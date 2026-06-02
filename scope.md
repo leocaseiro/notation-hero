@@ -1,0 +1,63 @@
+# Drum Tutor clone
+heavily inspired by:
+- primary by Roland DT-1 V-Drums Tutor (discountined)
+- also inspired by Melodics
+- Clone Hero / Guitar hero / Rock band
+- Synthesia
+
+I want to create an app to learn and practice how to play drums.
+As a main goal, the app should have all the features from the DT-1 V-Drums Tutor software from Roland which is discontinued.
+- The app should:
+    - work in both Windows and Mac devices, as well as for tablets (iPad/Android Tablet)
+        - a nice to have is to also work in a browser
+        - nice to have for small devices (mobile)
+    - primary work from e-drums, but should allow to select other instruments that are midi inputs (e.g. keyboard).
+    - work as a rhythm game, where the user has to hit the drums at the right time.
+    - allow the user to choose a file in format to play/listen to midi and/or guitar pro.
+        - nice to have is to also allow the user to have a background audio (e.g. mp3) or video (e.g. mp4 or youtube) to play/listen to while playing the song.
+    - display primary the song in notation, but a nice to have would be to display the song in a friendly notation view (like Synthesia as falling notes or Melodics as horizontal friendly notation for users that are not familiar with notation).
+    - display in real time the correct note hit by the user with a visual feedback for:
+        - Standard notation:
+            - a green circle around the notehead on perfect hit
+            - a orange circle around the notehead when too early
+            - a purple circle around the notehead when too late
+            - missed notes, shouldn't have any visual feedback
+            - extra hits, should display a red cross in the correct time and line/space position of the staff (e.g. if the user hits the snare instead of the kick, we should display a red cross in the snare position, and not in the kick position).
+    - Friendly notation view:
+        - TBD UI and feedback (can you provide suggestions for both the friendly notation view and the real time feedback indicators?)
+    - Player features:
+        - choose a song (upload or previous loaded)
+        - play / pause / stop
+        - loop on/off (off by default)
+        - count-in which should have the metronome sound for each bit based on the measure (e.g. 4 beats for a 4/4 time signature)
+        - metronome on/off (on by default)
+        - tempo that can be adjusted by bpm or percentage
+        - select what the volume of each instrument to listen to (e.g. drums, guitar, bass, etc)
+            - alternatively, the user can select a the instrument to listen and others (e.g. drums only, drums + everything else, just everything else but my instrument)
+        - select what part (from point A to point B) of the song to play (select point A and point B by clicking on a smaller timeline score view)
+        - repeat on/off (off by default)
+        - select what instrument to play (e.g. drums, keyboard) - default is drums
+        - back to start (stop and go to the start of the song)
+    - Score rating
+        - we should use a 5 star rating system to rate the user's performance and save a percentage from 0 to 100 for each time the user plays the song.
+        - streak, we should indicate the current streak of correct hits and the longest streak of correct hits.
+    - Game mode
+        - for game mode, user cannot select:
+            - select what part (from point A to point B) of the song to play
+            - tempo
+            - repeat
+    - Practice mode
+        - auto speed based on score accuracy (e.g. user can select to every time the hit over 90% accuracy, the speed wound increase 5 bpm, until the user reaches the song's original speed).
+        - memory mode, user can select to practice and/or play the song by memory, without displaying the notation. Howeve, if the user makes a mistake, than we display the notation which should fade out after a few perfect hits.
+    - Midi input
+        - user should be able to select a midi input device to play/listen to.
+        - user should be able to map the midi note for each instrument to the notation. (e.g. hitting either 51, 53, 59 and 93 from the midi input should consider as a ride 51 hit from notation).
+        - for the pedal hi-hat, we should allow the user select to ignore errors on extra hits, but still count the correct hits. (this is because the pedal hi-hat is a special case, because it is not just a hit note, but also is a preparation for the hit-hat closed/opened).
+    - Extra configuration features:
+        - latency compensation
+    - Nice to have features:
+        - keyboard shortcuts
+        - audio/video player
+        - keep a history of the user daily streak
+        - keep a history of the user for each score/play/practice session
+        - dynamic detection (e.g. ghost notes have lower volume, etc)
