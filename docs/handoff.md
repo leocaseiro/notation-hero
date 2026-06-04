@@ -8,11 +8,11 @@
 
 ## Project identity
 
-- **Name:** NotationHero (renamed from `notation-hero`)
+- **Name:** NotationHero (brand); repo + dir `notation-hero` (renamed from `notation-hero`)
 - **What:** drum-practice / rhythm-game app, spiritual successor to a discontinued
   discontinued classic standalone drum-tutor. Wedge vs subscription tutor: custom song upload
   (MIDI + Guitar Pro) and Android support.
-- **Domain:** being acquired (notationhero.* TBD)
+- **Domain:** being acquired (`notation-hero.*` / `notationhero.*` — TBD)
 - **Stage:** pre-code. Repo currently holds docs only (`scope.md`,
   `docs/design-stack.md`, this file).
 
@@ -80,15 +80,19 @@
 ## Folder rename procedure (run OUTSIDE a session in this folder)
 
 Do NOT rename while a Claude session's CWD is inside the folder (breaks the
-session + worktree links). After committing/pushing:
+session + worktree links). Exit this session first, then in a plain terminal:
 ```bash
 cd ~/Sites
-mv notation-hero notationhero
-cd notationhero
-git worktree repair      # fixes all worktree path links (you have 3 worktrees)
-git worktree list        # verify paths now point under notationhero
+mv notation-hero notation-hero
+cd notation-hero
+# main + the 2 nested linked worktrees moved together — pass each linked path:
+git worktree repair \
+  .claude/worktrees/pensive-boyd-6d17e3 \
+  .claude/worktrees/serene-grothendieck-fb5e67
+git worktree list   # every path should now start with ~/Sites/notation-hero
 ```
-Then start a fresh Claude session from `~/Sites/notationhero`.
+Then start a fresh Claude session from `~/Sites/notation-hero`.
+Optional: update `.specstory/.project.json` `project_name` to `notation-hero`.
 
 ## AWS toolchain status (2026-06-04)
 
@@ -108,7 +112,7 @@ Then start a fresh Claude session from `~/Sites/notationhero`.
    OIDC provider + deploy role. ACM cert when domain is ready.
 4. **Deploy workflow** (`.github/workflows/deploy.yml`): on merge to `master`,
    OIDC-assume role → `aws s3 sync` → CloudFront invalidation.
-5. **Create GitHub repo** `notationhero` (public) + push.
+5. **Create GitHub repo** `notation-hero` (public) + push.
 6. **Branch protection** on `master`: require PR + require CI status checks green.
 7. **Advanced PR policy** (Danger, VR-required-on-UI, Storybook-required-on-new-
    components, agent-vs-human rules) → designed via `/plan-eng-review` first,
