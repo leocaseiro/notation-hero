@@ -142,7 +142,7 @@ const I={
 };
 const ic=(n)=>`<svg viewBox="0 0 24 24">${I[n]}</svg>`;
 function tg(n,label,on){return `<div class="tg${on?' on':''}">${ic(n)}<span>${label}</span></div>`;}
-function tier(name,col,n,pct){return `<div class="tier"><span class="dot" style="background:${col}"></span>${name}<span class="bar"><i style="width:${pct}%;background:${col}"></i></span><span class="n">${n}</span></div>`;}
+function tier(name,col,n){return `<div class="tier"><span class="dot" style="background:${col}"></span>${name}<span class="bar"><i style="width:100%;background:${col}"></i></span><span class="n">${n}</span></div>`;}
 function sld(p){return `<div class="sld"><div class="f" style="width:${p}%"></div><div class="k" style="left:${p}%"></div></div>`;}
 function styles(active){const o=[['note','std'],['Tab','tab'],['slash','sl'],['hash','num']];
   return `<div class="styrow"><span class="stycap">VIEW</span><div class="stys">`+o.map(([g,k])=>`<span class="styopt${active.includes(k)?' on':''}">${g==='Tab'?'Tab':ic(g)}</span>`).join('')+`</div></div>`;}
@@ -172,7 +172,7 @@ document.getElementById('player').innerHTML=`
  <div class="rsb">
    <div class="sb-h" style="margin-bottom:6px"><span>SCORE · THIS PLAY</span><span class="x">✕</span></div>
    <div class="sb-score"><b>82%</b><span class="st">★★★★☆</span></div>
-   <div>${tier('Perfect',PAL.perfect,84,90)}${tier('Good',PAL.early,19,30)}${tier('OK',PAL.late,16,24)}${tier('Miss',PAL.miss,6,10)}</div>
+   <div>${tier('Perfect',PAL.perfect,84)}${tier('Early',PAL.early,12)}${tier('Late',PAL.late,9)}${tier('Missed',PAL.miss,6)}${tier('Error',PAL.extra,3)}</div>
    <div class="sb-streak"><div>STREAK<b class="g">×12</b></div><div>LONGEST<b>24</b></div><div>ACC<b>94%</b></div></div>
    <div class="sb-kit"><b>Drum kit</b>shown here when built</div>
  </div>
