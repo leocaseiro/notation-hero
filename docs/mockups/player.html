@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NotationHero — Player (v6 · light + dark)</title>
+<style>
+  :root{
+    --bg:#eceff4;--ink:#0f151c;--muted:#67707e;--faint:#9aa3b1;--line:#e5eaf1;--panel:#fbfcfe;
+    --accent:#10b6a6;--accent2:#2f6df6;
+    --perfect:#009E73;--early:#E69F00;--late:#CC79A7;--extra:#D55E00;--miss:#9AA0A6;
+    --shadow:0 1px 2px rgba(16,21,28,.05),0 16px 44px rgba(16,21,28,.13);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px 56px}
+  header.top{background:#141a23;color:#eef2f7;padding:22px 24px;border-bottom:3px solid var(--accent)}
+  header.top h1{margin:0;font-size:19px;font-weight:650}
+  header.top p{margin:5px 0 0;color:#9fb0c2;font-size:13px;max-width:880px}
+  .pill{display:inline-block;background:rgba(16,182,166,.16);color:#5ff0e0;border:1px solid rgba(16,182,166,.4);font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;margin-bottom:9px}
+  .lbl{font-size:13px;font-weight:650;margin:24px 0 8px;color:var(--muted)}
+
+  .device{position:relative;height:474px;border-radius:20px;box-shadow:var(--shadow);overflow:hidden;background:#fff;border:1px solid #d9dfe7}
+  svg{display:block}
+  .ix{display:grid;place-items:center;color:#55606f;width:40px;height:40px;cursor:default}
+  .ix svg{width:21px;height:21px}
+  .ix.on{color:var(--accent)}
+  .tg{display:flex;flex-direction:column;align-items:center;gap:2px;color:#586273;width:52px}
+  .tg svg{width:20px;height:20px}
+  .tg span{font-size:8.5px;letter-spacing:.03em;color:var(--faint);font-weight:600;white-space:nowrap}
+  .tg.on{color:var(--accent)}.tg.on span{color:var(--accent)}
+
+  .tick{position:absolute;top:0;left:0;right:0;height:50px;display:flex;align-items:center;gap:12px;padding:0 12px;border-bottom:1px solid var(--line);background:var(--panel);z-index:4}
+  .tick .back{color:var(--muted);font-size:20px;width:24px;text-align:center}
+  .tick .ttl{font-weight:650;font-size:14.5px}.tick .ttl s{color:var(--faint);text-decoration:none;font-weight:500;margin-left:5px;font-size:12.5px}
+  .scoretrigger{position:absolute;left:50%;top:13px;transform:translateX(-50%);display:flex;align-items:center;gap:14px;font-size:11px;color:var(--faint);letter-spacing:.05em}
+  .scoretrigger b{color:var(--ink);font-size:16px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:0;margin-left:5px}
+  .scoretrigger b.g{color:var(--perfect)}
+  .topicons{margin-left:auto;display:flex;align-items:center;gap:2px}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-right:4px}
+  .seg .ix{width:34px;height:30px}.seg .ix.on{background:var(--accent);color:#04201d}
+
+  .stage{position:absolute;top:50px;left:0;right:250px;bottom:114px;display:flex;align-items:center;padding:0 16px}
+  .ph{position:absolute;top:74px;height:150px;width:2px;background:var(--accent2);opacity:.7;left:38%}
+
+  .sidebar{position:absolute;top:50px;right:0;bottom:114px;width:250px;border-left:1px solid var(--line);background:var(--panel);padding:13px 15px;display:flex;flex-direction:column;gap:11px;z-index:3}
+  .sb-h{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--faint);font-weight:600;letter-spacing:.05em}
+  .sb-h .x{color:var(--faint);font-size:14px}
+  .sb-score{display:flex;align-items:baseline;gap:9px;color:var(--ink)}.sb-score b{font-size:30px;letter-spacing:-.02em}.sb-score .st{color:#f0a500;font-size:15px}
+  .tier{display:flex;align-items:center;gap:8px;font-size:12px;margin:3px 0;color:var(--ink)}
+  .tier .dot{width:9px;height:9px;border-radius:3px;flex:0 0 auto}
+  .tier .bar{height:7px;border-radius:4px;flex:1;background:rgba(0,0,0,.06)}.tier .bar i{display:block;height:100%;border-radius:4px}
+  .tier .n{width:24px;text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+  .sb-streak{display:flex;gap:6px;border-top:1px solid var(--line);padding-top:10px}
+  .sb-streak div{flex:1;font-size:10px;color:var(--faint);letter-spacing:.03em}.sb-streak b{display:block;color:var(--ink);font-size:15px}.sb-streak b.g{color:var(--perfect)}
+  .sb-kit{margin-top:auto;border:1.5px dashed var(--line);border-radius:12px;padding:14px;text-align:center;color:var(--faint);font-size:11px}
+  .sb-kit b{display:block;color:var(--muted);font-size:12px;margin-bottom:2px}
+
+  .bottom{position:absolute;left:0;right:0;bottom:0;height:114px;background:linear-gradient(180deg,#fff,var(--panel));border-top:1px solid var(--line);padding:14px 16px 12px;z-index:4}
+  .scrub{display:flex;align-items:center;gap:13px}
+  .scrub .t{font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;flex:0 0 auto;width:36px}
+  .scrub .t.r{text-align:right}
+  .scrub .track{position:relative;height:6px;border-radius:999px;background:rgba(0,0,0,.10);flex:1}
+  .scrub .fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent)}
+  .scrub .ab{position:absolute;top:-4px;bottom:-4px;background:rgba(16,182,166,.16);border-left:2px solid var(--accent);border-right:2px solid var(--accent);border-radius:3px}
+  .scrub .knob{position:absolute;top:50%;left:38%;transform:translate(-50%,-50%);width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.25)}
+  .scrub .h{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:18px;border-radius:4px;background:var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.3)}
+
+  .btns{display:flex;align-items:center;margin-top:11px;gap:6px}
+  .divider{width:1px;height:28px;background:var(--line);margin:0 8px}
+  .play{color:var(--accent);width:46px;height:46px;display:grid;place-items:center}.play svg{width:30px;height:30px}
+  .bpmctl{display:flex;align-items:center;gap:6px}
+  .step{width:28px;height:28px;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;color:#586273}.step svg{width:15px;height:15px}
+  .bpmval{display:flex;flex-direction:column;align-items:center;width:54px;color:#586273}
+  .bpmval b{font-size:16px;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1}
+  .bpmval .lab{display:flex;align-items:center;gap:3px;font-size:8px;color:var(--faint);font-weight:600;letter-spacing:.06em}
+  .bpmval .auto{display:inline-flex;color:var(--accent)}.bpmval .auto.off{color:var(--faint);opacity:.4}.bpmval .auto svg{width:11px;height:11px}
+  .spacer{margin-left:auto}
+
+  /* DARK theme overrides */
+  .device.dark{background:#0c1117;border-color:#1d2531;--line:#222c39;--panel:#121821;--ink:#e8edf3;--muted:#9aa6b4;--faint:#6c7889}
+  .device.dark .tick,.device.dark .sidebar{background:#121821}
+  .device.dark .bottom{background:linear-gradient(180deg,#0f141b,#121821)}
+  .device.dark .ttl{color:#e8edf3}
+  .device.dark .ix,.device.dark .tg,.device.dark .step,.device.dark .back{color:#aeb9c8}
+  .device.dark .bpmval b{color:#e8edf3}
+  .device.dark .scrub .track{background:rgba(255,255,255,.13)}
+  .device.dark .scrub .knob{background:#0c1117}
+  .device.dark .tier .bar{background:rgba(255,255,255,.09)}
+  .device.dark .seg{border-color:#2a3543}
+
+  .cap{font-size:11.5px;color:var(--muted);margin:9px 2px 0}
+  .foot{margin-top:22px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap" style="max-width:1120px">
+  <span class="pill">PLAYER · v6 — AUTO icon now inside the BPM control · light + dark</span>
+  <h1>NotationHero — Player (light + dark)</h1>
+  <p>The auto-speed ⟳ now lives inside the BPM block (green = on, grey = off). Standard notation defaults to light/paper; dark theme below for dim rooms (and it's the natural base for the Friendly view). Theme is chosen in Settings.</p>
+</div></header>
+
+<div class="wrap">
+  <p class="lbl">Light (default)</p>
+  <div id="player" class="device"></div>
+  <p class="lbl">Dark</p>
+  <div id="playerDark" class="device dark"></div>
+  <p class="cap">Same layout, themed. AUTO ⟳ sits under the BPM number. Score sidebar shown open in both (default = closed, notation full-width).</p>
+  <div class="foot">NotationHero · player v6 · dark = D-3 (keep + theme). Feedback palette (Okabe-Ito) is theme-independent; rings read on both paper and dark.</div>
+</div>
+
+<script>
+const PAL={perfect:'#009E73',early:'#E69F00',late:'#CC79A7',extra:'#D55E00',miss:'#9AA0A6'};
+function staff(x0,x1,c){let s='';[0,9,18,27,36].forEach(y=>s+=`<line x1="${x0}" y1="${26+y}" x2="${x1}" y2="${26+y}" stroke="${c}" stroke-width="1"/>`);return s;}
+function head(cx,cy,f,t){if(t==='cym')return `<g stroke="${f}" stroke-width="2.3" stroke-linecap="round"><line x1="${cx-4.8}" y1="${cy-4.4}" x2="${cx+4.8}" y2="${cy+4.4}"/><line x1="${cx-4.8}" y1="${cy+4.4}" x2="${cx+4.8}" y2="${cy-4.4}"/></g>`;return `<ellipse cx="${cx}" cy="${cy}" rx="6.4" ry="4.9" fill="${f}" transform="rotate(-18 ${cx} ${cy})"/>`;}
+function ring(cx,cy,c){return `<circle cx="${cx}" cy="${cy}" r="11" fill="none" stroke="${c}" stroke-width="2.4"/>`;}
+function chev(cx,cy,c,d){const s=d==='left'?-1:1,b=cx+s*11;return `<path d="M ${b} ${cy-4.4} L ${b+s*6} ${cy} L ${b} ${cy+4.4} Z" fill="${c}"/>`;}
+function cross(cx,cy,c){return `<g stroke="${c}" stroke-width="2.9" stroke-linecap="round"><line x1="${cx-6}" y1="${cy-6}" x2="${cx+6}" y2="${cy+6}"/><line x1="${cx-6}" y1="${cy+6}" x2="${cx+6}" y2="${cy-6}"/></g>`;}
+const NOTES=[{l:1,t:'cym'},{l:3,t:'drum',fb:'perfect'},{l:1,t:'cym'},{l:4,t:'drum'},{l:1,t:'cym',fb:'early'},{l:3,t:'drum',fb:'late'},{l:1,t:'cym'},{l:4,t:'drum'},{l:2,t:'drum'},{l:3,t:'drum',fb:'extra'},{l:1,t:'cym'},{l:4,t:'drum'},{l:1,t:'cym'},{l:3,t:'drum'}];
+function notation(w,theme){const baseF=theme==='dark'?'#e9edf2':'#15191f',sc=theme==='dark'?'#3a4655':'#c9d0d9',beam=theme==='dark'?'#9aa6b4':'#222';const yL=[26,35,44,53,62],x0=8,step=(w-30)/NOTES.length;let g=staff(x0,w-10,sc);
+  g+=`<line x1="${x0+18}" y1="16" x2="${x0+18+step*(NOTES.length-1)}" y2="16" stroke="${beam}" stroke-width="2.6"/>`;
+  NOTES.forEach((n,i)=>{const cx=x0+18+i*step,cy=yL[n.l];g+=`<line x1="${cx+5}" y1="${cy}" x2="${cx+5}" y2="16" stroke="${beam}" stroke-width="1.4"/>`;
+    if(!n.fb){g+=head(cx,cy,baseF,n.t);return;} if(n.fb==='extra'){g+=head(cx,cy,baseF,n.t);g+=cross(cx,yL[0]-3,PAL.extra);return;}
+    g+=head(cx,cy,baseF,n.t);g+=ring(cx,cy,PAL[n.fb]);if(n.fb==='early')g+=chev(cx,cy,PAL.early,'left');if(n.fb==='late')g+=chev(cx,cy,PAL.late,'right');});
+  return `<svg width="${w}" height="78" viewBox="0 0 ${w} 78">${g}</svg>`;}
+const I={
+ back:'<path d="M7 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 5L10 12L19 19Z" fill="currentColor"/>',
+ play:'<path d="M8 5v14l11-7z" fill="currentColor"/>',
+ folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+ plus:'<path d="M12 6v12M6 12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+ minus:'<path d="M6 12h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+ auto:'<path d="M5 12a7 7 0 0 1 11.5-5.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M19 12a7 7 0 0 1-11.5 5.3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M16.5 3.5l1 3.2-3.2.4z" fill="currentColor"/><path d="M7.5 20.5l-1-3.2 3.2-.4z" fill="currentColor"/>',
+ loop:'<path d="M5 12a7 7 0 0 1 11.5-5.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 12a7 7 0 0 1-11.5 5.3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M16.5 3.5l1 3.2-3.2.4z" fill="currentColor"/><path d="M7.5 20.5l-1-3.2 3.2-.4z" fill="currentColor"/>',
+ metro:'<path d="M9.6 4h4.8l2.4 16H7.2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 17.5L15.4 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M7.7 16h8.6" stroke="currentColor" stroke-width="1.5"/>',
+ countin:'<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 12V7M12 12l3.4 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
+ tracks:'<path d="M6 4v16M12 4v16M18 4v16" stroke="currentColor" stroke-width="1.6"/><circle cx="6" cy="9" r="2.1" fill="currentColor" opacity=".15"/><circle cx="6" cy="9" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="14" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="18" cy="8" r="2.1" fill="none" stroke="currentColor" stroke-width="1.6"/>',
+ note:'<ellipse cx="9" cy="17" rx="3" ry="2.4" fill="currentColor"/><path d="M11.6 16.5V6l6-2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11.6 6l6-2v3.6l-6 2z" fill="currentColor"/>',
+ lanes:'<rect x="4" y="7" width="16" height="2.4" rx="1.2" fill="currentColor"/><rect x="4" y="11" width="10" height="2.4" rx="1.2" fill="currentColor"/><rect x="4" y="15" width="13" height="2.4" rx="1.2" fill="currentColor"/>',
+ midi:'<circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="8" cy="10" r="1.1" fill="currentColor"/><circle cx="12" cy="8" r="1.1" fill="currentColor"/><circle cx="16" cy="10" r="1.1" fill="currentColor"/><circle cx="9" cy="14.5" r="1.1" fill="currentColor"/><circle cx="15" cy="14.5" r="1.1" fill="currentColor"/>',
+ gear:'<circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M19.1 14.5a1.5 1.5 0 0 0 .3 1.65l.05.05a1.8 1.8 0 1 1-2.55 2.55l-.05-.05a1.5 1.5 0 0 0-1.65-.3 1.5 1.5 0 0 0-.9 1.37V20a1.8 1.8 0 0 1-3.6 0v-.08a1.5 1.5 0 0 0-.98-1.37 1.5 1.5 0 0 0-1.65.3l-.05.05a1.8 1.8 0 1 1-2.55-2.55l.05-.05a1.5 1.5 0 0 0 .3-1.65 1.5 1.5 0 0 0-1.37-.9H4a1.8 1.8 0 0 1 0-3.6h.08a1.5 1.5 0 0 0 1.37-.98 1.5 1.5 0 0 0-.3-1.65l-.05-.05a1.8 1.8 0 1 1 2.55-2.55l.05.05a1.5 1.5 0 0 0 1.65.3H9a1.5 1.5 0 0 0 .98-1.37V4a1.8 1.8 0 0 1 3.6 0v.08a1.5 1.5 0 0 0 .9 1.37 1.5 1.5 0 0 0 1.65-.3l.05-.05a1.8 1.8 0 1 1 2.55 2.55l-.05.05a1.5 1.5 0 0 0-.3 1.65V9a1.5 1.5 0 0 0 1.37.98H20a1.8 1.8 0 0 1 0 3.6h-.08a1.5 1.5 0 0 0-1.37.9z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'
+};
+const ic=(n)=>`<svg viewBox="0 0 24 24">${I[n]}</svg>`;
+function tg(n,label,on){return `<div class="tg${on?' on':''}">${ic(n)}<span>${label}</span></div>`;}
+function tier(name,col,n,pct){return `<div class="tier"><span class="dot" style="background:${col}"></span>${name}<span class="bar"><i style="width:${pct}%;background:${col}"></i></span><span class="n">${n}</span></div>`;}
+
+function build(theme){const stageW=1118-250-32;return `
+ <div class="tick">
+   <span class="back">‹</span>
+   <span class="ttl">Light Pop<s>(Easy)</s></span>
+   <div class="scoretrigger">SCORE<b>82%</b><span style="margin-left:6px">COMBO</span><b class="g">×12</b></div>
+   <div class="topicons"><div class="seg"><div class="ix on">${ic('note')}</div><div class="ix">${ic('lanes')}</div></div><div class="ix">${ic('midi')}</div></div>
+ </div>
+ <div class="stage">${notation(stageW,theme)}</div>
+ <div class="ph"></div>
+ <div class="sidebar">
+   <div class="sb-h"><span>SCORE · THIS PLAY</span><span class="x">✕</span></div>
+   <div class="sb-score"><b>82%</b><span class="st">★★★★☆</span></div>
+   <div>${tier('Perfect',PAL.perfect,84,90)}${tier('Good',PAL.early,19,30)}${tier('OK',PAL.late,16,24)}${tier('Miss',PAL.miss,6,10)}</div>
+   <div class="sb-streak"><div>STREAK<b class="g">×12</b></div><div>LONGEST<b>24</b></div><div>ACCURACY<b>94%</b></div></div>
+   <div class="sb-kit"><b>Drum kit</b>lights up as you hit — shown here when built</div>
+ </div>
+ <div class="bottom">
+   <div class="scrub"><span class="t">1:04</span><div class="track"><div class="ab" style="left:30%;width:24%"></div><div class="fill" style="width:38%"></div><div class="h" style="left:30%"></div><div class="h" style="left:54%"></div><div class="knob"></div></div><span class="t r">3:48</span></div>
+   <div class="btns">
+     <div class="ix">${ic('folder')}</div>
+     <div class="divider"></div>
+     <div class="ix">${ic('back')}</div><div class="play">${ic('play')}</div>
+     <div class="divider"></div>
+     <div class="bpmctl"><div class="step">${ic('minus')}</div><div class="bpmval"><b>120</b><span class="lab">BPM<span class="auto">${ic('auto')}</span></span></div><div class="step">${ic('plus')}</div></div>
+     ${tg('metro','METRO',true)}${tg('countin','COUNT-IN')}${tg('loop','LOOP',true)}
+     <div class="spacer"></div>
+     ${tg('tracks','TRACKS')}${tg('gear','SETTINGS')}
+   </div>
+ </div>`;}
+document.getElementById('player').innerHTML=build('light');
+document.getElementById('playerDark').innerHTML=build('dark');
+</script>
+</body>
+</html>
