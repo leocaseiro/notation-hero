@@ -2,7 +2,7 @@
 
 > Created 2026-06-05, after the feature freeze locked. Copy each fenced block into a **fresh Claude session** to run that track. Your global ADHD collaboration rules auto-load, so they're not repeated here.
 >
-> **Dependency:** Tracks **1 (UI)** and **2 (Pipeline)** need no song schema → fully parallel now. Track **3 (Schema)** finalizes [song-schema.md](song-schema.md) → that unblocks the *later* APP-data-layer + CMS build split. So: run all three in parallel; just don't start the APP/CMS *data* code until Track 3 lands.
+> **Dependency:** Tracks **1 (UI)**, **2 (Pipeline)**, and **4 (CMS approach)** are independent decisions → fully parallel now. Track **3 (Schema)** finalizes [song-schema.md](song-schema.md). The *later* CMS **build** waits on both Track 3 (schema) **and** Track 4 (approach); the APP **data** layer waits on Track 3. So: run all four in parallel; just don't start APP/CMS *data/build* code until those land.
 >
 > Canonical docs (read-only inputs) all live in `~/Sites/notation-hero/.claude/worktrees/pensive-boyd-6d17e3/docs/` and `scope.md`.
 
@@ -69,4 +69,35 @@ Scope: resolve the 5 open questions in song-schema.md; finalize the Lesson recor
 Constraints: DynamoDB single-table (H-3); shared/global data (no per-user identity in Alpha/Beta); store raw files and parse on the client via AlphaTab (no pre-stored tick map); extensible for later /design-shotgun findings.
 
 Deliverable: song-schema.md updated to status LOCKED — the contract APP and CMS both implement.
+```
+
+---
+
+## Track 4 — Decide the CMS implementation approach
+
+```text
+NotationHero — decide HOW to build the Admin/CMS (Track 4 of a parallel plan). The feature freeze is locked; AWS depth is a PRIMARY near-term goal (job-hunt portfolio).
+
+Goal: choose the CMS implementation approach — custom-built on AWS vs headless CMS (self-hosted or SaaS) vs git/flat-file — and document the decision + rationale.
+
+THE CORE TENSION: the CMS (area K) was placed in Alpha specifically as an AWS-portfolio piece — building S3 + DynamoDB + Lambda + CloudFront yourself (incl. a CloudFront-Function Basic-Auth gate) is a ranked interview showcase. A headless/SaaS CMS is faster but LARGELY bypasses that learning (it brings its own DB/backend) and may add cost or a vendor. Weigh AWS-learning value (PRIMARY) against build-speed / convenience / cost.
+
+Read first (absolute paths):
+- /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/pensive-boyd-6d17e3/docs/feature-freeze.md  — area K (K-1 lesson store, K-2 hosted admin SPA+CRUD w/ CloudFront-Function Basic Auth, K-3 catalog API) + the AWS portfolio-candidate ranking + the sync model.
+- /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/pensive-boyd-6d17e3/docs/song-schema.md  — what the CMS manages (Lesson record + S3 files + catalog API). Track 3 finalizes this; this tooling decision can proceed in parallel.
+- /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/pensive-boyd-6d17e3/docs/aws-learning-map.md  — which AWS services the CMS is meant to teach.
+- /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/pensive-boyd-6d17e3/docs/design-stack.md  — AWS stack (Pulumi, Lambda Function URL, DynamoDB, S3+CloudFront+OAC), free-tier posture, and App-Store license constraints (proprietary app; OSS-compatible licenses only — relevant if bundling/forking a CMS).
+
+Evaluate at least these options, each on: AWS-learning value, cost (Always-Free-tier fit), build effort, fit for the lesson schema, and license/App-Store compatibility:
+1. Custom-built (raw React admin + Lambda Function URL CRUD + DynamoDB + S3 + CloudFront-Function Basic Auth) — max AWS learning, free tier, more code (this is what area K currently describes).
+2. Self-hosted headless (Strapi / Directus / Payload) — less code + a real admin UI, but container hosting (Fargate/EC2 = no free tier) and its own DB bypasses the DynamoDB/Lambda learning. Check: can it store media in S3 and/or sync metadata to your DynamoDB?
+3. Managed/SaaS headless (Sanity / Contentful / Strapi Cloud) — fastest, but $ + data off-AWS (undercuts the portfolio) + vendor + ToS/license.
+4. Git / flat-file (lessons as repo files + a thin editor) — simplest, free, but no dynamic catalog API + rebuild-to-publish.
+5. Hybrid (headless admin UX, but files in S3 + metadata synced to DynamoDB) — some AWS surface + admin convenience.
+
+Also note how the choice resolves the DEFERRED question "does /design-shotgun cover the CMS UI?" — a headless CMS has its own admin UI, so there's nothing to design.
+
+Constraints: AWS-portfolio depth is the PRIMARY goal; stay in the AWS Always-Free tier where possible; no Cognito for admin (CloudFront-Function Basic Auth already chosen); proprietary app → OSS-compatible licenses only if bundling a CMS.
+
+Deliverable: a CMS-approach decision doc (chosen approach + rationale + exactly what AWS it does/doesn't exercise + cost), written to docs/. Suggest running /office-hours or ce-brainstorm.
 ```
