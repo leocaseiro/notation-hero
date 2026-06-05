@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NotationHero — Library</title>
+<style>
+  :root{
+    --bg:#eceff4;--ink:#0f151c;--muted:#67707e;--faint:#9aa3b1;--line:#e5eaf1;--panel:#fbfcfe;
+    --accent:#10b6a6;--gold:#f0a500;--perfect:#009E73;
+    --shadow:0 1px 2px rgba(16,21,28,.05),0 16px 44px rgba(16,21,28,.13);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px 56px}
+  header.top{background:#141a23;color:#eef2f7;padding:22px 24px;border-bottom:3px solid var(--accent)}
+  header.top h1{margin:0;font-size:19px;font-weight:650}
+  header.top p{margin:5px 0 0;color:#9fb0c2;font-size:13px;max-width:840px}
+  .pill{display:inline-block;background:rgba(16,182,166,.16);color:#5ff0e0;border:1px solid rgba(16,182,166,.4);font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;margin-bottom:9px}
+  svg{display:block}
+
+  .device{position:relative;border-radius:20px;box-shadow:var(--shadow);overflow:hidden;background:#fff;border:1px solid #d9dfe7}
+  /* app top bar */
+  .abar{display:flex;align-items:center;gap:14px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:750;font-size:16px;letter-spacing:-.01em}
+  .logo .m{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#10b6a6,#2f6df6);display:grid;place-items:center;color:#fff}
+  .logo .m svg{width:16px;height:16px}
+  .search{margin-left:8px;flex:1;max-width:420px;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;color:var(--faint);font-size:13px}
+  .search svg{width:16px;height:16px}
+  .abar .sp{margin-left:auto}
+  .obtn{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 13px;font-size:13px;font-weight:600;color:var(--ink)}
+  .obtn svg{width:17px;height:17px;color:var(--muted)}
+  .iconbtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);display:grid;place-items:center;color:var(--muted)}.iconbtn svg{width:19px;height:19px}
+
+  .body{padding:18px 20px 22px}
+  .filters{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .chip{font-size:12.5px;padding:6px 13px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:#fff;font-weight:600}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#04201d}
+  .sort{margin-left:auto;display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted);border:1px solid var(--line);border-radius:9px;padding:6px 11px}.sort svg{width:14px;height:14px}
+
+  /* continue */
+  .cont{display:flex;align-items:center;gap:16px;background:linear-gradient(100deg,rgba(16,182,166,.12),rgba(47,109,246,.08));border:1px solid rgba(16,182,166,.3);border-radius:14px;padding:14px 16px;margin-bottom:18px}
+  .cont .art{width:50px;height:50px;border-radius:11px;background:linear-gradient(135deg,#10b6a6,#2f6df6);display:grid;place-items:center;color:#fff}.cont .art svg{width:24px;height:24px}
+  .cont .lbl{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.05em}
+  .cont .ti{font-weight:700;font-size:16px}.cont .mt{font-size:12.5px;color:var(--muted)}
+  .cont .resume{margin-left:auto;display:flex;align-items:center;gap:9px;background:var(--accent);color:#04201d;border-radius:11px;padding:11px 18px;font-weight:700;font-size:14px}
+  .cont .resume svg{width:20px;height:20px}
+
+  /* list */
+  .lhead,.row{display:grid;grid-template-columns:46px 1fr 120px 96px 130px 48px;align-items:center;gap:12px}
+  .lhead{padding:0 12px 8px;font-size:10.5px;color:var(--faint);font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+  .lhead .r,.row .r{text-align:right}.lhead .c,.row .c{text-align:center}
+  .row{padding:11px 12px;border-radius:12px;border:1px solid transparent}
+  .row+.row{border-top:1px solid var(--line)}
+  .row.hl{background:rgba(16,182,166,.06);border-color:rgba(16,182,166,.3)}
+  .row .art{width:38px;height:38px;border-radius:9px;background:#eef1f6;display:grid;place-items:center;color:var(--faint);font-size:13px;font-weight:700}
+  .row.hl .art{background:linear-gradient(135deg,#10b6a6,#2f6df6);color:#fff}
+  .row .ti{font-weight:650;font-size:14px}.row .mt{font-size:11.5px;color:var(--faint)}
+  .stars{font-size:13px;letter-spacing:1px}.stars .f{color:var(--gold)}.stars .e{color:#d3d9e2}
+  .tempo{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}.tempo b{color:var(--ink)}
+  .best{font-size:13px;font-variant-numeric:tabular-nums}.best b{font-size:14px}.best .ms{font-size:10px;letter-spacing:0}.best .dash{color:var(--faint)}
+  .pl{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;color:var(--accent);margin-left:auto}.pl svg{width:18px;height:18px}
+  .row.hl .pl{background:var(--accent);border-color:var(--accent);color:#04201d}
+
+  .cap{font-size:11.5px;color:var(--muted);margin:10px 2px 0}
+  .foot{margin-top:22px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap" style="max-width:1120px">
+  <span class="pill">SCREEN · Library / song-select — the home & entry point to the player</span>
+  <h1>NotationHero — Library</h1>
+  <p>Searchable lesson/song list: difficulty (★), tempo, your best score. A Continue card resumes the last session; Open loads a local file (B‑1). Tapping a row → the player.</p>
+</div></header>
+
+<div class="wrap">
+  <div class="device" id="lib"></div>
+  <p class="cap">Filter by difficulty (or genre), sort, search. Best score shows % + mini-stars, or "—" if unplayed. The teal row = most recent.</p>
+  <div class="foot">NotationHero · Library · feeds the player · lesson catalog from the CMS (H‑11/K) · Open file = B‑1 (local, no upload).</div>
+</div>
+
+<script>
+const I={
+ note:'<path d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="16.5" cy="16" r="2.6" fill="currentColor"/>',
+ search:'<circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+ folder:'<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+ gear:'<circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M19.1 14.5a1.5 1.5 0 0 0 .3 1.65l.05.05a1.8 1.8 0 1 1-2.55 2.55l-.05-.05a1.5 1.5 0 0 0-1.65-.3 1.5 1.5 0 0 0-.9 1.37V20a1.8 1.8 0 0 1-3.6 0v-.08a1.5 1.5 0 0 0-.98-1.37 1.5 1.5 0 0 0-1.65.3l-.05.05a1.8 1.8 0 1 1-2.55-2.55l.05-.05a1.5 1.5 0 0 0 .3-1.65 1.5 1.5 0 0 0-1.37-.9H4a1.8 1.8 0 0 1 0-3.6h.08a1.5 1.5 0 0 0 1.37-.98 1.5 1.5 0 0 0-.3-1.65l-.05-.05a1.8 1.8 0 1 1 2.55-2.55l.05.05a1.5 1.5 0 0 0 1.65.3H9a1.5 1.5 0 0 0 .98-1.37V4a1.8 1.8 0 0 1 3.6 0v.08a1.5 1.5 0 0 0 .9 1.37 1.5 1.5 0 0 0 1.65-.3l.05-.05a1.8 1.8 0 1 1 2.55 2.55l-.05.05a1.5 1.5 0 0 0-.3 1.65V9a1.5 1.5 0 0 0 1.37.98H20a1.8 1.8 0 0 1 0 3.6h-.08a1.5 1.5 0 0 0-1.37.9z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+ play:'<path d="M8 5v14l11-7z" fill="currentColor"/>',
+ sort:'<path d="M4 7h16M6 12h12M9 17h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>'
+};
+const ic=(n)=>`<svg viewBox="0 0 24 24">${I[n]}</svg>`;
+function stars(n){let s='';for(let i=1;i<=5;i++)s+=`<span class="${i<=n?'f':'e'}">★</span>`;return `<span class="stars">${s}</span>`;}
+function best(pct,st){return pct==null?`<span class="dash">—</span>`:`<b style="color:${pct>=80?'var(--perfect)':'var(--ink)'}">${pct}%</b> <span class="ms">${stars(st)}</span>`;}
+const SONGS=[
+ {n:"Let's Start!",g:"Warm-up · 4/4",d:1,t:90,pct:null,st:0},
+ {n:"Light Pop",g:"Pop · Easy · 4/4",d:2,t:120,pct:82,st:4,hl:true},
+ {n:"Light Pop",g:"Pop · Medium",d:3,t:125,pct:64,st:3},
+ {n:"Rock Beat",g:"Rock · Easy",d:2,t:120,pct:91,st:5},
+ {n:"Soul Fusion",g:"Soul · Medium",d:3,t:100,pct:null,st:0},
+ {n:"Funk Groove",g:"Funk · Medium",d:3,t:105,pct:88,st:4},
+ {n:"Driving Rock",g:"Rock · Hard",d:4,t:110,pct:73,st:3},
+ {n:"Shuffle Blues",g:"Blues · Easy",d:2,t:96,pct:null,st:0}
+];
+const rows=SONGS.map((s,i)=>`<div class="row${s.hl?' hl':''}">
+   <div class="art">${s.hl?ic('play'):(i+1)}</div>
+   <div><div class="ti">${s.n}</div><div class="mt">${s.g}</div></div>
+   <div class="c">${stars(s.d)}</div>
+   <div class="tempo c"><b>${s.t}</b> BPM</div>
+   <div class="best r">${best(s.pct,s.st)}</div>
+   <div class="pl">${ic('play')}</div>
+ </div>`).join('');
+document.getElementById('lib').innerHTML=`
+ <div class="abar">
+   <div class="logo"><span class="m">${ic('note')}</span>NotationHero</div>
+   <div class="search">${ic('search')} Search songs &amp; lessons…</div>
+   <div class="sp"></div>
+   <div class="obtn">${ic('folder')} Open file</div>
+   <div class="iconbtn">${ic('gear')}</div>
+ </div>
+ <div class="body">
+   <div class="filters">
+     <span class="chip on">All</span><span class="chip">Easy</span><span class="chip">Medium</span><span class="chip">Hard</span>
+     <span style="width:14px"></span><span class="chip">Rock</span><span class="chip">Pop</span><span class="chip">Funk</span>
+     <div class="sort">${ic('sort')} Recent</div>
+   </div>
+   <div class="cont">
+     <div class="art">${ic('note')}</div>
+     <div><div class="lbl">CONTINUE</div><div class="ti">Light Pop <span style="font-weight:500;color:var(--muted)">(Easy)</span></div><div class="mt">last 82% · ★★★★☆ · 120 BPM</div></div>
+     <div class="resume">${ic('play')} Resume</div>
+   </div>
+   <div class="lhead"><div></div><div>Name</div><div class="c">Level</div><div class="c">Tempo</div><div class="r">Best</div><div></div></div>
+   ${rows}
+ </div>`;
+</script>
+</body>
+</html>
