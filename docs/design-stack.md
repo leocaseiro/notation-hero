@@ -16,9 +16,13 @@ The user has done significant pre-work that this doc now aligns with:
    `rhythm-game` branch. Live demo:
    https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game
    Source: /Users/leocaseiro/Sites/alphaTabWebsite
-   Confirmed: AlphaTab drum rendering + Web MIDI scoring + auto-BPM +
-   accuracy-coloured score + iOS Web MIDI shim all working in browser
-   with acceptable latency. The fork is MPL-2.0 (inherits from AlphaTab).
+   Confirmed on Mac Chrome: AlphaTab drum rendering + Web MIDI scoring +
+   auto-BPM + accuracy-coloured score, with acceptable latency. iOS Web MIDI
+   validated ONLY via the third-party WebMIDIAPIShimForiOS bridge app
+   (separately installed by users) — native iPad Safari has no Web MIDI in
+   2026, so PWA-on-iPad is not a viable v1 distribution path; Capacitor +
+   native CoreMIDI is the iPad route. The fork is MPL-2.0 (inherits from
+   AlphaTab).
 
 2. **MIDI mapping feature spec'd** at `MIDI_MAPPING_PLAN_SUMMARY.md`:
    multi-zone e-drum support (51/52/53 all → notation 51), preset
@@ -46,15 +50,34 @@ The user has done significant pre-work that this doc now aligns with:
 | Dependency | License | App Store impact |
 |---|---|---|
 | `@coderline/alphatab@^1.8.1` | MPL-2.0 | ✅ Compatible. File-level copyleft only. New files calling AlphaTab APIs can be proprietary. |
-| `alphaTabWebsite` fork (rhythm-game branch) | MPL-2.0 | ✅ Compatible. **MUST stay MPL-2.0** as a derivative; extract only the *logic patterns* into the clean proprietary app, not the source files. |
+| `alphaTabWebsite` fork (rhythm-game branch) | MPL-2.0 derivative | ✅ Compatible with nuance. CoderLine-authored files in the fork MUST stay MPL-2.0; extract only logic patterns into the proprietary repo. **User-authored fork-only files** (sole-authored by leocaseiro, never merged upstream — e.g., `MidiRhythmGame.tsx`, `useRhythmGameScore.tsx`, the `MIDI_MAPPING_*.md` / `AUTO_BPM.md` / `PERFORMANCE.md` / `PRACTICE_MODAL_PLAN.md` etc. plans) remain under the author's copyright and **CAN be re-licensed into the proprietary repo by the author** with the Sightread scrub applied (see Action item). |
 | `sightread` (sightread.dev) | **GPL-3** | 🚫 **INCOMPATIBLE.** GPL-3 conflicts with App Store DRM/redistribution terms. Reference patterns only — do not copy code. |
 | Tone.js, RxDB, Legend-State, PixiJS, React, Capacitor | MIT / Apache-2.0 | ✅ All App Store friendly. |
 
-**Action item:** the production `notation-hero` repo starts clean. It
-depends on `@coderline/alphatab` as a normal npm package. Code patterns
-the user learned in the alphaTabWebsite fork can be reimplemented in
-the clean repo (clean-room rewrite). No source files from the fork or
-from sightread should be checked into the production repo.
+**Action item:** the production `notation-hero` repo depends on
+`@coderline/alphatab` as a normal npm package and starts CoderLine-source-free.
+**User-authored fork-only files** (sole-authored, never merged upstream) may
+be re-licensed by the author into the proprietary repo with the **Sightread
+scrub** applied: (1) substitute own timing window values for the proprietary
+build (e.g., the reference tutor's actual windows, subscription tutor' published windows, or
+self-calibrated from user testing — NOT the fork's 50ms/300ms which match
+sightread); (2) remove the `// --- MIDI handler (sightread two-direction
+algorithm)` comment and the `MidiRhythmGame.tsx` header line "sightread-style
+two-direction scoring algorithm"; (3) treat sightread as not-read for any
+future algorithmic work in the proprietary repo. **CoderLine's source files
+stay in the MPL-2.0 fork; sightread source files never come in.**
+
+**Sightread reference verification (2026-06-05):** Side-by-side review of
+the fork's `useRhythmGameScore.tsx` + `MidiRhythmGame.tsx` against sightread's
+`src/features/player/player.ts` (commit `e247fdd9`) confirms NO source code
+was copied. Only the two timing-window constants (`PERFECT = 50ms`,
+`GOOD = 300ms`) match — these are uncopyrightable facts (Feist v. Rural
+Telephone, 499 U.S. 340). The fork's implementation is independently derived
+on AlphaTab's API surface (`api.tickCache.findBeat`, `api.boundsLookup`),
+uses React `useRef` for state (sightread uses Jotai atoms), and a different
+accuracy formula (fork: weighted 0.9 for good; sightread: simple ratio).
+"Two-direction" is a generic algorithm name used across rhythm games.
+Residual derivative-work risk after the proprietary scrub: effectively zero.
 
 ## Problem Statement
 
@@ -80,6 +103,26 @@ The full functional scope lives in `scope.md`. This document focuses on the
   love (not just licensed subscription tutor content) are underserved today.
 - **Real-time visual feedback** with timing categories (perfect / early / late /
   missed / extra) styled after standard drum-kit notation.
+- **Author dogfoods.** The doc's author is themselves a the reference tutor user, currently
+  stuck on legacy 32-bit Mac hardware to run it (the reference tutor doesn't run on modern
+  macOS, Apple Silicon, or iPadOS). They want to drum on their iPad or M5
+  Mac. The replacement audience is real and includes the builder — strong
+  dogfooding signal, not just complaint-mining from a competitor's userbase.
+  the reference tutor user-forum reports consistently ask "what do I move to?" and the parent company's
+  only pointer is the subscription tutor partnership, which has the two wedge gaps
+  named above.
+
+### Wedge validation (kill criterion before v1.5 launch)
+
+Set thresholds before launch so the wedge thesis is falsifiable:
+
+- If <X% of N drummer friends use custom upload weekly in the first 30 days
+  post-launch, the custom-upload wedge thesis is wrong; re-scope v1.5 toward
+  Mac/PWA-first and de-emphasize the Android subscription tutor-gap pitch.
+- If Android tablet installs are <Y% of total installs in the first 90 days,
+  the Android-wedge thesis is wrong; treat Android as Web-MIDI-PWA-only and
+  redirect the native Kotlin bridge budget into deeper Mac/iPad polish.
+- Define X, N, Y as part of the v1.5 launch plan, not at v1 build time.
 
 ## Constraints
 
@@ -97,9 +140,16 @@ The full functional scope lives in `scope.md`. This document focuses on the
 - **Offline-first is a CORE constraint, not nice-to-have.** The app must work
   fully offline (load song, score hits, save results); cloud sync is layered
   on top via RxDB or Legend-State replication.
-- **Career angle:** the backend doubles as a system-design portfolio piece.
-  Choices favor "rich enough to whiteboard and defend in a Staff FE interview"
-  over "minimum required to ship."
+- **Career angle (high priority — near-term):** the user is currently
+  between jobs (laid off as of 2026-06-04) and building this full-time,
+  agent-assisted, as an AWS-skills portfolio + job-hunt accelerator. The
+  backend doubles as a system-design portfolio piece for Staff FE / senior
+  backend interviews. **AWS depth = primary near-term goal; rhythm-game
+  feature completeness = secondary.** Choices favor "rich enough to whiteboard
+  and defend" over "minimum required to ship." Realistic v1 timeline:
+  ~2-5 months full-time + agents (NOT the 4-8 months weekend-pace projection
+  that the original review used). Status is time-sensitive — re-evaluate
+  this constraint if employment status changes.
 
 ## Premises (agreed, third revision)
 
@@ -165,17 +215,33 @@ acceptable for v1.
 - Frontend: TypeScript + **React 19** + Tailwind + Vite
 - Music core: **`@coderline/alphatab@^1.8.1`** (MPL-2.0; Guitar Pro
   parsing, standard drum notation, `AlphaSynth` audio synth engine)
-- **Friendly notation view (falling-notes-style falling notes):** PixiJS
-  on a separate canvas, fed from the same tick map AlphaTab uses.
-  PixiJS chosen over plain Canvas 2D for animation throughput on dense
-  drum charts (kick + 2 toms + snare + hi-hat + ride + crash + ghost
-  notes = a lot of moving sprites per second).
-- Audio scheduling: `tone@^15` for metronome and count-in. AlphaSynth is
-  the **timeline master**; `Tone.Transport.seconds` is periodically
-  re-synced from AlphaSynth's `positionChanged` callbacks (drift
-  correction, not true slaving — AlphaSynth doesn't export a sample-
-  accurate clock). Metronome ticks are scheduled in beat coordinates from
-  AlphaSynth position, not from `Tone.Transport` time, to avoid drift on
+- **Friendly notation view (v1.5 — design pending /design-shotgun pass,
+  see Deferred / Open Questions):** PixiJS on a separate canvas, fed from
+  the same tick map AlphaTab uses. PixiJS chosen over plain Canvas 2D for
+  animation throughput on dense drum charts (kick + 2 toms + snare + hi-hat
+  + ride + crash + ghost notes = a lot of moving sprites per second).
+  **v1 ships STANDARD notation only; v1 architecture must be
+  friendly-view-ready without foreclosing the v1.5 view.** Concretely:
+  - Extract a `NotationRenderer` interface that the scoring + feedback
+    layer calls. v1 implements `AlphaTabNotationRenderer`; v1.5 adds
+    `PixiJSFriendlyRenderer` without changing the scoring layer.
+  - The tick map is already renderer-agnostic (`[{tick, midiNote, lane,
+    windowMs}, ...]`) — no change needed.
+  - Native bridge emits `{noteId, verdict, ts, velocity}` events;
+    both renderers subscribe to the same event stream.
+  - Reserve a Settings slot "Notation style" (Standard | Friendly),
+    grayed-out in v1 with tooltip "Coming in v1.5" — avoids a navigation
+    refactor when v1.5 lands.
+  - Information-architecture decisions for the eventual view selection
+    (per-session vs persistent per-user preference, toggle location,
+    mid-song switch semantics, PixiJS canvas mount/unmount lifecycle)
+    are part of the /design-shotgun pass.
+- Audio scheduling: AlphaSynth's built-in metronome handles count-in and
+  timing in v1 (validated in Phase 0 — fork uses AlphaSynth metronome,
+  no Tone.js). A `tone@^15`-based drift-correction layer (AlphaSynth as
+  timeline master, `Tone.Transport` re-synced from `playerPositionChanged`)
+  is deferred pending Phase 1 spike — see Open Questions. Default to
+  AlphaSynth-only unless flam drift is demonstrably worse on iPad or
   backgrounded iOS AudioContexts.
 - MIDI input:
   - **iPad shell:** custom Swift Capacitor plugin wrapping CoreMIDI. Scoring
@@ -192,17 +258,49 @@ acceptable for v1.
 - **Offline-first sync:** **RxDB or Legend-State** (TBD in Phase 0+) handles
   client-side persistence + replication protocol. Server is two Lambdas:
   `pull(checkpoint)` queries a DynamoDB GSI for changes since the checkpoint;
-  `push(changeRows)` does conditional writes (LWW on `updatedAt`) and
-  returns conflicts. Soft-delete tombstones with DynamoDB TTL (~30 days).
+  `push(changeRows)` does conditional writes (LWW on **server-assigned
+  `updatedAt`** — the `push` Lambda stamps `Date.now()` at write time and
+  IGNORES any client-supplied timestamp, defending against client clock
+  spoofing / jailbroken-app attacks). Client-provided timestamps may be
+  used only for ordering local pending operations, never as the
+  authoritative conflict-resolution value stored in DynamoDB. Soft-delete
+  tombstones with DynamoDB TTL (~30 days). **v1.5 optimization (deferred):**
+  if real-world conflict UX shows the server-stamp approach drops too many
+  legitimate offline edits, add a bounded-drift mode that accepts client
+  timestamps within ±24h of server time — but ship the safe simple version
+  first.
 - **AWS backend (raw services, Pulumi TypeScript IaC):**
-  - **Lambda Function URL** (no API Gateway). JWT verified in-handler via
-    `aws-jwt-verify` against Cognito user pool.
+  - **Lambda Function URL** (no API Gateway), fronted by **CloudFront with
+    AWS WAF rate-limiting** (per-IP token-bucket: 100 req/min default;
+    returns HTTP **429** + `Retry-After` header on throttle via WAF custom
+    response). JWT verified in-handler via `aws-jwt-verify` against Cognito
+    user pool. Defense-in-depth: per-function Lambda **reserved-concurrency
+    cap** so a single compromised endpoint can't exhaust account-wide
+    concurrency. Cost: WAF rules ~$1/rule/mo + $0.60/M evaluations — well
+    inside Always-Free CloudFront 1 TB / 10M req/mo budget for solo-dev
+    traffic; rejected attack traffic doesn't drive bills because the
+    rate-limit rule returns 429 at the edge before reaching the origin.
   - **DynamoDB** single-table design with GSI on `(USER#sub, updatedAt)`
     for sync change-feed. Streams enabled for projection side-effects.
   - **Cognito** Hosted UI + PKCE + Google federation (v1). Apple
     federation added with iOS shell (Apple requires it on App Store if
     any social login is offered). GitHub federation deferred (needs OIDC
     bridge).
+  - **Token storage (Capacitor shells):** Cognito issues JWT access tokens
+    and JWT refresh tokens. Refresh tokens and the PKCE `code_verifier`
+    are stored in the **platform secure store** — iOS Keychain on the
+    iPad shell, Android EncryptedSharedPreferences on the Android shell
+    (via `@capacitor/preferences` with the secure option, or
+    `@capacitor-community/secure-storage-plugin`). Access tokens (short
+    TTL, 15–60 min) live in **memory only** — never LocalStorage, never
+    plaintext SharedPreferences. **Desktop PWA:** access tokens
+    in-memory; refresh tokens in IndexedDB with a session-scoped wrapper
+    (LocalStorage is acceptable for refresh tokens only if SameSite-strict
+    cookies are unavailable — solo-dev PWA usually fine).
+  - **Refresh-token rotation:** Cognito's "Token revocation" feature
+    enabled so every refresh issues a new refresh token and invalidates
+    the prior one — defends against stolen-token replay even before the
+    revocation API is wired up.
   - **SQS + SNS fan-out → consumer Lambda → S3 (Parquet) → Athena** for
     usage analytics. DynamoDB is wrong here (no aggregation).
   - **CloudFront + OAC** in front of a private S3 bucket for the PWA
@@ -238,9 +336,9 @@ adds render-time cost on dense drum scores — measure in Phase 0). Without
 this, `boundsLookup` returns bar/beat bounds but not per-note bounds, which
 breaks the extra-hit positioning feature.
 
-**Hit-detection timing source:**
-`AlphaSynth.positionChanged` (tick-based, locked to playback) drives the
-scoring window. NOT DOM events. NOT `requestAnimationFrame`.
+**Hit-detection timing source (the clock):**
+`AlphaTabApi.playerPositionChanged` (tick-based, locked to playback) drives the
+scoring-window check. NOT DOM events. NOT `requestAnimationFrame`.
 
 **Tick map format (JS → native):** at song load, AlphaSynth's score is
 walked once to produce a JSON array `[{tick, midiNote, lane, windowMs}, ...]`
@@ -248,11 +346,47 @@ passed to the native bridge via a single `loadSong(tickMap, scoringWindows)`
 call. Bridge acks; thereafter MIDI events on the device are scored locally
 in native code against the tick map.
 
-**Scoring windows (initial v1 values, tunable in settings):**
+**Native bridge playback-state protocol (JS ↔ native):** the tick map is
+one-shot at song load, but native scoring needs current playback state on
+every MIDI input. The protocol (must be specified in its own dedicated
+plan/spec before Swift bridge implementation — same precision-first rule
+applies to any UX- or performance-impacting feature):
+
+- **Discrete transport events (JS → native):** `play()`, `pause()`,
+  `seek(tick)`, `setTempo(bpm)`, `setLoop(startTick, endTick)`,
+  `clearLoop()`, `setLatencyOffsetMs(offset)`, `setMidiMapping(map)`,
+  `unloadSong()`.
+- **Heartbeat (JS → native, ~50ms while playing):** `tick(tick, ts, tempo)`
+  where `tick` is the current AlphaSynth tick from `playerPositionChanged`,
+  `ts` is `audioContext.currentTime` JS-side, and `tempo` is the current
+  BPM. Native uses this to anchor its own monotonic clock.
+- **Native-side tick estimation between heartbeats:** linear extrapolation
+  from the last `(tick, ts)` pair plus the current tempo. On `seek` /
+  `setTempo`, native discards extrapolation and waits for the next
+  heartbeat before scoring.
+- **Staleness threshold:** if no heartbeat arrives within 200ms, native
+  pauses scoring (does not guess) and emits a `staleHeartbeat` event back
+  to JS so the UI can surface a warning.
+- **Verdict events (native → JS):** `{noteId, verdict, ts, velocity}` per
+  scored input; aggregate `{score, streak}` updates batched every ~16ms
+  (one render frame) to avoid bridge thrash.
+
+The same protocol covers both Swift (CoreMIDI) and Kotlin
+(`android.media.midi`) bridges so they stay behaviorally identical. Document
+the full IPC contract in an `.proto`-style schema before the first Swift
+spike. **Cross-reference:** this protocol is THE load-bearing design for
+hit-detection latency; treat it as Phase 1's first deliverable, scoped as
+its own implementation plan separate from this stack doc.
+
+**Scoring windows (the acceptance bands — initial v1 values, tunable in settings):**
 - Perfect: ±25ms
 - Early/Late: ±50ms (outside perfect but inside this band → orange/purple)
 - Missed: any expected tick that elapsed +75ms with no hit
 - Extra: any input that doesn't match an expected tick within ±75ms
+
+Note: these v1 values are for the proprietary repo — they intentionally
+differ from the Phase 0 fork's sightread-borrowed 50/300ms constants
+(see License compatibility § Sightread scrub).
 
 **Per-instrument volume:**
 `AlphaSynth.applyTrackVolume(trackIndex, gain)` handles per-stem mixing
@@ -260,13 +394,23 @@ in native code against the tick map.
 
 **Effort:** Medium-Large (4-8 months solo, weekend pace, to first playable
 v1 across iPad + PWA; Android shell adds 6-10 weeks).
-**Risk:** Medium-High. The Capacitor MIDI bridges must be written from scratch
-(no shipping `@capacitor-community/midi` plugin exists as of 2026). For a
-TypeScript-only developer with no prior Swift/Kotlin shipping experience,
-budget **4-6 weeks per platform** for a production-quality bridge (includes
-Apple MIDI entitlements, background audio session config, Android USB-MIDI
-permission flow, hot-plug callbacks, edge-case device handling). A single-
-device happy-path spike still fits in 1 week per platform.
+**Risk:** Medium-High. The Capacitor MIDI bridge must be written from
+scratch (no shipping `@capacitor-community/midi` plugin exists as of 2026).
+For a TypeScript developer learning Swift, **staged timeline at full-time
+pace** (per the Career angle constraint — agent-assisted):
+
+| Stage | Scope | Weeks | Cumulative | Ship gate |
+|---|---|---|---|---|
+| **1** | iOS Capacitor shell + MIDI plumbing only (Swift bridge wraps CoreMIDI, emits raw MIDI events to JS; **scoring runs in JS like PWA**) | 4-6 wk | wk 6 | **TestFlight EAP / alpha** — looser latency (15-30ms via WebView Web Audio) acceptable for alpha audience |
+| **2** | Native-side scoring + tick-map IPC + JS↔native playback-state sync protocol (per the *Native bridge playback-state protocol* section above) | 3-5 wk | wk 11 | **v1 production gate** — 5-10ms perceived latency on iPad |
+| **3** | iOS audio session interruption (per *Audio session interruption resilience* in v1 success criteria) + latency-compensation arithmetic + hot-plug / entitlements / edge cases | 2-3 wk | wk 14 | **App Store submission readiness** |
+
+Total: **~11-14 weeks full-time** for full v1 iOS production. **TestFlight
+EAP available at ~week 6** — launch the alpha/EAP early, collect
+real-device feedback, latency-tightening work in Stages 2+3 follows after
+first user signal. A single-device happy-path spike still fits in 1 week
+(Stage 1 sub-step). **Android Kotlin bridge moves to v1.5** (per v1
+Success Criteria); v1 Android = PWA-Web-MIDI fallback.
 
 **Important latency clarification:** The native scoring keeps the *verdict
 event* (perfect/early/late) under ~10ms perceived. The *audio feedback for
@@ -286,8 +430,10 @@ path too.
   and audio synth playback in one library.
 - Raw CDK + Lambda + DynamoDB + S3 + Cognito cleanly satisfies the AWS
   learning goal.
-- iPad latency target (5-10ms scoring via native CoreMIDI) hits the gold
-  standard.
+- iPad latency TARGET 5-10ms scoring via native CoreMIDI — Phase 0 measured
+  5-10ms on Mac Chrome with raw Web MIDI (not iPad through Capacitor); the
+  iPad number is UNVERIFIED. Phase 1 Step 5 spike measures it and is a hard
+  stop-and-reassess at >25ms perceived (see Assignment / Stop-and-Reassess).
 
 **Cons:**
 - Two custom native bridges (~300-600 LoC Swift + ~300-600 LoC Kotlin) before
@@ -305,7 +451,7 @@ delay), and the WebView-for-notation friction (event marshalling, scroll
 sync, layout-pass mismatches) undercuts Flutter's "native everything"
 appeal. Native Windows MIDI is the only real win, which is below v1's bar.
 
-### Approach C: Pure web PWA (the Phase 0 spike, not the v1 stack)
+### Approach C: Pure web PWA — Phase 0 Spike (not the v1 product)
 
 Same web layer as A, no Capacitor. iPad Safari has no Web MIDI → degraded.
 **Not viable as the v1 product** because iPad is the daily driver. **IS the
@@ -321,7 +467,7 @@ qualifiers from the section above:
 2. Tone.js is **slaved** to AlphaSynth's clock, not the other way around.
 3. Per-note feedback is drawn on a **custom SVG overlay** aligned to
    AlphaTab's `boundsLookup`, not via AlphaTab's render hooks.
-4. AWS layer is **raw services via CDK**, not Amplify.
+4. AWS layer is **raw services via Pulumi TypeScript**, not Amplify or CDK.
 
 Phase 0 spike (Approach C scope) precedes Phase 1 (Capacitor shells).
 
@@ -354,6 +500,14 @@ Phase 0 spike (Approach C scope) precedes Phase 1 (Capacitor shells).
    the boundary. Document this in the production repo's README so any
    future contributor or App Store reviewer can verify.
 
+7. **Tone.js vs AlphaSynth-only metronome.** Phase 0 uses AlphaSynth's
+   built-in metronome with no Tone.js dependency. The drift-correction
+   architecture (AlphaSynth as timeline master, `Tone.Transport` re-synced
+   from `playerPositionChanged`) is speculative and adds complexity. Phase 1
+   spike: render 60s of count-in with both approaches on iPad; compare flam
+   audibility at correction boundaries. Default to AlphaSynth-only unless
+   drift is demonstrably worse.
+
 ## Success Criteria
 
 **Phase 0 (the spike, 1-2 weekends):**
@@ -368,7 +522,11 @@ Phase 0 spike (Approach C scope) precedes Phase 1 (Capacitor shells).
   another controller) connect via CoreMIDI through the Capacitor bridge.
 - Hit scoring runs native-side; per-note feedback (green/orange/purple
   circles, red cross at the actually-hit staff position) appears within
-  20ms perceived on iPad **and Android tablet at v1**.
+  20ms perceived on iPad at v1. Android tablet runs the PWA-on-Android
+  fallback in v1 (Web MIDI in Chrome Android, scoring in JS — degraded but
+  functional); the native Kotlin bridge (latency parity with iPad) moves
+  to v1.5, contingent on Phase 1 isolating whether the Phase 0 Android
+  latency is in our MIDI handling or AlphaTab's WebView render path.
 - Velocity is read from `noteon.velocity` and surfaced visually (lighter
   feedback for ghost notes).
 - **User-editable MIDI mapping UI**: maps source MIDI notes (e.g. 51, 53,
@@ -385,14 +543,75 @@ Phase 0 spike (Approach C scope) precedes Phase 1 (Capacitor shells).
 - **Latency compensation:** per-device offset slider (±100ms), persisted
   per-user-per-device in DynamoDB, cached locally. Applied to the scoring
   windows in the native bridge.
+- **Audio session interruption resilience (iOS):** on AVAudioSession
+  interruption (incoming call, Siri, AirPods disconnect, other-app audio
+  takeover), playback pauses at the last good tick; on resume, the user
+  sees a "resume from bar N" prompt rather than partial scoring. iOS
+  bridge subscribes to `AVAudioSession.interruptionNotification` and emits
+  `transportInterrupted` / `transportResumed` events to JS over the
+  bridge. (Critical for daily-driver iPad use — calls and Siri activations
+  are routine.)
 - **Game mode** (separate from Practice mode): locks tempo, A/B selection,
-  and repeat. User can only play start-to-finish at the song's original speed.
+  and repeat (matches scope.md §Game mode: "select what part (A to B),
+  tempo, repeat" all disabled). User can only play start-to-finish at the
+  song's original speed.
+- **Transport controls:** play / pause / stop / **back to start** (stop and
+  rewind to song start).
+- **Tempo adjust:** BPM and percentage (0–200% of original) slider, applied
+  to AlphaSynth playback rate (locked in Game mode per scope.md §Game mode).
+- **MIDI input instrument selector:** drums (default) or keyboard, persisted
+  to localStorage; informs the MIDI mapping presets.
+- **Loop on/off** toggle (off by default; per scope.md §Player features —
+  clarify semantics vs A/B loop selection and Repeat in Phase 1 spike).
+- **All other scope.md required features must be in v1** unless explicitly
+  deferred below with rationale. Audit against scope.md and the Phase 0
+  fork's existing features before locking the v1 ship-gate.
+
+**v1 UI features pending per-feature design specs (bridge-implementation-blocking):**
+
+Per the project rule that every UX- or performance-impacting feature gets
+its own dedicated plan/spec before implementation, the following v1 features
+each need a dedicated `docs/specs/<feature-name>.md` BEFORE their code
+lands. The Phase 0 fork has existing markdown plans (in
+`~/Sites/alphaTabWebsite/src/components/AlphaTabRhythmGame/`) that should be
+folded in as starting points:
+
+- **MIDI mapping UI** — `docs/specs/midi-mapping-ui.md` (TBD). Inputs from
+  fork: `MIDI_MAPPING_PLAN.md`, `MIDI_MAPPING_PLAN_SUMMARY.md`,
+  `MIDI_MAPPING_VISUAL_GUIDE.md`, `MIDI_MAPPING_IMPLEMENTATION_SUMMARY.md`,
+  `MIDI_MAPPING_QUICK_REF.md`. Cover: tap-to-learn flow, kit visualization,
+  preset surface (Yamaha DTX / Roland TD-50), unmapped-note state, mid-song
+  mapping change protocol.
+- **Per-device latency compensation UI** — `docs/specs/latency-compensation-ui.md`
+  (TBD). Cover: control location, guided calibration flow vs manual slider,
+  ±100ms range visualization, persistence semantics.
+- **Game mode UX** — `docs/specs/game-mode-ux.md` (TBD). Inputs from fork:
+  `PRACTICE_MODAL_PLAN.md` (sister-doc). Cover: enter/exit UX,
+  mode-switching navigation, visually-disabled controls with tooltips,
+  per-song-vs-session persistence.
+- **Per-instrument volume mixer + mute-mine/solo-mine UI** —
+  `docs/specs/mixer-ui.md` (TBD). Cover: layout position, control type per
+  track, three-state-toggle semantics, behavior on drums-only songs.
+- **A/B loop selection via timeline-view UI** —
+  `docs/specs/timeline-ab-loop.md` (TBD). Cover: timeline-view content,
+  set/reset gesture, region visualization, 10" tablet real-estate
+  (portrait + landscape).
+
+Each spec is small (1-2 pages); a `/ce-plan` or `/ce-brainstorm` pass per
+feature is appropriate. These specs do NOT block design-stack.md approval —
+they block their respective implementation tasks.
 
 **v1.5 (the $2 app push):**
+- **Android Kotlin native bridge** (latency parity with iPad) — contingent on Phase 1 latency-source isolation; v1 Android uses the PWA-Web-MIDI fallback.
 - AWS Cognito user pools (Lite-usage tier) for accounts.
 - DynamoDB score history + **cross-session daily streak history** (calendar
   tracking — different from v1's in-session streak counter).
-- S3-stored user uploads (with Lambda validator).
+- **S3-stored user uploads** (proprietary `.gp` / `.mid` files), with full validation pipeline:
+  - **Pre-signed PUT URLs with `ContentLengthRange` condition** (max 10 MB MIDI, 50 MB Guitar Pro) — S3 rejects oversized uploads at the storage layer before any Lambda invocation.
+  - **Lambda validator checks magic bytes BEFORE storing** — MIDI: `0x4D546864`; Guitar Pro: format-specific headers per GP3/GP4/GP5/GP6/GP7.
+  - **Quarantine prefix** (`quarantine/<user-sub>/<uuid>`) → on validation pass, move to `uploads/<user-sub>/<song-id>`.
+  - **Per-user upload rate limit** (e.g., 100 uploads/day) via DynamoDB counter, defends against single-user storage exhaustion.
+  - **Per-user S3 prefix isolation** enforced via IAM least-privilege on the Lambda execution role and the pre-signed URL key path — direct S3 access cross-tenant blocked.
 - 5-10 included royalty-free practice tracks (S3 + DynamoDB metadata).
 - Practice mode: auto-speed and memory mode.
 - Backing-track playback (MP3/MP4/YouTube) — if the iOS sync measurement
@@ -436,9 +655,11 @@ builds are manual via Xcode/Android Studio in v1.
 - **`react@^19` + `react-dom@^19`** (matches the Phase 0 fork).
 - **`@capacitor/core@^6`** + custom Swift + Kotlin bridge plugins written
   from scratch.
-- **`tone@^15`** for metronome timing (drift-corrected from AlphaSynth).
+- **`tone@^15`** — DEFERRED to Phase 1 spike. Phase 0 baseline uses
+  AlphaSynth's built-in metronome. Add Tone.js only if drift on iPad /
+  backgrounded AudioContexts is demonstrably worse than AlphaSynth-only.
 - **`@tonejs/midi@^2`** for `.mid` parsing.
-- **`pixi.js@^8`** for the friendly notation (falling-notes) view.
+- **`pixi.js@^8`** for the friendly notation (falling-notes) view (v1.5; do not install for v1).
 - **`rxdb@^16` OR `@legendapp/state@^3`** for offline-first sync (TBD).
 - **`pulumi@^3` + `@pulumi/aws@^6`** for IaC.
 - **`aws-jwt-verify@^5`** for JWT verification inside Lambda Function URL.
@@ -588,3 +809,76 @@ right end-to-end first.
     in Constraints and feeds the choice of richer backend over minimal.
 44. ✅ XState added to Open Questions for the game-mode FSM (optional
     interview-rigor add).
+
+## Deferred / Open Questions
+
+### From 2026-06-04 review
+
+- **Fold §6 friendly-view design into design-stack.md** — Approach A / Explicitly deferred (P0, design-lens + coherence, confidence 100)
+
+  Implementers will build the wrong friendly view: design-stack.md describes it as "falling-notes-style falling notes" (vertical waterfall) AND defers it pending /design-consultation. But stack-brainstorm.md §6 has the complete UX spec with horizontal-highway-style horizontal highway as primary, falling-notes app vertical as optional alternate, gem shape encoding (filled / X / halo / dim for normal / cymbal / accent / ghost), translucent now-line hit-window band, velocity → brightness/size, feedback table for every event (Perfect / Early / Late / Miss / Wrong-extra with pedal hi-hat suppression), tendency meter, combo glow, and accessibility pair-color-with-shape+text+position rule. scope.md's "TBD" question is already answered in §6. User chose to brainstorm friendly-view design via `/design-shotgun` (generating multiple variants) before committing to §6's fold-in — defer the fold-in pending that pass.
+
+  <!-- dedup-key: section="approach a explicitly deferred" title="fold 6 friendlyview design into designstackmd" evidence="friendly notation view synthesiastyle falling notes pixijs on a separate canvas fed from the same tick map" -->
+
+- **$2 paid-app economics not modeled against the chosen infrastructure** — Problem Statement / v1.5 / Dependencies (P1, product-lens + scope-guardian + adversarial, confidence 100)
+
+  At $2/unit × ~70% net after store cut ≈ $1.40/sale; needs ~86 paid downloads/yr just to cover the Apple Developer fee ($99/yr) before any AWS infrastructure cost. AWS steady-state, Cognito post-10K MAU paid tier, CloudFront 1 TB egress cliff ($0.085/GB above), and Sentry tier limits are not modeled against expected sales volume. Three personas converged. **Alternative monetization shape under consideration:** open-source the app (App-Store-compatible OSS license — MIT / Apache-2.0 / BSD / MPL-2.0 OK per the doc's License Compatibility table; GPL-3 / AGPL-3 NOT), charge optional $2 on App/Play Store to help cover annual dev fees, accept donations via buymeacoffee. Open question: which OSS license + which monetization shape before v1.5 launch?
+
+  <!-- dedup-key: section="problem statement v15 dependencies" title="2 paidapp economics not modeled against the chosen infrastructure" evidence="stretch goal of a 2 tablet app on ios and android" -->
+
+- **Validate Cognito Hosted UI redirect flow in Capacitor WebView before v1.5 lock** — Approach A / Cognito (P1, feasibility + adversarial, confidence 100)
+
+  Cognito Hosted UI + PKCE works cleanly on desktop browsers but on Capacitor needs `ASWebAuthenticationSession` (iOS) / Chrome Custom Tabs (Android) plus URL-scheme registration (`com.notationhero.app://callback`) plus Cognito callback-URL allowlist plus handling Sign-in-with-Apple's redirect quirks. Either `@capacitor-community/oauth2` plugin OR a custom Swift plugin. **Validate in a Capacitor iOS spike BEFORE committing to Cognito Hosted UI for v1.5** — if the flow breaks, fall back to Cognito user-pool API direct with custom sign-in screens (more code but more control). Test legs: (a) custom URI-scheme callback, (b) Google federation, (c) `ASWebAuthenticationSession` path. Add as Phase-1 spike step to Assignment.
+
+  <!-- dedup-key: section="approach a cognito" title="validate cognito hosted ui redirect flow in capacitor webview before v15 lock" evidence="cognito hosted ui pkce works cleanly on desktop browsers but on capacitor the webview is not safari" -->
+
+- **Cognito vs alternatives — brainstorm before v1.5 lock-in** — Approach A / AWS backend / Auth (P2, user-raised, confidence 75)
+
+  User raised: "Is Cognito really the best option? Happy to skip Cognito if you have a better approach without any extra cost." Trade-offs at a glance: (1) Cognito Hosted UI (current plan) — $0 on Always-Free 10K MAU legacy account, canonical AWS auth answer, Capacitor OAuth redirect adds 1-2 weeks plumbing. (2) Cognito user-pool API direct (skip Hosted UI) — $0 same, more code = deeper portfolio story, no redirect complexity. (3) Hand-rolled Lambda + DynamoDB users + JWT + bcrypt — $0 free tier, less name-recognition, full control. (4) Skip auth entirely for v1, defer to v1.5. **v1 recommendation: skip auth (localStorage only); v1.5 picks from options 1-3 via dedicated `/ce-brainstorm` pass with current 2026 free-tier prices, Capacitor-WKWebView state, and the F-15 spike results.**
+
+  <!-- dedup-key: section="approach a aws backend auth" title="cognito vs alternatives brainstorm before v15 lockin" evidence="user raised is cognito really the best option happy to skip cognito if you have a better approach without any extra cost" -->
+
+### Paused mid-walkthrough — re-evaluate post v1 feature freeze (from 2026-06-04 review)
+
+User requested a v1 feature freeze before continuing the per-finding walkthrough. The following 18 findings + 3 FYI observations were paused mid-review. After the freeze locks, re-evaluate each against the new boundary (Apply / Defer long-term / kill).
+
+**P2 — Errors (2):**
+
+- **`AlphaSynth.applyTrackVolume(trackIndex, gain)` likely wrong API namespace** — Custom rendering layer / Per-instrument volume (P2, feasibility, 75). AlphaTab 1.8.x's documented API is `api.changeTrackVolume(tracks, volume)` on `AlphaTabApi`, consistent with `changeTrackMute` / `changeTrackSolo` / `playerPositionChanged`. Verify against AlphaTab 1.8.1 `.d.ts` before locking the mixer UI.
+- **'Replaces extinct tool' framing assumes addressable install base** — What Makes This Cool (P2, product-lens, 75). the reference tutor has been discontinued for years; orphans have moved on. The author-dogfood evidence (added 2026-06-04) is the real wedge — reframe "extinct tool replacement" as the design north star, not a strategic claim about a waiting user base.
+
+**P2 — Omissions / AWS security gold (7, all gated_auto with concrete fixes — interview-tellable):**
+
+- **Lambda Function URL needs CloudFront in front for custom-domain sync API** — AWS backend / Distribution (P2, feasibility, 75). FUrls expose only `*.lambda-url.<region>.on.aws`; for `api.notation-hero.com` you need a CloudFront distribution + ACM (us-east-1) + CORS configured. Often the same CloudFront from F-17 (rate-limit WAF) — fold in one shot.
+- **CORS policy for Lambda Function URLs not specified** — AWS backend (P2, security-lens, 75). Lock `AllowOrigins` to the CloudFront distribution domain + Capacitor schemes (`capacitor://localhost` / `ionic://localhost`); never `*`.
+- **DynamoDB per-user partition key must come from verified JWT `sub` claim** — AWS backend / DynamoDB (P2, security-lens, 75). Document as an implementation requirement: Lambda handler extracts `sub` from verified JWT and uses it as partition key. Request body must never supply or override the user identifier. Defends against IDOR.
+- **Sentry session replay / DOM capture PII risk** — Observability (P2, security-lens, 75). Initialize Sentry with replay disabled OR `maskAllText` / `blockAllMedia` enabled; `beforeSend` strips uploaded filenames + device names. Disclose Sentry data collection in App Privacy Report.
+- **Apple App Transport Security (ATS) not addressed** — Distribution / App Store (P2, security-lens, 75). iOS shell `Info.plist` must specify `NSAppTransportSecurity` with no arbitrary-load exception. All external URLs (Lambda FUrl, Cognito Hosted UI, any CDN) must be HTTPS with TLS 1.2+. App Store submission checklist item.
+- **IAM least-privilege for Lambda execution roles not specified** — AWS / IaC (P2, security-lens, 75). In Pulumi: sync Lambda gets `dynamodb:GetItem/PutItem/Query` on the specific table ARN only; upload validator gets `s3:PutObject` scoped to `uploads/` prefix only. No `*:*` defaults.
+- **JWT revocation + refresh strategy not specified** — Approach A / Auth (P2, security-lens, 75). Short access token TTL (~15 min) in Cognito user pool; refresh token rotation enabled; compromise remediation via `Cognito AdminUserGlobalSignOut` API.
+
+**P2 — Omissions / Bridge architecture (2):**
+
+- **Mid-song MIDI mapping update path JS↔native undefined** — MIDI input (P2, feasibility, 75). Add `setMidiMapping(map)` bridge call to native plugin contract: live application, debounced 100ms in JS, applied atomically on next MIDI event in native. Defines whether mid-song mapping changes take effect immediately or only on next song load.
+- **Tick map JSON shipping reinvents AlphaTab's `tickCache.findBeat`** — Tick map format (P2, adversarial, 75). Native bridge will need its own Swift + Kotlin port of AlphaTab's tick→time→repeat semantics — that's not in the 4-6w/platform estimate. Either bundle the tick map as a millisecond-target list pre-resolved by AlphaTab JS (so native does ms math only) OR budget +2-4w/platform for the scoring engine port.
+
+**P2 — Omissions / Scope + design (5):**
+
+- **Practice mode 'auto speed' + 'memory mode' silently downgraded to v1.5** — Practice mode (P2, scope-guardian, 75). scope.md treats these as core practice features, not nice-to-haves. Add explicit rationale to v1.5 entry (depends on scoring engine + game loop being stable end-to-end first) OR re-promote to v1 if the user's daily-driver practice need demands it.
+- **Accessibility silent despite §6 pair-with-shape+text+position rule** — Custom rendering layer (P2, design-lens, 75). Feedback colors (green/orange/purple/red) ARE the core mechanic. Add: "Each feedback color must be paired with a distinct shape (ring vs flash vs cross) and optionally a brief text label (PERFECT / EARLY / LATE) to remain interpretable without color perception. Applies to standard SVG overlay and the friendly view highway."
+- **First-song upload + latency calibration onboarding flows absent** — v1 Success Criteria (P2, design-lens, 75). Specify: (1) empty state when no song is loaded (prompt to upload + accepted formats), (2) calibration prompted on first MIDI device connection vs settings-only, (3) minimal calibration flow (count-in sequence, user taps along, app measures offset).
+- **Multi-platform interaction model for touch vs mouse+keyboard unspecified** — Constraints (P2, design-lens, 75). All interactions use click-language but iPad + Android tablet are co-primary. Touch target sizing (44pt min), tap-vs-drag disambiguation, hover as progressive enhancement for desktop PWA only, landscape primary on 10" tablet.
+- **Career-portfolio compounding direction unexamined for post-v1** — Career angle (P2, product-lens, 75). When the interview goal is achieved (or abandoned), what happens to the backend? Options: (1) keep running as production, (2) freeze as documented portfolio artifact + migrate to minimal alt, (3) tear down. Name the disposition pre-launch to prevent silent maintenance burden.
+
+**P3 — minor (2):**
+
+- **'One codebase ships to three channels' framing obscures duplicated scoring** — Pros / Approach A (P3, adversarial, 75). Frontend shared; scoring intentionally duplicated across Swift, Kotlin, JS. Reword Pros bullet to acknowledge the duplication is intentional (latency reason) but bug fixes touch three implementations.
+- **Latency-compensation slider PWA path silent** — Latency compensation / v1 Success Criteria (P3, feasibility, 75). PWA has no native bridge but needs the same offset applied to JS-side scoring windows. Add: "Applied to the scoring windows in the native bridge (Capacitor) AND in the JS scoring loop (PWA). Offset value is the same control; application site differs."
+
+**FYI observations (3, advisory only):**
+
+- **Tick map construction procedure (who walks, when, on what thread) unspecified** — Critical Architectural Decision (P2, coherence, 50). Document: walk happens in a React effect on song load (after AlphaSynth.score is set), synchronous, ~1-5ms for typical drum charts, passed to native via single IPC call. Bridge validates JSON schema and acks or errors.
+- **`rxdb@^16` / `@legendapp/state@^3` versions not validated against current npm** — Dependencies (P3, coherence, 50). Versions pinned 2026-06-03; confirm currentness during Phase 1 spike before locking.
+- **Soft-delete tombstones with 30-day TTL — payload contents not specified** — Offline-first sync (P3, security-lens, 50). Specify tombstones carry only the primary key and `deleted:true` flag — no payload from the original document. Limits data exposure during the retention window.
+
+<!-- dedup-key-block-end: 2026-06-04-review-paused-findings -->
