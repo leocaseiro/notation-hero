@@ -8,6 +8,13 @@
 
 ---
 
+## Freeze alignment (2026-06-05)
+
+Updated to match the locked [feature-freeze.md](feature-freeze.md):
+- **Sync = M1.** No per-device sync — user data is localStorage in Alpha/Beta; DynamoDB *cross-device* sync arrives at **M1** with Cognito User Pools. The `pull`/`push` engine (RxDB/Legend-State) is therefore an **M1** piece.
+- **DynamoDB's Alpha vehicle = the Admin CMS (`K`) + analytics** (shared/global data, no identity) — build DynamoDB skills there first, not on per-user sync.
+- **Kafka (`H-12`)** = the local **replay** exercise (rebuild the `H-6` ingestion; consumer groups + offsets + replay vs SQS delete-on-consume).
+
 ## Punchline
 
 - **One feature teaches almost all the messaging services: the usage-analytics pipeline (`H-6`).**
