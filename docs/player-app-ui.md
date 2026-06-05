@@ -26,7 +26,7 @@
 | **D‑1** | Feedback colors (green vs blue reconcile · A‑2) | **Perfect = green.** Adopt scope intent over the fork/the reference tutor blue. Final hue = Okabe‑Ito green `#009E73` (see D‑2). |
 | **D‑2** | Accessibility palette + glyph (A‑6) | **Single Okabe‑Ito palette** (no second palette / no light-vs-default toggle). On-note encoding = **Approach A: ring + directional chevron** (left = early, right = late). Redundant coding everywhere (color + shape + position + chevron). Custom color-picker = **optional / deferred**. |
 | **D‑3** | Dark mode (F‑4) | **Keep + theme properly.** Standard notation defaults to light/paper with a dark option; the Friendly view is dark by nature. Theme switch (light / dark / system) lives in **Settings → Display**. |
-| **D‑4** | Score display (C‑2) | **Split:** in-play = calm (Score/Combo in the top ticker; full breakdown in a toggleable right **Score sidebar**). End-of-play **Results = direction B (modern card) + per-tier bars** (to be finalized when Results is built). Tiers = **Perfect / Good / OK / Miss**. |
+| **D‑4** | Score display (C‑2) | **Split:** in-play = calm (Score/Combo in the top ticker; full breakdown in a toggleable **Score sidebar**). End-of-play **Results = direction B (modern card) + per-state bars**. The breakdown uses the **5 feedback states** — **Perfect / Early / Late / Missed / Error** — not abstract Good/OK tiers, so the score speaks the same language as the live rings. Bars are **equal-width** (the count carries the value). |
 | **D‑5** | A/B-loop timeline UI (B‑9) | **Always-on scrubber** in the player: single row `current-time │ track │ end-time`, with **draggable A/B handles + markers** (A can fall mid-measure → no measure labels on the handles). Tap-set A/B, drag to adjust. |
 
 ### Feedback visual language (the heart of D‑1/D‑2)
@@ -38,8 +38,8 @@ The same 5 states, rendered per the locked palette + Approach A. Extra/wrong is 
 | **Perfect** | 🟢 `#009E73` | full ring on the correct notehead | green gem burst + combo tick |
 | **Early** (rushed) | 🟠 `#E69F00` | ring + chevron on the **left** edge | orange flash, gem high in the hit-window |
 | **Late** (dragging) | 🟣 `#CC79A7` | ring + chevron on the **right** edge | violet flash, gem low in the window |
-| **Miss** | — | notehead dims (no mark) | gem greys + slides past |
-| **Extra / wrong** | 🔴 `#D55E00` | red **✗** at the wrongly-hit staff position | red flash in the wrong lane (suppressed for pedal hi-hat) |
+| **Missed** | — | notehead dims (no mark) | gem greys + slides past |
+| **Error** (extra / wrong) | 🔴 `#D55E00` | red **✗** at the wrongly-hit staff position | red flash in the wrong lane (suppressed for pedal hi-hat) |
 
 **Why it's accessible:** `#CC79A7` is itself an Okabe‑Ito color, so the set stays distinguishable across deuteranopia / protanopia / tritanopia. And color is redundant: perfect/early/late are *rings on the correct note* (early vs late split by which side the chevron sits), extra is a *cross elsewhere*, miss is *absence*. Readable in greyscale. See `docs/mockups/index.html` for the lab.
 
@@ -84,8 +84,8 @@ The same 5 states, rendered per the locked palette + Approach A. Extra/wrong is 
 | **BPM control** | `– 120 +` stepper; `%` shown **only while adjusting**. Small **auto ⟳** glyph *inside* the block (teal = auto-speed on, grey/hidden = off). = E‑3 indicator. |
 | **Bottom toggles** | Icon + tiny label, teal when on: `METRO · COUNT‑IN · LOOP`. Left: **folder** (open file). Right: **Tracks · Settings**. |
 | **Top bar** | back · song · centered **SCORE / COMBO** (borderless; tap → Score sidebar) · view toggle (♪ Standard / ▦ Friendly) · MIDI. Icon-only. |
-| **Score sidebar** (right, toggle) | `%` + 5★, per-tier **Perfect/Good/OK/Miss** bars, current/longest streak + accuracy, reserved **drum-kit** slot (J‑6). |
-| **Tracks sidebar** (left, toggle) | Quick **Drums only / Minus drums** (solo-mine / mute-mine). Per track: **eye** (show/hide) · **headphones** (solo) · **speaker** (mute) · volume · **notation switch** (Standard / Tab / Slash / #). Master at bottom. |
+| **Score sidebar** (left, toggle) | `%` + 5★, per-state **Perfect/Early/Late/Missed/Error** bars (equal-width), current/longest streak + accuracy, reserved **drum-kit** slot (J‑6). |
+| **Tracks sidebar** (right, toggle) | Quick **Drums only / Minus drums** (solo-mine / mute-mine). Per track: **eye** (show/hide) · **headphones** (solo) · **speaker** (mute) · volume · **notation switch** (Standard / Tab / Slash / #). Master at bottom. |
 | **Settings modal** | Sectioned: **Input & MIDI · Timing · Practice · Display · About**. Left nav + scannable groups. |
 | **Switches / segmented / sliders** | iOS-style switch; segmented control (teal active); slider = teal fill + white knob (44px hit area). |
 
@@ -124,8 +124,8 @@ Input&MIDI (device, I-play, mapping preset + edit, latency slider, multi-device 
 ### 6.4 Library / song-select — *to design (next)*
 Lesson/song list with level (★), tempo, last score; open-file; search; entry to Play.
 
-### 6.5 Results — *to design*
-Direction **B (modern)** — % completion ring + 5★ + **per-tier bars** (Perfect/Good/OK/Miss) + streak; graft the the reference tutor Target‑vs‑You bar as a secondary. Dedicated screen, so density is free.
+### 6.5 Results — `docs/mockups/results.html`
+Direction **B (modern)**: big completion-% ring + 5★ + a verdict + "new best" badge; **per-state bars** (Perfect/Early/Late/Missed/Error, equal-width) + the **the reference tutor Target‑vs‑You** bars; streak / longest / max-combo / accuracy chips; Retry · Library · Next. Dedicated screen, so density is free. **Locked.**
 
 ### 6.6 Friendly view — *to design (design-gated milestone)*
 Horizontal highway (primary) + vertical falling-notes (alt). Gem feedback carries the same 5-state language + a11y. Dark by nature.
@@ -146,7 +146,7 @@ Horizontal highway (primary) + vertical falling-notes (alt). Gem feedback carrie
 
 ## 8. Open items / next
 
-- **Build:** Results → Friendly stub. *(Library ✅ · compact Tracks rows ✅)*
+- **Build:** Friendly-view stub (design-gated later milestone). *(Library ✅ · Results ✅ · Tracks ✅)*
 - **Settings tabs** — only Input&MIDI is drawn; render Timing / Practice / Display content.
 - **Dark theme** for Tracks/Settings panels (inherit app theme).
 - **Drum-kit (J‑6)** slot reserved in the Score sidebar; design when built.
