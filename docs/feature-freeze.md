@@ -1,17 +1,19 @@
 # NotationHero — Feature Freeze (go / no-go)
 
-> **Status:** DRAFT — **review complete** (pending lock; then folds into design-stack.md)
+> **Status:** 🔒 **LOCKED 2026-06-05** — per-feature milestones frozen (one row open: `H-10` upload policy = TBD). Folded into design-stack.md.
 > **Created:** 2026-06-05 · **Owner:** leocaseiro
 > **Companions:** [docs/design-stack.md](design-stack.md) · [scope.md](../scope.md) · [docs/aws-learning-map.md](aws-learning-map.md)
 > **Fork (Phase 0):** `~/Sites/alphaTabWebsite` (branch `rhythm-game`) — live: https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game
 
 Single canonical per-feature go/no-go. Each row has a **Milestone** (your decision), fork-reuse status, effort, AWS candidacy, and a **Status**. Reference any feature by **ID** (e.g. `A-1`, `D-2-a`). Children (`X-n-a`) decompose a parent feature.
 
-> **Process:** (1) you review each row ✓; (2) we review together ✓; (3) **lock** → folds into `design-stack.md` with a `**Feature freeze locked YYYY-MM-DD**` marker. The whole-app `/design-shotgun` UI pass runs **after** this freeze.
+> **Process:** (1) you review each row ✓; (2) we review together ✓; (3) **locked 2026-06-05** ✓ → folded into `design-stack.md`. The whole-app `/design-shotgun` UI pass runs **after** this freeze.
 
 ## Decisions log
 
 > Locked decisions, newest first. Applied to the rows below.
+
+- **2026-06-05 (LOCKED):** freeze locked — all rows frozen except `H-10` (upload policy = open, decide before M1). Folded into design-stack.md (pointer + ladder + marker; `tone@^15` dropped).
 
 - **2026-06-05 (review complete):**
   - **Tone.js dropped** — AlphaSynth-only audio/metronome; revisit only at friendly-view or if iPad drift shows up. (Removes `tone@^15` from design-stack.md at fold-in.)
@@ -161,7 +163,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | H-7 | CloudWatch + X-Ray SLOs | SLIs/SLOs, burn-rate alarms, traces | A | ✗ | L | req: CloudWatch·X-Ray | Beta | approved | SRE story |
 | H-8 | Sentry client errors | Client JS error tracking | A | ✗ | S | — | Alpha | approved | ⚠ PII masking (doc-review) |
 | H-9 | Cognito auth (User Pools) | Hosted UI + PKCE + Google → real accounts | A | ✗ | L | req: Cognito | M1 | approved | enables cross-device sync; ⚠ Capacitor-redirect spike (F-15). (Admin `K-2` uses CloudFront-Function Basic Auth, not Cognito) |
-| H-10 | S3 uploads + validation | Pre-signed PUT, magic-byte validate, quarantine, rate-limit | R | ✗ | L | req: S3·Lambda | M1 | reviewed | ⚠ **upload policy OPEN** — leaning private-per-user / no public sharing; ToS + DMCA. Admin pipeline reused by `K-1` |
+| H-10 | S3 uploads + validation | Pre-signed PUT, magic-byte validate, quarantine, rate-limit | R | ✗ | L | req: S3·Lambda | M1 | TBD (open) | ⚠ **upload policy OPEN** — leaning private-per-user / no public sharing; ToS + DMCA. Admin pipeline reused by `K-1` |
 | H-11 | Lesson / song library | Curated lessons (S3 files + DynamoDB metadata) | N | ✗ | M | req: S3·DynamoDB | Beta | approved | produced by area `K` (CMS, Alpha); initial preloaded exercise set in Beta; expand at M1 `[Note: I want a list of exercises preloaded in Beta]` |
 | H-12 | Kafka (local Docker) | Queue-vs-log learning, off-AWS | A | ✗ | M | — | deferred | approved | **exercise:** rebuild `H-6` ingestion in Kafka (Redpanda) — consumer groups + offsets + **replay** (vs SQS delete-on-consume). Or Aiven/Confluent free tier `[OK, any suggestion to use Kafka? → this]` |
 | H-13 | PWA install + offline shell | Service Worker + manifest (offline app-shell, installable) | A | ✗ | S | — | Beta | approved | offline *app shell* (loads w/o network); separate from the M1 sync engine (`H-5`) |
