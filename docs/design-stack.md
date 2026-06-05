@@ -510,6 +510,33 @@ Phase 0 spike (Approach C scope) precedes Phase 1 (Capacitor shells).
 
 ## Success Criteria
 
+> **🔒 Feature freeze locked 2026-06-05.** Per-feature milestone allocation is now **canonical in [docs/feature-freeze.md](feature-freeze.md)** (fork-reuse status, effort, and AWS candidacy per feature). The scheme below changed from `v1/v1.5/v2` to the **Alpha→M5 ladder** after a PWA-first pivot. The detailed criteria that follow are retained as **design reference (the HOW each feature works)**; the freeze is the source of truth for **which milestone (the WHAT/WHEN)**.
+
+### Milestone ladder (replaces v1 / v1.5 / v2)
+
+| Rung | Gate |
+|---|---|
+| **Alpha / EAP** | PWA rhythm game + minimum AWS + iPad via WebMIDI shim (dogfood). Fast fork migration. |
+| **Beta** | PWA hardened (offline shell) + AWS portfolio depth (analytics + SLOs) + preloaded exercises. |
+| **Friendly** | Friendly notation view (design-gated). Between Beta and M1. |
+| **M1** | First native + $2 launch: iPad CoreMIDI bridge, native scoring, Cognito accounts, cross-device sync, uploads. |
+| **M2** | Android native + advanced practice/audio. |
+| **M3** | Enhancements (velocity, dynamics, kit diagram, imports). |
+| **M4** | Desktop (Mac/Win PWA polish, Electron, shortcuts). |
+| **M5** | Pro-audio (Windows ASIO/WinMM). |
+| **deferred** | Mobile phone, expand-repeats, share, Discord, Kafka (learning). |
+
+**Headline changes from this doc's original plan:**
+- **PWA-first pivot:** native iPad (was the v1 centerpiece) moves to **M1**; **Alpha = PWA + AWS + Admin CMS**, dogfooded on iPad via the WebMIDI shim.
+- **Sync model:** no per-device sync — user data is **localStorage in Alpha/Beta**; real **cross-device sync = M1** (Cognito User Pools). MIDI mapping / latency / settings are localStorage-first (not "stored in DynamoDB at v1" as the criteria below say).
+- **New Admin/CMS track (area `K`, Alpha):** hosted lesson manager gated by a CloudFront-Function Basic-Auth (no Cognito); produces the shared lesson library. DynamoDB earns its Alpha place via this shared content + analytics, not per-user sync.
+- **Tone.js dropped** (AlphaSynth-only audio/metronome; revisit only at friendly-view).
+- Visual decisions (feedback colors, a11y palette, dark mode, score-display) deferred to a **`/design-shotgun`** pass after the freeze.
+
+> **Translating the criteria below (kept as design reference):** old **v1** ≈ Alpha + Beta (+ **M1** for the *native* parts); old **v1.5** ≈ M1/M2; old **v2** ≈ M4/M5. Where the v1 criteria say "native-side scoring on iPad" or "stored in DynamoDB," read that as **M1** per the freeze.
+
+---
+
 **Phase 0 (the spike, 1-2 weekends):**
 - Vite + AlphaTab + Web MIDI on Mac Chrome.
 - Load a `.gp` file, see the drum notation render.
@@ -655,9 +682,10 @@ builds are manual via Xcode/Android Studio in v1.
 - **`react@^19` + `react-dom@^19`** (matches the Phase 0 fork).
 - **`@capacitor/core@^6`** + custom Swift + Kotlin bridge plugins written
   from scratch.
-- **`tone@^15`** — DEFERRED to Phase 1 spike. Phase 0 baseline uses
-  AlphaSynth's built-in metronome. Add Tone.js only if drift on iPad /
-  backgrounded AudioContexts is demonstrably worse than AlphaSynth-only.
+- **`tone@^15`** — **DROPPED (feature freeze 2026-06-05).** AlphaSynth's
+  built-in metronome + backing-track playback cover the need (backing track
+  already works in the Phase 0 fork). Revisit only if the friendly-view
+  (PixiJS) needs sample-accurate scheduling AlphaSynth can't provide.
 - **`@tonejs/midi@^2`** for `.mid` parsing.
 - **`pixi.js@^8`** for the friendly notation (falling-notes) view (v1.5; do not install for v1).
 - **`rxdb@^16` OR `@legendapp/state@^3`** for offline-first sync (TBD).
