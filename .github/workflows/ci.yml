@@ -28,7 +28,7 @@ jobs:
         with:
           filters: |
             web:
-              - 'apps/web/**'
+              - 'apps/player-pwa/**'
               - 'package.json'
               - 'bun.lock'
               - 'tsconfig.base.json'
@@ -55,10 +55,10 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
-      - run: bun run --filter='@notation-hero/web' lint
-      - run: bun run --filter='@notation-hero/web' typecheck
-      - run: bun run --filter='@notation-hero/web' test
-      - run: bun run --filter='@notation-hero/web' build
+      - run: bun run --filter='@apps/player-pwa' lint
+      - run: bun run --filter='@apps/player-pwa' typecheck
+      - run: bun run --filter='@apps/player-pwa' test
+      - run: bun run --filter='@apps/player-pwa' build
 
   infra:
     needs: changes
