@@ -4,9 +4,11 @@
 > bootstrap, and the **multi-agent parallel build** of Track 2. Lives in this
 > repo (not a sibling worktree) so **Track 1 (feature) agents can see it** and
 > respect the file-ownership boundaries below.
-> **Status:** Wave 1 in progress · **Created:** 2026-06-06
-> **Companion:** `scope.md` (requirements). Strategy/stack rationale lives in the
-> `pensive-boyd-6d17e3` and `serene-grothendieck-fb5e67` worktrees (not visible here).
+> **Status:** Wave-1 baseline committed, then **realigned to the hexagonal
+> (ports & adapters) layout** — green locally, **unpushed**. · **Updated:** 2026-06-07
+> **Companions:** `scope.md` (requirements) · the CMS/area-K decision +
+> hexagonal rationale live in `../affectionate-dewdney-42c19c/docs/cms-approach.md`
+> (sibling worktree). Strategy/stack docs are in `pensive-boyd-6d17e3`.
 
 ---
 
@@ -14,15 +16,43 @@
 
 - **Public** GitHub repo `leocaseiro/notation-hero` + **proprietary LICENSE**
   (public = unlimited free Actions minutes; license keeps all rights).
-- **Monorepo:** `apps/web`, `infra`, later `packages/shared`. **bun 1.3.11**.
-- **CI** (`ci.yml`): install → lint → typecheck → test → build. **Linux only**,
-  path-filtered, concurrency-cancel, cached. iOS builds run **LOCAL**, never on
-  GitHub-hosted macOS runners.
+- **Hexagonal monorepo** (bun 1.3.11): `core/*` (pure domain) ← `adapters/*`
+  (AWS / DynamoDB / S3 / react-admin / …) ← `apps/*` (composition roots);
+  `infra/` (Pulumi composition root); `packages/config` (shared ESLint).
+- **CI** (`ci.yml`): install → lint → typecheck → test → build per layer.
+  **Linux only**, dependency-aware path-filtering, concurrency-cancel, cached.
+  iOS builds run **LOCAL**, never on GitHub-hosted macOS runners.
 - **AWS creds:** IAM user + access keys for **local `pulumi up`**;
   **GitHub OIDC** for CI (no long-lived secrets in Actions).
-- **First deliverable:** `pulumi up` deploys a **hello-world Lambda Function URL**,
-  verified in CloudWatch — the smallest interview-tellable AWS story.
+- **First deliverable:** `pulumi up` deploys a **hello-world Lambda Function URL**
+  (via `@adapters/aws` `LambdaWithUrl`), verified in CloudWatch — the smallest
+  interview-tellable AWS story.
 - **Branch protection** on `master`: require PR + green CI (single "CI Green" check).
+
+---
+
+## Architecture — hexagonal (ports & adapters)
+
+Chosen deliberately as a Staff-FE **system-design portfolio piece** (the
+"swappable backend" story): `core` depends on nothing; AWS/DynamoDB/S3/etc. are
+adapters behind ports; apps are thin composition roots that wire them together.
+See `../affectionate-dewdney-42c19c/docs/cms-approach.md` for the area-K (CMS =
+React-Admin over a custom AWS backend) decision this layout serves.
+
+| Layer | Dir | Rule |
+|---|---|---|
+| **Domain** | `core/<context>` (`@core/<context>`) | Pure TS. **No** AWS / React / HTTP imports. The real-time MIDI→verdict hot path calls core **directly** — never through an adapter. |
+| **Adapters** | `adapters/<name>` (`@adapters/<name>`) | Implement core's ports against the outside world (Pulumi/AWS, DynamoDB, S3, React-Admin, AlphaTab, PixiJS). |
+| **Apps** | `apps/<name>` (`@apps/<name>`) | Composition roots; one deploy target each (player-pwa, admin-spa, lambda-*). |
+| **Infra** | `infra/` (`@notation-hero/infra`) | Pulumi composition root; composes `apps/*/infra.ts` + cross-cutting resources, instantiating `@adapters/aws` ComponentResources. |
+| **Tooling** | `packages/config` (`@config/eslint`) | Shared ESLint flat config + plugin deps. |
+
+**Granularity decision (refactor-proofing):** packages use **scoped names that
+double as import specifiers** (`@core/scoring`, `@adapters/aws`). So
+`import … from "@core/scoring"` never churns if a package is split/moved, and
+adding a new context/adapter is **purely additive** (new folder + manifest; the
+`core/*` / `adapters/*` glob picks it up). The accepted YAGNI = a few extra
+`package.json` files now, to avoid a painful import-rewrite later.
 
 ---
 
@@ -33,9 +63,10 @@
 | Package manager / runtime | **bun 1.3.11** |
 | Default branch | **`master`** (not renamed to main) |
 | Repo visibility | **Public** + proprietary `LICENSE` (all rights reserved) |
+| Architecture | **Hexagonal** (ports & adapters); scoped workspace names |
 | Actions runners | **`ubuntu-latest` only**; iOS builds LOCAL, never GitHub-hosted macOS |
 | AWS account | **Legacy (pre-2025-07-15)** → Always-Free tiers |
-| IaC | **Pulumi TypeScript** (`@pulumi/aws`) |
+| IaC | **Pulumi TypeScript** — primitives in `@adapters/aws`, composed in `infra/` |
 | Web hosting | **S3 (private) + CloudFront + OAC** |
 | Local AWS creds | IAM user + access keys (`aws configure`) |
 | CI AWS creds | **GitHub OIDC** — zero long-lived secrets in Actions |
@@ -55,18 +86,21 @@ cannot OIDC-deploy before Pulumi creates the OIDC provider; you cannot
 serialize the spine.**
 
 ```
-WAVE 1 — SEED (serial, 1 agent)         the shared trunk; root-file conflicts paid ONCE
-  root bun workspace + tsconfig.base + .gitignore + LICENSE
-  + minimal apps/web that already lints/types/tests/builds GREEN
-  + infra/ stub workspace (so the workspace array is final here)
-  + ci.yml proving it green (web + infra jobs path-filtered against the stub)
-        │  one PR → master
+WAVE 1 — SEED (done, committed in baby steps)   the shared trunk + hexagonal skeleton
+  root bun workspace (apps/* adapters/* core/* packages/* infra) + tsconfig.base
+  + LICENSE + .gitignore + packages/config (shared ESLint)
+  + core/scoring (@core/scoring, pure domain, tested)
+  + apps/player-pwa (Vite+React shell, green)
+  + adapters/aws + infra/ (Pulumi composition-root stubs)
+  + ci.yml (per-layer, dependency-aware, CI Green gate)   ← all green locally
+        │  (baby commits on the working branch; not pushed yet)
         ▼
 WAVE 2 — FAN-OUT (parallel, isolated git worktrees)   disjoint subtrees, clean merges
-  Lane A  infra/**         Pulumi hello-world Lambda Function URL  (owns infra/)
-  Lane B  .github/**       deploy.yml + OIDC provider/role wiring  (owns deploy files)
-  Lane C  root meta        README, CODEOWNERS, dependabot.yml, PR template, branch script
-  Lane D  apps/web/**      landing polish (optional; hands src/** to Track 1 after)
+  Lane A  infra/** + adapters/aws/**   Pulumi hello-world Lambda Function URL
+                                       (LambdaWithUrl ComponentResource + compose)
+  Lane B  .github/workflows/deploy.yml  OIDC provider/role wiring + S3/CF deploy
+  Lane C  repo meta                     README, CODEOWNERS, dependabot.yml, PR template, branch script
+  Lane D  apps/player-pwa/**            landing polish (optional; hands src/** to Track 1)
         │  up to 4 PRs, each independently green-CI-gated
         ▼
 WAVE 3 — INTEGRATION (serial, human-gated)
@@ -76,41 +110,49 @@ WAVE 3 — INTEGRATION (serial, human-gated)
   4. merge green PRs → turn branch protection ON (checks now exist + have run)
 ```
 
-**Why Wave 1 is serial:** every file is shared/foundational (root manifest,
-tsconfig). Two agents editing the root manifest = guaranteed conflict. ~30 min
-solo. It becomes the common ancestor every Wave-2 lane branches from.
+> **Note:** area-K (the CMS — `apps/admin-spa`, `apps/lambda-cms-*`,
+> `@adapters/dynamodb`, `@adapters/s3`, `@adapters/react-admin`) is **Track-4 /
+> feature work**, not Track 2. Track 2 stops at: green CI, the AWS bootstrap, and
+> the hello-world Lambda. Those packages get added (additively) when their
+> features land.
+
+**Why Wave 1 is serial:** the root manifest + base tsconfig + the workspace
+shape are shared/foundational; two agents editing them = guaranteed conflict.
+It is the common ancestor every Wave-2 lane branches from.
 
 **Why Wave 2 parallelizes cleanly:** the lanes touch **disjoint directory
-subtrees**; the only shared hotspot (root manifest) is frozen by Wave 1.
+subtrees**; the shared hotspots (root manifest, `ci.yml`) are frozen by Wave 1.
 
 ---
 
 ## File-ownership map (the "agents don't collide" contract)
 
-Every file has exactly **one owner**. This is the guarantee that parallel agents
-(and Track 1 vs Track 2) never break each other. **Track 1 feature agents: read
-this before editing — `apps/web/src/**` is yours; everything else here is not.**
+Every path has exactly **one owner**. This is the guarantee that parallel agents
+(and Track 1 vs Track 2) never break each other.
 
-| Path | Owner | Wave |
+| Path | Owner | Notes |
 |---|---|---|
-| root `package.json` / `bun.lock` / `tsconfig.base.json` / `.gitignore` / `LICENSE` | **Wave 1 only — FROZEN after** | 1 |
-| `.github/workflows/ci.yml` | **Wave 1 only** (anticipates infra job) | 1 |
-| `apps/web/**` scaffold + config | Wave 1 seeds → then **Track 1** owns `src/**` | 1 → T1 |
-| `infra/**` | **Lane A** (fills the stub) | 2 |
-| `.github/workflows/deploy.yml` + OIDC docs | **Lane B** | 2 |
-| `README.md` / `CODEOWNERS` / `.github/dependabot.yml` / `.github/pull_request_template.md` / branch-protect script | **Lane C** | 2 |
-| `apps/web/**` landing polish | **Lane D** (optional) → then Track 1 | 2 |
+| root `package.json` / `bun.lock` / `tsconfig.base.json` / `.gitignore` / `LICENSE` | **Track 2 — FROZEN** | workspace shape is final; changes coordinated |
+| `.github/workflows/ci.yml` | **Track 2** | per-layer filters already cover core/adapters/apps/infra |
+| `packages/config/**` | **Track 2** | shared ESLint config |
+| `infra/**` + `adapters/aws/**` | **Track 2 / Lane A** | Pulumi composition root + AWS ComponentResources |
+| `.github/workflows/deploy.yml` | **Track 2 / Lane B** | OIDC + S3/CloudFront deploy |
+| `README` / `CODEOWNERS` / `.github/dependabot.yml` / PR template / branch script | **Track 2 / Lane C** | repo meta |
+| `core/**` (domain) | **Track 1 (feature)** | `@core/scoring` seeded by Track 2; further contexts are feature work |
+| `apps/*/src/**` | **Track 1 (feature)** | app code; Track 2 seeded the `player-pwa` shell |
+| `adapters/{dynamodb,s3,react-admin,alphatab,pixijs,http-client}/**` | **Track 1 / Track 4** | added with their features |
 
-**Shared-file rule:** root manifest + `ci.yml` are written once in Wave 1 and
-frozen. `ci.yml` is authored with the infra job already wired (path-filtered)
-against the Wave-1 stub, so Lane A fills `infra/` **without editing `ci.yml`**.
+**Shared-file rule:** root manifest + `ci.yml` are written once and frozen.
+`ci.yml` already wires per-layer jobs (core/adapters/app/infra) with
+dependency-aware filters, so new packages are picked up by the `@core/*` /
+`@adapters/*` / `@apps/*` globs **without editing `ci.yml`**.
 
 **How agents stay safe:**
 1. **Mechanical** — branch protection: nothing red merges to `master`.
-2. **Structural** — single-owner per file (table above).
+2. **Structural** — single-owner per path (table above).
 3. **Isolation** — each Wave-2 lane runs in its own git worktree.
-4. **Diagnosability** — path-filtered CI points failures at the right lane.
-5. **Reversibility** — small single-lane PRs → one `git revert`.
+4. **Diagnosability** — per-layer path-filtered CI points failures at the right layer.
+5. **Reversibility** — small single-lane (baby) commits → one `git revert`.
 6. **Lockfile** — bun **text** `bun.lock` (default 1.2+) merges cleanly across
    parallel PRs; never the binary `bun.lockb`.
 
@@ -122,20 +164,24 @@ against the Wave-1 stub, so Lane A fills `infra/` **without editing `ci.yml`**.
 - **Runner:** `ubuntu-latest` only.
 - **Concurrency:** `group: ci-${{ github.ref }}`, `cancel-in-progress: true`.
 - **Setup:** `oven-sh/setup-bun@v2` pinned to `1.3.11`; cache
-  `~/.bun/install/cache` keyed on `bun.lock`.
-- **Install:** `bun install --frozen-lockfile` (fails on lockfile drift).
-- **Path filter:** `dorny/paths-filter` emits `web` / `infra` outputs; jobs run
-  only for affected subtrees.
-- **Jobs:** `web` (lint → `tsc --noEmit` → `vitest run` → `vite build`),
-  `infra` (typecheck/build of the Pulumi project — no-op green on the Wave-1 stub).
+  `~/.bun/install/cache` keyed on `bun.lock`; `bun install --frozen-lockfile`.
+- **Dependency-aware path filters** (`dorny/paths-filter`) emit `core` /
+  `adapters` / `app` / `infra` outputs. A consumer is re-checked when something
+  it depends on changes: **`app` ⊇ apps + core + packages**; **`infra` ⊇ infra +
+  adapters + packages**; root files trip everything.
+- **Per-layer jobs**, each `lint → typecheck → test → build` via bun's
+  scoped-name filter: `@core/*`, `@adapters/*`, `@apps/*`, `@notation-hero/infra`.
 - **Single required check — "CI Green":** an aggregation job
-  (`if: always()`, `needs: [web, infra]`) that fails if any needed job
-  **failed** (skipped is OK). Set **this one job** as the required status check
-  in branch protection.
+  (`if: always()`, `needs: [core, adapters, app, infra]`) that fails if any
+  needed job **failed/cancelled** (skipped is OK). Set **this one job** as the
+  required status check in branch protection.
+
+> **Test policy:** app shells use `vitest run --passWithNoTests` (logic lives in
+> `core`); **core packages keep strict `vitest run`** so a deleted test fails CI.
 
 ### ⚠️ Footgun #1 — skipped-required-check deadlock
-If you mark `web` or `infra` themselves as required checks, a PR that doesn't
-touch their paths *skips* them → GitHub waits forever for a check that never
+If you mark a per-layer job (e.g. `app`) as a required check, a PR that doesn't
+touch its paths *skips* it → GitHub waits forever for a check that never
 reports → PR can never merge. **Fix:** require only the always-running
 **"CI Green"** aggregation job.
 
@@ -148,14 +194,14 @@ the review *skills* (`ce-code-review`, gstack `/review`) are the human reviewer.
 
 ## Deploy design — `.github/workflows/deploy.yml` (Lane B)
 
-- **Trigger:** `push: master`, path-filtered to `apps/web/**`.
+- **Trigger:** `push: master`, path-filtered to `apps/player-pwa/**`.
 - **OIDC, no secrets:** `permissions: id-token: write` →
   `aws-actions/configure-aws-credentials@v4` with `role-to-assume: <ARN>`.
   Role trust policy locks `sub` to
   `repo:leocaseiro/notation-hero:ref:refs/heads/master`.
-- **Web deploy:** `vite build` → `aws s3 sync apps/web/dist s3://<bucket> --delete`
-  → CloudFront invalidation. `cancel-in-progress: false` (never cancel a
-  half-done deploy — queue instead).
+- **Web deploy:** `bun run --filter='@apps/player-pwa' build` →
+  `aws s3 sync apps/player-pwa/dist s3://<bucket> --delete` → CloudFront
+  invalidation. `cancel-in-progress: false` (never cancel a half-done deploy).
 - **Least privilege:** because infra applies run **locally** for now, the CI
   deploy role only needs **S3 + CloudFront** perms (web deploy), NOT full infra
   rights.
@@ -196,7 +242,7 @@ Cognito accounts, and cross-device sync are **M1**, not now.
 
 ---
 
-## Tooling status (verified 2026-06-06)
+## Tooling status (verified 2026-06-07)
 
 | Tool | State |
 |---|---|
@@ -217,3 +263,5 @@ Cognito accounts, and cross-device sync are **M1**, not now.
 - CodeQL (free on public repos) for security scanning.
 - Dependabot vs Renovate — confirm native bun support; else Renovate.
 - CI-driven `pulumi up` with a broader-scoped OIDC role (after the local flow is solid).
+- ESLint **import-boundary rule** to enforce core's purity (no AWS/React/HTTP in
+  `core/*`) at lint time — strengthens the hexagonal guarantee.

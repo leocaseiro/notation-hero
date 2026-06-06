@@ -14,12 +14,16 @@ permissions:
   contents: read
 
 jobs:
-  # Decide which subtrees changed so we only run the jobs that matter.
-  # Root files (manifest / lockfile / base tsconfig / this workflow) trip BOTH.
+  # Decide which layers changed. Filters are DEPENDENCY-AWARE: a consumer is
+  # re-checked when something it depends on changes (apps depend on core +
+  # shared config; infra depends on the aws adapter). Root files
+  # (manifest / lockfile / base tsconfig / this workflow) trip everything.
   changes:
     runs-on: ubuntu-latest
     outputs:
-      web: ${{ steps.filter.outputs.web }}
+      core: ${{ steps.filter.outputs.core }}
+      adapters: ${{ steps.filter.outputs.adapters }}
+      app: ${{ steps.filter.outputs.app }}
       infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@v4
@@ -27,22 +31,40 @@ jobs:
         id: filter
         with:
           filters: |
-            web:
-              - 'apps/player-pwa/**'
+            core:
+              - 'core/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.base.json'
+              - '.github/workflows/ci.yml'
+            adapters:
+              - 'adapters/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.base.json'
+              - '.github/workflows/ci.yml'
+            app:
+              - 'apps/**'
+              - 'core/**'
+              - 'packages/**'
               - 'package.json'
               - 'bun.lock'
               - 'tsconfig.base.json'
               - '.github/workflows/ci.yml'
             infra:
               - 'infra/**'
+              - 'adapters/**'
+              - 'packages/**'
               - 'package.json'
               - 'bun.lock'
               - 'tsconfig.base.json'
               - '.github/workflows/ci.yml'
 
-  web:
+  core:
     needs: changes
-    if: ${{ needs.changes.outputs.web == 'true' }}
+    if: ${{ needs.changes.outputs.core == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,10 +77,50 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
-      - run: bun run --filter='@apps/player-pwa' lint
-      - run: bun run --filter='@apps/player-pwa' typecheck
-      - run: bun run --filter='@apps/player-pwa' test
-      - run: bun run --filter='@apps/player-pwa' build
+      - run: bun run --filter='@core/*' lint
+      - run: bun run --filter='@core/*' typecheck
+      - run: bun run --filter='@core/*' test
+      - run: bun run --filter='@core/*' build
+
+  adapters:
+    needs: changes
+    if: ${{ needs.changes.outputs.adapters == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter='@adapters/*' lint
+      - run: bun run --filter='@adapters/*' typecheck
+      - run: bun run --filter='@adapters/*' test
+      - run: bun run --filter='@adapters/*' build
+
+  app:
+    needs: changes
+    if: ${{ needs.changes.outputs.app == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - run: bun run --filter='@apps/*' lint
+      - run: bun run --filter='@apps/*' typecheck
+      - run: bun run --filter='@apps/*' test
+      - run: bun run --filter='@apps/*' build
 
   infra:
     needs: changes
@@ -75,6 +137,7 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
+      - run: bun run --filter='@notation-hero/infra' lint
       - run: bun run --filter='@notation-hero/infra' typecheck
       - run: bun run --filter='@notation-hero/infra' build
 
@@ -84,16 +147,17 @@ jobs:
   ci-green:
     name: CI Green
     if: always()
-    needs: [web, infra]
+    needs: [core, adapters, app, infra]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
         run: |
-          web="${{ needs.web.result }}"
-          infra="${{ needs.infra.result }}"
-          echo "web=$web  infra=$infra"
-          if [[ "$web" == "failure" || "$web" == "cancelled" || "$infra" == "failure" || "$infra" == "cancelled" ]]; then
-            echo "::error::A required CI job did not pass"
-            exit 1
-          fi
+          results=("${{ needs.core.result }}" "${{ needs.adapters.result }}" "${{ needs.app.result }}" "${{ needs.infra.result }}")
+          echo "core=${{ needs.core.result }} adapters=${{ needs.adapters.result }} app=${{ needs.app.result }} infra=${{ needs.infra.result }}"
+          for r in "${results[@]}"; do
+            if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
+              echo "::error::A required CI job did not pass"
+              exit 1
+            fi
+          done
           echo "All required jobs passed (skipped is OK)."
