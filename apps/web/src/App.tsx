@@ -1,4 +1,4 @@
-import { starRating } from "./lib/scoring";
+import { starRating } from "@core/scoring";
 
 const DEMO_ACCURACY = 84;
 
