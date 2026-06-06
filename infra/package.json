@@ -4,14 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc --noEmit",
-    "lint": "eslint .",
-    "typecheck": "tsc --noEmit",
-    "test": "echo \"infra: tests configured in Wave 2 (Lane A)\""
-  },
-  "devDependencies": {
-    "@config/eslint": "workspace:*",
-    "@types/node": "^22.10.0",
-    "eslint": "^9.17.0"
+    "lint": "echo \"@notation-hero/infra: lint runs once code lands (U9)\"",
+    "typecheck": "echo \"@notation-hero/infra: typecheck runs once code lands (U9)\"",
+    "test": "echo \"@notation-hero/infra: tests run once code lands (U9)\"",
+    "build": "echo \"@notation-hero/infra: build runs once code lands (U9)\""
   }
 }

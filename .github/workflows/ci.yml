@@ -14,57 +14,45 @@ permissions:
   contents: read
 
 jobs:
-  # Decide which layers changed. Filters are DEPENDENCY-AWARE: a consumer is
-  # re-checked when something it depends on changes (apps depend on core +
-  # shared config; infra depends on the aws adapter). Root files
-  # (manifest / lockfile / base tsconfig / this workflow) trip everything.
+  # Path filter so docs-only PRs skip the build jobs entirely (and the single
+  # required "CI Green" check still passes — no skipped-required-check deadlock).
+  # `code` = anything that can affect lint/typecheck/depcheck/test.
+  # `apps`  = apps + their deps (core/adapters) — what a build needs.
   changes:
     runs-on: ubuntu-latest
     outputs:
-      core: ${{ steps.filter.outputs.core }}
-      adapters: ${{ steps.filter.outputs.adapters }}
-      app: ${{ steps.filter.outputs.app }}
-      infra: ${{ steps.filter.outputs.infra }}
+      code: ${{ steps.filter.outputs.code }}
+      apps: ${{ steps.filter.outputs.apps }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
-            core:
+            code:
               - 'core/**'
-              - 'packages/**'
-              - 'package.json'
-              - 'bun.lock'
-              - 'tsconfig.base.json'
-              - '.github/workflows/ci.yml'
-            adapters:
               - 'adapters/**'
-              - 'packages/**'
+              - 'apps/**'
+              - 'infra/**'
               - 'package.json'
               - 'bun.lock'
-              - 'tsconfig.base.json'
+              - 'tsconfig*.json'
+              - '.eslintrc.cjs'
+              - '.dependency-cruiser.cjs'
               - '.github/workflows/ci.yml'
-            app:
+            apps:
               - 'apps/**'
               - 'core/**'
-              - 'packages/**'
-              - 'package.json'
-              - 'bun.lock'
-              - 'tsconfig.base.json'
-              - '.github/workflows/ci.yml'
-            infra:
-              - 'infra/**'
               - 'adapters/**'
-              - 'packages/**'
               - 'package.json'
               - 'bun.lock'
-              - 'tsconfig.base.json'
+              - 'tsconfig*.json'
               - '.github/workflows/ci.yml'
 
-  core:
+  # Lint + typecheck + Hexagonal layer-boundary check (dependency-cruiser) + test.
+  quality:
     needs: changes
-    if: ${{ needs.changes.outputs.core == 'true' }}
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -77,14 +65,20 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
-      - run: bun run --filter='@core/*' lint
-      - run: bun run --filter='@core/*' typecheck
-      - run: bun run --filter='@core/*' test
-      - run: bun run --filter='@core/*' build
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Dependency boundaries (Hexagonal layers)
+        run: bun run depcheck
+      - name: Test
+        run: bun run test
 
-  adapters:
+  # Per-deploy-target build. Runs every workspace's build via bun's filter;
+  # split into a per-app matrix if/when build time warrants.
+  build:
     needs: changes
-    if: ${{ needs.changes.outputs.adapters == 'true' }}
+    if: ${{ needs.changes.outputs.apps == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,67 +91,24 @@ jobs:
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
           restore-keys: ${{ runner.os }}-bun-
       - run: bun install --frozen-lockfile
-      - run: bun run --filter='@adapters/*' lint
-      - run: bun run --filter='@adapters/*' typecheck
-      - run: bun run --filter='@adapters/*' test
-      - run: bun run --filter='@adapters/*' build
+      - run: bun run build
 
-  app:
-    needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.11
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      - run: bun run --filter='@apps/*' lint
-      - run: bun run --filter='@apps/*' typecheck
-      - run: bun run --filter='@apps/*' test
-      - run: bun run --filter='@apps/*' build
-
-  infra:
-    needs: changes
-    if: ${{ needs.changes.outputs.infra == 'true' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.11
-      - uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
-          restore-keys: ${{ runner.os }}-bun-
-      - run: bun install --frozen-lockfile
-      - run: bun run --filter='@notation-hero/infra' lint
-      - run: bun run --filter='@notation-hero/infra' typecheck
-      - run: bun run --filter='@notation-hero/infra' build
-
-  # Single REQUIRED status check for branch protection. Always runs, so it never
-  # deadlocks when a path-filtered job is skipped. Fails only if a needed job
-  # actually failed or was cancelled (skipped is fine).
+  # Single REQUIRED status check for branch protection. Always runs, so a
+  # path-filtered skip never deadlocks the merge. Fails only on a real
+  # failure/cancellation (skipped is OK).
   ci-green:
     name: CI Green
     if: always()
-    needs: [core, adapters, app, infra]
+    needs: [quality, build]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
         run: |
-          results=("${{ needs.core.result }}" "${{ needs.adapters.result }}" "${{ needs.app.result }}" "${{ needs.infra.result }}")
-          echo "core=${{ needs.core.result }} adapters=${{ needs.adapters.result }} app=${{ needs.app.result }} infra=${{ needs.infra.result }}"
-          for r in "${results[@]}"; do
-            if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
-              echo "::error::A required CI job did not pass"
-              exit 1
-            fi
-          done
+          q="${{ needs.quality.result }}"
+          b="${{ needs.build.result }}"
+          echo "quality=$q  build=$b"
+          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" ]]; then
+            echo "::error::A required CI job did not pass"
+            exit 1
+          fi
           echo "All required jobs passed (skipped is OK)."
