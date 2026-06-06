@@ -1,0 +1,3 @@
+# Design-tool raw exports — keep rendered images (*.png) in git, not the bulky exports
+*.zip
+stitch_beatflow_studio/
