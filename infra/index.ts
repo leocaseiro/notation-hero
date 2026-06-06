@@ -1,11 +1,18 @@
 /**
- * Pulumi stack entrypoint — STUB (Wave 1).
+ * Pulumi COMPOSITION ROOT (hexagonal layout).
  *
- * Wave 2 (Lane A) replaces this with the hello-world Lambda Function URL:
- * an aws.lambda.Function + aws.lambda.FunctionUrl, plus the GitHub OIDC
- * provider and CI deploy role. See docs/cicd-pipeline.md.
+ * Where the deployable stack is assembled: imports each app's infra
+ * (apps/<app>/infra.ts) plus the cross-cutting resources (the shared DynamoDB
+ * single-table + S3 file bucket), instantiating the reusable Pulumi
+ * ComponentResources from @adapters/aws.
  *
- * This stub exists so `infra` is a valid workspace from Wave 1 — keeping the
- * root workspace array frozen so parallel agents never edit the root manifest.
+ * STUB: Wave 3 (Lane A) fills this in. First deliverable = one hello-world
+ * Lambda Function URL via @adapters/aws LambdaWithUrl, verified in CloudWatch,
+ * then the GitHub OIDC provider + CI deploy role. See docs/cicd-pipeline.md.
+ *
+ *   // Lane A:
+ *   // import { LambdaWithUrl } from "@adapters/aws";
+ *   // export const hello = new LambdaWithUrl("hello", { ... });
  */
-export const placeholder = "infra stub — replaced in Wave 2 (Lane A)";
+export const compositionRoot =
+  "infra composition root — resources added in Wave 3 (Lane A)";
