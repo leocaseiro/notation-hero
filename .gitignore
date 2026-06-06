@@ -1,1 +1,23 @@
+# SpecStory auto-save
 .specstory
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# bun.lock is COMMITTED (text lockfile) — see docs/cicd-pipeline.md
+
+# Env / secrets — never commit AWS creds
+.env
+.env.*
+!.env.example
+
+# Pulumi local backups
+*.yaml.bak
+
+# Editor / OS
+.DS_Store
+*.log
