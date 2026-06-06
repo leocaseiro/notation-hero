@@ -104,7 +104,6 @@ Library ──tap song──▶ Play screen ──finish (game)──▶ Results
 
 - **Sidebars vs modals:** Tracks (**right**, by its bottom-bar button) and Score (**left**) are **persistent sidebars** — usable *alongside* gameplay; either closes to widen the staff. Settings + MIDI are **modals** (you're configuring, not playing).
 - **Memory mode** is armed in **pre-play setup**, never toggled mid-play.
-- **Focus** (distraction-free) = a mode that hides chrome; not a permanent panel.
 
 ---
 
@@ -147,6 +146,7 @@ Horizontal highway (primary) + vertical falling-notes (alt). Gem feedback carrie
 ## 8. Open items / next
 
 - **Build:** Friendly-view stub (design-gated later milestone). *(Library ✅ · Results ✅ · Tracks ✅)*
+- **Mixer solo / play-along model** (open) — keep the named **Drums-only / Minus-drums** shortcuts, or switch to per-track **"Only"** (exclusive solo) + **Mute** + a single **"Play along"** (mute your own part)? Deferred to the design-tool exploration.
 - **Settings tabs** — only Input&MIDI is drawn; render Timing / Practice / Display content.
 - **Dark theme** for Tracks/Settings panels (inherit app theme).
 - **Drum-kit (J‑6)** slot reserved in the Score sidebar; design when built.
