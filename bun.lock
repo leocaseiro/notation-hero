@@ -8,6 +8,15 @@
         "typescript": "^5.7.0",
       },
     },
+    "adapters/aws": {
+      "name": "@adapters/aws",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@config/eslint": "workspace:*",
+        "@types/node": "^22.10.0",
+        "eslint": "^9.17.0",
+      },
+    },
     "apps/player-pwa": {
       "name": "@apps/player-pwa",
       "version": "0.0.0",
@@ -40,7 +49,9 @@
       "name": "@notation-hero/infra",
       "version": "0.0.0",
       "devDependencies": {
+        "@config/eslint": "workspace:*",
         "@types/node": "^22.10.0",
+        "eslint": "^9.17.0",
       },
     },
     "packages/config": {
@@ -55,6 +66,8 @@
     },
   },
   "packages": {
+    "@adapters/aws": ["@adapters/aws@workspace:adapters/aws"],
+
     "@apps/player-pwa": ["@apps/player-pwa@workspace:apps/player-pwa"],
 
     "@babel/code-frame": ["@babel/code-frame@7.29.7", "", { "dependencies": { "@babel/helper-validator-identifier": "^7.29.7", "js-tokens": "^4.0.0", "picocolors": "^1.1.1" } }, "sha512-Aup7aUOfpbAUg2ROOJN6Iw5f9DMBlzu0mIkm/malLQFN/YQgO48wCj0Kxa3sEHJvPVFg7siR+qRInwXd2qhQKw=="],

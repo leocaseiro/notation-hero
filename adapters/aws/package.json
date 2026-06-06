@@ -1,13 +1,16 @@
 {
-  "name": "@notation-hero/infra",
+  "name": "@adapters/aws",
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
   "scripts": {
-    "build": "tsc --noEmit",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"infra: tests configured in Wave 2 (Lane A)\""
+    "test": "echo \"@adapters/aws: tests added with the first ComponentResource\"",
+    "build": "tsc --noEmit"
   },
   "devDependencies": {
     "@config/eslint": "workspace:*",
