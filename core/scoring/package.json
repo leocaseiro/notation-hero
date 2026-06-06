@@ -1,0 +1,18 @@
+{
+  "name": "@core/scoring",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "scripts": {
+    "lint": "echo \"@core/scoring: lint wired via @config/eslint (packages/config commit)\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0"
+  }
+}

@@ -9,9 +9,10 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@core/scoring": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

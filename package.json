@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "packageManager": "bun@1.3.11",
-  "workspaces": ["apps/*", "infra", "packages/*"],
+  "workspaces": ["apps/*", "adapters/*", "core/*", "packages/*", "infra"],
   "scripts": {
     "lint": "bun run --filter='*' lint",
     "typecheck": "bun run --filter='*' typecheck",
