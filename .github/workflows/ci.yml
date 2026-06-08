@@ -1,0 +1,114 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+# Cancel superseded runs on the same ref (saves minutes, avoids stale results).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Path filter so docs-only PRs skip the build jobs entirely (and the single
+  # required "CI Green" check still passes — no skipped-required-check deadlock).
+  # `code` = anything that can affect lint/typecheck/depcheck/test.
+  # `apps`  = apps + their deps (core/adapters) — what a build needs.
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      apps: ${{ steps.filter.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'core/**'
+              - 'adapters/**'
+              - 'apps/**'
+              - 'infra/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig*.json'
+              - '.eslintrc.cjs'
+              - '.dependency-cruiser.cjs'
+              - '.github/workflows/ci.yml'
+            apps:
+              - 'apps/**'
+              - 'core/**'
+              - 'adapters/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig*.json'
+              - '.github/workflows/ci.yml'
+
+  # Lint + typecheck + Hexagonal layer-boundary check (dependency-cruiser) + test.
+  quality:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - name: Lint
+        run: bun run lint
+      - name: Typecheck
+        run: bun run typecheck
+      - name: Dependency boundaries (Hexagonal layers)
+        run: bun run depcheck
+      - name: Test
+        run: bun run test
+
+  # Per-deploy-target build. Runs every workspace's build via bun's filter;
+  # split into a per-app matrix if/when build time warrants.
+  build:
+    needs: changes
+    if: ${{ needs.changes.outputs.apps == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.11
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: ${{ runner.os }}-bun-
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+
+  # Single REQUIRED status check for branch protection. Always runs, so a
+  # path-filtered skip never deadlocks the merge. Fails only on a real
+  # failure/cancellation (skipped is OK).
+  ci-green:
+    name: CI Green
+    if: always()
+    needs: [quality, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify required jobs passed
+        run: |
+          q="${{ needs.quality.result }}"
+          b="${{ needs.build.result }}"
+          echo "quality=$q  build=$b"
+          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" ]]; then
+            echo "::error::A required CI job did not pass"
+            exit 1
+          fi
+          echo "All required jobs passed (skipped is OK)."
