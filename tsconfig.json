@@ -1,0 +1,7 @@
+{
+  "//": "Root solution config. Compiles nothing directly (files: []); each",
+  "// ": "workspace has its own tsconfig that extends tsconfig.base.json. Used by",
+  "//  ": "dependency-cruiser for path-alias resolution without a tsc inputs error.",
+  "extends": "./tsconfig.base.json",
+  "files": []
+}

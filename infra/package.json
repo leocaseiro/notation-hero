@@ -1,0 +1,12 @@
+{
+  "name": "@notation-hero/infra",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "echo \"@notation-hero/infra: lint runs once code lands (U9)\"",
+    "typecheck": "echo \"@notation-hero/infra: typecheck runs once code lands (U9)\"",
+    "test": "echo \"@notation-hero/infra: tests run once code lands (U9)\"",
+    "build": "echo \"@notation-hero/infra: build runs once code lands (U9)\""
+  }
+}
