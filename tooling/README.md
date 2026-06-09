@@ -60,10 +60,25 @@ See [`linear-queue.schema.json`](./linear-queue.schema.json). Minimum example:
 
 **Manual (next agent session):**
 1. Read `tooling/linear-queue.json`.
-2. For each item in `queue`, attempt the corresponding Linear MCP call with `payload`.
-3. On success: remove the item from `queue`.
+2. For each item in `queue`, attempt the corresponding Linear MCP call with `payload` (see the action→tool table below).
+3. **On success — idempotency-aware (F-1 hardening):**
+   - If `action == "create_issue"` AND `linearId` is **unset**: write the Linear-returned issue id into `linearId` on the item **BEFORE** removing — this turns a future crash-before-remove + replay into a benign `update_issue` no-op instead of a duplicate-issue bug.
+   - If `action == "create_issue"` AND `linearId` is **already set** (a prior partial-success scenario replaying): call `update_issue` with that id instead of `create_issue`, then remove the item.
+   - For all other actions: remove the item.
 4. On failure: increment `attempts`, set `lastError`, keep the item; surface to the user if `attempts >= 3`.
 5. Commit the resulting `linear-queue.json` change in a small chore-commit (`chore(linear): drain N queued items`).
+
+#### Action → Linear MCP tool mapping (F-5 hardening)
+
+The `action` enum names a logical operation; the table below gives the concrete Linear MCP tool to invoke. All Linear MCP tools live under the workspace's Linear MCP server prefix (the prefix is session-specific — agents resolve it via their tool registry).
+
+| Queue action | Linear MCP tool | How to call |
+|---|---|---|
+| `create_issue` | `save_issue` (no `id` in args) | Pass `payload` fields (`title`, `team`, `description`, `labels`…) as args. On success, write the returned issue id into the item's `linearId` field BEFORE removing — see drain step 3. |
+| `update_issue` | `save_issue` (with `id` in args) | Pass `payload.id` + updated fields. |
+| `add_comment` | `save_comment` | Pass `payload.issueId` + `payload.body`. |
+| `set_status` | `save_issue` (with `id` + `state`) | Pass `id` + new `state` (status type, name, or ID). |
+| `add_label` | `save_issue` (with `id` + `labels`) | Pass `id` + `labels` array. |
 
 **Automated (CI drain job — wired in a later Sequencing step):**
 - Lives at `.github/workflows/linear-drain.yml`.
