@@ -24,7 +24,7 @@ Rationale: foundational migrations (package manager, orchestrator, package bound
 
 ## Verification on record
 
-**Nx + Bun (researched 2026):** Bun *is* officially supported by Nx (since 19.1; the text `bun.lock` avoids the binary-lockfile bug class), and the core loop works. But pnpm was chosen because it wins on the Approver's three loudest priorities: (1) Nx generators/presets/examples are pnpm-first → agents emit pnpm-idiomatic commands by default = fewer wasted tokens; (2) pnpm's Nx code paths are the most-tested = never-migrate stability (Bun had 5+ Nx lockfile bugs in 2025, reactively patched); (3) pnpm's strict symlinked `node_modules` structurally blocks phantom/undeclared imports = a clean-architecture win. Bun and the package manager are separable — Bun may stay as a fast script runtime if desired.
+**Nx + Bun (researched 2026):** Bun *is* officially supported by Nx (since 19.1; the text `bun.lock` avoids the binary-lockfile bug class), and the core loop works. But pnpm was chosen because it wins on the Approver's three loudest priorities: (1) Nx generators/presets/examples are pnpm-first → agents emit pnpm-idiomatic commands by default = fewer wasted tokens; (2) pnpm's Nx code paths are the most-tested = never-migrate stability (Bun had 5+ Nx lockfile bugs in 2025, reactively patched); (3) pnpm's strict symlinked `node_modules` structurally blocks phantom/undeclared imports = a clean-architecture win. Bun is **fully dropped** (pnpm only) — mixing bun + pnpm in one repo creates two ways to run scripts, which confuses agents and new devs (review finding F-6).
 
 ## Decisions
 
@@ -32,7 +32,7 @@ Rationale: foundational migrations (package manager, orchestrator, package bound
 
 | Layer | Decision | Why | Rejected / deferred |
 |---|---|---|---|
-| **Package manager** | **pnpm** | Agent-idiomatic Nx output, most-tested Nx paths, phantom-dep blocking (clean arch), `pnpm catalog` centralizes versions | Bun (verified to work, but loses on the 3 factors above); Bun may remain a fast runtime |
+| **Package manager** | **pnpm** | Agent-idiomatic Nx output, most-tested Nx paths, phantom-dep blocking (clean arch), `pnpm catalog` centralizes versions | Bun (verified to work, but loses on the 3 factors above); **Bun fully dropped** — bun+pnpm in one repo = ambiguity for agents + onboarding (F-6) |
 | **L1 Orchestrator** | **Nx** | Complete: affected + computation cache + generators (agents scaffold identical correct packages) + `@nx/enforce-module-boundaries` (architecture grows *as eslint rules* — matches the principle) | Turborepo (lighter but boundaries not integrated); Moon (polyglot irrelevant); bun-native (no cache/generators/affected-graph). Nx self-hosted *remote cache* plugin is deprecated (CVE-2025-36852) — use local cache + Nx Cloud free tier instead |
 | **L2 Boundaries** | Real workspace packages + TS **project references** + **Nx `enforce-module-boundaries`** tags (`type:core/adapter/app/infra`) + **dependency-cruiser** kept for cycle-detection & graph viz + a committed **self-testing probe suite** (intentional violations asserted to FAIL in CI) | Illegal imports become *unresolvable* (package simply doesn't depend on the layer), not merely linted; probe suite guards against an agent loosening a rule | `tsconfig.paths` as the boundary mechanism (2026 anti-pattern — current state); eslint-plugin-boundaries / sheriff (Nx tags cover it) |
 | **L3 Lint / format** | **ESLint flat config** as the growable rule engine (Nx boundaries + `@typescript-eslint` type-aware + custom architectural rules) + **Prettier** for format | "New eslint rules on the way" is the explicit growth vector; Nx is ESLint-native | Biome-as-primary (would sideline the eslint rule ecosystem the project grows); Oxlint (correctness-only). *Biome may be added later purely as a faster formatter if Prettier speed bites* |
@@ -48,7 +48,7 @@ Rationale: foundational migrations (package manager, orchestrator, package bound
 | **L7 CI cost/safety** | **`nx affected`** (cheap-CI engine) + **reusable workflow / composite action** (DRY; adding a gate = one line) + artifact **retention → 7d** + **fix the `master`/`main` trigger** + **merge-queue** (`merge_group`) + OIDC stays reserved for `deploy.yml` | Keeps proven patterns ("CI Green" single check, concurrency-cancel); merge-queue stops two independently-green parallel-agent PRs combining into a broken main | per-layer CI matrix (N× installs cost on a skeleton — defer until real code); full hermetic/no-internet CI (over-engineered now) |
 | **L8 Agent standards** | **AGENTS.md generated FROM config + a CI drift-check** (config = single source of truth; doc auto-derived; build fails if they diverge) + **Lefthook** (pre-commit/pre-push running `nx affected` lint/typecheck/test on staged) + **shared config packages** (Nx-provided `@repo/tsconfig` etc.) | Highest-leverage layer; agents reliably read AGENTS.md but not multi-file configs. Drift-check stops doc/gate divergence; Lefthook collapses the write→push→red-CI→rewrite token loop to a local gate | hand-written AGENTS.md (drift risk); husky+lint-staged (lefthook is one YAML, parallel, agent-native) |
 
-### Hygiene, dependency health & security (cost-proof, two-phase)
+### L9 — Hygiene, dependency health & security (cost-proof, two-phase)
 
 | Area | Decision |
 |---|---|
@@ -140,7 +140,7 @@ Colocation (`CallbackFunction` inline, CDK `NodejsFunction` next to source, SST)
 
 ## Open verification / first-PR checklist
 
-- [ ] **Confirm default branch** (`main` vs `master`) and fix `ci.yml` `on.push.branches` + the OIDC trust-policy ref accordingly.
+- [x] **Default branch = `master`** (confirmed: `ci.yml` triggers `master`, no remote, `git branch --show-current` = `master`). All `on.push.branches` / `merge_group` / OIDC trust-policy refs use `refs/heads/master`.
 - [ ] Run the pnpm migration as the first commit (cheapest while skeleton).
 - [ ] Set the **type-coverage** start floor and **coverage/mutation** start floors low; ratchet up as real code lands.
 - [ ] Enable **GitHub native secret scanning + push protection** in repo settings now (public).
@@ -156,3 +156,24 @@ Colocation (`CallbackFunction` inline, CDK `NodejsFunction` next to source, SST)
 ## Supersedes
 
 Reverses ideation rejection **R1** (Nx/Turborepo deferral) under the complete-now principle. All other ideation rejections (Moon, Oxlint-as-primary, append-only test ledger, hermetic CI, per-layer CI matrix) stand. CodeQL is **added** (not rejected) as the public-phase deep-SAST tier alongside Semgrep.
+
+## Review resolutions (external review — 2026-06-09)
+
+External review (CMS-plan owner) raised 7 material + 10 minor + 1 cosmetic finding; all accepted except where noted.
+
+**Material:**
+- **F-1 (isolatedDeclarations cost):** L4 — `isolatedDeclarations` needs explicit return-type annotations on every public export (~5-10% extra LOC on public APIs; agents emit them by default). Benefit (3-15× incremental `.d.ts`) holds; cost is priced in.
+- **F-2 (Stryker on ports):** L5 — Stryker `mutate` glob **excludes interface/port files** (no behavior to mutate); target behavior-bearing files (entities, value objects, validators). Tests stay **co-located** (NO `__tests__/` convention); port fakes co-locate (`*.fake.ts`) or live in a small `test-utils` package. `*.test.*` / `*.stories.*` / fakes never ship (build + bundle excludes).
+- **F-3 (ratchet persistence + no-escape-hatches):** L5 — floors live in a committed `tooling/floors.json` (one floor per metric × per Nx project). PRs fail if coverage/mutation/type-cov drops below the committed floor (read-only); an `update-floors` job (`contents: write`, `push:master` only) bumps floors up + commits. Start low (~60% coverage / 50% mutation / 90% type-cov), ratchet up. **Plus a "no escape hatches" ESLint rule set:** ban/limit `eslint-disable` (`@eslint-community/eslint-plugin-eslint-comments`, require reason), `@ts-ignore`/`@ts-nocheck` (`@typescript-eslint/ban-ts-comment`), and `/* istanbul ignore */` — stops agents disabling their way past a gate (anti-gaming layer for the gates themselves; grows with the rule set).
+- **F-4 (Nx-managed project references):** L4 — TS `references` are **Nx-managed via `nx sync`** (CI runs `nx sync --check`; free, Nx core, no Nx Cloud). Do **not** hand-edit `references` arrays — this removes the tsconfig merge-conflict problem. Enable via `nx.json` `sync-generators`; AGENTS.md documents "never hand-edit references."
+- **F-5 (default branch):** ✅ confirmed `master` (see checklist).
+- **F-6 (Bun):** ✅ Bun **fully dropped** — pnpm only.
+- **F-7 (Sentry token):** checklist — create Sentry project + project-scoped auth token; add `SENTRY_AUTH_TOKEN` GitHub Actions secret **before** wiring source-map upload (silent-fails without it).
+
+**Minor (accepted):** M-1 DangerJS test-relocation opt-out label (`refactor:test-relocation`); M-2 per-Nx-project type-coverage floors (infra lower due to Pulumi `Output<unknown>`); M-3 `merge_group` requires branch-protection (post-repo-creation step); M-4 add `eslint-config-prettier`; M-5 `.nvmrc` Node version = Lambda runtime (esbuild target match); M-6 per-Lambda `size-limit` budget on `dist` (catches Pulumi leaking into the bundle); M-8 add `.pulumi/` + Pulumi stack files to `.nxignore` + `.gitignore`; M-9 Linear MCP token one-time setup.
+
+**M-7 (changelog/release):** ✅ **`nx release`** (commit-driven, Nx-native) — reads conventional commits → per-`@notationhero/*`-package SemVer bump + per-project `CHANGELOG.md` + git tags. Alpha track via `nx release --prerelease alpha` (`1.0.0-alpha.x` on master merge); PR previews via explicit specifier (`0.0.1-pr.{prId}`) in a PR job. Per-version `changelog/changelog-{ver}.md` files = small custom post-`version` step (default is cumulative per-package `CHANGELOG.md`). Chosen over changesets (manual intent files, not commit-driven) and release-please/semantic-release (standalone) because it reuses commitlint + Nx with no extra tool. Main app package = `notationhero`.
+
+**M-10 (license/header):** ⏳ **TBD** — license (proprietary vs open-source) + the `eslint-plugin-header` copyright rule are pending the open-source decision. Tracked in Linear (ticket created 2026-06-09, team Leocaseiro).
+
+**Cosmetic:** L9 label added to the dependency-health/security section.
