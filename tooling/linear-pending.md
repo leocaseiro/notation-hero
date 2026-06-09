@@ -15,6 +15,20 @@ Append a bullet when ALL of:
 
 If the MCP call succeeds on the first try (or after a retry), never touch this file.
 
+## Payload hygiene — never enqueue (F-18 hardening)
+
+This file commits to git. Anything written here is permanent in the public repo's history. Before appending a bullet, sanitize the content:
+
+| **Never** put in a bullet | **Why** | **Instead** |
+|---|---|---|
+| Raw API responses, error bodies, stack traces | Often embed env vars, request URLs with tokens, internal hostnames | Summarize: `"NetworkError on call to <redacted>, see logs in agent session"` |
+| Authorization headers, `Bearer <token>` | Direct token leak | Don't reference; restart and re-auth |
+| AWS access keys (`AKIA…` / `ASIA…`), secret keys | AWS credentials trigger amazon-side auto-revoke and a security incident | Don't reference; rotate in IAM |
+| Database connection strings, DSNs | Credentials inline | Just say "DB connection issue" |
+| Internal customer / PII | GDPR + privacy concerns | Replace with IDs only |
+
+Future hardening: gitleaks pre-commit hook scoped to `tooling/linear-pending.md` will land with DACI L9 (already on the Sequencing path). Until then, this is a discipline rule for the agent author.
+
 ## Item format
 
 ```
