@@ -4,7 +4,7 @@
 > **Companions:** [`docs/feature-freeze.md`](feature-freeze.md) (feature → AWS) · `stack-aws-brainstorm.md` (rationale, free-tier ceilings, learning order — in worktree `serene-grothendieck-fb5e67`)
 > **Goal:** get AWS skills interview-ready *fast*. The freeze table answers "what AWS does this feature need?"; this doc inverts it — **"which feature is the best vehicle to learn each service?"** so you can pick build targets that maximize learning.
 
-> The whole app **can ship as a pure PWA with zero AWS.** AWS is opt-in per feature, chosen for portfolio value — not because the rhythm game needs it. Legacy (pre-2025-07-15) account → **Always-Free** tiers make this ~$0.
+> The whole app **can ship as a pure PWA with zero AWS.** AWS is opt-in per feature, chosen for portfolio value — not because the rhythm game needs it. New account (post-2025-07-15, **Paid plan** + $200 credits) → core stack (Lambda · DynamoDB · SQS · SNS · CloudFront · Cognito · CloudWatch) is still **Always-Free**, so this stays ~$0; only S3/Athena + non-free services draw down credits. A **zero-spend budget** alarm guards against surprise charges.
 
 ---
 
@@ -79,7 +79,7 @@ Almost all of it lives in **Alpha + Beta** — AWS skills come fast, not behind 
 
 ---
 
-## Free-tier ceilings (legacy account → Always-Free)
+## Free-tier ceilings (new account post-2025-07-15 → Always-Free services + $200 credits)
 
 | Service | Allowance | Type |
 |---|---|---|
@@ -94,6 +94,8 @@ Almost all of it lives in **Alpha + Beta** — AWS skills come fast, not behind 
 | Athena | pay-per-scan (~$0 at this volume) | ~free |
 
 **No free tier — speak it, don't build:** MSK (~$460–607/mo), Kinesis, NAT Gateway (~$32/mo), API Gateway (12-mo only), CloudWatch RUM, DocumentDB, EC2.
+
+> **⚠ 2025 free-tier overhaul:** this is a *post-2025-07-15* account, so the old **12-month** trials (EC2 750h, API Gateway, etc.) no longer apply — those services now draw on the **$200 credits** instead (credits expire 12 mo after signup). The **Always-Free** services above are unaffected and remain the ~$0 backbone. S3's 5 GB is credit-covered early, then pennies/mo. Verify live limits at [aws.amazon.com/free](https://aws.amazon.com/free).
 
 ---
 
