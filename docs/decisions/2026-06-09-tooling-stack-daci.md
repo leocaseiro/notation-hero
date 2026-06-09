@@ -206,7 +206,7 @@ Implementation specifics (round-2 hardening):
 
 | Layer | Decision | Why | Rejected |
 |---|---|---|---|
-| **L10a Linear MCP (foundation)** | One-time MCP token setup with explicit hygiene: minimum scope `write:issues` only (NOT admin), stored in OS keychain (NOT a dotfile, NOT a repo env var), 90-day rotation, machine-compromise response = `revoke at linear.app/settings/api`. Existing Linear project (`notation-hero-db465058e201`) already active. **Uptime SPOF fallback:** agents log Linear-bound updates to `tooling/linear-queue.json` (committed) when MCP unavailable; a periodic CI job (or next agent session) drains the queue when MCP becomes available — so a Linear outage or expired token does not silently lose deferred-item bookkeeping. | Genuinely agent-native — MCP IS the agent's hands into Linear; immediate value before any PR exists; lets agents mirror the L13 "Deferred" list as Linear tickets during foundation buildout itself. Fallback queue closes the SPOF gap | Custom Linear API integration (overkill for solo); storing token in repo env var (rejected — exfiltration risk) |
+| **L10a Linear MCP (foundation)** | One-time MCP token setup with explicit hygiene: minimum scope `write:issues` only (NOT admin), stored in OS keychain (NOT a dotfile, NOT a repo env var), 90-day rotation, machine-compromise response = `revoke at linear.app/settings/api`. Existing Linear project (`notation-hero-db465058e201`) already active. **Uptime SPOF fallback (v2):** agents append bullets to `tooling/linear-pending.md` (committed markdown TODO) when MCP unavailable; next agent session drains the file by flipping `- [ ]` to `- [x]` per successful Linear call — so a Linear outage or expired token does not silently lose deferred-item bookkeeping. (Original v1 used a typed JSON queue + state-machine drain; re-decided after implementation surfaced over-engineering — see "Implementation re-decisions" below.) | Genuinely agent-native — MCP IS the agent's hands into Linear; immediate value before any PR exists; lets agents mirror the L13 "Deferred" list as Linear tickets during foundation buildout itself. Fallback closes the SPOF gap at the minimum shape that handles real failure modes | Custom Linear API integration (overkill for solo); storing token in repo env var (rejected — exfiltration risk); typed JSON queue with state-machine drain (rejected v2 — over-engineered for ~99.9% SLA solo-dev failure surface) |
 | **L10b Linear GitHub App (deferred — first PR trigger)** | Native Linear GitHub App (branch→issue, status automation on merge) — wires at first PR loop (build-phase). Tracked in "Deferred" section + DangerJS first-PR trigger. | Repo↔Linear bridge needs GH repo linked to Linear team + branch-naming convention (`LEO-<n>-<slug>`); no value before there's a PR for it to act on | Custom GH-Actions↔Linear sync (overkill for solo) |
 
 ### Additional upfront setup (gap sweep — L11–L13)
@@ -293,9 +293,9 @@ Colocation (`CallbackFunction` inline, CDK `NodejsFunction` next to source, SST)
 Items below are reordered by Sequencing step ascending; check off as each lands.
 
 - [x] **`[Done]` Default branch = `master`** (confirmed: `ci.yml` triggers `master`, no remote, `git branch --show-current` = `master`). All `on.push.branches` / `merge_group` / OIDC trust-policy refs use `refs/heads/master`.
-- [ ] **`[Step 0]` Set up Linear MCP token** with hygiene per L10a: minimum scope `write:issues`, stored in OS keychain (not dotfile/env var), 90-day rotation calendar reminder, document `revoke at linear.app/settings/api` in machine-compromise runbook. Mirror the "Deferred" list as Linear tickets once MCP is wired. (Pre-PR: wire before pnpm migration so agents can use MCP from PR #1.)
-- [ ] **`[Step 0]` Initialize `tooling/linear-queue.json`** as the MCP-downtime fallback; wire a CI drain job (or document agent-session drain) so the queue is processed when MCP becomes available again.
-- [ ] **`[Step 1]` Run the pnpm migration as the first commit** (cheapest while skeleton).
+- [x] **`[Step 0]` Set up Linear MCP token** with hygiene per L10a: minimum scope `write:issues`, stored in OS keychain (not dotfile/env var), 90-day rotation calendar reminder, document `revoke at linear.app/settings/api` in machine-compromise runbook. Mirror the "Deferred" list as Linear tickets once MCP is wired. **Shipped in [PR #2](https://github.com/leocaseiro/notation-hero/pull/2):** runbook at `docs/runbooks/linear-mcp.md` + Deferred items mirrored as LEO-98/99/100/101.
+- [x] **`[Step 0]` Initialize `tooling/linear-pending.md`** (markdown TODO) as the MCP-downtime fallback; document the agent-session drain procedure inline in the file. CI drain job is optional + lands later; the markdown form is human-runnable already. **Shipped in PR #2 (DACI L10a v2 — see Implementation re-decisions; replaces the v1 JSON queue).**
+- [x] **`[Step 1]` Run the pnpm migration as the first commit** (cheapest while skeleton). **Shipped in PR #2 commit `1499903` — `packageManager: pnpm@11.5.2`, `pnpm-workspace.yaml`, CI `pnpm/action-setup@v4 + setup-node@v4` (Node 22, cache: 'pnpm').**
 - [ ] **`[Step 1]` Set type-coverage / coverage / mutation start floors** low; ratchet up as real code lands. **Infra projects (`type:infra`) use lower type-coverage floors** (~90%) due to Pulumi `Output<unknown>` complexity (per M-2); other projects start ~95% and ratchet up together.
 - [ ] **`[Step 1]` Scaffold each Lambda as SEPARATE `apps/<fn>` (`type:app`) + `infra/<fn>` (`type:infra`)**; never colocate `handler.ts` + `infra.ts`. Infra references `apps/<fn>/dist` via `FileArchive`; wire `implicitDependencies` + `deploy.dependsOn`.
 - [ ] **`[Step 1]` Add dependency-cruiser file-level rules:** handler ↛ `@pulumi/*`, infra ↛ `apps`/`libs` source, core ↛ `@aws-sdk/*`, **adapters ↛ `apps`/`infra` source** (adapters are horizontal — they MAY import `@aws-sdk/*` and `@core/*` but never domain or infra). Document the serverless split in AGENTS.md so agents scaffold it.
@@ -373,15 +373,41 @@ External review (CMS-plan owner) raised 7 material + 10 minor + 1 cosmetic findi
 
 **Cosmetic:** L9 label added to the dependency-health/security section.
 
+## Implementation re-decisions (post-implementation amendments)
+
+### L10a v2 — Replace JSON queue with markdown TODO (2026-06-09)
+
+**Original (v1):** `tooling/linear-queue.json` + `linear-queue.schema.json` + state-machine drain procedure (ULID `id` format, `linearId` write-back for idempotency, `action` enum mapping to MCP tools, `attempts`/`lastError` tracking).
+
+**Re-decision (v2):** `tooling/linear-pending.md` — a markdown TODO file. Bullets per pending Linear operation; drained via "for each `- [ ]` bullet, attempt the MCP call, flip to `- [x]` on success with inline `LEO-XXX` note for idempotency".
+
+**Why:** Implementing v1 in [PR #2](https://github.com/leocaseiro/notation-hero/pull/2), then walking the resulting `/ce-code-review` findings, exposed that the typed queue was over-engineered for the actual failure mode (Linear MCP outage in solo-dev with Linear's ~99.9% SLA). The hardening commits — F-1 idempotency via `linearId`, F-2 ULID id format, F-5 action→tool mapping table — were a leading indicator that the design was reaching beyond its real scope. Approver's reframe on 2026-06-09: *"Linear is only needed for large changes — small ops go to markdown."*
+
+**What survived v1 → v2:**
+- Token hygiene rules (`write:issues` scope, OS keychain, 90-day rotation) — unchanged
+- Machine-compromise runbook — unchanged, plus gains a token smoke-test step (F-12)
+- **All hardening *concepts*** — idempotency via inline `LEO-XXX` notes in drained bullets; uniqueness via markdown's natural append + git rebase semantics; action types as table headings in the markdown
+- DACI Step 0 obligation to wire MCP before PR #1 — unchanged
+- Payload hygiene rules (never enqueue secrets, tokens, stack traces) — preserved as a section in `linear-pending.md`
+
+**What v1 dropped:**
+- ~200 LOC of JSON Schema + drain prose (replaced by ~80 LOC self-contained markdown)
+- The CI drain workflow plan (v2 wants the same, simpler — parse markdown, not JSON)
+- Code-review findings **F-7** (schema version evolution), **F-9** (CI schema validation), **F-13** (strict-additionalProperties at root) — all moot in v2 since no schema
+
+**Where it landed:** [PR #2](https://github.com/leocaseiro/notation-hero/pull/2) commit [`bfd2827`](https://github.com/leocaseiro/notation-hero/commit/bfd2827). The schema-based queue lives in git history if v3 ever needs to reverse course.
+
+**Doctrine note:** This is the first DACI Implementation re-decision. The "complete now, never migrate" override has its falsification signals catalogued earlier in this doc (Nx Cloud cap, first-PR cliff, slice velocity, `isolatedDeclarations` compliance). The v1 → v2 trigger here doesn't match any of those exactly — it's closer to *"first contact with implementation surfaced a latent over-engineering signal the override didn't predict."* The lesson for future complete-now decisions: ship the minimum viable shape, then accrete complexity only on first real pain. The hardening cycle that surfaced this signal is itself a positive — agent-native review caught the over-engineering early enough to revise cheaply, before any agent actually used the queue.
+
 ## Deferred — awaiting first-use trigger
 
 Items deferred from foundation under the "first-pain wins" pattern (see "When this principle applies"). Each is tracked here AND surfaced via a DangerJS first-use rule (L6 implementation detail) that comments on the PR introducing the first instance. Mirror to Linear tickets once L10a Linear MCP is wired.
 
 | Layer | Trigger condition | Setup task on trigger | Linear ticket |
 |---|---|---|---|
-| **L13 Storybook** | First `*.tsx` component added to the repo | Scaffold Storybook (`npx storybook@latest init`); confirm default `**/*.stories.@(ts|tsx)` glob; align Vitest coverage excludes for `*.stories.*` | _TBD when MCP wired_ |
-| **L13 Playwright** | First `*.e2e.{ts,tsx}` or any file under `e2e/**` | Scaffold Playwright (`npm init playwright`); commit test-ID naming convention; wire `@playwright/test` to CI | _TBD when MCP wired_ |
-| **L13 LocalStack** | First file under `adapters/aws-*/**/*.integration.test.ts` | Add `docker-compose.localstack.yml`; commit adapter-integration test pattern; wire AWS endpoint override in test setup | _TBD when MCP wired_ |
-| **L10b Linear GitHub App** | First PR opened on the GH repo (`danger.github.pr.number === 1`) | Link the GH repo to the Linear team in Linear settings; adopt branch-naming convention `LEO-<n>-<slug>`; verify status sync on merge | _TBD when MCP wired_ |
+| **L13 Storybook** | First `*.tsx` component added to the repo | Scaffold Storybook (`npx storybook@latest init`); confirm default `**/*.stories.@(ts|tsx)` glob; align Vitest coverage excludes for `*.stories.*` | [LEO-98](https://linear.app/leocaseiro/issue/LEO-98) |
+| **L13 Playwright** | First `*.e2e.{ts,tsx}` or any file under `e2e/**` | Scaffold Playwright (`npm init playwright`); commit test-ID naming convention; wire `@playwright/test` to CI | [LEO-99](https://linear.app/leocaseiro/issue/LEO-99) |
+| **L13 LocalStack** | First file under `adapters/aws-*/**/*.integration.test.ts` | Add `docker-compose.localstack.yml`; commit adapter-integration test pattern; wire AWS endpoint override in test setup | [LEO-100](https://linear.app/leocaseiro/issue/LEO-100) |
+| **L10b Linear GitHub App** | First PR opened on the GH repo (`danger.github.pr.number === 1`) | Link the GH repo to the Linear team in Linear settings; adopt branch-naming convention `LEO-<n>-<slug>`; verify status sync on merge | [LEO-101](https://linear.app/leocaseiro/issue/LEO-101) (PR #2 is the trigger) |
 
 When triggered: complete the setup task, remove the row from this list, mirror status to the corresponding Linear ticket. Add new rows here whenever a future layer is deferred under "first-pain wins" — every entry also gets a corresponding DangerJS first-use rule (L6) so the trigger lands on the PR.
