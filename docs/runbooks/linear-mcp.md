@@ -37,13 +37,13 @@ Branch naming convention (used once L10b Linear GitHub App is wired): `LEO-<issu
 4. **Re-store in keychain** (don't paste anywhere else first). Delete clipboard after pasting.
 5. **Restart MCP client** so it picks up the new keychain entry.
 6. **Smoke-test the new token** (F-12 hardening) — run one low-risk Linear MCP call (e.g. `list_teams` or `get_user me`) and confirm it returns data without error. A misnamed keychain entry, wrong token scope, or stale-copy MCP client all fail silently otherwise. Only proceed once one successful call has gone through.
-7. **Drain the fallback queue** (see [tooling/README.md](../../tooling/README.md)) — any deferred Linear updates queued while the MCP was offline will replay.
+7. **Drain the markdown TODO fallback** (see [`tooling/linear-pending.md`](../../tooling/linear-pending.md)) — any deferred Linear updates appended while the MCP was offline will replay on the first successful drain pass.
 
 ## Fallback when MCP is unavailable
 
-If the MCP returns errors (token expired, Linear outage, network blip), agents log the intended Linear update to [`tooling/linear-queue.json`](../../tooling/linear-queue.json) and continue work. The queue drains on the next successful agent session OR via a CI drain job.
+If the MCP returns errors (token expired, Linear outage, network blip), agents append the intended update as a bullet to [`tooling/linear-pending.md`](../../tooling/linear-pending.md) and continue work. The markdown TODO drains on the next successful agent session.
 
-See [`tooling/README.md`](../../tooling/README.md) for the queue format and drain procedure.
+See [`tooling/linear-pending.md`](../../tooling/linear-pending.md) for the bullet format + drain procedure. Solo-dev + Linear's ~99.9% SLA means we deliberately picked the simplest fallback shape; an earlier draft used a typed JSON queue with state-machine drain, but the complexity wasn't justified.
 
 ## Related decisions
 
