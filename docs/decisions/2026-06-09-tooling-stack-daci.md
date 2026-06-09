@@ -93,6 +93,39 @@ Build-phase (NOT pre-setup — lands with the AWS work per the learning order): 
   - Storybook `stories` glob = the **default** `**/*.stories.@(ts|tsx)` (plural — the standard agents emit by default, so no corrections needed).
   - **One structure, encoded for everyone:** AGENTS.md documents the convention (agents scaffold it correctly), Nx generators emit it (scaffolding matches), and the gate configs above know it (no false-positives) — humans, agents, and tools share one shape.
 
+### Serverless project layout — handler vs IaC (the colocation gotcha)
+
+**Verified (Nx docs + Pulumi, 2026):** `@nx/enforce-module-boundaries` is **project-level only** — tags live on `project.json`, and the rule is *blind to imports between two files in the same project*. So a Lambda `handler.ts` and its Pulumi `infra.ts` **must not share one Nx project**, or:
+
+- the boundary rule can't stop `handler → @pulumi/*` or `infra → @core/*` (same project = no boundary between them);
+- under the `FileArchive` bundle pattern, deploy-time `@pulumi/*` can **silently ship inside the Lambda bundle** (Pulumi only auto-strips `@pulumi/*` in the inline `CallbackFunction` path, which we don't use).
+
+**Rule — separate Nx projects, always:**
+
+| Role | Project | Tag | Imports | Never |
+|---|---|---|---|---|
+| Handler (runtime) | `apps/<fn>` | `type:app` | `@aws-sdk/*`, `@core/*` | `@pulumi/*` |
+| IaC (deploy-time) | `infra/<fn>` (or one `infra`) | `type:infra` | `@pulumi/*` | domain source |
+
+- Infra references the handler's **build output**, never its source — so `@pulumi` never enters the Lambda bundle:
+  ```ts
+  code: new pulumi.asset.FileArchive(path.resolve(__dirname, "../../apps/<fn>/dist"))
+  ```
+- Wire the Nx graph (the dist-path link is invisible to Nx's static analysis):
+  ```jsonc
+  // infra/<fn>/project.json
+  "implicitDependencies": ["<fn>"],
+  "targets": { "deploy": { "dependsOn": [{ "projects": ["<fn>"], "target": "build" }] } }
+  ```
+- **dependency-cruiser** covers the file/package-level bans Nx can't see (this is why the DACI keeps both):
+  ```js
+  { from: { path: "^apps/[^/]+/src" }, to: { path: "@pulumi/" },     severity: "error" } // handler ↛ pulumi
+  { from: { path: "^infra/" },         to: { path: "^(apps|libs)/" }, severity: "error" } // infra ↛ source
+  { from: { path: "^libs/core/" },     to: { path: "@aws-sdk/" },     severity: "error" } // core ↛ aws-sdk
+  ```
+
+Colocation (`CallbackFunction` inline, CDK `NodejsFunction` next to source, SST) is valid for single-function / full-IaC-framework projects, but trades away Nx boundary enforcement + per-function `nx affected` — not compatible with the hexagonal layer model here.
+
 ## Sequencing (build order — foundation first, while it's free)
 
 1. **Foundation (do first, while layers are empty):** pnpm migration (swap CI `setup-bun` → `pnpm/action-setup`, regenerate lockfile, set `packageManager`, point scripts at `nx`) → `nx init` → real Nx libs/apps with `type:` tags → TS project references + `composite` + `isolatedDeclarations` → ESLint flat + Prettier → dependency-cruiser kept for cycles.
@@ -117,6 +150,8 @@ Build-phase (NOT pre-setup — lands with the AWS work per the learning order): 
 - [ ] Keep Storybook on the default `*.stories.tsx` glob; align Vitest coverage excludes for `*.test.*` / `*.stories.*`.
 - [ ] Wire Sentry source maps + release tagging into the CI build (client).
 - [ ] Add typed env schema (zod/t3-env), `.nvmrc` + `packageManager` pin, `eslint-plugin-jsx-a11y`, and a `size-limit` budget.
+- [ ] Scaffold each Lambda as a SEPARATE `apps/<fn>` (`type:app`) + its Pulumi as `infra/<fn>` (`type:infra`); never colocate `handler.ts` + `infra.ts`. Infra references `apps/<fn>/dist` via `FileArchive`; wire `implicitDependencies` + `deploy.dependsOn`.
+- [ ] Add dependency-cruiser file-level rules: handler ↛ `@pulumi/*`, infra ↛ `apps`/`libs` source, core ↛ `@aws-sdk/*`. Document the serverless split in AGENTS.md so agents scaffold it.
 
 ## Supersedes
 
