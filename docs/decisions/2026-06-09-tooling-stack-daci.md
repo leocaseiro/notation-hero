@@ -84,14 +84,14 @@ Build-phase (NOT pre-setup — lands with the AWS work per the learning order): 
   Player/
     Player.tsx
     Player.test.tsx      # Vitest, next to source
-    Player.story.tsx     # Storybook (stories glob set for *.story.tsx)
+    Player.stories.tsx   # Storybook (default plural glob — agent-idiomatic)
     index.ts             # optional barrel
   ```
 - **Config implications (set these so the gates don't false-positive):**
-  - Vitest test glob `**/*.test.{ts,tsx}`; **exclude `*.test.*` and `*.story.*` from coverage targets** (don't measure coverage *of* tests/stories).
-  - **dependency-cruiser `no-orphans` (now `error`) and Knip must treat `*.test.*` / `*.story.*` as entry points / exclusions** — otherwise co-located tests/stories read as orphans. This is the exact false-positive that got `no-orphans` dropped before; configure it correctly this time.
-  - Storybook `stories` glob set to `**/*.story.@(ts|tsx)` (Approver uses singular `*.story.tsx`, not Storybook's default `*.stories.tsx`).
-  - Nx generators default to co-located specs — keep that; align the Storybook generator to the same folder-per-unit shape.
+  - Vitest test glob `**/*.test.{ts,tsx}`; **exclude `*.test.*` and `*.stories.*` from coverage targets** (don't measure coverage *of* tests/stories).
+  - **dependency-cruiser `no-orphans` (now `error`) and Knip must treat `*.test.*` / `*.stories.*` as entry points / exclusions** — otherwise co-located tests/stories read as orphans. This is the exact false-positive that got `no-orphans` dropped before; configure it correctly this time.
+  - Storybook `stories` glob = the **default** `**/*.stories.@(ts|tsx)` (plural — the standard agents emit by default, so no corrections needed).
+  - **One structure, encoded for everyone:** AGENTS.md documents the convention (agents scaffold it correctly), Nx generators emit it (scaffolding matches), and the gate configs above know it (no false-positives) — humans, agents, and tools share one shape.
 
 ## Sequencing (build order — foundation first, while it's free)
 
@@ -101,7 +101,7 @@ Build-phase (NOT pre-setup — lands with the AWS work per the learning order): 
 4. **Test integrity:** Vitest + coverage ratchet → vacuous-green fix + no-empty-scripts guard → Stryker config (core).
 5. **Dep health + security:** Knip + Syncpack + pnpm catalog + `no-orphans`→error → osv-scanner + Dependabot alerts → gitleaks + native secret scanning → Renovate → Semgrep + CodeQL (guarded).
 6. **Integrations:** Linear GitHub App + MCP.
-7. **Test/dev harnesses (L13):** LocalStack docker-compose + adapter-integration-test pattern → Playwright E2E scaffold + test-ID convention → Storybook (`*.story.tsx` glob).
+7. **Test/dev harnesses (L13):** LocalStack docker-compose + adapter-integration-test pattern → Playwright E2E scaffold + test-ID convention → Storybook (default `*.stories.tsx` glob).
 8. **Cross-cutting + observability (L11–L12):** typed env schema (zod) → `.nvmrc` + `packageManager` pin → `eslint-plugin-jsx-a11y` (into the L3 ESLint config) → `size-limit` budget gate → Sentry client SDK (source maps + release tagging in CI).
 9. **Self-testing probe suite:** add once the boundary rules exist (one fixture per rule; grows with the rule set).
 
@@ -113,8 +113,8 @@ Build-phase (NOT pre-setup — lands with the AWS work per the learning order): 
 - [ ] Enable **GitHub native secret scanning + push protection** in repo settings now (public).
 - [ ] Implement the **CodeQL `repository.visibility` guard** (or `gh api` guard job) so it auto-skips on private.
 - [ ] Decide Stryker scope expansion (core → adapters) once adapters have logic.
-- [ ] Configure `no-orphans` + Knip to exclude / treat-as-entry `*.test.*` and `*.story.*` (avoid the prior false-positive).
-- [ ] Set Storybook `stories` glob to `*.story.tsx` (singular); align Vitest coverage excludes for `*.test.*` / `*.story.*`.
+- [ ] Configure `no-orphans` + Knip to exclude / treat-as-entry `*.test.*` and `*.stories.*` (avoid the prior false-positive); document the folder convention in AGENTS.md so agents follow it.
+- [ ] Keep Storybook on the default `*.stories.tsx` glob; align Vitest coverage excludes for `*.test.*` / `*.stories.*`.
 - [ ] Wire Sentry source maps + release tagging into the CI build (client).
 - [ ] Add typed env schema (zod/t3-env), `.nvmrc` + `packageManager` pin, `eslint-plugin-jsx-a11y`, and a `size-limit` budget.
 
