@@ -26,8 +26,8 @@
       "properties": {
         "id": {
           "type": "string",
-          "description": "Locally unique queue item id, e.g. q-2026-06-09-001",
-          "pattern": "^q-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{3}$"
+          "description": "Locally unique queue item id: `q-` prefix + 26-char ULID (Crockford base32, e.g. q-01HZK3MECHZX3TBDSZ7XR8QY3D). The first 10 chars encode a millisecond timestamp (sortable); the last 16 chars are crypto-random. F-2 hardening — replaced the prior sequential `q-YYYY-MM-DD-NNN` scheme that had a concurrent-enqueue race.",
+          "pattern": "^q-[0-9A-HJKMNP-TV-Z]{26}$"
         },
         "action": {
           "type": "string",

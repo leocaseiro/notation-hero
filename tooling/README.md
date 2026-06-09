@@ -36,7 +36,7 @@ See [`linear-queue.schema.json`](./linear-queue.schema.json). Minimum example:
 
 ```json
 {
-  "id": "q-2026-06-09-001",
+  "id": "q-01HZK3MECHZX3TBDSZ7XR8QY3D",
   "action": "create_issue",
   "payload": {
     "team": "Leocaseiro",
@@ -48,13 +48,19 @@ See [`linear-queue.schema.json`](./linear-queue.schema.json). Minimum example:
   "queuedBy": "agent-session-competent-poitras-8b8d05",
   "reason": "mcp-unreachable",
   "attempts": 0,
-  "lastError": null
+  "lastError": null,
+  "linearId": null
 }
 ```
 
-### `id` format
+### `id` format (F-2 hardening — ULID)
 
-`q-YYYY-MM-DD-NNN` where `NNN` is a zero-padded counter for that calendar day. Agents pick the next free counter by scanning the file.
+`q-<ULID>` where `<ULID>` is a 26-character [Crockford base32](https://github.com/ulid/spec) string. The first 10 chars encode a millisecond Unix timestamp (sortable — newest entries lexicographically last); the last 16 chars are crypto-random (80 bits of entropy → collision probability vanishingly small without coordination).
+
+- **Example:** `q-01HZK3MECHZX3TBDSZ7XR8QY3D`
+- **Generation:** use the [`ulid`](https://www.npmjs.com/package/ulid) npm package (`ulid()` returns the 26-char string). Add as a devDependency when the first agent code that enqueues lands.
+- **Why ULID (not a sequential counter):** counter-style ids (`q-YYYY-MM-DD-NNN`) require read-scan-increment-write, which lets two concurrent agent sessions both pick the same id and silently clobber one item on write. ULID eliminates the race without coordination AND removes the daily-counter ceiling that capped enqueues at 999/day.
+- **Recovery if a collision IS observed** (theoretical but document for audit): the second-arriving write should detect the duplicate `id` on read-back, regenerate, and retry. Agents must validate against the schema regex after generation.
 
 ### Drain procedure
 
