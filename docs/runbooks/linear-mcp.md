@@ -36,7 +36,8 @@ Branch naming convention (used once L10b Linear GitHub App is wired): `LEO-<issu
 3. **Re-issue:** create a new token, `write:issues` scope only, friendly name like `mcp-laptop-2026-09-07`. Copy once to clipboard.
 4. **Re-store in keychain** (don't paste anywhere else first). Delete clipboard after pasting.
 5. **Restart MCP client** so it picks up the new keychain entry.
-6. **Drain the fallback queue** (see [tooling/README.md](../../tooling/README.md)) — any deferred Linear updates queued while the MCP was offline will replay.
+6. **Smoke-test the new token** (F-12 hardening) — run one low-risk Linear MCP call (e.g. `list_teams` or `get_user me`) and confirm it returns data without error. A misnamed keychain entry, wrong token scope, or stale-copy MCP client all fail silently otherwise. Only proceed once one successful call has gone through.
+7. **Drain the fallback queue** (see [tooling/README.md](../../tooling/README.md)) — any deferred Linear updates queued while the MCP was offline will replay.
 
 ## Fallback when MCP is unavailable
 
