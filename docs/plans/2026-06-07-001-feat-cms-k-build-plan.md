@@ -127,7 +127,7 @@ Product-lens flagged the swap-count premise as unaudited. This table audits each
 - **Node.js 22 Lambda runtime** (`nodejs22.x`) with ESM handlers (`index.mjs`). esbuild bundling (`--platform=node --target=node22 --format=esm --minify --external:@aws-sdk/*`). `@aws-sdk/client-*` modular imports only.
 - **CloudFront KeyValueStore (KVS) for Basic-Auth credential storage** (NOT baked credential). Rotation = update KVS key (single API call, takes ~10-30s to propagate across edges) vs full function redeploy. CF Function reads via `cf.kvs(<id>).get(<key>)` (async, only allowed I/O in `cloudfront-js-2.0`). **Storage shape:** KVS holds the raw `base64(user:pass)` value, NOT a hash (CF Functions can't bcrypt/argon2 at the edge). Security-lens flagged the original "stored hashed" framing as misleading. Plaintext-in-KVS risk is mitigated by (a) IAM-scoped deploy role: only Pulumi can write KVS keys; CF Function reads via the function association, NOT via IAM; (b) Pulumi state encryption required (see "Pulumi backend" decision below). **Verification:** `aws.cloudfront.KeyvaluestoreKey` Pulumi resource path needs confirmation at U3 build time — feasibility-lens flagged a possible drift between `@pulumi/aws` v7 surface and the AWS API. Fallback: a `command.local.Command` invoking `aws cloudfront-keyvaluestore put-key` for KVS key writes.
 - **OAC + `AuthType: AWS_IAM` on Lambda Function URLs.** Without OAC, the FURL is publicly reachable bypassing CloudFront entirely (defeats the Basic-Auth gate). Required for OAC: (a) `aws.lambda.Permission` with `principal: cloudfront.amazonaws.com` AND `sourceArn: <distribution_arn>` (pins invocation to the specific distribution; without `sourceArn` ANY CloudFront distribution in ANY AWS account could invoke the FURL); (b) CF cache behavior uses managed origin request policy `AllViewerExceptHostHeader` (id `b689b0a8-53d0-40ab-baf2-68738e2966ac`) so POST/PUT bodies forward correctly for SigV4 signing. Admin file uploads bypass this by going **direct to S3 via presigned PUT** (not through CloudFront).
-- **Two separate CloudFront distributions:** `admin.notation-hero.com` (KVS-backed Basic-Auth gate, points at admin SPA bucket + admin CRUD FURL behind OAC) and `cdn.notation-hero.com` or `api.notation-hero.com` (no gate, points at public read FURL behind OAC). Mixing them via path-pattern is fragile and forces gate logic into the public path. The admin distribution has TWO cache behaviors — default → SPA bucket; `/api/*` → admin Lambda FURL — both gated by the same EdgeBasicAuth CF Function on viewer-request. **Cache policy for `/api/*` MUST be AWS-managed `CachingDisabled` (id `4135ea2d-6df8-44a3-9df3-4b5a84be39ad`)** to prevent CloudFront caching of authenticated responses and serving them across requests (adversarial flagged this as a P0 auth bypass risk if the default cache key — which omits `Authorization` — is in play).
+- **Two separate CloudFront distributions:** `admin.notationhero.com` (KVS-backed Basic-Auth gate, points at admin SPA bucket + admin CRUD FURL behind OAC) and `cdn.notationhero.com` or `api.notationhero.com` (no gate, points at public read FURL behind OAC). Mixing them via path-pattern is fragile and forces gate logic into the public path. The admin distribution has TWO cache behaviors — default → SPA bucket; `/api/*` → admin Lambda FURL — both gated by the same EdgeBasicAuth CF Function on viewer-request. **Cache policy for `/api/*` MUST be AWS-managed `CachingDisabled` (id `4135ea2d-6df8-44a3-9df3-4b5a84be39ad`)** to prevent CloudFront caching of authenticated responses and serving them across requests (adversarial flagged this as a P0 auth bypass risk if the default cache key — which omits `Authorization` — is in play).
 - **DynamoDB single-table** as documented in `song-schema.md`: `PK=LESSON#<id>` `SK=METADATA`; GSI1 `(category, order)` for catalog listing; GSI2 `(updatedAt)` for future change-feed (`H-3` @ M1). `PAY_PER_REQUEST` billing — small catalog stays in free tier without provisioned-capacity bookkeeping.
 - **Raw `@aws-sdk/lib-dynamodb` (no DynamoDB-Toolbox wrapper)** for the single Lesson entity. Originally specified Toolbox v2.8; product-lens + scope-guardian both flagged it as over-specified for a 1-entity catalog (saves ~20 LOC of PK/SK composition while adding a dependency with documented v2.x breaking-syntax history). Zod schema in `core/lesson/Lesson.ts` handles runtime validation; `@aws-sdk/lib-dynamodb` `DocumentClient` handles marshaling. Re-evaluate Toolbox if a 2nd entity lands.
 - **`file-type` (sindresorhus, MIT)** for magic-byte detection. Streaming from S3 via `fileTypeStream(Readable.toWeb(s3Stream))` — only first ~4KB hits Lambda memory (matters for the 50MB Guitar Pro cap that mirrors `H-10`).
@@ -149,7 +149,7 @@ Product-lens flagged the swap-count premise as unaudited. This table audits each
 - **`dependency-cruiser` rules:** (a) `core/` cannot import from `adapters/` or `apps/`; (b) `adapters/` cannot import from `apps/`; (c) no cyclic imports; (d) `apps/*/handler.ts` (and `use-cases/`, `routes/`) cannot import from `apps/*/infra.ts` or `@pulumi/*` (prevents Pulumi from being bundled into Lambda runtime — adversarial-flagged layer-boundary gap); (e) `apps/*/infra.ts` cannot import from `handler.ts`/`use-cases/`/`routes/` (composition direction guard). **Dropped:** the original `no-orphans` rule — scope-guardian flagged it false-positives on Hexagonal port interfaces (which are intentionally not imported by their implementing adapters; adapters import from core but ports are type-only references at construction time).
 - **`.dependency-cruiser.cjs` uses CommonJS `module.exports = { ... }` syntax** (NOT ESM `export default`) — root `package.json` is `"type": "module"`, so the `.cjs` extension is the explicit-CommonJS escape (feasibility footgun).
 - **Pulumi backend MUST be Pulumi Cloud or S3+KMS** (NOT local filesystem). Pre-deploy check in `infra/README.md` and CI: `pulumi backend` MUST NOT report `file://`. Local backend = plaintext state.json on disk = credential leak vector (security-lens flagged the original "Use Pulumi Cloud OR self-managed" wording as documentation-not-enforcement).
-- **CORS allow-origins MUST be an explicit list on both distributions; `*` is prohibited.** If domain isn't finalized at deploy time, use a dummy explicit list (e.g., `https://admin.notation-hero-dev.com`) as a placeholder. CloudFront Response Headers Policy carries the list; `Vary: Origin` always set to prevent cache poisoning. (Security-lens + adversarial convergence.)
+- **CORS allow-origins MUST be an explicit list on both distributions; `*` is prohibited.** If domain isn't finalized at deploy time, use a dummy explicit list (e.g., `https://admin.notationhero-dev.com`) as a placeholder. CloudFront Response Headers Policy carries the list; `Vary: Origin` always set to prevent cache poisoning. (Security-lens + adversarial convergence.)
 - **CSP on admin SPA distribution Response Headers Policy.** `default-src 'self'`; `script-src 'self'`; `style-src 'self' 'unsafe-inline'` (MUI requires inline styles in v5); `img-src 'self' data: https:` (cover images may be on arbitrary CDNs); `connect-src 'self' https://*.s3.<region>.amazonaws.com` (presigned PUT direct-to-S3). Prevents stored-XSS if React-Admin ever renders attacker-controlled content (security-lens deferred Q).
 - **ACM cert two-pass deploy on first bring-up.** Pass 1: `pulumi up --target` for ACM certs + DNS validation CNAME records only; wait for `ISSUED` status (5-30 min). Pass 2: full `pulumi up` for everything else. Use `aws.acm.CertificateValidation` resource to gate dependent resources on cert validation. **CloudWatch alarm** on `AWS/CertificateManager DaysToExpiry < 30` per cert (free; ACM auto-renewal only works if validation CNAMEs persist in DNS — operational note in U9 README). Replaces the original Success Metric claim of "5-min deploy" (adversarial-flagged unrealistic for first deploy).
 - **Admin gate rate-limiting deferred as explicit non-goal in K v1; add CloudWatch alarm only.** Originally not addressed; security-lens + adversarial flagged the brute-force cost-amplification risk. Decision: single-curator scope makes WAF overkill ($1/rule/mo + complexity); instead, add a CloudWatch alarm on `4xxErrorRate > 10/sec` on the admin distribution → email to operator. If alarm fires (suggests probing), add WAF with rate-based rule reactively. Document as explicit deferred-with-trigger in Risks. (NOT just silently omitted.)
@@ -162,7 +162,7 @@ Product-lens flagged the swap-count premise as unaudited. This table audits each
 ### Resolved During Planning
 
 - **Layout choice:** strict top-level Layout 4 (Hexagonal) — user explicitly chose Path 1 over Path 2 (retrofit under `packages/`) after seeing Wave 1 was already scaffolded with the `apps/web` shape. Premise audit added (see Key Technical Decisions) per doc-review.
-- **Subdomain vs path for admin gate:** subdomain (`admin.notation-hero.com`) wins over path-prefix on a single distribution. Cleaner scope for the CF Function gate; no path-pattern coupling.
+- **Subdomain vs path for admin gate:** subdomain (`admin.notationhero.com`) wins over path-prefix on a single distribution. Cleaner scope for the CF Function gate; no path-pattern coupling.
 - **Two CloudFront distributions or one:** two. One for admin (gated), one for public read (ungated). Same cost on free tier; cleaner gate scoping. Admin distribution carries 2 cache behaviors (default → SPA bucket; `/api/*` → admin Lambda FURL via CachingDisabled policy).
 - **Credential storage for Basic-Auth:** CloudFront KVS (not baked credential). KVS holds raw `base64(user:pass)` — NOT hashed (CF Functions can't hash at edge). Plaintext-in-KVS risk mitigated via IAM-scoped state encryption (Pulumi backend = Cloud or S3+KMS, enforced).
 - **Lambda runtime:** `nodejs22.x`. `nodejs20.x` deprecated April 2026.
@@ -313,7 +313,7 @@ The tree above is a **scope declaration**, not a constraint — the implementer 
 flowchart TB
     subgraph "ADMIN PLANE (gated)"
         AdminBrowser[Curator browser]
-        AdminCF[CloudFront: admin.notation-hero.com]
+        AdminCF[CloudFront: admin.notationhero.com]
         AdminGate[CF Function viewer-request<br/>Basic-Auth check via KVS]
         AdminBucket[(S3: admin SPA bundle<br/>private + OAC)]
         AdminFURL[Lambda FURL: cms-crud-admin<br/>AuthType=AWS_IAM via OAC]
@@ -326,7 +326,7 @@ flowchart TB
 
     subgraph "READ PLANE (public)"
         PlayerApp[Player app / web]
-        PublicCF[CloudFront: cdn.notation-hero.com]
+        PublicCF[CloudFront: cdn.notationhero.com]
         PublicFURL[Lambda FURL: cms-crud-public<br/>AuthType=AWS_IAM via OAC]
         PlayerApp -->|GET /lessons| PublicCF
         PublicCF --> PublicFURL
@@ -623,8 +623,9 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 - **List filtering defaults to `status="published"`** — `pending_validation` and `draft` lessons are NEVER served from the public API (security + coherence convergent finding). `GET /v1/lessons/{id}` returns 404 for `status!="published"` records. Implementer override via `?includeStatus=…` query param is NOT exposed in v1.
 - Response shape: list projection per `song-schema.md` (`[{lessonId, title, artist, difficulty, tags, bpm, durationBars, category, order, coverImageUrl}]`); full record for `GET /v1/lessons/{id}` is the complete published Lesson + `{ sourceUrl: string, signedUrlExpiresAt: number }`.
 - **Pagination clamps** — `?limit` clamps to max 100 (silently — log warning); `?cursor` validated for shape, returns 400 on malformed.
-- CORS: configured on CloudFront `ResponseHeadersPolicy` (NOT on the Function URL — CloudFront strips/replaces). `AllowOrigins` = **explicit list** from Pulumi config (e.g., `["https://app.notation-hero.com"]`); `*` is prohibited (security-lens P2 + adversarial residual). `Vary: Origin` set to prevent cache poisoning. Preflight: `Access-Control-Max-Age: 3600`.
-- Distribution: public CloudFront (no gate). Custom domain `cdn.notation-hero.com` (or whatever the user finalizes). ACM cert provisioned via second Pulumi provider pinned to `us-east-1`. **Cache policy** for default behavior = AWS-managed `CachingOptimized` (id `658327ea-f89d-4fab-a63d-7e88639e58f6`) — public data is safe to cache 1 day; player rarely re-fetches.
+- CORS: configured on CloudFront `ResponseHeadersPolicy` (NOT on the Function URL — CloudFront strips/replaces). `AllowOrigins` = **explicit list** from Pulumi config — the player app is at the **apex**, so e.g. `["https://notationhero.com"]`; `*` is prohibited (security-lens P2 + adversarial residual). `Vary: Origin` set to prevent cache poisoning. Preflight: `Access-Control-Max-Age: 3600`.
+- Distribution: public CloudFront (no gate). Custom domain `cdn.notationhero.com` (or whatever the user finalizes). ACM cert provisioned via second Pulumi provider pinned to `us-east-1`. **Cache policy** for default behavior = AWS-managed `CachingOptimized` (id `658327ea-f89d-4fab-a63d-7e88639e58f6`) — public data is safe to cache 1 day; player rarely re-fetches.
+- **SEO — keep non-app hosts out of search.** Only the apex (`notationhero.com`, the app) is meant to be indexable. `admin.` is Basic-Auth-gated → uncrawlable already; for `cdn.` add `X-Robots-Tag: noindex` to the `ResponseHeadersPolicy` + a `robots.txt` (`Disallow: /`).
 - **OAC wiring (per Key Technical Decision):** `aws.lambda.Permission` includes `principal: cloudfront.amazonaws.com` AND **`sourceArn: distribution.arn`** (pins invocation to this specific distribution). Cache behavior uses **`AllViewerExceptHostHeader` origin request policy** (`b689b0a8-53d0-40ab-baf2-68738e2966ac`) so request headers + bodies forward for SigV4 signing.
 - **Contract test in CI:** the response shape of `GET /v1/lessons` and `GET /v1/lessons/{id}` is validated against a checked-in JSON Schema fixture (`__tests__/contract/lessons-v1.schema.json`). Any drift fails CI loudly — protects deployed player clients from accidental wire-shape changes.
 
@@ -645,7 +646,7 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 - Error path: DynamoDB throttling (mocked) → handler returns 503 with `Retry-After` header.
 - Error path: invalid UUID in path → returns 400 (caught by `LessonId.fromString` validation).
 - Integration scenario: deployed Lambda behind CloudFront with OAC — direct hit to `lambda-url.<region>.on.aws` returns 403 (Lambda Function URL rejects unsigned requests when `AuthType=AWS_IAM`); hit via CloudFront returns 200 — confirms OAC seal.
-- Integration scenario: CORS preflight from `https://admin.notation-hero.com` returns expected `Access-Control-Allow-Origin` header; preflight from `https://evil.example.com` returns no allow-origin (browser blocks).
+- Integration scenario: CORS preflight from `https://admin.notationhero.com` returns expected `Access-Control-Allow-Origin` header; preflight from `https://evil.example.com` returns no allow-origin (browser blocks).
 - Integration scenario: signed URL minted by `getLesson` actually fetches the S3 file from the player's browser without auth (confirms S3 OAC config + presigning works end-to-end).
 
 **Verification:** `bun test apps/lambda-cms-crud-public/` runs green for unit tests; integration tests pass against the deployed dev stack (manual trigger or scheduled). `pulumi preview` for the U5 module shows expected resource diff (Lambda + Role + Policy + FunctionUrl + Permission + OAC + Distribution + cert).
@@ -806,7 +807,7 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
   - Default behavior → admin SPA S3 bucket via OAC. Uses managed `CachingOptimized` cache policy. ResponseHeadersPolicy includes CORS (explicit list from Pulumi config) + **CSP** (`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.s3.<region>.amazonaws.com`).
   - `/api/*` behavior → admin Lambda FURL (U6 exports the FURL) via OAC. **`CachingDisabled` cache policy** (id `4135ea2d-6df8-44a3-9df3-4b5a84be39ad`) — prevents the P0 auth-bypass risk from cached authenticated responses. Origin request policy = `AllViewerExceptHostHeader` for SigV4 body forwarding.
   - Both cache behaviors attach the inline KVS-backed Basic-Auth CF Function on viewer-request (function ARN passed in from `infra/index.ts` U9).
-  - ACM cert for `admin.notation-hero.com` from us-east-1 (passed in by U9).
+  - ACM cert for `admin.notationhero.com` from us-east-1 (passed in by U9).
 - **S3 BucketCorsConfigurationV2 on the shared S3 bucket** (defined inline in U9's `infra/index.ts` — adversarial-flagged P1): `allowedMethods: ["PUT", "POST"]`, `allowedOrigins: [adminDomain]`, `allowedHeaders: ["*"]`, `exposeHeaders: ["ETag"]`, `maxAgeSeconds: 3600`. Without this, browser preflight blocks the direct-to-S3 PUT and curator sees "upload failed" with no diagnostic. Verified in U8 integration test (CORS preflight returns 200 from admin origin; no allow-origin from evil origin).
 
 **Patterns to follow:**
@@ -927,11 +928,11 @@ export const publicApiUrl = publicApi.distributionDomain  // same — public dis
   ```yaml
   config:
     aws:region: us-east-1
-    notation-hero-infra:domain: notation-hero-dev.com
+    notation-hero-infra:domain: notationhero-dev.com
     notation-hero-infra:logRetentionDays: 7
     notation-hero-infra:corsOrigins:
-      - https://admin.notation-hero-dev.com
-      - https://app.notation-hero-dev.com
+      - https://admin.notationhero-dev.com
+      - https://notationhero-dev.com
     notation-hero-infra:basicAuthCredential:
       secure: <pulumi-encrypted-value>
   ```
@@ -998,7 +999,7 @@ export const publicApiUrl = publicApi.distributionDomain  // same — public dis
 - **GitHub repo created** (`leocaseiro/notation-hero`, public, proprietary LICENSE). Not yet done.
 - **AWS account access** — IAM user + access keys + `aws configure`. Wave 3 blocker per `cicd-pipeline.md`. Required before U9 `pulumi up`.
 - **Pulumi backend confirmed** — user is logged in (likely Pulumi Cloud); confirm before first U9 deploy.
-- **Domain** — `notation-hero.com` (or similar) acquired; ACM cert validation requires DNS access.
+- **Domain** — `notationhero.com` acquired at **Namecheap**. **DNS = manual registrar records** (Route 53 hosted zone skipped — saves ~$6/yr for a small static record set; trade-off = manual ACM cert-validation CNAMEs). **Apex → app** via Namecheap **ALIAS** record; `admin.`/`cdn.` are CNAMEs. ACM cert-validation CNAMEs **must persist** for auto-renewal.
 
 ---
 

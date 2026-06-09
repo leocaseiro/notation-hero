@@ -877,7 +877,7 @@ User requested a v1 feature freeze before continuing the per-finding walkthrough
 
 **P2 — Omissions / AWS security gold (7, all gated_auto with concrete fixes — interview-tellable):**
 
-- **Lambda Function URL needs CloudFront in front for custom-domain sync API** — AWS backend / Distribution (P2, feasibility, 75). FUrls expose only `*.lambda-url.<region>.on.aws`; for `api.notation-hero.com` you need a CloudFront distribution + ACM (us-east-1) + CORS configured. Often the same CloudFront from F-17 (rate-limit WAF) — fold in one shot.
+- **Lambda Function URL needs CloudFront in front for custom-domain sync API** — AWS backend / Distribution (P2, feasibility, 75). FUrls expose only `*.lambda-url.<region>.on.aws`; for `api.notationhero.com` you need a CloudFront distribution + ACM (us-east-1) + CORS configured. Often the same CloudFront from F-17 (rate-limit WAF) — fold in one shot.
 - **CORS policy for Lambda Function URLs not specified** — AWS backend (P2, security-lens, 75). Lock `AllowOrigins` to the CloudFront distribution domain + Capacitor schemes (`capacitor://localhost` / `ionic://localhost`); never `*`.
 - **DynamoDB per-user partition key must come from verified JWT `sub` claim** — AWS backend / DynamoDB (P2, security-lens, 75). Document as an implementation requirement: Lambda handler extracts `sub` from verified JWT and uses it as partition key. Request body must never supply or override the user identifier. Defends against IDOR.
 - **Sentry session replay / DOM capture PII risk** — Observability (P2, security-lens, 75). Initialize Sentry with replay disabled OR `maskAllText` / `blockAllMedia` enabled; `beforeSend` strips uploaded filenames + device names. Disclose Sentry data collection in App Privacy Report.
