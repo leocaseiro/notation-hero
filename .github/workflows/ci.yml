@@ -28,12 +28,17 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          # ADD new root config files (eslint.config.*, lefthook.yml, dangerfile.ts, etc.)
+          # here or quality/build will silently skip on changes to them. The ci-green
+          # gate treats "skipped" as OK, so an unlisted file → no CI → false-green.
+          # See DACI L7 (Sequencing Step 3 — CI cost/safety) + F-4/F-10 from PR #1 review.
           filters: |
             code:
               - 'core/**'
               - 'adapters/**'
               - 'apps/**'
               - 'infra/**'
+              - 'tooling/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
