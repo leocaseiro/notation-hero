@@ -1,0 +1,11 @@
+# pnpm workspace globs — mirrors the npm-style `workspaces` field that used
+# to live in the root package.json. Source of truth for pnpm.
+#
+# `core/`, `adapters/`, `apps/` currently hold `.gitkeep` placeholders.
+# Real Nx libs/apps materialize in later Sequencing steps (DACI L2 / Step 1
+# continued: `nx init` + real packages).
+packages:
+  - 'core/*'
+  - 'adapters/*'
+  - 'apps/*'
+  - 'infra'
