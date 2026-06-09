@@ -1,0 +1,6 @@
+{
+  "$schema": "./linear-queue.schema.json",
+  "version": 1,
+  "description": "Fallback queue for Linear-bound updates when MCP is unavailable. See ./README.md for format + drain procedure.",
+  "queue": []
+}
