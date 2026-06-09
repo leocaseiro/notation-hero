@@ -6,9 +6,9 @@
   "packageManager": "pnpm@11.5.2",
   "scripts": {
     "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .ts,.tsx --no-error-on-unmatched-pattern",
-    "typecheck": "pnpm -r run typecheck",
-    "test": "pnpm -r run test",
-    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r --if-present run typecheck",
+    "test": "pnpm -r --if-present run test",
+    "build": "pnpm -r --if-present run build",
     "depcheck": "depcruise core adapters apps infra --config .dependency-cruiser.cjs"
   },
   "devDependencies": {
