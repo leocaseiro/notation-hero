@@ -64,6 +64,35 @@ Rationale: foundational migrations (package manager, orchestrator, package bound
 |---|---|---|---|
 | **L10 PM integration** | Native **Linear GitHub App** (branch→issue, status automation on merge) + **Linear MCP** so agents update issues from the terminal | Free, one-time, agent-friendly; Linear already in use | Custom GH-Actions↔Linear sync (overkill for solo) |
 
+### Additional upfront setup (gap sweep — L11–L13)
+
+Beyond the 10 dev-tooling layers, these were confirmed in-scope from `stack-aws-brainstorm.md` + the Approver's completeness pass. They extend the infra/enforcement set (allowed to grow); they do not alter the frozen foundation.
+
+| Layer | Decision | Why | Notes |
+|---|---|---|---|
+| **L11 Observability** | **Sentry** for **client** JS errors now (source maps + release tagging from commit #1). **CloudWatch + X-Ray** for backend SRE/SLOs land **with the Lambdas** (build-phase, not pre-setup). | Source-map/release wiring is painful to retrofit; `stack-aws-brainstorm.md` already chose Sentry (client) / CloudWatch+X-Ray (backend) / SQS→S3→Athena (usage). Free tiers. | CloudWatch RUM rejected (not free). Sentry-for-Lambda deferred (backend stays on CloudWatch/X-Ray). |
+| **L12 Cross-cutting upfront** | **Typed env validation** (zod schema, e.g. `t3-env`) + **Node/pnpm version pinning** (`.nvmrc` + `packageManager`) + **`eslint-plugin-jsx-a11y`** + **perf/bundle budget** (`size-limit`, optionally Lighthouse CI). | Each is cheap now / painful or drift-prone later. a11y folds into L3's growable ESLint engine. Dev spans Mac + iPad → pinning matters. | size-limit gate runs in CI; budgets ratchet like coverage. |
+| **L13 Test/dev harnesses** | Establish now (empty harness + conventions): **LocalStack** (AWS-integration tests, docker-compose), **Playwright** (E2E + test-ID conventions), **Storybook** (component dev). | Same logic as standing up Stryker before tests exist — set the harness + conventions while cheap. `stack-aws-brainstorm.md` flags LocalStack for CI tests. | Real AWS stays primary for learning; LocalStack for fast local/CI only. |
+
+Build-phase (NOT pre-setup — lands with the AWS work per the learning order): CloudWatch + X-Ray, Cognito, SQS/SNS/DynamoDB/Streams, S3/CloudFront, Athena, Kafka-local. **Pulumi** (IaC) is already decided.
+
+### Conventions — domain-driven, co-located
+
+- **Domain/feature-organized folders, one folder per unit.** Group by domain, not by file-type (no top-level `__tests__/` or `stories/` trees).
+- **Tests and stories co-located with source:**
+  ```
+  Player/
+    Player.tsx
+    Player.test.tsx      # Vitest, next to source
+    Player.story.tsx     # Storybook (stories glob set for *.story.tsx)
+    index.ts             # optional barrel
+  ```
+- **Config implications (set these so the gates don't false-positive):**
+  - Vitest test glob `**/*.test.{ts,tsx}`; **exclude `*.test.*` and `*.story.*` from coverage targets** (don't measure coverage *of* tests/stories).
+  - **dependency-cruiser `no-orphans` (now `error`) and Knip must treat `*.test.*` / `*.story.*` as entry points / exclusions** — otherwise co-located tests/stories read as orphans. This is the exact false-positive that got `no-orphans` dropped before; configure it correctly this time.
+  - Storybook `stories` glob set to `**/*.story.@(ts|tsx)` (Approver uses singular `*.story.tsx`, not Storybook's default `*.stories.tsx`).
+  - Nx generators default to co-located specs — keep that; align the Storybook generator to the same folder-per-unit shape.
+
 ## Sequencing (build order — foundation first, while it's free)
 
 1. **Foundation (do first, while layers are empty):** pnpm migration (swap CI `setup-bun` → `pnpm/action-setup`, regenerate lockfile, set `packageManager`, point scripts at `nx`) → `nx init` → real Nx libs/apps with `type:` tags → TS project references + `composite` + `isolatedDeclarations` → ESLint flat + Prettier → dependency-cruiser kept for cycles.
@@ -72,7 +101,9 @@ Rationale: foundational migrations (package manager, orchestrator, package bound
 4. **Test integrity:** Vitest + coverage ratchet → vacuous-green fix + no-empty-scripts guard → Stryker config (core).
 5. **Dep health + security:** Knip + Syncpack + pnpm catalog + `no-orphans`→error → osv-scanner + Dependabot alerts → gitleaks + native secret scanning → Renovate → Semgrep + CodeQL (guarded).
 6. **Integrations:** Linear GitHub App + MCP.
-7. **Self-testing probe suite:** add once the boundary rules exist (one fixture per rule; grows with the rule set).
+7. **Test/dev harnesses (L13):** LocalStack docker-compose + adapter-integration-test pattern → Playwright E2E scaffold + test-ID convention → Storybook (`*.story.tsx` glob).
+8. **Cross-cutting + observability (L11–L12):** typed env schema (zod) → `.nvmrc` + `packageManager` pin → `eslint-plugin-jsx-a11y` (into the L3 ESLint config) → `size-limit` budget gate → Sentry client SDK (source maps + release tagging in CI).
+9. **Self-testing probe suite:** add once the boundary rules exist (one fixture per rule; grows with the rule set).
 
 ## Open verification / first-PR checklist
 
@@ -82,6 +113,10 @@ Rationale: foundational migrations (package manager, orchestrator, package bound
 - [ ] Enable **GitHub native secret scanning + push protection** in repo settings now (public).
 - [ ] Implement the **CodeQL `repository.visibility` guard** (or `gh api` guard job) so it auto-skips on private.
 - [ ] Decide Stryker scope expansion (core → adapters) once adapters have logic.
+- [ ] Configure `no-orphans` + Knip to exclude / treat-as-entry `*.test.*` and `*.story.*` (avoid the prior false-positive).
+- [ ] Set Storybook `stories` glob to `*.story.tsx` (singular); align Vitest coverage excludes for `*.test.*` / `*.story.*`.
+- [ ] Wire Sentry source maps + release tagging into the CI build (client).
+- [ ] Add typed env schema (zod/t3-env), `.nvmrc` + `packageManager` pin, `eslint-plugin-jsx-a11y`, and a `size-limit` budget.
 
 ## Supersedes
 
