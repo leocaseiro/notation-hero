@@ -1,0 +1,85 @@
+# tooling/
+
+Lives outside the workspace package graph — repo-wide enforcement scaffolding, fallback queues, and rule modules. Files here are imported by CI workflows + Dangerfile, not by application code.
+
+## Files
+
+| File | Purpose | Source-of-truth decision |
+|---|---|---|
+| `linear-queue.json` | Fallback queue for Linear MCP updates when the MCP is unreachable. Drained on next successful agent session OR via CI. | DACI L10a |
+| `linear-queue.schema.json` | JSON Schema for queue items. | DACI L10a |
+
+Files coming in later Sequencing steps (placeholders documented for foresight, NOT created in this PR):
+
+| File | Purpose | DACI step |
+|---|---|---|
+| `first-use-flags.json` | Persisted flags for DangerJS first-use triggers (Storybook, Playwright, LocalStack, first-PR). Concurrency-safe across parallel PRs. | L6 hardening (Step 3) |
+| `floors.json` | Per-Nx-project floors for coverage / mutation / type-coverage (read-only in PR; bumped only by the `update-floors` workflow). | F-3 (Step 4) |
+| `isolated-declarations-log.json` | 3-bucket classification log for `isolatedDeclarations` CI failures during the F-1 measurement window. | F-1 addendum (Step 4) |
+| `probes/` | Self-testing probe suite — one Vitest spec per dep-cruise/boundary rule. | L2 implementation detail (Step 9) |
+| `dangerfile.ts` + rule modules | DangerJS configuration entry + per-rule modules. | L6 (Step 3) |
+
+## `linear-queue.json` — usage
+
+### When to enqueue
+
+An agent enqueues an item when ALL of:
+1. The agent wanted to write to Linear (create issue, update status, etc.).
+2. The Linear MCP call failed (`mcp-unreachable`, `token-expired`, `rate-limited`, or `unknown-error`).
+3. The work being captured matters enough that losing it would create real bookkeeping debt (e.g., mirroring a Deferred item from the DACI; logging a follow-up issue from a code review).
+
+If the MCP call succeeds on the first try, never touch this file.
+
+### Item shape
+
+See [`linear-queue.schema.json`](./linear-queue.schema.json). Minimum example:
+
+```json
+{
+  "id": "q-2026-06-09-001",
+  "action": "create_issue",
+  "payload": {
+    "team": "Leocaseiro",
+    "title": "Wire Linear GitHub App at PR #1",
+    "description": "From DACI L10b deferred trigger…",
+    "labels": ["deferred", "L10b"]
+  },
+  "queuedAt": "2026-06-09T12:34:56Z",
+  "queuedBy": "agent-session-competent-poitras-8b8d05",
+  "reason": "mcp-unreachable",
+  "attempts": 0,
+  "lastError": null
+}
+```
+
+### `id` format
+
+`q-YYYY-MM-DD-NNN` where `NNN` is a zero-padded counter for that calendar day. Agents pick the next free counter by scanning the file.
+
+### Drain procedure
+
+**Manual (next agent session):**
+1. Read `tooling/linear-queue.json`.
+2. For each item in `queue`, attempt the corresponding Linear MCP call with `payload`.
+3. On success: remove the item from `queue`.
+4. On failure: increment `attempts`, set `lastError`, keep the item; surface to the user if `attempts >= 3`.
+5. Commit the resulting `linear-queue.json` change in a small chore-commit (`chore(linear): drain N queued items`).
+
+**Automated (CI drain job — wired in a later Sequencing step):**
+- Lives at `.github/workflows/linear-drain.yml`.
+- Runs on `schedule: cron '0 */6 * * *'` (every 6 h) and on `workflow_dispatch`.
+- Uses a repo-secret `LINEAR_API_TOKEN` (NOT the personal MCP token — a separate `write:issues`-scoped token for CI).
+- On success, commits the cleared queue back to `master` (allowed via the `update-floors`-style environment-reviewer pattern OR a dedicated bot).
+- The drain job is **not** wired in PR #1 (this one) — only the queue file + format. The CI job is a separate baby PR.
+
+### Why the file is committed
+
+Both the queue and its drain history are auditable from `git log -- tooling/linear-queue.json`. Solo-dev context, but the audit habit is cheap to keep.
+
+## Related runbooks
+
+- [`docs/runbooks/linear-mcp.md`](../docs/runbooks/linear-mcp.md) — token hygiene, machine-compromise response.
+
+## Related decisions
+
+The DACI ([`docs/decisions/2026-06-09-tooling-stack-daci.md`](../docs/decisions/2026-06-09-tooling-stack-daci.md)) anchors every file in this directory. Files appear here as their parent Sequencing step lands.
