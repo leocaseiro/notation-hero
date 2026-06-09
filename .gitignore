@@ -8,7 +8,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 
-# bun.lock is COMMITTED (text lockfile) — see docs/cicd-pipeline.md
+# pnpm-lock.yaml is COMMITTED (text lockfile) — see docs/cicd-pipeline.md
 
 # Pulumi
 .pulumi/
