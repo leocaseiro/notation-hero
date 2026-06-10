@@ -50,6 +50,10 @@ module.exports = {
   options: {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
+    // Scan source only. `dist/` is gitignored `tsc -b` build output; cruising it
+    // would double-report every module (and its orphan/boundary state) via its
+    // compiled twin. node_modules is third-party.
+    exclude: { path: "(^|/)dist/" },
     doNotFollow: { path: "node_modules" },
     enhancedResolveOptions: { exportsFields: ["exports"], conditionNames: ["import", "require", "node", "default"] },
   },

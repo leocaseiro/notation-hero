@@ -1,0 +1,7 @@
+{
+  "name": "@notation-hero/core",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "projectType": "library",
+  "sourceRoot": "core",
+  "tags": ["type:core"]
+}

@@ -2,7 +2,11 @@
 # to live in the root package.json. Source of truth for pnpm.
 #
 # `core/`, `adapters/`, `apps/` hold real Nx packages as of Wave 1 (DACI Step 1).
+# `core` is a single bounded-context package (`@notation-hero/core`, package.json at
+# the `core/` root per the K-build-plan tree); the `core/*` glob is kept for any
+# future sub-packages. `adapters/*` / `apps/*` stay glob-only until their first package.
 packages:
+  - 'core'
   - 'core/*'
   - 'adapters/*'
   - 'apps/*'
