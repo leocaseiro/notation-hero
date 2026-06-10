@@ -407,7 +407,7 @@ External review (CMS-plan owner) raised 7 material + 10 minor + 1 cosmetic findi
 
 **Re-decision (Approver: leocaseiro, 2026-06-10):** bump CI to `node-version: 24` in both jobs, amending the "no `.github` changes" acceptance criterion for [PR #7](https://github.com/leocaseiro/notation-hero/pull/7).
 
-**Why:** Wave 1's `test` target runs `node --test` directly on `.ts` via default type-stripping (on by default in Node ≥22.18 and Node 24). It was validated on local Node 24 while CI still pinned 22 — a green-local/red-CI parity risk. Node 24 is the current **Active LTS** (Node 22 entered Maintenance 2025-10), so the bump makes **local == CI == Node 24** and closes the gap. The sole `.github` change in PR #7 is this two-line version bump.
+**Why:** Wave 1's `test` target runs `node --test` directly on `.ts` via default type-stripping (on by default in Node ≥22.18 and Node 24). It was validated on local Node 24 while CI still pinned 22 — a green-local/red-CI parity risk. Node 24 is the current **Active LTS** (Node 22 entered Maintenance 2025-10), so the bump makes **local == CI == Node 24** and closes the gap. The `.github` changes in PR #7 are this version bump **plus** closing a paths-filter false-green hole — adding `nx.json` to the `changes` filter (`code:` + `apps:`) so a config-only PR can no longer skip the `quality`/`build` jobs and still report green via the skip-tolerant `ci-green` gate. That is nominally a Step-3 (L7) item, pulled forward because a false green is the exact failure the whole foundation exists to prevent.
 
 **Forward note:** `.nvmrc` = Lambda runtime (M-5) remains its own later lane; confirm `nodejs24.x` Lambda availability before the deploy lane.
 

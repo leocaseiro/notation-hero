@@ -45,6 +45,7 @@ jobs:
               - 'tsconfig*.json'
               - '.eslintrc.cjs'
               - '.dependency-cruiser.cjs'
+              - 'nx.json'
               - '.github/workflows/ci.yml'
             apps:
               - 'apps/**'
@@ -54,6 +55,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'tsconfig*.json'
+              - 'nx.json'
               - '.github/workflows/ci.yml'
 
   # Lint + typecheck + Hexagonal layer-boundary check (dependency-cruiser) + test.
