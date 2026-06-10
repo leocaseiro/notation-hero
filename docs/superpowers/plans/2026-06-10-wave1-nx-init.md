@@ -383,9 +383,16 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     assert.equal(classifyHit(DEFAULT_WINDOWS.perfectMs), "perfect");
   });
 
-  test("classifyHit: distinguishes early from late in the good band", () => {
-    assert.equal(classifyHit(-40), "early");
-    assert.equal(classifyHit(40), "late");
+  test("classifyHit: distinguishes early from late beyond the good band", () => {
+    // early/late is the OUTER band: magnitude strictly between goodMs(50) and
+    // hittableMs(120). ±40 falls inside the good band, so use ±80.
+    assert.equal(classifyHit(-80), "early");
+    assert.equal(classifyHit(80), "late");
+    // boundary lock: ±goodMs(50) is still "good"; ±51 crosses into early/late.
+    assert.equal(classifyHit(50), "good");
+    assert.equal(classifyHit(-50), "good");
+    assert.equal(classifyHit(-51), "early");
+    assert.equal(classifyHit(51), "late");
   });
 
   test("classifyHit: beyond the hittable window is a miss", () => {
