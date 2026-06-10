@@ -7,5 +7,11 @@ packages:
   - 'adapters/*'
   - 'apps/*'
   - 'infra'
-onlyBuiltDependencies:
-  - nx
+# Build-script approval. pnpm 11.5.2 uses the `allowBuilds: {pkg: true|false}` map
+# (it IGNORES the older `onlyBuiltDependencies` list and re-injects this block as a
+# prompt). Both nx and @swc/core (transitive via @nx/js) ship postinstall builds;
+# approving both keeps a fresh `pnpm install --frozen-lockfile` green (e.g. CI),
+# which otherwise fails with ERR_PNPM_IGNORED_BUILDS.
+allowBuilds:
+  '@swc/core': true
+  nx: true
