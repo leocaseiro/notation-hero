@@ -256,11 +256,11 @@ Seven reviewers (coherence, feasibility, security, scope, product, design, adver
 
 ### Open (deferred from the 2026-06-10 round-2 review)
 
-- **`neonDatabaseUrl` in Lambda env vs SSM SecureString** — the CF signing key moved to SSM (forgery + non-invalidatable risk); the Neon URL stayed env-injected (resettable in seconds via the Neon console; single-principal account). Security-lens recommends SSM for both — revisit if the account grows principals.
+- ~~`neonDatabaseUrl` env vs SSM~~ — **resolved 2026-06-10 (walkthrough): stays a Lambda env var.** KMS-encrypted at rest; single-principal account; Neon password resets in seconds. Named upgrade triggers: a second IAM principal, or screen-sharing the AWS console in demos.
 - ~~Schedule tripwire numbers~~ — **locked 2026-06-10: N=3 / M=6** (walkthrough).
 - ~~`feature-freeze.md` `H-3` milestone~~ — **resolved 2026-06-10: re-milestoned Alpha → M1** in feature-freeze (walkthrough decision 🅰); the 2026-06-09 decision doc carries the NoSQL interview story until M1.
 - ~~Cover thumbnails: signed vs public~~ / ~~EXIF stripping~~ — **both dissolved 2026-06-10**: covers are out of K v1 entirely (owner decision; `cover_image_key` stays NULL).
-- **Initial content seeding** — K delivers authoring; no plan owns the first curated lessons (H-11 preload is Beta). The CMS could demo empty.
+- ~~Initial content seeding~~ — **resolved 2026-06-10 (walkthrough): the owner seeds license-clean content through the CMS during U9 bring-up** (count/selection at owner's discretion — not plan-prescribed). H-11's fuller preload stays Beta.
 
 ### Deferred to Implementation
 
