@@ -2,7 +2,7 @@
 
 > **Status:** 🟢 DESIGN (brainstorm-approved 2026-06-10) — ready for implementation planning
 > **Store:** Neon **PostgreSQL + JSONB** (per [2026-06-09 catalogue-store decision](../decisions/2026-06-09-catalogue-store-postgres-neon.md))
-> **Supersedes:** the DynamoDB-based `song-schema.md` draft (Lesson record / single-table / GSIs).
+> **Supersedes:** the `song-schema.md` drafts (2026-06-05 DynamoDB record; 2026-06-09 Postgres reframe) — this is the authoritative contract with the full brainstormed field design (patterns, exercises, lesson types).
 > **Feature-freeze refs:** `K-1`/`K-3` (CMS + catalog API), `H-11` (lesson library), `D-2` (mapping presets), `H-10` (upload validation). DynamoDB stays for **per-user** data only.
 > **Owner:** leocaseiro
 
@@ -211,6 +211,7 @@ A lesson's `lesson_type` determines where each step's notation comes from:
 Every facet the player browses by is a typed column or array → one query spans songs + lessons.
 
 ```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- required for gin_trgm_ops + % fuzzy search below
 -- Indexes
 CREATE INDEX ci_gin_instruments ON catalogue_item USING gin (instruments);
 CREATE INDEX ci_gin_skill       ON catalogue_item USING gin (skill);
