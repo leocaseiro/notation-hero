@@ -1056,192 +1056,136 @@ export interface CatalogueRepository {
 
 ---
 
-### U8. Admin SPA (K-2 frontend) — `apps/admin-spa`
+### U8. Admin SPA (K-2 frontend) — `apps/admin-spa` — REVISED 2026-06-10
 
-**Goal:** Build the React-Admin SPA that talks to the admin CRUD API via a custom DataProvider, with a custom FileInput that uses presigned-PUT direct-to-S3 (NOT base64 inline upload). Deploy as static bundle to S3+CloudFront with the EdgeBasicAuth gate.
+**Goal:** Build the React-Admin SPA over **three resources** — catalogue items, exercises, patterns — with a custom DataProvider, presigned-PUT direct-to-S3 file inputs (source + cover), client-side alphaTex validation for exercise steps, and an explicit Publish action surfacing the §5 gates. Deploy as static bundle to S3+CloudFront with the EdgeBasicAuth gate (unchanged).
 
 **Requirements:** R3 (K-2 admin SPA) · R7 (composition root for UI adapter).
 
-**Dependencies:** U2 (core types via http-client adapter), U3 (CloudFrontStaticSite + EdgeBasicAuth components), U6 (admin CRUD API must exist — DataProvider needs an endpoint).
+**Dependencies:** U2 (core types), U3 (`CloudFrontStaticSite`), U6 (admin CRUD API — DataProvider needs the endpoint).
 
 **Files:**
-- Create: `apps/admin-spa/src/main.tsx` (React entry — wires `CatalogApiClient` + `lessonsDataProvider` + renders `<App />`)
-- Create: `apps/admin-spa/src/App.tsx` (React-Admin `<Admin>` + `<Resource name="lessons" />` registration; imports `lessonsResource.tsx` from adapter)
-- Create: `adapters/http-client/CatalogApiClient.ts` (fetch wrapper for the admin CRUD API URL; reads base URL from import.meta.env; throws structured errors mapped from HTTP status codes)
-- Create: `adapters/http-client/package.json`
-- Create: `adapters/react-admin/lessonsDataProvider.ts` (implements React-Admin v5.14 `DataProvider` interface: `getList`, `getOne`, `getMany`, `create`, `update`, `delete`, others delegating; uses `CatalogApiClient` for the wire)
-- Create: `adapters/react-admin/lessonsResource.tsx` (React-Admin Resource config: `<List>` with filterable fields, `<Edit>` with form, `<Create>` with form, `<Show>` for read-only view)
-- Create: `adapters/react-admin/LessonFileInput.tsx` (custom FileInput component: intercepts File object → calls `CatalogApiClient.mintFileUploadUrl(lessonId, ext)` → PUTs File to returned URL → on success, stores `key` in form state)
-- Create: `adapters/react-admin/package.json` (deps: `react-admin@^5.14`, `ra-core@^5.14`, `react@^19`, `react-dom@^19`, `@notation-hero/adapters-http-client`, `@notation-hero/core` for types)
-- Create: `apps/admin-spa/infra.ts` (Pulumi `notation-hero:cms:AdminSite` ComponentResource: composes `CloudFrontStaticSite` for SPA bucket + `EdgeBasicAuth` gate on viewer-request + cross-references U6's admin Lambda FURL as a second cache behavior at path `/api/*` + ACM cert from us-east-1)
-- Create: `apps/admin-spa/vite.config.ts` (Vite 6+; React plugin; `define: { 'import.meta.env.VITE_API_URL': … }`)
-- Create: `apps/admin-spa/index.html`
-- Create: `apps/admin-spa/package.json` (deps: `@notation-hero/adapters-react-admin`, `react@^19`, `react-dom@^19`; devDeps: `vite@^6`, `@vitejs/plugin-react@^5`, `typescript@^5.7`, `vitest@^3`)
-- Create: `apps/admin-spa/tsconfig.json`
-- Create: `apps/admin-spa/__tests__/{App,LessonFileInput}.test.tsx` (smoke tests with Vitest + React Testing Library)
+- Create: `apps/admin-spa/src/main.tsx` (wires `CatalogApiClient` + `catalogueDataProvider` + renders `<App />`)
+- Create: `apps/admin-spa/src/App.tsx` (React-Admin `<Admin>` + `<Resource name="catalogue">` + `<Resource name="patterns">`; exercises edited inside the lesson Edit view, not a top-level resource)
+- Create: `adapters/react-admin/CatalogApiClient.ts` (fetch wrapper; base URL from `import.meta.env.VITE_API_URL`; maps HTTP errors — 412 → `StaleUpdateError`, 422 → `PublishGateError(gate)`)
+- Create: `adapters/react-admin/catalogueDataProvider.ts` (React-Admin v5.14 `DataProvider`: `getList` → `GET /api/catalogue?…` (admin list — drafts visible); `getOne`/`create`; `update` sends `If-Match: <updatedAt>`; `delete` → archive. Custom methods: `publish(id, updatedAt)`, `replaceExercises(id, steps)`, `setPatternLinks(id, patternIds)`, `mintUploadUrl(id, kind, ext)`)
+- Create: `adapters/react-admin/catalogueResource.tsx` (List with the §9 facets as filters — type/level/bpm/genre/tags/search; level renders as the **§5 D6 star mapping** (1–2→1★ … 9–10→5★, NULL→"—"); Edit/Create forms per type — song fields (bpm required, file required) vs lesson fields (lesson_type, skill); status chip; **Publish** toolbar action with gate-failure toasts; archive confirm dialog warns when song is sliced by lessons)
+- Create: `adapters/react-admin/exercisesResource.tsx` (ordered-steps editor inside lesson Edit: add/remove/reorder rows; per-row one-of editor — alphaTex textarea (`AlphaTexInput`) / file ref / song-slice picker (source song + bar range); start→goal BPM pair with goal≥start client check)
+- Create: `adapters/react-admin/patternsResource.tsx` (List filtered by `kind` (Beats/Fills/Rudiments tabs); Edit/Create with family/subdivision/level/aliases/notationTex)
+- Create: `adapters/react-admin/CatalogueFileInput.tsx` (custom FileInput: client-side size check (20 MB source / 2 MB cover) → `mintUploadUrl` → direct PUT to S3 quarantine → stores key + "validating…" status; **a `.mid` selection is blocked client-side with the convert-in-Guitar-Pro message** — same copy the API returns)
+- Create: `adapters/react-admin/AlphaTexInput.tsx` (textarea + on-blur alphaTab parse in the browser; parse errors render inline — RC-5's client-side validation)
+- Create: `infra/cms/admin-site.ts` (Pulumi module — RC-10: `CloudFrontStaticSite` with TWO cache behaviors (default → SPA bucket / `/api/*` → U6's FURL via OAC + `CachingDisabled`), both gated by the KVS Basic-Auth CF Function; CSP/CORS Response Headers Policy; ACM cert from us-east-1 — all unchanged from the original `apps/admin-spa/infra.ts` content, relocated)
+- Create: `apps/admin-spa/vite.config.ts` · `index.html` · `package.json` · `tsconfig.json` · `__tests__/{App,CatalogueFileInput,AlphaTexInput}.test.tsx`
 
-**Approach:**
-- React-Admin v5.14.7 (current). MUI v5 baseline fine (no compat caveats). React 19 supported. **Pin transitive MUI/Emotion versions** in `apps/admin-spa/package.json`: `@mui/material@^5.16`, `@mui/icons-material@^5.16`, `@emotion/react@^11.13`, `@emotion/styled@^11.13` (feasibility-flagged React-19 strict-mode compat).
-- No `authProvider` — the CF Function gate handles auth before the SPA loads. React-Admin runs auth-less by default.
-- `lessonsDataProvider`:
-  - `getList`: translates `{ pagination: { page, perPage }, sort, filter }` → `GET /v1/lessons?limit=N&cursor=...&sortField=...&sortOrder=...&category=...&difficulty=...&tag=...`. Response shape `{ data: Lesson[], total: number }` (or pageInfo with `hasNextPage` if cursor-based).
-  - `getOne`: `GET /v1/lessons/{id}` → `{ data: Lesson }`.
-  - `create`: `POST /api/lessons` with body. If body contains a `file` field with a `rawFile` (File object), first call mintFileUploadUrl + direct PUT, replace `file` with `{ key, format }` (the validator fills in sizeBytes/checksum async).
-  - `update`: `PUT /api/lessons/{id}` with `If-Match` header carrying current version.
-  - `delete`: `DELETE /api/lessons/{id}` (soft-delete).
-  - `getMany`, `getManyReference`, `updateMany`, `deleteMany`: minimal implementations (likely not needed for v1; can throw "not supported" for non-essential ones).
-- `LessonFileInput`: extends React-Admin's `<FileInput>` with `format`/`parse` props overridden to intercept the File object. On change: client-side size check (≤50MB); calls `mintFileUploadUrl` for presigned URL; PUTs File directly to S3 quarantine; on success stores opaque `key` in form state for the dataProvider to submit. Shows "upload pending validation" UI for alphaTex while the validator finishes async.
-- Bundle target: Vite production build → ~180KB gzipped. Deployed to S3 bucket; CloudFront caches default 1 day, with `index.html` no-cache for instant updates.
-- **U8 OWNS the admin CloudFront distribution.** `apps/admin-spa/infra.ts` instantiates `CloudFrontStaticSite` with TWO cache behaviors:
-  - Default behavior → admin SPA S3 bucket via OAC. Uses managed `CachingOptimized` cache policy. ResponseHeadersPolicy includes CORS (explicit list from Pulumi config) + **CSP** (`default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https://*.s3.<region>.amazonaws.com`).
-  - `/api/*` behavior → admin Lambda FURL (U6 exports the FURL) via OAC. **`CachingDisabled` cache policy** (id `4135ea2d-6df8-44a3-9df3-4b5a84be39ad`) — prevents the P0 auth-bypass risk from cached authenticated responses. Origin request policy = `AllViewerExceptHostHeader` for SigV4 body forwarding.
-  - Both cache behaviors attach the inline KVS-backed Basic-Auth CF Function on viewer-request (function ARN passed in from `infra/index.ts` U9).
-  - ACM cert for `admin.notation-hero.com` from us-east-1 (passed in by U9).
-- **S3 BucketCorsConfigurationV2 on the shared S3 bucket** (defined inline in U9's `infra/index.ts` — adversarial-flagged P1): `allowedMethods: ["PUT", "POST"]`, `allowedOrigins: [adminDomain]`, `allowedHeaders: ["*"]`, `exposeHeaders: ["ETag"]`, `maxAgeSeconds: 3600`. Without this, browser preflight blocks the direct-to-S3 PUT and curator sees "upload failed" with no diagnostic. Verified in U8 integration test (CORS preflight returns 200 from admin origin; no allow-origin from evil origin).
+**Approach (deltas from the original — everything not listed is unchanged):**
+- React-Admin v5.14.7 + React 19 + pinned MUI/Emotion transitive versions; no `authProvider`; Vite bundle to S3; CSP including `connect-src` S3 — all as originally specified.
+- `update` flows carry `updatedAt` as the `If-Match` token (RC-12); 412 → React-Admin conflict UI ("This item was updated elsewhere — refresh").
+- The lesson Edit view composes three panels: facets form · exercises editor (`replaceExercises` on save — atomic) · pattern links (multi-select against `GET /api/patterns`).
+- alphaTab runs **in the SPA** for `AlphaTexInput` (it's a browser library; MPL-2.0 already license-cleared) — this is RC-5's authoring-time validation. The player remains the rendering authority; a server-side re-check is M1 hardening.
+- Cover upload uses the same `CatalogueFileInput` with `kind='cover'` (RC-7); the list view thumbnails `cover_image_url` with an icon fallback.
 
-**Patterns to follow:**
-- React-Admin DataProvider template: based on `ra-data-json-server` (study source, write custom).
-- Vite + React 19 + TypeScript: standard `create-vite` template adapted.
+**TDD task list:**
 
-**Test scenarios:**
-- Happy path: `<App />` renders without throwing; visiting `/` shows the lessons list (mocked DataProvider).
-- Happy path: `lessonsDataProvider.getList` translates filters correctly into URL params; the http-client mock confirms the URL shape.
-- Happy path: `LessonFileInput` selecting a real File → calls mintFileUploadUrl mock → calls PUT to returned URL → stores key in form state on success.
-- Edge case: `getList` with no filters returns full list (URL has no `?` params).
-- Edge case: `LessonFileInput` selecting a 60MB file → rejects before PUT (client-side size check matches server-side limit).
-- Edge case: `update` with stale version → API returns 412 → DataProvider throws specific error → React-Admin shows conflict UI ("This lesson was updated elsewhere — refresh to see changes").
-- Error path: API returns 500 → DataProvider error toast surfaces in React-Admin's default error handling.
-- Error path: presigned PUT to S3 fails (network) → FileInput shows error inline; user can retry without resubmitting form.
-- Integration scenario (manual): deployed admin SPA, log in via Basic-Auth, create a Lesson with `.gp` file upload, verify it appears in public `GET /lessons` after validator processes (1-3s).
-- Integration scenario: edit existing Lesson, change category, save — verify list re-fetches and shows new category.
-- Integration scenario: soft-delete a Lesson — confirms it no longer appears in list (default filter shows only `status="published"`).
+- [ ] **8.1** Write `catalogueDataProvider` unit tests — `getList` filter→query-param mapping (incl. level/bpm ranges + csv arrays); `update` sends `If-Match`; 412 → `StaleUpdateError`; `publish` posts with token → FAIL → implement provider + `CatalogApiClient` → PASS → commit `feat(k-2): catalogue DataProvider`
+- [ ] **8.2** Write `CatalogueFileInput` tests — happy PUT flow stores key; 25 MB file blocked client-side; `.mid` blocked with convert-first copy; PUT network failure → inline retry → FAIL → implement → PASS → commit
+- [ ] **8.3** Write `AlphaTexInput` test — valid tex passes; broken tex shows alphaTab error inline → FAIL → implement → PASS → commit
+- [ ] **8.4** Build the three resource configs + App; smoke test renders list with mocked provider; star-mapping unit test (1→1★, 4→2★, 10→5★, null→"—") → PASS → commit `feat(k-2): admin resources (items/exercises/patterns)`
+- [ ] **8.5** Author `infra/cms/admin-site.ts` (relocated distribution config); `pnpm --filter @notation-hero/admin-spa build` produces the bundle; `pulumi preview` clean → commit
 
-**Verification:** `bun test apps/admin-spa/` smoke tests green. `bun run --filter apps/admin-spa build` produces a working bundle. Manual smoke against deployed dev stack: create + edit + delete + upload all work end-to-end.
+**Test scenarios:** (beyond the TDD list; manual/integration unchanged from the original — create/edit/archive/upload end-to-end, Basic-Auth gate, CORS preflight)
+- Integration (manual): author a **beat lesson** end-to-end — create lesson → 3 alphaTex steps with BPM ladder → link `rock-8th` pattern → Publish (fails until a step exists — gate toast) → appears in public API.
+- Integration (manual): upload song cover; thumbnail renders in list within one refresh.
+
+**Verification:** `pnpm vitest run apps/admin-spa adapters/react-admin --root .` green; production bundle builds; manual smoke against deployed dev stack covers the full author loop.
 
 ---
 
-### U9. Pulumi composition root (`infra/index.ts`) + cross-cutting resources
+### U9. Pulumi composition root (`infra/index.ts`) + cross-cutting resources — REVISED 2026-06-10
 
-**Goal:** Build the Pulumi root entry point that composes all per-app `infra.ts` modules, defines cross-cutting resources (shared DynamoDB table, shared S3 bucket, KVS for credential), wires shared resources into the per-app modules, and provides stack-config indirection (`dev` / `prod` config files).
+**Goal:** Build the Pulumi root that composes the `infra/cms/*` modules (RC-10), defines cross-cutting AWS resources (shared S3 bucket, KVS + key, SNS topic, ACM certs, alarms), injects the **Neon connection string as a secret** into the three Lambdas, and provides stack-config indirection. **No database resources are provisioned** — Neon is external SaaS (RC-6); the runbook covers Neon project setup + migrations instead.
 
-**Requirements:** R4 (Pulumi IaC composition) · R5 (free-tier-safe config defaults).
+**Requirements:** R4 (Pulumi IaC composition; DB-provisioning exception) · R5 (free-tier-safe defaults).
 
-**Dependencies:** U3 (component classes exist), U5/U6/U7/U8 (per-app infra.ts files exist to compose).
+**Dependencies:** U3 (components), U5/U6/U7/U8 (the `infra/cms/*.ts` modules exist).
 
 **Files:**
-- Create: `infra/index.ts` (Pulumi entry — instantiates cross-cutting resources, imports each app's `infra.ts` factory, wires them with shared ARNs/names)
-- Create: `infra/Pulumi.yaml` (project metadata: `name: notation-hero-infra`, `runtime: nodejs`, `description: …`)
-- Create: `infra/Pulumi.dev.yaml` (dev stack config: domain, region, log retention, etc.)
-- Create: `infra/Pulumi.prod.yaml` (prod stack config scaffolding — NOT deployed v1)
-- Create: `infra/package.json` (name `@notation-hero/infra`; deps: `@pulumi/pulumi@^3`, `@pulumi/aws@^7`, all `@notation-hero/adapters-aws` + each app workspace for infra.ts imports)
-- Create: `infra/tsconfig.json`
-- Create: `infra/README.md` (operator docs: how to set Basic-Auth credential via `pulumi config set --secret`, how to rotate, how to roll back, deploy steps)
-- Test: `infra/__tests__/preview.test.ts` (Pulumi automation API smoke — `pulumi preview` on the dev stack runs without errors)
+- Create: `infra/index.ts` (entry — cross-cutting resources + module composition)
+- Create: `infra/Pulumi.yaml` · `infra/Pulumi.dev.yaml` (config incl. `basicAuthCredential` + **`neonDatabaseUrl`** as `secure:`) · `infra/Pulumi.prod.yaml` (scaffold, not deployed)
+- Create: `infra/package.json` (deps: `@pulumi/pulumi@^3`, `@pulumi/aws@^7`, `@notation-hero/adapters-aws`) · `infra/tsconfig.json`
+- Create: `infra/README.md` (operator runbook — now including the **Neon section**: create project/branch, create the least-privilege app role, run migrations, rotate the connection string)
+- Test: `infra/__tests__/preview.test.ts` (Pulumi automation-API `preview` smoke on the dev stack)
 
 **Approach:**
 
-**Pre-deploy guards** (run BEFORE `pulumi up` in CI deploy.yml AND documented in `infra/README.md`):
-1. `pulumi backend` MUST NOT report `file://` (local backend = plaintext state on disk = credential leak). Pulumi Cloud or S3+KMS only.
-2. `aws sts get-caller-identity` returns valid identity (AWS creds configured).
+**Pre-deploy guards** (CI `deploy.yml` AND `infra/README.md` — extended):
+1. `pulumi backend` MUST NOT report `file://` (unchanged — state holds the Neon URL + Basic-Auth secrets).
+2. `aws sts get-caller-identity` returns valid identity.
+3. **Migrations are current:** `DATABASE_URL=$(pulumi config get neonDatabaseUrl --show-secrets) pnpm --filter @notation-hero/adapters-postgres migrate` — idempotent; run BEFORE `pulumi up` so new Lambda code never meets an old schema.
 
-**`infra/index.ts` structure** (the 3 components from U3 are *not* used for inline resources — DynamoDB, S3 bucket, KVS, SNS topic, ACM certs, CF Function go directly as Pulumi resource calls):
+**`infra/index.ts` structure:**
 ```ts
-// 1. Read config + setup
+// 1. Config
 const config = new pulumi.Config()
 const domain = config.require('domain')
-const basicAuthCred = config.requireSecret('basicAuthCredential')  // base64(user:pass)
+const basicAuthCred = config.requireSecret('basicAuthCredential')   // base64(user:pass)
+const neonDatabaseUrl = config.requireSecret('neonDatabaseUrl')     // postgres://… (Neon; RC-6 — NOT provisioned here)
 const corsOrigins = config.requireObject<string[]>('corsOrigins')   // explicit; no '*'
 
-// 2. Cross-cutting resources (inline; no component class)
-const lessonsTable = new aws.dynamodb.Table('lessons', {
-  billingMode: 'PAY_PER_REQUEST', hashKey: 'PK', rangeKey: 'SK',
-  attributes: [/* PK, SK, GSI1PK, GSI1SK */],
-  globalSecondaryIndexes: [{ name: 'GSI1', hashKey: 'GSI1PK', rangeKey: 'GSI1SK', projectionType: 'ALL' }],
-  pointInTimeRecovery: { enabled: true },
-})
-const lessonsBucket = new aws.s3.Bucket('lessons-storage', { /* private, AES256, versioning off */ })
-new aws.s3.BucketPublicAccessBlock('lessons-storage-pab', { bucket: lessonsBucket.id, ...allBlocked })
-new aws.s3.BucketCorsConfigurationV2('lessons-storage-cors', { bucket: lessonsBucket.id, /* PUT/POST from adminDomain only */ })
-new aws.s3.BucketLifecycleConfigurationV2('lessons-storage-lifecycle', {
-  bucket: lessonsBucket.id,
+// 2. Cross-cutting AWS resources (inline; no component class) — NOTE: no database, no DynamoDB (RC-3/RC-6)
+const filesBucket = new aws.s3.Bucket('catalogue-files', { /* private, AES256, versioning off, forceDestroy:false */ })
+new aws.s3.BucketPublicAccessBlock('catalogue-files-pab', { bucket: filesBucket.id, ...allBlocked })
+new aws.s3.BucketCorsConfigurationV2('catalogue-files-cors', { bucket: filesBucket.id, /* PUT/POST from adminDomain only */ })
+new aws.s3.BucketLifecycleConfigurationV2('catalogue-files-lifecycle', {
+  bucket: filesBucket.id,
   rules: [
     { id: 'expire-quarantine', filter: { prefix: 'uploads/quarantine/' }, expiration: { days: 1 } },
-    { id: 'expire-rejected', filter: { prefix: 'uploads/rejected/' }, expiration: { days: 7 } },
+    { id: 'expire-rejected',   filter: { prefix: 'uploads/rejected/' },   expiration: { days: 7 } },
   ],
 })
-// addLambdaNotification helper aggregates all BucketNotification configs into one resource
-const bucketNotifications = createBucketNotificationsAggregator(lessonsBucket)
-const eventsTopic = new aws.sns.Topic('lesson-events', {})
+const bucketNotifications = createBucketNotificationsAggregator(filesBucket)  // single BucketNotification resource
+const eventsTopic = new aws.sns.Topic('lesson-events', {})                    // topic name kept (RC-11)
 const adminKvs = new aws.cloudfront.KeyValueStore('admin-cred-store', {})
-// VERIFY at U3 build whether @pulumi/aws v7 exposes aws.cloudfront.KeyvaluestoreKey directly;
-// if not, use command.local.Command invoking `aws cloudfront-keyvaluestore put-key`
-const adminKvsKey = new aws.cloudfront.KeyvaluestoreKey('admin-cred', {
-  keyValueStoreArn: adminKvs.arn, key: 'admin-cred', value: basicAuthCred,
-})
+const adminKvsKey = /* KVS key write — verify @pulumi/aws v7 resource at U3 build; CLI fallback unchanged */
 const usEast1 = new aws.Provider('us-east-1', { region: 'us-east-1' })
 const adminCert = new aws.acm.Certificate('admin', { domainName: `admin.${domain}`, validationMethod: 'DNS' }, { provider: usEast1 })
-const cdnCert = new aws.acm.Certificate('cdn', { domainName: `cdn.${domain}`, validationMethod: 'DNS' }, { provider: usEast1 })
-// adminCertValidation, cdnCertValidation — wait for ISSUED before downstream
+const cdnCert   = new aws.acm.Certificate('cdn',   { domainName: `cdn.${domain}`,   validationMethod: 'DNS' }, { provider: usEast1 })
 
-// 3. Inline CF Function for KVS-backed Basic-Auth + microbench step
-const basicAuthFn = new aws.cloudfront.Function('admin-basic-auth', {
-  runtime: 'cloudfront-js-2.0',
-  keyValueStoreAssociations: [adminKvs.arn],
-  code: pulumi.interpolate`<inline JS template literal from U3 Approach>`,
-})
+// 3. Inline CF Function for KVS-backed Basic-Auth (+ U9 microbench step) — unchanged from original
 
-// 4. Per-app composition
-const publicApi = publicReadApi({ lessonsTable, lessonsBucket, cdnCert, corsOrigins, bucketNotifications })
-const validator = uploadValidator({ lessonsTable, lessonsBucket, eventsTopic, bucketNotifications })
-const adminApi = adminCrudApi({ lessonsTable, lessonsBucket, eventsTopic })
-const adminSite = adminSpa({ adminLambdaArn: adminApi.fnArn, adminLambdaUrl: adminApi.fnUrl,
-                              adminCert, basicAuthFnArn: basicAuthFn.arn, corsOrigins })
+// 4. Module composition (infra/cms/* — RC-10)
+const publicApi  = publicReadApi({ neonDatabaseUrl, filesBucket, cdnCert, corsOrigins })
+const validator  = uploadValidator({ neonDatabaseUrl, filesBucket, eventsTopic, bucketNotifications })
+const adminApi   = adminCrudApi({ neonDatabaseUrl, filesBucket, eventsTopic })
+const adminSite  = adminSpaSite({ adminLambdaArn: adminApi.fnArn, adminLambdaUrl: adminApi.fnUrl,
+                                  adminCert, basicAuthFnArn: basicAuthFn.arn, corsOrigins })
 
 // 5. Outputs (player track + ce-work consume these)
 export const adminUrl = adminSite.distributionDomain
 export const publicCdnUrl = publicApi.distributionDomain
-export const publicApiUrl = publicApi.distributionDomain  // same — public distro fronts the public Lambda
+export const publicApiUrl = publicApi.distributionDomain
 ```
 
-- Each per-app `infra.ts` exports a factory function (e.g., `publicReadApi(args): { fnUrl; fnArn; distributionDomain; ... }`). `infra/index.ts` calls them with shared resource references.
-- **KVS rotation:** `pulumi config set --secret basicAuthCredential <newBase64>` then `pulumi up`. Updates only the KVS key resource (one-resource diff). **Propagation lag is 10-30s across edge locations** (operator README documents this — emergency rotation procedure: take admin distribution offline by updating the distribution to a 503 custom error page for 60s, then restore).
-- **CloudWatch alarms** in U9:
-  - `notation-hero-cms:admin-error-rate` — `aws.cloudwatch.MetricAlarm` on CloudFront `4xxErrorRate > 10/sec` on the admin distribution (brute-force trigger; email to operator)
-  - `notation-hero-cms:cert-admin-expiry` — `AWS/CertificateManager DaysToExpiry < 30` on admin cert
-  - `notation-hero-cms:cert-cdn-expiry` — same for cdn cert
-- **ACM cert two-pass deploy on first bring-up:**
-  - Pass 1: `pulumi up --target cert.admin --target cert.cdn` — wait for `ISSUED` (5-30 min depending on DNS propagation)
-  - Pass 2: full `pulumi up` for everything else
-  - `aws.acm.CertificateValidation` resource gates dependent resources on validation; subsequent runs only re-validate if certs change
-- `Pulumi.dev.yaml`:
-  ```yaml
-  config:
-    aws:region: us-east-1
-    notation-hero-infra:domain: notation-hero-dev.com
-    notation-hero-infra:logRetentionDays: 7
-    notation-hero-infra:corsOrigins:
-      - https://admin.notation-hero-dev.com
-      - https://app.notation-hero-dev.com
-    notation-hero-infra:basicAuthCredential:
-      secure: <pulumi-encrypted-value>
-  ```
-- `Pulumi.prod.yaml` scaffolded but not provisioned in v1 (`logRetentionDays: 30`; prod domain; commented "DO NOT DEPLOY v1 — promote when app ships").
-- **CFF microbench step in `infra/README.md`:** after `pulumi up` lands the CF Function, run `aws cloudfront describe-function --name admin-basic-auth --stage DEVELOPMENT` to verify (a) compiled function size <8KB; (b) `constantTimeEquals` execution time is constant across same-length/different-length comparisons (deploy a microbench function alongside; compare timing percentiles).
+- **`DATABASE_URL` injection:** each `infra/cms/*` module passes `env: { DATABASE_URL: neonDatabaseUrl, … }` to `LambdaWithUrl`. Pulumi secrets stay encrypted in state and surface only as Lambda env (the standard pattern; SSM SecureString is the documented alternative if env-var exposure in the console becomes a concern — runbook note).
+- **Neon least-privilege (runbook, not IaC):** create role `app_cms` with `SELECT/INSERT/UPDATE` on the four catalogue tables + `SELECT` on `schema_migrations` (no DDL, no DELETE — the adapter never deletes); migrations run as the owning role. Document `psql` snippets in `infra/README.md`.
+- **AWS-managed equivalent (the interview talking point — document in `infra/README.md` under "Why Neon / what the AWS answer looks like"):** Aurora Serverless v2 (or RDS Postgres) + **RDS Proxy** — Lambda's connection-per-invocation pattern exhausts vanilla Postgres connection slots, so AWS's answer is a pooling proxy; Neon's serverless HTTP driver solves the same problem at the protocol layer. The store is swappable behind K-3: re-point `DATABASE_URL`, re-run migrations, done.
+- **KVS rotation, ACM two-pass first deploy, CloudWatch alarms** (admin 4xx rate, 2× cert expiry): all **unchanged** from the original plan.
+- `Pulumi.dev.yaml` adds one line to the original: `notation-hero-infra:neonDatabaseUrl: { secure: <encrypted> }`.
 
-**Patterns to follow:**
-- Pulumi `Config` patterns: `config.require(...)` for required string, `config.requireSecret(...)` for encrypted.
-- Cross-provider resources (us-east-1 cert): instantiate a second provider, pass via `{ provider: useast1 }` opts.
+**TDD task list:**
+
+- [ ] **9.1** Write `infra/__tests__/preview.test.ts` (automation-API preview, throwaway stack, fake config values) → FAIL → implement `infra/index.ts` skeleton (config + bucket + topic + KVS + certs) → preview passes → commit `feat(infra): composition root (no DB resources — Neon external)`
+- [ ] **9.2** Wire the four `infra/cms/*` modules with `DATABASE_URL` env injection → preview shows the full graph (~30–40 resources; **no DynamoDB table, no RDS**) → commit
+- [ ] **9.3** Write `infra/README.md` — deploy (two-pass certs), **Neon setup + `app_cms` role + migrate step**, rotate Basic-Auth (normal + emergency), rotate `neonDatabaseUrl`, rollback hygiene, KVS propagation, microbench procedure → commit `docs(infra): operator runbook incl. Neon section`
+- [ ] **9.4** First real deploy: Neon project created → `pulumi config set --secret neonDatabaseUrl …` → migrate → two-pass `pulumi up` → smoke: admin Basic-Auth prompt; `GET /v1/catalogue` returns `{ items: [], total: 0 }` → commit any drift fixes
+- [ ] **9.5** Idempotency + rotation drills: second `pulumi up` shows zero diff; KVS credential rotation <30 s; `neonDatabaseUrl` rotation = config set + `pulumi up` (Lambda env update only) → record results in README → commit
 
 **Test scenarios:**
-- Happy path: `pulumi preview --stack dev` produces a complete resource diff with no errors (~30-40 resources expected: 1 DDB table + 1 S3 bucket + 1 KVS + 1 KVS key + 1 CF Function + 3 Lambdas + 3 IAM roles + 3 IAM policies + 3 FunctionUrls + 3 Lambda permissions + 2 OACs (admin + public) + 2 Distributions + 2 ACM certs + DNS records).
-- Happy path: `pulumi up --stack dev` deploys to a real AWS account; admin and public URLs resolve; admin Basic-Auth prompt appears in browser; public API returns 200 on `GET /lessons`.
-- Edge case: `pulumi config set --secret basicAuthCredential <newval> && pulumi up` updates only the KVS key (single resource diff); functionality continues without function redeploy.
-- Edge case: changing `domain` config requires re-issuing ACM certs (Pulumi diff shows cert replacement) — verify and document the manual cert validation step.
-- Error path: deploying to an AWS account without `lambda:CreateFunctionUrlConfig` permission → Pulumi clear error pointing at IAM gap.
-- Error path: deploying when `aws:region` is `us-east-1` but admin distribution config tries to reference cert in `us-east-2` → Pulumi config error caught at preview.
-- Integration scenario: full bring-up against fresh AWS account: `pulumi up` from zero → all resources created in dependency order (table + bucket first, then Lambdas + roles, then CF distributions, then DNS records) → admin curator can sign in within 5 minutes total.
+- Happy path: full bring-up on a fresh AWS account + fresh Neon project — resources in dependency order; curator signs in within the first-deploy window (15–25 min, certs dominating — unchanged).
+- Edge: `pulumi config set --secret neonDatabaseUrl <new> && pulumi up` updates only the three Lambdas' env (no distribution churn).
+- Error path: missing `neonDatabaseUrl` config → `config.requireSecret` fails preview with a clear message.
+- Error path: migrations not run before deploy → K-3 returns 503s with `relation "catalogue_item" does not exist` in logs — the pre-deploy guard #3 exists precisely for this; documented in the runbook troubleshooting table.
 
-**Verification:** `pulumi preview --stack dev` clean. `pulumi up --stack dev` succeeds in a real account. `pulumi up --stack dev` again with no changes shows zero diff (idempotency). KVS rotation tested. Operator README covers all common operations.
+**Verification:** `pulumi preview --stack dev` clean; `pulumi up --stack dev` succeeds; zero-diff on re-run; KVS + Neon-URL rotation drills pass; `GET /v1/catalogue` 200 against the deployed stack; operator README covers Neon + migrations + all original procedures.
 
 ---
 
