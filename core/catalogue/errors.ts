@@ -8,8 +8,8 @@
  * hint string.
  *
  * This file is APPENDED to as the domain grows — keep the shape consistent:
- *   U2.5 (this task): InvalidFileFormat, MidiNotSupported
- *   U2.6 adds: PublishGateFailed
+ *   U2.5: InvalidFileFormat, MidiNotSupported
+ *   U2.6 (this task) adds: PublishGateFailed
  *   U2.7 adds: ItemNotFound, ItemAlreadyExists, StaleUpdate,
  *              SourceNotAvailable, ValidationError, RepositoryError
  * A union of all members (`CatalogueError`) is intentionally NOT declared yet;
@@ -38,6 +38,18 @@ export interface MidiNotSupported {
   readonly detail?: string;
 }
 
+/**
+ * One or more §5 publish gates blocked a publish attempt. `failures` carries
+ * EVERY failed gate code (e.g. `lesson-needs-at-least-one-exercise`,
+ * `curated-item-needs-license`) so the curator sees all blockers at once rather
+ * than fixing one only to hit the next. The codes are stable strings the admin
+ * UI maps to per-gate guidance. Always non-empty when this error is produced.
+ */
+export interface PublishGateFailed {
+  readonly kind: 'PublishGateFailed';
+  readonly failures: readonly string[];
+}
+
 /** Construct an `InvalidFileFormat` error, optionally with a hint. */
 export const invalidFileFormat = (detail?: string): InvalidFileFormat => ({
   kind: 'InvalidFileFormat',
@@ -48,4 +60,10 @@ export const invalidFileFormat = (detail?: string): InvalidFileFormat => ({
 export const midiNotSupported = (detail?: string): MidiNotSupported => ({
   kind: 'MidiNotSupported',
   detail,
+});
+
+/** Construct a `PublishGateFailed` error carrying every failed gate code. */
+export const publishGateFailed = (failures: readonly string[]): PublishGateFailed => ({
+  kind: 'PublishGateFailed',
+  failures,
 });
