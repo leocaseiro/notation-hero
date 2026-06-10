@@ -7,6 +7,8 @@ mode: repo-grounded
 
 # Ideation: Agent-Native Tooling & CI Enforcement Stack
 
+> **Note (post-decision, 2026-06-09):** This is the brainstorming snapshot that fed the [tooling-stack DACI](../decisions/2026-06-09-tooling-stack-daci.md). The DACI's `Verification on record` section + the `Decisions` tables finalized the binding choices — notably **pnpm replaces Bun** (Bun fully dropped per F-6) and **R1's deferral of Nx was REVERSED** (Nx adopted under the complete-now override). Read this doc for the reasoning history that shaped the trade-offs; read the DACI for binding choices.
+
 > ce-ideate run `6c6a14a0`. Generated many → critiqued all → survivors below. Feeds a per-layer DACI (Driver-Approver-Contributors-Informed).
 
 ## Grounding Context (Codebase Context)
