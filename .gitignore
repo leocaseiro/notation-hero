@@ -27,3 +27,8 @@ docs/.private/
 # Editor / OS
 .DS_Store
 *.log
+
+
+
+.nx/cache
+.nx/workspace-data
