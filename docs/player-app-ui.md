@@ -4,13 +4,13 @@
 > **Scope:** the **player app only** (the admin CMS is a separate track). Resolves the five 🎨 design-shotgun-gated decisions from the feature freeze.
 > **Owner:** leocaseiro · **Companions:** [feature-freeze.md](../../pensive-boyd-6d17e3/docs/feature-freeze.md) · [scope.md](scope.md) · [stack-brainstorm.md](../../serene-grothendieck-fb5e67/stack-brainstorm.md)
 > **Live mockups** (open in a browser / Launch panel): [`docs/mockups/`](mockups/) — `index.html` (feedback lab) · `player.html` (play screen, light+dark) · `player-full.html` (Tracks-left + Score-right) · `tracks-settings.html` (panels).
-> **North-star:** the discontinued **classic standalone drum-tutor** (features, not palette). Reference screenshots in `~/Downloads/dt-1_ss_*.jpg`.
+> **North-star:** a classic standalone drum-tutor (features, not palette). Internal reference screenshots tracked privately — see `docs/.private/` or the project's Linear Document.
 
 ---
 
 ## 1. Design principles
 
-1. **Calm by default, everything one tap away.** The the reference tutor mistake was welding every panel on, permanently, with no off switch. Here the play screen defaults to notation + a slim player; detail (score breakdown, mixer, settings) opens on demand and is remembered per song.
+1. **Calm by default, everything one tap away.** The classic-tutor mistake was welding every panel on, permanently, with no off switch. Here the play screen defaults to notation + a slim player; detail (score breakdown, mixer, settings) opens on demand and is remembered per song.
 2. **A player, not a control panel.** Controls read like a media player: flat line-icons, one accented play, an always-visible timeline. No chunky bordered buttons.
 3. **Tablet-first, landscape.** iPad + Android tablets. 44px minimum touch targets. Mouse/desktop inherit the same layout.
 4. **One renderer interface (A‑7).** Standard notation (AlphaTab) and the later Friendly highway (PixiJS) are two renderers behind a single feedback-event contract. Build the interface *with* the Friendly view, not before.
@@ -23,7 +23,7 @@
 
 | # | Decision | Resolution |
 |---|---|---|
-| **D‑1** | Feedback colors (green vs blue reconcile · A‑2) | **Perfect = green.** Adopt scope intent over the fork/the reference tutor blue. Final hue = Okabe‑Ito green `#009E73` (see D‑2). |
+| **D‑1** | Feedback colors (green vs blue reconcile · A‑2) | **Perfect = green.** Adopt scope intent over the legacy blue. Final hue = Okabe‑Ito green `#009E73` (see D‑2). |
 | **D‑2** | Accessibility palette + glyph (A‑6) | **Single Okabe‑Ito palette** (no second palette / no light-vs-default toggle). On-note encoding = **Approach A: ring + directional chevron** (left = early, right = late). Redundant coding everywhere (color + shape + position + chevron). Custom color-picker = **optional / deferred**. |
 | **D‑3** | Dark mode (F‑4) | **Keep + theme properly.** Standard notation defaults to light/paper with a dark option; the Friendly view is dark by nature. Theme switch (light / dark / system) lives in **Settings → Display**. |
 | **D‑4** | Score display (C‑2) | **Split:** in-play = calm (Score/Combo in the top ticker; full breakdown in a toggleable **Score sidebar**). End-of-play **Results = direction B (modern card) + per-state bars**. The breakdown uses the **5 feedback states** — **Perfect / Early / Late / Missed / Error** — not abstract Good/OK tiers, so the score speaks the same language as the live rings. Bars are **equal-width** (the count carries the value). |
@@ -124,7 +124,7 @@ Input&MIDI (device, I-play, mapping preset + edit, latency slider, multi-device 
 Lesson/song list with level (★), tempo, last score; open-file; search; entry to Play.
 
 ### 6.5 Results — `docs/mockups/results.html`
-Direction **B (modern)**: big completion-% ring + 5★ + a verdict + "new best" badge; **per-state bars** (Perfect/Early/Late/Missed/Error, equal-width) + the **the reference tutor Target‑vs‑You** bars; streak / longest / max-combo / accuracy chips; Retry · Library · Next. Dedicated screen, so density is free. **Locked.**
+Direction **B (modern)**: big completion-% ring + 5★ + a verdict + "new best" badge; **per-state bars** (Perfect/Early/Late/Missed/Error, equal-width) + **Target‑vs‑You** comparison bars; streak / longest / max-combo / accuracy chips; Retry · Library · Next. Dedicated screen, so density is free. **Locked.**
 
 ### 6.6 Friendly view — *to design (design-gated milestone)*
 Horizontal highway (primary) + vertical falling-notes (alt). Gem feedback carries the same 5-state language + a11y. Dark by nature.

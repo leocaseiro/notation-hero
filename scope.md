@@ -1,12 +1,8 @@
-# NotationHero
-heavily inspired by:
-- primary by classic standalone drum-tutor software (discountined)
-- also inspired by subscription tutor
-- Clone Hero / rhythm games / rhythm games
-- falling-notes app
+# NotationHero — Scope
 
-I want to create an app to learn and practice how to play drums.
-As a main goal, the app should have all the features from the classic standalone drum-tutor software (now discontinued).
+Inspired by the rhythm-game genre and open-source community projects [Clone Hero](https://clonehero.net/) and [Phase Shift](https://www.dwsk.co.uk/index_phase_shift.html).
+
+I want to create an app to learn and practice drums. As a main goal, it should fill a real gap in current drum-learning tools: combining the immediate, game-like feedback of a rhythm game with the long-term skill of **standard sight reading**, AND letting users load **any custom song they already own on file** — MIDI (`.mid`), MusicXML (`.musicxml`), or Guitar Pro tablature (`.gp*`). Both features have been deprioritized by most current drum-learning apps.
 - The app should:
     - work in both Windows and Mac devices, as well as for tablets (iPad/Android Tablet)
         - a nice to have is to also work in a browser
@@ -15,7 +11,7 @@ As a main goal, the app should have all the features from the classic standalone
     - work as a rhythm game, where the user has to hit the drums at the right time.
     - allow the user to choose a file in format to play/listen to midi and/or guitar pro.
         - nice to have is to also allow the user to have a background audio (e.g. mp3) or video (e.g. mp4 or youtube) to play/listen to while playing the song.
-    - display primary the song in notation, but a nice to have would be to display the song in a friendly notation view (like falling-notes app as falling notes or subscription tutor as horizontal friendly notation for users that are not familiar with notation).
+    - display primary the song in notation, but a nice to have would be to display the song in a friendly notation view (a falling-notes view, or a horizontal friendly-notation view for users who don't yet read standard notation).
     - display in real time the correct note hit by the user with a visual feedback for:
         - Standard notation:
             - a green circle around the notehead on perfect hit
