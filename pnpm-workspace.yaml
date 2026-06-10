@@ -1,11 +1,17 @@
 # pnpm workspace globs — mirrors the npm-style `workspaces` field that used
 # to live in the root package.json. Source of truth for pnpm.
 #
-# `core/`, `adapters/`, `apps/` currently hold `.gitkeep` placeholders.
-# Real Nx libs/apps materialize in later Sequencing steps (DACI L2 / Step 1
-# continued: `nx init` + real packages).
+# `core/`, `adapters/`, `apps/` hold real Nx packages as of Wave 1 (DACI Step 1).
 packages:
   - 'core/*'
   - 'adapters/*'
   - 'apps/*'
   - 'infra'
+# Build-script approval. pnpm 11.5.2 uses the `allowBuilds: {pkg: true|false}` map
+# (it IGNORES the older `onlyBuiltDependencies` list and re-injects this block as a
+# prompt). Both nx and @swc/core (transitive via @nx/js) ship postinstall builds;
+# approving both keeps a fresh `pnpm install --frozen-lockfile` green (e.g. CI),
+# which otherwise fails with ERR_PNPM_IGNORED_BUILDS.
+allowBuilds:
+  '@swc/core': true
+  nx: true

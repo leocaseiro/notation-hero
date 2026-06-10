@@ -45,6 +45,7 @@ jobs:
               - 'tsconfig*.json'
               - '.eslintrc.cjs'
               - '.dependency-cruiser.cjs'
+              - 'nx.json'
               - '.github/workflows/ci.yml'
             apps:
               - 'apps/**'
@@ -54,6 +55,7 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'tsconfig*.json'
+              - 'nx.json'
               - '.github/workflows/ci.yml'
 
   # Lint + typecheck + Hexagonal layer-boundary check (dependency-cruiser) + test.
@@ -66,7 +68,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - name: Lint
@@ -89,7 +91,7 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'pnpm'
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
