@@ -1,0 +1,7 @@
+{
+  "name": "@notation-hero/player-pwa",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/player-pwa/src",
+  "tags": ["type:app"]
+}

@@ -38,6 +38,12 @@ importers:
 
   adapters/aws-dynamodb: {}
 
+  apps/player-pwa:
+    dependencies:
+      '@notation-hero/scoring':
+        specifier: workspace:*
+        version: link:../../core/scoring
+
   core/scoring: {}
 
   infra: {}
