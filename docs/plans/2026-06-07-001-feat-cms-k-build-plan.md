@@ -251,24 +251,28 @@ Product-lens flagged the swap-count premise as unaudited. This table audits each
 
 ## Output Structure
 
-Greenfield. This plan creates the following directory tree, replacing Track 2's Wave 1 scaffold:
+The U1 skeleton (root configs, empty layer dirs) is **committed**. This plan creates the following tree on top of it (revised 2026-06-10 — `core/catalogue/`, `adapters/postgres/`, IaC consolidated under `infra/`):
 
 ```text
 notation-hero/
 ├── core/                                  # Pure domain — NO AWS, NO React, NO HTTP imports
-│   ├── lesson/                            # Bounded context: lessons (area K + later H-11)
-│   │   ├── Lesson.ts                      # Entity (the schema type — mirrors song-schema.md)
-│   │   ├── LessonId.ts                    # Value object (branded type)
-│   │   ├── LessonValidator.ts             # Domain rule: magic-byte → format mapping
-│   │   ├── LessonFilter.ts                # Query language (category, difficulty, tag, status)
-│   │   ├── LessonEvent.ts                 # Event schema: lesson.{published,updated,deleted}
-│   │   ├── errors.ts                      # InvalidFileFormat, LessonNotFound, …
+│   ├── catalogue/                         # Bounded context: the shared catalogue (area K + later H-11)
+│   │   ├── CatalogueItem.ts               # Entity: song | lesson (typed facets per spec §4 ①) + Zod schema
+│   │   ├── Exercise.ts                    # Entity: a lesson's ordered steps (spec §4 ②) + Zod schema
+│   │   ├── Pattern.ts                     # Entity: beat/fill/rudiment vocabulary (spec §4 ③) + Zod schema
+│   │   ├── ids.ts                         # Branded CatalogueItemId / ExerciseId / PatternId
+│   │   ├── NotationFormat.ts              # 'gp'|'gpx'|'gp5'|'gp4'|'gp3'|'xml' (NO 'mid' — spec §2) + cover image formats
+│   │   ├── FileRules.ts                   # Pure magic-byte → format decision tree + size ceilings
+│   │   ├── CatalogueFilter.ts             # Query language (type, level, bpm-range, …, search) per spec §9
+│   │   ├── CatalogueEvent.ts              # catalogue_item.{created,updated,published,archived} + file.validated
+│   │   ├── publishGates.ts                # Pure §5 gate checks (≥1 exercise, license, curated-only)
+│   │   ├── errors.ts                      # InvalidFileFormat, ItemNotFound, StaleUpdate, PublishGateFailed, …
 │   │   ├── ports/
-│   │   │   ├── LessonRepository.ts        # save/load/list/delete interface
-│   │   │   ├── LessonFileStore.ts         # putFile/getSignedUrl interface
+│   │   │   ├── CatalogueRepository.ts     # items + exercises + pattern-links interface
+│   │   │   ├── PatternRepository.ts       # pattern CRUD interface
+│   │   │   ├── CatalogueFileStore.ts      # mintPresignedPut/mintSignedGet/promote interface
 │   │   │   └── FileValidator.ts           # validateMagicBytes(stream): Format | error
 │   │   └── __tests__/
-│   │       └── LessonValidator.test.ts
 │   ├── observability/
 │   │   └── ports/EventSink.ts             # publish(event): Promise<Result<void, …>>
 │   ├── shared/
@@ -280,70 +284,87 @@ notation-hero/
 │   │   ├── LambdaWithUrl.ts               # Lambda + IAM role + log group + optional FURL (3 consumers)
 │   │   ├── CloudFrontStaticSite.ts        # S3 + OAC + CF + ACM (2 consumers)
 │   │   └── package.json                   # name: "@notation-hero/adapters-aws"
-│   ├── dynamodb/                          # Runtime adapter — raw @aws-sdk/lib-dynamodb (no toolbox)
-│   │   ├── LessonRepositoryDynamoDB.ts    # implements core/lesson/ports/LessonRepository
-│   │   ├── __tests__/                     # integration tests (LocalStack)
-│   │   ├── docker-compose.test.yml        # localstack/localstack:4.x pinned
-│   │   └── package.json                   # name: "@notation-hero/adapters-dynamodb"
+│   ├── postgres/                          # Runtime adapter — raw parameterized SQL (NO ORM)
+│   │   ├── SqlExecutor.ts                 # query(text,params)→rows + batch(queries)→atomic seam
+│   │   ├── neonExecutor.ts                # runtime impl: @neondatabase/serverless (HTTP)
+│   │   ├── pgExecutor.ts                  # test/migration impl: pg (TCP)
+│   │   ├── CatalogueRepositoryPostgres.ts # implements core/catalogue/ports/CatalogueRepository
+│   │   ├── PatternRepositoryPostgres.ts   # implements core/catalogue/ports/PatternRepository
+│   │   ├── sql/buildListQuery.ts          # CatalogueFilter → {text, params} WHERE/ORDER builder
+│   │   ├── rowMappers.ts                  # snake_case row ↔ camelCase entity mapping
+│   │   ├── migrations/
+│   │   │   ├── 0001_catalogue_init.sql    # spec §4 DDL + §9 indexes VERBATIM
+│   │   │   └── 0002_source_write_once.sql # trigger: UPDATE may not change source (spec §5)
+│   │   ├── migrate.ts                     # ~40-LOC runner (pg, schema_migrations table)
+│   │   ├── docker-compose.test.yml        # postgres:16 pinned (NOT LocalStack)
+│   │   ├── __tests__/                     # integration tests vs Docker Postgres
+│   │   └── package.json                   # name: "@notation-hero/adapters-postgres"
 │   ├── s3/                                # Runtime adapters
-│   │   ├── LessonFileStoreS3.ts           # implements core/lesson/ports/LessonFileStore
-│   │   ├── MagicByteValidator.ts          # implements core/lesson/ports/FileValidator
+│   │   ├── CatalogueFileStoreS3.ts        # implements core/catalogue/ports/CatalogueFileStore
+│   │   ├── MagicByteValidator.ts          # implements core/catalogue/ports/FileValidator
 │   │   ├── __tests__/
-│   │   ├── docker-compose.test.yml
+│   │   ├── docker-compose.test.yml        # localstack/localstack:4.x pinned
 │   │   └── package.json                   # name: "@notation-hero/adapters-s3"
 │   ├── sns/                               # Runtime adapter for event emit
 │   │   ├── SnsEventSink.ts                # implements core/observability/ports/EventSink
 │   │   ├── __tests__/
 │   │   └── package.json                   # name: "@notation-hero/adapters-sns"
 │   └── react-admin/                       # UI adapter for the admin SPA
-│       ├── lessonsDataProvider.ts         # React-Admin DataProvider
-│       ├── lessonsResource.tsx            # Resource config (List/Edit/Create/Show)
-│       ├── LessonFileInput.tsx            # Custom FileInput → presigned-PUT upload
-│       ├── CatalogApiClient.ts            # fetch wrapper for /lessons (collapsed from http-client)
+│       ├── catalogueDataProvider.ts       # React-Admin DataProvider (items/exercises/patterns)
+│       ├── catalogueResource.tsx          # Resource: catalogue items (List/Edit/Create/Show + publish action)
+│       ├── exercisesResource.tsx          # Resource: a lesson's steps (nested via lesson_id filter)
+│       ├── patternsResource.tsx           # Resource: patterns (kind-discriminated views)
+│       ├── CatalogueFileInput.tsx         # Custom FileInput → presigned-PUT upload (source + cover)
+│       ├── AlphaTexInput.tsx              # alphaTex textarea + client-side alphaTab parse-validation
+│       ├── CatalogApiClient.ts            # fetch wrapper (collapsed from http-client)
 │       └── package.json                   # name: "@notation-hero/adapters-react-admin"
 │
-├── apps/                                  # Composition roots — one per deploy target
+├── apps/                                  # Composition roots — one per deploy target (NO infra.ts here — RC-10)
 │   ├── admin-spa/                         # K-2 frontend: React-Admin SPA
 │   │   ├── src/
-│   │   │   ├── main.tsx                   # Wires CatalogApiClient + lessonsDataProvider
-│   │   │   └── App.tsx                    # React-Admin <Admin> root
-│   │   ├── infra.ts                       # Pulumi: CloudFrontStaticSite + 2 cache behaviors + KVS Basic-Auth gate
+│   │   │   ├── main.tsx                   # Wires CatalogApiClient + catalogueDataProvider
+│   │   │   └── App.tsx                    # React-Admin <Admin> root (3 resources)
 │   │   ├── vite.config.ts
 │   │   ├── tsconfig.json
 │   │   └── package.json                   # name: "@notation-hero/admin-spa"
-│   ├── lambda-cms-crud-admin/             # K-2 backend: admin CRUD + SNS emit
+│   ├── lambda-cms-crud-admin/             # K-2 backend: admin CRUD + publish + SNS emit
 │   │   ├── handler.ts                     # buildApp() wires adapters → calls core
-│   │   ├── infra.ts                       # Pulumi: LambdaWithUrl (AWS_IAM) + permissions + SNS publish IAM
+│   │   ├── routes.ts · use-cases/ · build.ts
 │   │   ├── __tests__/handler.test.ts
 │   │   └── package.json
-│   ├── lambda-cms-crud-public/            # K-3: read API (filters status="published")
-│   │   ├── handler.ts
-│   │   ├── infra.ts                       # Pulumi: LambdaWithUrl + CloudFront + Response Headers Policy
+│   ├── lambda-cms-crud-public/            # K-3: read API (status='published' only)
+│   │   ├── handler.ts · routes.ts · use-cases/ · build.ts
 │   │   └── package.json
-│   └── lambda-cms-validate-upload/        # K-1: magic-byte validator (S3 event, no FURL)
-│       ├── handler.ts                     # S3 event → validate → move + write DDB + emit event
-│       ├── infra.ts                       # Pulumi: LambdaWithUrl(createFunctionUrl:false) + S3 event registered via shared bucket helper
+│   └── lambda-cms-validate-upload/        # K-1: magic-byte validator + parse-once seeder (S3 event, no FURL)
+│       ├── handler.ts                     # S3 event → validate → promote + UPDATE Postgres row + emit event
+│       ├── use-cases/validateAndPromote.ts · build.ts
 │       └── package.json
 │
-├── infra/                                 # Pulumi root — composes apps/*/infra.ts + cross-cutting inline resources
-│   ├── index.ts                           # Inline DynamoDB table, S3 bucket (+ CORS + lifecycle TTLs + notifications), KVS + KVS key, SNS topic, ACM certs (us-east-1 provider)
+├── infra/                                 # Pulumi root — ALL IaC lives here (RC-10)
+│   ├── index.ts                           # Composes infra/cms/*; inline S3 bucket (+CORS+lifecycle+notifications), KVS + key, SNS topic, ACM certs (us-east-1 provider). NO database resources (Neon is external — RC-6)
+│   ├── cms/
+│   │   ├── public-read-api.ts             # LambdaWithUrl + OAC + public distribution (was apps/lambda-cms-crud-public/infra.ts)
+│   │   ├── admin-api.ts                   # LambdaWithUrl (AWS_IAM) + permissions + SNS publish IAM
+│   │   ├── upload-validator.ts            # LambdaWithUrl(createFunctionUrl:false) + S3 event registration
+│   │   └── admin-site.ts                  # CloudFrontStaticSite + 2 cache behaviors + KVS Basic-Auth gate
 │   ├── Pulumi.yaml
-│   ├── Pulumi.dev.yaml                    # dev stack config (basicAuthCredential as secure)
+│   ├── Pulumi.dev.yaml                    # dev stack config (basicAuthCredential + neonDatabaseUrl as secure)
 │   ├── Pulumi.prod.yaml                   # prod stack config (scaffolded, not deployed v1)
-│   ├── README.md                          # operator runbook (deploy, rotate, rollback, KVS propagation)
+│   ├── README.md                          # operator runbook (deploy, rotate, rollback, KVS propagation, migrations)
 │   ├── tsconfig.json
 │   └── package.json                       # name: "@notation-hero/infra"
 │
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                         # Linux, bun, path-filtered: core/adapters/apps/infra; LocalStack service
-│       └── deploy.yml                     # On master merge: pulumi up (LOCAL for v1) → S3 sync → CF invalidate
+│       ├── ci.yml                         # Linux, pnpm, path-filtered: core/adapters/apps/infra; Postgres + LocalStack services
+│       └── deploy.yml                     # On master merge: migrate → pulumi up → S3 sync → CF invalidate
 │
-├── package.json                           # bun workspaces: ["core/*", "adapters/*", "apps/*", "infra"]
-├── tsconfig.base.json                     # path aliases: @core/*, @adapters/*, @apps/*
-├── .dependency-cruiser.cjs                # Layer rules: core↛adapters, adapters↛apps, handler↛infra (no Pulumi in runtime), no-circular
+├── package.json                           # pnpm scripts (lint/typecheck/test/build/depcheck) — committed (U1)
+├── pnpm-workspace.yaml                    # core/*, adapters/*, apps/*, infra — committed (U1)
+├── tsconfig.base.json                     # path aliases: @core/*, @adapters/*, @apps/* — committed (U1)
+├── .dependency-cruiser.cjs                # Layer rules: core↛adapters, adapters↛apps, apps↛infra/@pulumi, no-circular
 ├── .eslintrc.cjs                          # Per-layer ESLint rules (no-restricted-imports blocking aws-sdk/react in core/)
-├── LICENSE                                # Proprietary (all rights reserved)
+├── LICENSE                                # Proprietary (all rights reserved) — committed (U1)
 ├── .gitignore
 └── docs/                                  # Existing
     └── plans/2026-06-07-001-feat-cms-k-build-plan.md   # this file
@@ -384,41 +405,44 @@ flowchart TB
 
     subgraph "UPLOAD PIPELINE"
         S3Upload[(S3: uploads/quarantine/&lt;uuid&gt;)]
-        Validator[Lambda: cms-validate-upload<br/>magic-byte sniff via file-type]
-        S3Lessons[(S3: lessons/&lt;id&gt;/source.&lt;ext&gt;)]
+        Validator[Lambda: cms-validate-upload<br/>magic-byte sniff + parse-once seeding]
+        S3Catalogue[(S3: catalogue/&lt;id&gt;/source.&lt;ext&gt;<br/>+ catalogue/&lt;id&gt;/cover.&lt;ext&gt;)]
         S3Rejected[(S3: uploads/rejected/&lt;key&gt;<br/>7-day TTL)]
         AdminFURL -->|presigned PUT URL| AdminBrowser
         AdminBrowser -.->|direct PUT bypassing CF| S3Upload
         S3Upload -->|ObjectCreated event| Validator
-        Validator -->|valid| S3Lessons
-        Validator -->|invalid| S3Rejected
+        Validator -->|valid| S3Catalogue
+        Validator -->|invalid incl. MIDI| S3Rejected
     end
 
     subgraph "STATE"
-        DDB[(DynamoDB single-table<br/>PK=LESSON#&lt;id&gt; SK=METADATA<br/>GSI1 (category, order)<br/>GSI2 (updatedAt))]
-        AdminFURL <--> DDB
-        PublicFURL --> DDB
-        Validator -->|write Lesson record on success| DDB
-        S3Lessons -.->|signed URL minted by| PublicFURL
+        PG[(Neon Postgres — EXTERNAL SaaS, not Pulumi-provisioned<br/>catalogue_item + exercise + pattern + item_pattern<br/>pg_trgm + unaccent + tsvector search)]
+        AdminFURL <-->|@neondatabase/serverless, parameterized SQL| PG
+        PublicFURL -->|SELECT §9 projection / full record| PG
+        Validator -->|UPDATE notation_* / cover / seeded facets| PG
+        S3Catalogue -.->|signed URL minted by| PublicFURL
     end
 
     style AdminGate fill:#fa3
     style Validator fill:#3af
+    style PG fill:#9c6
 ```
 
 Three request flows mapped to the architecture:
 
-1. **Admin authoring (CRUD):** browser → CF (admin distribution) → CF Function viewer-request gate (KVS-backed Basic-Auth) → either S3 bucket (SPA static assets via OAC) or Lambda FURL (`AuthType=AWS_IAM` via OAC; CRUD operations write to DynamoDB).
-2. **Admin file upload:** browser POSTs to `/lessons/{id}/file` via CF (gated path) → admin Lambda mints a presigned S3 PUT URL → browser uploads file **directly to S3 quarantine prefix** (bypasses CloudFront entirely) → S3 ObjectCreated event triggers validator Lambda → magic-byte sniff → move to canonical key + write Lesson file metadata, OR move to rejected + log.
-3. **Public read:** player app → CF (public distribution, no gate) → Lambda FURL (`AuthType=AWS_IAM` via OAC) → DynamoDB query (list projection via GSI1, full record via PK lookup) → for `GET /lessons/{id}`, also mint short-lived signed S3 URL for the source file.
+1. **Admin authoring (CRUD):** browser → CF (admin distribution) → CF Function viewer-request gate (KVS-backed Basic-Auth) → either S3 bucket (SPA static assets via OAC) or Lambda FURL (`AuthType=AWS_IAM` via OAC; CRUD writes go to **Neon Postgres** via parameterized SQL; publish runs the §5 gates).
+2. **Admin file upload:** browser POSTs to `/api/catalogue/{id}/file` via CF (gated path) → admin Lambda mints a presigned S3 PUT URL → browser uploads file **directly to S3 quarantine prefix** (bypasses CloudFront entirely) → S3 ObjectCreated event triggers validator Lambda → magic-byte sniff + §10 parse-once seeding → promote to `catalogue/<id>/source.<ext>` + `UPDATE` the Postgres row (`notation_key/format/checksum/bytes`, `has_audio`, seeded facets), OR move to rejected + log (MIDI is rejected with `midi-not-renderable-convert-first`).
+3. **Public read:** player app → CF (public distribution, no gate) → Lambda FURL (`AuthType=AWS_IAM` via OAC) → Postgres query (**§9 list projection** for `GET /v1/catalogue`; full record + exercises + pattern links for `GET /v1/catalogue/{id}`) → also mint short-lived signed S3 URL for the source file; song-breakdown slices resolve through the **shared resolver** that refuses non-`published` source songs.
 
-The Hexagonal layer split per request: the Lambda handler is the **primary adapter** (HTTP → use case); `core/lesson/` use-cases call the **secondary adapters** (`LessonRepositoryDynamoDB`, `LessonFileStoreS3`, `MagicByteValidator`); composition root in `apps/lambda-*/handler.ts` wires them. Core never imports AWS SDK or React.
+The Hexagonal layer split per request: the Lambda handler is the **primary adapter** (HTTP → use case); `core/catalogue/` use-cases call the **secondary adapters** (`CatalogueRepositoryPostgres`, `CatalogueFileStoreS3`, `MagicByteValidator`); composition root in `apps/lambda-*/handler.ts` wires them. Core never imports AWS SDK, the Neon driver, or React.
 
 ---
 
 ## Implementation Units
 
-### U1. Repo bootstrap (Layout 4 monorepo skeleton + CI + dependency-cruiser)
+### U1. Repo bootstrap (Layout 4 monorepo skeleton + CI + dependency-cruiser) — ✅ DONE
+
+> **Status (2026-06-10): built and committed** — on **pnpm 11.5.2** (not bun; RC-9): root `package.json` + `pnpm-workspace.yaml`, `tsconfig.base.json` path aliases, `.dependency-cruiser.cjs`, `.eslintrc.cjs`, CI, LICENSE, `.gitkeep` layer dirs. See `docs/cicd-pipeline.md` for what U1 froze. The bun-flavored text below is **kept for the historical record**; read every `bun` as `pnpm`. Residual U1-adjacent work (Nx materialization) is tracked by the tooling DACI, not this plan.
 
 **Goal:** Replace Track 2's Wave 1 scaffold with a Layout 4 monorepo: root `package.json` with bun workspaces (`core/*`, `adapters/*`, `apps/*`, `infra`), `tsconfig.base.json` with path aliases, `.gitignore`, `LICENSE` (proprietary all-rights-reserved), `dependency-cruiser` config enforcing layer boundaries, baseline `ci.yml` GitHub Actions workflow. Every subsequent unit depends on this shape existing.
 
@@ -468,56 +492,185 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 
 ---
 
-### U2. Core domain (pure, no I/O)
+### U2. Core domain (pure, no I/O) — REVISED 2026-06-10
 
-**Goal:** Implement `core/lesson/` — entities (Lesson, LessonId), domain rules (magic-byte → Format mapping), port interfaces (LessonRepository, LessonFileStore, FileValidator), errors. Pure TypeScript, zero AWS/React/HTTP imports. Every adapter and Lambda handler in later units depends on these types and interfaces.
+**Goal:** Implement `core/catalogue/` — entities (`CatalogueItem`, `Exercise`, `Pattern`), the filter query language, pure file rules (magic-byte → format), pure publish-gate checks, the event schema, and the port interfaces every adapter and Lambda depends on. Pure TypeScript, zero AWS/Neon/React/HTTP imports. The shapes mirror the **locked spec** (`docs/specs/2026-06-10-catalogue-schema.md`) field-for-field; Zod refinements mirror the §4 DB CHECK constraints so invalid records fail at the boundary *and* in the database.
 
-**Requirements:** R6 (song-schema.md fidelity) · R7 (Hexagonal layering).
+**Requirements:** R6 (locked-spec fidelity) · R7 (Hexagonal layering).
 
-**Dependencies:** U1.
+**Dependencies:** U1 (✅ done).
 
 **Files:**
-- Create: `core/lesson/Lesson.ts` (TypeScript interface mirroring `song-schema.md`'s Lesson; Zod schema for runtime validation; branded `LessonId` type)
-- Create: `core/lesson/LessonId.ts` (`type LessonId = string & { __brand: "LessonId" }`; constructor `LessonId.fromString(s: string): LessonId | InvalidLessonId`)
-- Create: `core/lesson/LessonFormat.ts` (union type `Format = "gp" | "gpx" | "gp5" | "mid" | "alphatex"`; `formatFromExtension(ext: string): Format | UnknownExtension`)
-- Create: `core/lesson/LessonValidator.ts` (pure functions: `validateLesson(input: unknown): Result<Lesson, ValidationError[]>`, `validateMagicBytes(bytes: Uint8Array): Result<Format, InvalidFileFormat>` — calls the magic-byte detection logic that adapter `MagicByteValidator` wraps with the `file-type` streaming API)
-- Create: `core/lesson/LessonFilter.ts` (interface `{ category?: string; difficulty?: 1|2|3|4|5; tag?: string; pagination: { limit: number; cursor?: string } }`)
-- Create: `core/lesson/errors.ts` (`InvalidFileFormat`, `LessonNotFound`, `LessonAlreadyExists`, `ValidationError` — discriminated-union types)
-- Create: `core/lesson/ports/LessonRepository.ts` (interface with `save(lesson: Lesson): Promise<Result<void, RepositoryError>>`, `findById(id: LessonId): Promise<Result<Lesson, LessonNotFound>>`, `list(filter: LessonFilter): Promise<Result<{ items: Lesson[]; nextCursor?: string }, RepositoryError>>`, `softDelete(id: LessonId): Promise<Result<void, LessonNotFound>>`)
-- Create: `core/lesson/ports/LessonFileStore.ts` (interface with `mintPresignedPut(id: LessonId, ext: string): Promise<Result<{ url: string; key: string }, FileStoreError>>`, `mintSignedGet(key: string, ttlSeconds: number): Promise<Result<string, FileStoreError>>`)
-- Create: `core/lesson/ports/FileValidator.ts` (interface with `validateMagicBytes(stream: ReadableStream<Uint8Array>): Promise<Result<Format, InvalidFileFormat>>`)
-- Create: `core/shared/kernel/Result.ts` (discriminated-union `Result<T, E> = { ok: true; value: T } | { ok: false; error: E }` + helper `ok()` / `err()`)
-- Create: `core/shared/kernel/Brand.ts` (`type Brand<T, B> = T & { __brand: B }`)
-- Create: `core/package.json` (name `@notation-hero/core`, no runtime deps; devDep on `vitest` + `zod`)
-- Create: `core/tsconfig.json` (extends base; references `composite: true` for project refs later)
-- Test: `core/lesson/__tests__/LessonValidator.test.ts`, `core/lesson/__tests__/LessonId.test.ts`, `core/lesson/__tests__/LessonFormat.test.ts`
+- Create: `core/catalogue/CatalogueItem.ts` · `core/catalogue/Exercise.ts` · `core/catalogue/Pattern.ts` (entity types + Zod schemas)
+- Create: `core/catalogue/ids.ts` (branded `CatalogueItemId` / `ExerciseId` / `PatternId`; ids are `text` — slugs for curated items/patterns, uuid for exercises)
+- Create: `core/catalogue/NotationFormat.ts` (`'gp'|'gpx'|'gp5'|'gp4'|'gp3'|'xml'` — **no `'mid'`**, spec §2; plus `CoverFormat = 'jpg'|'png'|'webp'`)
+- Create: `core/catalogue/FileRules.ts` (pure magic-byte decision tree + size ceilings: `SOURCE_MAX_BYTES = 20_000_000`, `COVER_MAX_BYTES = 2_000_000`)
+- Create: `core/catalogue/CatalogueFilter.ts` (the spec §9 facet language)
+- Create: `core/catalogue/CatalogueEvent.ts` (`catalogue_item.{created,updated,published,archived}` + `catalogue_item.file.validated`)
+- Create: `core/catalogue/publishGates.ts` (pure §5 checks)
+- Create: `core/catalogue/errors.ts` (`InvalidFileFormat`, `MidiNotSupported`, `ItemNotFound`, `ItemAlreadyExists`, `StaleUpdate`, `PublishGateFailed`, `SourceNotAvailable`, `ValidationError` — discriminated unions)
+- Create: `core/catalogue/ports/CatalogueRepository.ts` · `ports/PatternRepository.ts` · `ports/CatalogueFileStore.ts` · `ports/FileValidator.ts`
+- Create: `core/shared/kernel/Result.ts` (`Result<T,E>` + `ok()`/`err()`) · `core/shared/kernel/Brand.ts`
+- Create: `core/package.json` (name `@notation-hero/core`; devDeps `vitest`, `zod`; **no runtime deps**) · `core/tsconfig.json`
+- Test: `core/catalogue/__tests__/{CatalogueItem,Exercise,FileRules,CatalogueFilter,publishGates}.test.ts`
+
+**Entity shapes (the contract — column-for-column with spec §4, camelCase in TS, snake_case in SQL):**
+
+```ts
+// core/catalogue/CatalogueItem.ts
+export type ItemType   = 'song' | 'lesson';
+export type ItemStatus = 'draft' | 'published' | 'archived';          // ci_status — NO pending_validation (RC-5)
+export type ItemSource = 'curated' | 'user-upload';                   // ci_source; write-once (spec §5)
+export type License    = 'royalty-free' | 'cc' | 'owned' | 'public-domain';
+export interface MediaLink { provider: string; url?: string; key?: string; label?: string }
+
+export interface CatalogueItem {
+  id: CatalogueItemId;
+  type: ItemType;
+  title: string;
+  level: number | null;              // 1–10; null = ungraded (ci_level)
+  artist: string | null;
+  bpm: number | null;                // required for songs (ci_song_bpm)
+  timeSig: string | null;
+  genre: string | null;              // stored LOWERCASE (ingest normalizes)
+  musicalKey: string | null;
+  instruments: string[];
+  skill: string[];
+  tags: string[];
+  lessonType: string | null;         // lessons only (ci_lesson_type_only); open vocab 'song-breakdown'|'beat'|'rudiment'
+  sortOrder: number | null;
+  source: ItemSource;
+  license: License | null;           // required before publishing curated items (ci_pub_license)
+  coverImageKey: string | null;
+  notationKey: string | null;        // songs only (ci_song_file); lessons carry notation on steps
+  notationFormat: NotationFormat | null;  // ci_song_fmt — no 'mid', no 'alphatex'
+  notationChecksum: string | null;   // sha256
+  notationBytes: number | null;
+  hasAudio: boolean;
+  hasVideo: boolean;
+  audio: MediaLink[] | null;
+  video: MediaLink[] | null;
+  status: ItemStatus;
+  data: Record<string, unknown> | null;  // §12 known keys: bars, sections[], album, year, defaultMappingPresetId, meta
+  createdAt: string;                 // ISO timestamptz
+  updatedAt: string;                 // ISO — doubles as the If-Match concurrency token (RC-12)
+}
+```
+
+```ts
+// core/catalogue/Exercise.ts — a lesson's ordered steps (spec §4 ②)
+export interface Exercise {
+  id: ExerciseId;
+  lessonId: CatalogueItemId;
+  stepNo: number;                    // UNIQUE (lesson_id, step_no)
+  title: string;                     // "Hi-hat only", "+ Kick"
+  sectionLabel: string | null;       // song-breakdown display label ("Chorus 1")
+  startBpm: number | null;
+  goalBpm: number | null;            // the start→goal practice ladder (ex_bpm_ladder)
+  // EXACTLY ONE of the three (ex_one_source):
+  notationTex: string | null;        // authored alphaTex inline — the common case
+  notationKey: string | null;        // rare: standalone GP/MusicXML S3 file
+  sourceItemId: CatalogueItemId | null;  // song-breakdown slice (ON DELETE RESTRICT)
+  startBar: number | null;           // ex_slice_bars: startBar > 0 AND endBar >= startBar
+  endBar: number | null;
+  data: Record<string, unknown> | null;
+}
+```
+
+```ts
+// core/catalogue/Pattern.ts — beats / fills / rudiments (spec §4 ③)
+export interface Pattern {
+  id: PatternId;                     // slug: 'rock-8th', 'single-paradiddle'
+  kind: string;                      // open vocab: 'beat'|'fill'|'rudiment' (later ostinato/scale/chord)
+  name: string;
+  family: string | null;             // kind-relative grouping (NOT genre): Rock/Funk · Roll/Diddle/Flam/Drag
+  subdivision: string | null;        // '8th'|'16th'|'triplet'|'quarter'
+  level: number | null;              // 1–10 (pat_level)
+  aliases: string[];
+  description: string | null;
+  notationTex: string | null;        // canonical pattern as alphaTex
+  data: Record<string, unknown> | null;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+```ts
+// core/catalogue/CatalogueFilter.ts — the §9 facet language (RC-1)
+export interface CatalogueFilter {
+  type?: ItemType;
+  status?: ItemStatus;               // the public API hard-codes 'published'
+  level?: { min?: number; max?: number };  // a BOUNDED level filter EXCLUDES ungraded NULLs by design (spec §9)
+  bpm?: { min?: number; max?: number };
+  timeSig?: string;
+  genre?: string;                    // compared lowercase
+  tags?: string[];                   // ALL-of (`@>` containment)
+  skill?: string[];
+  instruments?: string[];
+  lessonType?: string;
+  patternId?: string;                // JOIN item_pattern
+  search?: string;                   // fuzzy (pg_trgm) + accent-insensitive (unaccent) + full-text (tsvector)
+  sort?: 'relevance' | 'level' | 'bpm' | 'newest' | 'title' | 'curated';  // 'curated' = sort_order
+  pagination: { limit: number; offset: number };  // limit clamped to ≤100
+}
+```
+
+```ts
+// core/catalogue/ports/CatalogueRepository.ts
+export interface CatalogueListRow {   // the §9 K-3 list projection, EXACTLY (cover key still raw here;
+  id: CatalogueItemId; type: ItemType; title: string; artist: string | null;        // K-3 resolves cover_image_url)
+  genre: string | null; level: number | null; bpm: number | null; timeSig: string | null;
+  instruments: string[]; hasAudio: boolean; hasVideo: boolean;
+  sortOrder: number | null; coverImageKey: string | null; status: ItemStatus; updatedAt: string;
+}
+
+export interface CatalogueRepository {
+  saveItem(item: CatalogueItem): Promise<Result<void, ItemAlreadyExists | RepositoryError>>;
+  updateItem(item: CatalogueItem, ifUnmodifiedSince: string): Promise<Result<CatalogueItem, ItemNotFound | StaleUpdate | RepositoryError>>;
+  findById(id: CatalogueItemId): Promise<Result<CatalogueItem, ItemNotFound | RepositoryError>>;
+  list(filter: CatalogueFilter): Promise<Result<{ items: CatalogueListRow[]; total: number }, RepositoryError>>;
+  archive(id: CatalogueItemId): Promise<Result<void, ItemNotFound | RepositoryError>>;   // status='archived' tombstone — NEVER hard-delete (spec §12)
+  // exercises (a lesson's steps)
+  listExercises(lessonId: CatalogueItemId): Promise<Result<Exercise[], RepositoryError>>;
+  replaceExercises(lessonId: CatalogueItemId, steps: Exercise[]): Promise<Result<void, ItemNotFound | RepositoryError>>;  // atomic batch (reorder/upsert)
+  countExercises(lessonId: CatalogueItemId): Promise<Result<number, RepositoryError>>;   // publish gate §5
+  // pattern links (m:n)
+  linkPattern(itemId: CatalogueItemId, patternId: PatternId): Promise<Result<void, RepositoryError>>;
+  unlinkPattern(itemId: CatalogueItemId, patternId: PatternId): Promise<Result<void, RepositoryError>>;
+  listPatternsForItem(itemId: CatalogueItemId): Promise<Result<Pattern[], RepositoryError>>;
+}
+```
 
 **Approach:**
-- The `Lesson` interface in `core/lesson/Lesson.ts` is the **single source of truth** for the schema. Adapter code (DynamoDB, React-Admin) imports it. If Track 3 lands changes to `song-schema.md`, update this file and downstream code surfaces type errors.
-- Zod schema lives alongside the type: `LessonSchema` (Zod) → `type Lesson = z.infer<typeof LessonSchema>`. Single declaration, used both at compile-time (types) and runtime (validation in the Lambda handler).
-- Branded `LessonId` prevents passing raw strings into ports (compile-time error). Construction via `LessonId.fromString(s)` validates UUID shape.
-- `validateMagicBytes` in `LessonValidator.ts` contains the pure decision tree (ZIP → MIDI → BCFZ → Pascal-string GP3-5 → UTF-8 sniff). The `MagicByteValidator` adapter (U4) wraps it with the streaming I/O from `file-type`.
-- `Result<T, E>` over throwing — keeps error-paths explicit at call sites and works well with Hexagonal layering.
+- Zod schema beside each type: `CatalogueItemSchema` → `type CatalogueItem = z.infer<…>`. **Refinements mirror the §4 CHECKs** so a record that would violate the DB fails first at the boundary with a named error: `ci_song_bpm` (song ⇒ bpm), `ci_song_file` (song ⇒ notationKey), `ci_song_fmt` (format ∈ the no-mid vocab), `ci_lesson_type_only` (song ⇒ lessonType null), `ci_level` (1–10 or null), `ex_one_source` (exactly one of tex|key|slice), `ex_slice_bars`, `ex_bpm_ladder` (goal ≥ start), `ci_pub_license` + `ci_shared_curated` (encoded in `publishGates.ts`, see below).
+- `publishGates.ts` is pure: `canPublish(item, exerciseCount): Result<void, PublishGateFailed>` — checks (a) lesson ⇒ `exerciseCount ≥ 1`, (b) curated ⇒ `license != null`, (c) `source === 'curated'` (the v1 shared catalogue is curated-only). U6 calls it before flipping status; the DB CHECKs back it up.
+- `FileRules.ts` holds the pure magic-byte decision tree the U4 adapter wraps with streaming I/O: `PK\x03\x04`→`gp` (GP7/8 zip) · `BCFZ`→`gpx` (GP6) · Pascal-string `FICHIER GUITAR PRO v3/v4/v5`→`gp3/gp4/gp5` · `<?xml`→`xml` · `MThd`→`err(MidiNotSupported)` (curator must convert first — RC-5) · `\xFF\xD8\xFF`→`jpg` · `\x89PNG`→`png` · `RIFF…WEBP`→`webp` · else `err(InvalidFileFormat)`.
+- `Result<T, E>` over throwing — explicit error paths at call sites; ~20 LOC, no `neverthrow`/`effect`.
+- snake_case↔camelCase mapping is the **adapter's** job (U4 `rowMappers.ts`); core types are camelCase only.
 
-**Patterns to follow:**
-- Zod schema definitions: standard Zod 3.x patterns (no Zod-specific magic; well documented).
-- Result type: tiny inline implementation (not pulling in `neverthrow` or `effect`); ~20 LOC.
-- Test style: Vitest `describe/it/expect`; no mocks (no I/O to mock); table-driven for the magic-byte decision tree.
+**TDD task list:**
 
-**Test scenarios:**
-- Happy path: `validateLesson(validInput)` returns `ok(lesson)` with all required fields parsed; `formatFromExtension(".gp")` returns `ok("gp")`.
-- Edge case: `validateMagicBytes` correctly classifies (a) GP3 (Pascal-string `\x18FICHIER GUITAR PRO v3.00`), (b) GP5 (`\x1eFICHIER GUITAR PRO v5.00`), (c) GP6 (`BCFZ` at offset 0), (d) GP7/8 (ZIP `PK\x03\x04` at offset 0), (e) MIDI (`MThd` at offset 0), (f) alphaTex (no magic bytes; UTF-8 sniff passes), (g) garbage bytes (returns `err(InvalidFileFormat)`).
-- Edge case: `LessonId.fromString("not-a-uuid")` returns `err(InvalidLessonId)`; valid UUIDs return `ok(LessonId)`.
-- Edge case: `validateLesson` with missing required fields returns `err([…])` listing each missing field; with `meta` blob containing arbitrary nested data returns `ok(...)` (extensibility).
-- Edge case: `LessonFilter` with negative `pagination.limit` returns parse error; with `pagination.limit > 100` clamps to 100 (or errors — decide during impl).
-- Error path: `validateLesson` with malformed `file.checksum` (not sha256 shape) returns specific error.
-- No integration scenarios for this unit — pure domain, no I/O crossings.
+- [ ] **2.1** Write `core/shared/kernel/__tests__/Result.test.ts` (ok/err narrowing) → run `pnpm vitest run core/shared --root .` → FAIL → implement `Result.ts` + `Brand.ts` → PASS → commit `feat(core): Result + Brand kernel`
+- [ ] **2.2** Write `CatalogueItem.test.ts` table-driven Zod cases — valid song / valid lesson / song-missing-bpm (`ci_song_bpm`) / song-missing-file (`ci_song_file`) / `notationFormat:'mid'` rejected / song-with-lessonType rejected (`ci_lesson_type_only`) / `level: 0|11` rejected, `level: null` OK / `data` blob passthrough → FAIL → implement `ids.ts`, `NotationFormat.ts`, `CatalogueItem.ts` → PASS → commit
+- [ ] **2.3** Write `Exercise.test.ts` — exactly-one-source matrix (tex only ✓ · key only ✓ · slice+bars ✓ · none ✗ · two ✗), `ex_slice_bars` (startBar 0 ✗, endBar < startBar ✗), `ex_bpm_ladder` (goal < start ✗, equal ✓, nulls ✓) → FAIL → implement → PASS → commit
+- [ ] **2.4** Write `Pattern.test.ts` (level bounds; open `kind` vocab accepts `'scale'`) → implement → PASS → commit
+- [ ] **2.5** Write `FileRules.test.ts` — fixture-byte table for all 6 source formats + 3 cover formats + `MThd`→`MidiNotSupported` + garbage→`InvalidFileFormat` + truncated-100-byte inputs → FAIL → implement decision tree → PASS → commit
+- [ ] **2.6** Write `CatalogueFilter.test.ts` (limit clamp >100→100; negative limit → parse error) + `publishGates.test.ts` (lesson-no-exercises ✗ · curated-no-license ✗ · user-upload ✗ · curated+license+1-exercise ✓) → FAIL → implement → PASS → commit
+- [ ] **2.7** Define the four ports + `CatalogueEvent.ts` + `errors.ts` (types only — compile check) → `pnpm typecheck` green → `pnpm depcheck` green (zero `core→adapters|apps` imports) → commit `feat(core): catalogue ports + events`
 
-**Verification:** `bun test core/` runs green with ≥95% line coverage on `core/lesson/`. `dependency-cruiser` confirms zero imports from `adapters/` or `apps/` into `core/`. `tsc --noEmit` clean. The `Lesson` type matches `song-schema.md`'s documented shape — manual spot-check at PR time.
+**Test scenarios:** (encoded in the TDD list above; the load-bearing ones)
+- Zod refinements reject exactly what the §4 CHECKs reject — one named test per CHECK constraint.
+- `FileRules` classifies every supported format from first-bytes fixtures; MIDI is a *distinct* error from garbage (the admin UI tells the curator to convert, not "invalid file").
+- `publishGates` is exhaustive over the §5 matrix.
+- No integration scenarios — pure domain, no I/O crossings.
+
+**Verification:** `pnpm vitest run core --root .` green with ≥95% line coverage on `core/catalogue/`; `pnpm depcheck` confirms zero imports from `adapters/` or `apps/` into `core/`; `pnpm typecheck` clean. Field-for-field spot-check of `CatalogueItem` against spec §4 ① at PR time.
 
 ---
 
 ### U3. Pulumi infra primitives (adapters/aws/ as ComponentResources)
+
+> **Revision note (2026-06-10):** U3 is **unchanged by the Postgres swap** — both components are data-store-agnostic. Two deltas only: (a) the components' consumers are now the `infra/cms/*.ts` modules (RC-10), not `apps/*/infra.ts`; (b) commands are pnpm (RC-9).
 
 **Goal:** Build the two reusable Pulumi ComponentResource classes that have ≥2 consumers in this plan: `LambdaWithUrl` (3 consumers — 3 Lambdas in U5/U6/U7) and `CloudFrontStaticSite` (2 consumers — admin distribution in U8 + public distribution in U5). The originally-planned `DynamoSingleTable`, `EdgeBasicAuth`, and `S3FileBucket` each have exactly one consumer and are inlined in `infra/index.ts` (U9) instead — scope-guardian-flagged premature generality.
 
@@ -569,78 +722,151 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 **Test scenarios:**
 - Happy path: instantiate each component in a Pulumi unit-test fixture (`@pulumi/pulumi/testing`); assert the expected child resources exist (e.g., `LambdaWithUrl` creates 4 children: Function, Role, RolePolicy, FunctionUrl).
 - Happy path: `LambdaWithUrl` with `authType: "AWS_IAM"` emits a Function URL with that auth type; with `"NONE"` emits with NONE.
-- Edge case: `DynamoSingleTable` with empty GSI list emits a table with PK/SK only and no GSIs (no extra ARNs in policy).
-- Edge case: `EdgeBasicAuth` component synthesizes a CF Function with inlined KVS handle reference matching the KVS resource's ID.
-- Integration scenario: `pulumi preview` on a throwaway stack using the component runs to completion (no resource graph errors) — confirms shape is deployable.
+- Integration scenario: `pulumi preview` on a throwaway stack using the component runs to completion (no resource graph errors) — confirms shape is deployable. *(The original `DynamoSingleTable`/`EdgeBasicAuth` component scenarios are gone — those were inlined per doc-review, and DynamoDB left K's scope entirely per RC-3.)*
 - Test expectation: no `pulumi up` in tests (no AWS account hits); only `preview` + Pulumi's mock testing API.
 
-**Verification:** `bun test adapters/aws/` runs green. `dependency-cruiser` confirms `adapters/aws/` only imports from `@pulumi/*` and TS types from `core/` (no runtime core imports). Component naming convention applied uniformly.
+**Verification:** `pnpm vitest run adapters/aws --root .` runs green. `dependency-cruiser` confirms `adapters/aws/` only imports from `@pulumi/*` and TS types from `core/` (no runtime core imports). Component naming convention applied uniformly.
 
 ---
 
-### U4. Runtime adapters (DynamoDB + S3 + magic-byte)
+### U4. Runtime adapters (Postgres + S3 + SNS) — REVISED 2026-06-10
 
-**Goal:** Implement the secondary-adapter classes that wire the core ports to real AWS services: `LessonRepositoryDynamoDB` (implements `LessonRepository`), `LessonFileStoreS3` (implements `LessonFileStore`), `MagicByteValidator` (implements `FileValidator`). These are imported by the Lambda composition roots in U5/U6/U7.
+**Goal:** Implement the secondary adapters that wire the core ports to real services: **`adapters/postgres/`** (NEW — `CatalogueRepositoryPostgres` + `PatternRepositoryPostgres` over raw parameterized SQL, plus the **migrations** that ARE the locked DDL), `adapters/s3/` (`CatalogueFileStoreS3` + `MagicByteValidator`), `adapters/sns/` (`SnsEventSink` for `CatalogueEvent`). The DynamoDB catalogue adapter from the original plan is **not built** (RC-3).
 
-**Requirements:** R1 (lesson store) · R3 (admin CRUD backend) · R7 (Hexagonal layer).
+**Requirements:** R1 (lesson store) · R3 (admin CRUD backend) · R6 (DDL verbatim) · R7 (Hexagonal layer) · R9 (raw parameterized SQL; Docker Postgres tests).
 
 **Dependencies:** U2 (port interfaces).
 
 **Files:**
-- Create: `adapters/dynamodb/LessonRepositoryDynamoDB.ts` (constructor `{ tableName: string; client?: DynamoDBDocumentClient }`; implements `LessonRepository`; uses raw `@aws-sdk/lib-dynamodb` `DocumentClient` for marshaling — NO DynamoDB-Toolbox, per doc-review convergence on YAGNI for a single entity).
-- Create: `adapters/dynamodb/schema.ts` (Zod schema re-export from `@notation-hero/core/lesson/Lesson` + DynamoDB key composition helpers: `pk(id) → "LESSON#${id}"`, `sk() → "METADATA"`, `gsi1PkSk(category, order, id) → { GSI1PK: category, GSI1SK: \`${order}#${id}\` }`)
-- Create: `adapters/dynamodb/package.json` (deps: `@aws-sdk/client-dynamodb`, `@aws-sdk/lib-dynamodb`, `zod` peer; no DynamoDB-Toolbox)
-- Create: `adapters/dynamodb/__tests__/LessonRepositoryDynamoDB.test.ts` (integration tests via LocalStack — pinned `localstack/localstack:4.x` in `docker-compose.test.yml`)
-- Create: `adapters/dynamodb/docker-compose.test.yml` (LocalStack pinned with `SERVICES=dynamodb`, health-check)
-- Create: `adapters/s3/LessonFileStoreS3.ts` (constructor `{ bucketName: string; client?: S3Client; signedUrlTtlSeconds?: number }`; implements `LessonFileStore`; uses `@aws-sdk/s3-request-presigner`).
-- Create: `adapters/s3/MagicByteValidator.ts` (constructor `{ client?: S3Client }`; implements `FileValidator`; uses `file-type` package's `fileTypeStream` for streaming validation).
-- Create: `adapters/s3/package.json` (deps: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `file-type@^21`)
-- Create: `adapters/s3/__tests__/{LessonFileStoreS3,MagicByteValidator}.test.ts`
-- Create: `adapters/s3/docker-compose.test.yml` (LocalStack pinned with `SERVICES=s3`)
-- Create: `adapters/sns/SnsEventSink.ts` (constructor `{ topicArn: string; client?: SNSClient }`; implements `core/observability/ports/EventSink`; uses `@aws-sdk/client-sns` `PublishCommand` with `MessageAttributes` typed to the `LessonEvent` shape — admin Lambda's `createLesson`/`updateLesson`/`deleteLesson` use-cases publish via this).
-- Create: `adapters/sns/package.json` (deps: `@aws-sdk/client-sns`)
-- Create: `adapters/sns/__tests__/SnsEventSink.test.ts` (integration via LocalStack SNS)
-- Create: `adapters/dynamodb/tsconfig.json`, `adapters/s3/tsconfig.json`, `adapters/sns/tsconfig.json`
-
-**Approach:**
-- `LessonRepositoryDynamoDB` uses `@aws-sdk/lib-dynamodb`'s `DocumentClient.send(new GetCommand|PutCommand|UpdateCommand|QueryCommand|...)`. Zod schema from `core/lesson/Lesson.ts` handles validation; DocumentClient handles attribute marshaling.
-- PK/SK composition (via `schema.ts` helpers): `{ PK: "LESSON#${id}", SK: "METADATA" }`. GSI1 keys: `{ GSI1PK: category, GSI1SK: \`${String(order).padStart(6, '0')}#${id}\` }` (compound SK for stable sort within category; left-padded `order` for lexicographic correctness). **GSI2 (`updatedAt` change-feed) NOT built in K v1** — comment-only placeholder per doc-review scope-down.
-- `list(filter)` translates `LessonFilter` to:
-  - With `category` → Query on GSI1 with `KeyConditionExpression: "GSI1PK = :cat"` + `FilterExpression` for `difficulty` / `tag` / `status` (default `status="published"`).
-  - Without `category` → Scan with FilterExpression (acceptable for hundreds of items; revisit at thousand-scale).
-  - Pagination via `LastEvaluatedKey` opaque cursor — **MUST validate cursor shape on decode** (base64 → JSON → assert keys are non-empty strings before forwarding to `ExclusiveStartKey`); reject malformed cursor with `400 Bad Cursor` to prevent forged-cursor attacks (security-flagged in coherence-residual).
-- `softDelete(id)` does NOT delete the item — sets `status = "draft"`, increments `version`, updates `updatedAt`. True deletion is a manual admin task (out of scope).
-- `LessonFileStoreS3.mintPresignedPut(id, ext)` returns a URL with `Conditions: [["content-length-range", 0, 50_000_000], ["in", "$Content-Type", "application/octet-stream", "audio/midi", "audio/x-midi", "text/plain"]]` — **explicit Content-Type allowlist** (Guitar Pro = `application/octet-stream`, MIDI = `audio/midi`/`audio/x-midi`, alphaTex = `text/plain`). Prevents HTML/JS/SVG uploads at the S3 storage layer (security-flagged stored-XSS vector). Targeting key `uploads/quarantine/${uuidv4()}.${ext}` (NOT the final key — validator moves it on success). **`PutObject` SignedHeaders include `x-amz-meta-lesson-id`** so the validator (U7) can read the lesson-id metadata.
-- `LessonFileStoreS3.mintSignedGet(key, ttl)` uses `@aws-sdk/s3-request-presigner` `getSignedUrl` with 5-min default TTL.
-- `MagicByteValidator.validateMagicBytes(stream)` does NOT load the whole object — uses `fileTypeStream(Readable.toWeb(s3Body))` from `file-type` package; only the first ~4KB hits Lambda memory. Reads detected MIME, maps to our `Format` union via `core/lesson/LessonValidator`'s pure decision tree.
-- **`adapters/http-client/` package is NOT built** as a standalone (per doc-review scope-down). The `CatalogApiClient` lives directly in `adapters/react-admin/CatalogApiClient.ts` (single consumer).
-
-**Patterns to follow:**
-- DynamoDB-Toolbox v2 patterns: [dynamodbtoolbox.com](https://www.dynamodbtoolbox.com/).
-- `file-type` streaming usage:
-  ```ts
-  import { fileTypeStream } from 'file-type';
-  const stream = await fileTypeStream(Readable.toWeb(s3Body));
-  stream.fileType  // { mime, ext }
+- Create: `adapters/postgres/migrations/0001_catalogue_init.sql` — the spec **§4 DDL + §9 indexes, copied verbatim** (extensions `pg_trgm` + `unaccent`; `immutable_unaccent` + `immutable_array_to_string` wrappers; `catalogue_item` / `exercise` / `pattern` / `item_pattern` with ALL CHECK constraints; GIN/btree/trgm indexes; the GENERATED `search` tsvector column + `ci_fts`). Source of truth is the spec — any edit here is a spec change and is out of this plan's authority.
+- Create: `adapters/postgres/migrations/0002_source_write_once.sql` — spec-§5-sanctioned trigger:
+  ```sql
+  CREATE FUNCTION catalogue_item_source_write_once() RETURNS trigger
+    LANGUAGE plpgsql AS $$
+  BEGIN
+    IF NEW.source IS DISTINCT FROM OLD.source THEN
+      RAISE EXCEPTION 'catalogue_item.source is write-once (set by K-1 ingest)';
+    END IF;
+    RETURN NEW;
+  END $$;
+  CREATE TRIGGER trg_ci_source_write_once
+    BEFORE UPDATE ON catalogue_item
+    FOR EACH ROW EXECUTE FUNCTION catalogue_item_source_write_once();
   ```
-- S3 presigner: `@aws-sdk/s3-request-presigner@^3.x` (modular import).
+- Create: `adapters/postgres/migrate.ts` — the ~40-LOC runner:
+  ```ts
+  import { Client } from 'pg';
+  import { readdir, readFile } from 'node:fs/promises';
+  import { join } from 'node:path';
 
-**Test scenarios:**
-- Happy path (DDB): `save(lesson)` then `findById(id)` returns equal record (round-trip).
-- Happy path (DDB): `list({ category: "Rock", pagination: { limit: 10 } })` returns at most 10 items, all with `category="Rock"`, sorted by `order` then `id`.
-- Happy path (DDB): `softDelete(id)` flips `status` to `"draft"`; `findById` still returns the record; `list` with no status filter still includes it (filtering is consumer responsibility).
-- Happy path (S3): `mintPresignedPut(id, "gp")` returns a URL; client PUT of a small file to that URL succeeds; object lands at `uploads/quarantine/<uuid>.gp`.
-- Happy path (S3): `mintSignedGet(key, 60)` returns a URL that fetches the object within 60s and returns 403 after expiry.
-- Happy path (Validator): each format fixture (GP3/4/5/6/7/8 + MIDI + alphaTex sample) classified correctly via streaming validation.
-- Edge case (DDB): `save` with duplicate ID returns `err(LessonAlreadyExists)` — confirms conditional write.
-- Edge case (DDB): `list` with no items returns `ok({ items: [], nextCursor: undefined })`.
-- Edge case (DDB): pagination — `list({ pagination: { limit: 5 } })` followed by `list({ pagination: { limit: 5, cursor: prevCursor } })` returns disjoint pages.
-- Edge case (S3): `mintPresignedPut` with file format `"unknown"` returns `err(InvalidFileFormat)`.
-- Edge case (Validator): garbage bytes return `err(InvalidFileFormat)`; partial file (truncated to 100 bytes) for a format where signature is shorter than 100 bytes still detects correctly.
-- Error path: DDB throttling (simulated 429) returns `err(RepositoryError)`; LocalStack S3 outage (container stopped) returns `err(FileStoreError)`.
-- Integration scenario: full upload pipeline simulation — `mintPresignedPut` → client PUT → `MagicByteValidator.validateMagicBytes` reads from S3 → returns format → caller can move object to canonical key. Confirms the contract that U7 will consume.
+  export async function migrate(databaseUrl: string, dir = join(import.meta.dirname, 'migrations')) {
+    const client = new Client({ connectionString: databaseUrl });
+    await client.connect();
+    try {
+      await client.query(
+        'CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())'
+      );
+      const applied = new Set(
+        (await client.query('SELECT name FROM schema_migrations')).rows.map((r) => r.name)
+      );
+      for (const file of (await readdir(dir)).filter((f) => f.endsWith('.sql')).sort()) {
+        if (applied.has(file)) continue;
+        const sql = await readFile(join(dir, file), 'utf8');
+        await client.query('BEGIN');
+        try {
+          await client.query(sql);
+          await client.query('INSERT INTO schema_migrations (name) VALUES ($1)', [file]);
+          await client.query('COMMIT');
+          console.log(`applied ${file}`);
+        } catch (e) {
+          await client.query('ROLLBACK');
+          throw e;
+        }
+      }
+    } finally {
+      await client.end();
+    }
+  }
+  ```
+  CLI entry: `pnpm --filter @notation-hero/adapters-postgres migrate` reads `DATABASE_URL` (Docker for tests; the Neon **TCP** `postgres://` URL at deploy time — Neon speaks standard protocol; the HTTP driver is a Lambda-runtime concern only).
+- Create: `adapters/postgres/SqlExecutor.ts`:
+  ```ts
+  export interface SqlQuery { text: string; params?: unknown[] }
+  export interface SqlExecutor {
+    query<Row = Record<string, unknown>>(text: string, params?: unknown[]): Promise<Row[]>;
+    batch(queries: SqlQuery[]): Promise<void>;   // atomic — all or nothing
+  }
+  ```
+- Create: `adapters/postgres/neonExecutor.ts` (runtime — `@neondatabase/serverless`: `query` via `neon(url).query(text, params)`; `batch` via the driver's non-interactive `transaction(queries)`; both HTTP, no pool to manage)
+- Create: `adapters/postgres/pgExecutor.ts` (tests + migrations — `pg.Pool`: `query` via `pool.query(...).rows`; `batch` via `BEGIN`…`COMMIT` on one client)
+- Create: `adapters/postgres/CatalogueRepositoryPostgres.ts` (implements `CatalogueRepository`; constructor `{ sql: SqlExecutor }`)
+- Create: `adapters/postgres/PatternRepositoryPostgres.ts` (implements `PatternRepository`)
+- Create: `adapters/postgres/sql/buildListQuery.ts` (pure `CatalogueFilter → { text, params }` builder — unit-testable without a database)
+- Create: `adapters/postgres/rowMappers.ts` (snake_case row ↔ camelCase entity; timestamptz → ISO strings)
+- Create: `adapters/postgres/docker-compose.test.yml`:
+  ```yaml
+  services:
+    postgres:
+      image: postgres:16
+      environment:
+        POSTGRES_USER: notation
+        POSTGRES_PASSWORD: notation
+        POSTGRES_DB: catalogue_test
+      ports: ["55432:5432"]
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U notation -d catalogue_test"]
+        interval: 2s
+        timeout: 2s
+        retries: 15
+  ```
+- Create: `adapters/postgres/__tests__/{migrations,CatalogueRepositoryPostgres,PatternRepositoryPostgres,buildListQuery}.test.ts`
+- Create: `adapters/postgres/package.json` (name `@notation-hero/adapters-postgres`; deps: `@neondatabase/serverless`; devDeps: `pg`, `@types/pg`, `vitest`; peer: `@notation-hero/core`) · `adapters/postgres/tsconfig.json`
+- Create: `adapters/s3/CatalogueFileStoreS3.ts` (implements `CatalogueFileStore`; presigned PUT/GET + `promote(quarantineKey, finalKey)` server-side copy+delete)
+- Create: `adapters/s3/MagicByteValidator.ts` (wraps `core/catalogue/FileRules` with `file-type` streaming)
+- Create: `adapters/s3/package.json` (deps: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `file-type@^21`) · `adapters/s3/docker-compose.test.yml` (LocalStack `SERVICES=s3`) · `adapters/s3/__tests__/`
+- Create: `adapters/sns/SnsEventSink.ts` (implements `EventSink` for `CatalogueEvent`; `@aws-sdk/client-sns` `PublishCommand` with typed `MessageAttributes`) · `adapters/sns/package.json` · `adapters/sns/__tests__/` (LocalStack SNS)
 
-**Verification:** `bun test adapters/dynamodb/ adapters/s3/` runs green against LocalStack. CI runs the LocalStack-backed integration tests in a docker-compose service (acceptable on Linux ubuntu-latest; documented in `ci.yml`).
+**Approach (Postgres adapter):**
+- **The migrations ARE the contract.** `0001` is copied from spec §4+§9 byte-for-byte (minus the markdown fences). The migration test suite **probes the CHECKs**: each constraint gets one INSERT/UPDATE that must fail with that constraint name — this proves the applied DDL matches the spec, not an approximation of it.
+- `list(filter)` goes through `buildListQuery(filter)`, which appends `WHERE` clauses per facet with `$n` placeholders:
+  - equality facets → `type = $n`, `status = $n`, `time_sig = $n`, `genre = $n` (genre param lowercased), `lesson_type = $n`
+  - ranges → `bpm >= $n` / `bpm <= $n`; `level >= $n` / `level <= $n` (a bounded level filter naturally excludes `NULL` — spec §9 semantics)
+  - arrays → `instruments @> $n` / `skill @> $n` / `tags @> $n` (Postgres array containment, GIN-indexed)
+  - pattern → `EXISTS (SELECT 1 FROM item_pattern ip WHERE ip.item_id = ci.id AND ip.pattern_id = $n)`
+  - search → `(search @@ websearch_to_tsquery('simple', immutable_unaccent($n)) OR immutable_unaccent(lower(title)) % immutable_unaccent(lower($n)) OR immutable_unaccent(lower(coalesce(artist,''))) % immutable_unaccent(lower($n)))` — full-text first, trigram fallback for partials; accent + case-insensitive end-to-end
+  - sort → `relevance` (ts_rank + similarity when `search` present, else `updated_at DESC`) · `level NULLS LAST` · `bpm` · `newest` (`created_at DESC`) · `title` · `curated` (`sort_order NULLS LAST, title`)
+  - projection — **exactly the §9 list columns**; `data`, `notation_key`, `notation_checksum` never selected in list mode; `count(*) OVER()` for `total`
+- `updateItem(item, ifUnmodifiedSince)` — single statement, RC-12: `UPDATE catalogue_item SET …, updated_at = now() WHERE id = $1 AND updated_at = $2 RETURNING *`; 0 rows → re-`SELECT` to distinguish `ItemNotFound` from `StaleUpdate`. **The SET list never includes `source`** (write-once; trigger backs it up) and never includes `created_at`.
+- `archive(id)` → `UPDATE catalogue_item SET status='archived', updated_at=now() WHERE id=$1` — the tombstone path; no `DELETE` statement exists in the adapter (spec §12).
+- `replaceExercises(lessonId, steps)` → one atomic `batch`: `DELETE FROM exercise WHERE lesson_id=$1` + one `INSERT` per step. Satisfies `UNIQUE (lesson_id, step_no)` reordering without intermediate-state violations.
+- `saveItem` maps unique-violation (SQLSTATE `23505`) → `ItemAlreadyExists`; CHECK violation (`23514`) → `ValidationError` with the constraint name (belt-and-braces behind the U2 Zod boundary).
+- Tests run against **Docker `postgres:16`** (`pnpm --filter @notation-hero/adapters-postgres test:integration` boots compose, runs `migrate()`, executes the suite, tears down). An **env-gated smoke test** (`NEON_SMOKE=1 DATABASE_URL=postgres://…neon…`) re-runs a 5-query subset through `neonExecutor` against a throwaway Neon branch to catch driver drift; CI skips it by default.
+
+**Approach (S3/SNS deltas from the original):**
+- `mintPresignedPut(id, kind, ext)` now takes `kind: 'source' | 'cover'`: source → `content-length-range [0, 20_000_000]` + octet-stream/xml content types; cover → `[0, 2_000_000]` + `image/jpeg|png|webp` (RC-7). Both target `uploads/quarantine/<uuid>.<ext>` with `x-amz-meta-item-id` + `x-amz-meta-kind` metadata.
+- `promote(quarantineKey, finalKey)` does the server-side `CopyObject` → `catalogue/<id>/source.<ext>` or `catalogue/<id>/cover.<ext>` + `DeleteObject` on quarantine — extracted into the port so U7's use-case stays pure.
+- `SnsEventSink` publishes `CatalogueEvent` (RC-11); `MessageAttributes.eventType` carries the dotted name for H-6 subscription filters.
+
+**TDD task list:**
+
+- [ ] **4.1** Copy spec §4 DDL + §9 indexes → `migrations/0001_catalogue_init.sql`; write `migrations.test.ts` asserting `migrate()` applies cleanly on a fresh Docker Postgres and is idempotent on re-run → `docker compose -f adapters/postgres/docker-compose.test.yml up -d --wait && pnpm vitest run adapters/postgres/__tests__/migrations.test.ts --root .` → FAIL (no runner) → implement `migrate.ts` + `pgExecutor.ts` → PASS → commit `feat(adapters-postgres): migrations runner + verbatim catalogue DDL`
+- [ ] **4.2** Extend `migrations.test.ts` with **one failing INSERT/UPDATE per CHECK** (`ci_type`, `ci_status`, `ci_level`, `ci_song_bpm`, `ci_song_file`, `ci_song_fmt`, `ci_lesson_type_only`, `ci_shared_curated`, `ci_source`, `ci_pub_license`, `ex_one_source`, `ex_slice_bars`, `ex_bpm_ladder`, `pat_level`) asserting the named constraint in the error → PASS (DDL already enforces) → commit `test(adapters-postgres): CHECK-constraint fidelity probes`
+- [ ] **4.3** Write `0002_source_write_once.sql` + test (UPDATE flipping `user-upload`→`curated` raises) → run → PASS → commit
+- [ ] **4.4** Write `buildListQuery.test.ts` — pure unit table: each facet alone, combined facets, search-only, every sort, pagination clamp; assert generated `text` + `params` (no DB needed) → FAIL → implement `sql/buildListQuery.ts` → PASS → commit
+- [ ] **4.5** Write `CatalogueRepositoryPostgres.test.ts` round-trips against Docker: save→findById equality (incl. `data jsonb` and ISO timestamps via `rowMappers`); duplicate save → `ItemAlreadyExists`; `updateItem` happy + stale (`StaleUpdate`) + not-found; `archive` tombstone (status flips, `updated_at` bumps, row still SELECTable) → FAIL → implement repository + `rowMappers.ts` → PASS → commit
+- [ ] **4.6** Extend with search/filter integration cases: seed "São Paulo Samba" + "Motörhead — Ace of Spades" + a beat lesson; assert `search:'sao'` and `'motorhead'` match (accent/case-insensitive); `tags @>`, bpm-range, `level` bound excludes ungraded NULL, `patternId` join, §9 projection excludes `data`/`notation_key` → PASS → commit
+- [ ] **4.7** Write exercise + pattern-link tests: `replaceExercises` atomic reorder (step_no swap in one call); `countExercises`; slice-source `ON DELETE RESTRICT` (hard DELETE of sliced song fails at DB; `archive` succeeds); `linkPattern`/`unlinkPattern`/`listPatternsForItem` → implement remaining methods + `PatternRepositoryPostgres` → PASS → commit
+- [ ] **4.8** Implement `neonExecutor.ts` + the env-gated Neon smoke test (skips without `NEON_SMOKE=1`) → `pnpm typecheck` green → commit
+- [ ] **4.9** Update `adapters/s3/`: rename store to `CatalogueFileStoreS3`, add `kind: 'source'|'cover'` presign rules + `promote()`; LocalStack tests for PUT-within-limits, content-type allowlist rejection, promote copy+delete → PASS → commit
+- [ ] **4.10** Update `adapters/sns/SnsEventSink` to `CatalogueEvent` + LocalStack test → PASS → commit `feat(adapters): S3 catalogue file store + SNS catalogue events`
+
+**Test scenarios:** (beyond the TDD list)
+- Error path: Postgres down (compose stopped) → repository returns `err(RepositoryError)`, never throws raw driver errors across the port.
+- Edge: `list` on empty DB → `ok({ items: [], total: 0 })`; offset past end → empty page with correct `total`.
+- Edge: `replaceExercises` with an exercise violating `ex_one_source` → whole batch rolls back (count unchanged).
+- Integration: presigned PUT of a 25 MB file → S3 rejects via `content-length-range` (proves the §8 ceiling holds at the storage layer, before the validator even runs).
+
+**Verification:** `pnpm vitest run adapters/postgres --root .` green against Docker `postgres:16` (compose helper script boots/waits/tears down); `pnpm vitest run adapters/s3 adapters/sns --root .` green against LocalStack. CI runs both as services (documented in `ci.yml`). `pnpm depcheck` green.
 
 ---
 
