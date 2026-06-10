@@ -870,175 +870,189 @@ export interface CatalogueRepository {
 
 ---
 
-### U5. Public read API (K-3) — `apps/lambda-cms-crud-public`
+### U5. Public read API (K-3) — `apps/lambda-cms-crud-public` — REVISED 2026-06-10
 
-**Goal:** Build the public catalog API Lambda — `GET /lessons?category=&difficulty=&tag=` (list projection) + `GET /lessons/{id}` (full record + short-lived signed S3 URL for the source file). Behind CloudFront via OAC (`AuthType: AWS_IAM`). Composes core use-cases with DynamoDB + S3 adapters.
+**Goal:** Build the public catalog API Lambda — `GET /v1/catalogue` (the **spec §9 list projection exactly**) + `GET /v1/catalogue/{id}` (full record + exercises + pattern links + short-lived signed S3 URL; song-breakdown slices resolved through the **single shared resolver** with the spec §6 D2 published-source check). Behind CloudFront via OAC (`AuthType: AWS_IAM`). Composes core use-cases with the Postgres + S3 adapters.
 
-**Requirements:** R2 (K-3 catalog API) · R7 (composition root).
+**Requirements:** R2 (K-3 catalog API) · R7 (composition root) · R9 (parameterized SQL only).
 
-**Dependencies:** U2 (core ports), U3 (LambdaWithUrl + CloudFrontStaticSite components), U4 (DynamoDB + S3 adapters).
+**Dependencies:** U2 (core ports), U3 (`LambdaWithUrl` + `CloudFrontStaticSite` components), U4 (Postgres + S3 adapters).
 
 **Files:**
-- Create: `apps/lambda-cms-crud-public/handler.ts` (ESM Lambda handler; `buildApp()` composition function that constructs `LessonRepositoryDynamoDB` + `LessonFileStoreS3` and returns route table)
-- Create: `apps/lambda-cms-crud-public/routes.ts` (route matchers: `GET /lessons` → listLessons use-case; `GET /lessons/:id` → getLesson use-case)
-- Create: `apps/lambda-cms-crud-public/use-cases/listLessons.ts` (orchestrates `LessonRepository.list` + projection mapping to list-projection shape)
-- Create: `apps/lambda-cms-crud-public/use-cases/getLesson.ts` (orchestrates `LessonRepository.findById` + `LessonFileStore.mintSignedGet` for the file URL)
-- Create: `apps/lambda-cms-crud-public/infra.ts` (Pulumi `notation-hero:cms:PublicReadApi` ComponentResource: uses `LambdaWithUrl` (`AuthType: AWS_IAM`) + `aws.lambda.Permission` for `cloudfront.amazonaws.com` + `aws.cloudfront.OriginAccessControl` (origin type lambda) + `aws.cloudfront.Distribution` (public, no gate) + ACM cert from us-east-1)
-- Create: `apps/lambda-cms-crud-public/build.ts` (esbuild script: bundles handler.ts → dist/index.mjs)
-- Create: `apps/lambda-cms-crud-public/package.json` (deps: `@notation-hero/core`, `@notation-hero/adapters-dynamodb`, `@notation-hero/adapters-s3`, `@notation-hero/adapters-aws`, `@aws-sdk/client-*` as runtime; devDeps: `esbuild`, `@types/aws-lambda`, `vitest`)
-- Create: `apps/lambda-cms-crud-public/__tests__/handler.test.ts` (unit tests with in-memory `LessonRepository` + `LessonFileStore` fakes)
-- Create: `apps/lambda-cms-crud-public/__tests__/integration.test.ts` (against deployed dev stack — gated to run only when `INTEGRATION_TESTS=1`)
+- Create: `apps/lambda-cms-crud-public/handler.ts` (ESM Lambda handler; `buildApp()` constructs `CatalogueRepositoryPostgres(neonExecutor(DATABASE_URL))` + `CatalogueFileStoreS3` at INIT)
+- Create: `apps/lambda-cms-crud-public/routes.ts` (`GET /v1/catalogue` → listCatalogue; `GET /v1/catalogue/:id` → getCatalogueItem; ~20-LOC matcher, no framework)
+- Create: `apps/lambda-cms-crud-public/use-cases/listCatalogue.ts` (query-string → `CatalogueFilter` (status hard-coded `'published'`) → `repo.list` → map `coverImageKey` → `cover_image_url` via the file store)
+- Create: `apps/lambda-cms-crud-public/use-cases/getCatalogueItem.ts` (findById — 404 unless `status='published'` — + `listExercises` + `listPatternsForItem` + signed source URL + cover URL)
+- Create: `apps/lambda-cms-crud-public/use-cases/resolveStepNotation.ts` (**the shared slice resolver** — spec §6 D2; exported for reuse by any future consumer so the status check can't be bypassed):
+  ```ts
+  export type ResolvedNotation =
+    | { kind: 'tex'; tex: string }
+    | { kind: 'file'; url: string }
+    | { kind: 'slice'; url: string; startBar: number; endBar: number; sourceTitle: string };
+
+  export async function resolveStepNotation(
+    step: Exercise,
+    deps: { repo: CatalogueRepository; files: CatalogueFileStore },
+  ): Promise<Result<ResolvedNotation, SourceNotAvailable | RepositoryError>> {
+    if (step.notationTex) return ok({ kind: 'tex', tex: step.notationTex });
+    if (step.notationKey) return ok({ kind: 'file', url: await mustSign(deps.files, step.notationKey) });
+    // slice: the source song must itself be published — archived/draft songs may NOT
+    // keep serving through a song-breakdown back door (spec §6 D2)
+    const source = await deps.repo.findById(step.sourceItemId!);
+    if (!source.ok || source.value.status !== 'published' || !source.value.notationKey) {
+      return err({ kind: 'SourceNotAvailable', stepId: step.id });
+    }
+    return ok({
+      kind: 'slice',
+      url: await mustSign(deps.files, source.value.notationKey),
+      startBar: step.startBar!, endBar: step.endBar!, sourceTitle: source.value.title,
+    });
+  }
+  ```
+- Create: `apps/lambda-cms-crud-public/build.ts` (esbuild: `handler.ts --bundle --platform=node --target=node22 --format=esm --minify --external:@aws-sdk/* --outfile=dist/index.mjs`)
+- Create: `apps/lambda-cms-crud-public/package.json` (deps: `@notation-hero/core`, `@notation-hero/adapters-postgres`, `@notation-hero/adapters-s3`; devDeps: `esbuild`, `@types/aws-lambda`, `vitest`)
+- Create: `apps/lambda-cms-crud-public/__tests__/handler.test.ts` (unit — in-memory `CatalogueRepository`/`CatalogueFileStore` fakes)
+- Create: `apps/lambda-cms-crud-public/__tests__/contract/catalogue-v1.schema.json` + `contract.test.ts` (JSON-Schema contract test on both wire shapes — guards deployed player clients)
+- Create: `apps/lambda-cms-crud-public/__tests__/integration.test.ts` (against deployed dev stack — gated `INTEGRATION_TESTS=1`)
+- Create: `infra/cms/public-read-api.ts` (Pulumi module — RC-10, lives in the `infra` project: `LambdaWithUrl` (`AuthType: AWS_IAM`, env `DATABASE_URL` from the Neon secret + `BUCKET_NAME` + `SIGNED_URL_TTL_SECONDS`) + `aws.lambda.Permission` for `cloudfront.amazonaws.com` with `sourceArn` + OAC + public distribution + Response Headers Policy; references `../../apps/lambda-cms-crud-public/dist` as `FileArchive`)
 - Create: `apps/lambda-cms-crud-public/tsconfig.json`
 
 **Approach:**
-- Build before K-2 (admin CRUD) — simpler (read-only), validates the catalog API shape independently before admin write paths depend on it.
-- Handler imports from `core/lesson/` and `adapters/*` only — never directly from `@aws-sdk` (that's the adapter's job). The handler is a thin wire.
-- **`buildApp()` runs at Lambda INIT phase** (outside the handler function). Reads env vars (`TABLE_NAME`, `BUCKET_NAME`, `SIGNED_URL_TTL_SECONDS`), constructs adapters, returns route table. Subsequent invocations reuse the adapters (DynamoDB client connection-pooled per Lambda execution environment).
-- **Path prefix `/v1/lessons` (NOT bare `/lessons`)** — locks the public API contract version so a Track-3 schema reshape can ship as `/v2/lessons` without breaking deployed player clients. Adversarial-flagged Track-3-drift risk.
-- Route matching: minimal in-house matcher (~20 LOC). No framework — keeps cold start fast. Routes: `GET /v1/lessons?…`, `GET /v1/lessons/{id}`.
-- **List filtering defaults to `status="published"`** — `pending_validation` and `draft` lessons are NEVER served from the public API (security + coherence convergent finding). `GET /v1/lessons/{id}` returns 404 for `status!="published"` records. Implementer override via `?includeStatus=…` query param is NOT exposed in v1.
-- Response shape: list projection per `song-schema.md` (`[{lessonId, title, artist, difficulty, tags, bpm, durationBars, category, order, coverImageUrl}]`); full record for `GET /v1/lessons/{id}` is the complete published Lesson + `{ sourceUrl: string, signedUrlExpiresAt: number }`.
-- **Pagination clamps** — `?limit` clamps to max 100 (silently — log warning); `?cursor` validated for shape, returns 400 on malformed.
-- CORS: configured on CloudFront `ResponseHeadersPolicy` (NOT on the Function URL — CloudFront strips/replaces). `AllowOrigins` = **explicit list** from Pulumi config (e.g., `["https://app.notation-hero.com"]`); `*` is prohibited (security-lens P2 + adversarial residual). `Vary: Origin` set to prevent cache poisoning. Preflight: `Access-Control-Max-Age: 3600`.
-- Distribution: public CloudFront (no gate). Custom domain `cdn.notation-hero.com` (or whatever the user finalizes). ACM cert provisioned via second Pulumi provider pinned to `us-east-1`. **Cache policy** for default behavior = AWS-managed `CachingOptimized` (id `658327ea-f89d-4fab-a63d-7e88639e58f6`) — public data is safe to cache 1 day; player rarely re-fetches.
-- **OAC wiring (per Key Technical Decision):** `aws.lambda.Permission` includes `principal: cloudfront.amazonaws.com` AND **`sourceArn: distribution.arn`** (pins invocation to this specific distribution). Cache behavior uses **`AllViewerExceptHostHeader` origin request policy** (`b689b0a8-53d0-40ab-baf2-68738e2966ac`) so request headers + bodies forward for SigV4 signing.
-- **Contract test in CI:** the response shape of `GET /v1/lessons` and `GET /v1/lessons/{id}` is validated against a checked-in JSON Schema fixture (`__tests__/contract/lessons-v1.schema.json`). Any drift fails CI loudly — protects deployed player clients from accidental wire-shape changes.
+- Build before K-2 (admin CRUD) — read-only; validates the catalog API shape + the Lambda→Neon path independently before write paths depend on it.
+- **`buildApp()` runs at Lambda INIT** (outside the handler). Env: `DATABASE_URL` (Neon — injected as a secret, RC-6), `BUCKET_NAME`, `SIGNED_URL_TTL_SECONDS` (default 300 per spec §12). The Neon HTTP driver is stateless — no pool, no cleanup; warm invocations reuse the executor closure.
+- **Path prefix `/v1/`** retained — `/v1/catalogue` is the locked wire contract; a future reshape ships as `/v2/` without breaking deployed players.
+- **List response = the §9 projection verbatim:** `{ items: [{ id, type, title, artist, genre, level, bpm, time_sig, instruments, has_audio, has_video, sort_order, cover_image_url, status, updated_at }], total }` — snake_case on the wire (matches the spec contract text), camelCase internally; `data`, `notation_key`, `notation_checksum` are **never** serialized. `cover_image_url` is the resolved (signed/CDN) form of `cover_image_key`; null key → null url (icon fallback is the client's job).
+- **Detail response:** the full published `CatalogueItem` (sans `notationChecksum`) + `{ source_url, signed_url_expires_at }` + `exercises: [{ …step, notation: ResolvedNotation }]` (each step through `resolveStepNotation` — steps whose source is unavailable serialize as `{ notation: { kind: 'unavailable' } }` rather than failing the whole item) + `patterns: [{ id, kind, name, family, level }]`.
+- **Published-only is structural:** `listCatalogue` constructs the filter with `status: 'published'` (not overridable by query param); `getCatalogueItem` 404s on non-published. Drafts/archived are admin-plane data.
+- **Level-filter semantics (spec §9):** no level params → unbounded (ungraded included); `level_max`/`level_min` present → bounded SQL range, which excludes `NULL` by design. No silent default bound, ever.
+- Query params: `type, level_min, level_max, bpm_min, bpm_max, time_sig, genre, tags (csv), skill (csv), instruments (csv), lesson_type, pattern, q (search), sort, limit, offset`. `limit` clamps to 100 (log warning); malformed numerics → 400.
+- CORS/cache unchanged from the original (explicit-origin Response Headers Policy, `CachingOptimized` on the public distribution, `AllViewerExceptHostHeader` for SigV4, OAC `sourceArn` pinning).
 
-**Patterns to follow:**
-- ESM Lambda handler with `index.mjs`: see Node.js 22 runtime docs.
-- esbuild bundling: `esbuild handler.ts --bundle --platform=node --target=node22 --format=esm --minify --external:@aws-sdk/* --outfile=dist/index.mjs`.
-- Composition root pattern: `buildApp()` returns plain object of route → use-case mappings.
+**TDD task list:**
 
-**Test scenarios:**
-- Happy path: `GET /lessons` with no filters returns list projection of all lessons (admin populated test data).
-- Happy path: `GET /lessons?category=Rock` returns only Rock lessons.
-- Happy path: `GET /lessons?difficulty=3&tag=ghost-notes` returns lessons matching both.
-- Happy path: `GET /lessons/<uuid>` returns full Lesson + `sourceUrl` that fetches the file successfully within TTL.
-- Edge case: `GET /lessons?pagination.limit=200` clamps to 100 (or returns 400 — decide during impl).
-- Edge case: `GET /lessons?pagination.cursor=<invalid-base64>` returns 400 with error message.
-- Edge case: `GET /lessons/<nonexistent-uuid>` returns 404 with `LessonNotFound` error.
-- Edge case: `GET /lessons` when DynamoDB is empty returns `{ items: [], total: 0 }`.
-- Error path: DynamoDB throttling (mocked) → handler returns 503 with `Retry-After` header.
-- Error path: invalid UUID in path → returns 400 (caught by `LessonId.fromString` validation).
-- Integration scenario: deployed Lambda behind CloudFront with OAC — direct hit to `lambda-url.<region>.on.aws` returns 403 (Lambda Function URL rejects unsigned requests when `AuthType=AWS_IAM`); hit via CloudFront returns 200 — confirms OAC seal.
-- Integration scenario: CORS preflight from `https://admin.notation-hero.com` returns expected `Access-Control-Allow-Origin` header; preflight from `https://evil.example.com` returns no allow-origin (browser blocks).
-- Integration scenario: signed URL minted by `getLesson` actually fetches the S3 file from the player's browser without auth (confirms S3 OAC config + presigning works end-to-end).
+- [ ] **5.1** Write `handler.test.ts::list` cases with the in-memory fake — default published-only; every query param maps to its `CatalogueFilter` facet; limit clamp; malformed `bpm_min=abc` → 400; §9 projection keys (snapshot the serialized item: exactly 15 keys, snake_case) → FAIL → implement `routes.ts` + `listCatalogue.ts` + serializers → PASS → commit `feat(k-3): GET /v1/catalogue list + filter mapping`
+- [ ] **5.2** Write `handler.test.ts::detail` cases — published item returns full record + signed URL + exercises + patterns; draft/archived/missing id → 404; invalid id shape → 400 → FAIL → implement `getCatalogueItem.ts` → PASS → commit
+- [ ] **5.3** Write `resolveStepNotation.test.ts` — tex step; file step; slice over published source (url + bars); slice over **archived** source → `SourceNotAvailable`; slice over source missing `notationKey` → `SourceNotAvailable`; detail serialization degrades that one step to `{ kind: 'unavailable' }` → FAIL → implement resolver → PASS → commit `feat(k-3): shared slice resolver with published-source gate`
+- [ ] **5.4** Write `contract.test.ts` validating both wire shapes against `catalogue-v1.schema.json` → FAIL → author the JSON Schema (list + detail) → PASS → commit `test(k-3): /v1 wire-contract fixtures`
+- [ ] **5.5** Author `infra/cms/public-read-api.ts` + `build.ts`; `pnpm --filter @notation-hero/lambda-cms-crud-public build` produces `dist/index.mjs`; `pulumi preview` on the module shows Lambda + Role + Policy + FunctionUrl + Permission + OAC + Distribution → commit `feat(infra): public read API module (Neon env injection)`
 
-**Verification:** `bun test apps/lambda-cms-crud-public/` runs green for unit tests; integration tests pass against the deployed dev stack (manual trigger or scheduled). `pulumi preview` for the U5 module shows expected resource diff (Lambda + Role + Policy + FunctionUrl + Permission + OAC + Distribution + cert).
+**Test scenarios:** (beyond the TDD list)
+- Edge: empty catalogue → `{ items: [], total: 0 }`.
+- Edge: `q=sao` returns "São Paulo Samba" through the real adapter (covered in U4's integration suite; here via fake contract).
+- Error path: repository `RepositoryError` → 503 + `Retry-After` (Neon scale-to-zero cold resume manifests as latency, not errors — see Risks).
+- Integration: direct FURL hit → 403 (OAC seal); via CloudFront → 200. CORS preflight allowed-origin vs evil-origin. Signed URL fetches the file; expires after TTL.
+
+**Verification:** `pnpm vitest run apps/lambda-cms-crud-public --root .` green; contract test green; `pulumi preview` clean on the infra module; integration suite green against the dev stack once U9 deploys.
 
 ---
 
-### U6. Admin CRUD API (K-2 backend) — `apps/lambda-cms-crud-admin`
+### U6. Admin CRUD API (K-2 backend) — `apps/lambda-cms-crud-admin` — REVISED 2026-06-10
 
-**Goal:** Build the admin CRUD Lambda — `POST/PUT/DELETE /lessons`, `POST /lessons/{id}/file` (presigned PUT mint). Behind the gated admin CloudFront distribution with KVS-backed Basic-Auth + OAC. Implements R3.
+**Goal:** Build the admin CRUD Lambda for the **three catalogue entities** — items, exercises, patterns (+ pattern links) — plus presigned-PUT minting (source files *and* covers, RC-7) and an explicit **publish** action enforcing the spec §5 gates. Behind the gated admin CloudFront distribution with KVS-backed Basic-Auth + OAC. Implements R3.
 
-**Requirements:** R3 (admin SPA + CRUD) · R7 (composition root).
+**Requirements:** R3 (admin SPA + CRUD) · R7 (composition root) · R9 (parameterized SQL only).
 
-**Dependencies:** U2 (core ports), U3 (LambdaWithUrl + EdgeBasicAuth components), U4 (DynamoDB + S3 adapters), U5 (proves the Lambda+OAC+CloudFront pattern).
+**Dependencies:** U2 (core ports), U3 (components), U4 (Postgres + S3 + SNS adapters), U5 (proves the Lambda+OAC+CloudFront+Neon pattern).
+
+**Routes (all under the gated `/api/*` behavior):**
+
+| Route | Use-case | Notes |
+|---|---|---|
+| `POST /api/catalogue` | `createItem` | Zod-validated; `source` set server-side to `'curated'` (write-once — never client-supplied) |
+| `PUT /api/catalogue/{id}` | `updateItem` | requires `If-Match: <updatedAt ISO>` (RC-12) → 412 on stale; `source`/`created_at` not updatable |
+| `DELETE /api/catalogue/{id}` | `archiveItem` | tombstone (`status='archived'`) — the CMS **never hard-deletes** (spec §12) |
+| `POST /api/catalogue/{id}/publish` | `publishItem` | runs `publishGates` (≥1 exercise for lessons · license for curated · curated-only) then status flip with `If-Match` |
+| `PUT /api/catalogue/{id}/exercises` | `replaceExercises` | atomic batch (ordered steps; reorder = same call) |
+| `POST /api/catalogue/{id}/file` | `mintUploadUrl` | body `{ kind: 'source'|'cover', ext }` → presigned PUT into quarantine (`x-amz-meta-item-id` + `x-amz-meta-kind`) |
+| `POST /api/patterns` · `PUT /api/patterns/{id}` · `GET /api/patterns` | `savePattern` / `listPatterns` | pattern vocabulary CRUD (kind-discriminated) |
+| `PUT /api/catalogue/{id}/patterns` | `setPatternLinks` | replace the item's `item_pattern` link set |
+| `GET /api/catalogue` · `GET /api/catalogue/{id}` | `adminList` / `adminGet` | same query language as K-3 but **without** the published-only clamp (drafts/archived visible) |
 
 **Files:**
-- Create: `apps/lambda-cms-crud-admin/handler.ts` (ESM Lambda handler; `buildApp()` constructs `LessonRepositoryDynamoDB` + `LessonFileStoreS3`)
-- Create: `apps/lambda-cms-crud-admin/routes.ts` (route matchers for POST/PUT/DELETE/POST-file)
-- Create: `apps/lambda-cms-crud-admin/use-cases/createLesson.ts` (validates input via `core/lesson/LessonValidator`, persists, returns created Lesson)
-- Create: `apps/lambda-cms-crud-admin/use-cases/updateLesson.ts` (loads existing, applies patch, validates merged result, persists)
-- Create: `apps/lambda-cms-crud-admin/use-cases/deleteLesson.ts` (soft-delete via `LessonRepository.softDelete`)
-- Create: `apps/lambda-cms-crud-admin/use-cases/mintFileUploadUrl.ts` (calls `LessonFileStore.mintPresignedPut`)
-- Create: `apps/lambda-cms-crud-admin/infra.ts` (Pulumi `notation-hero:cms:AdminApi` ComponentResource: `LambdaWithUrl` (`AuthType: AWS_IAM`) + `aws.lambda.Permission` for CloudFront + `OriginAccessControl` (origin type lambda) — distribution is created in the admin SPA's infra.ts since SPA + API share the same CloudFront distribution with two cache behaviors)
-- Create: `apps/lambda-cms-crud-admin/build.ts` (esbuild script)
-- Create: `apps/lambda-cms-crud-admin/package.json`
-- Create: `apps/lambda-cms-crud-admin/__tests__/handler.test.ts` (unit with in-memory fakes)
-- Create: `apps/lambda-cms-crud-admin/__tests__/integration.test.ts` (against deployed dev stack with Basic-Auth credential from env)
-- Create: `apps/lambda-cms-crud-admin/tsconfig.json`
+- Create: `apps/lambda-cms-crud-admin/handler.ts` (`buildApp()` wires `CatalogueRepositoryPostgres` + `PatternRepositoryPostgres` + `CatalogueFileStoreS3` + `SnsEventSink` at INIT)
+- Create: `apps/lambda-cms-crud-admin/routes.ts` (matcher for the table above)
+- Create: `apps/lambda-cms-crud-admin/use-cases/{createItem,updateItem,archiveItem,publishItem,replaceExercises,mintUploadUrl,savePattern,setPatternLinks}.ts`
+- Create: `apps/lambda-cms-crud-admin/build.ts` · `package.json` · `tsconfig.json`
+- Create: `apps/lambda-cms-crud-admin/__tests__/handler.test.ts` (unit, in-memory fakes) · `__tests__/integration.test.ts` (deployed dev stack, Basic-Auth cred from env)
+- Create: `infra/cms/admin-api.ts` (Pulumi module — RC-10: `LambdaWithUrl` (`AuthType: AWS_IAM`, env `DATABASE_URL` + `BUCKET_NAME` + `EVENTS_TOPIC_ARN`) + Lambda Permission with `sourceArn` + OAC; the admin distribution itself lives in `infra/cms/admin-site.ts` (U8) and consumes this module's exported FURL)
 
 **Approach:**
-- `POST /api/lessons` body validated by `LessonValidator` (Zod). If validation fails, returns 400 with structured error list. **On success, publishes `lesson.published` event via `SnsEventSink` BEFORE returning 201** (event emission is part of the write — if SNS publish fails, the response is 500; DynamoDB record is left in place since the lesson is technically created, but the audit log captures the publish failure for retry).
-- `PUT /api/lessons/{id}` requires `If-Match` header (DynamoDB version) for optimistic concurrency. **On success, publishes `lesson.updated` event.**
-- `DELETE /api/lessons/{id}` flips status to `"draft"` (soft-delete). **On success, publishes `lesson.deleted` event** (with the soft-delete shape).
-- `POST /api/lessons/{id}/file` returns `{ uploadUrl, key, contentLengthMax: 50000000, allowedContentTypes: [...] }`. Client uploads file DIRECT TO S3 (bypassing CloudFront entirely — presigned URLs hit S3 directly). The presigned PUT carries the metadata header `x-amz-meta-lesson-id` set by the admin Lambda; U7 validator reads it to find the Lesson record.
-- Handler does NOT check Basic-Auth — that happens at the CloudFront edge before the request reaches Lambda. Handler trusts requests it receives (defense-in-depth via OAC means only CloudFront can invoke).
-- **Distribution ownership:** the admin CloudFront distribution is created in U8 (`apps/admin-spa/infra.ts`) with two cache behaviors. U6's `infra.ts` ONLY creates the admin Lambda + IAM role + Function URL + Lambda Permission for CloudFront with `sourceArn` pinned. U6 exports the FURL output for U8's distribution `additionalOrigins[0]` consumption.
-- Per-function reserved concurrency: set to 10 (cost-protection cap, NOT rate limiting — see Key Technical Decision on rate-limit deferral).
-- **Audit log:** each write use-case emits a structured CloudWatch log entry: `{ operation, lessonId, timestamp, sourceIp (from x-amz-cf-id + CloudFront-Forwarded-For), credentialVersion (KVS key updatedAt at request time, fetched lazily once per cold start) }`. Provides forensic capability without `H-7` SLO machinery.
-- **Validator-vs-admin write race (adversarial-flagged):** the admin Lambda updates the whole Lesson record (all attributes); U7's validator updates only `file.*` attributes after upload. To prevent admin's edit being clobbered by validator: U7 uses a partial `UpdateExpression` like `SET file = :file, version = version + :inc` with a `ConditionExpression` that does NOT lock on a specific version — it only validates the record exists. This keeps validator updates idempotent without forcing admin edits to retry.
+- `createItem`: Zod boundary (U2 schemas) → `repo.saveItem` → publish `catalogue_item.created` via `SnsEventSink` **before** returning 201 (publish failure → 500; row stays — audit log captures it for retry, matching the original event-emit semantics).
+- `updateItem`: `If-Match` header required (400 if absent) → `repo.updateItem(item, ifMatch)` → 412 on `StaleUpdate`. The request body **cannot** set `source` (stripped + warned), `status` (use publish/archive routes), `created_at`, or `notation_*` fields (validator-owned — see U7 race note). Emits `catalogue_item.updated`.
+- `publishItem`: loads item → `countExercises` (lessons) → `publishGates.canPublish` → on `ok`, status→`'published'` via the same `If-Match` path. Gate failures → 422 with the named gate (`{ gate: 'lesson-needs-exercise' | 'license-required' | 'curated-only' }`) so the SPA shows actionable errors. The DB CHECKs (`ci_shared_curated`, `ci_pub_license`) are the backstop — a 23514 here is a bug, logged loudly. Emits `catalogue_item.published`.
+- `archiveItem`: `repo.archive` → emits `catalogue_item.archived`. Archived song-breakdown sources stop serving slices via U5's resolver — surfaced in the SPA confirm dialog copy ("N lessons slice this song" via a count query).
+- `replaceExercises`: validates each step (U2 Zod incl. `ex_one_source`); slices may only reference items with `type='song'` (app-level check; the FK can't express it); atomic via the U4 batch.
+- `mintUploadUrl`: validates `ext` against `kind` (source: gp/gpx/gp5/gp4/gp3/xml — **mid is rejected here with the convert-first message**, before any upload happens; cover: jpg/png/webp) → presigned PUT.
+- Handler does NOT check Basic-Auth — the CloudFront edge gate does; OAC means only CloudFront can invoke (unchanged).
+- **Audit log** (unchanged shape, wider scope): every write use-case emits `{ operation, itemId, timestamp, sourceIp, credentialVersion }` to CloudWatch.
+- Per-function reserved concurrency 10 (cost cap, unchanged).
 
-**Patterns to follow:**
-- Reuse the `buildApp()` + route-matcher pattern from U5.
-- Optimistic concurrency: standard DynamoDB conditional-write on `version` attribute.
+**TDD task list:**
 
-**Test scenarios:**
-- Happy path: `POST /lessons` with valid body returns 201 with the created Lesson; subsequent `GET /lessons/{id}` (via public API) returns it.
-- Happy path: `PUT /lessons/{id}` with valid patch updates the record; `version` increments.
-- Happy path: `DELETE /lessons/{id}` flips `status` to `"draft"` (soft-delete, not hard-delete).
-- Happy path: `POST /lessons/{id}/file` returns presigned URL; client PUTs a real `.gp` file to that URL; S3 ObjectCreated event fires (verified in U7 tests).
-- Edge case: `POST /lessons` with missing required fields returns 400 with structured error listing each missing field.
-- Edge case: `POST /lessons` with extra fields outside the schema (and not in `meta`) — decide policy: strip silently OR reject. Recommended: strip (Zod default).
-- Edge case: `PUT /lessons/{id}` with stale `If-Match` returns 412 Precondition Failed.
-- Edge case: `POST /lessons/{id}/file` with `ext` not in our Format union returns 400.
-- Edge case: `DELETE /lessons/{nonexistent}` returns 404.
-- Error path: DynamoDB write throttling → 503 with `Retry-After`.
-- Error path: presigner errors (rare) → 500 with generic error message (no leaking adapter internals).
-- Integration scenario: direct hit to admin Lambda FURL (bypassing CloudFront) returns 403 (AWS_IAM rejects unsigned).
-- Integration scenario: hit through CloudFront WITHOUT `Authorization: Basic` header returns 401 with `WWW-Authenticate: Basic realm="admin"` header (CF Function gate enforces).
-- Integration scenario: hit through CloudFront with wrong credential returns 401; with correct credential returns 200 (CF Function correctly reads KVS).
-- Integration scenario: rotate KVS credential (single API call); old credential immediately rejected; new credential accepted — confirms instant rotation.
+- [ ] **6.1** Write `handler.test.ts::createItem` — valid song 201 + event emitted; Zod failure 400 with field list; client-supplied `source:'user-upload'` ignored (row is `curated`); duplicate id → 409 → FAIL → implement `createItem` + routes → PASS → commit `feat(k-2): create catalogue item + event emit`
+- [ ] **6.2** Write `updateItem` cases — happy 200 (updatedAt advances); missing `If-Match` 400; stale 412; `source`/`status`/`notation_key` in body stripped; not-found 404 → FAIL → implement → PASS → commit
+- [ ] **6.3** Write `publishItem` matrix — lesson w/ 0 exercises → 422 `lesson-needs-exercise`; curated w/o license → 422 `license-required`; happy lesson (1 exercise + license) → 200 + `catalogue_item.published`; song happy path; stale `If-Match` → 412 → FAIL → implement → PASS → commit `feat(k-2): publish action with §5 gates`
+- [ ] **6.4** Write `archiveItem` + `replaceExercises` cases — archive emits event; replace validates one-source rule per step; slice referencing a `type='lesson'` item → 422; atomic reorder → FAIL → implement → PASS → commit
+- [ ] **6.5** Write `mintUploadUrl` cases — `{kind:'source', ext:'gp'}` → URL + quarantine key + metadata; `ext:'mid'` → 400 `midi-not-renderable-convert-first`; `{kind:'cover', ext:'png'}` → 2 MB-capped URL; unknown ext → 400 → FAIL → implement → PASS → commit
+- [ ] **6.6** Write `savePattern`/`setPatternLinks` cases (link-set replace; unknown pattern id → 422) → implement → PASS → commit
+- [ ] **6.7** Author `infra/cms/admin-api.ts` + `build.ts`; `pulumi preview` clean → commit `feat(infra): admin CRUD API module`
 
-**Verification:** `bun test apps/lambda-cms-crud-admin/` green. Integration tests green against dev stack. KVS rotation tested end-to-end. Reserved concurrency cap verified via `pulumi preview`.
+**Test scenarios:** (beyond the TDD list)
+- Integration: direct FURL hit → 403; through CloudFront without/with-wrong/with-right `Authorization: Basic` → 401/401/200; KVS rotation honored (unchanged from original).
+- Integration: full author loop — create lesson → add 2 exercises → link a pattern → publish → public API serves it; archive → public API 404s it within one request.
+- Error path: Postgres CHECK violation surfacing as 500-with-constraint-name in logs (proves the belt-and-braces layering).
+
+**Verification:** `pnpm vitest run apps/lambda-cms-crud-admin --root .` green; integration green against dev stack; KVS rotation tested end-to-end; reserved concurrency visible in `pulumi preview`.
 
 ---
 
-### U7. Magic-byte validator (K-1) — `apps/lambda-cms-validate-upload`
+### U7. Upload validator + parse-once seeder (K-1) — `apps/lambda-cms-validate-upload` — REVISED 2026-06-10
 
-**Goal:** Build the S3-event-triggered Lambda that validates uploaded files via magic bytes, moves valid files to canonical keys, writes file metadata to the Lesson record, and routes invalid files to `rejected/` with structured rejection metadata.
+**Goal:** Build the S3-event-triggered Lambda that validates uploaded files via magic bytes, enforces the §8 streaming size ceiling, **parses the file once at upload** to seed catalogue facets (spec §10.1), promotes valid files to `catalogue/<id>/source.<ext>` (or `cover.<ext>`), **UPDATEs the Postgres row** with file metadata + seeded facets, and routes invalid files to `rejected/` with structured reasons. MIDI is rejected, not converted (RC-5).
 
-**Requirements:** R1 (lesson store — file validation half).
+**Requirements:** R1 (lesson store — validation + ingest half) · R6 (spec §10 pipeline) · R9.
 
-**Dependencies:** U2 (core ports), U3 (LambdaWithUrl + S3FileBucket components — event source wiring), U4 (MagicByteValidator + LessonFileStoreS3 + LessonRepositoryDynamoDB adapters).
+**Dependencies:** U2 (core ports + `FileRules`), U3 (`LambdaWithUrl`), U4 (`MagicByteValidator` + `CatalogueFileStoreS3` + `CatalogueRepositoryPostgres`).
 
 **Files:**
-- Create: `apps/lambda-cms-validate-upload/handler.ts` (ESM handler; entry takes S3 event, processes each record, idempotent via DynamoDB conditional write on `processedKeys` audit table OR the Lesson record's `file.checksum`)
-- Create: `apps/lambda-cms-validate-upload/use-cases/validateAndMove.ts` (orchestrates: fetch quarantine object stream → MagicByteValidator → if valid, copy to `lessons/<id>/source.<ext>` + delete quarantine + update Lesson record with file metadata; if invalid, copy to `rejected/<original-key>` with metadata + delete quarantine)
-- Create: `apps/lambda-cms-validate-upload/infra.ts` (Pulumi `notation-hero:cms:UploadValidator` ComponentResource: `LambdaWithUrl` (no FURL — this is event-triggered) + `aws.lambda.Permission` for `s3.amazonaws.com` + `aws.s3.BucketNotification` filtering `uploads/quarantine/` prefix → invokes this Lambda)
-- Create: `apps/lambda-cms-validate-upload/build.ts`
-- Create: `apps/lambda-cms-validate-upload/package.json`
-- Create: `apps/lambda-cms-validate-upload/__tests__/handler.test.ts` (unit with in-memory fakes — feed test fixtures for each format)
-- Create: `apps/lambda-cms-validate-upload/__tests__/integration.test.ts` (against deployed dev stack — upload real file → wait → verify it landed correctly)
-- Create: `apps/lambda-cms-validate-upload/tsconfig.json`
+- Create: `apps/lambda-cms-validate-upload/handler.ts` (S3 event entry; per-record orchestration; idempotency via checksum — see Approach)
+- Create: `apps/lambda-cms-validate-upload/use-cases/validateAndPromote.ts` (the pipeline below)
+- Create: `apps/lambda-cms-validate-upload/use-cases/seedFromFile.ts` (alphaTab parse → `{ bpm, timeSig, instruments, bars, sections }`)
+- Create: `apps/lambda-cms-validate-upload/use-cases/inspectZip.ts` (streaming central-directory walk: decompressed-size ceiling + embedded-audio detection)
+- Create: `apps/lambda-cms-validate-upload/build.ts` · `package.json` (adds `@coderline/alphatab` (MPL-2.0) + `yauzl`) · `tsconfig.json`
+- Create: `apps/lambda-cms-validate-upload/__tests__/handler.test.ts` (unit, fixture files per format) · `__tests__/integration.test.ts` (deployed dev stack)
+- Create: `infra/cms/upload-validator.ts` (Pulumi module — RC-10: `LambdaWithUrl({ createFunctionUrl: false })`, env `DATABASE_URL` + `BUCKET_NAME` + `EVENTS_TOPIC_ARN`; S3 notification registered via U9's shared-bucket aggregator with **strict `filterPrefix: "uploads/quarantine/"`**; Lambda Permission for `s3.amazonaws.com` with bucket `sourceArn`)
 
-**Approach:**
-- **`infra.ts` uses `LambdaWithUrl({ createFunctionUrl: false, … })`** — event-triggered, no Function URL needed. Coherence + scope-guardian convergent finding (originally `LambdaWithUrl (no FURL — this is event-triggered)` — wrong abstraction).
-- **S3 BucketNotification is single-config-per-bucket** (AWS constraint). U7's `infra.ts` does NOT create a standalone `aws.s3.BucketNotification` — instead it registers its notification via a helper exposed by U9's inlined shared S3 bucket: `sharedBucket.addLambdaNotification({ lambdaArn, events: ["s3:ObjectCreated:*"], filterPrefix: "uploads/quarantine/" })`. The helper aggregates all notifications into one `BucketNotification` resource. Plus the matching `aws.lambda.Permission` for `s3.amazonaws.com` with `sourceArn` of the bucket.
-- Quarantine key shape: `uploads/quarantine/<uuid>.<ext>` (the `<uuid>` is generated by the admin Lambda when minting the presigned URL; `<ext>` from the user-declared extension — NOT trusted for content-type, only for routing/logging).
-- Validator reads object metadata first to extract `lessonId` (admin Lambda sets `x-amz-meta-lesson-id` on the presigned URL). **Pre-existence check (adversarial S3-race finding):** validator does a DynamoDB `GetItem` for the `lessonId` FIRST. If the Lesson record doesn't exist (curator uploaded before calling create, OR a presigned URL was reused after lesson deletion), move to `uploads/rejected/orphaned/<key>` with reason `lesson-record-missing` — log + skip Lesson update. Without `x-amz-meta-lesson-id` at all → `uploads/rejected/no-metadata/<key>`.
-- Magic-byte validation via `MagicByteValidator.validateMagicBytes(s3Stream)` — only first ~4KB hits Lambda memory.
-- On success: server-side `CopyObject` to `lessons/<lessonId>/source.<ext>` (where `<ext>` derives from the **detected** Format, NOT the user-declared `<ext>` — if mismatch, log warning and use detected); delete the quarantine object; update Lesson record's `file` field with partial UpdateExpression `SET file = :file, version = version + :inc` (matches admin-race mitigation in U6 — only `file.*` attributes touched, admin's category/title/etc. edits preserved); emit `lesson.file.validated` event via SNS.
-- On failure: server-side `CopyObject` to `uploads/rejected/<original-key>` with object metadata `x-amz-meta-reason=<error-class>`; delete the quarantine object. Lifecycle rule on `uploads/rejected/` (defined in `infra/index.ts` S3 bucket inline) expires objects after 7 days. **Lifecycle rule on `uploads/quarantine/`** (added per doc-review convergence — was referenced in System-Wide Impact but missing from S3 bucket config) expires orphans after 24h.
-- **Idempotency via computed sha256 dedup key (NOT ETag).** ETag breaks under multipart upload (>5MB Guitar Pro files SDK auto-multiparts). Validator computes `sha256(bucket + quarantineKey + first-4KB-content)` as dedup key, written to DynamoDB conditional UpdateExpression on a `processedUploads` set attribute on the Lesson record. Replays return early without DDB/S3 churn.
-- **Bucket-notification filter must STRICTLY scope to `uploads/quarantine/` prefix** (adversarial-flagged copy-self-trigger risk). The `CopyObject` to `lessons/<id>/source.<ext>` would fire another ObjectCreated event if the filter were loose; the strict filter prevents infinite loop. **Test scenario** explicitly verifies validator does NOT re-trigger after the copy.
-- alphaTex files: `file-type` won't detect (no magic bytes). Validator falls back to UTF-8 sniff (no `0x00` bytes in first 1KB, valid UTF-8 sequences). Sets Lesson `status = "pending_validation"` so the admin can see it's not yet hard-validated. **Per security-lens + coherence convergent finding: the public read API (U5) filters status="published" by default, so pending_validation lessons are NEVER served to the player** — they remain admin-visible only until the async hard validator lands.
-- **Validator IAM scope (security-lens):** `s3:GetObject` on `${bucketArn}/uploads/quarantine/*` only; `s3:CopyObject`+`s3:PutObject` on `${bucketArn}/lessons/*` and `${bucketArn}/uploads/rejected/*` only; `s3:DeleteObject` on `${bucketArn}/uploads/quarantine/*` only; `dynamodb:GetItem`+`UpdateItem` on the specific table ARN; `sns:Publish` on the lesson-events topic ARN. NO wildcard prefixes — defends against path-traversal via crafted `x-amz-meta-lesson-id`. Additionally, **validate `lessonId` against `LessonId.fromString()`** before constructing destination key (UUID-shape check).
-- **Defensive event-shape handling (adversarial nil-paths):** `if (!event.Records?.length) return { statusCode: 200 }` (AWS internal retry artifact). For each record: try GetObject; if `Body: undefined` (rare 0-byte race) → move to rejected with reason `empty-body`.
-- Reserved concurrency: 5 (low — admin uploads are sparse).
+**The pipeline (`validateAndPromote`), per S3 record:**
+1. **Defensive event shape:** `!event.Records?.length` → return 200 (AWS retry artifact). `Body: undefined` → reject `empty-body`.
+2. **Metadata:** read `x-amz-meta-item-id` + `x-amz-meta-kind`; missing → `rejected/no-metadata/<key>`. Validate item-id shape before using it in any key path (path-traversal guard).
+3. **Row pre-check (race guard, unchanged logic, new store):** `SELECT` the catalogue row; missing → `rejected/orphaned/<key>` reason `item-record-missing`.
+4. **Magic bytes:** `MagicByteValidator.validateMagicBytes(s3Stream)` (first ~4KB) → `core/FileRules` mapping. `MThd` → reject with reason **`midi-not-renderable-convert-first`** (distinct from `invalid-file-format` so the admin UI can say "convert in Guitar Pro first"). For `kind='cover'`: only jpg/png/webp pass.
+5. **Size ceiling (spec §8):** object size > ceiling (20 MB source / 2 MB cover) → reject `too-large` (belt — the presigned `content-length-range` already blocks this at PUT). For zip containers (gp): `inspectZip` walks entries via `yauzl` keeping a **running decompressed-size total; abort the moment it exceeds 20 MB** — before any full-payload buffering (zip-bomb guard); also flags `Content/Assets/*.mp3` → `hasAudio=true`.
+6. **Parse-once seeding (spec §10.1–10.3, source files only):** `seedFromFile` loads the validated bytes through alphaTab (Node) → seed `bpm`, `time_sig`, `instruments[]` (GM program + **MIDI channel 9 = drums**), `data.bars`, `data.sections[]` (from GP `<Section>` markers — these later auto-seed song-breakdown steps). Normalize controlled vocab to **lowercase**. Seeding is **non-destructive**: only fills columns that are currently NULL/empty (curator edits are authoritative — "the row is authoritative, the parse is a seed"). Title/artist are NOT overwritten from file headers (often junk); a filename-derived title seeds only on NULL. Parse failure ≠ rejection: a magic-byte-valid file that alphaTab can't parse → reject `parse-failed` (it would be unplayable in the player, which uses the same parser).
+7. **Promote + record:** server-side copy `uploads/quarantine/<uuid>.<ext>` → `catalogue/<id>/source.<detectedExt>` (detected format wins over declared ext; mismatch logged) or `catalogue/<id>/cover.<ext>`; delete quarantine object; **partial UPDATE** of the Postgres row touching ONLY validator-owned columns — source: `notation_key, notation_format, notation_checksum (sha256), notation_bytes, has_audio` + NULL-only seeded facets; cover: `cover_image_key` — plus `updated_at = now()`. **No `If-Match`**: the partial column set keeps validator and curator edits non-clobbering (same race resolution as the original plan, expressed as a column-scoped UPDATE instead of a DynamoDB UpdateExpression).
+8. **Idempotency:** dedup key = sha256 of the full object (computed while streaming the copy). If the row's `notation_checksum` already equals it, return early — replays cause no churn. (ETag still unreliable under multipart.)
+9. **Event:** emit `catalogue_item.file.validated` (or nothing on rejection — rejections are CloudWatch-logged with reason + key).
+10. **Failure path:** copy to `uploads/rejected/<original-key>` with `x-amz-meta-reason`; delete quarantine; 7-day lifecycle TTL (24h on quarantine) — unchanged from the original plan.
 
-**Patterns to follow:**
-- S3 event source wiring: `aws.s3.BucketNotification` with `lambdaFunctions: [{ lambdaFunctionArn, events: ["s3:ObjectCreated:*"], filterPrefix: "uploads/quarantine/" }]` + matching `aws.lambda.Permission`.
-- `file-type` streaming: `fileTypeStream(Readable.toWeb(s3Body))` — never `getObject` then check.
+**IAM scope (security-lens, updated for Postgres):** `s3:GetObject`+`DeleteObject` on `uploads/quarantine/*` only; `s3:PutObject` on `catalogue/*` + `uploads/rejected/*` only; `sns:Publish` on the topic ARN. **No DynamoDB statements remain.** Postgres access = the `DATABASE_URL` secret env (Neon has no IAM; least-privilege = a Neon role with `SELECT/INSERT/UPDATE` on the four tables only — created in U9's runbook).
 
-**Test scenarios:**
-- Happy path: upload valid `.gp` file → validator detects GP7/8 (ZIP container) → copies to `lessons/<id>/source.gp` → Lesson record updated with `{ format: "gp", sizeBytes, checksum }` → quarantine object deleted.
-- Happy path: upload valid `.mid` file → detects MIDI (`MThd`) → copies to `lessons/<id>/source.mid` → updates record.
-- Happy path: upload valid `.alphatex` file → UTF-8 sniff passes → copies to `lessons/<id>/source.alphatex` → updates record with `status = "pending_validation"`.
-- Edge case: upload file with declared `.gp` ext but actual MIDI bytes → detected as MIDI → stored with `.mid` ext, Lesson record updated to reflect actual format, log warning about ext mismatch.
-- Edge case: upload object missing `x-amz-meta-lesson-id` → moves to `uploads/rejected/orphaned/<original-key>` with reason `missing-metadata`; no Lesson record touched.
-- Edge case: upload same file twice (same ETag) → second invocation detects already-processed via conditional write, returns early; no duplicate move/update.
-- Edge case: upload 50MB file → streaming validation only reads ~4KB; full file copied to canonical key via S3 server-side copy (no Lambda memory blow-up).
-- Edge case: upload empty file (0 bytes) → magic-byte detection fails → move to rejected with reason `empty-file`.
-- Edge case: alphaTex with binary garbage (some `0x00` bytes) → UTF-8 sniff fails → reject with `invalid-utf8`.
-- Error path: DynamoDB unavailable during Lesson record update → leaves object in quarantine, retries via Lambda's built-in event-source retry → on persistent failure, DLQ (if configured; v1 may skip DLQ — log error and let next retry handle).
-- Error path: S3 copy fails mid-flight (e.g., destination key already exists with same content) → idempotent retry handles; if persistent, move to `uploads/rejected/copy-failed/`.
-- Integration scenario: admin SPA uploads real `.gp` file via React-Admin's FileInput → presigned PUT → S3 quarantine → validator triggered → 1-3 seconds later, list API returns the lesson with `file.key` populated; `GET /lessons/{id}` returns signed URL that fetches the original file successfully.
-- Integration scenario: lifecycle rule on `uploads/rejected/` confirmed (objects expire after 7 days — verified via S3 lifecycle config in Pulumi state).
+**TDD task list:**
 
-**Verification:** `bun test apps/lambda-cms-validate-upload/` green. End-to-end integration test (admin upload → validator → public read) passes against dev stack. Lifecycle rules verified in `pulumi preview`.
+- [ ] **7.1** Write `handler.test.ts` happy path per source format (gp/gpx/gp5/gp4/gp3/xml fixtures) — promoted key, row UPDATE args (checksum/bytes/format), event emitted, quarantine deleted → FAIL → implement `handler.ts` + `validateAndPromote.ts` skeleton (fakes for repo/files/validator) → PASS → commit `feat(k-1): validator promote pipeline`
+- [ ] **7.2** Write rejection matrix — MIDI fixture → `midi-not-renderable-convert-first`; garbage → `invalid-file-format`; no metadata → `no-metadata`; missing row → `item-record-missing`; 0-byte → `empty-body`; declared `.gp` w/ xml bytes → promoted as `.xml` + warn → FAIL → implement branches → PASS → commit
+- [ ] **7.3** Write `inspectZip.test.ts` — synthetic zip fixtures: under-ceiling passes; crafted high-ratio zip aborts at the 20 MB running total (assert abort happens before full read — instrument the stream); `.gp` with embedded mp3 → `hasAudio: true` → FAIL → implement with `yauzl` → PASS → commit `feat(k-1): streaming zip ceiling + embedded-audio detection`
+- [ ] **7.4** Write `seedFromFile.test.ts` against a real fixture (e.g. a `.gp` with sections) — bpm/timeSig/instruments/bars/sections extracted; lowercase normalization; NULL-only fill (pre-set curator bpm survives); unparseable-but-valid-magic file → `parse-failed` → FAIL → implement with alphaTab → PASS → commit `feat(k-1): parse-once facet seeding`
+- [ ] **7.5** Write cover-kind cases — png fixture → `cover_image_key` set, no seeding attempted; oversized cover → `too-large` → implement → PASS → commit
+- [ ] **7.6** Idempotency: same fixture twice → second run early-returns (no S3 copy, no UPDATE) → implement checksum short-circuit → PASS → commit
+- [ ] **7.7** Author `infra/cms/upload-validator.ts` (strict prefix filter; no-FURL `LambdaWithUrl`); `pulumi preview` clean → commit `feat(infra): upload validator module`
+
+**Test scenarios:** (beyond the TDD list)
+- Edge: copy-self-trigger — promotion writes to `catalogue/` which the strict `uploads/quarantine/` filter ignores; integration test verifies no re-trigger (unchanged, critical).
+- Error path: Postgres unavailable during UPDATE → object stays in quarantine; Lambda event-source retry handles; persistent failure logs for the 24h TTL to sweep.
+- Integration: admin SPA upload of a real synced `.gp` (~4.6 MB) → 1–3 s later the public detail API returns `has_audio: true` + seeded bars/sections; signed URL fetches the original file.
+
+**Verification:** `pnpm vitest run apps/lambda-cms-validate-upload --root .` green; end-to-end (upload → validate → seed → public read) green against dev stack; lifecycle rules in `pulumi preview`; reserved concurrency 5.
 
 ---
 
