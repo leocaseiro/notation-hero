@@ -401,6 +401,16 @@ External review (CMS-plan owner) raised 7 material + 10 minor + 1 cosmetic findi
 
 **Doctrine note:** This is the first DACI Implementation re-decision. The "complete now, never migrate" override has its falsification signals catalogued earlier in this doc (Nx Cloud cap, first-PR cliff, slice velocity, `isolatedDeclarations` compliance). The v1 → v2 trigger here doesn't match any of those exactly — it's closer to *"first contact with implementation surfaced a latent over-engineering signal the override didn't predict."* The lesson for future complete-now decisions: ship the minimum viable shape, then accrete complexity only on first real pain. The hardening cycle that surfaced this signal is itself a positive — agent-native review caught the over-engineering early enough to revise cheaply, before any agent actually used the queue.
 
+### Wave 1 — CI Node 22 → 24 (2026-06-10)
+
+**Original:** Wave 1 froze CI (`.github/workflows/ci.yml`) — "no `.github` changes this PR"; the existing `quality`+`build` jobs pinned `node-version: 22` (set in the PR #4 pnpm migration when 22 was the Active LTS).
+
+**Re-decision (Approver: leocaseiro, 2026-06-10):** bump CI to `node-version: 24` in both jobs, amending the "no `.github` changes" acceptance criterion for [PR #7](https://github.com/leocaseiro/notation-hero/pull/7).
+
+**Why:** Wave 1's `test` target runs `node --test` directly on `.ts` via default type-stripping (on by default in Node ≥22.18 and Node 24). It was validated on local Node 24 while CI still pinned 22 — a green-local/red-CI parity risk. Node 24 is the current **Active LTS** (Node 22 entered Maintenance 2025-10), so the bump makes **local == CI == Node 24** and closes the gap. The sole `.github` change in PR #7 is this two-line version bump.
+
+**Forward note:** `.nvmrc` = Lambda runtime (M-5) remains its own later lane; confirm `nodejs24.x` Lambda availability before the deploy lane.
+
 ## Deferred — awaiting first-use trigger
 
 Items deferred from foundation under the "first-pain wins" pattern (see "When this principle applies"). Each is tracked here AND surfaced via a DangerJS first-use rule (L6 implementation detail) that comments on the PR introducing the first instance. Mirror to Linear tickets once L10a Linear MCP is wired.

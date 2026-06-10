@@ -6,14 +6,17 @@
 
 ## Package tag map (Nx `enforce-module-boundaries`)
 
-Import directions below mirror the enforced `.dependency-cruiser.cjs` rules (the
-live ground truth). A stricter Nx `enforce-module-boundaries` contract is a target
-state for Step ≥2; where this table is stricter than depcruise today, it is noted.
+Directions below are the **intended** hexagonal boundaries. What
+`.dependency-cruiser.cjs` enforces TODAY is narrower: only `core ↛ adapters`,
+`core ↛ apps`, `adapters ↛ apps`, plus no-cycles. The file-level bans
+(`core ↛ @aws-sdk`/`@pulumi`, `adapters ↛ infra`, `handler ↛ @pulumi`) and the Nx
+tag `enforce-module-boundaries` contract are a pending Step-1 / Lane-D item — rows
+below mark what is **NOT enforced yet**. Treat unmarked directions as enforced.
 
-| Folder | Package | Tag | May import (enforced by depcruiser) | Never imports |
+| Folder | Package | Tag | May import | Never imports |
 |---|---|---|---|---|
-| `core/*` | `@notation-hero/scoring` | `type:core` | nothing in-repo (pure domain) | `@aws-sdk/*`, `@pulumi/*`, adapters, apps |
-| `adapters/*` | `@notation-hero/aws-dynamodb` | `type:adapter` | `type:core` | apps, infra source |
+| `core/*` | `@notation-hero/scoring` | `type:core` | nothing in-repo (pure domain) | adapters, apps *(enforced)*; `@aws-sdk/*`, `@pulumi/*` *(intended — NOT enforced yet, Lane D)* |
+| `adapters/*` | `@notation-hero/aws-dynamodb` | `type:adapter` | `type:core` | apps *(enforced)*; infra source *(intended — NOT enforced yet, Lane D)* |
 | `apps/*` | `@notation-hero/player-pwa` | `type:app` | `type:core`, `type:adapter` | infra source *(an `apps → @pulumi/*` ban is a pending later Step-1 item, NOT enforced yet)* |
 | `infra` | `@notation-hero/infra` | `type:infra` | `type:adapter`, `type:app` (composition root) | — *(infra is the composition root: it imports adapters + apps; it must not be imported BY app/adapter/core source)* |
 
@@ -40,9 +43,13 @@ or the affected subset with `nx affected -t <target> --base=origin/master --head
 - The per-package `lint` script carries `ESLINT_USE_FLAT_CONFIG=false` inline so
   ESLint 9 uses the legacy root `.eslintrc.cjs` (flat config is the L3 lane). This
   toggle does NOT work via `nx.json` `targetDefaults` env — it must stay in the script.
-- Never hand-edit tsconfig `references` arrays — Nx-managed via `nx sync` (DACI F-4).
+- tsconfig `references`: DACI F-4 targets Nx-managed sync (`nx sync`), but that is
+  deferred to Lane A — it is NOT wired yet. The single `apps/player-pwa` reference is
+  a hand-authored Wave-1 interim; once `nx sync` lands, stop hand-editing them.
 - `depcheck` (`pnpm run depcheck`) is the dependency-cruiser whole-graph cycle +
   boundary scan; it stays a single root script, not an Nx per-project target.
+- `@notation-hero/infra` targets are stub echo scripts until infra source lands
+  (DACI U9) — green output from them is expected but vacuous.
 
 ## Working with leocaseiro
 

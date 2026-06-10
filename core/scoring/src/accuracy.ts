@@ -25,6 +25,11 @@ export const DEFAULT_WINDOWS: TimingWindows = {
  * Negative = early, positive = late. Outside `hittableMs` => "miss".
  */
 export function classifyHit(errorMs: number, windows: TimingWindows = DEFAULT_WINDOWS): HitVerdict {
+  // A non-finite timing error (NaN from a dropped/garbage sample, or ±Infinity)
+  // is never a real hit — treat it as a miss so it can't inflate accuracy.
+  if (!Number.isFinite(errorMs)) {
+    return "miss";
+  }
   const magnitude: number = Math.abs(errorMs);
   if (magnitude > windows.hittableMs) {
     return "miss";

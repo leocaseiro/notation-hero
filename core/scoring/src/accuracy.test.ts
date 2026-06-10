@@ -17,10 +17,28 @@ test("classifyHit: distinguishes early from late beyond the good band", () => {
   assert.equal(classifyHit(-50), "good");
   assert.equal(classifyHit(-51), "early");
   assert.equal(classifyHit(51), "late");
+  // perfect->good edge: ±perfectMs(20) is "perfect"; ±21 crosses into "good".
+  assert.equal(classifyHit(21), "good");
+  assert.equal(classifyHit(-21), "good");
+  // hittable edge is INCLUSIVE: ±hittableMs(120) still classifies; only >120 misses
+  // (pins the `>` vs `>=` operator).
+  assert.equal(classifyHit(120), "late");
+  assert.equal(classifyHit(-120), "early");
 });
 
 test("classifyHit: beyond the hittable window is a miss", () => {
   assert.equal(classifyHit(DEFAULT_WINDOWS.hittableMs + 1), "miss");
+});
+
+test("classifyHit: a non-finite timing error is a miss, not a hit", () => {
+  // A dropped/garbage sample (NaN) or runaway value (±Infinity) must never score
+  // as a hit — that would inflate accuracy in the wrong direction.
+  assert.equal(classifyHit(NaN), "miss");
+  assert.equal(classifyHit(Infinity), "miss");
+  assert.equal(classifyHit(-Infinity), "miss");
+  const result = scorePassage([NaN, 0, Infinity]); // miss, perfect, miss
+  assert.equal(result.hits, 1);
+  assert.equal(result.accuracyPct, 33.3);
 });
 
 test("scorePassage: mixes hits and misses into a rounded percentage", () => {
