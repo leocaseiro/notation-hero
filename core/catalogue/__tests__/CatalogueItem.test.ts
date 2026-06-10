@@ -190,4 +190,19 @@ describe('CatalogueItem schema — §4 CHECK refinements', () => {
       assert.equal(parsed(CatalogueItemSchema, validLesson({ genre: null })).genre, null);
     });
   });
+
+  describe('integer DDL columns reject fractional values (bpm/sortOrder/notationBytes are int)', () => {
+    test('fractional bpm is rejected', () => {
+      assert.equal(CatalogueItemSchema.safeParse(validSong({ bpm: 82.5 })).success, false);
+    });
+    test('fractional sortOrder is rejected', () => {
+      assert.equal(CatalogueItemSchema.safeParse(validSong({ sortOrder: 1.5 })).success, false);
+    });
+    test('fractional notationBytes is rejected', () => {
+      assert.equal(CatalogueItemSchema.safeParse(validSong({ notationBytes: 4096.7 })).success, false);
+    });
+    test('an integer bpm still parses', () => {
+      assert.equal(parsed(CatalogueItemSchema, validSong({ bpm: 90 })).bpm, 90);
+    });
+  });
 });

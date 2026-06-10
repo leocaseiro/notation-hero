@@ -52,16 +52,16 @@ export const ExerciseSchema: z.ZodType<Exercise> = z
     stepNo: z.number().int().min(0), // non-negative integer (DB UNIQUE is cross-row)
     title: z.string(),
     sectionLabel: z.string().nullable(),
-    startBpm: z.number().nullable(),
-    goalBpm: z.number().nullable(),
+    startBpm: z.number().int().nullable(), // DDL: int
+    goalBpm: z.number().int().nullable(), // DDL: int
     notationTex: z.string().max(NOTATION_TEX_MAX).nullable(),
     notationKey: z.string().nullable(),
     sourceItemId: z
       .string()
       .nullable()
       .transform((s): CatalogueItemId | null => (s == null ? null : toCatalogueItemId(s))),
-    startBar: z.number().nullable(),
-    endBar: z.number().nullable(),
+    startBar: z.number().int().nullable(), // DDL: int
+    endBar: z.number().int().nullable(), // DDL: int
     data: z.record(z.string(), z.unknown()).nullable(), // freeform passthrough
   })
   .superRefine((val, ctx) => {

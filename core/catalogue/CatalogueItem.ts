@@ -103,7 +103,7 @@ export const CatalogueItemSchema: z.ZodType<CatalogueItem> = z
     title: z.string(),
     level: z.number().int().min(1).max(10).nullable(), // ci_level (null OR int 1..10)
     artist: z.string().nullable(),
-    bpm: z.number().nullable(),
+    bpm: z.number().int().nullable(), // DDL: int
     timeSig: z.string().nullable(),
     genre: z
       .string()
@@ -114,14 +114,14 @@ export const CatalogueItemSchema: z.ZodType<CatalogueItem> = z
     skill: z.array(z.string()).transform(lowerAll), // normalize
     tags: z.array(z.string()).transform(lowerAll), // normalize
     lessonType: z.string().nullable(),
-    sortOrder: z.number().nullable(),
+    sortOrder: z.number().int().nullable(), // DDL: int
     source: z.enum(['curated', 'user-upload']), // ci_source
     license: z.enum(['royalty-free', 'cc', 'owned', 'public-domain']).nullable(), // license vocab
     coverImageKey: z.string().nullable(),
     notationKey: z.string().nullable(),
     notationFormat: notationFormatField, // ci_song_fmt (null OR no-mid vocab)
     notationChecksum: z.string().nullable(),
-    notationBytes: z.number().nullable(),
+    notationBytes: z.number().int().nullable(), // DDL: int
     hasAudio: z.boolean(),
     hasVideo: z.boolean(),
     audio: z.array(mediaLinkSchema).nullable(),

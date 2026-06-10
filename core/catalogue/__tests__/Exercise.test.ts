@@ -185,4 +185,18 @@ describe('Exercise schema — §4 ② CHECK refinements', () => {
       assert.equal(parsed(ExerciseSchema, validStep({ notationTex: atCap })).notationTex?.length, 65_536);
     });
   });
+
+  describe('integer DDL columns reject fractional values (bpm/bar fields are int)', () => {
+    test('fractional startBpm is rejected', () => {
+      assert.equal(ExerciseSchema.safeParse(validStep({ startBpm: 60.5, goalBpm: 120 })).success, false);
+    });
+    test('fractional startBar (slice) is rejected', () => {
+      assert.equal(
+        ExerciseSchema.safeParse(
+          validStep({ notationTex: null, sourceItemId: 'song-x', startBar: 1.5, endBar: 8 }),
+        ).success,
+        false,
+      );
+    });
+  });
 });
