@@ -13,6 +13,10 @@ Single canonical per-feature go/no-go. Each row has a **Milestone** (your decisi
 
 > Locked decisions, newest first. Applied to the rows below.
 
+- **2026-06-10 (H-3 milestone):** `H-3` (DynamoDB single-table + GSI) re-milestoned **Alpha → M1** — follows the 2026-06-09 data-store decision: K v1 deploys zero DynamoDB, and H-3's remaining content (per-user sync + analytics counters) is M1 work. Decided at the K-plan round-2 review walkthrough.
+
+- **2026-06-09 (data store):** **Catalogue store = Neon PostgreSQL + JSONB** (hybrid: typed columns + `data jsonb`). **Not** DynamoDB, **not** MongoDB Atlas. **DynamoDB stays** for per-user data (scores/settings/mappings/sync) + analytics counters. **Lesson ≠ Song** (distinct schemas; Song `parts` later). MongoDB/DocumentDB evaluated and dropped (interview talking-point + optional local-Docker side exercise). Affects `H-3`, `H-11`, `K-1`, `K-3`, `song-schema.md`. See [decisions/2026-06-09-catalogue-store-postgres-neon.md](decisions/2026-06-09-catalogue-store-postgres-neon.md).
+
 - **2026-06-05 (LOCKED):** freeze locked — all rows frozen except `H-10` (upload policy = open, decide before M1). Folded into design-stack.md (pointer + ladder + marker; `tone@^15` dropped).
 
 - **2026-06-05 (review complete):**
@@ -156,7 +160,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 |---|---|---|---|---|---|---|---|---|---|
 | H-1 | Pulumi TS IaC | Provision all AWS as TypeScript code | A | ✗ | M | req: (all) | Alpha | approved | interview multiplier |
 | H-2 | Lambda Function URL | Public Lambda (hello-world → API) | A | ✗ | M | req: Lambda | Alpha | approved | JWT-in-handler added with `H-9` |
-| H-3 | DynamoDB single-table + GSI | Shared content + (at M1) per-user cross-device sync | A | ✗ | L | req: DynamoDB | Alpha | approved | Alpha = shared data (lessons via `K`, analytics); per-user cross-device sync = M1 |
+| H-3 | DynamoDB single-table + GSI | Per-user data (M1 cross-device sync) + analytics counters | A | ✗ | L | req: DynamoDB | M1 | approved | **2026-06-09: lesson catalogue moved to Neon Postgres** (see Decisions log); **2026-06-10: re-milestoned Alpha → M1** — K v1 deploys zero DynamoDB, so the milestone follows the per-user data it now serves; the catalogue-store decision doc is the NoSQL talking-point until then |
 | H-4 | S3 + CloudFront + OAC | Host the PWA static bundle | A | ✗ | M | req: S3·CloudFront | Alpha | approved | 1 TB free tier |
 | H-5 | Offline-sync engine | RxDB vs Legend-State pull/push handler | A | ✗ | M | — | M1 | approved | the SYNC engine (cross-device = M1). App-shell offline = `H-13`. Spike both `[Q: only client offline? Service Worker too? → H-13]` |
 | H-6 | SQS/SNS → S3 → Athena analytics | Usage-event pipeline (queue + data lake) | A | ✗ | L | req: SQS·SNS·S3·Athena | Beta | approved | **richest interview piece**; needs `J-8`. Athena = SQL over the S3 event lake (most-practiced lessons, accuracy trends, funnels) `[Q: Where is Athena? → here]` |
@@ -164,7 +168,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | H-8 | Sentry client errors | Client JS error tracking | A | ✗ | S | — | Alpha | approved | ⚠ PII masking (doc-review) |
 | H-9 | Cognito auth (User Pools) | Hosted UI + PKCE + Google → real accounts | A | ✗ | L | req: Cognito | M1 | approved | enables cross-device sync; ⚠ Capacitor-redirect spike (F-15). (Admin `K-2` uses CloudFront-Function Basic Auth, not Cognito) |
 | H-10 | S3 uploads + validation | Pre-signed PUT, magic-byte validate, quarantine, rate-limit | R | ✗ | L | req: S3·Lambda | M1 | TBD (open) | ⚠ **upload policy OPEN** — leaning private-per-user / no public sharing; ToS + DMCA. Admin pipeline reused by `K-1` |
-| H-11 | Lesson / song library | Curated lessons (S3 files + DynamoDB metadata) | N | ✗ | M | req: S3·DynamoDB | Beta | approved | produced by area `K` (CMS, Alpha); initial preloaded exercise set in Beta; expand at M1 `[Note: I want a list of exercises preloaded in Beta]` |
+| H-11 | Lesson / song library | Curated lessons (S3 files + **Neon Postgres** metadata + search) | N | ✗ | M | req: S3 · Neon Postgres | Beta | approved | **2026-06-09: metadata store = Neon Postgres+JSONB** (was DynamoDB); produced by area `K` (CMS, Alpha); initial preloaded exercise set in Beta; expand at M1 `[Note: I want a list of exercises preloaded in Beta]` |
 | H-12 | Kafka (local Docker) | Queue-vs-log learning, off-AWS | A | ✗ | M | — | deferred | approved | **exercise:** rebuild `H-6` ingestion in Kafka (Redpanda) — consumer groups + offsets + **replay** (vs SQS delete-on-consume). Or Aiven/Confluent free tier `[OK, any suggestion to use Kafka? → this]` |
 | H-13 | PWA install + offline shell | Service Worker + manifest (offline app-shell, installable) | A | ✗ | S | — | Beta | approved | offline *app shell* (loads w/o network); separate from the M1 sync engine (`H-5`) |
 
@@ -200,20 +204,20 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 
 | ID | Feature | Description | Scope | Fork | Est | AWS | Milestone | Status | Ref/Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| K-1 | Lesson store (files + catalog) | Store + validate lesson files and metadata | A | ✗ | M | req: S3 · DynamoDB · Lambda(validate) | Alpha | approved | shared content (no identity); feeds `H-11`; admin-curated → sidesteps `B-1`/`H-10` copyright |
+| K-1 | Lesson store (files + catalog) | Store + validate lesson files and metadata | A | ✗ | M | req: S3 · **Neon Postgres** · Lambda(validate) | Alpha | approved | **catalogue metadata = Neon Postgres+JSONB** (2026-06-09, was DynamoDB); shared content (no identity); feeds `H-11`; admin-curated → sidesteps `B-1`/`H-10` copyright |
 | K-2 | Hosted admin SPA + CRUD | Manage/upload lessons; htpasswd-style gate | A | ✗ | M | req: S3 · CloudFront · CloudFront Function (Basic Auth) · Lambda FURL | Alpha | approved | **no Cognito**; edge Basic-Auth (rotate = redeploy, HTTPS-only); edge-auth portfolio piece |
-| K-3 | Lesson catalog API + delivery | App reads catalog + downloads lesson files | A | ✗ | S | req: Lambda · CloudFront | Alpha | approved | consumed by the app; feeds `H-11` |
+| K-3 | Lesson catalog API + delivery | App reads catalog + downloads lesson files | A | ✗ | S | req: Lambda · CloudFront | Alpha | approved | consumed by the app; feeds `H-11`; **Lambda → Neon Postgres** via serverless HTTP driver (store swappable behind this API) |
 
 ---
 
 ## AWS portfolio candidates (ranked by interview value)
 
-Per the **sync model**: per-user data is localStorage in Alpha/Beta; DynamoDB *cross-device* sync arrives at M1. DynamoDB earns its place early via **shared data** (lessons `K`, analytics).
+Per the **sync model**: per-user data is localStorage in Alpha/Beta; DynamoDB *cross-device* sync arrives at M1. DynamoDB earns its early place via **analytics counters** (the lesson *catalogue* moved to **Neon Postgres** on 2026-06-09 — see Decisions log).
 
 1. `H-6` Analytics pipeline (SQS/SNS → S3 → Athena) — messaging + data-lake — **L** — *Beta*
 2. `H-7` CloudWatch/X-Ray SLOs + burn-rate — SRE/observability — **L** — *Beta*
-3. `K-1`/`K-2`/`K-3` Admin CMS — S3 + DynamoDB + Lambda + CloudFront + edge Basic-Auth — **Alpha**
-4. `H-3` DynamoDB single-table + GSI (shared now; per-user sync @M1) — **L** — *Alpha*
+3. `K-1`/`K-2`/`K-3` Admin CMS — S3 + **Neon Postgres** + Lambda + CloudFront + edge Basic-Auth — **Alpha**
+4. `H-3` DynamoDB single-table + GSI (per-user sync @M1 + analytics counters; catalogue → Neon Postgres) — **L** — *M1*
 5. `H-1` Pulumi IaC — **M** — *Alpha* · 6. `H-2` Lambda Function URL — **M** — *Alpha* · 7. `H-4` S3 + CloudFront + OAC — **M** — *Alpha*
 8. `H-9` Cognito User Pools (OAuth2/PKCE) — unlocks cross-device sync — **L** — *M1* · 9. `H-10` S3 uploads + validation — **L** — *M1*
 10. `H-12` Kafka (local) — queue-vs-log + **replay** — **M** — *deferred (learning)*
