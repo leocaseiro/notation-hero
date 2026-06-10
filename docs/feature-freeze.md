@@ -29,7 +29,7 @@ Single canonical per-feature go/no-go. Each row has a **Milestone** (your decisi
   - **Ladder renumbered (monotonic):** `M3` = enhancements · `M4` = desktop · `M5` = pro-audio (ASIO).
   - **Sync model:** *no per-device sync.* User data = **localStorage in Alpha/Beta**; **cross-device sync = M1** (Cognito User Pools).
   - **Area `K` added (Admin/CMS):** Alpha; hosted admin gated by a **CloudFront Function (Basic Auth)** — no Cognito; produces the shared lesson library (feeds `H-11`).
-  - **Competitor-name scrub:** feature names generic; load-bearing strategic refs kept (the reference tutor north-star, positioning-wedge in design-stack.md, the reference tutor screenshots).
+  - **Competitor-name scrub:** feature names generic; all strategic positioning + reference screenshots moved to private storage (`docs/.private/` + Linear Document).
 
 ---
 
@@ -89,7 +89,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | B-8 | Display options | Scale / stretch / layout / cursors / highlight | R | ✓ | XS | sug: DynamoDB sync @M1 | Alpha | approved | IMPLEMENTATION_SUMMARY.md `[Q: ...good candidate for dynamoDB sync. WDYT?` → yes, @M1 |
 | B-9 | A/B loop (timeline UI) | Click point A & B; loop a range | R | ◑ | M | — | Friendly | approved 🎨 | basic A/B works via AlphaTab (Alpha); timeline-view UI polish = Friendly `[note: already available in the fork; selection owned by AlphaTab; improve UI w/ friendly-view]` |
 | B-10 | Per-instrument volume mixer | Volume per track (drums/guitar/bass) | R | ◑ | M | sug: DynamoDB sync @M1 | Beta | approved | ✚ `mixer-ui`; ⚠ API = `changeTrackVolume`; IMPLEMENTATION_SUMMARY.md `[approved with dynamoDB]` |
-| B-10-a | Mute-mine / solo-mine | Solo/mute the player's own instrument | R | ◑ | M | — | Beta | approved | AlphaTab `changeTrackMute`/`changeTrackSolo` exist; mute/solo-mine UX new (the reference tutor "Minus Drums/Drums Only") `[Q: I'ts already done, isn't?]` → partial |
+| B-10-a | Mute-mine / solo-mine | Solo/mute the player's own instrument | R | ◑ | M | — | Beta | approved | AlphaTab `changeTrackMute`/`changeTrackSolo` exist; mute/solo-mine UX new (classic "Minus Drums" / "Drums Only" convention) `[Q: I'ts already done, isn't?]` → partial |
 | B-11 | MIDI instrument selector | Choose drums (default) or keyboard | R | ◑ | S | localStorage; sug: DynamoDB @M1 | Beta | approved | track-display toggles = groundwork; input-instrument selector new `[Q: ...partially, no?` `[approved with dynamoDB]` |
 | B-12 | Keyboard shortcuts | Hotkeys play/pause/restart etc | N | ✗ | S | — | M4 | approved | FEATURES.md (shortcuts TODO); desktop-focused |
 
@@ -98,7 +98,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | ID | Feature | Description | Scope | Fork | Est | AWS | Milestone | Status | Ref/Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | C-1 | Hit-scoring engine | Timing-window scoring (JS / Web MIDI) | R | ✓ | M | — | Alpha | approved | ⚠ **Sightread scrub** (50/300ms consts + comments); PERFORMANCE.md |
-| C-2 | Score % at song end | 0-100 score per play | R | ✓ | XS | — | Alpha | approved 🎨 | FEATURES.md [x]; per-tier display (the reference tutor Excellent/Good/OK/Miss) → design-shotgun |
+| C-2 | Score % at song end | 0-100 score per play | R | ✓ | XS | — | Alpha | approved 🎨 | FEATURES.md [x]; per-tier display (classical 4-tier: Excellent/Good/OK/Miss) → design-shotgun |
 | C-3 | 5-star rating | Map score % → 5 stars | R | ◑ | S | — | Alpha | approved | scope §rating |
 | C-4 | In-session streak | Current + longest streak within a play | R | ✓ | XS | — | Alpha | approved | FEATURES.md [x] |
 | C-5 | Save score each play | Persist each play's score (local; sync later) | R | ✗ | S | localStorage; sug: DynamoDB @M1 | Beta | approved | event-source for `H-6` analytics; Streams roll-ups @M1 `[approved with dynamoDB. set score with game mode: practice/game/game-memory]` `[Q: SQS/SNS or Kafka here? → analytics path H-6, not storage]` |
@@ -147,7 +147,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | ID | Feature | Description | Scope | Fork | Est | AWS | Milestone | Status | Ref/Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | G-1 | Friendly highway view | Horizontal highway (primary) | N | ✗ | XL | — | Friendly | approved | ✚ `/design-shotgun`; stack-brainstorm §6; PixiJS. ⚠ must handle written repeats itself (AlphaTab does standard view) |
-| G-1-a | Vertical falling-notes (alt) | Vertical falling-notes alternate view | N | ✗ | L | — | Friendly | approved | stack-brainstorm §6 (renamed — no competitor names); the reference tutor game-mode screenshot is the reference |
+| G-1-a | Vertical falling-notes (alt) | Vertical falling-notes alternate view | N | ✗ | L | — | Friendly | approved | stack-brainstorm §6 (renamed — no competitor names); internal game-mode reference screenshot tracked privately |
 | G-2 | Friendly-view feedback | Gem shapes, tendency meter, combo glow, hit-window band | N | ✗ | L | — | Friendly | approved | stack-brainstorm §6; carries full a11y (color+shape+text) per `A-6` |
 
 ## H. AWS backend & infra  *(portfolio track — runs parallel; PWA-first unblocks it)*
@@ -190,8 +190,8 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | J-2 | Video (MP4/YouTube) sync | Background video synced to playback | N | ✗ | L | — | M2 | approved | sync to AlphaSynth `playerPositionChanged` clock; no Tone.js; #2397 caveat `[same as above]` |
 | J-3 | Import alphaTex / .midi | Import via AlphaTab alphaTex or raw `.midi` | N | ✗ | M | — | M3 | approved | `[Note: use AlphaTab alphaTex https://alphatab.net/docs/alphatex/introduction]` (also authors `K`/`H-11` exercises) |
 | J-4 | Share results (PDF/CSV) | Export score/results | N | ✗ | S | sug: Lambda gen ~S | deferred | approved | FEATURES.md (future) |
-| J-5 | Ghost-note dynamics detect + chart | Detect dynamics; the reference tutor-style dynamics chart | N | ✗ | L | — | M3 | approved | scope nice (dynamic detection) |
-| J-6 | Drumkit SVG (play-time) | Live kit visualization — lights up struck pads; shown in notation + friendly views | N | ✗ | L | — | M3 | approved | **distinct from `D-2-f`** (mapping diagram); the reference tutor-style (see `internal-reference-1.jpg`) `[show in both views]` |
+| J-5 | Ghost-note dynamics detect + chart | Detect dynamics; classical dynamics chart | N | ✗ | L | — | M3 | approved | scope nice (dynamic detection) |
+| J-6 | Drumkit SVG (play-time) | Live kit visualization — lights up struck pads; shown in notation + friendly views | N | ✗ | L | — | M3 | approved | **distinct from `D-2-f`** (mapping diagram); internal-reference style (see private design library) `[show in both views]` |
 | J-7 | Mobile phone support | Small-screen redesign | N | ✗ | XL | — | deferred | approved | phone = its own project |
 | J-8 | Analytics instrumentation (client) | Emit usage events to the pipeline | A | ✗ | S | req: feeds `H-6` | Beta | approved | enables `H-6` (and the `H-12` Kafka exercise) |
 | J-9 | Discord / social / publishing | Community + alternate.to listings | N | ✗ | XS | — | deferred | approved | ops, not app |
@@ -242,4 +242,4 @@ Per the **sync model**: per-user data is localStorage in Alpha/Beta; DynamoDB *c
 - **scope.md** · **docs/design-stack.md** · **docs/aws-learning-map.md**
 - **Fork plans** (`~/Sites/alphaTabWebsite/.../AlphaTabRhythmGame/`): FEATURES.md · AUTO_BPM.md · PERFORMANCE.md · PRACTICE_MODAL_PLAN.md · IMPLEMENTATION_SUMMARY.md · MIDI_MAPPING_PLAN(.md/_SUMMARY/_QUICK_REF/_VISUAL_GUIDE) · IMPLEMENTATION_COMPLETE.md · IMPROVEMENTS_SUMMARY.md
 - **Brainstorms** (`serene-grothendieck-fb5e67/`): stack-aws-brainstorm.md · stack-brainstorm.md (§6 friendly-view UI)
-- **the reference tutor reference screenshots:** `~/Downloads/internal-reference-1.jpg` (notation + kit SVG) · `~/Downloads/internal-reference-2.jpg` (friendly view + score panel)
+- **Internal reference screenshots:** tracked privately in `docs/.private/` and the project's Linear Document; not in the public repo.

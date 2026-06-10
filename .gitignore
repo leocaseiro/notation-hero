@@ -19,6 +19,11 @@ dist/
 .env.*
 !.env.example
 
+# Private strategic context (the reference tutor north-star / positioning-wedge / handoff content).
+# Public repo cannot contain competitor refs (Roland / [scrubbed-ref] / etc.).
+# Mirror lives in a Linear Document under the Notation Hero project.
+docs/.private/
+
 # Editor / OS
 .DS_Store
 *.log

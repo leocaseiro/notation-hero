@@ -1,4 +1,4 @@
-# Drum Tutor — Stack Brainstorm
+# NotationHero — Stack Brainstorm
 
 > **Status:** living brainstorm doc · **Last updated:** 2026-06-03
 > Companion to [`scope.md`](scope.md). Captures the tech-stack exploration: the recommendation, the alternatives we ruled out (and *why*), verified free-tier facts, and the decisions still open.
@@ -153,7 +153,7 @@ We run no server of our own, so this means **error tracking + usage analytics + 
 
 ## 6. Friendly notation UI + feedback (design notes)
 
-- **Primary friendly view:** **horizontal-highway-style horizontal highway** (lanes = kit pieces, rhythm reads left→right). Optional **falling-notes-style vertical waterfall** as an alternate.
+- **Primary friendly view:** **horizontal-highway** (lanes = kit pieces, rhythm reads left→right). Optional **vertical waterfall (falling-notes)** as an alternate.
 - Lanes **mirror the physical kit** (cymbals/hat top, kick bottom), configurable. **Gem shape encodes articulation**: filled = normal, **X = cymbals**, halo = accent, small/dim = ghost note. Translucent band at the now-line shows the **hit window**. Velocity → brightness/size.
 
 | Event | Standard notation (scope) | Friendly view |
