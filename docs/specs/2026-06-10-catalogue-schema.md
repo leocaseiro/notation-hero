@@ -53,7 +53,11 @@ catalogue_item ──< exercise            (a lesson's ordered steps)
 ## 4. Schema (authoritative DDL)
 
 ```sql
-CREATE EXTENSION IF NOT EXISTS pg_trgm;   -- fuzzy/partial search (used in §9)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;    -- fuzzy/partial search (§9)
+CREATE EXTENSION IF NOT EXISTS unaccent;   -- accent-insensitive search ("sao" finds "São")
+-- immutable wrapper so unaccent() works inside generated columns + functional indexes
+CREATE FUNCTION immutable_unaccent(text) RETURNS text
+  LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$ SELECT public.unaccent('public.unaccent', $1) $$;
 
 -- ─────────────────────────────────────────────────────────────────────
 -- ① catalogue_item — songs AND lessons (shared facets = typed columns)
@@ -95,7 +99,8 @@ CREATE TABLE catalogue_item (
   CONSTRAINT ci_song_bpm  CHECK (type <> 'song' OR bpm IS NOT NULL),
   CONSTRAINT ci_song_file CHECK (type <> 'song' OR notation_key IS NOT NULL),
   CONSTRAINT ci_song_fmt  CHECK (notation_format IS NULL OR notation_format IN ('gp','gpx','gp5','gp4','gp3','xml')),
-  CONSTRAINT ci_lesson_type_only CHECK (type = 'lesson' OR lesson_type IS NULL)
+  CONSTRAINT ci_lesson_type_only CHECK (type = 'lesson' OR lesson_type IS NULL),
+  CONSTRAINT ci_shared_curated   CHECK (status <> 'published' OR source = 'curated')  -- v1: shared catalogue is curated-only; user-uploads stay private-per-user (M1), never published here
 );
 
 -- ─────────────────────────────────────────────────────────────────────
@@ -188,7 +193,7 @@ Real files are messy/incomplete → **almost everything is optional, seeded from
 
 **Publish-gate rules (app/CMS-enforced — DDL can't express these):**
 - **A lesson must have ≥1 exercise** before `status` → `published` (else it is unplayable). *(D4)*
-- **`source='user-upload'` items cannot reach `status='published'`** without an explicit curator review step (DMCA/content safety; user identity is M1). Until M1, treat user-upload + published as forbidden.
+- **The shared catalogue is curated-only (v1).** `CHECK (status<>'published' OR source='curated')` enforces that no `user-upload` row is ever published here. User uploads (M1) live in a **private per-user space** (separate, keyed by uploader — mirrors shared-vs-per-user data), never auto-surfaced in the shared library. `source` stays for provenance + future deliberate curate-in.
 - **`source='curated'` items require a non-null `license`** before `published`.
 
 **Level → display (D6):** `level` 1–10 maps to the 5★ library display as `1–2→1★ · 3–4→2★ · 5–6→3★ · 7–8→4★ · 9–10→5★`; `NULL`→no stars ("—"). Library/CMS/player all use this mapping.
@@ -240,13 +245,14 @@ CREATE INDEX ci_gin_skill       ON catalogue_item USING gin (skill);
 CREATE INDEX ci_gin_tags        ON catalogue_item USING gin (tags);
 CREATE INDEX ci_btree_filters   ON catalogue_item (type, status, level, bpm, time_sig, genre);
 CREATE INDEX ci_updated         ON catalogue_item (updated_at);
-CREATE INDEX ci_trgm_title      ON catalogue_item USING gin (title gin_trgm_ops);   -- fuzzy
-CREATE INDEX ci_trgm_artist     ON catalogue_item USING gin (artist gin_trgm_ops);
-CREATE INDEX ip_by_pattern      ON item_pattern (pattern_id);
+-- fuzzy indexes are accent + case-insensitive (immutable_unaccent from §4) → "sao" matches "São"
+CREATE INDEX ci_trgm_title  ON catalogue_item USING gin (immutable_unaccent(lower(title)) gin_trgm_ops);
+CREATE INDEX ci_trgm_artist ON catalogue_item USING gin (immutable_unaccent(lower(coalesce(artist,''))) gin_trgm_ops);
+CREATE INDEX ip_by_pattern  ON item_pattern (pattern_id);
 ALTER TABLE catalogue_item ADD COLUMN search tsvector GENERATED ALWAYS AS (
-    setweight(to_tsvector('simple', coalesce(title,'')),  'A')
- || setweight(to_tsvector('simple', coalesce(artist,'')), 'B')
- || setweight(to_tsvector('simple', array_to_string(coalesce(tags,'{}'),' ')), 'C')
+    setweight(to_tsvector('simple', immutable_unaccent(coalesce(title,''))),  'A')
+ || setweight(to_tsvector('simple', immutable_unaccent(coalesce(artist,''))), 'B')
+ || setweight(to_tsvector('simple', immutable_unaccent(array_to_string(coalesce(tags,'{}'),' '))), 'C')
 ) STORED;
 CREATE INDEX ci_fts ON catalogue_item USING gin (search);
 ```
@@ -262,13 +268,15 @@ WHERE type='song' AND status='published' AND bpm BETWEEN 80 AND 120
 -- lesson type                    →  WHERE type='lesson' AND lesson_type='beat'
 -- musical key (piano)            →  WHERE musical_key='C'
 -- by pattern (beat or rudiment)  →  JOIN item_pattern ip ON ip.item_id=ci.id WHERE ip.pattern_id='rock-8th'
--- fuzzy title                    →  WHERE title % 'yelow'
+-- fuzzy title (accent-insensitive) → WHERE immutable_unaccent(lower(title)) % immutable_unaccent(lower('Sao'))
 -- full-text                      →  WHERE search @@ websearch_to_tsquery('simple','yellow coldplay')
 ```
 
 **`K-3` list projection (the library card contract).** `GET /catalogue` (list) returns exactly: `id, type, title, artist, genre, level, bpm, time_sig, instruments, has_audio, has_video, sort_order, cover_image_url, status, updated_at` — **excluding** `data jsonb`, `notation_key`, `notation_checksum`. `cover_image_url` is the API-resolved (signed/CDN) form of `cover_image_key`. Full record + signed notation URL is fetched on item open. Per-user fields (best score, "continue") are joined from DynamoDB at the app layer, not from the catalogue.
 
 **UX (informs later UI spec):** *simple* filters always visible (search · type · level · bpm · time-sig · instrument); *advanced* behind "More" (genre · tags · skill · pattern · key · source/license). Sort: relevance · level · bpm · newest · most-practiced (later, from `H-6`) · A–Z · curated (`sort_order`).
+
+**Internationalization:** storage is **UTF-8** — `text` holds any language natively (ã/à/ñ/ç, 中文, emoji); no config. Search is **accent + case-insensitive** via `unaccent`+`lower` ("sao"→"São", "motorhead"→"Motörhead"). A–Z sort uses the UTF-8 collation; per-language ICU collation can refine later.
 
 ---
 
@@ -281,7 +289,7 @@ Parse each uploaded file **once at upload**; never parse server-side again (the 
 3. **Normalize** controlled-vocab values to **lowercase** at ingest (`genre`, array facets) so the §9 equality filters match.
 4. **MIDI (D1):** convert **before** upload — curators convert MIDI→GP in **Guitar Pro** and upload the `.gp` (the existing workflow). Automated MIDI→MusicXML conversion is an **M1 / user-upload** concern (deferred); no v1 converter. `notation_format` never stores `mid`.
 5. **`H-10` validation:** binary/sniffable formats validate by magic bytes (`gp`=PK zip, `gpx`=BCFS, `gp5/4/3`=version header, `xml`=`<?xml`); compute `notation_checksum` (sha256) + `notation_bytes`; enforce max size (§8); land in the `quarantine/` prefix, promote on pass. alphaTex is CMS-authored (parse-validated), never in the user-upload path.
-6. **Publish gating** (see §5): lessons need ≥1 exercise; curated need a `license`; user-uploads need curator review (M1).
+6. **Publish gating** (see §5): lessons need ≥1 exercise; curated need a `license`; **user-uploads are never published to the shared catalogue** (curated-only v1; private per-user at M1).
 
 ---
 
@@ -299,6 +307,7 @@ Parse each uploaded file **once at upload**; never parse server-side again (the 
 | `course` (ordered lessons) | v1 stops at Lesson→Exercise; Course wraps lessons later |
 | Per-user "can-play pattern" skill graph | **DynamoDB** (per-user), joined at app layer — not the catalogue |
 | Multi-arrangement grouping (one "work", many versions/keys) | each version is its own `catalogue_item` row now |
+| **User-upload private per-user space** | M1: a user's own files live separately (keyed by uploader), never auto-published to the shared (curated) catalogue — see §5 |
 
 > `pattern`/`item_pattern` ship in the v1 migration but stay empty until Beta content (`H-11`) is seeded — the CMS pattern-linking UI can arrive with that content.
 
@@ -310,7 +319,7 @@ Parse each uploaded file **once at upload**; never parse server-side again (the 
 - **`data jsonb` known keys** (the load-bearing ones features read; the rest is freeform): on `catalogue_item` — `bars` (int), `sections` (`[{label, startBar, endBar}]`, used to auto-seed song-breakdown steps), `album`, `year`, `defaultMappingPresetId`, `meta`. Cross-row invariants (e.g. a slice's bars ≤ the source song's `data.bars`) are **app-enforced** (DDL can't reach into another row's JSONB). **`data` is not a PII landing zone.**
 - **Open `kind`/`lesson_type` vocabularies** add categories (incl. piano scales/chords) with no schema change.
 - **`status`** lifecycle `draft → published → archived`; `archived` = soft-delete tombstone (`updated_at` bumped → future change-feed carries it). The CMS **never hard-deletes** catalogue rows (archival is the retirement path; see §6 archived-source rule).
-- **Security notes (plan-level):** files served via **CloudFront signed URLs** (private, short TTL); **user-upload→published gated** behind curator review; **curated→published requires `license`**; **upload size limits + quarantine prefix** (§8/§2/§10); **all SQL values parameterized** (§9). The `K-2` admin Basic-Auth credential should be stored in **SSM Parameter Store (SecureString)** and injected at deploy — not baked into the CloudFront Function source (IaC concern, tracked with `K-2`).
+- **Security notes (plan-level):** files served via **CloudFront signed URLs** (private, short TTL); **shared catalogue is curated-only** (CHECK: only `source='curated'` can be `published`; user-uploads are private-per-user at M1); **curated→published requires `license`**; **upload size limits + quarantine prefix** (§8/§2/§10); **all SQL values parameterized** (§9). The `K-2` admin Basic-Auth credential should be stored in **SSM Parameter Store (SecureString)** and injected at deploy — not baked into the CloudFront Function source (IaC concern, tracked with `K-2`).
 - **Swappable behind the `K-3` catalog API** — the app reads catalogue + signed file URLs through `K-3`; the Postgres choice stays an implementation detail (AWS-managed equivalent = Aurora/RDS + RDS Proxy).
 
 ---

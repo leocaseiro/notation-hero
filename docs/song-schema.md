@@ -1,5 +1,7 @@
 # NotationHero — Song / Lesson Schema (shared contract)
 
+> ⛔ **SUPERSEDED (2026-06-10)** — replaced by the authoritative v1 catalogue contract: **[specs/2026-06-10-catalogue-schema.md](specs/2026-06-10-catalogue-schema.md)** (Postgres + JSONB; song / lesson / pattern; ce-doc-review applied). Kept for history only — do not build to this file.
+
 > **Status:** DRAFT — seed for **Track 3** (finalize before splitting APP + CMS) · 2026-06-05 · **2026-06-09: catalogue store = Neon Postgres + JSONB** (see [decision record](decisions/2026-06-09-catalogue-store-postgres-neon.md); Lesson ≠ Song; per-user data = DynamoDB)
 > **Companions:** [feature-freeze.md](feature-freeze.md) (area `K`, `H-11`, `D-2`, sync model) · [design-stack.md](design-stack.md)
 > **Why this is first:** it's the ONE contract the **player app (reader)** and **Admin CMS (writer)** both build to. Lock it, then APP and CMS proceed in parallel. Keep it **extensible** (the `meta` blob) so a late `/design-shotgun` finding doesn't force a rebuild.
