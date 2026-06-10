@@ -58,6 +58,9 @@ CREATE EXTENSION IF NOT EXISTS unaccent;   -- accent-insensitive search ("sao" f
 -- immutable wrapper so unaccent() works inside generated columns + functional indexes
 CREATE FUNCTION immutable_unaccent(text) RETURNS text
   LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$ SELECT public.unaccent('public.unaccent', $1) $$;
+-- array_to_string is only STABLE → wrap it IMMUTABLE so the §9 generated tsvector column compiles
+CREATE FUNCTION immutable_array_to_string(text[], text) RETURNS text
+  LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$ SELECT array_to_string($1, $2) $$;
 
 -- ─────────────────────────────────────────────────────────────────────
 -- ① catalogue_item — songs AND lessons (shared facets = typed columns)
@@ -100,7 +103,9 @@ CREATE TABLE catalogue_item (
   CONSTRAINT ci_song_file CHECK (type <> 'song' OR notation_key IS NOT NULL),
   CONSTRAINT ci_song_fmt  CHECK (notation_format IS NULL OR notation_format IN ('gp','gpx','gp5','gp4','gp3','xml')),
   CONSTRAINT ci_lesson_type_only CHECK (type = 'lesson' OR lesson_type IS NULL),
-  CONSTRAINT ci_shared_curated   CHECK (status <> 'published' OR source = 'curated')  -- v1: shared catalogue is curated-only; user-uploads stay private-per-user (M1), never published here
+  CONSTRAINT ci_shared_curated   CHECK (status <> 'published' OR source = 'curated'),  -- v1: shared catalogue is curated-only; user-uploads stay private-per-user (M1)
+  CONSTRAINT ci_source           CHECK (source IN ('curated','user-upload')),           -- source is write-once (set by K-1 ingest; NOT CMS-updatable — the curated-only CHECK trusts it)
+  CONSTRAINT ci_pub_license      CHECK (status <> 'published' OR source <> 'curated' OR license IS NOT NULL)  -- published curated items must carry a license
 );
 
 -- ─────────────────────────────────────────────────────────────────────
@@ -193,6 +198,7 @@ Real files are messy/incomplete → **almost everything is optional, seeded from
 
 **Publish-gate rules (app/CMS-enforced — DDL can't express these):**
 - **A lesson must have ≥1 exercise** before `status` → `published` (else it is unplayable). *(D4)*
+- **`source` is write-once** — set by the K-1 ingest pipeline, never updatable via CMS CRUD. The `ci_shared_curated` gate trusts `source`, so re-labeling a `user-upload` as `curated` must be impossible (enforce in the K-1/K-3 API contract, or a DB trigger).
 - **The shared catalogue is curated-only (v1).** `CHECK (status<>'published' OR source='curated')` enforces that no `user-upload` row is ever published here. User uploads (M1) live in a **private per-user space** (separate, keyed by uploader — mirrors shared-vs-per-user data), never auto-surfaced in the shared library. `source` stays for provenance + future deliberate curate-in.
 - **`source='curated'` items require a non-null `license`** before `published`.
 
@@ -211,7 +217,7 @@ A lesson's `lesson_type` determines where each step's notation comes from:
 | **rudiment** | `notation_tex` (authored alphaTex variations) | `title` | a **pattern** (kind=rudiment) | single paradiddle at increasing BPM |
 
 - **Bonus (ingest nicety):** because GP files carry `<Section>` markers (verified: Coldplay "Yellow" → Intro / Verse 1 / Chorus 1 / …), a **song-breakdown lesson's steps can be auto-seeded** from the source song's sections (populating `section_label` + bar ranges).
-- **Archived-source rule (D2):** a song-breakdown step references a song via `source_item_id`. Hard-delete of that song is blocked (`ON DELETE RESTRICT`) — curators **archive** instead. When resolving a slice, the **`K-3` API must verify the source song's `status='published'`**; if the source is `archived`/`draft`, the API refuses to serve the slice (so a retired/de-licensed song can't keep serving through a song-breakdown back door).
+- **Archived-source rule (D2):** a song-breakdown step references a song via `source_item_id`. Hard-delete of that song is blocked (`ON DELETE RESTRICT`) — curators **archive** instead. When resolving a slice, the **`K-3` API must verify the source song's `status='published'`**; if the source is `archived`/`draft`, the API refuses to serve the slice (so a retired/de-licensed song can't keep serving through a song-breakdown back door). Slice resolution goes through a **single shared K-3 resolver** so the status check can't be bypassed by a new consumer (CMS preview, export, bulk re-render).
 
 ---
 
@@ -229,7 +235,7 @@ A lesson's `lesson_type` determines where each step's notation comes from:
 
 - **Item-level** `audio jsonb` / `video jsonb` arrays of links (`{provider, url|key, label}`) — YouTube link or separately-hosted mp3. Cheap booleans `has_audio` / `has_video` for filtering.
 - **Embedded GP audio travels with the file:** a synced `.gp` literally contains its mp3 inside the zip (`Content/Assets/*.mp3` + `<BackingTrack>`), so **uploading only the `.gp` works** and `has_audio` can be auto-detected at ingest. (AlphaTab audio/video **sync** itself is a later feature.)
-- **Upload size limits (security).** The embedded mp3 makes a valid `.gp` arbitrarily large (a synced file is ~4.6 MB). Ingest **enforces a max size** on both the container and any extracted asset, and checks decompressed size **before** writing to S3 (defends storage/Lambda exhaustion / zip-bomb variants). Cross-references the `H-10` rate-limit.
+- **Upload size limits (security).** The embedded mp3 makes a valid `.gp` arbitrarily large (a synced file is ~4.6 MB). Ingest enforces a max size on both the container and any extracted asset as a **streaming limit** — abort decompression once the running total exceeds the ceiling (~20 MB decompressed, tune per `H-10`) **before** buffering the full payload in Lambda memory (a post-load check still lets a zip-bomb exhaust the Lambda). Cross-references the `H-10` rate-limit.
 - **Per-track media (Songsterr-style "video per track") = deferred.** Re-associating media to tracks later is additive → no v1 rework.
 
 ---
@@ -252,7 +258,7 @@ CREATE INDEX ip_by_pattern  ON item_pattern (pattern_id);
 ALTER TABLE catalogue_item ADD COLUMN search tsvector GENERATED ALWAYS AS (
     setweight(to_tsvector('simple', immutable_unaccent(coalesce(title,''))),  'A')
  || setweight(to_tsvector('simple', immutable_unaccent(coalesce(artist,''))), 'B')
- || setweight(to_tsvector('simple', immutable_unaccent(array_to_string(coalesce(tags,'{}'),' '))), 'C')
+ || setweight(to_tsvector('simple', immutable_unaccent(immutable_array_to_string(coalesce(tags,'{}'),' '))), 'C')
 ) STORED;
 CREATE INDEX ci_fts ON catalogue_item USING gin (search);
 ```
@@ -277,6 +283,8 @@ WHERE type='song' AND status='published' AND bpm BETWEEN 80 AND 120
 **UX (informs later UI spec):** *simple* filters always visible (search · type · level · bpm · time-sig · instrument); *advanced* behind "More" (genre · tags · skill · pattern · key · source/license). Sort: relevance · level · bpm · newest · most-practiced (later, from `H-6`) · A–Z · curated (`sort_order`).
 
 **Internationalization:** storage is **UTF-8** — `text` holds any language natively (ã/à/ñ/ç, 中文, emoji); no config. Search is **accent + case-insensitive** via `unaccent`+`lower` ("sao"→"São", "motorhead"→"Motörhead"). A–Z sort uses the UTF-8 collation; per-language ICU collation can refine later.
+
+**Level filter semantics:** the level filter is **unbounded by default**; a bounded `level <= N` (or range) **excludes ungraded (`NULL`) items by design** (ungraded ≠ any 1–10 bucket). Ungraded is common (level isn't parsed from files), so never silently apply a bound the user didn't set; an "include ungraded" toggle is a later UI nicety.
 
 ---
 
@@ -319,7 +327,7 @@ Parse each uploaded file **once at upload**; never parse server-side again (the 
 - **`data jsonb` known keys** (the load-bearing ones features read; the rest is freeform): on `catalogue_item` — `bars` (int), `sections` (`[{label, startBar, endBar}]`, used to auto-seed song-breakdown steps), `album`, `year`, `defaultMappingPresetId`, `meta`. Cross-row invariants (e.g. a slice's bars ≤ the source song's `data.bars`) are **app-enforced** (DDL can't reach into another row's JSONB). **`data` is not a PII landing zone.**
 - **Open `kind`/`lesson_type` vocabularies** add categories (incl. piano scales/chords) with no schema change.
 - **`status`** lifecycle `draft → published → archived`; `archived` = soft-delete tombstone (`updated_at` bumped → future change-feed carries it). The CMS **never hard-deletes** catalogue rows (archival is the retirement path; see §6 archived-source rule).
-- **Security notes (plan-level):** files served via **CloudFront signed URLs** (private, short TTL); **shared catalogue is curated-only** (CHECK: only `source='curated'` can be `published`; user-uploads are private-per-user at M1); **curated→published requires `license`**; **upload size limits + quarantine prefix** (§8/§2/§10); **all SQL values parameterized** (§9). The `K-2` admin Basic-Auth credential should be stored in **SSM Parameter Store (SecureString)** and injected at deploy — not baked into the CloudFront Function source (IaC concern, tracked with `K-2`).
+- **Security notes (plan-level):** files served via **CloudFront signed URLs** (private, **~5 min TTL**); **shared catalogue is curated-only** (CHECK: only `source='curated'` can be `published`); **`source` is write-once** (set by K-1 ingest, never CMS-updatable — the curated-only CHECK trusts it); **published curated items require `license`** (DB CHECK `ci_pub_license`); **streaming upload size limits + quarantine prefix** (§8/§2/§10); **all SQL values parameterized** (§9). The `K-2` admin Basic-Auth credential should be stored in **SSM Parameter Store (SecureString)** and injected at deploy — not baked into the CloudFront Function source (IaC concern, tracked with `K-2`).
 - **Swappable behind the `K-3` catalog API** — the app reads catalogue + signed file URLs through `K-3`; the Postgres choice stays an implementation detail (AWS-managed equivalent = Aurora/RDS + RDS Proxy).
 
 ---
@@ -329,4 +337,4 @@ Parse each uploaded file **once at upload**; never parse server-side again (the 
 1. **`exercise` vs `step` naming** — direction confirmed (Lesson ──< Exercise); keep the table name `exercise` (default) or rename to `step`.
 2. **`id` strategy** — `text` (slug where stable for curated/patterns, uuid for user-uploads). Exercise ids: prefer uuid over `lesson-slug+step` so reordering/renaming doesn't break references.
 3. **`musical_key`** — free text in v1; a controlled list (for precise filtering) can come with piano content.
-4. **`license` enforcement depth** — documented as an app publish-gate; could harden to a DB `CHECK` if desired.
+4. ~~`license` enforcement depth~~ — **resolved (round-2):** DB-enforced via the `ci_pub_license` CHECK (published curated items require a non-null license).
