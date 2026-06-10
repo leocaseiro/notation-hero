@@ -30,6 +30,7 @@ deepened: 2026-06-07
 | RC-10 | Per-Lambda IaC | `apps/<fn>/infra.ts` colocated with the handler | DACI serverless layout: Nx `enforce-module-boundaries` is **project-level only**, so handler + IaC must not share a project. Per-Lambda IaC moves to **`infra/cms/*.ts`** modules inside the `infra` project; infra references the handler's **build output** (`dist/`), never its source |
 | RC-11 | Events | `LessonEvent` (`lesson.{published,updated,deleted}`) | SNS topic **`lesson-events` kept** (plumbing unchanged); event schema becomes `CatalogueEvent` — `catalogue_item.{created,updated,published,archived}` + `catalogue_item.file.validated` |
 | RC-12 | Optimistic concurrency | DynamoDB `version` attribute + `If-Match` | the locked schema has **no `version` column** → `updated_at` is the concurrency token (`If-Match: <updatedAt ISO>`; `UPDATE … WHERE id=$1 AND updated_at=$2`) |
+| RC-13 | File delivery | S3 **presigned GET** URLs minted by K-3 | spec §2 mandates **CloudFront signed URLs** (private, never public, ~5 min TTL — anti-hotlink/anti-bulk-download): the public distribution gains a `catalogue/*` S3-origin behavior (OAC + **trusted key group**); K-3 signs with `@aws-sdk/cloudfront-signer`; the key pair is a Pulumi secret. S3 presigned **PUT** for uploads is unchanged (uploads aren't delivery) |
 
 ## Summary
 
@@ -39,7 +40,7 @@ Implement the locked Track 4 approach (custom serverless AWS backend, mounting R
 
 ## Problem Frame
 
-Area `K` was placed in Alpha specifically as the **#3-ranked AWS-portfolio piece** (per `feature-freeze.md` AWS-portfolio candidates table). The build must intentionally exercise S3, DynamoDB single-table, Lambda Function URL, CloudFront, CloudFront Functions (edge auth), Pulumi IaC, and IAM least-privilege — because *those* are the interview-tellable assets. The admin UX itself is single-user-internal and gets a default React-Admin Material-UI shell (no `/design-shotgun` pass).
+Area `K` was placed in Alpha specifically as the **#3-ranked AWS-portfolio piece** (per `feature-freeze.md` AWS-portfolio candidates table). The build must intentionally exercise S3, Lambda Function URL, CloudFront (incl. signed-URL delivery), CloudFront Functions (edge auth), Pulumi IaC, and IAM least-privilege — because *those* are the interview-tellable assets. (DynamoDB left K's scope with the catalogue decision — it returns as the per-user centerpiece at M1; the catalogue adds the relational/Postgres breadth instead.) The admin UX itself is single-user-internal and gets a default React-Admin Material-UI shell (no `/design-shotgun` pass).
 
 The core tension was resolved in `docs/cms-approach.md` (locked 2026-06-05): every headless-CMS alternative either breaks the AWS-Always-Free constraint (self-hosted needs an always-on container) or moves data off AWS (SaaS), both of which delete the portfolio value `K` exists to create. The plan below executes that decision.
 
@@ -106,7 +107,7 @@ Plan-local — work that will be done separately:
 The repo is **greenfield**. Two adjacent artifacts to align with:
 
 - **`vigorous-goldwasser-73ccca/`** sibling worktree has an executed Wave 1 (React 19 + Vite 6 + Vitest + bun workspaces + path-filtered CI) — *this gets superseded by this plan's U1*. Reference for proven config patterns (Vite version, ESLint setup, CI workflow shape) but not for code copy.
-- **`alphaTabWebsite` fork** (`~/Sites/alphaTabWebsite`, MPL-2.0): NOT consumed by `K` directly. Phase 0 rhythm-game patterns are for the player PWA, not the CMS. Mentioned only because `core/lesson/LessonValidator.ts` magic-byte detection mirrors what `H-10` will eventually need for user uploads.
+- **`alphaTabWebsite` fork** (`~/Sites/alphaTabWebsite`, MPL-2.0): NOT consumed by `K` directly. Phase 0 rhythm-game patterns are for the player PWA, not the CMS. Mentioned only because `core/catalogue/FileRules.ts` magic-byte detection mirrors what `H-10` will eventually need for user uploads.
 
 ### Institutional Learnings
 
@@ -167,6 +168,7 @@ Product-lens flagged the swap-count premise as unaudited. This table audits each
 - **Optimistic concurrency via `updated_at` (RC-12).** The locked schema has no `version` column. Admin `PUT`s carry `If-Match: <updatedAt ISO>`; the repository issues `UPDATE … SET …, updated_at = now() WHERE id = $1 AND updated_at = $2` and maps 0-rows-affected to `StaleUpdate` (HTTP 412).
 - **`file-type` (sindresorhus, MIT)** for magic-byte detection. Streaming from S3 via `fileTypeStream(Readable.toWeb(s3Stream))` — only first ~4KB hits Lambda memory. Upload ceiling is the spec §8 **streaming ~20 MB limit**: presigned PUT carries `content-length-range [0, 20_000_000]`, and the validator's zip inspection aborts once the running decompressed total exceeds the ceiling — **before** buffering the payload in Lambda memory (zip-bomb guard).
 - **Quarantine = prefix in same bucket** (`uploads/quarantine/` → `catalogue/<id>/source.<ext>`, matching the spec §2 served-prefix layout). Failed validations → `uploads/rejected/<original-key>` with `x-amz-meta-reason` + 7-day lifecycle TTL. IAM scopes the ingest path to write `uploads/quarantine/` only; promotion to `catalogue/` is the validator's separate, narrowly-scoped permission (spec §2).
+- **File delivery = CloudFront signed URLs (RC-13 — spec §2, locked).** The public distribution adds a `catalogue/*` cache behavior with the files bucket as an S3 origin (OAC) and a **trusted key group**; objects are reachable ONLY with a CloudFront signature (S3 stays fully private, no presigned GETs in the serving path). K-3 mints URLs via `@aws-sdk/cloudfront-signer` (MIT) with ~5 min TTL (spec §12); the RSA key pair is generated at setup, the public key registered as `aws.cloudfront.PublicKey` + `KeyGroup`, the private key held as a Pulumi secret → Lambda env. Anti-hotlink/anti-bulk-download is the point — a leaked URL dies in minutes and never exposes the bucket.
 - **Pulumi ComponentResource pattern** with naming convention `notation-hero:<module>:<ResourceType>` (e.g., `notation-hero:cms:AdminApi`). All children passed `{ parent: this }`; `registerOutputs()` called synchronously.
 - **Pulumi: single project, multi-stack** — one project (`notation-hero-infra`), stacks `dev` (only one provisioned now), `prod` (config scaffolding only). No cross-stack references.
 - **Pulumi: ACM cert provider pinned to `us-east-1`** — CloudFront alternate-domain certs MUST live there regardless of the rest of the stack's region. Instantiate a second `aws.Provider` for cert resources.
@@ -180,7 +182,7 @@ Product-lens flagged the swap-count premise as unaudited. This table audits each
   - `adapters/s3/`, `adapters/sns/` — integration tests against LocalStack (pinned `localstack/localstack:4.x` via `docker-compose.test.yml`) or a dev AWS sandbox
   - `apps/*/handler.ts` — unit tests with fake adapters (in-memory implementations of ports)
 - **Pulumi ComponentResource scope:** only **`LambdaWithUrl`** (3 consumers: 3 Lambdas) and **`CloudFrontStaticSite`** (2 consumers: admin distro + public distro) earn the component-class abstraction. Originally specified 5 components; scope-guardian flagged that `DynamoSingleTable`, `EdgeBasicAuth`, and `S3FileBucket` each have exactly one consumer in this plan — premature generality. Inline those as plain Pulumi resource blocks directly in `infra/index.ts`. Extract to components when a 2nd consumer materializes. Plus **`LambdaWithUrl` carries an optional `createFunctionUrl: boolean` arg** (default `true`) so the validator Lambda (event-triggered, no FURL) can reuse the IAM-role + log-group boilerplate without a wrong-named abstraction (coherence + scope-guardian convergence — was "`LambdaWithUrl (no FURL — this is event-triggered)`" in the original draft).
-- **Drop `adapters/http-client/` as a separate package; collapse into `adapters/react-admin/`.** The `CatalogApiClient` is ~50-100 LOC of `fetch` boilerplate with one consumer in this plan (`lessonsDataProvider`). Standalone-package overhead (workspace, package.json, version resolution hop) is unjustified. Extract when player PWA needs the same wrapper.
+- **Drop `adapters/http-client/` as a separate package; collapse into `adapters/react-admin/`.** The `CatalogApiClient` is ~50-100 LOC of `fetch` boilerplate with one consumer in this plan (`catalogueDataProvider`). Standalone-package overhead (workspace, package.json, version resolution hop) is unjustified. Extract when player PWA needs the same wrapper.
 - **Change-feed indexing already covered by the spec.** The old "GSI2 (`updatedAt`) NOT built" scope-down is moot — the §9 `ci_updated` btree index on `updated_at` ships in the verbatim migration, and `archived` tombstones bump `updated_at`, so the future M1 change-feed reads it with no schema change.
 - **SNS `lesson-events` topic + admin Lambda event emit IN SCOPE for K v1** (per F-DR2b — product-lens convergence; topic name kept per the revision KEEP-list). Topic provisioned by `infra/index.ts`. Admin Lambda CRUD use-cases (U6) publish typed events (`catalogue_item.created`, `catalogue_item.updated`, `catalogue_item.published`, `catalogue_item.archived`) via `core/observability/ports/EventSink` → `adapters/sns/SnsEventSink`; the validator (U7) publishes `catalogue_item.file.validated`. Event schema in `core/catalogue/CatalogueEvent.ts` (RC-11). NO subscribers in K — that's H-6's job. Locks the contract so H-6 can subscribe without coordinating breaking changes. SNS free tier: 1M req + 1k emails/mo.
 - **`dependency-cruiser` rules:** (a) `core/` cannot import from `adapters/` or `apps/`; (b) `adapters/` cannot import from `apps/`; (c) no cyclic imports; (d) `apps/**` cannot import from `infra/**` or `@pulumi/*` (prevents Pulumi from being bundled into Lambda runtime — adversarial-flagged layer-boundary gap; simpler now that IaC lives wholly in `infra/` per RC-10); (e) `infra/**` cannot import from `apps/*/handler.ts`/`use-cases/`/`routes/` source (composition direction guard — infra consumes `dist/` build output only). **Dropped:** the original `no-orphans` rule — scope-guardian flagged it false-positives on Hexagonal port interfaces (which are intentionally not imported by their implementing adapters; adapters import from core but ports are type-only references at construction time).
@@ -270,7 +272,7 @@ notation-hero/
 │   │   ├── ports/
 │   │   │   ├── CatalogueRepository.ts     # items + exercises + pattern-links interface
 │   │   │   ├── PatternRepository.ts       # pattern CRUD interface
-│   │   │   ├── CatalogueFileStore.ts      # mintPresignedPut/mintSignedGet/promote interface
+│   │   │   ├── CatalogueFileStore.ts      # mintUploadUrl/mintDeliveryUrl/promote interface
 │   │   │   └── FileValidator.ts           # validateMagicBytes(stream): Format | error
 │   │   └── __tests__/
 │   ├── observability/
@@ -399,7 +401,7 @@ flowchart TB
         PlayerApp[Player app / web]
         PublicCF[CloudFront: cdn.notation-hero.com]
         PublicFURL[Lambda FURL: cms-crud-public<br/>AuthType=AWS_IAM via OAC]
-        PlayerApp -->|GET /lessons| PublicCF
+        PlayerApp -->|GET /v1/catalogue| PublicCF
         PublicCF --> PublicFURL
     end
 
@@ -672,7 +674,7 @@ export interface CatalogueRepository {
 
 > **Revision note (2026-06-10):** U3 is **unchanged by the Postgres swap** — both components are data-store-agnostic. Two deltas only: (a) the components' consumers are now the `infra/cms/*.ts` modules (RC-10), not `apps/*/infra.ts`; (b) commands are pnpm (RC-9).
 
-**Goal:** Build the two reusable Pulumi ComponentResource classes that have ≥2 consumers in this plan: `LambdaWithUrl` (3 consumers — 3 Lambdas in U5/U6/U7) and `CloudFrontStaticSite` (2 consumers — admin distribution in U8 + public distribution in U5). The originally-planned `DynamoSingleTable`, `EdgeBasicAuth`, and `S3FileBucket` each have exactly one consumer and are inlined in `infra/index.ts` (U9) instead — scope-guardian-flagged premature generality.
+**Goal:** Build the two reusable Pulumi ComponentResource classes that have ≥2 consumers in this plan: `LambdaWithUrl` (3 consumers — 3 Lambdas in U5/U6/U7) and `CloudFrontStaticSite` (2 consumers — admin distribution in U8 + public distribution in U5). The originally-planned `DynamoSingleTable`, `EdgeBasicAuth`, and `S3FileBucket` each have exactly one consumer and are inlined in `infra/index.ts` (U9) instead — scope-guardian-flagged premature generality. (`DynamoSingleTable` has since left K entirely — RC-3.)
 
 **Requirements:** R4 (Pulumi IaC) · R5 (free-tier fit — components default to free-tier-safe configs).
 
@@ -693,7 +695,7 @@ export interface CatalogueRepository {
 - `registerOutputs({...})` called synchronously at end of constructor with the public outputs (`fnUrl?`, `fnArn`, `distributionDomain`, `distributionArn`, etc.).
 - **`LambdaWithUrl` args:** `{ handlerDir: string; runtime?: "nodejs22.x" | "nodejs24.x"; env?: Record<string,pulumi.Input<string>>; createFunctionUrl?: boolean; authType?: "NONE" | "AWS_IAM"; reservedConcurrency?: number; logRetentionDays?: number; rolePolicyStatements?: aws.iam.PolicyStatement[] }`. Defaults: `nodejs22.x`, `createFunctionUrl: true`, `authType: "AWS_IAM"`, no reserved concurrency cap.
 - **`CloudFrontStaticSite` args:** `{ bucketName: string; certArn: pulumi.Input<string>; aliases: string[]; defaultCachePolicyId?: string; responseHeadersPolicy?: aws.cloudfront.ResponseHeadersPolicyArgs; viewerRequestFunctionArn?: string; additionalOrigins?: { id: string; pathPattern: string; originDomain: pulumi.Input<string>; cachePolicyId?: string; originRequestPolicyId?: string; viewerRequestFunctionArn?: string }[] }`. Used by U8 (admin distribution with `additionalOrigins[0]` = `/api/*` → admin Lambda FURL + `viewerRequestFunctionArn` = the KVS-backed Basic-Auth function ARN) and U5 (public distribution with no additional origins, no viewer-request function).
-- **Lambda code packaging — explicit orchestration:** root script `bun run build:lambdas` invokes `bun run --filter='./apps/lambda-*' build` BEFORE any `pulumi up`. Each `apps/lambda-*/build.ts` runs esbuild (`esbuild handler.ts --bundle --platform=node --target=node22 --format=esm --minify --external:@aws-sdk/* --outfile=dist/index.mjs`). The `LambdaWithUrl` component uses `pulumi.asset.FileAsset(path.join(handlerDir, 'dist/index.mjs'))` — eagerly resolved at synthesis time, errors loudly if `dist/index.mjs` is missing. CI `deploy.yml` runs `bun run build:lambdas` before `pulumi up`. (Addresses feasibility-flagged implicit ordering.)
+- **Lambda code packaging — explicit orchestration:** root script `pnpm run build:lambdas` invokes `pnpm --filter './apps/lambda-*' build` BEFORE any `pulumi up`. Each `apps/lambda-*/build.ts` runs esbuild (`esbuild handler.ts --bundle --platform=node --target=node22 --format=esm --minify --external:@aws-sdk/* --outfile=dist/index.mjs`). The `LambdaWithUrl` component uses `pulumi.asset.FileAsset(path.join(handlerDir, 'dist/index.mjs'))` — eagerly resolved at synthesis time, errors loudly if `dist/index.mjs` is missing. CI `deploy.yml` runs `pnpm run build:lambdas` before `pulumi up`. (Addresses feasibility-flagged implicit ordering.)
 - **`@aws-sdk/client-*` modular imports only;** runtime-provided SDK in `nodejs22.x` (no need to bundle). Pin SDK versions explicitly when using SDK features tied to a specific version.
 - **CFF Basic-Auth + KVS** is NOT a component here — inlined in `infra/index.ts` (U9) since it's single-consumer. The function code (template literal in `infra/index.ts`) reads:
   ```js
@@ -716,7 +718,7 @@ export interface CatalogueRepository {
 
 **Patterns to follow:**
 - Component template: [pulumi.com/docs/iac/guides/building-extending/components/build-a-component/](https://www.pulumi.com/docs/iac/guides/building-extending/components/build-a-component/).
-- Lambda + esbuild bundling: `pulumi.asset.FileAsset("./dist/index.mjs")` after a `bun run build` step.
+- Lambda + esbuild bundling: `pulumi.asset.FileAsset("./dist/index.mjs")` after a `pnpm run build` step.
 - KVS reference: [pulumi.com/registry/packages/aws/api-docs/cloudfront/keyvaluestore/](https://www.pulumi.com/registry/packages/aws/api-docs/cloudfront/keyvaluestore/).
 
 **Test scenarios:**
@@ -821,9 +823,9 @@ export interface CatalogueRepository {
   ```
 - Create: `adapters/postgres/__tests__/{migrations,CatalogueRepositoryPostgres,PatternRepositoryPostgres,buildListQuery}.test.ts`
 - Create: `adapters/postgres/package.json` (name `@notation-hero/adapters-postgres`; deps: `@neondatabase/serverless`; devDeps: `pg`, `@types/pg`, `vitest`; peer: `@notation-hero/core`) · `adapters/postgres/tsconfig.json`
-- Create: `adapters/s3/CatalogueFileStoreS3.ts` (implements `CatalogueFileStore`; presigned PUT/GET + `promote(quarantineKey, finalKey)` server-side copy+delete)
+- Create: `adapters/s3/CatalogueFileStoreS3.ts` (implements `CatalogueFileStore`: `mintUploadUrl` = S3 presigned PUT; `mintDeliveryUrl` = **CloudFront signed URL** via `@aws-sdk/cloudfront-signer` (RC-13 — env: CDN domain, key-pair id, private key); `promote(quarantineKey, finalKey)` server-side copy+delete)
 - Create: `adapters/s3/MagicByteValidator.ts` (wraps `core/catalogue/FileRules` with `file-type` streaming)
-- Create: `adapters/s3/package.json` (deps: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `file-type@^21`) · `adapters/s3/docker-compose.test.yml` (LocalStack `SERVICES=s3`) · `adapters/s3/__tests__/`
+- Create: `adapters/s3/package.json` (deps: `@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@aws-sdk/cloudfront-signer`, `file-type@^21`) · `adapters/s3/docker-compose.test.yml` (LocalStack `SERVICES=s3`) · `adapters/s3/__tests__/` (CloudFront signing is pure crypto — unit-test signature shape/expiry against a fixture key; LocalStack can't emulate CF)
 - Create: `adapters/sns/SnsEventSink.ts` (implements `EventSink` for `CatalogueEvent`; `@aws-sdk/client-sns` `PublishCommand` with typed `MessageAttributes`) · `adapters/sns/package.json` · `adapters/sns/__tests__/` (LocalStack SNS)
 
 **Approach (Postgres adapter):**
@@ -843,7 +845,7 @@ export interface CatalogueRepository {
 - Tests run against **Docker `postgres:16`** (`pnpm --filter @notation-hero/adapters-postgres test:integration` boots compose, runs `migrate()`, executes the suite, tears down). An **env-gated smoke test** (`NEON_SMOKE=1 DATABASE_URL=postgres://…neon…`) re-runs a 5-query subset through `neonExecutor` against a throwaway Neon branch to catch driver drift; CI skips it by default.
 
 **Approach (S3/SNS deltas from the original):**
-- `mintPresignedPut(id, kind, ext)` now takes `kind: 'source' | 'cover'`: source → `content-length-range [0, 20_000_000]` + octet-stream/xml content types; cover → `[0, 2_000_000]` + `image/jpeg|png|webp` (RC-7). Both target `uploads/quarantine/<uuid>.<ext>` with `x-amz-meta-item-id` + `x-amz-meta-kind` metadata.
+- `mintUploadUrl(id, kind, ext)` now takes `kind: 'source' | 'cover'`: source → `content-length-range [0, 20_000_000]` + octet-stream/xml content types; cover → `[0, 2_000_000]` + `image/jpeg|png|webp` (RC-7). Both target `uploads/quarantine/<uuid>.<ext>` with `x-amz-meta-item-id` + `x-amz-meta-kind` metadata.
 - `promote(quarantineKey, finalKey)` does the server-side `CopyObject` → `catalogue/<id>/source.<ext>` or `catalogue/<id>/cover.<ext>` + `DeleteObject` on quarantine — extracted into the port so U7's use-case stays pure.
 - `SnsEventSink` publishes `CatalogueEvent` (RC-11); `MessageAttributes.eventType` carries the dotted name for H-6 subscription filters.
 
@@ -857,7 +859,7 @@ export interface CatalogueRepository {
 - [ ] **4.6** Extend with search/filter integration cases: seed "São Paulo Samba" + "Motörhead — Ace of Spades" + a beat lesson; assert `search:'sao'` and `'motorhead'` match (accent/case-insensitive); `tags @>`, bpm-range, `level` bound excludes ungraded NULL, `patternId` join, §9 projection excludes `data`/`notation_key` → PASS → commit
 - [ ] **4.7** Write exercise + pattern-link tests: `replaceExercises` atomic reorder (step_no swap in one call); `countExercises`; slice-source `ON DELETE RESTRICT` (hard DELETE of sliced song fails at DB; `archive` succeeds); `linkPattern`/`unlinkPattern`/`listPatternsForItem` → implement remaining methods + `PatternRepositoryPostgres` → PASS → commit
 - [ ] **4.8** Implement `neonExecutor.ts` + the env-gated Neon smoke test (skips without `NEON_SMOKE=1`) → `pnpm typecheck` green → commit
-- [ ] **4.9** Update `adapters/s3/`: rename store to `CatalogueFileStoreS3`, add `kind: 'source'|'cover'` presign rules + `promote()`; LocalStack tests for PUT-within-limits, content-type allowlist rejection, promote copy+delete → PASS → commit
+- [ ] **4.9** Update `adapters/s3/`: rename store to `CatalogueFileStoreS3`, add `kind: 'source'|'cover'` presign rules, `mintDeliveryUrl` (CloudFront signing — unit-tested with a fixture RSA key: URL carries `Expires`/`Signature`/`Key-Pair-Id`, expiry honors TTL) + `promote()`; LocalStack tests for PUT-within-limits, content-type allowlist rejection, promote copy+delete → PASS → commit
 - [ ] **4.10** Update `adapters/sns/SnsEventSink` to `CatalogueEvent` + LocalStack test → PASS → commit `feat(adapters): S3 catalogue file store + SNS catalogue events`
 
 **Test scenarios:** (beyond the TDD list)
@@ -882,7 +884,7 @@ export interface CatalogueRepository {
 - Create: `apps/lambda-cms-crud-public/handler.ts` (ESM Lambda handler; `buildApp()` constructs `CatalogueRepositoryPostgres(neonExecutor(DATABASE_URL))` + `CatalogueFileStoreS3` at INIT)
 - Create: `apps/lambda-cms-crud-public/routes.ts` (`GET /v1/catalogue` → listCatalogue; `GET /v1/catalogue/:id` → getCatalogueItem; ~20-LOC matcher, no framework)
 - Create: `apps/lambda-cms-crud-public/use-cases/listCatalogue.ts` (query-string → `CatalogueFilter` (status hard-coded `'published'`) → `repo.list` → map `coverImageKey` → `cover_image_url` via the file store)
-- Create: `apps/lambda-cms-crud-public/use-cases/getCatalogueItem.ts` (findById — 404 unless `status='published'` — + `listExercises` + `listPatternsForItem` + signed source URL + cover URL)
+- Create: `apps/lambda-cms-crud-public/use-cases/getCatalogueItem.ts` (findById — 404 unless `status='published'` — + `listExercises` + `listPatternsForItem` + CloudFront-signed source URL + cover URL via `mintDeliveryUrl`, RC-13)
 - Create: `apps/lambda-cms-crud-public/use-cases/resolveStepNotation.ts` (**the shared slice resolver** — spec §6 D2; exported for reuse by any future consumer so the status check can't be bypassed):
   ```ts
   export type ResolvedNotation =
@@ -914,7 +916,7 @@ export interface CatalogueRepository {
 - Create: `apps/lambda-cms-crud-public/__tests__/handler.test.ts` (unit — in-memory `CatalogueRepository`/`CatalogueFileStore` fakes)
 - Create: `apps/lambda-cms-crud-public/__tests__/contract/catalogue-v1.schema.json` + `contract.test.ts` (JSON-Schema contract test on both wire shapes — guards deployed player clients)
 - Create: `apps/lambda-cms-crud-public/__tests__/integration.test.ts` (against deployed dev stack — gated `INTEGRATION_TESTS=1`)
-- Create: `infra/cms/public-read-api.ts` (Pulumi module — RC-10, lives in the `infra` project: `LambdaWithUrl` (`AuthType: AWS_IAM`, env `DATABASE_URL` from the Neon secret + `BUCKET_NAME` + `SIGNED_URL_TTL_SECONDS`) + `aws.lambda.Permission` for `cloudfront.amazonaws.com` with `sourceArn` + OAC + public distribution + Response Headers Policy; references `../../apps/lambda-cms-crud-public/dist` as `FileArchive`)
+- Create: `infra/cms/public-read-api.ts` (Pulumi module — RC-10, lives in the `infra` project: `LambdaWithUrl` (`AuthType: AWS_IAM`, env `DATABASE_URL` + `BUCKET_NAME` + `SIGNED_URL_TTL_SECONDS` + `CDN_DOMAIN` + `CF_KEY_PAIR_ID` + `CF_PRIVATE_KEY`) + `aws.lambda.Permission` for `cloudfront.amazonaws.com` with `sourceArn` + OAC + public distribution with **two behaviors**: default → Lambda FURL origin; `catalogue/*` → files-bucket S3 origin (OAC) gated by the **trusted key group** (RC-13) + Response Headers Policy; references `../../apps/lambda-cms-crud-public/dist` as `FileArchive`)
 - Create: `apps/lambda-cms-crud-public/tsconfig.json`
 
 **Approach:**
@@ -1129,6 +1131,8 @@ const config = new pulumi.Config()
 const domain = config.require('domain')
 const basicAuthCred = config.requireSecret('basicAuthCredential')   // base64(user:pass)
 const neonDatabaseUrl = config.requireSecret('neonDatabaseUrl')     // postgres://… (Neon; RC-6 — NOT provisioned here)
+const cfSigningKey = config.requireSecret('cfSigningPrivateKey')    // RSA private key for CloudFront signed URLs (RC-13)
+const cfPublicKeyPem = config.require('cfSigningPublicKey')         // public half → aws.cloudfront.PublicKey + KeyGroup
 const corsOrigins = config.requireObject<string[]>('corsOrigins')   // explicit; no '*'
 
 // 2. Cross-cutting AWS resources (inline; no component class) — NOTE: no database, no DynamoDB (RC-3/RC-6)
@@ -1191,12 +1195,12 @@ export const publicApiUrl = publicApi.distributionDomain
 
 ## System-Wide Impact
 
-- **Interaction graph:** admin curator browser ⇌ CF Function gate ⇌ admin SPA assets / admin Lambda; admin Lambda → presigned URL → browser → S3 quarantine → S3 event → validator Lambda → DynamoDB + S3 canonical key; player app → public CF → public Lambda → DynamoDB + S3 signed URL. Every cross-boundary call is HTTPS; every Lambda invocation logs to CloudWatch.
-- **Error propagation:** core use-cases return `Result<T, E>`; adapters map AWS SDK errors to domain errors (`RepositoryError`, `FileStoreError`); Lambda handlers map domain errors to HTTP status codes (4xx for client errors, 5xx for adapter errors with retry guidance). React-Admin DataProvider maps HTTP errors to its error UI conventions.
-- **State lifecycle risks:** (a) orphaned quarantine objects if admin uploads but never calls `create` — mitigated by **provisioned** lifecycle rule on `uploads/quarantine/` (TTL 24h) defined inline in `infra/index.ts` S3 bucket config; (b) Lesson record references a `file.key` that doesn't exist if validator failed mid-flight — admin UI shows "file pending" status; manual cleanup if persistent; (c) duplicate S3 event firing on validator — idempotency check via **computed sha256 dedup key** (NOT ETag, which breaks under multipart); (d) validator copy-then-delete pattern with strict `filterPrefix: "uploads/quarantine/"` so the destination CopyObject doesn't re-trigger the validator (verified in U7 integration test).
-- **API surface parity:** public `GET /lessons` projection is the contract the player app must implement against — locked in `song-schema.md`. Admin CRUD payload shape is internal but uses the same Lesson type — keeps writer/reader in sync.
-- **Integration coverage:** the upload pipeline (admin → presigned PUT → S3 event → validator → DynamoDB + canonical key → public read with signed URL) is a true end-to-end cross-layer flow that unit tests don't prove. The integration test in U7 + U8 must cover this.
-- **Unchanged invariants:** this plan does NOT create an `apps/player-pwa/` stub. The player track owns its own workspace shape. The plan exposes the public CDN URL + public API URL as Pulumi stack outputs (via `infra/index.ts`) that the player track consumes by name, decoupling the two plans.
+- **Interaction graph:** admin curator browser ⇌ CF Function gate ⇌ admin SPA assets / admin Lambda; admin Lambda → presigned URL → browser → S3 quarantine → S3 event → validator Lambda → **Neon Postgres** (parameterized SQL) + S3 canonical key; player app → public CF → public Lambda → **Neon Postgres** + S3 signed URL. Every cross-boundary call is HTTPS (the Neon HTTP driver included); every Lambda invocation logs to CloudWatch. The database sits **outside AWS** — the only cross-cloud hop, carried by one env-injected secret (RC-6).
+- **Error propagation:** core use-cases return `Result<T, E>`; adapters map driver/SDK errors to domain errors (`RepositoryError`, `FileStoreError`) — raw SQLSTATE/driver errors never cross the port; Lambda handlers map domain errors to HTTP (4xx client / 412 stale / 422 gate / 5xx adapter with retry guidance). React-Admin DataProvider maps HTTP errors to its error UI conventions.
+- **State lifecycle risks:** (a) orphaned quarantine objects — 24h lifecycle TTL (unchanged); (b) a catalogue row whose `notation_key` upload never validated — admin UI shows "file pending"; the row simply can't publish a playable song until the validator lands the key; (c) duplicate S3 event firing — idempotency via the **sha256 checksum short-circuit** (U7.6); (d) validator copy-self-trigger — strict `uploads/quarantine/` filter (unchanged, integration-verified); (e) **two-store consistency** (Postgres row vs S3 object): the validator promotes the object **before** the row UPDATE, so a mid-flight crash leaves a harmless orphan object + un-updated row (retried by the event source), never a row pointing at a missing object.
+- **API surface parity:** the public `GET /v1/catalogue` projection is the contract the player builds against — **locked in spec §9**, guarded by the CI contract test. Admin CRUD payloads use the same core entities — writer/reader stay in sync by construction.
+- **Integration coverage:** the upload pipeline (admin → presigned PUT → S3 event → validator → Postgres row + canonical key → public read with signed URL) is the true cross-layer flow unit tests can't prove; U7 + U8 integration scenarios cover it (unchanged), now including parse-once seeding assertions.
+- **Unchanged invariants:** no `apps/player-pwa/` stub; player consumes Pulumi stack outputs by name. The catalogue store is swappable behind K-3 (spec §12) — nothing outside `adapters/postgres/` + the `DATABASE_URL` secret knows Neon exists.
 
 ---
 
@@ -1204,35 +1208,39 @@ export const publicApiUrl = publicApi.distributionDomain
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| Track 2's `cicd-pipeline.md` doesn't get revised before this plan starts → conflict on master | Med | High | **Track 2 owner = leocaseiro; verification step in Prerequisites (run `git log master -- apps/web infra packages` to detect already-merged state).** U1 includes Track 2 escape-hatch section — if Track 2 hasn't landed, U1's bootstrap supersedes the existing scaffold via a clearly-labeled breaking PR. |
-| Track 3 schema lock changes the Lesson interface mid-build | Med | Med | `core/lesson/Lesson.ts` is the single source of truth; type errors cascade to all consumers. **U1 and U2 safe to start against draft schema; U4 and U5 SHOULD wait for Track 3 lock (Phase C exit gate).** Contract test on U5's `/v1/lessons` shape guards deployed players from breaking changes. `/v1/` path prefix locks the wire-version contract. |
-| AWS account not configured locally → can't `pulumi up` | Med | High | Documented as Prereq. U9's deploy step fails fast with clear error; `infra/README.md` covers setup. |
-| Pulumi state file leaks the Basic-Auth credential if backend is misconfigured | Low | High | **Pre-deploy guard in `infra/README.md` + CI: `pulumi backend` MUST NOT report `file://`.** Use Pulumi Cloud or S3+KMS. Credential stored as `config.requireSecret` (encrypted at rest). |
-| CloudFront Function 10KB code limit exceeded with KVS lookup + constant-time compare | Low | Med | **Measured at U9 build time** via `aws cloudfront describe-function --stage DEVELOPMENT` (NOT deferred to U6). Assert <8KB. Fallback: HMAC pattern (KVS stores HMAC key) — preserves rotation but cuts credential entropy in the function code. |
-| `constantTimeEquals` JIT-optimized into early-exit on cloudfront-js-2.0 — defeats timing-resistance | Low | Med | **Microbench step in U9** measures execution time across same-length/different-length cred comparisons. If JIT optimizes: switch to HMAC pattern. |
-| OAC for Lambda FURL: CORS gotchas + `x-amz-content-sha256` on POST/PUT | Low | Med | Required `sourceArn` on Lambda Permission + `AllViewerExceptHostHeader` origin request policy for body forwarding documented in Key Technical Decisions. Admin file uploads bypass via direct S3 presigned PUT (no CloudFront body-forwarding concern). |
-| `aws.cloudfront.KeyvaluestoreKey` Pulumi resource may not exist in v7 | Med | Low | **Verify at U3 build.** Fallback: `command.local.Command` invoking `aws cloudfront-keyvaluestore put-key`. Either path delivers the same outcome; just code shape differs. |
-| Magic-byte detection misclassifies an edge-case Guitar Pro file | Low | Med | `file-type` is actively maintained (Apr 2026 release); fixtures for all 5 GP versions in U2 tests; misclassified files route to `rejected/` with `x-amz-meta-reason` for curator forensics. |
-| Two CloudFront distributions = doubled ACM cert renewals + DNS-validation persistence required | Low | Low | Cost is $0. **DNS validation CNAME records MUST persist** (auto-renew requirement) — documented in `infra/README.md`. CloudWatch alarms (`DaysToExpiry < 30`) catch silent renewal failures. |
-| Lambda cold start (~200-400ms) noticeable on admin first action of the day | Med | Low | Acceptable for internal admin. ARM64 Graviton + LLRT a post-v1 optimization if painful. |
-| `dependency-cruiser` config drift — someone disables a rule mid-PR | Low | Med | CI gates on `depcheck`; disabling visible in code review. Rules documented inline. |
-| KVS credential rotation eventual-consistency lag (10-30s across edges) | Low | Low | Documented operator-README emergency rotation procedure: if rotation is in response to suspected compromise, take admin distribution offline (503 custom error page) for 60s before rotating, then restore. |
-| AlphaTex async hard validation never gets built → curator uploads bad alphaTex that breaks player | Low | Med | **Public read API filters `status="published"` so pending_validation lessons NEVER reach the player.** Curator sees them in admin only. Async validator is a follow-up plan (SQS-triggered Lambda with 15-min timeout recommended). |
-| Admin gate brute-force amplifies cost (CloudFront requests + CFF invocations) | Low | Med | **CloudWatch alarm on `4xxErrorRate > 10/sec` on admin distribution** (operator email). If alarm fires repeatedly, add WAF rate-based rule (free tier 10M req/mo on first ACL). Documented as explicit deferred-with-trigger, not silently omitted. |
-| Mid-stack partial deploy/rollback strands uploads in `uploads/quarantine/` | Low | Med | Operator README "Rollback hygiene" subsection: drain `uploads/quarantine/` and `uploads/rejected/` before destroying the bucket; 24h TTL eventually clears orphans if not drained. `forceDestroy: false` on bucket prevents accidental destroy with content. |
-| Validator update races admin metadata edit | Low | Low | Partial `UpdateExpression` on `file.*` attributes only; no version lock; admin's category/title edits preserved. |
-| S3 event race: validator runs before Lesson record exists (curator uploads before calling create) | Med | Low | Validator does DDB `GetItem` for lessonId FIRST; missing → `rejected/orphaned/<key>` with reason `lesson-record-missing`. Curator sees "upload failed" but no data corruption. |
-| `dorny/paths-filter` step fails → all CI child jobs skip silently → PR merges green with no checks | Low | Med | `changes` job marked as required check INDEPENDENTLY (not just downstream). Sanity-check step asserts "PR has commits but filter found no changes" fails loudly. |
-| Admin SPA renders attacker-controlled lesson content + has stored XSS risk | Low | Med | **CSP on admin distribution Response Headers Policy** (documented in Key Technical Decisions). React-Admin renders DOM-escaped strings by default. Presigned PUT Content-Type allowlist prevents HTML uploads at S3 layer. |
+| Migrations drift from the locked spec §4 (hand-copy error, "helpful" edits) | Low | High | `0001` is **verbatim**; the U4.2 **CHECK-fidelity probe suite** asserts every named constraint exists and fires; any migration edit is flagged as a spec change in review |
+| Driver drift: `pg` (tests) vs `@neondatabase/serverless` (runtime) behave differently (type parsing, transactions) | Low | Med | the `SqlExecutor` seam keeps SQL identical; env-gated **Neon smoke test** (U4.8) runs the suite subset through the real driver against a throwaway Neon branch |
+| Neon free-tier limits (0.5 GB / 100 compute-hrs/project; scale-to-zero @5 min) bite | Low | Med | catalogue is tiny (~MBs for thousands of rows); player reads are CloudFront-cached; **cold-resume latency** (~0.5–1 s on first query after idle) is acceptable for K and invisible behind cache — monitor in month 1; Aurora/RDS swap documented behind K-3 |
+| Neon connection string leaks (Pulumi state, Lambda env console visibility) | Low | High | Pulumi backend guard (no `file://`, unchanged); `requireSecret`; **least-privilege `app_cms` role** (no DDL/DELETE); rotation drill in U9.5; SSM SecureString documented as the alternative injection path |
+| Invalid alphaTex stored via direct API call (bypassing the SPA's client-side parse) breaks a step in the player | Low | Med | single-curator surface (the SPA *is* the authoring path); player degrades per-step (`kind:'unavailable'` pattern); server-side re-parse is a named M1 hardening item (RC-5) |
+| alphaTab-in-Node parse (U7 seeding) inflates validator bundle/cold start | Med | Low | async event path — no user-facing latency; reserved concurrency 5; measure bundle at U7 build; fallback = drop seeding to filename-only and keep validation (seeding is additive) |
+| AWS account not configured locally → can't `pulumi up` | Low | High | account exists (IAM Identity Center + zero-spend budget, 2026-06); `infra/README.md` covers profile setup; U9 fails fast |
+| Pulumi state file leaks secrets if backend is misconfigured | Low | High | **Pre-deploy guard: `pulumi backend` MUST NOT report `file://`** (unchanged); Pulumi Cloud or S3+KMS; secrets via `config.requireSecret` |
+| CloudFront Function 10KB code limit exceeded with KVS lookup + constant-time compare | Low | Med | **Measured at U9** via `describe-function`; assert <8KB; fallback HMAC pattern (unchanged) |
+| `constantTimeEquals` JIT-optimized into early-exit on cloudfront-js-2.0 | Low | Med | **Microbench step in U9** (unchanged); fallback HMAC pattern |
+| OAC for Lambda FURL: CORS gotchas + `x-amz-content-sha256` on POST/PUT | Low | Med | `sourceArn`-pinned Permission + `AllViewerExceptHostHeader` policy (unchanged); uploads bypass CF via presigned PUT |
+| `aws.cloudfront.KeyvaluestoreKey` Pulumi resource may not exist in v7 | Med | Low | **Verify at U3 build**; fallback `command.local.Command` (unchanged) |
+| Magic-byte detection misclassifies an edge-case Guitar Pro file | Low | Med | `file-type` actively maintained; fixtures for all GP versions (U2.5/U7.1); misclassified files land in `rejected/` with reason for forensics (unchanged) |
+| Two CloudFront distributions = doubled ACM renewals + DNS-validation persistence | Low | Low | $0 cost; CNAME persistence documented; `DaysToExpiry < 30` alarms (unchanged) |
+| Lambda cold start noticeable on admin first action | Med | Low | acceptable internal; ARM64/LLRT post-v1 (unchanged); Neon HTTP driver adds no pool warm-up |
+| `dependency-cruiser` config drift | Low | Med | CI `depcheck` gate; visible in review (unchanged); Nx boundary tags add a second axis when materialized |
+| KVS credential rotation eventual-consistency lag (10–30 s) | Low | Low | emergency-rotation procedure in runbook (unchanged) |
+| Admin gate brute-force amplifies cost | Low | Med | CloudWatch `4xxErrorRate > 10/sec` alarm → reactive WAF (unchanged — explicit deferred-with-trigger) |
+| Mid-stack rollback strands uploads in quarantine | Low | Med | runbook "Rollback hygiene": drain prefixes; `forceDestroy:false`; 24h TTL sweep (unchanged) |
+| Validator UPDATE races admin metadata edit | Low | Low | **column-scoped partial UPDATE** (validator owns `notation_*`/`cover_image_key`/NULL-only seeds; admin owns the rest; admin API strips `notation_*` from PUT bodies) — same resolution as the original, in SQL |
+| S3 event arrives before the catalogue row exists (upload-before-create) | Med | Low | validator row pre-check → `rejected/orphaned/` reason `item-record-missing` (unchanged logic, Postgres SELECT) |
+| `dorny/paths-filter` failure skips CI silently | Low | Med | `changes` job required independently + loud sanity assert (unchanged) |
+| Admin SPA stored-XSS via rendered content | Low | Med | CSP on admin distribution; React DOM-escaping; upload Content-Type allowlist now *narrower* (no `text/plain` — alphaTex is not an upload format anymore, RC-5) |
 
 **Prerequisites (external):**
 
-- **Track 2 plan revision lands** — see Deferred to Follow-Up Work. Without it, Track 2 may execute the old `apps/web` shape and conflict with this plan's U1.
-- **Track 3 schema lock lands** — `song-schema.md` flipped DRAFT → LOCKED. This plan can begin against the draft, but U2's `core/lesson/Lesson.ts` may need updating if Track 3 changes fields.
-- **GitHub repo created** (`leocaseiro/notation-hero`, public, proprietary LICENSE). Not yet done.
-- **AWS account access** — IAM user + access keys + `aws configure`. Wave 3 blocker per `cicd-pipeline.md`. Required before U9 `pulumi up`.
-- **Pulumi backend confirmed** — user is logged in (likely Pulumi Cloud); confirm before first U9 deploy.
-- **Domain** — `notation-hero.com` (or similar) acquired; ACM cert validation requires DNS access.
+- ✅ **Track 2 / toolchain** — landed (pnpm skeleton committed; DACI approved). Residual `nx init` in flight, non-blocking.
+- ✅ **Track 3 schema lock** — landed 2026-06-10 (the spec this revision implements).
+- ✅ **GitHub repo** — exists (`leocaseiro/notation-hero`, PRs flowing).
+- ✅ **AWS account access** — set up 2026-06 (paid account, IAM Identity Center daily-driver, zero-spend budget). Confirm the CLI profile before U9.
+- **Neon account + project** — create the free-tier project, a `dev` branch, and the `app_cms` role; capture the connection string into `pulumi config set --secret neonDatabaseUrl` (U9 runbook step). **Not yet done.**
+- **Pulumi backend confirmed** — Pulumi Cloud login (or S3+KMS) before first U9 deploy.
+- **Domain** — `notation-hero.com` (or similar) acquired; ACM validation needs DNS access. **Not yet done.**
 
 ---
 
@@ -1240,8 +1248,8 @@ export const publicApiUrl = publicApi.distributionDomain
 
 - **`infra/README.md`** (created in U9): how to deploy (`pulumi up --stack dev`), how to rotate the admin credential (`pulumi config set --secret basicAuthCredential <newBase64> && pulumi up`), how to roll back (`pulumi stack history` + `pulumi cancel` patterns), how to add a new lesson manually via admin SPA, how to forcibly clean orphaned quarantine objects.
 - **Per-component README in `adapters/aws/`** — short doc explaining each ComponentResource's args, outputs, and intended use. Helps future-you / contributors not need to read the implementation.
-- **Top-level `README.md` updated** in U1 with: Layout 4 architecture diagram, dependency direction rules, contribution flow (run `bun run lint` + `bun run depcheck` + `bun test` locally before PR).
-- **Decision-capture**: after each unit lands, capture institutional learnings via `/ce-compound` per the learnings researcher's recommendation. Highest-value: KVS Basic-Auth rotation pattern (U6/U9), `LambdaWithUrl` + OAC pattern (U3/U5/U6), magic-byte streaming validation pattern (U4/U7).
+- **Top-level `README.md` updated** in U1 with: Layout 4 architecture diagram, dependency direction rules, contribution flow (run `pnpm lint` + `pnpm depcheck` + `pnpm test` locally before PR).
+- **Decision-capture**: after each unit lands, capture institutional learnings via `/ce-compound` per the learnings researcher's recommendation. Highest-value: KVS Basic-Auth rotation pattern (U6/U9), `LambdaWithUrl` + OAC pattern (U3/U5/U6), Postgres hybrid-JSONB catalogue + CHECK-probe migrations (U4), magic-byte streaming validation + parse-once seeding (U4/U7).
 - **CloudWatch dashboard** (optional, deferred): single dashboard per Lambda with invocations + errors + duration. Worth adding in U9 as a `aws.cloudwatch.Dashboard` resource if time permits. `H-7` (Beta) does the real SLO + burn-rate work.
 - **Operational ad-hoc**: monthly check on Always-Free tier consumption — `aws ce get-cost-and-usage` or AWS Cost Explorer for free-tier dashboards. K should sit at $0; flag any drift.
 
@@ -1252,14 +1260,14 @@ export const publicApiUrl = publicApi.distributionDomain
 - **Origin document:** [docs/cms-approach.md](../cms-approach.md) (decision doc, locked 2026-06-05, in worktree `affectionate-dewdney-42c19c/`)
 - **Companion docs** (all currently in worktree `pensive-boyd-6d17e3/docs/`):
   - `feature-freeze.md` (area `K` rows, AWS portfolio ranking, sync model)
-  - `song-schema.md` (Lesson interface, catalog API contract, S3 layout)
+  - `song-schema.md` (historical — superseded by `specs/2026-06-10-catalogue-schema.md`)
   - `design-stack.md` (full AWS stack, license gate, AWS rejection rationale for Amplify/API Gateway/Cognito-in-K)
   - `aws-learning-map.md` (service → vehicle mapping)
   - `handoff.md` (project identity, decisions log)
   - `handoff-prompts.md` (Track 1-4 parallel handoff specs)
 - **Related Track plans:**
   - Track 2: `vigorous-goldwasser-73ccca/docs/cicd-pipeline.md` (requires revision per Deferred to Follow-Up Work)
-  - Track 3: pending (`song-schema.md` finalize)
+  - Track 3: ✅ landed — [specs/2026-06-10-catalogue-schema.md](../specs/2026-06-10-catalogue-schema.md) (this revision implements it)
 - **External docs** (cited inline above): React-Admin v5.14, AWS Lambda Node.js runtime, CloudFront Functions runtime + KVS, Pulumi `@pulumi/aws` v7, `file-type` package, `dependency-cruiser`, alphaTab Guitar Pro format docs.
 - **Repo state at plan time:** greenfield in worktree `charming-curran-f72274` (this plan's home); Wave 1 scaffold exists in `vigorous-goldwasser-73ccca/` and will be superseded.
 
@@ -1288,71 +1296,74 @@ ComponentResource external libraries:
 - **AWS CDK Solutions Constructs (via `@pulumi/cdk` adapter)** — evaluated and rejected. Hand-rolling `LambdaWithUrl` + `CloudFrontStaticSite` IS the portfolio value (R4) — using pre-built constructs would skip exactly the IaC depth `H-1` exists to showcase.
 - **SST.dev patterns** — evaluated and rejected for the same reason as CDK Solutions Constructs. SST adds its own runtime + opinions; the portfolio story is "I wrote raw Pulumi for AWS primitives", not "I used a framework that hides Pulumi". Adversarial-flagged the omission of these alternatives in the original draft — surfaced explicitly here for completeness.
 
+Data-store alternatives (2026-06-10 revision): **resolved upstream, not re-litigated here** — DynamoDB-only, DynamoDB+OpenSearch, MongoDB Atlas, Supabase, Prisma Postgres, and Aurora/RDS were all weighed in [decisions/2026-06-09-catalogue-store-postgres-neon.md](../decisions/2026-06-09-catalogue-store-postgres-neon.md); Neon Postgres + JSONB won for the catalogue, DynamoDB keeps per-user data at M1.
+
 ---
 
 ## Success Metrics
 
 **Ship-mechanics (must hold):**
-- **`pulumi up --stack dev` completes successfully** with all ~50-65 resources provisioned. **First-deploy timing: 15-25 minutes** (CloudFront distributions take ~15min each on cold create; ACM cert validation 5-30min depending on DNS propagation — gated via two-pass `pulumi up --target` for certs first). **Subsequent `pulumi up` with no changes: <30 seconds** (idempotency check).
-- **Admin curator can create a Lesson with `.gp` file upload** end-to-end in under 60 seconds (sign in → fill form → upload → save → see it in list, with validator processing < 3s).
-- **Public `GET /v1/lessons` returns the curated catalog** in <500ms (warm) / <2s (cold) from CloudFront.
-- **Public `GET /v1/lessons/{id}` returns a working signed URL** that fetches the file successfully within the URL TTL.
-- **KVS credential rotation completes in <30 seconds** (`pulumi config set --secret … && pulumi up`) without function redeploy; rotation propagation to all edges complete within 30s.
-- **CI pipeline green** for all PRs; `dependency-cruiser` blocks layer violations; contract test on `/v1/lessons` shape guards wire compat.
-- **Total monthly AWS cost on legacy free-tier account: $0** (verified via AWS Cost Explorer at end of first month).
+- **`pulumi up --stack dev` completes successfully** with all ~30–45 AWS resources provisioned (no database resources — Neon is external). **First-deploy timing: 15–25 minutes** (CloudFront ~15 min cold create; ACM validation 5–30 min — two-pass `--target` for certs first). **Subsequent no-change `pulumi up`: <30 seconds.** **Migrations precede deploy:** `pnpm --filter @notation-hero/adapters-postgres migrate` is idempotent and green against Neon.
+- **Admin curator can create a song with `.gp` file upload** end-to-end in under 60 seconds (sign in → form → upload → save → in list, validator + seeding < 3 s), **and author a beat lesson** (3 alphaTex steps with a BPM ladder + pattern link + publish) without leaving the SPA.
+- **Public `GET /v1/catalogue` returns the curated catalog** in <500 ms (warm) / <2 s (cold) from CloudFront; `?q=sao` matches "São" titles (accent-insensitive search verified in prod, not just tests).
+- **Public `GET /v1/catalogue/{id}` returns a working signed URL** within TTL; a song-breakdown lesson resolves slices only while the source song is published.
+- **KVS credential rotation <30 s**; **`neonDatabaseUrl` rotation** = config-set + `pulumi up` (Lambda env-only diff).
+- **CI green** for all PRs; `dependency-cruiser` blocks layer violations; the `/v1` contract test guards the §9 wire shape; the **CHECK-fidelity probes** guard DDL-vs-spec.
+- **Total monthly cost: $0 AWS** (Cost Explorer) **+ $0 Neon** (free-tier dashboard) at end of first month.
 
 **Portfolio-outcome metrics (the actual job-hunt purpose K serves — per F-DR2a):**
-- **≥5 captured solution docs in `docs/solutions/`** tied to the named patterns (file paths approximate):
-  - `docs/solutions/kvs-basic-auth-rotation.md` — CF Function + KVS edge-auth pattern with rotation procedure
-  - `docs/solutions/lambda-furl-oac-pattern.md` — Lambda Function URL behind CloudFront with OAC (including `sourceArn` pinning and `AllViewerExceptHostHeader` policy)
-  - `docs/solutions/dynamodb-single-table-lessons.md` — DynamoDB single-table access patterns for a content catalog (PK/SK + GSI1 + LessonFilter translation)
-  - `docs/solutions/magic-byte-streaming-validation.md` — S3-event Lambda + streaming `file-type` magic-byte validation pipeline
-  - `docs/solutions/pulumi-component-lambda-with-url.md` — `LambdaWithUrl` ComponentResource design (esbuild + IAM + log group + optional FURL)
-- **1 narrated whiteboard-rehearsal artifact per pattern** (a `.md` walkthrough doc paired with each solution doc above, simulating the interview explanation — what problem, what alternatives, why this design, what trade-offs). Goal: prove the pattern is internalized, not just shipped.
-- **1 architectural-decision capture per high-value pattern** — short `docs/decisions/NNN-*.md` files (ADR-lite) for: choice of Hexagonal Layout 4 (with the 6-swap Premise Audit attached), choice of CF Function + KVS over Lambda@Edge + Cognito, choice of bare FURL + OAC over API Gateway, choice of single-table over multi-table, choice of presigned-PUT direct-to-S3 over pass-through-Lambda.
+- **≥5 captured solution docs in `docs/solutions/`** tied to the named patterns:
+  - `docs/solutions/kvs-basic-auth-rotation.md` — CF Function + KVS edge-auth with rotation procedure
+  - `docs/solutions/lambda-furl-oac-pattern.md` — Lambda FURL behind CloudFront with OAC (`sourceArn` pinning, `AllViewerExceptHostHeader`)
+  - `docs/solutions/postgres-catalogue-jsonb-search.md` — hybrid typed-columns + JSONB catalogue; `pg_trgm`/`unaccent`/tsvector search; the CHECK-fidelity-probe migration pattern
+  - `docs/solutions/neon-serverless-lambda.md` — serverless HTTP driver vs the Aurora/RDS-Proxy pooling story (the swap-behind-K-3 narrative)
+  - `docs/solutions/magic-byte-streaming-validation.md` — S3-event validation + streaming zip ceiling + parse-once seeding
+  - `docs/solutions/pulumi-component-lambda-with-url.md` — `LambdaWithUrl` ComponentResource design
+- **1 narrated whiteboard-rehearsal artifact per pattern** (paired `.md` walkthroughs — problem, alternatives, design, trade-offs). Goal: prove the pattern is internalized, not just shipped.
+- **1 architectural-decision capture per high-value pattern** — ADR-lite `docs/decisions/NNN-*.md` for: Hexagonal Layout 4 (+ the 6-swap Premise Audit), CF Function + KVS over Lambda@Edge + Cognito, bare FURL + OAC over API Gateway, **catalogue = Postgres+JSONB over DynamoDB/Mongo (already captured: `decisions/2026-06-09-catalogue-store-postgres-neon.md` — link it, don't rewrite it)**, presigned-PUT direct-to-S3 over pass-through-Lambda.
 
-Capture these via `/ce-compound` after each unit lands (per learnings-researcher recommendation — this build is the seeding event for `docs/solutions/`).
+Capture these via `/ce-compound` after each unit lands (this build remains the seeding event for `docs/solutions/`).
 
 ---
 
 ## Phased Delivery
 
-The 9 units sequence into 4 phases. Phase boundaries are PR-merge points.
+The 9 units sequence into 4 phases. Phase boundaries are PR-merge points. **U1 is already done** — Phase A is half-complete at revision time.
 
-### Phase A — Foundation (U1, U2)
-Bootstrap monorepo + core domain. After this, the project compiles and lints; no AWS yet; no functional code. Phase exit gate: CI green, `dependency-cruiser` working, core/lesson tests pass.
+### Phase A — Foundation (U1 ✅, U2)
+U1 (pnpm Layout-4 skeleton + CI + dependency-cruiser) is committed. U2 builds the catalogue core domain. Phase exit gate: CI green, `core/catalogue` tests pass with the Zod↔CHECK mirror suite.
 
 ### Phase B — Infra primitives + adapters (U3, U4)
-Pulumi ComponentResources + DynamoDB/S3/Validator adapters. After this, adapter integration tests pass against LocalStack; Pulumi preview runs cleanly on each component. Still no deployed infra. Phase exit gate: all adapter tests green; `pulumi preview` clean.
+Pulumi ComponentResources + the Postgres/S3/SNS adapters. Phase exit gate: **Docker-Postgres integration suite green including the CHECK-fidelity probes**; LocalStack suites green; `pulumi preview` clean per component. Still no deployed infra, no Neon dependency (everything local).
 
 ### Phase C — Lambdas (U5, U6, U7)
-Three Lambda composition roots. Built in this order: public read first (simplest, validates the FURL+OAC pattern), then admin CRUD (adds the gate complexity), then validator (event-source pattern, depends on the others' patterns). Unit tests with fake adapters pass at each step. **Phase exit gates:** all unit tests green; **Track 3 schema lock has landed** (U5's contract test fixture matches the LOCKED Lesson shape); ready to deploy.
+Three Lambda composition roots, built public-read → admin-CRUD → validator (same rationale as the original). Phase exit gates: all unit tests green; **the `/v1` contract test matches the locked spec §9 projection** (the old "wait for Track 3" gate is satisfied by construction — the schema is locked); `infra/cms/*` modules preview cleanly.
 
 ### Phase D — Admin SPA + Pulumi composition + deploy (U8, U9)
-React-Admin frontend + Pulumi root that wires everything + first `pulumi up`. After this: deployed dev stack, admin curator can sign in and exercise the full flow end-to-end. Phase exit gate: integration tests green against dev stack; admin curator validates UX manually.
+React-Admin frontend + the infra root + first deploy. New pre-deploy steps: Neon project + `app_cms` role created; `neonDatabaseUrl` secret set; **migrations run against Neon**; then the two-pass `pulumi up`. Phase exit gate: integration tests green against the dev stack; curator validates the full author loop (song + beat lesson) manually.
 
 ---
 
 ## Documentation Plan
 
-- **`infra/README.md`** (U9) — operator runbook: deploy (two-pass for first run + certs), rotate credential (normal + emergency), rollback (with hygiene checklist), KVS propagation timing, ACM cert renewal monitoring, Pulumi backend pre-deploy check, CFF microbench procedure.
+- **`infra/README.md`** (U9) — operator runbook: deploy (migrate → two-pass certs → full up), Neon setup (project, `app_cms` role, connection-string capture/rotation), rotate Basic-Auth credential (normal + emergency), rollback (with hygiene checklist), KVS propagation timing, ACM cert renewal monitoring, Pulumi backend pre-deploy check, CFF microbench procedure.
 - **`adapters/aws/README.md`** (U3) — Component catalog: `LambdaWithUrl` + `CloudFrontStaticSite` args/outputs/usage.
 - **Top-level `README.md`** (U1) — architecture overview, Layout 4 diagram, `dependency-cruiser` rule rationale, contribution flow.
-- **`docs/solutions/`** (created post-landing via `/ce-compound`) — seed with 5+ entries per Success Metrics list (kvs-basic-auth-rotation, lambda-furl-oac-pattern, dynamodb-single-table-lessons, magic-byte-streaming-validation, pulumi-component-lambda-with-url). Plus paired whiteboard-rehearsal docs.
-- **`docs/decisions/`** (created per Success Metrics) — ADR-lite captures: Hexagonal Layout 4 (+ Premise Audit), CFF+KVS vs Lambda@Edge+Cognito, bare FURL+OAC vs API Gateway, single-table vs multi-table, presigned-PUT direct-to-S3.
-- **`adapters/dynamodb/README.md`** (U4) — access-pattern table for the Lesson catalog: list-by-category (GSI1), get-by-id (PK), update-with-version-check, soft-delete.
-- **`apps/admin-spa/README.md`** (U8) — local dev (`bun run dev`); env vars; how to add a new Resource; CSP rationale; React-Admin 5.14 + React 19 setup.
+- **`docs/solutions/`** (created post-landing via `/ce-compound`) — seed with 5+ entries per Success Metrics list (kvs-basic-auth-rotation, lambda-furl-oac-pattern, postgres-catalogue-jsonb-search, neon-serverless-lambda, magic-byte-streaming-validation, pulumi-component-lambda-with-url). Plus paired whiteboard-rehearsal docs.
+- **`docs/decisions/`** (created per Success Metrics) — ADR-lite captures: Hexagonal Layout 4 (+ Premise Audit), CFF+KVS vs Lambda@Edge+Cognito, bare FURL+OAC vs API Gateway, catalogue Postgres+JSONB (already exists — `2026-06-09-catalogue-store-postgres-neon.md`), presigned-PUT direct-to-S3.
+- **`adapters/postgres/README.md`** (U4) — query-pattern table for the catalogue: list-with-facets (`buildListQuery`), search (trgm/unaccent/tsvector + which index serves which query), update-with-`updated_at`-check, archive tombstone, exercise batch replace; plus the migration-runner contract (verbatim-DDL rule + CHECK probes).
+- **`apps/admin-spa/README.md`** (U8) — local dev (`pnpm --filter @notation-hero/admin-spa dev`); env vars; how to add a new Resource; CSP rationale; React-Admin 5.14 + React 19 setup.
 - **Plan revision history** (this file) — bump at end of plan execution with "STATUS: completed" and any deviations from the planned units. Track adversarial-flagged risks resolved at implementation time.
 
 ---
 
 ## Operational / Rollout Notes
 
-- **Initial bring-up sequence**: U1 → U2 → U3 → U4 (each merged to master with green CI before next starts); then U5+U6+U7 in parallel (different `apps/lambda-*` dirs, file-ownership-safe); then U8+U9 (U8 needs U6's exported FURL for the admin distribution's `/api/*` origin; U9 needs all `apps/*/infra.ts` factory functions in place). **U5 deployment to dev is gated on Track 3 schema lock** (Phase C exit gate).
-- **First deploy is manual** — `pulumi up --stack dev` from local. CI-driven deploys (`deploy.yml` for SPA bundles via OIDC) come later. **First-deploy is two-pass: certs first (`--target` for ACM certs), wait for validation, then full deploy.**
+- **Initial bring-up sequence**: U1 ✅ → U2 → U3 → U4 (each merged to master with green CI before next starts); then U5+U6+U7 in parallel (different `apps/lambda-*` dirs, file-ownership-safe); then U8+U9 (U8 needs U6's exported FURL for the admin distribution's `/api/*` origin; U9 needs all `infra/cms/*.ts` modules in place). The old Track-3 gate is satisfied — the schema is locked.
+- **First deploy is manual** — from local: create the Neon project + role → `pulumi config set --secret neonDatabaseUrl …` → `pnpm --filter @notation-hero/adapters-postgres migrate` → `pulumi up --stack dev`. CI-driven deploys (`deploy.yml` via OIDC, migrate step included) come later. **First-deploy is two-pass: certs first (`--target` for ACM certs), wait for validation, then full deploy.**
 - **Rollback strategy**: `pulumi stack history --stack dev` → identify a known-good revision → `pulumi stack export --version <N> > prev.json && pulumi stack import prev.json && pulumi up`.
 - **Rollback hygiene (adversarial-flagged):** before destroying the shared S3 bucket OR running a rollback that removes admin Lambda + presigned-PUT capability, drain `uploads/quarantine/` (curators may have uploads in flight) and `uploads/rejected/` (forensic data only — safe to delete). `forceDestroy: false` on the bucket prevents accidental destroy with content. For partial-state rollbacks (e.g., U6 destroyed but U7 validator still subscribed), temporarily disable admin distribution by setting the KVS credential to a junk value (`pulumi config set --secret basicAuthCredential <junk> && pulumi up`) so no new uploads land in the now-unprocessed quarantine.
 - **Monitoring**: CloudWatch Logs on each Lambda (7-day retention dev / 30-day prod). Three alarms in U9: `4xxErrorRate > 10/sec` on admin distribution (brute-force trigger), `DaysToExpiry < 30` per ACM cert (renewal-fail trigger).
-- **DR posture**: DynamoDB point-in-time recovery enabled on the shared table; S3 versioning OFF for the `lessons/` prefix (deterministic keys; PITR not needed). Backups out of scope for v1.
-- **Cost monitoring**: monthly check via AWS Cost Explorer. AWS Budgets alert (free) at 80% of any always-free ceiling per service (Lambda, DynamoDB, S3, CloudFront, CloudFront Functions, SNS, KVS, CloudWatch).
+- **DR posture**: Neon free tier includes point-in-time restore (limited history) + instant branches — a pre-risky-change branch is the cheap backup (runbook snippet). S3 versioning OFF for the `catalogue/` prefix (deterministic keys). Formal backups out of scope for v1.
+- **Cost monitoring**: monthly check via AWS Cost Explorer + the Neon usage dashboard (storage/compute-hours vs the free ceiling). AWS Budgets alert (free) at 80% of any always-free ceiling per service (Lambda, S3, CloudFront, CloudFront Functions, SNS, KVS, CloudWatch).
 - **Credential rotation procedure** (in `infra/README.md`): standard rotation `pulumi config set --secret basicAuthCredential <newBase64> && pulumi up` (KVS-only diff, ~30s). **Emergency rotation if leak suspected:** take admin distribution offline (update to 503 custom error page) for 60s → rotate credential → re-enable distribution. Documented because the 10-30s KVS propagation lag means the old credential is briefly still valid at some edges during normal rotation.
