@@ -27,3 +27,6 @@ docs/.private/
 # Editor / OS
 .DS_Store
 *.log
+
+# Compound Engineering local config
+.compound-engineering/*.local.yaml
