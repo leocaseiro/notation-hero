@@ -35,6 +35,7 @@ flowchart TD
 
   QSHAPE -->|"product requirements, right-sized ceremony"| BRAIN["/ce-brainstorm<br/>docs/brainstorms/*-requirements.md"]:::ce
   QSHAPE -->|"design spec + hard no-code gate"| SPBRAIN["superpowers:brainstorming<br/>committed design spec"]:::sp
+  QSHAPE -->|"it's visual — explore the look first"| DSHOT
 
   BRAIN --> QHOW
   SPBRAIN --> SPPLAN
@@ -51,10 +52,12 @@ flowchart TD
 
   QEXEC -->|"I steer"| CEWORK["/ce-work"]:::ce
   QEXEC -->|"hands-off to CI green"| LFG["/lfg"]:::ce
+  QEXEC -->|"frontend build"| CEFD["/ce-frontend-design<br/>build with design quality, screenshot-verified"]:::ce
   SPPLAN --> SPEXEC["superpowers:executing-plans<br/>or subagent-driven-development"]:::sp
 
   CEWORK --> QREV{"review the diff how?"}
   SPEXEC --> QREV
+  CEFD --> QREV
   LFG --> QFEED{"review feedback arrived?"}
 
   QREV -->|"quick bug pass"| BIREV["/code-review built-in<br/>ultra = cloud multi-agent"]:::bi
@@ -82,9 +85,22 @@ flowchart TD
   DONE -->|"solved something hard"| COMPOUND["/ce-compound<br/>writes docs/solutions/"]:::ce
   DONE -->|"worth announcing"| PROMOTE["/ce-promote<br/>launch copy"]:::ce
 
+  subgraph DESIGNTRACK["UI / design track — when the work is visual"]
+    DCONSULT["/design-consultation gs<br/>no design system yet → DESIGN.md"]:::gs
+    DSHOT["/design-shotgun gs<br/>N AI variants, comparison board"]:::gs
+    DHTML["/design-html gs<br/>finalize the approved variant"]:::gs
+    VISCOMP["superpowers Visual Companion<br/>mockups inside brainstorming"]:::sp
+    IMGGEN["/ce-gemini-imagegen<br/>AI mockup images — no board"]:::ce
+    FIGMA["ce-figma-design-sync agent<br/>match implementation to Figma"]:::ce
+    DCONSULT --> DSHOT
+    DSHOT --> DHTML
+  end
+  SPBRAIN -.->|"visual questions?"| VISCOMP
+  DHTML -->|"direction approved"| QHOW
+
   subgraph ANYTIME["anytime — outside the main flow"]
     LOST["lost context?<br/>/context-restore gs · /ce-sessions"]:::gs
-    WEBQA["web app running?<br/>/qa fix-mode · /qa-only report · /design-review gs"]:::gs
+    WEBQA["web app running?<br/>/qa fix-mode · /qa-only report · /design-review gs · ce-design-iterator agent"]:::gs
     RETRO["week over?<br/>/retro · /health gs"]:::gs
     SECOND["want a second opinion?<br/>/codex gs — cross-model review"]:::gs
   end
@@ -110,5 +126,11 @@ flowchart TD
 | Announce a shipped feature | `/ce-promote` | — |
 | Lost context / resuming | gstack `/context-restore` | `/ce-sessions` |
 | QA a running web app | gstack `/qa` (fixes) | `/qa-only` (report only) |
+| Explore visual directions (variant board) | gstack `/design-shotgun` | `/ce-gemini-imagegen` (images only, no board/feedback loop) |
+| Mockups while brainstorming | superpowers Visual Companion (inside `brainstorming`) | — |
+| No design system yet | gstack `/design-consultation` → DESIGN.md | `ui-ux-pro-max` (styles/palettes/font-pairing intelligence) |
+| Build frontend with design quality | `/ce-frontend-design` (detect → build → screenshot-verify) | gstack `/design-html` (finalize an approved variant) |
+| UI not coming together after 1–2 tries | `ce-design-iterator` agent (N screenshot-improve cycles) | gstack `/design-review` (live audit + fixes) |
+| Match implementation to a Figma design | `ce-figma-design-sync` / `ce-design-implementation-reviewer` agents | — |
 | Weekly reflection | gstack `/retro` + `/health` | — |
 | Cross-model second opinion | gstack `/codex` | — |
