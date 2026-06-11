@@ -87,6 +87,20 @@ uncommitted working-tree changes. Make baby commits at every green step so
 progress is visible and any step is one `git revert` away. Never pass
 `git commit/push --no-verify`.
 
+## Decision governance
+
+`docs/decisions/decision-registry.md` is the single source of truth for every decision +
+its status. Keep it alive:
+
+- **Manual approvals → the register.** Whenever leocaseiro personally approves, ratifies,
+  or revises a decision (in conversation, an `AskUserQuestion`, or a review), record it in
+  the registry's **Change log** (date, outcome, his reasoning). A decision isn't "ratified"
+  until it's in the register.
+- **PR merge → update statuses.** Every PR that changes what's enforced updates the register
+  in the SAME PR: add a Change-log entry and flip affected decisions' status/enforcement
+  (⏳→✅, 📄→🤖, clear the 🟥 gap). The register update travels with the PR so it lands
+  atomically on merge.
+
 ## Working with leocaseiro
 
 leocaseiro is ADHD-diagnosed; reduce cognitive load and let him drive decisions.

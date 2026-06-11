@@ -6,6 +6,26 @@
 
 Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · ✅ done · ⏳ pending · ⛔ superseded — enforcement: 🤖 machine · 🟡 partial · 📄 prose-only · — n/a
 
+## Change log — manual approvals & merge status updates
+
+Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
+
+### 2026-06-11 — PR #9 (guardrails + Jira migration)
+
+**Status changes (effective on merge):**
+- `__tests__/` · `__mocks__/` · `stories/` dir ban → **🤖 machine-enforced** by `tooling/check-layout.sh` (CI quality job) — closes the dir-ban lint gap for `CONV-1` / `CONV-coloc` / `L5-test-colocation`; full co-located placement stays a convention.
+- `@ts-ignore` · `@ts-nocheck` → **🟡 partial** via ESLint `ban-ts-comment` (`L5-no-escape-hatches` / `F3-noescape`); `eslint-disable`-reason rules land in PR #2.
+- `L10a` / `L10b` (Linear MCP + GitHub App) → **⛔ superseded → Jira (KAN)**; see `2026-06-11-tracker-linear-to-jira.md`.
+
+**Manual approvals (leocaseiro):**
+- Issue tracker → migrated **Linear → Jira (KAN)**.
+- L3 formatter → **keep ESLint + Prettier** (Nx boundary rule IS `@nx/eslint`; agent-idiomatic).
+- L5 test runner → **adopt Vitest at L5** (node:test runs today).
+- L5 Stryker mutation testing → **keep**. · L5 coverage ratchet → **keep**.
+- L4 `isolatedDeclarations` + type-coverage → **keep the rigor** (stress-tested 3× in prior sessions).
+- L9 Renovate → **keep** (vs Dependabot; grouped PRs). · L7 merge-queue → **keep**.
+- 9 remaining discretionary decisions (security scanners, AGENTS-from-config, dep-cruiser+Nx, DangerJS, Knip/Syncpack, Sentry, Lefthook) → **bulk-ratified as-is**.
+
 ## A · Foundation & folders (pnpm, Nx, boundaries, lint, types)
 
 | ID              | Decision                                                                                                                                                                                            | Status           | Enf | Source   | Gap |
