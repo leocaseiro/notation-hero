@@ -10,6 +10,11 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-11 — KAN-129 Semgrep SAST
+
+**Status changes (effective on merge):**
+- `E-semgrep` → **✅ done · 🤖 machine-enforced**. Semgrep now runs (1) in CI as the `sast` job wired into the required **"CI Green"** gate (`semgrep scan --config auto --error`, free community rulesets, no token; path-filtered on `code`), and (2) locally as a best-effort Lefthook pre-commit hook (`tooling/semgrep-precommit.sh`, scans staged source, graceful skip if semgrep isn't installed). Closes the 🟥 SAST gap. CodeQL deep SAST (`E-codeql`, KAN-121) layers on out-of-band.
+
 ### 2026-06-11 — KAN-128 gitleaks secret scanning
 
 **Status changes (effective on merge):**
@@ -134,7 +139,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | E-renovate-harden   | Renovate automerge hardening: minimumReleaseAge '3 days'; restrict automerge to lockFileMaintenance only; all version bumps need human review.               | ⏳ pending        | —   | DACI:203 |     |
 | E-gitleaks          | gitleaks always-on for secret scanning: Lefthook pre-commit + CI; free and works on private repos (carries the gap when GHAS native scanning auto-off).      | ✅ done           | 🤖  | DACI:196 |     |
 | E-gh-secret-scan    | Enable GitHub native secret scanning + push protection while public; AWS partner auto-revokes leaked keys; auto-off on private (needs GHAS).                 | ⏳ pending        | —   | DACI:196 |     |
-| E-semgrep           | Semgrep always-on SAST: fast, runs in Lefthook + PR, free on private repos.                                                                                  | ⏳ pending        | 📄  | DACI:197 | 🟥  |
+| E-semgrep           | Semgrep always-on SAST: fast, runs in Lefthook + PR, free on private repos.                                                                                  | ✅ done           | 🤖  | DACI:197 |     |
 | E-codeql            | CodeQL deep SAST out-of-band: weekly schedule + push-to-main; public-only via repository.visibility workflow guard, auto-disables on private (no GHAS bill). | ⏳ pending        | —   | DACI:197 |     |
 | E-sec-principle     | Security principle: for SAST and secrets each, run portable free OSS always-on + best free GitHub-native while public; GHAS never required.                  | 🔒 locked-active | —   | DACI:199 |     |
 | E-codeql-guard-impl | CodeQL visibility guard impl: job-level gh api .visibility output gating both CodeQL job and SARIF-upload step with if public (covers schedule events).      | ⏳ pending        | —   | DACI:205 |     |
