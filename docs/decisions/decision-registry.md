@@ -10,6 +10,11 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-11 — KAN-128 gitleaks secret scanning
+
+**Status changes (effective on merge):**
+- `E-gitleaks` → **✅ done · 🤖 machine-enforced**. gitleaks now runs (1) in CI as the always-on `secret-scan` job wired into the required **"CI Green"** gate (`gitleaks/gitleaks-action@v2`, full-history scan, free on this personal/public repo), and (2) locally as a Lefthook pre-commit hook (`tooling/gitleaks-precommit.sh`, best-effort — graceful skip if gitleaks isn't installed; verified against gitleaks 8.30). Closes the 🟥 secret-scan gap. GitHub-native secret scanning (`E-gh-secret-scan`, KAN-132) layers on top while public.
+
 ### 2026-06-11 — KAN-116 repo-meta (README + CODEOWNERS + Dependabot)
 
 **Status changes (effective on merge):**
@@ -127,7 +132,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | E-dependabot        | Enable GitHub Dependabot alerts (free, includes private) plus pnpm audit for dependency-vuln visibility.                                                     | 🔒 locked-active | —   | DACI:194 |     |
 | E-renovate          | Renovate for dependency updates: grouped packageRules for low PR noise, pnpm-catalog-aware, automerge only lockFileMaintenance.                              | ⏳ pending        | —   | DACI:195 |     |
 | E-renovate-harden   | Renovate automerge hardening: minimumReleaseAge '3 days'; restrict automerge to lockFileMaintenance only; all version bumps need human review.               | ⏳ pending        | —   | DACI:203 |     |
-| E-gitleaks          | gitleaks always-on for secret scanning: Lefthook pre-commit + CI; free and works on private repos (carries the gap when GHAS native scanning auto-off).      | ⏳ pending        | 📄  | DACI:196 | 🟥  |
+| E-gitleaks          | gitleaks always-on for secret scanning: Lefthook pre-commit + CI; free and works on private repos (carries the gap when GHAS native scanning auto-off).      | ✅ done           | 🤖  | DACI:196 |     |
 | E-gh-secret-scan    | Enable GitHub native secret scanning + push protection while public; AWS partner auto-revokes leaked keys; auto-off on private (needs GHAS).                 | ⏳ pending        | —   | DACI:196 |     |
 | E-semgrep           | Semgrep always-on SAST: fast, runs in Lefthook + PR, free on private repos.                                                                                  | ⏳ pending        | 📄  | DACI:197 | 🟥  |
 | E-codeql            | CodeQL deep SAST out-of-band: weekly schedule + push-to-main; public-only via repository.visibility workflow guard, auto-disables on private (no GHAS bill). | ⏳ pending        | —   | DACI:197 |     |
