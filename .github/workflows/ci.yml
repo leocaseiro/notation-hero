@@ -132,13 +132,29 @@ jobs:
       - name: Semgrep SAST
         run: semgrep scan --config auto --error
 
+  # Dependency CVE gate — osv-scanner over the pnpm lockfile. Path-filtered on `code`;
+  # fails the build on any known CVE (free SCA). Pinned to an exact tag — the action
+  # warns its behavior can change in a minor patch. (decision-registry E-osv-scanner)
+  deps-cve:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+        with:
+          scan-args: |-
+            --recursive
+            --skip-git
+            ./
+
   # Single REQUIRED status check for branch protection. Always runs, so a
   # path-filtered skip never deadlocks the merge. Fails only on a real
   # failure/cancellation (skipped is OK).
   ci-green:
     name: CI Green
     if: always()
-    needs: [quality, build, secret-scan, sast]
+    needs: [quality, build, secret-scan, sast, deps-cve]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
@@ -147,8 +163,9 @@ jobs:
           b="${{ needs.build.result }}"
           s="${{ needs.secret-scan.result }}"
           a="${{ needs.sast.result }}"
-          echo "quality=$q  build=$b  secret-scan=$s  sast=$a"
-          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" || "$s" == "failure" || "$s" == "cancelled" || "$a" == "failure" || "$a" == "cancelled" ]]; then
+          d="${{ needs.deps-cve.result }}"
+          echo "quality=$q  build=$b  secret-scan=$s  sast=$a  deps-cve=$d"
+          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" || "$s" == "failure" || "$s" == "cancelled" || "$a" == "failure" || "$a" == "cancelled" || "$d" == "failure" || "$d" == "cancelled" ]]; then
             echo "::error::A required CI job did not pass"
             exit 1
           fi

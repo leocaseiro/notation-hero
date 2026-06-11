@@ -10,6 +10,13 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-11 — KAN-130 osv-scanner + KAN-131/132 security settings
+
+**Status changes (effective on merge):**
+- `E-osv-scanner` → **🤖 machine-enforced**. New `deps-cve` CI job runs osv-scanner (pinned `google/osv-scanner-action/osv-scanner-action@v2.3.8`, `--recursive --skip-git`) over the pnpm lockfile, wired into the required **"CI Green"** gate; fails the build on any known dependency CVE. Closes the 🟥 SCA gap.
+- `E-gh-secret-scan` → **✅ done · 🤖**. GitHub-native secret scanning **and** push protection enabled on the repo (KAN-132, via `gh api`). Layers on top of gitleaks (`E-gitleaks`) while public; auto-off if the repo goes private (needs GHAS).
+- `E-dependabot` — Dependabot **alerts** now enabled (KAN-131, via `gh api PUT /vulnerability-alerts`). Version-update PRs remain Renovate's job (`E-renovate`); Dependabot security-updates left off to avoid duplicate PRs.
+
 ### 2026-06-11 — KAN-129 Semgrep SAST
 
 **Status changes (effective on merge):**
@@ -133,12 +140,12 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | E-syncpack          | Syncpack to enforce consistent dependency versions across the monorepo workspace.                                                                            | ⏳ pending        | 📄  | DACI:193 | 🟥  |
 | E-pnpm-catalog      | pnpm catalog for centralized version pinning (single source of truth for dep versions).                                                                      | 🔒 locked-active | —   | DACI:193 |     |
 | E-no-orphans-error  | Flip dependency-cruiser no-orphans from WARN to ERROR; configure test/story files as entries so co-location doesn't false-positive.                          | ⏳ pending        | 🟡  | DACI:193 | 🟥  |
-| E-osv-scanner       | osv-scanner as a CI gate that fails the build on any known CVE in dependencies (free SCA).                                                                   | 🔒 locked-active | 📄  | DACI:194 | 🟥  |
+| E-osv-scanner       | osv-scanner as a CI gate that fails the build on any known CVE in dependencies (free SCA).                                                                   | 🔒 locked-active | 🤖  | DACI:194 |     |
 | E-dependabot        | Enable GitHub Dependabot alerts (free, includes private) plus pnpm audit for dependency-vuln visibility.                                                     | 🔒 locked-active | —   | DACI:194 |     |
 | E-renovate          | Renovate for dependency updates: grouped packageRules for low PR noise, pnpm-catalog-aware, automerge only lockFileMaintenance.                              | ⏳ pending        | —   | DACI:195 |     |
 | E-renovate-harden   | Renovate automerge hardening: minimumReleaseAge '3 days'; restrict automerge to lockFileMaintenance only; all version bumps need human review.               | ⏳ pending        | —   | DACI:203 |     |
 | E-gitleaks          | gitleaks always-on for secret scanning: Lefthook pre-commit + CI; free and works on private repos (carries the gap when GHAS native scanning auto-off).      | ✅ done           | 🤖  | DACI:196 |     |
-| E-gh-secret-scan    | Enable GitHub native secret scanning + push protection while public; AWS partner auto-revokes leaked keys; auto-off on private (needs GHAS).                 | ⏳ pending        | —   | DACI:196 |     |
+| E-gh-secret-scan    | Enable GitHub native secret scanning + push protection while public; AWS partner auto-revokes leaked keys; auto-off on private (needs GHAS).                 | ✅ done           | 🤖  | DACI:196 |     |
 | E-semgrep           | Semgrep always-on SAST: fast, runs in Lefthook + PR, free on private repos.                                                                                  | ✅ done           | 🤖  | DACI:197 |     |
 | E-codeql            | CodeQL deep SAST out-of-band: weekly schedule + push-to-main; public-only via repository.visibility workflow guard, auto-disables on private (no GHAS bill). | ⏳ pending        | —   | DACI:197 |     |
 | E-sec-principle     | Security principle: for SAST and secrets each, run portable free OSS always-on + best free GitHub-native while public; GHAS never required.                  | 🔒 locked-active | —   | DACI:199 |     |
