@@ -147,13 +147,8 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | E-knip              | Knip for dead-code/drift detection: config now, advisory until apps land, then flip to error.                                                                | 🔒 locked-active | 📄  | DACI:193 | 🟥  |
 | E-syncpack          | Syncpack to enforce consistent dependency versions across the monorepo workspace.                                                                            | ✅ done           | 🤖  | DACI:193 |     |
 | E-pnpm-catalog      | pnpm catalog for centralized version pinning (single source of truth for dep versions).                                                                      | 🔒 locked-active | —   | DACI:193 |     |
-<<<<<<< HEAD
-| E-no-orphans-error  | Flip dependency-cruiser no-orphans from WARN to ERROR; configure test/story files as entries so co-location doesn't false-positive.                          | ⏳ pending        | 🟡  | DACI:193 | 🟥  |
-| E-osv-scanner       | osv-scanner as a CI gate that fails the build on any known CVE in dependencies (free SCA).                                                                   | 🔒 locked-active | 🤖  | DACI:194 |     |
-=======
 | E-no-orphans-error  | Flip dependency-cruiser no-orphans from WARN to ERROR; configure test/story files as entries so co-location doesn't false-positive.                          | ✅ done           | 🤖  | DACI:193 |     |
-| E-osv-scanner       | osv-scanner as a CI gate that fails the build on any known CVE in dependencies (free SCA).                                                                   | 🔒 locked-active | 📄  | DACI:194 | 🟥  |
->>>>>>> 0c23635 (docs(registry): record KAN-133 dep-hygiene status flips (KAN-133))
+| E-osv-scanner       | osv-scanner as a CI gate that fails the build on any known CVE in dependencies (free SCA).                                                                   | 🔒 locked-active | 🤖  | DACI:194 |     |
 | E-dependabot        | Enable GitHub Dependabot alerts (free, includes private) plus pnpm audit for dependency-vuln visibility.                                                     | 🔒 locked-active | —   | DACI:194 |     |
 | E-renovate          | Renovate for dependency updates: grouped packageRules for low PR noise, pnpm-catalog-aware, automerge only lockFileMaintenance.                              | ⏳ pending        | —   | DACI:195 |     |
 | E-renovate-harden   | Renovate automerge hardening: minimumReleaseAge '3 days'; restrict automerge to lockFileMaintenance only; all version bumps need human review.               | ⏳ pending        | —   | DACI:203 |     |
