@@ -10,6 +10,14 @@ on:
     # Path-filtered jobs (quality/build/sast/deps-cve) still skip on metadata-
     # only edits via the `changes` paths-filter, so cost is ~30-60s per edit.
     types: [opened, edited, synchronize, reopened]
+  # merge_group fires when GitHub's merge queue creates a synthetic merge commit
+  # between queued PRs and runs CI on the combined state. Two independently-green
+  # PRs that interact badly (different agents touching the same hot file) get
+  # caught HERE before they hit master. Free tier on public repos supports this.
+  # pr-title is gated to pull_request only (PR title already validated at PR time
+  # — no new title in the merge queue), so it skips here; ci-green treats skipped
+  # as OK. Closes registry L7-merge-queue.
+  merge_group:
 
 # Cancel superseded runs on the same ref (saves minutes, avoids stale results).
 concurrency:
