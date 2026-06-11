@@ -31,13 +31,9 @@ pre-commit:
       skip:
         - merge
         - rebase
-    # 4) Coverage-ignore guard — bans istanbul/c8/v8 ignore in source (no-escape-hatches).
-    coverage-ignore-guard:
-      run: bash tooling/check-no-coverage-ignore.sh
-      skip:
-        - merge
-        - rebase
-    # 5) nx affected lint + typecheck on UNCOMMITTED changes (staged + unstaged working tree).
+    # 4) nx affected lint + typecheck on UNCOMMITTED changes (staged + unstaged working tree).
+    # NOTE: Coverage-ignore guard runs in CI only (see ci.yml `quality` job). Same policy
+    # as gitleaks/semgrep: CI is authoritative for whole-tree gates; pre-commit stays fast.
     affected-lint-typecheck:
       run: pnpm exec nx affected -t lint typecheck --uncommitted
       skip:

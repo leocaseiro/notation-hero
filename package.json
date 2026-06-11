@@ -12,7 +12,9 @@
     "build": "nx run-many --target=build",
     "depcheck": "depcruise core adapters apps infra --config .dependency-cruiser.cjs",
     "knip": "knip",
-    "syncpack": "syncpack lint"
+    "syncpack": "syncpack lint",
+    "check:layout": "bash tooling/check-layout.sh",
+    "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",

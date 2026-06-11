@@ -155,13 +155,36 @@ jobs:
             --recursive
             ./
 
+  # PR-title commitlint — validates the PR title against commitlint.config.cjs.
+  # Why: GitHub squash-merge uses the PR title as master subject when a PR has
+  # 2+ commits (repo's squash_merge_commit_title = COMMIT_OR_PR_TITLE). The
+  # Lefthook commit-msg hook only validates LOCAL commits — without this gate
+  # a multi-commit PR with a non-conventional title produces a non-conventional
+  # master commit, breaking `nx release` SemVer detection. Same commitlint
+  # config is the single source of truth. PR-event only. (decision-registry L6-4)
+  pr-title:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: Validate PR title with commitlint
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint
+
   # Single REQUIRED status check for branch protection. Always runs, so a
   # path-filtered skip never deadlocks the merge. Fails only on a real
   # failure/cancellation (skipped is OK).
   ci-green:
     name: CI Green
     if: always()
-    needs: [quality, build, secret-scan, sast, deps-cve]
+    needs: [quality, build, secret-scan, sast, deps-cve, pr-title]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
@@ -171,8 +194,9 @@ jobs:
           s="${{ needs.secret-scan.result }}"
           a="${{ needs.sast.result }}"
           d="${{ needs.deps-cve.result }}"
-          echo "quality=$q  build=$b  secret-scan=$s  sast=$a  deps-cve=$d"
-          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" || "$s" == "failure" || "$s" == "cancelled" || "$a" == "failure" || "$a" == "cancelled" || "$d" == "failure" || "$d" == "cancelled" ]]; then
+          p="${{ needs.pr-title.result }}"
+          echo "quality=$q  build=$b  secret-scan=$s  sast=$a  deps-cve=$d  pr-title=$p"
+          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" || "$s" == "failure" || "$s" == "cancelled" || "$a" == "failure" || "$a" == "cancelled" || "$d" == "failure" || "$d" == "cancelled" || "$p" == "failure" || "$p" == "cancelled" ]]; then
             echo "::error::A required CI job did not pass"
             exit 1
           fi

@@ -8,12 +8,22 @@
 # Runs in CI (quality job) and Lefthook pre-commit.
 set -euo pipefail
 
-violations="$(git ls-files -- '*.ts' '*.tsx' \
-  | xargs grep -nE '/\*\s*(istanbul|c8|v8)\s+ignore' 2>/dev/null || true)"
+# `git grep` over the index avoids xargs whitespace-splitting bugs and treats
+# no-match as exit 1 (vs grep's exit 2 on error), so we can fail-closed cleanly.
+# Regex covers BOTH `// istanbul ignore next` (line) and `/* istanbul ignore */`
+# (block) forms — Istanbul/c8/v8 all accept either.
+set +e
+violations="$(git grep -nE '(//|/\*)[[:space:]]*(istanbul|c8|v8)[[:space:]]+ignore' -- '*.ts' '*.tsx')"
+rc=$?
+set -e
+if [ "$rc" -gt 1 ]; then
+  echo "::error::check-no-coverage-ignore: git grep failed (exit $rc) — investigate."
+  exit 2
+fi
 
 if [ -n "$violations" ]; then
   echo "::error::Coverage-ignore directives are banned (no-escape-hatches policy)."
-  echo "Remove /* istanbul ignore */, /* c8 ignore */, or /* v8 ignore */ comments."
+  echo "Remove // istanbul ignore, /* c8 ignore */, /* v8 ignore */ etc. comments."
   echo "See AGENTS.md + decision-registry.md F3-noescape / L5-no-escape-hatches."
   echo "Offending lines:"
   echo "$violations" | sed 's/^/  - /'
