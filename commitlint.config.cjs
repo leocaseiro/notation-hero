@@ -1,3 +1,4 @@
+// CJS extension required — package.json sets "type": "module" (same reason as .eslintrc.cjs).
 module.exports = {
   extends: ["@commitlint/config-conventional"],
   rules: {

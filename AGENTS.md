@@ -79,6 +79,28 @@ in the `quality` job); coverage globs and the `build:dts` excludes
 ⚠️ The legacy `docs/plans/2026-06-07-001-feat-cms-k-build-plan.md` predates this
 rule and still shows `__tests__/` paths — those are SUPERSEDED; co-locate instead.
 
+## Setup in a fresh worktree / clone
+
+Lefthook git hooks (`pre-commit`, `commit-msg`, `pre-push`) are the local-side
+of the CI gates. They must be **installed once per worktree**:
+
+1. `pnpm install` — runs the `prepare` script which calls `lefthook install`.
+2. If `pnpm install` fails on the `prepare` step with `core.hooksPath is set
+   locally`, the worktree has a stale per-worktree hooks path. Recover with:
+   ```sh
+   git config --unset-all --local core.hooksPath
+   pnpm install --ignore-scripts
+   pnpm exec lefthook install
+   ```
+   (Adding deps in the same recovery state: `pnpm add -D -w <pkg> --ignore-scripts`.)
+3. Verify hooks fire: `git config --get core.hooksPath` should be unset (empty
+   output); `.git/hooks/pre-commit` should exist. If hooks silently no-op
+   after a worktree move, re-run `pnpm exec lefthook install`.
+
+If you skip this, commits land **without** the layout / coverage-ignore /
+gitleaks / semgrep / nx-affected checks — CI will still catch them on push,
+but local feedback time is gone. Never use `git commit/push --no-verify`.
+
 ## Commit & review workflow
 
 **Always `git commit` a coherent, green checkpoint BEFORE asking leocaseiro to
