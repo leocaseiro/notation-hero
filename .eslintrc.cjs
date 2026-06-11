@@ -8,16 +8,27 @@ module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
   parserOptions: { ecmaVersion: 2022, sourceType: "module" },
-  plugins: ["@typescript-eslint"],
-  extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments"],
+  extends: [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@eslint-community/eslint-comments/recommended",
+  ],
   env: { node: true, browser: true, es2022: true },
+  // ESLint-native equivalent of the plugin's (deprecated since v4.7.0) `no-unused-disable`.
+  // Same effect, no plugin v5.0.0 removal risk. See decision-registry F3-noescape.
+  reportUnusedDisableDirectives: true,
   rules: {
-    // No escape hatches: @ts-ignore / @ts-nocheck banned; @ts-expect-error needs a reason.
-    // (decision-registry: no-escape-hatches — eslint-disable rules land in PR #2 with the plugin.)
+    // No-escape-hatches (decision-registry F3-noescape / L5-no-escape-hatches — enforced
+    // via this rule set + tooling/check-no-coverage-ignore.sh; see PR #21):
+    //  - ban @ts-ignore / @ts-nocheck; @ts-expect-error needs a reason
+    //  - every eslint-disable needs a description
+    //  - unused eslint-disable directives caught by `reportUnusedDisableDirectives` above
     "@typescript-eslint/ban-ts-comment": [
       "error",
       { "ts-ignore": true, "ts-nocheck": true, "ts-expect-error": "allow-with-description" },
     ],
+    "@eslint-community/eslint-comments/require-description": ["error", { ignore: [] }],
   },
   ignorePatterns: ["dist", "node_modules", "*.cjs", "*.config.js", "*.config.ts"],
   overrides: [

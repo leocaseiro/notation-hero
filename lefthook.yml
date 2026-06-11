@@ -32,8 +32,18 @@ pre-commit:
         - merge
         - rebase
     # 4) nx affected lint + typecheck on UNCOMMITTED changes (staged + unstaged working tree).
+    # NOTE: Coverage-ignore guard runs in CI only (see ci.yml `quality` job). Same policy
+    # as gitleaks/semgrep: CI is authoritative for whole-tree gates; pre-commit stays fast.
     affected-lint-typecheck:
       run: pnpm exec nx affected -t lint typecheck --uncommitted
+      skip:
+        - merge
+        - rebase
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
       skip:
         - merge
         - rebase
