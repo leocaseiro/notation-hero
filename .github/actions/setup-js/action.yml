@@ -1,5 +1,5 @@
 name: Setup JS toolchain
-description: pnpm + Node 24 + frozen-lockfile install (the common prelude for every JS-toolchain CI job).
+description: pnpm + Node (from .nvmrc) + frozen-lockfile install (the common prelude for every JS-toolchain CI job).
 
 # Composite action — call from any job AFTER `actions/checkout@v6`:
 #
@@ -11,14 +11,15 @@ description: pnpm + Node 24 + frozen-lockfile install (the common prelude for ev
 # composite hides the 3-step prelude behind one `uses:` line so adding a
 # new gate is a one-line addition — closes registry L7-reusable-wf.
 #
-# Node version is locked to 24 here AND in .nvmrc; bump both together.
+# Node version is sourced from .nvmrc — single source of truth for local
+# (nvm/fnm/asdf) AND CI. Bumping the Node version is a one-file change.
 runs:
   using: composite
   steps:
     - uses: pnpm/action-setup@v6
     - uses: actions/setup-node@v6
       with:
-        node-version: 24
+        node-version-file: .nvmrc
         cache: pnpm
     - shell: bash
       run: pnpm install --frozen-lockfile
