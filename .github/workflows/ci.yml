@@ -24,8 +24,8 @@ jobs:
       code: ${{ steps.filter.outputs.code }}
       apps: ${{ steps.filter.outputs.apps }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
           # ADD new root config files (eslint.config.*, lefthook.yml, dangerfile.ts, etc.)
@@ -65,11 +65,11 @@ jobs:
     if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Layout guard (co-located tests — no __tests__/ or stories/)
         run: bash tooling/check-layout.sh
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'pnpm'
@@ -90,9 +90,9 @@ jobs:
     if: ${{ needs.changes.outputs.apps == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: 'pnpm'
