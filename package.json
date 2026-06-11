@@ -10,7 +10,9 @@
     "typecheck": "nx run-many --target=typecheck",
     "test": "nx run-many --target=test",
     "build": "nx run-many --target=build",
-    "depcheck": "depcruise core adapters apps infra --config .dependency-cruiser.cjs"
+    "depcheck": "depcruise core adapters apps infra --config .dependency-cruiser.cjs",
+    "knip": "knip",
+    "syncpack": "syncpack lint"
   },
   "devDependencies": {
     "@nx/eslint": "22.7.5",
@@ -20,8 +22,10 @@
     "@typescript-eslint/parser": "^8.18.0",
     "dependency-cruiser": "^16.0.0",
     "eslint": "^9.17.0",
+    "knip": "^6.16.1",
     "lefthook": "2.1.9",
     "nx": "22.7.5",
+    "syncpack": "^15.3.1",
     "typescript": "^5.7.0"
   }
 }

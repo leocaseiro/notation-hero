@@ -45,6 +45,8 @@ jobs:
               - 'tsconfig*.json'
               - '.eslintrc.cjs'
               - '.dependency-cruiser.cjs'
+              - 'knip.json'
+              - '.syncpackrc.json'
               - 'lefthook.yml'
               - 'nx.json'
               - '.github/workflows/ci.yml'
@@ -80,6 +82,8 @@ jobs:
         run: pnpm run typecheck
       - name: Dependency boundaries (Hexagonal layers)
         run: pnpm run depcheck
+      - name: Dependency versions (Syncpack)
+        run: pnpm run syncpack
       - name: Test
         run: pnpm run test
 
