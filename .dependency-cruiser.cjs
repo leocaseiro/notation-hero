@@ -44,9 +44,10 @@ module.exports = {
       comment:
         "Non-test modules should be reachable. Co-located *.test.* / *.spec.* / *.stories.* " +
         "are exempt (legit entry points). The __tests__/ whitelist was removed — that folder " +
-        "layout is banned outright by tooling/check-layout.sh. Error-flip is the deferred " +
-        "DACI Step-5 item (needs full entry-point config); see docs/decisions/decision-registry.md.",
-      severity: "warn",
+        "layout is banned outright by tooling/check-layout.sh. Flipped WARN->ERROR in KAN-136 " +
+        "(E-no-orphans-error / CONV-5); safe now (0 modules) and enforced as source lands. Add " +
+        "explicit entry-point exemptions here when app/infra composition roots arrive.",
+      severity: "error",
       from: { orphan: true, pathNot: ["\\.(test|spec)\\.(ts|tsx)$", "\\.stories\\.(ts|tsx)$"] },
       to: {},
     },

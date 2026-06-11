@@ -10,6 +10,14 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-12 — KAN-133 dependency hygiene (Knip + Syncpack + no-orphans error)
+
+**Status changes (effective on merge):**
+- `E-syncpack` → **✅ done · 🤖**. `.syncpackrc.json` + `syncpack` script + a `Dependency versions (Syncpack)` step in the CI `quality` job enforce consistent dependency versions across the workspace (KAN-135).
+- `E-no-orphans-error` / `CONV-5` → **✅ done · 🤖**. `.dependency-cruiser.cjs` no-orphans flipped WARN→ERROR, with `*.test.*`/`*.spec.*`/`*.stories.*` exempt as entry points; enforced via the existing `depcheck` gate (KAN-136). Safe now (0 modules cruised).
+- `E-knip` → **🔒 locked-active** (advisory). `knip.json` + `knip` script landed for dead-code/unused-dep detection (KAN-134); **advisory, no CI gate** until apps land (per the decision), then flips to error. `ignoreDependencies` covers `@nx/eslint`+`@nx/js` (Nx plugins knip can't trace on a stub repo). Knip's default test/story-as-entry behavior covers `CONV-6` — verify when tests land.
+- `knip.json` + `.syncpackrc.json` added to the CI `code` path-filter so a config-only PR can't false-green.
+
 ### 2026-06-11 — KAN-130 osv-scanner + KAN-131/132 security settings
 
 **Status changes (effective on merge):**
@@ -136,11 +144,16 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 | ID                  | Decision                                                                                                                                                     | Status           | Enf | Source   | Gap |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | --- | -------- | --- |
-| E-knip              | Knip for dead-code/drift detection: config now, advisory until apps land, then flip to error.                                                                | ⏳ pending        | 📄  | DACI:193 | 🟥  |
-| E-syncpack          | Syncpack to enforce consistent dependency versions across the monorepo workspace.                                                                            | ⏳ pending        | 📄  | DACI:193 | 🟥  |
+| E-knip              | Knip for dead-code/drift detection: config now, advisory until apps land, then flip to error.                                                                | 🔒 locked-active | 📄  | DACI:193 | 🟥  |
+| E-syncpack          | Syncpack to enforce consistent dependency versions across the monorepo workspace.                                                                            | ✅ done           | 🤖  | DACI:193 |     |
 | E-pnpm-catalog      | pnpm catalog for centralized version pinning (single source of truth for dep versions).                                                                      | 🔒 locked-active | —   | DACI:193 |     |
+<<<<<<< HEAD
 | E-no-orphans-error  | Flip dependency-cruiser no-orphans from WARN to ERROR; configure test/story files as entries so co-location doesn't false-positive.                          | ⏳ pending        | 🟡  | DACI:193 | 🟥  |
 | E-osv-scanner       | osv-scanner as a CI gate that fails the build on any known CVE in dependencies (free SCA).                                                                   | 🔒 locked-active | 🤖  | DACI:194 |     |
+=======
+| E-no-orphans-error  | Flip dependency-cruiser no-orphans from WARN to ERROR; configure test/story files as entries so co-location doesn't false-positive.                          | ✅ done           | 🤖  | DACI:193 |     |
+| E-osv-scanner       | osv-scanner as a CI gate that fails the build on any known CVE in dependencies (free SCA).                                                                   | 🔒 locked-active | 📄  | DACI:194 | 🟥  |
+>>>>>>> 0c23635 (docs(registry): record KAN-133 dep-hygiene status flips (KAN-133))
 | E-dependabot        | Enable GitHub Dependabot alerts (free, includes private) plus pnpm audit for dependency-vuln visibility.                                                     | 🔒 locked-active | —   | DACI:194 |     |
 | E-renovate          | Renovate for dependency updates: grouped packageRules for low PR noise, pnpm-catalog-aware, automerge only lockFileMaintenance.                              | ⏳ pending        | —   | DACI:195 |     |
 | E-renovate-harden   | Renovate automerge hardening: minimumReleaseAge '3 days'; restrict automerge to lockFileMaintenance only; all version bumps need human review.               | ⏳ pending        | —   | DACI:203 |     |
@@ -183,7 +196,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | CONV-2 | Tests (*.test.tsx, Vitest) and stories (*.stories.tsx, Storybook) co-located next to source; optional index.ts barrel.                               | 🔒 locked-active    | 📄  | DACI:227 | 🟥  |
 | CONV-3 | Vitest test glob = **/*.test.{ts,tsx}; this is the discovery pattern for the test target.                                                            | 🔒 locked-active    | 🟡  | DACI:236 |     |
 | CONV-4 | Exclude *.test.* and *.stories.* from coverage targets — don't measure coverage of tests/stories.                                                    | ⏳ pending           | 📄  | DACI:236 | 🟥  |
-| CONV-5 | dependency-cruiser no-orphans promoted to error and must treat *.test.*/*.stories.* as entry points (else co-located tests/stories read as orphans). | ⏳ pending           | 🟡  | DACI:237 | 🟥  |
+| CONV-5 | dependency-cruiser no-orphans promoted to error and must treat *.test.*/*.stories.* as entry points (else co-located tests/stories read as orphans). | ✅ done              | 🤖  | DACI:237 |     |
 | CONV-6 | Knip must treat *.test.*/*.stories.* as entry points/exclusions so co-located tests/stories aren't flagged as unused.                                | ⏳ pending           | 📄  | DACI:237 | 🟥  |
 | CONV-7 | Storybook stories glob = default **/*.stories.@(ts|tsx) (plural — the standard agents emit), so no corrections needed.                               | 💤 deferred-trigger | 📄  | DACI:238 |     |
 | CONV-8 | One structure encoded for everyone: AGENTS.md documents it, Nx generators emit it, gate configs know it — humans, agents, tools share one shape.     | 🔒 locked-active    | 🟡  | DACI:239 |     |
