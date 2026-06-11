@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { ok, err } from '../Result.ts';
-import type { Result } from '../Result.ts';
+import { ok, err } from './Result.ts';
+import type { Result } from './Result.ts';
 
 describe('Result kernel', () => {
   describe('ok()', () => {

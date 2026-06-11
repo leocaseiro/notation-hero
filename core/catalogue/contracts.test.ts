@@ -8,11 +8,11 @@ import {
   sourceNotAvailable,
   validationError,
   repositoryError,
-} from '../errors.ts';
-import type { CatalogueError } from '../errors.ts';
-import type { CatalogueEvent } from '../CatalogueEvent.ts';
-import type { DetectedFormat } from '../FileRules.ts';
-import { toCatalogueItemId } from '../ids.ts';
+} from './errors.ts';
+import type { CatalogueError } from './errors.ts';
+import type { CatalogueEvent } from './CatalogueEvent.ts';
+import type { DetectedFormat } from './FileRules.ts';
+import { toCatalogueItemId } from './ids.ts';
 
 /**
  * Contracts smoke test — types-only unit; `tsc -b` is the real gate. This just

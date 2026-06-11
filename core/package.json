@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .ts",
     "typecheck": "tsc -b",
-    "test": "node --test \"**/__tests__/**/*.test.ts\"",
+    "test": "node --test \"**/*.test.ts\"",
     "build": "tsc -b"
   },
   "dependencies": {

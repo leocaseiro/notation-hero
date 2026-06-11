@@ -1,9 +1,9 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import type { CatalogueItem } from '../CatalogueItem.ts';
-import { CatalogueItemSchema } from '../CatalogueItem.ts';
-import { canPublish } from '../publishGates.ts';
-import type { PublishGateFacts } from '../publishGates.ts';
+import type { CatalogueItem } from './CatalogueItem.ts';
+import { CatalogueItemSchema } from './CatalogueItem.ts';
+import { canPublish } from './publishGates.ts';
+import type { PublishGateFacts } from './publishGates.ts';
 import { parsed } from './schemaTestUtils.ts';
 
 /**

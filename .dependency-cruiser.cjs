@@ -43,7 +43,7 @@ module.exports = {
       name: "no-orphans",
       comment: "Non-test modules should be reachable.",
       severity: "warn",
-      from: { orphan: true, pathNot: ["\\.test\\.(ts|tsx)$", "(^|/)__tests__/"] },
+      from: { orphan: true, pathNot: ["\\.test\\.(ts|tsx)$"] },
       to: {},
     },
   ],

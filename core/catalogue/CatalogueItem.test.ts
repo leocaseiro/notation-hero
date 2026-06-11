@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { CatalogueItemSchema } from '../CatalogueItem.ts';
+import { CatalogueItemSchema } from './CatalogueItem.ts';
 import { failureCodes, parsed } from './schemaTestUtils.ts';
 
 /**

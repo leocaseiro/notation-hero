@@ -1,6 +1,6 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { detectFormat, SOURCE_MAX_BYTES } from '../FileRules.ts';
+import { detectFormat, SOURCE_MAX_BYTES } from './FileRules.ts';
 
 /**
  * Fixtures — minimal leading-byte slices that carry each format's magic
