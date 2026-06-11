@@ -4,6 +4,12 @@ on:
   push:
     branches: [master]
   pull_request:
+    # `edited` ensures pr-title re-validates when the title (or body/label) is
+    # changed. Without it, a user could open with a conventional title (pass),
+    # then edit to non-conventional after merge approval → squash bypass.
+    # Path-filtered jobs (quality/build/sast/deps-cve) still skip on metadata-
+    # only edits via the `changes` paths-filter, so cost is ~30-60s per edit.
+    types: [opened, edited, synchronize, reopened]
 
 # Cancel superseded runs on the same ref (saves minutes, avoids stale results).
 concurrency:
