@@ -104,6 +104,7 @@ Library ──tap song──▶ Play screen ──finish (game)──▶ Results
 
 - **Sidebars vs modals:** Tracks (**right**, by its bottom-bar button) and Score (**left**) are **persistent sidebars** — usable *alongside* gameplay; either closes to widen the staff. Settings + MIDI are **modals** (you're configuring, not playing).
 - **Memory mode** is armed in **pre-play setup**, never toggled mid-play.
+- **Focus** (distraction-free) = a mode that hides chrome; not a permanent panel.
 
 ---
 
