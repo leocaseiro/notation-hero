@@ -10,6 +10,18 @@ deepened: 2026-06-07
 
 # feat: Area K — Admin/CMS build plan (custom AWS backend + React-Admin SPA)
 
+> [!WARNING]
+> ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
+> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
+> struck lines below.**
+>
+> **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+>
+> _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
+
 > **REVISED 2026-06-10 for the Postgres catalogue.** Track 3 locked the catalogue contract as **Neon PostgreSQL + JSONB** with a richer model (`catalogue_item` / `exercise` / `pattern` / `item_pattern`) — see [specs/2026-06-10-catalogue-schema.md](../specs/2026-06-10-catalogue-schema.md) (**THE authoritative contract** — implement as-written, do not re-litigate fields/constraints) and [decisions/2026-06-09-catalogue-store-postgres-neon.md](../decisions/2026-06-09-catalogue-store-postgres-neon.md) (why Neon; why DynamoDB stays per-user-only). The original R6 trigger ("if Track 3 lands changes, update the core model") has fired: this revision swaps the **catalogue data store DynamoDB → Postgres** and keeps every piece of schema-agnostic AWS plumbing (Lambdas, S3 + validator, CloudFront + OAC + KVS edge-auth, two distributions, React-Admin SPA, SNS, Pulumi components, CI + dependency-cruiser).
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement unit-by-unit. Revised units carry checkbox (`- [ ]`) TDD task lists.
@@ -479,15 +491,15 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 **Dependencies:** None (Track 2's Wave 1 in `vigorous-goldwasser-73ccca/` is discarded; this unit produces the new canonical Wave 1).
 
 **Files:**
-- Create: `package.json` (bun workspaces, no app deps yet)
+- Create: ~~`package.json` (bun workspaces, no app deps yet)~~ <!-- SUPERSEDED: Bun fully dropped; pnpm 11.5.2 + Nx workspaces per tooling DACI 2026-06-09 (U1 already DONE on pnpm) -->
 - Create: `tsconfig.base.json` (path aliases `@core/*`, `@adapters/*`, `@apps/*`; strict mode; `module: "esnext"`; `moduleResolution: "bundler"`)
 - Create: `.gitignore` (node_modules, dist, .pulumi, .env*, *.log)
 - Create: `LICENSE` (proprietary, all rights reserved)
 - Create: `.dependency-cruiser.cjs` (CommonJS `module.exports = {...}` syntax — root package is `type: module`, the `.cjs` extension is the explicit-CommonJS escape). Rules: (a) `core` cannot import from `adapters` or `apps`; (b) `adapters` cannot import from `apps`; (c) `apps/*/handler.ts|use-cases/*|routes/*` cannot import from `apps/*/infra.ts` or `@pulumi/*` (prevents Pulumi in Lambda runtime bundle); (d) `apps/*/infra.ts` cannot import from `handler.ts`/`use-cases/`/`routes/`; (e) no cyclic imports. **No `no-orphans` rule** — Hexagonal port interfaces are intentionally not imported by their implementing adapters and would false-positive.
 - Create: `.eslintrc.cjs` (TS + per-layer overrides — `no-restricted-imports` blocking `aws-sdk`/`react` in `core/`)
-- Create: `.github/workflows/ci.yml` (bun setup pinned to 1.3.11, path-filter via `dorny/paths-filter@v3` emitting outputs for `core` / `adapters` / `apps-*` / `infra`; jobs: `lint` + `typecheck` + `test` + `depcheck` + per-app `build`; single aggregation `CI Green` job marked as required)
+- Create: `.github/workflows/ci.yml` (~~bun setup pinned to 1.3.11~~ <!-- SUPERSEDED: Bun dropped; pnpm + Nx per tooling DACI 2026-06-09 -->, path-filter via `dorny/paths-filter@v3` emitting outputs for `core` / `adapters` / `apps-*` / `infra`; jobs: `lint` + `typecheck` + `test` + `depcheck` + per-app `build`; single aggregation `CI Green` job marked as required)
 - Create: `core/.gitkeep`, `adapters/.gitkeep`, `apps/.gitkeep`, `infra/.gitkeep` (so workspace dirs exist before first package.json drops in)
-- Test: `package.json` `scripts.test` runs `bun test` across workspaces; this unit's test is `bun install` + `bun run lint` + `bun run depcheck` running green on the empty skeleton.
+- Test: ~~`package.json` `scripts.test` runs `bun test` across workspaces; this unit's test is `bun install` + `bun run lint` + `bun run depcheck` running green on the empty skeleton.~~ <!-- SUPERSEDED: Bun dropped; live runner is `node --test` (Node 24), commands are pnpm, per tooling DACI 2026-06-09 -->
 
 **Approach:**
 - bun workspaces glob: `"workspaces": ["core/*", "adapters/*", "apps/*", "infra"]`. Confirm bun honors nested globs (it does as of 1.3+); fall back to enumerating if quirks emerge.
@@ -539,8 +551,8 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 - Create: `core/catalogue/errors.ts` (`InvalidFileFormat`, `MidiNotSupported`, `ItemNotFound`, `ItemAlreadyExists`, `StaleUpdate`, `PublishGateFailed`, `SourceNotAvailable`, `ValidationError` — discriminated unions)
 - Create: `core/catalogue/ports/CatalogueRepository.ts` · `ports/PatternRepository.ts` · `ports/CatalogueFileStore.ts` · `ports/FileValidator.ts`
 - Create: `core/shared/kernel/Result.ts` (`Result<T,E>` + `ok()`/`err()`) · `core/shared/kernel/Brand.ts`
-- Create: `core/package.json` (name `@notation-hero/core`; deps: `zod` (the schemas are runtime exports — Lambda handlers validate with them); devDeps: `vitest`) · `core/tsconfig.json`
-- Test: `core/catalogue/__tests__/{CatalogueItem,Exercise,FileRules,CatalogueFilter,publishGates}.test.ts`
+- Create: ~~`core/package.json` (name `@notation-hero/core`; deps: `zod` (the schemas are runtime exports — Lambda handlers validate with them); devDeps: `vitest`) · `core/tsconfig.json`~~ <!-- SUPERSEDED: Vitest is the deferred L5 lane; live runner is `node --test` (Node 24) per tooling DACI 2026-06-09 -->
+- Test: ~~`core/catalogue/__tests__/{CatalogueItem,Exercise,FileRules,CatalogueFilter,publishGates}.test.ts`~~ <!-- SUPERSEDED: tests are CO-LOCATED next to source (Foo.ts + Foo.test.ts), NO __tests__/ folders, per tooling DACI 2026-06-09 §F-2 -->
 
 **Entity shapes (the contract — column-for-column with spec §4, camelCase in TS, snake_case in SQL):**
 
@@ -681,7 +693,7 @@ export interface CatalogueRepository {
 
 **TDD task list:**
 
-- [ ] **2.1** Add `vitest` to the **root** devDependencies (the committed U1 skeleton doesn't have it — every later `pnpm vitest run` command depends on this) → write `core/shared/kernel/__tests__/Result.test.ts` (ok/err narrowing) → run `pnpm vitest run core/shared --root .` → FAIL → implement `Result.ts` + `Brand.ts` → PASS → commit `feat(core): Result + Brand kernel`
+- [ ] **2.1** ~~Add `vitest` to the **root** devDependencies (the committed U1 skeleton doesn't have it — every later `pnpm vitest run` command depends on this) → write `core/shared/kernel/__tests__/Result.test.ts` (ok/err narrowing) → run `pnpm vitest run core/shared --root .` → FAIL → implement `Result.ts` + `Brand.ts` → PASS → commit `feat(core): Result + Brand kernel`~~ <!-- SUPERSEDED: Vitest is the deferred L5 lane (live runner `node --test`, Node 24) AND tests are co-located (no __tests__/) per tooling DACI 2026-06-09 -->
 - [ ] **2.2** Write `CatalogueItem.test.ts` table-driven Zod cases — valid song / valid lesson / song-missing-bpm (`ci_song_bpm`) / song-missing-file (`ci_song_file`) / `notationFormat:'mid'` rejected / song-with-lessonType rejected (`ci_lesson_type_only`) / `level: 0|11` rejected, `level: null` OK / `data` blob passthrough / mixed-case `genre:'Rock'` + `tags:['Ghost-Notes']` persist lowercase (transform) → FAIL → implement `ids.ts`, `NotationFormat.ts`, `CatalogueItem.ts` → PASS → commit
 - [ ] **2.3** Write `Exercise.test.ts` — exactly-one-source matrix (tex only ✓ · key only ✓ · slice+bars ✓ · none ✗ · two ✗), `ex_slice_bars` (startBar 0 ✗, endBar < startBar ✗), `ex_bpm_ladder` (goal < start ✗, equal ✓, nulls ✓) → FAIL → implement → PASS → commit
 - [ ] **2.4** Write `Pattern.test.ts` (level bounds; open `kind` vocab accepts `'scale'`) → implement → PASS → commit
@@ -695,7 +707,7 @@ export interface CatalogueRepository {
 - `publishGates` is exhaustive over the §5 matrix.
 - No integration scenarios — pure domain, no I/O crossings.
 
-**Verification:** `pnpm vitest run core --root .` green with ≥95% line coverage on `core/catalogue/`; `pnpm depcheck` confirms zero imports from `adapters/` or `apps/` into `core/`; `pnpm typecheck` clean. Field-for-field spot-check of `CatalogueItem` against spec §4 ① at PR time.
+**Verification:** ~~`pnpm vitest run core --root .`~~ <!-- SUPERSEDED: live runner is `node --test` (Node 24); Vitest deferred L5 per tooling DACI 2026-06-09 --> green with ≥95% line coverage on `core/catalogue/`; `pnpm depcheck` confirms zero imports from `adapters/` or `apps/` into `core/`; `pnpm typecheck` clean. Field-for-field spot-check of `CatalogueItem` against spec §4 ① at PR time.
 
 ---
 
@@ -716,7 +728,7 @@ export interface CatalogueRepository {
 - Create: `adapters/aws/package.json` (name `@notation-hero/adapters-aws`, deps: `@pulumi/pulumi@^3`, `@pulumi/aws@^7`)
 - Create: `adapters/aws/tsconfig.json`
 - Create: `adapters/aws/README.md` (component catalog; args + outputs + intended use)
-- Test: `adapters/aws/__tests__/components.smoke.test.ts` — `pulumi preview` smoke test using `@pulumi/pulumi/automation` API against both components in a throwaway in-memory stack.
+- Test: ~~`adapters/aws/__tests__/components.smoke.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> — `pulumi preview` smoke test using `@pulumi/pulumi/automation` API against both components in a throwaway in-memory stack.
 
 **Approach:**
 - Naming convention: `notation-hero:aws:LambdaWithUrl`, `notation-hero:aws:CloudFrontStaticSite` (per Pulumi guidance — pick once, never rename).
@@ -756,7 +768,7 @@ export interface CatalogueRepository {
 - Integration scenario: `pulumi preview` on a throwaway stack using the component runs to completion (no resource graph errors) — confirms shape is deployable. *(The original `DynamoSingleTable`/`EdgeBasicAuth` component scenarios are gone — those were inlined per doc-review, and DynamoDB left K's scope entirely per RC-3.)*
 - Test expectation: no `pulumi up` in tests (no AWS account hits); only `preview` + Pulumi's mock testing API.
 
-**Verification:** `pnpm vitest run adapters/aws --root .` runs green. `dependency-cruiser` confirms `adapters/aws/` only imports from `@pulumi/*` and TS types from `core/` (no runtime core imports). Component naming convention applied uniformly.
+**Verification:** ~~`pnpm vitest run adapters/aws --root .`~~ <!-- SUPERSEDED: live runner is `node --test` (Node 24); Vitest deferred L5 per tooling DACI 2026-06-09 --> runs green. `dependency-cruiser` confirms `adapters/aws/` only imports from `@pulumi/*` and TS types from `core/` (no runtime core imports). Component naming convention applied uniformly.
 
 ---
 
@@ -850,13 +862,13 @@ export interface CatalogueRepository {
         timeout: 2s
         retries: 15
   ```
-- Create: `adapters/postgres/__tests__/{migrations,CatalogueRepositoryPostgres,PatternRepositoryPostgres,buildListQuery}.test.ts`
+- Create: ~~`adapters/postgres/__tests__/{migrations,CatalogueRepositoryPostgres,PatternRepositoryPostgres,buildListQuery}.test.ts`~~ <!-- SUPERSEDED: tests are co-located next to source (no __tests__/) per tooling DACI 2026-06-09 §F-2 -->
 - Create: `adapters/postgres/cli-migrate.ts` (CLI wrapper for `migrate()`)
-- Create: `adapters/postgres/package.json` (name `@notation-hero/adapters-postgres`; deps: `@neondatabase/serverless`; devDeps: `pg`, `@types/pg`, `vitest`, `tsx`; scripts: `migrate`; peer: `@notation-hero/core`) · `adapters/postgres/tsconfig.json`
+- Create: `adapters/postgres/package.json` (name `@notation-hero/adapters-postgres`; deps: `@neondatabase/serverless`; devDeps: `pg`, `@types/pg`, ~~`vitest`~~ <!-- SUPERSEDED: Vitest deferred L5; live runner `node --test` per tooling DACI 2026-06-09 -->, `tsx`; scripts: `migrate`; peer: `@notation-hero/core`) · `adapters/postgres/tsconfig.json`
 - Create: `adapters/s3/CatalogueFileStoreS3.ts` (implements `CatalogueFileStore`: `mintUploadUrl` = S3 presigned POST; `mintDeliveryUrl` = **CloudFront signed URL** via `@aws-sdk/cloudfront-signer` (RC-13 — env: CDN domain, key-pair id, private key); `promote(quarantineKey, finalKey)` server-side copy+delete)
 - Create: `adapters/s3/MagicByteValidator.ts` (wraps `core/catalogue/FileRules` with `file-type` streaming)
-- Create: `adapters/s3/package.json` (deps: `@aws-sdk/client-s3`, `@aws-sdk/s3-presigned-post`, `@aws-sdk/cloudfront-signer`, `file-type@^21`) · `adapters/s3/docker-compose.test.yml` (LocalStack `SERVICES=s3`) · `adapters/s3/__tests__/` (CloudFront signing is pure crypto — unit-test signature shape/expiry against a fixture key; LocalStack can't emulate CF)
-- Create: `adapters/sns/SnsEventSink.ts` (implements `EventSink` for `CatalogueEvent`; `@aws-sdk/client-sns` `PublishCommand` with typed `MessageAttributes`) · `adapters/sns/package.json` · `adapters/sns/__tests__/` (LocalStack SNS)
+- Create: `adapters/s3/package.json` (deps: `@aws-sdk/client-s3`, `@aws-sdk/s3-presigned-post`, `@aws-sdk/cloudfront-signer`, `file-type@^21`) · `adapters/s3/docker-compose.test.yml` (LocalStack `SERVICES=s3`) · ~~`adapters/s3/__tests__/`~~ <!-- SUPERSEDED: co-located tests (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (CloudFront signing is pure crypto — unit-test signature shape/expiry against a fixture key; LocalStack can't emulate CF)
+- Create: `adapters/sns/SnsEventSink.ts` (implements `EventSink` for `CatalogueEvent`; `@aws-sdk/client-sns` `PublishCommand` with typed `MessageAttributes`) · `adapters/sns/package.json` · ~~`adapters/sns/__tests__/`~~ <!-- SUPERSEDED: co-located tests (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (LocalStack SNS)
 
 **Approach (Postgres adapter):**
 - **The migrations ARE the contract.** `0001` is copied from spec §4+§9 byte-for-byte (minus the markdown fences). The migration test suite **probes the CHECKs**: each constraint gets one INSERT/UPDATE that must fail with that constraint name — this proves the applied DDL matches the spec, not an approximation of it.
@@ -882,7 +894,7 @@ export interface CatalogueRepository {
 
 **TDD task list:**
 
-- [ ] **4.1** Copy spec §4 DDL + §9 indexes → `migrations/0001_catalogue_init.sql`; write `migrations.test.ts` asserting `migrate()` applies cleanly on a fresh Docker Postgres and is idempotent on re-run → `docker compose -f adapters/postgres/docker-compose.test.yml up -d --wait && pnpm vitest run adapters/postgres/__tests__/migrations.test.ts --root .` → FAIL (no runner) → implement `migrate.ts` + `pgExecutor.ts` → PASS → commit `feat(adapters-postgres): migrations runner + verbatim catalogue DDL`
+- [ ] **4.1** Copy spec §4 DDL + §9 indexes → `migrations/0001_catalogue_init.sql`; write `migrations.test.ts` asserting `migrate()` applies cleanly on a fresh Docker Postgres and is idempotent on re-run → ~~`docker compose -f adapters/postgres/docker-compose.test.yml up -d --wait && pnpm vitest run adapters/postgres/__tests__/migrations.test.ts --root .`~~ <!-- SUPERSEDED: runner is `node --test` (Node 24), not Vitest; test is co-located (no __tests__/) per tooling DACI 2026-06-09 --> → FAIL (no runner) → implement `migrate.ts` + `pgExecutor.ts` → PASS → commit `feat(adapters-postgres): migrations runner + verbatim catalogue DDL`
 - [ ] **4.2** Extend `migrations.test.ts` with **one failing INSERT/UPDATE per CHECK** (`ci_type`, `ci_status`, `ci_level`, `ci_song_bpm`, `ci_song_file`, `ci_song_fmt`, `ci_lesson_type_only`, `ci_shared_curated`, `ci_source`, `ci_pub_license`, `ex_one_source`, `ex_slice_bars`, `ex_bpm_ladder`, `pat_level`) asserting the named constraint in the error → PASS (DDL already enforces) → commit `test(adapters-postgres): CHECK-constraint fidelity probes`
 - [ ] **4.3** Write `0002_source_write_once.sql` + test (UPDATE flipping `user-upload`→`curated` raises) → run → PASS → commit
 - [ ] **4.4** Write `buildListQuery.test.ts` — pure unit table: each facet alone, combined facets, search-only, every sort, pagination clamp, **unrecognized sort value (`'; DROP TABLE catalogue_item; --'`) throws instead of interpolating**; assert generated `text` + `params` (no DB needed) → FAIL → implement `sql/buildListQuery.ts` (incl. `SORT_MAP` allowlist) → PASS → commit
@@ -899,7 +911,7 @@ export interface CatalogueRepository {
 - Edge: `replaceExercises` with an exercise violating `ex_one_source` → whole batch rolls back (count unchanged).
 - Integration: presigned POST of a 25 MB file → S3 rejects via `content-length-range` (proves the §8 ceiling holds at the storage layer, before the validator even runs).
 
-**Verification:** `pnpm vitest run adapters/postgres --root .` green against Docker `postgres:16` (compose helper script boots/waits/tears down); `pnpm vitest run adapters/s3 adapters/sns --root .` green against LocalStack. CI runs both as services (documented in `ci.yml`). `pnpm depcheck` green.
+**Verification:** ~~`pnpm vitest run adapters/postgres --root .`~~ <!-- SUPERSEDED: live runner is `node --test` (Node 24); Vitest deferred L5 per tooling DACI 2026-06-09 --> green against Docker `postgres:16` (compose helper script boots/waits/tears down); ~~`pnpm vitest run adapters/s3 adapters/sns --root .`~~ <!-- SUPERSEDED: live runner is `node --test` (Node 24); Vitest deferred L5 per tooling DACI 2026-06-09 --> green against LocalStack. CI runs both as services (documented in `ci.yml`). `pnpm depcheck` green.
 
 ---
 
@@ -943,10 +955,10 @@ export interface CatalogueRepository {
   }
   ```
 - Create: `apps/lambda-cms-crud-public/build.ts` (esbuild: `handler.ts --bundle --platform=node --target=node22 --format=esm --minify --external:@aws-sdk/* --outfile=dist/index.mjs`)
-- Create: `apps/lambda-cms-crud-public/package.json` (deps: `@notation-hero/core`, `@notation-hero/adapters-postgres`, `@notation-hero/adapters-s3`; devDeps: `esbuild`, `@types/aws-lambda`, `vitest`)
-- Create: `apps/lambda-cms-crud-public/__tests__/handler.test.ts` (unit — in-memory `CatalogueRepository`/`CatalogueFileStore` fakes)
-- Create: `apps/lambda-cms-crud-public/__tests__/contract/catalogue-v1.schema.json` + `contract.test.ts` (JSON-Schema contract test on both wire shapes — guards deployed player clients)
-- Create: `apps/lambda-cms-crud-public/__tests__/integration.test.ts` (against deployed dev stack — gated `INTEGRATION_TESTS=1`)
+- Create: `apps/lambda-cms-crud-public/package.json` (deps: `@notation-hero/core`, `@notation-hero/adapters-postgres`, `@notation-hero/adapters-s3`; devDeps: `esbuild`, `@types/aws-lambda`, ~~`vitest`~~ <!-- SUPERSEDED: Vitest deferred L5; live runner `node --test` per tooling DACI 2026-06-09 -->)
+- Create: ~~`apps/lambda-cms-crud-public/__tests__/handler.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (unit — in-memory `CatalogueRepository`/`CatalogueFileStore` fakes)
+- Create: ~~`apps/lambda-cms-crud-public/__tests__/contract/catalogue-v1.schema.json` + `contract.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (JSON-Schema contract test on both wire shapes — guards deployed player clients)
+- Create: ~~`apps/lambda-cms-crud-public/__tests__/integration.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (against deployed dev stack — gated `INTEGRATION_TESTS=1`)
 - Create: `infra/cms/public-read-api.ts` (Pulumi module — RC-10, lives in the `infra` project: `LambdaWithUrl` (`AuthType: AWS_IAM`, env `DATABASE_URL` + `BUCKET_NAME` + `SIGNED_URL_TTL_SECONDS` + `CDN_DOMAIN` + `CF_KEY_PAIR_ID` + `CF_PRIVATE_KEY_PARAM` (SSM SecureString *name* — the key itself is fetched at INIT, never an env value; round-2 review) + `ssm:GetParameter`/`kms:Decrypt` scoped to that parameter + `aws.lambda.Permission` for `cloudfront.amazonaws.com` with `sourceArn` + OAC + public distribution with **two behaviors**: default → Lambda FURL origin; `catalogue/*` → files-bucket S3 origin (OAC) gated by the **trusted key group** (RC-13) + Response Headers Policy; references `../../apps/lambda-cms-crud-public/dist` as `FileArchive`)
 - Create: `apps/lambda-cms-crud-public/tsconfig.json`
 
@@ -975,7 +987,7 @@ export interface CatalogueRepository {
 - Error path: repository `RepositoryError` → 503 + `Retry-After` (Neon scale-to-zero cold resume manifests as latency, not errors — see Risks).
 - Integration: direct FURL hit → 403 (OAC seal); via CloudFront → 200. CORS preflight allowed-origin vs evil-origin. Signed URL fetches the file; expires after TTL.
 
-**Verification:** `pnpm vitest run apps/lambda-cms-crud-public --root .` green; contract test green; `pulumi preview` clean on the infra module; integration suite green against the dev stack once U9 deploys.
+**Verification:** ~~`pnpm vitest run apps/lambda-cms-crud-public --root .`~~ <!-- SUPERSEDED: live runner is `node --test` (Node 24); Vitest deferred L5 per tooling DACI 2026-06-09 --> green; contract test green; `pulumi preview` clean on the infra module; integration suite green against the dev stack once U9 deploys.
 
 ---
 
@@ -1008,7 +1020,7 @@ export interface CatalogueRepository {
 - Create: `apps/lambda-cms-crud-admin/routes.ts` (matcher for the table above)
 - Create: `apps/lambda-cms-crud-admin/use-cases/{createItem,updateItem,archiveItem,publishItem,replaceExercises,mintUploadUrl,getUploadStatus}.ts`
 - Create: `apps/lambda-cms-crud-admin/build.ts` · `package.json` · `tsconfig.json`
-- Create: `apps/lambda-cms-crud-admin/__tests__/handler.test.ts` (unit, in-memory fakes) · `__tests__/integration.test.ts` (deployed dev stack, Basic-Auth cred from env)
+- Create: ~~`apps/lambda-cms-crud-admin/__tests__/handler.test.ts` (unit, in-memory fakes) · `__tests__/integration.test.ts`~~ <!-- SUPERSEDED: co-located tests (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (deployed dev stack, Basic-Auth cred from env)
 - Create: `infra/cms/admin-api.ts` (Pulumi module — RC-10: `LambdaWithUrl` (`AuthType: AWS_IAM`, env `DATABASE_URL` + `BUCKET_NAME` + `EVENTS_TOPIC_ARN`) + Lambda Permission with `sourceArn` + OAC; the admin distribution itself lives in `infra/cms/admin-site.ts` (U8) and consumes this module's exported FURL)
 
 **Approach:**
@@ -1038,7 +1050,7 @@ export interface CatalogueRepository {
 - Integration: full author loop — create lesson → add 2 exercises → publish → public API serves it; archive → the public API stops serving it within the CDN cache window (≤60 s — see the cache/TTL contract).
 - Error path: Postgres CHECK violation surfacing as 500-with-constraint-name in logs (proves the belt-and-braces layering).
 
-**Verification:** `pnpm vitest run apps/lambda-cms-crud-admin --root .` green; integration green against dev stack; KVS rotation tested end-to-end; reserved concurrency visible in `pulumi preview`.
+**Verification:** ~~`pnpm vitest run apps/lambda-cms-crud-admin --root .`~~ <!-- SUPERSEDED: live runner is `node --test` (Node 24); Vitest deferred L5 per tooling DACI 2026-06-09 --> green; integration green against dev stack; KVS rotation tested end-to-end; reserved concurrency visible in `pulumi preview`.
 
 ---
 
@@ -1056,7 +1068,7 @@ export interface CatalogueRepository {
 - Create: `apps/lambda-cms-validate-upload/use-cases/seedFromFile.ts` (alphaTab parse → `{ bpm, timeSig, instruments, bars, sections }`)
 - Create: `apps/lambda-cms-validate-upload/use-cases/inspectZip.ts` (streaming central-directory walk: decompressed-size ceiling + embedded-audio detection)
 - Create: `apps/lambda-cms-validate-upload/build.ts` · `package.json` (adds `@coderline/alphatab` (MPL-2.0) + `yauzl`) · `tsconfig.json`
-- Create: `apps/lambda-cms-validate-upload/__tests__/handler.test.ts` (unit, fixture files per format) · `__tests__/integration.test.ts` (deployed dev stack)
+- Create: ~~`apps/lambda-cms-validate-upload/__tests__/handler.test.ts` (unit, fixture files per format) · `__tests__/integration.test.ts`~~ <!-- SUPERSEDED: co-located tests (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (deployed dev stack)
 - Create: `infra/cms/upload-validator.ts` (Pulumi module — RC-10: `LambdaWithUrl({ createFunctionUrl: false })`, env `DATABASE_URL` + `BUCKET_NAME` + `EVENTS_TOPIC_ARN`; S3 notification registered via U9's shared-bucket aggregator with **strict `filterPrefix: "uploads/quarantine/"`**; Lambda Permission for `s3.amazonaws.com` with bucket `sourceArn`)
 
 **The pipeline (`validateAndPromote`), per S3 record:**
@@ -1091,7 +1103,7 @@ export interface CatalogueRepository {
 - Error path: Postgres unavailable during UPDATE → object stays in quarantine; Lambda event-source retry handles; persistent failure logs for the 24h TTL to sweep.
 - Integration: admin SPA upload of a real synced `.gp` (~4.6 MB) → 1–3 s later the public detail API returns `has_audio: true` + seeded bars/sections; signed URL fetches the original file.
 
-**Verification:** `pnpm vitest run apps/lambda-cms-validate-upload --root .` green; end-to-end (upload → validate → seed → public read) green against dev stack; lifecycle rules in `pulumi preview`; reserved concurrency 5.
+**Verification:** ~~`pnpm vitest run apps/lambda-cms-validate-upload --root .`~~ <!-- SUPERSEDED: live runner is `node --test` (Node 24); Vitest deferred L5 per tooling DACI 2026-06-09 --> green; end-to-end (upload → validate → seed → public read) green against dev stack; lifecycle rules in `pulumi preview`; reserved concurrency 5.
 
 ---
 
@@ -1116,7 +1128,7 @@ export interface CatalogueRepository {
 - Create: `adapters/react-admin/CatalogueFileInput.tsx` (custom FileInput: client-side size check (20 MB) → mint → **multipart/form-data POST** to the presigned-POST URL → "validating…". **The validating state resolves (round-2 review — it previously had no resolution path):** new-song dialog polls `getUploadStatus(uploadId)` every 3 s up to 60 s → success navigates to the created draft item's Edit view, failure shows the rejection reason ("MIDI can't be rendered — convert to Guitar Pro and upload the .gp" for `midi-not-renderable-convert-first`); the source-replacement input re-fetches the item until `notation_key` updates or `data.lastUploadError` appears; timeout shows "still validating — refresh in a moment". **A `.mid` selection is also blocked client-side** with the same convert-first copy)
 - Create: `adapters/react-admin/AlphaTexInput.tsx` (textarea + on-blur alphaTab parse in the browser; parse errors render inline — RC-5's client-side validation)
 - Create: `infra/cms/admin-site.ts` (Pulumi module — RC-10: `CloudFrontStaticSite` with TWO cache behaviors (default → SPA bucket / `/api/*` → U6's FURL via OAC + `CachingDisabled`), both gated by the KVS Basic-Auth CF Function; CSP/CORS Response Headers Policy; ACM cert from us-east-1 — all unchanged from the original `apps/admin-spa/infra.ts` content, relocated)
-- Create: `apps/admin-spa/vite.config.ts` · `index.html` · `package.json` · `tsconfig.json` · `__tests__/{App,CatalogueFileInput,AlphaTexInput}.test.tsx`
+- Create: `apps/admin-spa/vite.config.ts` · `index.html` · `package.json` · `tsconfig.json` · ~~`__tests__/{App,CatalogueFileInput,AlphaTexInput}.test.tsx`~~ <!-- SUPERSEDED: co-located tests (no __tests__/) per tooling DACI 2026-06-09 §F-2 -->
 
 **Approach (deltas from the original — everything not listed is unchanged):**
 - React-Admin v5.14.7 + React 19 + pinned MUI/Emotion transitive versions; no `authProvider`; Vite bundle to S3; CSP including `connect-src` S3 — all as originally specified.
@@ -1137,7 +1149,7 @@ export interface CatalogueRepository {
 - Integration (manual): author a **beat lesson** end-to-end — create lesson → 3 alphaTex steps with BPM ladder → Publish (fails until a step exists — gate toast) → appears in public API. And the **upload-first song path**: New song → upload `.gp` → poll lands on the draft Edit view with seeded bpm/sections → set license → Publish.
 - Integration (manual): replace a song's source file via the item-scoped input; the detail response serves the new checksum within one refresh.
 
-**Verification:** `pnpm vitest run apps/admin-spa adapters/react-admin --root .` green; production bundle builds; manual smoke against deployed dev stack covers the full author loop.
+**Verification:** ~~`pnpm vitest run apps/admin-spa adapters/react-admin --root .`~~ <!-- SUPERSEDED: live runner is `node --test` (Node 24); Vitest deferred L5 per tooling DACI 2026-06-09 --> green; production bundle builds; manual smoke against deployed dev stack covers the full author loop.
 
 ---
 
@@ -1154,7 +1166,7 @@ export interface CatalogueRepository {
 - Create: `infra/Pulumi.yaml` · `infra/Pulumi.dev.yaml` (config incl. `basicAuthCredential` + **`neonDatabaseUrl`** as `secure:`) · `infra/Pulumi.prod.yaml` (scaffold, not deployed)
 - Create: `infra/package.json` (deps: `@pulumi/pulumi@^3`, `@pulumi/aws@^7`, `@notation-hero/adapters-aws`) · `infra/tsconfig.json`
 - Create: `infra/README.md` (operator runbook — now including the **Neon section**: create project/branch, create the least-privilege app role, run migrations, rotate the connection string)
-- Test: `infra/__tests__/preview.test.ts` (Pulumi automation-API `preview` smoke on the dev stack)
+- Test: ~~`infra/__tests__/preview.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (Pulumi automation-API `preview` smoke on the dev stack)
 
 **Approach:**
 
@@ -1219,7 +1231,7 @@ export const publicApiUrl = publicApi.distributionDomain
 
 **TDD task list:**
 
-- [ ] **9.1** Write `infra/__tests__/preview.test.ts` (automation-API preview, throwaway stack, fake config values) → FAIL → implement `infra/index.ts` skeleton (config + bucket + topic + KVS + certs) → preview passes → commit `feat(infra): composition root (no DB resources — Neon external)`
+- [ ] **9.1** Write ~~`infra/__tests__/preview.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (automation-API preview, throwaway stack, fake config values) → FAIL → implement `infra/index.ts` skeleton (config + bucket + topic + KVS + certs) → preview passes → commit `feat(infra): composition root (no DB resources — Neon external)`
 - [ ] **9.2** Wire the four `infra/cms/*` modules with `DATABASE_URL` env injection → preview shows the full graph (~30–40 resources; **no DynamoDB table, no RDS**) → commit
 - [ ] **9.3** Write `infra/README.md` — deploy (two-pass certs), **Neon setup + `app_cms` role + migrate step**, rotate Basic-Auth (normal + emergency), rotate `neonDatabaseUrl` (normal + **emergency: reset the role password in the Neon console first** — takes effect in seconds — then config-set + `pulumi up`), **CloudFront signing-key rotation** (add new PublicKey to KeyGroup → `pulumi up` → flip the SSM value → remove old key; emergency variant removes the old key first, ≤5 min dead URLs), rollback hygiene, KVS propagation, microbench procedure → commit `docs(infra): operator runbook incl. Neon section`
 - [ ] **9.4** First real deploy: Neon project created → `pulumi config set --secret neonDatabaseUrl …` → migrate → two-pass `pulumi up` → smoke: admin Basic-Auth prompt; `GET /v1/catalogue` returns `{ items: [], total: 0 }` → commit any drift fixes
