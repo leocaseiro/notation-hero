@@ -10,6 +10,19 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-12 — KAN-147 no-escape-hatches ESLint + KAN-148 commitlint
+
+**Status changes (effective on merge):**
+- `F3-noescape` / `L5-no-escape-hatches` → **✅ done · 🤖**. Three layers now enforce no-escape-hatches: (1) `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`/`@ts-nocheck` (PR #9), (2) `@eslint-community/eslint-plugin-eslint-comments` requires a description for every `eslint-disable` + bans unlimited/unused disables (this PR), (3) `tooling/check-no-coverage-ignore.sh` bans `/* istanbul/c8/v8 ignore */` directives in source (CI quality job + Lefthook pre-commit).
+- `L6-4` → **✅ done · 🤖**. `@commitlint/cli` + `@commitlint/config-conventional` validate every commit message against conventional-commits format via Lefthook `commit-msg` hook. `body-max-line-length` relaxed to warn at 200 (not error) for long body lines.
+- `commitlint.config.*` added to the CI `code` path-filter so a config-only PR can't false-green.
+
+### 2026-06-12 — fix(registry): resolve committed conflict markers from PR #19 merge
+
+**Status changes (effective on merge):**
+- `E-no-orphans-error` conflict markers resolved: → **✅ done · 🤖** (per KAN-133/136 change-log).
+- `E-osv-scanner` conflict markers resolved: → **🔒 locked-active · 🤖** (per KAN-130 change-log).
+
 ### 2026-06-12 — KAN-133 dependency hygiene (Knip + Syncpack + no-orphans error)
 
 **Status changes (effective on merge):**
@@ -94,7 +107,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | L5-stryker-port-exclude      | Stryker mutate glob EXCLUDES interface/port files (no behavior to mutate); target only behavior-bearing files (entities, value objects, validators).                                      | ⏳ pending           | 📄  | DACI:361 | 🟥  |
 | L5-test-colocation           | Tests co-located with source (NO **tests**/ tree); port fakes co-locate as *.fake.ts or a small test-utils pkg; *.test.* / *.stories.* / fakes never ship (build+bundle exclude).         | ⏳ pending           | 📄  | DACI:361 | 🟥  |
 | L5-floors-json               | Floors live in committed tooling/floors.json (one floor per metric x per Nx project); PRs fail on drop (read-only); update-floors job (contents:write, push:master only) bumps + commits. | ⏳ pending           | 📄  | DACI:362 | 🟥  |
-| L5-no-escape-hatches         | No-escape-hatches ESLint rule set: ban/limit eslint-disable (require reason), @ts-ignore/@ts-nocheck, and /* istanbul ignore */ — stops agents disabling past a gate.                     | ⏳ pending           | 📄  | DACI:362 | 🟥  |
+| L5-no-escape-hatches         | No-escape-hatches ESLint rule set: ban/limit eslint-disable (require reason), @ts-ignore/@ts-nocheck, and /* istanbul ignore */ — stops agents disabling past a gate.                     | ✅ done              | 🤖  | DACI:362 |     |
 | L5-floor-guard               | DangerJS rule fails any PR that modifies BOTH tooling/floors.json AND test files in the same diff — closes the 'delete tests + lower floor together' attack.                              | ⏳ pending           | 📄  | DACI:362 | 🟥  |
 | L5-stryker-incremental-cache | Stryker --incremental cache: declare .stryker-tmp/incremental.json as an Nx output for the mutate target AND exclude it from inputs (two caches must not invalidate each other).          | ⏳ pending           | —   | DACI:175 |     |
 | L5-stryker-scope-expand      | Decide Stryker scope expansion (core/ → adapters/) once adapters have real logic.                                                                                                         | ⏳ pending           | —   | DACI:316 |     |
@@ -107,7 +120,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | L6-1  | DangerJS rule: deleted test-lines + unchanged source = FAIL (catches the green-fake by diff-shape, no coverage math).                                                                                              | 💤 deferred-trigger | 📄  | DACI:135         | 🟥  |
 | L6-2  | DangerJS rule: PR > ~400 lines = FAIL, to enforce baby-PRs / one-`git revert` value.                                                                                                                               | 💤 deferred-trigger | 📄  | DACI:135         | 🟥  |
 | L6-3  | DangerJS: conventional commit scope = workspace; missing issue ref = WARN (non-blocking).                                                                                                                          | 💤 deferred-trigger | 📄  | DACI:135         | 🟥  |
-| L6-4  | Adopt commitlint to validate commit messages (conventional commits).                                                                                                                                               | 💤 deferred-trigger | 📄  | DACI:135         | 🟥  |
+| L6-4  | Adopt commitlint to validate commit messages (conventional commits).                                                                                                                                               | ✅ done              | 🤖  | DACI:135         |     |
 | L6-5  | CODEOWNERS-by-layer; specifically cover enforcement-rule files (dangerfile, probes, drift-check/update-floors workflows, CODEOWNERS, eslint/dep-cruiser config).                                                   | ⏳ pending           | 📄  | DACI:135,308     | 🟥  |
 | L6-6  | DangerJS first-use trigger rules (WARN, non-blocking): first *.tsx→Storybook, first *.e2e→Playwright, first aws-* integration test→LocalStack, first PR→Linear GitHub App.                                         | ⏳ pending           | 📄  | DACI:155-162,310 | 🟥  |
 | L6-7  | First-use trigger hardening: glob exclusions for tests/stories/configs, committed `tooling/first-use-flags.json` for concurrency-safe single-fire, `gh api` 'no merged PRs' check replacing fragile pr.number===1. | ⏳ pending           | 📄  | DACI:166-169,310 | 🟥  |
@@ -252,7 +265,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | F2-noship        | *.test.* / *.stories.* / *.fake.ts files never ship — excluded from build + bundle output (refines L5).                                                                                                                          | ⏳ pending           | 📄  | DACI:361 | 🟥  |
 | F3-floors        | Quality floors live in committed tooling/floors.json (per metric x per Nx project); PRs fail if coverage/mutation/type-cov drops below committed floor; start low, ratchet up (refines L5).                                      | ⏳ pending           | 📄  | DACI:362 | 🟥  |
 | F3-updatejob     | update-floors job (contents:write, push:master only) bumps floors up + commits; constrained to workflow_dispatch OR push:master, never pull_request*, gated by Actions environment with required reviewer.                       | ⏳ pending           | 📄  | DACI:362 | 🟥  |
-| F3-noescape      | Add 'no escape hatches' ESLint set: ban/limit eslint-disable (require reason), @ts-ignore/@ts-nocheck, /* istanbul ignore */ — stops agents disabling past a gate.                                                               | ⏳ pending           | 📄  | DACI:362 | 🟥  |
+| F3-noescape      | Add 'no escape hatches' ESLint set: ban/limit eslint-disable (require reason), @ts-ignore/@ts-nocheck, /* istanbul ignore */ — stops agents disabling past a gate.                                                               | ✅ done              | 🤖  | DACI:362 |     |
 | F3-danger-floor  | DangerJS rule fails any PR modifying BOTH tooling/floors.json AND test files in same diff (closes 'delete tests + lower floor together' attack).                                                                                 | ⏳ pending           | 📄  | DACI:362 | 🟥  |
 | F3-attackdoc     | Floor-downgrade-via-PR-injection attack vector documented in-doc so future reviewers see it.                                                                                                                                     | 🔒 locked-active    | —   | DACI:362 |     |
 | F3-codeowners    | Enforcement-rule files (dangerfile + rule modules, probes/**, drift-check/update-floors workflows, CODEOWNERS, eslint.config.*, dependency-cruiser.cjs) are CODEOWNERS-protected against same-PR rule-deletion attack.           | ⏳ pending           | 📄  | DACI:364 | 🟥  |
