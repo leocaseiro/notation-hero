@@ -99,21 +99,36 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
 
+  # Secret scanning — gitleaks over the diff/history. Runs on EVERY change (NOT
+  # path-filtered) — a secret can land in any file. Free on personal/public repos;
+  # an org repo would need GITLEAKS_LICENSE. (decision-registry E-gitleaks)
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+
   # Single REQUIRED status check for branch protection. Always runs, so a
   # path-filtered skip never deadlocks the merge. Fails only on a real
   # failure/cancellation (skipped is OK).
   ci-green:
     name: CI Green
     if: always()
-    needs: [quality, build]
+    needs: [quality, build, secret-scan]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
         run: |
           q="${{ needs.quality.result }}"
           b="${{ needs.build.result }}"
-          echo "quality=$q  build=$b"
-          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" ]]; then
+          s="${{ needs.secret-scan.result }}"
+          echo "quality=$q  build=$b  secret-scan=$s"
+          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" || "$s" == "failure" || "$s" == "cancelled" ]]; then
             echo "::error::A required CI job did not pass"
             exit 1
           fi

@@ -19,7 +19,13 @@ pre-commit:
       skip:
         - merge
         - rebase
-    # 2) nx affected lint + typecheck on UNCOMMITTED changes (staged + unstaged working tree).
+    # 2) gitleaks secret scan on STAGED changes (local best-effort; CI is authoritative — E-gitleaks).
+    secret-scan:
+      run: bash tooling/gitleaks-precommit.sh
+      skip:
+        - merge
+        - rebase
+    # 3) nx affected lint + typecheck on UNCOMMITTED changes (staged + unstaged working tree).
     affected-lint-typecheck:
       run: pnpm exec nx affected -t lint typecheck --uncommitted
       skip:
