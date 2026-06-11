@@ -145,7 +145,6 @@ jobs:
         with:
           scan-args: |-
             --recursive
-            --skip-git
             ./
 
   # Single REQUIRED status check for branch protection. Always runs, so a
