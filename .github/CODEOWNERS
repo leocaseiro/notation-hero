@@ -1,0 +1,25 @@
+# CODEOWNERS — single owner per path (solo repo).
+#
+# Branch protection does NOT require review approval: GitHub forbids approving your
+# own PR (solo-repo "Footgun #2"), so the single "CI Green" status check is the merge
+# gate. This file documents ownership and flags changes to enforcement-rule files
+# (decision-registry L6-5) so rule edits are always visible in review.
+
+# Default owner for everything
+*                               @leocaseiro
+
+# --- Enforcement-rule files (L6-5): rule changes must be visible ---
+/.github/workflows/             @leocaseiro
+/.github/CODEOWNERS             @leocaseiro
+/.github/dependabot.yml         @leocaseiro
+/.eslintrc.cjs                  @leocaseiro
+/.dependency-cruiser.cjs        @leocaseiro
+/lefthook.yml                   @leocaseiro
+/nx.json                        @leocaseiro
+/tsconfig.json                  @leocaseiro
+/tsconfig.base.json             @leocaseiro
+/tooling/                       @leocaseiro
+
+# --- Decision governance ---
+/AGENTS.md                      @leocaseiro
+/docs/decisions/                @leocaseiro

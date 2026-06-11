@@ -10,6 +10,13 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-11 — KAN-116 repo-meta (README + CODEOWNERS + Dependabot)
+
+**Status changes (effective on merge):**
+- `L6-5` (CODEOWNERS-by-layer + enforcement-file coverage) → CODEOWNERS added at `.github/CODEOWNERS` (single-owner `@leocaseiro`; explicitly lists `.github/workflows/`, `.eslintrc.cjs`, `.dependency-cruiser.cjs`, `lefthook.yml`, `nx.json`, `tsconfig*.json`, `tooling/`, `AGENTS.md`, `docs/decisions/`). Stays **📄 prose-grade** — solo-repo branch protection cannot require CODEOWNERS review (Footgun #2: GitHub forbids self-approval), so this documents ownership, it does not gate merges.
+- `E-dependabot` → `.github/dependabot.yml` added, scoped to **github-actions** (weekly) only. npm/pnpm version-update PRs remain owned by **Renovate** (`E-renovate`, lands with KAN-133) to avoid duplicate update PRs; Dependabot security *alerts* stay a repo setting. ⚠️ KAN-116's text said "Dependabot pnpm-workspace aware" — **narrowed to actions-only** for registry consistency (E-renovate owns npm); revisit only if Renovate is dropped.
+- `README.md` added (root) — no enforcement change.
+
 ### 2026-06-11 — PR #9 (guardrails + Jira migration)
 
 **Status changes (effective on merge):**
