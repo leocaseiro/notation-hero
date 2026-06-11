@@ -1,0 +1,19 @@
+# Dependabot — see docs/decisions/decision-registry.md (E-dependabot, E-renovate).
+#
+# Scope here = GitHub Actions version updates ONLY. npm/pnpm dependency-update PRs
+# are intentionally owned by Renovate (E-renovate — grouped, low-noise, pnpm-catalog
+# aware; lands with KAN-133), NOT Dependabot, to avoid duplicate update PRs.
+# Dependabot security *alerts* are a repo setting (Settings → Code security &
+# analysis), not configured in this file.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(ci)"
