@@ -9,6 +9,12 @@ source: docs/ideation/2026-06-09-agent-native-tooling-ci-ideation.md (ce-ideate 
 
 # DACI — Agent-Native Tooling & CI Stack
 
+> **Ratification note (2026-06-11):** every decision below was audited and ratified by
+> leocaseiro — see `docs/decisions/decision-registry.md` for the full status map. One
+> interim clarification: the **live test runner TODAY is Node 24's built-in `node --test`**;
+> **Vitest is the chosen-but-deferred L5 runner** (ratified, not "live now"). Read Vitest
+> mentions below as "the planned L5 runner," not the current one.
+
 ## Roles
 
 - **Driver:** leocaseiro + AI agents (propose & implement)

@@ -1,7 +1,7 @@
 /**
  * dependency-cruiser — enforces Hexagonal (Layout 4) dependency direction in CI.
- * Run via `bun run depcheck`. The `depcheck` CI job is part of the required
- * "CI Green" aggregation. See docs/cicd-pipeline.md.
+ * Run via `pnpm run depcheck` (part of the required "CI Green" aggregation).
+ * See AGENTS.md + docs/decisions/decision-registry.md.
  *
  *   core      → may import: nothing in-repo (pure domain)
  *   adapters  → may import: core
@@ -41,9 +41,13 @@ module.exports = {
     },
     {
       name: "no-orphans",
-      comment: "Non-test modules should be reachable.",
+      comment:
+        "Non-test modules should be reachable. Co-located *.test.* / *.spec.* / *.stories.* " +
+        "are exempt (legit entry points). The __tests__/ whitelist was removed — that folder " +
+        "layout is banned outright by tooling/check-layout.sh. Error-flip is the deferred " +
+        "DACI Step-5 item (needs full entry-point config); see docs/decisions/decision-registry.md.",
       severity: "warn",
-      from: { orphan: true, pathNot: ["\\.test\\.(ts|tsx)$", "(^|/)__tests__/"] },
+      from: { orphan: true, pathNot: ["\\.(test|spec)\\.(ts|tsx)$", "\\.stories\\.(ts|tsx)$"] },
       to: {},
     },
   ],
