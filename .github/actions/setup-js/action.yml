@@ -1,5 +1,5 @@
 name: Setup JS toolchain
-description: pnpm + Node (from .nvmrc) + frozen-lockfile install (the common prelude for every JS-toolchain CI job).
+description: pnpm + Node (from .nvmrc) + frozen-lockfile install — shared setup steps for JS-toolchain jobs.
 
 # Composite action — call from any job AFTER `actions/checkout@v6`:
 #

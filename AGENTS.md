@@ -40,7 +40,9 @@ authoring a new CI workflow job**, always use the composite
 `- uses: ./.github/actions/setup-js` (pnpm + Node-from-.nvmrc + frozen
 install) AFTER `actions/checkout@v6`; do not inline the pnpm/node setup
 steps. For jobs that run `nx affected`, also add `nrwl/nx-set-shas@v4`
-right after checkout (the composite handles the rest).
+right after checkout AND set `fetch-depth: 0` on the checkout step
+(`nx-set-shas` needs full git history to resolve the base SHA — without
+it the action silently falls back to a degraded base).
 
 - Default branch is `master` (NOT main). Never pass `git commit/push --no-verify`.
 - Tests use the zero-dep Node 24 runner (`node --test`); relies on default
@@ -92,8 +94,12 @@ rule and still shows `__tests__/` paths — those are SUPERSEDED; co-locate inst
 
 **Node version** — run `nvm use` (or `fnm use` / `asdf install nodejs`) in
 the repo root before anything else; `.nvmrc` pins Node 24 to match CI. The
-CI composite (`.github/actions/setup-js`) reads the same `.nvmrc`, so local
-and CI Node versions stay in sync from one file.
+CI composite (`.github/actions/setup-js`) reads the same `.nvmrc` via
+`node-version-file:`, so local and CI Node versions stay in sync from one
+file. Volta users: `.nvmrc` is not picked up automatically — run
+`volta pin node@24` once in the repo root, then Volta uses that pin.
+(`asdf install nodejs` requires `legacy_version_file = yes` in
+`~/.asdfrc` to read `.nvmrc`; otherwise install via `asdf install nodejs 24`.)
 
 Lefthook git hooks (`pre-commit`, `commit-msg`, `pre-push`) are the local-side
 of the CI gates. They must be **installed once per worktree**:
