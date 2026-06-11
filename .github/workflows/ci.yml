@@ -48,6 +48,7 @@ jobs:
               - 'knip.json'
               - '.syncpackrc.json'
               - 'lefthook.yml'
+              - 'commitlint.config.*'
               - 'nx.json'
               - '.github/workflows/ci.yml'
             apps:
@@ -70,6 +71,8 @@ jobs:
       - uses: actions/checkout@v6
       - name: Layout guard (co-located tests — no __tests__/ or stories/)
         run: bash tooling/check-layout.sh
+      - name: Coverage-ignore guard (no istanbul/c8/v8 ignore)
+        run: bash tooling/check-no-coverage-ignore.sh
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:

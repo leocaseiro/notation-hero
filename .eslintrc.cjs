@@ -8,8 +8,12 @@ module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
   parserOptions: { ecmaVersion: 2022, sourceType: "module" },
-  plugins: ["@typescript-eslint"],
-  extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended"],
+  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments"],
+  extends: [
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:@eslint-community/eslint-comments/recommended",
+  ],
   env: { node: true, browser: true, es2022: true },
   rules: {
     // No escape hatches: @ts-ignore / @ts-nocheck banned; @ts-expect-error needs a reason.
@@ -18,6 +22,8 @@ module.exports = {
       "error",
       { "ts-ignore": true, "ts-nocheck": true, "ts-expect-error": "allow-with-description" },
     ],
+    "@eslint-community/eslint-comments/require-description": ["error", { ignore: [] }],
+    "@eslint-community/eslint-comments/no-unused-disable": "error",
   },
   ignorePatterns: ["dist", "node_modules", "*.cjs", "*.config.js", "*.config.ts"],
   overrides: [
