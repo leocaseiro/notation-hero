@@ -1,0 +1,15 @@
+{
+  "name": "@notation-hero/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .ts",
+    "typecheck": "tsc -b",
+    "test": "node --test \"**/__tests__/**/*.test.ts\"",
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}
