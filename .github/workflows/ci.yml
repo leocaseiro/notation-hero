@@ -45,6 +45,7 @@ jobs:
               - 'tsconfig*.json'
               - '.eslintrc.cjs'
               - '.dependency-cruiser.cjs'
+              - 'lefthook.yml'
               - 'nx.json'
               - '.github/workflows/ci.yml'
             apps:

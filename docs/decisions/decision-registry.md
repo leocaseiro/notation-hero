@@ -16,6 +16,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 - `__tests__/` · `__mocks__/` · `stories/` dir ban → **🤖 machine-enforced** by `tooling/check-layout.sh` (CI quality job) — closes the dir-ban lint gap for `CONV-1` / `CONV-coloc` / `L5-test-colocation`; full co-located placement stays a convention.
 - `@ts-ignore` · `@ts-nocheck` → **🟡 partial** via ESLint `ban-ts-comment` (`L5-no-escape-hatches` / `F3-noescape`); `eslint-disable`-reason rules land in PR #2.
 - `L10a` / `L10b` (Linear MCP + GitHub App) → **⛔ superseded → Jira (KAN)**; see `2026-06-11-tracker-linear-to-jira.md`.
+- **Lefthook git hooks** (`L8-3` / `L6`) → **✅ done**: pre-commit runs the layout guard + `nx affected` lint/typecheck; pre-push adds test — local enforcement *before* CI. (gitleaks + commitlint deferred to follow-up PRs.)
 
 **Manual approvals (leocaseiro):**
 - Issue tracker → migrated **Linear → Jira (KAN)**.
