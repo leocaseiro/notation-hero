@@ -89,12 +89,7 @@ jobs:
         run: bash tooling/check-layout.sh
       - name: Coverage-ignore guard (no istanbul/c8/v8 ignore)
         run: bash tooling/check-no-coverage-ignore.sh
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-js
       - name: Lint
         run: pnpm run lint
       - name: Typecheck
@@ -119,12 +114,7 @@ jobs:
       - uses: nrwl/nx-set-shas@v4
         with:
           main-branch-name: master
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-js
       - run: pnpm run build
 
   # Secret scanning — gitleaks over the diff/history. Runs on EVERY change (NOT
@@ -188,12 +178,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-js
       - name: Validate PR title with commitlint
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
