@@ -53,6 +53,54 @@ or the affected subset with `nx affected -t <target> --base=origin/master --head
 - `@notation-hero/infra` targets are stub echo scripts until infra source lands
   (DACI U9) — green output from them is expected but vacuous.
 
+## Test & story layout — co-located, NEVER `__tests__/`
+
+Tests and stories live **next to the source they cover**, in the same folder —
+`Foo.ts` and `Foo.test.ts` side by side. **Never create `__tests__/` or
+`stories/` directories**, and never group by file-type; organize by domain
+(one folder per unit).
+
+```
+core/catalogue/
+  CatalogueItem.ts
+  CatalogueItem.test.ts     # ✅ co-located, next to source
+  Exercise.ts
+  Exercise.test.ts
+```
+
+❌ `core/catalogue/__tests__/CatalogueItem.test.ts` — forbidden layout.
+
+Locked DACI convention (2026-06-09, §"Conventions — domain-driven, co-located"
+in `docs/decisions/2026-06-09-tooling-stack-daci.md`). CI **fails** any `__tests__/`,
+`__mocks__/`, or `stories/` path via the layout guard (`tooling/check-layout.sh`, run
+in the `quality` job); coverage globs and the `build:dts` excludes
+(`*.test.*`, `*.stories.*`) assume this layout.
+
+⚠️ The legacy `docs/plans/2026-06-07-001-feat-cms-k-build-plan.md` predates this
+rule and still shows `__tests__/` paths — those are SUPERSEDED; co-locate instead.
+
+## Commit & review workflow
+
+**Always `git commit` a coherent, green checkpoint BEFORE asking leocaseiro to
+review or approve.** Review happens on the committed diff / PR — never on
+uncommitted working-tree changes. Make baby commits at every green step so
+progress is visible and any step is one `git revert` away. Never pass
+`git commit/push --no-verify`.
+
+## Decision governance
+
+`docs/decisions/decision-registry.md` is the single source of truth for every decision +
+its status. Keep it alive:
+
+- **Manual approvals → the register.** Whenever leocaseiro personally approves, ratifies,
+  or revises a decision (in conversation, an `AskUserQuestion`, or a review), record it in
+  the registry's **Change log** (date, outcome, his reasoning). A decision isn't "ratified"
+  until it's in the register.
+- **PR merge → update statuses.** Every PR that changes what's enforced updates the register
+  in the SAME PR: add a Change-log entry and flip affected decisions' status/enforcement
+  (⏳→✅, 📄→🤖, clear the 🟥 gap). The register update travels with the PR so it lands
+  atomically on merge.
+
 ## Working with leocaseiro
 
 leocaseiro is ADHD-diagnosed; reduce cognitive load and let him drive decisions.

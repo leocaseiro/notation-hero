@@ -1,5 +1,17 @@
 # Wave 1: Nx Foundation (DACI Step 1) Implementation Plan
 
+> [!WARNING]
+> ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
+> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
+> struck lines below.**
+>
+> **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+>
+> _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (- [ ]) syntax for tracking.
 
 **Goal:** Land the single gated Nx-foundation PR on branch `chore/nx-init`: `nx init` + `targetDefaults` task pipelines, four real tagged Nx packages, root scripts swapped to `nx run-many`, a root `AGENTS.md` stub, and the DACI Step-1/F-8 checklist closure — all six quality gates green; the only CI edit is a Node 22→24 bump (Approver-approved — see Task 11).
@@ -12,7 +24,7 @@
 
 ## File map
 
-Every path is relative to the worktree root `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438`.
+~~Every path is relative to the worktree root `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438`.~~ <!-- SUPERSEDED: stale worktree path — blissful-khorana-9fa438 no longer the active checkout; plan shipped as PR #7 (commit 3060171) on master. Do not cd into this ROOT. -->
 
 **Modified — root config**
 - `pnpm-workspace.yaml` — set the `allowBuilds:` map (`nx: true`, `'@swc/core': true`). pnpm 11.5.2 uses `allowBuilds`, NOT `onlyBuiltDependencies` (which it silently ignores); both build-script deps must be approved or a fresh `pnpm install` errors with `ERR_PNPM_IGNORED_BUILDS` (`@swc/core` arrives transitively with `@nx/js` in Task 3).
@@ -1042,7 +1054,7 @@ A decision was made (Approver: leocaseiro) to bump CI to **Node 24**, amending t
 
 ## Verification
 
-Run all six gates from the worktree root, in order. Each must be GREEN before the PR is opened. Set `ROOT=/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438` and prefix each command with `cd "$ROOT" &&` (the agent shell resets between calls — set `ROOT` at the top of each Bash call).
+~~Run all six gates from the worktree root, in order. Each must be GREEN before the PR is opened. Set `ROOT=/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438` and prefix each command with `cd "$ROOT" &&` (the agent shell resets between calls — set `ROOT` at the top of each Bash call).~~ <!-- SUPERSEDED: stale worktree path — this ROOT points at blissful-khorana-9fa438, which is not the active checkout; the work already merged to master via PR #7 (commit 3060171). Do not re-run these gates against this path. -->
 
 - [ ] **1. Frozen install.** Run: `cd "$ROOT" && pnpm install --frozen-lockfile`
   **Expected:** completes, no `ERR_PNPM_*`, no "lockfile not up to date" (Tasks 4/6 committed the regenerated lockfile). Exit 0.

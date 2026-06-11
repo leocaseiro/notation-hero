@@ -9,6 +9,12 @@ source: docs/ideation/2026-06-09-agent-native-tooling-ci-ideation.md (ce-ideate 
 
 # DACI — Agent-Native Tooling & CI Stack
 
+> **Ratification note (2026-06-11):** every decision below was audited and ratified by
+> leocaseiro — see `docs/decisions/decision-registry.md` for the full status map. One
+> interim clarification: the **live test runner TODAY is Node 24's built-in `node --test`**;
+> **Vitest is the chosen-but-deferred L5 runner** (ratified, not "live now"). Read Vitest
+> mentions below as "the planned L5 runner," not the current one.
+
 ## Roles
 
 - **Driver:** leocaseiro + AI agents (propose & implement)
@@ -206,8 +212,8 @@ Implementation specifics (round-2 hardening):
 
 | Layer | Decision | Why | Rejected |
 |---|---|---|---|
-| **L10a Linear MCP (foundation)** | One-time MCP token setup with explicit hygiene: minimum scope `write:issues` only (NOT admin), stored in OS keychain (NOT a dotfile, NOT a repo env var), 90-day rotation, machine-compromise response = `revoke at linear.app/settings/api`. Existing Linear project (`notation-hero-db465058e201`) already active. **Uptime SPOF fallback (v2):** agents append bullets to `tooling/linear-pending.md` (committed markdown TODO) when MCP unavailable; next agent session drains the file by flipping `- [ ]` to `- [x]` per successful Linear call — so a Linear outage or expired token does not silently lose deferred-item bookkeeping. (Original v1 used a typed JSON queue + state-machine drain; re-decided after implementation surfaced over-engineering — see "Implementation re-decisions" below.) | Genuinely agent-native — MCP IS the agent's hands into Linear; immediate value before any PR exists; lets agents mirror the L13 "Deferred" list as Linear tickets during foundation buildout itself. Fallback closes the SPOF gap at the minimum shape that handles real failure modes | Custom Linear API integration (overkill for solo); storing token in repo env var (rejected — exfiltration risk); typed JSON queue with state-machine drain (rejected v2 — over-engineered for ~99.9% SLA solo-dev failure surface) |
-| **L10b Linear GitHub App (deferred — first PR trigger)** | Native Linear GitHub App (branch→issue, status automation on merge) — wires at first PR loop (build-phase). Tracked in "Deferred" section + DangerJS first-PR trigger. | Repo↔Linear bridge needs GH repo linked to Linear team + branch-naming convention (`LEO-<n>-<slug>`); no value before there's a PR for it to act on | Custom GH-Actions↔Linear sync (overkill for solo) |
+| **L10a Linear MCP (foundation)** — ⛔ SUPERSEDED → Jira (see `docs/decisions/2026-06-11-tracker-linear-to-jira.md`) | One-time MCP token setup with explicit hygiene: minimum scope `write:issues` only (NOT admin), stored in OS keychain (NOT a dotfile, NOT a repo env var), 90-day rotation, machine-compromise response = `revoke at linear.app/settings/api`. Existing Linear project (`notation-hero-db465058e201`) already active. **Uptime SPOF fallback (v2):** agents append bullets to `tooling/linear-pending.md` (committed markdown TODO) when MCP unavailable; next agent session drains the file by flipping `- [ ]` to `- [x]` per successful Linear call — so a Linear outage or expired token does not silently lose deferred-item bookkeeping. (Original v1 used a typed JSON queue + state-machine drain; re-decided after implementation surfaced over-engineering — see "Implementation re-decisions" below.) | Genuinely agent-native — MCP IS the agent's hands into Linear; immediate value before any PR exists; lets agents mirror the L13 "Deferred" list as Linear tickets during foundation buildout itself. Fallback closes the SPOF gap at the minimum shape that handles real failure modes | Custom Linear API integration (overkill for solo); storing token in repo env var (rejected — exfiltration risk); typed JSON queue with state-machine drain (rejected v2 — over-engineered for ~99.9% SLA solo-dev failure surface) |
+| **L10b Linear GitHub App (deferred — first PR trigger)** — ⛔ SUPERSEDED → Jira (see `docs/decisions/2026-06-11-tracker-linear-to-jira.md`) | Native Linear GitHub App (branch→issue, status automation on merge) — wires at first PR loop (build-phase). Tracked in "Deferred" section + DangerJS first-PR trigger. | Repo↔Linear bridge needs GH repo linked to Linear team + branch-naming convention (`LEO-<n>-<slug>`); no value before there's a PR for it to act on | Custom GH-Actions↔Linear sync (overkill for solo) |
 
 ### Additional upfront setup (gap sweep — L11–L13)
 

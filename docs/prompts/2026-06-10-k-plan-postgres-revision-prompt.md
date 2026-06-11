@@ -1,5 +1,17 @@
 # Handoff prompt — revise the Area-K CMS build plan for the locked Postgres catalogue
 
+> [!WARNING]
+> ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
+> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
+> struck lines below.**
+>
+> **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+>
+> _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
+
 > Created 2026-06-10. **Paste the fenced block below into a fresh Claude session** to run the K-plan revision. Your global ADHD collaboration rules auto-load, so they're not repeated here. All paths are in worktree `optimistic-lalande-2ad538` (this branch) — or under `docs/` once merged to `master`.
 
 ```text
@@ -11,7 +23,7 @@ Read first (absolute paths; all under /Users/leocaseiro/Sites/notation-hero/.cla
 - docs/specs/2026-06-10-catalogue-schema.md — ★ THE LOCKED catalogue contract (brainstormed, reviewed twice via ce-doc-review, validated against a live Postgres). Entities: `catalogue_item` (type='song'|'lesson', shared facets as typed columns) + `exercise` (a lesson's ordered steps) + `pattern` (beats/fills/rudiments) + `item_pattern` (m:n). Neon Postgres + JSONB. This is AUTHORITATIVE — implement it; do NOT re-litigate the schema fields or the Postgres decision.
 - docs/plans/2026-06-07-001-feat-cms-k-build-plan.md — the existing K-plan to revise (U1–U9, 1125 lines, fully doc-reviewed). U1 (the Layout-4 hexagonal skeleton) is already built/committed. Its R6 anticipated this: "implement against song-schema.md (DRAFT — Track 3 finalizes); if Track 3 lands changes, update core/lesson/Lesson.ts." That trigger has now fired.
 - docs/decisions/2026-06-09-catalogue-store-postgres-neon.md — why Neon Postgres+JSONB for the catalogue, and why DynamoDB stays for per-user data only.
-- docs/cicd-pipeline.md — the LOCKED Layout-4 hexagonal architecture + toolchain you must fit into (core/ + adapters/ + apps/ + infra/; @notation-hero/*; bun 1.3.11; dependency-cruiser-enforced layer boundaries).
+- docs/cicd-pipeline.md — the LOCKED Layout-4 hexagonal architecture + toolchain you must fit into (core/ + adapters/ + apps/ + infra/; @notation-hero/*; ~~bun 1.3.11~~ <!-- SUPERSEDED: pnpm+Nx locked 2026-06-09; Bun fully dropped (tooling-stack-daci.md F-6) -->; dependency-cruiser-enforced layer boundaries).
 - docs/feature-freeze.md — K-1/K-3/H-11/D-2/H-10 rows + Alpha milestone context.
 
 WHAT CHANGES (the catalogue data layer):
@@ -27,7 +39,7 @@ KEEP (schema-agnostic AWS plumbing — do NOT rework): the 3 Lambdas (admin CRUD
 RECONCILE THE PROBLEM-FRAME TENSION (call this out explicitly in the revised plan): the K-plan justified the custom-AWS backend partly on "don't move data off AWS (SaaS)." Neon moves the *catalogue* off AWS. The resolution (per the 2026-06-09 decision): the AWS-portfolio value lives in the Lambda + S3 + CloudFront + edge-auth + Pulumi/IaC plumbing (which a headless CMS would delete) and the swappable-behind-K-3 framing + the Aurora/RDS-Proxy talking point — so the custom backend still earns its keep; only the catalogue's data store moved to a portable, $0, swappable Postgres. DynamoDB still demonstrates NoSQL via the per-user data at M1.
 
 Constraints (LOCKED — don't re-litigate):
-- Layout 4 hexagonal monorepo (core/adapters/apps/infra; @notation-hero/* names; @core/@adapters/@apps path aliases; dependency-cruiser-enforced). bun 1.3.11. Node.js 22 Lambda runtime. @pulumi/aws v7.
+- Layout 4 hexagonal monorepo (core/adapters/apps/infra; @notation-hero/* names; @core/@adapters/@apps path aliases; dependency-cruiser-enforced). ~~bun 1.3.11.~~ <!-- SUPERSEDED: pnpm+Nx locked 2026-06-09; Bun fully dropped (tooling-stack-daci.md F-6) --> ~~Node.js 22 Lambda runtime.~~ <!-- SUPERSEDED: Node 22→24; Node 24 is Active LTS per K-plan Wave 1 changelog 2026-06-10 + tooling DACI --> @pulumi/aws v7.
 - The catalogue schema (docs/specs/2026-06-10-catalogue-schema.md) is LOCKED — implement it as-written; do not change fields/constraints.
 - DynamoDB = per-user only (not the catalogue).
 - AWS Always-Free tier (~$0/mo). Neon's $0 free tier is the one deliberate off-AWS exception (justified in the decision doc).

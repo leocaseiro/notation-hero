@@ -1,5 +1,17 @@
 # NotationHero — CI/CD + AWS Pipeline Plan
 
+> [!WARNING]
+> ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
+> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
+> struck lines below.**
+>
+> **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+>
+> _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
+
 > **Purpose:** the CI/CD + AWS-bootstrap + branch-protection companion to the
 > canonical build plan. Lives in-repo so any agent can see the pipeline + the
 > file-ownership boundaries.
@@ -15,15 +27,15 @@
 ## TL;DR
 
 - **Public** GitHub repo `leocaseiro/notation-hero` + **proprietary LICENSE**.
-- **Layout 4 (Hexagonal) monorepo**, bun 1.3.11, workspaces
-  `["core/*", "adapters/*", "apps/*", "infra"]`. Packages are named
+- **Layout 4 (Hexagonal) monorepo**, ~~bun 1.3.11, workspaces~~ <!-- SUPERSEDED: pnpm+Nx locked 2026-06-09; Nx workspace layout, not bun workspaces -->
+  ~~`["core/*", "adapters/*", "apps/*", "infra"]`.~~ Packages are named <!-- SUPERSEDED: bun-workspace shape; Nx is the locked mechanism (tooling-stack-daci 2026-06-09) -->
   `@notation-hero/*`; intra-repo imports use tsconfig **path aliases**
   `@core/* @adapters/* @apps/*`.
-- **Layer boundaries enforced in CI** by **dependency-cruiser** (`depcheck`)
-  + an `.eslintrc.cjs` `no-restricted-imports` guard on `core/`. Both
-  **validated** (probe: `@aws-sdk` in `core/` → ESLint fails;
-  `core → apps` → dependency-cruiser fails).
-- **CI** (`ci.yml`): `quality` (lint → typecheck → depcheck → test) + `build`,
+- ~~**Layer boundaries enforced in CI** by **dependency-cruiser** (`depcheck`)~~ <!-- SUPERSEDED: layer boundaries enforced by Nx tags / module-boundary lint, not dependency-cruiser (tooling-stack-daci 2026-06-09) -->
+  ~~+ an `.eslintrc.cjs` `no-restricted-imports` guard on `core/`. Both~~ <!-- SUPERSEDED: enforcement mechanism is Nx tags, not depcheck/.eslintrc.cjs depcheck -->
+  ~~**validated** (probe: `@aws-sdk` in `core/` → ESLint fails;~~ <!-- SUPERSEDED: dependency-cruiser probe; replaced by Nx module boundaries -->
+  ~~`core → apps` → dependency-cruiser fails).~~ <!-- SUPERSEDED: dependency-cruiser replaced by Nx tags 2026-06-09 -->
+- ~~**CI** (`ci.yml`): `quality` (lint → typecheck → depcheck → test) + `build`,~~ <!-- SUPERSEDED: depcheck step stale (Nx tags); test runner today is `node --test`, not bun test (tooling-stack-daci 2026-06-09) -->
   path-filtered, **Linux only**, concurrency-cancel, cached, single required
   **"CI Green"** check. iOS builds run **LOCAL**, never GitHub-hosted macOS.
 - **AWS creds:** IAM user + access keys for **local `pulumi up`**;
@@ -41,10 +53,10 @@ Chosen as a Staff-FE **system-design portfolio piece** (the "swappable backend"
 story). See the canonical plan's *Output Structure* for the full tree; the
 shape U1 froze:
 
-| Layer | Dir / package | Rule (enforced by `depcheck` + ESLint) |
+| Layer | Dir / package | ~~Rule (enforced by `depcheck` + ESLint)~~ <!-- SUPERSEDED: enforced by Nx tags / module-boundary lint, not depcheck (tooling-stack-daci 2026-06-09) --> |
 |---|---|---|
 | **Domain** | `core/` → `@notation-hero/core` (subdirs `lesson/`, `shared/kernel/`) | Pure TS. **No** AWS / React / HTTP / adapters / apps imports. |
-| **Adapters** | `adapters/<name>` → `@notation-hero/adapters-<name>` | Implement core's ports against the world (Pulumi/AWS, DynamoDB, S3, React-Admin). May import `core`, not `apps`. |
+| **Adapters** | `adapters/<name>` → `@notation-hero/adapters-<name>` | ~~Implement core's ports against the world (Pulumi/AWS, DynamoDB, S3, React-Admin). May import `core`, not `apps`.~~ <!-- SUPERSEDED: catalogue/CMS adapter is Neon Postgres+JSONB, NOT DynamoDB; DynamoDB is per-user only (catalogue-store-postgres-neon 2026-06-09) --> |
 | **Apps** | `apps/<name>` → `@notation-hero/<name>` | Composition roots; one deploy target each. May import `core` + `adapters`. |
 | **Infra** | `infra/` → `@notation-hero/infra` | Pulumi composition root; composes `apps/*/infra.ts` + cross-cutting resources. |
 
@@ -53,17 +65,17 @@ resolved by `tsconfig.base.json` `paths`); the workspace **package name** is
 `@notation-hero/*`. Two different things — aliases are intra-repo ergonomics,
 names are npm identity.
 
-**U1 files (the frozen skeleton):** root `package.json` (workspaces + scripts
-`lint`/`typecheck`/`test`/`depcheck`/`build`), `tsconfig.base.json` (path
-aliases, strict, `bundler`), `tsconfig.json` (root solution config, `files: []`,
-used by dependency-cruiser for alias resolution), `.dependency-cruiser.cjs`,
-`.eslintrc.cjs`, `.gitignore`, `LICENSE`, `.github/workflows/ci.yml`,
-`core/ adapters/ apps/ .gitkeep` + an `@notation-hero/infra` stub package.
+~~**U1 files (the frozen skeleton):** root `package.json` (workspaces + scripts~~ <!-- SUPERSEDED: skeleton is pnpm+Nx, not bun workspaces (tooling-stack-daci 2026-06-09) -->
+~~`lint`/`typecheck`/`test`/`depcheck`/`build`), `tsconfig.base.json` (path~~ <!-- SUPERSEDED: depcheck script replaced by Nx tags; test runner is `node --test` -->
+~~aliases, strict, `bundler`), `tsconfig.json` (root solution config, `files: []`,~~ <!-- SUPERSEDED: bun/dependency-cruiser tsconfig setup; pnpm+Nx is locked -->
+~~used by dependency-cruiser for alias resolution), `.dependency-cruiser.cjs`,~~ <!-- SUPERSEDED: dependency-cruiser replaced by Nx module boundaries 2026-06-09 -->
+~~`.eslintrc.cjs`, `.gitignore`, `LICENSE`, `.github/workflows/ci.yml`,~~ <!-- SUPERSEDED: .eslintrc.cjs depcheck config part of dropped bun/dependency-cruiser stack -->
+~~`core/ adapters/ apps/ .gitkeep` + an `@notation-hero/infra` stub package.~~ <!-- SUPERSEDED: bun-workspace skeleton; Nx workspace layout is locked -->
 
-> **bun-workspace quirk (resolved):** the non-glob `infra` workspace entry
-> requires an `infra/package.json` to exist or `bun install` errors
-> "Workspace not found". U1 ships a minimal infra stub package; U9 fills it.
-> (The `core/* adapters/* apps/*` globs match zero dirs without erroring.)
+> ~~**bun-workspace quirk (resolved):** the non-glob `infra` workspace entry~~ <!-- SUPERSEDED: bun-workspace quirk; pnpm+Nx is the locked mechanism (tooling-stack-daci 2026-06-09) -->
+> ~~requires an `infra/package.json` to exist or `bun install` errors~~ <!-- SUPERSEDED: `bun install` not used; pnpm is the locked package manager -->
+> ~~"Workspace not found". U1 ships a minimal infra stub package; U9 fills it.~~ <!-- SUPERSEDED: bun-workspace behaviour, n/a under pnpm+Nx -->
+> ~~(The `core/* adapters/* apps/*` globs match zero dirs without erroring.)~~ <!-- SUPERSEDED: bun-workspace glob behaviour, n/a under pnpm+Nx -->
 
 ---
 
@@ -71,10 +83,10 @@ used by dependency-cruiser for alias resolution), `.dependency-cruiser.cjs`,
 
 | Constraint | Value |
 |---|---|
-| Package manager / runtime | **bun 1.3.11** |
+| Package manager / runtime | ~~**bun 1.3.11**~~ <!-- SUPERSEDED: pnpm+Nx locked 2026-06-09; Bun fully dropped --> |
 | Default branch | **`master`** |
 | Repo visibility | **Public** + proprietary `LICENSE` |
-| Architecture | **Layout 4 (Hexagonal)**; `@notation-hero/*` names; `dependency-cruiser`-enforced |
+| Architecture | **Layout 4 (Hexagonal)**; `@notation-hero/*` names; ~~`dependency-cruiser`-enforced~~ <!-- SUPERSEDED: enforced by Nx tags / module-boundary lint, not dependency-cruiser (tooling-stack-daci 2026-06-09) --> |
 | Actions runners | **`ubuntu-latest` only**; iOS builds LOCAL, never GitHub-hosted macOS |
 | AWS account | **Legacy (pre-2025-07-15)** → Always-Free tiers |
 | IaC | **Pulumi TypeScript** (`@pulumi/aws` v7) — components in `adapters/aws`, composed in `infra/` |
@@ -126,24 +138,24 @@ WAVE 3 — INTEGRATION (serial, human-gated)
 
 | Path | Owner |
 |---|---|
-| root `package.json` / `bun.lock` / `tsconfig*.json` / `.gitignore` / `LICENSE` | **Track 2 — workspace shape FROZEN** |
-| `.eslintrc.cjs` / `.dependency-cruiser.cjs` | **Track 2** (layer-enforcement config) |
+| ~~root `package.json` / `bun.lock` / `tsconfig*.json` / `.gitignore` / `LICENSE`~~ <!-- SUPERSEDED: locked lockfile is pnpm-lock.yaml, not bun.lock (tooling-stack-daci 2026-06-09) --> | **Track 2 — workspace shape FROZEN** |
+| ~~`.eslintrc.cjs` / `.dependency-cruiser.cjs`~~ <!-- SUPERSEDED: dependency-cruiser replaced by Nx tags / module-boundary lint 2026-06-09 --> | **Track 2** (layer-enforcement config) |
 | `.github/workflows/*` | **Track 2** (CI already covers core/adapters/apps/infra; new packages need no `ci.yml` edit) |
-| `core/**` | **K-plan U2** (domain) — pure; `depcheck` forbids AWS/React/adapter/app imports |
+| `core/**` | **K-plan U2** (domain) — pure; ~~`depcheck` forbids AWS/React/adapter/app imports~~ <!-- SUPERSEDED: Nx tags / module-boundary lint enforce this, not depcheck --> |
 | `adapters/aws/**` + `infra/**` | **K-plan U3/U9** — Pulumi components + composition (Track 2 provides the AWS-creds bootstrap they deploy with) |
-| `adapters/{dynamodb,s3,react-admin}/**` | **K-plan U4** |
+| ~~`adapters/{dynamodb,s3,react-admin}/**` | **K-plan U4** |~~ <!-- SUPERSEDED: catalogue/CMS store is Neon Postgres+JSONB; DynamoDB is per-user only, no DynamoDB catalogue adapter (catalogue-store-postgres-neon 2026-06-09) -->
 | `apps/lambda-cms-*/**` | **K-plan U5–U7** |
 | `apps/admin-spa/**` | **K-plan U8** |
 | `apps/player-pwa/src/**` | **Track 1 (player)** — separate plan; U1/U9 only stub it |
 
 **How agents stay safe:**
 1. **Mechanical** — branch protection: nothing red merges to `master`.
-2. **Layer integrity** — `depcheck` (dependency-cruiser) fails any PR that
-   crosses a Hexagonal boundary; ESLint blocks AWS/React in `core/`.
+2. ~~**Layer integrity** — `depcheck` (dependency-cruiser) fails any PR that~~ <!-- SUPERSEDED: layer integrity enforced by Nx tags / module-boundary lint, not depcheck (tooling-stack-daci 2026-06-09) -->
+   ~~crosses a Hexagonal boundary; ESLint blocks AWS/React in `core/`.~~ <!-- SUPERSEDED: dependency-cruiser/.eslintrc depcheck mechanism dropped for Nx tags -->
 3. **Single-owner per path** (table above); the workspace shape is frozen.
 4. **Diagnosability** — path-filtered CI skips irrelevant work.
 5. **Reversibility** — small (baby) commits → one `git revert`.
-6. **Lockfile** — bun **text** `bun.lock` merges cleanly across parallel PRs.
+6. ~~**Lockfile** — bun **text** `bun.lock` merges cleanly across parallel PRs.~~ <!-- SUPERSEDED: locked lockfile is pnpm-lock.yaml, not bun.lock (tooling-stack-daci 2026-06-09) -->
 
 ---
 
@@ -151,13 +163,13 @@ WAVE 3 — INTEGRATION (serial, human-gated)
 
 - **Triggers:** `pull_request` + `push: master`. **Runner:** `ubuntu-latest`.
 - **Concurrency:** `group: ci-${{ github.ref }}`, `cancel-in-progress: true`.
-- **Setup:** `oven-sh/setup-bun@v2` pinned `1.3.11`; cache `~/.bun/install/cache`
-  keyed on `bun.lock`; `bun install --frozen-lockfile`.
+- ~~**Setup:** `oven-sh/setup-bun@v2` pinned `1.3.11`; cache `~/.bun/install/cache`~~ <!-- SUPERSEDED: pnpm+Nx locked 2026-06-09; use pnpm/action-setup, not setup-bun -->
+  ~~keyed on `bun.lock`; `bun install --frozen-lockfile`.~~ <!-- SUPERSEDED: cache keyed on pnpm-lock.yaml; `pnpm install --frozen-lockfile` -->
 - **Path filter** (`dorny/paths-filter`): `code` (any source/config) gates
   `quality`; `apps` (apps + core + adapters) gates `build`. A **docs-only PR
   skips both** → the required check still passes.
-- **Jobs:** `quality` = `lint → typecheck → depcheck → test` (one install);
-  `build` = `bun run build` across deploy targets (split to a per-app matrix
+- ~~**Jobs:** `quality` = `lint → typecheck → depcheck → test` (one install);~~ <!-- SUPERSEDED: depcheck replaced by Nx tags; test runner today is `node --test` (tooling-stack-daci 2026-06-09) -->
+  ~~`build` = `bun run build` across deploy targets (split to a per-app matrix~~ <!-- SUPERSEDED: build runs via Nx/pnpm (`pnpm nx ... build`), not `bun run build` -->
   when build time warrants).
 - **Single required check — "CI Green":** aggregation job (`if: always()`,
   `needs: [quality, build]`) failing only on a real failure/cancellation
@@ -182,7 +194,7 @@ the review *skills* (`ce-code-review`, gstack `/review`) are the human reviewer.
   `aws-actions/configure-aws-credentials@v4` with `role-to-assume: <ARN>`.
   Role trust policy locks `sub` to
   `repo:leocaseiro/notation-hero:ref:refs/heads/master`.
-- **Web deploy:** `bun run --filter='@notation-hero/<app>' build` →
+- **Web deploy:** ~~`bun run --filter='@notation-hero/<app>' build` →~~ <!-- SUPERSEDED: build via Nx/pnpm (`pnpm nx build @notation-hero/<app>`), not bun (tooling-stack-daci 2026-06-09) -->
   `aws s3 sync apps/<app>/dist s3://<bucket> --delete` → CloudFront
   invalidation. `cancel-in-progress: false` (never cancel a half-done deploy).
 - **Least privilege:** infra applies run **locally** for now, so the CI deploy
@@ -229,7 +241,7 @@ are **M1**, not now.
 
 | Tool | State |
 |---|---|
-| bun | 1.3.11 ✅ |
+| ~~bun | 1.3.11 ✅ |~~ <!-- SUPERSEDED: bun is NOT the sanctioned runtime; pnpm+Nx locked 2026-06-09 (Bun fully dropped) -->
 | pulumi | 3.243.0 ✅ (logged in as `leocaseiro`) |
 | aws CLI | 2.34.53 ✅ · **creds ❌ none · region ❌ none** (Wave-3 blocker) |
 | node | 24.14.1 ✅ |

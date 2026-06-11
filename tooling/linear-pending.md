@@ -1,3 +1,8 @@
+> [!WARNING]
+> ⛔ **SUPERSEDED — Linear is retired.** The issue tracker is now **Jira** (project **KAN**)
+> as of 2026-06-11. See `docs/decisions/2026-06-11-tracker-linear-to-jira.md`.
+> Kept for history; do not act on it. Any fallback/runbook pattern here still applies but targets Jira now.
+
 # Linear-pending TODO
 
 Lightweight fallback for Linear MCP outages. When MCP is unavailable, append a bullet describing the pending operation. Next agent session (with MCP working) drains items by attempting each Linear MCP call and removing the bullet on success.

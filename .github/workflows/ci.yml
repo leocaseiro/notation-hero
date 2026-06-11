@@ -45,6 +45,7 @@ jobs:
               - 'tsconfig*.json'
               - '.eslintrc.cjs'
               - '.dependency-cruiser.cjs'
+              - 'lefthook.yml'
               - 'nx.json'
               - '.github/workflows/ci.yml'
             apps:
@@ -65,6 +66,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Layout guard (co-located tests — no __tests__/ or stories/)
+        run: bash tooling/check-layout.sh
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:

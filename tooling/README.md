@@ -6,7 +6,7 @@ Lives outside the workspace package graph — repo-wide enforcement scaffolding,
 
 | File | Purpose | Source-of-truth decision |
 |---|---|---|
-| [`linear-pending.md`](./linear-pending.md) | Markdown TODO file. Lightweight fallback for Linear MCP outages — agents append a bullet when MCP is unreachable; next session drains. | DACI L10a (v2 — replaces the JSON queue) |
+| [`linear-pending.md`](./linear-pending.md) | ~~Markdown TODO file. Lightweight fallback for Linear MCP outages — agents append a bullet when MCP is unreachable; next session drains.~~ <!-- now Jira; see docs/decisions/2026-06-11-tracker-linear-to-jira.md --> | DACI L10a (v2 — replaces the JSON queue) |
 
 Files coming in later Sequencing steps (placeholders documented for foresight, NOT created in this PR):
 
@@ -36,7 +36,7 @@ The schema-based queue is preserved in git history if we ever need to revisit. T
 
 ## Related runbooks
 
-- [`docs/runbooks/linear-mcp.md`](../docs/runbooks/linear-mcp.md) — token hygiene + machine-compromise response.
+- [`docs/runbooks/linear-mcp.md`](../docs/runbooks/linear-mcp.md) — ~~token hygiene + machine-compromise response.~~ <!-- now Jira; see docs/decisions/2026-06-11-tracker-linear-to-jira.md -->
 
 ## Related decisions
 
