@@ -24,14 +24,16 @@
 # Env overrides: REPO, BRANCH, CHECK. Needs: gh authenticated with admin on the repo.
 # Idempotent — the PUT fully replaces the protection config, so re-running is safe.
 #
-# Merge queue (KAN-140 / L7-merge-queue): the ci.yml workflow ALREADY subscribes
-# to merge_group events. Enabling the queue itself is a one-time admin action
-# (Free tier supports it on public repos). The simplest path: open the repo
-# Settings → "General" → "Pull Requests" → tick "Allow merge queue" and select
-# the "CI Green" required check; then on the master branch protection rule,
-# tick "Require merge queue". `gh` exposes this via the same PUT below if the
-# `lock_branch` / `merge_queue` fields are added — left as an admin step for
-# now (one click in the UI, requires a CI Green run on master first).
+# Merge queue (KAN-140 / L7-merge-queue): this CLASSIC Branch Protection API
+# does NOT support the merge queue — it is a Rulesets-only feature. The two
+# layers coexist cleanly:
+#
+#   - branch-protection.sh (this script) = WHAT'S REQUIRED to merge
+#   - branch-ruleset.sh                   = HOW MERGES HAPPEN (the queue)
+#
+# After applying this script, also run `tooling/branch-ruleset.sh --apply` to
+# create the master-merge-queue Ruleset. ci.yml already subscribes to the
+# merge_group event.
 set -euo pipefail
 
 REPO="${REPO:-leocaseiro/notation-hero}"
