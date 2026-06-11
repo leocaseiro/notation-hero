@@ -132,9 +132,10 @@ jobs:
       - name: Semgrep SAST
         run: semgrep scan --config auto --error
 
-  # Dependency CVE gate — osv-scanner over the pnpm lockfile. Path-filtered on `code`;
-  # fails the build on any known CVE (free SCA). Pinned to an exact tag — the action
-  # warns its behavior can change in a minor patch. (decision-registry E-osv-scanner)
+  # Dependency CVE gate — osv-scanner recursive scan over the repo tree (picks up
+  # pnpm-lock.yaml). Path-filtered on `code`; fails the build on any known CVE (free
+  # SCA). Pinned to an exact tag — the action warns it can change in a minor patch.
+  # (decision-registry E-osv-scanner)
   deps-cve:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}

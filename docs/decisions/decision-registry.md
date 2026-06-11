@@ -13,7 +13,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 ### 2026-06-11 — KAN-130 osv-scanner + KAN-131/132 security settings
 
 **Status changes (effective on merge):**
-- `E-osv-scanner` → **🤖 machine-enforced**. New `deps-cve` CI job runs osv-scanner (pinned `google/osv-scanner-action/osv-scanner-action@v2.3.8`, `--recursive --skip-git`) over the pnpm lockfile, wired into the required **"CI Green"** gate; fails the build on any known dependency CVE. Closes the 🟥 SCA gap.
+- `E-osv-scanner` → **🤖 machine-enforced**. New `deps-cve` CI job runs osv-scanner (pinned `google/osv-scanner-action/osv-scanner-action@v2.3.8`, `--recursive ./`) recursively over the repo tree (picks up the pnpm lockfile), wired into the required **"CI Green"** gate; fails the build on any known dependency CVE. Closes the 🟥 SCA gap.
 - `E-gh-secret-scan` → **✅ done · 🤖**. GitHub-native secret scanning **and** push protection enabled on the repo (KAN-132, via `gh api`). Layers on top of gitleaks (`E-gitleaks`) while public; auto-off if the repo goes private (needs GHAS).
 - `E-dependabot` — Dependabot **alerts** now enabled (KAN-131, via `gh api PUT /vulnerability-alerts`). Version-update PRs remain Renovate's job (`E-renovate`); Dependabot security-updates left off to avoid duplicate PRs.
 
