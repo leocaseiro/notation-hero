@@ -108,6 +108,8 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 ## F · Integrations & observability (L10–L13)
 
+> ⚠️ **L10a / L10b (Linear) are SUPERSEDED — the tracker is now Jira (project KAN).** See `docs/decisions/2026-06-11-tracker-linear-to-jira.md`. The Linear rows below are retained for history.
+
 | ID            | Decision                                                                                                                                                                                 | Status              | Enf | Source   | Gap |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | --- | -------- | --- |
 | L10a          | Linear MCP is foundation: token scope write:issues only, OS keychain (not dotfile/env var), 90-day rotation, revoke-at-linear.app runbook.                                               | ✅ done              | —   | DACI:209 |     |

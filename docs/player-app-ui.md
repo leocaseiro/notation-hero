@@ -4,7 +4,7 @@
 > **Scope:** the **player app only** (the admin CMS is a separate track). Resolves the five 🎨 design-shotgun-gated decisions from the feature freeze.
 > **Owner:** leocaseiro · **Companions:** [feature-freeze.md](../../pensive-boyd-6d17e3/docs/feature-freeze.md) · [scope.md](scope.md) · [stack-brainstorm.md](../../serene-grothendieck-fb5e67/stack-brainstorm.md)
 > **Live mockups** (open in a browser / Launch panel): [`docs/mockups/`](mockups/) — `index.html` (feedback lab) · `player.html` (play screen, light+dark) · `player-full.html` (Tracks-left + Score-right) · `tracks-settings.html` (panels).
-> **North-star:** a classic standalone drum-tutor (features, not palette). Internal reference screenshots tracked privately — see `docs/.private/` or the project's Linear Document.
+> **North-star:** a classic standalone drum-tutor (features, not palette). Internal reference screenshots tracked privately — see `docs/.private/` or the project's ~~Linear Document~~ <!-- Linear retired 2026-06-11; tracker is now Jira (project KAN), https://leocaseiro.atlassian.net/jira/software/projects/KAN/summary — see docs/decisions/2026-06-11-tracker-linear-to-jira.md. Use the equivalent Jira (KAN) document/page. --> Jira (KAN) document.
 
 ---
 

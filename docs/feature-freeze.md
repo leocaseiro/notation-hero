@@ -33,7 +33,7 @@ Single canonical per-feature go/no-go. Each row has a **Milestone** (your decisi
   - **Ladder renumbered (monotonic):** `M3` = enhancements · `M4` = desktop · `M5` = pro-audio (ASIO).
   - **Sync model:** *no per-device sync.* User data = **localStorage in Alpha/Beta**; **cross-device sync = M1** (Cognito User Pools).
   - **Area `K` added (Admin/CMS):** Alpha; hosted admin gated by a **CloudFront Function (Basic Auth)** — no Cognito; produces the shared lesson library (feeds `H-11`).
-  - **Competitor-name scrub:** feature names generic; all strategic positioning + reference screenshots moved to private storage (`docs/.private/` + Linear Document).
+  - **Competitor-name scrub:** feature names generic; all strategic positioning + reference screenshots moved to private storage (`docs/.private/` + ~~Linear Document~~ <!-- Linear retired 2026-06-11; tracker is now Jira project KAN — see docs/decisions/2026-06-11-tracker-linear-to-jira.md. The "Linear Document" artifact is historical; re-home this private reference under the Jira/KAN equivalent. -->).
 
 ---
 
@@ -246,4 +246,4 @@ Per the **sync model**: per-user data is localStorage in Alpha/Beta; DynamoDB *c
 - **scope.md** · **docs/design-stack.md** · **docs/aws-learning-map.md**
 - **Fork plans** (`~/Sites/alphaTabWebsite/.../AlphaTabRhythmGame/`): FEATURES.md · AUTO_BPM.md · PERFORMANCE.md · PRACTICE_MODAL_PLAN.md · IMPLEMENTATION_SUMMARY.md · MIDI_MAPPING_PLAN(.md/_SUMMARY/_QUICK_REF/_VISUAL_GUIDE) · IMPLEMENTATION_COMPLETE.md · IMPROVEMENTS_SUMMARY.md
 - **Brainstorms** (`serene-grothendieck-fb5e67/`): stack-aws-brainstorm.md · stack-brainstorm.md (§6 friendly-view UI)
-- **Internal reference screenshots:** tracked privately in `docs/.private/` and the project's Linear Document; not in the public repo.
+- **Internal reference screenshots:** tracked privately in `docs/.private/` and the project's ~~Linear Document~~ <!-- Linear retired 2026-06-11; tracker is now Jira project KAN — see docs/decisions/2026-06-11-tracker-linear-to-jira.md. The "Linear Document" artifact is historical; re-home under the Jira/KAN equivalent. -->; not in the public repo.
