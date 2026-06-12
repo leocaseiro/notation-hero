@@ -234,6 +234,19 @@ So the article's blanket "ESLint can't" is mostly an artifact of testing the two
 
 > Either option makes a **separate "PascalCase-vs-camelCase DangerJS naming task" redundant** — Option B because everything is kebab (one rule), Option A because `check-file` + `naming-convention` already encode it. Drop that task either way.
 
+**Co-located tests stack as `name.role.test.ts`** (e.g. `catalogue-item.entity.test.ts`) — empirically verified clean:
+
+| Filename | `check-file` KEBAB + `ignoreMiddleExtensions:true` | flag `false` | Option A glob (bans kebab) |
+|---|---|---|---|
+| `catalogue-item.entity.ts` | ✅ pass | ❌ fail | ❌ fail |
+| `catalogue-item.entity.test.ts` | ✅ pass | ❌ fail | ❌ fail |
+| `catalogueItem.entity.ts` (camel) | ❌ fail | ❌ fail | ✅ pass |
+| `CatalogueItem.entity.ts` (Pascal) | ❌ fail | ❌ fail | ✅ pass |
+
+- `ignoreMiddleExtensions:true` (**already set in PR #25**) strips **all** middle extensions (`.entity` *and* `.test`) → checks only `catalogue-item`. So one `KEBAB_CASE` rule covers source **and** stacked tests. The flag is load-bearing — `false` fails even `catalogue-item.entity.ts`.
+- Every `.test.ts`-anchored glob already handles the stack (matches the trailing `.test.ts`): Nx `production` exclusion `*.{test,spec,stories,fake}.{ts,tsx}`, depcruise `no-orphans` `\.(test|spec)\.(ts|tsx)$`, Vitest `**/*.test.{ts,tsx}`, `build:dts` `*.test.*`, and `check-layout.sh` Rule 3 (strips `.test` → finds `catalogue-item.entity.ts` sibling).
+- This is a **point for Option B**: stacked role+test suffixes are clean with zero new tooling. Under Option A you'd use camelCase tests, and PascalCase+suffix collides with folder-per-entity.
+
 ### 6.2 Allowed unsuffixed files
 `index.ts` (package/Nx-project entry only — see §6.4), `*.config.ts`, `*.test.ts`/`*.spec.ts` (test marker is the suffix), `*.d.ts`, and top-level tooling. Everything that is a domain/application concept gets a role suffix (Option B) or obeys the Pascal/camel rule (Option A).
 
