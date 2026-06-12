@@ -42,11 +42,14 @@ module.exports = {
     {
       name: "no-handler-to-pulumi",
       comment:
-        "H8: Lambda handlers (apps/*/src, runtime code) must never import @pulumi/* (IaC). " +
-        "Infra references the handler BUILD OUTPUT (apps/*/dist), so @pulumi never enters the " +
-        "Lambda bundle.",
+        "H8: app runtime code must never import @pulumi/* (IaC). Covers ALL of apps/ — src/, lib/, " +
+        "and flat handlers (apps/<name>/handler.ts) — because apps is pure runtime (registry H2: " +
+        "handler never @pulumi) and IaC lives in infra/. Was ^apps/[^/]+/src, which silently missed " +
+        "flat/lib handlers; the /src scope was an incidental fixture-path transcription, never a " +
+        "decided boundary (PR #25 review #6, ce-sessions-confirmed). Infra references the handler " +
+        "BUILD OUTPUT (apps/*/dist), so @pulumi never enters the Lambda bundle.",
       severity: "error",
-      from: { path: "^apps/[^/]+/src" },
+      from: { path: "^apps/" },
       to: { path: "@pulumi/" },
     },
     {
@@ -91,6 +94,20 @@ module.exports = {
       severity: "error",
       from: { path: "^adapters/" },
       to: { path: "^(apps|infra)/" },
+    },
+    {
+      name: "no-apps-to-infra",
+      comment:
+        "H-app↛infra (PR #25 review #7): apps are runtime (the Lambda handler) — they must " +
+        "never import infra/ (IaC) SOURCE. That would invert the deploy direction: infra wires " +
+        "apps via build output (FileArchive(apps/*/dist) + implicitDependencies), never the " +
+        "reverse. Mirrors ADR D3 'app -> core,adapters,apps; never infra' + the " +
+        "@nx/enforce-module-boundaries type:app constraint (which omits type:infra) + " +
+        "eslint-plugin-boundaries. depcruise is the live CI backstop; the ESLint twins are " +
+        "editor/CI-staged.",
+      severity: "error",
+      from: { path: "^apps/" },
+      to: { path: "^infra/" },
     },
     {
       name: "no-circular",
