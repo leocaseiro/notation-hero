@@ -164,9 +164,13 @@
     <button class="toggle-btn"><span class="material-symbols-outlined">settings</span></button>
   </div>
   <div class="row" style="margin-bottom:4px">
-    <div class="seg"><button class="sel"><span class="material-symbols-outlined">music_note</span> Songs</button><button><span class="material-symbols-outlined">school</span> Lessons</button></div>
+    <div class="seg" id="vA-tabs"><button class="sel" onclick="vaTab('songs',this)"><span class="material-symbols-outlined">music_note</span> Songs</button><button onclick="vaTab('lessons',this)"><span class="material-symbols-outlined">school</span> Lessons</button></div>
     <span style="flex:1"></span>
     <button class="btn btn-secondary"><span class="material-symbols-outlined">upload</span> Upload</button>
+  </div>
+  <div class="row" id="vA-sub" style="display:none;margin:2px 0 8px">
+    <span class="faint" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-right:4px">Kind</span>
+    <div class="seg"><button class="sel" onclick="vaKind('all',this)">All</button><button onclick="vaKind('beat',this)"><span class="material-symbols-outlined">graphic_eq</span> Beats</button><button onclick="vaKind('rud',this)"><span class="material-symbols-outlined">drag_indicator</span> Rudiments</button><button onclick="vaKind('fill',this)"><span class="material-symbols-outlined">bolt</span> Fills</button></div>
   </div>
   <div class="filterbar">
     <div class="fg"><span class="fglbl">Level</span> <button class="chip on">≤ 4</button></div><span class="sep"></span>
@@ -178,7 +182,8 @@
   </div>
   <div class="continue" style="margin-bottom:14px"><div class="cv"><span class="material-symbols-outlined">play_circle</span></div><div style="flex:1"><div class="clbl">Continue</div><h3>Stadium Beat</h3><div class="csub">last 82% · 116 <span class="num">BPM</span> · Chorus 1</div></div><button class="btn btn-primary"><span class="material-symbols-outlined">play_arrow</span> Resume</button></div>
   <div class="thead"><span>Name</span><span class="c">Level</span><span class="r">BPM</span><span class="r">Best</span><span></span></div>
-  <div class="tbody" id="tblA"></div>
+  <div class="tbody" id="tblA-songs"></div>
+  <div class="tbody" id="tblA-lessons" style="display:none"></div>
 </div>
 
 <!-- ============ VARIANT B — left rail ============ -->
@@ -274,7 +279,7 @@
     var flags = o.flags ? '<span class="flags">'+o.flags+'</span>' : '';
     var best = o.best===100 ? '<span class="full"><span class="material-symbols-outlined">emoji_events</span>100%</span>' : (o.best ? '<span class="pct">'+o.best+'%</span>' : '<span class="none">—</span>');
     var lvl = o.lvl ? '<span class="grade">'+o.lvl+'</span>' : '<span class="grade ungraded">—</span>';
-    return '<div class="trow"><div class="nameC"><div class="cover'+(o.lesson?' lesson':'')+'"><span class="material-symbols-outlined">'+(o.icon||'music_note')+'</span></div>'
+    return '<div class="trow"'+(o.kind?' data-kind="'+o.kind+'"':'')+'><div class="nameC"><div class="cover'+(o.lesson?' lesson':'')+'"><span class="material-symbols-outlined">'+(o.icon||'music_note')+'</span></div>'
       +'<div class="nm"><div class="nmtitle">'+o.title+(o.tag||'')+(o.new?' <span class="pill pill-new">New</span>':'')+'</div><div class="nmsub">'+o.sub+'</div></div>'+flags+'</div>'
       +'<span class="levelC">'+lvl+'</span><span class="bpmC">'+o.bpm+'</span><span class="bestC">'+best+'</span>'
       +'<span class="playC"><button class="play" onclick="event.stopPropagation()"><span class="material-symbols-outlined">play_circle</span></button></span></div>';
@@ -286,8 +291,15 @@
     {title:'Odd-Meter Étude', sub:'Jazz <span class="dot"></span> 7/8 <span class="dot"></span> drums', lvl:10, bpm:132, best:0},
     {title:'Soul Fusion', sub:'Soul <span class="dot"></span> 6/8 <span class="dot"></span> drums·keys', lvl:0, bpm:100, best:0, new:true}
   ];
-  var html = SONGS.map(row).join('');
-  ['tblA','tblB','tblC'].forEach(function(id){ document.getElementById(id).innerHTML = html; });
+  var songsHtml = SONGS.map(row).join('');
+  ['tblA-songs','tblB','tblC'].forEach(function(id){ var e=document.getElementById(id); if(e) e.innerHTML=songsHtml; });
+  var LESSONS = [
+    {title:'8th-Note Rock — Layered Groove', sub:'4 steps <span class="dot"></span> timing·independence', tag:' <span class="badge beat">Beat</span>', lvl:2, bpm:'60→120', best:76, lesson:true, icon:'graphic_eq', kind:'beat'},
+    {title:'Single Paradiddle', sub:'6 steps <span class="dot"></span> hands·control', tag:' <span class="badge rud">Rudiment</span>', lvl:2, bpm:'50→140', best:64, lesson:true, icon:'drag_indicator', kind:'rud'},
+    {title:'Tom Fills — 4-Bar Transitions', sub:'5 steps <span class="dot"></span> coordination', tag:' <span class="badge fill">Fill</span>', lvl:3, bpm:'70→120', best:0, lesson:true, icon:'bolt', kind:'fill', new:true},
+    {title:'Funk Sixteenths', sub:'5 steps <span class="dot"></span> ghost-notes', tag:' <span class="badge beat">Beat</span>', lvl:4, bpm:'70→110', best:0, lesson:true, icon:'graphic_eq', kind:'beat'}
+  ];
+  document.getElementById('tblA-lessons').innerHTML = LESSONS.map(row).join('');
 
   function vshow(v,btn){ document.querySelectorAll('#vseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
     ['A','B','C'].forEach(function(x){ document.getElementById('v'+x).hidden = (x!==v); }); if(v!=='C') drawer(false); window.scrollTo(0,0); }
@@ -296,6 +308,12 @@
   function openStep(){ document.getElementById('stepModal').classList.add('open'); }
   function closeStep(){ document.getElementById('stepModal').classList.remove('open'); }
   function stepSrc(which,btn){ document.querySelectorAll('#srcseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); ['upload','tex','song'].forEach(s=>{ document.getElementById('src-'+s).style.display=(s===which)?'':'none'; }); }
+  function vaTab(which,btn){ document.querySelectorAll('#vA-tabs button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+    document.getElementById('vA-sub').style.display = which==='lessons'?'':'none';
+    document.getElementById('tblA-songs').style.display = which==='songs'?'':'none';
+    document.getElementById('tblA-lessons').style.display = which==='lessons'?'':'none'; }
+  function vaKind(kind,btn){ btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+    document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){ r.style.display=(kind==='all'||r.dataset.kind===kind)?'':'none'; }); }
 </script>
 </body>
 </html>
