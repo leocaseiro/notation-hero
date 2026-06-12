@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<!--
+  Notation Hero — Design System: core components × interaction states.
+  Locked tokens (teal brand, Okabe feedback, D3 type) + the state system:
+  default · hover · focus-visible · active · disabled · selected.
+  Toggle theme top-right, or ?theme=light|dark. This is the spec reference; real
+  components get built with the features that use them.
+-->
+<html data-theme="dark" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notation Hero — Components & States</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+<style>
+  :root, [data-theme="dark"] {
+    --bg:#0C1117; --panel:#121821; --panel2:#18202B; --elevate:#1C2530;
+    --ink:#E8EDF3; --muted:#9AA6B4; --faint:#6C7889; --line:#222C39;
+    --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
+    --time:#2F6DF6; --danger:#FF6B6B; --hover:rgba(255,255,255,.06); --press:rgba(255,255,255,.10);
+  }
+  [data-theme="light"] {
+    --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
+    --ink:#0F151C; --muted:#5A6472; --faint:#9AA3B1; --line:#E2E8F0;
+    --accent:#0F766E; --accenthi:#0D9488; --onaccent:#FFFFFF;
+    --time:#2F6DF6; --danger:#DC2626; --hover:rgba(15,21,28,.05); --press:rgba(15,21,28,.09);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Hanken Grotesk',system-ui,sans-serif;
+    transition:background-color .25s,color .25s; -webkit-font-smoothing:antialiased; }
+  .num { font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums; }
+  .wrap { max-width:980px; margin:0 auto; padding:28px 32px 80px; }
+  header { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  h1 { font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:26px; margin:0; letter-spacing:-.01em; }
+  .sub { color:var(--muted); font-size:14px; margin:0 0 26px; }
+  h2 { font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:17px; margin:30px 0 4px; }
+  .note { color:var(--faint); font-size:12.5px; margin:0 0 16px; }
+  .panel { background:var(--panel); border:.5px solid var(--line); border-radius:14px; padding:20px 22px; }
+  .row { display:flex; flex-wrap:wrap; gap:22px 26px; align-items:flex-end; }
+  .cell { display:flex; flex-direction:column; gap:9px; align-items:flex-start; }
+  .lbl { font-size:11px; color:var(--faint); text-transform:uppercase; letter-spacing:.07em; font-weight:600; }
+  .iconbtn-toggle { width:38px; height:38px; border-radius:10px; border:.5px solid var(--line); background:transparent;
+    color:var(--muted); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .iconbtn-toggle:hover { background:var(--hover); }
+
+  /* Buttons */
+  .btn { font-family:'Hanken Grotesk'; font-weight:600; font-size:14px; line-height:1; padding:10px 16px;
+    border-radius:10px; border:.5px solid transparent; cursor:pointer; display:inline-flex; align-items:center;
+    gap:7px; transition:background-color .12s, box-shadow .12s, transform .06s; }
+  .btn .material-symbols-outlined { font-size:18px; }
+  .btn-primary { background:var(--accent); color:var(--onaccent); }
+  .btn-secondary { background:var(--panel2); color:var(--ink); border-color:var(--line); }
+  .btn-ghost { background:transparent; color:var(--muted); }
+  .btn-danger { background:var(--danger); color:#fff; }
+  /* explicit state renders */
+  .s-hover.btn-primary { background:var(--accenthi); }
+  .s-hover.btn-secondary { background:var(--elevate); }
+  .s-hover.btn-ghost { background:var(--hover); color:var(--ink); }
+  .s-focus { box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+  .s-active { transform:scale(.96); filter:brightness(.93); }
+  .s-disabled { opacity:.38; cursor:not-allowed; }
+
+  /* Icon button */
+  .ibtn { width:40px; height:40px; border-radius:10px; border:.5px solid transparent; background:transparent;
+    color:var(--muted); display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+  .ibtn.s-hover { background:var(--hover); color:var(--ink); }
+  .ibtn.s-focus { box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+  .ibtn.s-on { background:var(--accent); color:var(--onaccent); }
+  .ibtn.s-disabled { opacity:.38; }
+
+  /* Switch */
+  .sw { width:44px; height:26px; border-radius:999px; background:var(--panel2); border:.5px solid var(--line);
+    position:relative; cursor:pointer; transition:background-color .15s; }
+  .sw::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%;
+    background:var(--ink); transition:left .15s; }
+  .sw.on { background:var(--accent); border-color:transparent; }
+  .sw.on::after { left:20px; background:var(--onaccent); }
+  .sw.s-focus { box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+  .sw.s-disabled { opacity:.38; }
+
+  /* Input */
+  .inp { font-family:'Hanken Grotesk'; font-size:14px; color:var(--ink); background:var(--bg);
+    border:.5px solid var(--line); border-radius:10px; padding:10px 12px; width:200px; outline:none; }
+  .inp::placeholder { color:var(--faint); }
+  .inp.s-focus { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .inp.s-invalid { border-color:var(--danger); box-shadow:0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent); }
+  .inp.s-disabled { opacity:.5; background:var(--panel2); }
+  .err { color:var(--danger); font-size:12px; }
+
+  /* Slider */
+  .sld { width:200px; height:4px; border-radius:999px; background:var(--panel2); position:relative; }
+  .sld i { position:absolute; left:0; top:0; height:4px; width:60%; border-radius:999px; background:var(--accent); }
+  .sld b { position:absolute; top:-7px; left:60%; width:18px; height:18px; border-radius:50%; background:var(--accent);
+    transform:translateX(-50%); box-shadow:0 1px 3px rgba(0,0,0,.3); }
+  .sld.s-focus b { box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+
+  /* Chips (multi-select notation styles + filters) */
+  .chip { font-family:'Hanken Grotesk'; font-weight:500; font-size:13px; padding:6px 13px; border-radius:999px;
+    border:.5px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; }
+  .chip.on { background:var(--accent); color:var(--onaccent); border-color:transparent; }
+  .chip.s-hover { background:var(--hover); color:var(--ink); }
+  .chip.s-focus { box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+
+  /* Status pills (catalog preview) */
+  .pill { font-family:'Hanken Grotesk'; font-weight:600; font-size:11px; letter-spacing:.04em; text-transform:uppercase;
+    padding:4px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; }
+  .pill .material-symbols-outlined { font-size:14px; }
+  .pill-new { background:var(--panel2); color:var(--muted); }
+  .pill-learning { background:color-mix(in srgb, var(--time) 16%, transparent); color:var(--time); }
+  .pill-mastered { background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent); }
+  .legend { display:flex; gap:18px; flex-wrap:wrap; color:var(--muted); font-size:12.5px; margin:0 0 14px; }
+  .legend b { color:var(--ink); font-weight:600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Notation Hero — components & states</h1>
+    <button id="themeToggle" class="iconbtn-toggle" title="Toggle light / dark"><span class="material-symbols-outlined" data-theme-icon>dark_mode</span></button>
+  </header>
+  <p class="sub">The locked tokens applied to the core components, each shown across its interaction states. Type: D3 · brand teal · Okabe feedback.</p>
+
+  <div class="legend">
+    <span><b>Default</b> base</span>
+    <span><b>Hover</b> surface lifts / brand brightens</span>
+    <span><b>Focus</b> 2px teal ring</span>
+    <span><b>Active</b> press (scale .96)</span>
+    <span><b>Disabled</b> 38% opacity</span>
+    <span><b>Selected</b> filled teal + on-accent</span>
+  </div>
+
+  <h2>Buttons</h2>
+  <p class="note">Primary = filled teal + <code>--on-accent</code>. Secondary = tonal. Ghost = transparent. Danger = error.</p>
+  <div class="panel">
+    <div class="row" style="margin-bottom:22px">
+      <div class="cell"><span class="lbl">Default</span><button class="btn btn-primary">Resume</button></div>
+      <div class="cell"><span class="lbl">Hover</span><button class="btn btn-primary s-hover">Resume</button></div>
+      <div class="cell"><span class="lbl">Focus</span><button class="btn btn-primary s-focus">Resume</button></div>
+      <div class="cell"><span class="lbl">Active</span><button class="btn btn-primary s-active">Resume</button></div>
+      <div class="cell"><span class="lbl">Disabled</span><button class="btn btn-primary s-disabled">Resume</button></div>
+    </div>
+    <div class="row" style="margin-bottom:22px">
+      <div class="cell"><span class="lbl">Secondary</span><button class="btn btn-secondary">Open file</button></div>
+      <div class="cell"><span class="lbl">Hover</span><button class="btn btn-secondary s-hover">Open file</button></div>
+      <div class="cell"><span class="lbl">Focus</span><button class="btn btn-secondary s-focus">Open file</button></div>
+      <div class="cell"><span class="lbl">Disabled</span><button class="btn btn-secondary s-disabled">Open file</button></div>
+    </div>
+    <div class="row">
+      <div class="cell"><span class="lbl">Ghost</span><button class="btn btn-ghost">Cancel</button></div>
+      <div class="cell"><span class="lbl">Hover</span><button class="btn btn-ghost s-hover">Cancel</button></div>
+      <div class="cell"><span class="lbl">Danger</span><button class="btn btn-danger">Delete</button></div>
+      <div class="cell"><span class="lbl">Icon · default</span><button class="ibtn"><span class="material-symbols-outlined">settings</span></button></div>
+      <div class="cell"><span class="lbl">Icon · hover</span><button class="ibtn s-hover"><span class="material-symbols-outlined">settings</span></button></div>
+      <div class="cell"><span class="lbl">Icon · on</span><button class="ibtn s-on"><span class="material-symbols-outlined">repeat</span></button></div>
+    </div>
+  </div>
+
+  <h2>Switch &amp; toggles</h2>
+  <p class="note">iOS-style switch (Settings). Notation-style chips are <em>multi-select</em> — more than one can be on.</p>
+  <div class="panel">
+    <div class="row" style="margin-bottom:22px">
+      <div class="cell"><span class="lbl">Off</span><div class="sw"></div></div>
+      <div class="cell"><span class="lbl">On</span><div class="sw on"></div></div>
+      <div class="cell"><span class="lbl">On · focus</span><div class="sw on s-focus"></div></div>
+      <div class="cell"><span class="lbl">Disabled</span><div class="sw s-disabled"></div></div>
+    </div>
+    <div class="row">
+      <div class="cell"><span class="lbl">Notation chips (multi)</span>
+        <div style="display:flex; gap:7px"><span class="chip on">Standard</span><span class="chip on">Tab</span><span class="chip">Slash</span><span class="chip">#</span></div>
+      </div>
+      <div class="cell"><span class="lbl">Filter · hover</span><span class="chip s-hover">Rock</span></div>
+      <div class="cell"><span class="lbl">Filter · focus</span><span class="chip s-focus">Pop</span></div>
+    </div>
+  </div>
+
+  <h2>Inputs &amp; sliders</h2>
+  <div class="panel">
+    <div class="row" style="margin-bottom:24px">
+      <div class="cell"><span class="lbl">Input · default</span><input class="inp" placeholder="Search songs…"></div>
+      <div class="cell"><span class="lbl">Input · focus</span><input class="inp s-focus" value="Light Pop"></div>
+      <div class="cell"><span class="lbl">Input · invalid</span><input class="inp s-invalid" value="bad@"><span class="err">Enter a valid value</span></div>
+      <div class="cell"><span class="lbl">Input · disabled</span><input class="inp s-disabled" value="Locked" disabled></div>
+    </div>
+    <div class="row">
+      <div class="cell"><span class="lbl">Slider · default</span><div class="sld"><i></i><b></b></div></div>
+      <div class="cell"><span class="lbl">Slider · focus</span><div class="sld s-focus"><i></i><b></b></div></div>
+    </div>
+  </div>
+
+  <h2>Status pills <span style="color:var(--faint);font-weight:400;font-size:13px">— catalog preview (felt-progress)</span></h2>
+  <p class="note">Songs move New → Learning → Mastered. Used in the library to make progress visible.</p>
+  <div class="panel">
+    <div class="row">
+      <div class="cell"><span class="lbl">New</span><span class="pill pill-new">New</span></div>
+      <div class="cell"><span class="lbl">Learning</span><span class="pill pill-learning"><span class="material-symbols-outlined">trending_up</span>Learning</span></div>
+      <div class="cell"><span class="lbl">Mastered</span><span class="pill pill-mastered"><span class="material-symbols-outlined">check_circle</span>Mastered</span></div>
+      <div class="cell"><span class="lbl">Best score</span><span class="num" style="color:var(--accent);font-weight:700;font-size:15px">94%</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var q = new URLSearchParams(location.search).get('theme');
+    if (q === 'light' || q === 'dark') root.setAttribute('data-theme', q);
+    function sync(){ var i=document.querySelector('[data-theme-icon]'); if(i) i.textContent = root.getAttribute('data-theme')!=='light'?'dark_mode':'light_mode'; }
+    sync();
+    document.getElementById('themeToggle').addEventListener('click', function(){
+      root.setAttribute('data-theme', root.getAttribute('data-theme')==='light'?'dark':'light'); sync();
+    });
+  })();
+</script>
+</body>
+</html>
