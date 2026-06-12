@@ -149,6 +149,19 @@
   .advsec .advlbl{width:70px;flex:none;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700;padding-top:8px;}
   .advsec .advctl{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1;min-width:0;}
   .advsec .advctl.tempo{gap:12px;min-height:31px;}
+  /* token pickers (Tags / Pattern / Key) — search + enter → chip, × to remove */
+  .advctl.tokens{gap:6px;}
+  .chip.tok{padding-right:8px;cursor:default;}
+  .chip.tok .x{font-size:15px;margin-left:3px;opacity:.8;cursor:pointer;border-radius:50%;line-height:1;}
+  .chip.tok .x:hover{opacity:1;background:color-mix(in srgb,var(--onaccent) 25%,transparent);}
+  .tokin{position:relative;display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px dashed color-mix(in srgb,var(--accent) 32%,var(--line));border-radius:999px;}
+  .tokin > .material-symbols-outlined{font-size:15px;color:var(--faint);}
+  .tokin input{border:none;background:transparent;outline:none;font-family:'Hanken Grotesk';font-weight:500;font-size:13px;color:var(--ink);width:90px;padding:0;}
+  .tokin input::placeholder{color:var(--faint);}
+  .tokpop{position:absolute;top:calc(100% + 7px);left:0;min-width:172px;background:var(--bg);border:.5px solid var(--line);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:5px;display:none;z-index:50;max-height:210px;overflow:auto;}
+  .tokpop.open{display:block;}
+  .tokpop .s{padding:8px 9px;border-radius:7px;font-size:13px;color:var(--ink);cursor:pointer;}
+  .tokpop .s:hover,.tokpop .s.hi{background:var(--hover);}
 
   /* Variant B — left rail */
   .shell{display:grid;grid-template-columns:230px 1fr;gap:22px;align-items:start;}
@@ -238,11 +251,12 @@
       </div>
     </div>
 
-    <!-- Tags — inline chips -->
+    <!-- Tags — token picker (many options): search → enter → chip, × to remove -->
     <div class="advsec">
       <div class="advlbl">Tags</div>
-      <div class="advctl">
-        <button class="chip on" onclick="this.classList.toggle('on')">ghost-notes</button><button class="chip" onclick="this.classList.toggle('on')">syncopation</button><button class="chip" onclick="this.classList.toggle('on')">shuffle</button><button class="chip" onclick="this.classList.toggle('on')">double-kick</button><button class="chip" onclick="this.classList.toggle('on')">linear</button>
+      <div class="advctl tokens" data-filter="tags">
+        <button class="chip on tok" data-val="ghost-notes">ghost-notes <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="syncopation">syncopation <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
+        <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add tag…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
       </div>
     </div>
 
@@ -254,19 +268,21 @@
       </div>
     </div>
 
-    <!-- Pattern — inline chips -->
+    <!-- Pattern — token picker (many options) -->
     <div class="advsec">
       <div class="advlbl">Pattern</div>
-      <div class="advctl">
-        <button class="chip" onclick="this.classList.toggle('on')">8th-note</button><button class="chip" onclick="this.classList.toggle('on')">16th-note</button><button class="chip" onclick="this.classList.toggle('on')">Triplets</button><button class="chip" onclick="this.classList.toggle('on')">Paradiddle</button><button class="chip" onclick="this.classList.toggle('on')">Single-stroke</button>
+      <div class="advctl tokens" data-filter="pattern">
+        <button class="chip on tok" data-val="16th-note">16th-note <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
+        <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add pattern…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
       </div>
     </div>
 
-    <!-- Key — inline chips -->
+    <!-- Key — token picker (flats + sharps = many options) -->
     <div class="advsec">
       <div class="advlbl">Key</div>
-      <div class="advctl">
-        <button class="chip" onclick="this.classList.toggle('on')">C</button><button class="chip" onclick="this.classList.toggle('on')">G</button><button class="chip" onclick="this.classList.toggle('on')">D</button><button class="chip" onclick="this.classList.toggle('on')">A</button><button class="chip" onclick="this.classList.toggle('on')">E</button><button class="chip" onclick="this.classList.toggle('on')">F</button>
+      <div class="advctl tokens" data-filter="key">
+        <button class="chip on tok" data-val="C">C <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="F#">F♯ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="Bb">B♭ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
+        <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add key…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
       </div>
     </div>
   </div>
@@ -427,6 +443,31 @@
   function kClear(ev){ ev.stopPropagation(); kSel={}; document.querySelectorAll('#dynPop .fopt').forEach(function(o){o.classList.remove('on');}); document.getElementById('dynChip').innerHTML='Kind <span class="material-symbols-outlined caret">expand_more</span>'; document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){r.style.display='';}); }
   function gPick(el,ev){ ev.stopPropagation(); el.classList.toggle('on'); var sel=[].slice.call(document.querySelectorAll('#dynPop .fopt.on')).map(function(o){return o.textContent.trim();}); document.getElementById('dynChip').innerHTML=(sel.length?'Genre: '+sel[0]+(sel.length>1?' +'+(sel.length-1):''):'Genre')+' <span class="material-symbols-outlined caret">expand_more</span>'; }
   function toggleMore(){ var a=document.getElementById('advRow'); var open=a.classList.toggle('open'); document.getElementById('moreBtn').classList.toggle('on',open); }
+
+  // ---- advanced token pickers (Tags / Pattern / Key): search → enter → chip, × to remove ----
+  var TOK_OPTS = {
+    tags: ['ghost-notes','syncopation','shuffle','double-kick','linear','flam','drag','blast-beat','half-time','open-hi-hat'],
+    pattern: ['8th-note','16th-note','triplets','paradiddle','single-stroke','double-stroke','flam-tap','six-stroke-roll'],
+    key: ['C','C♯','D♭','D','D♯','E♭','E','F','F♯','G♭','G','G♯','A♭','A','A♯','B♭','B','Am','Bm','C♯m','Dm','Em','F♯m','Gm']
+  };
+  function tokNorm(s){ return (s||'').toLowerCase().replace(/♯/g,'#').replace(/♭/g,'b').trim(); }
+  function tokRm(x,ev){ ev.stopPropagation(); x.closest('.chip').remove(); }
+  function tokSel(ctl){ return [].slice.call(ctl.querySelectorAll('.chip.tok')).map(function(c){return tokNorm(c.dataset.val);}); }
+  function tokAdd(ctl,val){ val=(val||'').trim(); if(!val) return; if(tokSel(ctl).indexOf(tokNorm(val))>-1) return;
+    var chip=document.createElement('button'); chip.className='chip on tok'; chip.dataset.val=val;
+    chip.innerHTML=val+' <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span>';
+    ctl.insertBefore(chip, ctl.querySelector('.tokin')); }
+  function tokSuggest(input){ var tokin=input.closest('.tokin'), ctl=input.closest('.advctl'), pop=tokin.querySelector('.tokpop');
+    var f=ctl.dataset.filter, q=tokNorm(input.value), sel=tokSel(ctl);
+    var opts=(TOK_OPTS[f]||[]).filter(function(o){ return sel.indexOf(tokNorm(o))<0 && tokNorm(o).indexOf(q)>-1; }).slice(0,8);
+    if(!opts.length){ pop.classList.remove('open'); pop.innerHTML=''; return; }
+    pop.innerHTML=opts.map(function(o,i){ return '<div class="s'+(i===0?' hi':'')+'" onmousedown="tokPick(this,event)">'+o+'</div>'; }).join('');
+    pop.classList.add('open'); }
+  function tokPick(s,ev){ ev.preventDefault(); var ctl=s.closest('.advctl'), input=ctl.querySelector('.tokin input'); tokAdd(ctl,s.textContent); input.value=''; tokSuggest(input); input.focus(); }
+  function tokKey(input,ev){ var pop=input.closest('.tokin').querySelector('.tokpop');
+    if(ev.key==='Enter'){ ev.preventDefault(); var ctl=input.closest('.advctl'); var hi=pop.querySelector('.s.hi')||pop.querySelector('.s'); tokAdd(ctl, hi?hi.textContent:input.value); input.value=''; tokSuggest(input); }
+    else if(ev.key==='Escape'){ pop.classList.remove('open'); input.blur(); } }
+  document.addEventListener('click',function(e){ if(!e.target.closest('.tokin')){ document.querySelectorAll('.tokpop').forEach(function(p){p.classList.remove('open');}); } });
 </script>
 </body>
 </html>
