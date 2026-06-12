@@ -8,7 +8,7 @@ module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
   parserOptions: { ecmaVersion: 2022, sourceType: "module" },
-  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments", "check-file"],
+  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments", "check-file", "import-x"],
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -53,6 +53,24 @@ module.exports = {
     "@typescript-eslint/naming-convention": [
       "error",
       { selector: "typeLike", format: ["PascalCase"] },
+    ],
+
+    // Imports (naming decision B: NO default exports). Named exports keep the domain surface
+    // greppable and refactor-safe — a default export lets an agent silently rename it at each
+    // import site. eslint-plugin-import-x is the maintained fork of eslint-plugin-import; we
+    // register only the two rules the bundle needs, not the full `recommended` preset (which
+    // pulls in resolver-backed rules we don't want on a pre-source repo).
+    "import-x/no-default-export": "error",
+    // Deterministic, AUTOFIXABLE import order so the pipeline repairs ordering mechanically:
+    // builtin -> external -> internal -> parent -> sibling -> index, blank line between groups,
+    // alphabetised within each group.
+    "import-x/order": [
+      "error",
+      {
+        groups: ["builtin", "external", "internal", "parent", "sibling", "index"],
+        "newlines-between": "always",
+        alphabetize: { order: "asc", caseInsensitive: true },
+      },
     ],
   },
   ignorePatterns: ["dist", "node_modules", "*.cjs", "*.config.js", "*.config.ts"],
