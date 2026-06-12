@@ -1,0 +1,25 @@
+name: Setup JS toolchain
+description: pnpm + Node (from .nvmrc) + frozen-lockfile install — shared setup steps for JS-toolchain jobs.
+
+# Composite action — call from any job AFTER `actions/checkout@v6`:
+#
+#   - uses: actions/checkout@v6
+#   - uses: ./.github/actions/setup-js
+#
+# Why composite (not reusable workflow): reusable workflows execute as a
+# whole job; we just want shared SETUP steps inside an existing job. A
+# composite hides the 3-step prelude behind one `uses:` line so adding a
+# new gate is a one-line addition — closes registry L7-reusable-wf.
+#
+# Node version is sourced from .nvmrc — single source of truth for local
+# (nvm/fnm/asdf) AND CI. Bumping the Node version is a one-file change.
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version-file: .nvmrc
+        cache: pnpm
+    - shell: bash
+      run: pnpm install --frozen-lockfile

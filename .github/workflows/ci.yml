@@ -10,6 +10,14 @@ on:
     # Path-filtered jobs (quality/build/sast/deps-cve) still skip on metadata-
     # only edits via the `changes` paths-filter, so cost is ~30-60s per edit.
     types: [opened, edited, synchronize, reopened]
+  # merge_group fires when GitHub's merge queue creates a synthetic merge commit
+  # between queued PRs and runs CI on the combined state. Two independently-green
+  # PRs that interact badly (different agents touching the same hot file) get
+  # caught HERE before they hit master. Free tier on public repos supports this.
+  # pr-title is gated to pull_request only (PR title already validated at PR time
+  # — no new title in the merge queue), so it skips here; ci-green treats skipped
+  # as OK. Closes registry L7-merge-queue.
+  merge_group:
 
 # Cancel superseded runs on the same ref (saves minutes, avoids stale results).
 concurrency:
@@ -75,16 +83,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          # nx-set-shas needs history to find the last successful run's SHA on master.
+          fetch-depth: 0
+      # Sets NX_BASE / NX_HEAD env vars so `nx affected` knows the right base for
+      # pull_request, push:master, AND merge_group events. Without this, affected
+      # is silently the full graph on PRs (wasteful) or empty on merge_group
+      # (misses work). Required by L7-set-shas. Pinned to v4.
+      - uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: master
       - name: Layout guard (co-located tests — no __tests__/ or stories/)
         run: bash tooling/check-layout.sh
       - name: Coverage-ignore guard (no istanbul/c8/v8 ignore)
         run: bash tooling/check-no-coverage-ignore.sh
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-js
       - name: Lint
         run: pnpm run lint
       - name: Typecheck
@@ -104,12 +117,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
         with:
-          node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+          fetch-depth: 0
+      - uses: nrwl/nx-set-shas@v4
+        with:
+          main-branch-name: master
+      - uses: ./.github/actions/setup-js
       - run: pnpm run build
 
   # Secret scanning — gitleaks over the diff/history. Runs on EVERY change (NOT
@@ -173,12 +186,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: 'pnpm'
-      - run: pnpm install --frozen-lockfile
+      - uses: ./.github/actions/setup-js
       - name: Validate PR title with commitlint
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}

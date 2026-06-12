@@ -23,6 +23,17 @@
 #
 # Env overrides: REPO, BRANCH, CHECK. Needs: gh authenticated with admin on the repo.
 # Idempotent — the PUT fully replaces the protection config, so re-running is safe.
+#
+# Merge queue (KAN-140 / L7-merge-queue): this CLASSIC Branch Protection API
+# does NOT support the merge queue — it is a Rulesets-only feature. The two
+# layers coexist cleanly:
+#
+#   - branch-protection.sh (this script) = WHAT'S REQUIRED to merge
+#   - branch-ruleset.sh                   = HOW MERGES HAPPEN (the queue)
+#
+# After applying this script, also run `tooling/branch-ruleset.sh --apply` to
+# create the master-merge-queue Ruleset. ci.yml already subscribes to the
+# merge_group event.
 set -euo pipefail
 
 REPO="${REPO:-leocaseiro/notation-hero}"
