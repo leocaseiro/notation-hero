@@ -72,6 +72,10 @@ module.exports = {
         alphabetize: { order: "asc", caseInsensitive: true },
       },
     ],
+
+    // Concise arrow bodies — AUTOFIXABLE, so the pipeline strips redundant `{ return x }`
+    // wrappers to `=> x` mechanically. Low-stakes style the agent never has to think about.
+    "arrow-body-style": ["error", "as-needed"],
   },
   ignorePatterns: ["dist", "node_modules", "*.cjs", "*.config.js", "*.config.ts"],
   overrides: [
