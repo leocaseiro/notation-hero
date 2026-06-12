@@ -168,11 +168,8 @@
     <span style="flex:1"></span>
     <button class="btn btn-secondary"><span class="material-symbols-outlined">upload</span> Upload</button>
   </div>
-  <div class="row" id="vA-sub" style="display:none;margin:2px 0 8px">
-    <span class="faint" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;margin-right:4px">Kind</span>
-    <div class="seg"><button class="sel" onclick="vaKind('all',this)">All</button><button onclick="vaKind('beat',this)"><span class="material-symbols-outlined">graphic_eq</span> Beats</button><button onclick="vaKind('rud',this)"><span class="material-symbols-outlined">drag_indicator</span> Rudiments</button><button onclick="vaKind('fill',this)"><span class="material-symbols-outlined">bolt</span> Fills</button></div>
-  </div>
   <div class="filterbar">
+    <span class="fg" id="vA-kind" style="display:none"><span class="fglbl">Kind</span> <button class="chip on" onclick="vaKind('all',this)">All</button><button class="chip" onclick="vaKind('beat',this)">Beats</button><button class="chip" onclick="vaKind('rud',this)">Rudiments</button><button class="chip" onclick="vaKind('fill',this)">Fills</button><span class="sep" style="margin-left:7px"></span></span>
     <div class="fg"><span class="fglbl">Level</span> <button class="chip on">≤ 4</button></div><span class="sep"></span>
     <div class="fg"><span class="fglbl">BPM</span> <span class="minirange"><span class="sel"></span><span class="h a"></span><span class="h b"></span></span> <span class="num faint" style="font-size:11px">80–120</span></div><span class="sep"></span>
     <div class="fg"><span class="fglbl">Time</span> <button class="chip">4/4</button></div><span class="sep"></span>
@@ -309,10 +306,10 @@
   function closeStep(){ document.getElementById('stepModal').classList.remove('open'); }
   function stepSrc(which,btn){ document.querySelectorAll('#srcseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); ['upload','tex','song'].forEach(s=>{ document.getElementById('src-'+s).style.display=(s===which)?'':'none'; }); }
   function vaTab(which,btn){ document.querySelectorAll('#vA-tabs button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
-    document.getElementById('vA-sub').style.display = which==='lessons'?'':'none';
+    document.getElementById('vA-kind').style.display = which==='lessons'?'':'none';
     document.getElementById('tblA-songs').style.display = which==='songs'?'':'none';
     document.getElementById('tblA-lessons').style.display = which==='lessons'?'':'none'; }
-  function vaKind(kind,btn){ btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+  function vaKind(kind,btn){ btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
     document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){ r.style.display=(kind==='all'||r.dataset.kind===kind)?'':'none'; }); }
 </script>
 </body>
