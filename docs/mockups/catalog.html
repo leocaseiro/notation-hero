@@ -251,7 +251,7 @@
 <!-- (variants B / C, the drawer and the step modal were removed in this fork — see catalog-variants.html for them) -->
 
 <script>
-  var MARK = '<span class="mark"><svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/><g fill="currentColor"><rect x="18.9" y="11" width="1.9" height="14" rx="0.9"/><path d="M20.8 11.2c4.6 1.5 4.1 5.6 2.4 8c1.2-3 .3-5.4-2.4-6.4z"/><ellipse cx="16.4" cy="24.8" rx="3.9" ry="3" transform="rotate(-20 16.4 24.8)"/></g></svg></span>';
+  var MARK = '<span class="mark"><svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/><svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor"><path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z"/></svg></svg></span>';
   document.querySelectorAll('.logo').forEach(function(l){ l.innerHTML = l.innerHTML.replace('__MARK__', MARK); });
 
   function row(o){
