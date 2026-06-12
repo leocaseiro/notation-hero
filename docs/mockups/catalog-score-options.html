@@ -106,6 +106,21 @@
   .spct{font-family:'Geist Mono';font-size:11.5px;color:var(--grade-green);font-weight:700;}
   .stars{letter-spacing:1.5px;font-size:13px;}
   .star{color:var(--line);} .star.on{color:var(--amber);}
+  /* ⑥ pie + number (pizza fill by %) */
+  .piewrap{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;}
+  .pie{width:22px;height:22px;border-radius:50%;flex:none;background:conic-gradient(var(--accent) calc(var(--p,0)*1%), var(--panel2) 0);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 22%,var(--line));}
+  .pie.empty{background:var(--panel2);box-shadow:inset 0 0 0 1px var(--line);}
+  .pie.done{background:var(--accent);}
+  .piepct{font-family:'Geist Mono';font-size:11.5px;color:var(--ink);min-width:32px;text-align:left;}
+  .pie.empty + .piepct{color:var(--faint);}
+  /* ⑦ donut (number inside the ring) */
+  .donut{position:relative;width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--p,0)*1%), var(--panel2) 0);}
+  .donut::before{content:'';position:absolute;inset:4.5px;border-radius:50%;background:var(--panel);}
+  .donut > span{position:relative;font-family:'Geist Mono';font-weight:700;font-size:10px;color:var(--ink);line-height:1;}
+  .donut.empty{background:var(--panel2);} .donut.empty > span{color:var(--faint);}
+  .donut.done{background:var(--accent);} .donut.done::before{background:var(--accent);} .donut.done > span{color:var(--onaccent);} .donut .chk2{font-size:16px;}
+  /* level as a rounded pill (vs the circular grade bullet) */
+  .lvlpill{display:inline-grid;place-items:center;min-width:32px;height:25px;padding:0 9px;border-radius:8px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);font-family:'Geist Mono';font-weight:700;font-size:12.5px;border:.5px solid color-mix(in srgb,var(--accent) 25%,var(--line));}
 </style>
 </head>
 <body>
@@ -116,7 +131,7 @@
     <button class="toggle-btn" onclick="theme()" title="Toggle theme"><span class="material-symbols-outlined" id="themeicon">dark_mode</span></button>
   </div>
   <h1>“Best” score — pick a treatment</h1>
-  <p class="lead">Five alternatives to the bare <b>92% / 🏆 100% / —</b> cell, after UI research (arcade rank grades, spaced-repetition pip meters, star tiers, progress meters). All mapped to teal, all degrade to a clear <i>not-attempted</i> and a distinct <i>mastered</i> state.</p>
+  <p class="lead">Seven alternatives to the bare <b>92% / 🏆 100% / —</b> cell, after UI research (arcade rank grades, spaced-repetition pip meters, star tiers, progress meters, percentage pies). All mapped to teal, all degrade to a clear <i>not-attempted</i> and a distinct <i>mastered</i> state. In context, <b>level</b> moves to a rounded pill so it doesn't read like the pie.</p>
 
   <h2><span class="material-symbols-outlined">table_rows</span> At a glance — every treatment across the score range</h2>
   <div class="matrix" id="matrix"></div>
@@ -169,6 +184,15 @@
       for(var i=0;i<5;i++) st+='<span class="star'+(i<full?' on':'')+'">'+(i<full?'★':'☆')+'</span>';
       return '<span class="starsrow"><span class="spct">'+score+'%</span><span class="stars">'+st+'</span></span>';
     }
+    if(t==='pie'){
+      if(none) return '<span class="piewrap"><span class="pie empty"></span><span class="piepct">—</span></span>';
+      return '<span class="piewrap"><span class="pie'+(score===100?' done':'')+'" style="--p:'+score+'"></span><span class="piepct">'+score+'%</span></span>';
+    }
+    if(t==='donut'){
+      if(none) return '<span class="donut empty"><span>—</span></span>';
+      if(score===100) return '<span class="donut done" style="--p:100"><span><span class="material-symbols-outlined chk2">check</span></span></span>';
+      return '<span class="donut" style="--p:'+score+'"><span>'+score+'</span></span>';
+    }
     return '';
   }
 
@@ -178,7 +202,9 @@
     {key:'chip',    name:'② Score chip', desc:'Same number, reframed as a teal-tiered pill'},
     {key:'pips',    name:'③ Pip meter', desc:'5 dots by tier — most compact, scans fast'},
     {key:'bar',     name:'④ Progress bar', desc:'Exact fill — best for comparing rows at a glance'},
-    {key:'stars',   name:'⑤ % + stars', desc:'Your Stitch reference — number + 5-star gestalt'}
+    {key:'stars',   name:'⑤ % + stars', desc:'Stitch ref — but reads like a competitor (gestalt risk)'},
+    {key:'pie',     name:'⑥ Pie + number', desc:'% as a filled pizza + the number — distinctive, precise'},
+    {key:'donut',   name:'⑦ Donut (n inside)', desc:'Ring fills by %, number in the centre — compact'}
   ];
   var SCEN=[ {s:100,l:'Mastered'}, {s:92,l:'92%'}, {s:76,l:'76%'}, {s:64,l:'64%'}, {s:null,l:'New'} ];
 
@@ -202,12 +228,12 @@
     {title:'Shuffle Feel', sub:'Blues · 12/8 · drums', lvl:4, bpm:84, best:64},
     {title:'Odd-Meter Étude', sub:'Jazz · 7/8 · drums', lvl:10, bpm:132, best:null}
   ];
-  var current='letter';
+  var current='pie';
   var seg=document.getElementById('seg');
   seg.innerHTML=OPTIONS.map(function(o){ return '<button class="'+(o.key===current?'sel':'')+'" onclick="pick(\''+o.key+'\',this)">'+o.name+'</button>'; }).join('');
   function renderList(){
     document.getElementById('list').innerHTML = LIST.map(function(o){
-      var lvl = o.lvl? '<span class="grade">'+o.lvl+'</span>' : '<span class="grade" style="border-style:dashed;border-color:var(--line);color:var(--faint)">–</span>';
+      var lvl = o.lvl? '<span class="lvlpill">'+o.lvl+'</span>' : '<span class="lvlpill" style="background:transparent;border-style:dashed;color:var(--faint)">–</span>';
       return '<div class="trow"><div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>'
         +'<div><div class="nmtitle">'+o.title+'</div><div class="nmsub">'+o.sub+'</div></div></div>'
         +'<span class="levelC">'+lvl+'</span><span class="bpmC">'+o.bpm+'</span>'
