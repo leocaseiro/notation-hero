@@ -30,21 +30,32 @@ module.exports = {
     ],
     "@eslint-community/eslint-comments/require-description": ["error", { ignore: [] }],
 
-    // Filenames (CONV-1/CONV-2 + naming decision A/B): bar separators in TS filenames.
-    // The custom glob `+([a-zA-Z])*([a-zA-Z0-9])` = start with a letter, then letters/digits
-    // only — so it BANS kebab-case (publish-gates.ts) and snake_case (publish_gates.ts) while
-    // ALLOWING both PascalCase entities (Brand.ts) and camelCase utilities (publishGates.ts).
-    // The PascalCase-entity / camelCase-utility split is a *semantic* judgement (entity vs
-    // helper) that no glob can make — it lives in AGENTS.md, backed by naming-convention below.
-    // ignoreMiddleExtensions:true so a co-located `Brand.test.ts` is checked as `Brand`, not
-    // `Brand.test` (which would fail any single-token convention). check-file v3 ships only
-    // flat presets, but its *rules* register fine in this legacy eslintrc (see registry note).
-    // NOTE: folder-per-entity (folder name == file basename) is NOT expressible by check-file's
-    // folder-match-with-fex (static folder globs only) — tooling/check-layout.sh owns that.
+    // Filenames (NAME-suffix; ADR 2026-06-12 D2 — kebab-case everywhere + role suffix).
+    // KEBAB_CASE bans PascalCase (Brand.entity.ts), camelCase (catalogueItem.entity.ts), and
+    // snake_case (catalogue_item.ts), allowing only kebab (catalogue-item.entity.ts). Kebab is
+    // the idiomatic hexagonal-Nx choice (NestJS + the 12k★ domain-driven-hexagon repo suffix in
+    // kebab), it dodges the macOS case-insensitive-FS collision (Brand vs brand), and Nx
+    // generators emit kebab — so the entity generator (KAN #8) won't fight this rule.
+    // ignoreMiddleExtensions:true is LOAD-BEARING: it strips ALL middle extensions, so a stacked
+    // `catalogue-item.entity.test.ts` is checked as `catalogue-item` (both `.entity` AND `.test`
+    // dropped) → one rule covers source AND co-located tests. Side effect: check-file cannot see
+    // the role suffix, so suffix-PRESENCE is owned by tooling/check-layout.sh (ADR F-1).
     "check-file/filename-naming-convention": [
       "error",
-      { "**/*.{ts,tsx}": "+([a-zA-Z])*([a-zA-Z0-9])" },
+      { "**/*.{ts,tsx}": "KEBAB_CASE" },
       { ignoreMiddleExtensions: true },
+    ],
+
+    // Ban junk-drawer role suffixes (ADR D2). `*.manager.ts` / `*.helper.ts` are catch-alls
+    // that hide missing domain modelling — steer to a real role (`*.service.ts`) or, for
+    // genuinely generic pure functions, the narrow `*.util.ts`. The approved-suffix VOCABULARY
+    // (entity/port/adapter/…) is enforced positively by tooling/check-layout.sh.
+    "check-file/filename-blocklist": [
+      "error",
+      {
+        "**/*.manager.{ts,tsx}": "*.service.{ts,tsx}",
+        "**/*.helper.{ts,tsx}": "*.util.{ts,tsx}",
+      },
     ],
 
     // Identifiers (naming decision B): domain nouns are PascalCase — classes, interfaces,
