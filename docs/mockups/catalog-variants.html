@@ -197,7 +197,7 @@
   </div>
   <div class="filterbar">
     <div class="fdrop" id="kindDrop" style="display:none">
-      <button class="fchip active" id="kindChip" onclick="toggleMenu('kindPop',event)"><span class="field">Kind</span><span class="op">is</span><span class="val">Beats</span><span class="caret material-symbols-outlined">expand_more</span></button>
+      <button class="fbtn" id="kindChip" onclick="toggleMenu('kindPop',event)">Kind: Beats <span class="material-symbols-outlined caret">expand_more</span></button>
       <div class="fpop" id="kindPop">
         <div class="opsel">Kind is any of <span class="material-symbols-outlined">unfold_more</span></div>
         <div class="fopt on" onclick="kPick(this,'beat',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">graphic_eq</span> Beats</div>
@@ -207,16 +207,16 @@
       </div>
     </div>
     <div class="fdrop">
-      <button class="fchip active" onclick="toggleMenu('lvlPop',event)"><span class="field">Level</span><span class="op">≤</span><span class="val">4</span><span class="caret material-symbols-outlined">expand_more</span></button>
+      <button class="fbtn" onclick="toggleMenu('lvlPop',event)">Level: ≤ 4 <span class="material-symbols-outlined caret">expand_more</span></button>
       <div class="fpop" id="lvlPop">
         <div class="opsel">Level is at most (≤) <span class="material-symbols-outlined">unfold_more</span></div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;padding:3px 4px 4px"><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">1</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">2</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">3</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">4</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">5</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">6</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">8</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">10</span></div>
         <div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>
       </div>
     </div>
-    <button class="fchip active"><span class="field">Tempo</span><span class="op">range</span><span class="val">80–120</span><span class="caret material-symbols-outlined">expand_more</span></button>
-    <button class="fchip active"><span class="field">Time</span><span class="op">=</span><span class="val">4/4</span><span class="caret material-symbols-outlined">expand_more</span></button>
-    <button class="fchip"><span class="field">Instrument</span><span class="caret material-symbols-outlined">expand_more</span></button>
+    <button class="fbtn">Tempo: 80–120 <span class="material-symbols-outlined caret">expand_more</span></button>
+    <button class="fbtn">Time: 4/4 <span class="material-symbols-outlined caret">expand_more</span></button>
+    <button class="fbtn">Instrument <span class="material-symbols-outlined caret">expand_more</span></button>
     <button class="chip"><span class="material-symbols-outlined">add</span> More</button>
     <span style="flex:1"></span><span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
   </div>
@@ -358,8 +358,8 @@
   function kPick(el,kind,ev){ ev.stopPropagation(); if(kSel[kind]){ delete kSel[kind]; el.classList.remove('on'); } else { kSel[kind]=true; el.classList.add('on'); } kUpdate(); }
   function kClear(ev){ ev.stopPropagation(); kSel={}; document.querySelectorAll('#kindPop .fopt').forEach(o=>o.classList.remove('on')); kUpdate(); }
   function kUpdate(){ var arr=Object.keys(kSel); var map={beat:'Beats',rud:'Rudiments',fill:'Fills'}; var chip=document.getElementById('kindChip');
-    if(arr.length===0){ chip.className='fchip'; chip.innerHTML='<span class="field">Kind</span><span class="caret material-symbols-outlined">expand_more</span>'; }
-    else { var extra=arr.length>1?'<span class="cnt">+'+(arr.length-1)+'</span>':''; chip.className='fchip active'; chip.innerHTML='<span class="field">Kind</span><span class="op">is</span><span class="val">'+map[arr[0]]+'</span>'+extra+'<span class="caret material-symbols-outlined">expand_more</span>'; }
+    var label = arr.length===0 ? 'Kind' : 'Kind: '+map[arr[0]]+(arr.length>1?' +'+(arr.length-1):'');
+    chip.innerHTML = label+' <span class="material-symbols-outlined caret">expand_more</span>';
     document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){ r.style.display=(arr.length===0||kSel[r.dataset.kind])?'':'none'; }); }
 </script>
 </body>
