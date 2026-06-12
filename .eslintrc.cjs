@@ -8,7 +8,7 @@ module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
   parserOptions: { ecmaVersion: 2022, sourceType: "module" },
-  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments", "check-file", "import-x"],
+  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments", "check-file", "import-x", "@nx"],
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -94,6 +94,34 @@ module.exports = {
             patterns: [
               { group: ["@aws-sdk/*", "@pulumi/*"], message: "core is pure domain — no AWS/Pulumi." },
               { group: ["@adapters/*", "@apps/*"], message: "core must not import adapters or apps." },
+            ],
+          },
+        ],
+      },
+    },
+    {
+      // Hexagonal layer boundaries by Nx tag (L2-tags) — the tag-aware layer that fails a
+      // cross-layer import even when the dependency is DECLARED, complementing dependency-cruiser
+      // (path-based, .dependency-cruiser.cjs) + pnpm's declared-deps gate. Tags live in each
+      // project.json; the tag map is documented in AGENTS.md. Direction:
+      //   core    -> core only            (pure domain)
+      //   adapter -> core + adapter        (implements ports; never apps/infra)
+      //   app     -> core + adapter + app  (never infra)
+      //   infra   -> anything              (composition root)
+      files: ["*.ts", "*.tsx"],
+      rules: {
+        "@nx/enforce-module-boundaries": [
+          "error",
+          {
+            allow: [],
+            depConstraints: [
+              { sourceTag: "type:core", onlyDependOnLibsWithTags: ["type:core"] },
+              { sourceTag: "type:adapter", onlyDependOnLibsWithTags: ["type:core", "type:adapter"] },
+              { sourceTag: "type:app", onlyDependOnLibsWithTags: ["type:core", "type:adapter", "type:app"] },
+              {
+                sourceTag: "type:infra",
+                onlyDependOnLibsWithTags: ["type:core", "type:adapter", "type:app", "type:infra"],
+              },
             ],
           },
         ],
