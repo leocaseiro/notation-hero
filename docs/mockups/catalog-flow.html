@@ -88,6 +88,8 @@
   .mark .material-symbols-outlined { font-size:18px; }
   .mark::after { content:''; position:absolute; right:-7px; top:50%; transform:translateY(-50%); width:0; height:0;
     border-top:7px solid transparent; border-bottom:7px solid transparent; border-left:10px solid var(--accent); }
+  /* H-4: arrow nudged onto the ring edge */
+  .mark::after { right:-10%; }
   /* G-4 search lives in the topbar */
   .topsearch { position:relative; flex:1; }
   .topsearch .material-symbols-outlined { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--faint); font-size:20px; }
@@ -109,7 +111,7 @@
   /* G-1 grade bullet: accent ring, transparent, 1–2 digits */
   .grade { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-family:'Geist Mono'; font-weight:700;
     font-size:13px; flex:none; border:2px solid var(--accent); color:var(--accent); background:transparent; }
-  .grade.sm { width:23px; height:23px; font-size:11px; border-width:1.5px; }
+  .grade.sm { width:24px; height:24px; font-size:11px; border-width:2.5px; }
   .grade.ungraded { border-style:dashed; border-color:var(--line); color:var(--faint); }
 
   /* ===== controls (tabs + filters/sort/add) ===== */
@@ -168,6 +170,9 @@
   .flags { display:inline-flex; gap:7px; color:var(--muted); }
   .flags .material-symbols-outlined { font-size:17px; }
   .flags .parts { color:var(--accent); }
+  /* G-8: media/parts icons get their own right-aligned cluster, off the instruments line */
+  .nameC .nm { flex:1; }
+  .nameC > .flags { margin-left:auto; padding-left:12px; flex:none; }
   .levelC { display:flex; justify-content:center; }
   .bpmC { text-align:right; font-family:'Geist Mono'; font-size:13px; color:var(--ink); }
   /* G-7 BEST encodes status: — / X% / 100% special */
@@ -245,6 +250,12 @@
   .drop .material-symbols-outlined{font-size:30px;color:var(--accent);}
   .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   .addstep{border:.5px dashed var(--line);border-radius:11px;padding:11px 14px;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .addstep:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--ink);}
+  .stepmini{display:flex;align-items:center;gap:10px;background:var(--panel);border:.5px solid var(--line);border-radius:11px;padding:9px 13px;font-size:13.5px;}
+  .stepmini .no{width:24px;height:24px;border-radius:7px;background:var(--panel2);color:var(--ink);display:grid;place-items:center;font-family:'Geist Mono';font-weight:700;font-size:12px;flex:none;}
+  .stepmini .sp{flex:1;} .stepmini .ic{color:var(--faint);cursor:pointer;font-size:18px;} .stepmini .ic:hover{color:var(--accent);}
+  textarea.tex{min-height:120px;font-family:'Geist Mono';font-size:13px;line-height:1.5;resize:vertical;width:100%;}
+  .admintag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:color-mix(in srgb,var(--learn-text) 18%,transparent);color:var(--learn-text);padding:2px 5px;border-radius:5px;margin-left:5px;}
 
   .hintbar { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:50; display:flex; align-items:center; gap:10px;
     background:var(--elevate); border:.5px solid var(--line); border-radius:999px; padding:9px 9px 9px 16px; box-shadow:0 8px 30px rgba(0,0,0,.22);
@@ -278,7 +289,7 @@
       <span class="spacer"></span>
       <button class="chip" onclick="toggleFilters()"><span class="material-symbols-outlined">tune</span> Filters</button>
       <span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
-      <button class="btn btn-secondary" onclick="go('add')" title="Add — admin / CMS"><span class="material-symbols-outlined">add</span> Add</button>
+      <button class="btn btn-secondary" onclick="go('add')" title="Upload a song or lesson"><span class="material-symbols-outlined">upload</span> Upload</button>
     </div>
 
     <!-- lessons sub-tabs -->
@@ -323,8 +334,8 @@
         <div class="trow" onclick="go('song')">
           <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
             <div class="nm"><div class="nmtitle">Stadium Beat</div>
-              <div class="nmsub">Rock <span class="dot"></span> 4/4 <span class="dot"></span> key A <span class="dot"></span> drums·guitar
-                <span class="flags"><span class="material-symbols-outlined">volume_up</span><span class="material-symbols-outlined">smart_display</span><span class="material-symbols-outlined parts">splitscreen</span></span></div></div></div>
+              <div class="nmsub">Rock <span class="dot"></span> 4/4 <span class="dot"></span> key A <span class="dot"></span> drums·guitar</div></div>
+            <span class="flags"><span class="material-symbols-outlined">volume_up</span><span class="material-symbols-outlined">smart_display</span><span class="material-symbols-outlined parts">splitscreen</span></span></div>
           <span class="levelC"><span class="grade">3</span></span>
           <span class="bpmC">116</span>
           <span class="bestC"><span class="pct">92%</span></span>
@@ -341,7 +352,7 @@
         </div>
         <div class="trow" onclick="go('song')">
           <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
-            <div class="nm"><div class="nmtitle">Funk Groove</div><div class="nmsub">Funk <span class="dot"></span> 4/4 <span class="dot"></span> drums <span class="flags"><span class="material-symbols-outlined">volume_up</span></span></div></div></div>
+            <div class="nm"><div class="nmtitle">Funk Groove</div><div class="nmsub">Funk <span class="dot"></span> 4/4 <span class="dot"></span> drums</div></div><span class="flags"><span class="material-symbols-outlined">volume_up</span></span></div>
           <span class="levelC"><span class="grade">5</span></span>
           <span class="bpmC">104</span>
           <span class="bestC"><span class="pct">88%</span></span>
@@ -485,8 +496,39 @@
       <div class="two"><div class="field"><label>Grade (level)</label><input class="inp" placeholder="e.g. 3"></div><div class="field"><label>Tempo (BPM)</label><input class="inp" placeholder="e.g. 116"></div></div>
       <div class="two"><div class="field"><label>Time signature</label><input class="inp" placeholder="4/4"></div><div class="field"><label>Genre</label><input class="inp" placeholder="rock"></div></div>
       <div class="field"><label>Instruments / tags</label><div style="display:flex;gap:7px;flex-wrap:wrap"><span class="chip on">drums</span><span class="chip">guitar</span><span class="chip">+ tag</span></div></div>
-      <div class="field"><label>Lesson steps <span class="faint">(lessons only — each step: notation + start→goal BPM)</span></label><div class="addstep"><span class="material-symbols-outlined">add</span> Add a step (Hi-hat only · 60→90…)</div></div>
+      <div class="field"><label>Lesson steps <span class="faint">(lessons only — each: notation + start→goal BPM)</span></label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:9px">
+          <div class="stepmini"><span class="no">1</span> Hi-hat only <span class="faint">· alphaTex · 60→90</span><span class="sp"></span><span class="material-symbols-outlined ic" onclick="go('addstep')">edit</span><span class="material-symbols-outlined ic">delete</span></div>
+          <div class="stepmini"><span class="no">2</span> + Kick <span class="faint">· alphaTex · 70→100</span><span class="sp"></span><span class="material-symbols-outlined ic" onclick="go('addstep')">edit</span><span class="material-symbols-outlined ic">delete</span></div>
+        </div>
+        <div class="addstep" onclick="go('addstep')"><span class="material-symbols-outlined">add</span> Add a step</div></div>
       <div class="actions"><button class="btn btn-primary"><span class="material-symbols-outlined">save</span> Save draft</button><button class="btn btn-ghost" onclick="go('catalog')">Cancel</button></div>
+    </div>
+  </section>
+
+  <!-- ===== ADD STEP — lesson step editor (H-1 flow · H-2 alphaTex admin source) ===== -->
+  <section class="screen" id="addstep">
+    <button class="backlink" onclick="go('add')"><span class="material-symbols-outlined">arrow_back</span> Lesson form</button>
+    <span class="adminbar"><span class="material-symbols-outlined" style="font-size:15px">shield_person</span> Admin · CMS</span>
+    <h1>Add a step</h1>
+    <div class="form" style="margin-top:18px">
+      <div class="field"><label>Step title</label><input class="inp" placeholder="e.g. Hi-hat only · + Kick · Chorus 1"></div>
+      <div class="field"><label>Notation source</label>
+        <div class="seg" id="srcseg">
+          <button onclick="stepSrc('upload',this)"><span class="material-symbols-outlined">upload_file</span> Upload <span class="faint" style="margin-left:4px">default</span></button>
+          <button class="sel" onclick="stepSrc('tex',this)"><span class="material-symbols-outlined">code</span> alphaTex <span class="admintag">admin</span></button>
+          <button onclick="stepSrc('song',this)"><span class="material-symbols-outlined">content_cut</span> From a song</button>
+        </div>
+        <div class="faint" style="font-size:11.5px;margin-top:7px">Users only ever upload. alphaTex (inline authoring) + song-slicing are admin-only.</div>
+      </div>
+      <div class="field srcbox" id="src-upload" style="display:none"><div class="drop"><span class="material-symbols-outlined">upload_file</span><div style="margin-top:6px">Drop a .gp / .xml step file</div></div></div>
+      <div class="field srcbox" id="src-tex"><label>alphaTex <span class="faint">(authored inline — the common case for beats &amp; rudiments)</span></label>
+        <textarea class="inp tex" placeholder=":8 42 42 42 42 | 42 42 42 42      &lt;- hi-hat 8ths (alphaTex)"></textarea></div>
+      <div class="field srcbox" id="src-song" style="display:none"><label>Source song + bar range <span class="faint">(slice a published song)</span></label>
+        <input class="inp" placeholder="Search a published song…" style="width:100%;margin-bottom:10px">
+        <div class="two"><input class="inp" placeholder="start bar — e.g. 17"><input class="inp" placeholder="end bar — e.g. 24"></div></div>
+      <div class="two"><div class="field"><label>Start BPM</label><input class="inp" placeholder="60"></div><div class="field"><label>Goal BPM <span class="faint">(the ladder)</span></label><input class="inp" placeholder="90"></div></div>
+      <div class="actions"><button class="btn btn-primary" onclick="go('add')"><span class="material-symbols-outlined">save</span> Save step</button><button class="btn btn-ghost" onclick="go('add')">Cancel</button></div>
     </div>
   </section>
 
@@ -521,6 +563,8 @@
   function lessonKind(kind,btn){ btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
     document.querySelectorAll('#list-lessons .trow').forEach(c=>{ c.style.display=(kind==='all'||c.dataset.kind===kind)?'':'none'; }); }
   function toggleFilters(){ document.getElementById('fpanel').classList.toggle('open'); }
+  function stepSrc(which,btn){ document.querySelectorAll('#srcseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+    ['upload','tex','song'].forEach(s=>{ document.getElementById('src-'+s).style.display=(s===which)?'':'none'; }); }
 </script>
 </body>
 </html>
