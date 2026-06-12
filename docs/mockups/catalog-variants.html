@@ -255,8 +255,8 @@
     <div class="advsec">
       <div class="advlbl">Tags</div>
       <div class="advctl tokens" data-filter="tags">
-        <button class="chip on tok" data-val="ghost-notes">ghost-notes <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="syncopation">syncopation <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
         <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add tag…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
+        <button class="chip on tok" data-val="ghost-notes">ghost-notes <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="syncopation">syncopation <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
       </div>
     </div>
 
@@ -272,8 +272,8 @@
     <div class="advsec">
       <div class="advlbl">Pattern</div>
       <div class="advctl tokens" data-filter="pattern">
-        <button class="chip on tok" data-val="16th-note">16th-note <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
         <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add pattern…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
+        <button class="chip on tok" data-val="16th-note">16th-note <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
       </div>
     </div>
 
@@ -281,8 +281,8 @@
     <div class="advsec">
       <div class="advlbl">Key</div>
       <div class="advctl tokens" data-filter="key">
-        <button class="chip on tok" data-val="C">C <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="F#">F♯ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="Bb">B♭ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
         <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add key…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
+        <button class="chip on tok" data-val="C">C <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="F#">F♯ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="Bb">B♭ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
       </div>
     </div>
   </div>
@@ -456,7 +456,7 @@
   function tokAdd(ctl,val){ val=(val||'').trim(); if(!val) return; if(tokSel(ctl).indexOf(tokNorm(val))>-1) return;
     var chip=document.createElement('button'); chip.className='chip on tok'; chip.dataset.val=val;
     chip.innerHTML=val+' <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span>';
-    ctl.insertBefore(chip, ctl.querySelector('.tokin')); }
+    ctl.appendChild(chip); /* input is pinned left; new chips flow to the right */ }
   function tokSuggest(input){ var tokin=input.closest('.tokin'), ctl=input.closest('.advctl'), pop=tokin.querySelector('.tokpop');
     var f=ctl.dataset.filter, q=tokNorm(input.value), sel=tokSel(ctl);
     var opts=(TOK_OPTS[f]||[]).filter(function(o){ return sel.indexOf(tokNorm(o))<0 && tokNorm(o).indexOf(q)>-1; }).slice(0,8);
