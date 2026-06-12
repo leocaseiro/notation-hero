@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<!--
+  Notation Hero — BEST-score cell: option compare board.
+  5 alternatives to the bare "92% / 🏆100% / —" treatment, after UI research
+  (arcade rank grades, SRS pip meters, star tiers, progress meters).
+  Section 1 = at-a-glance matrix (treatment × score). Section 2 = switch one onto real rows.
+  Teal/D3 tokens from PR #23. Brand stays clear of purple.
+-->
+<html data-theme="light" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notation Hero — Best-score options</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+<style>
+  :root, [data-theme="dark"] {
+    --bg:#0C1117; --panel:#121821; --panel2:#18202B; --elevate:#1C2530;
+    --ink:#E8EDF3; --muted:#9AA6B4; --faint:#818B9A; --line:#222C39;
+    --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
+    --learn-text:#7FA9FF; --hover:rgba(255,255,255,.06); --glow:color-mix(in srgb,var(--accent) 42%,transparent);
+    --grade-green:#1FBF8F; --amber:#F0B23E;
+  }
+  [data-theme="light"] {
+    --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
+    --ink:#0F151C; --muted:#5A6472; --faint:#6B7480; --line:#E2E8F0;
+    --accent:#0F766E; --accenthi:#0D9488; --onaccent:#FFFFFF;
+    --learn-text:#1D4ED8; --hover:rgba(15,21,28,.05); --glow:color-mix(in srgb,var(--accent) 30%,transparent);
+    --grade-green:#009E73; --amber:#C97A14;
+  }
+  :root { --dur:200ms; --ease:cubic-bezier(.2,.6,.2,1); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Hanken Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease); }
+  .num { font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums; }
+  .material-symbols-outlined { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal; line-height:1; text-transform:none; display:inline-block; white-space:nowrap; -webkit-font-feature-settings:'liga'; }
+  .muted{color:var(--muted)} .faint{color:var(--faint)}
+  .page{max-width:1040px;margin:0 auto;padding:22px 26px 100px;}
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
+  .mark{width:38px;height:34px;display:grid;place-items:center;color:var(--accent);flex:none;} .mark svg{width:100%;height:100%;overflow:visible;}
+  .logo{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:12px;}
+  .toggle-btn{width:38px;height:38px;border-radius:10px;border:.5px solid var(--line);background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;} .toggle-btn:hover{background:var(--hover);color:var(--ink);}
+  h1{font-family:'Bricolage Grotesque';font-size:21px;margin:14px 0 4px;}
+  .lead{color:var(--muted);font-size:13.5px;margin:0 0 4px;max-width:74ch;line-height:1.5;}
+  h2{font-family:'Bricolage Grotesque';font-size:15px;margin:30px 0 12px;display:flex;align-items:center;gap:9px;}
+  h2 .material-symbols-outlined{font-size:19px;color:var(--accent);}
+
+  /* ---- Section 1: matrix ---- */
+  .matrix{display:grid;grid-template-columns:240px repeat(5,1fr);border:.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);}
+  .matrix > div{padding:13px 14px;border-bottom:.5px solid var(--line);border-right:.5px solid var(--line);display:flex;align-items:center;}
+  .matrix > div:nth-child(6n){border-right:none;}
+  .matrix .mh{background:var(--elevate);font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700;justify-content:center;}
+  .matrix .mh.corner{justify-content:flex-start;}
+  .matrix .opt{flex-direction:column;align-items:flex-start;gap:3px;}
+  .matrix .opt .on{font-weight:700;font-size:13.5px;color:var(--ink);} .matrix .opt .od{font-size:11.5px;color:var(--muted);line-height:1.35;}
+  .matrix .cell{justify-content:center;}
+  .matrix .rowend{border-bottom:none;}
+  .scen{font-size:10px;color:var(--faint);} .scen b{display:block;font-size:11px;color:var(--muted);font-family:'Geist Mono';}
+
+  /* ---- Section 2: in-context list ---- */
+  .seg{display:inline-flex;flex-wrap:wrap;background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:3px;gap:2px;margin-bottom:14px;}
+  .seg button{font-family:'Hanken Grotesk';font-weight:600;font-size:12.5px;padding:8px 13px;border:none;background:transparent;color:var(--muted);border-radius:9px;cursor:pointer;}
+  .seg button:hover:not(.sel){color:var(--ink);} .seg button.sel{background:var(--accent);color:var(--onaccent);}
+  .thead,.trow{display:grid;grid-template-columns:1fr 56px 70px 116px 44px;align-items:center;gap:12px;}
+  .thead{padding:4px 14px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:700;} .thead .c{text-align:center} .thead .r{text-align:right}
+  .tbody{display:flex;flex-direction:column;gap:7px;}
+  .trow{background:var(--panel);border:.5px solid var(--line);border-radius:12px;padding:11px 14px;}
+  .nameC{display:flex;align-items:center;gap:11px;min-width:0;}
+  .cover{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);} .cover .material-symbols-outlined{font-size:20px;}
+  .nmtitle{font-weight:600;font-size:14px;color:var(--ink);} .nmsub{color:var(--muted);font-size:11.5px;margin-top:2px;}
+  .levelC{display:flex;justify-content:center;} .bpmC{text-align:right;font-family:'Geist Mono';font-size:13px;}
+  .bestC{display:flex;justify-content:flex-end;align-items:center;}
+  .grade{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-family:'Geist Mono';font-weight:700;font-size:12.5px;border:2px solid var(--accent);color:var(--accent);}
+  .playC{display:flex;justify-content:flex-end;} .play{width:34px;height:34px;border-radius:50%;background:var(--panel);color:var(--accent);border:none;display:grid;place-items:center;cursor:pointer;} .play .material-symbols-outlined{font-size:24px;}
+
+  /* ============ THE 5 TREATMENTS ============ */
+  /* current */
+  .b-pct{color:var(--grade-green);font-weight:700;font-family:'Geist Mono';font-size:13px;}
+  .b-none{color:var(--faint);}
+  .b-full{background:var(--accent);color:var(--onaccent);font-family:'Geist Mono';font-weight:700;padding:3px 8px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;font-size:12px;} .b-full .material-symbols-outlined{font-size:13px;}
+  /* ① letter grade */
+  .lg{display:inline-grid;place-items:center;width:27px;height:27px;border-radius:8px;font-family:'Geist Mono';font-weight:700;font-size:13px;}
+  .lg-s{background:var(--accent);color:var(--onaccent);box-shadow:0 2px 8px var(--glow);}
+  .lg-a{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);}
+  .lg-b{background:var(--panel2);color:var(--ink);border:.5px solid var(--line);}
+  .lg-c{background:var(--panel2);color:var(--muted);border:.5px solid var(--line);}
+  .lg-none{border:1.5px dashed var(--line);color:var(--faint);}
+  /* ② score chip */
+  .sc{display:inline-flex;align-items:center;gap:3px;font-family:'Geist Mono';font-weight:700;font-size:12px;padding:4px 10px;border-radius:999px;}
+  .sc .material-symbols-outlined{font-size:13px;}
+  .sc-master{background:var(--accent);color:var(--onaccent);}
+  .sc-hi{background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);}
+  .sc-mid{background:var(--panel2);color:var(--ink);border:.5px solid var(--line);}
+  .sc-lo{background:var(--panel2);color:var(--muted);border:.5px solid var(--line);}
+  .sc-none{border:1px dashed var(--line);color:var(--faint);padding:4px 11px;border-radius:999px;font-family:'Geist Mono';font-size:12px;}
+  /* ③ pip meter */
+  .pips{display:inline-flex;gap:4px;align-items:center;}
+  .pip{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--line);box-sizing:border-box;}
+  .pip.on{background:var(--accent);border-color:var(--accent);}
+  /* ④ progress bar */
+  .barwrap{display:inline-flex;align-items:center;gap:8px;justify-content:flex-end;}
+  .bar{width:56px;height:6px;border-radius:3px;background:var(--panel2);overflow:hidden;border:.5px solid var(--line);}
+  .bar .fill{display:block;height:100%;background:var(--accent);border-radius:3px;}
+  .barpct{font-family:'Geist Mono';font-size:11.5px;color:var(--ink);min-width:34px;text-align:right;display:inline-flex;justify-content:flex-end;align-items:center;}
+  .barpct .chk{color:var(--accent);font-size:17px;}
+  /* ⑤ % + stars */
+  .starsrow{display:inline-flex;align-items:center;gap:7px;justify-content:flex-end;}
+  .spct{font-family:'Geist Mono';font-size:11.5px;color:var(--grade-green);font-weight:700;}
+  .stars{letter-spacing:1.5px;font-size:13px;}
+  .star{color:var(--line);} .star.on{color:var(--amber);}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <span class="logo" id="logo">__MARK__ NotationHero</span>
+    <span style="flex:1"></span>
+    <button class="toggle-btn" onclick="theme()" title="Toggle theme"><span class="material-symbols-outlined" id="themeicon">dark_mode</span></button>
+  </div>
+  <h1>“Best” score — pick a treatment</h1>
+  <p class="lead">Five alternatives to the bare <b>92% / 🏆 100% / —</b> cell, after UI research (arcade rank grades, spaced-repetition pip meters, star tiers, progress meters). All mapped to teal, all degrade to a clear <i>not-attempted</i> and a distinct <i>mastered</i> state.</p>
+
+  <h2><span class="material-symbols-outlined">table_rows</span> At a glance — every treatment across the score range</h2>
+  <div class="matrix" id="matrix"></div>
+
+  <h2><span class="material-symbols-outlined">preview</span> In context — switch one onto real rows</h2>
+  <div class="seg" id="seg"></div>
+  <div class="thead"><span>Name</span><span class="c">Level</span><span class="r">BPM</span><span class="r">Best</span><span></span></div>
+  <div class="tbody" id="list"></div>
+</div>
+
+<script>
+  var MARK='<span class="mark"><svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/><svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor"><path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z"/></svg></svg></span>';
+  document.getElementById('logo').innerHTML = document.getElementById('logo').innerHTML.replace('__MARK__', MARK);
+  function theme(){ var h=document.documentElement; var d=h.getAttribute('data-theme')==='dark'; h.setAttribute('data-theme',d?'light':'dark'); document.getElementById('themeicon').textContent=d?'dark_mode':'light_mode'; }
+
+  function gradeOf(s){ if(s==null)return null; if(s>=95)return 'S'; if(s>=85)return 'A'; if(s>=70)return 'B'; if(s>=55)return 'C'; return 'D'; }
+  function pipsCount(s){ if(s==null)return 0; if(s>=95)return 5; if(s>=85)return 4; if(s>=70)return 3; if(s>=55)return 2; return 1; }
+
+  function bestHTML(score, t){
+    var none = (score==null);
+    if(t==='current'){
+      if(none) return '<span class="b-none">—</span>';
+      if(score===100) return '<span class="b-full"><span class="material-symbols-outlined">emoji_events</span>100%</span>';
+      return '<span class="b-pct">'+score+'%</span>';
+    }
+    if(t==='letter'){
+      if(none) return '<span class="lg lg-none">—</span>';
+      var g=gradeOf(score);
+      return '<span class="lg lg-'+g.toLowerCase()+'">'+g+'</span>';
+    }
+    if(t==='chip'){
+      if(none) return '<span class="sc-none">—</span>';
+      if(score===100) return '<span class="sc sc-master"><span class="material-symbols-outlined">emoji_events</span>100</span>';
+      var tier = score>=85?'hi':(score>=70?'mid':'lo');
+      return '<span class="sc sc-'+tier+'">'+score+'%</span>';
+    }
+    if(t==='pips'){
+      var n=pipsCount(score), d='';
+      for(var i=0;i<5;i++) d+='<span class="pip'+(i<n?' on':'')+'"></span>';
+      return '<span class="pips">'+d+'</span>';
+    }
+    if(t==='bar'){
+      if(none) return '<span class="barwrap"><span class="bar"><span class="fill" style="width:0%"></span></span><span class="barpct faint">—</span></span>';
+      var m=(score===100);
+      return '<span class="barwrap"><span class="bar"><span class="fill" style="width:'+score+'%"></span></span><span class="barpct">'+(m?'<span class="material-symbols-outlined chk">check_circle</span>':score+'%')+'</span></span>';
+    }
+    if(t==='stars'){
+      if(none) return '<span class="b-none">—</span>';
+      var full=Math.round(score/20), st='';
+      for(var i=0;i<5;i++) st+='<span class="star'+(i<full?' on':'')+'">'+(i<full?'★':'☆')+'</span>';
+      return '<span class="starsrow"><span class="spct">'+score+'%</span><span class="stars">'+st+'</span></span>';
+    }
+    return '';
+  }
+
+  var OPTIONS=[
+    {key:'current', name:'Current', desc:'Bare % · 🏆 for 100 · — for new'},
+    {key:'letter',  name:'① Letter grade', desc:'S/A/B/C — arcade-native, one glyph, colourblind-safe'},
+    {key:'chip',    name:'② Score chip', desc:'Same number, reframed as a teal-tiered pill'},
+    {key:'pips',    name:'③ Pip meter', desc:'5 dots by tier — most compact, scans fast'},
+    {key:'bar',     name:'④ Progress bar', desc:'Exact fill — best for comparing rows at a glance'},
+    {key:'stars',   name:'⑤ % + stars', desc:'Your Stitch reference — number + 5-star gestalt'}
+  ];
+  var SCEN=[ {s:100,l:'Mastered'}, {s:92,l:'92%'}, {s:76,l:'76%'}, {s:64,l:'64%'}, {s:null,l:'New'} ];
+
+  // ---- Section 1: matrix ----
+  var mx=document.getElementById('matrix'); var h='';
+  h+='<div class="mh corner">Treatment</div>';
+  SCEN.forEach(function(sc){ h+='<div class="mh"><span class="scen"><b>'+(sc.s==null?'—':sc.s)+'</b>'+sc.l+'</span></div>'; });
+  OPTIONS.forEach(function(o,ri){
+    var last=(ri===OPTIONS.length-1);
+    h+='<div class="opt'+(last?' rowend':'')+'"><span class="on">'+o.name+'</span><span class="od">'+o.desc+'</span></div>';
+    SCEN.forEach(function(sc){ h+='<div class="cell'+(last?' rowend':'')+'">'+bestHTML(sc.s,o.key)+'</div>'; });
+  });
+  mx.innerHTML=h;
+
+  // ---- Section 2: switcher + list ----
+  var LIST=[
+    {title:'Light Pop', sub:'Pop · 4/4 · drums', lvl:2, bpm:120, best:100},
+    {title:'Stadium Beat', sub:'Rock · 4/4 · drums·guitar', lvl:3, bpm:116, best:92},
+    {title:'Funk Groove', sub:'Funk · 4/4 · drums', lvl:5, bpm:104, best:88},
+    {title:'Backbeat Basics', sub:'Rock · 4/4 · drums', lvl:2, bpm:96, best:76},
+    {title:'Shuffle Feel', sub:'Blues · 12/8 · drums', lvl:4, bpm:84, best:64},
+    {title:'Odd-Meter Étude', sub:'Jazz · 7/8 · drums', lvl:10, bpm:132, best:null}
+  ];
+  var current='letter';
+  var seg=document.getElementById('seg');
+  seg.innerHTML=OPTIONS.map(function(o){ return '<button class="'+(o.key===current?'sel':'')+'" onclick="pick(\''+o.key+'\',this)">'+o.name+'</button>'; }).join('');
+  function renderList(){
+    document.getElementById('list').innerHTML = LIST.map(function(o){
+      var lvl = o.lvl? '<span class="grade">'+o.lvl+'</span>' : '<span class="grade" style="border-style:dashed;border-color:var(--line);color:var(--faint)">–</span>';
+      return '<div class="trow"><div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>'
+        +'<div><div class="nmtitle">'+o.title+'</div><div class="nmsub">'+o.sub+'</div></div></div>'
+        +'<span class="levelC">'+lvl+'</span><span class="bpmC">'+o.bpm+'</span>'
+        +'<span class="bestC">'+bestHTML(o.best,current)+'</span>'
+        +'<span class="playC"><button class="play"><span class="material-symbols-outlined">play_circle</span></button></span></div>';
+    }).join('');
+  }
+  function pick(k,btn){ current=k; document.querySelectorAll('#seg button').forEach(function(b){b.classList.remove('sel');}); btn.classList.add('sel'); renderList(); }
+  renderList();
+</script>
+</body>
+</html>
