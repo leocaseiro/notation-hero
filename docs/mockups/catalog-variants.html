@@ -122,6 +122,22 @@
   .fitem:hover{background:var(--hover);} .fitem .material-symbols-outlined{font-size:18px;color:var(--muted);}
   .fitem.sel{color:var(--accent);} .fitem.sel .material-symbols-outlined{color:var(--accent);}
   .fitem .check{margin-left:auto;font-size:17px;opacity:0;} .fitem.sel .check{opacity:1;}
+  /* Jira compound filter chips */
+  .fchip{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:9px;background:var(--panel2);font-family:'Hanken Grotesk';font-weight:600;font-size:13px;cursor:pointer;}
+  .fchip:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));}
+  .fchip .field{padding:7px 9px;color:var(--muted);} .fchip .caret{padding:7px 7px 7px 3px;color:var(--muted);font-size:18px;}
+  .fchip.active{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--panel2));}
+  .fchip.active .field{color:var(--accent);font-weight:700;}
+  .fchip .op{padding:7px 8px;color:var(--ink);font-family:'Geist Mono';font-size:11.5px;border-left:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));border-right:1px solid color-mix(in srgb,var(--accent) 28%,var(--line));}
+  .fchip .val{padding:7px 8px;color:var(--ink);} .fchip .cnt{background:var(--accent);color:var(--onaccent);font-size:10px;font-weight:700;border-radius:999px;padding:1px 6px;margin-right:4px;}
+  .fpop{position:absolute;top:calc(100% + 6px);left:0;z-index:45;width:238px;background:var(--bg);border:.5px solid var(--line);border-radius:12px;box-shadow:0 16px 44px rgba(0,0,0,.22);padding:8px;display:none;}
+  .fpop.open{display:block;}
+  .opsel{display:flex;align-items:center;justify-content:space-between;border:.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--muted);margin-bottom:8px;} .opsel .material-symbols-outlined{font-size:16px;}
+  .fopt{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer;} .fopt:hover{background:var(--hover);}
+  .fopt .box{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;color:var(--onaccent);} .fopt .box .material-symbols-outlined{font-size:14px;opacity:0;}
+  .fopt.on .box{background:var(--accent);border-color:var(--accent);} .fopt.on .box .material-symbols-outlined{opacity:1;}
+  .fopt .ic{color:var(--muted);font-size:18px;}
+  .fpop .foot{border-top:.5px solid var(--line);margin-top:6px;padding-top:4px;} .fpop .foot a{color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer;padding:7px 9px;display:inline-block;}
 
   /* Variant B — left rail */
   .shell{display:grid;grid-template-columns:230px 1fr;gap:22px;align-items:start;}
@@ -181,18 +197,26 @@
   </div>
   <div class="filterbar">
     <div class="fdrop" id="kindDrop" style="display:none">
-      <button class="fbtn" onclick="toggleMenu('kindMenu',event)"><span class="material-symbols-outlined">apps</span> All <span class="material-symbols-outlined caret">expand_more</span></button>
-      <div class="fmenu" id="kindMenu">
-        <div class="fitem sel" onclick="pickKind(this,'all')"><span class="material-symbols-outlined">apps</span> All<span class="material-symbols-outlined check">check</span></div>
-        <div class="fitem" onclick="pickKind(this,'beat')"><span class="material-symbols-outlined">graphic_eq</span> Beats<span class="material-symbols-outlined check">check</span></div>
-        <div class="fitem" onclick="pickKind(this,'rud')"><span class="material-symbols-outlined">drag_indicator</span> Rudiments<span class="material-symbols-outlined check">check</span></div>
-        <div class="fitem" onclick="pickKind(this,'fill')"><span class="material-symbols-outlined">bolt</span> Fills<span class="material-symbols-outlined check">check</span></div>
+      <button class="fchip active" id="kindChip" onclick="toggleMenu('kindPop',event)"><span class="field">Kind</span><span class="op">is</span><span class="val">Beats</span><span class="caret material-symbols-outlined">expand_more</span></button>
+      <div class="fpop" id="kindPop">
+        <div class="opsel">Kind is any of <span class="material-symbols-outlined">unfold_more</span></div>
+        <div class="fopt on" onclick="kPick(this,'beat',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">graphic_eq</span> Beats</div>
+        <div class="fopt" onclick="kPick(this,'rud',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">drag_indicator</span> Rudiments</div>
+        <div class="fopt" onclick="kPick(this,'fill',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">bolt</span> Fills</div>
+        <div class="foot"><a onclick="kClear(event)">Clear selection</a></div>
       </div>
     </div>
-    <button class="fbtn">Level: ≤ 4 <span class="material-symbols-outlined caret">expand_more</span></button>
-    <button class="fbtn">Tempo: 80–120 <span class="material-symbols-outlined caret">expand_more</span></button>
-    <button class="fbtn">Time: 4/4 <span class="material-symbols-outlined caret">expand_more</span></button>
-    <button class="fbtn"><span class="material-symbols-outlined">graphic_eq</span> Drums <span class="material-symbols-outlined caret">expand_more</span></button>
+    <div class="fdrop">
+      <button class="fchip active" onclick="toggleMenu('lvlPop',event)"><span class="field">Level</span><span class="op">≤</span><span class="val">4</span><span class="caret material-symbols-outlined">expand_more</span></button>
+      <div class="fpop" id="lvlPop">
+        <div class="opsel">Level is at most (≤) <span class="material-symbols-outlined">unfold_more</span></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding:3px 4px 4px"><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">1</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">2</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">3</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">4</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">5</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">6</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">8</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">10</span></div>
+        <div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>
+      </div>
+    </div>
+    <button class="fchip active"><span class="field">Tempo</span><span class="op">range</span><span class="val">80–120</span><span class="caret material-symbols-outlined">expand_more</span></button>
+    <button class="fchip active"><span class="field">Time</span><span class="op">=</span><span class="val">4/4</span><span class="caret material-symbols-outlined">expand_more</span></button>
+    <button class="fchip"><span class="field">Instrument</span><span class="caret material-symbols-outlined">expand_more</span></button>
     <button class="chip"><span class="material-symbols-outlined">add</span> More</button>
     <span style="flex:1"></span><span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
   </div>
@@ -328,13 +352,15 @@
     document.getElementById('kindDrop').style.display = which==='lessons'?'':'none';
     document.getElementById('tblA-songs').style.display = which==='songs'?'':'none';
     document.getElementById('tblA-lessons').style.display = which==='lessons'?'':'none'; }
-  function toggleMenu(id,ev){ ev.stopPropagation(); var m=document.getElementById(id); var open=m.classList.contains('open'); document.querySelectorAll('.fmenu').forEach(x=>x.classList.remove('open')); if(!open) m.classList.add('open'); }
-  document.addEventListener('click',function(){ document.querySelectorAll('.fmenu').forEach(x=>x.classList.remove('open')); });
-  function pickKind(el,kind){ el.parentNode.querySelectorAll('.fitem').forEach(i=>i.classList.remove('sel')); el.classList.add('sel');
-    var map={all:['apps','All'],beat:['graphic_eq','Beats'],rud:['drag_indicator','Rudiments'],fill:['bolt','Fills']};
-    document.querySelector('#kindDrop .fbtn').innerHTML='<span class="material-symbols-outlined">'+map[kind][0]+'</span> '+map[kind][1]+' <span class="material-symbols-outlined caret">expand_more</span>';
-    document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){ r.style.display=(kind==='all'||r.dataset.kind===kind)?'':'none'; });
-    document.getElementById('kindMenu').classList.remove('open'); }
+  function toggleMenu(id,ev){ ev.stopPropagation(); var m=document.getElementById(id); var open=m.classList.contains('open'); document.querySelectorAll('.fpop').forEach(x=>x.classList.remove('open')); if(!open) m.classList.add('open'); }
+  document.addEventListener('click',function(){ document.querySelectorAll('.fpop').forEach(x=>x.classList.remove('open')); });
+  var kSel = {beat:true};
+  function kPick(el,kind,ev){ ev.stopPropagation(); if(kSel[kind]){ delete kSel[kind]; el.classList.remove('on'); } else { kSel[kind]=true; el.classList.add('on'); } kUpdate(); }
+  function kClear(ev){ ev.stopPropagation(); kSel={}; document.querySelectorAll('#kindPop .fopt').forEach(o=>o.classList.remove('on')); kUpdate(); }
+  function kUpdate(){ var arr=Object.keys(kSel); var map={beat:'Beats',rud:'Rudiments',fill:'Fills'}; var chip=document.getElementById('kindChip');
+    if(arr.length===0){ chip.className='fchip'; chip.innerHTML='<span class="field">Kind</span><span class="caret material-symbols-outlined">expand_more</span>'; }
+    else { var extra=arr.length>1?'<span class="cnt">+'+(arr.length-1)+'</span>':''; chip.className='fchip active'; chip.innerHTML='<span class="field">Kind</span><span class="op">is</span><span class="val">'+map[arr[0]]+'</span>'+extra+'<span class="caret material-symbols-outlined">expand_more</span>'; }
+    document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){ r.style.display=(arr.length===0||kSel[r.dataset.kind])?'':'none'; }); }
 </script>
 </body>
 </html>
