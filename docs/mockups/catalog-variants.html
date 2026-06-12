@@ -142,8 +142,13 @@
   .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 12px;}
   .vsep{width:1px;height:24px;background:var(--line);}
   .fbtn.on{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:var(--accent);color:var(--accent);} .fbtn.on .material-symbols-outlined{color:var(--accent);}
-  .advrow{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:11px 13px;background:var(--panel);border:.5px solid var(--line);border-radius:12px;}
+  .advrow{display:none;flex-direction:column;gap:10px;margin:0 0 14px;padding:14px 16px;background:var(--panel);border:.5px solid var(--line);border-radius:12px;}
   .advrow.open{display:flex;}
+  .advhd{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--faint);}
+  .advsec{display:flex;align-items:flex-start;gap:14px;}
+  .advsec .advlbl{width:70px;flex:none;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700;padding-top:8px;}
+  .advsec .advctl{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1;min-width:0;}
+  .advsec .advctl.tempo{gap:12px;min-height:31px;}
 
   /* Variant B — left rail */
   .shell{display:grid;grid-template-columns:230px 1fr;gap:22px;align-items:start;}
@@ -212,83 +217,56 @@
     <span style="flex:1"></span>
     <span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
   </div>
-  <!-- advanced row — shown only when More is toggled; each chip now opens the SAME Jira-style menu as the primary row -->
+  <!-- advanced panel — shown when More is toggled; ALL options inline (range or chips), NO dropdowns -->
   <div class="advrow" id="advRow">
-    <span class="faint" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Advanced</span>
+    <div class="advhd">Advanced</div>
 
-    <!-- Tempo — range: the dual-handle BPM slider, brought into the advanced panel -->
-    <div class="fdrop"><button class="fbtn" onclick="toggleMenu('tempoPop',event)">Tempo: 80–120 <span class="material-symbols-outlined caret">expand_more</span></button>
-      <div class="fpop" id="tempoPop">
-        <div class="opsel">Tempo is between <span class="material-symbols-outlined">unfold_more</span></div>
-        <div style="padding:16px 11px 8px" onclick="event.stopPropagation()">
-          <span class="minirange" style="width:100%;display:block"><span class="sel"></span><span class="h a"></span><span class="h b"></span></span>
-          <div class="num faint" style="font-size:11.5px;text-align:center;margin-top:13px">80–120 BPM</div>
-        </div>
-        <div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>
+    <!-- Tempo — inline range (dual-handle BPM slider), no dropdown -->
+    <div class="advsec">
+      <div class="advlbl">Tempo</div>
+      <div class="advctl tempo">
+        <span class="minirange" style="display:block;width:158px"><span class="sel"></span><span class="h a"></span><span class="h b"></span></span>
+        <span class="num faint" style="font-size:11.5px">80–120 BPM</span>
       </div>
     </div>
 
-    <!-- Time — multi-select -->
-    <div class="fdrop"><button class="fbtn" onclick="toggleMenu('timePop',event)">Time: 4/4 <span class="material-symbols-outlined caret">expand_more</span></button>
-      <div class="fpop" id="timePop">
-        <div class="opsel">Time is any of <span class="material-symbols-outlined">unfold_more</span></div>
-        <div class="fopt on" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> 4/4</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> 3/4</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> 6/8</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> 7/8</div>
-        <div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>
+    <!-- Time — inline chips -->
+    <div class="advsec">
+      <div class="advlbl">Time</div>
+      <div class="advctl">
+        <button class="chip on" onclick="this.classList.toggle('on')">4/4</button><button class="chip" onclick="this.classList.toggle('on')">3/4</button><button class="chip" onclick="this.classList.toggle('on')">6/8</button><button class="chip" onclick="this.classList.toggle('on')">7/8</button><button class="chip" onclick="this.classList.toggle('on')">5/4</button>
       </div>
     </div>
 
-    <!-- Tags — multi-select -->
-    <div class="fdrop"><button class="fbtn" onclick="toggleMenu('tagPop',event)">Tags <span class="material-symbols-outlined caret">expand_more</span></button>
-      <div class="fpop" id="tagPop">
-        <div class="opsel">Tags is any of <span class="material-symbols-outlined">unfold_more</span></div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> ghost-notes</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> syncopation</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> shuffle</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> double-kick</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> linear</div>
-        <div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>
+    <!-- Tags — inline chips -->
+    <div class="advsec">
+      <div class="advlbl">Tags</div>
+      <div class="advctl">
+        <button class="chip on" onclick="this.classList.toggle('on')">ghost-notes</button><button class="chip" onclick="this.classList.toggle('on')">syncopation</button><button class="chip" onclick="this.classList.toggle('on')">shuffle</button><button class="chip" onclick="this.classList.toggle('on')">double-kick</button><button class="chip" onclick="this.classList.toggle('on')">linear</button>
       </div>
     </div>
 
-    <!-- Skill — multi-select with icons -->
-    <div class="fdrop"><button class="fbtn" onclick="toggleMenu('skillPop',event)">Skill <span class="material-symbols-outlined caret">expand_more</span></button>
-      <div class="fpop" id="skillPop">
-        <div class="opsel">Skill is any of <span class="material-symbols-outlined">unfold_more</span></div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">timer</span> Timing</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">call_split</span> Independence</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">tune</span> Control</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">sync</span> Coordination</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">speed</span> Speed</div>
-        <div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>
+    <!-- Skill — inline chips with icons -->
+    <div class="advsec">
+      <div class="advlbl">Skill</div>
+      <div class="advctl">
+        <button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">timer</span> Timing</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">call_split</span> Independence</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">tune</span> Control</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">sync</span> Coordination</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">speed</span> Speed</button>
       </div>
     </div>
 
-    <!-- Pattern — multi-select -->
-    <div class="fdrop"><button class="fbtn" onclick="toggleMenu('patPop',event)">Pattern <span class="material-symbols-outlined caret">expand_more</span></button>
-      <div class="fpop" id="patPop">
-        <div class="opsel">Pattern is any of <span class="material-symbols-outlined">unfold_more</span></div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> 8th-note</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> 16th-note</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> Triplets</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> Paradiddle</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> Single-stroke</div>
-        <div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>
+    <!-- Pattern — inline chips -->
+    <div class="advsec">
+      <div class="advlbl">Pattern</div>
+      <div class="advctl">
+        <button class="chip" onclick="this.classList.toggle('on')">8th-note</button><button class="chip" onclick="this.classList.toggle('on')">16th-note</button><button class="chip" onclick="this.classList.toggle('on')">Triplets</button><button class="chip" onclick="this.classList.toggle('on')">Paradiddle</button><button class="chip" onclick="this.classList.toggle('on')">Single-stroke</button>
       </div>
     </div>
 
-    <!-- Key — multi-select -->
-    <div class="fdrop"><button class="fbtn" onclick="toggleMenu('keyPop',event)">Key <span class="material-symbols-outlined caret">expand_more</span></button>
-      <div class="fpop" id="keyPop">
-        <div class="opsel">Key is any of <span class="material-symbols-outlined">unfold_more</span></div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> C major</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> G major</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> D major</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> A minor</div>
-        <div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span> E minor</div>
-        <div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>
+    <!-- Key — inline chips -->
+    <div class="advsec">
+      <div class="advlbl">Key</div>
+      <div class="advctl">
+        <button class="chip" onclick="this.classList.toggle('on')">C</button><button class="chip" onclick="this.classList.toggle('on')">G</button><button class="chip" onclick="this.classList.toggle('on')">D</button><button class="chip" onclick="this.classList.toggle('on')">A</button><button class="chip" onclick="this.classList.toggle('on')">E</button><button class="chip" onclick="this.classList.toggle('on')">F</button>
       </div>
     </div>
   </div>
