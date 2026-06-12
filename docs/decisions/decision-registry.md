@@ -10,6 +10,20 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-12 — File-level structure enforcement (ADR D1–D7 / PR #25 rework)
+
+Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-structure-enforcement-adr.md` (evidence: the same-dated spike + cross-ecosystem research). Reworks PR #25 from Option A (Pascal/camel + folder-per-entity) to **Option B (kebab-case + role suffix)**. Every rule fixture-verified, not vacuously green.
+
+**Status changes (effective on merge):**
+- `L2-tags` → **✅ done · 🤖**. `@nx/enforce-module-boundaries` tag rule wired in `.eslintrc.cjs` (PR #25, commit `96ddf1c`).
+- `DEPCR-files` → **✅ done · 🤖**. depcruise file-level bans live: H8 (handler↛@pulumi), H10 (core↛@aws-sdk), H11 (adapters↛apps/infra), **H9 widened** to `^(apps|core|adapters)/` (D3), plus **new `no-core-to-pulumi`** (D5). Top-level paths (`core/`/`adapters/`), not the registry's old `libs/`. Commit `84a2a87`.
+- `H7`/`H8`/`H9`/`H10`/`H11` → **✅ done · 🤖**. The DACI "keep BOTH depcruise + Nx" is now **empirically confirmed** by the spike — depcruise uniquely does cycles + orphans + graph viz under the legacy eslintrc (ESLint's `no-cycle`/`no-unused-modules` did not fire).
+- `CONV-1`/`CONV-2` → **📄→🤖**. `tooling/check-layout.sh` now machine-enforces no-`__tests__`/`__mocks__`/`stories` dirs (Rule 1) + co-located test sibling (Rule 3). **Folder-per-entity DROPPED** (D2) — the role suffix carries the role. Commit `827bee9`.
+- NEW `NAME-suffix` → **✅ done · 🤖**. kebab-case filenames + role suffix on every domain/app file. `check-file` `KEBAB_CASE` owns casing (commit `84d5c53`); `check-layout.sh` owns suffix-PRESENCE (ADR F-1, commit `827bee9`). Junk-drawer `*.manager`/`*.helper` banned. Pascal-vs-camel DangerJS task dropped (KAN-125 comment).
+- NEW `STRUCT-sibling` → **🟡 partial · 🤖**. `eslint-plugin-boundaries` v6 adopted for FILE-level layer direction with editor-realtime feedback (commit `96af4bb`); **sibling/internal isolation DEFERRED** (the v6-clean mechanism `entry-point` mandates per-feature barrels ADR §6.3 forbids; `no-private` is v6-deprecated; no intra-layer structure yet to verify against). Revisit at first-use.
+- NEW `STRICT-tiers` → **📄 prose-only**. Enforcement-tier ladder adopted (lint → test → compile); next lever is the tier-a compile wall via TS project references (elevates `L2-projref`, D7).
+- `L2-projref` → elevated to the next strictness lever (tier-a compile wall, D7); status unchanged (⏳ — not yet implemented).
+
 ### 2026-06-12 — KAN-137 CI architecture + KAN-143 .nvmrc (Theme 2 part 1)
 
 **Status changes (effective on merge):**
@@ -94,8 +108,8 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | PM-1            | Package manager = pnpm (only). Bun fully dropped; pnpm catalog centralizes versions; strict symlinked node_modules blocks phantom deps.                                                             | ✅ done           | 🤖  | DACI:123 |     |
 | L1              | L1 orchestrator = Nx (affected + computation cache + generators + enforce-module-boundaries). Self-hosted remote-cache plugin dropped (CVE-2025-36852); local cache + Nx Cloud free tier.           | ✅ done           | 🤖  | DACI:124 |     |
 | L2-pnpm         | Boundary axis (a): pnpm strict symlinked node_modules refuses to resolve packages not in dependencies (build-time block on illegal imports).                                                        | ✅ done           | 🤖  | DACI:125 |     |
-| L2-tags         | Boundary axis (b): Nx enforce-module-boundaries ESLint tag rule fails tag-violating imports (type:core/adapter/app/infra) even when the dep is declared.                                            | ⏳ pending        | 📄  | DACI:125 | 🟥  |
-| L2-projref      | Boundaries also use real workspace packages + TS project references; rejects tsconfig.paths as the boundary mechanism (2026 anti-pattern).                                                          | ⏳ pending        | 🟡  | DACI:125 |     |
+| L2-tags         | Boundary axis (b): Nx enforce-module-boundaries ESLint tag rule fails tag-violating imports (type:core/adapter/app/infra) even when the dep is declared.                                            | ✅ done           | 🤖  | DACI:125 |     |
+| L2-projref      | Boundaries also use real workspace packages + TS project references; rejects tsconfig.paths as the boundary mechanism (2026 anti-pattern). ADR D7: elevated to the next strictness lever — the tier-a compile wall. | ⏳ pending        | 🟡  | DACI:125 |     |
 | L2-depcruise    | dependency-cruiser kept for cycle-detection + graph viz alongside Nx tags (hexagonal DIRECTION rules as ERROR; no-circular).                                                                        | ✅ done           | 🤖  | DACI:125 |     |
 | L2-probes       | Committed self-testing probe suite under tooling/probes/ — one Vitest spec per boundary/dep-cruise rule asserting intentional violations FAIL in CI (guards against a rule being loosened).         | ⏳ pending        | 📄  | DACI:125 | 🟥  |
 | L3-eslint       | L3 lint = ESLint flat config as growable rule engine (Nx boundaries + @typescript-eslint type-aware + custom architectural rules). Biome-as-primary / Oxlint rejected.                              | 🔒 locked-active | 🟡  | DACI:126 |     |
@@ -106,9 +120,11 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | FOLD-hex        | Keep hexagonal core/ adapters/ apps/ infra/ materialized as real Nx libs/apps, each carrying a type: tag. Restructure rejected (no warrant to change shape).                                        | ✅ done           | 🟡  | DACI:128 |     |
 | FOLD-tagmap     | Tag map: core/->type:core, adapters/->type:adapter, apps/->type:app, infra/->type:infra. Tags drive the boundary ESLint rules.                                                                      | ✅ done           | 🟡  | DACI:128 |     |
 | FOLD-serverless | Serverless split per-Lambda into TWO Nx projects: apps/ (type:app, handler) + infra/ (type:infra, IaC), siblings; never colocate handler.ts + infra.ts. Colocation patterns rejected.               | ⏳ pending        | 📄  | DACI:128 | 🟥  |
-| DEPCR-files     | dependency-cruiser file-level bans: handler↛@pulumi/*, infra↛apps/libs source, core↛@aws-sdk/*, adapters↛apps/infra source (adapters horizontal; may import @aws-sdk + @core).                      | ⏳ pending        | 📄  | DACI:266 | 🟥  |
+| DEPCR-files     | dependency-cruiser file-level bans (top-level paths): handler↛@pulumi/* (H8), infra↛apps/core/adapters source (H9 widened, ADR D3), core↛@aws-sdk/* + core↛@pulumi/* (H10 + D5), adapters↛apps/infra source (H11). | ✅ done           | 🤖  | DACI:266 |     |
 | CONV-coloc      | Domain/feature-organized folders, one folder per unit; group by domain not file-type (no top-level **tests**/ or stories/ trees); tests + stories co-located with source.                           | ⏳ pending        | 📄  | DACI:226 | 🟥  |
 | CONV-orphans    | Configure no-orphans=error + Knip to treat *.test.* / *.stories.* as entry points/exclusions, and exclude them from coverage targets, so co-located tests/stories don't read as orphans.            | ⏳ pending        | 📄  | DACI:237 | 🟥  |
+| STRUCT-sibling  | eslint-plugin-boundaries (v6) for FILE-level layer direction with editor-realtime feedback (core→core; adapters→core,adapters; apps→…; infra→nothing in-repo). Sibling/internal isolation DEFERRED — entry-point mandates barrels §6.3 forbids; no intra-layer structure yet. | 🔒 locked-active | 🟡  | ADR:D4   | 🟥  |
+| STRICT-tiers    | Enforcement-tier ladder adopted: lint (Nx tags + depcruise + boundaries) → test → compile. Climb to tier-a (compile wall) via TS project references (elevates L2-projref).                          | 🔒 locked-active | 📄  | ADR:D7   | 🟥  |
 
 ## B · Test integrity & quality (L5)
 
@@ -215,14 +231,15 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 | ID     | Decision                                                                                                                                             | Status              | Enf | Source   | Gap |
 | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | --- | -------- | --- |
-| CONV-1 | Domain/feature-organized folders, one folder per unit; group by domain not file-type — NO top-level **tests**/ or stories/ trees.                    | 🔒 locked-active    | 📄  | DACI:226 | 🟥  |
-| CONV-2 | Tests (*.test.tsx, Vitest) and stories (*.stories.tsx, Storybook) co-located next to source; optional index.ts barrel.                               | 🔒 locked-active    | 📄  | DACI:227 | 🟥  |
+| CONV-1 | Domain/feature-organized folders; group by domain not file-type — NO top-level **tests**/ · **mocks**/ · stories/ dirs (check-layout Rule 1). 'One folder per unit' (folder-per-entity) DROPPED — the role suffix carries the role (see NAME-suffix). | 🔒 locked-active    | 🤖  | DACI:226 |     |
+| CONV-2 | Tests (*.test.ts, Vitest) and stories co-located next to source (check-layout Rule 3 — test requires source sibling). NO per-feature index.ts barrels (ADR §6.3 — public API is the Nx package entry).                               | 🔒 locked-active    | 🤖  | DACI:227 |     |
 | CONV-3 | Vitest test glob = **/*.test.{ts,tsx}; this is the discovery pattern for the test target.                                                            | 🔒 locked-active    | 🟡  | DACI:236 |     |
 | CONV-4 | Exclude *.test.* and *.stories.* from coverage targets — don't measure coverage of tests/stories.                                                    | ⏳ pending           | 📄  | DACI:236 | 🟥  |
 | CONV-5 | dependency-cruiser no-orphans promoted to error and must treat *.test.*/*.stories.* as entry points (else co-located tests/stories read as orphans). | ✅ done              | 🤖  | DACI:237 |     |
 | CONV-6 | Knip must treat *.test.*/*.stories.* as entry points/exclusions so co-located tests/stories aren't flagged as unused.                                | ⏳ pending           | 📄  | DACI:237 | 🟥  |
 | CONV-7 | Storybook stories glob = default **/*.stories.@(ts|tsx) (plural — the standard agents emit), so no corrections needed.                               | 💤 deferred-trigger | 📄  | DACI:238 |     |
 | CONV-8 | One structure encoded for everyone: AGENTS.md documents it, Nx generators emit it, gate configs know it — humans, agents, tools share one shape.     | 🔒 locked-active    | 🟡  | DACI:239 |     |
+| NAME-suffix | kebab-case filenames + a role suffix on every domain/app file (.entity/.value-object/.port/.adapter/.repository/.use-case/...); folder-per-entity DROPPED; junk-drawer *.manager/*.helper banned; Pascal-vs-camel DangerJS task dropped. check-file owns casing, check-layout owns suffix-presence (ADR F-1). | 🔒 locked-active    | 🤖  | ADR:D2   |     |
 
 ## H · Serverless project layout
 
@@ -234,11 +251,11 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 | H4  | Infra references the handler BUILD OUTPUT via FileArchive(apps//dist), never its source — so @pulumi never enters the Lambda bundle.                                            | ⏳ pending        | 📄  | DACI:255 | 🟥  |
 | H5  | Each apps/ sets targets.build.options.outputPath='dist'; apps/ and infra/ must be siblings under same parent so ../../apps//dist resolves.                                      | ⏳ pending        | 📄  | DACI:259 | 🟥  |
 | H6  | Wire the Nx graph the dist-link hides: infra/ sets implicitDependencies:[''] and deploy.dependsOn the handler build target.                                                     | ⏳ pending        | 📄  | DACI:260 | 🟥  |
-| H7  | dependency-cruiser owns the file/package-level bans Nx can't see; keep BOTH Nx boundaries and depcruise (this is why the DACI keeps depcruise).                                 | ⏳ pending        | 🟡  | DACI:266 | 🟥  |
-| H8  | depcruise rule: handler ↛ @pulumi/* — from ^apps/[^/]+/src to @pulumi/, severity error.                                                                                         | ⏳ pending        | 📄  | DACI:268 | 🟥  |
-| H9  | depcruise rule: infra ↛ apps/libs source — from ^infra/ to ^(apps|libs)/, severity error.                                                                                       | ⏳ pending        | 📄  | DACI:269 | 🟥  |
-| H10 | depcruise rule: core ↛ @aws-sdk/* — from ^libs/core/ to @aws-sdk/, severity error.                                                                                              | ⏳ pending        | 📄  | DACI:270 | 🟥  |
-| H11 | depcruise rule: adapters ↛ apps/infra source — from ^libs/adapters/ to ^(apps|infra)/, severity error (adapters are horizontal).                                                | ⏳ pending        | 📄  | DACI:271 | 🟥  |
+| H7  | dependency-cruiser owns the file/package-level bans Nx can't see; keep BOTH Nx boundaries and depcruise. Empirically confirmed by the 2026-06-12 spike — depcruise uniquely does cycles + orphans + graph viz under legacy eslintrc. | ✅ done           | 🤖  | DACI:266 |     |
+| H8  | depcruise rule: handler ↛ @pulumi/* — from ^apps/[^/]+/src to @pulumi/, severity error.                                                                                         | ✅ done           | 🤖  | DACI:268 |     |
+| H9  | depcruise rule: infra ↛ apps/core/adapters source — from ^infra/ to ^(apps\|core\|adapters)/, severity error (WIDENED, ADR D3; libs/ was vestigial — no libs/ dir).             | ✅ done           | 🤖  | DACI:269 |     |
+| H10 | depcruise rule: core ↛ @aws-sdk/* AND core ↛ @pulumi/* (D5 parity) — from ^core/ to @aws-sdk/ + @pulumi/, severity error.                                                        | ✅ done           | 🤖  | DACI:270 |     |
+| H11 | depcruise rule: adapters ↛ apps/infra source — from ^adapters/ to ^(apps\|infra)/, severity error (adapters are horizontal).                                                   | ✅ done           | 🤖  | DACI:271 |     |
 | H12 | Document the serverless handler-vs-IaC split in AGENTS.md so agents scaffold the apps/+infra/ shape correctly.                                                                  | ⏳ pending        | 📄  | DACI:303 |     |
 | H13 | Colocation patterns (CallbackFunction inline, CDK NodejsFunction next to source, SST) are REJECTED for this layer model — incompatible with Nx boundaries + per-fn nx affected. | 🔒 locked-active | —   | DACI:275 |     |
 
@@ -307,6 +324,8 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 ## 🟥 Lint backlog — decided rules NOT yet machine-enforced
 
 Each is a candidate lint/CI gate (Task 3). Most are deferred future tooling; the cheap-and-now subset is called out in the session notes.
+
+> **✅ Now enforced as of 2026-06-12 (PR #25 — moved out of this backlog; see the main tables for live status):** `L2-tags`, `DEPCR-files`, `H7`, `H8`, `H9` (widened to `apps|core|adapters`), `H10` (+ `core↛@pulumi`), `H11`, `CONV-1`/`CONV-2` (co-location via `check-layout.sh`), plus new `NAME-suffix` + `STRUCT-sibling`. Their rows below are **stale** (retained for history) — the `Suggested enforcement` text describing them as "prose only / not in config" no longer holds. A follow-up `docs(registry)` pass can prune them.
 
 | ID                      | Decision                                                                                                                                                                                                               | Suggested enforcement                                                                                                                                                                                                                                              | Source           |
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- |
