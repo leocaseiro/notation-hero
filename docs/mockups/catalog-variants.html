@@ -138,6 +138,12 @@
   .fopt.on .box{background:var(--accent);border-color:var(--accent);} .fopt.on .box .material-symbols-outlined{opacity:1;}
   .fopt .ic{color:var(--muted);font-size:18px;}
   .fpop .foot{border-top:.5px solid var(--line);margin-top:6px;padding-top:4px;} .fpop .foot a{color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer;padding:7px 9px;display:inline-block;}
+  /* single filter row + advanced row */
+  .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 12px;}
+  .vsep{width:1px;height:24px;background:var(--line);}
+  .fbtn.on{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:var(--accent);color:var(--accent);} .fbtn.on .material-symbols-outlined{color:var(--accent);}
+  .advrow{display:none;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px;padding:11px 13px;background:var(--panel);border:.5px solid var(--line);border-radius:12px;}
+  .advrow.open{display:flex;}
 
   /* Variant B — left rail */
   .shell{display:grid;grid-template-columns:230px 1fr;gap:22px;align-items:start;}
@@ -183,42 +189,38 @@
 
 <!-- ============ VARIANT A — top filter bar ============ -->
 <div class="vpage" id="vA">
-  <div class="vhint"><b>A · Top filter bar</b> — filters always visible in a bar under the tabs. Most discoverable; costs a little vertical space. Comfortable density.</div>
+  <div class="vhint"><b>A · single filter row</b> — songs/lessons · <b>dynamic</b> (Genre for songs, Kind for lessons) · level · instrument · More. <b>More</b> toggles a second advanced row. Upload sits in the top bar.</div>
   <div class="topbar">
     <span class="logo">__MARK__ NotationHero</span>
     <div class="searchwrap" style="flex:1"><span class="material-symbols-outlined">search</span><input class="inp" placeholder="Search songs &amp; lessons…"></div>
+    <button class="btn btn-secondary"><span class="material-symbols-outlined">upload</span> Upload</button>
     <button class="midi disconnected"><span class="material-symbols-outlined">piano</span></button>
     <button class="toggle-btn"><span class="material-symbols-outlined">settings</span></button>
   </div>
-  <div class="row" style="margin-bottom:4px">
+  <!-- SINGLE filter row -->
+  <div class="frow">
     <div class="seg" id="vA-tabs"><button class="sel" onclick="vaTab('songs',this)"><span class="material-symbols-outlined">music_note</span> Songs</button><button onclick="vaTab('lessons',this)"><span class="material-symbols-outlined">school</span> Lessons</button></div>
+    <span class="vsep"></span>
+    <div class="fdrop"><button class="fbtn" id="dynChip" onclick="toggleMenu('dynPop',event)">Genre <span class="material-symbols-outlined caret">expand_more</span></button><div class="fpop" id="dynPop"></div></div>
+    <div class="fdrop"><button class="fbtn" onclick="toggleMenu('lvlPop',event)">Level: ≤ 4 <span class="material-symbols-outlined caret">expand_more</span></button>
+      <div class="fpop" id="lvlPop"><div class="opsel">Level is at most (≤) <span class="material-symbols-outlined">unfold_more</span></div><div style="display:flex;gap:6px;flex-wrap:wrap;padding:3px 4px 4px"><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">1</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">2</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">3</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">4</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">5</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">6</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">8</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">10</span></div><div class="foot"><a onclick="event.stopPropagation()">Clear</a></div></div>
+    </div>
+    <div class="fdrop"><button class="fbtn" onclick="toggleMenu('instPop',event)">Instrument <span class="material-symbols-outlined caret">expand_more</span></button>
+      <div class="fpop" id="instPop"><div class="opsel">Instrument is any of <span class="material-symbols-outlined">unfold_more</span></div><div class="fopt on" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">graphic_eq</span> Drums</div><div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">queue_music</span> Guitar</div><div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">piano</span> Keys</div><div class="foot"><a onclick="event.stopPropagation()">Clear</a></div></div>
+    </div>
+    <button class="fbtn" id="moreBtn" onclick="toggleMore()"><span class="material-symbols-outlined">tune</span> More <span class="material-symbols-outlined caret">expand_more</span></button>
     <span style="flex:1"></span>
-    <button class="btn btn-secondary"><span class="material-symbols-outlined">upload</span> Upload</button>
+    <span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
   </div>
-  <div class="filterbar">
-    <div class="fdrop" id="kindDrop" style="display:none">
-      <button class="fbtn" id="kindChip" onclick="toggleMenu('kindPop',event)">Kind: Beats <span class="material-symbols-outlined caret">expand_more</span></button>
-      <div class="fpop" id="kindPop">
-        <div class="opsel">Kind is any of <span class="material-symbols-outlined">unfold_more</span></div>
-        <div class="fopt on" onclick="kPick(this,'beat',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">graphic_eq</span> Beats</div>
-        <div class="fopt" onclick="kPick(this,'rud',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">drag_indicator</span> Rudiments</div>
-        <div class="fopt" onclick="kPick(this,'fill',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">bolt</span> Fills</div>
-        <div class="foot"><a onclick="kClear(event)">Clear selection</a></div>
-      </div>
-    </div>
-    <div class="fdrop">
-      <button class="fbtn" onclick="toggleMenu('lvlPop',event)">Level: ≤ 4 <span class="material-symbols-outlined caret">expand_more</span></button>
-      <div class="fpop" id="lvlPop">
-        <div class="opsel">Level is at most (≤) <span class="material-symbols-outlined">unfold_more</span></div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap;padding:3px 4px 4px"><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">1</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">2</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">3</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">4</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">5</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">6</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">8</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">10</span></div>
-        <div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>
-      </div>
-    </div>
+  <!-- advanced row — shown only when More is toggled -->
+  <div class="advrow" id="advRow">
+    <span class="faint" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700">Advanced</span>
     <button class="fbtn">Tempo: 80–120 <span class="material-symbols-outlined caret">expand_more</span></button>
     <button class="fbtn">Time: 4/4 <span class="material-symbols-outlined caret">expand_more</span></button>
-    <button class="fbtn">Instrument <span class="material-symbols-outlined caret">expand_more</span></button>
-    <button class="chip"><span class="material-symbols-outlined">add</span> More</button>
-    <span style="flex:1"></span><span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
+    <button class="fbtn">Tags <span class="material-symbols-outlined caret">expand_more</span></button>
+    <button class="fbtn">Skill <span class="material-symbols-outlined caret">expand_more</span></button>
+    <button class="fbtn">Pattern <span class="material-symbols-outlined caret">expand_more</span></button>
+    <button class="fbtn">Key <span class="material-symbols-outlined caret">expand_more</span></button>
   </div>
   <div class="continue" style="margin-bottom:14px"><div class="cv"><span class="material-symbols-outlined">play_circle</span></div><div style="flex:1"><div class="clbl">Continue</div><h3>Stadium Beat</h3><div class="csub">last 82% · 116 <span class="num">BPM</span> · Chorus 1</div></div><button class="btn btn-primary"><span class="material-symbols-outlined">play_arrow</span> Resume</button></div>
   <div class="thead"><span>Name</span><span class="c">Level</span><span class="r">BPM</span><span class="r">Best</span><span></span></div>
@@ -349,18 +351,34 @@
   function closeStep(){ document.getElementById('stepModal').classList.remove('open'); }
   function stepSrc(which,btn){ document.querySelectorAll('#srcseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); ['upload','tex','song'].forEach(s=>{ document.getElementById('src-'+s).style.display=(s===which)?'':'none'; }); }
   function vaTab(which,btn){ document.querySelectorAll('#vA-tabs button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
-    document.getElementById('kindDrop').style.display = which==='lessons'?'':'none';
     document.getElementById('tblA-songs').style.display = which==='songs'?'':'none';
-    document.getElementById('tblA-lessons').style.display = which==='lessons'?'':'none'; }
+    document.getElementById('tblA-lessons').style.display = which==='lessons'?'':'none';
+    kSel={};
+    if(which==='lessons'){ document.getElementById('dynPop').innerHTML=KIND_MENU; document.getElementById('dynChip').innerHTML='Kind <span class="material-symbols-outlined caret">expand_more</span>'; document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){r.style.display='';}); }
+    else { document.getElementById('dynPop').innerHTML=GENRE_MENU; document.getElementById('dynChip').innerHTML='Genre <span class="material-symbols-outlined caret">expand_more</span>'; } }
   function toggleMenu(id,ev){ ev.stopPropagation(); var m=document.getElementById(id); var open=m.classList.contains('open'); document.querySelectorAll('.fpop').forEach(x=>x.classList.remove('open')); if(!open) m.classList.add('open'); }
   document.addEventListener('click',function(){ document.querySelectorAll('.fpop').forEach(x=>x.classList.remove('open')); });
-  var kSel = {beat:true};
-  function kPick(el,kind,ev){ ev.stopPropagation(); if(kSel[kind]){ delete kSel[kind]; el.classList.remove('on'); } else { kSel[kind]=true; el.classList.add('on'); } kUpdate(); }
-  function kClear(ev){ ev.stopPropagation(); kSel={}; document.querySelectorAll('#kindPop .fopt').forEach(o=>o.classList.remove('on')); kUpdate(); }
-  function kUpdate(){ var arr=Object.keys(kSel); var map={beat:'Beats',rud:'Rudiments',fill:'Fills'}; var chip=document.getElementById('kindChip');
-    var label = arr.length===0 ? 'Kind' : 'Kind: '+map[arr[0]]+(arr.length>1?' +'+(arr.length-1):'');
-    chip.innerHTML = label+' <span class="material-symbols-outlined caret">expand_more</span>';
-    document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){ r.style.display=(arr.length===0||kSel[r.dataset.kind])?'':'none'; }); }
+  var kSel = {};
+  var KIND_MENU = '<div class="opsel">Kind is any of <span class="material-symbols-outlined">unfold_more</span></div>'
+    +'<div class="fopt" onclick="kPick(this,\'beat\',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">graphic_eq</span> Beats</div>'
+    +'<div class="fopt" onclick="kPick(this,\'rud\',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">drag_indicator</span> Rudiments</div>'
+    +'<div class="fopt" onclick="kPick(this,\'fill\',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">bolt</span> Fills</div>'
+    +'<div class="foot"><a onclick="kClear(event)">Clear selection</a></div>';
+  var GENRE_MENU = '<div class="opsel">Genre is any of <span class="material-symbols-outlined">unfold_more</span></div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Rock</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Pop</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Funk</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Jazz</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Soul</div>'
+    +'<div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>';
+  document.getElementById('dynPop').innerHTML = GENRE_MENU;
+  function kPick(el,kind,ev){ ev.stopPropagation(); if(kSel[kind]){delete kSel[kind];el.classList.remove('on');}else{kSel[kind]=true;el.classList.add('on');}
+    var arr=Object.keys(kSel); var map={beat:'Beats',rud:'Rudiments',fill:'Fills'};
+    document.getElementById('dynChip').innerHTML=(arr.length?'Kind: '+map[arr[0]]+(arr.length>1?' +'+(arr.length-1):''):'Kind')+' <span class="material-symbols-outlined caret">expand_more</span>';
+    document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){r.style.display=(arr.length===0||kSel[r.dataset.kind])?'':'none';}); }
+  function kClear(ev){ ev.stopPropagation(); kSel={}; document.querySelectorAll('#dynPop .fopt').forEach(function(o){o.classList.remove('on');}); document.getElementById('dynChip').innerHTML='Kind <span class="material-symbols-outlined caret">expand_more</span>'; document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){r.style.display='';}); }
+  function gPick(el,ev){ ev.stopPropagation(); el.classList.toggle('on'); var sel=[].slice.call(document.querySelectorAll('#dynPop .fopt.on')).map(function(o){return o.textContent.trim();}); document.getElementById('dynChip').innerHTML=(sel.length?'Genre: '+sel[0]+(sel.length>1?' +'+(sel.length-1):''):'Genre')+' <span class="material-symbols-outlined caret">expand_more</span>'; }
+  function toggleMore(){ var a=document.getElementById('advRow'); var open=a.classList.toggle('open'); document.getElementById('moreBtn').classList.toggle('on',open); }
 </script>
 </body>
 </html>
