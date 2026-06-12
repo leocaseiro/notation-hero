@@ -111,6 +111,17 @@
   .filterbar .fg{display:inline-flex;align-items:center;gap:6px;} .filterbar .fglbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700;}
   .filterbar .sep{width:1px;height:22px;background:var(--line);margin:0 3px;}
   .minirange{width:96px;height:5px;border-radius:3px;background:var(--panel2);position:relative;} .minirange .sel{position:absolute;left:20%;right:42%;height:5px;border-radius:3px;background:var(--accent);} .minirange .h{position:absolute;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--accent);transform:translateX(-50%);} .minirange .h.a{left:20%}.minirange .h.b{left:58%}
+  /* Jira-style filter dropdowns */
+  .fdrop{position:relative;}
+  .fbtn{font-family:'Hanken Grotesk';font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border:.5px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:9px;cursor:pointer;}
+  .fbtn:hover{background:var(--elevate);border-color:color-mix(in srgb,var(--accent) 35%,var(--line));}
+  .fbtn .material-symbols-outlined{font-size:17px;color:var(--muted);} .fbtn .caret{font-size:18px;}
+  .fmenu{position:absolute;top:calc(100% + 6px);left:0;z-index:40;min-width:188px;background:var(--bg);border:.5px solid var(--line);border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.2);padding:6px;display:none;}
+  .fmenu.open{display:block;}
+  .fitem{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer;}
+  .fitem:hover{background:var(--hover);} .fitem .material-symbols-outlined{font-size:18px;color:var(--muted);}
+  .fitem.sel{color:var(--accent);} .fitem.sel .material-symbols-outlined{color:var(--accent);}
+  .fitem .check{margin-left:auto;font-size:17px;opacity:0;} .fitem.sel .check{opacity:1;}
 
   /* Variant B — left rail */
   .shell{display:grid;grid-template-columns:230px 1fr;gap:22px;align-items:start;}
@@ -169,12 +180,20 @@
     <button class="btn btn-secondary"><span class="material-symbols-outlined">upload</span> Upload</button>
   </div>
   <div class="filterbar">
-    <span class="fg" id="vA-kind" style="display:none"><span class="fglbl">Kind</span> <button class="chip on" onclick="vaKind('all',this)">All</button><button class="chip" onclick="vaKind('beat',this)">Beats</button><button class="chip" onclick="vaKind('rud',this)">Rudiments</button><button class="chip" onclick="vaKind('fill',this)">Fills</button><span class="sep" style="margin-left:7px"></span></span>
-    <div class="fg"><span class="fglbl">Level</span> <button class="chip on">≤ 4</button></div><span class="sep"></span>
-    <div class="fg"><span class="fglbl">BPM</span> <span class="minirange"><span class="sel"></span><span class="h a"></span><span class="h b"></span></span> <span class="num faint" style="font-size:11px">80–120</span></div><span class="sep"></span>
-    <div class="fg"><span class="fglbl">Time</span> <button class="chip">4/4</button></div><span class="sep"></span>
-    <button class="chip on"><span class="material-symbols-outlined">graphic_eq</span> Drums</button>
-    <button class="chip"><span class="material-symbols-outlined">tune</span> More</button>
+    <div class="fdrop" id="kindDrop" style="display:none">
+      <button class="fbtn" onclick="toggleMenu('kindMenu',event)"><span class="material-symbols-outlined">apps</span> All <span class="material-symbols-outlined caret">expand_more</span></button>
+      <div class="fmenu" id="kindMenu">
+        <div class="fitem sel" onclick="pickKind(this,'all')"><span class="material-symbols-outlined">apps</span> All<span class="material-symbols-outlined check">check</span></div>
+        <div class="fitem" onclick="pickKind(this,'beat')"><span class="material-symbols-outlined">graphic_eq</span> Beats<span class="material-symbols-outlined check">check</span></div>
+        <div class="fitem" onclick="pickKind(this,'rud')"><span class="material-symbols-outlined">drag_indicator</span> Rudiments<span class="material-symbols-outlined check">check</span></div>
+        <div class="fitem" onclick="pickKind(this,'fill')"><span class="material-symbols-outlined">bolt</span> Fills<span class="material-symbols-outlined check">check</span></div>
+      </div>
+    </div>
+    <button class="fbtn">Level: ≤ 4 <span class="material-symbols-outlined caret">expand_more</span></button>
+    <button class="fbtn">Tempo: 80–120 <span class="material-symbols-outlined caret">expand_more</span></button>
+    <button class="fbtn">Time: 4/4 <span class="material-symbols-outlined caret">expand_more</span></button>
+    <button class="fbtn"><span class="material-symbols-outlined">graphic_eq</span> Drums <span class="material-symbols-outlined caret">expand_more</span></button>
+    <button class="chip"><span class="material-symbols-outlined">add</span> More</button>
     <span style="flex:1"></span><span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
   </div>
   <div class="continue" style="margin-bottom:14px"><div class="cv"><span class="material-symbols-outlined">play_circle</span></div><div style="flex:1"><div class="clbl">Continue</div><h3>Stadium Beat</h3><div class="csub">last 82% · 116 <span class="num">BPM</span> · Chorus 1</div></div><button class="btn btn-primary"><span class="material-symbols-outlined">play_arrow</span> Resume</button></div>
@@ -306,11 +325,16 @@
   function closeStep(){ document.getElementById('stepModal').classList.remove('open'); }
   function stepSrc(which,btn){ document.querySelectorAll('#srcseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel'); ['upload','tex','song'].forEach(s=>{ document.getElementById('src-'+s).style.display=(s===which)?'':'none'; }); }
   function vaTab(which,btn){ document.querySelectorAll('#vA-tabs button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
-    document.getElementById('vA-kind').style.display = which==='lessons'?'':'none';
+    document.getElementById('kindDrop').style.display = which==='lessons'?'':'none';
     document.getElementById('tblA-songs').style.display = which==='songs'?'':'none';
     document.getElementById('tblA-lessons').style.display = which==='lessons'?'':'none'; }
-  function vaKind(kind,btn){ btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on')); btn.classList.add('on');
-    document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){ r.style.display=(kind==='all'||r.dataset.kind===kind)?'':'none'; }); }
+  function toggleMenu(id,ev){ ev.stopPropagation(); var m=document.getElementById(id); var open=m.classList.contains('open'); document.querySelectorAll('.fmenu').forEach(x=>x.classList.remove('open')); if(!open) m.classList.add('open'); }
+  document.addEventListener('click',function(){ document.querySelectorAll('.fmenu').forEach(x=>x.classList.remove('open')); });
+  function pickKind(el,kind){ el.parentNode.querySelectorAll('.fitem').forEach(i=>i.classList.remove('sel')); el.classList.add('sel');
+    var map={all:['apps','All'],beat:['graphic_eq','Beats'],rud:['drag_indicator','Rudiments'],fill:['bolt','Fills']};
+    document.querySelector('#kindDrop .fbtn').innerHTML='<span class="material-symbols-outlined">'+map[kind][0]+'</span> '+map[kind][1]+' <span class="material-symbols-outlined caret">expand_more</span>';
+    document.querySelectorAll('#tblA-lessons .trow').forEach(function(r){ r.style.display=(kind==='all'||r.dataset.kind===kind)?'':'none'; });
+    document.getElementById('kindMenu').classList.remove('open'); }
 </script>
 </body>
 </html>
