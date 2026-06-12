@@ -5,8 +5,9 @@
  *
  *   core      → may import: nothing in-repo (pure domain)
  *   adapters  → may import: core
- *   apps      → may import: core, adapters
- *   infra     → may import: adapters, apps (composition root)
+ *   apps      → may import: core, adapters   (runtime composition root; handler may import @core)
+ *   infra     → may import: NO in-repo source — IaC wires apps via build output (dist/package),
+ *               never a TS import of app/core/adapter source (H9, ADR 2026-06-12 D3)
  */
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -49,13 +50,18 @@ module.exports = {
       to: { path: "@pulumi/" },
     },
     {
-      name: "no-infra-to-app-or-lib-source",
+      name: "no-infra-to-app-or-domain-source",
       comment:
-        "H9: infra (IaC) references the handler/lib BUILD OUTPUT, never its SOURCE — it wires " +
-        "apps via FileArchive(apps/*/dist) + Nx implicitDependencies, not a TS import of source.",
+        "H9 (widened, ADR 2026-06-12 D3): infra/ is pure IaC — it must never import apps, core, " +
+        "or adapters SOURCE. It wires apps via FileArchive(apps/*/dist) + Nx implicitDependencies " +
+        "(build output), honoring registry H3 (infra imports @pulumi, never domain source) + H4 " +
+        "(references build output, not source). The runtime composition root is apps/ (the handler " +
+        "may import @core per H2), NOT infra/. Was ^(apps|libs)/ but libs/ is vestigial (no libs/ " +
+        "dir) so it only blocked infra->apps; widened to core+adapters. Shared deploy constants " +
+        "live in non-domain config, not core/.",
       severity: "error",
       from: { path: "^infra/" },
-      to: { path: "^(apps|libs)/" },
+      to: { path: "^(apps|core|adapters)/" },
     },
     {
       name: "no-core-to-aws-sdk",
@@ -65,6 +71,17 @@ module.exports = {
       severity: "error",
       from: { path: "^core/" },
       to: { path: "@aws-sdk/" },
+    },
+    {
+      name: "no-core-to-pulumi",
+      comment:
+        "H10 parity (ADR 2026-06-12 D5): core is pure domain — it must never import @pulumi/* " +
+        "(IaC). The spike found depcruise had core->@aws-sdk (H10) and apps->@pulumi (H8) but no " +
+        "core->@pulumi (only the ESLint core/ deny-list caught it); this restores symmetry in the " +
+        "CI backstop so depcruise's external bans are not asymmetric.",
+      severity: "error",
+      from: { path: "^core/" },
+      to: { path: "@pulumi/" },
     },
     {
       name: "no-adapters-to-app-or-infra-source",
