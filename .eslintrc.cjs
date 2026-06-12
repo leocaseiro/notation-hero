@@ -8,7 +8,7 @@ module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
   parserOptions: { ecmaVersion: 2022, sourceType: "module" },
-  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments"],
+  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments", "check-file"],
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -29,6 +29,31 @@ module.exports = {
       { "ts-ignore": true, "ts-nocheck": true, "ts-expect-error": "allow-with-description" },
     ],
     "@eslint-community/eslint-comments/require-description": ["error", { ignore: [] }],
+
+    // Filenames (CONV-1/CONV-2 + naming decision A/B): bar separators in TS filenames.
+    // The custom glob `+([a-zA-Z])*([a-zA-Z0-9])` = start with a letter, then letters/digits
+    // only — so it BANS kebab-case (publish-gates.ts) and snake_case (publish_gates.ts) while
+    // ALLOWING both PascalCase entities (Brand.ts) and camelCase utilities (publishGates.ts).
+    // The PascalCase-entity / camelCase-utility split is a *semantic* judgement (entity vs
+    // helper) that no glob can make — it lives in AGENTS.md, backed by naming-convention below.
+    // ignoreMiddleExtensions:true so a co-located `Brand.test.ts` is checked as `Brand`, not
+    // `Brand.test` (which would fail any single-token convention). check-file v3 ships only
+    // flat presets, but its *rules* register fine in this legacy eslintrc (see registry note).
+    // NOTE: folder-per-entity (folder name == file basename) is NOT expressible by check-file's
+    // folder-match-with-fex (static folder globs only) — tooling/check-layout.sh owns that.
+    "check-file/filename-naming-convention": [
+      "error",
+      { "**/*.{ts,tsx}": "+([a-zA-Z])*([a-zA-Z0-9])" },
+      { ignoreMiddleExtensions: true },
+    ],
+
+    // Identifiers (naming decision B): domain nouns are PascalCase — classes, interfaces,
+    // type aliases, enums, type parameters. Utility *values* stay camelCase via TS defaults;
+    // we only pin the type-level surface here to keep the rule low-noise on a pre-source repo.
+    "@typescript-eslint/naming-convention": [
+      "error",
+      { selector: "typeLike", format: ["PascalCase"] },
+    ],
   },
   ignorePatterns: ["dist", "node_modules", "*.cjs", "*.config.js", "*.config.ts"],
   overrides: [
