@@ -106,12 +106,13 @@ module.exports = {
     "arrow-body-style": ["error", "as-needed"],
 
     // Layer direction at the FILE/import level with editor-realtime feedback (ADR D4). Mirrors
-    // the hexagon: core→core only; adapters→core,adapters; apps→core,adapters,apps; infra→NOTHING
-    // in-repo (pure IaC — matches the widened H9 / depcruise no-infra-to-app-or-domain-source;
-    // infra wires apps via build output, not source). v6 object-selector syntax. The dependencies
-    // rule governs IN-REPO element imports only — infra can still import external @pulumi/* (that's
-    // boundaries/external's domain), so IaC is unaffected. depcruise is the CI backstop; Nx tags
-    // the PROJECT-level rule; this is the editor-realtime layer.
+    // the hexagon: core→core only; adapters→core,adapters; apps→core,adapters,apps; infra→infra
+    // only (pure IaC — never core/adapters/apps SOURCE; matches the widened H9 / depcruise +
+    // the Nx tag rule; infra wires apps via build output, not imports — ADR D3). infra→infra is
+    // allowed for IaC composition (a shared infra lib), same self-layer pattern as core→core.
+    // v6 object-selector syntax. The dependencies rule governs IN-REPO element imports only —
+    // infra can still import external @pulumi/* (that's boundaries/external's domain), so IaC is
+    // unaffected. depcruise is the CI backstop; Nx tags the PROJECT-level rule; this is editor-realtime.
     // DEFERRED (ADR D4 scoped down 2026-06-12): sibling/internal isolation (core/lesson-b ↛
     // core/lesson-a internals) is NOT wired — the v6-clean mechanism (boundaries/entry-point)
     // mandates per-feature index.ts barrels that ADR §6.3 forbids, no-private is v6-deprecated, and
@@ -124,7 +125,7 @@ module.exports = {
           { from: { type: "core" }, allow: { to: { type: ["core"] } } },
           { from: { type: "adapters" }, allow: { to: { type: ["core", "adapters"] } } },
           { from: { type: "apps" }, allow: { to: { type: ["core", "adapters", "apps"] } } },
-          { from: { type: "infra" }, disallow: { to: { type: "*" } } },
+          { from: { type: "infra" }, allow: { to: { type: ["infra"] } } },
         ],
       },
     ],
@@ -156,10 +157,13 @@ module.exports = {
       // cross-layer import even when the dependency is DECLARED, complementing dependency-cruiser
       // (path-based, .dependency-cruiser.cjs) + pnpm's declared-deps gate. Tags live in each
       // project.json; the tag map is documented in AGENTS.md. Direction:
-      //   core    -> core only            (pure domain)
-      //   adapter -> core + adapter        (implements ports; never apps/infra)
-      //   app     -> core + adapter + app  (never infra)
-      //   infra   -> anything              (composition root)
+      //   core    -> core only             (pure domain)
+      //   adapter -> core + adapter         (implements ports; never apps/infra)
+      //   app     -> core + adapter + app   (runtime composition root; may import @core)
+      //   infra   -> infra only             (pure IaC; never domain/app SOURCE — apps is the
+      //                                      composition root, NOT infra. Build-order to apps flows
+      //                                      via implicitDependencies (not imports), so it is
+      //                                      unaffected by this import rule. Matches H9/D3.)
       files: ["*.ts", "*.tsx"],
       rules: {
         "@nx/enforce-module-boundaries": [
@@ -170,10 +174,7 @@ module.exports = {
               { sourceTag: "type:core", onlyDependOnLibsWithTags: ["type:core"] },
               { sourceTag: "type:adapter", onlyDependOnLibsWithTags: ["type:core", "type:adapter"] },
               { sourceTag: "type:app", onlyDependOnLibsWithTags: ["type:core", "type:adapter", "type:app"] },
-              {
-                sourceTag: "type:infra",
-                onlyDependOnLibsWithTags: ["type:core", "type:adapter", "type:app", "type:infra"],
-              },
+              { sourceTag: "type:infra", onlyDependOnLibsWithTags: ["type:infra"] },
             ],
           },
         ],
