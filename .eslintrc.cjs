@@ -8,13 +8,30 @@ module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
   parserOptions: { ecmaVersion: 2022, sourceType: "module" },
-  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments", "check-file", "import-x", "@nx"],
+  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments", "check-file", "import-x", "@nx", "boundaries"],
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
     "plugin:@eslint-community/eslint-comments/recommended",
   ],
   env: { node: true, browser: true, es2022: true },
+  // eslint-plugin-boundaries (STRUCT-layer; ADR 2026-06-12 D4) — file/import-level layer
+  // direction with EDITOR-realtime feedback, complementing dependency-cruiser (CI backstop) and
+  // the Nx tag rule (PROJECT-level). Each immediate subfolder of a layer is one element of that
+  // layer's type (mode:folder). The node resolver is given TS extensions so it can map a resolved
+  // import to its element (without this, .ts targets resolve to "unknown"). JS-only resolver — no
+  // native unrs-resolver build (keeps `allowBuilds` clean; see KAN-158).
+  settings: {
+    "import/resolver": {
+      node: { extensions: [".ts", ".tsx", ".js", ".jsx", ".json"] },
+    },
+    "boundaries/elements": [
+      { type: "core", pattern: "core/*", mode: "folder" },
+      { type: "adapters", pattern: "adapters/*", mode: "folder" },
+      { type: "apps", pattern: "apps/*", mode: "folder" },
+      { type: "infra", pattern: "infra/*", mode: "folder" },
+    ],
+  },
   // ESLint-native equivalent of the plugin's (deprecated since v4.7.0) `no-unused-disable`.
   // Same effect, no plugin v5.0.0 removal risk. See decision-registry F3-noescape.
   reportUnusedDisableDirectives: true,
@@ -87,6 +104,30 @@ module.exports = {
     // Concise arrow bodies — AUTOFIXABLE, so the pipeline strips redundant `{ return x }`
     // wrappers to `=> x` mechanically. Low-stakes style the agent never has to think about.
     "arrow-body-style": ["error", "as-needed"],
+
+    // Layer direction at the FILE/import level with editor-realtime feedback (ADR D4). Mirrors
+    // the hexagon: core→core only; adapters→core,adapters; apps→core,adapters,apps; infra→NOTHING
+    // in-repo (pure IaC — matches the widened H9 / depcruise no-infra-to-app-or-domain-source;
+    // infra wires apps via build output, not source). v6 object-selector syntax. The dependencies
+    // rule governs IN-REPO element imports only — infra can still import external @pulumi/* (that's
+    // boundaries/external's domain), so IaC is unaffected. depcruise is the CI backstop; Nx tags
+    // the PROJECT-level rule; this is the editor-realtime layer.
+    // DEFERRED (ADR D4 scoped down 2026-06-12): sibling/internal isolation (core/lesson-b ↛
+    // core/lesson-a internals) is NOT wired — the v6-clean mechanism (boundaries/entry-point)
+    // mandates per-feature index.ts barrels that ADR §6.3 forbids, no-private is v6-deprecated, and
+    // there's no intra-layer structure yet (core/ is .gitkeep). Revisit at first-use (KAN follow-up).
+    "boundaries/dependencies": [
+      "error",
+      {
+        default: "disallow",
+        rules: [
+          { from: { type: "core" }, allow: { to: { type: ["core"] } } },
+          { from: { type: "adapters" }, allow: { to: { type: ["core", "adapters"] } } },
+          { from: { type: "apps" }, allow: { to: { type: ["core", "adapters", "apps"] } } },
+          { from: { type: "infra" }, disallow: { to: { type: "*" } } },
+        ],
+      },
+    ],
   },
   ignorePatterns: ["dist", "node_modules", "*.cjs", "*.config.js", "*.config.ts"],
   overrides: [
