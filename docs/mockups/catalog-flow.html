@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<!--
+  Notation Hero — CATALOG low-fi clickable FLOW · v2 (Stitch-table basis).
+  Decides "what shows when": Catalog (table) → Song/Lesson detail (+history) → Player/Results stubs.
+  Built on PR #23 locked tokens + component classes. Layout/positions are deliberately rough — flow first.
+  Tap a ROW body → detail. Row ▶ → quick-play. 🌙 = theme. + Add = CMS doorway. Filters open a panel.
+-->
+<html data-theme="light" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notation Hero — Catalog Flow v2 (low-fi)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+<style>
+  /* ===== PR #23 locked tokens (verbatim) ===== */
+  :root, [data-theme="dark"] {
+    --bg:#0C1117; --panel:#121821; --panel2:#18202B; --elevate:#1C2530;
+    --ink:#E8EDF3; --muted:#9AA6B4; --faint:#818B9A; --line:#222C39;
+    --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
+    --time:#2F6DF6; --danger:#FF6B6B; --on-danger:#2A0808; --learn-text:#7FA9FF; --hover:rgba(255,255,255,.06); --glow:color-mix(in srgb, var(--accent) 42%, transparent);
+    --grade-green:#1FBF8F;
+  }
+  [data-theme="light"] {
+    --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
+    --ink:#0F151C; --muted:#5A6472; --faint:#6B7480; --line:#E2E8F0;
+    --accent:#0F766E; --accenthi:#0D9488; --onaccent:#FFFFFF;
+    --time:#2F6DF6; --danger:#DC2626; --on-danger:#FFFFFF; --learn-text:#1D4ED8; --hover:rgba(15,21,28,.05); --glow:color-mix(in srgb, var(--accent) 30%, transparent);
+    --grade-green:#009E73;
+  }
+  :root { --dur-micro:90ms; --dur-fast:150ms; --dur:220ms; --ease:cubic-bezier(.2,.6,.2,1); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Hanken Grotesk',system-ui,sans-serif;
+    transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease); -webkit-font-smoothing:antialiased; }
+  .num { font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums; }
+  .material-symbols-outlined { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal;
+    line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap;
+    direction:ltr; -webkit-font-feature-settings:'liga'; -webkit-font-smoothing:antialiased; }
+
+  /* ===== reused components (PR #23) ===== */
+  .btn { font-family:'Hanken Grotesk'; font-weight:600; font-size:14px; line-height:1; padding:11px 17px; border-radius:10px;
+    border:.5px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+    transition:background-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), transform var(--dur-micro) var(--ease); }
+  .btn .material-symbols-outlined { font-size:18px; }
+  .btn:focus-visible { outline:none; box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+  .btn:active { transform:scale(.96); filter:brightness(.93); }
+  .btn-primary { background:var(--accent); color:var(--onaccent); }
+  .btn-primary:hover { background:var(--accenthi); box-shadow:0 3px 12px var(--glow); }
+  .btn-secondary { background:var(--panel2); color:var(--ink); border-color:var(--line); }
+  .btn-secondary:hover { background:var(--elevate); }
+  .btn-ghost { background:transparent; color:var(--muted); }
+  .btn-ghost:hover { background:var(--hover); color:var(--ink); }
+  .ibtn { width:40px; height:40px; border-radius:10px; border:.5px solid transparent; background:transparent; color:var(--muted);
+    display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+    transition:background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+  .ibtn:hover { background:var(--hover); color:var(--ink); }
+  .seg { display:inline-flex; background:var(--panel2); border:.5px solid var(--line); border-radius:12px; padding:3px; gap:2px; }
+  .seg button { font-family:'Hanken Grotesk'; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:6px;
+    padding:9px 15px; border:none; background:transparent; color:var(--muted); border-radius:9px; cursor:pointer;
+    transition:background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+  .seg button .material-symbols-outlined { font-size:18px; }
+  .seg button:hover:not(.sel) { color:var(--ink); }
+  .seg button.sel { background:var(--accent); color:var(--onaccent); }
+  .chip { font-family:'Hanken Grotesk'; font-weight:500; font-size:13px; padding:7px 13px; border-radius:999px; border:.5px solid var(--line);
+    background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+    transition:background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+  .chip:hover:not(.on) { background:var(--hover); color:var(--ink); }
+  .chip.on { background:var(--accent); color:var(--onaccent); border-color:transparent; }
+  .chip .material-symbols-outlined { font-size:16px; }
+  .inp { font-family:'Hanken Grotesk'; font-size:14px; color:var(--ink); background:var(--bg); border:.5px solid var(--line);
+    border-radius:10px; padding:11px 12px; outline:none; transition:border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+  .inp::placeholder { color:var(--faint); }
+  .inp:focus { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .pill { font-family:'Hanken Grotesk'; font-weight:600; font-size:10.5px; letter-spacing:.04em; text-transform:uppercase;
+    padding:4px 9px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; }
+  .pill-new { background:var(--panel2); color:var(--muted); }
+  .pill-learning { background:color-mix(in srgb, var(--learn-text) 18%, transparent); color:var(--learn-text); }
+  .pill-mastered { background:color-mix(in srgb, var(--accent) 16%, transparent); color:var(--accent); }
+  input[type=range] { accent-color:var(--accent); cursor:pointer; }
+
+  /* ===== app shell ===== */
+  .app { max-width:880px; margin:0 auto; padding:0 24px 130px; }
+  .topbar { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:10px; padding:16px 0 12px;
+    background:linear-gradient(var(--bg) 80%, transparent); }
+  .logo { font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:18px; letter-spacing:-.01em;
+    display:inline-flex; align-items:center; gap:10px; white-space:nowrap; }
+  /* brand mark: circle + play-arrow + music note */
+  .mark { width:32px; height:32px; border-radius:50%; background:var(--accent); color:var(--onaccent); position:relative;
+    display:grid; place-items:center; }
+  .mark .material-symbols-outlined { font-size:18px; }
+  .spacer { flex:1; }
+  .toggle-btn { width:40px; height:40px; border-radius:10px; border:.5px solid var(--line); background:transparent; color:var(--muted);
+    display:grid; place-items:center; cursor:pointer; transition:background-color var(--dur-fast) var(--ease); }
+  .toggle-btn:hover { background:var(--hover); color:var(--ink); }
+  .midi { width:40px; height:40px; border-radius:10px; display:grid; place-items:center; color:var(--muted); position:relative; border:.5px solid var(--line); }
+  .midi .material-symbols-outlined { font-size:20px; }
+  .midi.disconnected::after { content:''; position:absolute; left:50%; top:50%; width:22px; height:2px; border-radius:2px;
+    background:var(--muted); transform:translate(-50%,-50%) rotate(-45deg); opacity:.7; }
+  .addbtn { display:inline-flex; align-items:center; gap:6px; }
+
+  .screen { display:none; animation:fade var(--dur) var(--ease); }
+  .screen.active { display:block; }
+  @keyframes fade { from{opacity:0; transform:translateY(4px)} to{opacity:1; transform:none} }
+  h1 { font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:25px; margin:0 0 2px; letter-spacing:-.01em; }
+  h2 { font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:15px; margin:24px 0 11px; }
+  .muted{color:var(--muted)} .faint{color:var(--faint)}
+  .backlink { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--muted);
+    background:transparent; border:none; cursor:pointer; padding:8px 0; margin:4px 0; }
+  .backlink:hover { color:var(--accent); }
+  .backlink .material-symbols-outlined { font-size:18px; }
+
+  /* ===== design-choices strip (pick the look) ===== */
+  .choices { background:var(--panel); border:.5px dashed color-mix(in srgb,var(--accent) 45%,var(--line)); border-radius:14px;
+    padding:13px 16px; margin:2px 0 18px; display:flex; gap:26px; align-items:center; flex-wrap:wrap; font-size:12.5px; }
+  .choices .lbl { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent); font-weight:700; }
+  .choices .group { display:flex; gap:9px; align-items:center; }
+  .choices .x { margin-left:auto; cursor:pointer; color:var(--faint); }
+
+  /* ===== grade bullet (notehead-style; 1–2 digits) ===== */
+  .grade { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-family:'Geist Mono'; font-weight:700;
+    font-size:13px; flex:none; }
+  .grade.g-ink   { background:var(--ink);   color:var(--bg); }
+  .grade.g-green { background:var(--grade-green); color:#fff; }
+  .grade.g-teal  { background:var(--accent); color:var(--onaccent); }
+  .grade.g-soft  { background:color-mix(in srgb,var(--ink) 9%, transparent); color:var(--ink); border:.5px solid var(--line); }
+  .grade.ungraded { background:transparent; color:var(--faint); border:1px dashed var(--line); font-size:12px; }
+
+  /* ===== search + filters ===== */
+  .searchwrap { position:relative; margin:2px 0 14px; }
+  .searchwrap .material-symbols-outlined { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--faint); font-size:20px; }
+  .searchwrap .inp { width:100%; padding-left:42px; font-size:15px; }
+  .controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .sortwrap { margin-left:auto; display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:13px; cursor:pointer; }
+  .filterrow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+  .filterrow .sep { width:1px; height:22px; background:var(--line); margin:0 3px; }
+  /* filters panel (selected-state examples) */
+  .fpanel { display:none; background:var(--panel); border:.5px solid var(--line); border-radius:14px; padding:16px 18px; margin:4px 0 12px; }
+  .fpanel.open { display:block; }
+  .fgrid { display:grid; grid-template-columns:repeat(2,1fr); gap:18px 26px; }
+  .fblock .flbl { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); font-weight:700; margin-bottom:9px; display:flex; align-items:center; gap:8px; }
+  .opset { display:inline-flex; background:var(--panel2); border:.5px solid var(--line); border-radius:8px; padding:2px; }
+  .opset button { border:none; background:transparent; color:var(--muted); font-family:'Geist Mono'; font-weight:700; font-size:12px; padding:4px 8px; border-radius:6px; cursor:pointer; }
+  .opset button.sel { background:var(--accent); color:var(--onaccent); }
+  .gradepick { display:flex; gap:7px; flex-wrap:wrap; }
+  .gradepick .grade { width:26px; height:26px; font-size:12px; cursor:pointer; opacity:.4; }
+  .gradepick .grade.sel { opacity:1; box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--accent); }
+  .range { margin-top:4px; }
+  .rangebar { position:relative; height:5px; border-radius:3px; background:var(--panel2); }
+  .rangebar .sel { position:absolute; height:5px; left:18%; right:55%; background:var(--accent); border-radius:3px; }
+  .rangebar .h { position:absolute; top:-6px; width:16px; height:16px; border-radius:50%; background:var(--accent); transform:translateX(-50%); }
+  .rangelabel { font-family:'Geist Mono'; font-size:12px; color:var(--muted); margin-top:9px; }
+
+  /* ===== continue card ===== */
+  .continue { display:flex; align-items:center; gap:15px; border-radius:16px; padding:15px 18px; margin:6px 0 18px;
+    background:linear-gradient(100deg, color-mix(in srgb,var(--accent) 14%,var(--panel)), var(--panel));
+    border:.5px solid color-mix(in srgb,var(--accent) 30%,var(--line)); }
+  .continue .cv { width:50px; height:50px; border-radius:12px; background:var(--accent); color:var(--onaccent); display:grid; place-items:center; flex:none; }
+  .continue .cv .material-symbols-outlined { font-size:26px; }
+  .continue .clbl { font-size:10.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--accent); font-weight:700; }
+  .continue h3 { margin:2px 0 3px; font-family:'Bricolage Grotesque'; font-size:17px; font-weight:600; }
+  .continue .csub { color:var(--muted); font-size:12.5px; }
+
+  /* ===== Stitch-style table ===== */
+  .thead, .trow { display:grid; grid-template-columns:30px 1fr 58px 84px 104px 46px; align-items:center; gap:12px; }
+  .thead { padding:4px 14px 10px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); font-weight:700; }
+  .thead .r { text-align:right; } .thead .c { text-align:center; }
+  .tbody { display:flex; flex-direction:column; gap:7px; }
+  .trow { background:var(--panel); border:.5px solid var(--line); border-radius:13px; padding:11px 14px; cursor:pointer; color:var(--ink);
+    text-align:left; transition:transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+  .trow:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--accent) 45%,var(--line)); box-shadow:0 5px 18px color-mix(in srgb,var(--accent) 12%,transparent); }
+  .rnum { font-family:'Geist Mono'; font-size:12px; color:var(--faint); text-align:center; }
+  .nameC { display:flex; align-items:center; gap:12px; min-width:0; }
+  .cover { width:42px; height:42px; border-radius:10px; flex:none; display:grid; place-items:center;
+    background:color-mix(in srgb,var(--accent) 15%,transparent); color:var(--accent); }
+  .cover .material-symbols-outlined { font-size:22px; }
+  .cover.lesson { background:color-mix(in srgb,var(--learn-text) 15%,transparent); color:var(--learn-text); }
+  .nm { min-width:0; }
+  .nmtitle { font-weight:600; font-size:14.5px; color:var(--ink); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .nmsub { color:var(--muted); font-size:12px; margin-top:2px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .badge { font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:5px; background:var(--panel2); color:var(--muted); }
+  .badge.beat{ color:var(--accent); background:color-mix(in srgb,var(--accent) 14%,transparent);}
+  .badge.rud { color:var(--learn-text); background:color-mix(in srgb,var(--learn-text) 15%,transparent);}
+  .badge.fill{ color:#C77; background:color-mix(in srgb,#E0795F 16%,transparent);}
+  .flags { display:inline-flex; gap:6px; color:var(--faint); }
+  .flags .material-symbols-outlined { font-size:15px; }
+  .tempoC { text-align:right; font-family:'Geist Mono'; font-size:13px; color:var(--ink); }
+  .tempoC small { color:var(--faint); font-size:10px; }
+  .bestC { text-align:right; font-size:12.5px; }
+  .bestC .pct { color:var(--grade-green); font-weight:700; font-family:'Geist Mono'; }
+  .bestC .none { color:var(--faint); }
+  .levelC { display:flex; justify-content:center; }
+  .playC { display:flex; justify-content:flex-end; }
+  .play { width:36px; height:36px; border-radius:50%; background:var(--accent); color:var(--onaccent); border:none; display:grid; place-items:center;
+    cursor:pointer; transition:transform var(--dur-micro) var(--ease), background-color var(--dur-fast) var(--ease); }
+  .play:hover { background:var(--accenthi); } .play:active { transform:scale(.93); }
+  .play .material-symbols-outlined { font-size:20px; }
+
+  /* ===== detail ===== */
+  .dhead { display:flex; gap:18px; align-items:center; margin:4px 0; }
+  .dhead .cover { width:82px; height:82px; border-radius:18px; }
+  .dhead .cover .material-symbols-outlined { font-size:40px; }
+  .metaline { color:var(--muted); font-size:14px; margin-top:7px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .dot { width:3px;height:3px;border-radius:50%;background:var(--faint);display:inline-block;}
+  .actions { display:flex; gap:10px; flex-wrap:wrap; margin:20px 0 4px; }
+  .panel { background:var(--panel); border:.5px solid var(--line); border-radius:14px; padding:16px 18px; }
+  .tags { display:flex; gap:7px; flex-wrap:wrap; margin-top:13px; }
+  .tagmini { font-size:12px; color:var(--muted); background:var(--panel2); border:.5px solid var(--line); padding:4px 10px; border-radius:999px; }
+  /* history (per-item progress garnish) */
+  .histtop { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:6px; }
+  .stat { flex:1; min-width:120px; background:var(--panel); border:.5px solid var(--line); border-radius:12px; padding:13px 15px; }
+  .stat .k { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); font-weight:700; }
+  .stat .v { font-family:'Geist Mono'; font-weight:700; font-size:22px; margin-top:5px; }
+  .stat .v.good { color:var(--grade-green); }
+  .hrow { display:flex; align-items:center; justify-content:space-between; padding:10px 2px; border-bottom:.5px solid var(--line); font-size:13px; }
+  .hrow:last-child{border-bottom:none}
+  .hrow .when { color:var(--muted); }
+  .hrow .res { font-family:'Geist Mono'; }
+  .spark { display:flex; align-items:flex-end; gap:3px; height:30px; }
+  .spark i { width:7px; background:color-mix(in srgb,var(--accent) 45%,transparent); border-radius:2px 2px 0 0; }
+  .spark i.best { background:var(--accent); }
+
+  /* ===== steps (bigger numbers + best overall) ===== */
+  .bestoverall { display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); background:var(--panel2);
+    border:.5px solid var(--line); border-radius:999px; padding:6px 13px; }
+  .bestoverall b { color:var(--grade-green); font-family:'Geist Mono'; }
+  .steplist { display:flex; flex-direction:column; gap:8px; }
+  .step { display:flex; align-items:center; gap:15px; background:var(--panel); border:.5px solid var(--line); border-radius:12px; padding:13px 15px;
+    transition:border-color var(--dur-fast) var(--ease); }
+  .step:hover { border-color:color-mix(in srgb,var(--accent) 40%,var(--line)); }
+  .stepno { width:38px; height:38px; border-radius:11px; background:var(--panel2); color:var(--ink); display:grid; place-items:center;
+    font-family:'Geist Mono'; font-size:17px; font-weight:700; flex:none; }
+  .stepbody { flex:1; min-width:0; }
+  .steptitle { font-weight:600; font-size:15px; }
+  .stepsub { color:var(--faint); font-size:12.5px; margin-top:2px; }
+  .ladder { display:inline-flex; align-items:center; gap:7px; flex:none; }
+  .ladder .num { font-size:13px; color:var(--muted); } .ladder .arr { color:var(--faint); }
+  .ladder .bar { width:50px; height:5px; border-radius:3px; background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 25%,transparent)); }
+  .playmini { width:38px; height:38px; border-radius:50%; flex:none; background:var(--accent); color:var(--onaccent); display:grid; place-items:center; cursor:pointer; border:none; }
+  .playmini:hover { background:var(--accenthi); } .playmini .material-symbols-outlined{font-size:20px;}
+
+  /* ===== stubs ===== */
+  .stub { text-align:center; padding:44px 20px; border:1px dashed var(--line); border-radius:18px; background:var(--panel); margin-top:12px; }
+  .stub .big { width:70px; height:70px; border-radius:20px; margin:0 auto 14px; display:grid; place-items:center; background:color-mix(in srgb,var(--accent) 15%,transparent); color:var(--accent); }
+  .stub .big .material-symbols-outlined{font-size:36px;}
+  .stub h1 { font-size:21px; } .stub p { color:var(--muted); font-size:14px; max-width:430px; margin:8px auto 0; }
+  .donut { width:112px;height:112px;border-radius:50%;margin:0 auto;display:grid;place-items:center;background:conic-gradient(var(--accent) 0 92%, var(--panel2) 92% 100%);}
+  .donut .hole{width:82px;height:82px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-family:'Geist Mono';font-weight:700;font-size:23px;}
+  .faketl{max-width:360px;margin:20px auto 0;height:6px;border-radius:999px;background:var(--panel2);position:relative;}
+  .faketl .fill{position:absolute;left:0;top:0;height:6px;width:42%;border-radius:999px;background:var(--accent);}
+  .faketl .hd{position:absolute;top:-6px;left:42%;width:18px;height:18px;border-radius:50%;background:var(--accent);transform:translateX(-50%);}
+
+  /* ===== add / CMS form ===== */
+  .adminbar { display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--learn-text);
+    background:color-mix(in srgb,var(--learn-text) 14%,transparent); border-radius:999px; padding:5px 12px; margin-bottom:14px; }
+  .form { display:flex; flex-direction:column; gap:16px; }
+  .field { display:flex; flex-direction:column; gap:7px; }
+  .field label { font-size:12px; font-weight:600; color:var(--muted); }
+  .field .inp { width:100%; }
+  .drop { border:1.5px dashed color-mix(in srgb,var(--accent) 45%,var(--line)); border-radius:14px; padding:26px; text-align:center; color:var(--muted); background:color-mix(in srgb,var(--accent) 5%,transparent); }
+  .drop .material-symbols-outlined { font-size:30px; color:var(--accent); }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .addstep { border:.5px dashed var(--line); border-radius:11px; padding:11px 14px; color:var(--muted); font-size:13px; display:flex; align-items:center; gap:8px; cursor:pointer; }
+
+  /* hint */
+  .hintbar { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:50; display:flex; align-items:center; gap:10px;
+    background:var(--elevate); border:.5px solid var(--line); border-radius:999px; padding:9px 9px 9px 16px; box-shadow:0 8px 30px rgba(0,0,0,.22);
+    font-size:12.5px; color:var(--muted); max-width:92vw; }
+  .hintbar b { color:var(--accent); font-weight:600; }
+  .hintbar .x { cursor:pointer; color:var(--faint); display:grid; place-items:center; width:26px; height:26px; border-radius:50%; }
+  .hintbar .x:hover { background:var(--hover); color:var(--ink); }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== TOP BAR (every page) ===== -->
+  <div class="topbar">
+    <span class="logo"><span class="mark" id="brandmark"><span class="material-symbols-outlined">music_note</span></span> NotationHero</span>
+    <span class="spacer"></span>
+    <button class="midi disconnected" title="MIDI — disconnected"><span class="material-symbols-outlined">piano</span></button>
+    <button class="btn btn-secondary addbtn" onclick="go('add')" title="Add a song or lesson (admin)"><span class="material-symbols-outlined">add</span> Add</button>
+    <button class="toggle-btn" onclick="theme()" title="Theme"><span class="material-symbols-outlined" id="themeicon">dark_mode</span></button>
+    <button class="toggle-btn" title="Settings"><span class="material-symbols-outlined">settings</span></button>
+  </div>
+
+  <!-- ===== SCREEN: CATALOG ===== -->
+  <section class="screen active" id="catalog">
+
+    <!-- pick-the-look strip -->
+    <div class="choices" id="choices">
+      <span class="lbl">🎨 pick the look</span>
+      <div class="group"><span class="faint">Grade bullet:</span>
+        <span class="grade g-ink">3</span><span class="grade g-green">3</span><span class="grade g-teal">3</span><span class="grade g-soft">3</span>
+        <span class="faint" style="margin:0 4px">·2-digit·</span><span class="grade g-ink">10</span>
+      </div>
+      <div class="group"><span class="faint">Logo:</span>
+        <span class="mark" style="width:28px;height:28px"><span class="material-symbols-outlined" style="font-size:16px">music_note</span></span>
+        <span class="mark" style="width:28px;height:28px;background:transparent;border:2px solid var(--accent);color:var(--accent)"><span class="material-symbols-outlined" style="font-size:15px">music_note</span></span>
+        <span class="mark" style="width:28px;height:28px"><span class="material-symbols-outlined" style="font-size:15px">play_arrow</span></span>
+      </div>
+      <span class="x" onclick="document.getElementById('choices').remove()"><span class="material-symbols-outlined" style="font-size:18px">close</span></span>
+    </div>
+
+    <div class="searchwrap">
+      <span class="material-symbols-outlined">search</span>
+      <input class="inp" placeholder="Search songs &amp; lessons — title or artist…">
+    </div>
+
+    <!-- type tabs + sort -->
+    <div class="controls">
+      <div class="seg" id="typeseg">
+        <button class="sel" onclick="primaryTab('songs',this)"><span class="material-symbols-outlined">music_note</span> Songs</button>
+        <button onclick="primaryTab('lessons',this)"><span class="material-symbols-outlined">school</span> Lessons</button>
+      </div>
+      <span class="sortwrap"><span class="material-symbols-outlined" style="font-size:18px">swap_vert</span> Sort: Relevance</span>
+    </div>
+
+    <!-- lessons sub-tabs (Beats / Rudiments / Fills) -->
+    <div class="controls" id="lessonsub" style="display:none">
+      <div class="seg">
+        <button class="sel" onclick="lessonKind('all',this)">All</button>
+        <button onclick="lessonKind('beat',this)"><span class="material-symbols-outlined">graphic_eq</span> Beats</button>
+        <button onclick="lessonKind('rud',this)"><span class="material-symbols-outlined">drag_indicator</span> Rudiments</button>
+        <button onclick="lessonKind('fill',this)"><span class="material-symbols-outlined">bolt</span> Fills</button>
+      </div>
+    </div>
+
+    <!-- simple filters + Filters toggle -->
+    <div class="filterrow">
+      <button class="chip" onclick="toggleFilters()"><span class="material-symbols-outlined">tune</span> Filters</button>
+      <span class="sep"></span>
+      <button class="chip on">Level ≤ 4</button>
+      <button class="chip on">80–90 <span class="num">BPM</span></button>
+      <button class="chip">4/4</button>
+      <button class="chip on"><span class="material-symbols-outlined">graphic_eq</span> Drums</button>
+    </div>
+
+    <!-- FILTERS PANEL — shown with example selected states -->
+    <div class="fpanel" id="fpanel">
+      <div class="fgrid">
+        <div class="fblock">
+          <div class="flbl">Level
+            <span class="opset"><button>=</button><button class="sel">≤</button><button>≥</button><button>range</button></span>
+          </div>
+          <div class="gradepick">
+            <span class="grade g-soft sel">1</span><span class="grade g-soft sel">2</span><span class="grade g-soft sel">3</span><span class="grade g-soft sel">4</span>
+            <span class="grade g-soft">5</span><span class="grade g-soft">6</span><span class="grade g-soft">7</span><span class="grade g-soft">8</span>
+          </div>
+          <div class="faint" style="font-size:11.5px;margin-top:8px">multi-select · "≤ 4" shown · ungraded excluded by a bound</div>
+        </div>
+        <div class="fblock">
+          <div class="flbl">Tempo (BPM)
+            <span class="opset"><button class="sel">range</button><button>&lt;</button><button>&gt;</button></span>
+          </div>
+          <div class="range">
+            <div class="rangebar"><div class="sel"></div><div class="h" style="left:18%"></div><div class="h" style="left:45%"></div></div>
+            <div class="rangelabel">80 — 90 BPM &nbsp; <span class="faint">(or “&lt; 80”, “&gt; 140”)</span></div>
+          </div>
+        </div>
+        <div class="fblock">
+          <div class="flbl">Time signature</div>
+          <div class="gradepick" style="gap:8px">
+            <button class="chip on">4/4</button><button class="chip">3/4</button><button class="chip">6/8</button><button class="chip">7/8</button>
+            <button class="chip">4/x <span class="faint">(any 4-)</span></button>
+          </div>
+        </div>
+        <div class="fblock">
+          <div class="flbl">Instrument &amp; more</div>
+          <div class="gradepick" style="gap:8px">
+            <button class="chip on"><span class="material-symbols-outlined">graphic_eq</span> Drums</button><button class="chip">Guitar</button><button class="chip">Keys</button>
+            <button class="chip">+ genre · skill · pattern · key</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTINUE card -->
+    <div class="continue" onclick="go('player')" style="cursor:pointer">
+      <div class="cv"><span class="material-symbols-outlined">play_circle</span></div>
+      <div style="flex:1">
+        <div class="clbl">Continue</div>
+        <h3>Stadium Beat <span class="faint" style="font-weight:400;font-size:13px">· Rock</span></h3>
+        <div class="csub">last 82% · 116 <span class="num">BPM</span> · Chorus 1</div>
+      </div>
+      <button class="btn btn-primary"><span class="material-symbols-outlined">play_arrow</span> Resume</button>
+    </div>
+
+    <!-- ===== SONGS table ===== -->
+    <div id="list-songs">
+      <div class="thead"><span class="c">#</span><span>Name</span><span class="c">Level</span><span class="r">Tempo</span><span class="r">Best</span><span></span></div>
+      <div class="tbody">
+        <!-- DENSE ROW — all icons + score populated -->
+        <div class="trow" onclick="go('song')">
+          <span class="rnum">1</span>
+          <div class="nameC">
+            <div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm">
+              <div class="nmtitle">Stadium Beat <span class="pill pill-mastered">Mastered</span></div>
+              <div class="nmsub">Rock <span class="dot"></span> 4/4 <span class="dot"></span> key A <span class="dot"></span> drums·guitar
+                <span class="flags"><span class="material-symbols-outlined">volume_up</span><span class="material-symbols-outlined">smart_display</span><span class="material-symbols-outlined">splitscreen</span></span>
+              </div>
+            </div>
+          </div>
+          <span class="levelC"><span class="grade g-ink">3</span></span>
+          <span class="tempoC">116 <small>BPM</small></span>
+          <span class="bestC"><span class="pct">92%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_arrow</span></button></span>
+        </div>
+
+        <div class="trow" onclick="go('song')">
+          <span class="rnum">2</span>
+          <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm"><div class="nmtitle">Light Pop</div><div class="nmsub">Pop <span class="dot"></span> 4/4 <span class="dot"></span> drums</div></div></div>
+          <span class="levelC"><span class="grade g-ink">2</span></span>
+          <span class="tempoC">120 <small>BPM</small></span>
+          <span class="bestC"><span class="pct">82%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_arrow</span></button></span>
+        </div>
+
+        <div class="trow" onclick="go('song')">
+          <span class="rnum">3</span>
+          <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm"><div class="nmtitle">Funk Groove</div><div class="nmsub">Funk <span class="dot"></span> 4/4 <span class="dot"></span> drums <span class="flags"><span class="material-symbols-outlined">volume_up</span></span></div></div></div>
+          <span class="levelC"><span class="grade g-ink">5</span></span>
+          <span class="tempoC">104 <small>BPM</small></span>
+          <span class="bestC"><span class="pct">88%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_arrow</span></button></span>
+        </div>
+
+        <div class="trow" onclick="go('song')">
+          <span class="rnum">4</span>
+          <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm"><div class="nmtitle">Odd-Meter Étude</div><div class="nmsub">Jazz <span class="dot"></span> 7/8 <span class="dot"></span> drums</div></div></div>
+          <span class="levelC"><span class="grade g-ink">10</span></span>
+          <span class="tempoC">132 <small>BPM</small></span>
+          <span class="bestC"><span class="none">—</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_arrow</span></button></span>
+        </div>
+
+        <div class="trow" onclick="go('song')">
+          <span class="rnum">5</span>
+          <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm"><div class="nmtitle">Soul Fusion <span class="pill pill-new">New</span></div><div class="nmsub">Soul <span class="dot"></span> 6/8 <span class="dot"></span> drums·keys</div></div></div>
+          <span class="levelC"><span class="grade ungraded">—</span></span>
+          <span class="tempoC">100 <small>BPM</small></span>
+          <span class="bestC"><span class="none">—</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_arrow</span></button></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== LESSONS table ===== -->
+    <div id="list-lessons" style="display:none">
+      <div class="thead"><span class="c">#</span><span>Name</span><span class="c">Level</span><span class="r">Tempo</span><span class="r">Best</span><span></span></div>
+      <div class="tbody">
+        <div class="trow" data-kind="beat" onclick="go('lesson')">
+          <span class="rnum">1</span>
+          <div class="nameC"><div class="cover lesson"><span class="material-symbols-outlined">graphic_eq</span></div>
+            <div class="nm"><div class="nmtitle">8th-Note Rock — Layered Groove <span class="badge beat">Beat</span></div>
+              <div class="nmsub">4 steps <span class="dot"></span> timing·independence <span class="dot"></span> uses Rock&nbsp;8th</div></div></div>
+          <span class="levelC"><span class="grade g-ink">2</span></span>
+          <span class="tempoC">60→120 <small>BPM</small></span>
+          <span class="bestC"><span class="pct">76%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_arrow</span></button></span>
+        </div>
+        <div class="trow" data-kind="rud" onclick="go('lesson')">
+          <span class="rnum">2</span>
+          <div class="nameC"><div class="cover lesson"><span class="material-symbols-outlined">drag_indicator</span></div>
+            <div class="nm"><div class="nmtitle">Single Paradiddle <span class="badge rud">Rudiment</span> <span class="pill pill-learning">Learning</span></div>
+              <div class="nmsub">6 steps <span class="dot"></span> hands·control</div></div></div>
+          <span class="levelC"><span class="grade g-ink">2</span></span>
+          <span class="tempoC">50→140 <small>BPM</small></span>
+          <span class="bestC"><span class="pct">64%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_arrow</span></button></span>
+        </div>
+        <div class="trow" data-kind="fill" onclick="go('lesson')">
+          <span class="rnum">3</span>
+          <div class="nameC"><div class="cover lesson" style="background:color-mix(in srgb,#E0795F 16%,transparent);color:#D2664A"><span class="material-symbols-outlined">bolt</span></div>
+            <div class="nm"><div class="nmtitle">Tom Fills — 4-Bar Transitions <span class="badge fill">Fill</span> <span class="pill pill-new">New</span></div>
+              <div class="nmsub">5 steps <span class="dot"></span> coordination <span class="dot"></span> pairs with Rock beats</div></div></div>
+          <span class="levelC"><span class="grade g-ink">3</span></span>
+          <span class="tempoC">70→120 <small>BPM</small></span>
+          <span class="bestC"><span class="none">—</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_arrow</span></button></span>
+        </div>
+        <div class="trow" data-kind="beat" onclick="go('lesson')">
+          <span class="rnum">4</span>
+          <div class="nameC"><div class="cover lesson"><span class="material-symbols-outlined">graphic_eq</span></div>
+            <div class="nm"><div class="nmtitle">Funk Sixteenths <span class="badge beat">Beat</span></div><div class="nmsub">5 steps <span class="dot"></span> ghost-notes</div></div></div>
+          <span class="levelC"><span class="grade g-ink">4</span></span>
+          <span class="tempoC">70→110 <small>BPM</small></span>
+          <span class="bestC"><span class="none">—</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_arrow</span></button></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== SCREEN: SONG DETAIL (detail-first · history) ===== -->
+  <section class="screen" id="song">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <div class="dhead">
+      <div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+      <div>
+        <h1>Stadium Beat</h1>
+        <div class="metaline"><span class="grade g-ink" style="width:24px;height:24px;font-size:12px">3</span> Rock <span class="dot"></span> 116 <span class="num">BPM</span> <span class="dot"></span> 4/4 <span class="dot"></span> key A <span class="dot"></span> drums·guitar</div>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span> Play full</button>
+      <button class="btn btn-secondary" onclick="go('breakdown')"><span class="material-symbols-outlined">splitscreen</span> Practice in parts</button>
+      <button class="btn btn-ghost"><span class="material-symbols-outlined">volume_up</span> Audio</button>
+    </div>
+
+    <h2>Your history</h2>
+    <div class="histtop">
+      <div class="stat"><div class="k">Best</div><div class="v good">92%</div></div>
+      <div class="stat"><div class="k">Top tempo</div><div class="v">116<span style="font-size:13px;color:var(--faint)"> bpm</span></div></div>
+      <div class="stat"><div class="k">Sessions</div><div class="v">14</div></div>
+      <div class="stat"><div class="k">Trend</div><div class="spark" style="margin-top:8px">
+        <i style="height:40%"></i><i style="height:55%"></i><i style="height:50%"></i><i style="height:70%"></i><i style="height:78%"></i><i class="best" style="height:92%"></i>
+      </div></div>
+    </div>
+    <div class="panel" style="margin-top:8px">
+      <div class="hrow"><span class="when">2 days ago</span><span class="res"><span class="pct" style="color:var(--grade-green);font-weight:700">92%</span> · 116 BPM <span class="pill pill-mastered" style="margin-left:8px">new best</span></span></div>
+      <div class="hrow"><span class="when">5 days ago</span><span class="res">85% · 110 BPM</span></div>
+      <div class="hrow"><span class="when">1 week ago</span><span class="res">78% · 104 BPM</span></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <div class="muted" style="font-size:13.5px;line-height:1.5">A driving stadium-rock groove — four-on-the-floor kick, big backbeat, crash accents on the chorus.</div>
+      <div class="tags"><span class="tagmini">rock</span><span class="tagmini">backbeat</span><span class="tagmini">steady-time</span></div>
+    </div>
+  </section>
+
+  <!-- ===== SCREEN: BREAKDOWN (parts · best overall · bigger steps) ===== -->
+  <section class="screen" id="breakdown">
+    <button class="backlink" onclick="go('song')"><span class="material-symbols-outlined">arrow_back</span> Stadium Beat</button>
+    <h1>Practice in parts</h1>
+    <div class="metaline" style="margin-top:6px">6 sections · slices of the song, each with its own tempo ladder
+      <span class="bestoverall" style="margin-left:6px"><span class="material-symbols-outlined" style="font-size:16px">emoji_events</span> Best overall <b>89%</b></span></div>
+    <div class="actions" style="margin:18px 0"><button class="btn btn-primary" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span> Play all in sequence</button></div>
+    <div class="steplist">
+      <div class="step"><div class="stepno">1</div><div class="stepbody"><div class="steptitle">Intro</div><div class="stepsub">bars 1–8 · best 94%</div></div>
+        <div class="ladder"><span class="num">80</span><span class="arr">→</span><div class="bar"></div><span class="num">112</span></div>
+        <button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span></button></div>
+      <div class="step"><div class="stepno">2</div><div class="stepbody"><div class="steptitle">Verse 1</div><div class="stepsub">bars 9–24 · best 88%</div></div>
+        <div class="ladder"><span class="num">88</span><span class="arr">→</span><div class="bar"></div><span class="num">116</span></div>
+        <button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span></button></div>
+      <div class="step"><div class="stepno">3</div><div class="stepbody"><div class="steptitle">Chorus 1</div><div class="stepsub">bars 33–48 · best 85%</div></div>
+        <div class="ladder"><span class="num">96</span><span class="arr">→</span><div class="bar"></div><span class="num">120</span></div>
+        <button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span></button></div>
+      <div class="step"><div class="stepno">4</div><div class="stepbody"><div class="steptitle">Bridge</div><div class="stepsub">bars 49–64 · not yet</div></div>
+        <div class="ladder"><span class="num">90</span><span class="arr">→</span><div class="bar"></div><span class="num">116</span></div>
+        <button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span></button></div>
+    </div>
+  </section>
+
+  <!-- ===== SCREEN: LESSON DETAIL (steps · best overall · bigger numbers) ===== -->
+  <section class="screen" id="lesson">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <div class="dhead">
+      <div class="cover lesson"><span class="material-symbols-outlined">graphic_eq</span></div>
+      <div><h1>8th-Note Rock — Layered Groove</h1>
+        <div class="metaline"><span class="badge beat">Beat</span> <span class="grade g-ink" style="width:24px;height:24px;font-size:12px">2</span> timing·independence <span class="dot"></span> uses <b style="color:var(--accent)">Rock 8th</b></div></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span> Start from Step 1</button>
+      <span class="bestoverall" style="align-self:center"><span class="material-symbols-outlined" style="font-size:16px">emoji_events</span> Best overall <b>76%</b></span>
+    </div>
+    <h2>4 steps · build the groove in layers</h2>
+    <div class="steplist">
+      <div class="step"><div class="stepno">1</div><div class="stepbody"><div class="steptitle">Hi-hat only</div><div class="stepsub">steady 8ths · best 90%</div></div>
+        <div class="ladder"><span class="num">60</span><span class="arr">→</span><div class="bar"></div><span class="num">90</span></div>
+        <button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span></button></div>
+      <div class="step"><div class="stepno">2</div><div class="stepbody"><div class="steptitle">+ Kick</div><div class="stepsub">four-on-the-floor · best 82%</div></div>
+        <div class="ladder"><span class="num">70</span><span class="arr">→</span><div class="bar"></div><span class="num">100</span></div>
+        <button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span></button></div>
+      <div class="step"><div class="stepno">3</div><div class="stepbody"><div class="steptitle">+ Snare</div><div class="stepsub">backbeat 2 &amp; 4 · best 71%</div></div>
+        <div class="ladder"><span class="num">80</span><span class="arr">→</span><div class="bar"></div><span class="num">110</span></div>
+        <button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span></button></div>
+      <div class="step"><div class="stepno">4</div><div class="stepbody"><div class="steptitle">Full groove</div><div class="stepsub">all together · not yet</div></div>
+        <div class="ladder"><span class="num">90</span><span class="arr">→</span><div class="bar"></div><span class="num">120</span></div>
+        <button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span></button></div>
+    </div>
+  </section>
+
+  <!-- ===== SCREEN: ADD / UPLOAD (CMS doorway · admin) ===== -->
+  <section class="screen" id="add">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <span class="adminbar"><span class="material-symbols-outlined" style="font-size:15px">shield_person</span> Admin · CMS — same UI, admin-only actions</span>
+    <h1>Add to catalogue</h1>
+    <div class="form" style="margin-top:18px">
+      <div class="field"><label>Type</label>
+        <div class="seg"><button class="sel"><span class="material-symbols-outlined">music_note</span> Song</button><button><span class="material-symbols-outlined">school</span> Lesson</button></div>
+      </div>
+      <div class="field"><label>Notation file (.gp / .gpx / .xml)</label>
+        <div class="drop"><span class="material-symbols-outlined">upload_file</span><div style="margin-top:6px">Drop a Guitar Pro / MusicXML file, or click to browse</div>
+          <div class="faint" style="font-size:11.5px;margin-top:4px">validated + quarantined on upload · title/bpm/instruments auto-seeded</div></div>
+      </div>
+      <div class="field"><label>Title</label><input class="inp" placeholder="Seeded from the file — editable"></div>
+      <div class="two">
+        <div class="field"><label>Grade (level)</label><input class="inp" placeholder="e.g. 3"></div>
+        <div class="field"><label>Tempo (BPM)</label><input class="inp" placeholder="e.g. 116"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Time signature</label><input class="inp" placeholder="4/4"></div>
+        <div class="field"><label>Genre</label><input class="inp" placeholder="rock"></div>
+      </div>
+      <div class="field"><label>Instruments / tags</label>
+        <div style="display:flex;gap:7px;flex-wrap:wrap"><span class="chip on">drums</span><span class="chip">guitar</span><span class="chip">+ tag</span></div></div>
+      <div class="field"><label>Lesson steps <span class="faint">(lessons only — each step: notation + start→goal BPM)</span></label>
+        <div class="addstep"><span class="material-symbols-outlined">add</span> Add a step (Hi-hat only · 60→90…)</div></div>
+      <div class="actions"><button class="btn btn-primary"><span class="material-symbols-outlined">save</span> Save draft</button><button class="btn btn-ghost" onclick="go('catalog')">Cancel</button></div>
+    </div>
+  </section>
+
+  <!-- ===== STUBS ===== -->
+  <section class="screen" id="player">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <div class="stub"><div class="big"><span class="material-symbols-outlined">play_circle</span></div>
+      <h1>Player</h1><p>Already designed — <b>stub</b> here. Real reskin = <span class="num">player-flatrow-teal</span> (PR&nbsp;#23).</p>
+      <div class="faketl"><div class="fill"></div><div class="hd"></div></div>
+      <div class="actions" style="justify-content:center;margin-top:24px"><button class="btn btn-secondary" onclick="go('results')"><span class="material-symbols-outlined">stop_circle</span> End run → Results</button></div></div>
+  </section>
+  <section class="screen" id="results">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <div class="stub"><div class="donut"><div class="hole">92%</div></div>
+      <h1 style="margin-top:16px">Results</h1><p>Already designed — <b>stub</b>. Real = <span class="num">results.html</span> (PR&nbsp;#23). Score is the per-user garnish (DynamoDB), surfaced into history.</p>
+      <div style="margin-top:12px"><span class="pill pill-mastered"><span class="material-symbols-outlined" style="font-size:14px">emoji_events</span> New best · was 85%</span></div>
+      <div class="actions" style="justify-content:center;margin-top:24px"><button class="btn btn-secondary" onclick="go('player')"><span class="material-symbols-outlined">replay</span> Retry</button><button class="btn btn-primary" onclick="go('catalog')">Next <span class="material-symbols-outlined">arrow_forward</span></button></div></div>
+  </section>
+
+</div>
+
+<div class="hintbar" id="hint">
+  <span><b>Low-fi flow v2</b> — tap a <b>row</b> → detail · row <b>▶</b> → quick-play · <b>+ Add</b> → CMS · <b>Filters</b> opens the panel · 🌙 theme. Positions are rough on purpose.</span>
+  <span class="x" onclick="document.getElementById('hint').remove()"><span class="material-symbols-outlined" style="font-size:18px">close</span></span>
+</div>
+
+<script>
+  function go(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); window.scrollTo(0,0); }
+  function theme(){ const h=document.documentElement; const dark=h.getAttribute('data-theme')==='dark'; h.setAttribute('data-theme',dark?'light':'dark'); document.getElementById('themeicon').textContent=dark?'dark_mode':'light_mode'; }
+  function primaryTab(which,btn){ document.querySelectorAll('#typeseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+    document.getElementById('list-songs').style.display=which==='songs'?'':'none';
+    document.getElementById('list-lessons').style.display=which==='lessons'?'':'none';
+    document.getElementById('lessonsub').style.display=which==='lessons'?'':'none'; }
+  function lessonKind(kind,btn){ btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+    document.querySelectorAll('#list-lessons .trow').forEach(c=>{ c.style.display=(kind==='all'||c.dataset.kind===kind)?'':'none'; }); }
+  function toggleFilters(){ document.getElementById('fpanel').classList.toggle('open'); }
+</script>
+</body>
+</html>
