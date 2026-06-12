@@ -1,24 +1,24 @@
 <!DOCTYPE html>
 <!--
-  Notation Hero — Player (flat HUD row), reskinned to the locked design-system palette.
+  Notation Hero — Player (flat HUD row), reskinned to the locked design-system palette + typography.
   Source mockup: notation-hero-resources/src/index-hud-flatrow.html (Gemini/Stitch).
-  Changes vs source:
-    - Brand teal #2DD4BF (dark) / #0F766E (light), replacing the old green #4edea3.
-    - --on-accent glyph ink (dark) / white (light) — fixes the 1.9:1 play-button contrast.
+  Design-system decisions applied:
+    - Brand teal #2DD4BF (dark) / #0F766E (light); --on-accent ink (dark) / white (light).
     - Three-family colour law: interactive = teal · time = blue playhead · judgment = Okabe-Ito (note-marks only).
-    - Dual theme via data-theme on <html> (channel-RGB tokens). ?theme=light|dark to force. Toggle in header.
-    - HUD gains the state icons (check / chevron / hollow / x) from index-okabe.html.
-    - Removed decorative blur blobs.
-  NOTE: the notation staff + playhead here are placeholders. In the real app this region is an
-  AlphaTab render; its glyph/staff/cursor colours map to the same tokens (the "notation-surface" bridge).
+    - Early = Okabe sky-blue #56B4E9. Radius scale: full = circle, pill = soft (BPM + practice/game toggle).
+    - Typography D3: Bricolage Grotesque (display) + Hanken Grotesk (UI) + Geist Mono (numbers).
+  PLAYGROUND TOGGLES (top-right, or URL params):
+    - Theme:  ?theme=light|dark   ·  the moon/sun button
+    - Type:   ?type=d1|d3         ·  the "Aa" button  (d3 = Bricolage+Hanken default, d1 = Geist)
+  NOTE: the notation staff + playhead are placeholders for the AlphaTab render.
 -->
 <html data-theme="dark" lang="en">
 <head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>Notation Hero — Player (teal, light + dark)</title>
+<title>Notation Hero — Player (teal · D3 type · light + dark)</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;700&family=Geist:wght@400;500;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
 <style>
   :root, [data-theme="dark"] {
     --bg: 12 17 23;       --rail: 9 13 18;     --panel: 18 24 33;    --panel2: 24 32 43;
@@ -32,6 +32,9 @@
     --line: 226 232 240;  --accent: 15 118 110; --accenthi: 13 148 136; --onaccent: 255 255 255;
     --time: 47 109 246;   --error: 220 38 38;  --staffline: 201 210 221;
   }
+  :root { --font-display: 'Bricolage Grotesque'; --font-ui: 'Hanken Grotesk'; --font-num: 'Geist Mono'; }
+  [data-type="d1"] { --font-display: 'Geist'; --font-ui: 'Geist'; }
+  .num { font-family: var(--font-num), monospace; font-variant-numeric: tabular-nums; }
   body { transition: background-color .25s ease, color .25s ease; }
   .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
   .staff-container {
@@ -80,7 +83,11 @@
           "error": "rgb(var(--error) / <alpha-value>)"
         },
         borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "pill": "0.75rem", "full": "9999px" },
-        fontFamily: { "sans": ["Inter"], "mono": ["JetBrains Mono"] },
+        fontFamily: {
+          "sans": ["var(--font-ui)", "system-ui", "sans-serif"],
+          "mono": ["var(--font-num)", "monospace"],
+          "display": ["var(--font-display)", "system-ui", "sans-serif"]
+        },
         fontSize: {
           "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
           "label-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
@@ -95,13 +102,13 @@
 <!-- Top App Bar -->
 <header class="fixed top-0 left-0 w-full z-50 flex items-center px-8 h-16 bg-surface/70 backdrop-blur-xl border-b border-line shadow-sm">
   <div class="flex items-center gap-8 w-1/3">
-    <span class="text-headline-md font-bold text-primary">Notation Hero</span>
+    <span class="font-display text-headline-md font-bold text-primary">Notation Hero</span>
     <nav class="hidden md:flex gap-6">
-      <a class="text-on-surface font-medium transition-colors hover:text-primary" href="#">My Song name here</a>
+      <a class="font-display text-on-surface font-medium transition-colors hover:text-primary" href="#">My Song name here</a>
     </nav>
   </div>
   <div class="flex items-center justify-center w-1/3">
-    <div class="flex items-center bg-surface-container rounded-full p-1 border border-line shadow-sm">
+    <div class="flex items-center bg-surface-container rounded-pill p-1 border border-line shadow-sm">
       <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-elevate text-primary transition-colors" title="Toggle Auto-Speed">
         <span class="material-symbols-outlined text-sm" style="font-variation-settings:'FILL' 1;">bolt</span>
       </button>
@@ -109,13 +116,16 @@
         <button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-sm">remove</span></button>
         <div class="flex flex-col items-center min-w-[40px]">
           <span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-mono">BPM</span>
-          <span class="text-on-surface font-bold text-sm leading-none">120</span>
+          <span class="num text-on-surface font-bold text-sm leading-none">120</span>
         </div>
         <button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-sm">add</span></button>
       </div>
     </div>
   </div>
   <div class="flex items-center justify-end w-1/3 gap-2">
+    <button id="typeToggle" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Toggle typography (D3 Bricolage / D1 Geist)">
+      <span class="material-symbols-outlined">text_fields</span>
+    </button>
     <button id="themeToggle" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Toggle light / dark">
       <span class="material-symbols-outlined" data-theme-icon>dark_mode</span>
     </button>
@@ -130,9 +140,9 @@
   <!-- Left Rail -->
   <aside class="w-20 lg:w-24 flex flex-col items-center py-6 border-r border-line bg-surface-container-lowest z-40">
     <div class="flex flex-col gap-8 w-full items-center h-full">
-      <div class="flex flex-col items-center gap-3 bg-surface-container rounded-full p-1 border border-line mt-4">
-        <button class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center shadow-lg" title="Practice Mode"><span class="material-symbols-outlined">school</span></button>
-        <button class="w-10 h-10 rounded-full hover:bg-surface-container-highest text-on-surface-variant flex items-center justify-center" title="Game Mode"><span class="material-symbols-outlined">sports_esports</span></button>
+      <div class="flex flex-col items-center gap-3 bg-surface-container rounded-pill p-1 border border-line mt-4">
+        <button class="w-10 h-10 rounded-pill bg-primary text-on-primary flex items-center justify-center shadow-lg" title="Practice Mode"><span class="material-symbols-outlined">school</span></button>
+        <button class="w-10 h-10 rounded-pill hover:bg-surface-container-highest text-on-surface-variant flex items-center justify-center" title="Game Mode"><span class="material-symbols-outlined">sports_esports</span></button>
       </div>
       <div class="mt-auto flex flex-col gap-4 items-center">
         <button class="w-12 h-12 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-all" title="Open file"><span class="material-symbols-outlined">folder_open</span></button>
@@ -145,16 +155,16 @@
     <!-- Score HUD strip -->
     <div class="flex items-center justify-center gap-5 px-8 h-12 border-b border-line bg-surface-dim flex-shrink-0 z-20">
       <div class="flex gap-5 text-[10px] font-mono tracking-wider">
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#009E73"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">check</span>PERFECT</span><span class="text-on-surface font-medium text-[11px]">142</span></div>
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#56B4E9"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">chevron_left</span>EARLY</span><span class="text-on-surface font-medium text-[11px]">12</span></div>
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#CC79A7"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">chevron_right</span>LATE</span><span class="text-on-surface font-medium text-[11px]">8</span></div>
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#9AA0A6"><span class="material-symbols-outlined" style="font-size:13px">radio_button_unchecked</span>MISS</span><span class="text-on-surface font-medium text-[11px]">3</span></div>
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#D55E00"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">close</span>ERROR</span><span class="text-on-surface font-medium text-[11px]">1</span></div>
+        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#009E73"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">check</span>PERFECT</span><span class="num text-on-surface font-medium text-[11px]">142</span></div>
+        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#56B4E9"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">chevron_left</span>EARLY</span><span class="num text-on-surface font-medium text-[11px]">12</span></div>
+        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#CC79A7"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">chevron_right</span>LATE</span><span class="num text-on-surface font-medium text-[11px]">8</span></div>
+        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#9AA0A6"><span class="material-symbols-outlined" style="font-size:13px">radio_button_unchecked</span>MISS</span><span class="num text-on-surface font-medium text-[11px]">3</span></div>
+        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#D55E00"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">close</span>ERROR</span><span class="num text-on-surface font-medium text-[11px]">1</span></div>
       </div>
       <div class="w-px h-6 bg-line"></div>
-      <div class="flex flex-col items-center"><span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-mono">Streak</span><span class="text-primary font-bold text-sm leading-none mt-0.5">25</span></div>
+      <div class="flex flex-col items-center"><span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-mono">Streak</span><span class="num text-primary font-bold text-sm leading-none mt-0.5">25</span></div>
       <div class="w-px h-6 bg-line"></div>
-      <div class="flex flex-col items-center"><span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-mono">Accuracy</span><span class="mt-0.5 flex items-baseline gap-0.5"><span class="text-primary font-bold text-sm leading-none">94</span><span class="text-primary text-[10px] opacity-60">%</span></span></div>
+      <div class="flex flex-col items-center"><span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-mono">Accuracy</span><span class="mt-0.5 flex items-baseline gap-0.5"><span class="num text-primary font-bold text-sm leading-none">94</span><span class="num text-primary text-[10px] opacity-60">%</span></span></div>
     </div>
 
     <!-- Staff Area (AlphaTab render goes here in the real app) -->
@@ -193,15 +203,15 @@
       <div class="flex items-center w-full px-8 gap-6">
         <button class="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-primary text-on-primary shadow-lg shadow-primary/20 active:scale-90 transition-transform" title="Play / Pause"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">play_arrow</span></button>
         <button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Loop Toggle"><span class="material-symbols-outlined">repeat</span></button>
-        <span class="font-mono text-on-surface-variant text-sm flex-shrink-0">01:42</span>
+        <span class="num font-mono text-on-surface-variant text-sm flex-shrink-0">01:42</span>
         <div class="flex-1 h-2 bg-surface-container-highest relative group cursor-pointer rounded-full">
           <div class="absolute top-0 left-0 h-full w-[40%] bg-primary rounded-l-full"></div>
           <div class="absolute top-0 left-[40%] right-[20%] h-full bg-primary/30 z-10"></div>
           <div class="absolute left-[40%] right-[20%] z-10 border-t border-b border-primary/50" style="top:-12px;height:32px;background:rgb(var(--accent)/.12)"></div>
-          <div class="absolute top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-on-primary font-bold text-sm z-20 shadow-lg" style="left:calc(40% - 16px)">A</div>
-          <div class="absolute top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-on-primary font-bold text-sm z-20 shadow-lg" style="left:calc(80% - 16px)">B</div>
+          <div class="num absolute top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-on-primary font-bold text-sm z-20 shadow-lg" style="left:calc(40% - 16px)">A</div>
+          <div class="num absolute top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-on-primary font-bold text-sm z-20 shadow-lg" style="left:calc(80% - 16px)">B</div>
         </div>
-        <span class="font-mono text-on-surface-variant text-sm flex-shrink-0">04:20</span>
+        <span class="num font-mono text-on-surface-variant text-sm flex-shrink-0">04:20</span>
         <div class="flex items-center gap-2">
           <button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Metronome"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-6 h-6 fill-current"><title>metronome</title><path d="M12,1.75L8.57,2.67L4.06,19.53C4.03,19.68 4,19.84 4,20C4,21.11 4.89,22 6,22H18C19.11,22 20,21.11 20,20C20,19.84 19.97,19.68 19.94,19.53L18.58,14.42L17,16L17.2,17H13.41L16.25,14.16L14.84,12.75L10.59,17H6.8L10.29,4H13.71L15.17,9.43L16.8,7.79L15.43,2.67L12,1.75M11.25,5V14.75L12.75,13.25V5H11.25M19.79,7.8L16.96,10.63L16.25,9.92L14.84,11.34L17.66,14.16L19.08,12.75L18.37,12.04L21.2,9.21L19.79,7.8Z"/></svg></button>
           <button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Count-In"><span class="material-symbols-outlined">timer</span></button>
@@ -216,18 +226,21 @@
 <script>
   (function () {
     var root = document.documentElement;
-    var q = new URLSearchParams(location.search).get('theme');
-    if (q === 'light' || q === 'dark') root.setAttribute('data-theme', q);
+    var p = new URLSearchParams(location.search);
+    var qTheme = p.get('theme'); if (qTheme === 'light' || qTheme === 'dark') root.setAttribute('data-theme', qTheme);
+    var qType = p.get('type'); if (qType === 'd1') root.setAttribute('data-type', 'd1');
     function syncIcon() {
-      var dark = root.getAttribute('data-theme') !== 'light';
       var i = document.querySelector('[data-theme-icon]');
-      if (i) i.textContent = dark ? 'dark_mode' : 'light_mode';
+      if (i) i.textContent = root.getAttribute('data-theme') !== 'light' ? 'dark_mode' : 'light_mode';
     }
     syncIcon();
-    var btn = document.getElementById('themeToggle');
-    if (btn) btn.addEventListener('click', function () {
-      root.setAttribute('data-theme', root.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
-      syncIcon();
+    var tBtn = document.getElementById('themeToggle');
+    if (tBtn) tBtn.addEventListener('click', function () {
+      root.setAttribute('data-theme', root.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); syncIcon();
+    });
+    var fBtn = document.getElementById('typeToggle');
+    if (fBtn) fBtn.addEventListener('click', function () {
+      root.setAttribute('data-type', root.getAttribute('data-type') === 'd1' ? 'd3' : 'd1');
     });
     var play = document.querySelector('.active\\:scale-90');
     if (play) play.addEventListener('click', function () {
