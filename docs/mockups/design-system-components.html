@@ -14,15 +14,15 @@
 <style>
   :root, [data-theme="dark"] {
     --bg:#0C1117; --panel:#121821; --panel2:#18202B; --elevate:#1C2530;
-    --ink:#E8EDF3; --muted:#9AA6B4; --faint:#6C7889; --line:#222C39;
+    --ink:#E8EDF3; --muted:#9AA6B4; --faint:#818B9A; --line:#222C39;
     --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
-    --time:#2F6DF6; --danger:#FF6B6B; --hover:rgba(255,255,255,.06); --glow:color-mix(in srgb, var(--accent) 42%, transparent);
+    --time:#2F6DF6; --danger:#FF6B6B; --on-danger:#2A0808; --learn-text:#7FA9FF; --hover:rgba(255,255,255,.06); --glow:color-mix(in srgb, var(--accent) 42%, transparent);
   }
   [data-theme="light"] {
     --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
-    --ink:#0F151C; --muted:#5A6472; --faint:#9AA3B1; --line:#E2E8F0;
+    --ink:#0F151C; --muted:#5A6472; --faint:#6B7480; --line:#E2E8F0;
     --accent:#0F766E; --accenthi:#0D9488; --onaccent:#FFFFFF;
-    --time:#2F6DF6; --danger:#DC2626; --hover:rgba(15,21,28,.05); --glow:color-mix(in srgb, var(--accent) 30%, transparent);
+    --time:#2F6DF6; --danger:#DC2626; --on-danger:#FFFFFF; --learn-text:#1D4ED8; --hover:rgba(15,21,28,.05); --glow:color-mix(in srgb, var(--accent) 30%, transparent);
   }
   :root { --dur-micro:90ms; --dur-fast:150ms; --dur:220ms; --ease:cubic-bezier(.2,.6,.2,1); --ease-in:cubic-bezier(.4,0,1,1); }
   * { box-sizing:border-box; }
@@ -60,8 +60,9 @@
   .btn-secondary:hover:not(:disabled) { background:var(--elevate); }
   .btn-ghost { background:transparent; color:var(--muted); }
   .btn-ghost:hover:not(:disabled) { background:var(--hover); color:var(--ink); }
-  .btn-danger { background:var(--danger); color:#fff; }
-  .btn-danger:hover:not(:disabled) { filter:brightness(1.08); box-shadow:0 3px 12px color-mix(in srgb, var(--danger) 38%, transparent); }
+  .btn-danger { background:var(--danger); color:var(--on-danger); }
+  .btn-danger:hover:not(:disabled) { filter:brightness(1.06); box-shadow:0 3px 12px color-mix(in srgb, var(--danger) 38%, transparent); }
+  .btn-danger:focus-visible { box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--danger); }
 
   .ibtn { width:40px; height:40px; border-radius:10px; border:.5px solid transparent; background:transparent;
     color:var(--muted); display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
@@ -80,6 +81,8 @@
   .seg button:hover:not(.sel) { color:var(--ink); }
   .seg button.sel { background:var(--accent); color:var(--onaccent); }
   .seg button:focus-visible { outline:none; box-shadow:0 0 0 2px var(--panel2), 0 0 0 4px var(--accent); }
+  .seg-v { flex-direction:column; }
+  .seg-v button { padding:9px; justify-content:center; }
 
   /* ---- MIDI state machine ---- */
   .midi { width:40px; height:40px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center;
@@ -145,7 +148,7 @@
     padding:4px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; }
   .pill .material-symbols-outlined { font-size:14px; }
   .pill-new { background:var(--panel2); color:var(--muted); }
-  .pill-learning { background:color-mix(in srgb, var(--time) 16%, transparent); color:var(--time); }
+  .pill-learning { background:color-mix(in srgb, var(--time) 16%, transparent); color:var(--learn-text); }
   .pill-mastered { background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent); }
 
   /* ---- Motion + overlays docs ---- */
@@ -195,11 +198,11 @@
   </div>
 
   <h2>Mode toggle <small>— practice / learn (special)</small></h2>
-  <p class="note">Segmented, single-select. The active mode is filled teal; click to switch.</p>
+  <p class="note">Vertical, icon-only (lives in the left rail). Single-select; active mode is filled teal. Click to switch.</p>
   <div class="panel">
-    <div class="seg" id="modeSeg">
-      <button class="sel"><span class="material-symbols-outlined">school</span>Practice</button>
-      <button><span class="material-symbols-outlined">sports_esports</span>Game</button>
+    <div class="seg seg-v" id="modeSeg">
+      <button class="sel" title="Practice"><span class="material-symbols-outlined">school</span></button>
+      <button title="Game"><span class="material-symbols-outlined">sports_esports</span></button>
     </div>
   </div>
 
