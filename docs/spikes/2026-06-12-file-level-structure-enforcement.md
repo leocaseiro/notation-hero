@@ -3,7 +3,9 @@
 > **Status:** evidence + recommendation. **Decisions marked `🟦 DECIDE` are leocaseiro's to make — nothing here changes enforcement config until approved.**
 > **Date:** 2026-06-12 · **Worktree:** `recursing-moser-f882cf` (off `master` 84097c8) · **System-under-test:** PR #25 `claude/agent-aligned-enforcement` (180f3b4)
 > **Trigger:** <https://xebia.com/blog/taking-frontend-architecture-serious-with-dependency-cruiser/>
-> **Locked (not reopened):** hexagon layering, pnpm+Nx, folder-per-entity + test co-location.
+> **Locked (not reopened):** hexagon layering, pnpm+Nx, test co-location.
+>
+> **✅ DECISIONS RATIFIED 2026-06-12 → see the [ADR](../decisions/2026-06-12-file-level-structure-enforcement-adr.md).** This spike is the *evidence*; the ADR is the *decision record*. Net outcomes: KEEP depcruise (D1); kebab + role suffix, suffix everything, **folder-per-entity dropped** (D2); enforce H8–H11 and **WIDEN H9** to `apps\|core\|adapters` (D3); adopt `eslint-plugin-boundaries` (D4); add depcruise `no-core-to-pulumi` (D5); **skip** `no-restricted-paths` (D6); climb to TS project references as the compile wall (D7). Where this spike's pre-decision recommendations differ (esp. H9), the ADR is authoritative.
 
 ---
 
@@ -257,7 +259,7 @@ So the article's blanket "ESLint can't" is mostly an artifact of testing the two
 
 ### 6.4 Deferred bans (H8–H11) — 🟦 DECIDE enforce-now + H9 widen
 - **Enforce now:** H8/H10/H11 are built, probe-verified, 0 false positives. Recommendation: **flip to enforced** with PR #25.
-- **H9 fix required:** the regex `to: ^(apps|libs)/` is vestigial DACI text — this repo has no `libs/`, so H9 only blocks `infra→apps`. **🟦 DECIDE:** keep H9 = `infra↛apps` only (the dist-archive rationale is app-specific; infra-as-composition-root may legitimately import `core` types), **or** widen to `^(apps|core|adapters)/`. Recommendation: **keep apps-only** + add a comment that infra may import `core`/`adapter` types deliberately.
+- **H9 fix required:** the regex `to: ^(apps|libs)/` is vestigial DACI text — this repo has no `libs/`, so H9 only blocks `infra→apps`. **✅ RATIFIED 2026-06-12: WIDEN** to `^(apps|core|adapters)/` — this enforces the repo's own `H3` ("infra is IaC; imports @pulumi; **never domain source**") + `H4` (references build output, not source). The clean-arch "composition root imports core" norm applies to `apps/` (the runtime root, which may import `@core` per `H2`), **not** `infra/`. Escape valve: shared deploy constants live in non-domain config, not `core/`. See the [ADR](../decisions/2026-06-12-file-level-structure-enforcement-adr.md).
 - **Coverage note:** `core→@pulumi` is caught by ESLint but **not** depcruise — add a depcruise `no-core-to-pulumi` rule for parity, or accept ESLint as its sole owner.
 
 ### 6.5 Enforcement ownership (per rule)
