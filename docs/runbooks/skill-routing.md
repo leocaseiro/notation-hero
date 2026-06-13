@@ -11,8 +11,8 @@ Legend: 🟣 purple = compound-engineering (ce-) · 🟢 teal = superpowers ·
 
 Golden rule: **don't cross the streams** — `ce-brainstorm` feeds `ce-plan`;
 `superpowers:brainstorming` feeds `writing-plans`. gstack authors nothing at
-the plan stage; it reviews/ships whatever the other two produced, so it
-composes with both.
+the plan stage; it reviews/ships whatever the other two produced. memstack is a
+layer under all of them: it remembers sessions and manages the context window.
 
 ```mermaid
 flowchart TD
@@ -35,12 +35,14 @@ flowchart TD
   STRAT --> IDEATE
   IDEATE --> QSHAPE
 
-  QSHAPE -->|"product requirements, right-sized ceremony"| BRAIN["/ce-brainstorm<br/>docs/brainstorms/*-requirements.md"]:::ce
+  QSHAPE -->|"product requirements, right-sized ceremony"| BRAIN["/ce-brainstorm<br/>the WHAT — requirements doc"]:::ce
   QSHAPE -->|"design spec + hard no-code gate"| SPBRAIN["superpowers:brainstorming<br/>committed design spec"]:::sp
+  QSHAPE -->|"worth building at all?"| OFFICE["/office-hours gs<br/>premise challenge"]:::gs
   QSHAPE -->|"it's visual — explore the look first"| DSHOT
 
   BRAIN --> QHOW
   SPBRAIN --> SPPLAN
+  OFFICE --> QSHAPE
 
   QHOW -->|"no / risky / cross-cutting"| CEPLAN["/ce-plan<br/>decisions doc, repo-researched"]:::ce
   QHOW -->|"yes — well-bounded, want TDD cadence"| SPPLAN["superpowers:writing-plans<br/>TDD script with real code"]:::sp
@@ -54,7 +56,7 @@ flowchart TD
 
   QEXEC -->|"I steer"| CEWORK["/ce-work"]:::ce
   QEXEC -->|"hands-off to CI green"| LFG["/lfg"]:::ce
-  QEXEC -->|"frontend build"| CEFD["/ce-frontend-design<br/>build with design quality, screenshot-verified"]:::ce
+  QEXEC -->|"frontend build"| CEFD["/ce-frontend-design<br/>build, screenshot-verified"]:::ce
   SPPLAN --> SPEXEC["superpowers:executing-plans<br/>or subagent-driven-development"]:::sp
 
   CEWORK --> QREV{"review the diff how?"}
@@ -76,7 +78,7 @@ flowchart TD
   CPP --> QFEED
   SHIP --> QFEED
 
-  QFEED -->|yes| RESOLVE["/ce-resolve-pr-feedback<br/><i>rigor guard: superpowers:receiving-code-review</i>"]:::ce
+  QFEED -->|yes| RESOLVE["/ce-resolve-pr-feedback<br/><i>rigor: superpowers:receiving-code-review</i>"]:::ce
   QFEED -->|no| QDEPLOY{"merge and deploy?"}
   RESOLVE --> QDEPLOY
 
@@ -84,16 +86,16 @@ flowchart TD
   QDEPLOY -->|"not yet"| DONE(["done — anything worth keeping?"])
   LAND --> DONE
 
-  DONE -->|"solved something hard"| COMPOUND["/ce-compound<br/>writes docs/solutions/"]:::ce
+  DONE -->|"solved something hard"| COMPOUND["/ce-compound<br/>docs/solutions/ · memstack /grimoire"]:::ce
   DONE -->|"worth announcing"| PROMOTE["/ce-promote<br/>launch copy"]:::ce
 
   subgraph DESIGNTRACK["UI / design track — when the work is visual"]
-    DCONSULT["/design-consultation gs<br/>no design system yet → DESIGN.md"]:::gs
-    DSHOT["/design-shotgun gs<br/>N AI variants, comparison board"]:::gs
-    DHTML["/design-html gs<br/>finalize the approved variant"]:::gs
+    DCONSULT["/design-consultation gs<br/>no system yet → DESIGN.md"]:::gs
+    DSHOT["/design-shotgun gs<br/>N AI variants, board"]:::gs
+    DHTML["/design-html gs<br/>finalize approved variant"]:::gs
     VISCOMP["superpowers Visual Companion<br/>mockups inside brainstorming"]:::sp
-    IMGGEN["/ce-gemini-imagegen<br/>AI mockup images — no board"]:::ce
-    FIGMA["ce-figma-design-sync agent<br/>match implementation to Figma"]:::ce
+    IMGGEN["/ce-gemini-imagegen<br/>AI mockup images"]:::ce
+    FIGMA["ce-figma-design-sync agent<br/>match impl to Figma"]:::ce
     DCONSULT --> DSHOT
     DSHOT --> DHTML
   end
@@ -101,20 +103,20 @@ flowchart TD
   DHTML -->|"direction approved"| QHOW
 
   subgraph ANYTIME["anytime — outside the main flow"]
-    LOST["lost context?<br/>/context-restore gs · /ce-sessions · /state ms · /echo ms"]:::gs
-    WEBQA["web app running?<br/>/qa fix-mode · /qa-only report · /design-review gs · ce-design-iterator agent"]:::gs
+    LOST["lost context?<br/>/context-restore gs · /ce-sessions · /state ms"]:::gs
+    WEBQA["web app running?<br/>/qa · /qa-only · /design-review gs"]:::gs
     RETRO["week over?<br/>/retro · /health gs"]:::gs
-    SECOND["want a second opinion?<br/>/codex gs — cross-model review"]:::gs
+    SECOND["second opinion?<br/>/codex gs — cross-model"]:::gs
   end
 
-  subgraph MEMSTACK["memstack — memory & context layer (wraps every session + project; not yet installed here — see below)"]
-    MLOAD["session start / where was I<br/>/state load · /echo recall past"]:::ms
-    MSAVE["wrapping up / context low<br/>/diary log · /project handoff"]:::ms
-    MWORK["/work — plan, todos, what is next"]:::ms
-    MGRIM["big changes landed?<br/>/grimoire — refresh CLAUDE.md"]:::ms
-    MCTX["context window filling?<br/>/compress · /token-optimization · /shard"]:::ms
-    MTEACH["understand / explain code<br/>/mentor walk-through · /sight diagram"]:::ms
-    MGOV["new project?<br/>/governor — pick tier + scope"]:::ms
+  subgraph MEMSTACK["memstack — memory & context layer (wraps every session + project · not yet installed here)"]
+    MLOAD["session start / where was I<br/>/state load · /echo recall"]:::ms
+    MSAVE["wrapping up<br/>/diary log · /project handoff"]:::ms
+    MWORK["/work — plan, todos, next"]:::ms
+    MGRIM["big changes?<br/>/grimoire refresh CLAUDE.md"]:::ms
+    MCTX["context filling?<br/>/compress · /token-optimization · /shard"]:::ms
+    MTEACH["explain code<br/>/mentor walk-through · /sight diagram"]:::ms
+    MGOV["new project?<br/>/governor pick tier"]:::ms
   end
 ```
 
@@ -152,6 +154,7 @@ want a committed design doc with the no-code gate.
 | No idea what to build | `/ce-ideate` | gstack `/office-hours` (YC framing) |
 | Direction/strategy unclear | `/ce-strategy` | — |
 | Vague idea → requirements | `/ce-brainstorm` | `superpowers:brainstorming` (design spec + hard gate) |
+| Should this even exist? | gstack `/office-hours` (premise challenge) | — |
 | Know WHAT, not HOW | `/ce-plan` | — |
 | Know WHAT and HOW, want TDD | `superpowers:writing-plans` → `executing-plans` | — |
 | Pressure-test a plan | `/ce-doc-review` | gstack `/autoplan` (auto-decided gauntlet) |
@@ -160,7 +163,7 @@ want a committed design doc with the no-code gate.
 | Open a PR | `/ce-commit-push-pr` | gstack `/ship` (VERSION + CHANGELOG) |
 | PR feedback | `/ce-resolve-pr-feedback` | `superpowers:receiving-code-review` (rigor check) |
 | Merge + deploy + verify | gstack `/land-and-deploy` → `/canary` | — |
-| Capture a hard-won learning | `/ce-compound` | gstack `/learn` (curate) |
+| Capture a hard-won learning | `/ce-compound` | gstack `/learn` (curate), memstack `/grimoire` |
 | Announce a shipped feature | `/ce-promote` | — |
 | Lost context / resuming | gstack `/context-restore` | `/ce-sessions`, memstack `/state` + `/echo` |
 | QA a running web app | gstack `/qa` (fixes) | `/qa-only` (report only) |
