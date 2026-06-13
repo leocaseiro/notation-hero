@@ -61,6 +61,7 @@ jobs:
               - '.dependency-cruiser.cjs'
               - 'knip.json'
               - '.syncpackrc.json'
+              - '.semgrepignore'
               - 'lefthook.yml'
               - 'commitlint.config.*'
               - 'nx.json'
