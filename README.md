@@ -4,9 +4,11 @@ A Progressive Web App rhythm game for practising music notation, backed by an
 AWS-deployed admin/CMS. Built as a hexagonal **pnpm + Nx** monorepo — the
 architecture is a deliberate "swappable backend" system-design portfolio piece.
 
-> **Status:** early foundation. Tooling and CI are landing first; domain packages
-> materialise with their specs. The authoritative record of every decision and its
-> status is the [decision registry](docs/decisions/decision-registry.md).
+> **Status:** early foundation. The tooling + CI bedrock is in place, and the
+> **first AWS deliverable** — a hello-world Lambda Function URL (`apps/handler-hello`
+> + `infra/`) — is implemented and deployable. Remaining domain packages materialise
+> with their specs. The authoritative record of every decision and its status is the
+> [decision registry](docs/decisions/decision-registry.md).
 
 ## Stack
 
@@ -26,6 +28,10 @@ architecture is a deliberate "swappable backend" system-design portfolio piece.
 | `adapters/*` | `@notation-hero/adapters-*` | Implement core's ports against the world |
 | `apps/*` | `@notation-hero/*` | Composition roots; one deploy target each |
 | `infra/` | `@notation-hero/infra` | Pulumi composition root |
+
+**Built so far:** `apps/handler-hello` (the hello-world Lambda) and `infra/` (its
+Pulumi stack — the `LambdaWithUrl` component + composition). `core/` and `adapters/`
+land with the first domain feature (the catalogue).
 
 Tests and stories live **co-located** next to their source — never in `__tests__/`
 or `stories/` trees (CI enforces this via `tooling/check-layout.sh`).
@@ -49,6 +55,22 @@ pnpm nx affected -t lint typecheck test build --base=origin/master --head=HEAD
 
 The default branch is **`master`**. Never commit or push with `--no-verify` —
 Lefthook runs the layout guard and `nx affected` locally before CI does.
+
+## Deploy (AWS)
+
+Infrastructure is **Pulumi (TypeScript)**; stack state lives on Pulumi Cloud (free
+tier). Deploys run **locally** for now — CI-driven `deploy.yml` + GitHub OIDC land
+later (KAN-120/115). Requires AWS credentials (`aws configure`) and `pulumi login`.
+
+The first stack is a hello-world Lambda behind a public **Function URL**, logging to
+a managed CloudWatch log group — all within AWS always-free tiers (~$0).
+
+```bash
+pulumi -C infra stack init dev               # one-time; afterwards: stack select dev
+pnpm --filter @notation-hero/infra deploy    # builds the handler, then `pulumi up`
+curl "$(pulumi -C infra stack output url)"   # -> {"message":"hello from notation-hero"}
+pulumi -C infra destroy                      # tear down (stays $0 either way)
+```
 
 ## Documentation
 

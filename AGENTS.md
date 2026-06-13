@@ -20,7 +20,7 @@ below mark what is **NOT enforced yet**. Treat unmarked directions as enforced.
 | `apps/*` | `type:app` | `type:core`, `type:adapter` | infra source *(an `apps → @pulumi/*` ban is a pending later Step-1 item, NOT enforced yet)* |
 | `infra` | `type:infra` | nothing in-repo — pure IaC; wires `apps` via build output (`FileArchive(apps/*/dist)` + Nx `implicitDependencies`), never a TS import (ADR 2026-06-12 **D3**) | core / adapters / apps **source** *(enforced — depcruise **H9**)*; `infra` must never be imported BY app/adapter/core source. `apps` is the runtime composition root, **not** `infra`. |
 
-**Only `infra` (`@notation-hero/infra`, `type:infra`) exists today** — this foundation ships the nx wiring + the tag convention, **not** example domain packages. The first `core`/`adapter`/`app` packages materialize with their real domains (the **catalog** is first: `core/catalogue` + a Neon-Postgres adapter), each brainstormed/spec'd before code. The `@nx/js` + `@nx/eslint` generators are installed and ready to scaffold them with the right `--tags`.
+**`infra/` (`@notation-hero/infra`, `type:infra`) + `apps/handler-hello` (`type:app`) exist today** — the KAN-119 hello-world Lambda Function URL, the first AWS deliverable (see the decision-registry Change-log 2026-06-14). `core/` and `adapters/` are still empty; the first `core`/`adapter` packages materialize with their real domains (the **catalog** is first: `core/catalogue` + a Neon-Postgres adapter), each brainstormed/spec'd before code. The `@nx/js` + `@nx/eslint` generators are installed and ready to scaffold them with the right `--tags`.
 
 Naming is `@notation-hero/*` (hyphen — matches root `name: "notation-hero"`).
 The DACI's `@notationhero/*` (no hyphen, M-7) is a typo; do not adopt it.
