@@ -27,6 +27,7 @@
     --amber:#F0B23E;
     /* Okabe-Ito (CVD-safe), nudged brighter for dark bg; no purple member used */
     --oi-verm:#FF7A3D; --oi-orange:#F0A92E; --oi-green:#1FBF8F;
+    --score-blue:#56B4E9; /* Okabe-Ito azure — blue, NOT indigo/violet */
   }
   [data-theme="light"] {
     --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
@@ -35,6 +36,7 @@
     --learn-text:#1D4ED8; --hover:rgba(15,21,28,.05); --glow:color-mix(in srgb,var(--accent) 30%,transparent);
     --amber:#C97A14;
     --oi-verm:#D55E00; --oi-orange:#E69F00; --oi-green:#009E73;
+    --score-blue:#0072B2; /* Okabe-Ito azure — blue, NOT indigo/violet */
   }
   :root { --dur:200ms; --ease:cubic-bezier(.2,.6,.2,1); --track:var(--panel2); }
   * { box-sizing:border-box; }
@@ -85,11 +87,16 @@
   .sysD.mid {--ring:var(--oi-orange);}
   .sysD.good{--ring:var(--oi-green);}
   .sysD.hi  {--ring:var(--accent);}
+  /* E — teal + warm low + BLUE mid-high (Leo's ask: 70–89 blue, then cools to teal) */
+  .sysE.lo  {--ring:var(--amber);}
+  .sysE.mid {--ring:color-mix(in srgb,var(--accent) 58%,var(--muted));}
+  .sysE.blue{--ring:var(--score-blue);}
+  .sysE.top {--ring:var(--accenthi);}
 
   /* ---------- Section 1: systems × score matrix ---------- */
-  .matrix{display:grid;grid-template-columns:118px repeat(4,1fr);border:.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);}
-  .matrix > div{padding:9px 10px;border-bottom:.5px solid var(--line);border-right:.5px solid var(--line);display:flex;align-items:center;justify-content:center;}
-  .matrix > div:nth-child(5n){border-right:none;}
+  .matrix{display:grid;grid-template-columns:104px repeat(5,1fr);border:.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);}
+  .matrix > div{padding:9px 8px;border-bottom:.5px solid var(--line);border-right:.5px solid var(--line);display:flex;align-items:center;justify-content:center;}
+  .matrix > div:nth-child(6n){border-right:none;}
   .matrix .mh{background:var(--elevate);flex-direction:column;gap:2px;padding:11px 10px;}
   .matrix .mh .mhn{font-weight:700;font-size:12.5px;color:var(--ink);} .matrix .mh .mhd{font-size:10.5px;color:var(--faint);font-weight:600;text-align:center;line-height:1.3;}
   .matrix .mh.corner{justify-content:center;} .matrix .mh.corner .mhn{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);}
@@ -146,9 +153,9 @@
     <button class="toggle-btn" onclick="theme()" title="Toggle theme"><span class="material-symbols-outlined" id="themeicon">dark_mode</span></button>
   </div>
   <h1>Best-score donut — should the ring colour band by performance?</h1>
-  <p class="lead">The number (Geist&nbsp;Mono) <b>always carries the exact value</b>, so colour is <b>reinforcement only</b> — every system below stays colourblind-safe by construction. Four candidates, across the full score range, light&nbsp;+&nbsp;dark (🌙 toggles). Mastered = <b>solid teal disc + trophy</b>; not-attempted = <b>grey ring + —</b> (both locked, shared by every system).</p>
+  <p class="lead">The number (Geist&nbsp;Mono) <b>always carries the exact value</b>, so colour is <b>reinforcement only</b> — every system below stays colourblind-safe by construction. Five candidates, across the full score range, light&nbsp;+&nbsp;dark (🌙 toggles). Mastered = <b>solid teal disc + trophy</b>; not-attempted = <b>grey ring + —</b> (both locked, shared by every system).</p>
 
-  <h2><span class="material-symbols-outlined">grid_view</span> Four systems across the score range <span class="tag">28&nbsp;px · the core comparison</span></h2>
+  <h2><span class="material-symbols-outlined">grid_view</span> Five systems across the score range <span class="tag">28&nbsp;px · the core comparison</span></h2>
   <div class="matrix onpanel" id="matrix"></div>
 
   <h2><span class="material-symbols-outlined">states</span> Shared states — the climb to mastery &amp; the empty state</h2>
@@ -176,11 +183,16 @@
   document.getElementById('logo').innerHTML = document.getElementById('logo').innerHTML.replace('__MARK__', MARK);
   function theme(){ var h=document.documentElement; var d=h.getAttribute('data-theme')==='dark'; h.setAttribute('data-theme',d?'light':'dark'); document.getElementById('themeicon').textContent=d?'dark_mode':'light_mode'; }
 
-  // band model — reuses the app's existing S/A/B/C/D cuts (95/85/70/55 → folded to 4 colour bands)
-  function band(s){ if(s==null) return 'empty'; if(s>=100) return 'master'; if(s<55) return 'lo'; if(s<70) return 'mid'; if(s<85) return 'good'; return 'hi'; }
-  // one donut. sys = 'A'|'B'|'C'|'D'; sz optional px.
+  // band model — reuses the app's existing S/A/B/C/D cuts (95/85/70/55 → folded to colour bands).
+  // System E re-cuts the upper range so 70–89 is BLUE (covers 74 & 88), 90–99 cools to bright teal.
+  function band(s, sys){
+    if(s==null) return 'empty'; if(s>=100) return 'master';
+    if(sys==='E'){ if(s<55) return 'lo'; if(s<70) return 'mid'; if(s<90) return 'blue'; return 'top'; }
+    if(s<55) return 'lo'; if(s<70) return 'mid'; if(s<85) return 'good'; return 'hi';
+  }
+  // one donut. sys = 'A'|'B'|'C'|'D'|'E'; sz optional px.
   function donut(score, sys, sz){
-    var b=band(score), cls='donut sys'+sys+' '+b, st=(sz?'--dsz:'+sz+'px;':'');
+    var b=band(score, sys), cls='donut sys'+sys+' '+b, st=(sz?'--dsz:'+sz+'px;':'');
     if(b==='empty') return '<span class="'+cls+'" style="'+st+'"><span>–</span></span>';
     if(b==='master') return '<span class="'+cls+'" style="'+st+'--p:100"><span><span class="material-symbols-filled tro">trophy</span></span></span>';
     return '<span class="'+cls+'" style="'+st+'--p:'+score+'"><span>'+score+'</span></span>';
@@ -190,8 +202,10 @@
     {k:'A', n:'A · Uniform', d:'every ring teal (today)'},
     {k:'B', n:'B · Teal ramp', d:'one hue, dim → vivid'},
     {k:'C', n:'C · Teal + warm', d:'amber low, teal above'},
+    {k:'E', n:'E · Teal + blue', d:'amber low, blue 70–89'},
     {k:'D', n:'D · Okabe-Ito', d:'CVD heatmap, no purple'}
   ];
+  var LEAD='E'; // the system shown in states / size / context / legend by default
   // dense sweep across the range + the two special states at the ends
   var SCORES=[null,12,28,44,54,60,68,74,82,88,94,98,100];
   function scLabel(s){ if(s==null) return 'New'; if(s===100) return 'Master'; return band(s); }
@@ -211,18 +225,18 @@
 
   // ---- Section 2: states (climb to mastery + empty), shown in system C ----
   var st=document.getElementById('states'); var sh='';
-  var climb=[ {s:null,b:'New',t:'grey ring + —'},{s:48,b:'48',t:'low band'},{s:72,b:'72',t:'good band'},{s:92,b:'92',t:'high band'},{s:98,b:'98',t:'high band'},{s:100,b:'Mastered',t:'solid disc + trophy'} ];
+  var climb=[ {s:null,b:'New',t:'grey ring + —'},{s:41,b:'41',t:'low · amber'},{s:62,b:'62',t:'mid · teal'},{s:78,b:'78',t:'climbing · blue'},{s:94,b:'94',t:'near · bright teal'},{s:100,b:'Mastered',t:'solid disc + trophy'} ];
   climb.forEach(function(c,i){
     if(i>0) sh+='<span class="arrowdots">›</span>';
-    sh+='<div class="stitem">'+donut(c.s,'C',34)+'<span class="sl"><b>'+c.b+'</b>'+c.t+'</span></div>';
+    sh+='<div class="stitem">'+donut(c.s,LEAD,34)+'<span class="sl"><b>'+c.b+'</b>'+c.t+'</span></div>';
   });
   st.innerHTML=sh;
 
   // ---- Section 3: size check (system C, a high score) ----
   var sz=document.getElementById('sizes'); var zh='';
-  [24,26,28,30].forEach(function(px){ zh+='<div class="dcell">'+donut(88,'C',px)+'<span class="cap">'+px+'px</span></div>'; });
-  zh+='<div class="dcell">'+donut(100,'C',28)+'<span class="cap">100 · 28px</span><span class="cap2">mastered</span></div>';
-  zh+='<div class="dcell">'+donut(null,'C',28)+'<span class="cap">new · 28px</span><span class="cap2">not attempted</span></div>';
+  [24,26,28,30].forEach(function(px){ zh+='<div class="dcell">'+donut(88,LEAD,px)+'<span class="cap">'+px+'px</span></div>'; });
+  zh+='<div class="dcell">'+donut(100,LEAD,28)+'<span class="cap">100 · 28px</span><span class="cap2">mastered</span></div>';
+  zh+='<div class="dcell">'+donut(null,LEAD,28)+'<span class="cap">new · 28px</span><span class="cap2">not attempted</span></div>';
   sz.innerHTML=zh;
 
   // ---- Section 4: in-context switcher + list ----
@@ -235,7 +249,7 @@
     {title:'Warmup Roll', sub:'Technique · 4/4 · drums', lvl:1, bpm:72, best:41},
     {title:'Odd-Meter Étude', sub:'Jazz · 7/8 · drums', lvl:10, bpm:132, best:null}
   ];
-  var curSys='C';
+  var curSys=LEAD;
   var seg=document.getElementById('seg');
   seg.innerHTML=SYS.map(function(s){ return '<button class="'+(s.k===curSys?'sel':'')+'" onclick="pick(\''+s.k+'\',this)">'+s.n+'</button>'; }).join('');
   function renderList(){
@@ -253,18 +267,17 @@
 
   // ---- Thresholds legend (reflects the recommended system C) ----
   var BANDS=[
-    {b:'lo',  n:'Low',      r:'1 – 54',  d:'amber ring (C) / greyed teal (B)'},
-    {b:'mid', n:'Mid',      r:'55 – 69', d:'softer teal'},
-    {b:'good',n:'Good',     r:'70 – 84', d:'full teal (--accent)'},
-    {b:'hi',  n:'High',     r:'85 – 99', d:'bright teal (--accenthi)'},
-    {b:'master',n:'Mastered',r:'100',    d:'solid disc + trophy'},
-    {b:'empty',n:'Not attempted',r:'—',  d:'grey ring + dash'}
+    {b:'lo',  n:'Low',      r:'1 – 54',  d:'amber ring', sc:41},
+    {b:'mid', n:'Mid',      r:'55 – 69', d:'softer teal', sc:62},
+    {b:'blue',n:'Climbing', r:'70 – 89', d:'blue (--score-blue)', sc:78},
+    {b:'top', n:'Near-master',r:'90 – 99',d:'bright teal (--accenthi)', sc:94},
+    {b:'master',n:'Mastered',r:'100',    d:'solid disc + trophy', sc:100},
+    {b:'empty',n:'Not attempted',r:'—',  d:'grey ring + dash', sc:null}
   ];
   document.getElementById('legend').innerHTML = BANDS.map(function(x){
-    var demo = x.b==='empty'? donut(null,'C') : (x.b==='master'? donut(100,'C') : donut({lo:41,mid:62,good:78,hi:92}[x.b],'C'));
-    return '<div class="lgc">'+demo+'<span class="lgl"><b>'+x.n+'</b>'+x.d+'<span class="lgr">'+x.r+'</span></span></div>';
+    return '<div class="lgc">'+donut(x.sc,LEAD)+'<span class="lgl"><b>'+x.n+'</b>'+x.d+'<span class="lgr">'+x.r+'</span></span></div>';
   }).join('');
-  document.getElementById('legendnote').innerHTML = 'Cuts reuse the app’s existing grade model (<code>gradeOf()</code>: 95/85/70/55) folded into four colour bands. Because the centred number is authoritative, a viewer with any colour-vision deficiency reads the exact score regardless of ring hue — the band is a <b>fast-glance reinforcement</b>, never the only signal. System C’s only non-teal is the <b>amber low band</b> (already a brand token); it reads as “keep going,” not “error.”';
+  document.getElementById('legendnote').innerHTML = 'Thresholds shown for <b>E</b> (the blue variant). A/B/C/D share the app’s existing grade cuts (<code>gradeOf()</code>: 55/70/85); <b>E re-cuts the top</b> so <b>70–89 is blue</b> (covers 74 &amp; 88) and 90–99 cools to bright teal before the trophy. Because the centred number is authoritative, a viewer with any colour-vision deficiency reads the exact score regardless of ring hue — the band is <b>fast-glance reinforcement</b>, never the only signal. The two non-teal hues (<b>amber</b> low, <b>azure</b> climbing) are both blue-safe against teal and carry no “error” read. Tune any cut — say it.';
 </script>
 </body>
 </html>
