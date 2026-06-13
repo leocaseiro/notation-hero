@@ -3,23 +3,28 @@ import { test } from "node:test";
 
 import * as pulumi from "@pulumi/pulumi";
 
-// Register mocks BEFORE constructing any component (resources are created in the
-// constructor, so a static import of the component is safe).
+// Record every resource's resolved inputs so tests can assert on the wiring
+// (authType, retention, runtime, ...) — not just the exposed outputs.
+const created: Array<{ type: string; inputs: Record<string, unknown> }> = [];
+
 pulumi.runtime.setMocks({
-  newResource: (args) => ({
-    id: `${args.name}-id`,
-    state: {
-      ...args.inputs,
-      // aws.lambda.FunctionUrl exposes `functionUrl`; give a realistic value.
-      functionUrl: "https://abcd1234.lambda-url.ap-southeast-2.on.aws/",
-    },
-  }),
+  newResource: (args) => {
+    created.push({ type: args.type, inputs: args.inputs });
+    return {
+      id: `${args.name}-id`,
+      state: {
+        ...args.inputs,
+        // aws.lambda.FunctionUrl exposes `functionUrl`; give a realistic value.
+        functionUrl: "https://abcd1234.lambda-url.ap-southeast-2.on.aws/",
+      },
+    };
+  },
   call: (args) => args.inputs,
 });
 
 import { LambdaWithUrl } from "./lambda-with-url.stack.ts";
 
-const resolve = <T>(o: pulumi.Output<T>): Promise<T> =>
+const resolveOutput = <T>(o: pulumi.Output<T>): Promise<T> =>
   new Promise<T>((res) => {
     o.apply((v) => {
       res(v);
@@ -27,22 +32,49 @@ const resolve = <T>(o: pulumi.Output<T>): Promise<T> =>
     });
   });
 
-const makeComponent = (name: string, functionName: string): LambdaWithUrl =>
+const inputsOf = (typeSuffix: string): Record<string, unknown> => {
+  const match = created.find((r) => r.type.endsWith(typeSuffix));
+  assert.ok(match, `expected a created resource of type ...${typeSuffix}`);
+  return match.inputs;
+};
+
+const makeComponent = (name: string, args: Partial<{ runtime: string; logRetentionDays: number }> = {}): LambdaWithUrl =>
   new LambdaWithUrl(name, {
-    functionName,
+    functionName: name,
     code: new pulumi.asset.AssetArchive({
       "index.js": new pulumi.asset.StringAsset("exports.handler = async () => ({ statusCode: 200 });"),
     }),
     handler: "index.handler",
+    ...args,
   });
 
-test("exposes a public https function URL", async () => {
-  const url = await resolve(makeComponent("t1", "nh-test-fn").url);
+test("provisions a public Lambda Function URL over a 14-day-retention log group", async () => {
+  created.length = 0;
+  const component = makeComponent("nh-hello");
+
+  // Resolving the URL forces the whole resource graph to materialize under the mocks.
+  const url = await resolveOutput(component.url);
   assert.ok(url.startsWith("https://"), `expected an https URL, got: ${url}`);
+
+  assert.equal(await resolveOutput(component.logGroupName), "/aws/lambda/nh-hello");
+
+  const fn = inputsOf(":Function");
+  assert.equal(fn.runtime, "nodejs22.x");
+  assert.deepEqual(fn.architectures, ["arm64"]);
+
+  const logGroup = inputsOf(":LogGroup");
+  assert.equal(logGroup.name, "/aws/lambda/nh-hello");
+  assert.equal(logGroup.retentionInDays, 14);
+
+  // The public-endpoint security contract (C2/R1) — flipping to AWS_IAM must fail this.
+  assert.equal(inputsOf(":FunctionUrl").authorizationType, "NONE");
 });
 
-test("pins the log group to /aws/lambda/<functionName> with 14-day retention default", async () => {
-  const component = makeComponent("t2", "nh-test-fn-2");
-  const logGroupName = await resolve(component.logGroupName);
-  assert.equal(logGroupName, "/aws/lambda/nh-test-fn-2");
+test("honors runtime and retention overrides", async () => {
+  created.length = 0;
+  const component = makeComponent("nh-custom", { runtime: "nodejs20.x", logRetentionDays: 30 });
+  await resolveOutput(component.url);
+
+  assert.equal(inputsOf(":Function").runtime, "nodejs20.x");
+  assert.equal(inputsOf(":LogGroup").retentionInDays, 30);
 });
