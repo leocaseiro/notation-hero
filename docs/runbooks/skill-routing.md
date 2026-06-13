@@ -86,7 +86,7 @@ flowchart TD
   QDEPLOY -->|"not yet"| DONE(["done — anything worth keeping?"])
   LAND --> DONE
 
-  DONE -->|"solved something hard"| COMPOUND["/ce-compound<br/>docs/solutions/ · memstack /grimoire"]:::ce
+  DONE -->|"solved something hard"| COMPOUND["/ce-compound<br/>docs/solutions/ · memstack grimoire"]:::ce
   DONE -->|"worth announcing"| PROMOTE["/ce-promote<br/>launch copy"]:::ce
 
   subgraph DESIGNTRACK["UI / design track — when the work is visual"]
@@ -103,20 +103,20 @@ flowchart TD
   DHTML -->|"direction approved"| QHOW
 
   subgraph ANYTIME["anytime — outside the main flow"]
-    LOST["lost context?<br/>/context-restore gs · /ce-sessions · /state ms"]:::gs
+    LOST["lost context?<br/>/context-restore gs · /ce-sessions · memstack: say 'where was I'"]:::gs
     WEBQA["web app running?<br/>/qa · /qa-only · /design-review gs"]:::gs
     RETRO["week over?<br/>/retro · /health gs"]:::gs
     SECOND["second opinion?<br/>/codex gs — cross-model"]:::gs
   end
 
-  subgraph MEMSTACK["memstack — memory & context layer (wraps every session + project · not yet installed here)"]
-    MLOAD["session start / where was I<br/>/state load · /echo recall"]:::ms
-    MSAVE["wrapping up<br/>/diary log · /project handoff"]:::ms
-    MWORK["/work — plan, todos, next"]:::ms
-    MGRIM["big changes?<br/>/grimoire refresh CLAUDE.md"]:::ms
-    MCTX["context filling?<br/>/compress · /token-optimization · /shard"]:::ms
-    MTEACH["explain code<br/>/mentor walk-through · /sight diagram"]:::ms
-    MGOV["new project?<br/>/governor pick tier"]:::ms
+  subgraph MEMSTACK["memstack — MCP server · trigger by natural-language phrase (wraps every session + project)"]
+    MLOAD["say 'where was I'<br/>state load · echo recall"]:::ms
+    MSAVE["say 'wrapping up'<br/>diary log · project handoff"]:::ms
+    MWORK["say 'what is next'<br/>work — plan, todos"]:::ms
+    MGRIM["big changes?<br/>grimoire refresh CLAUDE.md"]:::ms
+    MCTX["context filling?<br/>compress · token-optimization · shard"]:::ms
+    MTEACH["say 'walk me through'<br/>mentor explain · sight diagram"]:::ms
+    MGOV["new project?<br/>governor pick tier"]:::ms
   end
 ```
 
@@ -163,9 +163,9 @@ want a committed design doc with the no-code gate.
 | Open a PR | `/ce-commit-push-pr` | gstack `/ship` (VERSION + CHANGELOG) |
 | PR feedback | `/ce-resolve-pr-feedback` | `superpowers:receiving-code-review` (rigor check) |
 | Merge + deploy + verify | gstack `/land-and-deploy` → `/canary` | — |
-| Capture a hard-won learning | `/ce-compound` | gstack `/learn` (curate), memstack `/grimoire` |
+| Capture a hard-won learning | `/ce-compound` | gstack `/learn` (curate), memstack `grimoire` |
 | Announce a shipped feature | `/ce-promote` | — |
-| Lost context / resuming | gstack `/context-restore` | `/ce-sessions`, memstack `/state` + `/echo` |
+| Lost context / resuming | gstack `/context-restore` | `/ce-sessions`, memstack `state` + `echo` |
 | QA a running web app | gstack `/qa` (fixes) | `/qa-only` (report only) |
 | Explore visual directions (variant board) | gstack `/design-shotgun` | `/ce-gemini-imagegen` (images only, no board/feedback loop) |
 | Mockups while brainstorming | superpowers Visual Companion (inside `brainstorming`) | — |
@@ -175,19 +175,24 @@ want a committed design doc with the no-code gate.
 | Match implementation to a Figma design | `ce-figma-design-sync` / `ce-design-implementation-reviewer` agents | — |
 | Weekly reflection | gstack `/retro` + `/health` | — |
 | Cross-model second opinion | gstack `/codex` | — |
-| Explain code as you go / learn | memstack `/mentor` | (the explain-code one) |
-| Visualize architecture | memstack `/sight` | gstack `/design-html` for real HTML |
-| Context window filling up | memstack `/compress`, `/token-optimization` | `/shard` for files >1000 lines |
-| Save / resume session state | memstack `/state` · `/diary` · `/project` | gstack `/context-save` + `/context-restore` |
-| Make AI text sound human | memstack `/humanize` | — |
+| Explain code as you go / learn | memstack `mentor` (say "walk me through") | (the explain-code one) |
+| Visualize architecture | memstack `sight` | gstack `/design-html` for real HTML |
+| Context window filling up | memstack `compress`, `token-optimization` | `shard` for files >1000 lines |
+| Save / resume session state | memstack `state` · `diary` · `project` | gstack `/context-save` + `/context-restore` |
+| Make AI text sound human | memstack `humanize` | — |
 
 ## memstack — the memory & context layer (cross-project)
 
-> ⚠️ **Not detected in this environment yet.** A scan of `~/.claude`, `~/.agents`,
-> `~/.codex`, the plugin registry, and the active skill list found no memstack skills
-> (`state`, `echo`, `grimoire`, `mentor`…). Install from
-> <https://github.com/cwinvestments/memstack> (skills live under `skills/`), then
-> re-run skill discovery. Everything below is ready for when it's live.
+> ℹ️ **memstack is an MCP server, not slash-command skills.** Skills are served by the
+> `memstack-skill-loader` MCP server and triggered by **natural-language phrases** — there
+> are no `/state`-style commands and they never appear in `/skills` or `/reload-skills`.
+> The "Skill" columns below are internal skill *names*; invoke each with the phrase in its
+> "Trigger" column.
+>
+> **One-time setup:** `pip install memstack-skill-loader`, then
+> `claude mcp add --scope user memstack-skills -- python -m memstack_skill_loader`
+> (point at your pipx venv's python if you installed via pipx), then **restart Claude Code**.
+> Verify by typing `list skills`. Free tier = 84 skills; a Pro key (memstack.pro) unlocks 127.
 
 Unlike ce-/superpowers/gstack — which *do* the work — memstack *remembers* work and
 *manages the context window*, so it wraps every session on every project
@@ -195,28 +200,28 @@ Unlike ce-/superpowers/gstack — which *do* the work — memstack *remembers* w
 
 **Session continuity — start & end of every session:**
 
-| Trigger | Skill |
+| Trigger phrase | Skill name |
 |---|---|
-| "where was I" / session start | `/state` (load context) · `/echo` (recall past sessions) |
-| "wrapping up" / context low | `/diary` (log session) · `/project` (save state + handoff) |
-| "what's next" / planning | `/work` (plan, todos, resume) |
-| big changes landed | `/grimoire` (refresh the project's CLAUDE.md) |
-| new project kickoff | `/governor` (pick tier / complexity budget) |
+| "where was I" / session start | `state` (load context) · `echo` (recall past sessions) |
+| "wrapping up" / context low | `diary` (log session) · `project` (save state + handoff) |
+| "what's next" / planning | `work` (plan, todos, resume) |
+| big changes landed | `grimoire` (refresh the project's CLAUDE.md) |
+| new project kickoff | `governor` (pick tier / complexity budget) |
 
 **Context-window management:**
 
-| Trigger | Skill |
+| Trigger phrase | Skill name |
 |---|---|
-| context filling up | `/compress` (API compression) · `/token-optimization` (Headroom + RTK + Serena) |
-| file over ~1000 lines | `/shard` (split it) |
-| split work across sessions | `/familiar` (dispatch parallel CC sessions) |
+| context filling up | `compress` (API compression) · `token-optimization` (Headroom + RTK + Serena) |
+| file over ~1000 lines | `shard` (split it) |
+| split work across sessions | `familiar` (dispatch parallel CC sessions) |
 
 **Understand & explain code (what you asked for):**
 
-| Trigger | Skill | Note |
+| Trigger phrase | Skill name | Note |
 |---|---|---|
-| "walk me through" / "teach me" | `/mentor` | plain-language narration as you build — the explain-code one |
-| "draw / diagram / visualize" | `/sight` | visual architecture overview |
+| "walk me through" / "teach me" | `mentor` | plain-language narration as you build — the explain-code one |
+| "draw / diagram / visualize" | `sight` | visual architecture overview |
 
 **Overlaps — don't double up.** memstack also ships engineering helpers that overlap
 your existing families: `code-reviewer` ≈ `/ce-code-review`, `test-writer` ≈
