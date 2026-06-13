@@ -62,6 +62,13 @@ test("provisions a public Lambda Function URL over a 14-day-retention log group"
   assert.equal(fn.runtime, "nodejs22.x");
   assert.deepEqual(fn.architectures, ["arm64"]);
 
+  // KTD4: loggingConfig.logGroup (not bare dependsOn) is what redirects logging
+  // to the managed group — assert the linkage so a regression to the unmanaged
+  // never-expire group fails the test.
+  const logging = fn.loggingConfig as { logFormat: string; logGroup: string };
+  assert.equal(logging.logFormat, "JSON");
+  assert.equal(logging.logGroup, "/aws/lambda/nh-hello");
+
   const logGroup = inputsOf(":LogGroup");
   assert.equal(logGroup.name, "/aws/lambda/nh-hello");
   assert.equal(logGroup.retentionInDays, 14);
