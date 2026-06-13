@@ -92,11 +92,17 @@
   .sysE.mid {--ring:color-mix(in srgb,var(--accent) 58%,var(--muted));}
   .sysE.blue{--ring:var(--score-blue);}
   .sysE.top {--ring:var(--accenthi);}
+  /* F — full spectrum (Leo's pick): vermillion → orange → blue(70–88) → green(89–99) → teal@100 */
+  .sysF.verm  {--ring:var(--oi-verm);}
+  .sysF.orange{--ring:var(--oi-orange);}
+  .sysF.blue  {--ring:var(--score-blue);}
+  .sysF.green {--ring:var(--oi-green);}
+  .sysF.master{background:var(--accenthi);} .sysF.master::before{background:var(--accenthi);}
 
   /* ---------- Section 1: systems × score matrix ---------- */
-  .matrix{display:grid;grid-template-columns:104px repeat(5,1fr);border:.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);}
+  .matrix{display:grid;grid-template-columns:104px repeat(3,1fr);border:.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);}
   .matrix > div{padding:9px 8px;border-bottom:.5px solid var(--line);border-right:.5px solid var(--line);display:flex;align-items:center;justify-content:center;}
-  .matrix > div:nth-child(6n){border-right:none;}
+  /* last-column right border is cleared in JS — column count is dynamic (1 + SYS.length) */
   .matrix .mh{background:var(--elevate);flex-direction:column;gap:2px;padding:11px 10px;}
   .matrix .mh .mhn{font-weight:700;font-size:12.5px;color:var(--ink);} .matrix .mh .mhd{font-size:10.5px;color:var(--faint);font-weight:600;text-align:center;line-height:1.3;}
   .matrix .mh.corner{justify-content:center;} .matrix .mh.corner .mhn{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);}
@@ -153,9 +159,9 @@
     <button class="toggle-btn" onclick="theme()" title="Toggle theme"><span class="material-symbols-outlined" id="themeicon">dark_mode</span></button>
   </div>
   <h1>Best-score donut — should the ring colour band by performance?</h1>
-  <p class="lead">The number (Geist&nbsp;Mono) <b>always carries the exact value</b>, so colour is <b>reinforcement only</b> — every system below stays colourblind-safe by construction. Five candidates, across the full score range, light&nbsp;+&nbsp;dark (🌙 toggles). Mastered = <b>solid teal disc + trophy</b>; not-attempted = <b>grey ring + —</b> (both locked, shared by every system).</p>
+  <p class="lead">The number (Geist&nbsp;Mono) <b>always carries the exact value</b>, so colour is <b>reinforcement only</b> — your spectrum stays colourblind-safe by construction (Okabe-Ito hues, no purple). <b>★ Spectrum</b> is your pick (vermillion → orange → blue → green → teal); shown against <b>Okabe</b> (no blue) and <b>Uniform</b> (today) across the full range, light&nbsp;+&nbsp;dark (🌙 toggles). Mastered = <b>teal disc + trophy</b>; not-attempted = <b>grey ring + —</b> (both locked).</p>
 
-  <h2><span class="material-symbols-outlined">grid_view</span> Five systems across the score range <span class="tag">28&nbsp;px · the core comparison</span></h2>
+  <h2><span class="material-symbols-outlined">grid_view</span> ★ Spectrum (your pick) across the score range <span class="tag">28&nbsp;px · vs Okabe &amp; Uniform</span></h2>
   <div class="matrix onpanel" id="matrix"></div>
 
   <h2><span class="material-symbols-outlined">states</span> Shared states — the climb to mastery &amp; the empty state</h2>
@@ -187,6 +193,7 @@
   // System E re-cuts the upper range so 70–89 is BLUE (covers 74 & 88), 90–99 cools to bright teal.
   function band(s, sys){
     if(s==null) return 'empty'; if(s>=100) return 'master';
+    if(sys==='F'){ if(s<50) return 'verm'; if(s<70) return 'orange'; if(s<89) return 'blue'; return 'green'; }
     if(sys==='E'){ if(s<55) return 'lo'; if(s<70) return 'mid'; if(s<90) return 'blue'; return 'top'; }
     if(s<55) return 'lo'; if(s<70) return 'mid'; if(s<85) return 'good'; return 'hi';
   }
@@ -199,13 +206,11 @@
   }
 
   var SYS=[
-    {k:'A', n:'A · Uniform', d:'every ring teal (today)'},
-    {k:'B', n:'B · Teal ramp', d:'one hue, dim → vivid'},
-    {k:'C', n:'C · Teal + warm', d:'amber low, teal above'},
-    {k:'E', n:'E · Teal + blue', d:'amber low, blue 70–89'},
-    {k:'D', n:'D · Okabe-Ito', d:'CVD heatmap, no purple'}
+    {k:'F', n:'★ Spectrum', d:'your pick — verm→orange→blue→green'},
+    {k:'D', n:'D · Okabe', d:'no blue (74–88 green)'},
+    {k:'A', n:'A · Uniform', d:'every ring teal (today)'}
   ];
-  var LEAD='E'; // the system shown in states / size / context / legend by default
+  var LEAD='F'; // the system shown in states / size / context / legend by default
   // dense sweep across the range + the two special states at the ends
   var SCORES=[null,12,28,44,54,60,68,74,82,88,94,98,100];
   function scLabel(s){ if(s==null) return 'New'; if(s===100) return 'Master'; return band(s); }
@@ -222,10 +227,13 @@
     SYS.forEach(function(s){ h+='<div class="'+(last?'rowend':'')+'">'+donut(sc,s.k)+'</div>'; });
   });
   mx.innerHTML=h;
+  // column count is dynamic: 1 score column + one per system
+  mx.style.gridTemplateColumns='104px repeat('+SYS.length+',1fr)';
+  [].slice.call(mx.children).forEach(function(c,i){ if((i+1)%(SYS.length+1)===0) c.style.borderRight='none'; });
 
   // ---- Section 2: states (climb to mastery + empty), shown in system C ----
   var st=document.getElementById('states'); var sh='';
-  var climb=[ {s:null,b:'New',t:'grey ring + —'},{s:41,b:'41',t:'low · amber'},{s:62,b:'62',t:'mid · teal'},{s:78,b:'78',t:'climbing · blue'},{s:94,b:'94',t:'near · bright teal'},{s:100,b:'Mastered',t:'solid disc + trophy'} ];
+  var climb=[ {s:null,b:'New',t:'grey ring + —'},{s:38,b:'38',t:'vermillion'},{s:60,b:'60',t:'orange'},{s:80,b:'80',t:'blue'},{s:94,b:'94',t:'green'},{s:100,b:'Mastered',t:'teal disc + trophy'} ];
   climb.forEach(function(c,i){
     if(i>0) sh+='<span class="arrowdots">›</span>';
     sh+='<div class="stitem">'+donut(c.s,LEAD,34)+'<span class="sl"><b>'+c.b+'</b>'+c.t+'</span></div>';
@@ -267,17 +275,17 @@
 
   // ---- Thresholds legend (reflects the recommended system C) ----
   var BANDS=[
-    {b:'lo',  n:'Low',      r:'1 – 54',  d:'amber ring', sc:41},
-    {b:'mid', n:'Mid',      r:'55 – 69', d:'softer teal', sc:62},
-    {b:'blue',n:'Climbing', r:'70 – 89', d:'blue (--score-blue)', sc:78},
-    {b:'top', n:'Near-master',r:'90 – 99',d:'bright teal (--accenthi)', sc:94},
-    {b:'master',n:'Mastered',r:'100',    d:'solid disc + trophy', sc:100},
-    {b:'empty',n:'Not attempted',r:'—',  d:'grey ring + dash', sc:null}
+    {b:'verm',  n:'Vermillion', r:'1 – 49',  d:'--oi-verm', sc:38},
+    {b:'orange',n:'Orange',     r:'50 – 69', d:'--oi-orange', sc:60},
+    {b:'blue',  n:'Blue',       r:'70 – 88', d:'--score-blue', sc:80},
+    {b:'green', n:'Green',      r:'89 – 99', d:'--oi-green', sc:94},
+    {b:'master',n:'Mastered',   r:'100',     d:'teal disc + trophy (--accenthi)', sc:100},
+    {b:'empty', n:'Not attempted',r:'—',     d:'grey ring + dash', sc:null}
   ];
   document.getElementById('legend').innerHTML = BANDS.map(function(x){
     return '<div class="lgc">'+donut(x.sc,LEAD)+'<span class="lgl"><b>'+x.n+'</b>'+x.d+'<span class="lgr">'+x.r+'</span></span></div>';
   }).join('');
-  document.getElementById('legendnote').innerHTML = 'Thresholds shown for <b>E</b> (the blue variant). A/B/C/D share the app’s existing grade cuts (<code>gradeOf()</code>: 55/70/85); <b>E re-cuts the top</b> so <b>70–89 is blue</b> (covers 74 &amp; 88) and 90–99 cools to bright teal before the trophy. Because the centred number is authoritative, a viewer with any colour-vision deficiency reads the exact score regardless of ring hue — the band is <b>fast-glance reinforcement</b>, never the only signal. The two non-teal hues (<b>amber</b> low, <b>azure</b> climbing) are both blue-safe against teal and carry no “error” read. Tune any cut — say it.';
+  document.getElementById('legendnote').innerHTML = 'System <b>F</b> — your spectrum: <code>verm &lt;50</code> · <code>orange 50–69</code> · <code>blue 70–88</code> · <code>green 89–99</code> · <code>teal 100</code>. Every hue is from the Okabe-Ito colourblind-safe set (no purple/violet/indigo). Because the centred number is authoritative, a viewer with any colour-vision deficiency reads the exact score regardless of ring hue — the band is <b>fast-glance reinforcement</b>, never the only signal. The 88/89 blue→green edge is a judgement call (you wrote both) — say the word to shift it. <b>One thing to eyeball:</b> vermillion on the lowest scores reads “loud / alarm,” which can feel harsh for a learner’s weakest pieces — a one-token swap to amber softens it if you’d rather it say “keep going.”';
 </script>
 </body>
 </html>
