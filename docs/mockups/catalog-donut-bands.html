@@ -29,6 +29,7 @@
     --oi-verm:#FF7A3D; --oi-orange:#F0A92E; --oi-green:#1FBF8F;
     --score-blue:#56B4E9; /* Okabe-Ito azure */
     --oi-purple:#E29CC4;  /* Okabe-Ito reddish-purple (brightened for dark) — score colour, not brand */
+    --gold:#FFD24A; --gold-ink:#2A2000; /* mastered-100 reward option (champion gold) */
   }
   [data-theme="light"] {
     --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
@@ -39,6 +40,7 @@
     --oi-verm:#D55E00; --oi-orange:#E69F00; --oi-green:#009E73;
     --score-blue:#0072B2; /* Okabe-Ito azure */
     --oi-purple:#CC79A7;  /* Okabe-Ito reddish-purple — score colour, not brand */
+    --gold:#E0A100; --gold-ink:#3A2C00; /* mastered-100 reward option (champion gold) */
   }
   :root { --dur:200ms; --ease:cubic-bezier(.2,.6,.2,1); --track:var(--panel2); }
   * { box-sizing:border-box; }
@@ -132,6 +134,18 @@
   .stitem .sl{font-size:11.5px;color:var(--muted);line-height:1.4;} .stitem .sl b{color:var(--ink);font-weight:600;display:block;font-size:12px;}
   .arrowdots{color:var(--faint);font-size:18px;}
 
+  /* mastered (100) reward-colour options */
+  .rewardrow{display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap;}
+  .rwd{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;max-width:120px;}
+  .rwd .lbl{font-size:11px;color:var(--muted);line-height:1.4;} .rwd .lbl b{display:block;color:var(--ink);font-weight:600;font-size:12px;margin-bottom:1px;}
+  .mdisc{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;flex:none;}
+  .mdisc .material-symbols-filled{font-size:21px;position:relative;top:1px;}
+  .m-teal{background:var(--accenthi);} .m-teal .material-symbols-filled{color:var(--onaccent);}
+  .m-gold{background:var(--gold);} .m-gold .material-symbols-filled{color:var(--gold-ink);}
+  .m-goldw{background:var(--gold);} .m-goldw .material-symbols-filled{color:#fff;}
+  .m-tealgold{background:var(--accenthi);} .m-tealgold .material-symbols-filled{color:var(--gold);}
+  .m-glow{background:var(--gold);box-shadow:0 0 14px color-mix(in srgb,var(--gold) 60%,transparent),0 0 0 3px color-mix(in srgb,var(--gold) 22%,transparent);} .m-glow .material-symbols-filled{color:var(--gold-ink);}
+
   /* ---------- system switcher ---------- */
   .seg{display:inline-flex;flex-wrap:wrap;background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:3px;gap:2px;margin-bottom:14px;}
   .seg button{font-family:'Hanken Grotesk';font-weight:600;font-size:12.5px;padding:8px 13px;border:none;background:transparent;color:var(--muted);border-radius:9px;cursor:pointer;}
@@ -182,6 +196,17 @@
     <div class="dscale" id="sizes"></div>
   </div>
 
+  <h2><span class="material-symbols-outlined">workspace_premium</span> Mastered (100) — its own reward colour? <span class="tag">100% is rare — should it stand apart?</span></h2>
+  <div class="panelbox onpanel">
+    <div class="rewardrow">
+      <div class="rwd"><span class="mdisc m-teal"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Teal (current)</b>≈ the 89–99 green</span></div>
+      <div class="rwd"><span class="mdisc m-gold"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Gold disc</b>champion / 1st place</span></div>
+      <div class="rwd"><span class="mdisc m-goldw"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Gold + white trophy</b>medal</span></div>
+      <div class="rwd"><span class="mdisc m-tealgold"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Teal disc + gold trophy</b>brand + reward</span></div>
+      <div class="rwd"><span class="mdisc m-glow"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Gold + glow</b>celebratory shine</span></div>
+    </div>
+    <p class="note" style="margin-top:14px">Today 100 is a teal disc — close in hue to the 89–99 <b>green</b> band, so colour adds little; only the trophy + solid-disc <i>form</i> sets it apart. A distinct <b>reward colour</b> (gold = the universal champion signal) makes a rare 100% feel earned. The 50–69 band is orange, so a gold <i>disc</i> rhymes with it in hue — the solid-disc-+-trophy form keeps them unmistakable, and <b>teal disc + gold trophy</b> sidesteps the rhyme entirely.</p>
+  </div>
   <h2><span class="material-symbols-outlined">preview</span> In context — on real catalogue rows</h2>
   <div class="seg" id="seg"></div>
   <div class="thead"><span>Name</span><span class="c">Level</span><span class="c">BPM</span><span class="c">Best</span><span></span></div>
