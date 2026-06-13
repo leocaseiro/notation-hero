@@ -1,12 +1,13 @@
 # Skill routing — which skill to run, and when
 
-Decision flowchart for picking between the three skill families
-(compound-engineering `ce-*`, superpowers, gstack) plus built-ins.
+Decision flowchart for picking between the four skill families
+(compound-engineering `ce-*`, superpowers, gstack, memstack) plus built-ins.
 Edit the Mermaid source below directly — GitHub renders it natively;
 for visual tweaking paste it into <https://mermaid.live>.
 
 Legend: 🟣 purple = compound-engineering (ce-) · 🟢 teal = superpowers ·
-🟠 coral = gstack (gs) · ⚪ gray = built-in Claude Code.
+🟠 coral = gstack (gs) · 🔵 blue = memstack (ms — memory/context layer) ·
+⚪ gray = built-in Claude Code.
 
 Golden rule: **don't cross the streams** — `ce-brainstorm` feeds `ce-plan`;
 `superpowers:brainstorming` feeds `writing-plans`. gstack authors nothing at
@@ -18,6 +19,7 @@ flowchart TD
   classDef ce fill:#EEEDFE,stroke:#534AB7,color:#26215C
   classDef sp fill:#E1F5EE,stroke:#0F6E56,color:#04342C
   classDef gs fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+  classDef ms fill:#E6F1FB,stroke:#185FA5,color:#042C53
   classDef bi fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
 
   START(["new task arrives"]) --> QBUG{"is something broken?"}
@@ -99,12 +101,48 @@ flowchart TD
   DHTML -->|"direction approved"| QHOW
 
   subgraph ANYTIME["anytime — outside the main flow"]
-    LOST["lost context?<br/>/context-restore gs · /ce-sessions"]:::gs
+    LOST["lost context?<br/>/context-restore gs · /ce-sessions · /state ms · /echo ms"]:::gs
     WEBQA["web app running?<br/>/qa fix-mode · /qa-only report · /design-review gs · ce-design-iterator agent"]:::gs
     RETRO["week over?<br/>/retro · /health gs"]:::gs
     SECOND["want a second opinion?<br/>/codex gs — cross-model review"]:::gs
   end
+
+  subgraph MEMSTACK["memstack — memory & context layer (wraps every session + project; not yet installed here — see below)"]
+    MLOAD["session start / where was I<br/>/state load · /echo recall past"]:::ms
+    MSAVE["wrapping up / context low<br/>/diary log · /project handoff"]:::ms
+    MWORK["/work — plan, todos, what is next"]:::ms
+    MGRIM["big changes landed?<br/>/grimoire — refresh CLAUDE.md"]:::ms
+    MCTX["context window filling?<br/>/compress · /token-optimization · /shard"]:::ms
+    MTEACH["understand / explain code<br/>/mentor walk-through · /sight diagram"]:::ms
+    MGOV["new project?<br/>/governor — pick tier + scope"]:::ms
+  end
 ```
+
+## Brainstorm front-doors, in plain English
+
+Three skills can open a feature, and the jargon hides what they actually do.
+Think of them as three different friends you tell *"I want to build X"*:
+
+- 🧑‍💼 **`/ce-brainstorm` — the sharp product-manager friend.** Challenges whether
+  you're building the *right thing* (who is it for? what's the evidence? what's the
+  smallest useful version?), then writes a clean requirements list. Stays out of the
+  technical how. "Product rigor" = it stress-tests the *product*, not the code.
+- 👷 **`superpowers:brainstorming` — the careful senior-engineer friend.** Won't let
+  any code be written until you've approved a **technical design** (architecture, data
+  flow, error handling, testing). The "no code before sign-off" guardrail *is* the point.
+- 🚀 **gstack `/office-hours` — the blunt startup-advisor friend.** Challenges the
+  *premise* — should this even exist? Is anyone desperate for it? The most "are you
+  sure?" of the three (YC = Y Combinator, the accelerator known for blunt founder questions).
+
+| Front door | The question it really asks |
+|---|---|
+| `/ce-brainstorm` | "Is this the right product, and what exactly are the requirements?" |
+| `superpowers:brainstorming` | "What's the technical design — and approve it before any code." |
+| gstack `/office-hours` | "Should this even exist? Prove the premise." |
+
+When unsure, sequence them: **office-hours** (worth building at all?) → **ce-brainstorm**
+(nail the WHAT) → reach for **superpowers:brainstorming** instead when you specifically
+want a committed design doc with the no-code gate.
 
 ## Quick routing table (text backup of the diagram)
 
@@ -124,7 +162,7 @@ flowchart TD
 | Merge + deploy + verify | gstack `/land-and-deploy` → `/canary` | — |
 | Capture a hard-won learning | `/ce-compound` | gstack `/learn` (curate) |
 | Announce a shipped feature | `/ce-promote` | — |
-| Lost context / resuming | gstack `/context-restore` | `/ce-sessions` |
+| Lost context / resuming | gstack `/context-restore` | `/ce-sessions`, memstack `/state` + `/echo` |
 | QA a running web app | gstack `/qa` (fixes) | `/qa-only` (report only) |
 | Explore visual directions (variant board) | gstack `/design-shotgun` | `/ce-gemini-imagegen` (images only, no board/feedback loop) |
 | Mockups while brainstorming | superpowers Visual Companion (inside `brainstorming`) | — |
@@ -134,3 +172,62 @@ flowchart TD
 | Match implementation to a Figma design | `ce-figma-design-sync` / `ce-design-implementation-reviewer` agents | — |
 | Weekly reflection | gstack `/retro` + `/health` | — |
 | Cross-model second opinion | gstack `/codex` | — |
+| Explain code as you go / learn | memstack `/mentor` | (the explain-code one) |
+| Visualize architecture | memstack `/sight` | gstack `/design-html` for real HTML |
+| Context window filling up | memstack `/compress`, `/token-optimization` | `/shard` for files >1000 lines |
+| Save / resume session state | memstack `/state` · `/diary` · `/project` | gstack `/context-save` + `/context-restore` |
+| Make AI text sound human | memstack `/humanize` | — |
+
+## memstack — the memory & context layer (cross-project)
+
+> ⚠️ **Not detected in this environment yet.** A scan of `~/.claude`, `~/.agents`,
+> `~/.codex`, the plugin registry, and the active skill list found no memstack skills
+> (`state`, `echo`, `grimoire`, `mentor`…). Install from
+> <https://github.com/cwinvestments/memstack> (skills live under `skills/`), then
+> re-run skill discovery. Everything below is ready for when it's live.
+
+Unlike ce-/superpowers/gstack — which *do* the work — memstack *remembers* work and
+*manages the context window*, so it wraps every session on every project
+(notation-hero, base-skill, anything). That's why it's a layer, not a competitor.
+
+**Session continuity — start & end of every session:**
+
+| Trigger | Skill |
+|---|---|
+| "where was I" / session start | `/state` (load context) · `/echo` (recall past sessions) |
+| "wrapping up" / context low | `/diary` (log session) · `/project` (save state + handoff) |
+| "what's next" / planning | `/work` (plan, todos, resume) |
+| big changes landed | `/grimoire` (refresh the project's CLAUDE.md) |
+| new project kickoff | `/governor` (pick tier / complexity budget) |
+
+**Context-window management:**
+
+| Trigger | Skill |
+|---|---|
+| context filling up | `/compress` (API compression) · `/token-optimization` (Headroom + RTK + Serena) |
+| file over ~1000 lines | `/shard` (split it) |
+| split work across sessions | `/familiar` (dispatch parallel CC sessions) |
+
+**Understand & explain code (what you asked for):**
+
+| Trigger | Skill | Note |
+|---|---|---|
+| "walk me through" / "teach me" | `/mentor` | plain-language narration as you build — the explain-code one |
+| "draw / diagram / visualize" | `/sight` | visual architecture overview |
+
+**Overlaps — don't double up.** memstack also ships engineering helpers that overlap
+your existing families: `code-reviewer` ≈ `/ce-code-review`, `test-writer` ≈
+`superpowers:test-driven-development`, `webapp-testing` ≈ gstack `/qa` (Playwright),
+`changelog-generator` ≈ gstack `/ship`'s CHANGELOG step, and
+`refactor-planner`/`migration-planner`/`performance-audit`/`api-designer` ≈ ce
+conditional review agents. Prefer your established family for those; use memstack's
+versions only if you go memstack-first on a project.
+
+**Out of scope for notation-hero** (but handy for *other* projects): the freelance/agency
+packs — `business/` (proposals, invoices, SOW, GDPR), `marketing/`, `seo-geo/`,
+`content/`, plus `quill` (client quotations) and `scan` (codebase estimates).
+
+**memstack's unique, no-equivalent-elsewhere wins:** the memory layer
+(`state`/`echo`/`diary`/`project`/`grimoire`), context-window tooling
+(`compress`/`token-optimization`/`shard`), `mentor` (live teaching), and `humanize`
+(de-AI-ify prose).
