@@ -16,3 +16,10 @@ allowBuilds:
   '@swc/core': true
   nx: true
   lefthook: true
+  # import-x@4's native (Rust) module resolver. FALSE on purpose: the enforcement bundle uses
+  # only import-x/no-default-export + import-x/order, neither of which needs the native resolver
+  # (group classification works off node builtins + static heuristics). An explicit `false`
+  # silences ERR_PNPM_IGNORED_BUILDS WITHOUT running a native build script we don't yet need.
+  # Flip to true when resolver-backed rules (no-unresolved, internal/external precision) are
+  # wired — likely with the flat-config migration (KAN-158) or when real source lands.
+  unrs-resolver: false

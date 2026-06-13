@@ -18,7 +18,7 @@ below mark what is **NOT enforced yet**. Treat unmarked directions as enforced.
 | `core/*` | `type:core` | nothing in-repo (pure domain) | adapters, apps *(enforced)*; `@aws-sdk/*`, `@pulumi/*` *(intended — NOT enforced yet, Lane D)* |
 | `adapters/*` | `type:adapter` | `type:core` | apps *(enforced)*; infra source *(intended — NOT enforced yet, Lane D)* |
 | `apps/*` | `type:app` | `type:core`, `type:adapter` | infra source *(an `apps → @pulumi/*` ban is a pending later Step-1 item, NOT enforced yet)* |
-| `infra` | `type:infra` | `type:adapter`, `type:app` (composition root) | — *(infra is the composition root: it imports adapters + apps; it must not be imported BY app/adapter/core source)* |
+| `infra` | `type:infra` | nothing in-repo — pure IaC; wires `apps` via build output (`FileArchive(apps/*/dist)` + Nx `implicitDependencies`), never a TS import (ADR 2026-06-12 **D3**) | core / adapters / apps **source** *(enforced — depcruise **H9**)*; `infra` must never be imported BY app/adapter/core source. `apps` is the runtime composition root, **not** `infra`. |
 
 **Only `infra` (`@notation-hero/infra`, `type:infra`) exists today** — this foundation ships the nx wiring + the tag convention, **not** example domain packages. The first `core`/`adapter`/`app` packages materialize with their real domains (the **catalog** is first: `core/catalogue` + a Neon-Postgres adapter), each brainstormed/spec'd before code. The `@nx/js` + `@nx/eslint` generators are installed and ready to scaffold them with the right `--tags`.
 
