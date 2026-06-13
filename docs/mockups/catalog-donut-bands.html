@@ -40,7 +40,7 @@
     --oi-verm:#D55E00; --oi-orange:#E69F00; --oi-green:#009E73;
     --score-blue:#0072B2; /* Okabe-Ito azure */
     --oi-purple:#CC79A7;  /* Okabe-Ito reddish-purple — score colour, not brand */
-    --gold:#E0A100; --gold-ink:#3A2C00; /* mastered-100 reward option (champion gold) */
+    --gold:#B8860B; --gold-ink:#FFF6DD; /* mastered-100: deep antique gold + cream trophy (sits darker than the orange band) */
   }
   :root { --dur:200ms; --ease:cubic-bezier(.2,.6,.2,1); --track:var(--panel2); }
   * { box-sizing:border-box; }
@@ -181,7 +181,7 @@
     <button class="toggle-btn" onclick="theme()" title="Toggle theme"><span class="material-symbols-outlined" id="themeicon">dark_mode</span></button>
   </div>
   <h1>Best-score donut — should the ring colour band by performance?</h1>
-  <p class="lead">The number (Geist&nbsp;Mono) <b>always carries the exact value</b>, so colour is <b>reinforcement only</b> — your spectrum is colourblind-safe by construction (every hue is Okabe-Ito). <b>★ Spectrum</b> is your pick (purple → orange → blue → green → teal); the purple is a <b>score</b> colour, not the brand. Shown against the <b>red-low</b> version and <b>Uniform</b> (today), light&nbsp;+&nbsp;dark (🌙 toggles). Mastered = <b>teal disc + trophy</b>; not-attempted = <b>grey ring + —</b> (both locked).</p>
+  <p class="lead">The number (Geist&nbsp;Mono) <b>always carries the exact value</b>, so colour is <b>reinforcement only</b> — your spectrum is colourblind-safe by construction (every hue is Okabe-Ito). <b>★ Spectrum</b> is your pick (purple → orange → blue → green → teal); the purple is a <b>score</b> colour, not the brand. Shown against the <b>red-low</b> version and <b>Uniform</b> (today), light&nbsp;+&nbsp;dark (🌙 toggles). Mastered = <b>gold disc + trophy</b> (champion reward); not-attempted = <b>grey ring + —</b> (both locked).</p>
 
   <h2><span class="material-symbols-outlined">grid_view</span> ★ Spectrum (your pick) across the score range <span class="tag">28&nbsp;px · purple-low vs red-low vs Uniform</span></h2>
   <div class="matrix onpanel" id="matrix"></div>
@@ -199,13 +199,13 @@
   <h2><span class="material-symbols-outlined">workspace_premium</span> Mastered (100) — its own reward colour? <span class="tag">100% is rare — should it stand apart?</span></h2>
   <div class="panelbox onpanel">
     <div class="rewardrow">
-      <div class="rwd"><span class="mdisc m-teal"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Teal (current)</b>≈ the 89–99 green</span></div>
+      <div class="rwd"><span class="mdisc m-teal"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Teal (previous)</b>≈ the 89–99 green</span></div>
       <div class="rwd"><span class="mdisc m-gold"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Gold disc</b>champion / 1st place</span></div>
       <div class="rwd"><span class="mdisc m-goldw"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Gold + white trophy</b>medal</span></div>
       <div class="rwd"><span class="mdisc m-tealgold"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Teal disc + gold trophy</b>brand + reward</span></div>
       <div class="rwd"><span class="mdisc m-glow"><span class="material-symbols-filled">trophy</span></span><span class="lbl"><b>Gold + glow</b>celebratory shine</span></div>
     </div>
-    <p class="note" style="margin-top:14px">Today 100 is a teal disc — close in hue to the 89–99 <b>green</b> band, so colour adds little; only the trophy + solid-disc <i>form</i> sets it apart. A distinct <b>reward colour</b> (gold = the universal champion signal) makes a rare 100% feel earned. The 50–69 band is orange, so a gold <i>disc</i> rhymes with it in hue — the solid-disc-+-trophy form keeps them unmistakable, and <b>teal disc + gold trophy</b> sidesteps the rhyme entirely.</p>
+    <p class="note" style="margin-top:14px">✅ <b>Chosen: gold</b> (champion reward). To separate from the orange 50–69 band, <b>light</b> mode uses a <b>deep antique gold</b> <code>#B8860B</code> + cream trophy (sits darker than the orange); <b>dark</b> mode uses a <b>bright gold</b> <code>#FFD24A</code> + dark trophy. The solid-disc-+-trophy form also keeps it distinct from the orange thin-ring. <i>Teal (previous) shown left for reference.</i></p>
   </div>
   <h2><span class="material-symbols-outlined">preview</span> In context — on real catalogue rows</h2>
   <div class="seg" id="seg"></div>
@@ -313,13 +313,13 @@
     {b:'orange',n:'Developing', r:'50 – 69', d:'orange (--oi-orange)', sc:60},
     {b:'blue',  n:'Climbing',   r:'70 – 88', d:'blue (--score-blue)', sc:80},
     {b:'green', n:'High',       r:'89 – 99', d:'green (--oi-green)', sc:94},
-    {b:'master',n:'Mastered',   r:'100',     d:'teal disc + trophy (--accenthi)', sc:100},
+    {b:'master',n:'Mastered',   r:'100',     d:'gold disc + trophy (--gold)', sc:100},
     {b:'empty', n:'Not attempted',r:'—',     d:'grey ring + dash', sc:null}
   ];
   document.getElementById('legend').innerHTML = BANDS.map(function(x){
     return '<div class="lgc">'+donut(x.sc,LEAD)+'<span class="lgl"><b>'+x.n+'</b>'+x.d+'<span class="lgr">'+x.r+'</span></span></div>';
   }).join('');
-  document.getElementById('legendnote').innerHTML = 'System <b>G</b> — your spectrum: <code>purple &lt;50</code> · <code>orange 50–69</code> · <code>blue 70–88</code> · <code>green 89–99</code> · <code>teal 100</code>. Every hue is a genuine <b>Okabe-Ito</b> member (the colourblind-safe set) — including the <b>purple</b> (reddish-purple #CC79A7) and the <b>blue</b> (#0072B2). Purple here is a <b>score</b> colour, not the brand (brand stays teal). It replaces red so a learner’s weakest pieces read “early,” not “fail.” Because the centred number is authoritative, any colour-vision type reads the exact score regardless of ring hue — the band is <b>fast-glance reinforcement</b>, never the only signal. The 88/89 blue→green edge is a judgement call — say the word to shift any cut.';
+  document.getElementById('legendnote').innerHTML = 'System <b>G</b> — your spectrum: <code>purple &lt;50</code> · <code>orange 50–69</code> · <code>blue 70–88</code> · <code>green 89–99</code> · <code>gold 100</code>. Every hue is a genuine <b>Okabe-Ito</b> member (the colourblind-safe set) — including the <b>purple</b> (reddish-purple #CC79A7) and the <b>blue</b> (#0072B2). Purple here is a <b>score</b> colour, not the brand (brand stays teal). It replaces red so a learner’s weakest pieces read “early,” not “fail.” Because the centred number is authoritative, any colour-vision type reads the exact score regardless of ring hue — the band is <b>fast-glance reinforcement</b>, never the only signal. The 88/89 blue→green edge is a judgement call — say the word to shift any cut.';
 </script>
 </body>
 </html>
