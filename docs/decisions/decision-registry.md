@@ -10,6 +10,27 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-14 — KAN-119 first `pulumi up` (hello-world Lambda Function URL)
+
+First real AWS deliverable + the first real Nx packages below the layer dirs (everything was empty stubs before). `apps/handler-hello` (runtime handler, esbuild → cjs/node22) + `infra/` (the `LambdaWithUrl` Pulumi ComponentResource + composition, packaging the handler's build output via `FileArchive`). The `pulumi up` deploy itself is a **human-gated** step run separately. Plan: `docs/plans/2026-06-13-001-feat-kan-119-pulumi-hello-world-plan.md`.
+
+**Component placement (decision):** the `LambdaWithUrl` Pulumi component lives in **`infra/` (type:infra)**, NOT `adapters/aws` as the (stale, pre-ADR) `docs/cicd-pipeline.md` / KAN-119 ticket text implied. Rationale: the live depcruise **H9** (`no-infra-to-app-or-domain-source`) forbids `infra → adapters` source imports, **H3** places IaC in `infra/`, and `check-layout.sh` has no `.component` suffix (`.stack` is approved). `adapters/aws` is therefore NOT created here — it lands later with its real runtime feature (the Neon repository).
+
+**Status changes (effective on merge):**
+- `FOLD-serverless` → **✅ done · 🟡**. The per-Lambda two-project split is realized: `apps/handler-hello` (type:app) + `infra/` (type:infra), siblings, handler never colocated with IaC. Backstopped by the live depcruise H8 (apps↛@pulumi) + H9 (infra↛apps/core/adapters source); the project-colocation itself stays convention (depcruise can't see intra-project imports).
+- `H1` → **✅ done · 🟡**. Handler (`apps/handler-hello`) and IaC (`infra/`) are separate Nx projects; backed by H8/H9.
+- `H2` → **✅ done · 🤖**. Handler imports no `@pulumi/*` — enforced live by depcruise H8 (`no-handler-to-pulumi`).
+- `H3` → **✅ done · 🤖**. IaC lives in `infra/` (type:infra), imports `@pulumi/*`, never domain source — enforced live by depcruise H9 (`no-infra-to-app-or-domain-source`).
+- `H4` → **✅ done · 📄**. `infra/index.ts` packages `FileArchive("../apps/handler-hello/dist")` (build output), never handler source. Prose-grade — the dist-path string is invisible to depcruise/Nx (no machine check).
+- `M8-nxignore` → **✅ done · 🟡**. `.nxignore` added with `.pulumi/`; `.gitignore` already covered `.pulumi/` + `*.yaml.bak` + `dist/`. Pulumi stack config (`Pulumi.<stack>.yaml`) stays committed.
+- `M5-nvmrc` / `L12-pin` → **Lambda-runtime-match axis CLOSED**. esbuild `--target=node22` matches the Lambda runtime `nodejs22.x` (the deferred half of M5/L12-pin). `.nvmrc` stays Node 24 for the build host (Node 24 is not a Lambda runtime).
+
+**Enforcement-config changes (this PR):**
+- `.dependency-cruiser.cjs`: added `exclude: (^|/)dist/` (never cruise esbuild/tsc build output) + two `no-orphans` entry-point exemptions (`infra/index.ts` Pulumi composition root; `apps/handler-hello/src/index.ts` Lambda handler entry) — the rule's own comment sanctions adding these "when app/infra composition roots arrive."
+- `knip.json`: `ignoreBinaries: ["pulumi"]` (system CLI, not an npm dep). Knip stays advisory (no CI gate).
+
+**Not done (deferred):** `M2-typecov` / `L4-typecov` (no type-coverage gate yet), `M6-sizelimit` (no per-Lambda size budget yet), `E-pnpm-catalog` (the repo still uses direct version pins everywhere — a catalog migration is its own task; these new deps follow the existing direct-pin style). The actual `pulumi up` + CloudWatch verification is the gated KAN-119 completion step. The A–G status tables below still show the pre-KAN-119 rows (⏳/🟥) for FOLD-serverless/H1–H4 — they are auto-derived and reconcile on the next `docs(registry)` regen pass; this Change-log entry is authoritative.
+
 ### 2026-06-12 — File-level structure enforcement (ADR D1–D7 / PR #25 rework)
 
 Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-structure-enforcement-adr.md` (evidence: the same-dated spike + cross-ecosystem research). Reworks PR #25 from Option A (Pascal/camel + folder-per-entity) to **Option B (kebab-case + role suffix)**. Every rule fixture-verified, not vacuously green.
