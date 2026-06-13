@@ -27,3 +27,7 @@ allowBuilds:
   # Flip to true when resolver-backed rules (no-unresolved, internal/external precision) are
   # wired — likely with the flat-config migration (KAN-158) or when real source lands.
   unrs-resolver: false
+  # protobufjs ships a postinstall build; it backs @pulumi/pulumi's gRPC runtime
+  # (transitive dep of the infra/ Pulumi program). Approve so a frozen CI install
+  # stays green and `pulumi up` works (KAN-119).
+  protobufjs: true
