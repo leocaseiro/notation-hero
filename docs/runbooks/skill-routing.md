@@ -230,6 +230,26 @@ versions only if you go memstack-first on a project.
 packs — `business/` (proposals, invoices, SOW, GDPR), `marketing/`, `seo-geo/`,
 `content/`, plus `quill` (client quotations) and `scan` (codebase estimates).
 
+### memstack `content/` pack — content-marketing copywriting (other projects)
+
+`content/` is a category folder, not one skill — 8 copywriting helpers, each a distinct
+format with its own hook/structure conventions. Nothing to do with code; lives in the
+"other projects" bucket.
+
+| Skill | What it writes |
+|---|---|
+| `content/blog-post` | Long-form blog articles / publication posts |
+| `content/landing-page-copy` | Persuasive sales-page / hero-section conversion copy |
+| `content/product-description` | E-commerce listings (Amazon/Shopify), benefit-driven |
+| `content/email-sequence` | Multi-email drip / nurture / launch / onboarding campaigns |
+| `content/newsletter` | Email newsletters — subject lines, structure, growth, sponsorship |
+| `content/twitter-thread` | Multi-tweet X threads (hook → data points → CTA) |
+| `content/tiktok-script` | Timestamped short-form video scripts (Reels/Shorts, 15–60s) |
+| `content/youtube-script` | Long-form YouTube scripts with hooks, chapters, CTAs |
+
+> For notation-hero's *own* launch/announcement copy, prefer `/ce-promote` (voice-matched
+> to you) over these generic content skills.
+
 **memstack's unique, no-equivalent-elsewhere wins:** the memory layer
 (`state`/`echo`/`diary`/`project`/`grimoire`), context-window tooling
 (`compress`/`token-optimization`/`shard`), `mentor` (live teaching), and `humanize`
