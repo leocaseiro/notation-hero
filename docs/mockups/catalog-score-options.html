@@ -32,6 +32,7 @@
   body { margin:0; background:var(--bg); color:var(--ink); font-family:'Hanken Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease); }
   .num { font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums; }
   .material-symbols-outlined { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal; line-height:1; text-transform:none; display:inline-block; white-space:nowrap; -webkit-font-feature-settings:'liga'; }
+  .material-symbols-filled { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal; line-height:1; text-transform:none; display:inline-block; white-space:nowrap; -webkit-font-feature-settings:'liga'; font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24; }
   .muted{color:var(--muted)} .faint{color:var(--faint)}
   .page{max-width:1040px;margin:0 auto;padding:22px 26px 100px;}
   .topbar{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
@@ -156,9 +157,9 @@
 
   <h2><span class="material-symbols-outlined">label</span> Level pill — colour options <span class="faint" style="font-weight:400;font-size:12.5px">(click a row to preview it on the list above)</span></h2>
   <div class="lvlcompare" id="lvlcompare">
-    <div class="lvlrow on" onclick="setLvl('',this)"><span class="lvln">Solid teal <code>current</code></span><span class="pills"><span class="lvlpill">1</span><span class="lvlpill">5</span><span class="lvlpill">10</span></span></div>
+    <div class="lvlrow" onclick="setLvl('',this)"><span class="lvln">Solid teal <code>.lg solid</code></span><span class="pills"><span class="lvlpill">1</span><span class="lvlpill">5</span><span class="lvlpill">10</span></span></div>
     <div class="lvlrow" onclick="setLvl('tint',this)"><span class="lvln">Teal tint <code>.lg-a</code></span><span class="pills"><span class="lvlpill tint">1</span><span class="lvlpill tint">5</span><span class="lvlpill tint">10</span></span></div>
-    <div class="lvlrow" onclick="setLvl('neutral',this)"><span class="lvln">Neutral <code>.lg-c</code></span><span class="pills"><span class="lvlpill neutral">1</span><span class="lvlpill neutral">5</span><span class="lvlpill neutral">10</span></span></div>
+    <div class="lvlrow on" onclick="setLvl('neutral',this)"><span class="lvln">Neutral <code>.lg-c · chosen</code></span><span class="pills"><span class="lvlpill neutral">1</span><span class="lvlpill neutral">5</span><span class="lvlpill neutral">10</span></span></div>
   </div>
 </div>
 
@@ -210,7 +211,7 @@
     }
     if(t==='donut'){
       if(none) return '<span class="donut empty"><span>—</span></span>';
-      if(score===100) return '<span class="donut done" style="--p:100"><span><span class="material-symbols-outlined chk2">check</span></span></span>';
+      if(score===100) return '<span class="donut done" style="--p:100"><span><span class="material-symbols-filled chk2">trophy</span></span></span>';
       return '<span class="donut" style="--p:'+score+'"><span>'+score+'</span></span>';
     }
     return '';
@@ -249,7 +250,7 @@
     {title:'Odd-Meter Étude', sub:'Jazz · 7/8 · drums', lvl:10, bpm:132, best:null}
   ];
   var current='donut';
-  var lvlStyle='';
+  var lvlStyle='neutral';
   function setLvl(s,row){ lvlStyle=s; document.querySelectorAll('#lvlcompare .lvlrow').forEach(function(r){r.classList.remove('on');}); row.classList.add('on'); renderList(); }
   var seg=document.getElementById('seg');
   seg.innerHTML=OPTIONS.map(function(o){ return '<button class="'+(o.key===current?'sel':'')+'" onclick="pick(\''+o.key+'\',this)">'+o.name+'</button>'; }).join('');
