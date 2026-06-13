@@ -27,12 +27,19 @@ module.exports = {
       to: { path: "^apps/" },
     },
     {
-      name: "no-adapters-to-apps",
-      comment: "adapters implement ports — they must not depend on apps.",
+      name: "no-core-to-infra",
+      comment:
+        "core is pure domain — it must never import infra/ (IaC) source. Completes the " +
+        "'core -> nothing in-repo' invariant in the CI-LIVE backstop: eslint-plugin-boundaries + " +
+        "the Nx type:core tag also forbid core->infra, but neither runs in CI yet, so depcruise is " +
+        "the only gate that actually enforces it today (PR #25 review #1).",
       severity: "error",
-      from: { path: "^adapters/" },
-      to: { path: "^apps/" },
+      from: { path: "^core/" },
+      to: { path: "^infra/" },
     },
+    // `no-adapters-to-apps` removed — fully subsumed by H11 (`no-adapters-to-app-or-infra-source`,
+    // `^adapters/` -> `^(apps|infra)/`); a single rule avoids double-firing on an adapters->apps
+    // import (PR #25 review #2).
     // ── File/package-level bans (H8–H11) ────────────────────────────────────────────────
     // The finer, package-aware layer Nx's tag rule can't see (registry H7). The Nx tag rule
     // works at the PROJECT level; these work at the FILE/import level — e.g. infra's PROJECT
