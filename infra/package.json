@@ -8,9 +8,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"*.test.ts\"",
-    "preview": "nx build @notation-hero/handler-hello && pulumi preview",
-    "deploy": "nx build @notation-hero/handler-hello && pulumi up",
-    "destroy": "pulumi destroy"
+    "pulumi:preview": "nx build @notation-hero/handler-hello && pulumi preview",
+    "pulumi:up": "nx build @notation-hero/handler-hello && pulumi up",
+    "pulumi:destroy": "pulumi destroy"
   },
   "dependencies": {
     "@pulumi/aws": "^7.32.0",

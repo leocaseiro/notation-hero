@@ -67,9 +67,9 @@ it the action silently falls back to a degraded base).
   boundary scan; it stays a single root script, not an Nx per-project target.
 - `@notation-hero/infra` targets are real as of KAN-119: `typecheck`/`build`
   run `tsc -p tsconfig.json --noEmit`, `test` runs `node --test`, and
-  `preview`/`deploy`/`destroy` wrap `pulumi preview`/`up`/`destroy`. The Pulumi
-  ops need AWS creds + a Pulumi token, so they run locally only — never in CI
-  `nx run-many` (KTD7).
+  `pulumi:preview`/`pulumi:up`/`pulumi:destroy` wrap `pulumi preview`/`up`/`destroy`
+  (namespaced to dodge pnpm's reserved `deploy`/`up` commands). The Pulumi ops need
+  AWS creds + a Pulumi token, so they run locally only — never in CI `nx run-many` (KTD7).
 
 ## Test & story layout — co-located, NEVER `__tests__/`
 

@@ -68,8 +68,8 @@ a managed CloudWatch log group — all within AWS always-free tiers (~$0).
 ```bash
 # select the stack if it exists, else create it with Pulumi Cloud secrets (no passphrase)
 pulumi -C infra stack select dev 2>/dev/null || pulumi -C infra stack init dev --secrets-provider=default
-pnpm --filter @notation-hero/infra preview   # safe dry-run: review the plan, no changes
-pnpm --filter @notation-hero/infra deploy    # builds the handler, then `pulumi up`
+pnpm --filter @notation-hero/infra pulumi:preview   # safe dry-run: review the plan, no changes
+pnpm --filter @notation-hero/infra pulumi:up        # builds the handler, then `pulumi up`
 curl "$(pulumi -C infra stack output url)"   # -> {"message":"hello from notation-hero"}
 aws logs tail "$(pulumi -C infra stack output logGroupName)" --since 5m --region ap-southeast-2
 pulumi -C infra destroy                      # tear down (stays $0 either way)
