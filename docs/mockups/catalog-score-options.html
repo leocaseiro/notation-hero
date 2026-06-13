@@ -116,11 +116,11 @@
   /* ⑦ donut (number inside the ring) */
   .donut{position:relative;width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--p,0)*1%), var(--panel2) 0);}
   .donut::before{content:'';position:absolute;inset:4.5px;border-radius:50%;background:var(--panel);}
-  .donut > span{position:relative;font-family:'Geist Mono';font-weight:700;font-size:10px;color:var(--ink);line-height:1;}
+  .donut > span{position:relative;font-family:'Geist Mono';font-weight:700;font-size:10px;color:var(--ink);line-height:1;transform:translateY(.085em);}
   .donut.empty{background:var(--panel2);} .donut.empty > span{color:var(--faint);}
   .donut.done{background:var(--accent);} .donut.done::before{background:var(--accent);} .donut.done > span{color:var(--onaccent);} .donut .chk2{font-size:16px;}
   /* level as a rounded pill (vs the circular grade bullet) */
-  .lvlpill{display:inline-grid;place-items:center;min-width:32px;height:25px;padding:0 9px;border-radius:8px;background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent);font-family:'Geist Mono';font-weight:700;font-size:12.5px;border:.5px solid color-mix(in srgb,var(--accent) 25%,var(--line));}
+  .lvlpill{display:inline-grid;place-items:center;min-width:32px;height:25px;padding:0 9px;border-radius:8px;background:var(--accent);color:var(--onaccent);font-family:'Geist Mono';font-weight:700;font-size:12.5px;}
 </style>
 </head>
 <body>
@@ -228,7 +228,7 @@
     {title:'Shuffle Feel', sub:'Blues · 12/8 · drums', lvl:4, bpm:84, best:64},
     {title:'Odd-Meter Étude', sub:'Jazz · 7/8 · drums', lvl:10, bpm:132, best:null}
   ];
-  var current='pie';
+  var current='donut';
   var seg=document.getElementById('seg');
   seg.innerHTML=OPTIONS.map(function(o){ return '<button class="'+(o.key===current?'sel':'')+'" onclick="pick(\''+o.key+'\',this)">'+o.name+'</button>'; }).join('');
   function renderList(){
