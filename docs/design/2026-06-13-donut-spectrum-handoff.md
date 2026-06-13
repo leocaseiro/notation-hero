@@ -1,6 +1,6 @@
 # 🤝 Handoff — Catalogue best-score **donut colour system** (decided) + layout polish (next)
 
-> **Status:** 🟢 Q1 DONE (donut colour = **System G "Spectrum"**, approved by Leo 2026-06-13) · 🔜 Q2 layout polish NOT started.
+> **Status:** 🟢 Q1 colour DONE (**System G "Spectrum"** + **gold-100**, approved 2026-06-13) · 🟡 mastered-trophy **glow** = 6 options built, awaiting Leo's pick · 🔜 Q2 layout polish NOT started.
 > **Jira:** [KAN-161](https://leocaseiro.atlassian.net/browse/KAN-161) (Catalogue UI design) · related KAN-27 (score display), KAN-49 (design-shotgun).
 > **Branch:** `claude/epic-easley-b661e6` · all work committed (baby commits, all green).
 > **Worktree:** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/epic-easley-b661e6` (work happens HERE, not the repo root).
@@ -49,6 +49,12 @@ Score cell = **donut**: ring fills by best-%, exact number centred (Geist Mono).
 - Mastered disc fills the `::before` too (solid disc), trophy is `material-symbols-filled` with `font-variation-settings:'FILL' 1`.
 - **Trophy centering:** `.tro` has `position:relative; top:1px` — the glyph sits 1px high optically without it (fixed this session per Leo).
 
+### 🟡 Mastered glow — PENDING (Leo deciding later)
+The gold 100 cell can carry a **glowing trophy** — glow on the **trophy glyph** (`drop-shadow`/`text-shadow`), not just the disc. A toggle in `catalog-donut-bands.html` (the "Mastered glow" section) compares **6 options**: None · Soft halo · Strong halo · White-hot · Pulse (animated) · Trophy + disc.
+- **Awaiting Leo's pick.** Lead candidate: **Strong halo** (clear, no motion); **Trophy + disc** for max; **Pulse** is animated → gate behind `prefers-reduced-motion`, and it can get busy if many pieces are mastered.
+- **Implication:** a glowing trophy must be a **bright** trophy in BOTH themes — so picking a glow locks the mastered cell to a **deep-gold disc + bright cream trophy** (replacing the dark-mode dark-trophy of the non-glow version). The glow lab uses disc `#B8860B` + trophy `#FFE9A8` + glow `#FFC21F`-ish.
+- On white the glow is naturally subtler than on dark (physics, not a bug).
+
 ---
 
 ## 🔜 Q2 NOT started — layout polish (next session)
@@ -74,7 +80,7 @@ The brief's second half. Concrete refinements for `catalog.html`:
 ## Files touched this session
 - **NEW** `docs/mockups/catalog-donut-bands.html` — the donut colour lab (the deliverable).
 - **NEW** `docs/design/2026-06-13-donut-spectrum-handoff.md` — this file.
-- Commits: `catalog-donut-bands.html` evolved A→B→C→E→F→**G** (each committed); trophy-centre fix last.
+- Commits: `catalog-donut-bands.html` evolved A→B→C→E→F→**G** spectrum → **gold-100** (deep antique, light) → **mastered-glow toggle** (6 options); trophy-centre fix. Each committed.
 
 ## Working style (Leo) — reminders for next session
 - **Decides visually** — serve a localhost URL he clicks (not tiny widgets); render the change, let him pick.
