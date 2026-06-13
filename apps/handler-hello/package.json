@@ -1,0 +1,15 @@
+{
+  "name": "@notation-hero/handler-hello",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "echo \"@notation-hero/handler-hello: real ESLint target lands with the flat-config lane (KAN-158)\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test \"src/**/*.test.ts\"",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node22 --format=cjs --outfile=dist/index.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  }
+}

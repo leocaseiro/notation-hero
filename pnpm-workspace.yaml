@@ -16,6 +16,10 @@ allowBuilds:
   '@swc/core': true
   nx: true
   lefthook: true
+  # esbuild ships a platform binary via a postinstall build; the handler-hello
+  # Lambda build (apps/handler-hello) bundles with it. Approve so a frozen CI
+  # install stays green (ERR_PNPM_IGNORED_BUILDS otherwise).
+  esbuild: true
   # import-x@4's native (Rust) module resolver. FALSE on purpose: the enforcement bundle uses
   # only import-x/no-default-export + import-x/order, neither of which needs the native resolver
   # (group classification works off node builtins + static heuristics). An explicit `false`
