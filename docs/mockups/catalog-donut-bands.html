@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<!--
+  Notation Hero — BEST-score donut: COLOUR-BAND lab.
+  Question (design-consultation 2026-06-13): should the score donut's ring colour
+  vary by performance band, or stay uniform teal?
+  Four systems compared across the full score range, light + dark:
+    A  Uniform        — every ring teal (status quo)
+    B  Teal ramp      — one hue, dim→vivid by band (purest brand, CVD-safe by luminance)
+    C  Teal + warm low— amber for the weakest band, teal ramp above (more signal, still safe)
+    D  Okabe-Ito      — CVD-safe diverging heatmap, NO purple (the "wilder" pole)
+  Number ALWAYS carries the exact value (Geist Mono) — colour is reinforcement only.
+  Locked: crisp ::before hole (inset:5px — gradient holes pixelate on Brave/Chromium GPUs).
+  Teal/D3 tokens from PR #23. Brand stays clear of purple/violet/indigo.
+-->
+<html data-theme="light" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notation Hero — Donut colour bands</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+<style>
+  :root, [data-theme="dark"] {
+    --bg:#0C1117; --panel:#121821; --panel2:#18202B; --elevate:#1C2530;
+    --ink:#E8EDF3; --muted:#9AA6B4; --faint:#818B9A; --line:#222C39;
+    --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
+    --learn-text:#7FA9FF; --hover:rgba(255,255,255,.06); --glow:color-mix(in srgb,var(--accent) 42%,transparent);
+    --amber:#F0B23E;
+    /* Okabe-Ito (CVD-safe), nudged brighter for dark bg; no purple member used */
+    --oi-verm:#FF7A3D; --oi-orange:#F0A92E; --oi-green:#1FBF8F;
+  }
+  [data-theme="light"] {
+    --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
+    --ink:#0F151C; --muted:#5A6472; --faint:#6B7480; --line:#E2E8F0;
+    --accent:#0F766E; --accenthi:#0D9488; --onaccent:#FFFFFF;
+    --learn-text:#1D4ED8; --hover:rgba(15,21,28,.05); --glow:color-mix(in srgb,var(--accent) 30%,transparent);
+    --amber:#C97A14;
+    --oi-verm:#D55E00; --oi-orange:#E69F00; --oi-green:#009E73;
+  }
+  :root { --dur:200ms; --ease:cubic-bezier(.2,.6,.2,1); --track:var(--panel2); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Hanken Grotesk',system-ui,sans-serif; -webkit-font-smoothing:antialiased; transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease); }
+  .num { font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums; }
+  .material-symbols-outlined { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal; line-height:1; text-transform:none; display:inline-block; white-space:nowrap; -webkit-font-feature-settings:'liga'; }
+  .material-symbols-filled { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal; line-height:1; text-transform:none; display:inline-block; white-space:nowrap; -webkit-font-feature-settings:'liga'; font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24; }
+  .muted{color:var(--muted)} .faint{color:var(--faint)}
+  .page{max-width:1080px;margin:0 auto;padding:22px 26px 110px;}
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
+  .mark{width:38px;height:34px;display:grid;place-items:center;color:var(--accent);flex:none;} .mark svg{width:100%;height:100%;overflow:visible;}
+  .logo{font-family:'Bricolage Grotesque',sans-serif;font-weight:700;font-size:17px;display:inline-flex;align-items:center;gap:12px;}
+  .toggle-btn{width:38px;height:38px;border-radius:10px;border:.5px solid var(--line);background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;} .toggle-btn:hover{background:var(--hover);color:var(--ink);}
+  h1{font-family:'Bricolage Grotesque';font-size:22px;margin:14px 0 4px;}
+  .lead{color:var(--muted);font-size:13.5px;margin:0 0 4px;max-width:80ch;line-height:1.55;}
+  .lead b{color:var(--ink);font-weight:600;}
+  h2{font-family:'Bricolage Grotesque';font-size:15px;margin:34px 0 13px;display:flex;align-items:center;gap:9px;}
+  h2 .material-symbols-outlined{font-size:19px;color:var(--accent);}
+  h2 .tag{font-family:'Hanken Grotesk';font-weight:600;font-size:11px;color:var(--faint);background:var(--panel2);border:.5px solid var(--line);border-radius:999px;padding:2px 9px;text-transform:none;letter-spacing:0;}
+
+  /* ---------- the donut (locked: crisp ::before hole) ---------- */
+  .donut{position:relative;width:var(--dsz,28px);height:var(--dsz,28px);border-radius:50%;flex:none;display:grid;place-items:center;
+    background:conic-gradient(var(--ring,var(--accent)) calc(var(--p,0)*1%), var(--track) 0);}
+  .donut::before{content:'';position:absolute;inset:5px;border-radius:50%;background:var(--panel);}
+  .donut > span{position:relative;font-family:'Geist Mono';font-weight:700;font-size:calc(var(--dsz,28px)*.33);color:var(--ink);line-height:1;}
+  .donut.empty{background:var(--track);} .donut.empty > span{color:var(--faint);}
+  .donut.master{background:var(--accent);} .donut.master::before{background:var(--accent);} .donut.master > span{color:var(--onaccent);}
+  .donut .tro{font-size:calc(var(--dsz,28px)*.56);}
+  /* on elevated surfaces (matrix/legend cells) the hole must match the cell, not the page panel */
+  .onpanel .donut::before{background:var(--panel);}
+  .onpanel2 .donut::before{background:var(--panel2);}
+
+  /* band → ring colour, per system. number always carries the value; colour is reinforcement. */
+  /* A — uniform */
+  .sysA.lo,.sysA.mid,.sysA.good,.sysA.hi{--ring:var(--accent);}
+  /* B — teal luminance ramp (single hue) */
+  .sysB.lo  {--ring:color-mix(in srgb,var(--accent) 42%,var(--muted));}
+  .sysB.mid {--ring:color-mix(in srgb,var(--accent) 70%,var(--muted));}
+  .sysB.good{--ring:var(--accent);}
+  .sysB.hi  {--ring:var(--accenthi);}
+  /* C — teal + warm low-end */
+  .sysC.lo  {--ring:var(--amber);}
+  .sysC.mid {--ring:color-mix(in srgb,var(--accent) 58%,var(--muted));}
+  .sysC.good{--ring:var(--accent);}
+  .sysC.hi  {--ring:var(--accenthi);}
+  /* D — Okabe-Ito diverging (CVD-safe, no purple) */
+  .sysD.lo  {--ring:var(--oi-verm);}
+  .sysD.mid {--ring:var(--oi-orange);}
+  .sysD.good{--ring:var(--oi-green);}
+  .sysD.hi  {--ring:var(--accent);}
+
+  /* ---------- Section 1: systems × score matrix ---------- */
+  .matrix{display:grid;grid-template-columns:118px repeat(4,1fr);border:.5px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);}
+  .matrix > div{padding:9px 10px;border-bottom:.5px solid var(--line);border-right:.5px solid var(--line);display:flex;align-items:center;justify-content:center;}
+  .matrix > div:nth-child(5n){border-right:none;}
+  .matrix .mh{background:var(--elevate);flex-direction:column;gap:2px;padding:11px 10px;}
+  .matrix .mh .mhn{font-weight:700;font-size:12.5px;color:var(--ink);} .matrix .mh .mhd{font-size:10.5px;color:var(--faint);font-weight:600;text-align:center;line-height:1.3;}
+  .matrix .mh.corner{justify-content:center;} .matrix .mh.corner .mhn{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);}
+  .matrix .sc{justify-content:flex-start;gap:9px;background:var(--panel);}
+  .matrix .sc .scn{font-family:'Geist Mono';font-weight:700;font-size:12.5px;color:var(--ink);width:30px;text-align:right;}
+  .matrix .sc .scl{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em;}
+  .matrix .bandtag{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:1px;}
+  .matrix .rowend{border-bottom:none;}
+
+  /* ---------- generic donut row (states / size / context) ---------- */
+  .panelbox{background:var(--panel);border:.5px solid var(--line);border-radius:14px;padding:16px 18px;}
+  .dscale{display:flex;align-items:flex-end;gap:26px;flex-wrap:wrap;}
+  .dcell{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .dcell .cap{font-size:11px;color:var(--muted);font-family:'Geist Mono';}
+  .dcell .cap2{font-size:10.5px;color:var(--faint);}
+
+  .states{display:flex;align-items:center;gap:30px;flex-wrap:wrap;}
+  .stitem{display:flex;flex-direction:column;align-items:center;gap:9px;text-align:center;max-width:130px;}
+  .stitem .sl{font-size:11.5px;color:var(--muted);line-height:1.4;} .stitem .sl b{color:var(--ink);font-weight:600;display:block;font-size:12px;}
+  .arrowdots{color:var(--faint);font-size:18px;}
+
+  /* ---------- system switcher ---------- */
+  .seg{display:inline-flex;flex-wrap:wrap;background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:3px;gap:2px;margin-bottom:14px;}
+  .seg button{font-family:'Hanken Grotesk';font-weight:600;font-size:12.5px;padding:8px 13px;border:none;background:transparent;color:var(--muted);border-radius:9px;cursor:pointer;}
+  .seg button:hover:not(.sel){color:var(--ink);} .seg button.sel{background:var(--accent);color:var(--onaccent);}
+
+  /* ---------- in-context list ---------- */
+  .thead,.trow{display:grid;grid-template-columns:1fr 54px 70px 60px 40px;align-items:center;gap:12px;}
+  .thead{padding:4px 14px 8px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:700;} .thead .c{text-align:center}
+  .tbody{display:flex;flex-direction:column;gap:7px;}
+  .trow{background:var(--panel);border:.5px solid var(--line);border-radius:12px;padding:11px 14px;}
+  .nameC{display:flex;align-items:center;gap:11px;min-width:0;}
+  .cover{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);} .cover .material-symbols-outlined{font-size:20px;}
+  .nmtitle{font-weight:600;font-size:14px;color:var(--ink);} .nmsub{color:var(--muted);font-size:11.5px;margin-top:2px;}
+  .levelC{display:flex;justify-content:center;} .bpmC{text-align:center;font-family:'Geist Mono';font-size:13px;color:var(--ink);}
+  .bestC{display:flex;justify-content:center;align-items:center;}
+  .playC{display:flex;justify-content:flex-end;} .play{width:34px;height:34px;border-radius:50%;background:var(--panel);color:var(--accent);border:none;display:grid;place-items:center;cursor:pointer;} .play .material-symbols-outlined{font-size:24px;}
+  .lvlpill{display:inline-grid;place-items:center;min-width:32px;height:25px;padding:0 9px;border-radius:8px;background:var(--panel2);color:var(--muted);border:.5px solid var(--line);font-family:'Geist Mono';font-weight:700;font-size:12.5px;}
+
+  /* ---------- thresholds legend ---------- */
+  .legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;}
+  .lgc{background:var(--panel);border:.5px solid var(--line);border-radius:12px;padding:13px 14px;display:flex;align-items:center;gap:13px;}
+  .lgc .lgl{font-size:12px;color:var(--muted);} .lgc .lgl b{display:block;color:var(--ink);font-size:13px;font-weight:600;margin-bottom:1px;}
+  .lgc .lgr{font-family:'Geist Mono';font-size:11px;color:var(--faint);margin-top:2px;}
+  .note{font-size:12.5px;color:var(--muted);line-height:1.55;max-width:80ch;margin-top:10px;}
+  .note code{font-family:'Geist Mono';font-size:11.5px;background:var(--panel2);border:.5px solid var(--line);border-radius:5px;padding:1px 5px;color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <span class="logo" id="logo">__MARK__ NotationHero</span>
+    <span style="flex:1"></span>
+    <button class="toggle-btn" onclick="theme()" title="Toggle theme"><span class="material-symbols-outlined" id="themeicon">dark_mode</span></button>
+  </div>
+  <h1>Best-score donut — should the ring colour band by performance?</h1>
+  <p class="lead">The number (Geist&nbsp;Mono) <b>always carries the exact value</b>, so colour is <b>reinforcement only</b> — every system below stays colourblind-safe by construction. Four candidates, across the full score range, light&nbsp;+&nbsp;dark (🌙 toggles). Mastered = <b>solid teal disc + trophy</b>; not-attempted = <b>grey ring + —</b> (both locked, shared by every system).</p>
+
+  <h2><span class="material-symbols-outlined">grid_view</span> Four systems across the score range <span class="tag">28&nbsp;px · the core comparison</span></h2>
+  <div class="matrix onpanel" id="matrix"></div>
+
+  <h2><span class="material-symbols-outlined">states</span> Shared states — the climb to mastery &amp; the empty state</h2>
+  <div class="panelbox onpanel">
+    <div class="states" id="states"></div>
+  </div>
+
+  <h2><span class="material-symbols-outlined">format_size</span> Size check <span class="tag">24 → 30&nbsp;px — legible at the small end?</span></h2>
+  <div class="panelbox onpanel">
+    <div class="dscale" id="sizes"></div>
+  </div>
+
+  <h2><span class="material-symbols-outlined">preview</span> In context — on real catalogue rows</h2>
+  <div class="seg" id="seg"></div>
+  <div class="thead"><span>Name</span><span class="c">Level</span><span class="c">BPM</span><span class="c">Best</span><span></span></div>
+  <div class="tbody" id="list"></div>
+
+  <h2><span class="material-symbols-outlined">straighten</span> Thresholds &amp; band rule</h2>
+  <div class="legend" id="legend"></div>
+  <p class="note" id="legendnote"></p>
+</div>
+
+<script>
+  var MARK='<span class="mark"><svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/><svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor"><path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z"/></svg></svg></span>';
+  document.getElementById('logo').innerHTML = document.getElementById('logo').innerHTML.replace('__MARK__', MARK);
+  function theme(){ var h=document.documentElement; var d=h.getAttribute('data-theme')==='dark'; h.setAttribute('data-theme',d?'light':'dark'); document.getElementById('themeicon').textContent=d?'dark_mode':'light_mode'; }
+
+  // band model — reuses the app's existing S/A/B/C/D cuts (95/85/70/55 → folded to 4 colour bands)
+  function band(s){ if(s==null) return 'empty'; if(s>=100) return 'master'; if(s<55) return 'lo'; if(s<70) return 'mid'; if(s<85) return 'good'; return 'hi'; }
+  // one donut. sys = 'A'|'B'|'C'|'D'; sz optional px.
+  function donut(score, sys, sz){
+    var b=band(score), cls='donut sys'+sys+' '+b, st=(sz?'--dsz:'+sz+'px;':'');
+    if(b==='empty') return '<span class="'+cls+'" style="'+st+'"><span>–</span></span>';
+    if(b==='master') return '<span class="'+cls+'" style="'+st+'--p:100"><span><span class="material-symbols-filled tro">trophy</span></span></span>';
+    return '<span class="'+cls+'" style="'+st+'--p:'+score+'"><span>'+score+'</span></span>';
+  }
+
+  var SYS=[
+    {k:'A', n:'A · Uniform', d:'every ring teal (today)'},
+    {k:'B', n:'B · Teal ramp', d:'one hue, dim → vivid'},
+    {k:'C', n:'C · Teal + warm', d:'amber low, teal above'},
+    {k:'D', n:'D · Okabe-Ito', d:'CVD heatmap, no purple'}
+  ];
+  // dense sweep across the range + the two special states at the ends
+  var SCORES=[null,12,28,44,54,60,68,74,82,88,94,98,100];
+  function scLabel(s){ if(s==null) return 'New'; if(s===100) return 'Master'; return band(s); }
+  var bandColorDot={lo:'var(--amber)',mid:'var(--accent)',good:'var(--accent)',hi:'var(--accenthi)'};
+
+  // ---- Section 1: matrix ----
+  var mx=document.getElementById('matrix'); var h='';
+  h+='<div class="mh corner"><span class="mhn">Score</span></div>';
+  SYS.forEach(function(s){ h+='<div class="mh"><span class="mhn">'+s.n+'</span><span class="mhd">'+s.d+'</span></div>'; });
+  SCORES.forEach(function(sc,ri){
+    var last=(ri===SCORES.length-1);
+    var lbl=scLabel(sc);
+    h+='<div class="sc'+(last?' rowend':'')+'"><span class="scn">'+(sc==null?'—':sc)+'</span><span class="scl">'+lbl+'</span></div>';
+    SYS.forEach(function(s){ h+='<div class="'+(last?'rowend':'')+'">'+donut(sc,s.k)+'</div>'; });
+  });
+  mx.innerHTML=h;
+
+  // ---- Section 2: states (climb to mastery + empty), shown in system C ----
+  var st=document.getElementById('states'); var sh='';
+  var climb=[ {s:null,b:'New',t:'grey ring + —'},{s:48,b:'48',t:'low band'},{s:72,b:'72',t:'good band'},{s:92,b:'92',t:'high band'},{s:98,b:'98',t:'high band'},{s:100,b:'Mastered',t:'solid disc + trophy'} ];
+  climb.forEach(function(c,i){
+    if(i>0) sh+='<span class="arrowdots">›</span>';
+    sh+='<div class="stitem">'+donut(c.s,'C',34)+'<span class="sl"><b>'+c.b+'</b>'+c.t+'</span></div>';
+  });
+  st.innerHTML=sh;
+
+  // ---- Section 3: size check (system C, a high score) ----
+  var sz=document.getElementById('sizes'); var zh='';
+  [24,26,28,30].forEach(function(px){ zh+='<div class="dcell">'+donut(88,'C',px)+'<span class="cap">'+px+'px</span></div>'; });
+  zh+='<div class="dcell">'+donut(100,'C',28)+'<span class="cap">100 · 28px</span><span class="cap2">mastered</span></div>';
+  zh+='<div class="dcell">'+donut(null,'C',28)+'<span class="cap">new · 28px</span><span class="cap2">not attempted</span></div>';
+  sz.innerHTML=zh;
+
+  // ---- Section 4: in-context switcher + list ----
+  var LIST=[
+    {title:'Light Pop', sub:'Pop · 4/4 · drums', lvl:2, bpm:120, best:100},
+    {title:'Stadium Beat', sub:'Rock · 4/4 · drums·guitar', lvl:3, bpm:116, best:92},
+    {title:'Funk Groove', sub:'Funk · 4/4 · drums', lvl:5, bpm:104, best:88},
+    {title:'Backbeat Basics', sub:'Rock · 4/4 · drums', lvl:2, bpm:96, best:76},
+    {title:'Shuffle Feel', sub:'Blues · 12/8 · drums', lvl:4, bpm:84, best:64},
+    {title:'Warmup Roll', sub:'Technique · 4/4 · drums', lvl:1, bpm:72, best:41},
+    {title:'Odd-Meter Étude', sub:'Jazz · 7/8 · drums', lvl:10, bpm:132, best:null}
+  ];
+  var curSys='C';
+  var seg=document.getElementById('seg');
+  seg.innerHTML=SYS.map(function(s){ return '<button class="'+(s.k===curSys?'sel':'')+'" onclick="pick(\''+s.k+'\',this)">'+s.n+'</button>'; }).join('');
+  function renderList(){
+    document.getElementById('list').innerHTML = LIST.map(function(o){
+      var lvl = o.lvl? '<span class="lvlpill">'+o.lvl+'</span>' : '<span class="lvlpill" style="border-style:dashed">–</span>';
+      return '<div class="trow"><div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>'
+        +'<div><div class="nmtitle">'+o.title+'</div><div class="nmsub">'+o.sub+'</div></div></div>'
+        +'<span class="levelC">'+lvl+'</span><span class="bpmC">'+o.bpm+'</span>'
+        +'<span class="bestC">'+donut(o.best,curSys)+'</span>'
+        +'<span class="playC"><button class="play"><span class="material-symbols-outlined">play_circle</span></button></span></div>';
+    }).join('');
+  }
+  function pick(k,btn){ curSys=k; document.querySelectorAll('#seg button').forEach(function(b){b.classList.remove('sel');}); btn.classList.add('sel'); renderList(); }
+  renderList();
+
+  // ---- Thresholds legend (reflects the recommended system C) ----
+  var BANDS=[
+    {b:'lo',  n:'Low',      r:'1 – 54',  d:'amber ring (C) / greyed teal (B)'},
+    {b:'mid', n:'Mid',      r:'55 – 69', d:'softer teal'},
+    {b:'good',n:'Good',     r:'70 – 84', d:'full teal (--accent)'},
+    {b:'hi',  n:'High',     r:'85 – 99', d:'bright teal (--accenthi)'},
+    {b:'master',n:'Mastered',r:'100',    d:'solid disc + trophy'},
+    {b:'empty',n:'Not attempted',r:'—',  d:'grey ring + dash'}
+  ];
+  document.getElementById('legend').innerHTML = BANDS.map(function(x){
+    var demo = x.b==='empty'? donut(null,'C') : (x.b==='master'? donut(100,'C') : donut({lo:41,mid:62,good:78,hi:92}[x.b],'C'));
+    return '<div class="lgc">'+demo+'<span class="lgl"><b>'+x.n+'</b>'+x.d+'<span class="lgr">'+x.r+'</span></span></div>';
+  }).join('');
+  document.getElementById('legendnote').innerHTML = 'Cuts reuse the app’s existing grade model (<code>gradeOf()</code>: 95/85/70/55) folded into four colour bands. Because the centred number is authoritative, a viewer with any colour-vision deficiency reads the exact score regardless of ring hue — the band is a <b>fast-glance reinforcement</b>, never the only signal. System C’s only non-teal is the <b>amber low band</b> (already a brand token); it reads as “keep going,” not “error.”';
+</script>
+</body>
+</html>
