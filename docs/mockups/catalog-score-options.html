@@ -123,7 +123,17 @@
   .donut.empty{background:var(--panel2);} .donut.empty > span{color:var(--faint);}
   .donut.done{background:var(--accent);} .donut.done::before{background:var(--accent);} .donut.done > span{color:var(--onaccent);} .donut .chk2{font-size:16px;}
   /* level as a rounded pill (vs the circular grade bullet) */
-  .lvlpill{display:inline-grid;place-items:center;min-width:32px;height:25px;padding:0 9px;border-radius:8px;background:var(--accent);color:var(--onaccent);font-family:'Geist Mono';font-weight:700;font-size:12.5px;}
+  .lvlpill{display:inline-grid;place-items:center;min-width:32px;height:25px;padding:0 9px;border-radius:8px;background:var(--accent);color:var(--onaccent);border:.5px solid transparent;font-family:'Geist Mono';font-weight:700;font-size:12.5px;}
+  .lvlpill.tint{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);border-color:transparent;}
+  .lvlpill.neutral{background:var(--panel2);color:var(--muted);border-color:var(--line);}
+  /* level pill colour compare */
+  .lvlcompare{display:flex;flex-direction:column;gap:4px;background:var(--panel);border:.5px solid var(--line);border-radius:12px;padding:8px;max-width:520px;}
+  .lvlrow{display:flex;align-items:center;gap:16px;padding:10px 12px;border-radius:9px;cursor:pointer;}
+  .lvlrow:hover{background:var(--hover);}
+  .lvlrow.on{background:color-mix(in srgb,var(--accent) 8%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--accent) 35%,var(--line));}
+  .lvlrow .lvln{width:175px;flex:none;font-size:13px;color:var(--ink);font-weight:600;}
+  .lvlrow .lvln code{font-weight:400;font-family:'Geist Mono';font-size:11px;color:var(--faint);margin-left:5px;}
+  .lvlrow .pills{display:flex;gap:8px;align-items:center;}
 </style>
 </head>
 <body>
@@ -143,6 +153,13 @@
   <div class="seg" id="seg"></div>
   <div class="thead"><span>Name</span><span class="c">Level</span><span class="r">BPM</span><span class="r">Best</span><span></span></div>
   <div class="tbody" id="list"></div>
+
+  <h2><span class="material-symbols-outlined">label</span> Level pill — colour options <span class="faint" style="font-weight:400;font-size:12.5px">(click a row to preview it on the list above)</span></h2>
+  <div class="lvlcompare" id="lvlcompare">
+    <div class="lvlrow on" onclick="setLvl('',this)"><span class="lvln">Solid teal <code>current</code></span><span class="pills"><span class="lvlpill">1</span><span class="lvlpill">5</span><span class="lvlpill">10</span></span></div>
+    <div class="lvlrow" onclick="setLvl('tint',this)"><span class="lvln">Teal tint <code>.lg-a</code></span><span class="pills"><span class="lvlpill tint">1</span><span class="lvlpill tint">5</span><span class="lvlpill tint">10</span></span></div>
+    <div class="lvlrow" onclick="setLvl('neutral',this)"><span class="lvln">Neutral <code>.lg-c</code></span><span class="pills"><span class="lvlpill neutral">1</span><span class="lvlpill neutral">5</span><span class="lvlpill neutral">10</span></span></div>
+  </div>
 </div>
 
 <script>
@@ -232,11 +249,13 @@
     {title:'Odd-Meter Étude', sub:'Jazz · 7/8 · drums', lvl:10, bpm:132, best:null}
   ];
   var current='donut';
+  var lvlStyle='';
+  function setLvl(s,row){ lvlStyle=s; document.querySelectorAll('#lvlcompare .lvlrow').forEach(function(r){r.classList.remove('on');}); row.classList.add('on'); renderList(); }
   var seg=document.getElementById('seg');
   seg.innerHTML=OPTIONS.map(function(o){ return '<button class="'+(o.key===current?'sel':'')+'" onclick="pick(\''+o.key+'\',this)">'+o.name+'</button>'; }).join('');
   function renderList(){
     document.getElementById('list').innerHTML = LIST.map(function(o){
-      var lvl = o.lvl? '<span class="lvlpill">'+o.lvl+'</span>' : '<span class="lvlpill" style="background:transparent;border-style:dashed;color:var(--faint)">–</span>';
+      var lvl = o.lvl? '<span class="lvlpill '+lvlStyle+'">'+o.lvl+'</span>' : '<span class="lvlpill '+lvlStyle+'" style="border-style:dashed">–</span>';
       return '<div class="trow"><div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>'
         +'<div><div class="nmtitle">'+o.title+'</div><div class="nmsub">'+o.sub+'</div></div></div>'
         +'<span class="levelC">'+lvl+'</span><span class="bpmC">'+o.bpm+'</span>'
