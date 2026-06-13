@@ -4,5 +4,6 @@
   "projectType": "application",
   "sourceRoot": "infra",
   "tags": ["type:infra"],
-  "implicitDependencies": ["@notation-hero/handler-hello"]
+  "implicitDependencies": ["@notation-hero/handler-hello"],
+  "targets": { "build": { "outputs": [] } }
 }

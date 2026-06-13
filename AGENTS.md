@@ -52,7 +52,11 @@ it the action silently falls back to a degraded base).
   mean every exported function/const needs an explicit return type (TS9007 if missing).
   Relative imports use explicit `.ts` extensions; `allowImportingTsExtensions` +
   `rewriteRelativeImportExtensions` are set so `tsc -b` compiles and rewrites
-  `.ts`→`.js` on emit.
+  `.ts`→`.js` on emit. **Exception (as of KAN-119):** the first `type:app`/`type:infra`
+  *leaf* packages (`apps/handler-hello`, `infra/`) use `tsc -p tsconfig.json --noEmit`
+  (no `composite`/`isolatedDeclarations`) — they emit no `.d.ts` (nothing imports them;
+  the Lambda bundle is built by esbuild, `infra/` runs via Pulumi). `tsc -b` + composite
+  project references apply to the first emitting library (`core/`).
 - The per-package `lint` script carries `ESLINT_USE_FLAT_CONFIG=false` inline so
   ESLint 9 uses the legacy root `.eslintrc.cjs` (flat config is the L3 lane). This
   toggle does NOT work via `nx.json` `targetDefaults` env — it must stay in the script.
