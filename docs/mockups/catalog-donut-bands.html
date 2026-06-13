@@ -146,6 +146,23 @@
   .m-tealgold{background:var(--accenthi);} .m-tealgold .material-symbols-filled{color:var(--gold);}
   .m-glow{background:var(--gold);box-shadow:0 0 14px color-mix(in srgb,var(--gold) 60%,transparent),0 0 0 3px color-mix(in srgb,var(--gold) 22%,transparent);} .m-glow .material-symbols-filled{color:var(--gold-ink);}
 
+  /* ---------- mastered GLOW lab (glow on the trophy, not just the disc) ---------- */
+  .glowrow{display:flex;align-items:flex-end;gap:36px;flex-wrap:wrap;}
+  .gcell{display:flex;flex-direction:column;align-items:center;gap:10px;}
+  .gcell .cap{font-size:11px;color:var(--muted);font-family:'Geist Mono';}
+  .gctx{display:flex;align-items:center;gap:13px;padding:9px 14px;background:var(--panel2);border:.5px solid var(--line);border-radius:12px;}
+  /* deep gold medal disc + bright trophy so the glow reads in both themes */
+  .gdisc{position:relative;width:var(--gsz,52px);height:var(--gsz,52px);border-radius:50%;display:grid;place-items:center;background:#B8860B;flex:none;}
+  .gdisc .material-symbols-filled{font-size:calc(var(--gsz,52px)*.55);color:#FFE9A8;position:relative;top:1px;}
+  /* glow = on the TROPHY glyph (drop-shadow/text-shadow follow the glyph alpha) */
+  .g-soft   .material-symbols-filled{filter:drop-shadow(0 0 3px #FFD54A);}
+  .g-strong .material-symbols-filled{filter:drop-shadow(0 0 3px #FFE08A) drop-shadow(0 0 8px #FFC21F);}
+  .g-sparkle .material-symbols-filled{color:#FFFDF2;text-shadow:0 0 2px #fff,0 0 7px #FFD54A,0 0 13px #FFB300;}
+  .g-pulse  .material-symbols-filled{animation:trophypulse 1.7s ease-in-out infinite;}
+  .g-combo  .material-symbols-filled{filter:drop-shadow(0 0 4px #FFE08A) drop-shadow(0 0 9px #FFC21F);}
+  .g-combo{box-shadow:0 0 18px 2px color-mix(in srgb,#FFC21F 45%,transparent);}
+  @keyframes trophypulse{0%,100%{filter:drop-shadow(0 0 2px #FFD54A);}50%{filter:drop-shadow(0 0 6px #FFE08A) drop-shadow(0 0 11px #FFC21F);}}
+
   /* ---------- system switcher ---------- */
   .seg{display:inline-flex;flex-wrap:wrap;background:var(--panel2);border:.5px solid var(--line);border-radius:12px;padding:3px;gap:2px;margin-bottom:14px;}
   .seg button{font-family:'Hanken Grotesk';font-weight:600;font-size:12.5px;padding:8px 13px;border:none;background:transparent;color:var(--muted);border-radius:9px;cursor:pointer;}
@@ -207,6 +224,12 @@
     </div>
     <p class="note" style="margin-top:14px">✅ <b>Chosen: gold</b> (champion reward). To separate from the orange 50–69 band, <b>light</b> mode uses a <b>deep antique gold</b> <code>#B8860B</code> + cream trophy (sits darker than the orange); <b>dark</b> mode uses a <b>bright gold</b> <code>#FFD24A</code> + dark trophy. The solid-disc-+-trophy form also keeps it distinct from the orange thin-ring. <i>Teal (previous) shown left for reference.</i></p>
   </div>
+  <h2><span class="material-symbols-outlined">auto_awesome</span> Mastered glow — toggle to compare <span class="tag">the trophy glows, not just the disc</span></h2>
+  <div class="seg" id="glowseg"></div>
+  <div class="panelbox onpanel">
+    <div class="glowrow" id="glowdemo"></div>
+  </div>
+
   <h2><span class="material-symbols-outlined">preview</span> In context — on real catalogue rows</h2>
   <div class="seg" id="seg"></div>
   <div class="thead"><span>Name</span><span class="c">Level</span><span class="c">BPM</span><span class="c">Best</span><span></span></div>
@@ -320,6 +343,21 @@
     return '<div class="lgc">'+donut(x.sc,LEAD)+'<span class="lgl"><b>'+x.n+'</b>'+x.d+'<span class="lgr">'+x.r+'</span></span></div>';
   }).join('');
   document.getElementById('legendnote').innerHTML = 'System <b>G</b> — your spectrum: <code>purple &lt;50</code> · <code>orange 50–69</code> · <code>blue 70–88</code> · <code>green 89–99</code> · <code>gold 100</code>. Every hue is a genuine <b>Okabe-Ito</b> member (the colourblind-safe set) — including the <b>purple</b> (reddish-purple #CC79A7) and the <b>blue</b> (#0072B2). Purple here is a <b>score</b> colour, not the brand (brand stays teal). It replaces red so a learner’s weakest pieces read “early,” not “fail.” Because the centred number is authoritative, any colour-vision type reads the exact score regardless of ring hue — the band is <b>fast-glance reinforcement</b>, never the only signal. The 88/89 blue→green edge is a judgement call — say the word to shift any cut.';
+
+  // ---- mastered glow toggle (glow on the trophy) ----
+  var GLOWS=[{k:'none',n:'None'},{k:'soft',n:'Soft halo'},{k:'strong',n:'Strong halo'},{k:'sparkle',n:'White-hot'},{k:'pulse',n:'Pulse (animated)'},{k:'combo',n:'Trophy + disc'}];
+  var curGlow='soft';
+  function gdiscHTML(sz){ return '<span class="gdisc g-'+curGlow+'" style="--gsz:'+sz+'px"><span class="material-symbols-filled">trophy</span></span>'; }
+  function renderGlow(){
+    document.getElementById('glowdemo').innerHTML =
+      '<div class="gcell">'+gdiscHTML(56)+'<span class="cap">56px</span></div>'
+      +'<div class="gcell">'+gdiscHTML(36)+'<span class="cap">36px</span></div>'
+      +'<div class="gcell">'+gdiscHTML(28)+'<span class="cap">28px · list</span></div>'
+      +'<div class="gcell"><span class="gctx">'+donut(64,'G')+donut(92,'G')+gdiscHTML(28)+'</span><span class="cap">in a row (orange · green · 100)</span></div>';
+  }
+  document.getElementById('glowseg').innerHTML=GLOWS.map(function(g){return '<button class="'+(g.k===curGlow?'sel':'')+'" onclick="pickGlow(\''+g.k+'\',this)">'+g.n+'</button>';}).join('');
+  function pickGlow(k,btn){ curGlow=k; document.querySelectorAll('#glowseg button').forEach(function(b){b.classList.remove('sel');}); btn.classList.add('sel'); renderGlow(); }
+  renderGlow();
 </script>
 </body>
 </html>
