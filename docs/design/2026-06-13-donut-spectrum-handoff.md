@@ -31,12 +31,13 @@ Score cell = **donut**: ring fills by best-%, exact number centred (Geist Mono).
 | Developing | `50–69` | orange `#E69F00` / `#F0A92E` | `--oi-orange` |
 | Climbing | `70–88` | blue `#0072B2` / `#56B4E9` | `--score-blue` |
 | High | `89–99` | green `#009E73` / `#1FBF8F` | `--oi-green` |
-| **Mastered** | `100` | **solid teal disc + filled `trophy`** `#0D9488` / `#5EEAD4` | `--accenthi` |
+| **Mastered** | `100` | **gold disc + filled `trophy`** — deep antique `#B8860B` (light) / bright `#FFD24A` (dark) | `--gold` |
 | Not attempted | `null` | **grey ring + `–`** | `--track` |
 
 **Why this shape:**
 - **Banded, not uniform** — Leo wanted bands clearly distinct (the earlier teal ramps were "too similar to the 80+").
 - **Purple low, not red** — vermillion/red read as "fail/alarm" for a learner's weakest pieces; **purple is gentler and maximally distinct**. Leo's call.
+- **Gold for 100, not teal** — a rare 100% deserves its own **champion reward colour**. Teal was too close to the 89–99 green, so colour did no work. Gold = the universal medal signal. Light uses a **deep antique gold** (`#B8860B`) so it separates from the orange 50–69 band by lightness; dark uses **bright gold** (`#FFD24A`). The solid-disc-+-trophy form also keeps it distinct from the orange thin-ring.
 - **a11y** — the centred number always carries the exact value, so colour is **reinforcement only** → CVD-safe by construction. Verified light + dark.
 - **Thresholds** reuse the app's existing grade model (`gradeOf()` cuts) folded into the 5 bands. The `88/89` blue→green edge is a judgement call (tunable).
 
