@@ -1,0 +1,3 @@
+# Pulumi local workspace + state are never part of the Nx project graph or hash
+# inputs (decision-registry M8). Mirrors the .gitignore entry.
+.pulumi/

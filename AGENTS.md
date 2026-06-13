@@ -20,7 +20,7 @@ below mark what is **NOT enforced yet**. Treat unmarked directions as enforced.
 | `apps/*` | `type:app` | `type:core`, `type:adapter` | infra source *(an `apps → @pulumi/*` ban is a pending later Step-1 item, NOT enforced yet)* |
 | `infra` | `type:infra` | nothing in-repo — pure IaC; wires `apps` via build output (`FileArchive(apps/*/dist)` + Nx `implicitDependencies`), never a TS import (ADR 2026-06-12 **D3**) | core / adapters / apps **source** *(enforced — depcruise **H9**)*; `infra` must never be imported BY app/adapter/core source. `apps` is the runtime composition root, **not** `infra`. |
 
-**Only `infra` (`@notation-hero/infra`, `type:infra`) exists today** — this foundation ships the nx wiring + the tag convention, **not** example domain packages. The first `core`/`adapter`/`app` packages materialize with their real domains (the **catalog** is first: `core/catalogue` + a Neon-Postgres adapter), each brainstormed/spec'd before code. The `@nx/js` + `@nx/eslint` generators are installed and ready to scaffold them with the right `--tags`.
+**`infra/` (`@notation-hero/infra`, `type:infra`) + `apps/handler-hello` (`type:app`) exist today** — the KAN-119 hello-world Lambda Function URL, the first AWS deliverable (see the decision-registry Change-log 2026-06-14). `core/` and `adapters/` are still empty; the first `core`/`adapter` packages materialize with their real domains (the **catalog** is first: `core/catalogue` + a Neon-Postgres adapter), each brainstormed/spec'd before code. The `@nx/js` + `@nx/eslint` generators are installed and ready to scaffold them with the right `--tags`.
 
 Naming is `@notation-hero/*` (hyphen — matches root `name: "notation-hero"`).
 The DACI's `@notationhero/*` (no hyphen, M-7) is a typo; do not adopt it.
@@ -52,7 +52,11 @@ it the action silently falls back to a degraded base).
   mean every exported function/const needs an explicit return type (TS9007 if missing).
   Relative imports use explicit `.ts` extensions; `allowImportingTsExtensions` +
   `rewriteRelativeImportExtensions` are set so `tsc -b` compiles and rewrites
-  `.ts`→`.js` on emit.
+  `.ts`→`.js` on emit. **Exception (as of KAN-119):** the first `type:app`/`type:infra`
+  *leaf* packages (`apps/handler-hello`, `infra/`) use `tsc -p tsconfig.json --noEmit`
+  (no `composite`/`isolatedDeclarations`) — they emit no `.d.ts` (nothing imports them;
+  the Lambda bundle is built by esbuild, `infra/` runs via Pulumi). `tsc -b` + composite
+  project references apply to the first emitting library (`core/`).
 - The per-package `lint` script carries `ESLINT_USE_FLAT_CONFIG=false` inline so
   ESLint 9 uses the legacy root `.eslintrc.cjs` (flat config is the L3 lane). This
   toggle does NOT work via `nx.json` `targetDefaults` env — it must stay in the script.
@@ -61,8 +65,11 @@ it the action silently falls back to a degraded base).
   a hand-authored Wave-1 interim; once `nx sync` lands, stop hand-editing them.
 - `depcheck` (`pnpm run depcheck`) is the dependency-cruiser whole-graph cycle +
   boundary scan; it stays a single root script, not an Nx per-project target.
-- `@notation-hero/infra` targets are stub echo scripts until infra source lands
-  (DACI U9) — green output from them is expected but vacuous.
+- `@notation-hero/infra` targets are real as of KAN-119: `typecheck`/`build`
+  run `tsc -p tsconfig.json --noEmit`, `test` runs `node --test`, and
+  `pulumi:preview`/`pulumi:up`/`pulumi:destroy` wrap `pulumi preview`/`up`/`destroy`
+  (namespaced to dodge pnpm's reserved `deploy`/`up` commands). The Pulumi ops need
+  AWS creds + a Pulumi token, so they run locally only — never in CI `nx run-many` (KTD7).
 
 ## Test & story layout — co-located, NEVER `__tests__/`
 

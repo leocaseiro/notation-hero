@@ -132,7 +132,20 @@ module.exports = {
         "(E-no-orphans-error / CONV-5); safe now (0 modules) and enforced as source lands. Add " +
         "explicit entry-point exemptions here when app/infra composition roots arrive.",
       severity: "error",
-      from: { orphan: true, pathNot: ["\\.(test|spec)\\.(ts|tsx)$", "\\.stories\\.(ts|tsx)$"] },
+      from: {
+        orphan: true,
+        pathNot: [
+          "\\.(test|spec)\\.(ts|tsx)$",
+          "\\.stories\\.(ts|tsx)$",
+          // Composition roots are entry points, not orphans (KAN-119, the
+          // "add entry-point exemptions when app/infra composition roots
+          // arrive" note above). infra/index.ts is the Pulumi program entry;
+          // apps/handler-hello/src/index.ts is the Lambda handler entry
+          // (packaged via FileArchive(dist), invoked by AWS — never imported).
+          "^infra/index\\.ts$",
+          "^apps/handler-hello/src/index\\.ts$",
+        ],
+      },
       to: {},
     },
   ],
@@ -140,6 +153,10 @@ module.exports = {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     doNotFollow: { path: "node_modules" },
+    // Never cruise build output — dist/ is gitignored esbuild/tsc emit (e.g.
+    // apps/handler-hello/dist), not source; scanning it raises false no-orphans
+    // errors on the bundled entry (KAN-119).
+    exclude: { path: "(^|/)dist/" },
     enhancedResolveOptions: { exportsFields: ["exports"], conditionNames: ["import", "require", "node", "default"] },
   },
 };
