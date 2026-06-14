@@ -1,0 +1,60 @@
+# lefthook.yml — notation-hero (pnpm 11.5.2 + Nx 22.7.5, hexagonal monorepo)
+# Docs: https://lefthook.dev/configuration/  |  nx affected: https://nx.dev/nx-api/nx/documents/affected
+#
+# pre-commit: fast feedback on STAGED work — the layout guard (same script CI runs)
+#             + nx affected lint/typecheck scoped to uncommitted (staged + working) changes.
+# pre-push:   wider safety net — nx affected lint/typecheck/test vs origin/master.
+#
+# Skip on merge/rebase so conflict-resolution / history-rewrite commits don't fight the hooks.
+# Worktree note: lefthook >= 2.1.9 resolves the shim via `git rev-parse --show-toplevel`
+# (fixes the deleted-worktree dead-path bug). Re-run `pnpm exec lefthook install` in the
+# worktree you actively develop in if hooks ever stop firing.
+
+pre-commit:
+  parallel: false
+  commands:
+    # 1) Layout guard — blocks __tests__/ · __mocks__/ · stories/ dirs BEFORE they're committed.
+    layout-guard:
+      run: bash tooling/check-layout.sh
+      skip:
+        - merge
+        - rebase
+    # 2) gitleaks secret scan on STAGED changes (local best-effort; CI is authoritative — E-gitleaks).
+    secret-scan:
+      run: bash tooling/gitleaks-precommit.sh
+      skip:
+        - merge
+        - rebase
+    # 3) semgrep SAST on STAGED source (local best-effort; CI is authoritative — E-semgrep).
+    sast:
+      run: bash tooling/semgrep-precommit.sh
+      skip:
+        - merge
+        - rebase
+    # 4) nx affected lint + typecheck on UNCOMMITTED changes (staged + unstaged working tree).
+    # NOTE: Coverage-ignore guard runs in CI only (see ci.yml `quality` job). Same policy
+    # as gitleaks/semgrep: CI is authoritative for whole-tree gates; pre-commit stays fast.
+    affected-lint-typecheck:
+      run: pnpm exec nx affected -t lint typecheck --uncommitted
+      skip:
+        - merge
+        - rebase
+
+commit-msg:
+  commands:
+    commitlint:
+      run: pnpm exec commitlint --edit {1}
+      skip:
+        - merge
+        - rebase
+
+pre-push:
+  parallel: false
+  commands:
+    # Wider net before sharing: lint + typecheck + test for projects affected since origin/master.
+    # Requires origin/master to be fetched locally (a normal `git push` has it).
+    affected-verify:
+      run: pnpm exec nx affected -t lint typecheck test --base=origin/master --head=HEAD
+      skip:
+        - merge
+        - rebase

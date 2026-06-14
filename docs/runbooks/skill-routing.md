@@ -56,7 +56,7 @@ flowchart TD
 
   QEXEC -->|"I steer"| CEWORK["/ce-work"]:::ce
   QEXEC -->|"hands-off to CI green"| LFG["/lfg"]:::ce
-  QEXEC -->|"frontend build"| CEFD["/ce-frontend-design<br/>build, screenshot-verified"]:::ce
+  QEXEC -->|"frontend build"| CEFD["/ce-frontend-design<br/>build with design quality, screenshot-verified"]:::ce
   SPPLAN --> SPEXEC["superpowers:executing-plans<br/>or subagent-driven-development"]:::sp
 
   CEWORK --> QREV{"review the diff how?"}
@@ -78,7 +78,7 @@ flowchart TD
   CPP --> QFEED
   SHIP --> QFEED
 
-  QFEED -->|yes| RESOLVE["/ce-resolve-pr-feedback<br/><i>rigor: superpowers:receiving-code-review</i>"]:::ce
+  QFEED -->|yes| RESOLVE["/ce-resolve-pr-feedback<br/><i>rigor guard: superpowers:receiving-code-review</i>"]:::ce
   QFEED -->|no| QDEPLOY{"merge and deploy?"}
   RESOLVE --> QDEPLOY
 
@@ -145,6 +145,13 @@ Think of them as three different friends you tell *"I want to build X"*:
 When unsure, sequence them: **office-hours** (worth building at all?) → **ce-brainstorm**
 (nail the WHAT) → reach for **superpowers:brainstorming** instead when you specifically
 want a committed design doc with the no-code gate.
+
+    LOST["lost context?<br/>/context-restore gs · /ce-sessions"]:::gs
+    WEBQA["web app running?<br/>/qa fix-mode · /qa-only report · /design-review gs · ce-design-iterator agent"]:::gs
+    RETRO["week over?<br/>/retro · /health gs"]:::gs
+    SECOND["want a second opinion?<br/>/codex gs — cross-model review"]:::gs
+  end
+```
 
 ## Quick routing table (text backup of the diagram)
 

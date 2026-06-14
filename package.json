@@ -4,19 +4,44 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
-    "lint": "ESLINT_USE_FLAT_CONFIG=false eslint . --ext .ts,.tsx --no-error-on-unmatched-pattern",
-    "typecheck": "pnpm -r --if-present run typecheck",
-    "test": "pnpm -r --if-present run test",
-    "build": "pnpm -r --if-present run build",
-    "depcheck": "depcruise core adapters apps infra --config .dependency-cruiser.cjs"
+    "prepare": "lefthook install",
+    "lint": "nx run-many --target=lint",
+    "typecheck": "nx run-many --target=typecheck",
+    "test": "nx run-many --target=test",
+    "build": "nx run-many --target=build",
+    "depcheck": "depcruise core adapters apps infra --config .dependency-cruiser.cjs",
+    "knip": "knip",
+    "syncpack": "syncpack lint",
+    "check:layout": "bash tooling/check-layout.sh",
+    "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh",
+    "infra:preview": "pnpm --filter @notation-hero/infra pulumi:preview",
+    "infra:up": "pnpm --filter @notation-hero/infra pulumi:up",
+    "infra:destroy": "pnpm --filter @notation-hero/infra pulumi:destroy"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "@eslint-community/eslint-plugin-eslint-comments": "^4.7.2",
+    "@nx/eslint": "22.7.5",
+    "@nx/eslint-plugin": "22.7.5",
+    "@nx/js": "22.7.5",
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "dependency-cruiser": "^16.0.0",
     "eslint": "^9.17.0",
+    "eslint-import-resolver-node": "^0.4.0",
+    "eslint-plugin-boundaries": "^6.0.2",
+    "eslint-plugin-check-file": "^3.3.1",
+    "eslint-plugin-import-x": "^4.16.2",
+    "knip": "^6.16.1",
+    "lefthook": "2.1.9",
+    "nx": "22.7.5",
+    "syncpack": "^15.3.1",
     "typescript": "^5.7.0"
   }
 }

@@ -7,6 +7,18 @@ mode: repo-grounded
 
 # Ideation: Agent-Native Tooling & CI Enforcement Stack
 
+> [!WARNING]
+> ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
+> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
+> struck lines below.**
+>
+> **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+>
+> _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
+
 > **Note (post-decision, 2026-06-09):** This is the brainstorming snapshot that fed the [tooling-stack DACI](../decisions/2026-06-09-tooling-stack-daci.md). The DACI's `Verification on record` section + the `Decisions` tables finalized the binding choices — notably **pnpm replaces Bun** (Bun fully dropped per F-6) and **R1's deferral of Nx was REVERSED** (Nx adopted under the complete-now override). Read this doc for the reasoning history that shaped the trade-offs; read the DACI for binding choices.
 
 > ce-ideate run `6c6a14a0`. Generated many → critiqued all → survivors below. Feeds a per-layer DACI (Driver-Approver-Contributors-Informed).
@@ -15,21 +27,21 @@ mode: repo-grounded
 
 **Project reality.** `notation-hero` is a drum-tutor rhythm game (web PWA + Capacitor), but the *real* product is the developer's **AWS / staff-engineer learning** via a system-design portfolio. Solo + heavily AI-agent-driven. ADHD-aware (visible progress, baby commits, mechanical guardrails over vibes, low token waste). Public repo now, **private later** (CI cost will start to matter). Legacy AWS account = always-free tiers.
 
-**Current state (all re-evaluable).** Bun 1.3.11 workspaces; hexagonal layout `core/ adapters/ apps/ infra/` — but layers are empty `.gitkeep` and only `infra` has a real (echo-stub) `package.json`. tsconfig `strict` + `paths` aliasing; ESLint legacy (flat-disabled) + dependency-cruiser (4 forbidden rules) + tsc. Single **"CI Green"** required check, `concurrency` cancel-in-progress, cache-on-`bun.lock`, OIDC reserved for a future `deploy.yml`, iOS builds local-only.
+**Current state (all re-evaluable).** ~~Bun 1.3.11 workspaces;~~ <!-- SUPERSEDED: pnpm+Nx locked 2026-06-09; Bun fully dropped (tooling-stack-daci F-6) --> hexagonal layout `core/ adapters/ apps/ infra/` — but layers are empty `.gitkeep` and only `infra` has a real (echo-stub) `package.json`. tsconfig `strict` + `paths` aliasing; ESLint legacy (flat-disabled) + dependency-cruiser (4 forbidden rules) + tsc. Single **"CI Green"** required check, `concurrency` cancel-in-progress, ~~cache-on-`bun.lock`,~~ <!-- SUPERSEDED: lockfile is pnpm-lock.yaml, not bun.lock --> OIDC reserved for a future `deploy.yml`, iOS builds local-only.
 
-**Proven patterns to keep/extend.** "CI Green" single-required-check (dodges skipped-check deadlock + solo self-approval trap); concurrency-cancel + path-filters + cache-on-lockfile; "every boundary rule ships an adversarial probe PR"; baby commits → `git revert`; `bun.lock` text-merges across parallel agent PRs.
+**Proven patterns to keep/extend.** "CI Green" single-required-check (dodges skipped-check deadlock + solo self-approval trap); concurrency-cancel + path-filters + cache-on-lockfile; "every boundary rule ships an adversarial probe PR"; baby commits → `git revert`; ~~`bun.lock` text-merges across parallel agent PRs.~~ <!-- SUPERSEDED: pnpm-lock.yaml is the locked lockfile, not bun.lock -->
 
 **Genuine gaps (highest ideation value).** No green-faking defense (no mutation testing; coverage is a note, not a gate/ratchet); no git hooks; no commit/PR hygiene; no DangerJS; no dependency health (knip/syncpack/osv); no type-coverage; no Linear.
 
-**2026 landscape signal.** `AGENTS.md` is the cross-tool standard agents actually follow (vs `.editorconfig` they ignore), backed by **Lefthook** (one YAML) + **Biome** (one JSON). **Stryker mutation + coverage-ratchet** = the anti-green-faking combo. **Turborepo** (free Vercel cache) / **Nx** (import-level affected) for orchestration — but premature at this scale. **Knip + Syncpack + Renovate** for dep health.
+**2026 landscape signal.** `AGENTS.md` is the cross-tool standard agents actually follow (vs `.editorconfig` they ignore), backed by **Lefthook** (one YAML) + **Biome** (one JSON). **Stryker mutation + coverage-ratchet** = the anti-green-faking combo. **Turborepo** (free Vercel cache) / **Nx** (import-level affected) for orchestration — ~~but premature at this scale.~~ <!-- SUPERSEDED: Nx ADOPTED 2026-06-09 (R1 reversed under complete-now override); not deferred --> **Knip + Syncpack + Renovate** for dep health.
 
 ## Live Findings (true in the repo today)
 
-- 🔴 **CI is vacuously green** — `infra` scripts are `echo "…"` (exit 0); `core/adapters/apps` empty, so `bun --filter='*' test|typecheck|build` matches nothing → exits 0. The "bullet-proof CI" proves nothing right now. (→ Idea 4)
+- 🔴 **CI is vacuously green** — `infra` scripts are `echo "…"` (exit 0); `core/adapters/apps` empty, so ~~`bun --filter='*' test|typecheck|build`~~ <!-- SUPERSEDED: stack is pnpm + Nx; use Nx affected/run-many, not bun --filter --> matches nothing → exits 0. The "bullet-proof CI" proves nothing right now. (→ Idea 4)
 - 🟠 `.dependency-cruiser.cjs` `no-orphans` is `severity:"warn"` → dead modules pass. (→ Idea 9)
 - 🟠 `tsconfig.base.json` uses `paths` aliasing = 2026 boundary anti-pattern; no `composite`/`references`/`isolatedDeclarations`. (→ Idea 5)
 - 🟠 ESLint runs legacy (`ESLINT_USE_FLAT_CONFIG=false`), duplicating dependency-cruiser's `core/` import-ban. (→ Idea 6)
-- 🟡 `ci.yml` triggers on `branches: [master]` — default branch appears to be `main`; if so, pushes never trigger CI (PRs still do). **Verify.**
+- ~~🟡 `ci.yml` triggers on `branches: [master]` — default branch appears to be `main`; if so, pushes never trigger CI (PRs still do). **Verify.**~~ <!-- SUPERSEDED: default branch is LOCKED as `master`, NOT `main`; `branches: [master]` is correct — do NOT change ci.yml triggers to `main` -->
 
 ## Ranked Ideas
 
@@ -45,7 +57,7 @@ mode: repo-grounded
 
 ### 2. Lefthook pre-commit/pre-push running the exact CI commands locally
 
-**Description:** One `lefthook.yml` whose hooks call the identical `bun run` scripts CI calls (lint, typecheck, depcheck, test), scoped to staged files, in parallel — so agents hit the gate before a commit reaches CI.
+**Description:** One `lefthook.yml` whose hooks call the identical ~~`bun run` scripts~~ <!-- SUPERSEDED: pnpm + Nx scripts, not `bun run`; wire `pnpm`/`nx run` --> CI calls (lint, typecheck, depcheck, test), scoped to staged files, in parallel — so agents hit the gate before a commit reaches CI.
 **Warrant:** `external:` Lefthook (single YAML, Go, parallel, no shell/lint-staged) > husky for agent-native; repo has no git hooks today.
 **Rationale:** Collapses the push→red-CI→rewrite loop to a zero-network local gate — the single biggest token + CI-minute saver for agent-driven dev. ADHD bonus: only green commits form, keeping baby-commit/`git revert` history clean.
 **Downsides:** Agents must run `lefthook install` once; pre-commit scope must stay fast or it nags.
@@ -53,15 +65,15 @@ mode: repo-grounded
 
 ### 3. Test-integrity spine: coverage ratchet + Stryker mutation floor (incremental, core-first)
 
-**Description:** Vitest `coverage.thresholds` committed as a ratchet (fail if coverage *decreases* → blocks test deletion) + Stryker mutation testing scoped to `core/`, `--incremental`, with a mutation-score floor (fail if tests don't kill mutants → blocks assertion-free "hollow" tests).
+**Description:** ~~Vitest `coverage.thresholds` committed as a ratchet (fail if coverage *decreases* → blocks test deletion)~~ <!-- SUPERSEDED: TODAY's runner is Node 24 built-in `node --test`; Vitest + coverage-ratchet is the DEFERRED L5 lane, not current --> + Stryker mutation testing scoped to `core/`, `--incremental`, with a mutation-score floor (fail if tests don't kill mutants → blocks assertion-free "hollow" tests).
 **Warrant:** `external:` documented case — 93% line coverage masked a 58% mutation score; Stryker per-test + incremental + `breakOn`. `direct:` repo gap — coverage is a note, not a gate/ratchet.
 **Rationale:** Directly answers "agents can't green-fake tests / only fix tests when they should." Ratchet stops deletion; mutation stops hollowing. Two mechanisms, phaseable (ratchet first, mutation once tests exist).
-**Downsides:** Mutation adds CI minutes (mitigated by core-only + incremental); requires choosing Vitest as runner.
+**Downsides:** Mutation adds CI minutes (mitigated by core-only + incremental); ~~requires choosing Vitest as runner.~~ <!-- SUPERSEDED: runner TODAY is `node --test` (Node 24); Vitest is the DEFERRED L5 lane — do NOT install Vitest as if current -->
 **Confidence:** 92%  **Complexity:** Medium  **Status:** Unexplored
 
 ### 4. Fix the vacuous-green scaffold + no-empty-scripts / empty-filter guard
 
-**Description:** A guard (CI step + lefthook) that fails if a workspace contains `.ts` but ships a stub/`echo` script, or if `bun --filter` matched zero packages. Distinguish "empty on purpose" via an explicit sentinel allowlist.
+**Description:** A guard (CI step + lefthook) that fails if a workspace contains `.ts` but ships a stub/`echo` script, or if ~~`bun --filter` matched zero packages.~~ <!-- SUPERSEDED: bun --filter is obsolete under pnpm+Nx; use Nx affected/empty-project detection --> Distinguish "empty on purpose" via an explicit sentinel allowlist.
 **Warrant:** `direct:` live bug — `infra/package.json` scripts are `echo "…"`; `bun --filter='*'` matches nothing and exits 0. CI is green over zero real checks.
 **Rationale:** Cheapest, most urgent: closes a green-faking vector that needs no malice — it's the repo's default state today, and it teaches agents the wrong pattern by example.
 **Downsides:** Needs a convention for legitimate empty stubs (sentinel) so it doesn't block scaffolding.
@@ -87,7 +99,7 @@ mode: repo-grounded
 
 ### 7. Self-testing guardrails: a committed probe suite of intentional violations, asserted to fail in CI
 
-**Description:** Formalize the repo's "adversarial probe PR per rule" habit into a committed `__probes__/` of intentional violations (core→adapter import, circular dep, etc.) + a CI meta-test asserting each gate exits non-zero. If someone loosens a rule, its probe stops failing → the meta-test goes red.
+**Description:** Formalize the repo's "adversarial probe PR per rule" habit into a committed ~~`__probes__/` of intentional violations~~ <!-- SUPERSEDED: locked co-location convention forbids top-level file-type folders; co-locate probes by domain, no `__probes__/` dir --> (core→adapter import, circular dep, etc.) + a CI meta-test asserting each gate exits non-zero. If someone loosens a rule, its probe stops failing → the meta-test goes red.
 **Warrant:** `direct:` extends the proven repo pattern; today the 5 dep-cruiser rules have no test that they actually fire. Serves the explicit "ruleset can GROW incrementally" goal.
 **Rationale:** Guards the guards — closes the meta-gap where an agent's "fix" is to weaken a rule (a green-fake at the config layer). Each new rule adds one cheap fixture.
 **Downsides:** A maintenance surface (tests that test the linters); needs a convention for where probes live and how they run.
@@ -95,9 +107,9 @@ mode: repo-grounded
 
 ### 8. Parallel-agent merge safety: merge_group queue + CODEOWNERS-by-layer + reusable workflow
 
-**Description:** Enable GitHub merge queue (`merge_group` trigger) so CI runs against the *post-merge* tree; add `CODEOWNERS` partitioned by hexagonal layer; extract the duplicated `checkout→setup-bun→cache→install` block into a reusable workflow/composite action so adding a gate is one line.
+**Description:** Enable GitHub merge queue (`merge_group` trigger) so CI runs against the *post-merge* tree; add `CODEOWNERS` partitioned by hexagonal layer; extract the duplicated ~~`checkout→setup-bun→cache→install`~~ <!-- SUPERSEDED: setup-bun no longer applies; use pnpm/action-setup + pnpm install (pnpm+Nx) --> block into a reusable workflow/composite action so adding a gate is one line.
 **Warrant:** `direct:` ci.yml has no `merge_group` and duplicates the setup block across jobs; "CI Green" is reusable as the queue gate. `external:` 2026 — merge queue, reusable workflows DRY, retention→7d.
-**Rationale:** The project's defining workflow is parallel agent PRs merging to main — merge queue is the exact mechanism that stops two independently-green PRs from combining into a broken main, without a human gatekeeper. Reusable workflow makes "growable CI" cheap.
+**Rationale:** The project's defining workflow is parallel agent PRs ~~merging to main~~ <!-- SUPERSEDED: default branch is `master`, NOT `main` --> — merge queue is the exact mechanism that stops two independently-green PRs from combining into a broken main, without a human gatekeeper. Reusable workflow makes "growable CI" cheap.
 **Downsides:** Merge queue adds merge latency; reusable-workflow extraction refactors the file branch protection points at.
 **Confidence:** 78%  **Complexity:** Medium  **Status:** Unexplored
 
@@ -131,7 +143,7 @@ mode: repo-grounded
 
 | #   | Idea                                           | Reason Rejected                                                                                                                                                                                           |
 | --- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| R1  | Nx / Turborepo adoption (now)                  | Defer — <6-pkg skeleton; Nx self-hosted cache deprecated (CVE-2025-36852); bun + TS project refs give affected/incremental without overhead. Revisit Turborepo (free Vercel cache) when build time hurts. |
+| R1  | Nx / Turborepo adoption (now)                  | ~~Defer — <6-pkg skeleton; Nx self-hosted cache deprecated (CVE-2025-36852); bun + TS project refs give affected/incremental without overhead. Revisit Turborepo (free Vercel cache) when build time hurts.~~ <!-- SUPERSEDED: R1 REVERSED 2026-06-09 — Nx ADOPTED under complete-now override (tooling-stack-daci); Bun dropped for pnpm --> |
 | R2  | Moon                                           | Polyglot value irrelevant (all-TS).                                                                                                                                                                       |
 | R3  | Oxlint                                         | Correctness-only, no formatter; Biome covers more in one tool.                                                                                                                                            |
 | R4  | Append-only test ledger + human sign-token     | Heavy signing ceremony; deletion vector already covered by coverage-ratchet + Danger deleted-test rule + mutation.                                                                                        |

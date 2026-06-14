@@ -4,7 +4,7 @@
 > **Scope:** the **player app only** (the admin CMS is a separate track). Resolves the five 🎨 design-shotgun-gated decisions from the feature freeze.
 > **Owner:** leocaseiro · **Companions:** [feature-freeze.md](../../pensive-boyd-6d17e3/docs/feature-freeze.md) · [scope.md](scope.md) · [stack-brainstorm.md](../../serene-grothendieck-fb5e67/stack-brainstorm.md)
 > **Live mockups** (open in a browser / Launch panel): [`docs/mockups/`](mockups/) — `index.html` (feedback lab) · `player.html` (play screen, light+dark) · `player-full.html` (Tracks-left + Score-right) · `tracks-settings.html` (panels).
-> **North-star:** a classic standalone drum-tutor (features, not palette). Internal reference screenshots tracked privately — see `docs/.private/` or the project's Linear Document.
+> **North-star:** a classic standalone drum-tutor (features, not palette). Internal reference screenshots tracked privately — see `docs/.private/` or the project's ~~Linear Document~~ <!-- Linear retired 2026-06-11; tracker is now Jira (project KAN), https://leocaseiro.atlassian.net/jira/software/projects/KAN/summary — see docs/decisions/2026-06-11-tracker-linear-to-jira.md. Use the equivalent Jira (KAN) document/page. --> Jira (KAN) document.
 
 ---
 
@@ -104,6 +104,7 @@ Library ──tap song──▶ Play screen ──finish (game)──▶ Results
 
 - **Sidebars vs modals:** Tracks (**right**, by its bottom-bar button) and Score (**left**) are **persistent sidebars** — usable *alongside* gameplay; either closes to widen the staff. Settings + MIDI are **modals** (you're configuring, not playing).
 - **Memory mode** is armed in **pre-play setup**, never toggled mid-play.
+- **Focus** (distraction-free) = a mode that hides chrome; not a permanent panel.
 
 ---
 

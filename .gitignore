@@ -30,3 +30,7 @@ docs/.private/
 
 # Compound Engineering local config
 .compound-engineering/*.local.yaml
+
+
+.nx/cache
+.nx/workspace-data

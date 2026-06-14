@@ -1,0 +1,8 @@
+# Semgrep scan exclusions (gitignore syntax). semgrep already skips untracked +
+# node_modules; this removes tracked paths that are not production code.
+
+# Design mockups are throwaway design references, not served/production code.
+# Their HTML uses the Tailwind Play CDN (https://cdn.tailwindcss.com), a JIT dev
+# tool with no subresource-integrity hash — the missing-integrity SAST rule is a
+# false positive here. Keep SAST scoped to real app/infra code.
+docs/mockups/

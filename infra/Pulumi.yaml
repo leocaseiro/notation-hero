@@ -1,0 +1,4 @@
+name: notation-hero
+runtime: nodejs
+description: Notation Hero AWS infrastructure — KAN-119 hello-world Lambda Function URL proof-of-life.
+main: index.ts

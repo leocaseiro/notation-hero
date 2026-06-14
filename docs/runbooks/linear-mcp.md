@@ -1,5 +1,10 @@
 # Linear MCP — Token Hygiene Runbook
 
+> [!WARNING]
+> ⛔ **SUPERSEDED — Linear is retired.** The issue tracker is now **Jira** (project **KAN**)
+> as of 2026-06-11. See `docs/decisions/2026-06-11-tracker-linear-to-jira.md`.
+> Kept for history; do not act on it. Any fallback/runbook pattern here still applies but targets Jira now.
+
 Source of truth: [`docs/decisions/2026-06-09-tooling-stack-daci.md`](../decisions/2026-06-09-tooling-stack-daci.md), Layer **L10a**.
 
 ## What this is
@@ -31,9 +36,11 @@ Branch naming convention (used once L10b Linear GitHub App is wired): `LEO-<issu
 
 ## Machine-compromise response (runbook step-by-step)
 
-1. **Revoke now:** open <https://linear.app/settings/api>, find the active personal access token, click "Revoke". The MCP will start failing — that is the desired blast radius.
+1. ~~**Revoke now:** open <https://linear.app/settings/api>, find the active personal access token, click "Revoke". The MCP will start failing — that is the desired blast radius.~~ <!-- SUPERSEDED 2026-06-11: Linear retired; do not act on a live Linear token. Tracker is now Jira (KAN). See docs/decisions/2026-06-11-tracker-linear-to-jira.md -->
+
 2. **Audit recent Linear activity:** Inbox → Activity → filter by your user → check for any unrecognized issue edits in the last 24h. Roll back surprising changes.
-3. **Re-issue:** create a new token, `write:issues` scope only, friendly name like `mcp-laptop-2026-09-07`. Copy once to clipboard.
+3. ~~**Re-issue:** create a new token, `write:issues` scope only, friendly name like `mcp-laptop-2026-09-07`. Copy once to clipboard.~~ <!-- SUPERSEDED 2026-06-11: do not issue a new Linear token; Linear is retired. Apply the same hygiene pattern to a Jira (KAN) credential instead. See docs/decisions/2026-06-11-tracker-linear-to-jira.md -->
+
 4. **Re-store in keychain** (don't paste anywhere else first). Delete clipboard after pasting.
 5. **Restart MCP client** so it picks up the new keychain entry.
 6. **Smoke-test the new token** (F-12 hardening) — run one low-risk Linear MCP call (e.g. `list_teams` or `get_user me`) and confirm it returns data without error. A misnamed keychain entry, wrong token scope, or stale-copy MCP client all fail silently otherwise. Only proceed once one successful call has gone through.

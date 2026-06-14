@@ -1,11 +1,33 @@
 # pnpm workspace globs — mirrors the npm-style `workspaces` field that used
 # to live in the root package.json. Source of truth for pnpm.
 #
-# `core/`, `adapters/`, `apps/` currently hold `.gitkeep` placeholders.
-# Real Nx libs/apps materialize in later Sequencing steps (DACI L2 / Step 1
-# continued: `nx init` + real packages).
+# `core/`, `adapters/`, `apps/` hold real Nx packages as of Wave 1 (DACI Step 1).
 packages:
   - 'core/*'
   - 'adapters/*'
   - 'apps/*'
   - 'infra'
+# Build-script approval. pnpm 11.5.2 uses the `allowBuilds: {pkg: true|false}` map
+# (it IGNORES the older `onlyBuiltDependencies` list and re-injects this block as a
+# prompt). Both nx and @swc/core (transitive via @nx/js) ship postinstall builds;
+# approving both keeps a fresh `pnpm install --frozen-lockfile` green (e.g. CI),
+# which otherwise fails with ERR_PNPM_IGNORED_BUILDS.
+allowBuilds:
+  '@swc/core': true
+  nx: true
+  lefthook: true
+  # esbuild ships a platform binary via a postinstall build; the handler-hello
+  # Lambda build (apps/handler-hello) bundles with it. Approve so a frozen CI
+  # install stays green (ERR_PNPM_IGNORED_BUILDS otherwise).
+  esbuild: true
+  # import-x@4's native (Rust) module resolver. FALSE on purpose: the enforcement bundle uses
+  # only import-x/no-default-export + import-x/order, neither of which needs the native resolver
+  # (group classification works off node builtins + static heuristics). An explicit `false`
+  # silences ERR_PNPM_IGNORED_BUILDS WITHOUT running a native build script we don't yet need.
+  # Flip to true when resolver-backed rules (no-unresolved, internal/external precision) are
+  # wired — likely with the flat-config migration (KAN-158) or when real source lands.
+  unrs-resolver: false
+  # protobufjs ships a postinstall build; it backs @pulumi/pulumi's gRPC runtime
+  # (transitive dep of the infra/ Pulumi program). Approve so a frozen CI install
+  # stays green and `pulumi up` works (KAN-119).
+  protobufjs: true
