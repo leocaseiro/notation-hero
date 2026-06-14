@@ -186,13 +186,21 @@ want a committed design doc with the no-code gate.
 > ℹ️ **memstack is an MCP server, not slash-command skills.** Skills are served by the
 > `memstack-skill-loader` MCP server and triggered by **natural-language phrases** — there
 > are no `/state`-style commands and they never appear in `/skills` or `/reload-skills`.
-> The "Skill" columns below are internal skill *names*; invoke each with the phrase in its
-> "Trigger" column.
+> The "Skill" columns below are internal skill *names*; the loader picks the match from your phrasing.
 >
-> **One-time setup:** `pip install memstack-skill-loader`, then
-> `claude mcp add --scope user memstack-skills -- python -m memstack_skill_loader`
-> (point at your pipx venv's python if you installed via pipx), then **restart Claude Code**.
-> Verify by typing `list skills`. Free tier = 84 skills; a Pro key (memstack.pro) unlocks 127.
+> **One-time setup — TWO parts, both required** (the pip package bundles NO skills; missing
+> part 1 is why `list skills`/reindex returns "no skills"):
+> 1. **Skills** (the SKILL.md files): `claude plugin marketplace add cwinvestments/memstack`
+>    — clones 84 free skills to `~/.claude/plugins/marketplaces/cwinvestments-memstack/skills`,
+>    which the loader auto-discovers. (Adding the marketplace is enough; you need not *enable*
+>    the plugin — that would also flood them into `/skills`, defeating the on-demand design.)
+> 2. **Loader** (the MCP server that indexes + serves them): `pip install memstack-skill-loader`,
+>    then `claude mcp add --scope user memstack-skills -- python -m memstack_skill_loader`
+>    (use your pipx venv's python path if you installed via pipx).
+> 3. **Restart Claude Code** — the loader auto-discovers the skills and auto-indexes on boot.
+>
+> Verify by asking Claude to "list memstack skills" (it calls the `list_skills` MCP tool).
+> A Pro key (memstack.pro) downloads 43 more to `~/.memstack/pro-skills` (127 total).
 
 Unlike ce-/superpowers/gstack — which *do* the work — memstack *remembers* work and
 *manages the context window*, so it wraps every session on every project
