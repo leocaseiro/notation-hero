@@ -17,7 +17,10 @@
     "knip": "knip",
     "syncpack": "syncpack lint",
     "check:layout": "bash tooling/check-layout.sh",
-    "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh"
+    "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh",
+    "infra:preview": "pnpm --filter @notation-hero/infra pulumi:preview",
+    "infra:up": "pnpm --filter @notation-hero/infra pulumi:up",
+    "infra:destroy": "pnpm --filter @notation-hero/infra pulumi:destroy"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
