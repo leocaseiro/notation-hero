@@ -7,6 +7,8 @@ approver: leocaseiro
 supersedes: DACI L10a (Linear MCP), DACI L10b (Linear GitHub App), docs/runbooks/linear-mcp.md, tooling/linear-pending.md
 ---
 
+> ⛔ **SUPERSEDED 2026-06-15** — the tracker has since moved **KAN → NH** (team-managed → company-managed Jira). The KAN project is drained; all issues now live in **NH** (board: <https://leocaseiro.atlassian.net/jira/software/c/projects/NH/boards/2>). This document is retained for the earlier Linear→KAN history.
+
 # Decision — Issue tracker: Linear → Jira
 
 ## Decision

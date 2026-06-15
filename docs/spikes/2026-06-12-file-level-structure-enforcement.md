@@ -297,7 +297,7 @@ So the article's blanket "ESLint can't" is mostly an artifact of testing the two
 - **`L2-depcruise` / `H7`**: append the empirical "why both" justification from §0.
 - **New row `NAME-suffix`**: the chosen suffix convention (Option A or B) + the dropped DangerJS Pascal-vs-camel task + the junk-drawer ban.
 - **New row `STRUCT-sibling`**: sibling-isolation decision (enforce via boundaries vs defer).
-- **AGENTS.md** "naming" section (KAN-#9) + Nx entity generator template (KAN-#8) unblock once `NAME-suffix` lands — they were the "one true hard-block."
+- **AGENTS.md** "naming" section + Nx entity generator template unblock once `NAME-suffix` lands — they were the "one true hard-block."
 
 ---
 
