@@ -28,6 +28,8 @@ Shipped the first slice of NH-16 (the L6 PR-policy ticket, moved KAN-125 → NH-
 
 **Migration:** Jira **KAN → NH** (company-managed). KAN-125 is now **NH-16**; both keys stay valid in branches/commits/PRs and in the checklist regex `(NH|KAN)-\d+`.
 
+**Review hardening (ce-code-review, 2026-06-15):** a post-review pass closed four gate findings — delete-the-checklist bypass (template-anchoring: items are read from the PR template, missing one fails), N/A-in-label false-pass (N/A honored only in the author text after the label), quoted-sample false-fail (strip HTML comments + code fences), and the template's example key satisfying the key check (exclude checklist lines from the key search). Added `tooling/pr-checklist.test.mjs` (13 cases incl. the three regressions) + `pnpm run test:tooling`, run in the CI `quality` job. `pr-checklist` job documents the dep-free `setup-node` exception (AGENTS.md).
+
 ### 2026-06-14 — NH-150 first `pulumi up` (hello-world Lambda Function URL)
 
 First real AWS deliverable + the first real Nx packages below the layer dirs (everything was empty stubs before). `apps/handler-hello` (runtime handler, esbuild → cjs/node22) + `infra/` (the `LambdaWithUrl` Pulumi ComponentResource + composition, packaging the handler's build output via `FileArchive`). The `pulumi up` deploy itself is a **human-gated** step run separately. Plan: `docs/plans/2026-06-13-001-feat-kan-119-pulumi-hello-world-plan.md`.

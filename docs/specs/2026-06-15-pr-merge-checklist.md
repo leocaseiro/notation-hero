@@ -1,6 +1,6 @@
 # NotationHero — Agent PR Merge Checklist (v1) — Design
 
-> **Status:** 🟡 DESIGN (brainstorm-approved 2026-06-15) — pending spec review, then implementation plan
+> **Status:** 🟢 SHIPPED (2026-06-15, NH-16 v1) — CI gate live + hardened after ce-code-review; v2 smart rules deferred (NH-16 backlog)
 > **Ticket:** [NH-16](https://leocaseiro.atlassian.net/browse/NH-16) (moved from KAN-125) — "[Track 2] Advanced PR policy — DangerJS, VR-required-on-UI, Storybook-on-new-components"
 > **Decision source:** DACI **L6** (PR automation) — [`docs/decisions/2026-06-09-tooling-stack-daci.md`](../decisions/2026-06-09-tooling-stack-daci.md)
 > **Engine decisions (this session):** custom CI step (NOT DangerJS for v1) · Jira-key = required gate · keep local worktree reminder · Storybook/VR = required · "no-blank-boxes" rule
@@ -53,7 +53,7 @@ Directly solves "agents ignore warnings": **the gate fails on ANY unaddressed bo
 
 **The teeth:** the **Jira-key grep** — a real `NH-`/`KAN-` key must appear in the PR **title, body, or branch** — is the one check that **cannot be N/A'd**. That is what guarantees every PR is tracked (the core pain). Every prefixed checkbox *additionally* follows the no-blank rule, so nothing is silently skipped: an agent must tick each box or write a visible `N/A`.
 
-**Reserved marker:** the skip token is the literal `N/A` on an item's line, so PR-template item **labels must never contain `N/A`** (else the gate would read a blank box as already skipped — caught in testing 2026-06-15). A more robust marker / smart per-item detection is a v2 item.
+**Robustness (hardened 2026-06-15):** the gate reads the canonical items from the PR template (deleting one fails), honors `N/A` only in the author-added text **after** the label (a label containing `N/A` no longer auto-passes), and strips comments / fences / checklist-lines from the key search (the template's example key doesn't count). Real Jira-API validation + smart per-item detection (e.g. require a Storybook story when `*.tsx` changed) remain v2.
 
 v1 is honesty-based for the checkboxes (ticking ≠ proof). Promoting a `required:` item to a real, un-N/A-able gate (e.g. "a Storybook story exists when `*.tsx` changed") is **v2 smart detection** — the prefixes are intent labels until then.
 
@@ -61,12 +61,13 @@ v1 is honesty-based for the checkboxes (ticking ≠ proof). Promoting a `require
 
 **Inputs** (from the `github` context via env vars): PR title, body, `head_ref` (branch), `user.type` (bot?).
 
-**Logic:**
-1. **Bot bypass:** `user.type === 'Bot'` → pass (dependabot etc. skip the whole gate).
-2. **Jira key:** require `/(NH|KAN)-\d+/` in **title ∪ body ∪ branch**. Absent → **fail**.
-3. **Checklist parse** — for each `- [ ]`/`- [x]` line prefixed `required:`/`warn:` (others ignored):
-   - not `[x]` **and** not containing `N/A` → **fail** (collected). The no-blank rule is uniform across `required:`/`warn:`; the Jira grep (step 2) is the only un-N/A-able check.
-4. Exit non-zero with a clear list of what's missing; otherwise pass and print the acknowledged warns.
+**Logic** (hardened after ce-code-review, 2026-06-15):
+1. **Bot bypass:** `user.type === 'Bot'` → pass.
+2. **Strip noise:** remove HTML comments + ` ``` ` / `~~~` code fences from the body, so keys/checkboxes hidden in comments or quoted samples don't count (fixes a false-fail on quoted checklists + a commented-key false-pass).
+3. **Jira key:** require `/(NH|KAN)-\d+/` in **title ∪ branch ∪ body-minus-checklist-lines**. Excluding checklist lines stops the template's own example key (`[NH-16] …`) from satisfying the check. Absent → **fail**.
+4. **Canonical items:** read the `required:`/`warn:` items from `.github/pull_request_template.md`. **Every** canonical item must appear in the body — a missing/renamed item **fails** (closes the delete-the-checklist bypass).
+5. **No-blank:** each item must be `[x]`, or have `N/A` in the author-added text **after** the canonical label (so a label that contains `N/A` can't auto-pass a blank box).
+6. Exit non-zero with the list of missing/unaddressed items; else pass.
 
 **CI wiring:**
 - New `pr-checklist` job, `if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'`.
@@ -83,7 +84,9 @@ Add a non-blocking `worktree-reminder` to `lefthook.yml` `pre-push`: echo `git w
 | File | Change |
 |---|---|
 | `.github/pull_request_template.md` | new prefixed checklist; NH + KAN |
-| `tooling/pr-checklist.mjs` | **new** — the gate parser |
+| `tooling/pr-checklist.mjs` | **new** — the gate parser (template-anchored) |
+| `tooling/pr-checklist.test.mjs` | **new** — node --test suite (13 cases incl. F1/F2/F3 regressions) |
+| `package.json` | `test:tooling` script (runs the suite; CI quality job calls it) |
 | `.github/workflows/ci.yml` | new `pr-checklist` job; add to `ci-green` `needs` |
 | `lefthook.yml` | pre-push `worktree-reminder` |
 | `.github/CODEOWNERS` | cover `tooling/pr-checklist.mjs` |
@@ -105,7 +108,8 @@ Add a Smart Checklist to NH-16: v1 items (this work) + a "v2 smart (DangerJS)" s
 ## 10. Open points / caveats
 
 - **Storybook/VR = required, but the harness isn't built yet** (deferred per DACI L13). v1 scopes it to `required: if UI changed` (self-attest + `N/A` escape). Until the Storybook/VR harness lands, a UI PR may mark `N/A (harness pending — <ticket>)`; once it lands, `N/A` is no longer acceptable for UI PRs. Smart `*.tsx`-diff detection = v2.
-- **Honesty-based v1:** ticking a box is not proof the work was done — except the Jira-key grep, which is a real presence check. Deep verification = v2.
+- **Hardened after ce-code-review (2026-06-15):** the delete-the-checklist bypass, the N/A-in-label false-pass, the quoted-sample false-fail, and the template-example-key false-pass are all **closed** (template-anchoring + noise-stripping), locked by `tooling/pr-checklist.test.mjs`.
+- **Honesty-based v1:** ticking a box is not proof the work was done — except the Jira-key presence check. Deep verification (real Jira-API lookup, "is the ticket done?", smart per-item detection) = v2.
 - **CODEOWNERS self-approval:** enforcement-file changes hit the solo-dev self-approval block; use the documented direct-master-push exception when one must merge (per DACI F-3 caveat).
 
 ## 11. Test plan
