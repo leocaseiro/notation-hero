@@ -11,7 +11,7 @@
 
 ## 0. TL;DR — decision-ready
 
-1. **KEEP dependency-cruiser.** It is *not* redundant. Empirically, neither tool is a superset of the other, and depcruise is the only tool that does three things **today**: detect **cycles**, detect **orphans**, and **visualise the graph**. In the repo's current **legacy `.eslintrc.cjs`** setup, the ESLint cycle/orphan rules (`import-x/no-cycle`, `import-x/no-unused-modules`) **did not fire at all** despite a working resolver — they are flat-config-first and unreliable until KAN-158. depcruise caught both instantly, zero config fuss.
+1. **KEEP dependency-cruiser.** It is *not* redundant. Empirically, neither tool is a superset of the other, and depcruise is the only tool that does three things **today**: detect **cycles**, detect **orphans**, and **visualise the graph**. In the repo's current **legacy `.eslintrc.cjs`** setup, the ESLint cycle/orphan rules (`import-x/no-cycle`, `import-x/no-unused-modules`) **did not fire at all** despite a working resolver — they are flat-config-first and unreliable until NH-42. depcruise caught both instantly, zero config fuss.
 
 2. **BUT depcruise's file-level *path/external bans* (H8–H11 + layer direction) ARE fully reproducible in pure ESLint** at equal-or-better precision — proven against identical fixtures. `import-x/no-restricted-paths` + `no-restricted-imports` caught **relative, alias, and workspace-package** forms (depcruise parity), and even caught `core→@pulumi`, which depcruise currently *misses*. So the overlap on bans is real and intentional belt-and-suspenders, not waste.
 
@@ -284,7 +284,7 @@ So the article's blanket "ESLint can't" is mostly an artifact of testing the two
 
 **KEEP dependency-cruiser.** Validated unique value: (1) **cycle** detection that works today (ESLint's doesn't, under legacy config), (2) **orphan** detection that works today, (3) **graph visualization** that ESLint structurally cannot do. Its file-level path/external bans overlap with what ESLint *could* do — but that overlap is cheap, intentional belt-and-suspenders, and depcruise additionally guards files that aren't yet in an Nx project (the entire pre-source repo right now). The standing registry decision `H7`/`L2-depcruise` ("keep BOTH") is **empirically confirmed**, not just inherited.
 
-**Do NOT drop it** even after KAN-158 (flat config) unless you re-test and confirm `import-x/no-cycle` + `import-x/no-unused-modules` fire reliably — and even then you'd lose visualization.
+**Do NOT drop it** even after NH-42 (flat config) unless you re-test and confirm `import-x/no-cycle` + `import-x/no-unused-modules` fire reliably — and even then you'd lose visualization.
 
 **Optional enhancement (not required):** add `import-x/no-restricted-paths` for editor-realtime layer feedback (it reproduced H8–H11 at equal precision and *does* work under legacy config). This is additive; it doesn't replace depcruise.
 

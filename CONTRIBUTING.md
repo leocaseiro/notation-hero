@@ -13,21 +13,21 @@ The app auto-populates a Jira issue's **Development** panel (branches, commits,
 pull requests) **when the issue key `KAN-<n>` appears** in the branch name, a
 commit message, or the PR title. This works on any GitHub plan.
 
-- **Branch:** `KAN-<n>-<short-slug>` — e.g. `KAN-118-aws-creds-bootstrap`.
+- **Branch:** `KAN-<n>-<short-slug>` — e.g. `NH-149-aws-creds-bootstrap`.
   (Or click **Create branch** on the Jira issue.)
-- **PR title:** prefix the key — `[KAN-118] Bootstrap AWS creds`.
-- **Commits:** include the key in the subject — `KAN-118 add OIDC trust policy`.
+- **PR title:** prefix the key — `[NH-149] Bootstrap AWS creds`.
+- **Commits:** include the key in the subject — `NH-149 add OIDC trust policy`.
 - **Smart commits** (optional) post back to Jira:
-  `KAN-118 #comment ready`, `KAN-118 #time 2h`, `KAN-118 #close`.
+  `NH-149 #comment ready`, `NH-149 #time 2h`, `NH-149 #close`.
 
 ### GitHub → Jira (clickable links on GitHub) — use full URLs
 
-This repo is on the **GitHub Free plan**, where a bare `KAN-123` does **not**
+This repo is on the **GitHub Free plan**, where a bare `NH-17` does **not**
 auto-link ([autolink references require GitHub Pro/Team/Enterprise][autolinks]).
 So in PR/issue bodies, link Jira issues with a **full markdown link**:
 
 ```md
-- Closes [KAN-118](https://leocaseiro.atlassian.net/browse/KAN-118)
+- Closes [NH-149](https://leocaseiro.atlassian.net/browse/NH-149)
 ```
 
 The PR template includes this line ready to fill in.
