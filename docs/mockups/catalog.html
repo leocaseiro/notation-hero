@@ -17,6 +17,9 @@
     --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
     --time:#2F6DF6; --danger:#FF6B6B; --learn-text:#7FA9FF; --hover:rgba(255,255,255,.06); --glow:color-mix(in srgb, var(--accent) 42%, transparent);
     --grade-green:#1FBF8F; --scrim:rgba(0,0,0,.55);
+    /* score-donut spectrum (System G — Okabe-Ito, CVD-safe; dark members) */
+    --oi-purple:#E29CC4; --oi-orange:#F0A92E; --score-blue:#56B4E9; --oi-green:#1FBF8F;
+    --gold:#FFD24A; --gold-ink:#2A2000;
   }
   [data-theme="light"] {
     --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
@@ -24,6 +27,9 @@
     --accent:#0F766E; --accenthi:#0D9488; --onaccent:#FFFFFF;
     --time:#2F6DF6; --danger:#DC2626; --learn-text:#1D4ED8; --hover:rgba(15,21,28,.05); --glow:color-mix(in srgb, var(--accent) 30%, transparent);
     --grade-green:#009E73; --scrim:rgba(15,21,28,.4);
+    /* score-donut spectrum (System G — Okabe-Ito, CVD-safe; light members) */
+    --oi-purple:#CC79A7; --oi-orange:#E69F00; --score-blue:#0072B2; --oi-green:#009E73;
+    --gold:#B8860B; --gold-ink:#FFF6DD;
   }
   :root { --dur-micro:90ms; --dur-fast:150ms; --dur:220ms; --ease:cubic-bezier(.2,.6,.2,1); }
   * { box-sizing:border-box; }
@@ -62,9 +68,27 @@
   .midi .material-symbols-outlined{font-size:20px;} .midi.disconnected::after{content:'';position:absolute;left:50%;top:50%;width:21px;height:2px;border-radius:2px;background:var(--muted);transform:translate(-50%,-50%) rotate(-45deg);opacity:.7;}
   .sortwrap{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;cursor:pointer;} .sortwrap .material-symbols-outlined{font-size:18px;}
 
-  /* grade bullet */
+  /* grade bullet (filter-dropdown swatches still use this) */
   .grade{width:27px;height:27px;border-radius:50%;display:grid;place-items:center;font-family:'Geist Mono';font-weight:700;font-size:12.5px;flex:none;border:2px solid var(--accent);color:var(--accent);background:transparent;}
   .grade.ungraded{border-style:dashed;border-color:var(--line);color:var(--faint);}
+
+  /* ---- best-score donut (System G "Spectrum"); locked: crisp ::before hole, NO glow ---- */
+  .donut{position:relative;width:var(--dsz,28px);height:var(--dsz,28px);border-radius:50%;flex:none;display:inline-grid;place-items:center;
+    background:conic-gradient(var(--ring,var(--accent)) calc(var(--p,0)*1%), var(--track,var(--panel2)) 0);}
+  .donut::before{content:'';position:absolute;inset:5px;border-radius:50%;background:var(--panel);}
+  .donut > span{position:relative;font-family:'Geist Mono';font-weight:700;font-size:calc(var(--dsz,28px)*.33);color:var(--ink);line-height:1;}
+  .donut.empty{background:var(--track,var(--panel2));} .donut.empty > span{color:var(--faint);}
+  .donut .tro{font-size:calc(var(--dsz,28px)*.56);position:relative;top:1px;}
+  /* System G bands — ring colour by best-%, all Okabe-Ito (number always carries the value) */
+  .donut.pur   {--ring:var(--oi-purple);}
+  .donut.orange{--ring:var(--oi-orange);}
+  .donut.blue  {--ring:var(--score-blue);}
+  .donut.green {--ring:var(--oi-green);}
+  .donut.master{background:var(--gold);} .donut.master::before{background:var(--gold);} .donut.master > span{color:var(--gold-ink);}
+  .material-symbols-filled{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;text-transform:none;display:inline-block;white-space:nowrap;-webkit-font-feature-settings:'liga';font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24;}
+  /* neutral level pill (replaces the accent grade bullet in the row) */
+  .lvlpill{display:inline-grid;place-items:center;min-width:32px;height:25px;padding:0 9px;border-radius:8px;background:var(--panel2);color:var(--muted);border:.5px solid var(--line);font-family:'Geist Mono';font-weight:700;font-size:12.5px;}
+  .lvlpill.neutral{} .lvlpill.none{border-style:dashed;color:var(--faint);}
 
   /* search */
   .searchwrap{position:relative;} .searchwrap .material-symbols-outlined{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:20px;}
@@ -88,8 +112,7 @@
   .dot{width:3px;height:3px;border-radius:50%;background:var(--faint);display:inline-block;}
   .flags{display:inline-flex;gap:6px;color:var(--muted);} .flags .material-symbols-outlined{font-size:16px;} .flags .parts{color:var(--accent);}
   .levelC{display:flex;justify-content:center;} .bpmC{text-align:right;font-family:'Geist Mono';font-size:13px;color:var(--ink);}
-  .bestC{text-align:right;font-size:12px;} .bestC .pct{color:var(--grade-green);font-weight:700;font-family:'Geist Mono';} .bestC .none{color:var(--faint);}
-  .bestC .full{background:var(--accent);color:var(--onaccent);font-family:'Geist Mono';font-weight:700;padding:3px 7px;border-radius:999px;display:inline-flex;align-items:center;gap:3px;} .bestC .full .material-symbols-outlined{font-size:12px;}
+  .bestC{display:flex;justify-content:flex-end;align-items:center;}
   .playC{display:flex;justify-content:flex-end;} .play{width:34px;height:34px;border-radius:50%;background:var(--panel);color:var(--accent);border:none;display:grid;place-items:center;cursor:pointer;} .play:hover{background:var(--hover);} .play .material-symbols-outlined{font-size:24px;}
   /* density modifiers */
   .dense .trow{padding:8px 12px;border-radius:10px;} .dense .cover{width:34px;height:34px;} .dense .cover .material-symbols-outlined{font-size:18px;} .dense .tbody{gap:5px;} .dense .nmtitle{font-size:13.5px;}
@@ -254,10 +277,19 @@
   var MARK = '<span class="mark"><svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/><svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor"><path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z"/></svg></svg></span>';
   document.querySelectorAll('.logo').forEach(function(l){ l.innerHTML = l.innerHTML.replace('__MARK__', MARK); });
 
+  // best-score donut (System G "Spectrum"): ring colour bands by best-%, number always centred.
+  // <50 purple · 50–69 orange · 70–88 blue · 89–99 green · 100 gold disc + trophy · null/0 grey + –.
+  function band(s){ if(s==null||s===0) return 'empty'; if(s>=100) return 'master';
+    if(s<50) return 'pur'; if(s<70) return 'orange'; if(s<89) return 'blue'; return 'green'; }
+  function donut(score, sz){ var b=band(score), cls='donut '+b, st=(sz?'--dsz:'+sz+'px;':'');
+    if(b==='empty') return '<span class="'+cls+'" style="'+st+'"><span>–</span></span>';
+    if(b==='master') return '<span class="'+cls+'" style="'+st+'--p:100"><span><span class="material-symbols-filled tro">trophy</span></span></span>';
+    return '<span class="'+cls+'" style="'+st+'--p:'+score+'"><span>'+score+'</span></span>'; }
+
   function row(o){
     var flags = o.flags ? '<span class="flags">'+o.flags+'</span>' : '';
-    var best = o.best===100 ? '<span class="full"><span class="material-symbols-outlined">emoji_events</span>100%</span>' : (o.best ? '<span class="pct">'+o.best+'%</span>' : '<span class="none">—</span>');
-    var lvl = o.lvl ? '<span class="grade">'+o.lvl+'</span>' : '<span class="grade ungraded">—</span>';
+    var best = donut(o.best);
+    var lvl = o.lvl ? '<span class="lvlpill neutral">'+o.lvl+'</span>' : '<span class="lvlpill none">–</span>';
     return '<div class="trow"'+(o.kind?' data-kind="'+o.kind+'"':'')+'><div class="nameC"><div class="cover'+(o.lesson?' lesson':'')+'"><span class="material-symbols-outlined">'+(o.icon||'music_note')+'</span></div>'
       +'<div class="nm"><div class="nmtitle">'+o.title+(o.tag||'')+(o.new?' <span class="pill pill-new">New</span>':'')+'</div><div class="nmsub">'+o.sub+'</div></div>'+flags+'</div>'
       +'<span class="levelC">'+lvl+'</span><span class="bpmC">'+o.bpm+'</span><span class="bestC">'+best+'</span>'
@@ -267,7 +299,7 @@
     {title:'Stadium Beat', sub:'Rock <span class="dot"></span> 4/4 <span class="dot"></span> drums·guitar', lvl:3, bpm:116, best:92, flags:'<span class="material-symbols-outlined">volume_up</span><span class="material-symbols-outlined">smart_display</span><span class="material-symbols-outlined parts">splitscreen</span>'},
     {title:'Light Pop', sub:'Pop <span class="dot"></span> 4/4 <span class="dot"></span> drums', lvl:2, bpm:120, best:100},
     {title:'Funk Groove', sub:'Funk <span class="dot"></span> 4/4 <span class="dot"></span> drums', lvl:5, bpm:104, best:88, flags:'<span class="material-symbols-outlined">volume_up</span>'},
-    {title:'Odd-Meter Étude', sub:'Jazz <span class="dot"></span> 7/8 <span class="dot"></span> drums', lvl:10, bpm:132, best:0},
+    {title:'Odd-Meter Étude', sub:'Jazz <span class="dot"></span> 7/8 <span class="dot"></span> drums', lvl:10, bpm:132, best:41},
     {title:'Soul Fusion', sub:'Soul <span class="dot"></span> 6/8 <span class="dot"></span> drums·keys', lvl:0, bpm:100, best:0, new:true}
   ];
   var songsHtml = SONGS.map(row).join('');
