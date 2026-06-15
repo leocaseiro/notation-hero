@@ -60,7 +60,7 @@ Lefthook runs the layout guard and `nx affected` locally before CI does.
 
 Infrastructure is **Pulumi (TypeScript)**; stack state lives on Pulumi Cloud (free
 tier). Deploys run **locally** for now — CI-driven `deploy.yml` + GitHub OIDC land
-later (KAN-120/115). Requires AWS credentials (`aws configure`) and `pulumi login`.
+later (NH-151/115). Requires AWS credentials (`aws configure`) and `pulumi login`.
 
 The first stack is a hello-world Lambda behind a public **Function URL**, logging to
 a managed CloudWatch log group — all within AWS always-free tiers (~$0).

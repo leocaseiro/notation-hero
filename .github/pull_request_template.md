@@ -1,4 +1,4 @@
-<!-- Keep the Jira key (KAN-<n>) in the PR TITLE too, e.g. "[KAN-118] Bootstrap AWS creds".
+<!-- Keep the Jira key (NH-<n>) in the PR TITLE too, e.g. "[NH-149] Bootstrap AWS creds".
      The key in the title/branch/commits is what populates the Jira Development panel. -->
 
 ## What & why
@@ -7,12 +7,12 @@
 
 ## Jira
 
-<!-- This repo is on the GitHub Free plan, so a bare "KAN-123" does NOT auto-link
+<!-- This repo is on the GitHub Free plan, so a bare "NH-17" does NOT auto-link
      (autolinks need GitHub Pro/Team/Enterprise). Paste the FULL Jira URL so the
      reference is clickable here on GitHub. -->
 
-- Closes [KAN-123](https://leocaseiro.atlassian.net/browse/KAN-123)
-<!-- - Relates to [KAN-124](https://leocaseiro.atlassian.net/browse/KAN-124) -->
+- Closes [NH-17](https://leocaseiro.atlassian.net/browse/NH-17)
+<!-- - Relates to [NH-18](https://leocaseiro.atlassian.net/browse/NH-18) -->
 
 ## How to test
 
@@ -20,7 +20,7 @@
 
 ## Checklist
 
-- [ ] PR title is prefixed with the Jira key, e.g. `[KAN-123]`
-- [ ] Branch name contains the key, e.g. `KAN-123-short-slug`
+- [ ] PR title is prefixed with the Jira key, e.g. `[NH-17]`
+- [ ] Branch name contains the key, e.g. `NH-17-short-slug`
 - [ ] Jira issue linked above with a full URL
 - [ ] CI Green

@@ -20,7 +20,7 @@ module.exports = {
   // the Nx tag rule (PROJECT-level). Each immediate subfolder of a layer is one element of that
   // layer's type (mode:folder). The node resolver is given TS extensions so it can map a resolved
   // import to its element (without this, .ts targets resolve to "unknown"). JS-only resolver — no
-  // native unrs-resolver build (keeps `allowBuilds` clean; see KAN-158).
+  // native unrs-resolver build (keeps `allowBuilds` clean; see NH-42).
   settings: {
     "import/resolver": {
       node: { extensions: [".ts", ".tsx", ".js", ".jsx", ".json"] },

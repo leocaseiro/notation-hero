@@ -1,21 +1,21 @@
 ---
-title: "feat: KAN-119 — first pulumi up (hello-world Lambda Function URL + CloudWatch)"
+title: "feat: NH-150 — first pulumi up (hello-world Lambda Function URL + CloudWatch)"
 type: feat
 date: 2026-06-13
 origin: docs/cicd-pipeline.md
 ---
 
-# feat: KAN-119 — first `pulumi up` (hello-world Lambda Function URL + CloudWatch)
+# feat: NH-150 — first `pulumi up` (hello-world Lambda Function URL + CloudWatch)
 
 ## Summary
 
 Stand up the repo's first deployable AWS infrastructure: a hello-world Lambda behind a public **Function URL**, logging to a managed **CloudWatch LogGroup**, deployed to `ap-southeast-2` with state on **Pulumi Cloud** (free tier). Built the full-hexagonal way — a runtime handler in `apps/`, the Pulumi `LambdaWithUrl` ComponentResource + composition in `infra/`, wired to the handler's **build output** (never its source). This ships the **Pulumi program** as a reviewable PR; the actual `pulumi up` (real AWS resources + a public endpoint) is a gated, human-approved final step.
 
-This is **KAN-119** (Track-2 / KAN-48) — the AWS proof-of-life for Alpha and the unblocker for KAN-120 (OIDC) → KAN-115/114 (deploy).
+This is **NH-150** (Track-2 / NH-119) — the AWS proof-of-life for Alpha and the unblocker for NH-151 (OIDC) → NH-146/114 (deploy).
 
 ## Problem Frame
 
-The workspace is greenfield below the layer dirs: `core/ adapters/ apps/` are empty `.gitkeep`; `infra/` is a stub (placeholder `echo` scripts, `type:infra` tag). No `@pulumi/*` deps exist. AWS creds are live and verified (IAM user `notation-hero-pulumi-local`, account `617255150217`, region `ap-southeast-2`; KAN-118 Done). Pulumi CLI v3.243 is logged into Pulumi Cloud as `leocaseiro`. So everything the deploy needs exists **except the code**.
+The workspace is greenfield below the layer dirs: `core/ adapters/ apps/` are empty `.gitkeep`; `infra/` is a stub (placeholder `echo` scripts, `type:infra` tag). No `@pulumi/*` deps exist. AWS creds are live and verified (IAM user `notation-hero-pulumi-local`, account `617255150217`, region `ap-southeast-2`; NH-149 Done). Pulumi CLI v3.243 is logged into Pulumi Cloud as `leocaseiro`. So everything the deploy needs exists **except the code**.
 
 ---
 
@@ -154,10 +154,10 @@ pnpm-workspace.yaml            # catalog entries for the new deps
 
 **Goal:** Prove R1–R3 against real AWS. **Not run by the pipeline** — requires explicit user approval (real resources + a public endpoint).
 **Requirements:** R1, R2, R3. **Dependencies:** U4 + merged/approved PR.
-**Files:** none (operational); capture results in the KAN-119 ticket.
+**Files:** none (operational); capture results in the NH-150 ticket.
 **Approach:** `nx build handler-hello` → `pulumi -C infra stack init dev` (first time) → `pulumi -C infra up` → `curl` the `url` output (expect `200` hello JSON) → confirm an invocation log line in the `/aws/lambda/<name>` CloudWatch group → optionally `pulumi destroy` after the demo. Confirm the zero-spend budget alert stayed quiet.
 **Test scenarios:** Manual acceptance: URL returns 200 hello JSON; CloudWatch shows the invocation; AWS bill stays $0.
-**Verification:** screenshots/output pasted into KAN-119; transition KAN-119 → Done.
+**Verification:** screenshots/output pasted into NH-150; transition NH-150 → Done.
 
 ---
 

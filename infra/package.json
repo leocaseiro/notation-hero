@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "echo \"@notation-hero/infra: real ESLint target lands with the flat-config lane (KAN-158)\"",
+    "lint": "echo \"@notation-hero/infra: real ESLint target lands with the flat-config lane (NH-42)\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"*.test.ts\"",

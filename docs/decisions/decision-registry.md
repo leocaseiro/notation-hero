@@ -10,11 +10,11 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
-### 2026-06-14 — KAN-119 first `pulumi up` (hello-world Lambda Function URL)
+### 2026-06-14 — NH-150 first `pulumi up` (hello-world Lambda Function URL)
 
 First real AWS deliverable + the first real Nx packages below the layer dirs (everything was empty stubs before). `apps/handler-hello` (runtime handler, esbuild → cjs/node22) + `infra/` (the `LambdaWithUrl` Pulumi ComponentResource + composition, packaging the handler's build output via `FileArchive`). The `pulumi up` deploy itself is a **human-gated** step run separately. Plan: `docs/plans/2026-06-13-001-feat-kan-119-pulumi-hello-world-plan.md`.
 
-**Component placement (decision):** the `LambdaWithUrl` Pulumi component lives in **`infra/` (type:infra)**, NOT `adapters/aws` as the (stale, pre-ADR) `docs/cicd-pipeline.md` / KAN-119 ticket text implied. Rationale: the live depcruise **H9** (`no-infra-to-app-or-domain-source`) forbids `infra → adapters` source imports, **H3** places IaC in `infra/`, and `check-layout.sh` has no `.component` suffix (`.stack` is approved). `adapters/aws` is therefore NOT created here — it lands later with its real runtime feature (the Neon repository).
+**Component placement (decision):** the `LambdaWithUrl` Pulumi component lives in **`infra/` (type:infra)**, NOT `adapters/aws` as the (stale, pre-ADR) `docs/cicd-pipeline.md` / NH-150 ticket text implied. Rationale: the live depcruise **H9** (`no-infra-to-app-or-domain-source`) forbids `infra → adapters` source imports, **H3** places IaC in `infra/`, and `check-layout.sh` has no `.component` suffix (`.stack` is approved). `adapters/aws` is therefore NOT created here — it lands later with its real runtime feature (the Neon repository).
 
 **Status changes (effective on merge):**
 - `FOLD-serverless` → **✅ done · 🟡**. The per-Lambda two-project split is realized: `apps/handler-hello` (type:app) + `infra/` (type:infra), siblings, handler never colocated with IaC. Backstopped by the live depcruise H8 (apps↛@pulumi) + H9 (infra↛apps/core/adapters source); the project-colocation itself stays convention (depcruise can't see intra-project imports).
@@ -29,7 +29,7 @@ First real AWS deliverable + the first real Nx packages below the layer dirs (ev
 - `.dependency-cruiser.cjs`: added `exclude: (^|/)dist/` (never cruise esbuild/tsc build output) + two `no-orphans` entry-point exemptions (`infra/index.ts` Pulumi composition root; `apps/handler-hello/src/index.ts` Lambda handler entry) — the rule's own comment sanctions adding these "when app/infra composition roots arrive."
 - `knip.json`: `ignoreBinaries: ["pulumi"]` (system CLI, not an npm dep). Knip stays advisory (no CI gate).
 
-**Not done (deferred):** `M2-typecov` / `L4-typecov` (no type-coverage gate yet), `M6-sizelimit` (no per-Lambda size budget yet), `E-pnpm-catalog` (the repo still uses direct version pins everywhere — a catalog migration is its own task; these new deps follow the existing direct-pin style). The actual `pulumi up` + CloudWatch verification is the gated KAN-119 completion step. The A–G status tables below still show the pre-KAN-119 rows (⏳/🟥) for FOLD-serverless/H1–H4 — they are auto-derived and reconcile on the next `docs(registry)` regen pass; this Change-log entry is authoritative.
+**Not done (deferred):** `M2-typecov` / `L4-typecov` (no type-coverage gate yet), `M6-sizelimit` (no per-Lambda size budget yet), `E-pnpm-catalog` (the repo still uses direct version pins everywhere — a catalog migration is its own task; these new deps follow the existing direct-pin style). The actual `pulumi up` + CloudWatch verification is the gated NH-150 completion step. The A–G status tables below still show the pre-NH-150 rows (⏳/🟥) for FOLD-serverless/H1–H4 — they are auto-derived and reconcile on the next `docs(registry)` regen pass; this Change-log entry is authoritative.
 
 ### 2026-06-12 — File-level structure enforcement (ADR D1–D7 / PR #25 rework)
 
@@ -40,31 +40,31 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 - `DEPCR-files` → **✅ done · 🤖**. depcruise file-level bans live: H8 (handler↛@pulumi), H10 (core↛@aws-sdk), H11 (adapters↛apps/infra), **H9 widened** to `^(apps|core|adapters)/` (D3), plus **new `no-core-to-pulumi`** (D5). Top-level paths (`core/`/`adapters/`), not the registry's old `libs/`. Commit `84a2a87`. **Review update:** H8 broadened from `^apps/[^/]+/src` to `^apps/` so flat/lib handlers are covered (#6); **new `no-apps-to-infra`** (`^apps/` ↛ `^infra/`) added (#7). depcruise runs as a direct CI command, so these stay genuinely 🤖.
 - `H7`/`H8`/`H9`/`H10`/`H11` → **✅ done · 🤖**. The DACI "keep BOTH depcruise + Nx" is now **empirically confirmed** by the spike — depcruise uniquely does cycles + orphans + graph viz under the legacy eslintrc (ESLint's `no-cycle`/`no-unused-modules` did not fire).
 - `CONV-1`/`CONV-2` → **📄→🤖**. `tooling/check-layout.sh` now machine-enforces no-`__tests__`/`__mocks__`/`stories` dirs (Rule 1) + co-located test sibling (Rule 3). **Folder-per-entity DROPPED** (D2) — the role suffix carries the role. Commit `827bee9`.
-- NEW `NAME-suffix` → **🟡 partial**. kebab-case filenames + role suffix on every domain/app file. **suffix-PRESENCE** (`check-layout.sh`, ADR F-1, commit `827bee9`) is **CI-live 🤖**; **kebab-CASING** (`check-file` `KEBAB_CASE`, commit `84d5c53`) + the junk-drawer `*.manager`/`*.helper` blocklist run under ESLint and are **NOT yet CI-enforced 🟡** (see ⚠️ below). Pascal-vs-camel DangerJS task dropped (KAN-125 comment).
+- NEW `NAME-suffix` → **🟡 partial**. kebab-case filenames + role suffix on every domain/app file. **suffix-PRESENCE** (`check-layout.sh`, ADR F-1, commit `827bee9`) is **CI-live 🤖**; **kebab-CASING** (`check-file` `KEBAB_CASE`, commit `84d5c53`) + the junk-drawer `*.manager`/`*.helper` blocklist run under ESLint and are **NOT yet CI-enforced 🟡** (see ⚠️ below). Pascal-vs-camel DangerJS task dropped (NH-16 comment).
 - NEW `STRUCT-sibling` → **🟡 partial · 🟡 (editor-only; NOT yet CI-enforced — see ⚠️ below)**. `eslint-plugin-boundaries` v6 adopted for FILE-level layer direction with editor-realtime feedback (commit `96af4bb`); **sibling/internal isolation DEFERRED** (the v6-clean mechanism `entry-point` mandates per-feature barrels ADR §6.3 forbids; `no-private` is v6-deprecated; no intra-layer structure yet to verify against). Revisit at first-use.
 - NEW `STRICT-tiers` → **📄 prose-only**. Enforcement-tier ladder adopted (lint → test → compile); next lever is the tier-a compile wall via TS project references (elevates `L2-projref`, D7).
 - `L2-projref` → elevated to the next strictness lever (tier-a compile wall, D7); status unchanged (⏳ — not yet implemented).
 
-> **⚠️ CI-enforcement reality (PR #25 review #1):** Only **depcruise** (H8–H11, `no-core-to-pulumi`, `no-apps-to-infra`) and **`tooling/check-layout.sh`** (Rules 1–3) actually execute in CI today — they run as direct commands in the `quality` job, so they are genuinely 🤖. The **ESLint-delivered** rules — `@nx/enforce-module-boundaries` (`L2-tags`), `check-file` kebab-casing + blocklist (the casing half of `NAME-suffix`), `eslint-plugin-boundaries` (`STRUCT-sibling`) — are **wired but NOT yet CI-enforced** (🟡): `pnpm run lint` = `nx run-many --target=lint` and no project has a real lint target yet (placeholder `echo` scripts; ESLint 9 defaults to flat config with no `eslint.config.*` and `ESLINT_USE_FLAT_CONFIG` unset, so the legacy `.eslintrc.cjs` wouldn't load even if a target ran). They flip to 🤖 when per-package lint scripts (the AGENTS.md `ESLINT_USE_FLAT_CONFIG=false eslint` template) + tagged Nx projects + the flat-config migration (KAN-158) land. Until then, `check-layout.sh` carries suffix-PRESENCE and depcruise carries layer-direction as the live CI backstop.
+> **⚠️ CI-enforcement reality (PR #25 review #1):** Only **depcruise** (H8–H11, `no-core-to-pulumi`, `no-apps-to-infra`) and **`tooling/check-layout.sh`** (Rules 1–3) actually execute in CI today — they run as direct commands in the `quality` job, so they are genuinely 🤖. The **ESLint-delivered** rules — `@nx/enforce-module-boundaries` (`L2-tags`), `check-file` kebab-casing + blocklist (the casing half of `NAME-suffix`), `eslint-plugin-boundaries` (`STRUCT-sibling`) — are **wired but NOT yet CI-enforced** (🟡): `pnpm run lint` = `nx run-many --target=lint` and no project has a real lint target yet (placeholder `echo` scripts; ESLint 9 defaults to flat config with no `eslint.config.*` and `ESLINT_USE_FLAT_CONFIG` unset, so the legacy `.eslintrc.cjs` wouldn't load even if a target ran). They flip to 🤖 when per-package lint scripts (the AGENTS.md `ESLINT_USE_FLAT_CONFIG=false eslint` template) + tagged Nx projects + the flat-config migration (NH-42) land. Until then, `check-layout.sh` carries suffix-PRESENCE and depcruise carries layer-direction as the live CI backstop.
 
-### 2026-06-12 — KAN-137 CI architecture + KAN-143 .nvmrc (Theme 2 part 1)
+### 2026-06-12 — NH-83 CI architecture + NH-167 .nvmrc (Theme 2 part 1)
 
 **Status changes (effective on merge):**
-- `L7-set-shas` → **✅ done · 🤖**. `nrwl/nx-set-shas@v4` added to the `quality` and `build` jobs in `ci.yml` (KAN-138). Sets `NX_BASE`/`NX_HEAD` so `nx affected` works correctly across `pull_request`, `push:master`, AND `merge_group` events. `fetch-depth: 0` on the checkout gives the action the history it needs. Pinned to `@v4`. `main-branch-name: master` overrides the action's `main` default.
-- `L7-reusable-wf` → **✅ done · 🤖**. Local composite action at `.github/actions/setup-js/action.yml` (pnpm/action-setup + setup-node@v6 with `node-version-file: .nvmrc` + cache pnpm + frozen-lockfile install). Replaces the repeated 4-step prelude in the `quality`, `build`, and `pr-title` jobs (KAN-139). Adding a new JS-toolchain gate is now one `- uses: ./.github/actions/setup-js` line. Net diff: +27 composite / −18 workflow.
-- `L7-merge-queue` → **✅ wired · 🤖** (CI ready + version-controlled Ruleset; admin runs `tooling/branch-ruleset.sh --apply` once). `merge_group:` event added to `ci.yml` triggers (KAN-140); `pr-title` is correctly gated to `pull_request` only and skips on merge_group. **The merge queue is a Rulesets-only feature** — classic Branch Protection (managed by `tooling/branch-protection.sh`) does NOT support it. New `tooling/branch-ruleset.json` + `tooling/branch-ruleset.sh` manage the `master-merge-queue` Ruleset (squash, ALLGREEN strategy, 5-concurrent build, 1-5 group size, 60-min check timeout). Two layers coexist cleanly: classic protection = what's required (CI Green, linear history), Ruleset = how merges happen (the queue itself).
+- `L7-set-shas` → **✅ done · 🤖**. `nrwl/nx-set-shas@v4` added to the `quality` and `build` jobs in `ci.yml` (NH-170). Sets `NX_BASE`/`NX_HEAD` so `nx affected` works correctly across `pull_request`, `push:master`, AND `merge_group` events. `fetch-depth: 0` on the checkout gives the action the history it needs. Pinned to `@v4`. `main-branch-name: master` overrides the action's `main` default.
+- `L7-reusable-wf` → **✅ done · 🤖**. Local composite action at `.github/actions/setup-js/action.yml` (pnpm/action-setup + setup-node@v6 with `node-version-file: .nvmrc` + cache pnpm + frozen-lockfile install). Replaces the repeated 4-step prelude in the `quality`, `build`, and `pr-title` jobs (NH-171). Adding a new JS-toolchain gate is now one `- uses: ./.github/actions/setup-js` line. Net diff: +27 composite / −18 workflow.
+- `L7-merge-queue` → **✅ wired · 🤖** (CI ready + version-controlled Ruleset; admin runs `tooling/branch-ruleset.sh --apply` once). `merge_group:` event added to `ci.yml` triggers (NH-172); `pr-title` is correctly gated to `pull_request` only and skips on merge_group. **The merge queue is a Rulesets-only feature** — classic Branch Protection (managed by `tooling/branch-protection.sh`) does NOT support it. New `tooling/branch-ruleset.json` + `tooling/branch-ruleset.sh` manage the `master-merge-queue` Ruleset (squash, ALLGREEN strategy, 5-concurrent build, 1-5 group size, 60-min check timeout). Two layers coexist cleanly: classic protection = what's required (CI Green, linear history), Ruleset = how merges happen (the queue itself).
 - `L7-plan-tier` → **✅ verified**. Repo is `public`, GitHub Free supports `merge_group`. `gh api repos/leocaseiro/notation-hero --jq '.visibility'` = `public` (logged in PR #22 description).
 - `M3-mergegroup` → **✅ done · 🤖**. Tied to `L7-merge-queue` above (workflow side wired; queue-enable is admin step).
 - `M5-nvmrc` → **🟡 partial · 🤖**. `.nvmrc` added at repo root with `24`; the composite action's `node-version-file: .nvmrc` now drives CI Node too — single source of truth for local AND CI. pnpm pin via `packageManager: pnpm@11.5.2` was already set (PR #2). Stays partial (not done) because the `M5` intent also includes Lambda-runtime match (esbuild target = Lambda Node version) — a Lambda-domain check that lands when first apps deploy.
 - `L12-pin` → **🟡 partial** (was `⏳ pending`). `.nvmrc 24` lands here for the dev/CI parity axis; the Lambda-runtime match (esbuild target = Lambda Node version) still pending first Lambda deploy.
-- `KAN-149` (nx release / M7-release) **deferred to standalone brainstorm session** — initial dry-run on the skeleton repo surfaced unresolved questions (release-group glob for a single-stub-project workspace, first-release flag flow, CHANGELOG location vs gallant-bardeen's KAN-126 future adapter). See KAN-149 Jira comment 2026-06-12 for the 7 open Qs. No registry status change (M7-release stays 🔒 locked-active · 📄 prose-only).
-- `KAN-146` (AGENTS.md generated-from-config + drift-check / L8-1 / L8-2) **deferred to its own PR** — design call between a full generator (200+ LOC) and a minimal drift-check (30 LOC) is large enough to want its own review surface.
+- `NH-98` (nx release / M7-release) **deferred to standalone brainstorm session** — initial dry-run on the skeleton repo surfaced unresolved questions (release-group glob for a single-stub-project workspace, first-release flag flow, CHANGELOG location vs gallant-bardeen's NH-79 future adapter). See NH-98 Jira comment 2026-06-12 for the 7 open Qs. No registry status change (M7-release stays 🔒 locked-active · 📄 prose-only).
+- `NH-96` (AGENTS.md generated-from-config + drift-check / L8-1 / L8-2) **deferred to its own PR** — design call between a full generator (200+ LOC) and a minimal drift-check (30 LOC) is large enough to want its own review surface.
 
-### 2026-06-12 — KAN-147 no-escape-hatches ESLint + KAN-148 commitlint
+### 2026-06-12 — NH-91 no-escape-hatches ESLint + NH-93 commitlint
 
 **Status changes (effective on merge):**
 - `F3-noescape` / `L5-no-escape-hatches` → **✅ done · 🤖**. Three layers now enforce no-escape-hatches: (1) `@typescript-eslint/ban-ts-comment` bans `@ts-ignore`/`@ts-nocheck` (PR #9), (2) `@eslint-community/eslint-plugin-eslint-comments`'s `require-description` (active) requires a reason for every `eslint-disable`; ESLint's native `reportUnusedDisableDirectives: true` catches unused disables (replaces the deprecated `no-unused-disable` plugin rule), (3) `tooling/check-no-coverage-ignore.sh` bans both `// istanbul/c8/v8 ignore` (line) AND `/* istanbul/c8/v8 ignore */` (block) directives via `git grep` over the index (CI `quality` job; CI is authoritative — no pre-commit duplicate per gitleaks/semgrep pattern). Hardened in this PR (post code-review) against the xargs whitespace-bypass and single-line-comment-form gaps.
-- `L6-4` → **✅ done · 🤖** at TWO levels: (a) `@commitlint/cli` + `@commitlint/config-conventional` validate every local commit message via Lefthook `commit-msg` hook; (b) a CI `pr-title` job pipes the PR title through the same `commitlint.config.cjs` (single source of truth) so multi-commit PRs that squash-merge can't bypass the gate via the PR title (repo `squash_merge_commit_title = COMMIT_OR_PR_TITLE`; for 1-commit PRs the local hook is sufficient). Required by `nx release` (KAN-149) needing conventional-commit subjects in master history. `body-max-line-length` relaxed to warn at 200 (not error) for long body lines.
+- `L6-4` → **✅ done · 🤖** at TWO levels: (a) `@commitlint/cli` + `@commitlint/config-conventional` validate every local commit message via Lefthook `commit-msg` hook; (b) a CI `pr-title` job pipes the PR title through the same `commitlint.config.cjs` (single source of truth) so multi-commit PRs that squash-merge can't bypass the gate via the PR title (repo `squash_merge_commit_title = COMMIT_OR_PR_TITLE`; for 1-commit PRs the local hook is sufficient). Required by `nx release` (NH-98) needing conventional-commit subjects in master history. `body-max-line-length` relaxed to warn at 200 (not error) for long body lines.
 - `commitlint.config.*` added to the CI `code` path-filter so a config-only PR can't false-green; `pr-title` job added to the required `ci-green` gate's `needs:` list.
 - New `pnpm run check:layout` + `pnpm run check:coverage-ignore` scripts expose the shell guards as agent-runnable entry-points (parity with `pnpm run depcheck`/`knip`/`syncpack`).
 - AGENTS.md "Setup in a fresh worktree / clone" section added — documents the `pnpm install --ignore-scripts` + `pnpm exec lefthook install` recovery path for the per-worktree `core.hooksPath` quirk we hit during this session, plus a verification step.
@@ -72,39 +72,39 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 ### 2026-06-12 — fix(registry): resolve committed conflict markers from PR #19 merge
 
 **Status changes (effective on merge):**
-- `E-no-orphans-error` conflict markers resolved: → **✅ done · 🤖** (per KAN-133/136 change-log).
-- `E-osv-scanner` conflict markers resolved: → **🔒 locked-active · 🤖** (per KAN-130 change-log).
+- `E-no-orphans-error` conflict markers resolved: → **✅ done · 🤖** (per NH-89/136 change-log).
+- `E-osv-scanner` conflict markers resolved: → **🔒 locked-active · 🤖** (per NH-154 change-log).
 
-### 2026-06-12 — KAN-133 dependency hygiene (Knip + Syncpack + no-orphans error)
+### 2026-06-12 — NH-89 dependency hygiene (Knip + Syncpack + no-orphans error)
 
 **Status changes (effective on merge):**
-- `E-syncpack` → **✅ done · 🤖**. `.syncpackrc.json` + `syncpack` script + a `Dependency versions (Syncpack)` step in the CI `quality` job enforce consistent dependency versions across the workspace (KAN-135).
-- `E-no-orphans-error` / `CONV-5` → **✅ done · 🤖**. `.dependency-cruiser.cjs` no-orphans flipped WARN→ERROR, with `*.test.*`/`*.spec.*`/`*.stories.*` exempt as entry points; enforced via the existing `depcheck` gate (KAN-136). Safe now (0 modules cruised).
-- `E-knip` → **🔒 locked-active** (advisory). `knip.json` + `knip` script landed for dead-code/unused-dep detection (KAN-134); **advisory, no CI gate** until apps land (per the decision), then flips to error. `ignoreDependencies` covers `@nx/eslint`+`@nx/js` (Nx plugins knip can't trace on a stub repo). Knip's default test/story-as-entry behavior covers `CONV-6` — verify when tests land.
+- `E-syncpack` → **✅ done · 🤖**. `.syncpackrc.json` + `syncpack` script + a `Dependency versions (Syncpack)` step in the CI `quality` job enforce consistent dependency versions across the workspace (NH-143).
+- `E-no-orphans-error` / `CONV-5` → **✅ done · 🤖**. `.dependency-cruiser.cjs` no-orphans flipped WARN→ERROR, with `*.test.*`/`*.spec.*`/`*.stories.*` exempt as entry points; enforced via the existing `depcheck` gate (NH-144). Safe now (0 modules cruised).
+- `E-knip` → **🔒 locked-active** (advisory). `knip.json` + `knip` script landed for dead-code/unused-dep detection (NH-142); **advisory, no CI gate** until apps land (per the decision), then flips to error. `ignoreDependencies` covers `@nx/eslint`+`@nx/js` (Nx plugins knip can't trace on a stub repo). Knip's default test/story-as-entry behavior covers `CONV-6` — verify when tests land.
 - `knip.json` + `.syncpackrc.json` added to the CI `code` path-filter so a config-only PR can't false-green.
 
-### 2026-06-11 — KAN-130 osv-scanner + KAN-131/132 security settings
+### 2026-06-11 — NH-154 osv-scanner + NH-155/132 security settings
 
 **Status changes (effective on merge):**
 - `E-osv-scanner` → **🤖 machine-enforced**. New `deps-cve` CI job runs osv-scanner (pinned `google/osv-scanner-action/osv-scanner-action@v2.3.8`, `--recursive ./`) recursively over the repo tree (picks up the pnpm lockfile), wired into the required **"CI Green"** gate; fails the build on any known dependency CVE. Closes the 🟥 SCA gap.
-- `E-gh-secret-scan` → **✅ done · 🤖**. GitHub-native secret scanning **and** push protection enabled on the repo (KAN-132, via `gh api`). Layers on top of gitleaks (`E-gitleaks`) while public; auto-off if the repo goes private (needs GHAS).
-- `E-dependabot` — Dependabot **alerts** now enabled (KAN-131, via `gh api PUT /vulnerability-alerts`). Version-update PRs remain Renovate's job (`E-renovate`); Dependabot security-updates left off to avoid duplicate PRs.
+- `E-gh-secret-scan` → **✅ done · 🤖**. GitHub-native secret scanning **and** push protection enabled on the repo (NH-156, via `gh api`). Layers on top of gitleaks (`E-gitleaks`) while public; auto-off if the repo goes private (needs GHAS).
+- `E-dependabot` — Dependabot **alerts** now enabled (NH-155, via `gh api PUT /vulnerability-alerts`). Version-update PRs remain Renovate's job (`E-renovate`); Dependabot security-updates left off to avoid duplicate PRs.
 
-### 2026-06-11 — KAN-129 Semgrep SAST
-
-**Status changes (effective on merge):**
-- `E-semgrep` → **✅ done · 🤖 machine-enforced**. Semgrep now runs (1) in CI as the `sast` job wired into the required **"CI Green"** gate (`semgrep scan --config auto --error`, free community rulesets, no token; path-filtered on `code`), and (2) locally as a best-effort Lefthook pre-commit hook (`tooling/semgrep-precommit.sh`, scans staged source, graceful skip if semgrep isn't installed). Closes the 🟥 SAST gap. CodeQL deep SAST (`E-codeql`, KAN-121) layers on out-of-band.
-
-### 2026-06-11 — KAN-128 gitleaks secret scanning
+### 2026-06-11 — NH-153 Semgrep SAST
 
 **Status changes (effective on merge):**
-- `E-gitleaks` → **✅ done · 🤖 machine-enforced**. gitleaks now runs (1) in CI as the always-on `secret-scan` job wired into the required **"CI Green"** gate (`gitleaks/gitleaks-action@v2`, full-history scan, free on this personal/public repo), and (2) locally as a Lefthook pre-commit hook (`tooling/gitleaks-precommit.sh`, best-effort — graceful skip if gitleaks isn't installed; verified against gitleaks 8.30). Closes the 🟥 secret-scan gap. GitHub-native secret scanning (`E-gh-secret-scan`, KAN-132) layers on top while public.
+- `E-semgrep` → **✅ done · 🤖 machine-enforced**. Semgrep now runs (1) in CI as the `sast` job wired into the required **"CI Green"** gate (`semgrep scan --config auto --error`, free community rulesets, no token; path-filtered on `code`), and (2) locally as a best-effort Lefthook pre-commit hook (`tooling/semgrep-precommit.sh`, scans staged source, graceful skip if semgrep isn't installed). Closes the 🟥 SAST gap. CodeQL deep SAST (`E-codeql`, NH-19) layers on out-of-band.
 
-### 2026-06-11 — KAN-116 repo-meta (README + CODEOWNERS + Dependabot)
+### 2026-06-11 — NH-152 gitleaks secret scanning
+
+**Status changes (effective on merge):**
+- `E-gitleaks` → **✅ done · 🤖 machine-enforced**. gitleaks now runs (1) in CI as the always-on `secret-scan` job wired into the required **"CI Green"** gate (`gitleaks/gitleaks-action@v2`, full-history scan, free on this personal/public repo), and (2) locally as a Lefthook pre-commit hook (`tooling/gitleaks-precommit.sh`, best-effort — graceful skip if gitleaks isn't installed; verified against gitleaks 8.30). Closes the 🟥 secret-scan gap. GitHub-native secret scanning (`E-gh-secret-scan`, NH-156) layers on top while public.
+
+### 2026-06-11 — NH-147 repo-meta (README + CODEOWNERS + Dependabot)
 
 **Status changes (effective on merge):**
 - `L6-5` (CODEOWNERS-by-layer + enforcement-file coverage) → CODEOWNERS added at `.github/CODEOWNERS` (single-owner `@leocaseiro`; explicitly lists `.github/workflows/`, `.eslintrc.cjs`, `.dependency-cruiser.cjs`, `lefthook.yml`, `nx.json`, `tsconfig*.json`, `tooling/`, `AGENTS.md`, `docs/decisions/`). Stays **📄 prose-grade** — solo-repo branch protection cannot require CODEOWNERS review (Footgun #2: GitHub forbids self-approval), so this documents ownership, it does not gate merges.
-- `E-dependabot` → `.github/dependabot.yml` added, scoped to **github-actions** (weekly) only. npm/pnpm version-update PRs remain owned by **Renovate** (`E-renovate`, lands with KAN-133) to avoid duplicate update PRs; Dependabot security *alerts* stay a repo setting. ⚠️ KAN-116's text said "Dependabot pnpm-workspace aware" — **narrowed to actions-only** for registry consistency (E-renovate owns npm); revisit only if Renovate is dropped.
+- `E-dependabot` → `.github/dependabot.yml` added, scoped to **github-actions** (weekly) only. npm/pnpm version-update PRs remain owned by **Renovate** (`E-renovate`, lands with NH-89) to avoid duplicate update PRs; Dependabot security *alerts* stay a repo setting. ⚠️ NH-147's text said "Dependabot pnpm-workspace aware" — **narrowed to actions-only** for registry consistency (E-renovate owns npm); revisit only if Renovate is dropped.
 - `README.md` added (root) — no enforcement change.
 
 ### 2026-06-11 — PR #9 (guardrails + Jira migration)
@@ -112,11 +112,11 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 **Status changes (effective on merge):**
 - `__tests__/` · `__mocks__/` · `stories/` dir ban → **🤖 machine-enforced** by `tooling/check-layout.sh` (CI quality job) — closes the dir-ban lint gap for `CONV-1` / `CONV-coloc` / `L5-test-colocation`; full co-located placement stays a convention.
 - `@ts-ignore` · `@ts-nocheck` → **🟡 partial** via ESLint `ban-ts-comment` (`L5-no-escape-hatches` / `F3-noescape`); `eslint-disable`-reason rules land in PR #2.
-- `L10a` / `L10b` (Linear MCP + GitHub App) → **⛔ superseded → Jira (KAN)**; see `2026-06-11-tracker-linear-to-jira.md`.
+- `L10a` / `L10b` (Linear MCP + GitHub App) → **⛔ superseded → Jira (KAN, now NH)**; see `2026-06-11-tracker-linear-to-jira.md`.
 - **Lefthook git hooks** (`L8-3` / `L6`) → **✅ done**: pre-commit runs the layout guard + `nx affected` lint/typecheck; pre-push adds test — local enforcement *before* CI. (gitleaks + commitlint deferred to follow-up PRs.)
 
 **Manual approvals (leocaseiro):**
-- Issue tracker → migrated **Linear → Jira (KAN)**.
+- Issue tracker → migrated **Linear → Jira (KAN → NH)**.
 - L3 formatter → **keep ESLint + Prettier** (Nx boundary rule IS `@nx/eslint`; agent-idiomatic).
 - L5 test runner → **adopt Vitest at L5** (node:test runs today).
 - L5 Stryker mutation testing → **keep**. · L5 coverage ratchet → **keep**.
@@ -228,7 +228,7 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 
 ## F · Integrations & observability (L10–L13)
 
-> ⚠️ **L10a / L10b (Linear) are SUPERSEDED — the tracker is now Jira (project KAN).** See `docs/decisions/2026-06-11-tracker-linear-to-jira.md`. The Linear rows below are retained for history.
+> ⚠️ **L10a / L10b (Linear) are SUPERSEDED — the tracker is now Jira (project NH).** See `docs/decisions/2026-06-11-tracker-linear-to-jira.md`. The Linear rows below are retained for history.
 
 | ID            | Decision                                                                                                                                                                                 | Status              | Enf | Source   | Gap |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | --- | -------- | --- |

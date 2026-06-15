@@ -25,7 +25,7 @@
 #      test directories.
 #
 # Pure git-tracked-file scan; no build needed. Bash 3.2 compatible (macOS default bash +
-# Linux CI). BATS coverage is KAN-153.
+# Linux CI). BATS coverage is NH-40.
 set -euo pipefail
 
 # Run from the repo root so `git ls-files` yields repo-relative paths (the core/|adapters/|apps/|

@@ -1,7 +1,7 @@
 # Linear MCP — Token Hygiene Runbook
 
 > [!WARNING]
-> ⛔ **SUPERSEDED — Linear is retired.** The issue tracker is now **Jira** (project **KAN**)
+> ⛔ **SUPERSEDED — Linear is retired.** The issue tracker is now **Jira** (project **NH**)
 > as of 2026-06-11. See `docs/decisions/2026-06-11-tracker-linear-to-jira.md`.
 > Kept for history; do not act on it. Any fallback/runbook pattern here still applies but targets Jira now.
 

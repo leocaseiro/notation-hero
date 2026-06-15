@@ -128,7 +128,7 @@ module.exports = {
       comment:
         "Non-test modules should be reachable. Co-located *.test.* / *.spec.* / *.stories.* " +
         "are exempt (legit entry points). The __tests__/ whitelist was removed — that folder " +
-        "layout is banned outright by tooling/check-layout.sh. Flipped WARN->ERROR in KAN-136 " +
+        "layout is banned outright by tooling/check-layout.sh. Flipped WARN->ERROR in NH-144 " +
         "(E-no-orphans-error / CONV-5); safe now (0 modules) and enforced as source lands. Add " +
         "explicit entry-point exemptions here when app/infra composition roots arrive.",
       severity: "error",
@@ -137,7 +137,7 @@ module.exports = {
         pathNot: [
           "\\.(test|spec)\\.(ts|tsx)$",
           "\\.stories\\.(ts|tsx)$",
-          // Composition roots are entry points, not orphans (KAN-119, the
+          // Composition roots are entry points, not orphans (NH-150, the
           // "add entry-point exemptions when app/infra composition roots
           // arrive" note above). infra/index.ts is the Pulumi program entry;
           // apps/handler-hello/src/index.ts is the Lambda handler entry
@@ -155,7 +155,7 @@ module.exports = {
     doNotFollow: { path: "node_modules" },
     // Never cruise build output — dist/ is gitignored esbuild/tsc emit (e.g.
     // apps/handler-hello/dist), not source; scanning it raises false no-orphans
-    // errors on the bundled entry (KAN-119).
+    // errors on the bundled entry (NH-150).
     exclude: { path: "(^|/)dist/" },
     enhancedResolveOptions: { exportsFields: ["exports"], conditionNames: ["import", "require", "node", "default"] },
   },
