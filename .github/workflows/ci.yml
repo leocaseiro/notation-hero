@@ -193,13 +193,33 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint
 
+  # Agent PR merge checklist (NH-16) — Jira-key presence + no-blank-boxes over the
+  # PR-template `required:`/`warn:` items. PR-event only, bot-exempt, NOT path-filtered
+  # (must run on every PR). Pure Node, no deps. (decision-registry L6 / spec
+  # docs/specs/2026-06-15-pr-merge-checklist.md)
+  pr-checklist:
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: PR checklist gate
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+        run: node tooling/pr-checklist.mjs
+
   # Single REQUIRED status check for branch protection. Always runs, so a
   # path-filtered skip never deadlocks the merge. Fails only on a real
   # failure/cancellation (skipped is OK).
   ci-green:
     name: CI Green
     if: always()
-    needs: [quality, build, secret-scan, sast, deps-cve, pr-title]
+    needs: [quality, build, secret-scan, sast, deps-cve, pr-title, pr-checklist]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
@@ -210,8 +230,9 @@ jobs:
           a="${{ needs.sast.result }}"
           d="${{ needs.deps-cve.result }}"
           p="${{ needs.pr-title.result }}"
-          echo "quality=$q  build=$b  secret-scan=$s  sast=$a  deps-cve=$d  pr-title=$p"
-          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" || "$s" == "failure" || "$s" == "cancelled" || "$a" == "failure" || "$a" == "cancelled" || "$d" == "failure" || "$d" == "cancelled" || "$p" == "failure" || "$p" == "cancelled" ]]; then
+          c="${{ needs.pr-checklist.result }}"
+          echo "quality=$q  build=$b  secret-scan=$s  sast=$a  deps-cve=$d  pr-title=$p  pr-checklist=$c"
+          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" || "$s" == "failure" || "$s" == "cancelled" || "$a" == "failure" || "$a" == "cancelled" || "$d" == "failure" || "$d" == "cancelled" || "$p" == "failure" || "$p" == "cancelled" || "$c" == "failure" || "$c" == "cancelled" ]]; then
             echo "::error::A required CI job did not pass"
             exit 1
           fi

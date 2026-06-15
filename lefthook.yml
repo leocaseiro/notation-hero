@@ -58,3 +58,13 @@ pre-push:
       skip:
         - merge
         - rebase
+    # Non-blocking heads-up (NH-16): list active worktrees so you notice overlapping
+    # work before pushing — the one overlap signal CI structurally can't see. Always
+    # passes (informational); the PR checklist's "overlapping work" item is the record.
+    worktree-reminder:
+      run: |
+        echo "ℹ️  Active git worktrees — watch for overlapping work before pushing:"
+        git worktree list || true
+      skip:
+        - merge
+        - rebase
