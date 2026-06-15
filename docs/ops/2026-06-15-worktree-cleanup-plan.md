@@ -4,6 +4,28 @@
 > the removals / Jira syncs per your ticks. **Nothing has been removed or changed yet.**
 > This doc can stay as an audit trail or be deleted after cleanup — your call.
 
+## ✅ Execution log — 2026-06-15 (done this session, with approval)
+
+**Verified live against freshly-fetched `origin/master` (`c77fa1d`) — not PR/ticket labels.**
+
+- **Bucket A — 6/6 worktrees removed:** `competent-poitras`, `clever-mccarthy`, `determined-torvalds`,
+  `musing-banach`, `mystifying-zhukovsky`, `silly-chaplygin`. All `unlanded=0`; 5 were dirty *only* from a
+  regenerable `vectors/` index → `--force`. **Branches + commits + sessions all preserved.**
+- **`__BKP` — 14/14 deleted (~62 MB freed):** each verified to hold **no unique non-junk files** vs its
+  live worktree before deletion.
+- **Jira (G-4):** **NH-150** + **NH-125** → **Done**, each with a tracking comment linking the merged PRs + this audit.
+
+### 🔁 Reclassification — `origin/master` advanced since the plan was written
+Moved `3e66b8d → c77fa1d`: **PR #30** (skill-routing runbook) + **PR #32** (disable nx analytics) merged. So:
+- `beautiful-villani-f9f02c` (#30) — was Bucket C (keep) → **now merged** (eligible for cleanup).
+- `relaxed-haibt-51598a` (#32) — was Bucket C (keep) → **now merged** (eligible for cleanup).
+- Open PRs now: **#28, #26, #24, #8** (+ this audit #34).
+
+### ⚠️ Side-finding — `vectors/` is not gitignored
+`vectors/` (memstack skill-index: `skills.lance` + `tfidf_index.pkl`, ~1 MB) regenerates in **every worktree
+and the master root**, and is **not** in `.gitignore` → accidental-commit risk. Recommend adding it to
+`.gitignore` (fits the in-flight PR #24).
+
 ## Context
 
 - **43 removable worktrees** under `.claude/worktrees/` (+ the `master` root + this active cleanup session).
