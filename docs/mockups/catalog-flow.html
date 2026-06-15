@@ -115,23 +115,46 @@
   .controls .spacer { flex:1; }
   .sortwrap { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:13px; cursor:pointer; padding:0 4px; }
   .sortwrap .material-symbols-outlined { font-size:18px; }
-  /* G-15/G-13 filters collapsed behind a button — final placement TBD (design-consult) */
-  .fpanel { display:none; background:var(--panel); border:.5px solid var(--line); border-radius:14px; padding:16px 18px; margin:0 0 14px; }
-  .fpanel.open { display:block; }
-  .fphead { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
-  .fphead .t { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); font-weight:700; }
-  .fgrid { display:grid; grid-template-columns:repeat(2,1fr); gap:18px 26px; }
-  .flbl { font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); font-weight:700; margin-bottom:9px; display:flex; align-items:center; gap:8px; }
-  .opset { display:inline-flex; background:var(--panel2); border:.5px solid var(--line); border-radius:8px; padding:2px; }
-  .opset button { border:none; background:transparent; color:var(--muted); font-family:'Geist Mono'; font-weight:700; font-size:12px; padding:3px 8px; border-radius:6px; cursor:pointer; }
-  .opset button.sel { background:var(--accent); color:var(--onaccent); }
-  .gradepick { display:flex; gap:7px; flex-wrap:wrap; align-items:center; }
-  .gradepick .grade { width:25px; height:25px; font-size:11px; cursor:pointer; opacity:.4; }
-  .gradepick .grade.sel { opacity:1; }
-  .rangebar { position:relative; height:5px; border-radius:3px; background:var(--panel2); margin-top:6px; }
-  .rangebar .sel { position:absolute; height:5px; left:18%; right:55%; background:var(--accent); border-radius:3px; }
-  .rangebar .h { position:absolute; top:-6px; width:16px; height:16px; border-radius:50%; background:var(--accent); transform:translateX(-50%); }
-  .rangelabel { font-family:'Geist Mono'; font-size:12px; color:var(--muted); margin-top:9px; }
+  /* ===== single filter row + advanced panel (variant A — ported from catalog.html) ===== */
+  .minirange{width:96px;height:5px;border-radius:3px;background:var(--panel2);position:relative;} .minirange .sel{position:absolute;left:20%;right:42%;height:5px;border-radius:3px;background:var(--accent);} .minirange .h{position:absolute;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--accent);transform:translateX(-50%);} .minirange .h.a{left:20%}.minirange .h.b{left:58%}
+  /* Jira-style filter dropdowns */
+  .fdrop{position:relative;}
+  .fbtn{font-family:'Hanken Grotesk';font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border:.5px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:9px;cursor:pointer;}
+  .fbtn:hover{background:var(--elevate);border-color:color-mix(in srgb,var(--accent) 35%,var(--line));}
+  .fbtn .material-symbols-outlined{font-size:17px;color:var(--muted);} .fbtn .caret{font-size:18px;}
+  /* Jira compound filter chips */
+  .fpop{position:absolute;top:calc(100% + 6px);left:0;z-index:45;width:238px;background:var(--bg);border:.5px solid var(--line);border-radius:12px;box-shadow:0 16px 44px rgba(0,0,0,.22);padding:8px;display:none;}
+  .fpop.open{display:block;}
+  .opsel{display:flex;align-items:center;justify-content:space-between;border:.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--muted);margin-bottom:8px;} .opsel .material-symbols-outlined{font-size:16px;}
+  .fopt{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer;} .fopt:hover{background:var(--hover);}
+  .fopt .box{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;color:var(--onaccent);} .fopt .box .material-symbols-outlined{font-size:14px;opacity:0;}
+  .fopt.on .box{background:var(--accent);border-color:var(--accent);} .fopt.on .box .material-symbols-outlined{opacity:1;}
+  .fopt .ic{color:var(--muted);font-size:18px;}
+  .fpop .foot{border-top:.5px solid var(--line);margin-top:6px;padding-top:4px;} .fpop .foot a{color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer;padding:7px 9px;display:inline-block;}
+  /* single filter row + advanced row */
+  .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 12px;}
+  .vsep{width:1px;height:24px;background:var(--line);}
+  .fbtn.on{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:var(--accent);color:var(--accent);} .fbtn.on .material-symbols-outlined{color:var(--accent);}
+  .advrow{display:none;flex-direction:column;gap:10px;margin:0 0 14px;padding:14px 16px;background:var(--panel);border:.5px solid var(--line);border-radius:12px;}
+  .advrow.open{display:flex;}
+  .advhd{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--faint);}
+  .advsec{display:flex;align-items:flex-start;gap:14px;}
+  .advsec .advlbl{width:70px;flex:none;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700;padding-top:8px;}
+  .advsec .advctl{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1;min-width:0;}
+  .advsec .advctl.tempo{gap:12px;min-height:31px;}
+  /* token pickers (Tags / Pattern / Key) — search + enter → chip, × to remove */
+  .advctl.tokens{gap:6px;}
+  .chip.tok{padding-right:8px;cursor:default;}
+  .chip.tok .x{font-size:15px;margin-left:3px;opacity:.8;cursor:pointer;border-radius:50%;line-height:1;}
+  .chip.tok .x:hover{opacity:1;background:color-mix(in srgb,var(--onaccent) 25%,transparent);}
+  .tokin{position:relative;display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px dashed color-mix(in srgb,var(--accent) 32%,var(--line));border-radius:999px;}
+  .tokin > .material-symbols-outlined{font-size:15px;color:var(--faint);}
+  .tokin input{border:none;background:transparent;outline:none;font-family:'Hanken Grotesk';font-weight:500;font-size:13px;color:var(--ink);width:90px;padding:0;}
+  .tokin input::placeholder{color:var(--faint);}
+  .tokpop{position:absolute;top:calc(100% + 7px);left:0;min-width:172px;background:var(--bg);border:.5px solid var(--line);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:5px;display:none;z-index:50;max-height:210px;overflow:auto;}
+  .tokpop.open{display:block;}
+  .tokpop .s{padding:8px 9px;border-radius:7px;font-size:13px;color:var(--ink);cursor:pointer;}
+  .tokpop .s:hover,.tokpop .s.hi{background:var(--hover);}
 
   /* ===== continue ===== */
   .continue { display:flex; align-items:center; gap:15px; border-radius:16px; padding:14px 18px; margin:0 0 16px; cursor:pointer;
@@ -276,42 +299,76 @@
   <!-- ===== CATALOG ===== -->
   <section class="screen active" id="catalog">
 
-    <!-- controls: tabs · filters · sort · +Add(near table) -->
-    <div class="controls">
-      <div class="seg" id="typeseg">
-        <button class="sel" onclick="primaryTab('songs',this)"><span class="material-symbols-outlined">music_note</span> Songs</button>
-        <button onclick="primaryTab('lessons',this)"><span class="material-symbols-outlined">school</span> Lessons</button>
+    <!-- SINGLE filter row (variant A — ported from catalog.html) -->
+    <div class="frow">
+      <div class="seg" id="typeseg"><button class="sel" onclick="primaryTab('songs',this)"><span class="material-symbols-outlined">music_note</span> Songs</button><button onclick="primaryTab('lessons',this)"><span class="material-symbols-outlined">school</span> Lessons</button></div>
+      <span class="vsep"></span>
+      <div class="fdrop"><button class="fbtn" id="dynChip" onclick="toggleMenu('dynPop',event)">Genre <span class="material-symbols-outlined caret">expand_more</span></button><div class="fpop" id="dynPop"></div></div>
+      <div class="fdrop"><button class="fbtn" onclick="toggleMenu('lvlPop',event)">Level: ≤ 4 <span class="material-symbols-outlined caret">expand_more</span></button>
+        <div class="fpop" id="lvlPop"><div class="opsel">Level is at most (≤) <span class="material-symbols-outlined">unfold_more</span></div><div style="display:flex;gap:6px;flex-wrap:wrap;padding:3px 4px 4px"><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">1</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">2</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">3</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">4</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">5</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">6</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">8</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">10</span></div><div class="foot"><a onclick="event.stopPropagation()">Clear</a></div></div>
       </div>
-      <span class="spacer"></span>
-      <button class="chip" onclick="toggleFilters()"><span class="material-symbols-outlined">tune</span> Filters</button>
+      <div class="fdrop"><button class="fbtn" onclick="toggleMenu('instPop',event)">Instrument <span class="material-symbols-outlined caret">expand_more</span></button>
+        <div class="fpop" id="instPop"><div class="opsel">Instrument is any of <span class="material-symbols-outlined">unfold_more</span></div><div class="fopt on" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">graphic_eq</span> Drums</div><div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">queue_music</span> Guitar</div><div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">piano</span> Keys</div><div class="foot"><a onclick="event.stopPropagation()">Clear</a></div></div>
+      </div>
+      <button class="fbtn" id="moreBtn" onclick="toggleMore()"><span class="material-symbols-outlined">tune</span> More <span class="material-symbols-outlined caret">expand_more</span></button>
+      <span style="flex:1"></span>
       <span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
       <button class="btn btn-secondary" onclick="go('add')" title="Upload a song or lesson"><span class="material-symbols-outlined">upload</span> Upload</button>
     </div>
+    <!-- advanced panel — shown when More is toggled; ALL options inline (range or chips), NO dropdowns -->
+    <div class="advrow" id="advRow">
+      <div class="advhd">Advanced</div>
 
-    <!-- lessons sub-tabs -->
-    <div class="controls" id="lessonsub" style="display:none">
-      <div class="seg">
-        <button class="sel" onclick="lessonKind('all',this)">All</button>
-        <button onclick="lessonKind('beat',this)"><span class="material-symbols-outlined">graphic_eq</span> Beats</button>
-        <button onclick="lessonKind('rud',this)"><span class="material-symbols-outlined">drag_indicator</span> Rudiments</button>
-        <button onclick="lessonKind('fill',this)"><span class="material-symbols-outlined">bolt</span> Fills</button>
+      <!-- Tempo — inline range (dual-handle BPM slider), no dropdown -->
+      <div class="advsec">
+        <div class="advlbl">Tempo</div>
+        <div class="advctl tempo">
+          <span class="minirange" style="display:block;width:158px"><span class="sel"></span><span class="h a"></span><span class="h b"></span></span>
+          <span class="num faint" style="font-size:11.5px">80–120 BPM</span>
+        </div>
       </div>
-    </div>
 
-    <!-- filters panel (placement TBD — design-consult) -->
-    <div class="fpanel" id="fpanel">
-      <div class="fphead"><span class="t">Filters</span><span class="faint" style="font-size:11.5px">placement WIP · design-consult</span></div>
-      <div class="fgrid">
-        <div><div class="flbl">Level <span class="opset"><button>=</button><button class="sel">≤</button><button>≥</button><button>range</button></span></div>
-          <div class="gradepick"><span class="grade sel">1</span><span class="grade sel">2</span><span class="grade sel">3</span><span class="grade sel">4</span><span class="grade">5</span><span class="grade">6</span><span class="grade">8</span><span class="grade">10</span></div>
-          <div class="faint" style="font-size:11.5px;margin-top:8px">multi-select · “≤ 4” · ungraded excluded by a bound</div></div>
-        <div><div class="flbl">Tempo (BPM) <span class="opset"><button class="sel">range</button><button>&lt;</button><button>&gt;</button></span></div>
-          <div class="rangebar"><div class="sel"></div><div class="h" style="left:18%"></div><div class="h" style="left:45%"></div></div>
-          <div class="rangelabel">80 — 90 BPM <span class="faint">(or “&lt; 80”, “&gt; 140”)</span></div></div>
-        <div><div class="flbl">Time signature</div>
-          <div class="gradepick" style="gap:8px"><button class="chip on">4/4</button><button class="chip">3/4</button><button class="chip">6/8</button><button class="chip">7/8</button><button class="chip">4/x <span class="faint">any&nbsp;4-</span></button></div></div>
-        <div><div class="flbl">Instrument &amp; more</div>
-          <div class="gradepick" style="gap:8px"><button class="chip on"><span class="material-symbols-outlined">graphic_eq</span> Drums</button><button class="chip">Guitar</button><button class="chip">Keys</button><button class="chip">+ genre·skill·pattern·key</button></div></div>
+      <!-- Time — inline chips -->
+      <div class="advsec">
+        <div class="advlbl">Time</div>
+        <div class="advctl">
+          <button class="chip on" onclick="this.classList.toggle('on')">4/4</button><button class="chip" onclick="this.classList.toggle('on')">3/4</button><button class="chip" onclick="this.classList.toggle('on')">6/8</button><button class="chip" onclick="this.classList.toggle('on')">7/8</button><button class="chip" onclick="this.classList.toggle('on')">5/4</button>
+        </div>
+      </div>
+
+      <!-- Tags — token picker (many options): search → enter → chip, × to remove -->
+      <div class="advsec">
+        <div class="advlbl">Tags</div>
+        <div class="advctl tokens" data-filter="tags">
+          <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add tag…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
+          <button class="chip on tok" data-val="ghost-notes">ghost-notes <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="syncopation">syncopation <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
+        </div>
+      </div>
+
+      <!-- Skill — inline chips with icons -->
+      <div class="advsec">
+        <div class="advlbl">Skill</div>
+        <div class="advctl">
+          <button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">timer</span> Timing</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">call_split</span> Independence</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">tune</span> Control</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">sync</span> Coordination</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">speed</span> Speed</button>
+        </div>
+      </div>
+
+      <!-- Pattern — token picker (many options) -->
+      <div class="advsec">
+        <div class="advlbl">Pattern</div>
+        <div class="advctl tokens" data-filter="pattern">
+          <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add pattern…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
+          <button class="chip on tok" data-val="16th-note">16th-note <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
+        </div>
+      </div>
+
+      <!-- Key — token picker (flats + sharps = many options) -->
+      <div class="advsec">
+        <div class="advlbl">Key</div>
+        <div class="advctl tokens" data-filter="key">
+          <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add key…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
+          <button class="chip on tok" data-val="C">C <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="F#">F♯ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="Bb">B♭ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
+        </div>
       </div>
     </div>
 
@@ -546,7 +603,7 @@
 </div>
 
 <div class="hintbar" id="hint">
-  <span><b>v3</b> — tap a <b>row</b> → detail · row <b>▶</b> → quick-play · <b>Filters</b> = button (placement TBD) · <b>+ Add</b> → CMS · 🌙 theme.</span>
+  <span><b>v3</b> — tap a <b>row</b> → detail · row <b>▶</b> → quick-play · single <b>filter row</b> + <b>More</b> → advanced · <b>+ Add</b> → CMS · 🌙 theme.</span>
   <span class="x" onclick="document.getElementById('hint').remove()"><span class="material-symbols-outlined" style="font-size:18px">close</span></span>
 </div>
 
@@ -556,12 +613,61 @@
   function primaryTab(which,btn){ document.querySelectorAll('#typeseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
     document.getElementById('list-songs').style.display=which==='songs'?'':'none';
     document.getElementById('list-lessons').style.display=which==='lessons'?'':'none';
-    document.getElementById('lessonsub').style.display=which==='lessons'?'':'none'; }
-  function lessonKind(kind,btn){ btn.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
-    document.querySelectorAll('#list-lessons .trow').forEach(c=>{ c.style.display=(kind==='all'||c.dataset.kind===kind)?'':'none'; }); }
-  function toggleFilters(){ document.getElementById('fpanel').classList.toggle('open'); }
+    kSel={};
+    if(which==='lessons'){ document.getElementById('dynPop').innerHTML=KIND_MENU; document.getElementById('dynChip').innerHTML='Kind <span class="material-symbols-outlined caret">expand_more</span>'; document.querySelectorAll('#list-lessons .trow').forEach(function(r){r.style.display='';}); }
+    else { document.getElementById('dynPop').innerHTML=GENRE_MENU; document.getElementById('dynChip').innerHTML='Genre <span class="material-symbols-outlined caret">expand_more</span>'; } }
   function stepSrc(which,btn){ document.querySelectorAll('#srcseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
     ['upload','tex','song'].forEach(s=>{ document.getElementById('src-'+s).style.display=(s===which)?'':'none'; }); }
+
+  // ---- single filter row: dropdowns, dynamic Genre/Kind chip, More toggle (ported from catalog.html) ----
+  function toggleMenu(id,ev){ ev.stopPropagation(); var m=document.getElementById(id); var open=m.classList.contains('open'); document.querySelectorAll('.fpop').forEach(x=>x.classList.remove('open')); if(!open) m.classList.add('open'); }
+  document.addEventListener('click',function(){ document.querySelectorAll('.fpop').forEach(x=>x.classList.remove('open')); });
+  var kSel = {};
+  var KIND_MENU = '<div class="opsel">Kind is any of <span class="material-symbols-outlined">unfold_more</span></div>'
+    +'<div class="fopt" onclick="kPick(this,\'beat\',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">graphic_eq</span> Beats</div>'
+    +'<div class="fopt" onclick="kPick(this,\'rud\',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">drag_indicator</span> Rudiments</div>'
+    +'<div class="fopt" onclick="kPick(this,\'fill\',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">bolt</span> Fills</div>'
+    +'<div class="foot"><a onclick="kClear(event)">Clear selection</a></div>';
+  var GENRE_MENU = '<div class="opsel">Genre is any of <span class="material-symbols-outlined">unfold_more</span></div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Rock</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Pop</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Funk</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Jazz</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Soul</div>'
+    +'<div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>';
+  document.getElementById('dynPop').innerHTML = GENRE_MENU;
+  function kPick(el,kind,ev){ ev.stopPropagation(); if(kSel[kind]){delete kSel[kind];el.classList.remove('on');}else{kSel[kind]=true;el.classList.add('on');}
+    var arr=Object.keys(kSel); var map={beat:'Beats',rud:'Rudiments',fill:'Fills'};
+    document.getElementById('dynChip').innerHTML=(arr.length?'Kind: '+map[arr[0]]+(arr.length>1?' +'+(arr.length-1):''):'Kind')+' <span class="material-symbols-outlined caret">expand_more</span>';
+    document.querySelectorAll('#list-lessons .trow').forEach(function(r){r.style.display=(arr.length===0||kSel[r.dataset.kind])?'':'none';}); }
+  function kClear(ev){ ev.stopPropagation(); kSel={}; document.querySelectorAll('#dynPop .fopt').forEach(function(o){o.classList.remove('on');}); document.getElementById('dynChip').innerHTML='Kind <span class="material-symbols-outlined caret">expand_more</span>'; document.querySelectorAll('#list-lessons .trow').forEach(function(r){r.style.display='';}); }
+  function gPick(el,ev){ ev.stopPropagation(); el.classList.toggle('on'); var sel=[].slice.call(document.querySelectorAll('#dynPop .fopt.on')).map(function(o){return o.textContent.trim();}); document.getElementById('dynChip').innerHTML=(sel.length?'Genre: '+sel[0]+(sel.length>1?' +'+(sel.length-1):''):'Genre')+' <span class="material-symbols-outlined caret">expand_more</span>'; }
+  function toggleMore(){ var a=document.getElementById('advRow'); var open=a.classList.toggle('open'); document.getElementById('moreBtn').classList.toggle('on',open); }
+
+  // ---- advanced token pickers (Tags / Pattern / Key): search → enter → chip, × to remove ----
+  var TOK_OPTS = {
+    tags: ['ghost-notes','syncopation','shuffle','double-kick','linear','flam','drag','blast-beat','half-time','open-hi-hat'],
+    pattern: ['8th-note','16th-note','triplets','paradiddle','single-stroke','double-stroke','flam-tap','six-stroke-roll'],
+    key: ['C','C♯','D♭','D','D♯','E♭','E','F','F♯','G♭','G','G♯','A♭','A','A♯','B♭','B','Am','Bm','C♯m','Dm','Em','F♯m','Gm']
+  };
+  function tokNorm(s){ return (s||'').toLowerCase().replace(/♯/g,'#').replace(/♭/g,'b').trim(); }
+  function tokRm(x,ev){ ev.stopPropagation(); x.closest('.chip').remove(); }
+  function tokSel(ctl){ return [].slice.call(ctl.querySelectorAll('.chip.tok')).map(function(c){return tokNorm(c.dataset.val);}); }
+  function tokAdd(ctl,val){ val=(val||'').trim(); if(!val) return; if(tokSel(ctl).indexOf(tokNorm(val))>-1) return;
+    var chip=document.createElement('button'); chip.className='chip on tok'; chip.dataset.val=val;
+    chip.innerHTML=val+' <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span>';
+    ctl.appendChild(chip); /* input is pinned left; new chips flow to the right */ }
+  function tokSuggest(input){ var tokin=input.closest('.tokin'), ctl=input.closest('.advctl'), pop=tokin.querySelector('.tokpop');
+    var f=ctl.dataset.filter, q=tokNorm(input.value), sel=tokSel(ctl);
+    var opts=(TOK_OPTS[f]||[]).filter(function(o){ return sel.indexOf(tokNorm(o))<0 && tokNorm(o).indexOf(q)>-1; }).slice(0,8);
+    if(!opts.length){ pop.classList.remove('open'); pop.innerHTML=''; return; }
+    pop.innerHTML=opts.map(function(o,i){ return '<div class="s'+(i===0?' hi':'')+'" onmousedown="tokPick(this,event)">'+o+'</div>'; }).join('');
+    pop.classList.add('open'); }
+  function tokPick(s,ev){ ev.preventDefault(); var ctl=s.closest('.advctl'), input=ctl.querySelector('.tokin input'); tokAdd(ctl,s.textContent); input.value=''; tokSuggest(input); input.focus(); }
+  function tokKey(input,ev){ var pop=input.closest('.tokin').querySelector('.tokpop');
+    if(ev.key==='Enter'){ ev.preventDefault(); var ctl=input.closest('.advctl'); var hi=pop.querySelector('.s.hi')||pop.querySelector('.s'); tokAdd(ctl, hi?hi.textContent:input.value); input.value=''; tokSuggest(input); }
+    else if(ev.key==='Escape'){ pop.classList.remove('open'); input.blur(); } }
+  document.addEventListener('click',function(e){ if(!e.target.closest('.tokin')){ document.querySelectorAll('.tokpop').forEach(function(p){p.classList.remove('open');}); } });
 </script>
 </body>
 </html>
