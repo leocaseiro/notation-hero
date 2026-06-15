@@ -65,7 +65,7 @@
   .donut{position:relative;width:var(--dsz,28px);height:var(--dsz,28px);border-radius:50%;flex:none;display:grid;place-items:center;
     background:conic-gradient(var(--ring,var(--accent)) calc(var(--p,0)*1%), var(--track) 0);}
   .donut::before{content:'';position:absolute;inset:5px;border-radius:50%;background:var(--panel);}
-  .donut > span{position:relative;font-family:'Geist Mono';font-weight:700;font-size:calc(var(--dsz,28px)*.33);color:var(--ink);line-height:1;}
+  .donut > span{position:relative;font-family:'Geist Mono';font-weight:700;font-size:calc(var(--dsz,28px)*.33);color:var(--ink);line-height:normal;}
   .donut.empty{background:var(--track);} .donut.empty > span{color:var(--faint);}
   .donut.master{background:var(--accent);} .donut.master::before{background:var(--accent);} .donut.master > span{color:var(--onaccent);}
   .donut .tro{font-size:calc(var(--dsz,28px)*.56);position:relative;top:1px;} /* glyph sits 1px high optically — nudge down to centre */
