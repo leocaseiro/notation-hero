@@ -136,6 +136,22 @@ uncommitted working-tree changes. Make baby commits at every green step so
 progress is visible and any step is one `git revert` away. Never pass
 `git commit/push --no-verify`.
 
+## PR checklist (CI-gated)
+
+Every PR carries a checklist (`.github/pull_request_template.md`) whose items are
+prefixed `required:` or `warn:`. The `pr-checklist` CI job (`tooling/pr-checklist.mjs`)
+is a required check and enforces:
+
+- **No blank boxes** — every `required:`/`warn:` item must be ticked `[x]` OR marked
+  `N/A`. A blank `[ ]` fails the gate, so a `warn:` can't be silently skipped: tick it
+  or write a visible `N/A`. (`required:` = do it; `warn:` = address or consciously skip.)
+- **A real Jira key** — `NH-####` or `KAN-####` must appear in the PR title, body, or
+  branch (the one check that can't be N/A'd → every PR stays tracked).
+
+Bots (dependabot etc.) are exempt. This is the v1 "simple checklist"; smart/DangerJS
+rules (green-fake catch, first-use triggers) are the deferred NH-16 v2 backlog. Spec:
+`docs/specs/2026-06-15-pr-merge-checklist.md`.
+
 ## Decision governance
 
 `docs/decisions/decision-registry.md` is the single source of truth for every decision +

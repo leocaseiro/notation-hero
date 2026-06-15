@@ -10,6 +10,24 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-15 — NH-16 agent PR merge checklist (v1) + KAN→NH migration
+
+Shipped the first slice of NH-16 (the L6 PR-policy ticket, moved KAN-125 → NH-16). **v1 deliberately uses a custom CI step, NOT DangerJS** — a tick-the-box checklist wants a native task-list gate, not Danger's fail/warn comment (Danger smart rules deferred to the NH-16 v2 backlog). Spec: `docs/specs/2026-06-15-pr-merge-checklist.md`.
+
+**What landed:**
+- `tooling/pr-checklist.mjs` + a `pr-checklist` CI job (PR-event only, bot-exempt, non-path-filtered, wired into the required `ci-green` check). Two checks: (1) a real `NH-`/`KAN-` key in the PR title/body/branch — **un-skippable**, the teeth for "every PR is tracked"; (2) the **no-blank-boxes** rule — every `required:`/`warn:` item in the PR body must be `[x]` or `N/A`, so warnings can't be silently ignored.
+- `.github/pull_request_template.md` carries the prefixed checklist; supports **both NH- and KAN-** keys.
+- `lefthook.yml` pre-push `worktree-reminder` (non-blocking `git worktree list` — the overlap signal CI can't see).
+- `CONTRIBUTING.md` updated for KAN→NH (both keys recognized; NH active).
+
+**Clarification (leocaseiro):** "baby steps = many small COMMITS within a PR," NOT a PR-LOC cap. DACI L6's "PR > ~400 lines = fail" is the baby-COMMIT discipline; v1 PR-size is a soft `warn:` self-attest item, never a blocking fail. Mirrored as a clarification note in `2026-06-09-tooling-stack-daci.md`.
+
+**Status changes (effective on merge):**
+- NEW `L6-checklist` → **✅ done · 🤖**. PR-checklist gate (Jira-key presence + no-blank-boxes) runs in CI as a required check. Honesty-based for the checkboxes; the Jira-key grep is the one hard check.
+- `L6` DangerJS green-fake / first-use / anti-gaming rules → **still ⏳ pending** (NH-16 v2 smart backlog; v1 is intentionally non-Danger).
+
+**Migration:** Jira **KAN → NH** (company-managed). KAN-125 is now **NH-16**; both keys stay valid in branches/commits/PRs and in the checklist regex `(NH|KAN)-\d+`.
+
 ### 2026-06-14 — NH-150 first `pulumi up` (hello-world Lambda Function URL)
 
 First real AWS deliverable + the first real Nx packages below the layer dirs (everything was empty stubs before). `apps/handler-hello` (runtime handler, esbuild → cjs/node22) + `infra/` (the `LambdaWithUrl` Pulumi ComponentResource + composition, packaging the handler's build output via `FileArchive`). The `pulumi up` deploy itself is a **human-gated** step run separately. Plan: `docs/plans/2026-06-13-001-feat-kan-119-pulumi-hello-world-plan.md`.
