@@ -39,5 +39,6 @@
       "inputs": ["default", "{workspaceRoot}/.dependency-cruiser.cjs"],
       "cache": true
     }
-  }
+  },
+  "analytics": false
 }
