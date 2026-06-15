@@ -52,7 +52,7 @@ module.exports = {
     // snake_case (catalogue_item.ts), allowing only kebab (catalogue-item.entity.ts). Kebab is
     // the idiomatic hexagonal-Nx choice (NestJS + the 12k★ domain-driven-hexagon repo suffix in
     // kebab), it dodges the macOS case-insensitive-FS collision (Brand vs brand), and Nx
-    // generators emit kebab — so the entity generator (KAN #8) won't fight this rule.
+    // generators emit kebab — so the entity generator won't fight this rule.
     // ignoreMiddleExtensions:true is LOAD-BEARING: it strips ALL middle extensions, so a stacked
     // `catalogue-item.entity.test.ts` is checked as `catalogue-item` (both `.entity` AND `.test`
     // dropped) → one rule covers source AND co-located tests. Side effect: check-file cannot see
@@ -116,7 +116,7 @@ module.exports = {
     // DEFERRED (ADR D4 scoped down 2026-06-12): sibling/internal isolation (core/lesson-b ↛
     // core/lesson-a internals) is NOT wired — the v6-clean mechanism (boundaries/entry-point)
     // mandates per-feature index.ts barrels that ADR §6.3 forbids, no-private is v6-deprecated, and
-    // there's no intra-layer structure yet (core/ is .gitkeep). Revisit at first-use (KAN follow-up).
+    // there's no intra-layer structure yet (core/ is .gitkeep). Revisit at first-use.
     "boundaries/dependencies": [
       "error",
       {
