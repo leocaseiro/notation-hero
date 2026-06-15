@@ -27,7 +27,7 @@ A spike built throwaway fixtures for every violation class and ran them against 
 
 **Rationale (empirical):**
 - Neither tool is a superset. depcruise uniquely provides **today**: cycle detection, orphan detection, and **graph visualization** (Mermaid/Dot — no linter can do this).
-- The candidate ESLint stack (`import-x/no-cycle`, `import-x/no-unused-modules`) **did not fire** under the repo's legacy `.eslintrc.cjs` despite a working resolver (verified via `no-unresolved`). import-x 4 is flat-config-first; its graph rules are unreliable until the flat-config migration (`L3-eslint`/KAN-158).
+- The candidate ESLint stack (`import-x/no-cycle`, `import-x/no-unused-modules`) **did not fire** under the repo's legacy `.eslintrc.cjs` despite a working resolver (verified via `no-unresolved`). import-x 4 is flat-config-first; its graph rules are unreliable until the flat-config migration (`L3-eslint`/NH-42).
 - depcruise's **path/external bans (H8–H11 + layer) ARE reproducible** in ESLint at equal precision (`import-x/no-restricted-paths` matched relative + alias + workspace-package), so the overlap is **deliberate belt-and-suspenders**, not waste — and depcruise additionally guards files **not yet in an Nx project** (the entire pre-source repo).
 - Its role is **tier-c fast feedback + visualization, sitting *under* the compile wall (D7)** — not the wall itself.
 
@@ -105,7 +105,7 @@ Examples: `catalogue-item.entity.ts`, `logger.port.ts`, `neon-catalogue.reposito
 | Layer direction (`core↛adapters`, …) | TS project references (D7) | *(opt) ts-arch* | `@nx/enforce-module-boundaries` + `eslint-plugin-boundaries` (D4) | dependency-cruiser |
 | File-level source bans (H9/H11) | TS project references (D7) | — | — | **dependency-cruiser** |
 | External-package bans (H8/H10, core↛@pulumi D5) | — | — | ESLint `no-restricted-imports` | **dependency-cruiser** |
-| Cycles | — | — | — | **dependency-cruiser** (import-x `no-cycle` unreliable until KAN-158) |
+| Cycles | — | — | — | **dependency-cruiser** (import-x `no-cycle` unreliable until NH-42) |
 | Orphans | — | — | — | **dependency-cruiser** |
 | Sibling / internal isolation | — | — | **`eslint-plugin-boundaries`** (D4) | dependency-cruiser (path rules) |
 | Public entry point | TS project references / package `exports` (D7) | — | `@nx/enforce-module-boundaries` (project) | — |
