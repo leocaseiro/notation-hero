@@ -10,6 +10,16 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-15 — CMS via catalog reuse (front-end pivot) + Alpha build order
+
+Ratified by leocaseiro 2026-06-15. The admin CMS **reuses the same catalog UI + the same lambdas**, with admin-gated write actions — **no separate admin SPA**. This **supersedes the UI half** of `docs/cms-approach.md` (the React-Admin SPA, Option 1 → effectively its Option 1a "hand-rolled UI"); that doc's AWS **backend** analysis still stands. Already the locked direction in the 2026-06-13 catalog design (`catalog-flow-decisions.md`: *"CMS = the same UI"*). Spec: `docs/specs/2026-06-15-cms-admin.md` (eng-reviewed, CLEARED). Tracked by **NH-122 [K-2]**; **NH-24 folded in + cancelled as duplicate**.
+
+**Eng-review decisions (F1–F3):** F1 — gated admin-read mode on the K-3 read API (same lambda returns all statuses when the password is present); F2 — one public site + in-lambda password on writes (secret in SSM SecureString, never in the repo); F3 — include un-archive (delete = archive, schema §12).
+
+**Build order (leocaseiro, 2026-06-15):** (1) **CRUD for catalog** — K-* bundle: NH-79 Neon adapter → NH-126 [K-1] store → NH-123 [K-3] read API → NH-122 [K-2] CRUD UI; (2) **play a song** (no MIDI, no score) — player core A-1/A-2 + B-1/B-2/B-7; (3) **SRE + Sentry + analytics** — H-7 (NH-52) + H-8 (NH-124) + H-6 (NH-54) / J-8 (NH-51); (4) **MIDI + score** — D-* (NH-100..32) + C-* (NH-97..29). Jira rank to be aligned to this order.
+
+No status-table/enforcement changes (front-end approach + sequencing decision; no machine gate).
+
 ### 2026-06-15 — NH-16 agent PR merge checklist (v1) + KAN→NH migration
 
 Shipped the first slice of NH-16 (the L6 PR-policy ticket, moved KAN-125 → NH-16). **v1 deliberately uses a custom CI step, NOT DangerJS** — a tick-the-box checklist wants a native task-list gate, not Danger's fail/warn comment (Danger smart rules deferred to the NH-16 v2 backlog). Spec: `docs/specs/2026-06-15-pr-merge-checklist.md`.
