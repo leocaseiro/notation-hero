@@ -12,8 +12,10 @@
 //      or `warn:` must be ticked ([x]) OR marked N/A. A blank box ([ ]) fails the
 //      gate, so a warning can't be silently ignored: it must be consciously
 //      addressed (done, or a visible N/A). `required:` vs `warn:` is an intent
-//      label for the reader; the gate treats both with the no-blank rule. Making
-//      a non-Jira item hard-unskippable = v2 smart detection (see the spec).
+//      label for the reader; the gate treats both with the no-blank rule.
+//      RESERVED MARKER: the skip token is the literal "N/A" on the item's line, so
+//      PR-template item labels must never contain "N/A" (else a blank box reads as
+//      skipped). Making a non-Jira item hard-unskippable = v2 smart detection.
 //
 // Bots (dependabot etc.) are skipped by the workflow `if:`; re-checked here too.
 //

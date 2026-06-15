@@ -31,13 +31,14 @@
 
 ```md
 ## Checklist
-<!-- `required:` blocks merge (CI). `warn:` is a reminder you must still address.
-     Write `N/A` to skip an item that does not apply. No box may be left blank. -->
+<!-- Every `required:`/`warn:` item must be ticked [x] OR have "N/A" on its line.
+     Skip with "N/A — reason". No box may be left blank.
+     EDITORS: never put the literal "N/A" in an item's label — it is the reserved marker. -->
 - [ ] required: Links a Jira ticket — full URL to NH-#### (or KAN-####) in the body
 - [ ] warn: Key in the PR title too, e.g. `[NH-16] …` (squash-merge uses the title)
-- [ ] warn: Decision log updated (docs/decisions change-log) — or N/A if nothing enforced changed
+- [ ] warn: Decision log updated (docs/decisions change-log)
 - [ ] warn: Checked overlapping open PRs / worktrees; risks noted in the PR + Jira
-- [ ] required: If this PR changes UI → Storybook story / VR added or updated (else N/A)
+- [ ] required: Storybook story / VR added or updated if this PR changes UI
 - [ ] warn: If large (>~400 LOC) → explained why (baby commits within, not a hard cap)
 ```
 
@@ -47,10 +48,12 @@ Directly solves "agents ignore warnings": **the gate fails on ANY unaddressed bo
 
 | Prefix | Gate rule | `N/A` allowed? | Meaning |
 |---|---|---|---|
-| `required:` | `[x]` or `N/A` — never blank | ✅ but only when genuinely N/A (the item says when, e.g. Storybook "else N/A") | "Do this." |
+| `required:` | `[x]` or `N/A` — never blank | ✅ write `N/A — reason` on the line when it genuinely doesn't apply | "Do this." |
 | `warn:` | `[x]` or `N/A` — never blank | ✅ (conscious, visible skip) | "Address or consciously skip." |
 
 **The teeth:** the **Jira-key grep** — a real `NH-`/`KAN-` key must appear in the PR **title, body, or branch** — is the one check that **cannot be N/A'd**. That is what guarantees every PR is tracked (the core pain). Every prefixed checkbox *additionally* follows the no-blank rule, so nothing is silently skipped: an agent must tick each box or write a visible `N/A`.
+
+**Reserved marker:** the skip token is the literal `N/A` on an item's line, so PR-template item **labels must never contain `N/A`** (else the gate would read a blank box as already skipped — caught in testing 2026-06-15). A more robust marker / smart per-item detection is a v2 item.
 
 v1 is honesty-based for the checkboxes (ticking ≠ proof). Promoting a `required:` item to a real, un-N/A-able gate (e.g. "a Storybook story exists when `*.tsx` changed") is **v2 smart detection** — the prefixes are intent labels until then.
 
