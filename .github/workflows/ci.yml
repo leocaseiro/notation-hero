@@ -109,6 +109,8 @@ jobs:
         run: pnpm run syncpack
       - name: Test
         run: pnpm run test
+      - name: Tooling unit tests (node --test)
+        run: pnpm run test:tooling
 
   # Per-deploy-target build. Runs every workspace's build via pnpm -r;
   # split into a per-app matrix if/when build time warrants.
@@ -202,6 +204,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+      # Dep-free Node script: use setup-node directly (not the setup-js composite) to skip
+      # the pnpm install — documented exception in AGENTS.md "Targets & how to run them".
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
