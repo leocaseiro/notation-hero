@@ -28,6 +28,8 @@ docs/.private/
 .DS_Store
 *.log
 
+# Compound Engineering local config
+.compound-engineering/*.local.yaml
 
 
 .nx/cache
