@@ -1,251 +1,140 @@
 # NH Jira Reorg — Execution Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development (recommended) or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
-> This is an **API-operations plan** (Jira Cloud), not code. Each task = operation → **verify (read-back)** → checkpoint. All writes are **idempotent** (check-before-create) and **reversible** (rollback noted).
+> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or superpowers:executing-plans. Steps use checkbox (`- [ ]`) syntax.
+> API-operations plan (Jira Cloud), not code. Each task = operation → **verify (read-back)** → checkpoint. All writes **idempotent** (check-before-create) and **reversible** (rollback noted). **Hardened 2026-06-16 from ce-doc-review** (data-safety, idempotency, token handling, live-API corrections).
 
-**Goal:** Restructure the NH Jira project into a whole-project structure — 9 Components, 4 Releases, ~11 workstream Epics, 15 ordered Sprints (=goals), and Goals — then re-parent/tag issues, executing **Catalog Preview first**.
+**Goal:** Restructure NH into 9 Components, 4 Releases, ~11 workstream Epics, 15 ordered Sprints (=goals), and Goals — then re-parent/tag issues, executing **Catalog Preview first**.
 
-**Architecture:** Pure REST + Agile + Goals GraphQL against `leocaseiro.atlassian.net`, Basic-auth with the token in `jira.env`. Scaffolding (additive, safe) lands first; bulk re-parenting (mutates existing issues) is a later, separately-confirmed phase. Spec: `docs/superpowers/specs/2026-06-15-nh-jira-reorg-design.md`.
+**Architecture:** REST + Agile + Goals GraphQL on `leocaseiro.atlassian.net`, Basic-auth token in `jira.env`. Scaffolding (additive) lands first; bulk re-parenting (mutates existing issues) is separately confirmed. Spec: `docs/superpowers/specs/2026-06-15-nh-jira-reorg-design.md`.
 
-**Tech Stack:** Jira Cloud REST v3 (`/rest/api/3`), Agile REST (`/rest/agile/1.0`), Goals GraphQL (`/gateway/api/graphql`); `curl` + `jq`; project NH = id `10001`; Scrum board = id `2`.
+**Tech Stack:** Jira Cloud REST v3, Agile REST v1, Goals GraphQL; `curl`+`jq`; project NH=`10001`; Scrum board=`2`; Epic-Link field=`customfield_10014`; Sprint field=`customfield_10020`.
+
+**Live-API facts confirmed by review:** re-parent via `fields.parent` WORKS on this CMP; stories also carry `customfield_10014` (Epic Link) → must realign both. `/rest/api/3/search/jql` returns `total:null` + paginates → never trust counts. Sprint id 1 is **board-1-origin** (not board 2); sprint id 4 is board-2. Goal mutations ARE exposed to the token but `goals_create` requires `containerId` (workspace ARI) + `goalTypeId`.
 
 ---
 
-## Task 0: Setup, conventions & safety
+## Task 0: Setup, safety preflight & conventions
 
-**Files:**
-- Create: `docs/superpowers/plans/2026-06-16-nh-reorg-run-log.md` (append-only log of created IDs + actions, for traceability + rollback)
-
-- [ ] **Step 1: Auth helper (every shell that hits Jira sources this)**
+- [ ] **Step 1: Auth helper (token NEVER on the command line → use `--netrc`)**
 
 ```bash
 set +a; . /Users/leocaseiro/Sites/notation-hero/jira.env; set +a
-EMAIL="$JIRA_EMAIL"; TOKEN="$JIRA_TOKEN"; BASE="https://leocaseiro.atlassian.net"
-jira(){ curl -sS -u "$EMAIL:$TOKEN" -H "Content-Type: application/json" -H "Accept: application/json" "$@"; }
-# verify: should print your account
-jira "$BASE/rest/api/3/myself" | jq -r '.displayName + " / " + .accountId'
+BASE="https://leocaseiro.atlassian.net"
+NETRC=$(mktemp); chmod 600 "$NETRC"
+printf 'machine leocaseiro.atlassian.net login %s password %s\n' "$JIRA_EMAIL" "$JIRA_TOKEN" > "$NETRC"
+jira(){ curl -sS --netrc-file "$NETRC" -H "Content-Type: application/json" -H "Accept: application/json" "$@"; }
+trap 'rm -f "$NETRC"' EXIT
+jira "$BASE/rest/api/3/myself" | jq -r '.displayName'   # expect: Leo Caseiro
 ```
-Expected: `Leo Caseiro / 557058:5a008315-8d06-4398-87ff-5221e3d2d591`
 
-- [ ] **Step 2: Conventions (apply to every task below)**
-  - **Idempotent:** before any create, GET the collection and skip if a same-named item exists; capture the returned `id` to the run-log.
-  - **Verify:** after each create/update, read it back and assert the field.
-  - **Rollback:** components/versions → DELETE by id; epics → transition to Cancelled or delete; re-parent → PUT `parent` back to the milestone epic (log the old parent before changing).
-  - **No `--no-verify`, no force.** Bulk writes run only after the per-phase confirmation gate.
+- [ ] **Step 2: Token-safety preflight (abort if any fail)**
+
+```bash
+git check-ignore -q jira.env && echo "jira.env ignored OK" || { echo "ABORT: jira.env NOT git-ignored"; exit 1; }
+RUNLOG=/tmp/nh-reorg-run-log.md   # run-log lives OUTSIDE the repo (never committed)
+echo "# NH reorg run-log $(date -u)" > "$RUNLOG"
+```
+
+- [ ] **Step 3: BASELINE EXPORT (restore point — do this before ANY write)**
+
+```bash
+# Full mutable state of every NH issue → timestamped JSON baseline (the restore point)
+jira "$BASE/rest/api/3/search/jql" -X POST -d '{"jql":"project=NH","fields":["summary","parent","customfield_10014","fixVersions","components","labels","customfield_10020","status"],"maxResults":100}' > /tmp/nh-baseline-p1.json
+# paginate with nextPageToken until isLast:true (search/jql has NO total) — repeat for each page
+cp /tmp/nh-baseline-*.json docs/superpowers/specs/ 2>/dev/null || true   # OPTIONAL: keep a copy (review for secrets before commit)
+```
+
+- [ ] **Step 4: Conventions**
+  - **DRY_RUN:** every mutating loop honors `DRY_RUN=1` → prints the intended method+URL+body instead of sending. Do a dry run of each phase first.
+  - **Idempotent:** before any create (component, version, epic, **sprint**, **goal**) GET the collection and skip-or-reuse by name; log the id.
+  - **Counts are unreliable:** for existence/empty checks use `POST /rest/api/3/search/approximate-count` (`{"count":N}`) or `maxResults=1` + `.issues==[]`; for "expect N" verifies, paginate `nextPageToken` until `isLast:true`. NEVER trust `.total` or one page's `.issues|length`.
+  - **Per-call error handling:** capture HTTP status (`-w '%{http_code}'` / `--fail-with-body`); abort the loop on non-2xx (201 create / 204 update), log the failing key; back off + retry on 429.
+  - **Merge, don't clobber:** when setting `fixVersions`/`components`, READ existing first and append (don't replace) unless the baseline shows empty.
+  - **Rollback:** components/versions → DELETE by id; epics/NH-1 → transition to Cancelled (archive), not delete; re-parent → PUT `parent`+`customfield_10014` back from the baseline; goals → delete-goal mutation or UI. Exclusive access during the run (no concurrent UI edits).
 
 ---
 
-## Task 1: Create Components (9) — additive
+## Task 1: Components (9) — additive, idempotent
 
-**Verify-first list:** `Catalog/CMS, Player, Notation-render, MIDI, Scoring, Infra/AWS, CI-CD/Tooling, Observability, Design-system`
+- [ ] **Step 1:** `jira "$BASE/rest/api/3/project/NH/components" | jq -r '.[].name'` (skip existing).
+- [ ] **Step 2:** create each missing of `Catalog/CMS, Player, Notation-render, MIDI, Scoring, Infra/AWS, CI-CD/Tooling, Observability, Design-system` via `POST /rest/api/3/component {"name":..,"project":"NH"}` (honor DRY_RUN).
+- [ ] **Step 3:** verify 9 exist; append `id\tname` to `$RUNLOG`.
 
-- [ ] **Step 1: List existing components (idempotency)**
+## Task 2: Releases (4) — additive, idempotent
 
-Run: `jira "$BASE/rest/api/3/project/NH/components" | jq -r '.[].name'`
-Expected: empty (0) on first run.
+- [ ] **Step 1:** `jira "$BASE/rest/api/3/project/NH/versions" | jq -r '.[].name'` (skip existing).
+- [ ] **Step 2:** create each of `Catalog Preview, Alpha / EAP, Beta, M1` via `POST /rest/api/3/version {"name":..,"projectId":10001,"released":false}`.
+- [ ] **Step 3:** verify 4; append ids to `$RUNLOG`.
 
-- [ ] **Step 2: Create each missing component**
+## Task 3: Workstream Epics (9 new; reuse NH-14, NH-15)
 
-```bash
-for C in "Catalog/CMS" "Player" "Notation-render" "MIDI" "Scoring" "Infra/AWS" "CI-CD/Tooling" "Observability" "Design-system"; do
-  jira -X POST "$BASE/rest/api/3/component" -d "{\"name\":\"$C\",\"project\":\"NH\"}" \
-    | jq -r '"created component \(.id): \(.name)"'
-done
-```
+Reuse **NH-14** Design (sprints 2,3,14), **NH-15** Local play (sprint 7). Create:
 
-- [ ] **Step 3: Verify + log**
+| Epic | Sprint(s) | AWS-track? |
+|---|---|---|
+| Foundation & CI/CD | 1 | — |
+| Catalog/CMS & Infra | **4 only** | ✅ (Lambda·S3·CF·Pulumi) |
+| Player & Notation | 5 | — |
+| Scoring, MIDI & Progress | 7, 9 | ✅ (DynamoDB @9) |
+| Observability & SRE | 6, 12 | ✅ |
+| AWS Messaging & Analytics | 7b, 11 | ✅ |
+| Auth & Accounts (incl. upload) | 8, **10** | ✅ (Cognito·S3) |
+| Offline Sync | 13 | ✅ |
+| Native & Platform | 15 | — |
 
-Run: `jira "$BASE/rest/api/3/project/NH/components" | jq -r '.[] | "\(.id)\t\(.name)"' | tee -a docs/superpowers/plans/2026-06-16-nh-reorg-run-log.md`
-Expected: 9 rows. Keep this id↔name map — re-parenting needs component ids.
+*(Fix from review: sprint-10 "User upload" now under **Auth & Accounts**, not Catalog. AWS-track epics marked so Task 5 goal-linking is explicit.)*
 
----
+- [ ] **Step 1:** list existing epics (idempotency). **Step 2:** create the 9 (honor DRY_RUN). **Step 3:** verify + log keys.
 
-## Task 2: Create Releases (4) — additive
+## Task 4: Sprints (15) on board 2 — reconcile carefully
 
-Names (rename later if desired): `Catalog Preview`, `Alpha / EAP`, `Beta`, `M1`.
+> 🚦 The two existing **active** sprints are handled per Leo's decision (see the execution-gate question). Sprint **id 1 is board-1-origin**; **id 4 is board-2**. Do NOT close an active sprint until its issues are explicitly re-homed; closing is irreversible via API.
 
-- [ ] **Step 1: List existing versions**
+- [ ] **Step 1:** read both: `jira "$BASE/rest/agile/1.0/sprint/{1,4}" | jq '{id,name,state,originBoardId}'` and **dump their issue lists + statuses** to `$RUNLOG`.
+- [ ] **Step 2:** apply the **chosen reconciliation** (migrate-then-close / leave-active / rename-id-4) — PUT-rename via `PUT /rest/agile/1.0/sprint/{id} {"name":..}` (NOT POST). Do not rename id 1 to a name that collides with a freshly-created sprint.
+- [ ] **Step 3 (idempotent):** read `board/2/sprint`, build name→id set; create only the **missing** of the 15 `N · …` sprints via `POST /rest/agile/1.0/sprint {"name":..,"originBoardId":2}` (future state). Skip-or-reuse by name. **Step 4:** verify 15; log ids.
 
-Run: `jira "$BASE/rest/api/3/project/NH/versions" | jq -r '.[].name'`
-Expected: empty on first run.
+## Task 5: Goals + link (Goals GraphQL)
 
-- [ ] **Step 2: Create each**
+- [ ] **Step 1: resolve required inputs** — introspect `goals_create` / link mutation names AND their input types; resolve the workspace **`containerId`** (org→cloudId→workspace ARI) and a valid **`goalTypeId`** (`goals_goalTypes`). Without both, create fails. Log them.
+- [ ] **Step 2 (idempotent):** query existing goals by name; create only missing — 2 parents (`AWS interview-ready`, `Ship Notation Hero v1`) + 15 sprint goals — passing `{containerId, name, goalTypeId}`. Log each ARI immediately (resumable). Add goals to the rollback list.
+- [ ] **Step 3:** link each sprint's epic → its sprint goal; link the AWS-track sprint goals (sprints 4,7b,8,9,10,11,12,13 per Task 3 table) → `AWS interview-ready`; product ones → `Ship Notation Hero v1`. Verify via `getTeamworkGraphContext` on one epic.
+- **Fallback:** if any required id can't be resolved, create the ~17 goals in the Atlassian Home UI and link via the issue Goals field; log that API was unavailable.
 
-```bash
-for V in "Catalog Preview" "Alpha / EAP" "Beta" "M1"; do
-  jira -X POST "$BASE/rest/api/3/version" -d "{\"name\":\"$V\",\"projectId\":10001,\"released\":false}" \
-    | jq -r '"created version \(.id): \(.name)"'
-done
-```
+## Task 6: Catalog Preview — re-parent + tag + sprint-assign (🚦 CONFIRM GATE)
 
-- [ ] **Step 3: Verify + log**
+Issue→target map (sprints 1–4): **S1 Foundation** → Foundation&CI/CD / CI-CD-Tooling: NH-119,80,83,89,91,93,96,98,104,125,25 · **S2 Wireframes** → NH-14 / Design-system: NH-133,134,116 · **S3 Temp DS** → NH-14 / Design-system: *(read NH-14 children at run time to confirm keys)* · **S4 Catalog+infra** → Catalog/CMS&Infra: NH-126,79,123,122,118,117 (Catalog/CMS) + NH-107,110,121 (Infra/AWS). All → release `Catalog Preview`.
 
-Run: `jira "$BASE/rest/api/3/project/NH/versions" | jq -r '.[] | "\(.id)\t\(.name)"' | tee -a docs/superpowers/plans/2026-06-16-nh-reorg-run-log.md`
-Expected: 4 rows. Keep version ids.
-
----
-
-## Task 3: Create workstream Epics (9 new; reuse NH-14, NH-15)
-
-Reuse: **NH-14** "Design — App UI/UX" (sprints 2,3,14), **NH-15** "Local play" (sprint 7). Create these 9:
-
-| Epic summary | Sprints it serves |
-|---|---|
-| Foundation & CI/CD | 1 |
-| Catalog/CMS & Infra | 4, 10 |
-| Player & Notation | 5 |
-| Scoring, MIDI & Progress | 7, 9 |
-| Observability & SRE | 6, 12 |
-| AWS Messaging & Analytics | 7b, 11 |
-| Auth & Accounts | 8 |
-| Offline Sync | 13 |
-| Native & Platform | 15 |
-
-- [ ] **Step 1: List existing epics (idempotency)**
-
-Run: `jira "$BASE/rest/api/3/search/jql" -X POST -d '{"jql":"project=NH AND issuetype=Epic","fields":["summary"],"maxResults":100}' | jq -r '.issues[]? | "\(.key)\t\(.fields.summary)"'`
-Expected: the 11 current epics (NH-1, NH-6..NH-15). Confirm none already match the 9 new summaries.
-
-- [ ] **Step 2: Create each new epic**
+- [ ] **Step 1: snapshot** each issue's FULL mutable state (`parent,customfield_10014,fixVersions,components,labels,customfield_10020`) to `$RUNLOG` — the per-issue restore record.
+- [ ] **Step 2: re-parent + realign Epic Link + merge tags** (DRY_RUN first):
 
 ```bash
-for S in "Foundation & CI/CD" "Catalog/CMS & Infra" "Player & Notation" "Scoring, MIDI & Progress" "Observability & SRE" "AWS Messaging & Analytics" "Auth & Accounts" "Offline Sync" "Native & Platform"; do
-  jira -X POST "$BASE/rest/api/3/issue" \
-    -d "{\"fields\":{\"project\":{\"key\":\"NH\"},\"issuetype\":{\"name\":\"Epic\"},\"summary\":\"$S\"}}" \
-    | jq -r '"created epic \(.key): '"$S"'"'
-done
-```
-
-- [ ] **Step 3: Verify + log**
-
-Run the Step-1 search again; expect 9 new epic keys. Append `key↔summary` to the run-log. Keep the epic keys — re-parenting needs them.
-
-**Rollback:** `jira -X PUT "$BASE/rest/api/3/issue/NH-<key>" -d '{"update":{...}}'` to Cancelled transition, or DELETE if empty.
-
----
-
-## Task 4: Reconcile + create the 15 Sprints (board 2)
-
-Board 2 ("NH board") is **scrum**. It already has `sprint 1` and `sprint 4`, both named "CI/CD Setup", state **active**.
-
-- [ ] **Step 1: Read existing sprints**
-
-Run: `jira "$BASE/rest/agile/1.0/board/2/sprint" | jq -r '.values[] | "\(.id)\t\(.name)\t\(.state)"'`
-Expected: the two "CI/CD Setup" active sprints (ids 1, 4).
-
-- [ ] **Step 2: Rename one, close the duplicate**
-
-Rename sprint id 1 → `1 · Foundation` (PUT), and the dup (id 4) → either repurpose to `4 · Catalog + infra` or close it. Do NOT delete an active sprint with issues without checking contents first:
-```bash
-jira "$BASE/rest/agile/1.0/sprint/4/issue" | jq -r '.issues | length'   # how many issues in the dup
-jira -X POST "$BASE/rest/agile/1.0/sprint" -d '{"name":"1 · Foundation","originBoardId":2}'  # OR PUT to rename id 1
-```
-(Decision at execution: rename in place vs create-fresh + close dupes. Log the choice.)
-
-- [ ] **Step 3: Create the remaining sprints in order**
-
-```bash
-for N in "2 · Wireframes" "3 · Temp design system" "4 · Catalog + infra" "5 · Player" "6 · Sentry (FE)" "7 · Local play + score" "7b · Thin SQS+SNS" "8 · Auth" "9 · Score history" "10 · User upload" "11 · Messaging + analytics" "12 · Deep SRE" "13 · Offline sync" "14 · Better UI" "15 · Native"; do
-  jira -X POST "$BASE/rest/agile/1.0/sprint" -d "{\"name\":\"$N\",\"originBoardId\":2}" | jq -r '"created sprint \(.id): \(.name)"'
-done
-```
-
-- [ ] **Step 4: Verify + log** — re-read board sprints; expect 15 ordered; append id↔name to run-log.
-
-**Note:** future sprints are created in `future` state (correct). Don't start/activate more than your board allows.
-
----
-
-## Task 5: Create Goals + link (Goals GraphQL)
-
-> ⚠️ **Schema unknown:** endpoint + token verified, but the exact `createGoal` / link-work-item mutation names are NOT yet confirmed. **Step 1 introspects first.**
-
-- [ ] **Step 1: Introspect the goals mutations (named operation required)**
-
-```bash
-jira -X POST "$BASE/gateway/api/graphql" -d '{"query":"query Introspect { __schema { mutationType { fields { name } } } }"}' \
-  | jq -r '.data.__schema.mutationType.fields[].name' | grep -iE "goal" 
-```
-Expected: mutation names containing "goal" (create/update/link). Capture exact names + required args (introspect their input types next).
-
-- [ ] **Step 2: Create the 2 parent goals + 15 sprint goals**
-Parent: `AWS interview-ready`, `Ship Notation Hero v1`. Sprint goals = the 15 sprint names (outcome phrasing). Use the mutation discovered in Step 1. Log goal ARIs.
-
-- [ ] **Step 3: Link each sprint's epic to its sprint goal**, and AWS sprint goals (4,7b,8,9,10,11,12,13) → parent `AWS interview-ready`; product goals → `Ship Notation Hero v1`. Use the link-work-item / parent-goal mutation. Verify via `getTeamworkGraphContext` on one epic.
-
-**Fallback:** if introspection shows goal mutations are not exposed to API tokens, create the ~17 goals in the **Atlassian Home UI** (small N) and link via the issue Goals field; log that the API path was unavailable.
-
----
-
-## Task 6: Catalog Preview — re-parent + tag + sprint-assign (CONFIRM GATE before running)
-
-> 🚦 This is the first **mutating** batch. Run only after Leo confirms. Logs old parent of each issue before changing (rollback).
-
-**Issue → target map (sprints 1–4):**
-
-| Issue(s) | Epic | Component | Release | Sprint |
-|---|---|---|---|---|
-| NH-119, NH-80, NH-83, NH-89, NH-91, NH-93, NH-96, NH-98, NH-104, NH-125, NH-25 | Foundation & CI/CD | CI-CD/Tooling | Catalog Preview | 1 · Foundation |
-| NH-133, NH-134, NH-116 | NH-14 (Design) | Design-system | Catalog Preview | 2 · Wireframes |
-| (design-system tokens stories — confirm keys) | NH-14 (Design) | Design-system | Catalog Preview | 3 · Temp design system |
-| NH-126, NH-79, NH-123, NH-122, NH-118, NH-117 | Catalog/CMS & Infra | Catalog/CMS | Catalog Preview | 4 · Catalog + infra |
-| NH-107, NH-110, NH-121 | Catalog/CMS & Infra | Infra/AWS | Catalog Preview | 4 · Catalog + infra |
-
-- [ ] **Step 1: For each issue — log current parent (rollback safety)**
-
-```bash
-for K in NH-119 NH-80 ... ; do jira "$BASE/rest/api/3/issue/$K?fields=parent" \
-  | jq -r '"\(.key)\told_parent=\(.fields.parent.key // "none")"' | tee -a docs/superpowers/plans/2026-06-16-nh-reorg-run-log.md; done
-```
-
-- [ ] **Step 2: Re-parent + set fixVersion + components** (substitute real epic key + version id + component id captured in Tasks 1–3)
-
-```bash
-# template — one issue:
+# per issue — set parent AND epic-link together; append (not replace) fixVersions/components after reading existing:
 jira -X PUT "$BASE/rest/api/3/issue/NH-126" -d '{"fields":{
-  "parent":{"key":"NH-<CatalogEpic>"},
-  "fixVersions":[{"id":"<CatalogPreviewVersionId>"}],
-  "components":[{"id":"<CatalogCmsComponentId>"}]
-}}'   # 204 No Content = success
+  "parent":{"key":"<epicKey>"},
+  "customfield_10014":"<epicKey>",
+  "fixVersions":[<existing...>,{"id":"<CatalogPreviewId>"}],
+  "components":[<existing...>,{"id":"<componentId>"}]
+}}'   # expect 204; abort loop on non-2xx
 ```
 
-- [ ] **Step 3: Add each issue to its sprint**
+- [ ] **Step 3:** add issues to their sprint via `POST /rest/agile/1.0/sprint/<id>/issue {"issues":[...]}` (expect 204).
+- [ ] **Step 4: diff-verify vs baseline** — re-dump the same fields; assert each issue gained the intended parent/epic-link/version/sprint AND that **no pre-existing fixVersion/component was lost** (diff against `/tmp/nh-baseline-*.json`). Flag any unintended change.
 
-```bash
-jira -X POST "$BASE/rest/agile/1.0/sprint/<sprintId>/issue" -d '{"issues":["NH-126","NH-79","NH-123","NH-122","NH-118","NH-117","NH-107","NH-110","NH-121"]}'  # 204 = success
-```
+## Task 7: Cleanup (🚦 CONFIRM)
 
-- [ ] **Step 4: Verify the whole release**
+- [ ] **NH-1:** check emptiness with `approximate-count` over `parent=NH-1 OR "Epic Link"=NH-1` (NOT `.issues|length`); if truly empty, **transition to Cancelled (archive), not hard-delete** (irreversible on free tier).
+- [ ] Old milestone-epics **NH-6..NH-13:** after their stories are re-parented (later phases), transition to Cancelled / relabel "(archived milestone)". Keep NH-14, NH-15.
 
-```bash
-jira "$BASE/rest/api/3/search/jql" -X POST -d '{"jql":"project=NH AND fixVersion=\"Catalog Preview\" ORDER BY parent","fields":["summary","parent","components","customfield_10020"],"maxResults":100}' \
-  | jq -r '.issues[] | "\(.key)\t\(.fields.parent.key // "-")\t\(.fields.summary)"'
-```
-Expected: every sprint 1–4 issue shows the right epic parent; counts match the map.
+## Task 8+: Alpha / Beta / M1 phases
 
----
+Same hardened procedure as Task 6, per spec §6, one release at a time (snapshot → dry-run → re-parent+epic-link+merge → sprint-assign → diff-verify). Confirm before each.
+- **Alpha** sprints 5,6,7,7b · **Beta** 8–12 · **M1** 13–15. (Clarify sprint-7b "NH-51 part" key at run time.)
 
-## Task 7: Cleanup (CONFIRM)
+## Task 9: Credential hygiene (after all phases)
 
-- [ ] **Step 1:** Delete junk epic **NH-1** (verify empty first): `jira "$BASE/rest/api/3/search/jql" -X POST -d '{"jql":"parent=NH-1"}' | jq '.issues|length'` → if 0, delete.
-- [ ] **Step 2:** Old milestone-epics **NH-6..NH-13** — after their stories are re-parented (later phases), transition to Cancelled or relabel "(archived milestone)". Keep NH-14, NH-15.
-
----
-
-## Task 8+: Alpha / Beta / M1 phases (detailed when each nears)
-
-Same procedure as Task 6, per the spec's sprint table (spec §6), one release at a time:
-- **Alpha / EAP** — sprints 5, 6, 7, 7b (Player port NH-90/88/86/102/84/101/103/105; Sentry NH-124; Local play NH-15/97/92/50; thin SQS/SNS).
-- **Beta** — sprints 8–12 (Auth NH-45; Score history NH-120/58/77/74/99; Upload NH-49; Messaging NH-54/51/31; Deep SRE NH-52).
-- **M1** — sprints 13–15 (Sync NH-44; Better UI NH-14/108/82; Native NH-46/47/48/78/128/129/130).
-
-Each phase: log-old-parent → re-parent+tag → sprint-assign → verify release. Confirm before running each.
-
----
+- [ ] Revoke/rotate the API token at id.atlassian.com → Security → API tokens once the reorg is done (it is full-account scope). Regenerate only when next needed.
 
 ## Self-Review
 
-- **Spec coverage:** components (✓ Task 1), releases incl. Catalog Preview (✓ Task 2), 11 epics (✓ Task 3), 15 sprints (✓ Task 4), goals + parents + linking (✓ Task 5), re-parent/tag/sprint (✓ Task 6 + Task 8), cleanup (✓ Task 7), fork-port + native are issue *content* (out of scope for the Jira-structure plan — tracked as the issues themselves).
-- **Known unknown flagged:** Goals mutation schema (Task 5 Step 1 introspects; UI fallback documented).
-- **Idempotency + rollback:** every create checks-existing; every re-parent logs old parent.
-- **Gaps:** sprint-3 "Temp design system" exact issue keys unconfirmed (Task 6 flags "confirm keys") — resolve by reading NH-14 children at execution.
+Coverage: components/releases/epics/sprints/goals/re-parent/cleanup all present + hardened. Review findings applied: baseline export + DRY_RUN (P0), count-safe checks (P0), sprint id-1/board-1 + PUT-rename + no-blind-close (P0), sprint/goal idempotency (P0), snapshot+merge+epic-link on re-parent (P0/P2), per-call error handling (P1), goals containerId/goalTypeId (P1), token via netrc + run-log out-of-repo + tracked-gitignore + rotation (P1/P2), Catalog-epic=sprint-4 + AWS-track tagging (P1/P2), diff-verify (P2). **Open (Leo's call):** active-sprint reconciliation + board-1 scope.
