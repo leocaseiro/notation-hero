@@ -10,6 +10,44 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-16 — NH-185 FE framework: Next.js (one source → SSR web / static Capacitor)
+
+Reverses the **FE-framework axis** of the 2026-06-02 stack-pick ("Vite + React; Next.js rejected"). Surfaced via `/ce-sessions`: that rejection was of **SSR** Next.js; **static-export + a one-source/two-targets build** was never evaluated, and it resolves the Capacitor conflict while delivering the job-hunt Next.js keyword + an SSR/hydration portfolio piece. ADR: [`2026-06-16-fe-framework-nextjs-adr.md`](2026-06-16-fe-framework-nextjs-adr.md); spike: [`../spikes/2026-06-16-fe-framework-nextjs.md`](../spikes/2026-06-16-fe-framework-nextjs.md).
+
+**Decision:** Next.js (App Router), one source `apps/notation-hero`, two build targets — **SSR web** (OpenNext → Lambda + CloudFront, Pulumi, free-tier) + **static-export** (Capacitor iOS/Android). Catalogue routes first. **No Amplify** (keeps Pulumi as the single IaC). **Capacitor + PWA + S3/CloudFront + Pulumi + hexagon all unchanged.**
+
+**Status:** 📄 prose-only (framework choice — no machine check). Implementation tracked in **NH-185** (Story under Epic NH-177). `H-4` / `FOLD-hex` / Pulumi rows unaffected; the SSR Lambda+CloudFront lands in `infra/` (Pulumi) when the build does.
+
+### 2026-06-15 — CMS via catalog reuse (front-end pivot) + Alpha build order
+
+Ratified by leocaseiro 2026-06-15. The admin CMS **reuses the same catalog UI + the same lambdas**, with admin-gated write actions — **no separate admin SPA**. This **supersedes the UI half** of `docs/cms-approach.md` (the React-Admin SPA, Option 1 → effectively its Option 1a "hand-rolled UI"); that doc's AWS **backend** analysis still stands. Already the locked direction in the 2026-06-13 catalog design (`catalog-flow-decisions.md`: *"CMS = the same UI"*). Spec: `docs/specs/2026-06-15-cms-admin.md` (eng-reviewed, CLEARED). Tracked by **NH-122 [K-2]**; **NH-24 folded in + cancelled as duplicate**.
+
+**Eng-review decisions (F1–F3):** F1 — gated admin-read mode on the K-3 read API (same lambda returns all statuses when the password is present); F2 — one public site + in-lambda password on writes (secret in SSM SecureString, never in the repo); F3 — include un-archive (delete = archive, schema §12).
+
+**Build order (leocaseiro, 2026-06-15):** (1) **CRUD for catalog** — K-* bundle: NH-79 Neon adapter → NH-126 [K-1] store → NH-123 [K-3] read API → NH-122 [K-2] CRUD UI; (2) **play a song** (no MIDI, no score) — player core A-1/A-2 + B-1/B-2/B-7; (3) **SRE + Sentry + analytics** — H-7 (NH-52) + H-8 (NH-124) + H-6 (NH-54) / J-8 (NH-51); (4) **MIDI + score** — D-* (NH-100..32) + C-* (NH-97..29). Jira rank to be aligned to this order.
+
+No status-table/enforcement changes (front-end approach + sequencing decision; no machine gate).
+
+### 2026-06-15 — NH-16 agent PR merge checklist (v1) + KAN→NH migration
+
+Shipped the first slice of NH-16 (the L6 PR-policy ticket, moved KAN-125 → NH-16). **v1 deliberately uses a custom CI step, NOT DangerJS** — a tick-the-box checklist wants a native task-list gate, not Danger's fail/warn comment (Danger smart rules deferred to the NH-16 v2 backlog). Spec: `docs/specs/2026-06-15-pr-merge-checklist.md`.
+
+**What landed:**
+- `tooling/pr-checklist.mjs` + a `pr-checklist` CI job (PR-event only, bot-exempt, non-path-filtered, wired into the required `ci-green` check). Two checks: (1) a real `NH-`/`KAN-` key in the PR title/body/branch — **un-skippable**, the teeth for "every PR is tracked"; (2) the **no-blank-boxes** rule — every `required:`/`warn:` item in the PR body must be `[x]` or `N/A`, so warnings can't be silently ignored.
+- `.github/pull_request_template.md` carries the prefixed checklist; supports **both NH- and KAN-** keys.
+- `lefthook.yml` pre-push `worktree-reminder` (non-blocking `git worktree list` — the overlap signal CI can't see).
+- `CONTRIBUTING.md` updated for KAN→NH (both keys recognized; NH active).
+
+**Clarification (leocaseiro):** "baby steps = many small COMMITS within a PR," NOT a PR-LOC cap. DACI L6's "PR > ~400 lines = fail" is the baby-COMMIT discipline; v1 PR-size is a soft `warn:` self-attest item, never a blocking fail. Mirrored as a clarification note in `2026-06-09-tooling-stack-daci.md`.
+
+**Status changes (effective on merge):**
+- NEW `L6-checklist` → **✅ done · 🤖**. PR-checklist gate (Jira-key presence + no-blank-boxes) runs in CI as a required check. Honesty-based for the checkboxes; the Jira-key grep is the one hard check.
+- `L6` DangerJS green-fake / first-use / anti-gaming rules → **still ⏳ pending** (NH-16 v2 smart backlog; v1 is intentionally non-Danger).
+
+**Migration:** Jira **KAN → NH** (company-managed). KAN-125 is now **NH-16**; both keys stay valid in branches/commits/PRs and in the checklist regex `(NH|KAN)-\d+`.
+
+**Review hardening (ce-code-review, 2026-06-15):** a post-review pass closed four gate findings — delete-the-checklist bypass (template-anchoring: items are read from the PR template, missing one fails), N/A-in-label false-pass (N/A honored only in the author text after the label), quoted-sample false-fail (strip HTML comments + code fences), and the template's example key satisfying the key check (exclude checklist lines from the key search). Added `tooling/pr-checklist.test.mjs` (13 cases incl. the three regressions) + `pnpm run test:tooling`, run in the CI `quality` job. `pr-checklist` job documents the dep-free `setup-node` exception (AGENTS.md).
+
 ### 2026-06-14 — NH-150 first `pulumi up` (hello-world Lambda Function URL)
 
 First real AWS deliverable + the first real Nx packages below the layer dirs (everything was empty stubs before). `apps/handler-hello` (runtime handler, esbuild → cjs/node22) + `infra/` (the `LambdaWithUrl` Pulumi ComponentResource + composition, packaging the handler's build output via `FileArchive`). The `pulumi up` deploy itself is a **human-gated** step run separately. Plan: `docs/plans/2026-06-13-001-feat-kan-119-pulumi-hello-world-plan.md`.
