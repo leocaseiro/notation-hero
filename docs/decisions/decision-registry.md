@@ -10,6 +10,14 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-16 — NH-185 FE framework: Next.js (one source → SSR web / static Capacitor)
+
+Reverses the **FE-framework axis** of the 2026-06-02 stack-pick ("Vite + React; Next.js rejected"). Surfaced via `/ce-sessions`: that rejection was of **SSR** Next.js; **static-export + a one-source/two-targets build** was never evaluated, and it resolves the Capacitor conflict while delivering the job-hunt Next.js keyword + an SSR/hydration portfolio piece. ADR: [`2026-06-16-fe-framework-nextjs-adr.md`](2026-06-16-fe-framework-nextjs-adr.md); spike: [`../spikes/2026-06-16-fe-framework-nextjs.md`](../spikes/2026-06-16-fe-framework-nextjs.md).
+
+**Decision:** Next.js (App Router), one source `apps/notation-hero`, two build targets — **SSR web** (OpenNext → Lambda + CloudFront, Pulumi, free-tier) + **static-export** (Capacitor iOS/Android). Catalogue routes first. **No Amplify** (keeps Pulumi as the single IaC). **Capacitor + PWA + S3/CloudFront + Pulumi + hexagon all unchanged.**
+
+**Status:** 📄 prose-only (framework choice — no machine check). Implementation tracked in **NH-185** (Story under Epic NH-177). `H-4` / `FOLD-hex` / Pulumi rows unaffected; the SSR Lambda+CloudFront lands in `infra/` (Pulumi) when the build does.
+
 ### 2026-06-15 — CMS via catalog reuse (front-end pivot) + Alpha build order
 
 Ratified by leocaseiro 2026-06-15. The admin CMS **reuses the same catalog UI + the same lambdas**, with admin-gated write actions — **no separate admin SPA**. This **supersedes the UI half** of `docs/cms-approach.md` (the React-Admin SPA, Option 1 → effectively its Option 1a "hand-rolled UI"); that doc's AWS **backend** analysis still stands. Already the locked direction in the 2026-06-13 catalog design (`catalog-flow-decisions.md`: *"CMS = the same UI"*). Spec: `docs/specs/2026-06-15-cms-admin.md` (eng-reviewed, CLEARED). Tracked by **NH-122 [K-2]**; **NH-24 folded in + cancelled as duplicate**.
