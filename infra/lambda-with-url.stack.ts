@@ -2,7 +2,7 @@ import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 
 /**
- * Reusable Pulumi component (KAN-119): a Node Lambda fronted by a public
+ * Reusable Pulumi component (NH-150): a Node Lambda fronted by a public
  * Function URL, with a managed CloudWatch LogGroup (explicit retention).
  *
  * Lives in `infra/` (type:infra) because it is deploy-time IaC importing

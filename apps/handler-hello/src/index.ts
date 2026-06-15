@@ -1,5 +1,5 @@
 /**
- * Hello-world Lambda handler (KAN-119) — the AWS proof-of-life.
+ * Hello-world Lambda handler (NH-150) — the AWS proof-of-life.
  *
  * Pure runtime code: no `@pulumi/*` imports (depcruise H8). The infra stack
  * packages this file's esbuild BUILD OUTPUT (apps/handler-hello/dist) via

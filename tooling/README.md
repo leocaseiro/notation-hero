@@ -7,8 +7,8 @@ Lives outside the workspace package graph — repo-wide enforcement scaffolding,
 | File | Purpose | Source-of-truth decision |
 |---|---|---|
 | [`branch-protection.sh`](./branch-protection.sh) | Apply classic Branch Protection to `master` (CI Green required, linear history, no force push, no deletions). DRY-RUN by default; `--apply` to commit. Idempotent. | DACI L7 (classic-API portion) |
-| [`branch-ruleset.json`](./branch-ruleset.json) | Declarative GitHub Repository Ruleset for `master-merge-queue`. Targets `~DEFAULT_BRANCH`. Encodes squash merge, ALLGREEN strategy, 5-concurrent build, 1–5 group size, 60-min check timeout. | DACI L7-merge-queue (KAN-140) |
-| [`branch-ruleset.sh`](./branch-ruleset.sh) | Apply the Ruleset above to the repo. DRY-RUN by default; `--apply` to commit. Idempotent (POST if new, PUT if a ruleset with the same name already exists). | DACI L7-merge-queue (KAN-140) |
+| [`branch-ruleset.json`](./branch-ruleset.json) | Declarative GitHub Repository Ruleset for `master-merge-queue`. Targets `~DEFAULT_BRANCH`. Encodes squash merge, ALLGREEN strategy, 5-concurrent build, 1–5 group size, 60-min check timeout. | DACI L7-merge-queue (NH-172) |
+| [`branch-ruleset.sh`](./branch-ruleset.sh) | Apply the Ruleset above to the repo. DRY-RUN by default; `--apply` to commit. Idempotent (POST if new, PUT if a ruleset with the same name already exists). | DACI L7-merge-queue (NH-172) |
 | [`linear-pending.md`](./linear-pending.md) | ~~Markdown TODO file. Lightweight fallback for Linear MCP outages — agents append a bullet when MCP is unreachable; next session drains.~~ <!-- now Jira; see docs/decisions/2026-06-11-tracker-linear-to-jira.md --> | DACI L10a (v2 — replaces the JSON queue) |
 
 Files coming in later Sequencing steps (placeholders documented for foresight, NOT created in this PR):

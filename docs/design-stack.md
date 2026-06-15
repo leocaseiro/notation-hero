@@ -14,8 +14,8 @@
 
 This file holds the **implementation-only** picks. Strategic positioning, competitive analysis, the "why this product" thesis, and any internal reference materials live in private storage:
 
-- Linear Document (canonical) under the [Notation Hero project](https://linear.app/leocaseiro/project/notation-hero-db465058e201)
-- Local agent context: `docs/.private/design-stack-strategic.md` (gitignored; mirrors the Linear doc)
+- ~~Linear Document (canonical) under the [Notation Hero project](https://linear.app/leocaseiro/project/notation-hero-db465058e201)~~ — _Linear retired 2026-06-11; the canonical reference is now **Jira (NH)** — see [`decisions/2026-06-11-tracker-linear-to-jira.md`](decisions/2026-06-11-tracker-linear-to-jira.md), board <https://leocaseiro.atlassian.net/jira/software/c/projects/NH/boards/2>._
+- Local agent context: `docs/.private/design-stack-strategic.md` (gitignored; mirrors the canonical strategic doc)
 
 ## Stack picks
 
