@@ -39,7 +39,10 @@ accurate than the local `--base=origin/master` approximation. **When
 authoring a new CI workflow job**, always use the composite
 `- uses: ./.github/actions/setup-js` (pnpm + Node-from-.nvmrc + frozen
 install) AFTER `actions/checkout@v6`; do not inline the pnpm/node setup
-steps. For jobs that run `nx affected`, also add `nrwl/nx-set-shas@v4`
+steps. **Exception:** a job running a dependency-free Node script (e.g. the
+`pr-checklist` gate) may use `actions/setup-node@v6` with `node-version-file:
+.nvmrc` directly — it needs no pnpm install; leave an inline comment saying so.
+For jobs that run `nx affected`, also add `nrwl/nx-set-shas@v4`
 right after checkout AND set `fetch-depth: 0` on the checkout step
 (`nx-set-shas` needs full git history to resolve the base SHA — without
 it the action silently falls back to a degraded base).
@@ -135,6 +138,26 @@ review or approve.** Review happens on the committed diff / PR — never on
 uncommitted working-tree changes. Make baby commits at every green step so
 progress is visible and any step is one `git revert` away. Never pass
 `git commit/push --no-verify`.
+
+## PR checklist (CI-gated)
+
+Every PR carries a checklist (`.github/pull_request_template.md`) whose items are
+prefixed `required:` or `warn:`. The `pr-checklist` CI job (`tooling/pr-checklist.mjs`,
+required via *CI Green*) enforces:
+
+- **All canonical items present** — the items are read from the PR template, so deleting
+  or renaming them fails the gate (you can't delete the checklist to pass).
+- **No blank boxes** — every item must be ticked `[x]` OR skipped by writing the literal
+  token `N/A` *after* the item label (e.g. `… — N/A: no UI change`). A blank `[ ]` fails.
+  `required:` = do it; `warn:` = address or consciously skip. Even a `required:` item may
+  be `N/A`'d when it genuinely doesn't apply (e.g. the Storybook item on a non-UI PR).
+- **A real Jira key** — `NH-####` or `KAN-####` in the PR title, branch, or a prose line
+  (e.g. `Closes [NH-16](…)`). Keys inside HTML comments, code fences, or checklist-label
+  examples don't count. This is the one check that can't be `N/A`'d.
+
+Bots (dependabot etc.) are exempt. This is v1; smart/DangerJS rules (green-fake catch,
+first-use triggers, real Jira validation) are the deferred NH-16 v2 backlog. Spec:
+`docs/specs/2026-06-15-pr-merge-checklist.md`.
 
 ## Decision governance
 

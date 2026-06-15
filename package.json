@@ -12,6 +12,7 @@
     "lint": "nx run-many --target=lint",
     "typecheck": "nx run-many --target=typecheck",
     "test": "nx run-many --target=test",
+    "test:tooling": "node --test tooling/*.test.mjs",
     "build": "nx run-many --target=build",
     "depcheck": "depcruise core adapters apps infra --config .dependency-cruiser.cjs",
     "knip": "knip",
