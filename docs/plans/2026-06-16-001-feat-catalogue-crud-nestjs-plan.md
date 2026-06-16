@@ -6,7 +6,7 @@
 
 **Architecture:** One NestJS app (`apps/catalogue-api`) wrapped for Lambda with `@codegenie/serverless-express` (cached-server pattern) behind the existing Lambda Function URL + CloudFront. The domain lives in a framework-free `core/catalogue` library (ports/entities); the Neon data access lives in `adapters/neon-catalogue` (Drizzle + Neon HTTP driver) and is wired to the port via NestJS dependency injection. Pulumi packages the esbuilt `dist/` exactly like `apps/handler-hello` today.
 
-**Tech Stack:** NestJS 11 (Express adapter) · `@codegenie/serverless-express` · `@nx/nest` 22.7.5 · esbuild (`@nx/esbuild`) + `@anatine/esbuild-decorators` · Drizzle ORM (`drizzle-orm/neon-http`) + `@neondatabase/serverless` + `drizzle-kit` · Pulumi (existing `LambdaWithUrl`) · Lambda Node 24 / arm64 · Jest + supertest.
+**Tech Stack:** NestJS 11 (Express adapter) · `@codegenie/serverless-express` · `@nx/nest` 22.7.5 · esbuild (`@nx/esbuild`) + `@anatine/esbuild-decorators` · Drizzle ORM (`drizzle-orm/neon-http`) + `@neondatabase/serverless` + `drizzle-kit` · Pulumi (existing `LambdaWithUrl` + Cognito) · Lambda Node 24 / arm64 · Cognito auth (`aws-jwt-verify`) · Jest + supertest.
 
 ---
 
@@ -31,7 +31,7 @@
 - `pattern` / `item_pattern` linking UI (ships empty until Beta content).
 - `audio`/`video` JSONB editing (only the `has_audio`/`has_video` booleans).
 - The generated `search` tsvector column — it is `GENERATED ALWAYS … STORED`, never written by CRUD; read-only in queries.
-- Auth (Cognito) — writes are protected by the existing **password gate** (cms-admin §4) for now; full Cognito is milestone M3.
+- ~~Auth deferred to Cognito M3~~ — **now IN scope (2026-06-16 review F14):** writes are gated by **Amazon Cognito**, provisioned in **Pulumi** (`aws.cognito.*`) and verified in the Lambda via `aws-jwt-verify`. Cognito's 10k-MAU tier is **always-free** ($0, no cliff). The cms-admin §4 shared-password gate is dropped. FE uses Authorization Code + PKCE (FE-session work).
 - The FE (design system / router) — being evaluated in a separate session; this plan defines only the **API contract** the Next.js catalogue will consume.
 
 ---
@@ -93,11 +93,13 @@ apps/catalogue-api/                     # NEW package (the Nest app)
   src/catalogue/create-catalogue-item.use-case.ts
   src/catalogue/update-catalogue-item.use-case.ts
   src/catalogue/archive-catalogue-item.use-case.ts
+  src/catalogue/cognito-auth.guard.ts   # Cognito JWT guard (aws-jwt-verify)
   src/catalogue/dto/*.dto.ts
   test/catalogue.e2e-spec.ts            # NestJS e2e (+ test/jest-e2e.json)
   project.json  tsconfig*.json  package.json  esbuild.config.cjs
 infra/lambda-with-url.stack.ts          # MODIFY: add memorySize/timeout/environment args + nodejs24.x default
 infra/index.ts                          # MODIFY: add catalogue-api LambdaWithUrl instance
+infra/cognito.stack.ts                  # NEW: Cognito user pool + app client (PKCE) + hosted UI domain (F14)
 infra/package.json                      # MODIFY: pulumi:preview/up also build catalogue-api (F8)
 infra/project.json                      # MODIFY: add catalogue-api to implicitDependencies (F8)
 tooling/check-layout.sh                 # MODIFY: +module suffix, exempt main.ts
@@ -120,7 +122,7 @@ package.json                            # MODIFY: add deps (see Task 0.1)
 | D4  | **Function URL**, not API Gateway, for v1                                       | Already in the repo; Always-Free vs API GW's 12-mo-only tier on this account                                                                                                      | Add API GW HTTP API when you need authorizers/throttling/usage-plans                            |
 | D5  | Cold-start: **SPA ping (primary) + 5-min EventBridge warmer (secondary)**       | Ping warms on real arrival ($0, no infra); warmer holds one instance hot off-peak. Skip Provisioned Concurrency ($); no SnapStart (Node unsupported)                              | —                                                                                               |
 | D6  | **Keep all four enforcement guards**; extend two                                | Nest's boundaries are *runtime/DI*; the static guards are orthogonal and are the hexagon lesson. Only `check-layout.sh` + one depcruise/ESLint rule need edits                    | —                                                                                               |
-| D7  | CRUD writes gated by the **existing password gate** (cms-admin §4), not Cognito | Cognito is M3; keeps this slice shippable                                                                                                                                         | —                                                                                               |
+| D7  | CRUD writes gated by **Amazon Cognito** (Pulumi-managed), verified via `aws-jwt-verify` | Amplify Auth *is* Cognito; the 10k-MAU tier is always-free ($0); Pulumi-managed fits the locked IaC (no parallel stack) — real auth now (2026-06-16 review F14)                                                                                                                                         | —                                                                                               |
 
 ---
 
@@ -148,7 +150,7 @@ pnpm add -D -w @nx/nest@22.7.5 @nx/esbuild@22.7.5
 # Nest runtime
 pnpm add -w @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 reflect-metadata rxjs
 # Lambda bridge + validation
-pnpm add -w @codegenie/serverless-express class-validator class-transformer
+pnpm add -w @codegenie/serverless-express class-validator class-transformer aws-jwt-verify
 # Data layer
 pnpm add -w drizzle-orm @neondatabase/serverless
 pnpm add -D -w drizzle-kit @anatine/esbuild-decorators
@@ -416,7 +418,10 @@ const catalogueApi = new LambdaWithUrl('catalogue-api', {
   code: new pulumi.asset.FileArchive('../apps/catalogue-api/dist'),
   memorySize: 1024,
   timeout: 15,                                                // first cold request may also wake Neon
-  environment: { DB_URL_PARAM: '/notation-hero/catalogue/database-url' },  // SSM param NAME only — value fetched in main.ts (F7 / Task 0.6a)
+  environment: {
+    DB_URL_PARAM: '/notation-hero/catalogue/database-url',   // SSM param NAME only — value fetched in main.ts (F7 / Task 0.6a)
+    COGNITO_USER_POOL_ID: adminPool.id, COGNITO_CLIENT_ID: adminClient.id,  // for aws-jwt-verify (Task 2.1 / F14)
+  },
   ssmParameterArns: [dbUrlParamArn],                          // arn:aws:ssm:<region>:<acct>:parameter/notation-hero/catalogue/database-url — scoped grant (F7)
 });
 export const catalogueApiUrl = catalogueApi.url;
@@ -586,11 +591,15 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 ---
 
-## Phase 2 — CREATE + UPDATE (password-gated)
+## Phase 2 — CREATE + UPDATE (Cognito-gated)
 
-### Task 2.1: Password gate guard
+### Task 2.0: Provision Cognito (Pulumi) — admin auth
 
-- [ ] Implement a Nest guard (`apps/catalogue-api/src/catalogue/admin.guard.ts`) that checks the cms-admin §4 shared password header on **all writes** and on the gated admin-read (which returns ALL statuses, decision F1). Hardening (F12): compare with `**crypto.timingSafeEqual**` (constant-time, equal-length buffers), enforce a **fixed minimum failure response time** (kill the timing side-channel), and add a **module-scope per-IP attempt counter** returning 429 after N failures (resets on cold start — acceptable at M0–M2 scale; or rely on a CloudFront WAF rate rule). Mark the guard as the intentional **Cognito-replacement seam** (M3). TDD: failing test for 401 without the header → implement → pass → commit.
+- [ ] Provision a Cognito **User Pool** + **App Client** (PKCE: `allowedOauthFlows: ['code']`, `allowedOauthFlowsUserPoolClient: true`, callback URLs) + **Hosted UI domain** in Pulumi (`infra/cognito.stack.ts` — `aws.cognito.UserPool`/`UserPoolClient`/`UserPoolDomain`, ~80 lines, `type:infra`). Output `userPoolId`/`clientId`/`domain` for the Lambda env (Task 0.6) + the FE. Cognito's 10k-MAU tier is **always-free** ($0). Single source of truth in Pulumi — no Amplify/parallel stack. **FE (separate session):** Authorization Code + **PKCE** against the Hosted UI → send the `access_token` as a `Bearer` header to the API. Commit.
+
+### Task 2.1: Cognito JWT auth guard
+
+- [ ] Implement a Nest guard (`apps/catalogue-api/src/catalogue/cognito-auth.guard.ts`) that verifies a **Cognito access-token** (`Bearer` header) on **all writes** and on the gated admin-read (which returns ALL statuses, decision F1). Use **`aws-jwt-verify`** (AWS Labs, 0 deps): construct `CognitoJwtVerifier.create({ userPoolId, tokenUse: 'access', clientId })` at **module scope** (JWKS cache survives warm invocations), then `await verifier.verify(token)` in `canActivate` (throws → 401). The cms-admin §4 shared-password gate is dropped. TDD: failing test for 401 without a valid token → implement → pass → commit.
 
 ### Task 2.2: Create
 
