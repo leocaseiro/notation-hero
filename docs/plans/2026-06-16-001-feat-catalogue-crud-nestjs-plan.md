@@ -6,7 +6,7 @@
 
 **Architecture:** One NestJS app (`apps/catalogue-api`) wrapped for Lambda with `@codegenie/serverless-express` (cached-server pattern) behind the existing Lambda Function URL + CloudFront. The domain lives in a framework-free `core/catalogue` library (ports/entities); the Neon data access lives in `adapters/neon-catalogue` (Drizzle + Neon HTTP driver) and is wired to the port via NestJS dependency injection. Pulumi packages the esbuilt `dist/` exactly like `apps/handler-hello` today.
 
-**Tech Stack:** NestJS 11 (Express adapter) · `@codegenie/serverless-express` · `@nx/nest` 22.7.5 · esbuild (`@nx/esbuild`) + `@anatine/esbuild-decorators` · Drizzle ORM (`drizzle-orm/neon-http`) + `@neondatabase/serverless` + `drizzle-kit` · Pulumi (existing `LambdaWithUrl`) · Lambda Node 22 / arm64 · Jest + supertest.
+**Tech Stack:** NestJS 11 (Express adapter) · `@codegenie/serverless-express` · `@nx/nest` 22.7.5 · esbuild (`@nx/esbuild`) + `@anatine/esbuild-decorators` · Drizzle ORM (`drizzle-orm/neon-http`) + `@neondatabase/serverless` + `drizzle-kit` · Pulumi (existing `LambdaWithUrl`) · Lambda Node 24 / arm64 · Jest + supertest.
 
 ---
 
@@ -94,8 +94,10 @@ apps/catalogue-api/                     # NEW package (the Nest app)
   src/catalogue/dto/*.dto.ts
   test/catalogue.e2e-spec.ts            # NestJS e2e (+ test/jest-e2e.json)
   project.json  tsconfig*.json  package.json  esbuild.config.cjs
-infra/lambda-with-url.stack.ts          # MODIFY: add memorySize + timeout args
+infra/lambda-with-url.stack.ts          # MODIFY: add memorySize/timeout/environment args + nodejs24.x default
 infra/index.ts                          # MODIFY: add catalogue-api LambdaWithUrl instance
+infra/package.json                      # MODIFY: pulumi:preview/up also build catalogue-api (F8)
+infra/project.json                      # MODIFY: add catalogue-api to implicitDependencies (F8)
 tooling/check-layout.sh                 # MODIFY: +module suffix, exempt main.ts
 .dependency-cruiser.cjs                 # MODIFY: add no-core-to-nestjs; main.ts in no-orphan allowlist
 core/catalogue/eslint config            # core ESLint deny-list: add @nestjs/*
@@ -255,7 +257,7 @@ pnpm exec nx g @nx/js:library neon-catalogue --directory=adapters/neon-catalogue
 
 Replace the generated `apps/catalogue-api/project.json` `build` target with `@nx/esbuild:esbuild` (CJS, `platform: node`, single bundle, `FileArchive`-friendly `dist/`). Key options:
 - **`outputFileName: 'main.js'`** — keep NestJS's `main.ts` entry, so the bundle is `dist/main.js` and the Pulumi handler is **`main.handler`** (resolves Open Q1; aligned in Task 0.6). [F6]
-- **`target: 'node22'`** — revisit if the repo bumps to Node 24 (see Open Questions). [F4b]
+- **`target: 'node24'`** — Node 24 (Active LTS); the repo-wide bump (handler-hello, infra default, `engines`, CI) is a prerequisite chore — verify `nodejs24.x` in `ap-southeast-2`. [F4b]
 - **`dist/package.json` must contain `{"type":"commonjs"}`** — REQUIRED because the workspace root is `"type":"module"`, so without it Node loads the CJS bundle as ESM and the Lambda crashes at import (`require is not defined`). Achieve via `@nx/esbuild`'s `generatePackageJson` or a post-build write step, mirroring handler-hello's shim. [F4]
 
 Add the decorator-metadata plugin + externals via `esbuild.config.cjs`:
@@ -265,7 +267,7 @@ Add the decorator-metadata plugin + externals via `esbuild.config.cjs`:
 const { esbuildDecorators } = require('@anatine/esbuild-decorators');
 module.exports = {
   bundle: true, minify: true, treeShaking: true,
-  format: 'cjs', platform: 'node', target: 'node22',
+  format: 'cjs', platform: 'node', target: 'node24',
   plugins: [esbuildDecorators()],          // esbuild does NOT emit decorator metadata without this
   external: [
     '@aws-sdk/*',                           // present in the Lambda runtime
@@ -390,11 +392,11 @@ git add apps/catalogue-api/src
 git commit -m "feat(catalogue-api): cached-server lambda bootstrap + /health (NH-177)"
 ```
 
-### Task 0.6: Wire the Lambda in Pulumi (+ memory/timeout args)
+### Task 0.6: Wire the Lambda in Pulumi (+ memory/timeout/env/runtime args)
 
-**Files:** Modify `infra/lambda-with-url.stack.ts` (add `memorySize`, `timeout` args + widen CORS verbs); modify `infra/index.ts` (add instance).
+**Files:** Modify `infra/lambda-with-url.stack.ts` (add `memorySize`/`timeout`/`environment` args, `nodejs24.x` default, widen CORS verbs); `infra/index.ts` (add instance); `infra/package.json` + `infra/project.json` (build catalogue-api on deploy).
 
-- [ ] **Step 1: Add `memorySize` + `timeout` args to `LambdaWithUrl`** (keep existing `arm64`). Default the new args so `handler-hello` is unaffected; set the catalogue instance to `memorySize: 1024, timeout: 15`.
+- [ ] **Step 1: Extend `LambdaWithUrl` args + set the catalogue instance** (keep existing `arm64`). Add three OPTIONAL args to `LambdaWithUrlArgs` — `memorySize?`, `timeout?`, and `environment?: pulumi.Input<Record<string, pulumi.Input<string>>>` — and wire `environment` into the `aws.lambda.Function` (`environment: { variables: args.environment }`; it is not passed today). Default all three so `handler-hello` is unaffected. Set the catalogue instance to `memorySize: 1024, timeout: 15, runtime: 'nodejs24.x'` (Node 24 — also bump the `LambdaWithUrl` default + repo `engines`/`@types/node`/CI as a prerequisite chore; verify `nodejs24.x` in `ap-southeast-2`). [F5, F4b]
 
 - [ ] **Step 2: Widen the Function URL CORS** from `allowMethods: ["GET"]` to `["GET","POST","PUT","PATCH","DELETE","OPTIONS"]`; keep `allowOrigins: ["*"]` for now (tighten to the CloudFront origin in Phase 4).
 
@@ -402,14 +404,18 @@ git commit -m "feat(catalogue-api): cached-server lambda bootstrap + /health (NH
 
 ```ts
 const catalogueApi = new LambdaWithUrl('catalogue-api', {
+  functionName: 'notation-hero-catalogue-api',               // REQUIRED (deterministic LogGroup name)
   handler: 'main.handler',                                    // matches dist/main.js (NestJS entry; Open Q1 resolved)
+  runtime: 'nodejs24.x',                                      // Node 24 (Active LTS); bump repo default too
   code: new pulumi.asset.FileArchive('../apps/catalogue-api/dist'),
   memorySize: 1024,
   timeout: 15,                                                // first cold request may also wake Neon
-  environment: { DATABASE_URL: catalogueDbUrlSsm },           // SSM SecureString -> env (Phase 1)
+  environment: { DATABASE_URL: catalogueDbUrlSsm },           // SSM SecureString -> resolved env (Task 0.6a / F7)
 });
 export const catalogueApiUrl = catalogueApi.url;
 ```
+
+- [ ] **Step 3b: Make `infra:preview`/`up` build catalogue-api** — change `infra/package.json` `pulumi:preview`/`pulumi:up` from `nx build @notation-hero/handler-hello && pulumi …` to also build catalogue-api (e.g. `nx run-many --target=build --projects=@notation-hero/handler-hello,@notation-hero/catalogue-api && pulumi …`), and add `@notation-hero/catalogue-api` to `infra/project.json` `implicitDependencies` — otherwise `infra:up` packages a stale `dist`. [F8]
 
 - [ ] **Step 4: Build + preview (no apply yet)**
 
