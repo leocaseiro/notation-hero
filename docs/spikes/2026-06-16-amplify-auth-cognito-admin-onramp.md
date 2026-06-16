@@ -14,13 +14,13 @@
 
 2. **Cost is a non-issue.** Cognito's free tier is **10,000 monthly-active-users, always-free** (does *not* expire after 12 months). The admin tool has ~1–5 users → **$0/month, forever**, and it sits *outside* the account's $200-credit / 12-month window. Amplify adds **no** separate auth bill (only Amplify *Hosting* bills separately — already rejected).
 
-3. **Day 1 you already get the full flow.** Cognito **Hosted UI** ships sign-up, sign-in, sign-out, password reset/recovery, email/phone verification and MFA as AWS-hosted pages — **zero front-end auth code** — whether the pool is made by Amplify or Pulumi.
+3. **Day 1 you already get the full flow.** Cognito **Hosted UI** ships sign-up, sign-in, sign-out, password reset/recovery, email/phone verification and MFA as AWS-hosted pages — **zero front-end auth code** — whether the pool is made by Amplify or Pulumi. *(Social/third-party sign-in is supported too, but each provider is a ~15–30 min per-provider setup — not free day-1; see §2.)*
 
 4. **Effort for the admin gate ≈ ½–1 day** end-to-end, dominated by front-end callback wiring + the Lambda token check — **not** the ~1-week M1 *user* auth scope ([NH-45](https://leocaseiro.atlassian.net/browse/NH-45)). See §7.
 
 5. **🟦 DECIDE — provisioning path.** Recommendation: **B — Cognito in Pulumi + Hosted UI** (stays in IaC, *is* the learning, no migration debt). **A — Amplify `defineAuth`** is a legit *momentum shortcut* but adds a parallel CloudFormation stack + a later `pulumi import`. **C — console click-ops** = worst fit. See §6.
 
-6. **🟦 DECIDE — now vs defer**, and note the Lambda guard is **blocked on the Fastify-vs-NestJS** back-end choice (§9).
+6. **🟦 DECIDE — now vs defer.** (The Lambda guard uses `aws-jwt-verify` on whichever back-end framework lands — leo is handling the Fastify-vs-NestJS call separately; not a blocker tracked here. §9.)
 
 ---
 
@@ -42,6 +42,16 @@ Cognito's **Hosted UI** is an AWS-hosted set of pages at `https://<domain>.auth.
 - Social-IdP buttons (only if you configure them — not needed for admin)
 
 You redirect to it and handle the OAuth callback. This is a **Cognito** feature, not an Amplify one — so "use the built-in flow temporarily" works on any provisioning path. (The `aws-amplify` client lib will *handle the callback + token refresh for you*; without it you write ~an hour of OAuth-callback handling, or drop in a small OIDC client.)
+
+### Social / third-party sign-in — supported, not zero-config
+
+Hosted UI **can** show "Sign in with …" buttons, but each provider is a **one-time setup**, not a day-1 freebie:
+
+- **Built-in social IdPs:** Google, Facebook, Login with Amazon, Sign in with Apple (+ legacy Twitter/X). Microsoft/Entra and most others via generic **OIDC** or **SAML 2.0**.
+- **GitHub is the notable gap** — *not* built-in, and GitHub isn't OIDC-compliant, so it needs a custom OIDC shim/proxy (real work). Budget for it separately if "Login with GitHub" matters.
+- **Per-provider effort:** register an OAuth app on the provider side + add the IdP to the pool + map attributes (~15–30 min each). Once configured, **Hosted UI renders the buttons automatically** — still no UI code.
+
+**For the admin gate you almost certainly don't want social at all** — email/password (or a single "Sign in with Google" restricted to your address) is plenty for ~2 internal users. **Social login is really an M1 _end-user_ concern** ([NH-45](https://leocaseiro.atlassian.net/browse/NH-45)) — wiring Google + PKCE + the Capacitor redirect is part of *why* M1 is ~a week, not ~a day (§7).
 
 ## 3. How it wires into the stack
 
@@ -121,13 +131,14 @@ Because every path lands on Cognito, "migrating off Amplify later" is really **m
 
 1. **Provisioning path** — **A** (Amplify shortcut) / **B** (Cognito-in-Pulumi, *recommended*) / **C** (console). §6.
 2. **Now vs defer** — stand the admin gate up this week, or leave it for when the admin CMS ([NH-122](https://leocaseiro.atlassian.net/browse/NH-122)) is built. Today the K-2 admin gate is specced as **CloudFront Basic Auth**; this spike is the case for upgrading it to a Cognito Hosted-UI gate at ~the same effort.
-3. **Back-end framework** — the Lambda guard (Phase 4) is **blocked on Fastify-vs-NestJS** ([fe-framework-nextjs spike](./2026-06-16-fe-framework-nextjs.md) settled the FE = Next.js; the BE framework is still open). Difficulty is identical either way (`aws-jwt-verify`), but the middleware can't be written until it's picked.
+3. **Back-end framework** — the Lambda guard (Phase 4) uses `aws-jwt-verify` regardless of Fastify vs NestJS (identical difficulty). **leo is handling the BE-framework decision separately** ([fe-framework-nextjs spike](./2026-06-16-fe-framework-nextjs.md) settled FE = Next.js) — not a blocker tracked here; the guard slots into whichever lands.
 
 ## Sources
 
 - [Amazon Cognito pricing](https://aws.amazon.com/cognito/pricing/) (10k MAU always-free)
 - [Use existing Cognito resources — Amplify Gen 2](https://docs.amplify.aws/react/build-a-backend/auth/use-existing-cognito-resources/)
 - [aws-jwt-verify](https://github.com/awslabs/aws-jwt-verify)
+- [Cognito social identity providers (Google/Facebook/Amazon/Apple + OIDC/SAML)](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-pools-social-idp.html)
 - [AWS Free Tier: $200 credits + 6-month plan (Jul 2025)](https://aws.amazon.com/about-aws/whats-new/2025/07/aws-free-tier-credits-month-free-plan/)
 
 > **No ADR yet** — this is evidence + a recommendation. Promote to a `docs/decisions/` ADR (+ decision-registry row) **if/when** leo locks the admin-gate provisioning path.
