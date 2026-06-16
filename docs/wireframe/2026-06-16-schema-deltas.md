@@ -141,7 +141,26 @@ Nothing changes unilaterally.
 
 ---
 
-### Open (need your call): SD-1 · SD-2 · SD-3 · SD-12
-### Build in v1.3: SD-10 (sort dir) · SD-11 (flag filters) · N-14 (level bands)
-### Resolved: SD-4 (no change) · SD-5 (derive) · SD-6 (numbered) · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional, revisit per N-13)
-*(SD-7/8/9 are filter-side or one-line CHECK changes — the item schema stayed almost entirely intact, as you predicted. I'll apply the resolved ones to the locked spec on your go, with a changelog line each.)*
+## Round-2 resolutions (2026-06-16)
+
+- **SD-1 → RESOLVED:** Fills = **`pattern.kind`**, *not* a `lesson_type`. *UI follow-up:* drop "Fills" from the
+  Lessons **Kind** filter; patterns (beats / fills / rudiments) get a future **Patterns browse** (the `pattern`
+  table already exists). Wireframe keeps a placeholder until that browse is designed.
+- **SD-3 → DIRECTION:** add **`owner_id`** + a **`visibility`** enum to user-uploads — `public` (curated /
+  shared) · `private` (owner-only) · `shared` / friends *(TBD)*. This is the per-item ACL. Full model lands
+  with auth / CRUD; wireframe shows a "Private" tag on a user's own uploads.
+- **SD-10 → OPEN QUESTIONS:** sort direction (asc / desc) deferred (your call).
+- **SD-11 → v1.3 (deferred):** flag filters (audio / video / parts) — batched, not now.
+- **SD-12 → BUILDING (client-side):** score filter + sort-by-score wireframed client-side (per-user caveat
+  shown in-UI); the real impl needs the DynamoDB join (per SD-4).
+- **N-16 — indexes (your PS):** per-sort indexes + (if keyset is ever revisited) e.g.
+  `CREATE INDEX ci_keyset ON catalogue_item (updated_at DESC, id DESC)` — go in the spec when deltas are
+  applied. We chose numbered `OFFSET` pagination (SD-6), so keyset is optional.
+
+---
+
+### 🔵 Open (need your call): SD-2 (song→breakdown link) · SD-3 (visibility model TBD) · SD-12 (impl) · SD-10 / SD-11 (deferred)
+### ✅ Resolved: SD-1 (fills=pattern) · SD-4 · SD-5 · SD-6 · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional)
+*(**Applying** resolved deltas to the locked spec is a SEPARATE deliberate pass — on your go, a changelog line
+each, likely after CRUD. The item schema stayed almost entirely intact, as you predicted — most changes are
+filter-side.)*
