@@ -180,11 +180,29 @@ Nothing changes unilaterally.
   sections (no "Practice in parts"). UI adapts; publish gate unchanged (a lesson needs ≥1 `exercise`). UI +
   validation note, not a structural change.
 
+## Round-4 — fill-lessons, descriptions, per-step scores (2026-06-16)
+
+- **SD-1 REFINED (reopen):** a **lesson can teach a fill**, like a beat/rudiment — so **`lesson_type` *does*
+  include `'fill'`** (what the lesson drills) **AND** `pattern.kind='fill'` is the pattern entity it links to.
+  They **coexist** (not either/or). *Action:* restore the **Fills** Lessons sub-kind + fill-lessons (the v1.2
+  removal over-corrected). `lesson_type ∈ {beat, rudiment, fill, song-breakdown}`; `pattern.kind ∈ {beat, fill,
+  rudiment, …}`.
+- **SD-19 — Lesson description ("what you'll learn").** Lesson-level blurb (distinct from per-step SD-17). Add
+  `description` to `catalogue_item` (or `data.description`); shown on lesson detail.
+- **SD-20 — ⭐ Per-PART / per-STEP score (per-user).** Best-score is per *item* today; show the donut on **each
+  song part** + **each lesson step**. Implies per-user scoring at **section/step granularity** (DynamoDB, e.g.
+  `user#item#step`), joined client-side — not catalogue. Also **Play → "Continue"** when partially done.
+- **SD-21 — Per-user 'completed' flag + reset-score-keep-history.** Mark items/steps completed; let a user
+  **clear the current best but keep attempt history**. Per-user (DynamoDB) — extra joins, not catalogue.
+- **SD-15 note (voicing legend):** kit-piece icons (hi-hat·kick·snare·toms·crash·ride) marking active voices per
+  part/step — built as **our own** glyphs (teal/Material), **not** a copy of any competitor's; competitor names
+  stay out of repo docs (project rule).
+
 ---
 
-### 🔵 Open (need your call): SD-2 (song→breakdown link) · SD-3 (visibility TBD) · SD-12 (impl) · SD-15 (voicing — design) · SD-16 (repeated parts)
-### 🟢 Building (v1.4): SD-13 (artist) · SD-14 (pattern browse) · SD-17 (step desc) · SD-18 (no-step UI) · SD-15/16 (sample/light to validate)
-### ✅ Resolved: SD-1 (fills=pattern) · SD-4 · SD-5 · SD-6 · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional)
+### 🔵 Open (need your call): SD-2 · SD-3 (visibility) · SD-12 (impl) · SD-15 (voicing design) · SD-16 (repeated parts) · SD-20 (per-step scoring) · SD-21 (completed/reset)
+### 🟢 Building (v1.4 — "build all"): SD-1 (restore Fills) · SD-13 (artist) · SD-14 (pattern detail) · SD-17 (step desc) · SD-19 (lesson desc) · SD-18 (no-step UI) · SD-15/16/20 (sample/light)
+### ✅ Resolved: SD-4 · SD-5 · SD-6 · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional)
 *(**Applying** resolved deltas to the locked spec is a SEPARATE deliberate pass — on your go, a changelog line
 each, likely after CRUD. The item schema stayed almost entirely intact, as you predicted — most changes are
 filter-side.)*
