@@ -1,6 +1,8 @@
-<!-- Keep the Jira key (NH-<n>, or legacy KAN-<n>) in the PR TITLE too, e.g.
-     "[NH-16] Add the PR checklist gate". The key in the title/branch/commits is
-     what populates the Jira Development panel. -->
+<!-- Keep the Jira key (NH-<n>, or legacy KAN-<n>) in the PR TITLE too. The title must be
+     a valid Conventional Commit — commitlint runs in the `pr-title` gate — so put the key
+     in PARENTHESES at the end, e.g. "feat: add the PR checklist gate (NH-16)". Do NOT use a
+     "[NH-16] …" prefix: commitlint rejects it (type-empty / subject-empty). The key in the
+     title/branch/commits is what populates the Jira Development panel. -->
 
 ## What & why
 
