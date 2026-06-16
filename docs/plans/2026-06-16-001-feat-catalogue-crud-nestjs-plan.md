@@ -396,7 +396,7 @@ git commit -m "feat(catalogue-api): cached-server lambda bootstrap + /health (NH
 
 **Files:** Modify `infra/lambda-with-url.stack.ts` (add `memorySize`/`timeout`/`environment` args, `nodejs24.x` default, widen CORS verbs); `infra/index.ts` (add instance); `infra/package.json` + `infra/project.json` (build catalogue-api on deploy).
 
-- [ ] **Step 1: Extend `LambdaWithUrl` args + set the catalogue instance** (keep existing `arm64`). Add three OPTIONAL args to `LambdaWithUrlArgs` — `memorySize?`, `timeout?`, and `environment?: pulumi.Input<Record<string, pulumi.Input<string>>>` — and wire `environment` into the `aws.lambda.Function` (`environment: { variables: args.environment }`; it is not passed today). Default all three so `handler-hello` is unaffected. Set the catalogue instance to `memorySize: 1024, timeout: 15, runtime: 'nodejs24.x'` (Node 24 — also bump the `LambdaWithUrl` default + repo `engines`/`@types/node`/CI as a prerequisite chore; verify `nodejs24.x` in `ap-southeast-2`). [F5, F4b]
+- [ ] **Step 1: Extend `LambdaWithUrl` args + set the catalogue instance** (keep existing `arm64`). Add three OPTIONAL args to `LambdaWithUrlArgs` — `memorySize?`, `timeout?`, and `environment?: pulumi.Input<Record<string, pulumi.Input<string>>>` — and wire `environment` into the `aws.lambda.Function` (`environment: { variables: args.environment }`; it is not passed today). Default all three so `handler-hello` is unaffected. Set the catalogue instance to `memorySize: 1024, timeout: 15, runtime: 'nodejs24.x'` (Node 24 — also bump the `LambdaWithUrl` default + repo `engines`/`@types/node`/CI as a prerequisite chore; verify `nodejs24.x` in `ap-southeast-2`). Also add `ssmParameterArns?: pulumi.Input<string>[]` — when set, attach an inline `RolePolicy` granting `ssm:GetParameter` on those ARNs + `kms:Decrypt`; the catalogue instance passes its DB-URL param ARN so the Lambda reads the SecureString at runtime. [F5, F4b, F7]
 
 - [ ] **Step 2: Widen the Function URL CORS** from `allowMethods: ["GET"]` to `["GET","POST","PUT","PATCH","DELETE","OPTIONS"]`; keep `allowOrigins: ["*"]` for now (tighten to the CloudFront origin in Phase 4).
 
@@ -410,7 +410,8 @@ const catalogueApi = new LambdaWithUrl('catalogue-api', {
   code: new pulumi.asset.FileArchive('../apps/catalogue-api/dist'),
   memorySize: 1024,
   timeout: 15,                                                // first cold request may also wake Neon
-  environment: { DATABASE_URL: catalogueDbUrlSsm },           // SSM SecureString -> resolved env (Task 0.6a / F7)
+  environment: { DB_URL_PARAM: '/notation-hero/catalogue/database-url' },  // SSM param NAME only — value fetched in main.ts (F7 / Task 0.6a)
+  ssmParameterArns: [dbUrlParamArn],                          // arn:aws:ssm:<region>:<acct>:parameter/notation-hero/catalogue/database-url — scoped grant (F7)
 });
 export const catalogueApiUrl = catalogueApi.url;
 ```
@@ -432,6 +433,42 @@ Expected: `{"status":"ok"}` over HTTPS. **This is the M0 "I have a cloud backend
 ```bash
 git add infra
 git commit -m "feat(infra): deploy catalogue-api lambda (function url, 1024mb/15s, crud cors) (NH-177)"
+```
+
+---
+
+### Task 0.6a: Resolve `DATABASE_URL` from SSM at cold start (runtime fetch — F7 approach 2️⃣)
+
+**Files:** Modify `apps/catalogue-api/src/main.ts` (cold-start SSM fetch). The SecureString is created out-of-band (value never in repo/CI logs/Pulumi state).
+
+- [ ] **Step 1: One-time — create the SecureString** (before the first DB-touching deploy):
+
+```bash
+aws ssm put-parameter --name /notation-hero/catalogue/database-url \
+  --type SecureString --value '<neon POOLED connection string>' --region ap-southeast-2
+```
+
+- [ ] **Step 2: Fetch + cache in `main.ts` BEFORE `NestFactory.create`** (so the Task 1.2 Drizzle client sees a populated `process.env.DATABASE_URL`). `@aws-sdk/client-ssm` is externalized (present in the Lambda runtime — not bundled):
+
+```ts
+import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
+async function loadDbUrl(): Promise<void> {
+  if (process.env.DATABASE_URL) return;                       // warm reuse — fetch once per cold start
+  const ssm = new SSMClient({});
+  const out = await ssm.send(new GetParameterCommand({ Name: process.env.DB_URL_PARAM!, WithDecryption: true }));
+  process.env.DATABASE_URL = out.Parameter!.Value!;
+}
+// in bootstrap(), as the FIRST statement inside the `if (!cachedServer)` block:
+await loadDbUrl();
+```
+
+> Role grant (`ssm:GetParameter` on the param ARN + `kms:Decrypt`) comes from `LambdaWithUrl`'s `ssmParameterArns` (Task 0.6 Step 1). The warmer short-circuits before `bootstrap()` (Task 4.3), so warmer pings never pay the SSM fetch. The plaintext URL never lands in Pulumi state, the Lambda env config, or the repo — only the param NAME does. [F7]
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add apps/catalogue-api/src/main.ts
+git commit -m "feat(catalogue-api): resolve DATABASE_URL from SSM at cold start (NH-177)"
 ```
 
 ---
@@ -496,7 +533,7 @@ export interface CatalogueRepositoryPort {
 import { drizzle } from 'drizzle-orm/neon-http';
 import { neon } from '@neondatabase/serverless';
 import * as schema from './schema/catalogue-item.schema';
-const sql = neon(process.env.DATABASE_URL!);        // pooled (-pooler) endpoint at runtime
+const sql = neon(process.env.DATABASE_URL!);        // pooled (-pooler); populated by main.ts loadDbUrl() at cold start (F7/Task 0.6a)
 export const db = drizzle(sql, { schema });          // module-scope singleton — reused across warm invocations
 export type Db = typeof db;
 ```
