@@ -92,7 +92,7 @@ apps/catalogue-api/                     # NEW package (the Nest app)
   src/catalogue/update-catalogue-item.use-case.ts
   src/catalogue/archive-catalogue-item.use-case.ts
   src/catalogue/dto/*.dto.ts
-  src/catalogue/catalogue.e2e.test.ts
+  test/catalogue.e2e-spec.ts            # NestJS e2e (+ test/jest-e2e.json)
   project.json  tsconfig*.json  package.json  esbuild.config.cjs
 infra/lambda-with-url.stack.ts          # MODIFY: add memorySize + timeout args
 infra/index.ts                          # MODIFY: add catalogue-api LambdaWithUrl instance
@@ -139,8 +139,8 @@ package.json                            # MODIFY: add deps (see Task 0.1)
 - [ ] **Step 1: Install runtime + dev deps**
 
 ```bash
-# Nx Nest plugin pinned to the repo's Nx version
-pnpm add -D -w @nx/nest@22.7.5
+# Nx Nest + esbuild plugins pinned to the repo's Nx version
+pnpm add -D -w @nx/nest@22.7.5 @nx/esbuild@22.7.5
 # Nest runtime
 pnpm add -w @nestjs/common@^11 @nestjs/core@^11 @nestjs/platform-express@^11 reflect-metadata rxjs
 # Lambda bridge + validation
@@ -166,18 +166,23 @@ git commit -m "chore(deps): add nestjs, serverless-express, drizzle + neon for c
 
 **Files:** Modify `tooling/check-layout.sh`; modify `tooling/pr-checklist`/decision-registry `NAME-suffix` row for governance sync.
 
-> **Why first:** `.module.ts` is not in `approved_suffix` and `main.ts` has no role suffix → the layout guard fails on the very first Nest commit (pre-commit + CI red).
+> **Why first:** `.module.ts`/`.schema.ts` are not in `approved_suffix`, `main.ts` has no role suffix, and `*.e2e-spec.ts` is neither an approved suffix nor an exempt test pattern → the layout guard fails on the very first Nest/Drizzle commit (pre-commit + CI red). The fix keeps every NestJS/Drizzle file at its idiomatic name and widens the guard — it does NOT rename framework files.
 
 - [ ] **Step 1: Write a failing fixture test**
 
-Add to `tooling/check-layout` fixtures (mirror existing fixture style) a file named `foo.module.ts` and `main.ts`, then run the guard.
+Add to `tooling/check-layout` fixtures (mirror existing fixture style): `foo.module.ts`, `main.ts`, `foo.schema.ts`, and `test/foo.e2e-spec.ts`, then run the guard.
 
 Run: `bash tooling/check-layout.sh` (or its test runner `node --test tooling/*.test.mjs` if a layout test exists)
-Expected: FAIL — `foo.module.ts` rejected (suffix not approved), `main.ts` rejected (no suffix, not index.ts).
+Expected: FAIL — `foo.module.ts`/`foo.schema.ts` rejected (suffix not approved), `main.ts` rejected (no suffix, not index.ts), `foo.e2e-spec.ts` rejected (suffix `e2e-spec` not approved + not yet exempt).
 
-- [ ] **Step 2: Add `module` (+ guard/pipe/interceptor/filter) to the approved suffix list and exempt `main.ts`**
+- [ ] **Step 2: Widen the guard for Nest + Drizzle idiomatic names (suffixes + entry + e2e specs)**
 
-In `tooling/check-layout.sh`, locate the `approved_suffix` regex (already includes `controller|service|dto|entity|repository|port|…`) and add `module|guard|pipe|interceptor|filter`. In the entry-file exemption (currently allows `index.ts`), add `main.ts`.
+In `tooling/check-layout.sh`:
+- **Role suffixes** — locate the `approved_suffix` regex (already includes `controller|service|dto|entity|repository|port|…`) and add `module|guard|pipe|interceptor|filter` (Nest elements) **and `schema`** (Drizzle table files, e.g. `catalogue-item.schema.ts`).
+- **Entry exemption** — in the Rule 2 entry-file exemption (currently allows `index.{ts,tsx,mts,cts}`), add `main.ts` (Nest's entry has no role suffix).
+- **e2e specs** — add `*.e2e-spec.*` to the Rule 2 test-file exemption so NestJS e2e specs pass. They don't trip Rule 3's co-located-sibling check (that fires only on `*.test.*`/`*.spec.*`, and e2e specs boot the whole app so they have no single source sibling), and Rule 1 allows a `test/` dir (only `__tests__/`/`__mocks__/`/`stories/` are banned).
+
+This adapts the guard to NestJS/Drizzle conventions rather than renaming framework files to fit the guard.
 
 - [ ] **Step 3: Re-run the guard**
 
@@ -186,11 +191,11 @@ Expected: PASS for `foo.module.ts` and `main.ts`.
 
 - [ ] **Step 4: Sync governance + commit**
 
-Update the `NAME-suffix` row note in [docs/decisions/decision-registry.md](../decisions/decision-registry.md) to record the added suffixes (per AGENTS.md "change-log in the same PR").
+Update the `NAME-suffix` row note in [docs/decisions/decision-registry.md](../decisions/decision-registry.md) to record the added suffixes (`module|guard|pipe|interceptor|filter|schema`) plus the `main.ts` entry and `*.e2e-spec.*` test exemptions (per AGENTS.md "change-log in the same PR").
 
 ```bash
 git add tooling/check-layout.sh docs/decisions/decision-registry.md
-git commit -m "build(tooling): allow nest module/guard suffixes + main.ts entry in layout guard (NH-177)"
+git commit -m "build(tooling): allow nest module/guard/schema suffixes + main.ts entry + e2e-spec tests in layout guard (NH-177)"
 ```
 
 ### Task 0.3: Add the `no-core-to-nestjs` boundary rule (keep `core` framework-free)
@@ -237,16 +242,23 @@ git commit -m "build(boundaries): forbid core -> @nestjs (keep domain framework-
 
 ```bash
 # app/library generators set the type:* tags the boundary rules need
-pnpm exec nx g @nx/nest:application catalogue-api --directory=apps/catalogue-api --tags=type:app --unitTestRunner=jest --e2eTestRunner=none
+pnpm exec nx g @nx/nest:application catalogue-api --directory=apps/catalogue-api --tags=type:app --unitTestRunner=jest --e2eTestRunner=jest
 pnpm exec nx g @nx/nest:library catalogue --directory=core/catalogue --tags=type:core --buildable
 pnpm exec nx g @nx/js:library neon-catalogue --directory=adapters/neon-catalogue --tags=type:adapter --buildable
 ```
 
-> `--e2eTestRunner=none`: the generated `test/` e2e dir would fail the layout guard. We co-locate a `*.e2e.test.ts` spec instead (Task 1).
+> `--e2eTestRunner=jest` (NestJS default): keeps Nest's standard e2e setup — `apps/catalogue-api/test/*.e2e-spec.ts` + `test/jest-e2e.json`. The layout guard is taught to exempt `*.e2e-spec.*` in Task 0.2 (a `test/` dir is allowed; only `__tests__/`/`__mocks__/`/`stories/` are banned), so no NestJS files get renamed to satisfy the guard.
 
-- [ ] **Step 2: Override the app build target to esbuild (generator defaults to webpack)**
+- [ ] **Step 2: Set the app build target to the Nx-native esbuild executor (generator defaults to webpack)**
 
-Replace the generated `apps/catalogue-api/project.json` `build` target with the `@nx/esbuild:esbuild` shape used by `apps/handler-hello` (CJS, `platform: node`, `target: node22`, single bundle, `FileArchive`-friendly `dist/`). Add the decorator-metadata plugin + externals via `esbuild.config.cjs`:
+> **Precedent note (corrected):** `apps/handler-hello` builds via a **raw `esbuild` CLI script** in its `package.json` (`esbuild src/index.ts … --outfile=dist/index.js && node -e "…writeFileSync('dist/package.json',{type:'commonjs'})"`) — it has **no Nx build target**, and `@nx/esbuild` is not yet a dependency. For catalogue-api, adopt the **Nx-native `@nx/esbuild:esbuild` executor** instead (Nx caching + `affected`); `@nx/esbuild@22.7.5` is added in Task 0.1. [F3]
+
+Replace the generated `apps/catalogue-api/project.json` `build` target with `@nx/esbuild:esbuild` (CJS, `platform: node`, single bundle, `FileArchive`-friendly `dist/`). Key options:
+- **`outputFileName: 'main.js'`** — keep NestJS's `main.ts` entry, so the bundle is `dist/main.js` and the Pulumi handler is **`main.handler`** (resolves Open Q1; aligned in Task 0.6). [F6]
+- **`target: 'node22'`** — revisit if the repo bumps to Node 24 (see Open Questions). [F4b]
+- **`dist/package.json` must contain `{"type":"commonjs"}`** — REQUIRED because the workspace root is `"type":"module"`, so without it Node loads the CJS bundle as ESM and the Lambda crashes at import (`require is not defined`). Achieve via `@nx/esbuild`'s `generatePackageJson` or a post-build write step, mirroring handler-hello's shim. [F4]
+
+Add the decorator-metadata plugin + externals via `esbuild.config.cjs`:
 
 ```js
 // apps/catalogue-api/esbuild.config.cjs
@@ -270,7 +282,7 @@ Set the app `tsconfig` to `experimentalDecorators: true, emitDecoratorMetadata: 
 - [ ] **Step 4: Verify each project is tagged + builds the empty skeleton**
 
 Run: `pnpm exec nx build catalogue-api`
-Expected: PASS — produces `apps/catalogue-api/dist/index.js` (or `main.js`; align the Pulumi `handler` name in Task 0.6).
+Expected: PASS — produces `apps/catalogue-api/dist/main.js` + `dist/package.json` `{"type":"commonjs"}`. The Pulumi `handler` is `main.handler` (Task 0.6).
 
 - [ ] **Step 5: Run the layout guard + boundaries on the new packages**
 
@@ -291,11 +303,11 @@ git commit -m "feat(catalogue): scaffold core/adapter/app hexagon packages for c
 - [ ] **Step 1: Write a failing e2e test for `/health`**
 
 ```ts
-// apps/catalogue-api/src/health/health.e2e.test.ts
+// apps/catalogue-api/test/health.e2e-spec.ts
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { INestApplication } from '@nestjs/common';
-import { AppModule } from '../app.module';
+import { AppModule } from '../src/app.module';
 
 describe('health', () => {
   let app: INestApplication;
@@ -390,7 +402,7 @@ git commit -m "feat(catalogue-api): cached-server lambda bootstrap + /health (NH
 
 ```ts
 const catalogueApi = new LambdaWithUrl('catalogue-api', {
-  handler: 'index.handler',                                   // match the esbuild output name
+  handler: 'main.handler',                                    // matches dist/main.js (NestJS entry; Open Q1 resolved)
   code: new pulumi.asset.FileArchive('../apps/catalogue-api/dist'),
   memorySize: 1024,
   timeout: 15,                                                // first cold request may also wake Neon
@@ -492,7 +504,7 @@ git commit -m "feat(catalogue): repository port + module-cached neon-http drizzl
 
 ### Task 1.3: List + detail (TDD)
 
-**Files:** Create `adapters/neon-catalogue/src/neon-catalogue.repository.ts`; `apps/catalogue-api/src/catalogue/*` (controller, use-cases, DTOs, `database.module.ts`, `catalogue.module.ts`); test `apps/catalogue-api/src/catalogue/catalogue.e2e.test.ts`.
+**Files:** Create `adapters/neon-catalogue/src/neon-catalogue.repository.ts`; `apps/catalogue-api/src/catalogue/*` (controller, use-cases, DTOs, `database.module.ts`, `catalogue.module.ts`); e2e test `apps/catalogue-api/test/catalogue.e2e-spec.ts`.
 
 - [ ] **Step 1: Failing e2e test** — `GET /catalogue` returns only `published` for public callers and the §9 list projection (no `data`, no `notation_key`); `GET /catalogue/:id` returns the full row. Use a seeded Neon test branch (or a fake repo bound to the port for the unit layer).
 
@@ -589,7 +601,7 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 | Risk | Likelihood / effort | Mitigation |
 |---|---|---|
-| `check-layout.sh` blocks the Nest app on first commit | HIGH / LOW | **Task 0.2 does this first**, before generating |
+| `check-layout.sh` blocks the Nest app on first commit (Nest `main.ts`/e2e specs, Drizzle `*.schema.ts`) | HIGH / LOW | **Task 0.2 does this first** — widens suffixes (+`schema`), exempts `main.ts` + `*.e2e-spec.*` — before generating |
 | esbuild silently drops decorator metadata → Nest DI + DTO validation break at runtime | HIGH / LOW | `@anatine/esbuild-decorators` plugin + `import 'reflect-metadata'` first + app-tsconfig `emitDecoratorMetadata` (Task 0.4) |
 | Generator scaffolds **webpack**, contradicting the esbuild Lambda convention + inflating cold start | HIGH / LOW-MED | Override build target to `@nx/esbuild:esbuild` immediately (Task 0.4) |
 | `isolatedDeclarations` (core) clashes with decorators | MED / MED | Keep ALL `@nestjs/*` + decorators in `apps/` (a leaf `tsc --noEmit` package); never in `core` — walled by `no-core-to-nestjs` |
@@ -602,7 +614,7 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 ## Enforcement / tooling — exact change set (principles preserved)
 
 - **KEEP** all four guards (`@nx/enforce-module-boundaries`, `eslint-plugin-boundaries`, `dependency-cruiser`, `check-layout.sh`) + lefthook/commitlint/gitleaks/semgrep — Nest's boundaries are *runtime*; these are the *static* hexagon walls (the lesson).
-- **EDIT 1 (Task 0.2):** `check-layout.sh` — `+module|guard|pipe|interceptor|filter` suffixes, exempt `main.ts`.
+- **EDIT 1 (Task 0.2):** `check-layout.sh` — add `module|guard|pipe|interceptor|filter|schema` suffixes, exempt `main.ts` (entry) and `*.e2e-spec.*` (NestJS e2e). Keeps every Nest/Drizzle file at its idiomatic name.
 - **EDIT 2 (Task 0.3):** add `no-core-to-nestjs` to `.dependency-cruiser.cjs` + `@nestjs/*` to the `core/` ESLint deny-list; add `apps/catalogue-api/src/main.ts` to the depcruise no-orphan entry allowlist (Lambda invokes it, nothing imports it — same as `handler-hello/src/index.ts`).
 - **`@nx/nest` usage:** `nx g @nx/nest:application|library` for the app/libs (sets tags), but **Nest CLI (`nest g`) for elements** (controllers/modules/DTOs) — `@nx/nest` will deprecate element wrappers in v23.
 
