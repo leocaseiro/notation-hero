@@ -1,14 +1,14 @@
 # Spike — Catalogue admin/user auth via AWS Cognito
 
 > **Status:** 🔬 SPIKE — open design questions, not yet decided. Surfaced by the 2026-06-16 `ce-doc-review` of the Catalogue CRUD plan; the plan records the *decision* (auth = Cognito) and defers the *design* here.
-> **Decision being designed:** writes (`POST/PUT/DELETE`) + admin-read on the catalogue API are gated by **AWS Cognito** (user pool, admin group) — replaces the rejected in-Lambda password idea. The same pool enables end-user auth later.
+> **Decision being designed:** writes (`POST/PUT/DELETE`) + admin-read on the catalogue API are gated by **AWS Cognito** (user pool, admin group) — the real auth from day one, **no interim admin shortcut**. The same pool enables end-user auth later.
 > **Owner:** leocaseiro · **Date:** 2026-06-17 · **Tickets:** NH-177 (K-3 API) / NH-122 (K-2 CMS)
 
 ---
 
 ## Why Cognito (decision context)
 
-- **Real auth, not a hack.** The earlier plan gated writes with a shared in-Lambda password (registry F2). Cognito replaces it with standard token auth — and the *same* user pool gives end-user accounts later ("user auth soon").
+- **Real auth, not a hack.** Cognito is the auth from the start — standard token auth, **no interim admin shortcut** — and the *same* user pool gives end-user accounts later ("user auth soon").
 - **$0, perpetual.** Cognito user pools are free for the first **50,000 MAUs** — perpetual, not a 6-month promo. **No "free-tier bomb," no Amplify, no migration step** (this supersedes the earlier "Amplify for 6 months then migrate to Cognito" idea).
 - **Pulumi-native.** A Cognito user pool is a first-class resource (`aws.cognito.UserPool`), so it lands in `infra/` alongside the Lambda — keeping **Pulumi the single IaC**. This resolves the NH-185 "no Amplify, Pulumi single IaC" decision cleanly: we are NOT using Amplify (hosting or IaC), only Cognito-the-service via Pulumi.
 

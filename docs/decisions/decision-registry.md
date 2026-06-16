@@ -10,6 +10,12 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-17 — Catalogue admin/user auth = Cognito (supersedes F2 in-Lambda password)
+
+Ratified by leocaseiro 2026-06-17 during the NH-177 catalogue-plan `ce-doc-review`: the catalogue API's admin/write auth is **AWS Cognito** (user pool + admin group, provisioned via Pulumi) — **NOT** a temporary in-Lambda admin password or any interim admin shortcut. This **supersedes the mechanism in the 2026-06-15 eng-review F2** ("in-lambda password on writes"); the **admin-gating requirement (F1) stands** — only the mechanism changes. The same pool enables end-user auth later. **No Amplify** (Cognito free tier = 50k MAUs, perpetual $0; keeps Pulumi the single IaC, consistent with NH-185). Detailed design (JWT verify path, group claims, FE token flow) in the spike [`../spikes/2026-06-17-catalogue-cognito-auth.md`](../spikes/2026-06-17-catalogue-cognito-auth.md).
+
+**Status:** 📄 prose-only (auth direction; no machine check). Implementation tracked under **NH-177** (K-3) / **NH-122** (K-2 CMS). The 2026-06-15 F2 "in-lambda password" line below is retained for history but is **superseded** by this entry.
+
 ### 2026-06-16 — NH-185 FE framework: Next.js (one source → SSR web / static Capacitor)
 
 Reverses the **FE-framework axis** of the 2026-06-02 stack-pick ("Vite + React; Next.js rejected"). Surfaced via `/ce-sessions`: that rejection was of **SSR** Next.js; **static-export + a one-source/two-targets build** was never evaluated, and it resolves the Capacitor conflict while delivering the job-hunt Next.js keyword + an SSR/hydration portfolio piece. ADR: [`2026-06-16-fe-framework-nextjs-adr.md`](2026-06-16-fe-framework-nextjs-adr.md); spike: [`../spikes/2026-06-16-fe-framework-nextjs.md`](../spikes/2026-06-16-fe-framework-nextjs.md).
