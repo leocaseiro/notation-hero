@@ -31,3 +31,11 @@ allowBuilds:
   # (transitive dep of the infra/ Pulumi program). Approve so a frozen CI install
   # stays green and `pulumi up` works (NH-150).
   protobufjs: true
+
+# Security overrides — force patched versions of transitive deps flagged by the CI
+# `deps-cve` gate (osv-scanner). pnpm 11 reads `overrides` here, NOT package.json's
+# `pnpm.overrides` (that field is ignored). The two Pulumi-transitive MAJOR-bump CVEs
+# (js-yaml, @opentelemetry/core) are deferred via osv-scanner.toml — see NH-191.
+overrides:
+  form-data: 4.0.6 # GHSA-hmw2-7cc7-3qxx (High 8.7); was 4.0.5
+  tmp: 0.2.7 # GHSA-7c78-jf6q-g5cm (High 8.2); was 0.2.6
