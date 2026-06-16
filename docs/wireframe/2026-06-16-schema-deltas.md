@@ -200,9 +200,24 @@ Nothing changes unilaterally.
 
 ---
 
-### 🔵 Open (need your call): SD-2 · SD-3 (visibility) · SD-12 (impl) · SD-15 (voicing design) · SD-16 (repeated parts) · SD-20 (per-step scoring) · SD-21 (completed/reset)
-### 🟢 Building (v1.4 — "build all"): SD-1 (restore Fills) · SD-13 (artist) · SD-14 (pattern detail) · SD-17 (step desc) · SD-19 (lesson desc) · SD-18 (no-step UI) · SD-15/16/20 (sample/light)
+## ⏸ PAUSED — Lesson ↔ Step ↔ Pattern model needs a brainstorm (2026-06-16)
+
+The READ-page review surfaced a model tangle worth a dedicated brainstorm (Leo's call; resuming tomorrow). See
+**`2026-06-16-brainstorm-prep-patterns-lessons.md`** for the framing. **v1.4 build is PAUSED** — building
+lesson/pattern UI on a fuzzy model = wasted work. v1.3 (songs + catalog/search/filters + READ) is solid.
+
+- **Core tension:** schema has `pattern` standalone + `item_pattern` (m:n) + `exercise` steps; Leo's UI model is
+  **"a Lesson = 1+ patterns"** (no standalone-pattern browse; Lessons = the browse: drums beats/fills/rudiments,
+  piano scales). Reconcile `exercise` (step) vs `pattern`.
+- **SD-22 — Load & go (OPEN):** drop a `.gp` → play now (private/draft, no required fields). Ties to SD-23.
+- **SD-23 — GP file = song OR pattern (flaw, OPEN):** a GuitarPro file isn't always a song — it can be a
+  pattern/groove. "Upload → always song" is too narrow. Upload must decide song vs pattern vs step.
+
+---
+
+### 🧠 Tomorrow: brainstorm Lesson↔Step↔Pattern + the GP-file role, THEN build v1.4 on the settled model.
 ### ✅ Resolved: SD-4 · SD-5 · SD-6 · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional)
+### 🔵 Open: SD-2 · SD-3 · SD-12 · SD-15 · SD-16 · SD-20 · SD-21 · SD-22 · SD-23 + the patterns/lessons model
 *(**Applying** resolved deltas to the locked spec is a SEPARATE deliberate pass — on your go, a changelog line
 each, likely after CRUD. The item schema stayed almost entirely intact, as you predicted — most changes are
 filter-side.)*
