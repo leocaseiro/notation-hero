@@ -21,17 +21,21 @@
 
 ## Checklist
 
-<!-- The `pr-checklist` CI gate fails on any BLANK box: every `required:`/`warn:` item
-     must be ticked [x] OR have "N/A" written on its line. `required:` = do it;
-     `warn:` = address, or consciously skip by writing "N/A — reason" on the line.
-     A real NH-/KAN- key must also appear in the title, body, or branch.
-     EDITORS: never put the literal "N/A" inside an item's label — it is the reserved
-     skip marker the gate looks for. -->
+<!-- The `pr-checklist` CI gate fails unless EVERY box below is ticked [x]. There is no
+     "N/A": these are standing acknowledgements (each stays true whether or not its
+     condition applies), so tick them all. A real NH-#### (or legacy KAN-####) key must
+     also appear in the PR title, body, or branch. Do NOT delete or reword items — the
+     gate reads them from this template and fails if any is missing. -->
 
-- [ ] required: Links a Jira ticket — full URL to NH-#### (or KAN-####) in the body
-- [ ] warn: Key in the PR title too, e.g. `[NH-16] …` (squash-merge uses the title)
-- [ ] warn: Decision log updated (docs/decisions change-log)
-- [ ] warn: Checked overlapping open PRs / worktrees; risks noted in the PR + Jira
-- [ ] required: Storybook story / VR added or updated if this PR changes UI
-- [ ] warn: If large (>~400 LOC) → explained why (baby commits within, not a hard cap)
-- [ ] CI Green
+- [ ] I am aware I must link a Jira ticket (NH-####) and keep its status updated through implementation, review, and merge.
+- [ ] I am aware I must write/maintain Storybook stories if this PR includes any UI changes.
+- [ ] I am aware I must add/update VR (visual-regression) tests if this PR includes any UI changes.
+- [ ] I am aware I must write/maintain tests if this PR includes any testable code changes.
+- [ ] I am aware I must update the decision log (docs/decisions) if this PR changes a decision or what's enforced.
+- [ ] I am aware I must update README.md / relevant docs with essential changes and the "why", for easy tracking later.
+- [ ] I am aware I must check for overlapping open PRs / worktrees and note any risks in the PR and Jira.
+- [ ] I am aware I must keep PRs small (baby commits), or explain why this one is large.
+- [ ] I have self-reviewed my own diff before requesting review.
+- [ ] I am aware I must call out any breaking changes or data migrations in the PR description.
+- [ ] I am aware I must not commit secrets, keys, or credentials.
+- [ ] I am aware I must not use --no-verify or skip CI gates.
