@@ -1,26 +1,25 @@
 #!/usr/bin/env node
-// tooling/pr-checklist.mjs — NH-16 v1 "agent PR merge checklist" gate (hardened).
+// tooling/pr-checklist.mjs — NH-16 "agent PR merge checklist" gate (v1.1).
 //
 // Runs in CI on pull_request (see .github/workflows/ci.yml `pr-checklist` job).
-// Three checks, all derived from the PR — no repo writes, no third-party action:
+// Two checks, both derived from the PR — no repo writes, no third-party action:
 //
 //   1. Jira key — a real (NH|KAN)-<n> in the PR title, body, OR branch. The body is
 //      searched with HTML comments and ``` / ~~~ code fences stripped, so a key hidden
-//      in a comment or a quoted sample does not count. This is the ONE un-skippable check.
+//      in a comment or a quoted sample does not count. Un-skippable.
 //
-//   2. Checklist presence (anti-deletion) — the canonical `required:`/`warn:` items are
-//      read from .github/pull_request_template.md (the source of truth). EVERY canonical
-//      item must appear in the PR body; deleting or renaming items FAILS the gate, so an
-//      author can't delete the checklist to pass.
+//   2. Acknowledgement checklist — the canonical items are read from
+//      .github/pull_request_template.md (the source of truth). EVERY canonical item must
+//      appear in the PR body AND be ticked [x]. Deleting or rewording an item FAILS the
+//      gate (so an author can't delete the checklist to pass). There is NO N/A escape:
+//      the items are standing acknowledgements, phrased to stay true whether or not their
+//      condition applies, so they are always tickable. Any blank box fails the gate.
 //
-//   3. No-blank-boxes — each canonical item must be ticked [x] OR skipped by writing the
-//      literal token N/A in the author-added text AFTER the item label (never the label
-//      itself, so a label that happens to contain "N/A" can't auto-pass a blank box).
-//      Comments and fences are stripped first, so quoted samples don't cause false-fails.
+// `required:`/`warn:` severity and the `N/A` skip marker were removed in v1.1 — the user's
+// model is "every box is an agreement you tick; no checked, no merge." (See spec.)
 //
-// `required:` vs `warn:` is an intent label for the reader; the gate treats both the same
-// (presence + no-blank). Bots (dependabot etc.) are skipped by the workflow `if:` and here.
-// Fails CLOSED: any uncaught error exits non-zero, which ci-green treats as failure.
+// Bots (dependabot etc.) are skipped by the workflow `if:` and here. Fails CLOSED: any
+// uncaught error exits non-zero, which ci-green treats as failure.
 //
 // Inputs (env, set from the github context in the workflow):
 //   PR_TITLE, PR_BODY, PR_BRANCH, PR_AUTHOR_TYPE
@@ -36,8 +35,6 @@ const authorType = process.env.PR_AUTHOR_TYPE ?? '';
 
 const JIRA_RE = /\b(?:NH|KAN)-\d+\b/;
 const TASK_RE = /^\s*[-*]\s*\[([ xX])\]\s*(.+?)\s*$/;
-const PREFIX_RE = /^(required|warn)\s*:/i;
-const NA_RE = /\bN\/A\b/i;
 
 // Bot bypass (defensive — the workflow also gates on user.type).
 if (authorType === 'Bot') {
@@ -55,8 +52,8 @@ const stripNoise = (s) =>
 
 const body = stripNoise(rawBody);
 // For the key search, also drop checklist lines so a template EXAMPLE key inside an item
-// label (e.g. the "[NH-16] …" sample) can't satisfy the requirement — the real key must be
-// in the title, branch, or a prose line like "Closes [NH-16](url)".
+// label can't satisfy the requirement — the real key must be in the title, branch, or a
+// prose line like "Closes [NH-16](url)".
 const bodyForKey = body
   .split('\n')
   .filter((l) => !TASK_RE.test(l))
@@ -65,7 +62,7 @@ const bodyForKey = body
 // Normalize for matching: collapse whitespace, lowercase.
 const norm = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
 
-// Canonical required:/warn: item labels, read from the committed PR template.
+// Canonical acknowledgement labels, read from the committed PR template (every task line).
 function canonicalItems() {
   const tpl = readFileSync(
     new URL('../.github/pull_request_template.md', import.meta.url),
@@ -74,7 +71,7 @@ function canonicalItems() {
   const items = [];
   for (const line of tpl.split('\n')) {
     const m = TASK_RE.exec(line);
-    if (m && PREFIX_RE.test(m[2])) items.push(m[2]);
+    if (m) items.push(m[2]);
   }
   return items;
 }
@@ -95,49 +92,44 @@ const addressed = [];
 // 1. Jira key presence (un-skippable; comments/fences/checklist lines excluded).
 if (![title, bodyForKey, branch].some((s) => JIRA_RE.test(s))) {
   fails.push(
-    'No Jira key found. Add a real NH-#### or KAN-#### to the PR title, body, or branch ' +
+    'No Jira key found. Add a real NH-#### (or KAN-####) to the PR title, body, or branch ' +
       '(e.g. "[NH-16] …" in the title, or a full URL in the body).',
   );
 }
 
-// Index the body's checkbox lines.
+// Index the body's checkbox lines (noise already stripped).
 const bodyTasks = [];
 for (const line of body.split('\n')) {
   const m = TASK_RE.exec(line);
   if (m) bodyTasks.push({ checked: m[1].toLowerCase() === 'x', text: m[2] });
 }
 
-// 2 + 3. Every canonical item must be present AND addressed.
+// 2. Every canonical item must be present AND ticked [x]. No N/A.
 for (const label of canonical) {
   const nlabel = norm(label);
   const match = bodyTasks.find((t) => norm(t.text).startsWith(nlabel));
   if (!match) {
-    fails.push(`Missing checklist item — restore it from the PR template: "${label}"`);
+    fails.push(`Missing checklist item — restore it verbatim from the PR template: "${label}"`);
     continue;
   }
-  // N/A is honored only in the author-added remainder AFTER the canonical label.
-  const remainder = norm(match.text).slice(nlabel.length);
-  if (match.checked || NA_RE.test(remainder)) {
-    addressed.push(`${match.checked ? '[x]' : 'N/A'} ${label}`);
+  if (match.checked) {
+    addressed.push(`[x] ${label}`);
     continue;
   }
-  const severity = (PREFIX_RE.exec(label)?.[1] ?? 'warn').toLowerCase();
-  fails.push(
-    `Unaddressed ${severity}: item — tick it [x] or append "— N/A: reason" → "${label}"`,
-  );
+  fails.push(`Unticked item — tick it [x] before merging: "${label}"`);
 }
 
 if (fails.length > 0) {
   console.error('❌ pr-checklist failed:\n');
   for (const f of fails) console.error(`  • ${f}`);
   console.error(
-    '\nFix: run `gh pr edit --body "…"` (or edit on GitHub) so a real NH-/KAN- key is ' +
-      'present and every required:/warn: item from the template is ticked [x] or appended ' +
-      'with the literal token "N/A: reason". Editing the PR re-runs this gate automatically.',
+    '\nFix: edit the PR (on GitHub or `gh pr edit`) so a real NH-/KAN- key is present and ' +
+      'EVERY checklist item from the template is ticked [x]. There is no N/A — the items are ' +
+      'standing acknowledgements, so tick them all. Editing the PR re-runs this gate.',
   );
   process.exit(1);
 }
 
-console.log('✅ pr-checklist passed.');
+console.log('✅ pr-checklist passed — Jira key present and all acknowledgements ticked.');
 for (const a of addressed) console.log(`  • ${a}`);
 process.exit(0);

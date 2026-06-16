@@ -141,23 +141,21 @@ progress is visible and any step is one `git revert` away. Never pass
 
 ## PR checklist (CI-gated)
 
-Every PR carries a checklist (`.github/pull_request_template.md`) whose items are
-prefixed `required:` or `warn:`. The `pr-checklist` CI job (`tooling/pr-checklist.mjs`,
-required via *CI Green*) enforces:
+Every PR carries an **acknowledgement checklist** (`.github/pull_request_template.md`).
+The `pr-checklist` CI job (`tooling/pr-checklist.mjs`, required via *CI Green*) enforces:
 
+- **Every box ticked `[x]` — there is no `N/A`.** The items are standing acknowledgements
+  ("I am aware I must … if …"), phrased to stay true whether or not their condition
+  applies, so you can always tick them. Any blank `[ ]` fails the gate. No checked, no merge.
 - **All canonical items present** — the items are read from the PR template, so deleting
-  or renaming them fails the gate (you can't delete the checklist to pass).
-- **No blank boxes** — every item must be ticked `[x]` OR skipped by writing the literal
-  token `N/A` *after* the item label (e.g. `… — N/A: no UI change`). A blank `[ ]` fails.
-  `required:` = do it; `warn:` = address or consciously skip. Even a `required:` item may
-  be `N/A`'d when it genuinely doesn't apply (e.g. the Storybook item on a non-UI PR).
-- **A real Jira key** — `NH-####` or `KAN-####` in the PR title, branch, or a prose line
-  (e.g. `Closes [NH-16](…)`). Keys inside HTML comments, code fences, or checklist-label
-  examples don't count. This is the one check that can't be `N/A`'d.
+  or rewording them fails the gate (you can't delete the checklist to pass).
+- **A real Jira key** — `NH-####` (or legacy `KAN-####`) in the PR title, branch, or a
+  prose line (e.g. `Closes [NH-16](…)`). Keys inside HTML comments, code fences, or
+  checklist-label examples don't count. Un-skippable — the one check with real teeth.
 
-Bots (dependabot etc.) are exempt. This is v1; smart/DangerJS rules (green-fake catch,
-first-use triggers, real Jira validation) are the deferred NH-16 v2 backlog. Spec:
-`docs/specs/2026-06-15-pr-merge-checklist.md`.
+Bots (dependabot etc.) are exempt. This is v1.1; smart/DangerJS rules (green-fake catch,
+first-use triggers, real Jira validation, diff-aware UI/test detection) are the deferred
+NH-16 v2 backlog. Spec: `docs/specs/2026-06-15-pr-merge-checklist.md`.
 
 ## Decision governance
 

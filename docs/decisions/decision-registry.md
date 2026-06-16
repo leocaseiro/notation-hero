@@ -10,6 +10,15 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-16 — NH-16 PR-checklist v1.1: all-required acknowledgements (no N/A)
+
+Reframed the `pr-checklist` gate after a real-world miss: PR #40 merged with required boxes left unticked. Root cause (systematic-debugging) — the gate passed *correctly* per the v1 design (docs PR; the UI item was legitimately `N/A`'d), but `N/A` is a **self-asserted, unverifiable escape** an agent can abuse (e.g. `N/A` the Storybook item on a PR that *does* change UI). Fix per leocaseiro's model — "an agreement of terms & conditions: no checked, no merge":
+
+- **Every checklist box must be ticked `[x]`; `N/A` and the `required:`/`warn:` severity split are removed.** Items are now standing acknowledgements ("I am aware I must … *if* …") that stay true regardless of the PR, so they're always tickable. Items expanded to 12 (added: VR-tests-if-UI, README/docs + the "why", self-review, breaking-changes/migrations, no-secrets, no `--no-verify`). The Jira-key grep (`NH`/`KAN`, un-skippable) is unchanged — still the one check with real teeth.
+- `tooling/pr-checklist.mjs` rewritten (anti-deletion + all-ticked + key grep, `N/A`/prefix logic deleted); `tooling/pr-checklist.test.mjs` rewritten (12 cases, TDD red→green, incl. "N/A no longer honored"). Branch protection set to **include administrators** so a red gate can't be clicked past. Spec updated: `docs/specs/2026-06-15-pr-merge-checklist.md`.
+
+**Status:** `L6-checklist` stays **✅ done · 🤖** (mechanism evolved, status unchanged). DangerJS smart rules (green-fake, first-use, diff-aware UI/test detection) remain the NH-16 v2 backlog.
+
 ### 2026-06-16 — NH-185 FE framework: Next.js (one source → SSR web / static Capacitor)
 
 Reverses the **FE-framework axis** of the 2026-06-02 stack-pick ("Vite + React; Next.js rejected"). Surfaced via `/ce-sessions`: that rejection was of **SSR** Next.js; **static-export + a one-source/two-targets build** was never evaluated, and it resolves the Capacitor conflict while delivering the job-hunt Next.js keyword + an SSR/hydration portfolio piece. ADR: [`2026-06-16-fe-framework-nextjs-adr.md`](2026-06-16-fe-framework-nextjs-adr.md); spike: [`../spikes/2026-06-16-fe-framework-nextjs.md`](../spikes/2026-06-16-fe-framework-nextjs.md).
