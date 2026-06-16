@@ -586,11 +586,11 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 ### Task 2.1: Password gate guard
 
-- [ ] Implement a Nest guard (`apps/catalogue-api/src/catalogue/admin.guard.ts`) that checks the cms-admin §4 shared password header on **all writes** and on the gated admin-read (which returns ALL statuses, decision F1). TDD: failing test for 401 without the header → implement → pass → commit.
+- [ ] Implement a Nest guard (`apps/catalogue-api/src/catalogue/admin.guard.ts`) that checks the cms-admin §4 shared password header on **all writes** and on the gated admin-read (which returns ALL statuses, decision F1). Hardening (F12): compare with **`crypto.timingSafeEqual`** (constant-time, equal-length buffers), enforce a **fixed minimum failure response time** (kill the timing side-channel), and add a **module-scope per-IP attempt counter** returning 429 after N failures (resets on cold start — acceptable at M0–M2 scale; or rely on a CloudFront WAF rate rule). Mark the guard as the intentional **Cognito-replacement seam** (M3). TDD: failing test for 401 without the header → implement → pass → commit.
 
 ### Task 2.2: Create
 
-- [ ] **TDD** `POST /catalogue`: insert `catalogue_item` with `status` defaulting `'draft'`; `source` is **write-once** — hardcode `'curated'` at insert (NOT settable via the form, schema §5). DTO validated via `class-validator`. Test create → 201 with id; verify `source` cannot be overridden by the payload. Commit.
+- [ ] **TDD** `POST /catalogue`: insert `catalogue_item` with `status` defaulting `'draft'`; `source` is **write-once** — hardcode `'curated'` at insert (NOT settable via the form, schema §5). Validation (F13): enable a global `ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true })` in `main.ts`, and give the DTOs explicit constraints (`@IsString()`/`@MaxLength()` on `title`/`artist`/`genre`, `@IsIn([...])` on `status`/`type`) so undeclared fields are stripped/rejected and oversized payloads can't reach the JSONB column. Test create → 201 with id; verify `source` cannot be overridden by the payload; add an oversized-`title` (>500 chars) → 400 test. Commit.
 
 ### Task 2.3: Update
 
@@ -620,7 +620,10 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 ### Task 4.2: `deploy.yml` (OIDC + Pulumi, self-managed S3 backend = $0)
 
-- [ ] One-time (outside CI): create the GitHub OIDC identity provider + a least-privilege IAM deploy role trusting `repo:leocaseiro/notation-hero:ref:refs/heads/master`; create the Pulumi state S3 bucket; add secrets `AWS_DEPLOY_ROLE_ARN`, `PULUMI_CONFIG_PASSPHRASE`, state-bucket name.
+- [ ] One-time (outside CI):
+  - **OIDC + two scoped roles (F21):** create the GitHub OIDC provider; a **deploy role** trusting `repo:leocaseiro/notation-hero:ref:refs/heads/master` (push only) with an **enumerated** least-privilege policy — `lambda:*` on the project functions, `iam:CreateRole`/`AttachRolePolicy`/`PassRole` scoped to the created roles, `logs:*`, `scheduler:*`, `ssm:GetParameter`/`PutParameter` on `/notation-hero/*`, `s3:*` on the state bucket; and a **separate read-only preview role** trusting `pull_request` only (e.g. `cloudformation:DescribeStacks`, `lambda:GetFunction` — no mutating actions). Distinct roles, non-overlapping trust.
+  - **State bucket hygiene (F20):** create the Pulumi state S3 bucket with **SSE** (SSE-S3 or SSE-KMS), **Block Public Access ON**, and **access logging**. Generate `PULUMI_CONFIG_PASSPHRASE` with ≥32 bytes of entropy (`openssl rand -base64 32`); rotation uses `pulumi stack change-secrets-provider`.
+  - **Secrets:** `AWS_DEPLOY_ROLE_ARN`, `AWS_PREVIEW_ROLE_ARN`, `PULUMI_CONFIG_PASSPHRASE`, state-bucket name, and `DATABASE_URL_DIRECT` (Neon DIRECT/non-pooler, for migrations — F17).
 - [ ] Create `.github/workflows/deploy.yml` (push:master, `permissions: id-token: write`, `concurrency: deploy-master` non-cancelling):
 
 ```yaml
@@ -628,14 +631,16 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 - uses: ./.github/actions/setup-js
 - uses: aws-actions/configure-aws-credentials@v6.2.0
   with: { role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}, aws-region: ap-southeast-2 }
-- run: pnpm exec nx run @notation-hero/neon-catalogue:migrate     # drizzle-kit migrate, DIRECT url, BEFORE deploy
+- run: pnpm exec nx run @notation-hero/neon-catalogue:migrate     # drizzle-kit migrate, BEFORE deploy
+  env: { DATABASE_URL: ${{ secrets.DATABASE_URL_DIRECT }} }       # Neon DIRECT (non-pooler) for migrations (F17)
 - run: pnpm exec nx build catalogue-api                            # dist/ must exist for FileArchive
 - uses: pulumi/actions@v7.0.0
   with: { command: up, stack-name: dev, work-dir: infra, cloud-url: 's3://<state-bucket>' }
   env: { PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }} }
 ```
 
-- [ ] Add a `pull_request` `command: preview` variant (read-only role) for plan-on-PR. Add a PR check that `drizzle-kit generate` produces no diff (schema-vs-migrations in sync). Commit.
+- [ ] Add a `pull_request` `command: preview` variant (the read-only preview role) for plan-on-PR. Add a PR check that `drizzle-kit generate` produces no diff (schema-vs-migrations in sync). Commit.
+- [ ] **Migration safety (F22):** migrations must be backward-compatible (**expand → contract**) — additive in the deploy that introduces them, destructive (drop/rename) only in a *later* deploy after the code no longer references the old shape. Because `migrate` runs **before** `pulumi up`, a destructive migration plus a failed deploy would leave new schema against old code; if `pulumi up` fails after `migrate`, re-run a corrected migration or restore the Neon branch.
 
 ### Task 4.3: Cold-start warmer + SPA ping contract
 
