@@ -9,6 +9,8 @@
 **Tech Stack:** Fastify 5, `@fastify/aws-lambda` ^6, `@neondatabase/serverless` (HTTP `neon()` driver), Drizzle ORM + drizzle-kit, TypeBox (`@sinclair/typebox` + `@fastify/type-provider-typebox`), `node --test`, Pulumi (TypeScript), pnpm + Nx, GitHub Actions (OIDC → Pulumi).
 
 > **Status:** 📋 PLAN — authored 2026-06-16, ready for execution. Decisions consolidated from the 2026-06-16 BE investigation (Fastify-on-Lambda risks, CI/CD fit, cold-start mitigations, impl skeleton). Ticket: Epic [NH-177](https://leocaseiro.atlassian.net/browse/NH-177) "Catalog/CMS & Infra" (catalogue API = `K-3`).
+>
+> **`ce-doc-review` applied 2026-06-16→17:** auth → **Cognito** (via Pulumi, admin group gates writes/admin-read — replaces the in-Lambda password); secrets → **SSM SecureString + KMS**, lazy-loaded (F4/F11); deploy build/stack/secret fixes (F2/F3/F4); offline migration check (F5); `:id` + public-status validation (F9/F1). Remaining decisions → **Open Questions**; schema-dependent items → [`docs/research/2026-06-16-catalogue-schema-review-findings.md`](../research/2026-06-16-catalogue-schema-review-findings.md); auth design → [`docs/spikes/2026-06-17-catalogue-cognito-auth.md`](../spikes/2026-06-17-catalogue-cognito-auth.md).
 
 ---
 
@@ -30,7 +32,8 @@ These are locked for this plan. Rationale lives in the investigation; here is th
 | **Status codes** | `200` read/update · `201`+`Location` create · `204` delete · `404` unknown · `409` duplicate · `422` validation | REST conventions interviewers probe |
 | **CORS** | Owned by the **Function URL** (already configured). Do NOT add `@fastify/cors` | One owner avoids duplicate `Access-Control-Allow-Origin` headers |
 | **Security (open URL)** | `@fastify/rate-limit` (key = `sourceIp`) + `reservedConcurrentExecutions: 10` (denial-of-wallet cap) + AWS Budgets alarm + strict TypeBox validation | `AuthType: NONE` is public/unmetered — the concurrency cap is the non-negotiable guardrail |
-| **Write/admin auth (F1/F2)** | Writes (`POST/PUT/DELETE`) **and** admin-read (all statuses) require an in-Lambda **admin password** (shared secret via SSM SecureString, injected as `ADMIN_PASSWORD`); public reads are forced to `status='published'` | Decided CMS contract (registry 2026-06-15 **F1/F2**). `AuthType: NONE` is open *transport*, so the app-layer password is the curated-write boundary (schema DS-10) — without it anyone can write/delete and `?status=draft` leaks unpublished items |
+| **Write/admin auth (F1/F2)** | **AWS Cognito** user pool (provisioned via Pulumi — keeps Pulumi the single IaC, per NH-185). An **admin group** gates writes (`POST/PUT/DELETE`) + admin-read (all statuses); the same pool enables end-user auth later. The Lambda verifies the Cognito **JWT** (cached JWKS) in a `preHandler`. Public reads forced to `status='published'`. **Design → spike `docs/spikes/2026-06-17-catalogue-cognito-auth.md`** | Real auth, not a throwaway password (registry F1/F2); Cognito free tier (50k MAUs) is **perpetual $0** — no Amplify, no migration deadline; resolves NH-185 "no Amplify, Pulumi single IaC" cleanly |
+| **Secrets (F4)** | `DATABASE_URL` lives in **SSM Parameter Store (SecureString + KMS)**, fetched into memory **once at first use** (lazy, cached) via scoped IAM (`ssm:GetParameter` + `kms:Decrypt`). **Not** in Pulumi state, Lambda env vars, or the repo. Cognito pool/client ids + region are non-secret env. | Smallest secret-exposure surface + standard AWS pattern (AWS-skills); env vars are readable via `GetFunctionConfiguration`, an SSM SecureString is not |
 | **Cold start** | Tiered, FE-decoupled (see §3) | Start cheap; escalate only if demos feel slow |
 | **CI/CD** | Keep the Nx + pnpm + lefthook + 9-job `ci.yml` foundation; ADD a keyless OIDC deploy workflow + 2 PR jobs (see §2) | New app auto-covered by `nx affected`; only the deploy path is genuinely new |
 | **esbuild output** | CJS (`--format=cjs --target=node22`), `external: @aws-sdk/*`, `sourcemap` | Matches `handler-hello` "bundled cjs/node22"; dodges every ESM-on-Lambda footgun |
@@ -41,14 +44,14 @@ These are locked for this plan. Rationale lives in the investigation; here is th
 | # | Risk | Severity | Mitigation (in this plan) |
 |---|---|---|---|
 | 1 | `AuthType: NONE` = public, unmetered, denial-of-wallet | High | `reservedConcurrentExecutions: 10` cap (Task 0.6) + `@fastify/rate-limit` (Task R.9) + Budgets alarm + TypeBox validation everywhere |
-| 2 | Cold-start *stacking* — Lambda init **+** Neon scale-to-zero resume (~0.7–1.2 s first hit) | Medium | Neon HTTP driver (fewer round-trips) + arm64 (set) + esbuild (set) + module-scope init; accept + skeleton, warmer only warms Lambda (§3) |
+| 2 | Cold-start *stacking* — Lambda init **+** Neon scale-to-zero resume (~0.7–1.2 s first hit) | Medium | Neon HTTP driver (fewer round-trips) + arm64 (set) + esbuild (set) + module-scope **app** build (routes/schemas); the Neon client/secret is **lazy on first request** (F4/F11) so the warmer warms the Lambda without touching SSM/DB (§3) |
 | 3 | Fastify/TypeBox schema compilation inflates cold start | Medium | Build app at module scope; keep the route/schema surface small for v1 |
 | 4 | ESM (`"type":"module"`) + esbuild traps (`__dirname`, top-level await) | Medium | Bundle to **CJS** (Task 0.4) — esbuild down-levels ESM source → CJS output cleanly |
 | 5 | Neon connection handling | Medium | HTTP `neon()` only; **no VPC**; pooled (`-pooler`) connection string; `DATABASE_URL` via SSM (Task 0.6) |
 | 6 | Function URL payload v2.0 (comma-joined multi-value query) | Low | `@fastify/aws-lambda` handles v2.0; set `parseCommaSeparatedQueryParams: true` if repeated query params are used |
 | 7 | CORS double-headers | Low | One owner = Function URL; no `@fastify/cors` |
 | 8 | Lambda statelessness (in-memory state, post-response work) | Low–Med | `await` all DB work before responding; no in-memory durable state; pino→stdout, no file transport |
-| 9 | Open URL exposes **writes** (`POST/PUT/DELETE`) + draft listing (`?status=`) with **no app-layer auth** | High | Admin-password `preHandler` on write + admin-read routes (`ADMIN_PASSWORD` via SSM — Task 0.6 + CU.4); public reads force `status='published'` (Task R.10) — per registry F1/F2 |
+| 9 | Open URL exposes **writes** (`POST/PUT/DELETE`) + draft listing (`?status=`) with **no app-layer auth** | High | **Cognito JWT** `preHandler` (verify cached JWKS + admin group) on write + admin-read routes (Task CU.4 + auth spike); public reads force `status='published'` (Task R.10) — per registry F1/F2 |
 
 ---
 
@@ -82,7 +85,7 @@ adapters/neon-catalogue/                # @notation-hero/neon-catalogue-adapter 
   src/
     index.ts
     neon-client.client.ts               # [R] neon(url) factory + query helper
-    catalogue-schema.dto.ts             # [R] Drizzle table defs (.schema.ts is NOT an approved suffix → use .dto.ts)
+    catalogue-table.adapter.ts          # [R] Drizzle table defs (.schema.ts not approved; .adapter = ORM-layer artifact — F15)
     catalogue-row.dto.ts                # [R] DB row shape (snake_case), adapter-internal
     catalogue-item.mapper.ts            # [R] row(snake) <-> domain(camel); list projection
     list-filter.mapper.ts               # [R] domain filter+cursor -> parameterized SQL
@@ -122,7 +125,7 @@ infra/
 | `node --test`, esbuild, Nx inferred targets, `nx affected`, depcruise, eslint-boundaries, check-layout, lefthook, gitleaks/semgrep/osv/syncpack/knip/commitlint, `setup-js` composite, `infra:*` scripts | **KEEP** | Zero per-app work; clone scripts + add the tag |
 | `fastify` + `@fastify/aws-lambda` + `@neondatabase/serverless` + drizzle + typebox | **ADD** | App/adapter deps |
 | `.github/workflows/deploy.yml` (OIDC `pulumi up` on merge) | **ADD** | The one new workflow; keyless AWS via `aws-actions/configure-aws-credentials` role-assume + `pulumi/auth-actions`. Highest résumé value |
-| `migrations-dryrun` + `infra-preview` PR jobs | **ADD** | Catch schema/infra drift on PR against a free Neon preview branch; add both to the `CI Green` aggregation |
+| `migrations-consistency` (offline) + `infra-preview` PR jobs | **ADD** | `drizzle-kit check` = **offline** migration-file consistency (no DB, no secret — F5); `infra-preview` = read-only `pulumi preview`. Both into the `CI Green` aggregation. (Live-DB migration dry-run deferred — CU-h cost; see Open Questions) |
 | AWS IAM OIDC provider + scoped deploy role | **ADD (one-time, in Pulumi)** | Trust policy pinned to `repo:leocaseiro/notation-hero` refs; store only the role ARN, never keys |
 | Vitest + coverage ratchet | **DEFER** | The spec'd L5 lane — migrate all apps together later, not mid-feature |
 | API Gateway, Serverless Framework, per-app lefthook/boundary rules, per-app CI matrix | **DO NOT ADD** | Function URL already covers it; extra config forks the one-config principle and slows dev |
@@ -269,7 +272,7 @@ test("makeSql returns a callable tagged-template fn", () => {
 
 ### Task 0.5: Drizzle config + schema source (inside the adapter)
 
-**Files:** Create `adapters/neon-catalogue/drizzle.config.ts`, `adapters/neon-catalogue/src/catalogue-schema.dto.ts`
+**Files:** Create `adapters/neon-catalogue/drizzle.config.ts`, `adapters/neon-catalogue/src/catalogue-table.adapter.ts` (F15: `.adapter` not `.dto` — it's an ORM-layer artifact, and avoids two `*.dto.ts` in one dir)
 
 - [ ] **Step 1: `drizzle.config.ts`** (config.ts = suffix-exempt; output SQL to `drizzle/migrations`)
 
@@ -278,13 +281,13 @@ import { defineConfig } from "drizzle-kit";
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/catalogue-schema.dto.ts",
+  schema: "./src/catalogue-table.adapter.ts",
   out: "./drizzle/migrations",
   dbCredentials: { url: process.env.DATABASE_URL ?? "" },
 });
 ```
 
-- [ ] **Step 2: `catalogue-schema.dto.ts`** — the Drizzle table for `catalogue_item` ONLY (skip exercise/pattern). Mirror the authoritative DDL in `docs/specs/2026-06-10-catalogue-schema.md` §4. Columns: `id, type, title, level, artist, bpm, time_sig, genre, musical_key, instruments[], skill[], tags[], lesson_type, sort_order, source, license, cover_image_key, notation_key, notation_format, notation_checksum, notation_bytes, has_audio, has_video, audio(jsonb), video(jsonb), status, data(jsonb), created_at, updated_at`. (The generated `search` tsvector column + the extensions/`immutable_*` functions + indexes are appended by hand to the generated SQL in Task R.10 — drizzle-kit won't emit the functional/generated-column DDL.)
+- [ ] **Step 2: `catalogue-table.adapter.ts`** — the Drizzle table for `catalogue_item` ONLY (skip exercise/pattern). Mirror the authoritative DDL in `docs/specs/2026-06-10-catalogue-schema.md` §4. Columns: `id, type, title, level, artist, bpm, time_sig, genre, musical_key, instruments[], skill[], tags[], lesson_type, sort_order, source, license, cover_image_key, notation_key, notation_format, notation_checksum, notation_bytes, has_audio, has_video, audio(jsonb), video(jsonb), status, data(jsonb), created_at, updated_at`. (The generated `search` tsvector column + the extensions/`immutable_*` functions + indexes are appended by hand to the generated SQL in Task R.10 — drizzle-kit won't emit the functional/generated-column DDL.)
 
 - [ ] **Step 3:** `pnpm --filter ...adapter exec drizzle-kit generate` then **hand-edit** `drizzle/migrations/0001_*.sql` to add (verbatim from schema §4 + §9): `CREATE EXTENSION pg_trgm/unaccent`, `immutable_unaccent`, `immutable_array_to_string`, the `search` generated column, and every index in §9. Rename to `0001_catalogue_item.sql`. Commit `feat(catalogue): drizzle schema + 0001 migration (catalogue_item)`.
 
@@ -312,14 +315,17 @@ const catalogue = new LambdaWithUrl("catalogue", {
   functionName: "nh-catalogue",
   code: new pulumi.asset.FileArchive("../apps/handler-catalogue/dist"),
   handler: "index.handler",
-  environment: { DATABASE_URL: cfg.requireSecret("neonDatabaseUrl"), ADMIN_PASSWORD: cfg.requireSecret("adminPassword") },
+  // F4: no DATABASE_URL/secret in env — the Lambda reads it from SSM SecureString (KMS) at first use (lazy).
+  // Env carries only NON-secret config: the SSM param name + the Pulumi-provisioned Cognito pool/client (see auth spike).
+  environment: { DB_SECRET_PARAM: "/nh/<stage>/catalogue/database-url", COGNITO_USER_POOL_ID: catalogueUserPool.id, COGNITO_CLIENT_ID: catalogueClient.id, AWS_REGION_NAME: "ap-southeast-2" },
+  extraPolicy: ssmReadPolicy, // ssm:GetParameter + kms:Decrypt scoped to the catalogue param (F4)
   memorySize: 512, timeout: 10, reservedConcurrentExecutions: 10,
   allowMethods: ["GET", "POST", "PUT", "DELETE"],
 });
 export const catalogueUrl = catalogue.url;
 ```
 
-- [ ] **Step 4:** Add `"@notation-hero/handler-catalogue"` to `infra/project.json` `implicitDependencies` **and edit the `infra/package.json` `pulumi:*` scripts to actually build it.** `implicitDependencies` does NOT change the shell command, and the scripts today hardcode `nx build @notation-hero/handler-hello` — so deploy/preview would ship the wrong app (F2). Change **both** (covers the prod-deploy *and* PR-preview paths): `"pulumi:preview": "nx run-many -t build -p @notation-hero/handler-hello @notation-hero/handler-catalogue && pulumi preview"` and `"pulumi:up": "nx run-many -t build -p @notation-hero/handler-hello @notation-hero/handler-catalogue && pulumi up"`. Set the Neon + admin secrets **per stack**: `cd infra && pulumi stack select dev && pulumi config set --secret neonDatabaseUrl "<neon -pooler url>" && pulumi config set --secret adminPassword "<admin pw>"`, then repeat for the `prod` stack (Task 0.7 Step 3). Commit `feat(infra): catalogue lambda + env/memory/timeout/concurrency args`.
+- [ ] **Step 4:** Add `"@notation-hero/handler-catalogue"` to `infra/project.json` `implicitDependencies` **and edit the `infra/package.json` `pulumi:*` scripts to actually build it.** `implicitDependencies` does NOT change the shell command, and the scripts today hardcode `nx build @notation-hero/handler-hello` — so deploy/preview would ship the wrong app (F2). Change **both** (covers the prod-deploy *and* PR-preview paths): `"pulumi:preview": "nx run-many -t build -p @notation-hero/handler-hello @notation-hero/handler-catalogue && pulumi preview"` and `"pulumi:up": "nx run-many -t build -p @notation-hero/handler-hello @notation-hero/handler-catalogue && pulumi up"`. Put the Neon URL in **SSM** (not Pulumi config) **per environment**: `aws ssm put-parameter --name /nh/<stage>/catalogue/database-url --type SecureString --value "<neon -pooler url>" --key-id <kms-key>` (e.g. `/nh/dev/...` and `/nh/prod/...`). The Cognito pool/client are provisioned by Pulumi (see auth spike); their ids flow to the Lambda env as outputs. Commit `feat(infra): catalogue lambda + env/memory/timeout/concurrency args`.
 
 ### Task 0.7: GitHub Actions — keyless OIDC deploy + PR jobs
 
@@ -347,21 +353,23 @@ jobs:
         with: { role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}, aws-region: ap-southeast-2 }
       - uses: pulumi/auth-actions@v1
         with: { organization: leocaseiro, requested-token-type: urn:pulumi:token-type:access_token:organization }
-      - name: Select prod stack + export the single-source Neon URL (F4)
+      - name: Select prod stack
         working-directory: infra
+        run: pulumi stack select prod
+      - name: Export the single-source Neon URL from SSM (F4)
         run: |
-          pulumi stack select prod
-          echo "::add-mask::$(pulumi config get neonDatabaseUrl --show-secrets)"
-          echo "DATABASE_URL=$(pulumi config get neonDatabaseUrl --show-secrets)" >> "$GITHUB_ENV"
-      - name: DB migrate (apply) — reads the SAME secret the Lambda runtime uses
+          URL=$(aws ssm get-parameter --name /nh/prod/catalogue/database-url --with-decryption --query Parameter.Value --output text)
+          echo "::add-mask::$URL"
+          echo "DATABASE_URL=$URL" >> "$GITHUB_ENV"
+      - name: DB migrate (apply) — reads the SAME SSM secret the Lambda runtime uses
         run: pnpm --filter @notation-hero/neon-catalogue-adapter run db:migrate
       - name: Pulumi up (prod)   # infra:up -> pulumi:up builds both apps (Task 0.6 Step 4) first
         run: pnpm run infra:up
 ```
 
-- [ ] **Step 2: Add two PR jobs to `ci.yml`** (`migrations-dryrun` running `db:migrate:status` against `${{ secrets.NEON_PREVIEW_URL }}`, and `infra-preview` running `pnpm run infra:preview` with the same OIDC + `pulumi/auth-actions`, read-only). Add **both** to the `needs:` list and the result-check of the `CI Green` aggregation job (the existing comment warns: forgetting this = false-green).
+- [ ] **Step 2: Add two PR jobs to `ci.yml`** — (1) **`migrations-consistency`** running `db:migrate:status` (= `drizzle-kit check`, an **offline** migration-file consistency check — no DB, no secret; **F5**: it does NOT connect to a preview branch, so do not pass `NEON_PREVIEW_URL`), and (2) `infra-preview` running `pnpm run infra:preview` with OIDC + `pulumi/auth-actions`, read-only. Add **both** to the `needs:` list and the result-check of the `CI Green` aggregation job (the existing comment warns: forgetting this = false-green). *(A real live-DB migration dry-run against an ephemeral Neon branch is deferred — it spends CU-h; see Open Questions.)*
 
-- [ ] **Step 3: One-time AWS setup (author in Pulumi or document):** create the GitHub OIDC provider (`token.actions.githubusercontent.com`); an IAM role whose trust `sub` is restricted to `repo:leocaseiro/notation-hero:ref:refs/heads/master` (deploy) and `repo:leocaseiro/notation-hero:pull_request` (preview); store **only** the role ARN as the `AWS_DEPLOY_ROLE_ARN` secret. **Create both Pulumi stacks (F3):** keep `dev` for local + the `infra-preview` PR job, and `pulumi stack init prod` for `deploy.yml`; set each stack's `neonDatabaseUrl` + `adminPassword` secrets. `deploy.yml` selects `prod` and reads `neonDatabaseUrl` from it, so the migrate step and the Lambda runtime share one source (F4). Commit `ci(catalogue): keyless OIDC deploy + PR migration/infra preview`.
+- [ ] **Step 3: One-time AWS setup (author in Pulumi or document):** create the GitHub OIDC provider (`token.actions.githubusercontent.com`); an IAM role whose trust `sub` is restricted to `repo:leocaseiro/notation-hero:ref:refs/heads/master` (deploy) and `repo:leocaseiro/notation-hero:pull_request` (preview); store **only** the role ARN as the `AWS_DEPLOY_ROLE_ARN` secret (the deploy role needs scoped `ssm:GetParameter` + `kms:Decrypt` on the catalogue param). **Create both Pulumi stacks (F3):** keep `dev` for local + the `infra-preview` PR job, and `pulumi stack init prod` for `deploy.yml`. The Neon URL is the **single source in SSM** (`/nh/<stage>/catalogue/database-url`, SecureString+KMS) — both `deploy.yml`'s migrate step and the Lambda runtime read it from SSM (F4), so they cannot drift; set the non-secret Cognito ids via `pulumi config` per stack. Commit `ci(catalogue): keyless OIDC deploy + PR migration/infra preview`.
 
 ### Task 0.8: (Tier 2) Scheduled warmer — wire, optionally disabled
 
@@ -561,7 +569,7 @@ export class FakeCatalogueRepository implements CatalogueRepository {
 }
 ```
 
-- [ ] **Step 3: Test the fake** filters by status + returns null on miss. Run → PASS. Commit.
+- [ ] **Step 3: Test the fake** filters by status + returns null on miss. **(F12 — test fidelity):** make the key→URL transform **visible** in the fake — `coverImageUrl` must be a *resolved* form (e.g. `toListItem` takes a `resolveCoverUrl` fn, or maps to a `cdn://${i.coverImageKey}` sentinel), NOT the raw `coverImageKey` — so a test can assert resolution happened and catch a regression where the real mapper (Task R.6) stops resolving. Add that assertion. Run → PASS. Commit.
 
 ### Task R.5: Read use-cases — `list-catalogue.query.ts`, `get-catalogue-item.query.ts`
 
@@ -625,7 +633,7 @@ export class NeonCatalogueRepository implements CatalogueRepository { constructo
 
 ### Task R.7: Fastify server + composition root
 
-**Files:** Create `apps/handler-catalogue/src/server.service.ts`, `composition.service.ts` (+ server test)
+**Files:** Create `apps/handler-catalogue/src/server.service.ts`, `composition.service.ts`, `secrets.service.ts` (SSM loader — F4) (+ server test)
 
 - [ ] **Step 1: `composition.service.ts`** — DI root: read `DATABASE_URL`, build the Neon client, repo, and use-case functions; return them as a typed `Deps` object.
 
@@ -633,14 +641,21 @@ export class NeonCatalogueRepository implements CatalogueRepository { constructo
 import { makeSql } from "@notation-hero/neon-catalogue-adapter";
 import { NeonCatalogueRepository } from "@notation-hero/neon-catalogue-adapter";
 import { makeListCatalogue, makeGetCatalogueItem } from "@notation-hero/catalogue-core";
+import { loadDatabaseUrl } from "./secrets.service.ts"; // F4: read SSM SecureString (KMS) once, cache
 
 export interface Deps {
   listCatalogue: ReturnType<typeof makeListCatalogue>;
   getCatalogueItem: ReturnType<typeof makeGetCatalogueItem>;
 }
-export const buildDeps = (connectionString = process.env.DATABASE_URL ?? ""): Deps => {
-  const repo = new NeonCatalogueRepository(makeSql(connectionString));
-  return { listCatalogue: makeListCatalogue(repo), getCatalogueItem: makeGetCatalogueItem(repo) };
+// F11 + F4: async + memoized. The SSM fetch + Neon client happen on FIRST use, never at module scope —
+// so module load never needs the secret (no crash on missing config) and the warmer warms the Lambda
+// without touching SSM/DB.
+let cached: Deps | undefined;
+export const buildDeps = async (): Promise<Deps> => {
+  if (cached) return cached;
+  const repo = new NeonCatalogueRepository(makeSql(await loadDatabaseUrl()));
+  cached = { listCatalogue: makeListCatalogue(repo), getCatalogueItem: makeGetCatalogueItem(repo) };
+  return cached;
 };
 ```
 
@@ -653,10 +668,12 @@ import { buildDeps, type Deps } from "./composition.service.ts";
 import { registerCatalogueController } from "./catalogue.controller.ts";
 import { registerErrorMapper } from "./error-mapper.mapper.ts";
 
-export const buildServer = (deps: Deps = buildDeps()): FastifyInstance => {
+// F11: buildServer is SYNC and builds the app at MODULE SCOPE (cold-start win) WITHOUT touching the DB.
+// It passes a deps-GETTER; controllers call `await getDeps()` on first request (lazy SSM + Neon, memoized).
+export const buildServer = (getDeps: () => Promise<Deps> = buildDeps): FastifyInstance => {
   const app = Fastify({ logger: true }).withTypeProvider<TypeBoxTypeProvider>();
   registerErrorMapper(app);
-  registerCatalogueController(app, deps);
+  registerCatalogueController(app, getDeps);
   return app;
 };
 ```
@@ -683,31 +700,33 @@ export const buildServer = (deps: Deps = buildDeps()): FastifyInstance => {
 
 - [ ] **Step 1: `catalogue-response.dto.ts`** — TypeBox schemas: `ListItemSchema`, `ListResponseSchema` (`{ data: ListItem[], nextCursor: string|null }`), `ItemResponseSchema` (`{ data: Item }`). Export `Static` types.
 
-- [ ] **Step 2: `catalogue-request.dto.ts`** — TypeBox `ListQuerySchema` (type/status/level/bpmMin/bpmMax/timeSig/instrument/q/cursor/limit, all optional) + `Static`.
+- [ ] **Step 2: `catalogue-request.dto.ts`** — TypeBox `ListQuerySchema` (type/status/level/bpmMin/bpmMax/timeSig/instrument/q/cursor/limit, all optional) **+ `IdParamSchema`** (`{ id: Type.String({ minLength: 1, maxLength: 256 }) }` — **F9**: validates the `:id` path param at the edge, the "TypeBox everywhere" guardrail) + `Static`.
 
 - [ ] **Step 3: `catalogue.controller.ts`** — `registerCatalogueController(app, deps)`:
 
 ```ts
 import type { FastifyInstance } from "fastify";
 import type { Deps } from "./composition.service.ts";
-import { ListQuerySchema } from "./catalogue-request.dto.ts";
+import { ListQuerySchema, IdParamSchema } from "./catalogue-request.dto.ts";
 import { ListResponseSchema, ItemResponseSchema } from "./catalogue-response.dto.ts";
 
-export const registerCatalogueController = (app: FastifyInstance, deps: Deps): void => {
+export const registerCatalogueController = (app: FastifyInstance, getDeps: () => Promise<Deps>): void => {
   app.get("/catalogue", { schema: { querystring: ListQuerySchema, response: { 200: ListResponseSchema } } },
     async (req) => {
+      const deps = await getDeps();                          // F11: lazy SSM + Neon init on first use (memoized)
       const q = req.query;
       const result = await deps.listCatalogue(
         { type: q.type, status: q.status, level: q.level, bpmMin: q.bpmMin, bpmMax: q.bpmMax, timeSig: q.timeSig, instrument: q.instrument, q: q.q },
         q.cursor ?? null, q.limit);
       return { data: result.items, nextCursor: result.nextCursor };
     });
-  app.get("/catalogue/:id", { schema: { response: { 200: ItemResponseSchema } } },
-    async (req) => ({ data: await deps.getCatalogueItem((req.params as { id: string }).id) }));
+  // F9: validate :id at the edge via TypeBox params (the "TypeBox everywhere" guardrail)
+  app.get("/catalogue/:id", { schema: { params: IdParamSchema, response: { 200: ItemResponseSchema } } },
+    async (req) => ({ data: await (await getDeps()).getCatalogueItem(req.params.id) }));
 };
 ```
 
-- [ ] **Step 3b (F1 — public-status enforcement):** For unauthenticated callers the controller MUST drop any caller-supplied `status`/`includeArchived` and force `status='published'` — `isPublicListFilter` only *defaults* an unset status, so a public `?status=draft` would otherwise leak unpublished items. Only requests carrying a valid admin token (the CU.4 `admin-auth.service.ts` preHandler) may pass arbitrary `status`/`includeArchived` (admin-read, registry F1).
+- [ ] **Step 3b (F1 — public-status enforcement):** For unauthenticated callers the controller MUST drop any caller-supplied `status`/`includeArchived` and force `status='published'` — `isPublicListFilter` only *defaults* an unset status, so a public `?status=draft` would otherwise leak unpublished items. Only requests carrying a valid **Cognito admin JWT** (the CU.4 `cognito-auth.service.ts` preHandler) may pass arbitrary `status`/`includeArchived` (admin-read, registry F1).
 
 - [ ] **Step 4: Controller tests** via `app.inject()` + fake repo: `GET /catalogue` → 200 `{data,nextCursor}`; `GET /catalogue/:id` → 200; missing id → 404; bad query (`limit: 'x'`) → 422; **public `?status=draft` still returns only published (F1)**. Run → PASS. Commit `feat(catalogue): read controllers (GET list + by id)`.
 
@@ -749,9 +768,9 @@ export const registerCatalogueController = (app: FastifyInstance, deps: Deps): v
 
 ### Task CU.4: Create/Update controller + request DTOs + infra methods
 
-**Files:** Create `apps/handler-catalogue/src/catalogue-create.controller.ts`, `admin-auth.service.ts`; Modify `catalogue-request.dto.ts`, `server.service.ts`, `composition.service.ts`
+**Files:** Create `apps/handler-catalogue/src/catalogue-create.controller.ts`, `cognito-auth.service.ts`; Modify `catalogue-request.dto.ts`, `server.service.ts`, `composition.service.ts`
 
-- [ ] **Step 0 (F1/F2 — admin gate):** Add an admin-auth Fastify plugin/`preHandler` (`admin-auth.service.ts`) on `POST/PUT/DELETE /catalogue[...]` (and the admin-read path) comparing an `x-admin-token`/`Authorization` header against `process.env.ADMIN_PASSWORD` (from SSM via Task 0.6); return `401` when missing/wrong. Secret never in the repo. Test via `inject()`: write without the token → 401; with it → reaches the handler.
+- [ ] **Step 0 (F1/F2 — admin gate via Cognito):** Add a Cognito-JWT `preHandler` (`cognito-auth.service.ts`) on `POST/PUT/DELETE /catalogue[...]` (and the admin-read path): verify `Authorization: Bearer <jwt>` against the user pool's **cached JWKS** and require the **admin group** claim; `401` (no/invalid token) / `403` (valid but not admin). Pool id / client id / region are non-secret env config (Task 0.6) — no password anywhere. **Full design (JWKS caching, group claims, FE token flow) → spike `docs/spikes/2026-06-17-catalogue-cognito-auth.md`.** Test via `inject()`: no/invalid token → 401; valid non-admin → 403; valid admin → reaches the handler.
 
 - [ ] **Step 1:** TypeBox `CreateItemBody` / `UpdateItemBody` in `catalogue-request.dto.ts` (required `type`,`title`; optional rest; song-bpm enforced in the command, not the schema, so the error is a domain `422`).
 - [ ] **Step 2:** `registerCatalogueCreateController(app, deps)`: `POST /catalogue` → `201` + `Location: /catalogue/:id`, `409` on duplicate; `PUT /catalogue/:id` → `200`, `404` if absent. Wire `buildDeps` to expose `createCatalogueItem`/`updateCatalogueItem`; register in `buildServer`.
@@ -777,16 +796,42 @@ export const registerCatalogueController = (app: FastifyInstance, deps: Deps): v
 
 ---
 
+## Open Questions & Deferred (2026-06-16 doc-review)
+
+Findings from the `ce-doc-review` that need a decision later — **not blocking Phase 0/R**. Recommendations noted; decide when you pick them up.
+
+**Security / infra**
+- **F7 — open-URL rate-limit hardness (deferred by owner).** The in-memory `@fastify/rate-limit` store is per-container/best-effort; the *hard* denial-of-wallet stop is the `reservedConcurrentExecutions: 10` cap + Budgets. Minimum fix when revisited: pin the key to `req.ip` (the AWS `sourceIp` via `@fastify/aws-lambda`) and drop the forgeable `x-forwarded-for`. Options: (a) pin + document [rec], (b) + tighter limits on write routes, (c) + a shared store (Redis/DynamoDB — breaks $0).
+- **F10 — split the OIDC deploy vs PR-preview IAM role.** Today's plan uses one role for both `master` (deploy) and `pull_request` (preview). Recommend two roles — deploy (`ref:refs/heads/master`, write) and preview (`pull_request`, read-only) + an `if: head.repo == base.repo` fork guard on `infra-preview`. Hardening, not blocking.
+
+**Scope (your call)**
+- **F13 — Tier-2 warmer (Task 0.8) ships disabled infra.** Building the EventBridge schedule on feature #1 (default-off) vs adding it only when demos feel slow. Recommend **defer**: keep the cheap handler guard, build the Pulumi schedule when `enableWarmer` actually flips true.
+- **F14 — 3 controller files vs 1 for 5 routes.** Recommend **keep the split** — it mirrors the R → C+U → D phasing and the role-suffix convention; revisit only if it feels heavy.
+
+**Schema (pending validation — see [`docs/research/2026-06-16-catalogue-schema-review-findings.md`](../research/2026-06-16-catalogue-schema-review-findings.md))**
+- SCH-1 `source` provenance (NOT-NULL default? write-once via API or DB trigger?) · SCH-2 keyset composite index · SCH-3 `notation_key`-for-songs validation · SCH-4 archived-source resolver (§6, ships with lesson-steps). Fold into the plan once the schema spec is locked.
+
+**Auth design — see spike [`docs/spikes/2026-06-17-catalogue-cognito-auth.md`](../spikes/2026-06-17-catalogue-cognito-auth.md)**
+- Cognito user pool via Pulumi; in-Lambda JWT verification on the open Function URL; admin group vs end users; FE token flow; what's needed before Phase C+U writes ship.
+
+**FYI (low-signal, no action needed now)**
+- Migrate-before-`pulumi up` is forward-only — fine for additive `0001`; document expand/contract before any destructive migration.
+- Function URL CORS sets no `allowHeaders` — latent until the FE sends `Content-Type`/`Authorization` on writes; add `allowHeaders: ["content-type","authorization"]` when writes go live.
+- Per-function concurrency cap (10) is shared across read + write routes — 10 concurrent writes could starve reads; the tighter-write-limit option (F7) mitigates.
+- Clock-port "forward-ref" (orig. C4): non-issue — Phase R read tests use static fixtures with `updatedAt` pre-set; no clock needed until C+U.
+
+---
+
 ## Self-review (spec coverage)
 
 - **Read → Create+Update → Delete phasing** — Phases R / C+U / D, each a standalone green checkpoint + PR. ✅
-- **Neon + current schema** — `catalogue_item` columns mapped (entity + Drizzle `catalogue-schema.dto.ts`); migration `0001` is `catalogue_item` only; **lesson-steps (`exercise`/`pattern`) skipped** per instruction. ✅
+- **Neon + current schema** — `catalogue_item` columns mapped (entity + Drizzle `catalogue-table.adapter.ts`); migration `0001` is `catalogue_item` only; **lesson-steps (`exercise`/`pattern`) skipped** per instruction. ✅ *(schema-dependent gaps parked in `docs/research/2026-06-16-catalogue-schema-review-findings.md` pending schema validation)*
 - **Soft-delete** — `status='archived'` (NOT `deleted_at` — schema has none); reads hide archived. ✅
 - **Cold-start mitigations** — Tier 0 (arm64+esbuild+module-scope+HTTP driver+512MB/10s) in Task 0.4/0.6; Tier 2 warmer (DB-safe guard) in Task 0.8; Tiers 3/4 documented. ✅
 - **Fastify adoption risks** — §0.1 table; each mitigated by a task (concurrency cap 0.6, rate-limit R.9, CJS bundle 0.4, HTTP-driver 0.3, CORS one-owner via Function URL). ✅
 - **CI/CD fit** — §2 keep/add/defer; OIDC deploy + PR jobs in Task 0.7; no new test runner, no API Gateway, no per-app config. ✅
 - **Hexagon + naming** — every file uses an approved role suffix; `core` pure (no `@neondatabase` import); Drizzle confined to the adapter; verified against `tooling/check-layout.sh` + depcruise in Task 0.1/R.5. ✅
-- **Security** — open-URL guardrails (concurrency cap + rate-limit + Budgets + validation); `DATABASE_URL`/secrets via SSM/Pulumi secret; all SQL parameterized (`list-filter.mapper.ts`). ✅
+- **Security** — open-URL guardrails (concurrency cap + rate-limit + Budgets + validation); **writes/admin-read gated by Cognito JWT (F1/F2)**; `DATABASE_URL` in **SSM SecureString + KMS**, lazy-loaded off module scope (F4/F11); all SQL parameterized (`list-filter.mapper.ts`). ✅
 
 **Known follow-ups (out of this plan):** real ESLint target (NH-42 flat-config lane); Vitest + coverage ratchet (L5 lane); `exercise`/`pattern` tables + lesson-steps; signed CloudFront notation URLs on item-open; per-user score join (DynamoDB).
 
