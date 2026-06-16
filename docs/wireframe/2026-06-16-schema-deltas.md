@@ -1,0 +1,64 @@
+# Catalog schema — UI-surfaced deltas (running ledger)
+
+Findings from the catalog **wireframe** (`docs/wireframe/index.html`) that touch the **locked** schema
+(`docs/specs/2026-06-10-catalogue-schema.md`).
+
+**Model:** wireframe surfaces a gap → logged here as a numbered delta → **you approve each one** → only then
+is the locked spec amended (with a changelog line). Unapproved gaps stay open or live in `data jsonb`.
+Nothing changes unilaterally.
+
+**Status legend:** 🔵 open (needs your call) · 🟢 approved → applied · ⚪ confirmed, no change · ⛔ rejected
+
+---
+
+## 🔵 SD-1 — Are **Fills** a `lesson_type` or only a `pattern.kind`?
+
+- **What the UI needs:** the Lessons tab shows sub-kinds **Beats · Rudiments · Fills** (locked UI). To list a
+  "Fill" as a browsable lesson, an item needs `lesson_type='fill'`.
+- **Schema today:** `catalogue_item.lesson_type` open vocab = `'song-breakdown' | 'beat' | 'rudiment'`.
+  `'fill'` exists only as `pattern.kind='fill'` (a reusable vocabulary entry, not a browsable lesson).
+- **Why it matters:** without `lesson_type='fill'`, the Fills sub-tab has nothing to list (or must query
+  `pattern`, which is a different entity with no steps/BPM-ladder).
+- **Proposed change:** add `'fill'` to the `lesson_type` open vocab (no DDL change — it's a free-text column;
+  just a documented value + a seed). Keep `pattern.kind='fill'` for the reusable-vocabulary role.
+- **Cheapest alternative:** point the Fills sub-tab at `pattern` rows instead of lessons (changes what "Fills"
+  means — vocabulary, not practiceable lessons).
+- **Prior art:** the catalog-UI memory already flagged *"Fills → add `lesson_type='fill'` (schema tweak, open
+  vocab)."* This delta just formalises the decision.
+
+## 🔵 SD-2 — How does a **Song** find its "Practice in parts" lesson?
+
+- **What the UI needs:** Song detail shows **Practice in parts** → a song-breakdown lesson whose steps slice
+  that song.
+- **Schema today:** the link is *one-way* — a song-breakdown `exercise` points **up** to the song via
+  `source_item_id`. There's no pointer **down** from the song to its breakdown lesson(s).
+- **Why it matters:** to render the button, the app must reverse-query `exercise WHERE source_item_id = :song`
+  and group by `lesson_id` (works, but it's an implicit relationship the K-3 list projection doesn't carry).
+- **Proposed change:** none to DDL — document the reverse lookup as the supported pattern, and (optionally)
+  expose a `breakdownLessonIds[]` convenience field on `GET /catalogue/{id}` computed at read time.
+- **Cheapest alternative:** keep it purely query-driven (current assumption). ⚪ leaning no-change.
+
+## 🔵 SD-3 — Where does a **user-upload's owner** live (for the "my uploads" view)?
+
+- **What the UI needs:** a signed-in **User** sees their own uploaded drafts (e.g. *"My practice loop"*) that
+  aren't in the shared published catalog; **Admin** sees all.
+- **Schema today:** `catalogue_item.source='user-upload'` + `status` exist, but there is **no `owner` / `uploader_id`**
+  column. Deferred-slots note says user files are *"keyed by uploader, never auto-published"* — but doesn't say
+  where the uploader key lives.
+- **Why it matters:** filtering "items owned by *this* user" needs an owner reference somewhere queryable.
+- **Proposed change (options to decide):** (a) add `owner_id text` to `catalogue_item` (NULL for curated);
+  (b) keep user-upload pointers **per-user in DynamoDB** and never list them from the catalog query; (c) a
+  separate `user_upload` table.
+- **Cheapest alternative:** (b) — matches "per-user data → DynamoDB"; the catalog stays curated-only. Likely
+  the right call, but it changes how the User role's library is assembled (two sources merged client-side).
+
+## ⚪ SD-4 — Per-user score/history on list + detail (confirmed, no change)
+
+- Best score, sessions, trend, top-BPM are **per-user (DynamoDB)**, joined **client-side** — never in the
+  catalog tables. The wireframe fakes them on the item for demo only. The K-3 list projection (catalog fields
+  only) + client-side join **holds** under the UI. **No schema change.**
+
+---
+
+### Open count: 3 (SD-1, SD-2, SD-3) · awaiting your call
+*(I'll walk these as pickers once you've felt the v1 flow — they may shift as detail/steps/CRUD get fleshed.)*
