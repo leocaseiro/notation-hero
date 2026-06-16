@@ -68,7 +68,6 @@ a{color:inherit}
 .backlink{display:inline-flex;align-items:center;gap:5px;color:var(--muted);background:none;border:none;padding:6px 0;margin-bottom:6px}
 .backlink:hover{color:var(--ink)}
 
-/* filter row */
 .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
 .seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
 .seg button{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--muted);padding:6px 13px;border-radius:8px;font-weight:600;font-size:13.5px}
@@ -129,6 +128,10 @@ a{color:inherit}
 .badge2.fill{color:var(--s-dev);border-color:color-mix(in srgb,var(--s-dev) 40%,transparent)}
 .badge2.song-breakdown{color:var(--s-climb);border-color:color-mix(in srgb,var(--s-climb) 40%,transparent)}
 .pill-new{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:var(--pill);background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.tag{font-size:11px;padding:1px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--muted)}
+.tag.song{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.tag.lesson{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
+.tag.private{color:var(--s-dev);border-color:color-mix(in srgb,var(--s-dev) 45%,transparent)}
 .flags{display:inline-flex;gap:6px;color:var(--faint);margin-left:auto;padding-left:10px;flex:none}
 .flags .material-symbols-outlined{font-size:16px}
 .flags .parts{color:var(--accent)}
@@ -156,9 +159,6 @@ a{color:inherit}
 .hero .meta{flex:1;min-width:240px}
 .hero h1{font-size:30px;letter-spacing:-.02em}
 .hero .sub{color:var(--muted);margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.tag{font-size:11px;padding:1px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--muted)}
-.tag.song{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
-.tag.lesson{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
 .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .badge{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:5px 12px;font-size:13px;color:var(--muted)}
 .badge .material-symbols-outlined{font-size:17px;color:var(--faint)}
@@ -179,6 +179,19 @@ a{color:inherit}
 .trend span{flex:1;background:var(--accent);border-radius:3px 3px 0 0;opacity:.75;min-height:4px}
 .gate{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px dashed var(--line);border-radius:var(--radius);padding:14px 16px;color:var(--muted)}
 .gate .material-symbols-outlined{color:var(--faint)}
+
+/* relationships: patterns / media / source */
+.patrow{display:flex;gap:11px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);margin-bottom:7px;cursor:default}
+.patrow .pk{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;padding:2px 7px;border-radius:var(--pill);border:1px solid var(--line)}
+.patrow .pk.beat{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.patrow .pk.fill{color:var(--s-dev);border-color:color-mix(in srgb,var(--s-dev) 40%,transparent)}
+.patrow .pk.rudiment{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
+.media{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.medialink{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:6px 12px;font-size:13px;color:var(--ink)}
+.medialink:hover{border-color:var(--accent)}
+.medialink .material-symbols-outlined{font-size:17px;color:var(--accent)}
+.metafoot{color:var(--faint);font-size:12.5px;margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.metafoot .material-symbols-outlined{font-size:15px}
 
 .step{display:flex;gap:14px;align-items:center;padding:13px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px}
 .step:hover{border-color:var(--accent)}
@@ -236,7 +249,7 @@ a{color:inherit}
 <body>
 
 <div class="wf-banner">
-  <b>WIREFRAME</b><span>low-fi flow sim · v1.2 · functional filters · not final styling</span>
+  <b>WIREFRAME</b><span>low-fi flow sim · v1.3 · inside pages + relationships · not final styling</span>
   <span class="wf-tg">Theme:
     <button data-theme-set="dark" aria-pressed="true">Dark</button>
     <button data-theme-set="light" aria-pressed="false">Light</button>
@@ -282,42 +295,50 @@ a{color:inherit}
 
 <script>
 /* ====================================================================
-   Notation Hero — Catalog wireframe (v1.2 · functional filters)
-   Filters mirror the CatalogueFilter contract:
-   - type single · genre/timeSig/lessonType MULTI-select filter (= ANY over
-     single-valued columns) · instruments SINGLE (@> contains) · level/bpm RANGE
-     (level 0=Debut, NULL=ungraded) · tags/skill ALL-of (@>) · musicalKey MULTI,
-     shown only for PITCHED instruments · sort.
+   Notation Hero — Catalog wireframe (v1.3 · inside pages + relationships)
+   Adds: client-side score filter/sort (SD-12, per-user caveat); item↔pattern
+   links (SD-1 fills=pattern); media (audio/video); source/license; owner +
+   visibility (SD-3, public/private). Filters mirror the CatalogueFilter contract.
    ==================================================================== */
 
 const MARK_SVG = '<svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/><svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor"><path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z"/></svg></svg>';
 const MIDI_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M20.18,12C20.18,8.18 17.55,4.96 14,4.07V6H10V4.07C6.45,4.96 3.82,8.18 3.82,12A8.18,8.18 0 0,0 12,20.18A8.18,8.18 0 0,0 20.18,12M7,10.64A1.36,1.36 0 0,1 8.36,12A1.36,1.36 0 0,1 7,13.36C6.25,13.36 5.64,12.75 5.64,12C5.64,11.25 6.25,10.64 7,10.64M17,10.64A1.36,1.36 0 0,1 18.36,12A1.36,1.36 0 0,1 17,13.36A1.36,1.36 0 0,1 15.64,12A1.36,1.36 0 0,1 17,10.64M8.36,14.27A1.37,1.37 0 0,1 9.73,15.64C9.73,16.39 9.12,17 8.36,17A1.36,1.36 0 0,1 7,15.64C7,14.88 7.61,14.27 8.36,14.27M15.64,14.27C16.39,14.27 17,14.88 17,15.64A1.36,1.36 0 0,1 15.64,17C14.88,17 14.27,16.39 14.27,15.64A1.37,1.37 0 0,1 15.64,14.27M12,15.64A1.36,1.36 0 0,1 13.36,17A1.36,1.36 0 0,1 12,18.36A1.36,1.36 0 0,1 10.64,17A1.36,1.36 0 0,1 12,15.64Z"/></svg>';
 
+/* ---------- patterns (the reusable vocabulary — beats/fills/rudiments) ---------- */
+const PATTERNS = {
+  'rock-8th':         {kind:'beat',     name:'8th-Note Rock',     family:'Rock',  subdivision:'8th',  level:1},
+  'four-floor':       {kind:'beat',     name:'Four-on-the-Floor', family:'House', subdivision:'quarter', level:1},
+  'single-paradiddle':{kind:'rudiment', name:'Single Paradiddle', family:'Diddle',subdivision:'16th', level:2},
+  'double-stroke':    {kind:'rudiment', name:'Double Stroke Roll',family:'Roll',  subdivision:'16th', level:3},
+  'linear-6stroke':   {kind:'fill',     name:'Linear 6-Stroke',   family:'Linear',subdivision:'16th', level:5},
+};
+const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',label:'Fill'}, rudiment:{icon:'drag_indicator',label:'Rudiment'}};
+
 /* ---------- sample data (catalogue_item) ---------- */
 const ITEMS = [
-  {id:'seven-nation-army', type:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['riff','syncopation'], musical_key:null, status:'published', source:'curated', notation_format:'gp', has_audio:true, has_video:true, best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
+  {id:'seven-nation-army', type:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['riff','syncopation'], patterns:['rock-8th'], musical_key:null, status:'published', source:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Official video'}], best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
     data:{bars:48, sections:[{label:'Intro',startBar:1,endBar:8},{label:'Verse',startBar:9,endBar:24},{label:'Chorus',startBar:25,endBar:40},{label:'Outro',startBar:41,endBar:48}]}, breakdown:'sna-breakdown'},
-  {id:'billie-jean', type:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], tags:['groove'], status:'published', source:'curated', notation_format:'gpx', has_audio:true, best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
+  {id:'billie-jean', type:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], tags:['groove'], patterns:['four-floor'], status:'published', source:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
     data:{bars:64, sections:[{label:'Groove',startBar:1,endBar:16},{label:'Verse',startBar:17,endBar:32},{label:'Chorus',startBar:33,endBar:48}]}},
-  {id:'rosanna', type:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['shuffle','ghost-notes'], status:'published', source:'curated', notation_format:'gp5', has_audio:true, has_video:true, best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
-  {id:'enter-sandman', type:'song', title:'Enter Sandman', artist:'Metallica', level:5, bpm:123, time_sig:'4/4', genre:'metal', instruments:['drums'], tags:['double-bass'], status:'published', source:'curated', notation_format:'gp', best:null, sessions:0, trend:[], new:true},
-  {id:'take-five', type:'song', title:'Take Five', artist:'Dave Brubeck', level:6, bpm:174, time_sig:'5/4', genre:'jazz', instruments:['drums'], tags:['syncopation'], status:'published', source:'curated', notation_format:'xml', has_video:true, best:52, sessions:4, top_bpm:150, trend:[30,40,48,52]},
-  {id:'creep', type:'song', title:'Creep', artist:'Radiohead', level:3, bpm:92, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['groove'], status:'published', source:'curated', notation_format:'gp', has_audio:true, best:67, sessions:3, top_bpm:88, trend:[44,58,67]},
-  /* pitched items — exercise the conditional Key filter + instrument single-select */
-  {id:'wonderwall', type:'song', title:'Wonderwall', artist:'Oasis', level:0, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar'], musical_key:'F#m', tags:['strumming'], status:'published', source:'curated', notation_format:'gp', has_audio:true, best:null, sessions:0, trend:[]},
-  {id:'clocks', type:'song', title:'Clocks', artist:'Coldplay', level:4, bpm:131, time_sig:'4/4', genre:'rock', instruments:['keys'], musical_key:'Eb', tags:['arpeggio'], status:'published', source:'curated', notation_format:'gpx', has_audio:true, best:60, sessions:2, top_bpm:120, trend:[40,60]},
-  {id:'my-demo-upload', type:'song', title:'My practice loop (upload)', artist:null, level:null, bpm:100, time_sig:'4/4', genre:null, instruments:['drums'], status:'draft', source:'user-upload', notation_format:'gp', best:12, sessions:1, trend:[12], ownedByUser:true},
+  {id:'rosanna', type:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['shuffle','ghost-notes'], patterns:['single-paradiddle'], status:'published', source:'curated', license:'royalty-free', notation_format:'gp5', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Drum cam'}], best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
+  {id:'enter-sandman', type:'song', title:'Enter Sandman', artist:'Metallica', level:5, bpm:123, time_sig:'4/4', genre:'metal', instruments:['drums'], tags:['double-bass'], patterns:['rock-8th'], status:'published', source:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[], new:true},
+  {id:'take-five', type:'song', title:'Take Five', artist:'Dave Brubeck', level:6, bpm:174, time_sig:'5/4', genre:'jazz', instruments:['drums'], tags:['syncopation'], status:'published', source:'curated', license:'public-domain', notation_format:'xml', has_video:true, video:[{provider:'youtube',label:'Live 1966'}], best:52, sessions:4, top_bpm:150, trend:[30,40,48,52]},
+  {id:'creep', type:'song', title:'Creep', artist:'Radiohead', level:3, bpm:92, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['groove'], patterns:['four-floor'], status:'published', source:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:67, sessions:3, top_bpm:88, trend:[44,58,67]},
+  {id:'wonderwall', type:'song', title:'Wonderwall', artist:'Oasis', level:0, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar'], musical_key:'F#m', tags:['strumming'], status:'published', source:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:null, sessions:0, trend:[]},
+  {id:'clocks', type:'song', title:'Clocks', artist:'Coldplay', level:4, bpm:131, time_sig:'4/4', genre:'rock', instruments:['keys'], musical_key:'Eb', tags:['arpeggio'], status:'published', source:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:60, sessions:2, top_bpm:120, trend:[40,60]},
+  {id:'my-demo-upload', type:'song', title:'My practice loop (upload)', artist:null, level:null, bpm:100, time_sig:'4/4', genre:null, instruments:['drums'], status:'draft', source:'user-upload', owner:'you', visibility:'private', notation_format:'gp', best:12, sessions:1, trend:[12], ownedByUser:true},
 
-  {id:'first-beat', type:'lesson', title:'Your First Beat', level:0, lesson_type:'beat', instruments:['drums'], skill:['timing'], status:'published', source:'curated', best:90, sessions:9, trend:[60,75,90], new:true},
-  {id:'rock-8th-beat', type:'lesson', title:'8th-Note Rock Beat', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing','coordination'], status:'published', source:'curated', best:64, sessions:3, trend:[30,48,64]},
-  {id:'four-on-floor', type:'lesson', title:'Four-on-the-Floor', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing'], status:'published', source:'curated', best:88, sessions:7, trend:[55,66,74,80,88]},
-  {id:'funk-16ths', type:'lesson', title:'Funk Groove — 16th Hats', level:4, lesson_type:'beat', instruments:['drums'], skill:['independence','timing'], tags:['ghost-notes','syncopation'], status:'published', source:'curated', best:41, sessions:2, trend:[22,41]},
-  {id:'single-paradiddle', type:'lesson', title:'Single Paradiddle', level:2, lesson_type:'rudiment', instruments:['drums'], skill:['independence','control'], status:'published', source:'curated', best:73, sessions:5, trend:[40,52,60,68,73]},
-  {id:'double-stroke', type:'lesson', title:'Double Stroke Roll', level:3, lesson_type:'rudiment', instruments:['drums'], skill:['control'], status:'published', source:'curated', best:null, sessions:0, trend:[]},
-  {id:'linear-fill-1', type:'lesson', title:'Linear Fill — 6-stroke', level:5, lesson_type:'fill', instruments:['drums'], skill:['fills'], status:'published', source:'curated', best:20, sessions:1, trend:[20]},
-  {id:'sna-breakdown', type:'lesson', title:'Seven Nation Army — Practice in Parts', level:2, lesson_type:'song-breakdown', instruments:['drums'], skill:['timing'], status:'published', source:'curated', has_audio:true, best:55, sessions:3, trend:[35,48,55], sourceSong:'seven-nation-army'},
+  {id:'first-beat', type:'lesson', title:'Your First Beat', level:0, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:90, sessions:9, trend:[60,75,90], new:true},
+  {id:'rock-8th-beat', type:'lesson', title:'8th-Note Rock Beat', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing','coordination'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:64, sessions:3, trend:[30,48,64]},
+  {id:'four-on-floor', type:'lesson', title:'Four-on-the-Floor', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['four-floor'], status:'published', source:'curated', license:'owned', best:88, sessions:7, trend:[55,66,74,80,88]},
+  {id:'funk-16ths', type:'lesson', title:'Funk Groove — 16th Hats', level:4, lesson_type:'beat', instruments:['drums'], skill:['independence','timing'], tags:['ghost-notes','syncopation'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:41, sessions:2, trend:[22,41]},
+  {id:'single-paradiddle', type:'lesson', title:'Single Paradiddle', level:2, lesson_type:'rudiment', instruments:['drums'], skill:['independence','control'], patterns:['single-paradiddle'], status:'published', source:'curated', license:'owned', best:73, sessions:5, trend:[40,52,60,68,73]},
+  {id:'double-stroke', type:'lesson', title:'Double Stroke Roll', level:3, lesson_type:'rudiment', instruments:['drums'], skill:['control'], patterns:['double-stroke'], status:'published', source:'curated', license:'owned', best:null, sessions:0, trend:[]},
+  {id:'linear-fill-1', type:'lesson', title:'Linear Fill — 6-stroke', level:5, lesson_type:'rudiment', instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', source:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'teaches a FILL pattern (fills = pattern.kind, not lesson_type — SD-1)'},
+  {id:'sna-breakdown', type:'lesson', title:'Seven Nation Army — Practice in Parts', level:2, lesson_type:'song-breakdown', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', source:'curated', license:'royalty-free', has_audio:true, best:55, sessions:3, trend:[35,48,55], sourceSong:'seven-nation-army'},
 ];
 
+/* ---------- sample data (exercise = STEPS) ---------- */
 const STEPS = {
   'first-beat':[
     {step_no:1,title:'Just the kick',     start_bpm:50,goal_bpm:70, notation_tex:'kd kd kd kd'},
@@ -358,14 +379,14 @@ const STEPS = {
   ],
 };
 
-const LESSON_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, fill:{icon:'bolt',label:'Fills'}, 'song-breakdown':{icon:'segment',label:'Song parts'}};
+const LESSON_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, 'song-breakdown':{icon:'segment',label:'Song parts'}};
 const GENRES = ['rock','pop','jazz','metal','funk','soul'];
 const TIMES = ['4/4','3/4','5/4','6/8','7/8'];
 const INSTRUMENTS = ['drums','guitar','keys'];
 const KEYS = ['C','G','D','A','E','F#m','Am','Em','Bb','Eb'];
 const SKILLS = ['timing','coordination','independence','control','speed','fills'];
-const SORTS = {relevance:'Relevance', level:'Level', bpm:'BPM', newest:'Newest', title:'A–Z', curated:'Curated'};
-const PITCHED = ['guitar','keys'];   // non-drum → has key/scale
+const SORTS = {relevance:'Relevance', level:'Level', bpm:'BPM', best:'Best score', newest:'Newest', title:'A–Z', curated:'Curated'};
+const PITCHED = ['guitar','keys'];
 const PAGE_SIZE = 6;
 
 /* ---------- state ---------- */
@@ -376,17 +397,12 @@ const state = {
   q: '',
   advanced: false,
   page: 1,
-  openPop: null,                 // id of the currently-open filter popover
-  // filters (mirror CatalogueFilter)
-  genre: [],                     // multi (OR)
-  kind: [],                      // multi (OR) — lesson_type
-  timeSig: [],                   // multi (OR)
-  instrument: null,              // SINGLE (@> contains)
-  level: { min:null, max:null }, // range; 0=Debut
-  inclUngraded: false,
-  bpm: { min:null, max:null },   // range
-  skill: [],                     // multi (ALL-of)
-  musicalKey: [],                // multi (OR) — pitched only
+  openPop: null,
+  genre: [], kind: [], timeSig: [], instrument: null,
+  level: { min:null, max:null }, inclUngraded: false,
+  bpm: { min:null, max:null },
+  score: { min:null, max:null }, inclUnplayed: false,   // SD-12 (per-user, client-side)
+  skill: [], musicalKey: [],
   sort: 'relevance',
 };
 const el = sel => document.querySelector(sel);
@@ -395,7 +411,6 @@ const esc = s => (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'
 const cap = s => s? s[0].toUpperCase()+s.slice(1):s;
 const gradeLabel = v => v===0?'Debut':String(v);
 
-/* ---------- score donut ---------- */
 function band(v){ if(v==null)return 'none'; if(v>=100)return 'gold'; if(v>=89)return 'high'; if(v>=70)return 'climb'; if(v>=50)return 'dev'; return 'low'; }
 function donut(v){
   const b = band(v), col = {none:'--s-none',low:'--s-low',dev:'--s-dev',climb:'--s-climb',high:'--s-high',gold:'--s-gold'}[b];
@@ -410,7 +425,6 @@ const isAdmin = () => state.role==='admin';
 const signedIn= () => state.role!=='anon';
 const isPitched = () => state.instrument && PITCHED.includes(state.instrument);
 
-/* ---------- derived flags ---------- */
 function hasParts(it){ return it.type==='song' ? !!(it.data&&it.data.sections&&it.data.sections.length) : (STEPS[it.id]||[]).length>0; }
 function itemFlags(it){
   const f=[];
@@ -464,21 +478,22 @@ function render(){
 /* ---------- filtering + sorting ---------- */
 function matches(it){
   if(it.type!==state.tab.replace(/s$/,'')) return false;
-  if(state.genre.length && !state.genre.includes(it.genre)) return false;             // OR
-  if(state.tab==='lessons' && state.kind.length && !state.kind.includes(it.lesson_type)) return false; // OR
-  if(state.timeSig.length && !state.timeSig.includes(it.time_sig)) return false;       // OR
-  if(state.instrument && !(it.instruments||[]).includes(state.instrument)) return false; // @> contains (single)
-  if(state.level.min!=null || state.level.max!=null){                                  // range, excl ungraded
+  if(state.genre.length && !state.genre.includes(it.genre)) return false;
+  if(state.tab==='lessons' && state.kind.length && !state.kind.includes(it.lesson_type)) return false;
+  if(state.timeSig.length && !state.timeSig.includes(it.time_sig)) return false;
+  if(state.instrument && !(it.instruments||[]).includes(state.instrument)) return false;
+  if(state.level.min!=null || state.level.max!=null){
     if(it.level==null){ if(!state.inclUngraded) return false; }
-    else {
-      if(state.level.min!=null && it.level<state.level.min) return false;
-      if(state.level.max!=null && it.level>state.level.max) return false;
-    }
+    else { if(state.level.min!=null && it.level<state.level.min) return false; if(state.level.max!=null && it.level>state.level.max) return false; }
   }
   if(state.bpm.min!=null && (it.bpm==null || it.bpm<state.bpm.min)) return false;
   if(state.bpm.max!=null && (it.bpm==null || it.bpm>state.bpm.max)) return false;
-  if(state.skill.length && !state.skill.every(s=>(it.skill||[]).includes(s))) return false; // ALL-of
-  if(isPitched() && state.musicalKey.length && !state.musicalKey.includes(it.musical_key)) return false; // OR, pitched
+  if(signedIn() && (state.score.min!=null || state.score.max!=null)){   // SD-12 (per-user; client-side here)
+    if(it.best==null){ if(!state.inclUnplayed) return false; }
+    else { if(state.score.min!=null && it.best<state.score.min) return false; if(state.score.max!=null && it.best>state.score.max) return false; }
+  }
+  if(state.skill.length && !state.skill.every(s=>(it.skill||[]).includes(s))) return false;
+  if(isPitched() && state.musicalKey.length && !state.musicalKey.includes(it.musical_key)) return false;
   if(state.q){ const t=(it.title+' '+(it.artist||'')).toLowerCase(); if(!t.includes(state.q.toLowerCase())) return false; }
   if(!isAdmin() && it.status!=='published' && !(it.ownedByUser && signedIn())) return false;
   return true;
@@ -487,31 +502,30 @@ function sortItems(arr){
   const c=[...arr], s=state.sort;
   if(s==='level') c.sort((a,b)=>(a.level==null?99:a.level)-(b.level==null?99:b.level));
   else if(s==='bpm') c.sort((a,b)=>(a.bpm==null?1e9:a.bpm)-(b.bpm==null?1e9:b.bpm));
+  else if(s==='best') c.sort((a,b)=>(b.best==null?-1:b.best)-(a.best==null?-1:a.best));
   else if(s==='title') c.sort((a,b)=>a.title.localeCompare(b.title));
   else if(s==='newest') c.sort((a,b)=>(b.new?1:0)-(a.new?1:0));
-  return c; // relevance / curated → source order
+  return c;
 }
 
-/* ---------- filter chip face labels ---------- */
 function multiFace(label, arr, fmt){ if(!arr.length) return `<span class="k">${label}:</span> Any`; const f=fmt||cap; return `<span class="k">${label}:</span> ${f(arr[0])}${arr.length>1?' +'+(arr.length-1):''}`; }
 function rangeFace(label, r, fmt){ const f=fmt||(x=>x); if(r.min==null&&r.max==null) return `<span class="k">${label}:</span> Any`; if(r.min!=null&&r.max!=null) return `<span class="k">${label}:</span> ${f(r.min)}–${f(r.max)}`; if(r.max!=null) return `<span class="k">${label}:</span> ≤ ${f(r.max)}`; return `<span class="k">${label}:</span> ≥ ${f(r.min)}`; }
 
-/* ---------- popover builders ---------- */
-function multiPop(id, group, opts){ // opts: [{val,label,icon}]
+function multiPop(id, group, opts){
   const sel = state[group];
   return `<div class="fpop ${state.openPop===id?'open':''}" id="${id}">
     <div class="opsel">is any of</div>
     ${opts.map(o=>`<div class="fopt ${sel.includes(o.val)?'on':''}" data-mg="${group}" data-val="${o.val}">
       <span class="box"><span class="material-symbols-outlined">check</span></span>
       ${o.icon?`<span class="material-symbols-outlined ic">${o.icon}</span>`:''}${o.label}</div>`).join('')}
-    <div class="foot"><a data-clear="${group}">Clear</a></div></div>`;
+    <div class="foot"><span></span><a data-clear="${group}">Clear</a></div></div>`;
 }
-function singlePop(id, opts){ // instrument
+function singlePop(id, opts){
   return `<div class="fpop ${state.openPop===id?'open':''}" id="${id}">
     <div class="opsel">is</div>
     ${opts.map(o=>`<div class="fopt ${state.instrument===o.val?'on':''}" data-si="instrument" data-val="${o.val}">
       <span class="radio"></span><span class="material-symbols-outlined ic">${o.icon}</span>${o.label}</div>`).join('')}
-    <div class="foot"><a data-clear="instrument">Clear</a></div></div>`;
+    <div class="foot"><span></span><a data-clear="instrument">Clear</a></div></div>`;
 }
 function levelPop(){
   const optEls = n => [0,1,2,3,4,5,6,7,8,9,10].map(v=>`<option value="${v}" ${state.level[n]===v?'selected':''}>${gradeLabel(v)}</option>`).join('');
@@ -529,10 +543,19 @@ function bpmPop(){
       <span class="dash">–</span><label>Max</label><input type="number" min="0" step="1" data-range="bpmMax" value="${state.bpm.max??''}" placeholder="—"></div>
     <div class="foot"><span></span><a data-clear="bpm">Clear</a></div></div>`;
 }
+function scorePop(){
+  return `<div class="fpop ${state.openPop==='scorePop'?'open':''}" id="scorePop" style="min-width:250px">
+    <div class="opsel">your best score % · per-user</div>
+    <div class="rangerow"><label>Min</label><input type="number" min="0" max="100" step="1" data-range="scoreMin" value="${state.score.min??''}" placeholder="—">
+      <span class="dash">–</span><label>Max</label><input type="number" min="0" max="100" step="1" data-range="scoreMax" value="${state.score.max??''}" placeholder="—"></div>
+    <div class="fopt ${state.inclUnplayed?'on':''}" data-toggle="inclUnplayed" style="margin-top:2px"><span class="box"><span class="material-symbols-outlined">check</span></span>Include not-attempted</div>
+    <div class="foot"><span style="color:var(--faint);font-size:11px">SD-12: wireframe filters the loaded set</span><a data-clear="score">Clear</a></div></div>`;
+}
 function sortPop(){
+  const opts = Object.entries(SORTS).filter(([v])=> v!=='best' || signedIn());
   return `<div class="fpop r ${state.openPop==='sortPop'?'open':''}" id="sortPop">
     <div class="opsel">sort by</div>
-    ${Object.entries(SORTS).map(([v,l])=>`<div class="fopt ${state.sort===v?'on':''}" data-sort="${v}"><span class="radio"></span>${l}</div>`).join('')}</div>`;
+    ${opts.map(([v,l])=>`<div class="fopt ${state.sort===v?'on':''}" data-sort="${v}"><span class="radio"></span>${l}</div>`).join('')}</div>`;
 }
 
 /* ---------- screen: CATALOG ---------- */
@@ -571,9 +594,10 @@ function renderCatalog(){
       <div class="fdrop"><button class="fbtn ${state.timeSig.length?'on':''}" data-pop="timePop">${multiFace('Time',state.timeSig,x=>x)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('timePop','timeSig',TIMES.map(t=>({val:t,label:t})))}</div>
       <div class="fdrop"><button class="fbtn ${state.bpm.min!=null||state.bpm.max!=null?'on':''}" data-pop="bpmPop">${rangeFace('Tempo',state.bpm)} <span class="material-symbols-outlined caret">expand_more</span></button>${bpmPop()}</div>
       <div class="fdrop"><button class="fbtn ${state.skill.length?'on':''}" data-pop="skillPop">${multiFace('Skill',state.skill)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('skillPop','skill',SKILLS.map(s=>({val:s,label:cap(s)})))}</div>
+      ${signedIn()?`<div class="fdrop"><button class="fbtn ${state.score.min!=null||state.score.max!=null?'on':''}" data-pop="scorePop">${rangeFace('Best',state.score,x=>x+'%')} <span class="material-symbols-outlined caret">expand_more</span></button>${scorePop()}</div>`:''}
       ${isPitched()
         ? `<div class="fdrop"><button class="fbtn ${state.musicalKey.length?'on':''}" data-pop="keyPop">${multiFace('Key',state.musicalKey,x=>x)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('keyPop','musicalKey',KEYS.map(k=>({val:k,label:k})))}</div>`
-        : `<span class="advsec" title="Key applies to pitched instruments (guitar/keys) — pick one in Instrument"><span class="albl">Key</span><span style="color:var(--faint);font-size:12px">— pick a pitched instrument</span></span>`}
+        : `<span class="advsec" title="Key applies to pitched instruments (guitar/keys)"><span class="albl">Key</span><span style="color:var(--faint);font-size:12px">— pick a pitched instrument</span></span>`}
     </div>
     ${signedIn()?`<div class="continue" data-nav="#/lesson/rock-8th-beat"><span class="material-symbols-outlined">resume</span><div style="flex:1"><b>Continue:</b> 8th-Note Rock Beat — Step 3 of 4 <small style="color:var(--faint);display:block">last best 64%</small></div><span class="material-symbols-outlined">chevron_right</span></div>`:''}
     ${ list.length ? `
@@ -588,6 +612,7 @@ function rowHTML(it){
   const cover = isLesson ? (LESSON_KINDS[it.lesson_type]?.icon||'school') : 'music_note';
   const badge = isLesson ? `<span class="badge2 ${it.lesson_type}">${LESSON_KINDS[it.lesson_type]?.label||'Lesson'}</span>` : '';
   const isNew = it.new ? `<span class="pill-new">New</span>` : '';
+  const priv = it.visibility==='private' ? `<span class="tag private" style="font-size:10px;padding:1px 6px">Private</span>` : '';
   const sub = isLesson
     ? `${(STEPS[it.id]||[]).length} steps <span class="dot"></span> ${(it.skill||[]).slice(0,2).join(' · ')}`
     : `${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}${it.musical_key?' <span class="dot"></span> '+it.musical_key:''}`;
@@ -597,7 +622,7 @@ function rowHTML(it){
     <div class="name">
       <div class="cover ${isLesson?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
       <div class="nm" data-nav="#/${it.type}/${it.id}">
-        <div class="nmtitle"><b>${esc(it.title)}</b>${badge}${isNew}</div>
+        <div class="nmtitle"><b>${esc(it.title)}</b>${badge}${isNew}${priv}</div>
         <div class="nmsub">${sub}</div>
       </div>
       ${itemFlags(it)}
@@ -630,6 +655,31 @@ function adminCatalogBar(){
   </div>`;
 }
 
+/* ---------- relationship + meta blocks (READ deepening) ---------- */
+function patternsCard(it){
+  if(!it.patterns||!it.patterns.length) return '';
+  return `<div class="card"><h3><span class="material-symbols-outlined">extension</span> Patterns ${it.type==='song'?'in this song':'this lesson teaches'} <span style="font-weight:400;color:var(--faint)">· reusable grooves / fills / rudiments</span></h3>
+    ${it.patterns.map(pid=>{ const p=PATTERNS[pid]; if(!p) return ''; const k=PATTERN_KINDS[p.kind]||{label:p.kind,icon:'extension'};
+      return `<div class="patrow"><span class="material-symbols-outlined" style="color:var(--accent)">${k.icon}</span>
+        <div style="flex:1"><b>${esc(p.name)}</b><small style="color:var(--faint);display:block">${[p.family,p.subdivision&&p.subdivision+' notes','level '+(p.level??'—')].filter(Boolean).join(' · ')}</small></div>
+        <span class="pk ${p.kind}">${k.label}</span></div>`; }).join('')}
+    <small style="color:var(--faint);display:block;margin-top:4px">Linked via <code>item_pattern</code> (m:n). Fills live here — they're a <code>pattern.kind</code>, not a lesson type (SD-1).</small>
+  </div>`;
+}
+function mediaLinks(it){
+  const m=[...(it.video||[]).map(v=>({i:'smart_display',l:v.label||'Video'})), ...(it.audio||[]).map(a=>({i:'volume_up',l:a.label||'Audio'}))];
+  if(!m.length) return '';
+  return `<div class="media">${m.map(x=>`<span class="medialink"><span class="material-symbols-outlined">${x.i}</span>${esc(x.l)}</span>`).join('')}</div>`;
+}
+function metaFoot(it){
+  const bits=[];
+  if(it.source==='user-upload'){ bits.push(it.visibility==='private'?'<span class="tag private">Private</span>':'<span class="tag">Upload</span>'); if(it.owner) bits.push('owner: '+esc(it.owner)); }
+  else bits.push('Curated');
+  if(it.license) bits.push(esc(it.license));
+  bits.push('source: <code style="font-size:11px">'+esc(it.source||'?')+'</code>');
+  return `<div class="metafoot"><span class="material-symbols-outlined">info</span>${bits.join(' · ')}</div>`;
+}
+
 /* ---------- screen: SONG detail ---------- */
 function renderSong(id){
   const it = ITEMS.find(x=>x.id===id); if(!it) return notFound();
@@ -641,16 +691,15 @@ function renderSong(id){
     <div class="hero">
       <div class="meta">
         <h1>${esc(it.title)}</h1>
-        <div class="sub">${it.artist?esc(it.artist):'Unknown artist'} <span class="tag song">Song</span></div>
+        <div class="sub">${it.artist?esc(it.artist):'Unknown artist'} <span class="tag song">Song</span> ${it.visibility==='private'?'<span class="tag private">Private</span>':''}</div>
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
           <span class="badge"><span class="material-symbols-outlined">schedule</span>${it.time_sig}</span>
           <span class="badge"><span class="material-symbols-outlined">bar_chart</span>${it.level===0?'Debut':'Level '+(it.level??'—')}</span>
           <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.instruments||[]).join('·')}</span>
           ${it.musical_key?`<span class="badge"><span class="material-symbols-outlined">piano</span>Key ${it.musical_key}</span>`:''}
-          ${it.has_audio?'<span class="badge"><span class="material-symbols-outlined">volume_up</span>Audio</span>':''}
-          ${it.has_video?'<span class="badge"><span class="material-symbols-outlined">smart_display</span>Video</span>':''}
         </div>
+        ${mediaLinks(it)}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>
           ${it.breakdown?`<button class="btn secondary" data-nav="#/lesson/${it.breakdown}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
@@ -668,6 +717,8 @@ function renderSong(id){
           ${it.breakdown?`<span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span>`:''}
         </div>`).join('') : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`}
     </div>
+    ${patternsCard(it)}
+    ${metaFoot(it)}
   `;
 }
 
@@ -697,6 +748,8 @@ function renderLesson(id){
       ${steps.map(s=>stepRow(it,s)).join('')}
       ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
     </div>
+    ${patternsCard(it)}
+    ${metaFoot(it)}
   `;
 }
 function stepRow(lesson, s){
@@ -843,6 +896,7 @@ function closeModal(){ el('#modal').classList.remove('open'); }
 function clearFilter(g){
   if(g==='level'){ state.level={min:null,max:null}; state.inclUngraded=false; }
   else if(g==='bpm'){ state.bpm={min:null,max:null}; }
+  else if(g==='score'){ state.score={min:null,max:null}; state.inclUnplayed=false; }
   else if(g==='instrument'){ state.instrument=null; }
   else state[g]=[];
   state.page=1;
@@ -852,44 +906,39 @@ document.addEventListener('click', e=>{
   const navEl = e.target.closest('[data-nav]');
   if(navEl){ navigate(navEl.dataset.nav); return; }
   if(e.target.closest('[data-back]')){ history.length>1?history.back():navigate('#/catalog'); return; }
-  // open/close a filter popover
   const popBtn = e.target.closest('[data-pop]');
   if(popBtn){ const id=popBtn.dataset.pop; state.openPop = state.openPop===id?null:id; renderCatalog(); return; }
-  // multi-select toggle (stays open)
   const mg = e.target.closest('[data-mg]');
   if(mg){ const g=mg.dataset.mg, v=mg.dataset.val; const a=state[g]; const i=a.indexOf(v); i>=0?a.splice(i,1):a.push(v); state.page=1; renderCatalog(); return; }
-  // single-select (instrument) → close after pick
   const si = e.target.closest('[data-si]');
   if(si){ const v=si.dataset.val; state.instrument = state.instrument===v?null:v; if(!isPitched()) state.musicalKey=[]; state.openPop=null; state.page=1; renderCatalog(); return; }
-  // toggle (include ungraded)
   const tg = e.target.closest('[data-toggle]');
   if(tg){ state[tg.dataset.toggle]=!state[tg.dataset.toggle]; state.page=1; renderCatalog(); return; }
-  // sort pick → close
   const so = e.target.closest('[data-sort]');
   if(so){ state.sort=so.dataset.sort; state.openPop=null; renderCatalog(); return; }
-  // clear a filter
   const cl = e.target.closest('[data-clear]');
   if(cl){ clearFilter(cl.dataset.clear); renderCatalog(); return; }
-  // click outside any popover closes it
   if(!e.target.closest('.fpop') && !e.target.closest('[data-pop]') && state.openPop){ state.openPop=null; renderCatalog(); }
   if(e.target.closest('[data-tab]')){ state.tab=e.target.closest('[data-tab]').dataset.tab; state.page=1; state.openPop=null; renderCatalog(); return; }
   if(e.target.closest('[data-more]')){ state.advanced=!state.advanced; renderCatalog(); return; }
   if(e.target.closest('[data-page]')){ state.page=+e.target.closest('[data-page]').dataset.page; renderCatalog(); window.scrollTo({top:0,behavior:'smooth'}); return; }
-  if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); state.instrument=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
+  if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); clearFilter('score'); state.instrument=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
   if(e.target.closest('[data-role-set]')){ setRole(e.target.closest('[data-role-set]').dataset.roleSet); return; }
   if(e.target.closest('[data-theme-set]')){ setTheme(e.target.closest('[data-theme-set]').dataset.themeSet); return; }
   if(e.target.closest('#acctBtn') || e.target.closest('#signinHere')){ openModal(); return; }
   if(e.target.closest('#modalX') || e.target===el('#modal')){ closeModal(); return; }
   if(e.target.closest('#uploadBtn')){ navigate('#/admin/new?type=upload'); return; }
 });
-// range inputs (level selects + bpm number inputs)
 document.addEventListener('change', e=>{
   const r = e.target.dataset.range; if(!r) return;
-  const val = e.target.value===''?null:+e.target.value;
+  let val = e.target.value===''?null:+e.target.value;
+  if(val!=null && (r==='scoreMin'||r==='scoreMax')) val=Math.max(0,Math.min(100,val));
   if(r==='levelMin') state.level.min=val;
   else if(r==='levelMax') state.level.max=val;
   else if(r==='bpmMin') state.bpm.min=val;
   else if(r==='bpmMax') state.bpm.max=val;
+  else if(r==='scoreMin') state.score.min=val;
+  else if(r==='scoreMax') state.score.max=val;
   state.page=1; renderCatalog();
 });
 el('#q').addEventListener('input', e=>{ state.q=e.target.value; state.page=1; const onCat=(parseHash().seg[0]||'catalog')==='catalog'; if(onCat) renderCatalog(); else navigate('#/catalog'); });

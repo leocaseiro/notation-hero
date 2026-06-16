@@ -71,3 +71,8 @@ approval → amend the locked spec with a changelog). Nothing in the locked sche
   (OR), instrument **single**, level/tempo **ranges** (level `0 = Debut`), tags/skill **ALL-of**, **Key**
   shown only for pitched instruments, functional **Sort**. See `filter-review.md` (per-filter review vs the
   `CatalogueFilter` contract) and SD-7/8/9 in the schema-deltas ledger.
+- **v1.3** — **inside-page relationships + score filter**: **Patterns** card on song & lesson detail
+  (item↔pattern links; fills shown as a `pattern.kind`, SD-1); **media** links (audio/video); source / license /
+  owner **metafoot** + **Private** tag on user-uploads (SD-3); **client-side score filter** + **Best-score
+  sort** (SD-12, signed-in only — per-user caveat shown in-UI). Sample now includes pitched items (guitar/keys)
+  + a Debut (level 0) item.
