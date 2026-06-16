@@ -623,7 +623,7 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 ### Task 3.2: Unarchive
 
-- [ ] **TDD** `POST /catalogue/:id/unarchive` (decision F3): `archived → draft` (or `published` if gates pass). Both are password-gated. Commit. **Full-CRUD checkpoint.**
+- [ ] **TDD** `POST /catalogue/:id/unarchive` (decision F3): `archived → draft` (or `published` if gates pass). Both are Cognito-gated (Task 2.1 guard). Commit. **Full-CRUD checkpoint.**
 
 ---
 
@@ -697,7 +697,7 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 ## Open questions for review
 
-1. **App build output name** — `index.js` vs `main.js`? The Pulumi `handler: 'index.handler'` must match the esbuild output. (Plan assumes `index.handler` like `handler-hello`.)
+1. ~~**App build output name** — `index.js` vs `main.js`?~~ **Resolved (review F6):** pin esbuild output to `main.js` (NestJS `main.ts` entry) → Pulumi `handler: 'main.handler'`.
 2. **Neon dev branch per PR** — free tier allows 10 branches/project; wire PR-time migrate+test against an ephemeral branch now, or defer? (Plan defers to a "nice-to-have" note.)
 3. **Password-gate location** — header vs a tiny login that sets a cookie? (Plan assumes the cms-admin §4 shared-password header.) — *Superseded by the 2026-06-16 review: auth is moving to Cognito; see F14 below.*
 
