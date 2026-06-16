@@ -157,9 +157,33 @@ Nothing changes unilaterally.
   `CREATE INDEX ci_keyset ON catalogue_item (updated_at DESC, id DESC)` — go in the spec when deltas are
   applied. We chose numbered `OFFSET` pagination (SD-6), so keyset is optional.
 
+## Round-3 — inside-page deltas (2026-06-16, from READ-page review)
+
+- **SD-13 — Artist as filter + clickable.** `artist` is a column and already FTS-weighted (B), but there's **no
+  artist facet** in `CatalogueFilter`. Add `artist?: string` (or `string[]`); clicking an artist on a row/detail
+  sets the filter. *No item-schema change* (column exists).
+- **SD-14 — Patterns are STANDALONE + need a browse/detail.** `pattern` is a first-class table; `item_pattern`
+  links are optional (0..n) → a pattern can exist with no parent. Add a **Pattern detail** (route + clickable
+  links from song/lesson) with a **reverse `item_pattern` lookup** ("Used in: songs + lessons"). Resolves SD-1's
+  deferred Patterns browse. *No schema change* — it's a new read view + the existing m:n.
+- **SD-15 — ⭐ Per-part / per-step VOICING (NEW, biggest).** Which kit voices are active per section/step
+  (hi-hat · kick · snare · crash · toms · ride …). Enables "intro = hats+kick; chorus = +snare+crash" and
+  partial-groove lessons. **Not in schema today** — `data.sections[]` = `{label,startBar,endBar}` only.
+  *Proposed:* add `voices: string[]` to each section AND to `exercise` (steps). Open: controlled vocab for kit
+  voices? per-instrument (drums vs guitar pieces)? Affects ingest + CRUD. **Needs design.**
+- **SD-16 — Repeated parts.** A section label can occur at multiple bar ranges (Chorus = 25–40 **and** 60–80).
+  *Proposed:* either allow repeated `{label}` entries in `data.sections[]`, or group as
+  `{label, ranges:[[s,e],…]}`. Affects how a song-breakdown step maps to a repeated section.
+- **SD-17 — Step description.** Add a short `description` to `exercise` (or `exercise.data.description`) — a
+  one-liner under the step title ("Hit on the 1 & 3"). Tiny.
+- **SD-18 — Items without multiple steps/sections.** A 1-step lesson (no ladder emphasis) / a song with no
+  sections (no "Practice in parts"). UI adapts; publish gate unchanged (a lesson needs ≥1 `exercise`). UI +
+  validation note, not a structural change.
+
 ---
 
-### 🔵 Open (need your call): SD-2 (song→breakdown link) · SD-3 (visibility model TBD) · SD-12 (impl) · SD-10 / SD-11 (deferred)
+### 🔵 Open (need your call): SD-2 (song→breakdown link) · SD-3 (visibility TBD) · SD-12 (impl) · SD-15 (voicing — design) · SD-16 (repeated parts)
+### 🟢 Building (v1.4): SD-13 (artist) · SD-14 (pattern browse) · SD-17 (step desc) · SD-18 (no-step UI) · SD-15/16 (sample/light to validate)
 ### ✅ Resolved: SD-1 (fills=pattern) · SD-4 · SD-5 · SD-6 · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional)
 *(**Applying** resolved deltas to the locked spec is a SEPARATE deliberate pass — on your go, a changelog line
 each, likely after CRUD. The item schema stayed almost entirely intact, as you predicted — most changes are
