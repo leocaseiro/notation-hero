@@ -102,7 +102,46 @@ Nothing changes unilaterally.
   no column change. A future `scale`/`mode` filter can join it for piano content (§13 "controlled list with
   piano content").
 
+## 🟢 SD-10 — Sort **direction** (ASC / DESC) — `$10`
+
+- **What the UI needs:** a direction toggle next to Sort. *Relevance* and *Curated* have a natural order
+  (relevance = best-match DESC; curated = `sort_order` ASC) → no toggle. *Level / BPM / Newest / A–Z* get an
+  ASC/DESC switch.
+- **Filter-contract change:** add `sortDir?: 'asc' | 'desc'` (default per field). No column change. **Build in v1.3.**
+
+## 🟢 SD-11 — Filter by **flags** (has audio / video / parts-or-steps) — `$11`
+
+- **What the UI needs:** toggle filters matching the row flags. `has_audio` / `has_video` are **columns** →
+  `has_audio = true`. "Has parts/steps" = derived (SD-5) → `EXISTS(...)` / `jsonb_array_length(...) > 0`.
+- **Filter-contract change:** add `hasAudio?` / `hasVideo?` / `hasParts?` booleans. No new column. **Build in v1.3.**
+
+## 🔵 SD-12 — Filter **and sort by score** — `$12` ⚠️ crosses the catalogue / per-user boundary
+
+- **What the UI needs:** "show all below 90%", sort by best-score.
+- **The catch:** best-score is **per-user (DynamoDB)** — **not in the catalogue** (SD-4) and not in the K-3 query.
+  A pure catalogue query *cannot* filter/sort by it.
+- **Options:** (a) **client-side** post-filter/sort of the fetched page (simple, but breaks server-side
+  pagination + global sort — only sorts the current page); (b) a **per-user "my library" index** in DynamoDB
+  (proper: query scores → ids, then hydrate from catalogue) — more work, belongs with the scores/player build;
+  (c) **defer** until per-user data is wired. **Recommend (c)/defer** — revisit with the DynamoDB scores work.
+- **No catalogue column change either way.**
+
 ---
 
-### Open: SD-1, SD-2, SD-3 (await pickers) · Resolved: SD-4 (no change) · SD-5 (derive) · SD-6 (numbered) · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional)
-*(SD-7/8/9 are filter-side or one-line CHECK changes — the item schema stayed almost entirely intact, as you predicted. I'll apply them to the locked spec on your go, with a changelog line each.)*
+## Filter / UI notes (not schema changes)
+
+- **N-13 (`$13`) — show Key for drums / no-instrument too?** You're reconsidering SD-9's strict hide-for-drums.
+  Likely: show Key when **no instrument is selected** (mixed catalogue) and for pitched; hide only when
+  instrument = drums. *Explore later* — flagged on SD-9.
+- **N-14 (`$14`) — group levels into named bands** (Debut · Beginner · Intermediate · Advanced, RSL-style) via
+  `<optgroup>` in the Level picker. **Display only** (level stays 0–10); band ranges TBD (RSL-style, unverified).
+  Nice-to-have, candidate for v1.3.
+- **N-15 (`$15`) — range UI = from-to selects** (min/max), **confirmed** — no dual-handle slider needed in the
+  wireframe (already built this way). Documented here + in `filter-review.md`.
+
+---
+
+### Open (need your call): SD-1 · SD-2 · SD-3 · SD-12
+### Build in v1.3: SD-10 (sort dir) · SD-11 (flag filters) · N-14 (level bands)
+### Resolved: SD-4 (no change) · SD-5 (derive) · SD-6 (numbered) · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional, revisit per N-13)
+*(SD-7/8/9 are filter-side or one-line CHECK changes — the item schema stayed almost entirely intact, as you predicted. I'll apply the resolved ones to the locked spec on your go, with a changelog line each.)*
