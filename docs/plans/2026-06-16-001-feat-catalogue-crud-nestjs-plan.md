@@ -25,6 +25,8 @@
 
 **This plan covers (everything discussed this session):** NestJS adoption into the hexagon, the two enforcement edits it needs, the data layer (Drizzle + Neon HTTP), the full CRUD (R→CU→D), cold-start mitigations, and the one missing CI piece (Pulumi deploy automation via OIDC).
 
+**Reviewed 2026-06-16 (ce-doc-review — 6 personas, 24 findings + 2 FYIs):** 23 findings applied directly into this plan, 1 deferred (F15), 1 superseded (F12, by the Cognito decision). The auth decision (F14) is grounded in the [Cognito auth spike](../spikes/2026-06-16-cognito-auth-spike.md). Pending / verify / FE-session items are consolidated under [Open questions](#open-questions-for-review). Tracked in PR #47.
+
 **Explicitly OUT of scope for the first CRUD (per Leo):**
 
 - The `exercise` table (lesson steps) — first CRUD is *add-a-song*; songs carry their own `notation_key`, no steps.
@@ -701,15 +703,21 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 2. **Neon dev branch per PR** — free tier allows 10 branches/project; wire PR-time migrate+test against an ephemeral branch now, or defer? (Plan defers to a "nice-to-have" note.)
 3. **Password-gate location** — header vs a tiny login that sets a cookie? (Plan assumes the cms-admin §4 shared-password header.) — *Superseded by the 2026-06-16 review: auth is moving to Cognito; see F14 below.*
 
-### Deferred from the 2026-06-16 review
+### Deferred / pending from the 2026-06-16 review
 
-- **Expand Phases 2–4 to full 5-step TDD?** (F15) Phases 2–4 are currently task-level (see Self-review notes). Decide whether to expand them to Phase-0/1 granularity before execution, or expand each task just-in-time at execution time.
+- **F15 — Expand Phases 2–4 to full 5-step TDD?** Currently task-level (see Self-review notes). Expand to Phase-0/1 granularity before execution, or expand each task just-in-time.
+- **Q2 — Neon dev-branch-per-PR.** Reviewers agreed deferring is fine; wire ephemeral-branch migrate+test on PRs later (free tier = 10 branches/project).
+- **FYI-1 — Warmer / `/health` timing.** When building the warmer, match the event shape exactly (`event.warmer === true`), and keep `/health` minimal (no env/version/DB-status in the body).
+- **FYI-2 — Warmer necessity.** The SPA `/health` ping already warms on real arrival; consider shipping ping-only first and adding the EventBridge warmer only if cold-starts actually bite.
+- **Verify before deploy:** `nodejs24.x` is offered in `ap-southeast-2` (F4b); whether `handler-hello` is already deployed (decides if F18 stack export/import is needed).
+- **FE session (separate):** Cognito Authorization Code + PKCE flow; rxjs masking of the Neon first-query wake; the `/health` SPA ping contract.
 
 ---
 
 ## References
 
 - Investigation findings (this session, 4-agent workflow `wf_b04af626-e6f`): adapter = `@codegenie/serverless-express`; ORM = Drizzle `neon-http`; `@nx/nest` 22.7.5; the two enforcement edits; the `deploy.yml` OIDC+S3 recipe.
+- Auth spike (2026-06-16): [docs/spikes/2026-06-16-cognito-auth-spike.md](../spikes/2026-06-16-cognito-auth-spike.md) — Amplify Auth = Cognito; **Pulumi-managed Cognito** chosen; verified via `aws-jwt-verify`; FE = Authorization Code + PKCE.
 - Starters: [CodeGenieApp/serverless-express](https://github.com/CodeGenieApp/serverless-express) (`examples/nestjs`) · [NestJS serverless docs](https://docs.nestjs.com/faq/serverless) · [pulumi/actions](https://github.com/pulumi/actions) · [drizzle-orm neon-http](https://orm.drizzle.team/docs/connect-neon).
 
 ---
