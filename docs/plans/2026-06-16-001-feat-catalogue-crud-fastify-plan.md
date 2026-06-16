@@ -30,6 +30,7 @@ These are locked for this plan. Rationale lives in the investigation; here is th
 | **Status codes** | `200` read/update · `201`+`Location` create · `204` delete · `404` unknown · `409` duplicate · `422` validation | REST conventions interviewers probe |
 | **CORS** | Owned by the **Function URL** (already configured). Do NOT add `@fastify/cors` | One owner avoids duplicate `Access-Control-Allow-Origin` headers |
 | **Security (open URL)** | `@fastify/rate-limit` (key = `sourceIp`) + `reservedConcurrentExecutions: 10` (denial-of-wallet cap) + AWS Budgets alarm + strict TypeBox validation | `AuthType: NONE` is public/unmetered — the concurrency cap is the non-negotiable guardrail |
+| **Write/admin auth (F1/F2)** | Writes (`POST/PUT/DELETE`) **and** admin-read (all statuses) require an in-Lambda **admin password** (shared secret via SSM SecureString, injected as `ADMIN_PASSWORD`); public reads are forced to `status='published'` | Decided CMS contract (registry 2026-06-15 **F1/F2**). `AuthType: NONE` is open *transport*, so the app-layer password is the curated-write boundary (schema DS-10) — without it anyone can write/delete and `?status=draft` leaks unpublished items |
 | **Cold start** | Tiered, FE-decoupled (see §3) | Start cheap; escalate only if demos feel slow |
 | **CI/CD** | Keep the Nx + pnpm + lefthook + 9-job `ci.yml` foundation; ADD a keyless OIDC deploy workflow + 2 PR jobs (see §2) | New app auto-covered by `nx affected`; only the deploy path is genuinely new |
 | **esbuild output** | CJS (`--format=cjs --target=node22`), `external: @aws-sdk/*`, `sourcemap` | Matches `handler-hello` "bundled cjs/node22"; dodges every ESM-on-Lambda footgun |
@@ -47,6 +48,7 @@ These are locked for this plan. Rationale lives in the investigation; here is th
 | 6 | Function URL payload v2.0 (comma-joined multi-value query) | Low | `@fastify/aws-lambda` handles v2.0; set `parseCommaSeparatedQueryParams: true` if repeated query params are used |
 | 7 | CORS double-headers | Low | One owner = Function URL; no `@fastify/cors` |
 | 8 | Lambda statelessness (in-memory state, post-response work) | Low–Med | `await` all DB work before responding; no in-memory durable state; pino→stdout, no file transport |
+| 9 | Open URL exposes **writes** (`POST/PUT/DELETE`) + draft listing (`?status=`) with **no app-layer auth** | High | Admin-password `preHandler` on write + admin-read routes (`ADMIN_PASSWORD` via SSM — Task 0.6 + CU.4); public reads force `status='published'` (Task R.10) — per registry F1/F2 |
 
 ---
 
@@ -310,14 +312,14 @@ const catalogue = new LambdaWithUrl("catalogue", {
   functionName: "nh-catalogue",
   code: new pulumi.asset.FileArchive("../apps/handler-catalogue/dist"),
   handler: "index.handler",
-  environment: { DATABASE_URL: cfg.requireSecret("neonDatabaseUrl") },
+  environment: { DATABASE_URL: cfg.requireSecret("neonDatabaseUrl"), ADMIN_PASSWORD: cfg.requireSecret("adminPassword") },
   memorySize: 512, timeout: 10, reservedConcurrentExecutions: 10,
   allowMethods: ["GET", "POST", "PUT", "DELETE"],
 });
 export const catalogueUrl = catalogue.url;
 ```
 
-- [ ] **Step 4:** Add `"@notation-hero/handler-catalogue"` to `infra/project.json` `implicitDependencies` and the `infra/package.json` `pulumi:*` pre-build (so `nx build handler-catalogue` runs before `pulumi up`). Set the secret: `pnpm run infra:preview` is gated, so locally run `cd infra && pulumi config set --secret neonDatabaseUrl "<neon -pooler url>"`. Commit `feat(infra): catalogue lambda + env/memory/timeout/concurrency args`.
+- [ ] **Step 4:** Add `"@notation-hero/handler-catalogue"` to `infra/project.json` `implicitDependencies` **and edit the `infra/package.json` `pulumi:*` scripts to actually build it.** `implicitDependencies` does NOT change the shell command, and the scripts today hardcode `nx build @notation-hero/handler-hello` — so deploy/preview would ship the wrong app (F2). Change **both** (covers the prod-deploy *and* PR-preview paths): `"pulumi:preview": "nx run-many -t build -p @notation-hero/handler-hello @notation-hero/handler-catalogue && pulumi preview"` and `"pulumi:up": "nx run-many -t build -p @notation-hero/handler-hello @notation-hero/handler-catalogue && pulumi up"`. Set the Neon + admin secrets **per stack**: `cd infra && pulumi stack select dev && pulumi config set --secret neonDatabaseUrl "<neon -pooler url>" && pulumi config set --secret adminPassword "<admin pw>"`, then repeat for the `prod` stack (Task 0.7 Step 3). Commit `feat(infra): catalogue lambda + env/memory/timeout/concurrency args`.
 
 ### Task 0.7: GitHub Actions — keyless OIDC deploy + PR jobs
 
@@ -345,16 +347,21 @@ jobs:
         with: { role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}, aws-region: ap-southeast-2 }
       - uses: pulumi/auth-actions@v1
         with: { organization: leocaseiro, requested-token-type: urn:pulumi:token-type:access_token:organization }
-      - name: DB migrate (apply)
-        env: { DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }} }
+      - name: Select prod stack + export the single-source Neon URL (F4)
+        working-directory: infra
+        run: |
+          pulumi stack select prod
+          echo "::add-mask::$(pulumi config get neonDatabaseUrl --show-secrets)"
+          echo "DATABASE_URL=$(pulumi config get neonDatabaseUrl --show-secrets)" >> "$GITHUB_ENV"
+      - name: DB migrate (apply) — reads the SAME secret the Lambda runtime uses
         run: pnpm --filter @notation-hero/neon-catalogue-adapter run db:migrate
-      - name: Pulumi up
+      - name: Pulumi up (prod)   # infra:up -> pulumi:up builds both apps (Task 0.6 Step 4) first
         run: pnpm run infra:up
 ```
 
 - [ ] **Step 2: Add two PR jobs to `ci.yml`** (`migrations-dryrun` running `db:migrate:status` against `${{ secrets.NEON_PREVIEW_URL }}`, and `infra-preview` running `pnpm run infra:preview` with the same OIDC + `pulumi/auth-actions`, read-only). Add **both** to the `needs:` list and the result-check of the `CI Green` aggregation job (the existing comment warns: forgetting this = false-green).
 
-- [ ] **Step 3: One-time AWS setup (author in Pulumi or document):** create the GitHub OIDC provider (`token.actions.githubusercontent.com`); an IAM role whose trust `sub` is restricted to `repo:leocaseiro/notation-hero:ref:refs/heads/master` (deploy) and `repo:leocaseiro/notation-hero:pull_request` (preview); store **only** the role ARN as the `AWS_DEPLOY_ROLE_ARN` secret. Commit `ci(catalogue): keyless OIDC deploy + PR migration/infra preview`.
+- [ ] **Step 3: One-time AWS setup (author in Pulumi or document):** create the GitHub OIDC provider (`token.actions.githubusercontent.com`); an IAM role whose trust `sub` is restricted to `repo:leocaseiro/notation-hero:ref:refs/heads/master` (deploy) and `repo:leocaseiro/notation-hero:pull_request` (preview); store **only** the role ARN as the `AWS_DEPLOY_ROLE_ARN` secret. **Create both Pulumi stacks (F3):** keep `dev` for local + the `infra-preview` PR job, and `pulumi stack init prod` for `deploy.yml`; set each stack's `neonDatabaseUrl` + `adminPassword` secrets. `deploy.yml` selects `prod` and reads `neonDatabaseUrl` from it, so the migrate step and the Lambda runtime share one source (F4). Commit `ci(catalogue): keyless OIDC deploy + PR migration/infra preview`.
 
 ### Task 0.8: (Tier 2) Scheduled warmer — wire, optionally disabled
 
@@ -700,7 +707,9 @@ export const registerCatalogueController = (app: FastifyInstance, deps: Deps): v
 };
 ```
 
-- [ ] **Step 4: Controller tests** via `app.inject()` + fake repo: `GET /catalogue` → 200 `{data,nextCursor}`; `GET /catalogue/:id` → 200; missing id → 404; bad query (`limit: 'x'`) → 422. Run → PASS. Commit `feat(catalogue): read controllers (GET list + by id)`.
+- [ ] **Step 3b (F1 — public-status enforcement):** For unauthenticated callers the controller MUST drop any caller-supplied `status`/`includeArchived` and force `status='published'` — `isPublicListFilter` only *defaults* an unset status, so a public `?status=draft` would otherwise leak unpublished items. Only requests carrying a valid admin token (the CU.4 `admin-auth.service.ts` preHandler) may pass arbitrary `status`/`includeArchived` (admin-read, registry F1).
+
+- [ ] **Step 4: Controller tests** via `app.inject()` + fake repo: `GET /catalogue` → 200 `{data,nextCursor}`; `GET /catalogue/:id` → 200; missing id → 404; bad query (`limit: 'x'`) → 422; **public `?status=draft` still returns only published (F1)**. Run → PASS. Commit `feat(catalogue): read controllers (GET list + by id)`.
 
 ### Task R.11: Integration test (real SQL, free-tier-safe)
 
@@ -740,7 +749,9 @@ export const registerCatalogueController = (app: FastifyInstance, deps: Deps): v
 
 ### Task CU.4: Create/Update controller + request DTOs + infra methods
 
-**Files:** Create `apps/handler-catalogue/src/catalogue-create.controller.ts`; Modify `catalogue-request.dto.ts`, `server.service.ts`, `composition.service.ts`
+**Files:** Create `apps/handler-catalogue/src/catalogue-create.controller.ts`, `admin-auth.service.ts`; Modify `catalogue-request.dto.ts`, `server.service.ts`, `composition.service.ts`
+
+- [ ] **Step 0 (F1/F2 — admin gate):** Add an admin-auth Fastify plugin/`preHandler` (`admin-auth.service.ts`) on `POST/PUT/DELETE /catalogue[...]` (and the admin-read path) comparing an `x-admin-token`/`Authorization` header against `process.env.ADMIN_PASSWORD` (from SSM via Task 0.6); return `401` when missing/wrong. Secret never in the repo. Test via `inject()`: write without the token → 401; with it → reaches the handler.
 
 - [ ] **Step 1:** TypeBox `CreateItemBody` / `UpdateItemBody` in `catalogue-request.dto.ts` (required `type`,`title`; optional rest; song-bpm enforced in the command, not the schema, so the error is a domain `422`).
 - [ ] **Step 2:** `registerCatalogueCreateController(app, deps)`: `POST /catalogue` → `201` + `Location: /catalogue/:id`, `409` on duplicate; `PUT /catalogue/:id` → `200`, `404` if absent. Wire `buildDeps` to expose `createCatalogueItem`/`updateCatalogueItem`; register in `buildServer`.
