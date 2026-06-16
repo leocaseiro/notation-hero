@@ -58,7 +58,26 @@ Nothing changes unilaterally.
   catalog tables. The wireframe fakes them on the item for demo only. The K-3 list projection (catalog fields
   only) + client-side join **holds** under the UI. **No schema change.**
 
+## ⚪ SD-5 — Row flags `hasParts` / `hasSteps` (no new column — derive)
+
+- **What the UI needs:** row indicators for audio / video / "has parts-or-steps" (`volume_up` · `smart_display`
+  · `splitscreen`).
+- **Decision (you, 2026-06-16):** **no extra schema flag.** `has_audio` / `has_video` are already columns (and
+  in the K-3 projection). "Has parts" = a song has `data.sections[]`; "has steps" = a lesson has `exercise`
+  rows — both **derivable**. To show them in the *list* without shipping `data jsonb`, the **K-3 projection
+  computes two booleans** at read time: `has_parts := jsonb_array_length(data->'sections') > 0` (songs) and
+  `has_steps := EXISTS(SELECT 1 FROM exercise WHERE lesson_id = ci.id)` (lessons). **No DDL change.**
+
+## 🟢 SD-6 — Pagination = numbered (`OFFSET` + `COUNT`), not load-more/keyset
+
+- **What the UI needs (you, 2026-06-16):** **numbered** pagination, not "load more".
+- **Feasible?** Yes — JSONB doesn't block it. Numbered pages = `SELECT … LIMIT :n OFFSET :(page-1)*n` plus a
+  `SELECT COUNT(*)` for the page count, over the **typed/indexed** filter columns (`ci_btree_filters`, GIN,
+  FTS). Fine at catalog scale (hundreds–low thousands).
+- **Supersedes:** the earlier "pagination = keyset/cursor" note (a scale optimisation). **v1 = OFFSET+COUNT
+  numbered**; revisit keyset only if the catalog grows large enough that deep `OFFSET` hurts. **No DDL change.**
+
 ---
 
-### Open count: 3 (SD-1, SD-2, SD-3) · awaiting your call
-*(I'll walk these as pickers once you've felt the v1 flow — they may shift as detail/steps/CRUD get fleshed.)*
+### Open count: 3 (SD-1, SD-2, SD-3) · resolved: SD-4 (no change), SD-5 (derive), SD-6 (numbered)
+*(I'll walk SD-1/2/3 as pickers when you're ready — they may shift as CRUD gets fleshed in v2.)*

@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Notation Hero — Catalog Wireframe (low-fi flow sim)</title>
 
-<!-- Final-ish identity: Material Symbols + D3 type. Low-fi on spacing; approved colours. -->
+<!-- Final-ish identity: Material Symbols OUTLINED (design-system source of truth) + D3 type. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@500;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,400,0..1,0&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
 
 <style>
 /* ---------- approved palette (PR #23 tokens) ---------- */
@@ -19,7 +19,6 @@
   --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
   --time:#2F6DF6; --danger:#FF6B6B; --learn:#7FA9FF;
   --line:#222C39;
-  /* score bands — System G spectrum (dark) */
   --s-low:#E29CC4; --s-dev:#F0A92E; --s-climb:#56B4E9; --s-high:#1FBF8F; --s-gold:#FFD24A; --s-none:#3A4655;
   --radius:12px; --pill:999px; --dur:.18s; --ease:cubic-bezier(.2,.6,.2,1);
 }
@@ -34,7 +33,8 @@ html[data-theme="light"]{
 body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:15px;line-height:1.45}
 h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:600;margin:0}
 .mono{font-family:"Geist Mono",monospace;font-variant-numeric:tabular-nums}
-.material-symbols-rounded{font-size:20px;line-height:1;vertical-align:middle;user-select:none}
+.material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;vertical-align:middle;user-select:none;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.msf{font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
 button{font-family:inherit;font-size:inherit;cursor:pointer}
 a{color:inherit}
 
@@ -49,13 +49,17 @@ a{color:inherit}
 /* ---------- top app bar ---------- */
 .topbar{position:sticky;top:0;z-index:30;display:flex;gap:12px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
 .logo{display:flex;align-items:center;gap:9px;font-family:"Bricolage Grotesque";font-weight:700;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
-.logo svg{width:26px;height:26px;flex:none}
+.mark{width:30px;height:27px;color:var(--accent);display:inline-grid;place-items:center;flex:none}
+.mark svg{width:100%;height:100%;overflow:visible}
 .search{flex:1;display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:8px 14px;max-width:560px}
 .search input{flex:1;background:none;border:none;outline:none;color:var(--ink);font-size:15px}
-.search .material-symbols-rounded{color:var(--faint)}
-.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:transparent;border:1px solid transparent;color:var(--muted)}
+.search .material-symbols-outlined{color:var(--faint)}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:transparent;border:1px solid var(--line);color:var(--muted)}
 .iconbtn:hover{background:var(--panel2);color:var(--ink)}
-.iconbtn.ghost-line{border-color:var(--line)}
+/* MIDI button (design-system .midi) */
+.midi{width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);background:transparent;border:1px solid var(--line);position:relative}
+.midi:hover{color:var(--ink);border-color:var(--accent)}
+.midi svg{width:22px;height:22px;fill:currentColor}
 .acct{display:inline-flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:5px 6px 5px 12px}
 .acct .role{font-size:12.5px;color:var(--muted)}
 .avatar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--onaccent);font-weight:700;font-size:13px}
@@ -66,77 +70,104 @@ a{color:inherit}
 .crumbs{display:flex;gap:6px;align-items:center;color:var(--faint);font-size:13px;margin:4px 0 16px;flex-wrap:wrap}
 .crumbs a{color:var(--faint);text-decoration:none}
 .crumbs a:hover{color:var(--ink)}
-.crumbs .material-symbols-rounded{font-size:16px}
+.crumbs .material-symbols-outlined{font-size:16px}
 .backlink{display:inline-flex;align-items:center;gap:5px;color:var(--muted);background:none;border:none;padding:6px 0;margin-bottom:6px}
 .backlink:hover{color:var(--ink)}
 
-/* tabs */
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px}
-.tabs button{background:none;border:none;color:var(--muted);padding:10px 14px;font-weight:600;border-bottom:2px solid transparent;margin-bottom:-1px}
-.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
-.subtabs{display:flex;gap:8px;margin:-4px 0 14px}
-.subtabs button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:var(--pill);padding:5px 12px;font-size:13px;display:inline-flex;gap:6px;align-items:center}
-.subtabs button[aria-pressed="true"]{background:var(--elevate);color:var(--ink);border-color:var(--accent)}
-.subtabs .material-symbols-rounded{font-size:17px}
-
-/* filter row */
-.filterrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:var(--pill);padding:7px 12px;font-size:13.5px}
-.chip .k{color:var(--faint)}
-.chip:hover{border-color:var(--accent)}
-.chip.more{margin-left:auto}
-.advanced{display:none;gap:8px;flex-wrap:wrap;padding:10px;background:var(--panel);border:1px dashed var(--line);border-radius:var(--radius);margin-bottom:8px}
+/* ---------- single filter row (variant A — LOCKED) ---------- */
+.frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
+.seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--muted);padding:6px 13px;border-radius:8px;font-weight:600;font-size:13.5px}
+.seg button.sel{background:var(--bg);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.seg .material-symbols-outlined{font-size:17px}
+.vsep{width:1px;height:24px;background:var(--line)}
+.fdrop{position:relative}
+.fbtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:var(--pill);padding:7px 12px;font-size:13.5px}
+.fbtn:hover{border-color:var(--accent)}
+.fbtn.on{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:var(--accent);color:var(--accent)}
+.fbtn .k{color:var(--faint)}
+.fbtn .caret{font-size:17px;color:var(--faint)}
+.fpop{position:absolute;top:calc(100% + 6px);left:0;z-index:45;min-width:188px;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 44px rgba(0,0,0,.3);padding:6px;display:none}
+.fpop.open{display:block}
+.fopt{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer}
+.fopt:hover{background:var(--panel2)}
+.fopt.sel{color:var(--accent);font-weight:600}
+.fopt .material-symbols-outlined{font-size:18px;color:var(--faint)}
+.fopt.sel .material-symbols-outlined{color:var(--accent)}
+.sortwrap{display:inline-flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
+.sortwrap .material-symbols-outlined{font-size:18px}
+.advanced{display:none;gap:8px;flex-wrap:wrap;padding:12px 14px;background:var(--panel);border:1px dashed var(--line);border-radius:var(--radius);margin-bottom:12px}
 .advanced.open{display:flex}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:var(--pill);padding:7px 12px;font-size:13px}
+.chip .k{color:var(--faint)}
 
 /* continue banner */
-.continue{display:flex;align-items:center;gap:14px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 14%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;margin:6px 0 16px}
-.continue .material-symbols-rounded{color:var(--accent)}
+.continue{display:flex;align-items:center;gap:14px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 14%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;margin:6px 0 16px;cursor:pointer}
+.continue .material-symbols-outlined{color:var(--accent)}
 
-/* table */
-.tablehead,.row{display:grid;grid-template-columns:1fr 72px 78px 92px 44px;gap:10px;align-items:center}
+/* ---------- table rows (cover + flags) ---------- */
+.tablehead,.row{display:grid;grid-template-columns:1fr 70px 84px 60px 44px;gap:10px;align-items:center}
 .tablehead{padding:6px 12px;color:var(--faint);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
-.row{padding:11px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px;transition:border-color var(--dur) var(--ease)}
+.tablehead span:nth-child(2){text-align:center}.tablehead span:nth-child(3){text-align:right}.tablehead span:nth-child(4){text-align:center}
+.row{padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px;transition:border-color var(--dur) var(--ease)}
 .row:hover{border-color:var(--accent);background:var(--panel2)}
-.row .name{display:flex;flex-direction:column;gap:2px;cursor:pointer;min-width:0}
-.row .name b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.row .name small{color:var(--faint);display:flex;align-items:center;gap:6px}
-.tag{font-size:11px;padding:1px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--muted)}
-.tag.song{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
-.tag.lesson{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
-.lvlpill{justify-self:start;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:var(--pill);padding:2px 9px;font-size:12.5px;font-weight:600}
-.bpm{color:var(--muted)}
+.name{display:flex;align-items:center;gap:11px;min-width:0}
+.cover{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+.cover.lesson{background:color-mix(in srgb,var(--learn) 15%,transparent);color:var(--learn)}
+.cover .material-symbols-outlined{font-size:21px}
+.nm{flex:1;min-width:0;cursor:pointer}
+.nmtitle{font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.nmtitle b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nmsub{color:var(--muted);font-size:12px;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.badge2{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;padding:2px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--muted)}
+.badge2.beat{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.badge2.rudiment{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
+.badge2.fill{color:var(--s-dev);border-color:color-mix(in srgb,var(--s-dev) 40%,transparent)}
+.badge2.song-breakdown{color:var(--s-climb);border-color:color-mix(in srgb,var(--s-climb) 40%,transparent)}
+.pill-new{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:var(--pill);background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.flags{display:inline-flex;gap:6px;color:var(--faint);margin-left:auto;padding-left:10px;flex:none}
+.flags .material-symbols-outlined{font-size:16px}
+.flags .parts{color:var(--accent)}
+.dot{width:3px;height:3px;border-radius:50%;background:var(--faint);display:inline-block}
+.lvlpill{justify-self:center;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:var(--pill);padding:2px 9px;font-size:12.5px;font-weight:600}
+.bpm{color:var(--muted);text-align:right;font-size:13px}
 .play{justify-self:center;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--onaccent);border:none}
 .play:hover{background:var(--accenthi)}
 
 /* donut */
-.donut{position:relative;width:34px;height:34px}
+.donut{position:relative;width:34px;height:34px;justify-self:center}
 .donut svg{transform:rotate(-90deg)}
 .donut .val{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:700;font-family:"Geist Mono"}
-.donut.gold .val .material-symbols-rounded{font-size:18px;color:var(--s-gold);font-variation-settings:'FILL' 1}
+.donut.gold .val .material-symbols-outlined{font-size:18px;color:var(--s-gold)}
 
-/* loadmore */
-.loadmore{display:flex;flex-direction:column;align-items:center;gap:8px;margin-top:14px;color:var(--faint);font-size:13px}
-.loadmore button{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:var(--pill);padding:9px 22px}
+/* pagination */
+.pager{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.pager button{min-width:34px;height:34px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:0 8px;display:inline-flex;align-items:center;justify-content:center}
+.pager button[aria-current="true"]{background:var(--accent);color:var(--onaccent);border-color:transparent;font-weight:700}
+.pager button:hover:not([aria-current="true"]):not(:disabled){border-color:var(--accent)}
+.pager button:disabled{opacity:.4;cursor:default}
+.pager .info{color:var(--faint);font-size:12.5px;margin-left:8px}
+.loadmore{display:flex;justify-content:center;margin-top:14px;color:var(--faint);font-size:13px}
 
 /* detail */
 .hero{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
 .hero .meta{flex:1;min-width:240px}
 .hero h1{font-size:30px;letter-spacing:-.02em}
 .hero .sub{color:var(--muted);margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tag{font-size:11px;padding:1px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--muted)}
+.tag.song{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.tag.lesson{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
 .badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
 .badge{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:5px 12px;font-size:13px;color:var(--muted)}
-.badge .material-symbols-rounded{font-size:17px;color:var(--faint)}
+.badge .material-symbols-outlined{font-size:17px;color:var(--faint)}
 .btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:11px 20px;font-weight:600;border:1px solid transparent}
 .btn.primary{background:var(--accent);color:var(--onaccent)}
 .btn.primary:hover{background:var(--accenthi)}
 .btn.secondary{background:var(--panel2);color:var(--ink);border-color:var(--line)}
 .btn.secondary:hover{border-color:var(--accent)}
-.btn.danger{background:transparent;color:var(--danger);border-color:color-mix(in srgb,var(--danger) 45%,transparent)}
-.btn.block{width:100%;justify-content:center}
-
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-top:16px}
 .card h3{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-.card h3 .material-symbols-rounded{color:var(--accent);font-size:19px}
+.card h3 .material-symbols-outlined{color:var(--accent);font-size:19px}
 .history{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
 .history .big{display:flex;gap:18px;align-items:center}
 .stat{display:flex;flex-direction:column}
@@ -145,13 +176,13 @@ a{color:inherit}
 .trend{display:flex;gap:4px;align-items:flex-end;height:46px}
 .trend span{flex:1;background:var(--accent);border-radius:3px 3px 0 0;opacity:.75;min-height:4px}
 .gate{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px dashed var(--line);border-radius:var(--radius);padding:14px 16px;color:var(--muted)}
-.gate .material-symbols-rounded{color:var(--faint)}
+.gate .material-symbols-outlined{color:var(--faint)}
 
-/* steps list (lessons) */
+/* steps (lessons) */
 .step{display:flex;gap:14px;align-items:center;padding:13px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px}
 .step:hover{border-color:var(--accent)}
 .step .no{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--line);font-family:"Geist Mono";font-weight:700;font-size:13px;color:var(--muted)}
-.step .si{flex:1;min-width:0}
+.step .si{flex:1;min-width:0;cursor:pointer}
 .step .si b{font-weight:600}
 .step .si small{color:var(--faint);display:block}
 .ladder{display:inline-flex;align-items:center;gap:5px;font-family:"Geist Mono";font-size:12.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:3px 9px}
@@ -166,12 +197,12 @@ a{color:inherit}
 
 /* player stub */
 .playerstub{display:grid;place-items:center;min-height:360px;border:2px dashed var(--line);border-radius:18px;background:repeating-linear-gradient(45deg,var(--panel),var(--panel) 14px,var(--panel2) 14px,var(--panel2) 28px);text-align:center;gap:8px;padding:30px}
-.playerstub .material-symbols-rounded{font-size:60px;color:var(--accent)}
+.playerstub .material-symbols-outlined{font-size:60px;color:var(--accent)}
 .playerstub h2{font-size:24px}
 .playerstub .ctx{color:var(--muted);max-width:440px}
 
 /* admin affordances */
-.adminbar{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--s-dev) 40%,var(--line));border-radius:var(--radius);background:color-mix(in srgb,var(--s-dev) 8%,var(--panel))}
+.adminbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--s-dev) 40%,var(--line));border-radius:var(--radius);background:color-mix(in srgb,var(--s-dev) 8%,var(--panel))}
 .adminbar .lbl{display:inline-flex;gap:6px;align-items:center;color:var(--s-dev);font-weight:600;font-size:12.5px;margin-right:auto}
 .adminbtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 13px;font-size:13.5px}
 .adminbtn:hover{border-color:var(--s-dev)}
@@ -179,7 +210,7 @@ a{color:inherit}
 
 /* stub panel */
 .stubpanel{border:2px dashed var(--line);border-radius:18px;padding:28px;text-align:center;color:var(--muted)}
-.stubpanel .material-symbols-rounded{font-size:46px;color:var(--faint)}
+.stubpanel .material-symbols-outlined{font-size:46px;color:var(--faint)}
 .stubpanel code{background:var(--panel2);padding:2px 7px;border-radius:6px;font-family:"Geist Mono";font-size:12.5px}
 
 /* modal */
@@ -197,7 +228,7 @@ a{color:inherit}
 .modal .x{float:right;color:var(--faint);background:none;border:none}
 
 .empty{text-align:center;color:var(--faint);padding:50px 20px}
-.empty .material-symbols-rounded{font-size:44px;display:block;margin-bottom:8px}
+.empty .material-symbols-outlined{font-size:44px;display:block;margin-bottom:8px}
 @media(max-width:640px){
   .tablehead{display:none}
   .row{grid-template-columns:1fr 44px;grid-template-areas:"name play" "meta play"}
@@ -208,9 +239,9 @@ a{color:inherit}
 </head>
 <body>
 
-<!-- WIREFRAME controls (toggles you asked for) -->
+<!-- WIREFRAME controls (toggles) -->
 <div class="wf-banner">
-  <b>WIREFRAME</b><span>low-fi flow sim · not final styling</span>
+  <b>WIREFRAME</b><span>low-fi flow sim · v1.1 · not final styling</span>
   <span class="wf-tg">Theme:
     <button data-theme-set="dark" aria-pressed="true">Dark</button>
     <button data-theme-set="light" aria-pressed="false">Light</button>
@@ -226,44 +257,39 @@ a{color:inherit}
 <!-- TOP APP BAR -->
 <header class="topbar">
   <div class="logo" role="button" data-nav="#/catalog" title="Notation Hero — home">
-    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <circle cx="16" cy="16" r="13" stroke="var(--accent)" stroke-width="2.4"/>
-      <path d="M13 11l8 5-8 5z" fill="var(--accent)"/>
-      <circle cx="11.5" cy="21.5" r="2.4" fill="var(--accenthi)"/>
-    </svg>
-    Notation&nbsp;Hero
+    <span class="mark" id="brandMark"></span> Notation&nbsp;Hero
   </div>
   <div class="search">
-    <span class="material-symbols-rounded">search</span>
+    <span class="material-symbols-outlined">search</span>
     <input id="q" type="search" placeholder="Search songs &amp; lessons…" autocomplete="off" />
   </div>
-  <button class="iconbtn ghost-line" title="MIDI device"><span class="material-symbols-rounded">piano</span></button>
-  <button class="iconbtn ghost-line" id="uploadBtn" title="Upload"><span class="material-symbols-rounded">upload</span></button>
+  <button class="midi" id="midiBtn" title="MIDI device"></button>
+  <button class="iconbtn" id="uploadBtn" title="Upload"><span class="material-symbols-outlined">upload</span></button>
   <button class="acct" id="acctBtn" title="Account / switch role">
     <span class="role" id="acctRole">Sign in</span>
-    <span class="avatar anon" id="acctAvatar"><span class="material-symbols-rounded">person</span></span>
+    <span class="avatar anon" id="acctAvatar"><span class="material-symbols-outlined">person</span></span>
   </button>
 </header>
 
-<main class="wrap" id="app"><!-- screens render here --></main>
+<main class="wrap" id="app"></main>
 
 <!-- SIGN-IN / ROLE MODAL -->
 <div class="modalwrap" id="modal">
   <div class="modal">
-    <button class="x" id="modalX"><span class="material-symbols-rounded">close</span></button>
+    <button class="x" id="modalX"><span class="material-symbols-outlined">close</span></button>
     <h2>Sign in</h2>
     <p>Wireframe stand-in for auth. Pick who you are — the whole app morphs to that role (persisted across reloads).</p>
     <div class="rolepick">
       <button data-role-set="user">
-        <span class="ic"><span class="material-symbols-rounded">person</span></span>
+        <span class="ic"><span class="material-symbols-outlined">person</span></span>
         <span><b>Sign in as User</b><small>Track scores &amp; history · upload your own files</small></span>
       </button>
       <button data-role-set="admin">
-        <span class="ic"><span class="material-symbols-rounded">shield_person</span></span>
+        <span class="ic"><span class="material-symbols-outlined">shield_person</span></span>
         <span><b>Sign in as Admin</b><small>Curate catalog · add/edit songs, lessons &amp; steps</small></span>
       </button>
       <button data-role-set="anon">
-        <span class="ic"><span class="material-symbols-rounded">visibility</span></span>
+        <span class="ic"><span class="material-symbols-outlined">visibility</span></span>
         <span><b>Stay anonymous</b><small>Browse &amp; play · no saved progress</small></span>
       </button>
     </div>
@@ -272,93 +298,97 @@ a{color:inherit}
 
 <script>
 /* ====================================================================
-   Notation Hero — Catalog wireframe (v1)
+   Notation Hero — Catalog wireframe (v1.1)
    Single-file SPA · hash router (deep-link + reload + back/forward)
    Data shaped to the LOCKED Neon schema (catalogue_item / exercise).
    ==================================================================== */
 
+/* brand mark + MIDI glyph (from master design-system-components.html) */
+const MARK_SVG = '<svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/><svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor"><path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z"/></svg></svg>';
+const MIDI_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M20.18,12C20.18,8.18 17.55,4.96 14,4.07V6H10V4.07C6.45,4.96 3.82,8.18 3.82,12A8.18,8.18 0 0,0 12,20.18A8.18,8.18 0 0,0 20.18,12M7,10.64A1.36,1.36 0 0,1 8.36,12A1.36,1.36 0 0,1 7,13.36C6.25,13.36 5.64,12.75 5.64,12C5.64,11.25 6.25,10.64 7,10.64M17,10.64A1.36,1.36 0 0,1 18.36,12A1.36,1.36 0 0,1 17,13.36A1.36,1.36 0 0,1 15.64,12A1.36,1.36 0 0,1 17,10.64M8.36,14.27A1.37,1.37 0 0,1 9.73,15.64C9.73,16.39 9.12,17 8.36,17A1.36,1.36 0 0,1 7,15.64C7,14.88 7.61,14.27 8.36,14.27M15.64,14.27C16.39,14.27 17,14.88 17,15.64A1.36,1.36 0 0,1 15.64,17C14.88,17 14.27,16.39 14.27,15.64A1.37,1.37 0 0,1 15.64,14.27M12,15.64A1.36,1.36 0 0,1 13.36,17A1.36,1.36 0 0,1 12,18.36A1.36,1.36 0 0,1 10.64,17A1.36,1.36 0 0,1 12,15.64Z"/></svg>';
+
 /* ---------- sample data (mirrors catalogue_item) ---------- */
 const ITEMS = [
-  // ---- SONGS ----
-  {id:'seven-nation-army', type:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums'], status:'published', source:'curated', notation_format:'gp', best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
+  {id:'seven-nation-army', type:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums'], status:'published', source:'curated', notation_format:'gp', has_audio:true, has_video:true, best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
     data:{bars:48, sections:[{label:'Intro',startBar:1,endBar:8},{label:'Verse',startBar:9,endBar:24},{label:'Chorus',startBar:25,endBar:40},{label:'Outro',startBar:41,endBar:48}]}, breakdown:'sna-breakdown'},
-  {id:'billie-jean', type:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], status:'published', source:'curated', notation_format:'gpx', best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
+  {id:'billie-jean', type:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], status:'published', source:'curated', notation_format:'gpx', has_audio:true, best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
     data:{bars:64, sections:[{label:'Groove',startBar:1,endBar:16},{label:'Verse',startBar:17,endBar:32},{label:'Chorus',startBar:33,endBar:48}]}},
-  {id:'rosanna', type:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], status:'published', source:'curated', notation_format:'gp5', best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
-  {id:'enter-sandman', type:'song', title:'Enter Sandman', artist:'Metallica', level:5, bpm:123, time_sig:'4/4', genre:'metal', instruments:['drums'], status:'published', source:'curated', notation_format:'gp', best:null, sessions:0, trend:[]},
-  {id:'take-five', type:'song', title:'Take Five', artist:'Dave Brubeck', level:6, bpm:174, time_sig:'5/4', genre:'jazz', instruments:['drums'], status:'published', source:'curated', notation_format:'xml', best:52, sessions:4, top_bpm:150, trend:[30,40,48,52]},
+  {id:'rosanna', type:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], status:'published', source:'curated', notation_format:'gp5', has_audio:true, has_video:true, best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
+  {id:'enter-sandman', type:'song', title:'Enter Sandman', artist:'Metallica', level:5, bpm:123, time_sig:'4/4', genre:'metal', instruments:['drums'], status:'published', source:'curated', notation_format:'gp', best:null, sessions:0, trend:[], new:true},
+  {id:'take-five', type:'song', title:'Take Five', artist:'Dave Brubeck', level:6, bpm:174, time_sig:'5/4', genre:'jazz', instruments:['drums'], status:'published', source:'curated', notation_format:'xml', has_video:true, best:52, sessions:4, top_bpm:150, trend:[30,40,48,52]},
+  {id:'creep', type:'song', title:'Creep', artist:'Radiohead', level:3, bpm:92, time_sig:'4/4', genre:'rock', instruments:['drums'], status:'published', source:'curated', notation_format:'gp', has_audio:true, best:67, sessions:3, top_bpm:88, trend:[44,58,67]},
   {id:'my-demo-upload', type:'song', title:'My practice loop (upload)', artist:null, level:null, bpm:100, time_sig:'4/4', genre:null, instruments:['drums'], status:'draft', source:'user-upload', notation_format:'gp', best:12, sessions:1, trend:[12], ownedByUser:true},
 
-  // ---- LESSONS ----
-  {id:'rock-8th-beat', type:'lesson', title:'8th-Note Rock Beat', level:1, bpm:null, time_sig:'4/4', genre:null, instruments:['drums'], lesson_type:'beat', skill:['timing','coordination'], status:'published', source:'curated', best:64, sessions:3, trend:[30,48,64]},
+  {id:'rock-8th-beat', type:'lesson', title:'8th-Note Rock Beat', level:1, bpm:null, time_sig:'4/4', instruments:['drums'], lesson_type:'beat', skill:['timing','coordination'], status:'published', source:'curated', best:64, sessions:3, trend:[30,48,64]},
   {id:'four-on-floor', type:'lesson', title:'Four-on-the-Floor', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing'], status:'published', source:'curated', best:88, sessions:7, trend:[55,66,74,80,88]},
   {id:'funk-16ths', type:'lesson', title:'Funk Groove — 16th Hats', level:4, lesson_type:'beat', instruments:['drums'], skill:['independence','timing'], status:'published', source:'curated', best:41, sessions:2, trend:[22,41]},
-  {id:'single-paradiddle', type:'lesson', title:'Single Paradiddle', level:2, lesson_type:'rudiment', instruments:['drums'], skill:['independence','stickcontrol'], status:'published', source:'curated', best:73, sessions:5, trend:[40,52,60,68,73]},
-  {id:'double-stroke', type:'lesson', title:'Double Stroke Roll', level:3, lesson_type:'rudiment', instruments:['drums'], skill:['stickcontrol'], status:'published', source:'curated', best:null, sessions:0, trend:[]},
-  {id:'linear-fill-1', type:'lesson', title:'Linear Fill — 6-stroke', level:5, lesson_type:'fill', instruments:['drums'], skill:['fills'], status:'published', source:'curated', best:20, sessions:1, trend:[20]},  /* NB: 'fill' lesson_type → schema delta SD-1 */
-  {id:'sna-breakdown', type:'lesson', title:'Seven Nation Army — Practice in Parts', level:2, lesson_type:'song-breakdown', instruments:['drums'], skill:['timing'], status:'published', source:'curated', best:55, sessions:3, trend:[35,48,55], sourceSong:'seven-nation-army'},
+  {id:'single-paradiddle', type:'lesson', title:'Single Paradiddle', level:2, lesson_type:'rudiment', instruments:['drums'], skill:['independence','control'], status:'published', source:'curated', best:73, sessions:5, trend:[40,52,60,68,73]},
+  {id:'double-stroke', type:'lesson', title:'Double Stroke Roll', level:3, lesson_type:'rudiment', instruments:['drums'], skill:['control'], status:'published', source:'curated', best:null, sessions:0, trend:[]},
+  {id:'linear-fill-1', type:'lesson', title:'Linear Fill — 6-stroke', level:5, lesson_type:'fill', instruments:['drums'], skill:['fills'], status:'published', source:'curated', best:20, sessions:1, trend:[20], new:true},
+  {id:'sna-breakdown', type:'lesson', title:'Seven Nation Army — Practice in Parts', level:2, lesson_type:'song-breakdown', instruments:['drums'], skill:['timing'], status:'published', source:'curated', has_audio:true, best:55, sessions:3, trend:[35,48,55], sourceSong:'seven-nation-army'},
 ];
 
 /* ---------- sample data (mirrors exercise = STEPS) ---------- */
 const STEPS = {
   'rock-8th-beat':[
-    {step_no:1,title:'Hi-hat only',          start_bpm:60,goal_bpm:80, notation_tex:':8 hh hh hh hh hh hh hh hh'},
-    {step_no:2,title:'+ Kick on 1 & 3',      start_bpm:60,goal_bpm:90, notation_tex:'(hh kd) hh (hh kd) hh'},
-    {step_no:3,title:'+ Snare backbeat',     start_bpm:60,goal_bpm:100,notation_tex:'(hh kd) (hh sn) (hh kd) (hh sn)'},
-    {step_no:4,title:'Full groove',          start_bpm:70,goal_bpm:120,notation_tex:'full rock beat'},
+    {step_no:1,title:'Hi-hat only',      start_bpm:60,goal_bpm:80, notation_tex:':8 hh hh hh hh hh hh hh hh'},
+    {step_no:2,title:'+ Kick on 1 & 3',  start_bpm:60,goal_bpm:90, notation_tex:'(hh kd) hh (hh kd) hh'},
+    {step_no:3,title:'+ Snare backbeat',  start_bpm:60,goal_bpm:100,notation_tex:'(hh kd) (hh sn) (hh kd) (hh sn)'},
+    {step_no:4,title:'Full groove',       start_bpm:70,goal_bpm:120,notation_tex:'full rock beat'},
   ],
   'single-paradiddle':[
-    {step_no:1,title:'Slow · RLRR LRLL',     start_bpm:40,goal_bpm:60, notation_tex:'paradiddle slow'},
-    {step_no:2,title:'Medium',               start_bpm:60,goal_bpm:100,notation_tex:'paradiddle med'},
-    {step_no:3,title:'Fast',                 start_bpm:100,goal_bpm:160,notation_tex:'paradiddle fast'},
+    {step_no:1,title:'Slow · RLRR LRLL',  start_bpm:40,goal_bpm:60, notation_tex:'paradiddle slow'},
+    {step_no:2,title:'Medium',            start_bpm:60,goal_bpm:100,notation_tex:'paradiddle med'},
+    {step_no:3,title:'Fast',              start_bpm:100,goal_bpm:160,notation_tex:'paradiddle fast'},
   ],
   'four-on-floor':[
-    {step_no:1,title:'Kick every beat',      start_bpm:70,goal_bpm:110,notation_tex:'4 kd'},
-    {step_no:2,title:'+ Hats + backbeat',    start_bpm:70,goal_bpm:128,notation_tex:'house groove'},
+    {step_no:1,title:'Kick every beat',   start_bpm:70,goal_bpm:110,notation_tex:'4 kd'},
+    {step_no:2,title:'+ Hats + backbeat', start_bpm:70,goal_bpm:128,notation_tex:'house groove'},
   ],
   'funk-16ths':[
-    {step_no:1,title:'16th hats R only',     start_bpm:50,goal_bpm:80, notation_tex:'16 hats'},
-    {step_no:2,title:'Add ghost snares',     start_bpm:50,goal_bpm:92, notation_tex:'ghosts'},
-    {step_no:3,title:'Full funk pocket',     start_bpm:60,goal_bpm:104,notation_tex:'funk'},
+    {step_no:1,title:'16th hats R only',  start_bpm:50,goal_bpm:80, notation_tex:'16 hats'},
+    {step_no:2,title:'Add ghost snares',  start_bpm:50,goal_bpm:92, notation_tex:'ghosts'},
+    {step_no:3,title:'Full funk pocket',  start_bpm:60,goal_bpm:104,notation_tex:'funk'},
   ],
   'double-stroke':[
-    {step_no:1,title:'Hand to hand',         start_bpm:40,goal_bpm:70, notation_tex:'doubles'},
-    {step_no:2,title:'Open roll',            start_bpm:70,goal_bpm:120,notation_tex:'open roll'},
+    {step_no:1,title:'Hand to hand',      start_bpm:40,goal_bpm:70, notation_tex:'doubles'},
+    {step_no:2,title:'Open roll',         start_bpm:70,goal_bpm:120,notation_tex:'open roll'},
   ],
   'linear-fill-1':[
-    {step_no:1,title:'6-stroke shape',       start_bpm:60,goal_bpm:90, notation_tex:'linear fill'},
-    {step_no:2,title:'Around the kit',       start_bpm:70,goal_bpm:110,notation_tex:'linear fill kit'},
+    {step_no:1,title:'6-stroke shape',    start_bpm:60,goal_bpm:90, notation_tex:'linear fill'},
+    {step_no:2,title:'Around the kit',    start_bpm:70,goal_bpm:110,notation_tex:'linear fill kit'},
   ],
-  // song-breakdown → steps SLICE the source song (source_item_id + bars)
   'sna-breakdown':[
-    {step_no:1,title:'Main riff',  section_label:'Intro', source_item_id:'seven-nation-army',start_bar:1, end_bar:8, start_bpm:90, goal_bpm:124},
+    {step_no:1,title:'Main riff',   section_label:'Intro', source_item_id:'seven-nation-army',start_bar:1, end_bar:8, start_bpm:90, goal_bpm:124},
     {step_no:2,title:'Verse groove',section_label:'Verse',source_item_id:'seven-nation-army',start_bar:9, end_bar:24,start_bpm:100,goal_bpm:124},
-    {step_no:3,title:'Chorus hits',section_label:'Chorus',source_item_id:'seven-nation-army',start_bar:25,end_bar:40,start_bpm:110,goal_bpm:124},
+    {step_no:3,title:'Chorus hits', section_label:'Chorus',source_item_id:'seven-nation-army',start_bar:25,end_bar:40,start_bpm:110,goal_bpm:124},
   ],
 };
 
 const LESSON_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, fill:{icon:'bolt',label:'Fills'}, 'song-breakdown':{icon:'segment',label:'Song parts'}};
+const PAGE_SIZE = 6;
 
 /* ---------- state ---------- */
 const state = {
-  role: localStorage.getItem('nh_role') || 'anon',     // anon | user | admin
+  role: localStorage.getItem('nh_role') || 'anon',
   theme: localStorage.getItem('nh_theme') || 'dark',
-  tab: 'songs',          // songs | lessons
-  lessonKind: 'all',     // all | beat | rudiment | fill | song-breakdown
+  tab: 'songs',
+  lessonKind: 'all',
   q: '',
   advanced: false,
-  shown: 8,
+  page: 1,
 };
 const el = sel => document.querySelector(sel);
 const app = el('#app');
 const esc = s => (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cap = s => s? s[0].toUpperCase()+s.slice(1):s;
 
 /* ---------- score donut ---------- */
 function band(v){ if(v==null)return 'none'; if(v>=100)return 'gold'; if(v>=89)return 'high'; if(v>=70)return 'climb'; if(v>=50)return 'dev'; return 'low'; }
 function donut(v){
   const b = band(v), col = {none:'--s-none',low:'--s-low',dev:'--s-dev',climb:'--s-climb',high:'--s-high',gold:'--s-gold'}[b];
-  const pct = v==null?0:v, c=2*Math.PI*14, off=c*(1-pct/100);
-  const inner = b==='gold' ? `<span class="val"><span class="material-symbols-rounded">trophy</span></span>` : `<span class="val">${v==null?'–':v}</span>`;
+  const c=2*Math.PI*14, off=c*(1-(v==null?0:v)/100);
+  const inner = b==='gold' ? `<span class="val"><span class="material-symbols-outlined msf">trophy</span></span>` : `<span class="val">${v==null?'–':v}</span>`;
   return `<span class="donut ${b}" title="${v==null?'Not attempted':'Best '+v+'%'}">
     <svg width="34" height="34"><circle cx="17" cy="17" r="14" stroke="var(--s-none)" stroke-width="3.4" fill="none" opacity=".4"/>
     <circle cx="17" cy="17" r="14" stroke="var(${col})" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>${inner}</span>`;
@@ -366,27 +396,34 @@ function donut(v){
 
 /* ---------- role helpers (ACL) ---------- */
 const isAdmin = () => state.role==='admin';
-const isUser  = () => state.role==='user';
 const signedIn= () => state.role!=='anon';
+
+/* ---------- derived flags (no schema column — computed) ---------- */
+function hasParts(it){ return it.type==='song' ? !!(it.data&&it.data.sections&&it.data.sections.length) : (STEPS[it.id]||[]).length>0; }
+function itemFlags(it){
+  const f=[];
+  if(it.has_audio) f.push('<span class="material-symbols-outlined" title="Has audio">volume_up</span>');
+  if(it.has_video) f.push('<span class="material-symbols-outlined" title="Has video">smart_display</span>');
+  if(hasParts(it)) f.push(`<span class="material-symbols-outlined parts" title="${it.type==='song'?'Has parts':'Has steps'}">splitscreen</span>`);
+  return f.length?`<span class="flags">${f.join('')}</span>`:'';
+}
+function lessonLadder(it){ const s=STEPS[it.id]||[]; if(!s.length) return '—'; const a=Math.min(...s.map(x=>x.start_bpm||1e9)), b=Math.max(...s.map(x=>x.goal_bpm||0)); return (a<1e9&&b)?`${a}→${b}`:'—'; }
 
 /* ---------- router ---------- */
 function parseHash(){
   const raw = location.hash.replace(/^#/,'') || '/catalog';
   const [path, query] = raw.split('?');
-  const seg = path.split('/').filter(Boolean);
-  const qp = new URLSearchParams(query||'');
-  return {seg, qp, raw};
+  return {seg:path.split('/').filter(Boolean), qp:new URLSearchParams(query||''), raw};
 }
-function navigate(hash){ location.hash = hash; }                       // pushes history
-function replaceHash(hash){ history.replaceState(null,'','#'+hash); }   // no history entry
-
+function navigate(hash){ location.hash = hash; }
+function replaceHash(hash){ history.replaceState(null,'','#'+hash); el('#routeEcho').textContent = location.hash; }
 function syncCatalogHash(){
   const p = new URLSearchParams();
   p.set('tab', state.tab);
   if(state.tab==='lessons' && state.lessonKind!=='all') p.set('kind', state.lessonKind);
   if(state.q) p.set('q', state.q);
+  if(state.page>1) p.set('page', state.page);
   replaceHash('/catalog?'+p.toString());
-  el('#routeEcho').textContent = location.hash;
 }
 
 function render(){
@@ -394,21 +431,18 @@ function render(){
   paintRoleChrome();
   const {seg, qp} = parseHash();
   el('#routeEcho').textContent = location.hash || '#/catalog';
-
   if(seg[0]===undefined || seg[0]==='catalog'){
     if(qp.get('tab')) state.tab = qp.get('tab');
-    if(qp.get('kind')){ state.lessonKind = qp.get('kind'); }
+    if(qp.get('kind')) state.lessonKind = qp.get('kind');
     if(qp.get('q')!=null) state.q = qp.get('q');
+    state.page = +(qp.get('page')||1);
     return renderCatalog();
   }
   if(seg[0]==='song')   return renderSong(seg[1]);
-  if(seg[0]==='lesson'){
-    if(seg[2]==='step') return renderStep(seg[1], +seg[3]);
-    return renderLesson(seg[1]);
-  }
-  if(seg[0]==='play')   return renderPlayer(qp);
+  if(seg[0]==='lesson') return seg[2]==='step' ? renderStep(seg[1], +seg[3]) : renderLesson(seg[1]);
+  if(seg[0]==='play')   return renderPlayer();
   if(seg[0]==='admin')  return renderAdminStub(seg, qp);
-  app.innerHTML = `<div class="empty"><span class="material-symbols-rounded">help</span>Unknown route <code>${esc(location.hash)}</code><br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`;
+  app.innerHTML = `<div class="empty"><span class="material-symbols-outlined">help</span>Unknown route <code>${esc(location.hash)}</code><br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`;
 }
 
 /* ---------- screen: CATALOG ---------- */
@@ -416,118 +450,138 @@ function matches(it){
   if(it.type!==state.tab.replace(/s$/,'')) return false;
   if(state.tab==='lessons' && state.lessonKind!=='all' && it.lesson_type!==state.lessonKind) return false;
   if(state.q){ const t=(it.title+' '+(it.artist||'')).toLowerCase(); if(!t.includes(state.q.toLowerCase())) return false; }
-  // anon/user only see published curated; admin sees drafts + uploads too
   if(!isAdmin() && it.status!=='published' && !(it.ownedByUser && signedIn())) return false;
   return true;
 }
 function renderCatalog(){
   syncCatalogHash();
   if(el('#q').value!==state.q) el('#q').value=state.q;
-  const all = ITEMS.filter(matches);
-  const list = all.slice(0, state.shown);
   const isLessons = state.tab==='lessons';
-
-  const subtabs = isLessons ? `<div class="subtabs">
-    <button data-kind="all" aria-pressed="${state.lessonKind==='all'}">All</button>
-    ${Object.entries(LESSON_KINDS).map(([k,v])=>`<button data-kind="${k}" aria-pressed="${state.lessonKind===k}"><span class="material-symbols-rounded">${v.icon}</span>${v.label}</button>`).join('')}
-  </div>` : '';
-
-  const dynamicChip = isLessons ? `<button class="chip"><span class="k">Kind:</span> Any <span class="material-symbols-rounded">expand_more</span></button>`
-                                : `<button class="chip"><span class="k">Genre:</span> Any <span class="material-symbols-rounded">expand_more</span></button>`;
-
-  const recent = signedIn() ? `<div class="continue" data-nav="#/lesson/rock-8th-beat">
-      <span class="material-symbols-rounded">resume</span>
-      <div style="flex:1"><b>Continue:</b> 8th-Note Rock Beat — Step 3 of 4 <small style="color:var(--faint);display:block">last best 64%</small></div>
-      <span class="material-symbols-rounded">chevron_right</span></div>` : '';
+  const all = ITEMS.filter(matches);
+  const pages = Math.max(1, Math.ceil(all.length/PAGE_SIZE));
+  if(state.page>pages) state.page=pages; if(state.page<1) state.page=1;
+  const list = all.slice((state.page-1)*PAGE_SIZE, state.page*PAGE_SIZE);
+  const kindLabel = state.lessonKind==='all'?'Any':(LESSON_KINDS[state.lessonKind]?.label||'Any');
+  const dyn = isLessons
+    ? `<button class="fbtn ${state.lessonKind!=='all'?'on':''}" data-dyn><span class="k">Kind:</span> ${kindLabel} <span class="material-symbols-outlined caret">expand_more</span></button>
+       <div class="fpop" id="kindPop">
+         ${['all',...Object.keys(LESSON_KINDS)].map(k=>`<div class="fopt ${state.lessonKind===k?'sel':''}" data-kind="${k}"><span class="material-symbols-outlined">${k==='all'?'apps':LESSON_KINDS[k].icon}</span>${k==='all'?'All kinds':LESSON_KINDS[k].label}</div>`).join('')}
+       </div>`
+    : `<button class="fbtn" data-dyn><span class="k">Genre:</span> Any <span class="material-symbols-outlined caret">expand_more</span></button>`;
 
   app.innerHTML = `
     ${adminCatalogBar()}
-    <div class="tabs" role="tablist">
-      <button role="tab" aria-selected="${!isLessons}" data-tab="songs">Songs</button>
-      <button role="tab" aria-selected="${isLessons}" data-tab="lessons">Lessons</button>
-    </div>
-    ${subtabs}
-    <div class="filterrow">
-      <button class="chip"><span class="k">Type:</span> ${isLessons?'Lessons':'Songs'} </button>
-      ${dynamicChip}
-      <button class="chip"><span class="k">Level:</span> Any <span class="material-symbols-rounded">expand_more</span></button>
-      <button class="chip"><span class="k">Instrument:</span> Drums <span class="material-symbols-rounded">expand_more</span></button>
-      <button class="chip more" id="moreBtn"><span class="material-symbols-rounded">tune</span> More</button>
+    <div class="frow">
+      <div class="seg">
+        <button class="${!isLessons?'sel':''}" data-tab="songs"><span class="material-symbols-outlined">music_note</span> Songs</button>
+        <button class="${isLessons?'sel':''}" data-tab="lessons"><span class="material-symbols-outlined">school</span> Lessons</button>
+      </div>
+      <span class="vsep"></span>
+      <div class="fdrop">${dyn}</div>
+      <button class="fbtn" data-flt><span class="k">Level:</span> Any <span class="material-symbols-outlined caret">expand_more</span></button>
+      <button class="fbtn" data-flt><span class="k">Instrument:</span> Drums <span class="material-symbols-outlined caret">expand_more</span></button>
+      <button class="fbtn ${state.advanced?'on':''}" data-more><span class="material-symbols-outlined">tune</span> More <span class="material-symbols-outlined caret">expand_more</span></button>
+      <span style="flex:1"></span>
+      <span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
     </div>
     <div class="advanced ${state.advanced?'open':''}">
-      ${['Tempo','Time sig','Tags','Skill','Pattern','Key'].map(x=>`<button class="chip"><span class="k">${x}:</span> Any</button>`).join('')}
+      ${['Tempo','Time','Tags','Skill','Pattern','Key'].map(x=>`<span class="chip"><span class="k">${x}:</span> Any</span>`).join('')}
     </div>
-    ${recent}
+    ${signedIn()?`<div class="continue" data-nav="#/lesson/rock-8th-beat"><span class="material-symbols-outlined">resume</span><div style="flex:1"><b>Continue:</b> 8th-Note Rock Beat — Step 3 of 4 <small style="color:var(--faint);display:block">last best 64%</small></div><span class="material-symbols-outlined">chevron_right</span></div>`:''}
     ${ list.length ? `
       <div class="tablehead"><span>Name</span><span>Level</span><span>BPM</span><span>Best</span><span></span></div>
       ${list.map(rowHTML).join('')}
-      <div class="loadmore">
-        <span>Showing ${list.length} of ${all.length}</span>
-        ${all.length>state.shown?`<button id="moreRows">Load more</button>`:''}
-      </div>` : `<div class="empty"><span class="material-symbols-rounded">search_off</span>No ${state.tab} match “${esc(state.q)}”.<br><button class="btn secondary" id="clearFilters" style="margin-top:12px">Clear filters</button></div>` }
+      ${pager(all.length, pages)}
+      ` : `<div class="empty"><span class="material-symbols-outlined">search_off</span>No ${state.tab} match “${esc(state.q)}”.<br><button class="btn secondary" id="clearFilters" style="margin-top:12px">Clear filters</button></div>` }
   `;
 }
 function rowHTML(it){
-  const sub = it.type==='song'
-    ? `<small>${it.artist?esc(it.artist)+' · ':''}<span class="tag song">Song</span> ${it.status!=='published'?'<span class="tag">'+it.status+'</span>':''}</small>`
-    : `<small><span class="tag lesson">${LESSON_KINDS[it.lesson_type]?.label||'Lesson'}</span> ${(it.skill||[]).slice(0,2).join(' · ')}</small>`;
+  const isLesson = it.type==='lesson';
+  const cover = isLesson ? (LESSON_KINDS[it.lesson_type]?.icon||'school') : 'music_note';
+  const badge = isLesson ? `<span class="badge2 ${it.lesson_type}">${LESSON_KINDS[it.lesson_type]?.label||'Lesson'}</span>` : '';
+  const isNew = it.new ? `<span class="pill-new">New</span>` : '';
+  const sub = isLesson
+    ? `${(STEPS[it.id]||[]).length} steps <span class="dot"></span> ${(it.skill||[]).slice(0,2).join(' · ')}`
+    : `${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}`;
+  const bpm = isLesson ? lessonLadder(it) : (it.bpm||'—');
   return `<div class="row">
-    <div class="name" data-nav="#/${it.type}/${it.id}"><b>${esc(it.title)}</b>${sub}</div>
+    <div class="name">
+      <div class="cover ${isLesson?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
+      <div class="nm" data-nav="#/${it.type}/${it.id}">
+        <div class="nmtitle"><b>${esc(it.title)}</b>${badge}${isNew}</div>
+        <div class="nmsub">${sub}</div>
+      </div>
+      ${itemFlags(it)}
+    </div>
     <span class="lvlpill">${it.level??'—'}</span>
-    <span class="bpm mono">${it.bpm?it.bpm:'—'}</span>
+    <span class="bpm mono">${bpm}</span>
     ${donut(it.best)}
-    <button class="play" title="Quick play" data-nav="#/play/${it.id}"><span class="material-symbols-rounded">play_arrow</span></button>
+    <button class="play" title="Quick play" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span></button>
+  </div>`;
+}
+function pager(total, pages){
+  if(pages<=1) return `<div class="loadmore">${total} item${total===1?'':'s'}</div>`;
+  const start=(state.page-1)*PAGE_SIZE+1, end=Math.min(total,state.page*PAGE_SIZE);
+  let btns='';
+  for(let p=1;p<=pages;p++) btns+=`<button data-page="${p}" aria-current="${p===state.page}">${p}</button>`;
+  return `<div class="pager">
+    <button data-page="${Math.max(1,state.page-1)}" ${state.page===1?'disabled':''}><span class="material-symbols-outlined">chevron_left</span></button>
+    ${btns}
+    <button data-page="${Math.min(pages,state.page+1)}" ${state.page===pages?'disabled':''}><span class="material-symbols-outlined">chevron_right</span></button>
+    <span class="info">${start}–${end} of ${total}</span>
   </div>`;
 }
 function adminCatalogBar(){
   if(!isAdmin()) return '';
   return `<div class="adminbar">
-    <span class="lbl"><span class="material-symbols-rounded">shield_person</span>Admin · curate catalog</span>
-    <button class="adminbtn" data-nav="#/admin/new?type=song"><span class="material-symbols-rounded">add</span> New song</button>
-    <button class="adminbtn" data-nav="#/admin/new?type=lesson"><span class="material-symbols-rounded">add</span> New lesson</button>
-    <button class="adminbtn" data-nav="#/admin/new?type=upload"><span class="material-symbols-rounded">upload</span> Upload file</button>
+    <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin · curate catalog</span>
+    <button class="adminbtn" data-nav="#/admin/new?type=song"><span class="material-symbols-outlined">add</span> New song</button>
+    <button class="adminbtn" data-nav="#/admin/new?type=lesson"><span class="material-symbols-outlined">add</span> New lesson</button>
+    <button class="adminbtn" data-nav="#/admin/new?type=upload"><span class="material-symbols-outlined">upload</span> Upload file</button>
   </div>`;
 }
 
-/* ---------- screen: SONG detail (whole-piece feel) ---------- */
+/* ---------- screen: SONG detail ---------- */
 function renderSong(id){
   const it = ITEMS.find(x=>x.id===id); if(!it) return notFound();
   const sections = it.data?.sections||[];
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Song · '+esc(it.title)]])}
-    <button class="backlink" data-back><span class="material-symbols-rounded">arrow_back</span> Back</button>
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     ${adminDetailBar(it)}
     <div class="hero">
       <div class="meta">
         <h1>${esc(it.title)}</h1>
         <div class="sub">${it.artist?esc(it.artist):'Unknown artist'} <span class="tag song">Song</span></div>
         <div class="badges">
-          <span class="badge"><span class="material-symbols-rounded">speed</span><span class="mono">${it.bpm}</span> BPM</span>
-          <span class="badge"><span class="material-symbols-rounded">schedule</span>${it.time_sig}</span>
-          <span class="badge"><span class="material-symbols-rounded">bar_chart</span>Level ${it.level??'—'}</span>
-          <span class="badge"><span class="material-symbols-rounded">music_note</span>${(it.notation_format||'').toUpperCase()} · ${it.data?.bars||'?'} bars</span>
+          <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
+          <span class="badge"><span class="material-symbols-outlined">schedule</span>${it.time_sig}</span>
+          <span class="badge"><span class="material-symbols-outlined">bar_chart</span>Level ${it.level??'—'}</span>
+          <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.notation_format||'').toUpperCase()} · ${it.data?.bars||'?'} bars</span>
+          ${it.has_audio?'<span class="badge"><span class="material-symbols-outlined">volume_up</span>Audio</span>':''}
+          ${it.has_video?'<span class="badge"><span class="material-symbols-outlined">smart_display</span>Video</span>':''}
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-rounded">play_arrow</span> Play full song</button>
-          ${it.breakdown?`<button class="btn secondary" data-nav="#/lesson/${it.breakdown}"><span class="material-symbols-rounded">segment</span> Practice in parts</button>`:''}
+          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>
+          ${it.breakdown?`<button class="btn secondary" data-nav="#/lesson/${it.breakdown}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
         </div>
       </div>
       ${historyCard(it)}
     </div>
     <div class="card">
-      <h3><span class="material-symbols-rounded">segment</span> Song structure ${it.breakdown?'· <span style="font-weight:400;color:var(--faint)">tap a part to practice it</span>':''}</h3>
+      <h3><span class="material-symbols-outlined">segment</span> Song structure ${it.breakdown?'· <span style="font-weight:400;color:var(--faint)">tap a part to practice it</span>':''}</h3>
       ${sections.length? sections.map((s,i)=>`
         <div class="part" ${it.breakdown?`data-nav="#/lesson/${it.breakdown}/step/${i+1}"`:''}>
-          <span class="material-symbols-rounded" style="color:var(--accent)">${it.breakdown?'play_circle':'graphic_eq'}</span>
+          <span class="material-symbols-outlined" style="color:var(--accent)">${it.breakdown?'play_circle':'graphic_eq'}</span>
           <div style="flex:1"><b>${esc(s.label)}</b></div>
           <span class="bars">bars ${s.startBar}–${s.endBar}</span>
-          ${it.breakdown?`<span class="material-symbols-rounded" style="color:var(--faint)">chevron_right</span>`:''}
-        </div>`).join('') : `<div class="gate"><span class="material-symbols-rounded">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`}
+          ${it.breakdown?`<span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span>`:''}
+        </div>`).join('') : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`}
     </div>
   `;
 }
 
-/* ---------- screen: LESSON detail (steps feel) ---------- */
+/* ---------- screen: LESSON detail ---------- */
 function renderLesson(id){
   const it = ITEMS.find(x=>x.id===id); if(!it) return notFound();
   const steps = STEPS[id]||[];
@@ -535,7 +589,7 @@ function renderLesson(id){
   const srcSong = it.sourceSong ? ITEMS.find(x=>x.id===it.sourceSong) : null;
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Lesson · '+esc(it.title)]])}
-    <button class="backlink" data-back><span class="material-symbols-rounded">arrow_back</span> Back</button>
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     ${adminDetailBar(it)}
     <div class="hero">
       <div class="meta">
@@ -543,15 +597,15 @@ function renderLesson(id){
         <div class="sub"><span class="tag lesson">${kind}</span> Level ${it.level??'—'} ${(it.skill||[]).map(s=>`<span class="badge" style="padding:3px 9px">${s}</span>`).join('')}</div>
         ${srcSong?`<div class="sub" style="margin-top:8px;font-size:13px">Built from <a data-nav="#/song/${srcSong.id}" style="color:var(--accent);cursor:pointer">${esc(srcSong.title)}</a></div>`:''}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-rounded">play_arrow</span> Play lesson</button>
+          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>
         </div>
       </div>
       ${historyCard(it)}
     </div>
     <div class="card">
-      <h3><span class="material-symbols-rounded">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· ${steps.length} · start→goal BPM ladder</span></h3>
+      <h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· ${steps.length} · start→goal BPM ladder</span></h3>
       ${steps.map(s=>stepRow(it,s)).join('')}
-      ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-rounded">add</span> Add step</button>`:''}
+      ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
     </div>
   `;
 }
@@ -559,59 +613,65 @@ function stepRow(lesson, s){
   const srcTag = s.notation_tex!=null ? '<span class="src tex">alphaTex</span>'
                : s.source_item_id ? '<span class="src slice">song slice</span>'
                : '<span class="src upload">upload</span>';
-  const ladder = (s.start_bpm||s.goal_bpm) ? `<span class="ladder"><span class="material-symbols-rounded" style="font-size:14px">speed</span>${s.start_bpm??'?'}→${s.goal_bpm??'?'}</span>` : '';
+  const ladder = (s.start_bpm||s.goal_bpm) ? `<span class="ladder"><span class="material-symbols-outlined" style="font-size:14px">speed</span>${s.start_bpm??'?'}→${s.goal_bpm??'?'}</span>` : '';
   const sliceInfo = s.source_item_id ? `<small>${esc(s.section_label||'')} · bars ${s.start_bar}–${s.end_bar}</small>` : '';
-  return `<div class="step" data-nav="#/lesson/${lesson.id}/step/${s.step_no}">
+  return `<div class="step">
     <span class="no">${s.step_no}</span>
-    <div class="si"><b>${esc(s.title)}</b>${sliceInfo}</div>
+    <div class="si" data-nav="#/lesson/${lesson.id}/step/${s.step_no}"><b>${esc(s.title)}</b>${sliceInfo}</div>
     ${ladder} ${srcTag}
-    <button class="play" title="Play this step" data-nav="#/play/${lesson.id}/step/${s.step_no}" data-stop><span class="material-symbols-rounded">play_arrow</span></button>
+    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/admin/lesson/${lesson.id}/step/${s.step_no}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
+    <button class="play" title="Play this step" data-nav="#/play/${lesson.id}/step/${s.step_no}"><span class="material-symbols-outlined">play_arrow</span></button>
   </div>`;
 }
 
 /* ---------- screen: STEP (before-play for one step) ---------- */
 function renderStep(lessonId, n){
   const it = ITEMS.find(x=>x.id===lessonId); if(!it) return notFound();
-  const s = (STEPS[lessonId]||[]).find(x=>x.step_no===n); if(!s) return notFound();
+  const all = STEPS[lessonId]||[]; const s = all.find(x=>x.step_no===n); if(!s) return notFound();
   const srcSong = s.source_item_id?ITEMS.find(x=>x.id===s.source_item_id):null;
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['#/lesson/'+it.id,'Lesson · '+esc(it.title)],['','Step '+n]])}
-    <button class="backlink" data-back><span class="material-symbols-rounded">arrow_back</span> Back to lesson</button>
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back to lesson</button>
+    ${isAdmin()?`<div class="adminbar">
+      <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin · step</span>
+      <button class="adminbtn" data-nav="#/admin/lesson/${it.id}/step/${n}/edit"><span class="material-symbols-outlined">edit</span> Edit step</button>
+      <button class="adminbtn danger" data-nav="#/admin/lesson/${it.id}/step/${n}/edit?delete=1"><span class="material-symbols-outlined">delete</span> Delete step</button>
+    </div>`:''}
     <div class="hero">
       <div class="meta">
-        <div class="sub" style="margin-bottom:4px">Step ${n} of ${(STEPS[lessonId]||[]).length}</div>
+        <div class="sub" style="margin-bottom:4px">Step ${n} of ${all.length}</div>
         <h1>${esc(s.title)}</h1>
         <div class="badges">
-          <span class="badge"><span class="material-symbols-rounded">speed</span><span class="mono">${s.start_bpm??'?'} → ${s.goal_bpm??'?'}</span> BPM</span>
-          <span class="badge"><span class="material-symbols-rounded">music_note</span>${s.notation_tex!=null?'alphaTex (authored)':s.source_item_id?'slice of '+esc(srcSong?.title||'song'):'uploaded file'}</span>
-          ${s.source_item_id?`<span class="badge"><span class="material-symbols-rounded">segment</span>bars ${s.start_bar}–${s.end_bar}</span>`:''}
+          <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${s.start_bpm??'?'} → ${s.goal_bpm??'?'}</span> BPM</span>
+          <span class="badge"><span class="material-symbols-outlined">music_note</span>${s.notation_tex!=null?'alphaTex (authored)':s.source_item_id?'slice of '+esc(srcSong?.title||'song'):'uploaded file'}</span>
+          ${s.source_item_id?`<span class="badge"><span class="material-symbols-outlined">segment</span>bars ${s.start_bar}–${s.end_bar}</span>`:''}
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}/step/${n}"><span class="material-symbols-rounded">play_arrow</span> Play step</button>
-          ${n<(STEPS[lessonId]||[]).length?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${n+1}">Next step <span class="material-symbols-rounded">arrow_forward</span></button>`:''}
+          <button class="btn primary" data-nav="#/play/${it.id}/step/${n}"><span class="material-symbols-outlined">play_arrow</span> Play step</button>
+          ${n<all.length?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${n+1}">Next step <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
         </div>
       </div>
     </div>
-    <div class="card"><h3><span class="material-symbols-rounded">music_note</span> Notation preview</h3>
-      <div class="gate"><span class="material-symbols-rounded">info</span>Renders here at play time (AlphaTab). Source: ${s.notation_tex!=null?'<code>notation_tex</code> (inline alphaTex)':s.source_item_id?'<code>source_item_id</code> + bar range (song slice)':'<code>notation_key</code> (uploaded file)'}.</div>
+    <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation preview</h3>
+      <div class="gate"><span class="material-symbols-outlined">info</span>Renders here at play time (AlphaTab). Source: ${s.notation_tex!=null?'<code>notation_tex</code> (inline alphaTex)':s.source_item_id?'<code>source_item_id</code> + bar range (song slice)':'<code>notation_key</code> (uploaded file)'}.</div>
     </div>
   `;
 }
 
 /* ---------- screen: PLAYER stub ---------- */
-function renderPlayer(qp){
+function renderPlayer(){
   const {seg} = parseHash();
   const id = seg[1]; const stepNo = seg[2]==='step'?+seg[3]:null;
   const it = ITEMS.find(x=>x.id===id);
   let ctx = it? (it.type==='song'?`“${it.title}” — full song @ ${it.bpm} BPM`:`Lesson “${it.title}”`) : 'item';
   if(stepNo){ const s=(STEPS[id]||[]).find(x=>x.step_no===stepNo); if(s) ctx=`“${it.title}” — Step ${stepNo}: ${s.title} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
   app.innerHTML = `
-    <button class="backlink" data-back><span class="material-symbols-rounded">arrow_back</span> Back</button>
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     <div class="playerstub">
-      <span class="material-symbols-rounded">play_circle</span>
+      <span class="material-symbols-outlined">play_circle</span>
       <h2>🎵 Player here</h2>
       <div class="ctx">Now playing: <b>${esc(ctx)}</b><br><small>The play screen (notation + HUD + scoring) is a separate draft — stubbed for this flow sim.</small></div>
-      <button class="btn secondary" data-back style="margin-top:10px">← Back to ${it?(it.type==='song'?'song':'lesson'):'catalog'}</button>
+      <button class="btn secondary" data-back style="margin-top:10px">← Back</button>
     </div>
   `;
 }
@@ -619,16 +679,19 @@ function renderPlayer(qp){
 /* ---------- screen: ADMIN CRUD stub (v2) ---------- */
 function renderAdminStub(seg, qp){
   if(!isAdmin()){
-    app.innerHTML = `<div class="stubpanel"><span class="material-symbols-rounded">lock</span>
+    app.innerHTML = `<div class="stubpanel"><span class="material-symbols-outlined">lock</span>
       <h2 style="margin:8px 0">Admin only</h2><p>Switch role to <b>Admin</b> (top-right) to curate the catalog.</p>
       <button class="btn primary" id="signinHere" style="margin-top:10px">Sign in as admin</button></div>`;
     return;
   }
-  const what = seg[1]==='new' ? `New ${qp.get('type')||'item'}` : seg[1]==='edit' ? `Edit ${esc(seg[2]||'')}` : seg[2]==='lesson'?`Add step to ${esc(seg[2])}`:'CRUD';
+  let what='CRUD';
+  if(seg.includes('step')) what = `${qp.get('delete')?'Delete':'Edit'} step`;
+  else if(seg[1]==='new') what = `New ${qp.get('type')||'item'}`;
+  else if(seg[1]==='edit') what = `${qp.get('delete')?'Archive':'Edit'} item`;
   app.innerHTML = `
-    <button class="backlink" data-back><span class="material-symbols-rounded">arrow_back</span> Back</button>
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     <div class="stubpanel">
-      <span class="material-symbols-rounded">draw</span>
+      <span class="material-symbols-outlined">draw</span>
       <h2 style="margin:8px 0">${what}</h2>
       <p>CRUD forms (create / edit / delete songs, lessons &amp; steps + uploads) land in <b>v2</b>.<br>
       This route exists so the admin flow is walkable now: <code>${esc(location.hash)}</code></p>
@@ -638,13 +701,13 @@ function renderAdminStub(seg, qp){
 /* ---------- shared bits ---------- */
 function historyCard(it){
   if(!signedIn()) return `<div class="card" style="margin-top:0;min-width:240px">
-      <div class="gate"><span class="material-symbols-rounded">login</span><div>Sign in to track your best score, sessions &amp; trend.<br>
-      <button class="btn primary" id="signinHere" style="margin-top:10px"><span class="material-symbols-rounded">person</span> Sign in</button></div></div></div>`;
-  if(it.best==null) return `<div class="card" style="margin-top:0;min-width:240px"><h3><span class="material-symbols-rounded">history</span> Your history</h3>
-      <div class="gate" style="border-style:dashed"><span class="material-symbols-rounded">flag</span>Not attempted yet — play it to start your trend.</div></div>`;
+      <div class="gate"><span class="material-symbols-outlined">login</span><div>Sign in to track your best score, sessions &amp; trend.<br>
+      <button class="btn primary" id="signinHere" style="margin-top:10px"><span class="material-symbols-outlined">person</span> Sign in</button></div></div></div>`;
+  if(it.best==null) return `<div class="card" style="margin-top:0;min-width:240px"><h3><span class="material-symbols-outlined">history</span> Your history</h3>
+      <div class="gate" style="border-style:dashed"><span class="material-symbols-outlined">flag</span>Not attempted yet — play it to start your trend.</div></div>`;
   const tr = (it.trend||[]); const max=Math.max(100,...tr);
   return `<div class="card" style="margin-top:0;min-width:240px">
-    <h3><span class="material-symbols-rounded">history</span> Your history</h3>
+    <h3><span class="material-symbols-outlined">history</span> Your history</h3>
     <div class="history">
       <div class="big">${donut(it.best)}
         <div class="stat"><span class="n">${it.sessions||0}</span><span class="l">sessions</span></div>
@@ -658,19 +721,19 @@ function historyCard(it){
 function adminDetailBar(it){
   if(!isAdmin()) return '';
   return `<div class="adminbar">
-    <span class="lbl"><span class="material-symbols-rounded">shield_person</span>Admin</span>
-    <button class="adminbtn" data-nav="#/admin/edit/${it.id}"><span class="material-symbols-rounded">edit</span> Edit ${it.type}</button>
-    ${it.type==='lesson'?`<button class="adminbtn" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-rounded">add</span> Add step</button>`:''}
-    <button class="adminbtn danger" data-nav="#/admin/edit/${it.id}?delete=1"><span class="material-symbols-rounded">delete</span> ${it.status==='published'?'Archive':'Delete'}</button>
+    <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin</span>
+    <button class="adminbtn" data-nav="#/admin/edit/${it.id}"><span class="material-symbols-outlined">edit</span> Edit ${it.type}</button>
+    ${it.type==='lesson'?`<button class="adminbtn" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+    <button class="adminbtn danger" data-nav="#/admin/edit/${it.id}?delete=1"><span class="material-symbols-outlined">delete</span> ${it.status==='published'?'Archive':'Delete'}</button>
   </div>`;
 }
 function crumbs(parts){
   return `<div class="crumbs">${parts.map((p,i)=>{
-    const sep = i>0?'<span class="material-symbols-rounded">chevron_right</span>':'';
+    const sep = i>0?'<span class="material-symbols-outlined">chevron_right</span>':'';
     return sep + (p[0]?`<a data-nav="${p[0]}">${p[1]}</a>`:`<span style="color:var(--ink)">${p[1]}</span>`);
   }).join('')}</div>`;
 }
-function notFound(){ app.innerHTML = `<div class="empty"><span class="material-symbols-rounded">search_off</span>Item not found.<br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`; }
+function notFound(){ app.innerHTML = `<div class="empty"><span class="material-symbols-outlined">search_off</span>Item not found.<br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`; }
 
 /* ---------- role chrome ---------- */
 function paintRoleChrome(){
@@ -678,8 +741,8 @@ function paintRoleChrome(){
   document.querySelectorAll('[data-role-set]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.roleSet===state.role));
   document.querySelectorAll('[data-theme-set]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.themeSet===state.theme));
   el('#uploadBtn').style.display = signedIn()? 'inline-flex':'none';
-  if(state.role==='anon'){ rl.textContent='Sign in'; av.className='avatar anon'; av.innerHTML='<span class="material-symbols-rounded">person</span>'; }
-  else if(state.role==='user'){ rl.textContent='User'; av.className='avatar'; av.textContent='U'; }
+  if(state.role==='anon'){ rl.textContent='Sign in'; av.className='avatar anon'; av.innerHTML='<span class="material-symbols-outlined">person</span>'; av.style.background=''; }
+  else if(state.role==='user'){ rl.textContent='User'; av.className='avatar'; av.textContent='U'; av.style.background=''; }
   else { rl.textContent='Admin'; av.className='avatar'; av.textContent='A'; av.style.background='var(--s-dev)'; }
 }
 
@@ -693,22 +756,26 @@ document.addEventListener('click', e=>{
   const navEl = e.target.closest('[data-nav]');
   if(navEl){ navigate(navEl.dataset.nav); return; }
   if(e.target.closest('[data-back]')){ history.length>1?history.back():navigate('#/catalog'); return; }
-  if(e.target.closest('[data-tab]')){ state.tab=e.target.closest('[data-tab]').dataset.tab; state.shown=8; renderCatalog(); return; }
-  if(e.target.closest('[data-kind]')){ state.lessonKind=e.target.closest('[data-kind]').dataset.kind; state.shown=8; renderCatalog(); return; }
-  if(e.target.closest('#moreBtn')){ state.advanced=!state.advanced; renderCatalog(); return; }
-  if(e.target.closest('#moreRows')){ state.shown+=8; renderCatalog(); return; }
-  if(e.target.closest('#clearFilters')){ state.q=''; el('#q').value=''; state.lessonKind='all'; renderCatalog(); return; }
+  if(e.target.closest('[data-dyn]')){ const p=el('#kindPop'); if(p) p.classList.toggle('open'); return; }
+  if(e.target.closest('[data-kind]')){ state.lessonKind=e.target.closest('[data-kind]').dataset.kind; state.page=1; renderCatalog(); return; }
+  if(!e.target.closest('.fpop')) document.querySelectorAll('.fpop.open').forEach(p=>p.classList.remove('open'));
+  if(e.target.closest('[data-tab]')){ state.tab=e.target.closest('[data-tab]').dataset.tab; state.page=1; renderCatalog(); return; }
+  if(e.target.closest('[data-more]')){ state.advanced=!state.advanced; renderCatalog(); return; }
+  if(e.target.closest('[data-page]')){ state.page=+e.target.closest('[data-page]').dataset.page; renderCatalog(); window.scrollTo({top:0,behavior:'smooth'}); return; }
+  if(e.target.closest('#clearFilters')){ state.q=''; el('#q').value=''; state.lessonKind='all'; state.page=1; renderCatalog(); return; }
   if(e.target.closest('[data-role-set]')){ setRole(e.target.closest('[data-role-set]').dataset.roleSet); return; }
   if(e.target.closest('[data-theme-set]')){ setTheme(e.target.closest('[data-theme-set]').dataset.themeSet); return; }
   if(e.target.closest('#acctBtn') || e.target.closest('#signinHere')){ openModal(); return; }
   if(e.target.closest('#modalX') || e.target===el('#modal')){ closeModal(); return; }
   if(e.target.closest('#uploadBtn')){ navigate('#/admin/new?type=upload'); return; }
 });
-el('#q').addEventListener('input', e=>{ state.q=e.target.value; state.shown=8; const onCat=(parseHash().seg[0]||'catalog')==='catalog'; if(onCat) renderCatalog(); else navigate('#/catalog'); });
+el('#q').addEventListener('input', e=>{ state.q=e.target.value; state.page=1; const onCat=(parseHash().seg[0]||'catalog')==='catalog'; if(onCat) renderCatalog(); else navigate('#/catalog'); });
 window.addEventListener('hashchange', ()=>{ render(); window.scrollTo(0,0); });
 window.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
 
 /* ---------- boot ---------- */
+el('#brandMark').innerHTML = MARK_SVG;
+el('#midiBtn').innerHTML = MIDI_SVG;
 render();
 </script>
 </body>
