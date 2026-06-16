@@ -15,6 +15,7 @@
 **Where this sits:** This is milestone **M0→M1** of the cloud-learning roadmap (the "hello-cloud walking skeleton" → "catalogue full CRUD"). It **refines** the BE-framework and data-layer choices of the earlier CMS build plan ([docs/plans/2026-06-07-001-feat-cms-k-build-plan.md](2026-06-07-001-feat-cms-k-build-plan.md)) — the framework is now **NestJS** (decided 2026-06-16) and the ORM is **Drizzle**. Epic: [NH-177](https://leocaseiro.atlassian.net/browse/NH-177) "Catalog/CMS & Infra".
 
 **Source-of-truth references (read before implementing):**
+
 - Catalogue schema → [docs/specs/2026-06-10-catalogue-schema.md](../specs/2026-06-10-catalogue-schema.md) (`catalogue_item` table, `data` JSONB, generated `search` tsvector, CHECK constraints, indexes)
 - Datastore decision → [docs/decisions/2026-06-09-catalogue-store-postgres-neon.md](../decisions/2026-06-09-catalogue-store-postgres-neon.md) (Neon + serverless HTTP driver chosen for the Lambda↔Postgres pool problem)
 - CMS approach + admin spec → [docs/cms-approach.md](../cms-approach.md), [docs/specs/2026-06-15-cms-admin.md](../specs/2026-06-15-cms-admin.md) (the dataProvider CRUD contract, password gate, archive-not-delete)
@@ -25,6 +26,7 @@
 **This plan covers (everything discussed this session):** NestJS adoption into the hexagon, the two enforcement edits it needs, the data layer (Drizzle + Neon HTTP), the full CRUD (R→CU→D), cold-start mitigations, and the one missing CI piece (Pulumi deploy automation via OIDC).
 
 **Explicitly OUT of scope for the first CRUD (per Leo):**
+
 - The `exercise` table (lesson steps) — first CRUD is *add-a-song*; songs carry their own `notation_key`, no steps.
 - `pattern` / `item_pattern` linking UI (ships empty until Beta content).
 - `audio`/`video` JSONB editing (only the `has_audio`/`has_video` booleans).
@@ -36,14 +38,14 @@
 
 ## 1. Architecture & file map
 
-### 1.1 The three packages (hexagon rings)
+### d1.1 The three packages (hexagon rings)
 
-| Package | Nx tag | Responsibility | May import |
-|---|---|---|---|
-| `core/catalogue` (`@notation-hero/catalogue-core`) | `type:core` | Pure domain: `catalogue-item.entity.ts`, value objects, `catalogue-repository.port.ts`, domain errors. **ZERO `@nestjs/*`.** Emitting lib (`isolatedDeclarations` — explicit return types). | nothing |
-| `adapters/neon-catalogue` (`@notation-hero/neon-catalogue`) | `type:adapter` | Port implementation: `neon-catalogue.repository.ts` (Drizzle + Neon HTTP), `schema/*.ts` (Drizzle tables), `drizzle.client.ts`. | `core` only |
-| `apps/catalogue-api` (`@notation-hero/catalogue-api`) | `type:app` | **The only NestJS ring:** `app.module.ts`, `catalogue.module.ts`, `catalogue.controller.ts`, `*.use-case.ts`, `*.dto.ts`, `database.module.ts`, the Lambda `main.ts` (cached bootstrap). | `core` + `adapters` |
-| `infra/` (existing) | `type:infra` | One added `LambdaWithUrl(...)` instance pointing at `apps/catalogue-api/dist`. Wires build OUTPUT, never source. | `@pulumi/*` only |
+| Package                                                     | Nx tag         | Responsibility                                                                                                                                                                              | May import          |
+| ----------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| `core/catalogue` (`@notation-hero/catalogue-core`)          | `type:core`    | Pure domain: `catalogue-item.entity.ts`, value objects, `catalogue-repository.port.ts`, domain errors. **ZERO `@nestjs/*`.** Emitting lib (`isolatedDeclarations` — explicit return types). | nothing             |
+| `adapters/neon-catalogue` (`@notation-hero/neon-catalogue`) | `type:adapter` | Port implementation: `neon-catalogue.repository.ts` (Drizzle + Neon HTTP), `schema/*.ts` (Drizzle tables), `drizzle.client.ts`.                                                             | `core` only         |
+| `apps/catalogue-api` (`@notation-hero/catalogue-api`)       | `type:app`     | **The only NestJS ring:** `app.module.ts`, `catalogue.module.ts`, `catalogue.controller.ts`, `*.use-case.ts`, `*.dto.ts`, `database.module.ts`, the Lambda `main.ts` (cached bootstrap).    | `core` + `adapters` |
+| `infra/` (existing)                                         | `type:infra`   | One added `LambdaWithUrl(...)` instance pointing at `apps/catalogue-api/dist`. Wires build OUTPUT, never source.                                                                            | `@pulumi/*` only    |
 
 **Hexagon seam:** the Nest app is the **composition root**. It binds the adapter to the port via a custom provider with an injection token — never injecting the concrete class:
 
@@ -110,15 +112,15 @@ package.json                            # MODIFY: add deps (see Task 0.1)
 
 ## 2. Key decisions I made (override any of these)
 
-| # | Decision | Why | Flip condition |
-|---|---|---|---|
-| D1 | **Express** adapter (not Fastify) | `@codegenie/serverless-express` is the NestJS-official documented path; best docs for a backend newcomer; RPS is irrelevant at catalogue scale | Switch to `@h4ad/serverless-adapter` + Fastify later only if a hot path is CPU-bound in-process |
-| D2 | **Drizzle** (not Prisma/TypeORM) | ~7–35KB bundle, ~10–20ms cold-start; first-class `neon-http`; plain-SQL fits the JSONB/`pg_trgm`/tsvector schema without fighting an ORM; no provider lock-in (decision-doc goal) | Prisma 7 only if you want its Studio/declarative DX and accept the heavier artifact |
-| D3 | **Hand-rolled DI provider**, not `@knaadh/nestjs-drizzle` | That module has no Neon-HTTP support; the ~15-line factory is trivial and teaches the wiring | — |
-| D4 | **Function URL**, not API Gateway, for v1 | Already in the repo; Always-Free vs API GW's 12-mo-only tier on this account | Add API GW HTTP API when you need authorizers/throttling/usage-plans |
-| D5 | Cold-start: **SPA ping (primary) + 5-min EventBridge warmer (secondary)** | Ping warms on real arrival ($0, no infra); warmer holds one instance hot off-peak. Skip Provisioned Concurrency ($); no SnapStart (Node unsupported) | — |
-| D6 | **Keep all four enforcement guards**; extend two | Nest's boundaries are *runtime/DI*; the static guards are orthogonal and are the hexagon lesson. Only `check-layout.sh` + one depcruise/ESLint rule need edits | — |
-| D7 | CRUD writes gated by the **existing password gate** (cms-admin §4), not Cognito | Cognito is M3; keeps this slice shippable | — |
+| #   | Decision                                                                        | Why                                                                                                                                                                               | Flip condition                                                                                  |
+| --- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| D1  | **Express** adapter (not Fastify)                                               | `@codegenie/serverless-express` is the NestJS-official documented path; best docs for a backend newcomer; RPS is irrelevant at catalogue scale                                    | Switch to `@h4ad/serverless-adapter` + Fastify later only if a hot path is CPU-bound in-process |
+| D2  | **Drizzle** (not Prisma/TypeORM)                                                | ~7–35KB bundle, ~10–20ms cold-start; first-class `neon-http`; plain-SQL fits the JSONB/`pg_trgm`/tsvector schema without fighting an ORM; no provider lock-in (decision-doc goal) | Prisma 7 only if you want its Studio/declarative DX and accept the heavier artifact             |
+| D3  | **Hand-rolled DI provider**, not `@knaadh/nestjs-drizzle`                       | That module has no Neon-HTTP support; the ~15-line factory is trivial and teaches the wiring                                                                                      | —                                                                                               |
+| D4  | **Function URL**, not API Gateway, for v1                                       | Already in the repo; Always-Free vs API GW's 12-mo-only tier on this account                                                                                                      | Add API GW HTTP API when you need authorizers/throttling/usage-plans                            |
+| D5  | Cold-start: **SPA ping (primary) + 5-min EventBridge warmer (secondary)**       | Ping warms on real arrival ($0, no infra); warmer holds one instance hot off-peak. Skip Provisioned Concurrency ($); no SnapStart (Node unsupported)                              | —                                                                                               |
+| D6  | **Keep all four enforcement guards**; extend two                                | Nest's boundaries are *runtime/DI*; the static guards are orthogonal and are the hexagon lesson. Only `check-layout.sh` + one depcruise/ESLint rule need edits                    | —                                                                                               |
+| D7  | CRUD writes gated by the **existing password gate** (cms-admin §4), not Cognito | Cognito is M3; keeps this slice shippable                                                                                                                                         | —                                                                                               |
 
 ---
 
@@ -126,7 +128,7 @@ package.json                            # MODIFY: add deps (see Task 0.1)
 
 - **Phase 0 — Foundation:** scaffold the 3 packages + Lambda bootstrap + the 2 enforcement edits + infra wiring. **Green:** `GET /health` live on the cloud, all guards/CI pass.
 - **Phase 1 — READ:** `GET /catalogue` (list) + `GET /catalogue/:id` (detail). **Green:** a curl-able list/detail backed by Neon.
-- **Phase 2 — CREATE + UPDATE:** `POST /catalogue`, `PUT /catalogue/:id`, password-gated. **Green:** add/edit a song end-to-end.
+- **Phase 2 — CREATE + UPDATE (+ file upload):** `POST /catalogue`, `PUT /catalogue/:id`, `POST /catalogue/:id/file` (presigned S3), admin-gated. **Green:** add/edit a song end-to-end *with its file*.
 - **Phase 3 — DELETE = archive + unarchive:** `DELETE /catalogue/:id`, `POST /catalogue/:id/unarchive`. **Green:** full CRUD.
 - **Phase 4 — Deploy automation + warmer:** `deploy.yml` (OIDC + Pulumi), `.nx/cache`, EventBridge warmer. **Green:** push-to-master deploys; container stays warm.
 
@@ -180,7 +182,8 @@ Expected: FAIL — `foo.module.ts`/`foo.schema.ts` rejected (suffix not approved
 - [ ] **Step 2: Widen the guard for Nest + Drizzle idiomatic names (suffixes + entry + e2e specs)**
 
 In `tooling/check-layout.sh`:
-- **Role suffixes** — locate the `approved_suffix` regex (already includes `controller|service|dto|entity|repository|port|…`) and add `module|guard|pipe|interceptor|filter` (Nest elements) **and `schema`** (Drizzle table files, e.g. `catalogue-item.schema.ts`).
+
+- **Role suffixes** — locate the `approved_suffix` regex (already includes `controller|service|dto|entity|repository|port|…`) and add `module|guard|pipe|interceptor|filter` (Nest elements) **and `schema**` (Drizzle table files, e.g. `catalogue-item.schema.ts`).
 - **Entry exemption** — in the Rule 2 entry-file exemption (currently allows `index.{ts,tsx,mts,cts}`), add `main.ts` (Nest's entry has no role suffix).
 - **e2e specs** — add `*.e2e-spec.*` to the Rule 2 test-file exemption so NestJS e2e specs pass. They don't trip Rule 3's co-located-sibling check (that fires only on `*.test.*`/`*.spec.*`, and e2e specs boot the whole app so they have no single source sibling), and Rule 1 allows a `test/` dir (only `__tests__/`/`__mocks__/`/`stories/` are banned).
 
@@ -258,9 +261,10 @@ pnpm exec nx g @nx/js:library neon-catalogue --directory=adapters/neon-catalogue
 > **Precedent note (corrected):** `apps/handler-hello` builds via a **raw `esbuild` CLI script** in its `package.json` (`esbuild src/index.ts … --outfile=dist/index.js && node -e "…writeFileSync('dist/package.json',{type:'commonjs'})"`) — it has **no Nx build target**, and `@nx/esbuild` is not yet a dependency. For catalogue-api, adopt the **Nx-native `@nx/esbuild:esbuild` executor** instead (Nx caching + `affected`); `@nx/esbuild@22.7.5` is added in Task 0.1. [F3]
 
 Replace the generated `apps/catalogue-api/project.json` `build` target with `@nx/esbuild:esbuild` (CJS, `platform: node`, single bundle, `FileArchive`-friendly `dist/`). Key options:
-- **`outputFileName: 'main.js'`** — keep NestJS's `main.ts` entry, so the bundle is `dist/main.js` and the Pulumi handler is **`main.handler`** (resolves Open Q1; aligned in Task 0.6). [F6]
-- **`target: 'node24'`** — Node 24 (Active LTS); the repo-wide bump (handler-hello, infra default, `engines`, CI) is a prerequisite chore — verify `nodejs24.x` in `ap-southeast-2`. [F4b]
-- **`dist/package.json` must contain `{"type":"commonjs"}`** — REQUIRED because the workspace root is `"type":"module"`, so without it Node loads the CJS bundle as ESM and the Lambda crashes at import (`require is not defined`). Achieve via `@nx/esbuild`'s `generatePackageJson` or a post-build write step, mirroring handler-hello's shim. [F4]
+
+- `**outputFileName: 'main.js'**` — keep NestJS's `main.ts` entry, so the bundle is `dist/main.js` and the Pulumi handler is `**main.handler**` (resolves Open Q1; aligned in Task 0.6). [F6]
+- `**target: 'node24'**` — Node 24 (Active LTS); the repo-wide bump (handler-hello, infra default, `engines`, CI) is a prerequisite chore — verify `nodejs24.x` in `ap-southeast-2`. [F4b]
+- `**dist/package.json` must contain `{"type":"commonjs"}**` — REQUIRED because the workspace root is `"type":"module"`, so without it Node loads the CJS bundle as ESM and the Lambda crashes at import (`require is not defined`). Achieve via `@nx/esbuild`'s `generatePackageJson` or a post-build write step, mirroring handler-hello's shim. [F4]
 
 Add the decorator-metadata plugin + externals via `esbuild.config.cjs`:
 
@@ -281,7 +285,7 @@ module.exports = {
 
 Set the app `tsconfig` to `experimentalDecorators: true, emitDecoratorMetadata: true` (apps ring only — NOT core).
 
-- [ ] **Step 3: `import 'reflect-metadata'` as the FIRST line of `main.ts`** (see Task 0.5).
+- [ ] **Step 3: `import 'reflect-metadata'` as the FIRST line of `main.ts**` (see Task 0.5).
 
 - [ ] **Step 4: Verify each project is tagged + builds the empty skeleton**
 
@@ -304,7 +308,7 @@ git commit -m "feat(catalogue): scaffold core/adapter/app hexagon packages for c
 
 **Files:** Create `apps/catalogue-api/src/main.ts`, `src/app.module.ts`, `src/health/health.controller.ts`.
 
-- [ ] **Step 1: Write a failing e2e test for `/health`**
+- [ ] **Step 1: Write a failing e2e test for `/health**`
 
 ```ts
 // apps/catalogue-api/test/health.e2e-spec.ts
@@ -333,7 +337,7 @@ describe('health', () => {
 Run: `pnpm exec nx test catalogue-api`
 Expected: FAIL — cannot find `AppModule`/route 404.
 
-- [ ] **Step 3: Implement `health.controller.ts`, `app.module.ts`, `main.ts`**
+- [ ] **Step 3: Implement `health.controller.ts`, `app.module.ts`, `main.ts**`
 
 ```ts
 // apps/catalogue-api/src/health/health.controller.ts
@@ -402,7 +406,7 @@ git commit -m "feat(catalogue-api): cached-server lambda bootstrap + /health (NH
 
 - [ ] **Step 2: Make CORS per-instance + set the catalogue verbs** — add an optional `cors?: { allowOrigins?: string[]; allowMethods?: string[] }` arg to `LambdaWithUrl` (default `{ allowOrigins: ['*'], allowMethods: ['GET'] }` so `handler-hello` stays GET-only), and pass it through to the `FunctionUrl`. Set the catalogue instance to `cors: { allowMethods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'], allowOrigins: ['*'] }`. Do NOT widen the shared stack default (that would loosen `handler-hello` too). `allowOrigins` is tightened to the CloudFront origin in Phase 4 (Task 4.4). [F19]
 
-- [ ] **Step 3: Add the catalogue instance in `infra/index.ts`**
+- [ ] **Step 3: Add the catalogue instance in `infra/index.ts**`
 
 ```ts
 const catalogueApi = new LambdaWithUrl('catalogue-api', {
@@ -425,7 +429,7 @@ export const catalogueApiUrl = catalogueApi.url;
 Run: `pnpm exec nx build catalogue-api && pnpm run infra:preview` (the repo's `pulumi preview` shortcut)
 Expected: preview shows one new Lambda + Function URL, no errors.
 
-- [ ] **Step 5: Deploy + smoke-test `/health`**
+- [ ] **Step 5: Deploy + smoke-test `/health**`
 
 Run: `pnpm run infra:up`, then `curl "$（pulumi stack output catalogueApiUrl)/health"`
 Expected: `{"status":"ok"}` over HTTPS. **This is the M0 "I have a cloud backend" checkpoint.**
@@ -450,7 +454,7 @@ aws ssm put-parameter --name /notation-hero/catalogue/database-url \
   --type SecureString --value '<neon POOLED connection string>' --region ap-southeast-2
 ```
 
-- [ ] **Step 2: Fetch + cache in `main.ts` BEFORE `NestFactory.create`** (so the Task 1.2 Drizzle client sees a populated `process.env.DATABASE_URL`). `@aws-sdk/client-ssm` is externalized (present in the Lambda runtime — not bundled):
+- [ ] **Step 2: Fetch + cache in `main.ts` BEFORE `NestFactory.create**` (so the Task 1.2 Drizzle client sees a populated `process.env.DATABASE_URL`). `@aws-sdk/client-ssm` is externalized (present in the Lambda runtime — not bundled):
 
 ```ts
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
@@ -586,7 +590,7 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 ### Task 2.1: Password gate guard
 
-- [ ] Implement a Nest guard (`apps/catalogue-api/src/catalogue/admin.guard.ts`) that checks the cms-admin §4 shared password header on **all writes** and on the gated admin-read (which returns ALL statuses, decision F1). Hardening (F12): compare with **`crypto.timingSafeEqual`** (constant-time, equal-length buffers), enforce a **fixed minimum failure response time** (kill the timing side-channel), and add a **module-scope per-IP attempt counter** returning 429 after N failures (resets on cold start — acceptable at M0–M2 scale; or rely on a CloudFront WAF rate rule). Mark the guard as the intentional **Cognito-replacement seam** (M3). TDD: failing test for 401 without the header → implement → pass → commit.
+- [ ] Implement a Nest guard (`apps/catalogue-api/src/catalogue/admin.guard.ts`) that checks the cms-admin §4 shared password header on **all writes** and on the gated admin-read (which returns ALL statuses, decision F1). Hardening (F12): compare with `**crypto.timingSafeEqual**` (constant-time, equal-length buffers), enforce a **fixed minimum failure response time** (kill the timing side-channel), and add a **module-scope per-IP attempt counter** returning 429 after N failures (resets on cold start — acceptable at M0–M2 scale; or rely on a CloudFront WAF rate rule). Mark the guard as the intentional **Cognito-replacement seam** (M3). TDD: failing test for 401 without the header → implement → pass → commit.
 
 ### Task 2.2: Create
 
@@ -596,7 +600,9 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 - [ ] **TDD** `PUT /catalogue/:id`: patch editable fields; re-assert publish gates app-side before `status → 'published'` (curated item requires non-null `license`, backed by the `ci_pub_license` DB CHECK). Test: update draft→published without license → 422; with license → 200. Commit.
 
-> File upload (`POST /catalogue/:id/file` → presigned S3 quarantine) is **deferred within Phase 2** — create/edit works against an already-present file first.
+### Task 2.4: File upload (presigned S3 → quarantine → validate)
+
+- [ ] **TDD** the upload pipeline (pulled INTO Phase 2 per review F16, so "add a song" is end-to-end): `POST /catalogue/:id/file` returns a **presigned S3 PUT** to a **quarantine** prefix; an S3 event (or a validate endpoint) runs **magic-byte validation** before promoting the object to the served prefix and setting the file refs / `has_audio`. Admin-gated (same guard as writes). Scope the S3 bucket + least-privilege IAM (presign + validate) in Pulumi. This is the marquee AWS portfolio piece (IAM-scoped ingest). Expand to the 5-step TDD rhythm at execution time (see Open Questions → "Expand Phases 2–4"). Commit.
 
 ---
 
@@ -646,6 +652,7 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 - [ ] **EventBridge Scheduler (5-min) warmer** in Pulumi: a schedule invoking the catalogue Lambda with `{ "warmer": true }`; in `main.ts`, short-circuit `if (event?.warmer) return { statusCode: 200 }` before routing (don't hit Neon). ~8.6K invokes/mo — inside the 1M/400K-GB-s free tier ($0). Commit.
 - [ ] **Document the SPA ping contract** for the FE session: on SPA shell load, fire `fetch('<catalogueApiUrl>/health', { method: 'GET', keepalive: true })` once per session (sessionStorage-guarded), *before* React hydration. This is FE work (separate session) — add it to the API contract doc, don't implement here.
+- [ ] **Document the Neon-wake UX note** for the FE session (F24): the first catalogue query after Neon's 5-min auto-suspend pays a ~0.5–few-s wake — the FE masks it with an rxjs loading/retry stream (Capacitor-compatible). $0 is preserved by *accepting* this wake; never ping Neon to keep it warm.
 - [ ] Bump `nrwl/nx-set-shas` v4→v5 (or let Dependabot's `github-actions` group do it). Commit.
 
 ### Task 4.4: Tighten CORS to the CloudFront origin
@@ -656,16 +663,16 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 ## Risks & mitigations
 
-| Risk | Likelihood / effort | Mitigation |
-|---|---|---|
-| `check-layout.sh` blocks the Nest app on first commit (Nest `main.ts`/e2e specs, Drizzle `*.schema.ts`) | HIGH / LOW | **Task 0.2 does this first** — widens suffixes (+`schema`), exempts `main.ts` + `*.e2e-spec.*` — before generating |
-| esbuild silently drops decorator metadata → Nest DI + DTO validation break at runtime | HIGH / LOW | `@anatine/esbuild-decorators` plugin + `import 'reflect-metadata'` first + app-tsconfig `emitDecoratorMetadata` (Task 0.4) |
-| Generator scaffolds **webpack**, contradicting the esbuild Lambda convention + inflating cold start | HIGH / LOW-MED | Override build target to `@nx/esbuild:esbuild` immediately (Task 0.4) |
-| `isolatedDeclarations` (core) clashes with decorators | MED / MED | Keep ALL `@nestjs/*` + decorators in `apps/` (a leaf `tsc --noEmit` package); never in `core` — walled by `no-core-to-nestjs` |
-| DI lulls you into injecting the concrete Neon class (defeats the hexagon lesson) | MED / arch | Inject via the `CATALOGUE_REPOSITORY` **token**, bind `useClass` in the module |
-| Cold start per concurrent request (warmer holds only ONE instance) | LOW | Acceptable for a learning CRUD; don't claim "no cold starts" |
-| Neon compute auto-suspend adds ~0.5–few s on first query | LOW | Lambda `timeout: 15s`; `/health` must NOT wake Neon; disable auto-suspend later on paid Neon |
-| `neon-http` driver is non-transactional (`db.transaction` throws) | LOW | Keep all writes single-statement; if a multi-statement transaction is ever needed, switch that path to `@neondatabase/serverless` WebSocket Pool + `drizzle-orm/neon-serverless` (F11) |
+| Risk                                                                                                    | Likelihood / effort | Mitigation                                                                                                                                                                             |
+| ------------------------------------------------------------------------------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `check-layout.sh` blocks the Nest app on first commit (Nest `main.ts`/e2e specs, Drizzle `*.schema.ts`) | HIGH / LOW          | **Task 0.2 does this first** — widens suffixes (+`schema`), exempts `main.ts` + `*.e2e-spec.*` — before generating                                                                     |
+| esbuild silently drops decorator metadata → Nest DI + DTO validation break at runtime                   | HIGH / LOW          | `@anatine/esbuild-decorators` plugin + `import 'reflect-metadata'` first + app-tsconfig `emitDecoratorMetadata` (Task 0.4)                                                             |
+| Generator scaffolds **webpack**, contradicting the esbuild Lambda convention + inflating cold start     | HIGH / LOW-MED      | Override build target to `@nx/esbuild:esbuild` immediately (Task 0.4)                                                                                                                  |
+| `isolatedDeclarations` (core) clashes with decorators                                                   | MED / MED           | Keep ALL `@nestjs/*` + decorators in `apps/` (a leaf `tsc --noEmit` package); never in `core` — walled by `no-core-to-nestjs`                                                          |
+| DI lulls you into injecting the concrete Neon class (defeats the hexagon lesson)                        | MED / arch          | Inject via the `CATALOGUE_REPOSITORY` **token**, bind `useClass` in the module                                                                                                         |
+| Cold start per concurrent request (warmer holds only ONE instance)                                      | LOW                 | Acceptable for a learning CRUD; don't claim "no cold starts"                                                                                                                           |
+| Neon compute auto-suspend adds ~0.5–few s on first query                                                | LOW                 | Lambda `timeout: 15s`; `/health` must NOT wake Neon; accept the first-query wake as $0 behavior (NO paid Neon; never ping Neon to keep it warm — that burns the 100 compute-hr/mo free quota). The FE masks it with an rxjs loading/retry stream (Capacitor-compatible — FE-session work)                                                                                           |
+| `neon-http` driver is non-transactional (`db.transaction` throws)                                       | LOW                 | Keep all writes single-statement; if a multi-statement transaction is ever needed, switch that path to `@neondatabase/serverless` WebSocket Pool + `drizzle-orm/neon-serverless` (F11) |
 
 ---
 
@@ -674,7 +681,7 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 - **KEEP** all four guards (`@nx/enforce-module-boundaries`, `eslint-plugin-boundaries`, `dependency-cruiser`, `check-layout.sh`) + lefthook/commitlint/gitleaks/semgrep — Nest's boundaries are *runtime*; these are the *static* hexagon walls (the lesson).
 - **EDIT 1 (Task 0.2):** `check-layout.sh` — add `module|guard|pipe|interceptor|filter|schema` suffixes, exempt `main.ts` (entry) and `*.e2e-spec.*` (NestJS e2e). Keeps every Nest/Drizzle file at its idiomatic name.
 - **EDIT 2 (Task 0.3):** add `no-core-to-nestjs` to `.dependency-cruiser.cjs` + `@nestjs/*` to the `core/` ESLint deny-list; add `apps/catalogue-api/src/main.ts` to the depcruise no-orphan entry allowlist (Lambda invokes it, nothing imports it — same as `handler-hello/src/index.ts`).
-- **`@nx/nest` usage:** `nx g @nx/nest:application|library` for the app/libs (sets tags), but **Nest CLI (`nest g`) for elements** (controllers/modules/DTOs) — `@nx/nest` will deprecate element wrappers in v23.
+- `**@nx/nest` usage:** `nx g @nx/nest:application|library` for the app/libs (sets tags), but **Nest CLI (`nest g`) for elements** (controllers/modules/DTOs) — `@nx/nest` will deprecate element wrappers in v23.
 
 ---
 
@@ -682,7 +689,11 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 
 1. **App build output name** — `index.js` vs `main.js`? The Pulumi `handler: 'index.handler'` must match the esbuild output. (Plan assumes `index.handler` like `handler-hello`.)
 2. **Neon dev branch per PR** — free tier allows 10 branches/project; wire PR-time migrate+test against an ephemeral branch now, or defer? (Plan defers to a "nice-to-have" note.)
-3. **Password-gate location** — header vs a tiny login that sets a cookie? (Plan assumes the cms-admin §4 shared-password header.)
+3. **Password-gate location** — header vs a tiny login that sets a cookie? (Plan assumes the cms-admin §4 shared-password header.) — *Superseded by the 2026-06-16 review: auth is moving to Cognito; see F14 below.*
+
+### Deferred from the 2026-06-16 review
+
+- **Expand Phases 2–4 to full 5-step TDD?** (F15) Phases 2–4 are currently task-level (see Self-review notes). Decide whether to expand them to Phase-0/1 granularity before execution, or expand each task just-in-time at execution time.
 
 ---
 
