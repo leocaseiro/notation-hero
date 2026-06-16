@@ -77,7 +77,32 @@ Nothing changes unilaterally.
 - **Supersedes:** the earlier "pagination = keyset/cursor" note (a scale optimisation). **v1 = OFFSET+COUNT
   numbered**; revisit keyset only if the catalog grows large enough that deep `OFFSET` hurts. **No DDL change.**
 
+## 🟢 SD-7 — Level `0 = Debut` (extend the grade scale to 0–10)
+
+- **Decision (you, 2026-06-16):** add a **Debut** tier as `level = 0` (below grade 1). Keeps a single integer
+  scale; `NULL` stays "ungraded" and **distinct** from Debut.
+- **Schema change:** `ci_level CHECK (level BETWEEN 1 AND 10)` → **`BETWEEN 0 AND 10`**. UI renders `0` as a
+  "Debut" pill. The bounded-level filter still excludes ungraded `NULL` by design (§9).
+
+## 🟢 SD-8 — Multi-select *filter* over single-valued columns (genre / time / kind)
+
+- **Decision (you, 2026-06-16):** the **item columns stay single-valued** (a song has one genre, a lesson one
+  `lesson_type`, one `time_sig`) — *schema unchanged*. Only the **filter contract** gains list inputs so the
+  user can OR-match several.
+- **Filter-contract change:** `genre`, `timeSig`, `lessonType` go `string → string[]` in `CatalogueFilter`;
+  the SQL adapter maps them to `col = ANY($1)` (OR). `instruments` stays single-select for now (`@> ARRAY[$1]`).
+  Tags/Skill keep **ALL-of** (`@>`). No `catalogue_item` column changes.
+
+## 🟢 SD-9 — Add `musicalKey` filter, instrument-conditional (drums vs pitched)
+
+- **Decision (you, 2026-06-16):** add **`musicalKey`** to the filter contract — the `musical_key` column
+  already exists; it was just missing from `CatalogueFilter`. Expose it **only when the instrument filter is a
+  pitched one** (guitar / keys); **drums are unpitched** (no key/scale) so Key is hidden for drums / "Any".
+- **Filter-contract change:** add `musicalKey?: string[]` → `musical_key = ANY($1)` (OR). Conditional UI only;
+  no column change. A future `scale`/`mode` filter can join it for piano content (§13 "controlled list with
+  piano content").
+
 ---
 
-### Open count: 3 (SD-1, SD-2, SD-3) · resolved: SD-4 (no change), SD-5 (derive), SD-6 (numbered)
-*(I'll walk SD-1/2/3 as pickers when you're ready — they may shift as CRUD gets fleshed in v2.)*
+### Open: SD-1, SD-2, SD-3 (await pickers) · Resolved: SD-4 (no change) · SD-5 (derive) · SD-6 (numbered) · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional)
+*(SD-7/8/9 are filter-side or one-line CHECK changes — the item schema stayed almost entirely intact, as you predicted. I'll apply them to the locked spec on your go, with a changelog line each.)*

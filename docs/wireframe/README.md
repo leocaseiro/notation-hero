@@ -64,3 +64,10 @@ approval → amend the locked spec with a changelog). Nothing in the locked sche
 
 - **v1** — walkable browse flow (search → detail → steps → before-play → player stub) across all 3 roles;
   hash routing; role/theme persistence. CRUD routes reachable as stubs.
+- **v1.1** — matched the locked single-row filter layout (segmented Songs/Lessons inline) + design-system
+  icons (real MIDI glyph, Material Symbols Outlined, brand mark) + per-row cover icons + audio/video/parts
+  flags + New pill; numbered pagination; admin Edit/Delete on the step page.
+- **v1.2** — **functional filters** (the schema's query contract, live): genre/kind/time **multi-select**
+  (OR), instrument **single**, level/tempo **ranges** (level `0 = Debut`), tags/skill **ALL-of**, **Key**
+  shown only for pitched instruments, functional **Sort**. See `filter-review.md` (per-filter review vs the
+  `CatalogueFilter` contract) and SD-7/8/9 in the schema-deltas ledger.
