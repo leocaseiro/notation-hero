@@ -59,7 +59,7 @@ constructor(@Inject(CATALOGUE_REPOSITORY) private readonly repo: CatalogueReposi
 
 ### 1.2 The Lambdalith + cold-start shape
 
-One Nest app = one Lambda behind the **existing Function URL** (Always-Free; API Gateway is 12-mo-only on this account, deferred). `main.ts` caches the bootstrapped server at module scope so `NestFactory.create()` (the heavy DI graph build) runs **once per cold start**, never per request. Cold start ~1–2s, warm ~single-digit ms. Cold-start hidden by: (a) a fire-and-forget `GET /health` ping from the SPA shell on page load (warms the exact container the user will hit), and (b) a 5-minute EventBridge Scheduler warmer hitting `/health`. Neon's HTTP driver removes the DB connection cold-connect entirely (stateless fetch per query, no VPC).
+One Nest app = one Lambda behind the **existing Function URL** (Always-Free; API Gateway is 12-mo-only on this account, deferred). `main.ts` caches the bootstrapped server at module scope so `NestFactory.create()` (the heavy DI graph build) runs **once per cold start**, never per request. Cold start ~1–2s, warm ~single-digit ms. Cold-start hidden by: (a) a fire-and-forget `GET /health` ping from the SPA shell on page load (reduces — does not eliminate — perceived cold starts; reliably warms the user's own container only at concurrency=1, since Lambda routes concurrent requests to separate execution environments), and (b) a 5-minute EventBridge Scheduler warmer hitting `/health`. Neon's HTTP driver removes the DB connection cold-connect entirely (stateless fetch per query, no VPC).
 
 ### 1.3 Files created / modified
 
@@ -221,6 +221,8 @@ Expected: currently PASSES (no rule yet) — that's the gap.
   to: { path: '@nestjs/' },
 },
 ```
+
+- [ ] **Step 2b: Add `main.ts` to the `no-orphans` allowlist** — in `.dependency-cruiser.cjs`, add `"^apps/catalogue-api/src/main\\.ts$"` to the `no-orphans` rule's `pathNot` array (alongside the existing `infra/index.ts` + `handler-hello/src/index.ts` entries). The Lambda entry is invoked by AWS and imported by nothing, so depcruise flags it as an orphan otherwise. This is named in the file-map + enforcement section but was missing from the executable steps. [F9]
 
 - [ ] **Step 3: Add `@nestjs/*` to the `core/` ESLint deny-list** (the group that already bans `react`/`@aws-sdk`/`@pulumi`): add `'@nestjs/*'` to that `no-restricted-imports` patterns array.
 
@@ -398,7 +400,7 @@ git commit -m "feat(catalogue-api): cached-server lambda bootstrap + /health (NH
 
 - [ ] **Step 1: Extend `LambdaWithUrl` args + set the catalogue instance** (keep existing `arm64`). Add three OPTIONAL args to `LambdaWithUrlArgs` — `memorySize?`, `timeout?`, and `environment?: pulumi.Input<Record<string, pulumi.Input<string>>>` — and wire `environment` into the `aws.lambda.Function` (`environment: { variables: args.environment }`; it is not passed today). Default all three so `handler-hello` is unaffected. Set the catalogue instance to `memorySize: 1024, timeout: 15, runtime: 'nodejs24.x'` (Node 24 — also bump the `LambdaWithUrl` default + repo `engines`/`@types/node`/CI as a prerequisite chore; verify `nodejs24.x` in `ap-southeast-2`). Also add `ssmParameterArns?: pulumi.Input<string>[]` — when set, attach an inline `RolePolicy` granting `ssm:GetParameter` on those ARNs + `kms:Decrypt`; the catalogue instance passes its DB-URL param ARN so the Lambda reads the SecureString at runtime. [F5, F4b, F7]
 
-- [ ] **Step 2: Widen the Function URL CORS** from `allowMethods: ["GET"]` to `["GET","POST","PUT","PATCH","DELETE","OPTIONS"]`; keep `allowOrigins: ["*"]` for now (tighten to the CloudFront origin in Phase 4).
+- [ ] **Step 2: Make CORS per-instance + set the catalogue verbs** — add an optional `cors?: { allowOrigins?: string[]; allowMethods?: string[] }` arg to `LambdaWithUrl` (default `{ allowOrigins: ['*'], allowMethods: ['GET'] }` so `handler-hello` stays GET-only), and pass it through to the `FunctionUrl`. Set the catalogue instance to `cors: { allowMethods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'], allowOrigins: ['*'] }`. Do NOT widen the shared stack default (that would loosen `handler-hello` too). `allowOrigins` is tightened to the CloudFront origin in Phase 4 (Task 4.4). [F19]
 
 - [ ] **Step 3: Add the catalogue instance in `infra/index.ts`**
 
@@ -479,7 +481,10 @@ git commit -m "feat(catalogue-api): resolve DATABASE_URL from SSM at cold start 
 
 ### Task 1.1: Drizzle schema + extensions migration
 
-**Files:** Create `adapters/neon-catalogue/src/schema/catalogue-item.schema.ts`, `drizzle.config.ts`, `migrations/0000_extensions.sql`.
+**Files:** Create `adapters/neon-catalogue/src/schema/catalogue-item.schema.ts`, `drizzle.config.ts`, `migrations/0000_extensions.sql`; modify `adapters/neon-catalogue/project.json` (add `generate`/`migrate` targets).
+
+> **Prereq (F10):** `drizzle-kit` reads `DATABASE_URL` — set it (Neon **DIRECT**, non-pooler) in your shell or a gitignored `.env` before Steps 3–4; CI injects it as a secret (Task 4.2). The runtime Lambda uses the **pooled** URL via SSM (Task 0.6a) — these are two different connection strings.
+> **nx targets (F17):** add `generate` + `migrate` targets to `adapters/neon-catalogue/project.json` (`nx:run-commands` wrapping `drizzle-kit generate`/`migrate`) so `nx run @notation-hero/neon-catalogue:migrate` (used by `deploy.yml`, Task 4.2) resolves. Invoke them as `nx run …:generate` / `:migrate` in Steps 3–4.
 
 - [ ] **Step 1: Hand-write the prerequisite-extensions migration** (drizzle-kit can't author these from table defs; the generated `search` column + functional indexes depend on them):
 
@@ -638,6 +643,10 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 - [ ] **Document the SPA ping contract** for the FE session: on SPA shell load, fire `fetch('<catalogueApiUrl>/health', { method: 'GET', keepalive: true })` once per session (sessionStorage-guarded), *before* React hydration. This is FE work (separate session) — add it to the API contract doc, don't implement here.
 - [ ] Bump `nrwl/nx-set-shas` v4→v5 (or let Dependabot's `github-actions` group do it). Commit.
 
+### Task 4.4: Tighten CORS to the CloudFront origin
+
+- [ ] Set the catalogue Function URL `allowOrigins` from `['*']` to the CloudFront distribution URL once it is stable (wire the CloudFront origin as a Pulumi stack reference). Alternatively, consciously accept `['*']` for a single-admin internal API and delete the deferral note — but do not leave it as a stranded promise. Commit. [F19]
+
 ---
 
 ## Risks & mitigations
@@ -651,6 +660,7 @@ git commit -m "feat(catalogue): read endpoints (list projection + detail) over n
 | DI lulls you into injecting the concrete Neon class (defeats the hexagon lesson) | MED / arch | Inject via the `CATALOGUE_REPOSITORY` **token**, bind `useClass` in the module |
 | Cold start per concurrent request (warmer holds only ONE instance) | LOW | Acceptable for a learning CRUD; don't claim "no cold starts" |
 | Neon compute auto-suspend adds ~0.5–few s on first query | LOW | Lambda `timeout: 15s`; `/health` must NOT wake Neon; disable auto-suspend later on paid Neon |
+| `neon-http` driver is non-transactional (`db.transaction` throws) | LOW | Keep all writes single-statement; if a multi-statement transaction is ever needed, switch that path to `@neondatabase/serverless` WebSocket Pool + `drizzle-orm/neon-serverless` (F11) |
 
 ---
 
