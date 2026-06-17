@@ -489,6 +489,7 @@ function render(){
     return renderCatalog();
   }
   if(seg[0]==='song')   return renderSong(seg[1]);
+  if(seg[0]==='pattern') return renderPattern(seg[1]);
   if(seg[0]==='lesson') return seg[2]==='step' ? renderStep(seg[1], +seg[3]) : renderLesson(seg[1]);
   if(seg[0]==='play')   return renderPlayer();
   if(seg[0]==='admin')  return renderAdminStub(seg, qp);
@@ -683,7 +684,7 @@ function rowHTML(it){
     : `${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}${it.musical_key?' <span class="dot"></span> '+it.musical_key:''}`;
   const bpm = isLesson ? lessonLadder(it) : isPat ? '—' : (it.bpm||'—');
   const lvl = it.level===0 ? '<span class="lvlpill debut">Debut</span>' : `<span class="lvlpill">${it.level??'—'}</span>`;
-  const nav = isPat ? '' : ` data-nav="#/${it.type}/${it.id}"`;
+  const nav = ` data-nav="#/${it.type}/${it.id}"`;
   return `<div class="row">
     <div class="name">
       <div class="cover ${it.type!=='song'?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
@@ -821,6 +822,43 @@ function renderLesson(id){
     ${allFieldsPanel(it)}
   `;
 }
+/* ---------- screen: PATTERN detail (first-class playable — score + history) ---------- */
+function renderPattern(id){
+  const it = ITEMS.find(x=>x.id===id); if(!it) return notFound();
+  const k = PATTERN_KINDS[it.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const diff = it.data&&it.data.difficulty;
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'],['','Pattern · '+esc(it.title)]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
+    ${adminDetailBar(it)}
+    <div class="hero">
+      <div class="meta">
+        <h1>${esc(it.title)}</h1>
+        <div class="sub"><span class="tag lesson">${k.label}</span> ${it.level===0?'Debut':'Level '+(it.level??'—')} ${it.family?`<span class="badge" style="padding:3px 9px">${esc(it.family)}</span>`:''}</div>
+        <div class="badges">
+          <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.instruments||[]).join('·')}</span>
+          ${it.musical_key?`<span class="badge"><span class="material-symbols-outlined">piano</span>Key ${it.musical_key}</span>`:''}
+          ${it.genre?`<span class="badge"><span class="material-symbols-outlined">genres</span>${cap(it.genre)}</span>`:''}
+        </div>
+        ${mediaLinks(it)}
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play pattern</button>
+        </div>
+      </div>
+      ${historyCard(it)}
+    </div>
+    ${diff?`<div class="card"><h3><span class="material-symbols-outlined">trending_up</span> Difficulty <span style="font-weight:400;color:var(--faint)">· by ${esc(diff.by)}</span></h3>
+      ${diff.tiers.map(t=>`<div class="part"><div style="flex:1"><b>${t.upTo!==undefined?(t.upTo==null?'fastest':'up to '+t.upTo+(diff.by==='bpm'?' BPM':'')):esc(t.when)}</b></div><span class="lvlpill">L${t.level}</span></div>`).join('')}
+      <small style="color:var(--faint);display:block;margin-top:6px">Stored in <code>data.difficulty {by, tiers}</code> — a lesson step's level = this curve at the step's goal BPM.</small></div>`:''}
+    ${metaFoot(it)}
+    ${allFieldsPanel(it)}
+  `;
+}
+function stepFieldsPanel(lesson, s){
+  const f = {lesson_id:lesson.id, pattern_id:'(reusable pattern this step drills)', sort_order:s.step_no, start_bpm:s.start_bpm??null, goal_bpm:s.goal_bpm??null};
+  const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
+  return `<div class="nfields"><div class="nfsub">lesson_step · junction (a step is NOT a notation — it links a lesson to a reusable pattern, with order + bpm ladder)</div><div class="nfgrid">${grid}</div></div>`;
+}
 function stepRow(lesson, s){
   const srcTag = s.notation_tex!=null ? '<span class="src tex">alphaTex</span>'
                : s.source_item_id ? '<span class="src slice">song slice</span>'
@@ -867,6 +905,7 @@ function renderStep(lessonId, n){
     <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation preview</h3>
       <div class="gate"><span class="material-symbols-outlined">info</span>Renders here at play time (AlphaTab). Source: ${s.notation_tex!=null?'<code>notation_tex</code> (inline alphaTex)':s.source_item_id?'<code>source_item_id</code> + bar range (song slice)':'<code>notation_key</code> (uploaded file)'}.</div>
     </div>
+    ${stepFieldsPanel(it,s)}
   `;
 }
 
