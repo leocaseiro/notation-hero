@@ -46,7 +46,7 @@ err() { printf '::error::%s\n' "$1" >&2; fail=1; }
 
 # Approved role suffixes (ADR 2026-06-12 D2 taxonomy). Extended-regex alternation for grep -E.
 # Refine the per-layer split in AGENTS.md; this global union enforces "every file declares a role".
-approved_suffix='entity|value-object|aggregate|event|specification|port|service|error|adapter|repository|mapper|client|handler|use-case|command|query|controller|dto|stack|infra|util'
+approved_suffix='entity|value-object|aggregate|event|specification|port|service|error|adapter|repository|mapper|client|handler|use-case|command|query|controller|dto|stack|infra|util|module|guard|pipe|interceptor|filter|middleware|strategy|resolver|schema|policy'
 
 # base name with all extensions stripped: Foo.ts->Foo, Foo.test.ts->Foo, X.stories.tsx->X
 strip_ext() {
@@ -94,13 +94,13 @@ while IFS= read -r -d '' f; do
 
   # Rule 2 — role suffix required for domain/application source (core/adapters/apps/infra only)
   case "$f" in
-    core/* | adapters/* | apps/* | infra/*)
+    server/src/*)
       case "$file" in
         # exempt: package/Nx entry + co-located test/spec/stories/fake markers (config/d.ts already
         # excluded by the scan). Patterns end in `.*` so .ts/.tsx/.mts/.cts variants all match — and
         # so legit *.stories.*/*.fake.* files aren't rejected for "missing a role suffix" (PR #25
         # review #2; strip_ext() already treats .stories/.fake as middle extensions).
-        index.ts | index.tsx | index.mts | index.cts | *.test.* | *.spec.* | *.stories.* | *.fake.*) : ;;
+        index.ts | index.tsx | index.mts | index.cts | main.ts | main.tsx | *.test.* | *.spec.* | *.stories.* | *.fake.*) : ;;
         *)
           # strip the TS extension (.ts/.tsx/.mts/.cts), then the token after the last dot is the
           # role suffix (none -> whole name)

@@ -1,4 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignoreBinaries": ["pulumi"]
+  "ignoreBinaries": ["pulumi"],
+  "workspaces": {
+    "server": {
+      "entry": "src/entry/main.ts",
+      "ignoreDependencies": ["@types/express"]
+    }
+  }
 }
