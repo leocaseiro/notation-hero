@@ -352,7 +352,7 @@ const PLAYABLES = [
   {id:'take-five', kind:'song', title:'Take Five', artist:'Dave Brubeck', level:6, bpm:174, time_sig:'5/4', genre:'jazz', instruments:['drums'], tags:['syncopation'], status:'published', origin:'curated', license:'public-domain', notation_format:'xml', has_video:true, video:[{provider:'youtube',label:'Live 1966'}], best:52, sessions:4, top_bpm:150, trend:[30,40,48,52]},
   {id:'creep', kind:'song', title:'Creep', artist:'Radiohead', level:3, bpm:92, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['groove'], patterns:['p-four-floor'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:67, sessions:3, top_bpm:88, trend:[44,58,67]},
   {id:'wonderwall', kind:'song', title:'Wonderwall', artist:'Oasis', level:0, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar'], musical_key:'F#m', tags:['strumming'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:null, sessions:0, trend:[]},
-  {id:'clocks', kind:'song', title:'Clocks', artist:'Coldplay', level:4, bpm:131, time_sig:'4/4', genre:'rock', instruments:['keys'], musical_key:'Eb', tags:['arpeggio'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:60, sessions:2, top_bpm:120, trend:[40,60]},
+  {id:'clocks', kind:'song', title:'Clocks', artist:'Coldplay', level:4, bpm:131, time_sig:'4/4', genre:'rock', instruments:['keys'], musical_key:'Eb', tags:['arpeggio'], patterns:['p-prog-1564-c'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:60, sessions:2, top_bpm:120, trend:[40,60]},
   {id:'my-demo-upload', kind:'song', title:'My practice loop (upload)', artist:null, level:null, bpm:100, time_sig:'4/4', genre:null, instruments:['drums'], status:'draft', origin:'user-upload', owner:'you', visibility:'private', notation_format:'gp', best:12, sessions:1, trend:[12], ownedByUser:true},
 
   {id:'first-beat', kind:'lesson', title:'Your First Beat', level:0, instruments:['drums'], skill:['timing'], patterns:['p-rock-8th'], status:'published', origin:'curated', license:'owned', best:90, sessions:9, trend:[60,75,90], new:true},
@@ -362,6 +362,7 @@ const PLAYABLES = [
   {id:'single-paradiddle', kind:'lesson', title:'Single Paradiddle', level:2, instruments:['drums'], skill:['independence','control'], patterns:['p-paradiddle'], status:'published', origin:'curated', license:'owned', best:73, sessions:5, trend:[40,52,60,68,73]},
   {id:'double-stroke', kind:'lesson', title:'Double Stroke Roll', level:3, instruments:['drums'], skill:['control'], patterns:['p-double-stroke'], status:'published', origin:'curated', license:'owned', best:null, sessions:0, trend:[]},
   {id:'linear-fill-1', kind:'lesson', title:'Linear Fill — 6-stroke', level:5, instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', origin:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'kind derived from its step patterns (fill + rudiment) — fills are a pattern_kind, not a lesson type (SD-1)'},
+  {id:'chord-prog-1564', kind:'lesson', title:'Chord Progression — I–V–vi–IV', level:2, instruments:['keys','guitar'], skill:['chords','coordination'], status:'published', origin:'curated', license:'owned', best:58, sessions:3, trend:[40,52,58]},
   /* SONG PARTS — kind=part, parent_id -> the song, bar range, listable:false (hidden from browse; reached via the song's "Practice in parts"). Each part is its OWN playable, scored on its own id. */
   {id:'sna-intro',  kind:'part', title:'Intro',  parent_id:'seven-nation-army', start_bar:1,  end_bar:8,  sort_order:1, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:78, sessions:4, top_bpm:120, trend:[55,68,78], voices:['hi-hat','kick']},
   {id:'sna-verse',  kind:'part', title:'Verse',  parent_id:'seven-nation-army', start_bar:25, end_bar:40, sort_order:3, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:60, sessions:3, top_bpm:110, trend:[40,52,60], voices:['hi-hat','kick','snare']},
@@ -381,6 +382,13 @@ const PLAYABLES = [
   {id:'p-double-stroke',kind:'pattern',title:'Double Stroke Roll',   pattern_kind:'rudiment', family:'Roll',  level:3, instruments:['drums'], status:'published', origin:'curated', license:'owned', notation_alphaTex:'R R L L R R L L', best:88, sessions:4, top_bpm:110, trend:[55,72,88], data:{difficulty:{by:'bpm',tiers:[{upTo:80,level:2,score:88},{upTo:120,level:3,score:60},{upTo:null,level:4,score:null}]}}},
   /* COMPOSITE pattern — a groove with its OWN steps (reuses leaf patterns) + a whole-play notation. Same shape as a lesson; role=pattern. */
   {id:'p-rock-groove', kind:'pattern', title:'Rock Groove (full)',   pattern_kind:'beat',     family:'Rock',  level:3, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 (x.42 x.36) x (x.42 x.38) x', best:58, sessions:2, top_bpm:118, trend:[42,58]},
+  /* CHORDS — kind=pattern, pattern_kind=chord. Same notation plays on keys AND guitar (instruments[]); difficulty can differ per instrument (see p-chord-f). */
+  {id:'p-chord-c',  kind:'pattern', title:'C major', pattern_kind:'chord', family:'Triad', level:1, instruments:['keys','guitar'], musical_key:'C',  status:'published', origin:'curated', license:'owned', notation_alphaTex:'(C4 E4 G4)', best:82, sessions:3, trend:[60,74,82]},
+  {id:'p-chord-g',  kind:'pattern', title:'G major', pattern_kind:'chord', family:'Triad', level:1, instruments:['keys','guitar'], musical_key:'G',  status:'published', origin:'curated', license:'owned', notation_alphaTex:'(G4 B4 D5)', best:70, sessions:2, trend:[55,70]},
+  {id:'p-chord-am', kind:'pattern', title:'A minor', pattern_kind:'chord', family:'Triad', level:1, instruments:['keys','guitar'], musical_key:'Am', status:'published', origin:'curated', license:'owned', notation_alphaTex:'(A3 C4 E4)', best:null, sessions:0, trend:[]},
+  {id:'p-chord-f',  kind:'pattern', title:'F major', pattern_kind:'chord', family:'Triad', level:1, instruments:['keys','guitar'], musical_key:'F',  status:'published', origin:'curated', license:'owned', notation_alphaTex:'(F4 A4 C5)', best:48, sessions:2, trend:[30,48], data:{difficulty:{by:'instrument',tiers:[{when:'piano',level:1,score:80},{when:'guitar (barre)',level:4,score:48}]}}},
+  /* CHORD PROGRESSION — a COMPOSITE pattern: a sequence of chords (I–V–vi–IV realised in C). Songs use progressions. */
+  {id:'p-prog-1564-c', kind:'pattern', title:'I–V–vi–IV (C major)', pattern_kind:'chord', family:'Progression', level:2, instruments:['keys','guitar'], musical_key:'C', genre:'pop', status:'published', origin:'curated', license:'owned', notation_alphaTex:'(C4 E4 G4) (G4 B4 D5) (A3 C4 E4) (F4 A4 C5)', best:65, sessions:2, trend:[50,65]},
 ];
 
 /* ---------- sample data — the `step` JUNCTION (parent playable -> child pattern) ----------
@@ -432,16 +440,31 @@ const STEP = {
     {child_id:'p-hihat-8',   sort_order:1, start_bpm:70, goal_bpm:120},
     {child_id:'p-rock-kick', sort_order:2, start_bpm:70, goal_bpm:120},
   ],
+  // chord-progression lesson: drill each chord, then play the whole progression (final step = the composite)
+  'chord-prog-1564':[
+    {child_id:'p-chord-c',     sort_order:1, start_bpm:50, goal_bpm:80},
+    {child_id:'p-chord-g',     sort_order:2, start_bpm:50, goal_bpm:80},
+    {child_id:'p-chord-am',    sort_order:3, start_bpm:50, goal_bpm:80},
+    {child_id:'p-chord-f',     sort_order:4, start_bpm:50, goal_bpm:80},
+    {child_id:'p-prog-1564-c', sort_order:5, start_bpm:50, goal_bpm:90},
+  ],
+  // the progression composite — the 4 chords in sequence
+  'p-prog-1564-c':[
+    {child_id:'p-chord-c',  sort_order:1, start_bpm:60, goal_bpm:100},
+    {child_id:'p-chord-g',  sort_order:2, start_bpm:60, goal_bpm:100},
+    {child_id:'p-chord-am', sort_order:3, start_bpm:60, goal_bpm:100},
+    {child_id:'p-chord-f',  sort_order:4, start_bpm:60, goal_bpm:100},
+  ],
 };
 
 /* Lessons tab = every listable playable that isn't a song (lessons + patterns). Song parts are listable:false (reached from their song), so they never appear here. The Kind filter is by pattern_kind — a pattern's own kind; a lesson's = the pattern_kinds of its step children (lesson_type dropped; kind is derived). */
-const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',label:'Fills'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, scale:{icon:'piano',label:'Scales'}};
+const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',label:'Fills'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, scale:{icon:'piano',label:'Scales'}, chord:{icon:'piano',label:'Chords'}};
 const GENRES = ['rock','pop','jazz','metal','funk','soul'];
 const ARTISTS = [...new Set(PLAYABLES.filter(p=>p.kind==='song'&&p.artist).map(p=>p.artist))].sort();   // $C1 distinct song artists for a discoverable catalog filter
 const TIMES = ['4/4','3/4','5/4','6/8','7/8'];
 const INSTRUMENTS = ['drums','guitar','keys'];
 const KEYS = ['C','G','D','A','E','F#m','Am','Em','Bb','Eb'];
-const SKILLS = ['timing','coordination','independence','control','speed','fills'];
+const SKILLS = ['timing','coordination','independence','control','speed','fills','chords'];
 const SORTS = {relevance:'Relevance', level:'Level', bpm:'BPM', best:'Best score', newest:'Newest', title:'A–Z', curated:'Curated'};
 const PITCHED = ['guitar','keys'];
 const PAGE_SIZE = 6;
@@ -484,6 +507,12 @@ const isPitched = () => state.instrument && PITCHED.includes(state.instrument);
 
 /* SD-17/SD-19 — a short description per playable. The model field is `description`; sourced here as a lookup for the wireframe (rows stay lean; toPlayable surfaces it as a column). */
 const DESCRIPTIONS = {
+  'p-chord-c':'C major triad — the home chord (I).',
+  'p-chord-g':'G major triad — the V (dominant) in C major.',
+  'p-chord-am':'A minor triad — the vi (relative minor) in C major.',
+  'p-chord-f':'F major triad — the IV; a barre chord on guitar, easy on piano.',
+  'p-prog-1564-c':'The I–V–vi–IV pop progression in C: C → G → Am → F.',
+  'chord-prog-1564':'Learn the most common pop progression — each chord, then the changes.',
   'seven-nation-army':'A one-riff rock anthem — lock the kick to that iconic bass-line riff.',
   'billie-jean':'Machine-tight four-on-the-floor pop groove; all about steady time.',
   'rosanna':'The famous half-time shuffle — ghost notes and a slippery triplet feel.',
