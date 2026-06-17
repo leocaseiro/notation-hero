@@ -111,6 +111,7 @@ a{color:inherit}
 
 .tablehead,.row{display:grid;grid-template-columns:1fr 88px 84px 60px 44px;gap:10px;align-items:center}
 .tablehead{padding:6px 12px;color:var(--faint);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.stephead{display:flex;gap:14px;align-items:center;padding:0 14px 6px;color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 .tablehead span:nth-child(2){text-align:center}.tablehead span:nth-child(3){text-align:right}.tablehead span:nth-child(4){text-align:center}
 .row{padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px;transition:border-color var(--dur) var(--ease)}
 .row:hover{border-color:var(--accent);background:var(--panel2)}
@@ -934,13 +935,17 @@ function renderLesson(id){
         <div class="sub"><span class="tag lesson">${kind}</span> ${it.level===0?'Debut':'Level '+(it.level??'—')} ${(it.skill||[]).map(s=>`<span class="badge" style="padding:3px 9px">${s}</span>`).join('')}</div>
         ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>
+          ${signedIn() && it.best!=null
+            ? `<button class="btn primary" data-nav="#/play/${it.id}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
+               <button class="btn secondary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
+            : `<button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>`}
         </div>
       </div>
       ${historyCard(it)}
     </div>
     <div class="card">
       <h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· ${steps.length} · each step → a reusable pattern + BPM ladder</span></h3>
+      ${steps.length?`<div class="stephead"><span style="flex:1">Step · pattern</span><span>BPM</span><span style="width:54px;text-align:center">Kind</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`:''}
       ${steps.map(s=>stepRow(it,s)).join('')}
       ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
       <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>Each pattern above is scored on its <b>own</b> id. This lesson's score${signedIn()&&it.best!=null?` (<b>${it.best}%</b>)`:''} is your <b>whole-play</b> attempt — the “final exam” — <b>not</b> an average of the steps. Skip the steps, play it whole, score 100%.</div></div>
@@ -1021,7 +1026,7 @@ function stepRow(parent, s){
 
 /* ---------- screen: PLAYER stub ---------- */
 function renderPlayer(){
-  const {seg} = parseHash();
+  const {seg, qp} = parseHash();
   const id = seg[1]; const stepNo = seg[2]==='step'?+seg[3]:null;
   const it = PLAYABLES.find(x=>x.id===id);
   let ctx = it? (it.kind==='song'?`“${it.title}” — full song @ ${it.bpm} BPM`
@@ -1029,6 +1034,7 @@ function renderPlayer(){
               : it.kind==='pattern'?`Pattern “${it.title}”`
               :`Lesson “${it.title}”`) : 'item';
   if(stepNo){ const s=(STEP[id]||[]).find(x=>x.sort_order===stepNo); const c=s?childPlayable(s.child_id):null; if(s) ctx=`“${it.title}” — step ${stepNo}: ${c?c.title:s.child_id} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
+  if(qp.get('resume')) ctx += ' · resuming where you left off';
   app.innerHTML = `
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     <div class="playerstub">
