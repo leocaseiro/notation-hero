@@ -6,7 +6,7 @@
 > **Supersedes (pending ratification):** parts of `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (suffix-everything). See §9.
 > **Reaffirms:** `2026-06-09-catalogue-store-postgres-neon.md` (`DS-1`), the Cognito-not-Amplify decision (NH-193).
 > **Owner:** leocaseiro
-> **Spec review:** ✅ 2026-06-17 (8-persona ce-doc-review, NH-194) — 16 fixes applied inline. The offline open questions are being resolved inline (RxDB → plain Dexie; conflict-resolution + durability now decided in ARCH-OFFLINE-1; wiring-scope + DynamoDB key-design still open — see §"Deferred / Open Questions"). The parked `offline-first-reviewed.md` was folded into ARCH-OFFLINE-1 and removed (one ADR). The DACI + file-structure ADR text rewrite remains the post-review task (§11 step 1).
+> **Spec review:** ✅ 2026-06-17 (8-persona ce-doc-review, NH-194) — 16 fixes applied inline. The offline open questions are now resolved inline (RxDB → plain Dexie; conflict-resolution, durability + wiring-scope decided in ARCH-OFFLINE-1; DynamoDB key-design deferred to M1, not a v1 risk — see §"Deferred / Open Questions"). The parked `offline-first-reviewed.md` was folded into ARCH-OFFLINE-1 and removed (one ADR). The DACI + file-structure ADR text rewrite remains the post-review task (§11 step 1).
 
 ---
 
@@ -26,7 +26,7 @@ Each section maps to the brainstorm's open questions: §1 → Q1-3, §2 → Q5-7
 - **One backend service = a single NestJS 11 app** (modular monolith), **hexagonal/DDD inside**: framework-free domain core, ports (interfaces), adapters (I/O), Nest as the delivery "door".
 - Deployed as **one AWS Lambda** (HTTP API) behind a **Function URL** (→ CloudFront). Async work = **extra Lambda entry points from the SAME codebase**, not more apps.
 - **One React SPA** client, separate from the backend, over HTTPS; **Capacitor** for mobile; offline-first.
-- **Data:** Neon Postgres (catalogue) + DynamoDB single-table (per-user). **Auth:** Cognito (Pulumi) + `aws-jwt-verify`. **Infra:** Pulumi (TS), deploy via GitHub Actions OIDC. **Runtime:** Node 24 (`nodejs24.x`), arm64.
+- **Data:** Neon Postgres (catalogue, v1) + DynamoDB single-table (per-user, **M1** — v1 stores no per-user data, so no DynamoDB table is provisioned yet; it lands as an additive adapter behind a repository port). **Auth:** Cognito (Pulumi) + `aws-jwt-verify`. **Infra:** Pulumi (TS), deploy via GitHub Actions OIDC. **Runtime:** Node 24 (`nodejs24.x`), arm64.
 
 ---
 
@@ -291,7 +291,7 @@ This brainstorm ends at a committed, reviewable spec. **After approval (in a sep
 2. **Invoke `writing-plans`** for the phased implementation plan, sequenced **slice-first** so the build stays deployable and the FE scaffold can't balloon into "whole stack first":
    - **Phase 0 — remove everything Nx** (per the ARCH-MONO-1 migration inventory; regenerate a clean root `package.json`).
    - **Phase 1 — a thin deployable AWS slice:** an **About-page hello-world wired end-to-end** (CloudFront → Function URL → Lambda), so the recruiter-clickable artifact exists early (honours the DACI 4-week-pivot guardrail).
-   - **Phase 2 — CRUD (the admin catalogue CMS)** next, **layering the FE libraries (oRPC / TanStack Router+Query / RxDB / auth) only as CRUD actually needs them** — not all up front.
+   - **Phase 2 — CRUD (the admin catalogue CMS)** next, **layering the FE libraries (oRPC / TanStack Router+Query / Dexie / auth) only as CRUD actually needs them** — not all up front.
 
    Then execute.
 
@@ -303,14 +303,12 @@ Until then: ✅ decided · ⏳ no repo code/config changed (this doc refined by 
 
 ### From the 2026-06-17 spec review (ce-doc-review, NH-194) — offline / sync-DB
 
-Offline-first **stays** (the client is a PWA + Capacitor). After the **RxDB → plain Dexie** pivot (ARCH-OFFLINE-1, insert-only outbox), three of the four originally-deferred points are now **resolved inline in ARCH-OFFLINE-1**; only the DynamoDB key design remains open:
+Offline-first **stays** (the client is a PWA + Capacitor). After the **RxDB → plain Dexie** pivot (ARCH-OFFLINE-1, insert-only outbox), **all four** originally-deferred points are now resolved:
 
 - ✅ **Conflict resolution — N/A by design** (was #9). Insert-only + online-first updates + client-minted ULIDs remove merges by construction; settings = LWW by `updated_at`.
 - ✅ **Un-synced offline-write durability** (was #3). Stance: *local = cache*; sync eagerly; keep blobs in Capacitor Filesystem (eviction-safe); optional v1.x outbox-mirror hardening, shipped only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (no separate per-user durability doc).
 - ✅ **Dexie v1 wiring scope** (was #13). **Installed-but-stubbed at v1** — Dexie sits behind a client repository seam backed by direct online API calls; the insert-outbox, `POST /sync/batch`, mirror tables + blob queue are wired at **M1** (v1 = one admin, one device, online CMS → no offline user yet). Schema stays offline-ready via companion R13-R16.
 
-**Still open:**
+- ✅ **DynamoDB single-table key design** (was #11). **Deferred to M1 with the rest of per-user data.** v1 (admin catalogue CMS) stores no per-user scores/settings/sync, so no table is provisioned. **Not a v1 refactor risk:** the per-user store slots in as an *additive* adapter behind a new repository port (ARCH-HEX-1); nothing is provisioned yet (so "can't change a partition key in place" doesn't bite); and the one cross-store seam — stable, client-mintable catalogue IDs (R13) — is already locked, so a future `SCORE#<songId>` reference is safe. **Guardrail:** design the key schema *before* provisioning at M1. A starter sketch (PK=`USER#<sub>`; append-only `SCORE#<songId>#<ulid>`; `SONGSTAT#` rollup via Streams; `GSI1` pull-since) is recorded in the NH-194 session for M1.
 
-1. **DynamoDB single-table key design (was #11).** PK/SK + access patterns + the per-user pull/sync access pattern, in a short per-user companion (mirroring the catalogue data-layer doc), **before the table is provisioned** (a partition key can't be changed in place). *[companion doc — drafting next]*
-
-These feed the `writing-plans` stage and the parallel schema/data-layer redesign; the DACI + file-structure ADR text rewrite (§11 step 1) remains separate.
+All four offline open questions are now resolved. These + the locked decisions feed the `writing-plans` stage and the parallel schema/data-layer redesign; the DACI + file-structure ADR text rewrite (§11 step 1) remains separate.
