@@ -923,7 +923,7 @@ function renderPart(id){
     <div class="hero">
       <div class="meta">
         <h1>${esc(it.title)}</h1>
-        <div class="sub"><span class="tag song">Part</span> ${song?`of <a data-nav="#/song/${song.id}" style="color:var(--accent);cursor:pointer">${esc(song.title)}</a>`:''}</div>
+        <div class="sub"><span class="tag song">Part</span> ${song?`of <a data-nav="#/song/${song.id}" style="color:var(--accent);cursor:pointer">${esc(song.title)}</a>`:''}${song&&song.artist?` <span class="dot"></span> <a data-artist="${esc(song.artist)}" style="color:var(--accent);cursor:pointer" title="Browse this artist">${esc(song.artist)}</a>`:''}</div>
         ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">segment</span>bars ${barsLabel(it)}${it.ranges&&it.ranges.length>1?` · repeated ×${it.ranges.length}`:''}</span>
