@@ -67,7 +67,9 @@
     a <span class="leaf">leaf</span> = a single piece of <b>Notation</b> (a score), &nbsp;<b>or</b>&nbsp;
     a <span class="seq">sequence</span> = ordered <b>Steps</b>, each pointing at another playable.
     <br><br>
-    <b>Song</b>, <b>Lesson</b>, <b>Pattern</b>, <b>Part</b> are just <i>roles</i> on that single shape — which is why a lesson, a groove, and a structured song-tutorial all feel the same. They are.
+    <b>Song</b>, <b>Lesson</b>, <b>Pattern</b>, <b>Part</b> are just <i>roles</i> on that single shape (now all called a <b>Playable</b>) — which is why a lesson, a groove, and a structured song-tutorial all feel the same. They are.
+    <br><br>
+    <b>And every Playable is scored on its own.</b> A Lesson has its <i>own</i> score from playing the whole thing (the "final exam") — independent of its steps. Skip the steps, play the lesson, score 100%. <b>No averaging.</b>
   </div>
 
   <h2>Proposed vocabulary</h2>
@@ -121,13 +123,13 @@
     </div>
   </div>
 
-  <h2>Naming forks to settle ⚠️</h2>
+  <h2>Naming forks — status</h2>
   <ol class="forks">
-    <li><b>F1 — the umbrella word.</b> We need a name for "any playable unit" (the box that Song/Lesson/Pattern/Part all are). Today the schema calls it <code>notation</code> — but that collides with the score. Candidates: <b>Playable</b> · <b>Piece</b> · <b>Item</b> · keep <code>notation</code>.</li>
-    <li><b>F2 — free up "Notation".</b> Let <b>Notation</b> mean only the written score (its plain-English meaning), and give the umbrella a different name (F1). You already used it this way: <i>"a song can be a single notation."</i></li>
-    <li><b>F3 — "groove" is drum-only.</b> Treat <i>groove</i> as just an example of a <b>composite Pattern</b> (a pattern with steps), not its own model type — so the model stays instrument-agnostic.</li>
-    <li><b>F4 — composite Pattern vs Lesson.</b> A composite Pattern (groove with steps) and a Lesson are the <i>same shape</i>. Keep both (a Lesson carries <i>learning</i> intent + tempo ladders; a Pattern is a performance block), or collapse them into one?</li>
-    <li><b>F5 — structured song learning.</b> "Learn this song" = a Lesson whose Steps are the Song's Parts. So a Song offers two paths: play-by-bars (just Parts) <i>and/or</i> a curated Lesson. Agree?</li>
+    <li>✅ <b>F1 — umbrella word = <span style="color:var(--song)">Playable</span>.</b> Song / Lesson / Pattern / Part are all a <i>Playable</i>.</li>
+    <li>✅ <b>F2 — "Notation" = the written score</b> only (followed from F1).</li>
+    <li>✅ <b>F3 — "groove" is not a type</b> — it's an instrument-agnostic example of a <b>composite Pattern</b>.</li>
+    <li>🔵 <b>F4 — Lesson vs composite Pattern → proposed synthesis (confirming).</b> Same shape, kept as distinct <i>roles</i> sharing one mechanism: a Playable may carry its <b>own Notation + own score</b> (play it whole) <b>and</b> ordered <b>Steps</b> (sub-playables, each scored on their own). A Lesson is the "final-exam" role — its score is the whole-play, <i>never</i> an average of steps.</li>
+    <li>⏳ <b>F5 — structured song learning.</b> "Learn this song" = a Lesson whose Steps are the Song's Parts (confirm when we build Song Parts).</li>
   </ol>
 </div>
 </body>
