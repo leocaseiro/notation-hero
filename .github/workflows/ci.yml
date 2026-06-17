@@ -84,16 +84,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          # nx-set-shas needs history to find the last successful run's SHA on master.
-          fetch-depth: 0
-      # Sets NX_BASE / NX_HEAD env vars so `nx affected` knows the right base for
-      # pull_request, push:master, AND merge_group events. Without this, affected
-      # is silently the full graph on PRs (wasteful) or empty on merge_group
-      # (misses work). Required by L7-set-shas. Pinned to v4.
-      - uses: nrwl/nx-set-shas@v4
-        with:
-          main-branch-name: master
       - name: Layout guard (co-located tests — no __tests__/ or stories/)
         run: bash tooling/check-layout.sh
       - name: Coverage-ignore guard (no istanbul/c8/v8 ignore)
@@ -120,11 +110,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: nrwl/nx-set-shas@v4
-        with:
-          main-branch-name: master
       - uses: ./.github/actions/setup-js
       - run: pnpm run build
 

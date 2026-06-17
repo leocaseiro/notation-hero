@@ -21,7 +21,7 @@ export interface LambdaWithUrlArgs {
   code: pulumi.Input<pulumi.asset.Archive>;
   /** Lambda handler string, e.g. "index.handler". */
   handler: pulumi.Input<string>;
-  /** Defaults to "nodejs22.x" (AWS Lambda's newest Node runtime). */
+  /** Defaults to "nodejs24.x" (AWS Lambda's newest Node runtime). */
   runtime?: pulumi.Input<string>;
   /** CloudWatch log retention; defaults to 14 days. */
   logRetentionDays?: pulumi.Input<number>;
@@ -69,7 +69,7 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
         name: args.functionName,
         role: role.arn,
         handler: args.handler,
-        runtime: args.runtime ?? "nodejs22.x",
+        runtime: args.runtime ?? "nodejs24.x",
         architectures: ["arm64"],
         code: args.code,
         // loggingConfig.logGroup (not bare dependsOn) is what redirects logging

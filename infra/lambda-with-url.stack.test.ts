@@ -59,7 +59,7 @@ test("provisions a public Lambda Function URL over a 14-day-retention log group"
   assert.equal(await resolveOutput(component.logGroupName), "/aws/lambda/nh-hello");
 
   const fn = inputsOf(":Function");
-  assert.equal(fn.runtime, "nodejs22.x");
+  assert.equal(fn.runtime, "nodejs24.x");
   assert.deepEqual(fn.architectures, ["arm64"]);
 
   // KTD4: loggingConfig.logGroup (not bare dependsOn) is what redirects logging

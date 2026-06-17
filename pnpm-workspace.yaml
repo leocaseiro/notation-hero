@@ -9,12 +9,11 @@ packages:
   - 'infra'
 # Build-script approval. pnpm 11.5.2 uses the `allowBuilds: {pkg: true|false}` map
 # (it IGNORES the older `onlyBuiltDependencies` list and re-injects this block as a
-# prompt). Both nx and @swc/core (transitive via @nx/js) ship postinstall builds;
-# approving both keeps a fresh `pnpm install --frozen-lockfile` green (e.g. CI),
-# which otherwise fails with ERR_PNPM_IGNORED_BUILDS.
+# prompt). @swc/core ships a postinstall build — it backs the NestJS server's SWC
+# compile (added in 0.2). Approving it keeps a fresh `pnpm install --frozen-lockfile`
+# green (e.g. CI), which otherwise fails with ERR_PNPM_IGNORED_BUILDS.
 allowBuilds:
   '@swc/core': true
-  nx: true
   lefthook: true
   # esbuild ships a platform binary via a postinstall build; the handler-hello
   # Lambda build (apps/handler-hello) bundles with it. Approve so a frozen CI

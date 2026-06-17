@@ -8,7 +8,7 @@ module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
   parserOptions: { ecmaVersion: 2022, sourceType: "module" },
-  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments", "check-file", "import-x", "@nx", "boundaries"],
+  plugins: ["@typescript-eslint", "@eslint-community/eslint-comments", "check-file", "import-x", "boundaries"],
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
@@ -147,34 +147,6 @@ module.exports = {
             patterns: [
               { group: ["@aws-sdk/*", "@pulumi/*"], message: "core is pure domain — no AWS/Pulumi." },
               { group: ["@adapters/*", "@apps/*"], message: "core must not import adapters or apps." },
-            ],
-          },
-        ],
-      },
-    },
-    {
-      // Hexagonal layer boundaries by Nx tag (L2-tags) — the tag-aware layer that fails a
-      // cross-layer import even when the dependency is DECLARED, complementing dependency-cruiser
-      // (path-based, .dependency-cruiser.cjs) + pnpm's declared-deps gate. Tags live in each
-      // project.json; the tag map is documented in AGENTS.md. Direction:
-      //   core    -> core only             (pure domain)
-      //   adapter -> core + adapter         (implements ports; never apps/infra)
-      //   app     -> core + adapter + app   (runtime composition root; may import @core)
-      //   infra   -> infra only             (pure IaC; never domain/app SOURCE — apps is the
-      //                                      composition root, NOT infra. Build-order to apps flows
-      //                                      via implicitDependencies (not imports), so it is
-      //                                      unaffected by this import rule. Matches H9/D3.)
-      files: ["*.ts", "*.tsx"],
-      rules: {
-        "@nx/enforce-module-boundaries": [
-          "error",
-          {
-            allow: [],
-            depConstraints: [
-              { sourceTag: "type:core", onlyDependOnLibsWithTags: ["type:core"] },
-              { sourceTag: "type:adapter", onlyDependOnLibsWithTags: ["type:core", "type:adapter"] },
-              { sourceTag: "type:app", onlyDependOnLibsWithTags: ["type:core", "type:adapter", "type:app"] },
-              { sourceTag: "type:infra", onlyDependOnLibsWithTags: ["type:infra"] },
             ],
           },
         ],

@@ -1,13 +1,13 @@
-# lefthook.yml — notation-hero (pnpm 11.5.2 + Nx 22.7.5, hexagonal monorepo)
-# Docs: https://lefthook.dev/configuration/  |  nx affected: https://nx.dev/nx-api/nx/documents/affected
+# lefthook.yml — notation-hero (pnpm 11.5.2 workspaces, hexagonal monorepo)
+# Docs: https://lefthook.dev/configuration/
 #
 # pre-commit: fast feedback on STAGED work — the layout guard (same script CI runs)
-#             + nx affected lint/typecheck scoped to uncommitted (staged + working) changes.
-# pre-push:   wider safety net — nx affected lint/typecheck/test vs origin/master.
+#             + lint/typecheck across workspace packages (pnpm -r, root scripts).
+# pre-push:   wider safety net — lint/typecheck/test across workspace packages.
 #
 # Skip on merge/rebase so conflict-resolution / history-rewrite commits don't fight the hooks.
 # Worktree note: lefthook >= 2.1.9 resolves the shim via `git rev-parse --show-toplevel`
-# (fixes the deleted-worktree dead-path bug). Re-run `pnpm exec lefthook install` in the
+# (fixes the deleted-worktree dead-path bug). Re-run `lefthook install` in the
 # worktree you actively develop in if hooks ever stop firing.
 
 pre-commit:
@@ -31,11 +31,11 @@ pre-commit:
       skip:
         - merge
         - rebase
-    # 4) nx affected lint + typecheck on UNCOMMITTED changes (staged + unstaged working tree).
+    # 4) lint + typecheck across workspace packages on commit (root scripts wrap `pnpm -r`).
     # NOTE: Coverage-ignore guard runs in CI only (see ci.yml `quality` job). Same policy
     # as gitleaks/semgrep: CI is authoritative for whole-tree gates; pre-commit stays fast.
-    affected-lint-typecheck:
-      run: pnpm exec nx affected -t lint typecheck --uncommitted
+    lint-typecheck:
+      run: pnpm run lint && pnpm run typecheck
       skip:
         - merge
         - rebase
@@ -51,10 +51,9 @@ commit-msg:
 pre-push:
   parallel: false
   commands:
-    # Wider net before sharing: lint + typecheck + test for projects affected since origin/master.
-    # Requires origin/master to be fetched locally (a normal `git push` has it).
-    affected-verify:
-      run: pnpm exec nx affected -t lint typecheck test --base=origin/master --head=HEAD
+    # Wider net before sharing: lint + typecheck + test across all workspace packages.
+    verify:
+      run: pnpm run lint && pnpm run typecheck && pnpm run test
       skip:
         - merge
         - rebase
