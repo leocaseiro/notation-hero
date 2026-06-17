@@ -1,34 +1,37 @@
-# Handoff — Notation model (songs / lessons / parts / steps) — 2026-06-17
+# Handoff — Notation/Playable model — 2026-06-17 (session 2: MODEL LOCKED)
 
-**Resume goal (Leo):** finish looking into the **notation** model for **songs / lessons** and their **parts / steps**.
+**Status:** ✅ Content model **locked** and **validated on Postgres**. Vocabulary settled (instrument-agnostic). Next = migrate the **wireframe** to it.
 
 ## Where to work
 - Worktree: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model`
-- Branch: `docs/wireframe-pattern-lesson-model` (pushed to origin; PR not opened). Commits this session: `80eaaa5` → `d12d189` → `fe15ccd`.
-- Serve the wireframe: `python3 -m http.server 8780` → `http://localhost:8780/docs/wireframe/index.html` (flip **Inspector** on).
-- Local DB for DBeaver: `nh_notation` (Postgres `localhost:5432`, user `leocaseiro`, no password). Reload: `psql -d nh_notation -f docs/wireframe/2026-06-17-notation-model-draft.sql`.
+- Branch: `docs/wireframe-pattern-lesson-model`. Session-2 commits (local, not pushed): `b2c02fa` → `a87cf7f` → `d409ada` → `7ad0033` → `cb00d1f` → `88005e8`.
+- Serve: preview config in repo `.claude/launch.json` (name `wireframe`, port 8780), or `python3 -m http.server 8780 --directory <worktree>`. URLs:
+  - **Model map (source of truth):** `http://localhost:8780/docs/wireframe/model-map.html`
+  - Wireframe v1.4: `http://localhost:8780/docs/wireframe/index.html`
+- Local DB: `nh_notation` (Postgres `localhost:5432`, user `leocaseiro`, no password). Reload: `psql -d nh_notation -f docs/wireframe/2026-06-17-notation-model-draft.sql`
 
-## What's settled this session — full detail in project memory `notation_model.md`
-- **Unified `notation` model**: one table, `kind ∈ {song, part, lesson, pattern}`; self-ref `parent_id` (part→song); **`source`** table (file/alphaTex, optional bar range); **`lesson_step`** junction (lesson→reusable pattern + `sort_order` + bpm ladder); **difficulty curve** `data.difficulty {by, tiers}` (by = bpm for drums, fingering for pitched); **`listable`** flag; **`time_signature_numerator` / `time_signature_denominator`**; per-user **scores key off the notation id** (DynamoDB).
-- **UI**: `Songs | Lessons` tabs — Lessons = every **non-song listable** (lessons + patterns: beats/fills/rudiments/scales); **NO Patterns tab**. Patterns are first-class playables with their own detail (score/history).
-- Validated end-to-end on Postgres; wireframe v1.4 migrated + a global **"Show all fields"** field-dock inspector (fixed/resizable, on list + every detail page).
+## What's locked — full detail in `docs/wireframe/model-map.html` + project memory `notation_model.md`
+- **One shape:** a **`playable`** is a *leaf* (its own `notation`/score) **or** a *sequence* (ordered `step`s → other playables) — or both.
+- **`playable`** (was `notation`): umbrella, `kind ∈ {song,part,lesson,pattern}` = the role; `parent_id` self-ref (part→song); `notation_id` → score (nullable, set when it plays whole); facets + `data jsonb`; `listable`.
+- **`notation`** (was `source`): the **score** — `format`, `s3_key` OR `notation_alphatex`.
+- **`step`** (was `lesson_step`): ONE self-referencing junction `(parent_id→child_id, sort_order, start_bpm, goal_bpm)`, shared by lessons AND composite patterns. PK `(parent_id, sort_order)` → same child may repeat (slow/med/fast).
+- **Score** (DynamoDB, per-user, keyed by `playable_id`): every playable scored on its own; a lesson's score = whole-play, **never** an average.
+- **Decisions:** F1 `playable` · F2 `notation`=score · F3 `groove`=composite pattern (not a type) · F4 one-shape/roles/shared-step/per-playable-scoring. All validated on Postgres.
 
 ## Key files
-- Draft SQL (validated): `docs/wireframe/2026-06-17-notation-model-draft.sql`
-- Field explorer: `docs/wireframe/notation-explorer.html`
-- Wireframe v1.4: `docs/wireframe/index.html`
-- Brainstorm framing: `docs/wireframe/2026-06-16-brainstorm-prep-patterns-lessons.md`
+- Model map (ERM + vocab + decisions): `docs/wireframe/model-map.html`
+- Validated draft SQL: `docs/wireframe/2026-06-17-notation-model-draft.sql`
+- Decisions + open-Qs tracker: `docs/wireframe/notation-model-open-questions.md`
+- Wireframe v1.4 (per-step field panels added this session): `docs/wireframe/index.html`
 
-## Open / next — the resume goal
-1. **Parts & steps in depth (MAIN GOAL):**
-   - Song **parts** = first-class `notation` (kind=part, parent_id=song, bar range, `listable=false`). The wireframe still models *song-breakdown as a lesson* (old) — migrate it to **Song Parts**.
-   - Lesson **steps** = the `lesson_step` junction to **reusable patterns** (steps are NOT notations). The wireframe still uses old inline `STEPS` — migrate to the junction + reusable patterns so the same pattern can be step 1 in one lesson and step 3 in another.
-   - Confirm: a song "part" stays song-owned (parent_id), not reused like a pattern.
-2. **Taxonomy:** is `lesson_type` redundant now patterns carry `pattern_kind`? How the Lessons "Kind" filter should span both.
-3. **GP-upload kind** (old SD-23): largely dissolved — upload → notation of a chosen kind; upload-flow UX deferred to CRUD.
-4. Apply the resolved deltas to the real spec deliberately; reconcile users/audit (`created_by`/`owner`) vs the `architecture-spec` worktree's `2026-06-17-data-layer-requirements.md`.
+## Next — the resume goal: migrate the wireframe (`index.html`) to the locked model
+1. **Rename** data + render: `ITEMS`→playable (`kind`), `source`→`notation`, `STEPS`→`step` junction (parent→child), `notation_tex`→`notation_alphaTex`.
+2. **Song Parts:** `sna-breakdown` (fake lesson) → `kind=part` under the song (`parent_id`, bar range, `listable=false`), reached via "Practice in parts". Remove `song-breakdown` from `LESSON_KINDS`/`BROWSE_KINDS`.
+3. **Steps → `step` junction** referencing reusable patterns; show reuse + same-child-repeats + a composite pattern (groove with its own steps).
+4. **Per-playable scores** everywhere (lesson whole-play score *and* per-step/pattern scores; no averaging).
+5. **Drop `lesson_type`** (derive a lesson's kind from its patterns); Lessons "Kind" filter → `pattern_kind`.
 
-## Wireframe niceties already added
-- Global Inspector toggle (banner) → all-columns field-dock on list rows + song/lesson/step/pattern detail pages.
-- Clickable patterns (incl. on song detail pages), `cursor:pointer` + hover on every `[data-nav]` link.
-- Seven Nation Army → multi-instrument; Funk 16ths has `coordination` (ALL-of skill filter demo).
+## Still open
+- **F5** — structured song-learning = a Lesson whose steps are the song's Parts (confirm during Song Parts).
+- **OQ1** — artist on catalog Song rows + filter by artist (tracked in `notation-model-open-questions.md`).
+- Apply the locked model to the **real spec**; reconcile users/audit (`created_by`/owner) vs the `architecture-spec` worktree's `2026-06-17-data-layer-requirements.md`.
