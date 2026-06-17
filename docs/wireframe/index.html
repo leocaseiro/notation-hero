@@ -437,6 +437,7 @@ const STEP = {
 /* Lessons tab = every listable playable that isn't a song (lessons + patterns). Song parts are listable:false (reached from their song), so they never appear here. The Kind filter is by pattern_kind — a pattern's own kind; a lesson's = the pattern_kinds of its step children (lesson_type dropped; kind is derived). */
 const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',label:'Fills'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, scale:{icon:'piano',label:'Scales'}};
 const GENRES = ['rock','pop','jazz','metal','funk','soul'];
+const ARTISTS = [...new Set(PLAYABLES.filter(p=>p.kind==='song'&&p.artist).map(p=>p.artist))].sort();   // $C1 distinct song artists for a discoverable catalog filter
 const TIMES = ['4/4','3/4','5/4','6/8','7/8'];
 const INSTRUMENTS = ['drums','guitar','keys'];
 const KEYS = ['C','G','D','A','E','F#m','Am','Em','Bb','Eb'];
@@ -716,6 +717,8 @@ function renderCatalog(){
       <div class="fdrop sortwrap"><button class="fbtn" data-pop="sortPop"><span class="material-symbols-outlined">swap_vert</span> ${SORTS[state.sort]} <span class="material-symbols-outlined caret">expand_more</span></button>${sortPop()}</div>
     </div>
     <div class="advanced ${state.advanced?'open':''}">
+      ${!isLessons?`<div class="fdrop"><button class="fbtn ${state.artist?'on':''}" data-pop="artistPop">${state.artist?`<span class="k">Artist:</span> ${esc(state.artist)}`:'<span class="k">Artist:</span> Any'} <span class="material-symbols-outlined caret">expand_more</span></button>
+        <div class="fpop ${state.openPop==='artistPop'?'open':''}" id="artistPop" style="max-height:260px;overflow:auto"><div class="opsel">is</div>${ARTISTS.map(a=>`<div class="fopt ${state.artist===a?'on':''}" data-artist-pick="${esc(a)}"><span class="radio"></span>${esc(a)}</div>`).join('')}<div class="foot"><span></span><a data-clear-artist>Clear</a></div></div></div>`:''}
       <div class="fdrop"><button class="fbtn ${state.timeSig.length?'on':''}" data-pop="timePop">${multiFace('Time',state.timeSig,x=>x)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('timePop','timeSig',TIMES.map(t=>({val:t,label:t})))}</div>
       <div class="fdrop"><button class="fbtn ${state.bpm.min!=null||state.bpm.max!=null?'on':''}" data-pop="bpmPop">${rangeFace('Tempo',state.bpm)} <span class="material-symbols-outlined caret">expand_more</span></button>${bpmPop()}</div>
       <div class="fdrop"><button class="fbtn ${state.skill.length?'on':''}" data-pop="skillPop">${multiFace('Skill',state.skill)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('skillPop','skill',SKILLS.map(s=>({val:s,label:cap(s)})))}</div>
@@ -1216,6 +1219,8 @@ document.addEventListener('click', e=>{
   const artistEl = e.target.closest('[data-artist]');
   if(artistEl){ navigate('#/catalog?tab=songs&artist='+encodeURIComponent(artistEl.dataset.artist)); return; }
   if(e.target.closest('[data-clear-artist]')){ state.artist=null; state.page=1; renderCatalog(); return; }
+  const ap = e.target.closest('[data-artist-pick]');
+  if(ap){ const a=ap.dataset.artistPick; state.artist = state.artist===a?null:a; state.openPop=null; state.page=1; renderCatalog(); return; }
   const rs = e.target.closest('[data-reset]');
   if(rs){ const p=PLAYABLES.find(x=>x.id===rs.dataset.reset); if(p){ p.best=null; }/* SD-21: clear best, keep trend */ render(); return; }
   if(e.target.closest('[data-back]')){ history.length>1?history.back():navigate('#/catalog'); return; }
