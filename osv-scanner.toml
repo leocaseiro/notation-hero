@@ -1,0 +1,23 @@
+# osv-scanner.toml — accepted-risk ignores for the CI `deps-cve` gate (NH-191).
+#
+# Each entry is a CONSCIOUS, time-boxed deferral: a reason + a review date. The
+# `deps-cve` job (google/osv-scanner-action, `--recursive ./`) auto-loads this file.
+#
+# Fixed directly instead (see package.json `pnpm.overrides`):
+#   - GHSA-hmw2-7cc7-3qxx  form-data 4.0.5 -> 4.0.6  (High 8.7, safe patch)
+#   - GHSA-7c78-jf6q-g5cm  tmp       0.2.6 -> 0.2.7  (High 8.2, safe patch)
+#
+# Deferred below: both are deep @pulumi/pulumi transitives whose only fix is a
+# MAJOR bump we cannot force without risking Pulumi at runtime (unverifiable in CI
+# without AWS creds). Medium severity, IaC/build-time path only. Revisit when
+# @pulumi/pulumi upgrades them upstream.
+
+[[IgnoredVulns]]
+id = "GHSA-h67p-54hq-rp68"  # js-yaml 3.14.2 (Medium 5.3)
+ignoreUntil = 2026-09-16T00:00:00Z
+reason = "js-yaml@3.14.2 is a deep transitive of @pulumi/pulumi (IaC). Fix is js-yaml v4 — a MAJOR bump that risks breaking Pulumi at runtime (unverifiable in CI). Medium severity, IaC path only. Revisit when @pulumi/pulumi upgrades js-yaml upstream. Tracked: NH-191."
+
+[[IgnoredVulns]]
+id = "GHSA-8988-4f7v-96qf"  # @opentelemetry/core 1.30.1 (Medium 5.3)
+ignoreUntil = 2026-09-16T00:00:00Z
+reason = "@opentelemetry/core@1.30.1 is transitive via @pulumi/pulumi OTLP exporters (@opentelemetry/exporter-*@0.57.2 pin the v1 line). Fix is otel-core v2 — forcing it across the v1 otel set would break Pulumi telemetry. Medium severity, IaC path only. Revisit when @pulumi/pulumi upgrades the otel stack. Tracked: NH-191."

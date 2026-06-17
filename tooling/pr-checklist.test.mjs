@@ -2,6 +2,10 @@
 // Co-located per AGENTS.md (no __tests__/). Spawns the gate as a child process with
 // controlled env and asserts exit code + output. Canonical items are read from the live
 // PR template so the suite tracks label changes instead of hard-coding them.
+//
+// v1.1 model (NH-16 hardening): every checklist item is a standing acknowledgement that
+// MUST be ticked [x] — there is NO N/A and no required:/warn: severity. Plus the
+// un-skippable Jira-key grep (NH|KAN). Deleting an item still fails (anti-deletion).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -33,18 +37,18 @@ function run(env) {
   }
 }
 
+// Canonical items = EVERY task line in the template (no severity prefix in v1.1).
 const TASK_RE = /^\s*[-*]\s*\[([ xX])\]\s*(.+?)\s*$/;
-const PREFIX_RE = /^(required|warn)\s*:/i;
 const canonical = readFileSync(TEMPLATE, 'utf8')
   .split('\n')
   .map((l) => TASK_RE.exec(l))
-  .filter((m) => m && PREFIX_RE.test(m[2]))
+  .filter(Boolean)
   .map((m) => m[2]);
 
 const allTicked = () => canonical.map((label) => `- [x] ${label}`).join('\n');
 
-test('sanity: template exposes at least one required:/warn: item', () => {
-  assert.ok(canonical.length >= 1);
+test('sanity: template exposes several acknowledgement items', () => {
+  assert.ok(canonical.length >= 5);
 });
 
 test('fails when no Jira key anywhere', () => {
@@ -59,56 +63,61 @@ test('passes: key in title + all items ticked', () => {
 });
 
 test('passes: key only in body', () => {
-  const r = run({ PR_TITLE: 'feat', PR_BODY: `${allTicked()}\nCloses NH-16`, PR_BRANCH: 'feature' });
+  const r = run({
+    PR_TITLE: 'feat',
+    PR_BODY: `${allTicked()}\nCloses NH-16`,
+    PR_BRANCH: 'feature',
+  });
   assert.equal(r.code, 0);
 });
 
-test('passes: key only in branch (KAN- accepted too)', () => {
+test('passes: key only in branch (KAN- accepted too in code)', () => {
   const r = run({ PR_TITLE: 'feat', PR_BODY: allTicked(), PR_BRANCH: 'KAN-9-x' });
   assert.equal(r.code, 0);
 });
 
 test('bot bypass: PR_AUTHOR_TYPE=Bot skips the gate', () => {
-  const r = run({ PR_TITLE: 'bump', PR_BODY: '', PR_BRANCH: 'dependabot/x', PR_AUTHOR_TYPE: 'Bot' });
+  const r = run({
+    PR_TITLE: 'bump',
+    PR_BODY: '',
+    PR_BRANCH: 'dependabot/x',
+    PR_AUTHOR_TYPE: 'Bot',
+  });
   assert.equal(r.code, 0);
 });
 
-test('fails: a checklist item left blank', () => {
-  const body = canonical.map((label, i) => `- [${i === 0 ? ' ' : 'x'}] ${label}`).join('\n');
+test('fails: a single box left blank', () => {
+  const body = canonical
+    .map((label, i) => `- [${i === 0 ? ' ' : 'x'}] ${label}`)
+    .join('\n');
   const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: body, PR_BRANCH: 'nh-16-x' });
   assert.equal(r.code, 1);
+  assert.match(r.stderr, /Unticked/);
 });
 
-test('F1 regression: deleting one item fails (no delete-the-checklist bypass)', () => {
+test('v1.1: N/A is no longer honored — a blank box with "N/A" appended still fails', () => {
+  const body = canonical
+    .map((label, i) => (i === 0 ? `- [ ] ${label} — N/A: not applicable` : `- [x] ${label}`))
+    .join('\n');
+  const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: body, PR_BRANCH: 'nh-16-x' });
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /Unticked/);
+});
+
+test('anti-deletion: deleting one item fails (no delete-the-checklist bypass)', () => {
   const body = canonical.slice(1).map((label) => `- [x] ${label}`).join('\n');
   const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: body, PR_BRANCH: 'nh-16-x' });
   assert.equal(r.code, 1);
   assert.match(r.stderr, /Missing checklist item/);
 });
 
-test('F1 regression: empty/checklist-less body fails', () => {
+test('anti-deletion: empty / checklist-less body fails', () => {
   const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: 'just a description', PR_BRANCH: 'nh-16-x' });
   assert.equal(r.code, 1);
 });
 
-test('passes: blank box skipped with appended N/A', () => {
-  const body = canonical
-    .map((label, i) => (i === 0 ? `- [ ] ${label} — N/A: not applicable` : `- [x] ${label}`))
-    .join('\n');
-  const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: body, PR_BRANCH: 'nh-16-x' });
-  assert.equal(r.code, 0);
-});
-
-test('F2 regression: N/A elsewhere in prose does NOT address a blank item', () => {
-  const body = `Note: the N/A cases are handled in code.\n${canonical
-    .map((label, i) => `- [${i === 0 ? ' ' : 'x'}] ${label}`)
-    .join('\n')}`;
-  const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: body, PR_BRANCH: 'nh-16-x' });
-  assert.equal(r.code, 1);
-});
-
-test('F3 regression: a fenced sample checklist does not false-fail a compliant PR', () => {
-  const body = `${allTicked()}\n\nExample for docs:\n\`\`\`\n- [ ] required: sample item\n\`\`\``;
+test('fenced sample checklist does not false-fail a compliant PR', () => {
+  const body = `${allTicked()}\n\nExample for docs:\n\`\`\`\n- [ ] sample item\n\`\`\``;
   const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: body, PR_BRANCH: 'nh-16-x' });
   assert.equal(r.code, 0);
 });

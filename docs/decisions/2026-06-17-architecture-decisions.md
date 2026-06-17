@@ -127,6 +127,7 @@ server/src/
 ### ARCH-FE-1 — Vite + TanStack Router + TanStack Query
 **Decision:** **Vite 8** (build/dev) + **TanStack Router** (type-safe routes + typed search params) + **TanStack Query** (server cache, pairs with `@orpc/tanstack-query`). Scaffold: `npx @tanstack/cli create --router-only` (NOT the deprecated `create-tsrouter-app`).
 **Why:** keeps routing in the same typed/ecosystem story as Query + oRPC; typed search params suit the rhythm-game deep-links (`/play?songId=&difficulty=&speed=`). This was the closest call — **React Router v7 (data mode)** is the legitimate alternative if minimizing FE learning to focus on AWS matters more. **Flip:** RR v7 to spend zero learning budget on the FE router.
+**Supersedes:** the **2026-06-16 Next.js FE ADR** (`2026-06-16-fe-framework-nextjs-adr.md`, NH-185) — leocaseiro chose 2026-06-17 to supersede yesterday's Next.js decision; the OpenNext SSR target + the one-source/two-target build are dropped (pure Vite SPA; Capacitor wraps the static build).
 
 ### ARCH-OFFLINE-1 — RxDB (free Dexie storage), syncs via the API
 **Decision:** **RxDB** with the free **Dexie/IndexedDB** storage; offline-first; replication (pull/push HTTP handlers) to the NestJS API, which persists per-user data to **DynamoDB** and serves the catalogue from **Neon**. RxDB is backend-agnostic — it talks to *our API*, not to Neon/Dynamo directly.
@@ -209,7 +210,7 @@ Recorded in response to the "is a JWT in localStorage hackable like an MD5?" con
 | ARCH-EDGE-1 | One CloudFront, two origins (S3 + Lambda) | new |
 | ARCH-CONTRACT-1 | oRPC contract; ditch kanel-zod | new |
 | ARCH-ORM-1 | Drizzle | reaffirms `DS-1` |
-| ARCH-FE-1 | Vite + TanStack Router + Query | new |
+| ARCH-FE-1 | Vite + TanStack Router + Query | **supersedes 2026-06-16 Next.js ADR (NH-185)** |
 | ARCH-OFFLINE-1 | RxDB (free Dexie), sync via API | new |
 | ARCH-MOBILE-1 | Plain Capacitor (no Ionic) | new |
 | ARCH-AUTH-1 | Cognito (Pulumi) + Google federation v1 | reaffirms Cognito-not-Amplify |
@@ -227,6 +228,7 @@ These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reope
 - `2026-06-09-tooling-stack-daci.md`: `L1` (Nx) → **dropped** (ARCH-MONO-1); the `apps/core/adapters/infra` layout → **client/server/shared/infra** (ARCH-LAYOUT-1); `PM-1`/`F6-bun` → **unchanged** (pnpm kept).
 - `2026-06-12-file-level-structure-enforcement-adr.md`: `NAME-suffix` suffix-everything → **relaxed to NestJS-native filenames** (ARCH-NAME-1); co-location kept; depcruise rules → **folder-level** (ARCH-GUARD-1).
 - `2026-06-09-catalogue-store-postgres-neon.md` (`DS-1`) → **reaffirmed**; the schema gains `created_by` (ARCH-OWN-1, see companion doc).
+- **`2026-06-16-fe-framework-nextjs-adr.md` (NH-185) → ⛔ SUPERSEDED** by `ARCH-FE-1` (Vite + TanStack SPA). leocaseiro chose 2026-06-17 to supersede yesterday's Next.js decision; the OpenNext SSR target is dropped. That ADR's status header now points here.
 
 ---
 

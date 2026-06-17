@@ -29,7 +29,7 @@ Brainstorm-approved by leocaseiro (2026-06-17). Decides the 8 open architecture 
 - `ARCH-EDGE-1` one CloudFront, two origins (S3 FE + Lambda API).
 - `ARCH-CONTRACT-1` oRPC (ts-rest frozen — #797); ditch kanel-zod (drizzle-zod derive+curate).
 - `ARCH-ORM-1` Drizzle — **reaffirms `DS-1`**; confirmed over Prisma/TypeORM/Kysely for Neon-HTTP + SWC.
-- `ARCH-FE-1` Vite + TanStack Router + TanStack Query.
+- `ARCH-FE-1` Vite + TanStack Router + TanStack Query — **supersedes the 2026-06-16 Next.js FE ADR (`NH-185`)** (leocaseiro 2026-06-17: explicitly superseding yesterday's Next.js decision).
 - `ARCH-OFFLINE-1` RxDB (free Dexie), sync via API.
 - `ARCH-MOBILE-1` plain Capacitor (no Ionic).
 - `ARCH-AUTH-1` Cognito (Pulumi) + Google federation v1 — **reaffirms Cognito-not-Amplify (NH-193)**; pulls auth early for the admin gate (reverses the feature-freeze Basic-Auth plan).
@@ -47,6 +47,33 @@ Brainstorm-approved by leocaseiro (2026-06-17). Decides the 8 open architecture 
 **Spikes (2026-06-17):** contract (oRPC vs ts-rest#797), ORM (Drizzle vs Prisma/TypeORM/Kysely), Google federation (Cognito + Google IdP in Pulumi), NestJS-on-Lambda/SWC, React-SPA stack.
 
 **Manual approvals (leocaseiro):** all §1-§4 decisions approved section-by-section via AskUserQuestion this session; `W1` = write docs in a worktree; `W2` = review the spec in a separate session before the DACI/ADR rewrites.
+
+### 2026-06-16 — NH-16 PR-checklist v1.1: all-required acknowledgements (no N/A)
+
+Reframed the `pr-checklist` gate after a real-world miss: PR #40 merged with required boxes left unticked. Root cause (systematic-debugging) — the gate passed *correctly* per the v1 design (docs PR; the UI item was legitimately `N/A`'d), but `N/A` is a **self-asserted, unverifiable escape** an agent can abuse (e.g. `N/A` the Storybook item on a PR that *does* change UI). Fix per leocaseiro's model — "an agreement of terms & conditions: no checked, no merge":
+
+- **Every checklist box must be ticked `[x]`; `N/A` and the `required:`/`warn:` severity split are removed.** Items are now standing acknowledgements ("I am aware I must … *if* …") that stay true regardless of the PR, so they're always tickable. Items expanded to 12 (added: VR-tests-if-UI, README/docs + the "why", self-review, breaking-changes/migrations, no-secrets, no `--no-verify`). The Jira-key grep (`NH`/`KAN`, un-skippable) is unchanged — still the one check with real teeth.
+- `tooling/pr-checklist.mjs` rewritten (anti-deletion + all-ticked + key grep, `N/A`/prefix logic deleted); `tooling/pr-checklist.test.mjs` rewritten (12 cases, TDD red→green, incl. "N/A no longer honored"). Branch protection set to **include administrators** so a red gate can't be clicked past. Spec updated: `docs/specs/2026-06-15-pr-merge-checklist.md`.
+
+**Status:** `L6-checklist` stays **✅ done · 🤖** (mechanism evolved, status unchanged). DangerJS smart rules (green-fake, first-use, diff-aware UI/test detection) remain the NH-16 v2 backlog.
+
+### 2026-06-16 — NH-185 FE framework: Next.js (one source → SSR web / static Capacitor)
+
+Reverses the **FE-framework axis** of the 2026-06-02 stack-pick ("Vite + React; Next.js rejected"). Surfaced via `/ce-sessions`: that rejection was of **SSR** Next.js; **static-export + a one-source/two-targets build** was never evaluated, and it resolves the Capacitor conflict while delivering the job-hunt Next.js keyword + an SSR/hydration portfolio piece. ADR: [`2026-06-16-fe-framework-nextjs-adr.md`](2026-06-16-fe-framework-nextjs-adr.md); spike: [`../spikes/2026-06-16-fe-framework-nextjs.md`](../spikes/2026-06-16-fe-framework-nextjs.md).
+
+**Decision:** Next.js (App Router), one source `apps/notation-hero`, two build targets — **SSR web** (OpenNext → Lambda + CloudFront, Pulumi, free-tier) + **static-export** (Capacitor iOS/Android). Catalogue routes first. **No Amplify** (keeps Pulumi as the single IaC). **Capacitor + PWA + S3/CloudFront + Pulumi + hexagon all unchanged.**
+
+**Status:** ⛔ **SUPERSEDED 2026-06-17** by `ARCH-FE-1` (Vite + TanStack SPA) — see the 2026-06-17 entry above; leocaseiro chose to supersede this Next.js decision ("superseding whatever we decided yesterday"). [Historical] was 📄 prose-only, tracked in **NH-185** (Story under Epic NH-177); the OpenNext SSR Lambda is **not** being built.
+
+### 2026-06-15 — CMS via catalog reuse (front-end pivot) + Alpha build order
+
+Ratified by leocaseiro 2026-06-15. The admin CMS **reuses the same catalog UI + the same lambdas**, with admin-gated write actions — **no separate admin SPA**. This **supersedes the UI half** of `docs/cms-approach.md` (the React-Admin SPA, Option 1 → effectively its Option 1a "hand-rolled UI"); that doc's AWS **backend** analysis still stands. Already the locked direction in the 2026-06-13 catalog design (`catalog-flow-decisions.md`: *"CMS = the same UI"*). Spec: `docs/specs/2026-06-15-cms-admin.md` (eng-reviewed, CLEARED). Tracked by **NH-122 [K-2]**; **NH-24 folded in + cancelled as duplicate**.
+
+**Eng-review decisions (F1–F3):** F1 — gated admin-read mode on the K-3 read API (same lambda returns all statuses when the password is present); F2 — one public site + in-lambda password on writes (secret in SSM SecureString, never in the repo); F3 — include un-archive (delete = archive, schema §12).
+
+**Build order (leocaseiro, 2026-06-15):** (1) **CRUD for catalog** — K-* bundle: NH-79 Neon adapter → NH-126 [K-1] store → NH-123 [K-3] read API → NH-122 [K-2] CRUD UI; (2) **play a song** (no MIDI, no score) — player core A-1/A-2 + B-1/B-2/B-7; (3) **SRE + Sentry + analytics** — H-7 (NH-52) + H-8 (NH-124) + H-6 (NH-54) / J-8 (NH-51); (4) **MIDI + score** — D-* (NH-100..32) + C-* (NH-97..29). Jira rank to be aligned to this order.
+
+No status-table/enforcement changes (front-end approach + sequencing decision; no machine gate).
 
 ### 2026-06-15 — NH-16 agent PR merge checklist (v1) + KAN→NH migration
 

@@ -17,6 +17,8 @@ dist/
 # Env / secrets — never commit AWS creds
 .env
 .env.*
+*.env
+jira.env
 !.env.example
 
 # Private strategic context (the reference tutor north-star / positioning-wedge / handoff content).
