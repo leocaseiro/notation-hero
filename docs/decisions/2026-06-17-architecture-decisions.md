@@ -147,7 +147,7 @@ server/src/
 **iOS durability:** Capacitor's WKWebView ≠ Safari, so 7-day ITP eviction doesn't apply; the real risk is **storage-pressure LRU**, and `navigator.storage.persist()` is unreliable on iOS. So **local = cache**: curated content is disposable (re-pull); the durable risk is *user-created-but-unsynced* rows → **sync eagerly** + keep blobs in **Capacitor Filesystem** (native, eviction-safe). Optional v1.x hardening: mirror the outbox to Capacitor Preferences/Filesystem — ship without it, add only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (no separate per-user durability doc).
 **4 gating schema/server changes (REQUIRED for the free Dexie path; formalized as companion R13-R16, fed to the parallel schema redesign):** (1) keep **client-minted `text` ULID PKs** (no server `uuid DEFAULT`/`bigint`); (2) a transactional **`POST /sync/batch`** (idempotent by `batchId`) so an offline-created graph commits all-or-nothing; (3) **`source.upload_status`** (`pending_blob`｜`ready`) + relaxed `source_one_of` CHECK so a file-backed upload syncs first and the blob backfills; (4) **`DEFERRABLE INITIALLY IMMEDIATE`** on cross-row FKs so one batch txn commits a whole graph regardless of intra-batch order/cycles.
 **Flip conditions (when a framework WOULD be warranted):** drop insert-only → allow true offline edits of shared rows (real conflicts → TanStack DB / Zero / Replicache); real-time multi-device collaboration becomes a goal; the hand-rolled outbox sprawls past a few hundred lines / sprouts edge-case bugs; or Dexie stalls (no release in ~12+ months).
-**Evidence:** offline-first spike (`docs/spikes/2026-06-17-offline-first-sync.md`). **v1 wiring scope:** see §"Deferred / Open Questions".
+**Evidence:** offline-first spike (`docs/spikes/2026-06-17-offline-first-sync.md`). **v1 wiring scope:** Dexie is **installed-but-stubbed at v1** — behind a client repository seam backed by direct online API calls; the insert-outbox, `POST /sync/batch`, mirror tables + blob queue are wired at **M1** (v1 = one admin, one device, online CMS). Schema stays offline-ready via companion R13-R16.
 
 ### ARCH-MOBILE-1 — Plain Capacitor (no Ionic)
 **Decision:** add **Capacitor** to the plain Vite/React app; **do not** use the Ionic UI framework.
@@ -303,14 +303,14 @@ Until then: ✅ decided · ⏳ no repo code/config changed (this doc refined by 
 
 ### From the 2026-06-17 spec review (ce-doc-review, NH-194) — offline / sync-DB
 
-Offline-first **stays** (the client is a PWA + Capacitor). After the **RxDB → plain Dexie** pivot (ARCH-OFFLINE-1, insert-only outbox), the four originally-deferred points reduce to **two open** — the other two are now **resolved inline in ARCH-OFFLINE-1**:
+Offline-first **stays** (the client is a PWA + Capacitor). After the **RxDB → plain Dexie** pivot (ARCH-OFFLINE-1, insert-only outbox), three of the four originally-deferred points are now **resolved inline in ARCH-OFFLINE-1**; only the DynamoDB key design remains open:
 
-- ✅ **Conflict resolution — N/A by design** (was #9). Insert-only + online-first updates + client-minted ULIDs remove merges by construction; settings = LWW by `updated_at`. Folded into ARCH-OFFLINE-1.
-- ✅ **Un-synced offline-write durability** (was #3). Stance: *local = cache*; sync eagerly; keep blobs in Capacitor Filesystem (eviction-safe); optional v1.x outbox-mirror hardening, shipped only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (consolidation — no separate per-user durability doc). Folded into ARCH-OFFLINE-1.
+- ✅ **Conflict resolution — N/A by design** (was #9). Insert-only + online-first updates + client-minted ULIDs remove merges by construction; settings = LWW by `updated_at`.
+- ✅ **Un-synced offline-write durability** (was #3). Stance: *local = cache*; sync eagerly; keep blobs in Capacitor Filesystem (eviction-safe); optional v1.x outbox-mirror hardening, shipped only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (no separate per-user durability doc).
+- ✅ **Dexie v1 wiring scope** (was #13). **Installed-but-stubbed at v1** — Dexie sits behind a client repository seam backed by direct online API calls; the insert-outbox, `POST /sync/batch`, mirror tables + blob queue are wired at **M1** (v1 = one admin, one device, online CMS → no offline user yet). Schema stays offline-ready via companion R13-R16.
 
-**Still open (being decided this session):**
+**Still open:**
 
-1. **Dexie v1 wiring scope (was #13).** Fully wired (Dexie + insert-outbox + `POST /sync/batch` before the CMS) vs **installed-but-stubbed** until the sync milestone (v1 = one admin, one device, online-first). *[decision pending]*
-2. **DynamoDB single-table key design (was #11).** PK/SK + access patterns + the per-user pull/sync access pattern, in a short per-user companion (mirroring the catalogue data-layer doc), **before the table is provisioned** (a partition key can't be changed in place). *[companion doc pending]*
+1. **DynamoDB single-table key design (was #11).** PK/SK + access patterns + the per-user pull/sync access pattern, in a short per-user companion (mirroring the catalogue data-layer doc), **before the table is provisioned** (a partition key can't be changed in place). *[companion doc — drafting next]*
 
 These feed the `writing-plans` stage and the parallel schema/data-layer redesign; the DACI + file-structure ADR text rewrite (§11 step 1) remains separate.
