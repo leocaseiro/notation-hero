@@ -146,6 +146,13 @@ a{color:inherit}
 .donut svg{transform:rotate(-90deg)}
 .donut .val{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:700;font-family:"Geist Mono"}
 .donut.gold .val .material-symbols-outlined{font-size:18px;color:var(--s-gold)}
+.nfields{grid-column:1/-1;display:none;margin:8px 0 2px;border-top:1px dashed var(--line);padding-top:8px}
+body.showall .nfields{display:block}
+.nfsub{margin:7px 0 3px;font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}
+.nfgrid{display:grid;grid-template-columns:max-content 1fr;gap:2px 16px;font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;align-items:start}
+.nfk{color:var(--faint)}
+.nfv{color:var(--ink);word-break:break-word;white-space:pre-wrap}
+.nfv.nul{color:var(--s-none)}
 
 .pager{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:16px;flex-wrap:wrap}
 .pager button{min-width:34px;height:34px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:0 8px;display:inline-flex;align-items:center;justify-content:center}
@@ -249,7 +256,7 @@ a{color:inherit}
 <body>
 
 <div class="wf-banner">
-  <b>WIREFRAME</b><span>low-fi flow sim · v1.3 · inside pages + relationships · not final styling</span>
+  <b>WIREFRAME</b><span>low-fi flow sim · v1.4 · notation model + field inspector · not final styling</span>
   <span class="wf-tg">Theme:
     <button data-theme-set="dark" aria-pressed="true">Dark</button>
     <button data-theme-set="light" aria-pressed="false">Light</button>
@@ -258,6 +265,9 @@ a{color:inherit}
     <button data-role-set="anon"  aria-pressed="false">Anonymous</button>
     <button data-role-set="user"  aria-pressed="false">User</button>
     <button data-role-set="admin" aria-pressed="false">Admin</button>
+  </span>
+  <span class="wf-tg">Inspector:
+    <button data-fields aria-pressed="false">Show all fields</button>
   </span>
   <span style="margin-left:auto;color:var(--faint)" id="routeEcho"></span>
 </div>
@@ -312,11 +322,11 @@ const PATTERNS = {
   'double-stroke':    {kind:'rudiment', name:'Double Stroke Roll',family:'Roll',  subdivision:'16th', level:3},
   'linear-6stroke':   {kind:'fill',     name:'Linear 6-Stroke',   family:'Linear',subdivision:'16th', level:5},
 };
-const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',label:'Fill'}, rudiment:{icon:'drag_indicator',label:'Rudiment'}};
+const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',label:'Fill'}, rudiment:{icon:'drag_indicator',label:'Rudiment'}, scale:{icon:'piano',label:'Scale'}, chord:{icon:'piano',label:'Chord'}};
 
 /* ---------- sample data (catalogue_item) ---------- */
 const ITEMS = [
-  {id:'seven-nation-army', type:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['riff','syncopation'], patterns:['rock-8th'], musical_key:null, status:'published', source:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Official video'}], best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
+  {id:'seven-nation-army', type:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], tags:['riff','syncopation'], patterns:['rock-8th'], musical_key:null, status:'published', source:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Official video'}], best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
     data:{bars:48, sections:[{label:'Intro',startBar:1,endBar:8},{label:'Verse',startBar:9,endBar:24},{label:'Chorus',startBar:25,endBar:40},{label:'Outro',startBar:41,endBar:48}]}, breakdown:'sna-breakdown'},
   {id:'billie-jean', type:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], tags:['groove'], patterns:['four-floor'], status:'published', source:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
     data:{bars:64, sections:[{label:'Groove',startBar:1,endBar:16},{label:'Verse',startBar:17,endBar:32},{label:'Chorus',startBar:33,endBar:48}]}},
@@ -331,11 +341,19 @@ const ITEMS = [
   {id:'first-beat', type:'lesson', title:'Your First Beat', level:0, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:90, sessions:9, trend:[60,75,90], new:true},
   {id:'rock-8th-beat', type:'lesson', title:'8th-Note Rock Beat', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing','coordination'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:64, sessions:3, trend:[30,48,64]},
   {id:'four-on-floor', type:'lesson', title:'Four-on-the-Floor', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['four-floor'], status:'published', source:'curated', license:'owned', best:88, sessions:7, trend:[55,66,74,80,88]},
-  {id:'funk-16ths', type:'lesson', title:'Funk Groove — 16th Hats', level:4, lesson_type:'beat', instruments:['drums'], skill:['independence','timing'], tags:['ghost-notes','syncopation'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:41, sessions:2, trend:[22,41]},
+  {id:'funk-16ths', type:'lesson', title:'Funk Groove — 16th Hats', level:4, lesson_type:'beat', instruments:['drums'], skill:['independence','timing','coordination'], tags:['ghost-notes','syncopation'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:41, sessions:2, trend:[22,41]},
   {id:'single-paradiddle', type:'lesson', title:'Single Paradiddle', level:2, lesson_type:'rudiment', instruments:['drums'], skill:['independence','control'], patterns:['single-paradiddle'], status:'published', source:'curated', license:'owned', best:73, sessions:5, trend:[40,52,60,68,73]},
   {id:'double-stroke', type:'lesson', title:'Double Stroke Roll', level:3, lesson_type:'rudiment', instruments:['drums'], skill:['control'], patterns:['double-stroke'], status:'published', source:'curated', license:'owned', best:null, sessions:0, trend:[]},
   {id:'linear-fill-1', type:'lesson', title:'Linear Fill — 6-stroke', level:5, lesson_type:'rudiment', instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', source:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'teaches a FILL pattern (fills = pattern.kind, not lesson_type — SD-1)'},
   {id:'sna-breakdown', type:'lesson', title:'Seven Nation Army — Practice in Parts', level:2, lesson_type:'song-breakdown', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', source:'curated', license:'royalty-free', has_audio:true, best:55, sessions:3, trend:[35,48,55], sourceSong:'seven-nation-army'},
+
+  /* patterns — reusable building blocks, now browsable (kind=pattern). They live under the Lessons tab. */
+  {id:'p-hihat-8',   type:'pattern', title:'Straight 8th Hi-hats',  pattern_kind:'beat',     family:'Rock',   level:1, instruments:['drums'], genre:'rock', status:'published', source:'curated', license:'owned', notation_tex:':8 x x x x x x x x', best:90, sessions:8, top_bpm:140, trend:[70,82,90], data:{difficulty:{by:'bpm',tiers:[{upTo:90,level:1},{upTo:140,level:2},{upTo:null,level:3}]}}},
+  {id:'p-rock-8th',  type:'pattern', title:'8th-Note Rock Groove',  pattern_kind:'beat',     family:'Rock',   level:2, instruments:['drums'], genre:'rock', status:'published', source:'curated', license:'owned', notation_tex:':8 (x.42 x.36) x', best:71, sessions:4, top_bpm:118, trend:[55,63,71], data:{difficulty:{by:'bpm',tiers:[{upTo:80,level:2},{upTo:120,level:3},{upTo:null,level:4}]}}},
+  {id:'p-paradiddle',type:'pattern', title:'Single Paradiddle',     pattern_kind:'rudiment', family:'Diddle', level:2, instruments:['drums'], status:'published', source:'curated', license:'owned', notation_tex:'R L R R  L R L L', best:null, sessions:0, trend:[]},
+  {id:'p-tom-fill',  type:'pattern', title:'Descending Tom Fill',   pattern_kind:'fill',     family:'Tom',    level:2, instruments:['drums'], status:'published', source:'curated', license:'owned', notation_tex:':16 38 40 43 45', has_audio:true, audio:[{label:'Demo'}], best:48, sessions:2, trend:[30,48]},
+  {id:'p-cmaj-scale',type:'pattern', title:'C Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'C', status:'published', source:'curated', license:'public-domain', notation_tex:'C4 D4 E4 F4 G4 A4 B4 C5', best:60, sessions:3, top_bpm:100, trend:[40,52,60], data:{difficulty:{by:'fingering',tiers:[{when:'hands separate',level:1},{when:'hands together',level:2}]}}},
+  {id:'p-gmaj-scale',type:'pattern', title:'G Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'G', status:'published', source:'curated', license:'public-domain', notation_tex:'G4 A4 B4 C5 D5 E5 F#5 G5', best:null, sessions:0, trend:[]},
 ];
 
 /* ---------- sample data (exercise = STEPS) ---------- */
@@ -380,6 +398,8 @@ const STEPS = {
 };
 
 const LESSON_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, 'song-breakdown':{icon:'segment',label:'Song parts'}};
+/* Lessons tab = every listable notation that isn't a song (lessons + patterns). Kind filter spans both lesson_type and pattern_kind. */
+const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',label:'Fills'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, scale:{icon:'piano',label:'Scales'}, 'song-breakdown':{icon:'segment',label:'Song parts'}};
 const GENRES = ['rock','pop','jazz','metal','funk','soul'];
 const TIMES = ['4/4','3/4','5/4','6/8','7/8'];
 const INSTRUMENTS = ['drums','guitar','keys'];
@@ -398,7 +418,7 @@ const state = {
   advanced: false,
   page: 1,
   openPop: null,
-  genre: [], kind: [], timeSig: [], instrument: null,
+  genre: [], kind: [], timeSig: [], instrument: null, showAll: false,
   level: { min:null, max:null }, inclUngraded: false,
   bpm: { min:null, max:null },
   score: { min:null, max:null }, inclUnplayed: false,   // SD-12 (per-user, client-side)
@@ -477,9 +497,9 @@ function render(){
 
 /* ---------- filtering + sorting ---------- */
 function matches(it){
-  if(it.type!==state.tab.replace(/s$/,'')) return false;
+  if(state.tab==='songs' ? it.type!=='song' : it.type==='song') return false;   // Lessons tab = every non-song (lessons + patterns)
   if(state.genre.length && !state.genre.includes(it.genre)) return false;
-  if(state.tab==='lessons' && state.kind.length && !state.kind.includes(it.lesson_type)) return false;
+  if(state.tab==='lessons' && state.kind.length && !state.kind.includes(it.lesson_type) && !state.kind.includes(it.pattern_kind)) return false;
   if(state.timeSig.length && !state.timeSig.includes(it.time_sig)) return false;
   if(state.instrument && !(it.instruments||[]).includes(state.instrument)) return false;
   if(state.level.min!=null || state.level.max!=null){
@@ -569,8 +589,8 @@ function renderCatalog(){
   const list = all.slice((state.page-1)*PAGE_SIZE, state.page*PAGE_SIZE);
 
   const dyn = isLessons
-    ? `<div class="fdrop"><button class="fbtn ${state.kind.length?'on':''}" data-pop="kindPop">${multiFace('Kind',state.kind,k=>LESSON_KINDS[k].label)} <span class="material-symbols-outlined caret">expand_more</span></button>
-        ${multiPop('kindPop','kind',Object.keys(LESSON_KINDS).map(k=>({val:k,label:LESSON_KINDS[k].label,icon:LESSON_KINDS[k].icon})))}</div>`
+    ? `<div class="fdrop"><button class="fbtn ${state.kind.length?'on':''}" data-pop="kindPop">${multiFace('Kind',state.kind,k=>BROWSE_KINDS[k]?.label||k)} <span class="material-symbols-outlined caret">expand_more</span></button>
+        ${multiPop('kindPop','kind',Object.keys(BROWSE_KINDS).map(k=>({val:k,label:BROWSE_KINDS[k].label,icon:BROWSE_KINDS[k].icon})))}</div>`
     : `<div class="fdrop"><button class="fbtn ${state.genre.length?'on':''}" data-pop="genrePop">${multiFace('Genre',state.genre)} <span class="material-symbols-outlined caret">expand_more</span></button>
         ${multiPop('genrePop','genre',GENRES.map(g=>({val:g,label:cap(g)})))}</div>`;
 
@@ -607,21 +627,67 @@ function renderCatalog(){
       ` : `<div class="empty"><span class="material-symbols-outlined">search_off</span>No ${state.tab} match these filters.<br><button class="btn secondary" id="clearAll" style="margin-top:12px">Clear all filters</button></div>` }
   `;
 }
+/* ---- all-fields inspector (Fields toggle): map an item to the notation model + render every column ---- */
+function nfv(v){
+  if(v===null||v===undefined||v==='') return '<span class="nfv nul">∅ null</span>';
+  if(Array.isArray(v)) return v.length?`<span class="nfv">{${v.map(esc).join(', ')}}</span>`:'<span class="nfv nul">{} empty</span>';
+  if(typeof v==='object') return `<span class="nfv">${esc(JSON.stringify(v))}</span>`;
+  if(v===false) return '<span class="nfv nul">false</span>';
+  return `<span class="nfv">${esc(String(v))}</span>`;
+}
+function toNotation(it){
+  const ts = it.time_sig ? String(it.time_sig).split('/') : [null,null];
+  return {
+    id:it.id, kind:it.type, title:it.title,
+    parent_id: it.sourceSong||null,
+    source_id: it.notation_format?('src-'+it.id):(it.notation_tex?('tex-'+it.id):null),
+    start_bar:null, end_bar:null, sort_order:null,
+    listable: it.visibility==='private'?false:true,
+    level: it.level??null, artist: it.artist??null, bpm: it.bpm??null,
+    time_signature_numerator: ts[0]?Number(ts[0]):null, time_signature_denominator: ts[1]?Number(ts[1]):null,
+    genre: it.genre??null, musical_key: it.musical_key??null,
+    instruments: it.instruments||null, skill: it.skill||null, tags: it.tags||null,
+    lesson_type: it.lesson_type??null, pattern_kind: it.pattern_kind??null, family: it.family??null,
+    origin: it.source==='user-upload'?'user-upload':'curated',
+    status: it.status||'published', license: it.license??null,
+    has_audio: !!it.has_audio, has_video: !!it.has_video,
+    data: it.data||null, created_by: it.owner||null,
+  };
+}
+const NF_ORDER = ['id','kind','title','parent_id','source_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','lesson_type','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
+function allFieldsPanel(it){
+  const n = toNotation(it);
+  const grid = NF_ORDER.map(k=>`<span class="nfk">${k}</span>${nfv(n[k])}`).join('');
+  let src='';
+  if(n.source_id){
+    const fmt = it.notation_format || (it.notation_tex?'alphatex':'—');
+    const loc = it.notation_format ? ('s3_key · catalogue/'+it.id+'/source.'+it.notation_format) : ('alphatex · '+esc(it.notation_tex||''));
+    src = `<div class="nfsub">↳ source · ${esc(n.source_id)}</div><div class="nfgrid"><span class="nfk">format</span><span class="nfv">${esc(fmt)}</span><span class="nfk">key / tex</span><span class="nfv">${loc}</span></div>`;
+  }
+  return `<div class="nfields"><div class="nfsub">notation · all columns</div><div class="nfgrid">${grid}</div>${src}</div>`;
+}
 function rowHTML(it){
-  const isLesson = it.type==='lesson';
-  const cover = isLesson ? (LESSON_KINDS[it.lesson_type]?.icon||'school') : 'music_note';
-  const badge = isLesson ? `<span class="badge2 ${it.lesson_type}">${LESSON_KINDS[it.lesson_type]?.label||'Lesson'}</span>` : '';
+  const isLesson = it.type==='lesson', isPat = it.type==='pattern';
+  const cover = isLesson ? (LESSON_KINDS[it.lesson_type]?.icon||'school')
+              : isPat ? (PATTERN_KINDS[it.pattern_kind]?.icon||'extension')
+              : 'music_note';
+  const badge = isLesson ? `<span class="badge2 ${it.lesson_type}">${LESSON_KINDS[it.lesson_type]?.label||'Lesson'}</span>`
+              : isPat ? `<span class="badge2 ${it.pattern_kind}">${PATTERN_KINDS[it.pattern_kind]?.label||'Pattern'}</span>` : '';
   const isNew = it.new ? `<span class="pill-new">New</span>` : '';
   const priv = it.visibility==='private' ? `<span class="tag private" style="font-size:10px;padding:1px 6px">Private</span>` : '';
+  const diffHl = (it.data&&it.data.difficulty) ? ` <span class="dot"></span> by ${esc(it.data.difficulty.by)}` : '';
   const sub = isLesson
     ? `${(STEPS[it.id]||[]).length} steps <span class="dot"></span> ${(it.skill||[]).slice(0,2).join(' · ')}`
+    : isPat
+    ? `${PATTERN_KINDS[it.pattern_kind]?.label||it.pattern_kind}${it.family?' <span class="dot"></span> '+esc(it.family):''}${it.musical_key?' <span class="dot"></span> '+it.musical_key:(it.genre?' <span class="dot"></span> '+cap(it.genre):'')}${diffHl}`
     : `${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}${it.musical_key?' <span class="dot"></span> '+it.musical_key:''}`;
-  const bpm = isLesson ? lessonLadder(it) : (it.bpm||'—');
+  const bpm = isLesson ? lessonLadder(it) : isPat ? '—' : (it.bpm||'—');
   const lvl = it.level===0 ? '<span class="lvlpill debut">Debut</span>' : `<span class="lvlpill">${it.level??'—'}</span>`;
+  const nav = isPat ? '' : ` data-nav="#/${it.type}/${it.id}"`;
   return `<div class="row">
     <div class="name">
-      <div class="cover ${isLesson?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
-      <div class="nm" data-nav="#/${it.type}/${it.id}">
+      <div class="cover ${it.type!=='song'?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
+      <div class="nm"${nav}>
         <div class="nmtitle"><b>${esc(it.title)}</b>${badge}${isNew}${priv}</div>
         <div class="nmsub">${sub}</div>
       </div>
@@ -631,6 +697,7 @@ function rowHTML(it){
     <span class="bpm mono">${bpm}</span>
     ${donut(it.best)}
     <button class="play" title="Quick play" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span></button>
+    ${allFieldsPanel(it)}
   </div>`;
 }
 function pager(total, pages){
@@ -719,6 +786,7 @@ function renderSong(id){
     </div>
     ${patternsCard(it)}
     ${metaFoot(it)}
+    ${allFieldsPanel(it)}
   `;
 }
 
@@ -750,6 +818,7 @@ function renderLesson(id){
     </div>
     ${patternsCard(it)}
     ${metaFoot(it)}
+    ${allFieldsPanel(it)}
   `;
 }
 function stepRow(lesson, s){
@@ -921,6 +990,7 @@ document.addEventListener('click', e=>{
   if(!e.target.closest('.fpop') && !e.target.closest('[data-pop]') && state.openPop){ state.openPop=null; renderCatalog(); }
   if(e.target.closest('[data-tab]')){ state.tab=e.target.closest('[data-tab]').dataset.tab; state.page=1; state.openPop=null; renderCatalog(); return; }
   if(e.target.closest('[data-more]')){ state.advanced=!state.advanced; renderCatalog(); return; }
+  if(e.target.closest('[data-fields]')){ state.showAll=!state.showAll; document.body.classList.toggle('showall', state.showAll); document.querySelectorAll('[data-fields]').forEach(b=>b.setAttribute('aria-pressed', String(state.showAll))); return; }
   if(e.target.closest('[data-page]')){ state.page=+e.target.closest('[data-page]').dataset.page; renderCatalog(); window.scrollTo({top:0,behavior:'smooth'}); return; }
   if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); clearFilter('score'); state.instrument=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
   if(e.target.closest('[data-role-set]')){ setRole(e.target.closest('[data-role-set]').dataset.roleSet); return; }
