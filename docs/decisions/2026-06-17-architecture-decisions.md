@@ -237,3 +237,14 @@ These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reope
 - Google-federation spike (Cognito Hosted UI + Google IdP in Pulumi) — managed-login v2, account-linking pitfall, `tokenUse` access, $0 free-tier.
 - NestJS-on-Lambda + SWC best-practices research — `@codegenie/serverless-express` v5 (Node 24), `createApplicationContext`, `.swcrc` + esbuild per-entry.
 - React-SPA stack research — Vite + TanStack + RxDB vs Legend-State + Capacitor (plain vs Ionic).
+
+---
+
+## 11. Next steps (after spec review)
+
+This brainstorm ends at a committed, reviewable spec. **After approval (in a separate review session):**
+
+1. **Rewrite the DACI + file-structure ADR text** (the W2 deferral) — supersede `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (`NAME-suffix`) per §9, and flip the affected decision-registry rows.
+2. **Invoke `writing-plans`** for the phased implementation plan (foundation migration → scaffolding → first feature), then execute.
+
+Until then: ✅ decided · ⏳ no code/config changed.
