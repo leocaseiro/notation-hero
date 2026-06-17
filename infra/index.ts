@@ -3,14 +3,17 @@ import * as pulumi from "@pulumi/pulumi";
 import { LambdaWithUrl } from "./lambda-with-url.stack.ts";
 
 /**
- * Pulumi composition root (NH-150). Wires the hello-world handler's esbuild
- * BUILD OUTPUT (apps/handler-hello/dist) into the LambdaWithUrl component — never
- * the handler's source (H4/H9). Run `nx build @notation-hero/handler-hello`
- * before `pulumi up` so dist/ exists.
+ * Pulumi composition root. Phase 0 ships an inline placeholder handler — no app
+ * build is wired yet. Phase 1 (the deployable slice) replaces this with the
+ * server/ build output (FileArchive) and points `handler` at the Nest entry.
  */
 const hello = new LambdaWithUrl("hello", {
   functionName: "notation-hero-hello",
-  code: new pulumi.asset.FileArchive("../apps/handler-hello/dist"),
+  code: new pulumi.asset.AssetArchive({
+    "index.js": new pulumi.asset.StringAsset(
+      "exports.handler = async () => ({ statusCode: 200, headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: 'hello from notation-hero' }) });",
+    ),
+  }),
   handler: "index.handler",
 });
 

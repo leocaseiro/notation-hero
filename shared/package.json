@@ -1,0 +1,10 @@
+{
+  "name": "@notation-hero/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "echo \"@notation-hero/shared: real ESLint target lands with the flat-config lane (NH-42)\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

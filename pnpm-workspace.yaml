@@ -1,14 +1,12 @@
-# pnpm workspace globs — mirrors the npm-style `workspaces` field that used
-# to live in the root package.json. Source of truth for pnpm.
+# pnpm workspace globs — source of truth for pnpm (no Nx).
 #
-# `core/`, `adapters/`, `apps/` hold real Nx packages as of Wave 1 (DACI Step 1).
+# The four foundation packages (ADR §1, ARCH-LAYOUT-1): client (React SPA),
+# server (NestJS app; hexagon in src/), shared (oRPC contract, later), infra (Pulumi).
 packages:
-  - 'core/*'
-  - 'adapters/*'
-  - 'apps/*'
-  - 'infra'
-  - 'server'
   - 'client'
+  - 'server'
+  - 'shared'
+  - 'infra'
 # Build-script approval. pnpm 11.5.2 uses the `allowBuilds: {pkg: true|false}` map
 # (it IGNORES the older `onlyBuiltDependencies` list and re-injects this block as a
 # prompt). @swc/core ships a postinstall build — it backs the NestJS server's SWC

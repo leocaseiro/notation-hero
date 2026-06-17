@@ -48,9 +48,9 @@ jobs:
           # See DACI L7 (Sequencing Step 3 — CI cost/safety) + F-4/F-10 from PR #1 review.
           filters: |
             code:
-              - 'core/**'
-              - 'adapters/**'
-              - 'apps/**'
+              - 'client/**'
+              - 'server/**'
+              - 'shared/**'
               - 'infra/**'
               - 'tooling/**'
               - 'package.json'
@@ -64,17 +64,19 @@ jobs:
               - '.semgrepignore'
               - 'lefthook.yml'
               - 'commitlint.config.*'
-              - 'nx.json'
+              - '.nvmrc'
+              - '.npmrc'
               - '.github/workflows/ci.yml'
             apps:
-              - 'apps/**'
-              - 'core/**'
-              - 'adapters/**'
+              - 'client/**'
+              - 'server/**'
+              - 'shared/**'
+              - 'infra/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'tsconfig*.json'
-              - 'nx.json'
+              - '.nvmrc'
               - '.github/workflows/ci.yml'
 
   # Lint + typecheck + Hexagonal layer-boundary check (dependency-cruiser) + test.

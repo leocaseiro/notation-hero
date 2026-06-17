@@ -137,13 +137,14 @@ module.exports = {
         pathNot: [
           "\\.(test|spec)\\.(ts|tsx)$",
           "\\.stories\\.(ts|tsx)$",
-          // Composition roots are entry points, not orphans (NH-150, the
-          // "add entry-point exemptions when app/infra composition roots
-          // arrive" note above). infra/index.ts is the Pulumi program entry;
-          // apps/handler-hello/src/index.ts is the Lambda handler entry
-          // (packaged via FileArchive(dist), invoked by AWS — never imported).
+          // Composition roots / entry points are not orphans. infra/index.ts is
+          // the Pulumi program entry; server/src/entry/main.ts is the Nest
+          // bootstrap (the Lambda entry, invoked at runtime — never imported);
+          // shared/index.ts is the placeholder contract-package entry (no
+          // consumers yet — the oRPC contract lands here at §3).
           "^infra/index\\.ts$",
-          "^apps/handler-hello/src/index\\.ts$",
+          "^server/src/entry/main\\.ts$",
+          "^shared/index\\.ts$",
         ],
       },
       to: {},

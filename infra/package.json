@@ -8,8 +8,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"*.test.ts\"",
-    "pulumi:preview": "pnpm --filter @notation-hero/handler-hello build && pulumi preview",
-    "pulumi:up": "pnpm --filter @notation-hero/handler-hello build && pulumi up",
+    "pulumi:preview": "pulumi preview",
+    "pulumi:up": "pulumi up",
     "pulumi:destroy": "pulumi destroy"
   },
   "dependencies": {

@@ -4,75 +4,55 @@
 > Wave 1 hand-authored stub. The L8 lane replaces this with a generated-from-config
 > AGENTS.md + a CI drift-check (DACI L8). Until then this file is the agent contract.
 
-## Package tag map (Nx `enforce-module-boundaries`)
+## Layout & layer boundaries (pnpm workspaces, no Nx)
 
-Directions below are the **intended** hexagonal boundaries. What
-`.dependency-cruiser.cjs` enforces TODAY is narrower: only `core ↛ adapters`,
-`core ↛ apps`, `adapters ↛ apps`, plus no-cycles. The file-level bans
-(`core ↛ @aws-sdk`/`@pulumi`, `adapters ↛ infra`, `handler ↛ @pulumi`) and the Nx
-tag `enforce-module-boundaries` contract are a pending Step-1 / Lane-D item — rows
-below mark what is **NOT enforced yet**. Treat unmarked directions as enforced.
+Four workspace packages (ADR §1, ARCH-LAYOUT-1):
 
-| Folder glob | Tag | May import | Never imports |
-|---|---|---|---|
-| `core/*` | `type:core` | nothing in-repo (pure domain) | adapters, apps *(enforced)*; `@aws-sdk/*`, `@pulumi/*` *(intended — NOT enforced yet, Lane D)* |
-| `adapters/*` | `type:adapter` | `type:core` | apps *(enforced)*; infra source *(intended — NOT enforced yet, Lane D)* |
-| `apps/*` | `type:app` | `type:core`, `type:adapter` | infra source *(an `apps → @pulumi/*` ban is a pending later Step-1 item, NOT enforced yet)* |
-| `infra` | `type:infra` | nothing in-repo — pure IaC; wires `apps` via build output (`FileArchive(apps/*/dist)` + Nx `implicitDependencies`), never a TS import (ADR 2026-06-12 **D3**) | core / adapters / apps **source** *(enforced — depcruise **H9**)*; `infra` must never be imported BY app/adapter/core source. `apps` is the runtime composition root, **not** `infra`. |
+| Package | What |
+|---|---|
+| `client/` | React SPA — Vite + TanStack Router + Query (Capacitor later) |
+| `server/` | ONE NestJS app; the hexagon lives as folders in `server/src/` |
+| `shared/` | oRPC contract + Zod schemas, imported by client AND server (placeholder today) |
+| `infra/` | Pulumi TS — all AWS; imports no app/domain source |
 
-**`infra/` (`@notation-hero/infra`, `type:infra`) + `apps/handler-hello` (`type:app`) exist today** — the NH-150 hello-world Lambda Function URL, the first AWS deliverable (see the decision-registry Change-log 2026-06-14). `core/` and `adapters/` are still empty; the first `core`/`adapter` packages materialize with their real domains (the **catalog** is first: `core/catalogue` + a Neon-Postgres adapter), each brainstormed/spec'd before code. The `@nx/js` + `@nx/eslint` generators are installed and ready to scaffold them with the right `--tags`.
+The hexagon (ARCH-HEX-1) is folders inside `server/src/`: `core/` (framework-free
+domain), `adapters/` (I/O implementing ports), `modules/` (NestJS wiring — the
+"door"), `entry/` (Lambda/bootstrap entry points). Direction is enforced by
+`.dependency-cruiser.cjs` (`pnpm run depcheck`). The full folder-level fence
+(core imports nothing in-repo; adapters → core; modules → core+adapters; entry →
+all) plus a fail-closed core-purity canary is the ARCH-GUARD-1 work (follow-up PR).
 
 Naming is `@notation-hero/*` (hyphen — matches root `name: "notation-hero"`).
-The DACI's `@notationhero/*` (no hyphen, M-7) is a typo; do not adopt it.
 DynamoDB is per-user data only; the song/lesson catalogue lives in Neon
-Postgres + JSONB (future `adapters/neon-postgres`, out of Wave 1).
+Postgres + JSONB (a `server/src/adapters` Drizzle/Neon adapter, later).
 
 ## Targets & how to run them
 
-Every package exposes `lint`, `typecheck`, `test`, `build` as `package.json`
-scripts; Nx infers them. Run across the graph with `nx run-many --target=<t>`
-or the affected subset with `nx affected -t <target> --base=origin/master --head=HEAD`.
+Every package exposes the scripts it has (`lint`, `typecheck`, `test`, `build`)
+in its `package.json`. Run across the workspace with the root scripts
+(`pnpm run lint` / `typecheck` / `test` / `build`), each of which wraps
+`pnpm -r --if-present run <target>`. **Use the single-target form** —
+`pnpm -r lint typecheck` runs only `lint` (the rest become positional args).
+`depcheck` (`pnpm run depcheck`) is a single root dependency-cruiser cruise over
+`server shared infra`, not a per-package target.
 
-In CI, `nrwl/nx-set-shas@v4` sets `NX_BASE`/`NX_HEAD` to the correct base
-SHA across `pull_request`, `push:master`, and `merge_group` events — more
-accurate than the local `--base=origin/master` approximation. **When
-authoring a new CI workflow job**, always use the composite
-`- uses: ./.github/actions/setup-js` (pnpm + Node-from-.nvmrc + frozen
-install) AFTER `actions/checkout@v6`; do not inline the pnpm/node setup
-steps. **Exception:** a job running a dependency-free Node script (e.g. the
-`pr-checklist` gate) may use `actions/setup-node@v6` with `node-version-file:
-.nvmrc` directly — it needs no pnpm install; leave an inline comment saying so.
-For jobs that run `nx affected`, also add `nrwl/nx-set-shas@v4`
-right after checkout AND set `fetch-depth: 0` on the checkout step
-(`nx-set-shas` needs full git history to resolve the base SHA — without
-it the action silently falls back to a degraded base).
+**When authoring a new CI workflow job**, use the composite
+`- uses: ./.github/actions/setup-js` (pnpm + Node-from-`.nvmrc` + frozen install)
+AFTER `actions/checkout@v6`; do not inline the pnpm/node setup. **Exception:** a
+dependency-free Node script (e.g. the `pr-checklist` gate) may use
+`actions/setup-node@v6` with `node-version-file: .nvmrc` directly — leave an
+inline comment saying so.
 
 - Default branch is `master` (NOT main). Never pass `git commit/push --no-verify`.
-- Tests use the zero-dep Node 24 runner (`node --test`); relies on default
-  type-stripping (do NOT set `NODE_OPTIONS=--no-experimental-strip-types`).
-  Vitest + coverage-ratchet is the deferred L5 lane.
-- `typecheck`/`build` use `tsc -b`; `composite: true` + `isolatedDeclarations: true`
-  mean every exported function/const needs an explicit return type (TS9007 if missing).
-  Relative imports use explicit `.ts` extensions; `allowImportingTsExtensions` +
-  `rewriteRelativeImportExtensions` are set so `tsc -b` compiles and rewrites
-  `.ts`→`.js` on emit. **Exception (as of NH-150):** the first `type:app`/`type:infra`
-  *leaf* packages (`apps/handler-hello`, `infra/`) use `tsc -p tsconfig.json --noEmit`
-  (no `composite`/`isolatedDeclarations`) — they emit no `.d.ts` (nothing imports them;
-  the Lambda bundle is built by esbuild, `infra/` runs via Pulumi). `tsc -b` + composite
-  project references apply to the first emitting library (`core/`).
-- The per-package `lint` script carries `ESLINT_USE_FLAT_CONFIG=false` inline so
-  ESLint 9 uses the legacy root `.eslintrc.cjs` (flat config is the L3 lane). This
-  toggle does NOT work via `nx.json` `targetDefaults` env — it must stay in the script.
-- tsconfig `references`: DACI F-4 targets Nx-managed sync (`nx sync`), but that is
-  deferred to Lane A — it is NOT wired yet. The single `apps/player-pwa` reference is
-  a hand-authored Wave-1 interim; once `nx sync` lands, stop hand-editing them.
-- `depcheck` (`pnpm run depcheck`) is the dependency-cruiser whole-graph cycle +
-  boundary scan; it stays a single root script, not an Nx per-project target.
-- `@notation-hero/infra` targets are real as of NH-150: `typecheck`/`build`
-  run `tsc -p tsconfig.json --noEmit`, `test` runs `node --test`, and
-  `pulumi:preview`/`pulumi:up`/`pulumi:destroy` wrap `pulumi preview`/`up`/`destroy`
-  (namespaced to dodge pnpm's reserved `deploy`/`up` commands). The Pulumi ops need
-  AWS creds + a Pulumi token, so they run locally only — never in CI `nx run-many` (KTD7).
+- Node 24 (`.nvmrc`), `engine-strict=true`.
+- `server/` compiles with **SWC** via the nest-cli builder (`nest build`), plus a
+  separate `tsc --noEmit` typecheck (SWC does no type-checking); its unit test is
+  Jest. `client/` builds with **Vite** (`vite build`); `infra/` + `shared/`
+  typecheck with `tsc --noEmit`; `infra`/handler tests use `node --test`.
+- Per-package `lint` scripts are `echo` placeholders today; the real flat-config
+  ESLint lane is NH-42. The root `.eslintrc.cjs` is the legacy (dormant) config.
+- `@notation-hero/infra` Pulumi ops (`pulumi:preview`/`pulumi:up`/`pulumi:destroy`)
+  need AWS creds + a Pulumi token, so they run locally only — never in CI.
 
 ## Test & story layout — co-located, NEVER `__tests__/`
 
@@ -116,19 +96,19 @@ of the CI gates. They must be **installed once per worktree**:
 
 1. `pnpm install` — runs the `prepare` script which calls `lefthook install`.
 2. If `pnpm install` fails on the `prepare` step with `core.hooksPath is set
-   locally`, the worktree has a stale per-worktree hooks path. Recover with:
+   locally`, the worktree shares a custom hooks path that lefthook won't
+   re-install over. Run lefthook's **direct binary** (NOT `pnpm exec`, which
+   deadlocks on its own deps-check → `prepare` → `lefthook install`):
    ```sh
-   git config --unset-all --local core.hooksPath
-   pnpm install --ignore-scripts
-   pnpm exec lefthook install
+   node_modules/.bin/lefthook install --reset-hooks-path
    ```
-   (Adding deps in the same recovery state: `pnpm add -D -w <pkg> --ignore-scripts`.)
+   This unsets the custom `core.hooksPath` (hooks still resolve to `.git/hooks`)
+   and re-installs the shims; `pnpm install` then runs `prepare` cleanly.
 3. Verify hooks fire: `git config --get core.hooksPath` should be unset (empty
-   output); `.git/hooks/pre-commit` should exist. If hooks silently no-op
-   after a worktree move, re-run `pnpm exec lefthook install`.
+   output); `.git/hooks/pre-commit` should exist.
 
 If you skip this, commits land **without** the layout / coverage-ignore /
-gitleaks / semgrep / nx-affected checks — CI will still catch them on push,
+gitleaks / semgrep / lint+typecheck checks — CI will still catch them on push,
 but local feedback time is gone. Never use `git commit/push --no-verify`.
 
 ## Commit & review workflow
