@@ -1142,6 +1142,8 @@ function renderAdminStub(seg, qp){
 }
 
 /* ---------- shared ---------- */
+const PLAY_AGO = ['Today','Yesterday','3 days ago','Last week','2 weeks ago','3 weeks ago','Last month','6 weeks ago','2 months ago','3 months ago'];
+function recentPlays(it){ const tr=(it.trend||[]); return tr.slice().reverse().slice(0,5).map((score,i)=>({score, ago: PLAY_AGO[i]||((i+1)+' plays ago')})); }   // $PL1 latest plays (derived from the trend for the wireframe)
 function historyCard(it){
   if(!signedIn()) return `<div class="card" style="margin-top:0;min-width:240px">
       <div class="gate"><span class="material-symbols-outlined">login</span><div>Sign in to track your best score, sessions &amp; trend.<br>
@@ -1160,6 +1162,7 @@ function historyCard(it){
       </div>
       <div class="trend">${tr.map(v=>`<span style="height:${Math.round(v/max*100)}%"></span>`).join('')||'<small style="color:var(--faint)">no runs yet</small>'}</div>
     </div>
+    ${tr.length?`<div style="margin-top:12px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-bottom:2px">Recent plays</div>${recentPlays(it).map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12.5px;border-top:1px solid var(--line)"><span style="color:var(--muted)">${p.ago}</span><span class="mono" style="color:var(--s-${band(p.score)});font-weight:700">${p.score}%</span></div>`).join('')}</div>`:''}
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px">
       <small style="color:var(--faint)">Per-user (DynamoDB) — joined client-side.</small>
       ${it.best!=null?`<a data-reset="${it.id}" style="color:var(--accent);cursor:pointer;font-size:12px;white-space:nowrap" title="Clear your best — keep attempt history">Reset best</a>`:''}
