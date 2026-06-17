@@ -334,71 +334,71 @@ const PATTERNS = {
 };
 const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',label:'Fill'}, rudiment:{icon:'drag_indicator',label:'Rudiment'}, scale:{icon:'piano',label:'Scale'}, chord:{icon:'piano',label:'Chord'}};
 
-/* ---------- sample data (catalogue_item) ---------- */
-const ITEMS = [
-  {id:'seven-nation-army', type:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], tags:['riff','syncopation'], patterns:['rock-8th'], musical_key:null, status:'published', source:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Official video'}], best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
+/* ---------- sample data (playable — the locked umbrella; kind = the role) ---------- */
+const PLAYABLES = [
+  {id:'seven-nation-army', kind:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], tags:['riff','syncopation'], patterns:['rock-8th'], musical_key:null, status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Official video'}], best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
     data:{bars:48, sections:[{label:'Intro',startBar:1,endBar:8},{label:'Verse',startBar:9,endBar:24},{label:'Chorus',startBar:25,endBar:40},{label:'Outro',startBar:41,endBar:48}]}, breakdown:'sna-breakdown'},
-  {id:'billie-jean', type:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], tags:['groove'], patterns:['four-floor'], status:'published', source:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
+  {id:'billie-jean', kind:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], tags:['groove'], patterns:['four-floor'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
     data:{bars:64, sections:[{label:'Groove',startBar:1,endBar:16},{label:'Verse',startBar:17,endBar:32},{label:'Chorus',startBar:33,endBar:48}]}},
-  {id:'rosanna', type:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['shuffle','ghost-notes'], patterns:['single-paradiddle'], status:'published', source:'curated', license:'royalty-free', notation_format:'gp5', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Drum cam'}], best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
-  {id:'enter-sandman', type:'song', title:'Enter Sandman', artist:'Metallica', level:5, bpm:123, time_sig:'4/4', genre:'metal', instruments:['drums'], tags:['double-bass'], patterns:['rock-8th'], status:'published', source:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[], new:true},
-  {id:'take-five', type:'song', title:'Take Five', artist:'Dave Brubeck', level:6, bpm:174, time_sig:'5/4', genre:'jazz', instruments:['drums'], tags:['syncopation'], status:'published', source:'curated', license:'public-domain', notation_format:'xml', has_video:true, video:[{provider:'youtube',label:'Live 1966'}], best:52, sessions:4, top_bpm:150, trend:[30,40,48,52]},
-  {id:'creep', type:'song', title:'Creep', artist:'Radiohead', level:3, bpm:92, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['groove'], patterns:['four-floor'], status:'published', source:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:67, sessions:3, top_bpm:88, trend:[44,58,67]},
-  {id:'wonderwall', type:'song', title:'Wonderwall', artist:'Oasis', level:0, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar'], musical_key:'F#m', tags:['strumming'], status:'published', source:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:null, sessions:0, trend:[]},
-  {id:'clocks', type:'song', title:'Clocks', artist:'Coldplay', level:4, bpm:131, time_sig:'4/4', genre:'rock', instruments:['keys'], musical_key:'Eb', tags:['arpeggio'], status:'published', source:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:60, sessions:2, top_bpm:120, trend:[40,60]},
-  {id:'my-demo-upload', type:'song', title:'My practice loop (upload)', artist:null, level:null, bpm:100, time_sig:'4/4', genre:null, instruments:['drums'], status:'draft', source:'user-upload', owner:'you', visibility:'private', notation_format:'gp', best:12, sessions:1, trend:[12], ownedByUser:true},
+  {id:'rosanna', kind:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['shuffle','ghost-notes'], patterns:['single-paradiddle'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp5', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Drum cam'}], best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
+  {id:'enter-sandman', kind:'song', title:'Enter Sandman', artist:'Metallica', level:5, bpm:123, time_sig:'4/4', genre:'metal', instruments:['drums'], tags:['double-bass'], patterns:['rock-8th'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[], new:true},
+  {id:'take-five', kind:'song', title:'Take Five', artist:'Dave Brubeck', level:6, bpm:174, time_sig:'5/4', genre:'jazz', instruments:['drums'], tags:['syncopation'], status:'published', origin:'curated', license:'public-domain', notation_format:'xml', has_video:true, video:[{provider:'youtube',label:'Live 1966'}], best:52, sessions:4, top_bpm:150, trend:[30,40,48,52]},
+  {id:'creep', kind:'song', title:'Creep', artist:'Radiohead', level:3, bpm:92, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['groove'], patterns:['four-floor'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:67, sessions:3, top_bpm:88, trend:[44,58,67]},
+  {id:'wonderwall', kind:'song', title:'Wonderwall', artist:'Oasis', level:0, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar'], musical_key:'F#m', tags:['strumming'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:null, sessions:0, trend:[]},
+  {id:'clocks', kind:'song', title:'Clocks', artist:'Coldplay', level:4, bpm:131, time_sig:'4/4', genre:'rock', instruments:['keys'], musical_key:'Eb', tags:['arpeggio'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:60, sessions:2, top_bpm:120, trend:[40,60]},
+  {id:'my-demo-upload', kind:'song', title:'My practice loop (upload)', artist:null, level:null, bpm:100, time_sig:'4/4', genre:null, instruments:['drums'], status:'draft', origin:'user-upload', owner:'you', visibility:'private', notation_format:'gp', best:12, sessions:1, trend:[12], ownedByUser:true},
 
-  {id:'first-beat', type:'lesson', title:'Your First Beat', level:0, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:90, sessions:9, trend:[60,75,90], new:true},
-  {id:'rock-8th-beat', type:'lesson', title:'8th-Note Rock Beat', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing','coordination'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:64, sessions:3, trend:[30,48,64]},
-  {id:'four-on-floor', type:'lesson', title:'Four-on-the-Floor', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['four-floor'], status:'published', source:'curated', license:'owned', best:88, sessions:7, trend:[55,66,74,80,88]},
-  {id:'funk-16ths', type:'lesson', title:'Funk Groove — 16th Hats', level:4, lesson_type:'beat', instruments:['drums'], skill:['independence','timing','coordination'], tags:['ghost-notes','syncopation'], patterns:['rock-8th'], status:'published', source:'curated', license:'owned', best:41, sessions:2, trend:[22,41]},
-  {id:'single-paradiddle', type:'lesson', title:'Single Paradiddle', level:2, lesson_type:'rudiment', instruments:['drums'], skill:['independence','control'], patterns:['single-paradiddle'], status:'published', source:'curated', license:'owned', best:73, sessions:5, trend:[40,52,60,68,73]},
-  {id:'double-stroke', type:'lesson', title:'Double Stroke Roll', level:3, lesson_type:'rudiment', instruments:['drums'], skill:['control'], patterns:['double-stroke'], status:'published', source:'curated', license:'owned', best:null, sessions:0, trend:[]},
-  {id:'linear-fill-1', type:'lesson', title:'Linear Fill — 6-stroke', level:5, lesson_type:'rudiment', instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', source:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'teaches a FILL pattern (fills = pattern.kind, not lesson_type — SD-1)'},
-  {id:'sna-breakdown', type:'lesson', title:'Seven Nation Army — Practice in Parts', level:2, lesson_type:'song-breakdown', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', source:'curated', license:'royalty-free', has_audio:true, best:55, sessions:3, trend:[35,48,55], sourceSong:'seven-nation-army'},
+  {id:'first-beat', kind:'lesson', title:'Your First Beat', level:0, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', origin:'curated', license:'owned', best:90, sessions:9, trend:[60,75,90], new:true},
+  {id:'rock-8th-beat', kind:'lesson', title:'8th-Note Rock Beat', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing','coordination'], patterns:['rock-8th'], status:'published', origin:'curated', license:'owned', best:64, sessions:3, trend:[30,48,64]},
+  {id:'four-on-floor', kind:'lesson', title:'Four-on-the-Floor', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['four-floor'], status:'published', origin:'curated', license:'owned', best:88, sessions:7, trend:[55,66,74,80,88]},
+  {id:'funk-16ths', kind:'lesson', title:'Funk Groove — 16th Hats', level:4, lesson_type:'beat', instruments:['drums'], skill:['independence','timing','coordination'], tags:['ghost-notes','syncopation'], patterns:['rock-8th'], status:'published', origin:'curated', license:'owned', best:41, sessions:2, trend:[22,41]},
+  {id:'single-paradiddle', kind:'lesson', title:'Single Paradiddle', level:2, lesson_type:'rudiment', instruments:['drums'], skill:['independence','control'], patterns:['single-paradiddle'], status:'published', origin:'curated', license:'owned', best:73, sessions:5, trend:[40,52,60,68,73]},
+  {id:'double-stroke', kind:'lesson', title:'Double Stroke Roll', level:3, lesson_type:'rudiment', instruments:['drums'], skill:['control'], patterns:['double-stroke'], status:'published', origin:'curated', license:'owned', best:null, sessions:0, trend:[]},
+  {id:'linear-fill-1', kind:'lesson', title:'Linear Fill — 6-stroke', level:5, lesson_type:'rudiment', instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', origin:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'teaches a FILL pattern (fills = pattern.kind, not lesson_type — SD-1)'},
+  {id:'sna-breakdown', kind:'lesson', title:'Seven Nation Army — Practice in Parts', level:2, lesson_type:'song-breakdown', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', origin:'curated', license:'royalty-free', has_audio:true, best:55, sessions:3, trend:[35,48,55], sourceSong:'seven-nation-army'},
 
   /* patterns — reusable building blocks, now browsable (kind=pattern). They live under the Lessons tab. */
-  {id:'p-hihat-8',   type:'pattern', title:'Straight 8th Hi-hats',  pattern_kind:'beat',     family:'Rock',   level:1, instruments:['drums'], genre:'rock', status:'published', source:'curated', license:'owned', notation_tex:':8 x x x x x x x x', best:90, sessions:8, top_bpm:140, trend:[70,82,90], data:{difficulty:{by:'bpm',tiers:[{upTo:90,level:1},{upTo:140,level:2},{upTo:null,level:3}]}}},
-  {id:'p-rock-8th',  type:'pattern', title:'8th-Note Rock Groove',  pattern_kind:'beat',     family:'Rock',   level:2, instruments:['drums'], genre:'rock', status:'published', source:'curated', license:'owned', notation_tex:':8 (x.42 x.36) x', best:71, sessions:4, top_bpm:118, trend:[55,63,71], data:{difficulty:{by:'bpm',tiers:[{upTo:80,level:2},{upTo:120,level:3},{upTo:null,level:4}]}}},
-  {id:'p-paradiddle',type:'pattern', title:'Single Paradiddle',     pattern_kind:'rudiment', family:'Diddle', level:2, instruments:['drums'], status:'published', source:'curated', license:'owned', notation_tex:'R L R R  L R L L', best:null, sessions:0, trend:[]},
-  {id:'p-tom-fill',  type:'pattern', title:'Descending Tom Fill',   pattern_kind:'fill',     family:'Tom',    level:2, instruments:['drums'], status:'published', source:'curated', license:'owned', notation_tex:':16 38 40 43 45', has_audio:true, audio:[{label:'Demo'}], best:48, sessions:2, trend:[30,48]},
-  {id:'p-cmaj-scale',type:'pattern', title:'C Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'C', status:'published', source:'curated', license:'public-domain', notation_tex:'C4 D4 E4 F4 G4 A4 B4 C5', best:60, sessions:3, top_bpm:100, trend:[40,52,60], data:{difficulty:{by:'fingering',tiers:[{when:'hands separate',level:1},{when:'hands together',level:2}]}}},
-  {id:'p-gmaj-scale',type:'pattern', title:'G Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'G', status:'published', source:'curated', license:'public-domain', notation_tex:'G4 A4 B4 C5 D5 E5 F#5 G5', best:null, sessions:0, trend:[]},
+  {id:'p-hihat-8',   kind:'pattern', title:'Straight 8th Hi-hats',  pattern_kind:'beat',     family:'Rock',   level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 x x x x x x x x', best:90, sessions:8, top_bpm:140, trend:[70,82,90], data:{difficulty:{by:'bpm',tiers:[{upTo:90,level:1},{upTo:140,level:2},{upTo:null,level:3}]}}},
+  {id:'p-rock-8th',  kind:'pattern', title:'8th-Note Rock Groove',  pattern_kind:'beat',     family:'Rock',   level:2, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 (x.42 x.36) x', best:71, sessions:4, top_bpm:118, trend:[55,63,71], data:{difficulty:{by:'bpm',tiers:[{upTo:80,level:2},{upTo:120,level:3},{upTo:null,level:4}]}}},
+  {id:'p-paradiddle',kind:'pattern', title:'Single Paradiddle',     pattern_kind:'rudiment', family:'Diddle', level:2, instruments:['drums'], status:'published', origin:'curated', license:'owned', notation_alphaTex:'R L R R  L R L L', best:null, sessions:0, trend:[]},
+  {id:'p-tom-fill',  kind:'pattern', title:'Descending Tom Fill',   pattern_kind:'fill',     family:'Tom',    level:2, instruments:['drums'], status:'published', origin:'curated', license:'owned', notation_alphaTex:':16 38 40 43 45', has_audio:true, audio:[{label:'Demo'}], best:48, sessions:2, trend:[30,48]},
+  {id:'p-cmaj-scale',kind:'pattern', title:'C Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'C', status:'published', origin:'curated', license:'public-domain', notation_alphaTex:'C4 D4 E4 F4 G4 A4 B4 C5', best:60, sessions:3, top_bpm:100, trend:[40,52,60], data:{difficulty:{by:'fingering',tiers:[{when:'hands separate',level:1},{when:'hands together',level:2}]}}},
+  {id:'p-gmaj-scale',kind:'pattern', title:'G Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'G', status:'published', origin:'curated', license:'public-domain', notation_alphaTex:'G4 A4 B4 C5 D5 E5 F#5 G5', best:null, sessions:0, trend:[]},
 ];
 
 /* ---------- sample data (exercise = STEPS) ---------- */
 const STEPS = {
   'first-beat':[
-    {step_no:1,title:'Just the kick',     start_bpm:50,goal_bpm:70, notation_tex:'kd kd kd kd'},
-    {step_no:2,title:'+ Hi-hat',          start_bpm:50,goal_bpm:80, notation_tex:'(hh kd) hh (hh kd) hh'},
+    {step_no:1,title:'Just the kick',     start_bpm:50,goal_bpm:70, notation_alphaTex:'kd kd kd kd'},
+    {step_no:2,title:'+ Hi-hat',          start_bpm:50,goal_bpm:80, notation_alphaTex:'(hh kd) hh (hh kd) hh'},
   ],
   'rock-8th-beat':[
-    {step_no:1,title:'Hi-hat only',      start_bpm:60,goal_bpm:80, notation_tex:':8 hh hh hh hh hh hh hh hh'},
-    {step_no:2,title:'+ Kick on 1 & 3',  start_bpm:60,goal_bpm:90, notation_tex:'(hh kd) hh (hh kd) hh'},
-    {step_no:3,title:'+ Snare backbeat',  start_bpm:60,goal_bpm:100,notation_tex:'(hh kd) (hh sn) (hh kd) (hh sn)'},
-    {step_no:4,title:'Full groove',       start_bpm:70,goal_bpm:120,notation_tex:'full rock beat'},
+    {step_no:1,title:'Hi-hat only',      start_bpm:60,goal_bpm:80, notation_alphaTex:':8 hh hh hh hh hh hh hh hh'},
+    {step_no:2,title:'+ Kick on 1 & 3',  start_bpm:60,goal_bpm:90, notation_alphaTex:'(hh kd) hh (hh kd) hh'},
+    {step_no:3,title:'+ Snare backbeat',  start_bpm:60,goal_bpm:100,notation_alphaTex:'(hh kd) (hh sn) (hh kd) (hh sn)'},
+    {step_no:4,title:'Full groove',       start_bpm:70,goal_bpm:120,notation_alphaTex:'full rock beat'},
   ],
   'single-paradiddle':[
-    {step_no:1,title:'Slow · RLRR LRLL',  start_bpm:40,goal_bpm:60, notation_tex:'paradiddle slow'},
-    {step_no:2,title:'Medium',            start_bpm:60,goal_bpm:100,notation_tex:'paradiddle med'},
-    {step_no:3,title:'Fast',              start_bpm:100,goal_bpm:160,notation_tex:'paradiddle fast'},
+    {step_no:1,title:'Slow · RLRR LRLL',  start_bpm:40,goal_bpm:60, notation_alphaTex:'paradiddle slow'},
+    {step_no:2,title:'Medium',            start_bpm:60,goal_bpm:100,notation_alphaTex:'paradiddle med'},
+    {step_no:3,title:'Fast',              start_bpm:100,goal_bpm:160,notation_alphaTex:'paradiddle fast'},
   ],
   'four-on-floor':[
-    {step_no:1,title:'Kick every beat',   start_bpm:70,goal_bpm:110,notation_tex:'4 kd'},
-    {step_no:2,title:'+ Hats + backbeat', start_bpm:70,goal_bpm:128,notation_tex:'house groove'},
+    {step_no:1,title:'Kick every beat',   start_bpm:70,goal_bpm:110,notation_alphaTex:'4 kd'},
+    {step_no:2,title:'+ Hats + backbeat', start_bpm:70,goal_bpm:128,notation_alphaTex:'house groove'},
   ],
   'funk-16ths':[
-    {step_no:1,title:'16th hats R only',  start_bpm:50,goal_bpm:80, notation_tex:'16 hats'},
-    {step_no:2,title:'Add ghost snares',  start_bpm:50,goal_bpm:92, notation_tex:'ghosts'},
-    {step_no:3,title:'Full funk pocket',  start_bpm:60,goal_bpm:104,notation_tex:'funk'},
+    {step_no:1,title:'16th hats R only',  start_bpm:50,goal_bpm:80, notation_alphaTex:'16 hats'},
+    {step_no:2,title:'Add ghost snares',  start_bpm:50,goal_bpm:92, notation_alphaTex:'ghosts'},
+    {step_no:3,title:'Full funk pocket',  start_bpm:60,goal_bpm:104,notation_alphaTex:'funk'},
   ],
   'double-stroke':[
-    {step_no:1,title:'Hand to hand',      start_bpm:40,goal_bpm:70, notation_tex:'doubles'},
-    {step_no:2,title:'Open roll',         start_bpm:70,goal_bpm:120,notation_tex:'open roll'},
+    {step_no:1,title:'Hand to hand',      start_bpm:40,goal_bpm:70, notation_alphaTex:'doubles'},
+    {step_no:2,title:'Open roll',         start_bpm:70,goal_bpm:120,notation_alphaTex:'open roll'},
   ],
   'linear-fill-1':[
-    {step_no:1,title:'6-stroke shape',    start_bpm:60,goal_bpm:90, notation_tex:'linear fill'},
-    {step_no:2,title:'Around the kit',    start_bpm:70,goal_bpm:110,notation_tex:'linear fill kit'},
+    {step_no:1,title:'6-stroke shape',    start_bpm:60,goal_bpm:90, notation_alphaTex:'linear fill'},
+    {step_no:2,title:'Around the kit',    start_bpm:70,goal_bpm:110,notation_alphaTex:'linear fill kit'},
   ],
   'sna-breakdown':[
     {step_no:1,title:'Main riff',   section_label:'Intro', source_item_id:'seven-nation-army',start_bar:1, end_bar:8, start_bpm:90, goal_bpm:124},
@@ -455,12 +455,12 @@ const isAdmin = () => state.role==='admin';
 const signedIn= () => state.role!=='anon';
 const isPitched = () => state.instrument && PITCHED.includes(state.instrument);
 
-function hasParts(it){ return it.type==='song' ? !!(it.data&&it.data.sections&&it.data.sections.length) : (STEPS[it.id]||[]).length>0; }
+function hasParts(it){ return it.kind==='song' ? !!(it.data&&it.data.sections&&it.data.sections.length) : (STEPS[it.id]||[]).length>0; }
 function itemFlags(it){
   const f=[];
   if(it.has_audio) f.push('<span class="material-symbols-outlined" title="Has audio">volume_up</span>');
   if(it.has_video) f.push('<span class="material-symbols-outlined" title="Has video">smart_display</span>');
-  if(hasParts(it)) f.push(`<span class="material-symbols-outlined parts" title="${it.type==='song'?'Has parts':'Has steps'}">splitscreen</span>`);
+  if(hasParts(it)) f.push(`<span class="material-symbols-outlined parts" title="${it.kind==='song'?'Has parts':'Has steps'}">splitscreen</span>`);
   return f.length?`<span class="flags">${f.join('')}</span>`:'';
 }
 function lessonLadder(it){ const s=STEPS[it.id]||[]; if(!s.length) return '—'; const a=Math.min(...s.map(x=>x.start_bpm||1e9)), b=Math.max(...s.map(x=>x.goal_bpm||0)); return (a<1e9&&b)?`${a}→${b}`:'—'; }
@@ -508,7 +508,7 @@ function render(){
 
 /* ---------- filtering + sorting ---------- */
 function matches(it){
-  if(state.tab==='songs' ? it.type!=='song' : it.type==='song') return false;   // Lessons tab = every non-song (lessons + patterns)
+  if(state.tab==='songs' ? it.kind!=='song' : it.kind==='song') return false;   // Lessons tab = every non-song (lessons + patterns)
   if(state.genre.length && !state.genre.includes(it.genre)) return false;
   if(state.tab==='lessons' && state.kind.length && !state.kind.includes(it.lesson_type) && !state.kind.includes(it.pattern_kind)) return false;
   if(state.timeSig.length && !state.timeSig.includes(it.time_sig)) return false;
@@ -594,7 +594,7 @@ function renderCatalog(){
   syncCatalogHash();
   if(el('#q').value!==state.q) el('#q').value=state.q;
   const isLessons = state.tab==='lessons';
-  const all = sortItems(ITEMS.filter(matches));
+  const all = sortItems(PLAYABLES.filter(matches));
   const pages = Math.max(1, Math.ceil(all.length/PAGE_SIZE));
   if(state.page>pages) state.page=pages; if(state.page<1) state.page=1;
   const list = all.slice((state.page-1)*PAGE_SIZE, state.page*PAGE_SIZE);
@@ -638,7 +638,7 @@ function renderCatalog(){
       ` : `<div class="empty"><span class="material-symbols-outlined">search_off</span>No ${state.tab} match these filters.<br><button class="btn secondary" id="clearAll" style="margin-top:12px">Clear all filters</button></div>` }
   `;
 }
-/* ---- all-fields inspector (Fields toggle): map an item to the notation model + render every column ---- */
+/* ---- all-fields inspector (Fields toggle): map an item to the playable model + render every column ---- */
 function nfv(v){
   if(v===null||v===undefined||v==='') return '<span class="nfv nul">∅ null</span>';
   if(Array.isArray(v)) return v.length?`<span class="nfv">{${v.map(esc).join(', ')}}</span>`:'<span class="nfv nul">{} empty</span>';
@@ -646,12 +646,12 @@ function nfv(v){
   if(v===false) return '<span class="nfv nul">false</span>';
   return `<span class="nfv">${esc(String(v))}</span>`;
 }
-function toNotation(it){
+function toPlayable(it){
   const ts = it.time_sig ? String(it.time_sig).split('/') : [null,null];
   return {
-    id:it.id, kind:it.type, title:it.title,
+    id:it.id, kind:it.kind, title:it.title,
     parent_id: it.sourceSong||null,
-    source_id: it.notation_format?('src-'+it.id):(it.notation_tex?('tex-'+it.id):null),
+    notation_id: it.notation_format?('src-'+it.id):(it.notation_alphaTex?('tex-'+it.id):null),
     start_bar:null, end_bar:null, sort_order:null,
     listable: it.visibility==='private'?false:true,
     level: it.level??null, artist: it.artist??null, bpm: it.bpm??null,
@@ -659,28 +659,28 @@ function toNotation(it){
     genre: it.genre??null, musical_key: it.musical_key??null,
     instruments: it.instruments||null, skill: it.skill||null, tags: it.tags||null,
     lesson_type: it.lesson_type??null, pattern_kind: it.pattern_kind??null, family: it.family??null,
-    origin: it.source==='user-upload'?'user-upload':'curated',
+    origin: it.origin==='user-upload'?'user-upload':'curated',
     status: it.status||'published', license: it.license??null,
     has_audio: !!it.has_audio, has_video: !!it.has_video,
     data: it.data||null, created_by: it.owner||null,
   };
 }
-const NF_ORDER = ['id','kind','title','parent_id','source_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','lesson_type','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
-function notationGrid(it){
-  const n = toNotation(it);
+const NF_ORDER = ['id','kind','title','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','lesson_type','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
+function playableGrid(it){
+  const n = toPlayable(it);
   const grid = NF_ORDER.map(k=>`<span class="nfk">${k}</span>${nfv(n[k])}`).join('');
   let src='';
-  if(n.source_id){
-    const fmt = it.notation_format || (it.notation_tex?'alphatex':'—');
-    const loc = it.notation_format ? ('s3_key · catalogue/'+it.id+'/source.'+it.notation_format) : ('alphatex · '+esc(it.notation_tex||''));
-    src = `<div class="nfsub">↳ source · ${esc(n.source_id)}</div><div class="nfgrid"><span class="nfk">format</span><span class="nfv">${esc(fmt)}</span><span class="nfk">key / tex</span><span class="nfv">${loc}</span></div>`;
+  if(n.notation_id){
+    const fmt = it.notation_format || (it.notation_alphaTex?'alphatex':'—');
+    const loc = it.notation_format ? ('s3_key · catalogue/'+it.id+'/source.'+it.notation_format) : ('alphatex · '+esc(it.notation_alphaTex||''));
+    src = `<div class="nfsub">↳ notation · ${esc(n.notation_id)}</div><div class="nfgrid"><span class="nfk">format</span><span class="nfv">${esc(fmt)}</span><span class="nfk">key / tex</span><span class="nfv">${loc}</span></div>`;
   }
-  return `<div class="nfsub">notation · all columns</div><div class="nfgrid">${grid}</div>${src}`;
+  return `<div class="nfsub">playable · all columns</div><div class="nfgrid">${grid}</div>${src}`;
 }
-function allFieldsPanel(it){ return `<div class="nfields">${notationGrid(it)}</div>`; }              // inline, under list rows
-function detailFieldsPanel(it){ return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> fields · drag the corner to resize</div><div class="fdbody">${notationGrid(it)}</div></aside>`; }  // floating, on detail pages
+function allFieldsPanel(it){ return `<div class="nfields">${playableGrid(it)}</div>`; }              // inline, under list rows
+function detailFieldsPanel(it){ return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> fields · drag the corner to resize</div><div class="fdbody">${playableGrid(it)}</div></aside>`; }  // floating, on detail pages
 function rowHTML(it){
-  const isLesson = it.type==='lesson', isPat = it.type==='pattern';
+  const isLesson = it.kind==='lesson', isPat = it.kind==='pattern';
   const cover = isLesson ? (LESSON_KINDS[it.lesson_type]?.icon||'school')
               : isPat ? (PATTERN_KINDS[it.pattern_kind]?.icon||'extension')
               : 'music_note';
@@ -696,10 +696,10 @@ function rowHTML(it){
     : `${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}${it.musical_key?' <span class="dot"></span> '+it.musical_key:''}`;
   const bpm = isLesson ? lessonLadder(it) : isPat ? '—' : (it.bpm||'—');
   const lvl = it.level===0 ? '<span class="lvlpill debut">Debut</span>' : `<span class="lvlpill">${it.level??'—'}</span>`;
-  const nav = ` data-nav="#/${it.type}/${it.id}"`;
+  const nav = ` data-nav="#/${it.kind}/${it.id}"`;
   return `<div class="row">
     <div class="name">
-      <div class="cover ${it.type!=='song'?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
+      <div class="cover ${it.kind!=='song'?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
       <div class="nm"${nav}>
         <div class="nmtitle"><b>${esc(it.title)}</b>${badge}${isNew}${priv}</div>
         <div class="nmsub">${sub}</div>
@@ -738,7 +738,7 @@ function adminCatalogBar(){
 /* ---------- relationship + meta blocks (READ deepening) ---------- */
 function patternsCard(it){
   if(!it.patterns||!it.patterns.length) return '';
-  return `<div class="card"><h3><span class="material-symbols-outlined">extension</span> Patterns ${it.type==='song'?'in this song':'this lesson teaches'} <span style="font-weight:400;color:var(--faint)">· reusable grooves / fills / rudiments</span></h3>
+  return `<div class="card"><h3><span class="material-symbols-outlined">extension</span> Patterns ${it.kind==='song'?'in this song':'this lesson teaches'} <span style="font-weight:400;color:var(--faint)">· reusable grooves / fills / rudiments</span></h3>
     ${it.patterns.map(pid=>{ const p=PATTERNS[pid]; if(!p) return ''; const k=PATTERN_KINDS[p.kind]||{label:p.kind,icon:'extension'};
       return `<div class="patrow" data-nav="#/pattern/${pid}"><span class="material-symbols-outlined" style="color:var(--accent)">${k.icon}</span>
         <div style="flex:1"><b>${esc(p.name)}</b><small style="color:var(--faint);display:block">${[p.family,p.subdivision&&p.subdivision+' notes','level '+(p.level??'—')].filter(Boolean).join(' · ')}</small></div>
@@ -753,16 +753,16 @@ function mediaLinks(it){
 }
 function metaFoot(it){
   const bits=[];
-  if(it.source==='user-upload'){ bits.push(it.visibility==='private'?'<span class="tag private">Private</span>':'<span class="tag">Upload</span>'); if(it.owner) bits.push('owner: '+esc(it.owner)); }
+  if(it.origin==='user-upload'){ bits.push(it.visibility==='private'?'<span class="tag private">Private</span>':'<span class="tag">Upload</span>'); if(it.owner) bits.push('owner: '+esc(it.owner)); }
   else bits.push('Curated');
   if(it.license) bits.push(esc(it.license));
-  bits.push('source: <code style="font-size:11px">'+esc(it.source||'?')+'</code>');
+  bits.push('origin: <code style="font-size:11px">'+esc(it.origin||'?')+'</code>');
   return `<div class="metafoot"><span class="material-symbols-outlined">info</span>${bits.join(' · ')}</div>`;
 }
 
 /* ---------- screen: SONG detail ---------- */
 function renderSong(id){
-  const it = ITEMS.find(x=>x.id===id); if(!it) return notFound();
+  const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
   const sections = it.data?.sections||[];
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Song · '+esc(it.title)]])}
@@ -805,10 +805,10 @@ function renderSong(id){
 
 /* ---------- screen: LESSON detail ---------- */
 function renderLesson(id){
-  const it = ITEMS.find(x=>x.id===id); if(!it) return notFound();
+  const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
   const steps = STEPS[id]||[];
   const kind = LESSON_KINDS[it.lesson_type]?.label||'Lesson';
-  const srcSong = it.sourceSong ? ITEMS.find(x=>x.id===it.sourceSong) : null;
+  const srcSong = it.sourceSong ? PLAYABLES.find(x=>x.id===it.sourceSong) : null;
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Lesson · '+esc(it.title)]])}
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
@@ -836,8 +836,8 @@ function renderLesson(id){
 }
 /* ---------- screen: PATTERN detail (first-class playable — score + history) ---------- */
 function renderPattern(id){
-  let it = ITEMS.find(x=>x.id===id);
-  if(!it){ const p=PATTERNS[id]; if(p) it={id, type:'pattern', title:p.name, pattern_kind:p.kind, family:p.family, level:p.level, instruments:['drums'], status:'published', source:'curated'}; }
+  let it = PLAYABLES.find(x=>x.id===id);
+  if(!it){ const p=PATTERNS[id]; if(p) it={id, kind:'pattern', title:p.name, pattern_kind:p.kind, family:p.family, level:p.level, instruments:['drums'], status:'published', origin:'curated'}; }
   if(!it) return notFound();
   const k = PATTERN_KINDS[it.pattern_kind]||{label:'Pattern',icon:'extension'};
   const diff = it.data&&it.data.difficulty;
@@ -881,7 +881,7 @@ function stepFieldsInline(lesson, s){
     title: s.title,
     start_bpm: s.start_bpm ?? null,
     goal_bpm: s.goal_bpm ?? null,
-    notation_tex: s.notation_tex ?? null,
+    notation_alphaTex: s.notation_alphaTex ?? null,
     source_item_id: s.source_item_id ?? null,
     section_label: s.section_label ?? null,
     start_bar: s.start_bar ?? null,
@@ -889,10 +889,10 @@ function stepFieldsInline(lesson, s){
   };
   const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
   return `<div class="nfields"><div class="nfsub">exercise (step) · current = notation inlined on the step</div><div class="nfgrid">${grid}</div>
-    <div class="nfsub" style="color:var(--s-dev)">↳ target: a step = <code>lesson_step</code> junction → reusable <code>pattern</code> (pattern_id + sort_order + start/goal bpm). The notation_tex / song-slice fields move onto the pattern, so the same pattern can be reused across lessons.</div></div>`;
+    <div class="nfsub" style="color:var(--s-dev)">↳ target: a step = <code>lesson_step</code> junction → reusable <code>pattern</code> (pattern_id + sort_order + start/goal bpm). The notation_alphaTex / song-slice fields move onto the pattern, so the same pattern can be reused across lessons.</div></div>`;
 }
 function stepRow(lesson, s){
-  const srcTag = s.notation_tex!=null ? '<span class="src tex">alphaTex</span>'
+  const srcTag = s.notation_alphaTex!=null ? '<span class="src tex">alphaTex</span>'
                : s.source_item_id ? '<span class="src slice">song slice</span>'
                : '<span class="src upload">upload</span>';
   const ladder = (s.start_bpm||s.goal_bpm) ? `<span class="ladder"><span class="material-symbols-outlined" style="font-size:14px">speed</span>${s.start_bpm??'?'}→${s.goal_bpm??'?'}</span>` : '';
@@ -908,9 +908,9 @@ function stepRow(lesson, s){
 
 /* ---------- screen: STEP ---------- */
 function renderStep(lessonId, n){
-  const it = ITEMS.find(x=>x.id===lessonId); if(!it) return notFound();
+  const it = PLAYABLES.find(x=>x.id===lessonId); if(!it) return notFound();
   const all = STEPS[lessonId]||[]; const s = all.find(x=>x.step_no===n); if(!s) return notFound();
-  const srcSong = s.source_item_id?ITEMS.find(x=>x.id===s.source_item_id):null;
+  const srcSong = s.source_item_id?PLAYABLES.find(x=>x.id===s.source_item_id):null;
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['#/lesson/'+it.id,'Lesson · '+esc(it.title)],['','Step '+n]])}
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back to lesson</button>
@@ -925,7 +925,7 @@ function renderStep(lessonId, n){
         <h1>${esc(s.title)}</h1>
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${s.start_bpm??'?'} → ${s.goal_bpm??'?'}</span> BPM</span>
-          <span class="badge"><span class="material-symbols-outlined">music_note</span>${s.notation_tex!=null?'alphaTex (authored)':s.source_item_id?'slice of '+esc(srcSong?.title||'song'):'uploaded file'}</span>
+          <span class="badge"><span class="material-symbols-outlined">music_note</span>${s.notation_alphaTex!=null?'alphaTex (authored)':s.source_item_id?'slice of '+esc(srcSong?.title||'song'):'uploaded file'}</span>
           ${s.source_item_id?`<span class="badge"><span class="material-symbols-outlined">segment</span>bars ${s.start_bar}–${s.end_bar}</span>`:''}
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
@@ -935,7 +935,7 @@ function renderStep(lessonId, n){
       </div>
     </div>
     <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation preview</h3>
-      <div class="gate"><span class="material-symbols-outlined">info</span>Renders here at play time (AlphaTab). Source: ${s.notation_tex!=null?'<code>notation_tex</code> (inline alphaTex)':s.source_item_id?'<code>source_item_id</code> + bar range (song slice)':'<code>notation_key</code> (uploaded file)'}.</div>
+      <div class="gate"><span class="material-symbols-outlined">info</span>Renders here at play time (AlphaTab). Source: ${s.notation_alphaTex!=null?'<code>notation_alphaTex</code> (inline alphaTex)':s.source_item_id?'<code>source_item_id</code> + bar range (song slice)':'<code>notation_key</code> (uploaded file)'}.</div>
     </div>
     ${stepFieldsPanel(it,s)}
   `;
@@ -945,8 +945,8 @@ function renderStep(lessonId, n){
 function renderPlayer(){
   const {seg} = parseHash();
   const id = seg[1]; const stepNo = seg[2]==='step'?+seg[3]:null;
-  const it = ITEMS.find(x=>x.id===id);
-  let ctx = it? (it.type==='song'?`“${it.title}” — full song @ ${it.bpm} BPM`:`Lesson “${it.title}”`) : 'item';
+  const it = PLAYABLES.find(x=>x.id===id);
+  let ctx = it? (it.kind==='song'?`“${it.title}” — full song @ ${it.bpm} BPM`:`Lesson “${it.title}”`) : 'item';
   if(stepNo){ const s=(STEPS[id]||[]).find(x=>x.step_no===stepNo); if(s) ctx=`“${it.title}” — Step ${stepNo}: ${s.title} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
   app.innerHTML = `
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
@@ -1005,8 +1005,8 @@ function adminDetailBar(it){
   if(!isAdmin()) return '';
   return `<div class="adminbar">
     <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin</span>
-    <button class="adminbtn" data-nav="#/admin/edit/${it.id}"><span class="material-symbols-outlined">edit</span> Edit ${it.type}</button>
-    ${it.type==='lesson'?`<button class="adminbtn" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+    <button class="adminbtn" data-nav="#/admin/edit/${it.id}"><span class="material-symbols-outlined">edit</span> Edit ${it.kind}</button>
+    ${it.kind==='lesson'?`<button class="adminbtn" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
     <button class="adminbtn danger" data-nav="#/admin/edit/${it.id}?delete=1"><span class="material-symbols-outlined">delete</span> ${it.status==='published'?'Archive':'Delete'}</button>
   </div>`;
 }
