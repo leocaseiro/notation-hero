@@ -50,6 +50,22 @@
   .arrow b{color:var(--accent);font-weight:600}
   .stepno{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--panel);border:1px solid color-mix(in srgb,var(--step) 55%,transparent);color:var(--step);font-size:12px;font-weight:700;font-family:"Geist Mono",monospace}
   .reuse{color:var(--pattern);font-size:12px}
+  .erm{display:flex;flex-direction:column;gap:14px;margin-top:4px}
+  .ermrow{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+  .entity{border:1px solid var(--line);border-radius:10px;background:var(--panel2);min-width:200px;overflow:hidden}
+  .entity .ehead{border-bottom:1px solid var(--line);padding:7px 11px;font-weight:700;font-size:12.5px;color:var(--ink)}
+  .entity .ehead small{font-weight:400;color:var(--faint);font-size:10.5px}
+  .entity.playable .ehead{background:color-mix(in srgb,var(--song) 15%,var(--panel))}
+  .entity.notation .ehead{background:color-mix(in srgb,var(--note) 15%,var(--panel))}
+  .entity.step .ehead{background:color-mix(in srgb,var(--step) 15%,var(--panel))}
+  .entity.score .ehead{background:color-mix(in srgb,var(--part) 15%,var(--panel))}
+  .entity .ebody{padding:6px 11px;font-family:"Geist Mono",ui-monospace,monospace;font-size:11px}
+  .entity .f{display:flex;justify-content:space-between;gap:14px;padding:2px 0;color:var(--muted)}
+  .entity .f .fk{color:var(--faint)}
+  .entity .f.pk b{color:var(--accent)}
+  .relarrow{display:flex;flex-direction:column;justify-content:center;align-items:center;color:var(--faint);font-size:10.5px;text-align:center;min-width:92px;padding-top:14px}
+  .relarrow .ln{color:var(--accent);font-size:15px;line-height:1.2}
+  .ermnote{color:var(--faint);font-size:12px;margin:2px 0 0}
   ol.forks{margin:6px 0;padding-left:20px}
   ol.forks li{margin:9px 0}
   ol.forks b{color:var(--accent)}
@@ -120,6 +136,77 @@
           <span class="node note">📝 Notation <small>drums · piano · guitar</small></span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <h2>F4 — the shape as an ERM (entities + arrows)</h2>
+  <p class="sub" style="margin-bottom:10px"><b>"was …"</b> shows the rename: the old <code>notation</code> umbrella → <b>Playable</b>; the old <code>source</code> (the bytes) takes the name <b>Notation</b> (the score). One <b>Step</b> table serves both lessons and composite patterns.</p>
+  <div class="diagram">
+    <div class="erm">
+
+      <div class="ermrow">
+        <div class="entity playable">
+          <div class="ehead">Playable <small>was <code>notation</code></small></div>
+          <div class="ebody">
+            <div class="f pk"><b>id</b><span class="fk">PK</span></div>
+            <div class="f"><span>kind</span><span class="fk">song·part·lesson·pattern ← role</span></div>
+            <div class="f"><span>title</span><span class="fk">text</span></div>
+            <div class="f"><span>parent_id</span><span class="fk">FK→Playable</span></div>
+            <div class="f"><span>notation_id</span><span class="fk">FK→Notation ·nullable</span></div>
+            <div class="f"><span>…facets · data</span><span class="fk">level·bpm·instruments…</span></div>
+          </div>
+        </div>
+        <div class="relarrow"><span>renders when<br>played whole</span><span class="ln">──▶</span><span>(optional)</span></div>
+        <div class="entity notation">
+          <div class="ehead">Notation <small>the score · was <code>source</code></small></div>
+          <div class="ebody">
+            <div class="f pk"><b>id</b><span class="fk">PK</span></div>
+            <div class="f"><span>format</span><span class="fk">gp·midi·alphaTex·xml</span></div>
+            <div class="f"><span>s3_key?</span><span class="fk">file</span></div>
+            <div class="f"><span>notation_alphaTex?</span><span class="fk">inline</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ermrow">
+        <div class="entity playable">
+          <div class="ehead">Playable <small>kind = lesson / composite pattern</small></div>
+          <div class="ebody"><div class="f"><span>id</span><span class="fk">the parent / container</span></div></div>
+        </div>
+        <div class="relarrow"><span>has ordered</span><span class="ln">──▶</span><span>steps</span></div>
+        <div class="entity step">
+          <div class="ehead">Step <small>was <code>lesson_step</code></small></div>
+          <div class="ebody">
+            <div class="f"><span>parent_id</span><span class="fk">FK→Playable</span></div>
+            <div class="f"><span>child_id</span><span class="fk">FK→Playable</span></div>
+            <div class="f"><span>sort_order</span><span class="fk">int</span></div>
+            <div class="f"><span>start_bpm·goal_bpm</span><span class="fk">tempo ladder</span></div>
+          </div>
+        </div>
+        <div class="relarrow"><span>points at</span><span class="ln">──▶</span><span>a child</span></div>
+        <div class="entity playable">
+          <div class="ehead">Playable <small>kind = pattern (the block)</small></div>
+          <div class="ebody"><div class="f"><span>id</span><span class="fk">the reused child</span></div></div>
+        </div>
+      </div>
+      <p class="ermnote">↳ <b>Step is self-referencing</b> (Playable → Playable): a Lesson <i>and</i> a composite Pattern (groove) use the <b>same</b> Step table. A leaf (plain pattern, part, song) has <b>no</b> steps and sets <code>notation_id</code> instead.</p>
+
+      <div class="ermrow">
+        <div class="entity playable">
+          <div class="ehead">Playable <small>any kind</small></div>
+          <div class="ebody"><div class="f"><span>id</span><span class="fk">PK</span></div></div>
+        </div>
+        <div class="relarrow"><span>scored per-user</span><span class="ln">──▶</span><span>1 row / user</span></div>
+        <div class="entity score">
+          <div class="ehead">Score <small>per-user · DynamoDB</small></div>
+          <div class="ebody">
+            <div class="f"><span>user_id + playable_id</span><span class="fk">key</span></div>
+            <div class="f"><span>best · sessions · trend</span><span class="fk">…</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="ermnote">↳ Each Playable is scored on its <b>own</b> id. A Lesson's score = playing the <b>whole</b> lesson (the "final exam"); its Steps keep their <b>own</b> scores. <b>Never</b> an average.</p>
+
     </div>
   </div>
 
