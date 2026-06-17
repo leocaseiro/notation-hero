@@ -214,6 +214,8 @@ body.showall .fielddock{display:block}
 .step .si{flex:1;min-width:0;cursor:pointer}
 .step .si b{font-weight:600}
 .step .si small{color:var(--faint);display:block}
+.stepwrap{margin-bottom:8px}
+.stepwrap .step{margin-bottom:0}
 .ladder{display:inline-flex;align-items:center;gap:5px;font-family:"Geist Mono";font-size:12.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:3px 9px}
 .src{font-size:11px;padding:1px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--faint)}
 .src.tex{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
@@ -871,19 +873,37 @@ function stepFieldsPanel(lesson, s){
   const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
   return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> lesson_step · junction</div><div class="fdbody"><div class="nfsub">a step is NOT a notation — it links a lesson to a reusable pattern</div><div class="nfgrid">${grid}</div></div></aside>`;
 }
+/* inline per-step field panel (Inspector toggle): shows the fields THIS step carries + flags the target junction model */
+function stepFieldsInline(lesson, s){
+  const f = {
+    lesson_id: lesson.id,
+    step_no: s.step_no,
+    title: s.title,
+    start_bpm: s.start_bpm ?? null,
+    goal_bpm: s.goal_bpm ?? null,
+    notation_tex: s.notation_tex ?? null,
+    source_item_id: s.source_item_id ?? null,
+    section_label: s.section_label ?? null,
+    start_bar: s.start_bar ?? null,
+    end_bar: s.end_bar ?? null,
+  };
+  const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
+  return `<div class="nfields"><div class="nfsub">exercise (step) · current = notation inlined on the step</div><div class="nfgrid">${grid}</div>
+    <div class="nfsub" style="color:var(--s-dev)">↳ target: a step = <code>lesson_step</code> junction → reusable <code>pattern</code> (pattern_id + sort_order + start/goal bpm). The notation_tex / song-slice fields move onto the pattern, so the same pattern can be reused across lessons.</div></div>`;
+}
 function stepRow(lesson, s){
   const srcTag = s.notation_tex!=null ? '<span class="src tex">alphaTex</span>'
                : s.source_item_id ? '<span class="src slice">song slice</span>'
                : '<span class="src upload">upload</span>';
   const ladder = (s.start_bpm||s.goal_bpm) ? `<span class="ladder"><span class="material-symbols-outlined" style="font-size:14px">speed</span>${s.start_bpm??'?'}→${s.goal_bpm??'?'}</span>` : '';
   const sliceInfo = s.source_item_id ? `<small>${esc(s.section_label||'')} · bars ${s.start_bar}–${s.end_bar}</small>` : '';
-  return `<div class="step">
+  return `<div class="stepwrap"><div class="step">
     <span class="no">${s.step_no}</span>
     <div class="si" data-nav="#/lesson/${lesson.id}/step/${s.step_no}"><b>${esc(s.title)}</b>${sliceInfo}</div>
     ${ladder} ${srcTag}
     ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/admin/lesson/${lesson.id}/step/${s.step_no}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
     <button class="play" title="Play this step" data-nav="#/play/${lesson.id}/step/${s.step_no}"><span class="material-symbols-outlined">play_arrow</span></button>
-  </div>`;
+  </div>${stepFieldsInline(lesson, s)}</div>`;
 }
 
 /* ---------- screen: STEP ---------- */
