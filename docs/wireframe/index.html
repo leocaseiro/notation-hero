@@ -516,6 +516,19 @@ function stepsFor(parentId){ return (STEP[parentId]||[]).slice().sort((a,b)=>(a.
 function childPlayable(childId){ return PLAYABLES.find(x=>x.id===childId) || null; }
 function reuseCount(childId){ return Object.keys(STEP).filter(pid=>STEP[pid].some(s=>s.child_id===childId)).length; }   // how many parents step to this pattern
 function usedBy(childId){ return Object.keys(STEP).filter(pid=>STEP[pid].some(s=>s.child_id===childId)).map(childPlayable).filter(Boolean); }
+function usedIn(patternId){   // SD-14 reverse lookup: every playable referencing this pattern — via STEP child OR via the patterns[] m:n
+  const out=[], seen=new Set();
+  Object.keys(STEP).forEach(pid=>{ if(STEP[pid].some(s=>s.child_id===patternId)){ const p=childPlayable(pid); if(p&&!seen.has(p.id)){seen.add(p.id);out.push(p);} } });
+  PLAYABLES.forEach(p=>{ if((p.patterns||[]).includes(patternId) && !seen.has(p.id)){ seen.add(p.id); out.push(p); } });
+  return out;
+}
+/* playable_link — lightweight relationships (a song uses a groove; a fill uses a rudiment). SD-14. */
+const LINKS = [
+  {from:'seven-nation-army', to:'p-rock-8th',   relation:'uses'},
+  {from:'p-tom-fill',        to:'p-paradiddle', relation:'uses'},
+  {from:'p-rock-groove',     to:'p-rock-8th',   relation:'related'},
+];
+function linksOf(id){ return { uses: LINKS.filter(l=>l.from===id), usedByLink: LINKS.filter(l=>l.to===id) }; }
 function patternKindsOf(it){ if(it.kind==='pattern') return it.pattern_kind?[it.pattern_kind]:[]; return [...new Set(stepsFor(it.id).map(s=>childPlayable(s.child_id)).filter(Boolean).map(c=>c.pattern_kind).filter(Boolean))]; }   // a lesson's "kind" = the pattern_kinds of its step children (lesson_type is derived, not stored)
 function hasParts(it){ return it.kind==='song' ? (songParts(it.id).length>0 || !!(it.data&&it.data.sections&&it.data.sections.length)) : stepsFor(it.id).length>0; }
 function itemFlags(it){
@@ -1035,8 +1048,10 @@ function renderPattern(id){
     ${stepsFor(it.id).length?`<div class="card"><h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· composite pattern — built from ${stepsFor(it.id).length} reusable patterns</span></h3>
       ${stepsFor(it.id).map(s=>stepRow(it,s)).join('')}
       <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>This groove is scored on its <b>own</b> id (whole-play)${signedIn()&&it.best!=null?` — <b>${it.best}%</b>`:''}; each sub-pattern keeps its own score. No averaging.</div></div></div>`:''}
-    ${(()=>{ const u=usedBy(it.id); return u.length?`<div class="card"><h3><span class="material-symbols-outlined">hub</span> Used in <span style="font-weight:400;color:var(--faint)">· this pattern is a step in ${u.length} playable(s) — reuse</span></h3>
-      ${u.map(p=>`<div class="patrow" data-nav="#/${p.kind==='pattern'?'pattern':'lesson'}/${p.id}"><span class="material-symbols-outlined" style="color:var(--accent)">${p.kind==='pattern'?'extension':'school'}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${p.kind}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`:''; })()}
+    ${(()=>{ const u=usedIn(it.id); return u.length?`<div class="card"><h3><span class="material-symbols-outlined">hub</span> Used in <span style="font-weight:400;color:var(--faint)">· this pattern appears in ${u.length} playable(s) — reuse (steps + song/lesson links)</span></h3>
+      ${u.map(p=>`<div class="patrow" data-nav="#/${p.kind}/${p.id}"><span class="material-symbols-outlined" style="color:var(--accent)">${p.kind==='pattern'?'extension':p.kind==='song'?'music_note':p.kind==='part'?'segment':'school'}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${p.kind}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`:''; })()}
+    ${(()=>{ const lk=linksOf(it.id); const all=[...lk.uses.map(l=>({p:childPlayable(l.to),rel:l.relation,dir:'uses →'})), ...lk.usedByLink.map(l=>({p:childPlayable(l.from),rel:l.relation,dir:'← used by'}))].filter(x=>x.p); return all.length?`<div class="card"><h3><span class="material-symbols-outlined">share</span> Related <span style="font-weight:400;color:var(--faint)">· playable_link</span></h3>
+      ${all.map(x=>`<div class="patrow" data-nav="#/${x.p.kind}/${x.p.id}"><span class="src tex" style="white-space:nowrap">${x.dir}</span><div style="flex:1"><b>${esc(x.p.title)}</b><small style="color:var(--faint);display:block">${x.p.kind} · ${esc(x.rel)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`:''; })()}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
   `;
