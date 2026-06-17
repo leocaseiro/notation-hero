@@ -252,3 +252,39 @@ INSERT INTO playable_link (from_id, to_id, relation) VALUES
 --   SELECT s.sort_order, c.title FROM step s JOIN playable c ON c.id=s.child_id WHERE s.parent_id='groove-g' ORDER BY s.sort_order;
 -- a pattern's difficulty curve (per-kind variance in JSONB):
 --   SELECT id, data->'difficulty' FROM playable WHERE data ? 'difficulty';
+
+-- ============================================================================
+-- ROUND-6 OPEN QUESTIONS (2026-06-18) — sketches for the spec pass. NOT created above.
+-- ============================================================================
+-- (1) TRACKS — replace the flat playable.instruments text[] with a track relation.
+--     A song has N tracks; MULTIPLE tracks may share an instrument (guitar 'solo' + guitar 'bass').
+--   CREATE TABLE track (
+--     id          text PRIMARY KEY,
+--     playable_id text NOT NULL REFERENCES playable(id) ON DELETE CASCADE,
+--     instrument  text NOT NULL,         -- 'drums' | 'guitar' | 'keys' | 'bass' | ...
+--     role        text,                  -- 'solo' | 'rhythm' | 'lead' | 'bass' | 'pad' …  (disambiguates same instrument)
+--     name        text,                  -- optional display label
+--     sort_order  int
+--   );
+--   -- KEEP a denormalised playable.instruments text[] (DISTINCT instrument across tracks) for the FAST
+--   -- catalog filter (instruments @> ARRAY[$1]); the track table holds the detail. So the "rename" is a SPLIT.
+--   -- Open: is 'bass' a guitar role OR its own instrument? per-instrument difficulty per-track or by-instrument curve?
+--
+-- (2) MEDIA — multi-level (playable-level + per-track).
+--   CREATE TABLE media (
+--     id          text PRIMARY KEY,
+--     playable_id text NOT NULL REFERENCES playable(id) ON DELETE CASCADE,
+--     track_id    text REFERENCES track(id) ON DELETE CASCADE,   -- NULL = song-level media
+--     kind        text NOT NULL,         -- 'audio' | 'video'
+--     provider    text, url text, label text, sort_order int
+--   );
+--
+-- (3) PER-INSTRUMENT DIFFICULTY — a single scalar playable.level is INSUFFICIENT (CMaj6 / F-barre is hard on
+--     guitar, easy on piano). Options: playable.level_by_instrument jsonb, OR a per-track level, OR a
+--     data.difficulty(by:'instrument', tiers:[{when:'piano',level},{when:'guitar',level}]) curve (used in the wireframe).
+--
+-- (4) CHORD / PROGRESSION — a chord = LEAF pattern (pattern_kind='chord'); a chord PROGRESSION = a COMPOSITE
+--     pattern whose `step`s ARE the chords (same shape as a composite groove — NO new table). Open: store the
+--     abstract roman-numeral progression (I–V–vi–IV) once + derive concrete chords per key, OR one composite per
+--     key. Songs USE progressions via playable_link / the patterns m:n.
+-- ============================================================================

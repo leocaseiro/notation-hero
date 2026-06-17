@@ -300,3 +300,24 @@ UX deltas F1–F7 built on branch `docs/wireframe-pattern-lesson-model`. New DB-
 ### 4b coverage — scales/chords now have relationships
 - The chord lesson/progression gave chords real Used-in relationships; the earlier "empty relationships" was on
   scale patterns that nothing referenced yet.
+
+### ⭐ Tracks — `instruments[]` → a track relation (brainstorm, 2026-06-18)
+**Ask (Leo):** rename `instruments text[]` → `tracks`. **Catch:** a song can have MULTIPLE tracks of the SAME
+instrument — e.g. guitar `solo` + guitar `bass`/`rhythm`. A flat `instruments text[]` can't represent that, and
+per-track media (F7) / voicing (SD-15) / per-instrument difficulty ($N) all need a track identity.
+
+- **A — `track` relation (RECOMMENDED):** `track(id, playable_id, instrument, role, name?, sort_order)`. Two
+  same-instrument tracks = two rows, same `instrument`, different `role` (+ id). Media → `media.track_id`,
+  voicing → notes per track. **Keep a denormalised `playable.instruments text[]` (DISTINCT instrument across
+  tracks)** for the fast catalog filter (`@> ARRAY[$1]`), derived from tracks. So the "rename" is really a
+  **split**: promote the detail into a `track` table, keep `instruments[]` as a derived facet.
+- **B — `tracks jsonb`** `[{instrument, role, media}]` on the playable (matches the wireframe's current shape):
+  simplest, no join, but weak for filtering/indexing and for joining media/notes by track.
+- **C — instrument vocab only** (treat `bass` as its own instrument): solves bass-vs-guitar but NOT two of the
+  same (lead + rhythm guitar, two vocal harmonies). Insufficient alone.
+
+**Recommendation: A.** `role` (+ id) disambiguates same-instrument tracks; `instruments[]` stays the derived
+filter facet. Wireframe now demonstrates it — SNA tracks = drums(kit) · guitar(solo) · guitar(bass) · keys(pad),
+while its `instruments` facet stays `[drums, guitar, keys]`. **Open:** is `bass` a guitar `role` or its own
+instrument (vocab)? Per-instrument difficulty per-track or a by-instrument curve? DDL sketch in
+`2026-06-17-notation-model-draft.sql` (Round-6).
