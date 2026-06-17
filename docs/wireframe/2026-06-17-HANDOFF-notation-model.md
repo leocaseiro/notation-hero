@@ -1,6 +1,6 @@
 # Handoff — Notation/Playable model — 2026-06-17 (session 2: MODEL LOCKED)
 
-**Status:** ✅ Content model **locked** and **validated on Postgres**. Vocabulary settled (instrument-agnostic). Next = migrate the **wireframe** to it.
+**Status:** ✅ Content model **locked** + validated on Postgres. ✅ **Wireframe migrated** to it (C1–C5) + UX deltas built (E1–E6) on **2026-06-18** — branch `docs/wireframe-pattern-lesson-model`. Next = apply the locked model to the **real spec**.
 
 ## Where to work
 - Worktree: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model`
@@ -24,7 +24,14 @@
 - Decisions + open-Qs tracker: `docs/wireframe/notation-model-open-questions.md`
 - Wireframe v1.4 (per-step field panels added this session): `docs/wireframe/index.html`
 
-## Next — the resume goal: migrate the wireframe (`index.html`) to the locked model
+## ✅ DONE (2026-06-18) — wireframe migrated to the locked model + UX deltas
+All five migration steps below shipped (C1–C5). Plus UX deltas E1–E6: per-Playable descriptions (SD-17/19);
+song part field-inspector + clickable artist→filter (SD-13); lesson step table-headers + Continue/Play-from-start
+(SD-20); iPhone-style topbar back + step-detail revival + parts/steps prev-next; pattern relationships
+"Used in" + "Related"/uses (SD-14); repeated parts (SD-16); level bands (N-14); completed + reset-keep-history
+(SD-21); voicing placeholder (SD-15). DB-side notes for the spec pass live in `2026-06-16-schema-deltas.md` (Round-5).
+
+### Original resume goal (now done): migrate the wireframe (`index.html`) to the locked model
 1. **Rename** data + render: `ITEMS`→playable (`kind`), `source`→`notation`, `STEPS`→`step` junction (parent→child), `notation_tex`→`notation_alphaTex`.
 2. **Song Parts:** `sna-breakdown` (fake lesson) → `kind=part` under the song (`parent_id`, bar range, `listable=false`), reached via "Practice in parts". Remove `song-breakdown` from `LESSON_KINDS`/`BROWSE_KINDS`.
 3. **Steps → `step` junction** referencing reusable patterns; show reuse + same-child-repeats + a composite pattern (groove with its own steps).

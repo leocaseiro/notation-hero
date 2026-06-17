@@ -221,3 +221,42 @@ lesson/pattern UI on a fuzzy model = wasted work. v1.3 (songs + catalog/search/f
 *(**Applying** resolved deltas to the locked spec is a SEPARATE deliberate pass — on your go, a changelog line
 each, likely after CRUD. The item schema stayed almost entirely intact, as you predicted — most changes are
 filter-side.)*
+
+---
+
+## Round-5 — wireframe migrated to the locked Playable model + DB notes (2026-06-18)
+
+The catalog wireframe (`index.html`) was migrated to the **locked Playable model** (commits C1–C5) and a batch
+of UX deltas were built (E1–E6) on branch `docs/wireframe-pattern-lesson-model`. The locked DDL was **NOT**
+changed — DB-side items that surfaced are written down here for the separate spec-apply pass.
+
+### SD-15 — voicing model (per Leo, 2026-06-18). UI **placeholder shipped** (a `voices[]` chip line on parts). DB model:
+- A **playable has N tracks**; a **track has N notes (MIDI)**. A **voice** is *derived* from the MIDI note
+  numbers via a **note→voice map** (General-MIDI style) — voices are **not** stored per note.
+- Example drum map (a voice can cover several notes): `snare: 37,38,39,40` · `hi-hat foot: 44` · `bass drum: 35,36`.
+- "Active voices for a part/step" = the distinct voices present across that slice's track notes — **computed**.
+- DDL sketch (for the spec pass):
+  ```sql
+  -- track     (id, notation_id -> notation, instrument, name, channel)
+  -- note      (id, track_id -> track, midi int, start_tick, dur_tick, velocity)
+  -- voice_map (instrument, voice, midi int[])   -- e.g. ('drums','snare','{37,38,39,40}')
+  -- voices(slice) := SELECT DISTINCT vm.voice
+  --                  FROM note n JOIN track t ON t.id=n.track_id
+  --                  JOIN voice_map vm ON n.midi = ANY(vm.midi)
+  --                  WHERE <part/step bar range>;
+  ```
+
+### SD-16 — repeated parts. UI **shipped** (a part renders >1 bar range). DB options to choose at spec time:
+- **(a) multiple `part` rows** sharing a label, each its own row + range — simplest; each range independently scorable.
+- **(b) one part with `ranges jsonb = [[s,e],…]`** — one row, one score, many ranges.
+- The wireframe used (b) as a `ranges[]` display field on the part. Decide (a) vs (b) when applying.
+
+### Play-next on the **score / play screen** (Leo, 2026-06-18) — write-down:
+- The play/score screen (separate draft; stubbed here) should offer **"play next"** — chain to the next
+  part / step / lesson without returning to the catalog. Step/part **prev-next** live on the *detail* views;
+  the player itself stays minimal and is exited via the topbar **back** button.
+
+### Wart — PATTERNS-dict vs pattern-playable id duality (noticed during E5):
+- Lessons/songs reference vocabulary patterns via `patterns:['rock-8th']` (a PATTERNS lookup) while the `step`
+  junction references **pattern playables** (`p-rock-8th`, …) — two id namespaces. `usedIn()` unions both so
+  relationships render, but the real model should pick **one** (pattern playables). Reconcile in the spec pass.
