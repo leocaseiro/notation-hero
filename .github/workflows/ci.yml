@@ -66,6 +66,7 @@ jobs:
               - 'commitlint.config.*'
               - '.nvmrc'
               - '.npmrc'
+              - 'osv-scanner.toml'
               - '.github/workflows/ci.yml'
             apps:
               - 'client/**'

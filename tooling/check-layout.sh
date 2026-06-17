@@ -11,7 +11,7 @@
 #
 #   1. No __tests__/, __mocks__/, or stories/ directories — group by domain, not file-type.
 #
-#   2. Role suffix required: every *.ts/*.tsx/*.mts/*.cts under core/ adapters/ apps/ infra/ ends
+#   2. Role suffix required: every *.ts/*.tsx/*.mts/*.cts under server/src/ ends
 #      in an approved role suffix (e.g. catalogue-item.entity.ts, logger.port.ts, neon.adapter.ts).
 #      The suffix carries the role — this REPLACES the old PascalCase folder-per-entity rule.
 #      ESLint check-file owns the casing (kebab); this rule owns the suffix VOCABULARY. The set
@@ -28,8 +28,8 @@
 # Linux CI). BATS coverage is NH-40.
 set -euo pipefail
 
-# Run from the repo root so `git ls-files` yields repo-relative paths (the core/|adapters/|apps/|
-# infra/ case-matching below assumes top-level paths). Fail CLOSED if we're not inside a git work
+# Run from the repo root so `git ls-files` yields repo-relative paths (the server/src/ case-match
+# below assumes repo-relative paths). Fail CLOSED if we're not inside a git work
 # tree — a silent exit 0 here would make this gate fail open (PR #25 review #13).
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 [ -n "$ROOT" ] || { printf '::error::check-layout.sh must run inside the git work tree\n' >&2; exit 1; }
@@ -92,7 +92,7 @@ while IFS= read -r -d '' f; do
   base="$(strip_ext "$f")"
   file="$(basename "$f")"
 
-  # Rule 2 — role suffix required for domain/application source (core/adapters/apps/infra only)
+  # Rule 2 — role suffix required for domain/application source (server/src/ only)
   case "$f" in
     server/src/*)
       case "$file" in
@@ -107,7 +107,7 @@ while IFS= read -r -d '' f; do
           name="${file%.ts}"; name="${name%.tsx}"; name="${name%.mts}"; name="${name%.cts}"
           role="${name##*.}"
           if ! printf '%s' "$role" | grep -qE "^(${approved_suffix})$"; then
-            err "Missing role suffix: '$f' — files under core/adapters/apps/infra must end in an approved role suffix (e.g. .entity.ts, .port.ts, .adapter.ts; full set = the approved_suffix list at the top of this script, mirrored in docs/decisions/decision-registry.md NAME-suffix). Exempt: index.{ts,tsx,mts,cts}, *.config.*, *.d.*, *.test.*/*.spec.*, *.stories.*/*.fake.*."
+            err "Missing role suffix: '$f' — files under server/src/ must end in an approved role suffix (e.g. .entity.ts, .port.ts, .adapter.ts, .controller.ts, .module.ts; full set = the approved_suffix list at the top of this script, mirrored in docs/decisions/decision-registry.md NAME-suffix). Exempt: index.{ts,tsx,mts,cts}, main.{ts,tsx}, *.config.*, *.d.*, *.test.*/*.spec.*, *.stories.*/*.fake.*."
           fi
           ;;
       esac

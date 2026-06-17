@@ -15,9 +15,9 @@ packages:
 allowBuilds:
   '@swc/core': true
   lefthook: true
-  # esbuild ships a platform binary via a postinstall build; the handler-hello
-  # Lambda build (apps/handler-hello) bundles with it. Approve so a frozen CI
-  # install stays green (ERR_PNPM_IGNORED_BUILDS otherwise).
+  # esbuild ships a platform binary via a postinstall build; Vite (client/) bundles
+  # with it (and server/ per-entry Lambda bundling will too — ADR ARCH-BUILD-1, Phase 1).
+  # Approve so a frozen CI install stays green (ERR_PNPM_IGNORED_BUILDS otherwise).
   esbuild: true
   # lightningcss ships a native binary; Tailwind v4 (client/) uses it for CSS
   # transforms. Approve so a frozen CI install stays green (ERR_PNPM_IGNORED_BUILDS otherwise).

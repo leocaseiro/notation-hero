@@ -6,9 +6,9 @@ import * as pulumi from "@pulumi/pulumi";
  * Function URL, with a managed CloudWatch LogGroup (explicit retention).
  *
  * Lives in `infra/` (type:infra) because it is deploy-time IaC importing
- * `@pulumi/*` — the live depcruise H9 forbids `infra → adapters` source, and
- * `.stack` is the approved role suffix for a stack building block. The handler
- * runtime code lives in `apps/` and is packaged via FileArchive(dist) (H1–H4).
+ * `@pulumi/*`. The handler bundle is supplied by the Pulumi program (`index.ts`):
+ * Phase 0 ships an inline placeholder; Phase 1 wires the `server/` build output
+ * via FileArchive.
  */
 export interface LambdaWithUrlArgs {
   /**
@@ -17,7 +17,7 @@ export interface LambdaWithUrlArgs {
    * Lambda lazily auto-creates an unmanaged, never-expire group).
    */
   functionName: pulumi.Input<string>;
-  /** Archive of the handler's esbuild build output (apps/handler-hello/dist). */
+  /** Archive of the handler bundle (Phase 0: inline placeholder; Phase 1: server/ build output). */
   code: pulumi.Input<pulumi.asset.Archive>;
   /** Lambda handler string, e.g. "index.handler". */
   handler: pulumi.Input<string>;

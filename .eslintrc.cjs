@@ -25,6 +25,11 @@ module.exports = {
     "import/resolver": {
       node: { extensions: [".ts", ".tsx", ".js", ".jsx", ".json"] },
     },
+    // DORMANT (Phase 0 / NH-195): this legacy eslintrc runs in no lint script today
+    // (lint is echo placeholders; flat-config ESLint is NH-42). The element patterns
+    // below still name the OLD top-level core/adapters/apps dirs (now folders under
+    // server/src/). The element model is re-derived for server/src — together with the
+    // dependency-cruiser folder-fence + core-purity canary — in PR #2 (ARCH-GUARD-1).
     "boundaries/elements": [
       { type: "core", pattern: "core/*", mode: "folder" },
       { type: "adapters", pattern: "adapters/*", mode: "folder" },

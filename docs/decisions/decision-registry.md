@@ -10,6 +10,20 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-18 — Phase 0 foundation implementation, PR #1 (NH-195)
+
+Implements the ADR §1 foundation (plan `docs/plans/2026-06-18-001-feat-foundation-phase0-nx-to-pnpm-plan.md`) — the "deferred → implementation PR" item from the entry below. PR #1 = units U1–U4; the ARCH-GUARD-1 fence is the stacked PR #2.
+
+- **`ARCH-MONO-1` ✅ live:** Nx removed (`nx.json`, `.nxignore`, `project.json`×2, `@nx/*`+`nx` devDeps deleted); root scripts now `pnpm -r --if-present run <t>`; lefthook + CI drop `nx affected`/`nx-set-shas`.
+- **`ARCH-LAYOUT-1` ✅ live:** repo is `client/ server/ shared/ infra/`; `apps/core/adapters` retired; `pnpm-workspace.yaml` + CI paths-filter updated.
+- **`ARCH-HEX-1` ✅ skeleton:** `server/` = blank NestJS 11 (`nest new`), reshaped to `server/src/{core,adapters,modules,entry}`; SWC via nest-cli builder.
+- **`ARCH-FE-1` ✅ scaffold:** `client/` = Vite + TanStack Router SPA (`@tanstack/cli --router-only`); TanStack Query wired manually (router-only mode skips the add-on). `shared/` placeholder package added.
+- **`ARCH-NAME-1` ✅ live:** `check-layout.sh` re-scoped to `server/src` + NestJS suffixes (`module|guard|…|policy`) + `main.ts` exemption.
+- **Node 24** bumped across `engines.node`, infra Lambda runtime default + test assertion, esbuild target, `.npmrc`.
+- **Deferred to PR #2 (`ARCH-GUARD-1`):** dependency-cruiser folder-level rewrite under `server/src/` + fail-closed core-purity allow-rule + canary as a required CI check; `eslint-plugin-boundaries` element re-derivation. The depcruise hexagon rules + the dormant eslintrc in this PR still use the OLD `^core/ ^adapters/ ^apps/` paths (dead-letter, banner-commented) — only `no-circular`/`no-orphans` are live until PR #2.
+
+A–H status tables still show pre-Phase-0 rows; they auto-derive and reconcile on the next `docs(registry)` regen — this Change-log entry is authoritative.
+
 ### 2026-06-18 — Architecture ADR approved + foundation supersession ratified (NH-194)
 
 Expert review of `2026-06-17-architecture-decisions.md` complete (6-engineer ce-doc-review panel, NH-194); **leocaseiro approved the ADR.** 20 review findings applied or resolved — incl. **SEC-4:** AlphaTab ships no WebAssembly (verified in `~/Sites/alphaTab`) → no `wasm-unsafe-eval`; **Next.js confirmed dropped** (not a portfolio need + SSR fights the AWS $0 free tier). The W2 deferral (DACI/ADR text rewrites) is now executed:

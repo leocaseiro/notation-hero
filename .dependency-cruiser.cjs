@@ -1,13 +1,15 @@
 /**
- * dependency-cruiser — enforces Hexagonal (Layout 4) dependency direction in CI.
- * Run via `pnpm run depcheck` (part of the required "CI Green" aggregation).
- * See AGENTS.md + docs/decisions/decision-registry.md.
+ * dependency-cruiser — Hexagonal dependency-direction fence, run via `pnpm run depcheck`
+ * (part of the required "CI Green" aggregation). Scans `server shared infra`.
  *
- *   core      → may import: nothing in-repo (pure domain)
- *   adapters  → may import: core
- *   apps      → may import: core, adapters   (runtime composition root; handler may import @core)
- *   infra     → may import: NO in-repo source — IaC wires apps via build output (dist/package),
- *               never a TS import of app/core/adapter source (H9, ADR 2026-06-12 D3)
+ * PHASE 0 (NH-195) — DEAD-LETTER NOTICE: the `forbidden` hexagon rules below still use the
+ * OLD top-level paths (`^core/ ^adapters/ ^apps/`). After ARCH-LAYOUT-1 those dirs moved
+ * inside `server/src/`, so those rules now match ZERO files and enforce nothing. Only
+ * `no-circular` and `no-orphans` are LIVE in this PR. The full folder-level rewrite
+ * (`^server/src/core` etc.) + a fail-closed core-purity allow-rule + a canary as a required
+ * CI check land in PR #2 (ARCH-GUARD-1). Until then the hexagon is NOT machine-enforced —
+ * safe today only because `server/src/core` + `adapters` are empty placeholders.
+ * See AGENTS.md + docs/decisions/decision-registry.md.
  */
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
