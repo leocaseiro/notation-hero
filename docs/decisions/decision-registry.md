@@ -10,6 +10,44 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-17 — Architecture decisions (backend·client·auth) + foundation reversal
+
+Brainstorm-approved by leocaseiro (2026-06-17). Decides the 8 open architecture questions and **reopens the DACI-locked foundation** (pre-authorized). Spec: `docs/decisions/2026-06-17-architecture-decisions.md` + companion `docs/specs/2026-06-17-data-layer-requirements.md`. **Pending spec review in a separate session before the DACI/ADR text rewrites + implementation planning** — so the decisions below are ✅ decided but ⏳ enforcement-pending (no code/config changed yet).
+
+**What landed (docs only):** the architecture decision record (20 `ARCH-*` decisions), the data-layer requirements doc (`R1`-`R12`; `R1 created_by` is the one net-new schema requirement), and this entry.
+
+**Decisions (✅ decided · ⏳ enforcement pending-implementation):**
+- `ARCH-MONO-1` Drop Nx → plain pnpm workspaces — **supersedes `L1`, `L2-tags`, `L7-set-shas`**.
+- `ARCH-PM-1` Keep pnpm; bun stays dropped — **reaffirms `PM-1`, `F6-bun`**.
+- `ARCH-LAYOUT-1` `client/ server/ shared/ infra/` — supersedes the Nx `apps/core/adapters/infra` layout.
+- `ARCH-HEX-1` Hexagon = folders inside the one Nest app — **supersedes `FOLD-hex`**.
+- `ARCH-GUARD-1` Keep dependency-cruiser (rules rewritten folder-level); drop `@nx/enforce-module-boundaries` — **supersedes `H8`-`H14` paths, `L2-tags`, `STRUCT-sibling`**.
+- `ARCH-NAME-1` NestJS-native filenames — **supersedes `NAME-suffix`** (suffix-everything); co-location (`CONV-1`/`CONV-2`) kept.
+- `ARCH-BUILD-1` pnpm runner + SWC compiler everywhere; bundler by target (esbuild server / Vite client).
+- `ARCH-LAMBDA-1` one API Lambda (`@codegenie/serverless-express` v5 + Function URL + cached singleton); workers via `createApplicationContext`.
+- `ARCH-FMT-1` server CJS / client ESM.
+- `ARCH-EDGE-1` one CloudFront, two origins (S3 FE + Lambda API).
+- `ARCH-CONTRACT-1` oRPC (ts-rest frozen — #797); ditch kanel-zod (drizzle-zod derive+curate).
+- `ARCH-ORM-1` Drizzle — **reaffirms `DS-1`**; confirmed over Prisma/TypeORM/Kysely for Neon-HTTP + SWC.
+- `ARCH-FE-1` Vite + TanStack Router + TanStack Query.
+- `ARCH-OFFLINE-1` RxDB (free Dexie), sync via API.
+- `ARCH-MOBILE-1` plain Capacitor (no Ionic).
+- `ARCH-AUTH-1` Cognito (Pulumi) + Google federation v1 — **reaffirms Cognito-not-Amplify (NH-193)**; pulls auth early for the admin gate (reverses the feature-freeze Basic-Auth plan).
+- `ARCH-ROLE-1` roles via Cognito groups (admin) → `cognito:groups` JWT claim; one pool, admin-now/users-M1.
+- `ARCH-AUTHZ-1` `can(user,item,action)` policy port in core (minimal v1).
+- `ARCH-OWN-1` add `created_by` (Cognito sub) — net-new catalogue requirement (`R1`).
+- `ARCH-SEC-1` JWT security model (signature-verified; memory/session storage; short-lived + rotation; CSP).
+
+**Reopened (DACI) — pre-authorized; ADR text edits deferred to the review session:**
+- `2026-06-09-tooling-stack-daci.md`: `L1` (Nx) dropped; layout changed; `PM-1`/`F6-bun` unchanged.
+- `2026-06-12-file-level-structure-enforcement-adr.md`: `NAME-suffix` relaxed to framework-native; depcruise → folder-level; co-location kept.
+
+**Not done (deferred):** the DACI/ADR text rewrites; ALL code/config (Nx removal, depcruise rewrite, scaffolding) — land in the implementation PR after spec review. The §A status-table rows for `L1`/`FOLD-hex`/`NAME-suffix` still show the pre-reversal state and reconcile on the next regen; **this Change-log entry is authoritative.**
+
+**Spikes (2026-06-17):** contract (oRPC vs ts-rest#797), ORM (Drizzle vs Prisma/TypeORM/Kysely), Google federation (Cognito + Google IdP in Pulumi), NestJS-on-Lambda/SWC, React-SPA stack.
+
+**Manual approvals (leocaseiro):** all §1-§4 decisions approved section-by-section via AskUserQuestion this session; `W1` = write docs in a worktree; `W2` = review the spec in a separate session before the DACI/ADR rewrites.
+
 ### 2026-06-15 — NH-16 agent PR merge checklist (v1) + KAN→NH migration
 
 Shipped the first slice of NH-16 (the L6 PR-policy ticket, moved KAN-125 → NH-16). **v1 deliberately uses a custom CI step, NOT DangerJS** — a tick-the-box checklist wants a native task-list gate, not Danger's fail/warn comment (Danger smart rules deferred to the NH-16 v2 backlog). Spec: `docs/specs/2026-06-15-pr-merge-checklist.md`.
