@@ -10,6 +10,60 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-18 — Architecture ADR approved + foundation supersession ratified (NH-194)
+
+Expert review of `2026-06-17-architecture-decisions.md` complete (6-engineer ce-doc-review panel, NH-194); **leocaseiro approved the ADR.** 20 review findings applied or resolved — incl. **SEC-4:** AlphaTab ships no WebAssembly (verified in `~/Sites/alphaTab`) → no `wasm-unsafe-eval`; **Next.js confirmed dropped** (not a portfolio need + SSR fights the AWS $0 free tier). The W2 deferral (DACI/ADR text rewrites) is now executed:
+
+- **Foundation decisions superseded** (banners added to both legacy docs):
+  - `L1` (Nx), `L2-tags` (`@nx/enforce-module-boundaries`), `L7-set-shas` (nx-set-shas), `FOLD-tagmap` (Nx tag map) → **⛔ superseded by `ARCH-MONO-1`** (Nx dropped → plain pnpm workspaces).
+  - `FOLD-hex` + `FOLD-serverless` (hexagon/Lambdas as Nx libs/projects) → **⛔ superseded by `ARCH-HEX-1` + `ARCH-LAYOUT-1`** (hexagon = folders in one Nest app; `client/server/shared/infra`).
+  - `NAME-suffix` (suffix-everything) → **⛔ superseded by `ARCH-NAME-1`** (NestJS-native filenames).
+  - `STRUCT-sibling` (eslint-plugin-boundaries, package/tag form) → **⛔ superseded by `ARCH-GUARD-1`** (rewritten folder-level under `server/src/`).
+- **Kept:** `PM-1`/`F6-bun` (pnpm), `D1`/dependency-cruiser (rewritten folder-level), test co-location (`CONV-1`/`CONV-2`).
+- **Registry fixes (from the review):** decision count 20 → **21** (added `ARCH-SEC-2`); `L2-tags` removed from the `ARCH-GUARD-1` supersedes list (owned by `ARCH-MONO-1`); `ARCH-OFFLINE-1` corrected RxDB → **plain Dexie**.
+- **New spike:** `docs/spikes/2026-06-17-spa-token-storage.md` (in-memory tokens + silent renew + CSP).
+
+**Still deferred:** all code/config (Nx removal, depcruise rewrite, scaffolding) → the implementation PR.
+
+### 2026-06-17 — Architecture decisions (backend·client·auth) + foundation reversal
+
+Brainstorm-approved by leocaseiro (2026-06-17). Decides the 8 open architecture questions and **reopens the DACI-locked foundation** (pre-authorized). Spec: `docs/decisions/2026-06-17-architecture-decisions.md` + companion `docs/specs/2026-06-17-data-layer-requirements.md`. **Pending spec review in a separate session before the DACI/ADR text rewrites + implementation planning** — so the decisions below are ✅ decided but ⏳ enforcement-pending (no code/config changed yet).
+
+**What landed (docs only):** the architecture decision record (21 `ARCH-*` decisions), the data-layer requirements doc (`R1`-`R12`; `R1 created_by` is the one net-new schema requirement), and this entry.
+
+**Decisions (✅ decided · ⏳ enforcement pending-implementation):**
+- `ARCH-MONO-1` Drop Nx → plain pnpm workspaces — **supersedes `L1`, `L2-tags`, `L7-set-shas`**.
+- `ARCH-PM-1` Keep pnpm; bun stays dropped — **reaffirms `PM-1`, `F6-bun`**.
+- `ARCH-LAYOUT-1` `client/ server/ shared/ infra/` — supersedes the Nx `apps/core/adapters/infra` layout.
+- `ARCH-HEX-1` Hexagon = folders inside the one Nest app — **supersedes `FOLD-hex`**.
+- `ARCH-GUARD-1` Keep dependency-cruiser (rules rewritten folder-level); drop `@nx/enforce-module-boundaries` — **supersedes `H8`-`H14` paths, `STRUCT-sibling`** (`L2-tags` dies with Nx — owned by `ARCH-MONO-1`, not double-listed).
+- `ARCH-NAME-1` NestJS-native filenames — **supersedes `NAME-suffix`** (suffix-everything); co-location (`CONV-1`/`CONV-2`) kept.
+- `ARCH-BUILD-1` pnpm runner + SWC compiler everywhere; bundler by target (esbuild server / Vite client).
+- `ARCH-LAMBDA-1` one API Lambda (`@codegenie/serverless-express` v5 + Function URL + cached singleton); workers via `createApplicationContext`.
+- `ARCH-FMT-1` server CJS / client ESM.
+- `ARCH-EDGE-1` one CloudFront, two origins (S3 FE + Lambda API).
+- `ARCH-CONTRACT-1` oRPC (ts-rest frozen — #797); ditch kanel-zod (drizzle-zod derive+curate).
+- `ARCH-ORM-1` Drizzle — **reaffirms `DS-1`**; confirmed over Prisma/TypeORM/Kysely for Neon-HTTP + SWC.
+- `ARCH-FE-1` Vite + TanStack Router + TanStack Query — **supersedes the 2026-06-16 Next.js FE ADR (`NH-185`)** (leocaseiro 2026-06-17: explicitly superseding yesterday's Next.js decision).
+- `ARCH-OFFLINE-1` plain Dexie + insert-only outbox, sync via API (RxDB rejected — paywalled fast storage).
+- `ARCH-MOBILE-1` plain Capacitor (no Ionic).
+- `ARCH-AUTH-1` Cognito (Pulumi) + Google federation v1 — **reaffirms Cognito-not-Amplify (NH-193)**; pulls auth early for the admin gate (reverses the feature-freeze Basic-Auth plan).
+- `ARCH-ROLE-1` roles via Cognito groups (admin) → `cognito:groups` JWT claim; one pool, admin-now/users-M1.
+- `ARCH-AUTHZ-1` `can(user,item,action)` policy port in core (minimal v1).
+- `ARCH-OWN-1` add `created_by` (Cognito sub) — net-new catalogue requirement (`R1`).
+- `ARCH-SEC-1` JWT security model (signature-verified; memory/session storage; short-lived + rotation; CSP).
+- `ARCH-SEC-2` CSP baseline (CloudFront Response Headers Policy + native `<meta>` for the Capacitor build).
+
+**Reopened (DACI) — pre-authorized; ADR text edits deferred to the review session:**
+- `2026-06-09-tooling-stack-daci.md`: `L1` (Nx) dropped; layout changed; `PM-1`/`F6-bun` unchanged.
+- `2026-06-12-file-level-structure-enforcement-adr.md`: `NAME-suffix` relaxed to framework-native; depcruise → folder-level; co-location kept.
+
+**Status (updated 2026-06-18, W2):** the **DACI + file-structure ADR text rewrites are DONE** — both legacy docs now carry supersession banners (see the 2026-06-18 entry above). **Still deferred:** ALL code/config (Nx removal, depcruise rewrite, scaffolding) — land in the implementation PR. The headline §A rows (`L1`/`L2-tags`/`FOLD-hex`/`NAME-suffix`) are flipped to ⛔ below; full table reconciliation lands on the next regen. **The change-log entries remain authoritative.**
+
+**Spikes (2026-06-17):** contract (oRPC vs ts-rest#797), ORM (Drizzle vs Prisma/TypeORM/Kysely), Google federation (Cognito + Google IdP in Pulumi), NestJS-on-Lambda/SWC, React-SPA stack.
+
+**Manual approvals (leocaseiro):** all §1-§4 decisions approved section-by-section via AskUserQuestion this session; `W1` = write docs in a worktree; `W2` = review the spec in a separate session before the DACI/ADR rewrites.
+
 ### 2026-06-16 — NH-16 PR-checklist v1.1: all-required acknowledgements (no N/A)
 
 Reframed the `pr-checklist` gate after a real-world miss: PR #40 merged with required boxes left unticked. Root cause (systematic-debugging) — the gate passed *correctly* per the v1 design (docs PR; the UI item was legitimately `N/A`'d), but `N/A` is a **self-asserted, unverifiable escape** an agent can abuse (e.g. `N/A` the Storybook item on a PR that *does* change UI). Fix per leocaseiro's model — "an agreement of terms & conditions: no checked, no merge":
@@ -25,7 +79,7 @@ Reverses the **FE-framework axis** of the 2026-06-02 stack-pick ("Vite + React; 
 
 **Decision:** Next.js (App Router), one source `apps/notation-hero`, two build targets — **SSR web** (OpenNext → Lambda + CloudFront, Pulumi, free-tier) + **static-export** (Capacitor iOS/Android). Catalogue routes first. **No Amplify** (keeps Pulumi as the single IaC). **Capacitor + PWA + S3/CloudFront + Pulumi + hexagon all unchanged.**
 
-**Status:** 📄 prose-only (framework choice — no machine check). Implementation tracked in **NH-185** (Story under Epic NH-177). `H-4` / `FOLD-hex` / Pulumi rows unaffected; the SSR Lambda+CloudFront lands in `infra/` (Pulumi) when the build does.
+**Status:** ⛔ **SUPERSEDED 2026-06-17** by `ARCH-FE-1` (Vite + TanStack SPA) — see the 2026-06-17 entry above; leocaseiro chose to supersede this Next.js decision ("superseding whatever we decided yesterday"). [Historical] was 📄 prose-only, tracked in **NH-185** (Story under Epic NH-177); the OpenNext SSR Lambda is **not** being built.
 
 ### 2026-06-15 — CMS via catalog reuse (front-end pivot) + Alpha build order
 
@@ -176,9 +230,9 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 | ID              | Decision                                                                                                                                                                                            | Status           | Enf | Source   | Gap |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | --- | -------- | --- |
 | PM-1            | Package manager = pnpm (only). Bun fully dropped; pnpm catalog centralizes versions; strict symlinked node_modules blocks phantom deps.                                                             | ✅ done           | 🤖  | DACI:123 |     |
-| L1              | L1 orchestrator = Nx (affected + computation cache + generators + enforce-module-boundaries). Self-hosted remote-cache plugin dropped (CVE-2025-36852); local cache + Nx Cloud free tier.           | ✅ done           | 🤖  | DACI:124 |     |
+| L1              | ⛔ **superseded by `ARCH-MONO-1` (2026-06-18, NH-194)** — Nx dropped → plain pnpm workspaces. *(was: L1 orchestrator = Nx — affected + computation cache + generators + enforce-module-boundaries; local cache + Nx Cloud free tier.)* | ⛔ superseded | — | DACI:124 |     |
 | L2-pnpm         | Boundary axis (a): pnpm strict symlinked node_modules refuses to resolve packages not in dependencies (build-time block on illegal imports).                                                        | ✅ done           | 🤖  | DACI:125 |     |
-| L2-tags         | Boundary axis (b): Nx enforce-module-boundaries ESLint tag rule fails tag-violating imports (type:core/adapter/app/infra) even when the dep is declared. ESLint-only — wired, not yet CI-enforced (see change-log ⚠️ 2026-06-12).            | ✅ done           | 🟡  | DACI:125 | 🟥  |
+| L2-tags         | ⛔ **superseded by `ARCH-MONO-1` (2026-06-18)** — dies with Nx; folder-level dependency-cruiser (`ARCH-GUARD-1`) carries layer direction instead. *(was: Nx enforce-module-boundaries ESLint tag rule.)* | ⛔ superseded | — | DACI:125 |     |
 | L2-projref      | Boundaries also use real workspace packages + TS project references; rejects tsconfig.paths as the boundary mechanism (2026 anti-pattern). ADR D7: elevated to the next strictness lever — the tier-a compile wall. | ⏳ pending        | 🟡  | DACI:125 |     |
 | L2-depcruise    | dependency-cruiser kept for cycle-detection + graph viz alongside Nx tags (hexagonal DIRECTION rules as ERROR; no-circular).                                                                        | ✅ done           | 🤖  | DACI:125 |     |
 | L2-probes       | Committed self-testing probe suite under tooling/probes/ — one Vitest spec per boundary/dep-cruise rule asserting intentional violations FAIL in CI (guards against a rule being loosened).         | ⏳ pending        | 📄  | DACI:125 | 🟥  |
@@ -187,7 +241,7 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 | L4-strict       | L4 types = strict + composite + project references + isolatedDeclarations (adopt now while empty). strict-only and deferring isolatedDeclarations both rejected.                                    | 🔒 locked-active | 🤖  | DACI:127 |     |
 | L4-typecov      | type-coverage floor (start ~95%, ratchet up; infra type:infra uses ~90% per M-2 due to Pulumi Output).                                                                                              | ⏳ pending        | 📄  | DACI:127 | 🟥  |
 | L4-dts          | build:dts Nx target per library running tsc -b --emitDeclarationOnly (Vite/esbuild handles JS); tsconfig.build excludes co-located test/spec/stories/e2e/fake files; cache dist/types as Nx output. | ⏳ pending        | 📄  | DACI:151 | 🟥  |
-| FOLD-hex        | Keep hexagonal core/ adapters/ apps/ infra/ materialized as real Nx libs/apps, each carrying a type: tag. Restructure rejected (no warrant to change shape).                                        | ✅ done           | 🟡  | DACI:128 |     |
+| FOLD-hex        | ⛔ **superseded by `ARCH-HEX-1` + `ARCH-LAYOUT-1` (2026-06-18)** — hexagon = folders inside one Nest app (`server/src/`); layout `client/server/shared/infra`. *(was: hexagon as real Nx libs/apps with type: tags.)* | ⛔ superseded | — | DACI:128 |     |
 | FOLD-tagmap     | Tag map: core/->type:core, adapters/->type:adapter, apps/->type:app, infra/->type:infra. Tags drive the boundary ESLint rules.                                                                      | ✅ done           | 🟡  | DACI:128 |     |
 | FOLD-serverless | Serverless split per-Lambda into TWO Nx projects: apps/ (type:app, handler) + infra/ (type:infra, IaC), siblings; never colocate handler.ts + infra.ts. Colocation patterns rejected.               | ⏳ pending        | 📄  | DACI:128 | 🟥  |
 | DEPCR-files     | dependency-cruiser file-level bans (top-level paths): handler↛@pulumi/* (H8), infra↛apps/core/adapters source (H9 widened, ADR D3), core↛@aws-sdk/* + core↛@pulumi/* (H10 + D5), adapters↛apps/infra source (H11). | ✅ done           | 🤖  | DACI:266 |     |
@@ -309,7 +363,7 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 | CONV-6 | Knip must treat *.test.*/*.stories.* as entry points/exclusions so co-located tests/stories aren't flagged as unused.                                | ⏳ pending           | 📄  | DACI:237 | 🟥  |
 | CONV-7 | Storybook stories glob = default **/*.stories.@(ts|tsx) (plural — the standard agents emit), so no corrections needed.                               | 💤 deferred-trigger | 📄  | DACI:238 |     |
 | CONV-8 | One structure encoded for everyone: AGENTS.md documents it, Nx generators emit it, gate configs know it — humans, agents, tools share one shape.     | 🔒 locked-active    | 🟡  | DACI:239 |     |
-| NAME-suffix | kebab-case filenames + a role suffix on every domain/app file (.entity/.value-object/.port/.adapter/.repository/.use-case/...); folder-per-entity DROPPED; junk-drawer *.manager/*.helper banned; Pascal-vs-camel DangerJS task dropped. check-layout owns suffix-presence (CI-live 🤖, ADR F-1); check-file owns casing (ESLint — not yet CI-enforced 🟡, see change-log ⚠️). | 🔒 locked-active    | 🟡  | ADR:D2   | 🟥  |
+| NAME-suffix | ⛔ **superseded by `ARCH-NAME-1` (2026-06-18)** — relaxed to NestJS-native filenames; `core/` keeps the strict pure-domain subset (`entity, value-object, aggregate, event, specification, port, policy`); co-location kept. *(was: suffix-everything on every domain/app file.)* | ⛔ superseded | — | ADR:D2 |     |
 
 ## H · Serverless project layout
 
