@@ -1,13 +1,11 @@
 # Notation Hero — Architecture Decision Record (Backend · Client · Auth)
 
-> **Status:** 🟢 DECIDED (brainstorm-approved by leocaseiro, 2026-06-17) — **pending spec review in a separate session** before the DACI/ADR rewrites + implementation planning.
+> **Status:** 🟢 DECIDED (2026-06-17) — **pending approval** before the DACI/ADR text rewrites + implementation planning.
 > **Scope:** the 8 open questions in `docs/prompts/2026-06-17-architecture-brainstorm.md`. The north-star (NestJS modular monolith + hexagon, one Lambda behind a Function URL, React SPA + Capacitor) was already locked; this doc decides the open questions and **deliberately reopens** the DACI-locked foundation (Nx, hexagon physical form, file-structure ADR).
 > **Companion:** [`docs/specs/2026-06-17-data-layer-requirements.md`](../specs/2026-06-17-data-layer-requirements.md) — what the data layer must provide, decoupled from the parallel schema redesign.
 > **Supersedes (pending ratification):** parts of `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (suffix-everything). See §9.
 > **Reaffirms:** `2026-06-09-catalogue-store-postgres-neon.md` (`DS-1`), the Cognito-not-Amplify decision (NH-193).
 > **Owner:** leocaseiro
-> **Spec review:** ✅ 2026-06-17 (8-persona ce-doc-review, NH-194) — 16 fixes applied inline. The offline open questions are now resolved inline (RxDB → plain Dexie; conflict-resolution, durability + wiring-scope decided in ARCH-OFFLINE-1; DynamoDB key-design deferred to M1, not a v1 risk — see §"Deferred / Open Questions"). The parked `offline-first-reviewed.md` was folded into ARCH-OFFLINE-1 and removed (one ADR). The DACI + file-structure ADR text rewrite remains the post-review task (§11 step 1).
-
 ---
 
 ## 0. Why this doc
@@ -261,9 +259,9 @@ worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
 
 ---
 
-## 9. Supersedes — reopened DACI/ADR (to ratify in the review session)
+## 9. Supersedes — reopened DACI/ADR (pending ratification)
 
-These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reopening them this session. The DACI/ADR text edits are deferred to the post-review session (W2 decision); this doc + the registry entry record the reversal now.
+These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reopening them. The DACI/ADR text edits are deferred to a follow-up change; this doc + the registry entry record the reversal now.
 
 - `2026-06-09-tooling-stack-daci.md`: `L1` (Nx) → **dropped** (ARCH-MONO-1); the `apps/core/adapters/infra` layout → **client/server/shared/infra** (ARCH-LAYOUT-1); `PM-1`/`F6-bun` → **unchanged** (pnpm kept).
 - `2026-06-12-file-level-structure-enforcement-adr.md`: `NAME-suffix` suffix-everything → **relaxed to NestJS-native filenames** (ARCH-NAME-1); co-location kept; depcruise rules → **folder-level** (ARCH-GUARD-1).
@@ -283,11 +281,11 @@ These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reope
 
 ---
 
-## 11. Next steps (after spec review)
+## 11. Next steps
 
-This brainstorm ends at a committed, reviewable spec. **After approval (in a separate review session):**
+**After approval:**
 
-1. **Rewrite the DACI + file-structure ADR text** (the W2 deferral) — supersede `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (`NAME-suffix`) per §9, and flip the affected decision-registry rows.
+1. **Rewrite the DACI + file-structure ADR text** — supersede `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (`NAME-suffix`) per §9, and flip the affected decision-registry rows.
 2. **Invoke `writing-plans`** for the phased implementation plan, sequenced **slice-first** so the build stays deployable and the FE scaffold can't balloon into "whole stack first":
    - **Phase 0 — remove everything Nx** (per the ARCH-MONO-1 migration inventory; regenerate a clean root `package.json`).
    - **Phase 1 — a thin deployable AWS slice:** an **About-page hello-world wired end-to-end** (CloudFront → Function URL → Lambda), so the recruiter-clickable artifact exists early (honours the DACI 4-week-pivot guardrail).
@@ -295,20 +293,15 @@ This brainstorm ends at a committed, reviewable spec. **After approval (in a sep
 
    Then execute.
 
-Until then: ✅ decided · ⏳ no repo code/config changed (this doc refined by the 2026-06-17 spec review).
+Until then: ✅ decided · ⏳ no repo code/config changed.
 
 ---
 
-## Deferred / Open Questions
+## Open questions & deferred scope
 
-### From the 2026-06-17 spec review (ce-doc-review, NH-194) — offline / sync-DB
+A couple of items are intentionally scoped out of v1 — recorded here so they're tracked, not overlooked:
 
-Offline-first **stays** (the client is a PWA + Capacitor). After the **RxDB → plain Dexie** pivot (ARCH-OFFLINE-1, insert-only outbox), **all four** originally-deferred points are now resolved:
+- **DynamoDB single-table key design → deferred to M1.** v1 (the admin catalogue CMS) stores no per-user data — scores/settings/sync are M1 features — so no DynamoDB table is provisioned in v1. This is **not a v1 refactor risk:** the per-user store slots in as an *additive* adapter behind a new repository port (ARCH-HEX-1); nothing is provisioned yet (so "a partition key can't change in place" doesn't bite); and the one cross-store seam — stable, client-mintable catalogue IDs (R13) — is already locked, so a future `SCORE#<songId>` reference is safe. **Guardrail:** lock the key schema *before* provisioning at M1 — starter sketch: PK=`USER#<sub>`; append-only `SCORE#<songId>#<ulid>`; `SONGSTAT#` rollup via DynamoDB Streams; `GSI1` for pull-since. Tracked in NH-120.
+- **CSP × AlphaTab WASM (open confirm).** If AlphaTab ships a WebAssembly build, `script-src` needs `wasm-unsafe-eval` (ARCH-SEC-2, flag a). Confirm at AlphaTab-integration / CSP-enforcement time — not a v1 blocker.
 
-- ✅ **Conflict resolution — N/A by design** (was #9). Insert-only + online-first updates + client-minted ULIDs remove merges by construction; settings = LWW by `updated_at`.
-- ✅ **Un-synced offline-write durability** (was #3). Stance: *local = cache*; sync eagerly; keep blobs in Capacitor Filesystem (eviction-safe); optional v1.x outbox-mirror hardening, shipped only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (no separate per-user durability doc).
-- ✅ **Dexie v1 wiring scope** (was #13). **Installed-but-stubbed at v1** — Dexie sits behind a client repository seam backed by direct online API calls; the insert-outbox, `POST /sync/batch`, mirror tables + blob queue are wired at **M1** (v1 = one admin, one device, online CMS → no offline user yet). Schema stays offline-ready via companion R13-R16.
-
-- ✅ **DynamoDB single-table key design** (was #11). **Deferred to M1 with the rest of per-user data.** v1 (admin catalogue CMS) stores no per-user scores/settings/sync, so no table is provisioned. **Not a v1 refactor risk:** the per-user store slots in as an *additive* adapter behind a new repository port (ARCH-HEX-1); nothing is provisioned yet (so "can't change a partition key in place" doesn't bite); and the one cross-store seam — stable, client-mintable catalogue IDs (R13) — is already locked, so a future `SCORE#<songId>` reference is safe. **Guardrail:** design the key schema *before* provisioning at M1. A starter sketch (PK=`USER#<sub>`; append-only `SCORE#<songId>#<ulid>`; `SONGSTAT#` rollup via Streams; `GSI1` pull-since) is recorded in the NH-194 session for M1.
-
-All four offline open questions are now resolved. These + the locked decisions feed the `writing-plans` stage and the parallel schema/data-layer redesign; the DACI + file-structure ADR text rewrite (§11 step 1) remains separate.
+The offline-sync design — conflict handling (none, by the insert-only constraint), un-synced-write durability, and v1 wiring — is **decided in `ARCH-OFFLINE-1`**, not open. The locked decisions + these deferrals feed the implementation-planning stage and the parallel schema/data-layer redesign.
