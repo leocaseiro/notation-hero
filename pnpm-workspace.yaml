@@ -41,3 +41,5 @@ allowBuilds:
 overrides:
   form-data: 4.0.6 # GHSA-hmw2-7cc7-3qxx (High 8.7); was 4.0.5
   tmp: 0.2.7 # GHSA-7c78-jf6q-g5cm (High 8.2); was 0.2.6
+  multer: 2.2.0 # GHSA-72gw-mp4g-v24j (High 7.5) + GHSA-3p4h-7m6x-2hcm; runtime via @nestjs/platform-express; was 2.1.1
+  file-type: 21.3.4 # GHSA-5v7r-6r5c-r473 + GHSA-j47w-4g3g-c36v (Med 5.3); devDep via @nestjs/cli; dedupes to the 21.x already in-tree; was 20.5.0
