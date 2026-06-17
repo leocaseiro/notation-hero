@@ -348,13 +348,13 @@ const PLAYABLES = [
   {id:'clocks', kind:'song', title:'Clocks', artist:'Coldplay', level:4, bpm:131, time_sig:'4/4', genre:'rock', instruments:['keys'], musical_key:'Eb', tags:['arpeggio'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:60, sessions:2, top_bpm:120, trend:[40,60]},
   {id:'my-demo-upload', kind:'song', title:'My practice loop (upload)', artist:null, level:null, bpm:100, time_sig:'4/4', genre:null, instruments:['drums'], status:'draft', origin:'user-upload', owner:'you', visibility:'private', notation_format:'gp', best:12, sessions:1, trend:[12], ownedByUser:true},
 
-  {id:'first-beat', kind:'lesson', title:'Your First Beat', level:0, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', origin:'curated', license:'owned', best:90, sessions:9, trend:[60,75,90], new:true},
-  {id:'rock-8th-beat', kind:'lesson', title:'8th-Note Rock Beat', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing','coordination'], patterns:['rock-8th'], status:'published', origin:'curated', license:'owned', best:64, sessions:3, trend:[30,48,64]},
-  {id:'four-on-floor', kind:'lesson', title:'Four-on-the-Floor', level:1, lesson_type:'beat', instruments:['drums'], skill:['timing'], patterns:['four-floor'], status:'published', origin:'curated', license:'owned', best:88, sessions:7, trend:[55,66,74,80,88]},
-  {id:'funk-16ths', kind:'lesson', title:'Funk Groove — 16th Hats', level:4, lesson_type:'beat', instruments:['drums'], skill:['independence','timing','coordination'], tags:['ghost-notes','syncopation'], patterns:['rock-8th'], status:'published', origin:'curated', license:'owned', best:41, sessions:2, trend:[22,41]},
-  {id:'single-paradiddle', kind:'lesson', title:'Single Paradiddle', level:2, lesson_type:'rudiment', instruments:['drums'], skill:['independence','control'], patterns:['single-paradiddle'], status:'published', origin:'curated', license:'owned', best:73, sessions:5, trend:[40,52,60,68,73]},
-  {id:'double-stroke', kind:'lesson', title:'Double Stroke Roll', level:3, lesson_type:'rudiment', instruments:['drums'], skill:['control'], patterns:['double-stroke'], status:'published', origin:'curated', license:'owned', best:null, sessions:0, trend:[]},
-  {id:'linear-fill-1', kind:'lesson', title:'Linear Fill — 6-stroke', level:5, lesson_type:'rudiment', instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', origin:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'teaches a FILL pattern (fills = pattern.kind, not lesson_type — SD-1)'},
+  {id:'first-beat', kind:'lesson', title:'Your First Beat', level:0, instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', origin:'curated', license:'owned', best:90, sessions:9, trend:[60,75,90], new:true},
+  {id:'rock-8th-beat', kind:'lesson', title:'8th-Note Rock Beat', level:1, instruments:['drums'], skill:['timing','coordination'], patterns:['rock-8th'], status:'published', origin:'curated', license:'owned', best:64, sessions:3, trend:[30,48,64]},
+  {id:'four-on-floor', kind:'lesson', title:'Four-on-the-Floor', level:1, instruments:['drums'], skill:['timing'], patterns:['four-floor'], status:'published', origin:'curated', license:'owned', best:88, sessions:7, trend:[55,66,74,80,88]},
+  {id:'funk-16ths', kind:'lesson', title:'Funk Groove — 16th Hats', level:4, instruments:['drums'], skill:['independence','timing','coordination'], tags:['ghost-notes','syncopation'], patterns:['rock-8th'], status:'published', origin:'curated', license:'owned', best:41, sessions:2, trend:[22,41]},
+  {id:'single-paradiddle', kind:'lesson', title:'Single Paradiddle', level:2, instruments:['drums'], skill:['independence','control'], patterns:['single-paradiddle'], status:'published', origin:'curated', license:'owned', best:73, sessions:5, trend:[40,52,60,68,73]},
+  {id:'double-stroke', kind:'lesson', title:'Double Stroke Roll', level:3, instruments:['drums'], skill:['control'], patterns:['double-stroke'], status:'published', origin:'curated', license:'owned', best:null, sessions:0, trend:[]},
+  {id:'linear-fill-1', kind:'lesson', title:'Linear Fill — 6-stroke', level:5, instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', origin:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'kind derived from its step patterns (fill + rudiment) — fills are a pattern_kind, not a lesson type (SD-1)'},
   /* SONG PARTS — kind=part, parent_id -> the song, bar range, listable:false (hidden from browse; reached via the song's "Practice in parts"). Each part is its OWN playable, scored on its own id. */
   {id:'sna-intro',  kind:'part', title:'Intro',  parent_id:'seven-nation-army', start_bar:1,  end_bar:8,  sort_order:1, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:78, sessions:4, top_bpm:120, trend:[55,68,78]},
   {id:'sna-verse',  kind:'part', title:'Verse',  parent_id:'seven-nation-army', start_bar:9,  end_bar:24, sort_order:2, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:60, sessions:3, top_bpm:110, trend:[40,52,60]},
@@ -427,8 +427,7 @@ const STEP = {
   ],
 };
 
-const LESSON_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}};
-/* Lessons tab = every listable playable that isn't a song (lessons + patterns). Song parts are listable:false (reached from their song), so they never appear here. Kind filter spans both lesson_type and pattern_kind. */
+/* Lessons tab = every listable playable that isn't a song (lessons + patterns). Song parts are listable:false (reached from their song), so they never appear here. The Kind filter is by pattern_kind — a pattern's own kind; a lesson's = the pattern_kinds of its step children (lesson_type dropped; kind is derived). */
 const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',label:'Fills'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, scale:{icon:'piano',label:'Scales'}};
 const GENRES = ['rock','pop','jazz','metal','funk','soul'];
 const TIMES = ['4/4','3/4','5/4','6/8','7/8'];
@@ -480,6 +479,7 @@ function stepsFor(parentId){ return (STEP[parentId]||[]).slice().sort((a,b)=>(a.
 function childPlayable(childId){ return PLAYABLES.find(x=>x.id===childId) || null; }
 function reuseCount(childId){ return Object.keys(STEP).filter(pid=>STEP[pid].some(s=>s.child_id===childId)).length; }   // how many parents step to this pattern
 function usedBy(childId){ return Object.keys(STEP).filter(pid=>STEP[pid].some(s=>s.child_id===childId)).map(childPlayable).filter(Boolean); }
+function patternKindsOf(it){ if(it.kind==='pattern') return it.pattern_kind?[it.pattern_kind]:[]; return [...new Set(stepsFor(it.id).map(s=>childPlayable(s.child_id)).filter(Boolean).map(c=>c.pattern_kind).filter(Boolean))]; }   // a lesson's "kind" = the pattern_kinds of its step children (lesson_type is derived, not stored)
 function hasParts(it){ return it.kind==='song' ? (songParts(it.id).length>0 || !!(it.data&&it.data.sections&&it.data.sections.length)) : stepsFor(it.id).length>0; }
 function itemFlags(it){
   const f=[];
@@ -537,7 +537,7 @@ function matches(it){
   if(it.listable===false) return false;                                          // parts (and any listable:false playable) never appear in browse
   if(state.tab==='songs' ? it.kind!=='song' : it.kind==='song') return false;   // Lessons tab = every non-song (lessons + patterns)
   if(state.genre.length && !state.genre.includes(it.genre)) return false;
-  if(state.tab==='lessons' && state.kind.length && !state.kind.includes(it.lesson_type) && !state.kind.includes(it.pattern_kind)) return false;
+  if(state.tab==='lessons' && state.kind.length && !state.kind.some(k=>patternKindsOf(it).includes(k))) return false;   // Kind filter spans patterns (own kind) + lessons (derived from step children)
   if(state.timeSig.length && !state.timeSig.includes(it.time_sig)) return false;
   if(state.instrument && !(it.instruments||[]).includes(state.instrument)) return false;
   if(state.level.min!=null || state.level.max!=null){
@@ -685,14 +685,14 @@ function toPlayable(it){
     time_signature_numerator: ts[0]?Number(ts[0]):null, time_signature_denominator: ts[1]?Number(ts[1]):null,
     genre: it.genre??null, musical_key: it.musical_key??null,
     instruments: it.instruments||null, skill: it.skill||null, tags: it.tags||null,
-    lesson_type: it.lesson_type??null, pattern_kind: it.pattern_kind??null, family: it.family??null,
+    pattern_kind: it.pattern_kind??null, family: it.family??null,
     origin: it.origin==='user-upload'?'user-upload':'curated',
     status: it.status||'published', license: it.license??null,
     has_audio: !!it.has_audio, has_video: !!it.has_video,
     data: it.data||null, created_by: it.owner||null,
   };
 }
-const NF_ORDER = ['id','kind','title','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','lesson_type','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
+const NF_ORDER = ['id','kind','title','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
 function playableGrid(it){
   const n = toPlayable(it);
   const grid = NF_ORDER.map(k=>`<span class="nfk">${k}</span>${nfv(n[k])}`).join('');
@@ -708,10 +708,11 @@ function allFieldsPanel(it){ return `<div class="nfields">${playableGrid(it)}</d
 function detailFieldsPanel(it){ return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> fields · drag the corner to resize</div><div class="fdbody">${playableGrid(it)}</div></aside>`; }  // floating, on detail pages
 function rowHTML(it){
   const isLesson = it.kind==='lesson', isPat = it.kind==='pattern';
-  const cover = isLesson ? (LESSON_KINDS[it.lesson_type]?.icon||'school')
+  const lkPrimary = isLesson ? (patternKindsOf(it)[0]||null) : null;
+  const cover = isLesson ? (PATTERN_KINDS[lkPrimary]?.icon||'school')
               : isPat ? (PATTERN_KINDS[it.pattern_kind]?.icon||'extension')
               : 'music_note';
-  const badge = isLesson ? `<span class="badge2 ${it.lesson_type}">${LESSON_KINDS[it.lesson_type]?.label||'Lesson'}</span>`
+  const badge = isLesson ? `<span class="badge2 ${lkPrimary||''}">${lkPrimary?PATTERN_KINDS[lkPrimary].label:'Lesson'}</span>`
               : isPat ? `<span class="badge2 ${it.pattern_kind}">${PATTERN_KINDS[it.pattern_kind]?.label||'Pattern'}</span>` : '';
   const isNew = it.new ? `<span class="pill-new">New</span>` : '';
   const priv = it.visibility==='private' ? `<span class="tag private" style="font-size:10px;padding:1px 6px">Private</span>` : '';
@@ -881,7 +882,7 @@ function renderPart(id){
 function renderLesson(id){
   const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
   const steps = stepsFor(id);
-  const kind = LESSON_KINDS[it.lesson_type]?.label||'Lesson';
+  const lk = patternKindsOf(it); const kind = lk.length ? lk.map(k=>PATTERN_KINDS[k]?.label||k).join(' · ') : 'Lesson';
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Lesson · '+esc(it.title)]])}
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
