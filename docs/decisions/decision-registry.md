@@ -10,6 +10,16 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-18 — ARCH-GUARD-1 hexagon fence live, PR #2 (NH-195)
+
+Completes Phase 0 (stacked on PR #1). **`ARCH-GUARD-1` ⏳→✅ — now LIVE:**
+
+- **dependency-cruiser** rewritten to `server/src/` folder-level rules: a fail-CLOSED `core-purity` rule (core may import only Node builtins + core + `zod`), `adapters → core+adapters`, `modules → +modules`, `entry → all`, `infra ↛ server source`; plus the kept `no-circular` / `no-orphans`.
+- **Core-purity canary** (`tooling/check-core-purity-canary.sh`, `pnpm run check:core-purity`) wired as a REQUIRED step in the CI `quality` job — it plants a deliberate `core/ → @nestjs/common` import and asserts depcruise rejects it, so the fail-closed fence is verified, not assumed (guards the deny-list-passes-green trap).
+- **eslint-plugin-boundaries** element model re-derived for `server/src/{core,adapters,modules,entry}` (editor-realtime twin; still dormant until the flat-config lint lane, NH-42).
+
+Phase 0 (NH-195) is complete (both PRs).
+
 ### 2026-06-18 — Phase 0 foundation implementation, PR #1 (NH-195)
 
 Implements the ADR §1 foundation (plan `docs/plans/2026-06-18-001-feat-foundation-phase0-nx-to-pnpm-plan.md`) — the "deferred → implementation PR" item from the entry below. PR #1 = units U1–U4; the ARCH-GUARD-1 fence is the stacked PR #2.

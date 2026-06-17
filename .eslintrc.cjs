@@ -25,15 +25,15 @@ module.exports = {
     "import/resolver": {
       node: { extensions: [".ts", ".tsx", ".js", ".jsx", ".json"] },
     },
-    // DORMANT (Phase 0 / NH-195): this legacy eslintrc runs in no lint script today
-    // (lint is echo placeholders; flat-config ESLint is NH-42). The element patterns
-    // below still name the OLD top-level core/adapters/apps dirs (now folders under
-    // server/src/). The element model is re-derived for server/src — together with the
-    // dependency-cruiser folder-fence + core-purity canary — in PR #2 (ARCH-GUARD-1).
+    // Editor-realtime twin of the dependency-cruiser hexagon fence (ARCH-GUARD-1), mapping the
+    // server/src/ layers. NOTE: still DORMANT — no lint script runs this legacy eslintrc yet
+    // (lint is echo placeholders; the flat-config ESLint lane is NH-42). dependency-cruiser
+    // (`pnpm run depcheck`) is the LIVE CI enforcement; this mirrors it for when the lint lane lands.
     "boundaries/elements": [
-      { type: "core", pattern: "core/*", mode: "folder" },
-      { type: "adapters", pattern: "adapters/*", mode: "folder" },
-      { type: "apps", pattern: "apps/*", mode: "folder" },
+      { type: "core", pattern: "server/src/core/*", mode: "folder" },
+      { type: "adapters", pattern: "server/src/adapters/*", mode: "folder" },
+      { type: "modules", pattern: "server/src/modules/*", mode: "folder" },
+      { type: "entry", pattern: "server/src/entry/*", mode: "folder" },
       { type: "infra", pattern: "infra/*", mode: "folder" },
     ],
   },
@@ -129,7 +129,8 @@ module.exports = {
         rules: [
           { from: { type: "core" }, allow: { to: { type: ["core"] } } },
           { from: { type: "adapters" }, allow: { to: { type: ["core", "adapters"] } } },
-          { from: { type: "apps" }, allow: { to: { type: ["core", "adapters", "apps"] } } },
+          { from: { type: "modules" }, allow: { to: { type: ["core", "adapters", "modules"] } } },
+          { from: { type: "entry" }, allow: { to: { type: ["core", "adapters", "modules", "entry"] } } },
           { from: { type: "infra" }, allow: { to: { type: ["infra"] } } },
         ],
       },
@@ -138,8 +139,9 @@ module.exports = {
   ignorePatterns: ["dist", "node_modules", "*.cjs", "*.config.js", "*.config.ts"],
   overrides: [
     {
-      // core/ is pure domain — no AWS, no React, no HTTP, no adapters/apps.
-      files: ["core/**/*.ts", "core/**/*.tsx"],
+      // server/src/core is pure domain — no NestJS, AWS, React, HTTP, or sibling layers.
+      // Editor-realtime twin of the dependency-cruiser `core-purity` fence (dormant until NH-42).
+      files: ["server/src/core/**/*.ts", "server/src/core/**/*.tsx"],
       rules: {
         "no-restricted-imports": [
           "error",
@@ -147,11 +149,11 @@ module.exports = {
             paths: [
               { name: "react", message: "core is pure domain — no React." },
               { name: "react-dom", message: "core is pure domain — no React." },
-              { name: "aws-sdk", message: "core is pure domain — no AWS SDK." },
             ],
             patterns: [
+              { group: ["@nestjs/*"], message: "core is framework-free — no NestJS (it belongs in modules/adapters)." },
               { group: ["@aws-sdk/*", "@pulumi/*"], message: "core is pure domain — no AWS/Pulumi." },
-              { group: ["@adapters/*", "@apps/*"], message: "core must not import adapters or apps." },
+              { group: ["../adapters/*", "../modules/*", "../entry/*"], message: "core must not import sibling layers (adapters/modules/entry)." },
             ],
           },
         ],

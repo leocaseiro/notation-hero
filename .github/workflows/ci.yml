@@ -98,6 +98,8 @@ jobs:
         run: pnpm run typecheck
       - name: Dependency boundaries (Hexagonal layers)
         run: pnpm run depcheck
+      - name: Core-purity canary (proves the hexagon fence fires)
+        run: pnpm run check:core-purity
       - name: Dependency versions (Syncpack)
         run: pnpm run syncpack
       - name: Test

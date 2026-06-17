@@ -1,122 +1,63 @@
 /**
- * dependency-cruiser — Hexagonal dependency-direction fence, run via `pnpm run depcheck`
- * (part of the required "CI Green" aggregation). Scans `server shared infra`.
+ * dependency-cruiser — Hexagonal dependency-direction fence (ARCH-GUARD-1), run via
+ * `pnpm run depcheck` (part of the required "CI Green" aggregation). Scans `server shared infra`.
  *
- * PHASE 0 (NH-195) — DEAD-LETTER NOTICE: the `forbidden` hexagon rules below still use the
- * OLD top-level paths (`^core/ ^adapters/ ^apps/`). After ARCH-LAYOUT-1 those dirs moved
- * inside `server/src/`, so those rules now match ZERO files and enforce nothing. Only
- * `no-circular` and `no-orphans` are LIVE in this PR. The full folder-level rewrite
- * (`^server/src/core` etc.) + a fail-closed core-purity allow-rule + a canary as a required
- * CI check land in PR #2 (ARCH-GUARD-1). Until then the hexagon is NOT machine-enforced —
- * safe today only because `server/src/core` + `adapters` are empty placeholders.
- * See AGENTS.md + docs/decisions/decision-registry.md.
+ * The hexagon lives as folders under server/src/ (ARCH-HEX-1):
+ *   core/     framework-free domain — may import ONLY Node builtins + core + zod (fail-CLOSED)
+ *   adapters/ I/O implementing ports — may import core + adapters (Nest decorators allowed)
+ *   modules/  NestJS wiring ("the door") — may import core + adapters + modules
+ *   entry/    bootstrap / Lambda entry points — may import anything in server/src
+ *   infra/    pure IaC — wires server via build output (FileArchive), never a TS import of server source
+ *
+ * The `core-purity` rule is fail-CLOSED (it is an allow-list: anything not explicitly permitted
+ * errors by default). A canary — tooling/check-core-purity-canary.sh, wired as a REQUIRED CI step
+ * in the `quality` job — plants a deliberate `core/ -> @nestjs/common` import and asserts depcruise
+ * rejects it, so the fence is verified to fire, not assumed. See AGENTS.md + the decision-registry.
  */
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
     {
-      name: "no-core-to-adapters",
-      comment: "core is pure domain — it must not depend on any adapter.",
-      severity: "error",
-      from: { path: "^core/" },
-      to: { path: "^adapters/" },
-    },
-    {
-      name: "no-core-to-apps",
-      comment: "core is pure domain — it must not depend on an app.",
-      severity: "error",
-      from: { path: "^core/" },
-      to: { path: "^apps/" },
-    },
-    {
-      name: "no-core-to-infra",
+      name: "core-purity",
       comment:
-        "core is pure domain — it must never import infra/ (IaC) source. Completes the " +
-        "'core -> nothing in-repo' invariant in the CI-LIVE backstop: eslint-plugin-boundaries + " +
-        "the Nx type:core tag also forbid core->infra, but neither runs in CI yet, so depcruise is " +
-        "the only gate that actually enforces it today (PR #25 review #1).",
+        "server/src/core is the framework-free domain. It may import ONLY Node builtins, other " +
+        "core modules, and the explicit allow-list (zod). Anything else — @nestjs, adapters, " +
+        "@aws-sdk, @pulumi, any other package — is an error. FAIL-CLOSED: the `to` is an allow-list " +
+        "(pathNot keeps own-core + zod; dependencyTypesNot keeps Node builtins), so any unlisted " +
+        "import matches and errors by default. tooling/check-core-purity-canary.sh proves it fires.",
       severity: "error",
-      from: { path: "^core/" },
-      to: { path: "^infra/" },
-    },
-    // `no-adapters-to-apps` removed — fully subsumed by H11 (`no-adapters-to-app-or-infra-source`,
-    // `^adapters/` -> `^(apps|infra)/`); a single rule avoids double-firing on an adapters->apps
-    // import (PR #25 review #2).
-    // ── File/package-level bans (H8–H11) ────────────────────────────────────────────────
-    // The finer, package-aware layer Nx's tag rule can't see (registry H7). The Nx tag rule
-    // works at the PROJECT level; these work at the FILE/import level — e.g. infra's PROJECT
-    // may depend on an app (build-order via dist), but an infra SOURCE FILE must never import
-    // app SOURCE (H9). Paths use the repo's top-level core/ adapters/ apps/ infra/ (the
-    // registry's H10/H11 rows still say ^libs/* from the generic DACI; adapted here).
-    {
-      name: "no-handler-to-pulumi",
-      comment:
-        "H8: app runtime code must never import @pulumi/* (IaC). Covers ALL of apps/ — src/, lib/, " +
-        "and flat handlers (apps/<name>/handler.ts) — because apps is pure runtime (registry H2: " +
-        "handler never @pulumi) and IaC lives in infra/. Was ^apps/[^/]+/src, which silently missed " +
-        "flat/lib handlers; the /src scope was an incidental fixture-path transcription, never a " +
-        "decided boundary (PR #25 review #6, ce-sessions-confirmed). Infra references the handler " +
-        "BUILD OUTPUT (apps/*/dist), so @pulumi never enters the Lambda bundle.",
-      severity: "error",
-      from: { path: "^apps/" },
-      to: { path: "@pulumi/" },
+      from: { path: "^server/src/core/" },
+      to: {
+        pathNot: ["^server/src/core/", "node_modules/zod/"],
+        dependencyTypesNot: ["core"],
+      },
     },
     {
-      name: "no-infra-to-app-or-domain-source",
+      name: "no-adapters-to-modules-or-entry",
       comment:
-        "H9 (widened, ADR 2026-06-12 D3): infra/ is pure IaC — it must never import apps, core, " +
-        "or adapters SOURCE. It wires apps via FileArchive(apps/*/dist) + Nx implicitDependencies " +
-        "(build output), honoring registry H3 (infra imports @pulumi, never domain source) + H4 " +
-        "(references build output, not source). The runtime composition root is apps/ (the handler " +
-        "may import @core per H2), NOT infra/. Was ^(apps|libs)/ but libs/ is vestigial (no libs/ " +
-        "dir) so it only blocked infra->apps; widened to core+adapters. Shared deploy constants " +
-        "live in non-domain config, not core/.",
+        "adapters implement ports against core; they may import core + adapters, but never modules " +
+        "(the Nest wiring) or entry — that would invert the hexagon's dependency direction.",
+      severity: "error",
+      from: { path: "^server/src/adapters/" },
+      to: { path: "^server/src/(modules|entry)/" },
+    },
+    {
+      name: "no-modules-to-entry",
+      comment:
+        "modules (the Nest door) may import core + adapters + modules, but never entry " +
+        "(the bootstrap / Lambda entry points compose modules, not the reverse).",
+      severity: "error",
+      from: { path: "^server/src/modules/" },
+      to: { path: "^server/src/entry/" },
+    },
+    {
+      name: "no-infra-to-server-source",
+      comment:
+        "infra/ is deploy-time IaC — it wires server via build output (a FileArchive of the esbuild " +
+        "bundle), never a TS import of server source. infra may still import @pulumi/* (external).",
       severity: "error",
       from: { path: "^infra/" },
-      to: { path: "^(apps|core|adapters)/" },
-    },
-    {
-      name: "no-core-to-aws-sdk",
-      comment:
-        "H10: core is pure domain — it must never import @aws-sdk/* (adapter territory). Keeps " +
-        "the domain free of cloud-SDK coupling so it stays unit-testable and portable.",
-      severity: "error",
-      from: { path: "^core/" },
-      to: { path: "@aws-sdk/" },
-    },
-    {
-      name: "no-core-to-pulumi",
-      comment:
-        "H10 parity (ADR 2026-06-12 D5): core is pure domain — it must never import @pulumi/* " +
-        "(IaC). The spike found depcruise had core->@aws-sdk (H10) and apps->@pulumi (H8) but no " +
-        "core->@pulumi (only the ESLint core/ deny-list caught it); this restores symmetry in the " +
-        "CI backstop so depcruise's external bans are not asymmetric.",
-      severity: "error",
-      from: { path: "^core/" },
-      to: { path: "@pulumi/" },
-    },
-    {
-      name: "no-adapters-to-app-or-infra-source",
-      comment:
-        "H11: adapters are horizontal — they implement ports against @aws-sdk + @core and must " +
-        "never import apps or infra source (that would invert the dependency direction).",
-      severity: "error",
-      from: { path: "^adapters/" },
-      to: { path: "^(apps|infra)/" },
-    },
-    {
-      name: "no-apps-to-infra",
-      comment:
-        "H-app↛infra (PR #25 review #7): apps are runtime (the Lambda handler) — they must " +
-        "never import infra/ (IaC) SOURCE. That would invert the deploy direction: infra wires " +
-        "apps via build output (FileArchive(apps/*/dist) + implicitDependencies), never the " +
-        "reverse. Mirrors ADR D3 'app -> core,adapters,apps; never infra' + the " +
-        "@nx/enforce-module-boundaries type:app constraint (which omits type:infra) + " +
-        "eslint-plugin-boundaries. depcruise is the live CI backstop; the ESLint twins are " +
-        "editor/CI-staged.",
-      severity: "error",
-      from: { path: "^apps/" },
-      to: { path: "^infra/" },
+      to: { path: "^server/" },
     },
     {
       name: "no-circular",
@@ -128,22 +69,16 @@ module.exports = {
     {
       name: "no-orphans",
       comment:
-        "Non-test modules should be reachable. Co-located *.test.* / *.spec.* / *.stories.* " +
-        "are exempt (legit entry points). The __tests__/ whitelist was removed — that folder " +
-        "layout is banned outright by tooling/check-layout.sh. Flipped WARN->ERROR in NH-144 " +
-        "(E-no-orphans-error / CONV-5); safe now (0 modules) and enforced as source lands. Add " +
-        "explicit entry-point exemptions here when app/infra composition roots arrive.",
+        "Non-test modules should be reachable. Co-located *.test.* / *.spec.* / *.stories.* are " +
+        "exempt (legit entry points). Composition roots / entry points are also exempt: " +
+        "infra/index.ts (Pulumi program), server/src/entry/main.ts (Nest bootstrap, invoked at " +
+        "runtime — never imported), shared/index.ts (placeholder contract entry, no consumers yet).",
       severity: "error",
       from: {
         orphan: true,
         pathNot: [
           "\\.(test|spec)\\.(ts|tsx)$",
           "\\.stories\\.(ts|tsx)$",
-          // Composition roots / entry points are not orphans. infra/index.ts is
-          // the Pulumi program entry; server/src/entry/main.ts is the Nest
-          // bootstrap (the Lambda entry, invoked at runtime — never imported);
-          // shared/index.ts is the placeholder contract-package entry (no
-          // consumers yet — the oRPC contract lands here at §3).
           "^infra/index\\.ts$",
           "^server/src/entry/main\\.ts$",
           "^shared/index\\.ts$",
@@ -156,9 +91,8 @@ module.exports = {
     tsPreCompilationDeps: true,
     tsConfig: { fileName: "tsconfig.json" },
     doNotFollow: { path: "node_modules" },
-    // Never cruise build output — dist/ is gitignored esbuild/tsc emit (e.g.
-    // apps/handler-hello/dist), not source; scanning it raises false no-orphans
-    // errors on the bundled entry (NH-150).
+    // Never cruise build output — dist/ is gitignored esbuild/Vite/tsc emit (server/dist,
+    // client/dist), not source; scanning it raises false no-orphans errors on bundled entries.
     exclude: { path: "(^|/)dist/" },
     enhancedResolveOptions: { exportsFields: ["exports"], conditionNames: ["import", "require", "node", "default"] },
   },

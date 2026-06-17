@@ -18,9 +18,10 @@ Four workspace packages (ADR §1, ARCH-LAYOUT-1):
 The hexagon (ARCH-HEX-1) is folders inside `server/src/`: `core/` (framework-free
 domain), `adapters/` (I/O implementing ports), `modules/` (NestJS wiring — the
 "door"), `entry/` (Lambda/bootstrap entry points). Direction is enforced by
-`.dependency-cruiser.cjs` (`pnpm run depcheck`). The full folder-level fence
-(core imports nothing in-repo; adapters → core; modules → core+adapters; entry →
-all) plus a fail-closed core-purity canary is the ARCH-GUARD-1 work (follow-up PR).
+`.dependency-cruiser.cjs` (`pnpm run depcheck`, ARCH-GUARD-1): a fail-CLOSED
+`core-purity` rule (core imports only Node builtins + core + `zod`), `adapters →
+core+adapters`, `modules → +modules`, `entry → all`, `infra ↛ server source`. A
+canary (`pnpm run check:core-purity`, a required CI step) proves the fence fires.
 
 Naming is `@notation-hero/*` (hyphen — matches root `name: "notation-hero"`).
 DynamoDB is per-user data only; the song/lesson catalogue lives in Neon

@@ -19,6 +19,7 @@
     "syncpack": "syncpack lint",
     "check:layout": "bash tooling/check-layout.sh",
     "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh",
+    "check:core-purity": "bash tooling/check-core-purity-canary.sh",
     "infra:preview": "pnpm --filter @notation-hero/infra pulumi:preview",
     "infra:up": "pnpm --filter @notation-hero/infra pulumi:up",
     "infra:destroy": "pnpm --filter @notation-hero/infra pulumi:destroy"
