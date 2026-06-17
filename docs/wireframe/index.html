@@ -368,41 +368,62 @@ const PLAYABLES = [
   {id:'p-tom-fill',  kind:'pattern', title:'Descending Tom Fill',   pattern_kind:'fill',     family:'Tom',    level:2, instruments:['drums'], status:'published', origin:'curated', license:'owned', notation_alphaTex:':16 38 40 43 45', has_audio:true, audio:[{label:'Demo'}], best:48, sessions:2, trend:[30,48]},
   {id:'p-cmaj-scale',kind:'pattern', title:'C Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'C', status:'published', origin:'curated', license:'public-domain', notation_alphaTex:'C4 D4 E4 F4 G4 A4 B4 C5', best:60, sessions:3, top_bpm:100, trend:[40,52,60], data:{difficulty:{by:'fingering',tiers:[{when:'hands separate',level:1},{when:'hands together',level:2}]}}},
   {id:'p-gmaj-scale',kind:'pattern', title:'G Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'G', status:'published', origin:'curated', license:'public-domain', notation_alphaTex:'G4 A4 B4 C5 D5 E5 F#5 G5', best:null, sessions:0, trend:[]},
+
+  {id:'p-rock-kick',   kind:'pattern', title:'Rock Kick Pattern',    pattern_kind:'beat',     family:'Rock',  level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 (x.36) x (x.36) x', best:80, sessions:5, top_bpm:120, trend:[60,72,80]},
+  {id:'p-four-floor',  kind:'pattern', title:'Four-on-the-Floor',    pattern_kind:'beat',     family:'House', level:1, instruments:['drums'], genre:'pop',  status:'published', origin:'curated', license:'owned', notation_alphaTex:':4 (x.36) (x.36) (x.36) (x.36)', best:66, sessions:3, top_bpm:128, trend:[48,60,66]},
+  {id:'p-double-stroke',kind:'pattern',title:'Double Stroke Roll',   pattern_kind:'rudiment', family:'Roll',  level:3, instruments:['drums'], status:'published', origin:'curated', license:'owned', notation_alphaTex:'R R L L R R L L', best:null, sessions:0, trend:[]},
+  /* COMPOSITE pattern — a groove with its OWN steps (reuses leaf patterns) + a whole-play notation. Same shape as a lesson; role=pattern. */
+  {id:'p-rock-groove', kind:'pattern', title:'Rock Groove (full)',   pattern_kind:'beat',     family:'Rock',  level:3, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 (x.42 x.36) x (x.42 x.38) x', best:58, sessions:2, top_bpm:118, trend:[42,58]},
 ];
 
-/* ---------- sample data (exercise = STEPS) ---------- */
-const STEPS = {
+/* ---------- sample data — the `step` JUNCTION (parent playable -> child pattern) ----------
+   Replaces inline steps. A step links a parent (lesson OR composite pattern) to a REUSABLE
+   child pattern + order + bpm ladder. Mirrors the locked table
+   `step (parent_id, child_id, sort_order, start_bpm, goal_bpm)`.
+   Demonstrates: REUSE (same child across parents), SAME-CHILD-REPEATS (slow/med/fast),
+   and a COMPOSITE pattern (a pattern that itself has steps). */
+const STEP = {
+  // beginner: kick then hats — both reused by other lessons
   'first-beat':[
-    {step_no:1,title:'Just the kick',     start_bpm:50,goal_bpm:70, notation_alphaTex:'kd kd kd kd'},
-    {step_no:2,title:'+ Hi-hat',          start_bpm:50,goal_bpm:80, notation_alphaTex:'(hh kd) hh (hh kd) hh'},
+    {child_id:'p-rock-kick', sort_order:1, start_bpm:50, goal_bpm:70},
+    {child_id:'p-hihat-8',   sort_order:2, start_bpm:50, goal_bpm:80},
   ],
+  // builds up to the COMPOSITE groove as its final step
   'rock-8th-beat':[
-    {step_no:1,title:'Hi-hat only',      start_bpm:60,goal_bpm:80, notation_alphaTex:':8 hh hh hh hh hh hh hh hh'},
-    {step_no:2,title:'+ Kick on 1 & 3',  start_bpm:60,goal_bpm:90, notation_alphaTex:'(hh kd) hh (hh kd) hh'},
-    {step_no:3,title:'+ Snare backbeat',  start_bpm:60,goal_bpm:100,notation_alphaTex:'(hh kd) (hh sn) (hh kd) (hh sn)'},
-    {step_no:4,title:'Full groove',       start_bpm:70,goal_bpm:120,notation_alphaTex:'full rock beat'},
+    {child_id:'p-hihat-8',     sort_order:1, start_bpm:60, goal_bpm:90},
+    {child_id:'p-rock-kick',   sort_order:2, start_bpm:60, goal_bpm:100},
+    {child_id:'p-rock-groove', sort_order:3, start_bpm:70, goal_bpm:120},
   ],
-  'single-paradiddle':[
-    {step_no:1,title:'Slow · RLRR LRLL',  start_bpm:40,goal_bpm:60, notation_alphaTex:'paradiddle slow'},
-    {step_no:2,title:'Medium',            start_bpm:60,goal_bpm:100,notation_alphaTex:'paradiddle med'},
-    {step_no:3,title:'Fast',              start_bpm:100,goal_bpm:160,notation_alphaTex:'paradiddle fast'},
-  ],
+  // REUSE: four-on-floor reuses p-hihat-8 (also in first-beat / rock-8th-beat / funk)
   'four-on-floor':[
-    {step_no:1,title:'Kick every beat',   start_bpm:70,goal_bpm:110,notation_alphaTex:'4 kd'},
-    {step_no:2,title:'+ Hats + backbeat', start_bpm:70,goal_bpm:128,notation_alphaTex:'house groove'},
+    {child_id:'p-four-floor', sort_order:1, start_bpm:70, goal_bpm:110},
+    {child_id:'p-hihat-8',    sort_order:2, start_bpm:70, goal_bpm:128},
   ],
+  // REUSE: funk reuses p-hihat-8 + the COMPOSITE p-rock-groove (both also in rock-8th-beat)
   'funk-16ths':[
-    {step_no:1,title:'16th hats R only',  start_bpm:50,goal_bpm:80, notation_alphaTex:'16 hats'},
-    {step_no:2,title:'Add ghost snares',  start_bpm:50,goal_bpm:92, notation_alphaTex:'ghosts'},
-    {step_no:3,title:'Full funk pocket',  start_bpm:60,goal_bpm:104,notation_alphaTex:'funk'},
+    {child_id:'p-hihat-8',     sort_order:1, start_bpm:50, goal_bpm:92},
+    {child_id:'p-rock-groove', sort_order:2, start_bpm:60, goal_bpm:104},
   ],
+  // SAME CHILD REPEATS: one pattern drilled slow / medium / fast (same child, 3 positions)
+  'single-paradiddle':[
+    {child_id:'p-paradiddle', sort_order:1, start_bpm:40,  goal_bpm:60},
+    {child_id:'p-paradiddle', sort_order:2, start_bpm:60,  goal_bpm:100},
+    {child_id:'p-paradiddle', sort_order:3, start_bpm:100, goal_bpm:160},
+  ],
+  // SAME CHILD REPEATS again (double stroke slow -> fast)
   'double-stroke':[
-    {step_no:1,title:'Hand to hand',      start_bpm:40,goal_bpm:70, notation_alphaTex:'doubles'},
-    {step_no:2,title:'Open roll',         start_bpm:70,goal_bpm:120,notation_alphaTex:'open roll'},
+    {child_id:'p-double-stroke', sort_order:1, start_bpm:40, goal_bpm:70},
+    {child_id:'p-double-stroke', sort_order:2, start_bpm:70, goal_bpm:120},
   ],
+  // REUSE: a fill lesson that also reuses p-paradiddle (shared with single-paradiddle)
   'linear-fill-1':[
-    {step_no:1,title:'6-stroke shape',    start_bpm:60,goal_bpm:90, notation_alphaTex:'linear fill'},
-    {step_no:2,title:'Around the kit',    start_bpm:70,goal_bpm:110,notation_alphaTex:'linear fill kit'},
+    {child_id:'p-tom-fill',   sort_order:1, start_bpm:60, goal_bpm:90},
+    {child_id:'p-paradiddle', sort_order:2, start_bpm:70, goal_bpm:110},
+  ],
+  // COMPOSITE PATTERN: p-rock-groove has its OWN steps (a pattern built from patterns)
+  'p-rock-groove':[
+    {child_id:'p-hihat-8',   sort_order:1, start_bpm:70, goal_bpm:120},
+    {child_id:'p-rock-kick', sort_order:2, start_bpm:70, goal_bpm:120},
   ],
 };
 
@@ -455,7 +476,11 @@ const signedIn= () => state.role!=='anon';
 const isPitched = () => state.instrument && PITCHED.includes(state.instrument);
 
 function songParts(songId){ return PLAYABLES.filter(p=>p.kind==='part' && p.parent_id===songId).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
-function hasParts(it){ return it.kind==='song' ? (songParts(it.id).length>0 || !!(it.data&&it.data.sections&&it.data.sections.length)) : (STEPS[it.id]||[]).length>0; }
+function stepsFor(parentId){ return (STEP[parentId]||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
+function childPlayable(childId){ return PLAYABLES.find(x=>x.id===childId) || null; }
+function reuseCount(childId){ return Object.keys(STEP).filter(pid=>STEP[pid].some(s=>s.child_id===childId)).length; }   // how many parents step to this pattern
+function usedBy(childId){ return Object.keys(STEP).filter(pid=>STEP[pid].some(s=>s.child_id===childId)).map(childPlayable).filter(Boolean); }
+function hasParts(it){ return it.kind==='song' ? (songParts(it.id).length>0 || !!(it.data&&it.data.sections&&it.data.sections.length)) : stepsFor(it.id).length>0; }
 function itemFlags(it){
   const f=[];
   if(it.has_audio) f.push('<span class="material-symbols-outlined" title="Has audio">volume_up</span>');
@@ -463,7 +488,7 @@ function itemFlags(it){
   if(hasParts(it)) f.push(`<span class="material-symbols-outlined parts" title="${it.kind==='song'?'Has parts':'Has steps'}">splitscreen</span>`);
   return f.length?`<span class="flags">${f.join('')}</span>`:'';
 }
-function lessonLadder(it){ const s=STEPS[it.id]||[]; if(!s.length) return '—'; const a=Math.min(...s.map(x=>x.start_bpm||1e9)), b=Math.max(...s.map(x=>x.goal_bpm||0)); return (a<1e9&&b)?`${a}→${b}`:'—'; }
+function lessonLadder(it){ const s=stepsFor(it.id); if(!s.length) return '—'; const a=Math.min(...s.map(x=>x.start_bpm||1e9)), b=Math.max(...s.map(x=>x.goal_bpm||0)); return (a<1e9&&b)?`${a}→${b}`:'—'; }
 
 /* ---------- router ---------- */
 function parseHash(){
@@ -501,7 +526,7 @@ function render(){
   if(seg[0]==='song')   return renderSong(seg[1]);
   if(seg[0]==='part')   return renderPart(seg[1]);
   if(seg[0]==='pattern') return renderPattern(seg[1]);
-  if(seg[0]==='lesson') return seg[2]==='step' ? renderStep(seg[1], +seg[3]) : renderLesson(seg[1]);
+  if(seg[0]==='lesson') return renderLesson(seg[1]);
   if(seg[0]==='play')   return renderPlayer();
   if(seg[0]==='admin')  return renderAdminStub(seg, qp);
   app.innerHTML = `<div class="empty"><span class="material-symbols-outlined">help</span>Unknown route <code>${esc(location.hash)}</code><br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`;
@@ -692,7 +717,7 @@ function rowHTML(it){
   const priv = it.visibility==='private' ? `<span class="tag private" style="font-size:10px;padding:1px 6px">Private</span>` : '';
   const diffHl = (it.data&&it.data.difficulty) ? ` <span class="dot"></span> by ${esc(it.data.difficulty.by)}` : '';
   const sub = isLesson
-    ? `${(STEPS[it.id]||[]).length} steps <span class="dot"></span> ${(it.skill||[]).slice(0,2).join(' · ')}`
+    ? `${stepsFor(it.id).length} steps <span class="dot"></span> ${(it.skill||[]).slice(0,2).join(' · ')}`
     : isPat
     ? `${PATTERN_KINDS[it.pattern_kind]?.label||it.pattern_kind}${it.family?' <span class="dot"></span> '+esc(it.family):''}${it.musical_key?' <span class="dot"></span> '+it.musical_key:(it.genre?' <span class="dot"></span> '+cap(it.genre):'')}${diffHl}`
     : `${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}${it.musical_key?' <span class="dot"></span> '+it.musical_key:''}`;
@@ -855,9 +880,8 @@ function renderPart(id){
 /* ---------- screen: LESSON detail ---------- */
 function renderLesson(id){
   const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
-  const steps = STEPS[id]||[];
+  const steps = stepsFor(id);
   const kind = LESSON_KINDS[it.lesson_type]?.label||'Lesson';
-  const srcSong = it.sourceSong ? PLAYABLES.find(x=>x.id===it.sourceSong) : null;
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Lesson · '+esc(it.title)]])}
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
@@ -866,7 +890,6 @@ function renderLesson(id){
       <div class="meta">
         <h1>${esc(it.title)}</h1>
         <div class="sub"><span class="tag lesson">${kind}</span> ${it.level===0?'Debut':'Level '+(it.level??'—')} ${(it.skill||[]).map(s=>`<span class="badge" style="padding:3px 9px">${s}</span>`).join('')}</div>
-        ${srcSong?`<div class="sub" style="margin-top:8px;font-size:13px">Built from <a data-nav="#/song/${srcSong.id}" style="color:var(--accent);cursor:pointer">${esc(srcSong.title)}</a></div>`:''}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>
         </div>
@@ -874,11 +897,10 @@ function renderLesson(id){
       ${historyCard(it)}
     </div>
     <div class="card">
-      <h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· ${steps.length} · start→goal BPM ladder</span></h3>
+      <h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· ${steps.length} · each step → a reusable pattern + BPM ladder</span></h3>
       ${steps.map(s=>stepRow(it,s)).join('')}
       ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
     </div>
-    ${patternsCard(it)}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
   `;
@@ -913,81 +935,42 @@ function renderPattern(id){
     ${diff?`<div class="card"><h3><span class="material-symbols-outlined">trending_up</span> Difficulty <span style="font-weight:400;color:var(--faint)">· by ${esc(diff.by)}</span></h3>
       ${diff.tiers.map(t=>`<div class="part"><div style="flex:1"><b>${t.upTo!==undefined?(t.upTo==null?'fastest':'up to '+t.upTo+(diff.by==='bpm'?' BPM':'')):esc(t.when)}</b></div><span class="lvlpill">L${t.level}</span></div>`).join('')}
       <small style="color:var(--faint);display:block;margin-top:6px">Stored in <code>data.difficulty {by, tiers}</code> — a lesson step's level = this curve at the step's goal BPM.</small></div>`:''}
+    ${stepsFor(it.id).length?`<div class="card"><h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· composite pattern — built from ${stepsFor(it.id).length} reusable patterns</span></h3>
+      ${stepsFor(it.id).map(s=>stepRow(it,s)).join('')}</div>`:''}
+    ${(()=>{ const u=usedBy(it.id); return u.length?`<div class="card"><h3><span class="material-symbols-outlined">hub</span> Used in <span style="font-weight:400;color:var(--faint)">· this pattern is a step in ${u.length} playable(s) — reuse</span></h3>
+      ${u.map(p=>`<div class="patrow" data-nav="#/${p.kind==='pattern'?'pattern':'lesson'}/${p.id}"><span class="material-symbols-outlined" style="color:var(--accent)">${p.kind==='pattern'?'extension':'school'}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${p.kind}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`:''; })()}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
   `;
 }
-function stepFieldsPanel(lesson, s){
-  const f = {lesson_id:lesson.id, pattern_id:'(reusable pattern this step drills)', sort_order:s.step_no, start_bpm:s.start_bpm??null, goal_bpm:s.goal_bpm??null};
-  const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
-  return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> lesson_step · junction</div><div class="fdbody"><div class="nfsub">a step is NOT a notation — it links a lesson to a reusable pattern</div><div class="nfgrid">${grid}</div></div></aside>`;
-}
-/* inline per-step field panel (Inspector toggle): shows the fields THIS step carries + flags the target junction model */
-function stepFieldsInline(lesson, s){
+/* inline per-step field panel (Inspector toggle): shows the locked `step` junction row */
+function stepFieldsInline(parent, s){
+  const child = childPlayable(s.child_id);
   const f = {
-    lesson_id: lesson.id,
-    step_no: s.step_no,
-    title: s.title,
+    parent_id: parent.id,
+    child_id: s.child_id,
+    sort_order: s.sort_order,
     start_bpm: s.start_bpm ?? null,
     goal_bpm: s.goal_bpm ?? null,
-    notation_alphaTex: s.notation_alphaTex ?? null,
-    source_item_id: s.source_item_id ?? null,
-    section_label: s.section_label ?? null,
-    start_bar: s.start_bar ?? null,
-    end_bar: s.end_bar ?? null,
   };
   const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
-  return `<div class="nfields"><div class="nfsub">exercise (step) · current = notation inlined on the step</div><div class="nfgrid">${grid}</div>
-    <div class="nfsub" style="color:var(--s-dev)">↳ target: a step = <code>lesson_step</code> junction → reusable <code>pattern</code> (pattern_id + sort_order + start/goal bpm). The notation_alphaTex / song-slice fields move onto the pattern, so the same pattern can be reused across lessons.</div></div>`;
+  return `<div class="nfields"><div class="nfsub">step · the locked junction (parent_id, child_id, sort_order, start/goal bpm)</div><div class="nfgrid">${grid}</div>
+    <div class="nfsub" style="color:var(--accent)">↳ child = reusable <code>${esc(s.child_id)}</code>${child?` · “${esc(child.title)}”`:''} — reused in ${reuseCount(s.child_id)} playable(s). The notation lives on the child pattern, not the step.</div></div>`;
 }
-function stepRow(lesson, s){
-  const srcTag = s.notation_alphaTex!=null ? '<span class="src tex">alphaTex</span>'
-               : s.source_item_id ? '<span class="src slice">song slice</span>'
-               : '<span class="src upload">upload</span>';
+function stepRow(parent, s){
+  const child = childPlayable(s.child_id) || {title:s.child_id, pattern_kind:null};
+  const k = PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const reuse = reuseCount(s.child_id);
+  const composite = stepsFor(s.child_id).length>0;
   const ladder = (s.start_bpm||s.goal_bpm) ? `<span class="ladder"><span class="material-symbols-outlined" style="font-size:14px">speed</span>${s.start_bpm??'?'}→${s.goal_bpm??'?'}</span>` : '';
-  const sliceInfo = s.source_item_id ? `<small>${esc(s.section_label||'')} · bars ${s.start_bar}–${s.end_bar}</small>` : '';
+  const meta = [k.label, composite?'composite':null, reuse>1?`reused ×${reuse}`:null].filter(Boolean).join(' · ');
   return `<div class="stepwrap"><div class="step">
-    <span class="no">${s.step_no}</span>
-    <div class="si" data-nav="#/lesson/${lesson.id}/step/${s.step_no}"><b>${esc(s.title)}</b>${sliceInfo}</div>
-    ${ladder} ${srcTag}
-    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/admin/lesson/${lesson.id}/step/${s.step_no}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
-    <button class="play" title="Play this step" data-nav="#/play/${lesson.id}/step/${s.step_no}"><span class="material-symbols-outlined">play_arrow</span></button>
-  </div>${stepFieldsInline(lesson, s)}</div>`;
-}
-
-/* ---------- screen: STEP ---------- */
-function renderStep(lessonId, n){
-  const it = PLAYABLES.find(x=>x.id===lessonId); if(!it) return notFound();
-  const all = STEPS[lessonId]||[]; const s = all.find(x=>x.step_no===n); if(!s) return notFound();
-  const srcSong = s.source_item_id?PLAYABLES.find(x=>x.id===s.source_item_id):null;
-  app.innerHTML = `
-    ${crumbs([['#/catalog','Catalog'],['#/lesson/'+it.id,'Lesson · '+esc(it.title)],['','Step '+n]])}
-    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back to lesson</button>
-    ${isAdmin()?`<div class="adminbar">
-      <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin · step</span>
-      <button class="adminbtn" data-nav="#/admin/lesson/${it.id}/step/${n}/edit"><span class="material-symbols-outlined">edit</span> Edit step</button>
-      <button class="adminbtn danger" data-nav="#/admin/lesson/${it.id}/step/${n}/edit?delete=1"><span class="material-symbols-outlined">delete</span> Delete step</button>
-    </div>`:''}
-    <div class="hero">
-      <div class="meta">
-        <div class="sub" style="margin-bottom:4px">Step ${n} of ${all.length}</div>
-        <h1>${esc(s.title)}</h1>
-        <div class="badges">
-          <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${s.start_bpm??'?'} → ${s.goal_bpm??'?'}</span> BPM</span>
-          <span class="badge"><span class="material-symbols-outlined">music_note</span>${s.notation_alphaTex!=null?'alphaTex (authored)':s.source_item_id?'slice of '+esc(srcSong?.title||'song'):'uploaded file'}</span>
-          ${s.source_item_id?`<span class="badge"><span class="material-symbols-outlined">segment</span>bars ${s.start_bar}–${s.end_bar}</span>`:''}
-        </div>
-        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}/step/${n}"><span class="material-symbols-outlined">play_arrow</span> Play step</button>
-          ${n<all.length?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${n+1}">Next step <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
-        </div>
-      </div>
-    </div>
-    <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation preview</h3>
-      <div class="gate"><span class="material-symbols-outlined">info</span>Renders here at play time (AlphaTab). Source: ${s.notation_alphaTex!=null?'<code>notation_alphaTex</code> (inline alphaTex)':s.source_item_id?'<code>source_item_id</code> + bar range (song slice)':'<code>notation_key</code> (uploaded file)'}.</div>
-    </div>
-    ${stepFieldsPanel(it,s)}
-  `;
+    <span class="no">${s.sort_order}</span>
+    <div class="si" data-nav="#/pattern/${s.child_id}"><b>${esc(child.title)}</b><small>${meta}</small></div>
+    ${ladder} <span class="src tex">${k.label}</span>
+    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/admin/lesson/${parent.id}/step/${s.sort_order}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
+    <button class="play" title="Play this step" data-nav="#/play/${parent.id}/step/${s.sort_order}"><span class="material-symbols-outlined">play_arrow</span></button>
+  </div>${stepFieldsInline(parent, s)}</div>`;
 }
 
 /* ---------- screen: PLAYER stub ---------- */
@@ -999,7 +982,7 @@ function renderPlayer(){
               : it.kind==='part'?`“${it.title}” — part · bars ${it.start_bar}–${it.end_bar} @ ${it.bpm} BPM`
               : it.kind==='pattern'?`Pattern “${it.title}”`
               :`Lesson “${it.title}”`) : 'item';
-  if(stepNo){ const s=(STEPS[id]||[]).find(x=>x.step_no===stepNo); if(s) ctx=`“${it.title}” — Step ${stepNo}: ${s.title} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
+  if(stepNo){ const s=(STEP[id]||[]).find(x=>x.sort_order===stepNo); const c=s?childPlayable(s.child_id):null; if(s) ctx=`“${it.title}” — step ${stepNo}: ${c?c.title:s.child_id} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
   app.innerHTML = `
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     <div class="playerstub">
