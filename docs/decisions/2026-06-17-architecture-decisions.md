@@ -1,6 +1,6 @@
 # Notation Hero — Architecture Decision Record (Backend · Client · Auth)
 
-> **Status:** 🟢 DECIDED (2026-06-17) — **pending approval** before the DACI/ADR text rewrites + implementation planning.
+> **Status:** ✅ APPROVED (2026-06-18) — expert review complete (NH-194, 6-engineer panel); DACI + file-structure ADR superseded and the decision-registry updated. Ready for implementation planning.
 > **Scope:** the 8 open questions in `docs/prompts/2026-06-17-architecture-brainstorm.md`. The north-star (NestJS modular monolith + hexagon, one Lambda behind a Function URL, React SPA + Capacitor) was already locked; this doc decides the open questions and **deliberately reopens** the DACI-locked foundation (Nx, hexagon physical form, file-structure ADR).
 > **Companion:** [`docs/specs/2026-06-17-data-layer-requirements.md`](../specs/2026-06-17-data-layer-requirements.md) — what the data layer must provide, decoupled from the parallel schema redesign.
 > **Supersedes (pending ratification):** parts of `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (suffix-everything). See §9.
