@@ -213,9 +213,9 @@
   <h2>Naming forks — status</h2>
   <ol class="forks">
     <li>✅ <b>F1 — umbrella word = <span style="color:var(--song)">Playable</span>.</b> Song / Lesson / Pattern / Part are all a <i>Playable</i>.</li>
-    <li>✅ <b>F2 — "Notation" = the written score</b> only (followed from F1).</li>
+    <li>✅ <b>F2 — "Notation" = the written score</b> — the bytes table, renamed from <code>source</code>.</li>
     <li>✅ <b>F3 — "groove" is not a type</b> — it's an instrument-agnostic example of a <b>composite Pattern</b>.</li>
-    <li>🔵 <b>F4 — Lesson vs composite Pattern → proposed synthesis (confirming).</b> Same shape, kept as distinct <i>roles</i> sharing one mechanism: a Playable may carry its <b>own Notation + own score</b> (play it whole) <b>and</b> ordered <b>Steps</b> (sub-playables, each scored on their own). A Lesson is the "final-exam" role — its score is the whole-play, <i>never</i> an average of steps.</li>
+    <li>✅ <b>F4 — confirmed: one shape, distinct roles.</b> A Playable may carry its <b>own Notation + own score</b> (play it whole) <b>and</b> ordered <b>Steps</b> via one self-referencing <code>step</code> junction shared by lessons &amp; composite patterns. Every Playable (song, part, pattern, lesson) is scored on its own id — <i>never</i> an average.</li>
     <li>⏳ <b>F5 — structured song learning.</b> "Learn this song" = a Lesson whose Steps are the Song's Parts (confirm when we build Song Parts).</li>
   </ol>
 </div>
