@@ -337,7 +337,7 @@ const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',
 /* ---------- sample data (playable — the locked umbrella; kind = the role) ---------- */
 const PLAYABLES = [
   {id:'seven-nation-army', kind:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], tags:['riff','syncopation'], patterns:['rock-8th'], musical_key:null, status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Official video'}], best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
-    data:{bars:48, sections:[{label:'Intro',startBar:1,endBar:8},{label:'Verse',startBar:9,endBar:24},{label:'Chorus',startBar:25,endBar:40},{label:'Outro',startBar:41,endBar:48}]}, breakdown:'sna-breakdown'},
+    data:{bars:48, sections:[{label:'Intro',startBar:1,endBar:8},{label:'Verse',startBar:9,endBar:24},{label:'Chorus',startBar:25,endBar:40},{label:'Outro',startBar:41,endBar:48}]}},
   {id:'billie-jean', kind:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], tags:['groove'], patterns:['four-floor'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
     data:{bars:64, sections:[{label:'Groove',startBar:1,endBar:16},{label:'Verse',startBar:17,endBar:32},{label:'Chorus',startBar:33,endBar:48}]}},
   {id:'rosanna', kind:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['shuffle','ghost-notes'], patterns:['single-paradiddle'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp5', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Drum cam'}], best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
@@ -355,7 +355,11 @@ const PLAYABLES = [
   {id:'single-paradiddle', kind:'lesson', title:'Single Paradiddle', level:2, lesson_type:'rudiment', instruments:['drums'], skill:['independence','control'], patterns:['single-paradiddle'], status:'published', origin:'curated', license:'owned', best:73, sessions:5, trend:[40,52,60,68,73]},
   {id:'double-stroke', kind:'lesson', title:'Double Stroke Roll', level:3, lesson_type:'rudiment', instruments:['drums'], skill:['control'], patterns:['double-stroke'], status:'published', origin:'curated', license:'owned', best:null, sessions:0, trend:[]},
   {id:'linear-fill-1', kind:'lesson', title:'Linear Fill — 6-stroke', level:5, lesson_type:'rudiment', instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', origin:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'teaches a FILL pattern (fills = pattern.kind, not lesson_type — SD-1)'},
-  {id:'sna-breakdown', kind:'lesson', title:'Seven Nation Army — Practice in Parts', level:2, lesson_type:'song-breakdown', instruments:['drums'], skill:['timing'], patterns:['rock-8th'], status:'published', origin:'curated', license:'royalty-free', has_audio:true, best:55, sessions:3, trend:[35,48,55], sourceSong:'seven-nation-army'},
+  /* SONG PARTS — kind=part, parent_id -> the song, bar range, listable:false (hidden from browse; reached via the song's "Practice in parts"). Each part is its OWN playable, scored on its own id. */
+  {id:'sna-intro',  kind:'part', title:'Intro',  parent_id:'seven-nation-army', start_bar:1,  end_bar:8,  sort_order:1, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:78, sessions:4, top_bpm:120, trend:[55,68,78]},
+  {id:'sna-verse',  kind:'part', title:'Verse',  parent_id:'seven-nation-army', start_bar:9,  end_bar:24, sort_order:2, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:60, sessions:3, top_bpm:110, trend:[40,52,60]},
+  {id:'sna-chorus', kind:'part', title:'Chorus', parent_id:'seven-nation-army', start_bar:25, end_bar:40, sort_order:3, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:45, sessions:2, top_bpm:100, trend:[30,45]},
+  {id:'sna-outro',  kind:'part', title:'Outro',  parent_id:'seven-nation-army', start_bar:41, end_bar:48, sort_order:4, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[]},
 
   /* patterns — reusable building blocks, now browsable (kind=pattern). They live under the Lessons tab. */
   {id:'p-hihat-8',   kind:'pattern', title:'Straight 8th Hi-hats',  pattern_kind:'beat',     family:'Rock',   level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 x x x x x x x x', best:90, sessions:8, top_bpm:140, trend:[70,82,90], data:{difficulty:{by:'bpm',tiers:[{upTo:90,level:1},{upTo:140,level:2},{upTo:null,level:3}]}}},
@@ -400,16 +404,11 @@ const STEPS = {
     {step_no:1,title:'6-stroke shape',    start_bpm:60,goal_bpm:90, notation_alphaTex:'linear fill'},
     {step_no:2,title:'Around the kit',    start_bpm:70,goal_bpm:110,notation_alphaTex:'linear fill kit'},
   ],
-  'sna-breakdown':[
-    {step_no:1,title:'Main riff',   section_label:'Intro', source_item_id:'seven-nation-army',start_bar:1, end_bar:8, start_bpm:90, goal_bpm:124},
-    {step_no:2,title:'Verse groove',section_label:'Verse',source_item_id:'seven-nation-army',start_bar:9, end_bar:24,start_bpm:100,goal_bpm:124},
-    {step_no:3,title:'Chorus hits', section_label:'Chorus',source_item_id:'seven-nation-army',start_bar:25,end_bar:40,start_bpm:110,goal_bpm:124},
-  ],
 };
 
-const LESSON_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, 'song-breakdown':{icon:'segment',label:'Song parts'}};
-/* Lessons tab = every listable notation that isn't a song (lessons + patterns). Kind filter spans both lesson_type and pattern_kind. */
-const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',label:'Fills'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, scale:{icon:'piano',label:'Scales'}, 'song-breakdown':{icon:'segment',label:'Song parts'}};
+const LESSON_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}};
+/* Lessons tab = every listable playable that isn't a song (lessons + patterns). Song parts are listable:false (reached from their song), so they never appear here. Kind filter spans both lesson_type and pattern_kind. */
+const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',label:'Fills'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, scale:{icon:'piano',label:'Scales'}};
 const GENRES = ['rock','pop','jazz','metal','funk','soul'];
 const TIMES = ['4/4','3/4','5/4','6/8','7/8'];
 const INSTRUMENTS = ['drums','guitar','keys'];
@@ -455,7 +454,8 @@ const isAdmin = () => state.role==='admin';
 const signedIn= () => state.role!=='anon';
 const isPitched = () => state.instrument && PITCHED.includes(state.instrument);
 
-function hasParts(it){ return it.kind==='song' ? !!(it.data&&it.data.sections&&it.data.sections.length) : (STEPS[it.id]||[]).length>0; }
+function songParts(songId){ return PLAYABLES.filter(p=>p.kind==='part' && p.parent_id===songId).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
+function hasParts(it){ return it.kind==='song' ? (songParts(it.id).length>0 || !!(it.data&&it.data.sections&&it.data.sections.length)) : (STEPS[it.id]||[]).length>0; }
 function itemFlags(it){
   const f=[];
   if(it.has_audio) f.push('<span class="material-symbols-outlined" title="Has audio">volume_up</span>');
@@ -499,6 +499,7 @@ function render(){
     return renderCatalog();
   }
   if(seg[0]==='song')   return renderSong(seg[1]);
+  if(seg[0]==='part')   return renderPart(seg[1]);
   if(seg[0]==='pattern') return renderPattern(seg[1]);
   if(seg[0]==='lesson') return seg[2]==='step' ? renderStep(seg[1], +seg[3]) : renderLesson(seg[1]);
   if(seg[0]==='play')   return renderPlayer();
@@ -508,6 +509,7 @@ function render(){
 
 /* ---------- filtering + sorting ---------- */
 function matches(it){
+  if(it.listable===false) return false;                                          // parts (and any listable:false playable) never appear in browse
   if(state.tab==='songs' ? it.kind!=='song' : it.kind==='song') return false;   // Lessons tab = every non-song (lessons + patterns)
   if(state.genre.length && !state.genre.includes(it.genre)) return false;
   if(state.tab==='lessons' && state.kind.length && !state.kind.includes(it.lesson_type) && !state.kind.includes(it.pattern_kind)) return false;
@@ -650,10 +652,10 @@ function toPlayable(it){
   const ts = it.time_sig ? String(it.time_sig).split('/') : [null,null];
   return {
     id:it.id, kind:it.kind, title:it.title,
-    parent_id: it.sourceSong||null,
+    parent_id: it.parent_id||it.sourceSong||null,
     notation_id: it.notation_format?('src-'+it.id):(it.notation_alphaTex?('tex-'+it.id):null),
-    start_bar:null, end_bar:null, sort_order:null,
-    listable: it.visibility==='private'?false:true,
+    start_bar: it.start_bar??null, end_bar: it.end_bar??null, sort_order: it.sort_order??null,
+    listable: it.listable===false ? false : (it.visibility==='private'?false:true),
     level: it.level??null, artist: it.artist??null, bpm: it.bpm??null,
     time_signature_numerator: ts[0]?Number(ts[0]):null, time_signature_denominator: ts[1]?Number(ts[1]):null,
     genre: it.genre??null, musical_key: it.musical_key??null,
@@ -764,6 +766,7 @@ function metaFoot(it){
 function renderSong(id){
   const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
   const sections = it.data?.sections||[];
+  const parts = songParts(it.id);
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Song · '+esc(it.title)]])}
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
@@ -782,22 +785,68 @@ function renderSong(id){
         ${mediaLinks(it)}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>
-          ${it.breakdown?`<button class="btn secondary" data-nav="#/lesson/${it.breakdown}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
+          ${parts.length?`<button class="btn secondary" data-nav="#/part/${parts[0].id}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
         </div>
       </div>
       ${historyCard(it)}
     </div>
     <div class="card">
-      <h3><span class="material-symbols-outlined">segment</span> Song structure ${it.breakdown?'· <span style="font-weight:400;color:var(--faint)">tap a part to practice it</span>':''}</h3>
-      ${sections.length? sections.map((s,i)=>`
-        <div class="part" ${it.breakdown?`data-nav="#/lesson/${it.breakdown}/step/${i+1}"`:''}>
-          <span class="material-symbols-outlined" style="color:var(--accent)">${it.breakdown?'play_circle':'graphic_eq'}</span>
+      <h3><span class="material-symbols-outlined">segment</span> Song structure ${parts.length?'· <span style="font-weight:400;color:var(--faint)">each part is its own playable — practice &amp; score it on its own</span>':''}</h3>
+      ${parts.length
+        ? parts.map(p=>`
+        <div class="part" data-nav="#/part/${p.id}">
+          <span class="material-symbols-outlined" style="color:var(--accent)">play_circle</span>
+          <div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">kind=part · parent ${esc(it.title)}</small></div>
+          <span class="bars">bars ${p.start_bar}–${p.end_bar}</span>
+          ${donut(p.best)}
+          <span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span>
+        </div>`).join('')
+        : sections.length
+        ? sections.map(s=>`
+        <div class="part">
+          <span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span>
           <div style="flex:1"><b>${esc(s.label)}</b></div>
           <span class="bars">bars ${s.startBar}–${s.endBar}</span>
-          ${it.breakdown?`<span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span>`:''}
-        </div>`).join('') : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`}
+        </div>`).join('')
+        : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`}
     </div>
     ${patternsCard(it)}
+    ${metaFoot(it)}
+    ${detailFieldsPanel(it)}
+  `;
+}
+
+/* ---------- screen: PART detail (a slice of a song — its OWN playable, scored on its own id) ---------- */
+function renderPart(id){
+  const it = PLAYABLES.find(x=>x.id===id); if(!it || it.kind!=='part') return notFound();
+  const song = it.parent_id ? PLAYABLES.find(x=>x.id===it.parent_id) : null;
+  const sibs = song ? songParts(song.id) : [];
+  const idx  = sibs.findIndex(p=>p.id===it.id);
+  const next = idx>=0 && idx<sibs.length-1 ? sibs[idx+1] : null;
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'], song?['#/song/'+song.id,'Song · '+esc(song.title)]:['','Song'], ['','Part · '+esc(it.title)]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
+    ${adminDetailBar(it)}
+    <div class="hero">
+      <div class="meta">
+        <h1>${esc(it.title)}</h1>
+        <div class="sub"><span class="tag song">Part</span> ${song?`of <a data-nav="#/song/${song.id}" style="color:var(--accent);cursor:pointer">${esc(song.title)}</a>`:''}</div>
+        <div class="badges">
+          <span class="badge"><span class="material-symbols-outlined">segment</span>bars ${it.start_bar}–${it.end_bar}</span>
+          <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
+          <span class="badge"><span class="material-symbols-outlined">schedule</span>${it.time_sig}</span>
+          <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.instruments||[]).join('·')}</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play part</button>
+          ${next?`<button class="btn secondary" data-nav="#/part/${next.id}">Next part <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+        </div>
+      </div>
+      ${historyCard(it)}
+    </div>
+    <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation slice</h3>
+      <div class="gate"><span class="material-symbols-outlined">info</span>Plays bars <b>${it.start_bar}–${it.end_bar}</b> of the parent score — <code>notation_id</code> is shared with the song; <code>start_bar</code>/<code>end_bar</code> live on the part.</div>
+    </div>
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
   `;
@@ -946,7 +995,10 @@ function renderPlayer(){
   const {seg} = parseHash();
   const id = seg[1]; const stepNo = seg[2]==='step'?+seg[3]:null;
   const it = PLAYABLES.find(x=>x.id===id);
-  let ctx = it? (it.kind==='song'?`“${it.title}” — full song @ ${it.bpm} BPM`:`Lesson “${it.title}”`) : 'item';
+  let ctx = it? (it.kind==='song'?`“${it.title}” — full song @ ${it.bpm} BPM`
+              : it.kind==='part'?`“${it.title}” — part · bars ${it.start_bar}–${it.end_bar} @ ${it.bpm} BPM`
+              : it.kind==='pattern'?`Pattern “${it.title}”`
+              :`Lesson “${it.title}”`) : 'item';
   if(stepNo){ const s=(STEPS[id]||[]).find(x=>x.step_no===stepNo); if(s) ctx=`“${it.title}” — Step ${stepNo}: ${s.title} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
   app.innerHTML = `
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
