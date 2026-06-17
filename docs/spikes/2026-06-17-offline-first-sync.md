@@ -1,6 +1,6 @@
 # Spike — Offline-first sync design (plain Dexie) — 2026-06-17
 
-> **Feeds:** the offline-first decision ([`../decisions/2026-06-17-offline-first-reviewed.md`](../decisions/2026-06-17-offline-first-reviewed.md), pending review).
+> **Feeds:** the offline-first decision — `ARCH-OFFLINE-1` in [`../decisions/2026-06-17-architecture-decisions.md`](../decisions/2026-06-17-architecture-decisions.md).
 > **Question:** is **plain Dexie + insert-outbox + blob queue** sufficient for offline-first against the draft `notation`/`source`/`lesson_step`/`notation_link` schema, or is a sync framework needed?
 > **Verdict:** Dexie is sufficient AND the right tool — conditional on 4 schema/server changes. No framework.
 

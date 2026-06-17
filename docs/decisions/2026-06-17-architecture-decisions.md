@@ -6,7 +6,7 @@
 > **Supersedes (pending ratification):** parts of `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (suffix-everything). See §9.
 > **Reaffirms:** `2026-06-09-catalogue-store-postgres-neon.md` (`DS-1`), the Cognito-not-Amplify decision (NH-193).
 > **Owner:** leocaseiro
-> **Spec review:** ✅ 2026-06-17 (8-persona ce-doc-review, NH-194) — 16 fixes applied inline, 4 items parked in §"Deferred / Open Questions". The DACI + file-structure ADR text rewrite remains the post-review task (§11 step 1).
+> **Spec review:** ✅ 2026-06-17 (8-persona ce-doc-review, NH-194) — 16 fixes applied inline. The offline open questions are being resolved inline (RxDB → plain Dexie; conflict-resolution + durability now decided in ARCH-OFFLINE-1; wiring-scope + DynamoDB key-design still open — see §"Deferred / Open Questions"). The parked `offline-first-reviewed.md` was folded into ARCH-OFFLINE-1 and removed (one ADR). The DACI + file-structure ADR text rewrite remains the post-review task (§11 step 1).
 
 ---
 
@@ -126,7 +126,7 @@ server/src/
 
 ## §3 — Client stack (Q4 + the contract)
 
-> **FE-stack learning-budget note:** oRPC, TanStack Router/Query and RxDB are net-new libraries, but the owner already has hands-on experience with them and they're agent-assisted, so the marginal learning cost is low and does not displace the AWS-learning priority. Per §11, FE libraries are layered in **as CRUD actually needs them**, not all up front.
+> **FE-stack learning-budget note:** oRPC, TanStack Router/Query and Dexie are net-new libraries, but they're well-trodden and agent-assisted, so the marginal learning cost is low and does not displace the AWS-learning priority. Per §11, FE libraries are layered in **as CRUD actually needs them**, not all up front.
 
 ### ARCH-CONTRACT-1 — oRPC for the typed API contract (not ts-rest); ditch kanel-zod
 **Decision:** use **oRPC** (`@orpc/*`): the contract lives framework-free in `shared/` (`oc.route().input(zod).output(zod)`), `server/` implements it via `@orpc/nest` (`@Implement`), `client/` consumes it via `@orpc/tanstack-query`. **Ditch kanel-zod** — the DB→Zod layer is owned by Drizzle + `drizzle-zod` (derive a base from the DB schema, then `.omit()/.extend()` to curate the API DTO — DB-change awareness without coupling the API to the DB).
@@ -139,10 +139,15 @@ server/src/
 **Why:** keeps routing in the same typed/ecosystem story as Query + oRPC; typed search params suit the rhythm-game deep-links (`/play?songId=&difficulty=&speed=`). This was the closest call — **React Router v7 (data mode)** is the legitimate alternative if minimizing FE learning to focus on AWS matters more. **Flip:** RR v7 to spend zero learning budget on the FE router.
 **Supersedes:** the **2026-06-16 Next.js FE ADR** (`2026-06-16-fe-framework-nextjs-adr.md`, NH-185) — leocaseiro chose 2026-06-17 to supersede yesterday's Next.js decision; the OpenNext SSR target + the one-source/two-target build are dropped (pure Vite SPA; Capacitor wraps the static build).
 
-### ARCH-OFFLINE-1 — RxDB (free Dexie storage), syncs via the API
-**Decision:** **RxDB** with the free **Dexie/IndexedDB** storage; offline-first; replication (pull/push HTTP handlers) to the NestJS API, which persists per-user data to **DynamoDB** and serves the catalogue from **Neon**. RxDB is backend-agnostic — it talks to *our API*, not to Neon/Dynamo directly.
-**Why:** purpose-built for "sync with your own backend" + a real local query engine; matches the locked data split. **Caveat:** fast storages (OPFS/SQLite) are paid (€99/mo); on iOS WebView IndexedDB can be evicted — acceptable for *reads* since DynamoDB is the source of truth (local = cache). **Flip:** paid SQLite storage only if iOS eviction bites in device testing. **Rejected:** Legend-State (sync engine still `@beta` after ~2 years; custom-backend sync more DIY).
-**Open (offline-first stays — it's a PWA; see §"Deferred / Open Questions"):** four sync-DB design points are deferred for a dedicated revisit and do NOT block the admin-CMS v1 — (a) **un-synced-write durability** on iOS eviction (the "local = cache" claim is read-only; offline writes not yet pushed can be lost), (b) **RxDB push conflict resolution**, (c) the **DynamoDB single-table keys / access-patterns / change-feed GSI** that `pull` depends on, and (d) whether RxDB is **fully wired at v1 or stubbed** until the sync milestone.
+### ARCH-OFFLINE-1 — Plain Dexie + insert-only outbox, syncs via the API
+**Decision:** offline store = **plain Dexie** (`dexie` + `dexie-react-hooks` + `ulid`) with a **hand-rolled insert-outbox + blob queue** — **no sync framework** (RxDB / Replicache / Dexie Cloud). Offline-first; the outbox pushes to the NestJS API (`POST /api/sync/batch`), which persists per-user data to **DynamoDB** and serves the catalogue from **Neon**. Dexie talks only to *our API*, never to Neon/Dynamo directly.
+**Load-bearing constraint (makes it free AND conflict-free):** **offline writes are INSERT-ONLY; updates & deletes are online-first; the client mints its own ULID PKs; settings are the one exception → last-write-wins by `updated_at`.** A row created offline is immutable until it syncs, the server is authoritative, and re-sends are idempotent upserts by client ULID — so there are **no merge conflicts by construction** (this is why the old "push conflict resolution" question is **N/A by design**).
+**Why plain Dexie (not RxDB):** the only thing a sync framework buys here — conflict resolution — is *designed away* by the constraint above, and RxDB's fast storages (OPFS/SQLite) are paid (€99/mo) while its free Dexie/IndexedDB tier is what we'd hand-roll anyway. Plain Dexie is free, has a real local query engine, and doesn't fight the fixed NestJS/oRPC/Neon/S3 stack. **Rejected:** RxDB (premium-storage paywall + a sync engine we don't need), Legend-State (sync still `@beta` after ~2 yrs).
+**Sync topology:** curated catalogue (Neon) → pull-to-cache, read-only mirror, disposable (re-pull if evicted); user-created notation/source (Neon, `origin='user-upload'`, `listable=false`) → insert-outbox, push when online; per-user scores (DynamoDB) → append-only outbox; settings → LWW; binary files (S3) → Capacitor Filesystem (offline, eviction-safe) → presigned S3 PUT → patch `source.s3_key`.
+**iOS durability:** Capacitor's WKWebView ≠ Safari, so 7-day ITP eviction doesn't apply; the real risk is **storage-pressure LRU**, and `navigator.storage.persist()` is unreliable on iOS. So **local = cache**: curated content is disposable (re-pull); the durable risk is *user-created-but-unsynced* rows → **sync eagerly** + keep blobs in **Capacitor Filesystem** (native, eviction-safe). Optional v1.x hardening: mirror the outbox to Capacitor Preferences/Filesystem — ship without it, add only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (no separate per-user durability doc).
+**4 gating schema/server changes (REQUIRED for the free Dexie path; formalized as companion R13-R16, fed to the parallel schema redesign):** (1) keep **client-minted `text` ULID PKs** (no server `uuid DEFAULT`/`bigint`); (2) a transactional **`POST /sync/batch`** (idempotent by `batchId`) so an offline-created graph commits all-or-nothing; (3) **`source.upload_status`** (`pending_blob`｜`ready`) + relaxed `source_one_of` CHECK so a file-backed upload syncs first and the blob backfills; (4) **`DEFERRABLE INITIALLY IMMEDIATE`** on cross-row FKs so one batch txn commits a whole graph regardless of intra-batch order/cycles.
+**Flip conditions (when a framework WOULD be warranted):** drop insert-only → allow true offline edits of shared rows (real conflicts → TanStack DB / Zero / Replicache); real-time multi-device collaboration becomes a goal; the hand-rolled outbox sprawls past a few hundred lines / sprouts edge-case bugs; or Dexie stalls (no release in ~12+ months).
+**Evidence:** offline-first spike (`docs/spikes/2026-06-17-offline-first-sync.md`). **v1 wiring scope:** see §"Deferred / Open Questions".
 
 ### ARCH-MOBILE-1 — Plain Capacitor (no Ionic)
 **Decision:** add **Capacitor** to the plain Vite/React app; **do not** use the Ionic UI framework.
@@ -192,7 +197,7 @@ script-src 'self';
 style-src 'self' 'unsafe-inline';
 img-src 'self' data: blob:;
 font-src 'self';
-connect-src 'self' https://<pool>.auth.<region>.amazoncognito.com https://cognito-idp.<region>.amazonaws.com <rxdb-origin-if-separate>;
+connect-src 'self' https://<pool>.auth.<region>.amazoncognito.com https://cognito-idp.<region>.amazonaws.com;
 frame-src https://<pool>.auth.<region>.amazoncognito.com;
 form-action 'self' https://<pool>.auth.<region>.amazoncognito.com;
 frame-ancestors 'none'; base-uri 'self'; object-src 'none';
@@ -200,7 +205,7 @@ worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
 ```
 **Key points:** the Cognito Hosted-UI domain must appear in **three** directives — `connect-src` (token/JWKS fetch), `frame-src` (the `oidc-client-ts` silent-renew iframe navigates *to* Cognito), and `form-action` (Hosted-UI login + Google button). Google federation is brokered by Cognito → the SPA never calls Google directly, so **no** Google hosts. `script-src 'self'` (no `unsafe-inline`/`unsafe-eval`) is achievable by **externalizing Vite's inline bootstrap** (`build.modulePreload.polyfill:false`) or SHA-256-hashing it; `oidc-client-ts` uses Web Crypto (no WASM). Roll out as `Content-Security-Policy-Report-Only` first, then enforce.
 **Input "sanitization" = validation, not scrubbing:** oRPC + **Zod** validates every API input at the Lambda boundary; rely on React's default escaping in the UI and add **DOMPurify only** in the admin-CMS rich-text render path (if it ever renders authored HTML). Don't bolt string sanitizers onto Zod.
-**Confirm before enforcing (2 flags):** (a) does **AlphaTab** ship a **WASM** build? → if yes, add `wasm-unsafe-eval` to `script-src`. (b) is **RxDB replication** same-origin under `/api` or a separate host/`wss://`? → if separate, add it to `connect-src` (ties into the offline Open Question).
+**Confirm before enforcing:** (a) **[open]** does **AlphaTab** ship a **WASM** build? → if yes, add `wasm-unsafe-eval` to `script-src`. (b) **[resolved by ARCH-OFFLINE-1]** sync is the Dexie insert-outbox POSTing to same-origin `/api/sync/batch` (no separate host, no `wss://`) → **no extra `connect-src` needed**.
 
 ---
 
@@ -245,7 +250,7 @@ worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
 | ARCH-CONTRACT-1 | oRPC contract; ditch kanel-zod | new |
 | ARCH-ORM-1 | Drizzle | reaffirms `DS-1` |
 | ARCH-FE-1 | Vite + TanStack Router + Query | **supersedes 2026-06-16 Next.js ADR (NH-185)** |
-| ARCH-OFFLINE-1 | RxDB (free Dexie), sync via API | new |
+| ARCH-OFFLINE-1 | Plain Dexie + insert-only outbox, sync via API | new |
 | ARCH-MOBILE-1 | Plain Capacitor (no Ionic) | new |
 | ARCH-AUTH-1 | Cognito (Pulumi) + Google federation v1 | reaffirms Cognito-not-Amplify |
 | ARCH-ROLE-1 | Roles via Cognito groups; one pool | new |
@@ -273,7 +278,8 @@ These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reope
 - ORM spike (Drizzle vs Prisma vs TypeORM vs Kysely) — Neon-HTTP-driver fit; `@nestjs/typeorm` TCP-pool-only; Neon NestJS guide uses raw `pg`.
 - Google-federation spike (Cognito Hosted UI + Google IdP in Pulumi) — managed-login v2, account-linking pitfall, `tokenUse` access, $0 free-tier.
 - NestJS-on-Lambda + SWC best-practices research — `@codegenie/serverless-express` v5 (Node 24), `createApplicationContext`, `.swcrc` + esbuild per-entry.
-- React-SPA stack research — Vite + TanStack + RxDB vs Legend-State + Capacitor (plain vs Ionic).
+- React-SPA stack research — Vite + TanStack + Capacitor (plain vs Ionic); offline store = plain Dexie + insert-only outbox (see offline-first spike).
+- Offline-first spike (`docs/spikes/2026-06-17-offline-first-sync.md`) — plain Dexie vs RxDB/Replicache, the insert-only constraint, the 4 gating schema changes, iOS WebView durability.
 
 ---
 
@@ -295,13 +301,16 @@ Until then: ✅ decided · ⏳ no repo code/config changed (this doc refined by 
 
 ## Deferred / Open Questions
 
-### From the 2026-06-17 spec review (ce-doc-review, NH-194)
+### From the 2026-06-17 spec review (ce-doc-review, NH-194) — offline / sync-DB
 
-Offline-first **stays** (the client is a PWA + Capacitor). These offline / sync-DB design points are deferred to a dedicated revisit before the sync milestone — they do **not** block the admin-CMS v1:
+Offline-first **stays** (the client is a PWA + Capacitor). After the **RxDB → plain Dexie** pivot (ARCH-OFFLINE-1, insert-only outbox), the four originally-deferred points reduce to **two open** — the other two are now **resolved inline in ARCH-OFFLINE-1**:
 
-1. **Un-synced offline-write durability (#3, ARCH-OFFLINE-1).** "local = cache, eviction acceptable" holds for *reads* only — writes made offline live only in IndexedDB until the next push, so iOS WebView eviction can lose them permanently. Decide the stance (push-on-reconnect + flush-before-background, `navigator.storage.persist()`, an "unsynced changes" indicator) and **which doc owns offline-write durability** (this ADR vs the per-user DynamoDB spec).
-2. **RxDB push conflict resolution (#9, ARCH-OFFLINE-1).** Define how a per-user doc edited both offline and server-side reconciles on push (e.g. per-doc revision + DynamoDB conditional write; LWW by `updatedAt` or field-merge) + tombstone/TTL soft-delete so deletes replicate.
-3. **DynamoDB single-table key design (#11, ARCH-OFFLINE-1).** Specify PK/SK + access patterns + the **change-feed GSI** RxDB `pull` depends on, in a short per-user companion (mirroring the catalogue data-layer doc), **before the table is provisioned** (a partition key can't be changed in place).
-4. **RxDB v1 wiring scope (#13, ARCH-OFFLINE-1).** Decide whether RxDB pull/push is **fully wired at v1** (requires the NestJS replication endpoints before the CMS) or **installed-but-stubbed** until the sync milestone (v1 = one admin, one device).
+- ✅ **Conflict resolution — N/A by design** (was #9). Insert-only + online-first updates + client-minted ULIDs remove merges by construction; settings = LWW by `updated_at`. Folded into ARCH-OFFLINE-1.
+- ✅ **Un-synced offline-write durability** (was #3). Stance: *local = cache*; sync eagerly; keep blobs in Capacitor Filesystem (eviction-safe); optional v1.x outbox-mirror hardening, shipped only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (consolidation — no separate per-user durability doc). Folded into ARCH-OFFLINE-1.
+
+**Still open (being decided this session):**
+
+1. **Dexie v1 wiring scope (was #13).** Fully wired (Dexie + insert-outbox + `POST /sync/batch` before the CMS) vs **installed-but-stubbed** until the sync milestone (v1 = one admin, one device, online-first). *[decision pending]*
+2. **DynamoDB single-table key design (was #11).** PK/SK + access patterns + the per-user pull/sync access pattern, in a short per-user companion (mirroring the catalogue data-layer doc), **before the table is provisioned** (a partition key can't be changed in place). *[companion doc pending]*
 
 These feed the `writing-plans` stage and the parallel schema/data-layer redesign; the DACI + file-structure ADR text rewrite (§11 step 1) remains separate.

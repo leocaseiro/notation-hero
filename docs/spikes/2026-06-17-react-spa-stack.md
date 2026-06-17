@@ -1,7 +1,7 @@
 # Spike — React SPA stack (Vite + TanStack + Capacitor) — 2026-06-17
 
 > **Feeds:** `ARCH-FE-1`, `ARCH-MOBILE-1`.
-> ⚠️ **Two parts of this early research were SUPERSEDED by dedicated spikes:** the **typed contract** (this said ts-rest → now **oRPC**, see `2026-06-17-typed-contract-orpc.md`) and the **offline store** (this said RxDB → now **plain Dexie**, see `2026-06-17-offline-first-sync.md` + `../decisions/2026-06-17-offline-first-reviewed.md`).
+> ⚠️ **Two parts of this early research were SUPERSEDED by dedicated spikes:** the **typed contract** (this said ts-rest → now **oRPC**, see `2026-06-17-typed-contract-orpc.md`) and the **offline store** (this said RxDB → now **plain Dexie**, see `2026-06-17-offline-first-sync.md` + `ARCH-OFFLINE-1` in `../decisions/2026-06-17-architecture-decisions.md`).
 
 ## Recommended stack (versions verified 2026-06-17)
 | Layer | Pick | Version |

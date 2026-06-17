@@ -3,7 +3,7 @@
 > **Status:** 🟢 REQUIREMENTS (2026-06-17) — companion to [`docs/decisions/2026-06-17-architecture-decisions.md`](../decisions/2026-06-17-architecture-decisions.md).
 > **Purpose:** state **what the data layer must provide** for the architecture to work — **abstractly**, so leocaseiro's parallel schema redesign (table renames + changes, still Neon) can satisfy these *without* changing the architecture spec.
 > **Scope:** the catalogue store (Neon Postgres). Per-user data (scores/settings/sync) stays in **DynamoDB** and is out of scope here.
-> **Baseline:** today's `docs/specs/2026-06-10-catalogue-schema.md` already satisfies R2-R10; **R1 (`created_by`) is the one net-new requirement.**
+> **Baseline:** today's `docs/specs/2026-06-10-catalogue-schema.md` already satisfies R2-R10; **R1 (`created_by`) + R13-R16 (offline-first) are the net-new requirements.**
 > **Owner:** leocaseiro
 
 ---
@@ -30,8 +30,12 @@ Each requirement is a **capability the architecture depends on**, named by inten
 | **R10** | **Shared/per-user split** — the catalogue (Neon) holds **only** searchable/shared metadata + file keys (never blobs, never per-user data). Per-user scores/skill/settings stay in DynamoDB, joined at the app layer. | spec §2 storage table | ARCH-OFFLINE-1, data architecture |
 | **R11** | **Stable item identity** — a stable primary key (slug or uuid) usable as a foreign key by exercises/patterns and as the S3 key prefix. | `id text PRIMARY KEY` | catalogue domain |
 | **R12** | **Untrusted-upload seam (M1, not built now)** — the storage design must allow a quarantine path for user uploads (presigned S3 → quarantine prefix → magic-byte validate → promote) without schema change when uploads land. | spec §2 quarantine prefix + `notation_checksum`/`notation_bytes` | UGC seam (deferred) |
+| **R13** ⭐ | **Client-minted stable IDs (offline-first)** — PKs must be client-generatable (`text` ULID), not server-generated (`uuid DEFAULT`/`bigint`), so offline inserts mint their own IDs and re-sends are idempotent upserts by that ID. | `id text` (ULID) PKs | ARCH-OFFLINE-1 |
+| **R14** ⭐ | **Transactional batch ingest (offline-first)** — a single server endpoint accepts an offline-created **graph** (notation + parts + source + links/steps) and commits **all-or-nothing**, idempotent by a client `batchId` (per-row pushes tear on partial failure). | `POST /sync/batch` (server) | ARCH-OFFLINE-1 |
+| **R15** ⭐ | **Two-phase upload staging (offline-first)** — a file-backed row can sync *before* its blob exists: an `upload_status` (`pending_blob`｜`ready`) + a relaxed "exactly one of `s3_key`/`alphatex`" CHECK that's waived while `pending_blob`, so the row syncs first and the blob backfills. (Inline alphaTex has no wrinkle.) | `source.upload_status` + relaxed `source_one_of` | ARCH-OFFLINE-1, R12 |
+| **R16** ⭐ | **Deferrable cross-row FKs (offline-first)** — cross-row FKs are `DEFERRABLE INITIALLY IMMEDIATE` so one batch txn commits a whole graph regardless of intra-batch insert order or cycles. | `DEFERRABLE` on `parent_id`/`source_id`/`notation_link`/`lesson_step` FKs | ARCH-OFFLINE-1 |
 
-⭐ = the only requirement not already satisfied by today's schema.
+⭐ = net-new (not satisfied by today's schema): **R1** (ownership) + **R13-R16** (offline-first, from the Dexie insert-only design — see ARCH-OFFLINE-1).
 
 ---
 
@@ -44,6 +48,9 @@ Each requirement is a **capability the architecture depends on**, named by inten
 
 ---
 
-## Open item
+## Open items for the redesign
 
-- **R1 `created_by`** needs to be added in your redesign (nullable `text`, holds the Cognito `sub`). It is the single schema change the architecture introduces; everything else (R2-R12) the current schema already provides. **Backfill existing curated rows with the admin sub in the same migration**, and treat the `sub` as an internal identity key (omit from public DTOs; anonymize on deletion). See ARCH-OWN-1.
+- **R1 `created_by`** — add a nullable `text` column holding the Cognito `sub`. **Backfill existing curated rows with the admin sub in the same migration**, and treat the `sub` as an internal identity key (omit from public DTOs; anonymize on deletion). See ARCH-OWN-1.
+- **R13-R16 (offline-first, from ARCH-OFFLINE-1's Dexie insert-only design):** keep **client-minted ULID `text` PKs** (R13); add a transactional **`POST /sync/batch`** server endpoint (R14); add **`source.upload_status`** staging + relax the `source_one_of` CHECK (R15); make cross-row FKs **`DEFERRABLE INITIALLY IMMEDIATE`** (R16). Together these let an offline-created graph sync all-or-nothing with no merge conflicts.
+
+Everything else (R2-R12) the current schema already provides.
