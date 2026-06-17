@@ -344,7 +344,7 @@ const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',
 /* ---------- sample data (playable — the locked umbrella; kind = the role) ---------- */
 const PLAYABLES = [
   {id:'seven-nation-army', kind:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], tags:['riff','syncopation'], patterns:['rock-8th'], musical_key:null, status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Official video'}], best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
-    data:{bars:80, sections:[{label:'Intro',startBar:1,endBar:8},{label:'Verse',startBar:9,endBar:24},{label:'Chorus',startBar:25,endBar:40},{label:'Chorus',startBar:57,endBar:72},{label:'Outro',startBar:73,endBar:80}]}},
+    data:{bars:64, sections:[{label:'Intro',startBar:1,endBar:8},{label:'Chorus',startBar:9,endBar:24},{label:'Verse',startBar:25,endBar:40},{label:'Chorus',startBar:41,endBar:56},{label:'Outro',startBar:57,endBar:64}]}},
   {id:'billie-jean', kind:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], tags:['groove'], patterns:['four-floor'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
     data:{bars:64, sections:[{label:'Groove',startBar:1,endBar:16},{label:'Verse',startBar:17,endBar:32},{label:'Chorus',startBar:33,endBar:48}]}},
   {id:'rosanna', kind:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['shuffle','ghost-notes'], patterns:['single-paradiddle'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp5', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Drum cam'}], best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
@@ -364,9 +364,9 @@ const PLAYABLES = [
   {id:'linear-fill-1', kind:'lesson', title:'Linear Fill — 6-stroke', level:5, instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', origin:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'kind derived from its step patterns (fill + rudiment) — fills are a pattern_kind, not a lesson type (SD-1)'},
   /* SONG PARTS — kind=part, parent_id -> the song, bar range, listable:false (hidden from browse; reached via the song's "Practice in parts"). Each part is its OWN playable, scored on its own id. */
   {id:'sna-intro',  kind:'part', title:'Intro',  parent_id:'seven-nation-army', start_bar:1,  end_bar:8,  sort_order:1, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:78, sessions:4, top_bpm:120, trend:[55,68,78], voices:['hi-hat','kick']},
-  {id:'sna-verse',  kind:'part', title:'Verse',  parent_id:'seven-nation-army', start_bar:9,  end_bar:24, sort_order:2, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:60, sessions:3, top_bpm:110, trend:[40,52,60], voices:['hi-hat','kick','snare']},
-  {id:'sna-chorus', kind:'part', title:'Chorus', parent_id:'seven-nation-army', start_bar:25, end_bar:40, sort_order:3, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:45, sessions:2, top_bpm:100, trend:[30,45], ranges:[[25,40],[57,72]], voices:['hi-hat','kick','snare','crash']},
-  {id:'sna-outro',  kind:'part', title:'Outro',  parent_id:'seven-nation-army', start_bar:73, end_bar:80, sort_order:4, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[], voices:['hi-hat','kick','crash']},
+  {id:'sna-verse',  kind:'part', title:'Verse',  parent_id:'seven-nation-army', start_bar:25, end_bar:40, sort_order:3, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:60, sessions:3, top_bpm:110, trend:[40,52,60], voices:['hi-hat','kick','snare']},
+  {id:'sna-chorus', kind:'part', title:'Chorus', parent_id:'seven-nation-army', start_bar:9, end_bar:24, sort_order:2, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:45, sessions:2, top_bpm:100, trend:[30,45], ranges:[[9,24],[41,56]], voices:['hi-hat','kick','snare','crash']},
+  {id:'sna-outro',  kind:'part', title:'Outro',  parent_id:'seven-nation-army', start_bar:57, end_bar:64, sort_order:4, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[], voices:['hi-hat','kick','crash']},
 
   /* patterns — reusable building blocks, now browsable (kind=pattern). They live under the Lessons tab. */
   {id:'p-hihat-8',   kind:'pattern', title:'Straight 8th Hi-hats',  pattern_kind:'beat',     family:'Rock',   level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 x x x x x x x x', best:90, sessions:8, top_bpm:140, trend:[70,82,90], data:{difficulty:{by:'bpm',tiers:[{upTo:90,level:1},{upTo:140,level:2},{upTo:null,level:3}]}}},
@@ -499,10 +499,10 @@ const DESCRIPTIONS = {
   'single-paradiddle':'The RLRR-LRLL sticking, drilled slow to fast for control.',
   'double-stroke':'Two strokes per hand — the roll that powers buzz and speed.',
   'linear-fill-1':'A 6-stroke linear fill moved around the kit — fill plus rudiment hands.',
-  'sna-intro':'Bars 1–8 — the riff stated alone; set the tempo and feel.',
-  'sna-verse':'Bars 9–24 — the groove settles in under the riff.',
-  'sna-chorus':'Bars 25–40 — the fullest section; lock the backbeat.',
-  'sna-outro':'Bars 41–48 — wind it down to the finish.',
+  'sna-intro':'The riff stated alone — set the tempo and feel.',
+  'sna-verse':'The groove settles in under the riff.',
+  'sna-chorus':'The fullest section — lock the backbeat.',
+  'sna-outro':'Wind it down to the finish.',
   'p-hihat-8':'Eight steady right-hand hi-hats per bar — the timekeeping backbone.',
   'p-rock-8th':'Kick and snare under eighth hats — the everyday rock groove.',
   'p-paradiddle':'RLRR LRLL — the first and most useful rudiment.',
@@ -517,6 +517,11 @@ const DESCRIPTIONS = {
 function descOf(it){ return it.description || DESCRIPTIONS[it.id] || null; }
 function songParts(songId){ return PLAYABLES.filter(p=>p.kind==='part' && p.parent_id===songId).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
 function barsLabel(p){ const rs = (p.ranges && p.ranges.length) ? p.ranges : [[p.start_bar, p.end_bar]]; return rs.map(r=>r[0]+'–'+r[1]).join(' · '); }   // SD-16 repeated parts: a part may map to >1 bar range
+function songOccurrences(songId){   // $S8: one row PER bar-range occurrence, in playback (bar) order — a repeated part appears multiple times
+  const out=[];
+  songParts(songId).forEach(p=>{ const rs=(p.ranges&&p.ranges.length)?p.ranges:[[p.start_bar,p.end_bar]]; rs.forEach((r,i)=>out.push({part:p, start:r[0], end:r[1], rep:rs.length>1?i+1:0, repTotal:rs.length})); });
+  return out.sort((a,b)=>(a.start||0)-(b.start||0));
+}
 function voicesLine(p){ if(!p.voices||!p.voices.length) return ''; return `<div class="voices"><span class="vlbl">Voices</span>${p.voices.map(v=>`<span class="vchip">${esc(v)}</span>`).join('')}<span class="vnote">· placeholder — derived from the track MIDI (SD-15)</span></div>`; }
 function stepsFor(parentId){ return (STEP[parentId]||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
 function childPlayable(childId){ return PLAYABLES.find(x=>x.id===childId) || null; }
@@ -873,31 +878,29 @@ function renderSong(id){
         </div>
         ${mediaLinks(it)}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>
+          ${signedIn() && it.best!=null
+            ? `<button class="btn primary" data-nav="#/play/${it.id}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
+               <button class="btn secondary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
+            : `<button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>`}
           ${parts.length?`<button class="btn secondary" data-nav="#/part/${parts[0].id}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
         </div>
       </div>
       ${historyCard(it)}
     </div>
     <div class="card">
-      <h3><span class="material-symbols-outlined">segment</span> Song structure ${parts.length?'· <span style="font-weight:400;color:var(--faint)">each part is its own playable — practice &amp; score it on its own</span>':''}</h3>
-      ${parts.length
-        ? parts.map(p=>`
-        <div class="part" data-nav="#/part/${p.id}">
+      <h3><span class="material-symbols-outlined">segment</span> Song structure ${parts.length?'· <span style="font-weight:400;color:var(--faint)">each part is its own playable — practice &amp; score it on its own; repeats appear in order</span>':''}</h3>
+      ${(()=>{ const occ=songOccurrences(it.id); return occ.length
+        ? `<div class="stephead"><span style="flex:1">Part · section</span><span>Bars</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`
+          + occ.map(o=>{ const p=o.part; return `<div class="stepwrap"><div class="step">
           <span class="material-symbols-outlined" style="color:var(--accent)">play_circle</span>
-          <div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">kind=part · parent ${esc(it.title)}</small></div>
-          <span class="bars">bars ${barsLabel(p)}${p.ranges&&p.ranges.length>1?` · ×${p.ranges.length}`:''}</span>
+          <div class="si" data-nav="#/part/${p.id}"><b>${esc(p.title)}${o.repTotal>1?` <span style="color:var(--faint);font-weight:400">(${o.rep} of ${o.repTotal})</span>`:''}</b><small style="color:var(--faint);display:block">${descOf(p)?esc(descOf(p)):'kind=part · parent '+esc(it.title)}</small></div>
+          <span class="bars">bars ${o.start}–${o.end}</span>
           ${donut(p.best)}
-          <span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span>
-        </div>${allFieldsPanel(p)}`).join('')
+          <button class="play" title="Play this part" data-nav="#/play/${p.id}"><span class="material-symbols-outlined">play_arrow</span></button>
+        </div>${o.rep<=1?allFieldsPanel(p):''}</div>`; }).join('')
         : sections.length
-        ? sections.map(s=>`
-        <div class="part">
-          <span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span>
-          <div style="flex:1"><b>${esc(s.label)}</b></div>
-          <span class="bars">bars ${s.startBar}–${s.endBar}</span>
-        </div>`).join('')
-        : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`}
+        ? sections.map(s=>`<div class="part"><span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span><div style="flex:1"><b>${esc(s.label)}</b></div><span class="bars">bars ${s.startBar}–${s.endBar}</span></div>`).join('')
+        : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`; })()}
     </div>
     ${patternsCard(it)}
     ${metaFoot(it)}
