@@ -285,6 +285,7 @@ body.showall .fielddock{display:block}
 </div>
 
 <header class="topbar">
+  <button class="iconbtn" data-back id="topBack" title="Back" style="display:none"><span class="material-symbols-outlined">arrow_back_ios_new</span></button>
   <div class="logo" role="button" data-nav="#/catalog" title="Notation Hero — home">
     <span class="mark" id="brandMark"></span> Notation&nbsp;Hero
   </div>
@@ -551,6 +552,7 @@ function render(){
   paintRoleChrome();
   const {seg, qp} = parseHash();
   el('#routeEcho').textContent = location.hash || '#/catalog';
+  el('#topBack').style.display = (seg[0]===undefined||seg[0]==='catalog') ? 'none' : 'inline-flex';   // iPhone-style back, only on sub-pages
   if(seg[0]===undefined || seg[0]==='catalog'){
     if(qp.get('tab')) state.tab = qp.get('tab');
     if(qp.get('kind')) state.kind = qp.get('kind').split(',');
@@ -564,7 +566,7 @@ function render(){
   if(seg[0]==='song')   return renderSong(seg[1]);
   if(seg[0]==='part')   return renderPart(seg[1]);
   if(seg[0]==='pattern') return renderPattern(seg[1]);
-  if(seg[0]==='lesson') return renderLesson(seg[1]);
+  if(seg[0]==='lesson') return seg[2]==='step' ? renderStep(seg[1], +seg[3]) : renderLesson(seg[1]);
   if(seg[0]==='play')   return renderPlayer();
   if(seg[0]==='admin')  return renderAdminStub(seg, qp);
   app.innerHTML = `<div class="empty"><span class="material-symbols-outlined">help</span>Unknown route <code>${esc(location.hash)}</code><br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`;
@@ -890,6 +892,7 @@ function renderPart(id){
   const sibs = song ? songParts(song.id) : [];
   const idx  = sibs.findIndex(p=>p.id===it.id);
   const next = idx>=0 && idx<sibs.length-1 ? sibs[idx+1] : null;
+  const prev = idx>0 ? sibs[idx-1] : null;
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'], song?['#/song/'+song.id,'Song · '+esc(song.title)]:['','Song'], ['','Part · '+esc(it.title)]])}
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
@@ -907,6 +910,7 @@ function renderPart(id){
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play part</button>
+          ${prev?`<button class="btn secondary" data-nav="#/part/${prev.id}"><span class="material-symbols-outlined">arrow_back</span> Previous part</button>`:''}
           ${next?`<button class="btn secondary" data-nav="#/part/${next.id}">Next part <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
         </div>
       </div>
@@ -917,6 +921,49 @@ function renderPart(id){
     </div>
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
+  `;
+}
+
+/* ---------- screen: STEP detail (a lesson step → its reusable pattern; prev/next within the lesson) ---------- */
+function stepFieldsPanel(parent, s){
+  const f = {parent_id:parent.id, child_id:s.child_id, sort_order:s.sort_order, start_bpm:s.start_bpm??null, goal_bpm:s.goal_bpm??null};
+  const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
+  return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> step · junction</div><div class="fdbody"><div class="nfsub">the locked step row — points at a reusable child pattern</div><div class="nfgrid">${grid}</div></div></aside>`;
+}
+function renderStep(lessonId, n){
+  const it = PLAYABLES.find(x=>x.id===lessonId); if(!it) return notFound();
+  const steps = stepsFor(lessonId);
+  const idx = steps.findIndex(s=>s.sort_order===n);
+  const s = steps[idx]; if(!s) return notFound();
+  const child = childPlayable(s.child_id) || {title:s.child_id, pattern_kind:null};
+  const k = PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const prev = idx>0 ? steps[idx-1] : null;
+  const next = idx<steps.length-1 ? steps[idx+1] : null;
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'],['#/lesson/'+it.id,'Lesson · '+esc(it.title)],['','Step '+n]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back to lesson</button>
+    <div class="hero">
+      <div class="meta">
+        <div class="sub" style="margin-bottom:4px">Step ${n} of ${steps.length} · ${esc(it.title)}</div>
+        <h1>${esc(child.title)}</h1>
+        <div class="sub"><span class="tag lesson">${k.label}</span> <a data-nav="#/pattern/${s.child_id}" style="color:var(--accent);cursor:pointer">open pattern →</a> ${reuseCount(s.child_id)>1?`<span class="badge" style="padding:3px 9px">reused ×${reuseCount(s.child_id)}</span>`:''}</div>
+        ${descOf(child)?`<p class="lead">${esc(descOf(child))}</p>`:''}
+        <div class="badges">
+          <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${s.start_bpm??'?'} → ${s.goal_bpm??'?'}</span> BPM ladder</span>
+          <span class="badge"><span class="material-symbols-outlined">tag</span>step ${s.sort_order} of ${steps.length}</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn primary" data-nav="#/play/${it.id}/step/${n}"><span class="material-symbols-outlined">play_arrow</span> Play step</button>
+          ${prev?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${prev.sort_order}"><span class="material-symbols-outlined">arrow_back</span> Previous</button>`:''}
+          ${next?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${next.sort_order}">Next <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+        </div>
+      </div>
+      ${historyCard(child)}
+    </div>
+    <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation</h3>
+      <div class="gate"><span class="material-symbols-outlined">info</span>This step drills the reusable pattern <b>${esc(child.title)}</b> (<code>child_id=${esc(s.child_id)}</code>). The notation lives on the pattern; the step adds order + the ${s.start_bpm}→${s.goal_bpm} BPM ladder.</div>
+    </div>
+    ${stepFieldsPanel(it,s)}
   `;
 }
 
@@ -1017,7 +1064,7 @@ function stepRow(parent, s){
   const meta = [k.label, composite?'composite':null, reuse>1?`reused ×${reuse}`:null].filter(Boolean).join(' · ');
   return `<div class="stepwrap"><div class="step">
     <span class="no">${s.sort_order}</span>
-    <div class="si" data-nav="#/pattern/${s.child_id}"><b>${esc(child.title)}</b><small>${meta}</small></div>
+    <div class="si" data-nav="${parent.kind==='lesson'?`#/lesson/${parent.id}/step/${s.sort_order}`:`#/pattern/${s.child_id}`}"><b>${esc(child.title)}</b><small>${meta}</small></div>
     ${ladder} <span class="src tex">${k.label}</span> ${signedIn()?donut(child.best):''}
     ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/admin/lesson/${parent.id}/step/${s.sort_order}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
     <button class="play" title="Play this step" data-nav="#/play/${parent.id}/step/${s.sort_order}"><span class="material-symbols-outlined">play_arrow</span></button>
