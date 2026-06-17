@@ -260,3 +260,43 @@ changed — DB-side items that surfaced are written down here for the separate s
 - Lessons/songs reference vocabulary patterns via `patterns:['rock-8th']` (a PATTERNS lookup) while the `step`
   junction references **pattern playables** (`p-rock-8th`, …) — two id namespaces. `usedIn()` unions both so
   relationships render, but the real model should pick **one** (pattern playables). Reconcile in the spec pass.
+
+---
+
+## Round-6 — chords / progressions, media, per-instrument difficulty (2026-06-18, wireframe review 2)
+
+UX deltas F1–F7 built on branch `docs/wireframe-pattern-lesson-model`. New DB-side notes for the spec pass:
+
+### $N / $CP1 — chord vs chord progression + per-instrument difficulty
+- A **chord** is a single pattern (`pattern_kind='chord'`); a **chord progression** is a **sequence** of chords —
+  modelled as a **composite pattern** whose `step`s are the chords, exactly like a composite groove. Built in the
+  wireframe: chords C/G/Am/F + the composite `I–V–vi–IV (C major)` + a chord-progression lesson.
+- **Abstract vs concrete:** a progression is abstract (I–V–vi–IV) but realised per key (C→G→Am→F in C; G→D→Em→C in
+  G; F→C→Dm→B♭ in F). Open: store the abstract roman-numeral progression once + derive concrete chords per key, OR
+  store each key's concrete progression as its own composite. (Wireframe stored one concrete C-major composite.)
+- **Songs use progressions** — via the same m:n / `playable_link` as any pattern (wireframe: `clocks` → the progression).
+- **⭐ Per-instrument difficulty (the real find):** the same chord/notation plays on **keys AND guitar**
+  (`instruments[]` — no DB change for that). BUT **difficulty/level differs by instrument** (CMaj6 / F-barre is hard
+  on guitar L4–6, easy on piano L1). So a single scalar `level` is **insufficient** — level (and the difficulty
+  curve) likely needs to be **per-instrument**. Options: `level → level_by_instrument jsonb`, or a
+  `difficulty(by:'instrument', tiers:[{when:'piano',level},{when:'guitar',level}])` curve (wireframe used the latter
+  on the F chord). **Decide in the spec pass.**
+
+### Media (F7) — multi-level
+- A playable (song) has **n media** (audio/video) at the **playable level**, AND it has **n tracks** (instruments),
+  each track carrying its **own n media**. DB: a `media` table keyed by **`playable_id` + optional `track_id`**
+  (NULL track_id = song-level); a `track` table (`playable_id`, `instrument`, …). Wireframe: song-level media[] +
+  `tracks:[{instrument, media:[]}]`.
+
+### $S7 — time signature / key: UI-vs-storage (no gap)
+- UI shows a single `4/4` and a `Key` badge; the model stores time signature as **numerator + denominator** (two
+  columns) and `musical_key` separately. Display-vs-storage difference; both surface in the field inspector. No change.
+
+### Reconciled (F2a) — patterns[] now reference real pattern playables
+- Songs' `patterns[]` repointed from PATTERNS-dict ids to **pattern-playable ids** (`p-rock-8th` …) so each shows
+  its own score + links to its playable; `usedIn()` spans songs (patterns[]) + lessons (steps). The PATTERNS dict is
+  now largely vestigial — drop it in the spec pass. (Partially resolves the Round-5 wart.)
+
+### 4b coverage — scales/chords now have relationships
+- The chord lesson/progression gave chords real Used-in relationships; the earlier "empty relationships" was on
+  scale patterns that nothing referenced yet.
