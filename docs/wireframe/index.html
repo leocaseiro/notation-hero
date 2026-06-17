@@ -255,6 +255,10 @@ body.showall .fielddock{display:block}
 .modal .x{float:right;color:var(--faint);background:none;border:none}
 
 .lead{color:var(--muted);max-width:64ch;margin-top:10px;font-size:14px;line-height:1.5}
+.voices{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.vchip{font-size:11px;padding:2px 8px;border-radius:var(--pill);border:1px solid var(--line);color:var(--ink);background:var(--panel2)}
+.vlbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-right:2px}
+.vnote{font-size:11px;color:var(--faint)}
 .empty{text-align:center;color:var(--faint);padding:50px 20px}
 .empty .material-symbols-outlined{font-size:44px;display:block;margin-bottom:8px}
 @media(max-width:640px){
@@ -359,10 +363,10 @@ const PLAYABLES = [
   {id:'double-stroke', kind:'lesson', title:'Double Stroke Roll', level:3, instruments:['drums'], skill:['control'], patterns:['double-stroke'], status:'published', origin:'curated', license:'owned', best:null, sessions:0, trend:[]},
   {id:'linear-fill-1', kind:'lesson', title:'Linear Fill — 6-stroke', level:5, instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', origin:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'kind derived from its step patterns (fill + rudiment) — fills are a pattern_kind, not a lesson type (SD-1)'},
   /* SONG PARTS — kind=part, parent_id -> the song, bar range, listable:false (hidden from browse; reached via the song's "Practice in parts"). Each part is its OWN playable, scored on its own id. */
-  {id:'sna-intro',  kind:'part', title:'Intro',  parent_id:'seven-nation-army', start_bar:1,  end_bar:8,  sort_order:1, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:78, sessions:4, top_bpm:120, trend:[55,68,78]},
-  {id:'sna-verse',  kind:'part', title:'Verse',  parent_id:'seven-nation-army', start_bar:9,  end_bar:24, sort_order:2, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:60, sessions:3, top_bpm:110, trend:[40,52,60]},
-  {id:'sna-chorus', kind:'part', title:'Chorus', parent_id:'seven-nation-army', start_bar:25, end_bar:40, sort_order:3, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:45, sessions:2, top_bpm:100, trend:[30,45], ranges:[[25,40],[57,72]]},
-  {id:'sna-outro',  kind:'part', title:'Outro',  parent_id:'seven-nation-army', start_bar:73, end_bar:80, sort_order:4, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[]},
+  {id:'sna-intro',  kind:'part', title:'Intro',  parent_id:'seven-nation-army', start_bar:1,  end_bar:8,  sort_order:1, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:78, sessions:4, top_bpm:120, trend:[55,68,78], voices:['hi-hat','kick']},
+  {id:'sna-verse',  kind:'part', title:'Verse',  parent_id:'seven-nation-army', start_bar:9,  end_bar:24, sort_order:2, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:60, sessions:3, top_bpm:110, trend:[40,52,60], voices:['hi-hat','kick','snare']},
+  {id:'sna-chorus', kind:'part', title:'Chorus', parent_id:'seven-nation-army', start_bar:25, end_bar:40, sort_order:3, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:45, sessions:2, top_bpm:100, trend:[30,45], ranges:[[25,40],[57,72]], voices:['hi-hat','kick','snare','crash']},
+  {id:'sna-outro',  kind:'part', title:'Outro',  parent_id:'seven-nation-army', start_bar:73, end_bar:80, sort_order:4, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[], voices:['hi-hat','kick','crash']},
 
   /* patterns — reusable building blocks, now browsable (kind=pattern). They live under the Lessons tab. */
   {id:'p-hihat-8',   kind:'pattern', title:'Straight 8th Hi-hats',  pattern_kind:'beat',     family:'Rock',   level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 x x x x x x x x', best:90, sessions:8, top_bpm:140, trend:[70,82,90], data:{difficulty:{by:'bpm',tiers:[{upTo:90,level:1},{upTo:140,level:2},{upTo:null,level:3}]}}},
@@ -513,6 +517,7 @@ const DESCRIPTIONS = {
 function descOf(it){ return it.description || DESCRIPTIONS[it.id] || null; }
 function songParts(songId){ return PLAYABLES.filter(p=>p.kind==='part' && p.parent_id===songId).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
 function barsLabel(p){ const rs = (p.ranges && p.ranges.length) ? p.ranges : [[p.start_bar, p.end_bar]]; return rs.map(r=>r[0]+'–'+r[1]).join(' · '); }   // SD-16 repeated parts: a part may map to >1 bar range
+function voicesLine(p){ if(!p.voices||!p.voices.length) return ''; return `<div class="voices"><span class="vlbl">Voices</span>${p.voices.map(v=>`<span class="vchip">${esc(v)}</span>`).join('')}<span class="vnote">· placeholder — derived from the track MIDI (SD-15)</span></div>`; }
 function stepsFor(parentId){ return (STEP[parentId]||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
 function childPlayable(childId){ return PLAYABLES.find(x=>x.id===childId) || null; }
 function reuseCount(childId){ return Object.keys(STEP).filter(pid=>STEP[pid].some(s=>s.child_id===childId)).length; }   // how many parents step to this pattern
@@ -932,7 +937,8 @@ function renderPart(id){
       ${historyCard(it)}
     </div>
     <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation slice</h3>
-      <div class="gate"><span class="material-symbols-outlined">info</span>Plays bars <b>${it.start_bar}–${it.end_bar}</b> of the parent score — <code>notation_id</code> is shared with the song; <code>start_bar</code>/<code>end_bar</code> live on the part.</div>
+      ${voicesLine(it)}
+      <div class="gate"><span class="material-symbols-outlined">info</span>Plays bars <b>${barsLabel(it)}</b> of the parent score — <code>notation_id</code> is shared with the song; <code>start_bar</code>/<code>end_bar</code> live on the part.</div>
     </div>
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
@@ -1137,11 +1143,13 @@ function historyCard(it){
   if(!signedIn()) return `<div class="card" style="margin-top:0;min-width:240px">
       <div class="gate"><span class="material-symbols-outlined">login</span><div>Sign in to track your best score, sessions &amp; trend.<br>
       <button class="btn primary" id="signinHere" style="margin-top:10px"><span class="material-symbols-outlined">person</span> Sign in</button></div></div></div>`;
-  if(it.best==null) return `<div class="card" style="margin-top:0;min-width:240px"><h3><span class="material-symbols-outlined">history</span> Your history</h3>
-      <div class="gate" style="border-style:dashed"><span class="material-symbols-outlined">flag</span>Not attempted yet — play it to start your trend.</div></div>`;
   const tr = (it.trend||[]); const max=Math.max(100,...tr);
+  if(it.best==null && !tr.length) return `<div class="card" style="margin-top:0;min-width:240px"><h3><span class="material-symbols-outlined">history</span> Your history</h3>
+      <div class="gate" style="border-style:dashed"><span class="material-symbols-outlined">flag</span>Not attempted yet — play it to start your trend.</div></div>`;
+  const reset = it.best==null && tr.length>0;   // SD-21: best cleared, attempt history kept
+  const done  = it.best!=null && it.best>=90;   // SD-21: 'completed' (placeholder: passed ≥ 90%)
   return `<div class="card" style="margin-top:0;min-width:240px">
-    <h3><span class="material-symbols-outlined">history</span> Your history</h3>
+    <h3><span class="material-symbols-outlined">history</span> Your history ${done?'<span class="pill-new" style="background:color-mix(in srgb,var(--s-high) 18%,transparent);color:var(--s-high)">✓ Completed</span>':''}${reset?'<span class="pill-new" style="background:var(--panel2);color:var(--faint)">best reset</span>':''}</h3>
     <div class="history">
       <div class="big">${donut(it.best)}
         <div class="stat"><span class="n">${it.sessions||0}</span><span class="l">sessions</span></div>
@@ -1149,7 +1157,10 @@ function historyCard(it){
       </div>
       <div class="trend">${tr.map(v=>`<span style="height:${Math.round(v/max*100)}%"></span>`).join('')||'<small style="color:var(--faint)">no runs yet</small>'}</div>
     </div>
-    <small style="color:var(--faint);display:block;margin-top:10px">Per-user data (DynamoDB) — joined client-side, not in the catalog.</small>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px">
+      <small style="color:var(--faint)">Per-user (DynamoDB) — joined client-side.</small>
+      ${it.best!=null?`<a data-reset="${it.id}" style="color:var(--accent);cursor:pointer;font-size:12px;white-space:nowrap" title="Clear your best — keep attempt history">Reset best</a>`:''}
+    </div>
   </div>`;
 }
 function adminDetailBar(it){
@@ -1199,6 +1210,8 @@ document.addEventListener('click', e=>{
   const artistEl = e.target.closest('[data-artist]');
   if(artistEl){ navigate('#/catalog?tab=songs&artist='+encodeURIComponent(artistEl.dataset.artist)); return; }
   if(e.target.closest('[data-clear-artist]')){ state.artist=null; state.page=1; renderCatalog(); return; }
+  const rs = e.target.closest('[data-reset]');
+  if(rs){ const p=PLAYABLES.find(x=>x.id===rs.dataset.reset); if(p){ p.best=null; }/* SD-21: clear best, keep trend */ render(); return; }
   if(e.target.closest('[data-back]')){ history.length>1?history.back():navigate('#/catalog'); return; }
   const popBtn = e.target.closest('[data-pop]');
   if(popBtn){ const id=popBtn.dataset.pop; state.openPop = state.openPop===id?null:id; renderCatalog(); return; }
