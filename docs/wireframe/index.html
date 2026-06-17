@@ -153,6 +153,14 @@ body.showall .nfields{display:block}
 .nfk{color:var(--faint)}
 .nfv{color:var(--ink);word-break:break-word;white-space:pre-wrap}
 .nfv.nul{color:var(--s-none)}
+.fielddock{display:none;position:fixed;top:64px;right:14px;width:340px;max-height:74vh;overflow:auto;resize:both;background:var(--panel);border:1px solid var(--accent);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.4);z-index:40}
+body.showall .fielddock{display:block}
+.fdhead{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);display:flex;align-items:center;gap:6px;font-weight:600}
+.fdbody{padding:10px 12px}
+[data-nav]{cursor:pointer}
+.logo[data-nav]:hover{color:var(--accent)}
+.patrow[data-nav]{cursor:pointer}
+.part[data-nav]:hover,.patrow[data-nav]:hover{border-color:var(--accent);background:var(--panel2)}
 
 .pager{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:16px;flex-wrap:wrap}
 .pager button{min-width:34px;height:34px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:0 8px;display:inline-flex;align-items:center;justify-content:center}
@@ -656,7 +664,7 @@ function toNotation(it){
   };
 }
 const NF_ORDER = ['id','kind','title','parent_id','source_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','lesson_type','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
-function allFieldsPanel(it){
+function notationGrid(it){
   const n = toNotation(it);
   const grid = NF_ORDER.map(k=>`<span class="nfk">${k}</span>${nfv(n[k])}`).join('');
   let src='';
@@ -665,8 +673,10 @@ function allFieldsPanel(it){
     const loc = it.notation_format ? ('s3_key · catalogue/'+it.id+'/source.'+it.notation_format) : ('alphatex · '+esc(it.notation_tex||''));
     src = `<div class="nfsub">↳ source · ${esc(n.source_id)}</div><div class="nfgrid"><span class="nfk">format</span><span class="nfv">${esc(fmt)}</span><span class="nfk">key / tex</span><span class="nfv">${loc}</span></div>`;
   }
-  return `<div class="nfields"><div class="nfsub">notation · all columns</div><div class="nfgrid">${grid}</div>${src}</div>`;
+  return `<div class="nfsub">notation · all columns</div><div class="nfgrid">${grid}</div>${src}`;
 }
+function allFieldsPanel(it){ return `<div class="nfields">${notationGrid(it)}</div>`; }              // inline, under list rows
+function detailFieldsPanel(it){ return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> fields · drag the corner to resize</div><div class="fdbody">${notationGrid(it)}</div></aside>`; }  // floating, on detail pages
 function rowHTML(it){
   const isLesson = it.type==='lesson', isPat = it.type==='pattern';
   const cover = isLesson ? (LESSON_KINDS[it.lesson_type]?.icon||'school')
@@ -728,9 +738,9 @@ function patternsCard(it){
   if(!it.patterns||!it.patterns.length) return '';
   return `<div class="card"><h3><span class="material-symbols-outlined">extension</span> Patterns ${it.type==='song'?'in this song':'this lesson teaches'} <span style="font-weight:400;color:var(--faint)">· reusable grooves / fills / rudiments</span></h3>
     ${it.patterns.map(pid=>{ const p=PATTERNS[pid]; if(!p) return ''; const k=PATTERN_KINDS[p.kind]||{label:p.kind,icon:'extension'};
-      return `<div class="patrow"><span class="material-symbols-outlined" style="color:var(--accent)">${k.icon}</span>
+      return `<div class="patrow" data-nav="#/pattern/${pid}"><span class="material-symbols-outlined" style="color:var(--accent)">${k.icon}</span>
         <div style="flex:1"><b>${esc(p.name)}</b><small style="color:var(--faint);display:block">${[p.family,p.subdivision&&p.subdivision+' notes','level '+(p.level??'—')].filter(Boolean).join(' · ')}</small></div>
-        <span class="pk ${p.kind}">${k.label}</span></div>`; }).join('')}
+        <span class="pk ${p.kind}">${k.label}</span><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`; }).join('')}
     <small style="color:var(--faint);display:block;margin-top:4px">Linked via <code>item_pattern</code> (m:n). Fills live here — they're a <code>pattern.kind</code>, not a lesson type (SD-1).</small>
   </div>`;
 }
@@ -787,7 +797,7 @@ function renderSong(id){
     </div>
     ${patternsCard(it)}
     ${metaFoot(it)}
-    ${allFieldsPanel(it)}
+    ${detailFieldsPanel(it)}
   `;
 }
 
@@ -819,12 +829,14 @@ function renderLesson(id){
     </div>
     ${patternsCard(it)}
     ${metaFoot(it)}
-    ${allFieldsPanel(it)}
+    ${detailFieldsPanel(it)}
   `;
 }
 /* ---------- screen: PATTERN detail (first-class playable — score + history) ---------- */
 function renderPattern(id){
-  const it = ITEMS.find(x=>x.id===id); if(!it) return notFound();
+  let it = ITEMS.find(x=>x.id===id);
+  if(!it){ const p=PATTERNS[id]; if(p) it={id, type:'pattern', title:p.name, pattern_kind:p.kind, family:p.family, level:p.level, instruments:['drums'], status:'published', source:'curated'}; }
+  if(!it) return notFound();
   const k = PATTERN_KINDS[it.pattern_kind]||{label:'Pattern',icon:'extension'};
   const diff = it.data&&it.data.difficulty;
   app.innerHTML = `
@@ -851,13 +863,13 @@ function renderPattern(id){
       ${diff.tiers.map(t=>`<div class="part"><div style="flex:1"><b>${t.upTo!==undefined?(t.upTo==null?'fastest':'up to '+t.upTo+(diff.by==='bpm'?' BPM':'')):esc(t.when)}</b></div><span class="lvlpill">L${t.level}</span></div>`).join('')}
       <small style="color:var(--faint);display:block;margin-top:6px">Stored in <code>data.difficulty {by, tiers}</code> — a lesson step's level = this curve at the step's goal BPM.</small></div>`:''}
     ${metaFoot(it)}
-    ${allFieldsPanel(it)}
+    ${detailFieldsPanel(it)}
   `;
 }
 function stepFieldsPanel(lesson, s){
   const f = {lesson_id:lesson.id, pattern_id:'(reusable pattern this step drills)', sort_order:s.step_no, start_bpm:s.start_bpm??null, goal_bpm:s.goal_bpm??null};
   const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
-  return `<div class="nfields"><div class="nfsub">lesson_step · junction (a step is NOT a notation — it links a lesson to a reusable pattern, with order + bpm ladder)</div><div class="nfgrid">${grid}</div></div>`;
+  return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> lesson_step · junction</div><div class="fdbody"><div class="nfsub">a step is NOT a notation — it links a lesson to a reusable pattern</div><div class="nfgrid">${grid}</div></div></aside>`;
 }
 function stepRow(lesson, s){
   const srcTag = s.notation_tex!=null ? '<span class="src tex">alphaTex</span>'
