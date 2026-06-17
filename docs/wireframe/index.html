@@ -253,6 +253,7 @@ body.showall .fielddock{display:block}
 .rolepick small{color:var(--faint)}
 .modal .x{float:right;color:var(--faint);background:none;border:none}
 
+.lead{color:var(--muted);max-width:64ch;margin-top:10px;font-size:14px;line-height:1.5}
 .empty{text-align:center;color:var(--faint);padding:50px 20px}
 .empty .material-symbols-outlined{font-size:44px;display:block;margin-bottom:8px}
 @media(max-width:640px){
@@ -474,6 +475,40 @@ const isAdmin = () => state.role==='admin';
 const signedIn= () => state.role!=='anon';
 const isPitched = () => state.instrument && PITCHED.includes(state.instrument);
 
+/* SD-17/SD-19 — a short description per playable. The model field is `description`; sourced here as a lookup for the wireframe (rows stay lean; toPlayable surfaces it as a column). */
+const DESCRIPTIONS = {
+  'seven-nation-army':'A one-riff rock anthem — lock the kick to that iconic bass-line riff.',
+  'billie-jean':'Machine-tight four-on-the-floor pop groove; all about steady time.',
+  'rosanna':'The famous half-time shuffle — ghost notes and a slippery triplet feel.',
+  'enter-sandman':'Driving metal eighths with a double-bass-friendly main groove.',
+  'take-five':'Cool-jazz classic in 5/4 — count the odd meter, ride the brushes.',
+  'creep':'Slow, spacious rock ballad — restraint and dynamics over chops.',
+  'wonderwall':'Beginner-friendly strummer — steady down-up acoustic pattern in F#m.',
+  'clocks':'Arpeggiated piano ostinato in Eb — even eighths, gentle dynamic swells.',
+  'my-demo-upload':'A private practice-loop upload (draft, not in the shared catalog).',
+  'first-beat':'Your very first groove: kick on the beat, then add steady hi-hats.',
+  'rock-8th-beat':'Build the classic rock beat one layer at a time, up to the full groove.',
+  'four-on-floor':'Kick on every beat under straight hats — the dance-floor foundation.',
+  'funk-16ths':'Sixteenth-note hats with ghost snares — independence and pocket.',
+  'single-paradiddle':'The RLRR-LRLL sticking, drilled slow to fast for control.',
+  'double-stroke':'Two strokes per hand — the roll that powers buzz and speed.',
+  'linear-fill-1':'A 6-stroke linear fill moved around the kit — fill plus rudiment hands.',
+  'sna-intro':'Bars 1–8 — the riff stated alone; set the tempo and feel.',
+  'sna-verse':'Bars 9–24 — the groove settles in under the riff.',
+  'sna-chorus':'Bars 25–40 — the fullest section; lock the backbeat.',
+  'sna-outro':'Bars 41–48 — wind it down to the finish.',
+  'p-hihat-8':'Eight steady right-hand hi-hats per bar — the timekeeping backbone.',
+  'p-rock-8th':'Kick and snare under eighth hats — the everyday rock groove.',
+  'p-paradiddle':'RLRR LRLL — the first and most useful rudiment.',
+  'p-tom-fill':'A descending tom fill to land on beat one.',
+  'p-cmaj-scale':'C major, one octave — hands separate, then together.',
+  'p-gmaj-scale':'G major, one octave — one sharp (F#).',
+  'p-rock-kick':'The kick-drum part of the rock groove, on its own.',
+  'p-four-floor':'Kick on all four beats — the house and disco pulse.',
+  'p-double-stroke':'RRLL doubles — control the bounce, then build speed.',
+  'p-rock-groove':'Hi-hats plus kick combined into the full rock groove (composite).',
+};
+function descOf(it){ return it.description || DESCRIPTIONS[it.id] || null; }
 function songParts(songId){ return PLAYABLES.filter(p=>p.kind==='part' && p.parent_id===songId).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
 function stepsFor(parentId){ return (STEP[parentId]||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
 function childPlayable(childId){ return PLAYABLES.find(x=>x.id===childId) || null; }
@@ -676,7 +711,7 @@ function nfv(v){
 function toPlayable(it){
   const ts = it.time_sig ? String(it.time_sig).split('/') : [null,null];
   return {
-    id:it.id, kind:it.kind, title:it.title,
+    id:it.id, kind:it.kind, title:it.title, description: descOf(it),
     parent_id: it.parent_id||it.sourceSong||null,
     notation_id: it.notation_format?('src-'+it.id):(it.notation_alphaTex?('tex-'+it.id):null),
     start_bar: it.start_bar??null, end_bar: it.end_bar??null, sort_order: it.sort_order??null,
@@ -692,7 +727,7 @@ function toPlayable(it){
     data: it.data||null, created_by: it.owner||null,
   };
 }
-const NF_ORDER = ['id','kind','title','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
+const NF_ORDER = ['id','kind','title','description','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
 function playableGrid(it){
   const n = toPlayable(it);
   const grid = NF_ORDER.map(k=>`<span class="nfk">${k}</span>${nfv(n[k])}`).join('');
@@ -801,6 +836,7 @@ function renderSong(id){
       <div class="meta">
         <h1>${esc(it.title)}</h1>
         <div class="sub">${it.artist?esc(it.artist):'Unknown artist'} <span class="tag song">Song</span> ${it.visibility==='private'?'<span class="tag private">Private</span>':''}</div>
+        ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
           <span class="badge"><span class="material-symbols-outlined">schedule</span>${it.time_sig}</span>
@@ -857,6 +893,7 @@ function renderPart(id){
       <div class="meta">
         <h1>${esc(it.title)}</h1>
         <div class="sub"><span class="tag song">Part</span> ${song?`of <a data-nav="#/song/${song.id}" style="color:var(--accent);cursor:pointer">${esc(song.title)}</a>`:''}</div>
+        ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">segment</span>bars ${it.start_bar}–${it.end_bar}</span>
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
@@ -891,6 +928,7 @@ function renderLesson(id){
       <div class="meta">
         <h1>${esc(it.title)}</h1>
         <div class="sub"><span class="tag lesson">${kind}</span> ${it.level===0?'Debut':'Level '+(it.level??'—')} ${(it.skill||[]).map(s=>`<span class="badge" style="padding:3px 9px">${s}</span>`).join('')}</div>
+        ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>
         </div>
@@ -922,6 +960,7 @@ function renderPattern(id){
       <div class="meta">
         <h1>${esc(it.title)}</h1>
         <div class="sub"><span class="tag lesson">${k.label}</span> ${it.level===0?'Debut':'Level '+(it.level??'—')} ${it.family?`<span class="badge" style="padding:3px 9px">${esc(it.family)}</span>`:''}</div>
+        ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.instruments||[]).join('·')}</span>
           ${it.musical_key?`<span class="badge"><span class="material-symbols-outlined">piano</span>Key ${it.musical_key}</span>`:''}
