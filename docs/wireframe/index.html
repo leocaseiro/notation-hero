@@ -448,7 +448,7 @@ const state = {
   advanced: false,
   page: 1,
   openPop: null,
-  genre: [], kind: [], timeSig: [], instrument: null, showAll: false,
+  genre: [], kind: [], timeSig: [], instrument: null, artist: null, showAll: false,
   level: { min:null, max:null }, inclUngraded: false,
   bpm: { min:null, max:null },
   score: { min:null, max:null }, inclUnplayed: false,   // SD-12 (per-user, client-side)
@@ -538,6 +538,7 @@ function syncCatalogHash(){
   p.set('tab', state.tab);
   if(state.tab==='lessons' && state.kind.length) p.set('kind', state.kind.join(','));
   if(state.genre.length) p.set('genre', state.genre.join(','));
+  if(state.artist) p.set('artist', state.artist);
   if(state.q) p.set('q', state.q);
   if(state.sort!=='relevance') p.set('sort', state.sort);
   if(state.page>1) p.set('page', state.page);
@@ -553,6 +554,7 @@ function render(){
     if(qp.get('tab')) state.tab = qp.get('tab');
     if(qp.get('kind')) state.kind = qp.get('kind').split(',');
     if(qp.get('genre')) state.genre = qp.get('genre').split(',');
+    state.artist = qp.get('artist') || null;
     if(qp.get('q')!=null) state.q = qp.get('q');
     if(qp.get('sort')) state.sort = qp.get('sort');
     state.page = +(qp.get('page')||1);
@@ -572,6 +574,7 @@ function matches(it){
   if(it.listable===false) return false;                                          // parts (and any listable:false playable) never appear in browse
   if(state.tab==='songs' ? it.kind!=='song' : it.kind==='song') return false;   // Lessons tab = every non-song (lessons + patterns)
   if(state.genre.length && !state.genre.includes(it.genre)) return false;
+  if(state.tab==='songs' && state.artist && it.artist!==state.artist) return false;   // SD-13 artist facet (songs)
   if(state.tab==='lessons' && state.kind.length && !state.kind.some(k=>patternKindsOf(it).includes(k))) return false;   // Kind filter spans patterns (own kind) + lessons (derived from step children)
   if(state.timeSig.length && !state.timeSig.includes(it.time_sig)) return false;
   if(state.instrument && !(it.instruments||[]).includes(state.instrument)) return false;
@@ -676,6 +679,7 @@ function renderCatalog(){
       </div>
       <span class="vsep"></span>
       ${dyn}
+      ${(!isLessons && state.artist)?`<button class="fbtn on" data-clear-artist title="Clear artist filter"><span class="k">Artist:</span> ${esc(state.artist)} <span class="material-symbols-outlined" style="font-size:15px">close</span></button>`:''}
       <div class="fdrop"><button class="fbtn ${(state.level.min!=null||state.level.max!=null)?'on':''}" data-pop="lvlPop">${rangeFace('Level',state.level,gradeLabel)} <span class="material-symbols-outlined caret">expand_more</span></button>${levelPop()}</div>
       <div class="fdrop"><button class="fbtn ${state.instrument?'on':''}" data-pop="instPop">${state.instrument?`<span class="k">Instrument:</span> ${cap(state.instrument)}`:'<span class="k">Instrument:</span> Any'} <span class="material-symbols-outlined caret">expand_more</span></button>
         ${singlePop('instPop',INSTRUMENTS.map(i=>({val:i,label:cap(i),icon:i==='drums'?'graphic_eq':i==='guitar'?'queue_music':'piano'})))}</div>
@@ -835,7 +839,7 @@ function renderSong(id){
     <div class="hero">
       <div class="meta">
         <h1>${esc(it.title)}</h1>
-        <div class="sub">${it.artist?esc(it.artist):'Unknown artist'} <span class="tag song">Song</span> ${it.visibility==='private'?'<span class="tag private">Private</span>':''}</div>
+        <div class="sub">${it.artist?`<a data-artist="${esc(it.artist)}" style="color:var(--accent);cursor:pointer" title="Browse this artist">${esc(it.artist)}</a>`:'Unknown artist'} <span class="tag song">Song</span> ${it.visibility==='private'?'<span class="tag private">Private</span>':''}</div>
         ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
@@ -862,7 +866,7 @@ function renderSong(id){
           <span class="bars">bars ${p.start_bar}–${p.end_bar}</span>
           ${donut(p.best)}
           <span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span>
-        </div>`).join('')
+        </div>${allFieldsPanel(p)}`).join('')
         : sections.length
         ? sections.map(s=>`
         <div class="part">
@@ -1122,6 +1126,9 @@ function clearFilter(g){
 document.addEventListener('click', e=>{
   const navEl = e.target.closest('[data-nav]');
   if(navEl){ navigate(navEl.dataset.nav); return; }
+  const artistEl = e.target.closest('[data-artist]');
+  if(artistEl){ navigate('#/catalog?tab=songs&artist='+encodeURIComponent(artistEl.dataset.artist)); return; }
+  if(e.target.closest('[data-clear-artist]')){ state.artist=null; state.page=1; renderCatalog(); return; }
   if(e.target.closest('[data-back]')){ history.length>1?history.back():navigate('#/catalog'); return; }
   const popBtn = e.target.closest('[data-pop]');
   if(popBtn){ const id=popBtn.dataset.pop; state.openPop = state.openPop===id?null:id; renderCatalog(); return; }
@@ -1140,7 +1147,7 @@ document.addEventListener('click', e=>{
   if(e.target.closest('[data-more]')){ state.advanced=!state.advanced; renderCatalog(); return; }
   if(e.target.closest('[data-fields]')){ state.showAll=!state.showAll; document.body.classList.toggle('showall', state.showAll); document.querySelectorAll('[data-fields]').forEach(b=>b.setAttribute('aria-pressed', String(state.showAll))); return; }
   if(e.target.closest('[data-page]')){ state.page=+e.target.closest('[data-page]').dataset.page; renderCatalog(); window.scrollTo({top:0,behavior:'smooth'}); return; }
-  if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); clearFilter('score'); state.instrument=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
+  if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); clearFilter('score'); state.instrument=null; state.artist=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
   if(e.target.closest('[data-role-set]')){ setRole(e.target.closest('[data-role-set]').dataset.roleSet); return; }
   if(e.target.closest('[data-theme-set]')){ setTheme(e.target.closest('[data-theme-set]').dataset.themeSet); return; }
   if(e.target.closest('#acctBtn') || e.target.closest('#signinHere')){ openModal(); return; }
