@@ -6,6 +6,7 @@
 > **Supersedes (pending ratification):** parts of `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (suffix-everything). See §9.
 > **Reaffirms:** `2026-06-09-catalogue-store-postgres-neon.md` (`DS-1`), the Cognito-not-Amplify decision (NH-193).
 > **Owner:** leocaseiro
+> **Spec review:** ✅ 2026-06-17 (8-persona ce-doc-review, NH-194) — 16 fixes applied inline, 4 items parked in §"Deferred / Open Questions". The DACI + file-structure ADR text rewrite remains the post-review task (§11 step 1).
 
 ---
 
@@ -14,9 +15,9 @@
 A week of setup friction (Nx + pnpm + generators) stalled progress. The north-star is locked; the open questions are about the **foundation shape** and the **concrete tooling**. Two principles agreed this session drive every call below:
 
 1. **Tooling conforms to NestJS + the React starter — not the other way around.** We pick SWC because Nest wants it, Vite-SWC because that's the React standard, and we relax our own file-naming rules to admit framework-native filenames.
-2. **Now is the cheapest moment to change the foundation.** Almost no code has shipped (only `apps/handler-hello` + `infra/`; `core/`/`adapters/` are empty). The repo audit confirmed Nx is barely wired (every target is `nx:run-script`; `nx affected` is not used in CI; the only hexagon guard live in CI is dependency-cruiser, which is Nx-independent).
+2. **Now is the cheapest moment to change the foundation.** Almost no code has shipped (only `apps/handler-hello` + `infra/`; `core/`/`adapters/` are empty). The repo audit confirmed Nx is barely wired (every target is `nx:run-script`; `nx affected` does no real *filtering* in CI — the scripts call `nx run-many` — though it IS wired in the lefthook hooks + `nx-set-shas` (see ARCH-MONO-1); the only hexagon guard live in CI is dependency-cruiser, which is Nx-independent).
 
-Each section maps to the brainstorm's open questions: §1 → Q1-3, §2 → Q5-7, §3 → Q4 + the contract/ORM, §4 → Q8.
+Each section maps to the brainstorm's open questions: §1 → Q1-3, §2 → Q5-7 + ORM, §3 → Q4 + the contract, §4 → Q8.
 
 ---
 
@@ -33,7 +34,8 @@ Each section maps to the brainstorm's open questions: §1 → Q1-3, §2 → Q5-7
 
 ### ARCH-MONO-1 — Drop Nx → plain pnpm workspaces
 **Decision:** Remove Nx. Use plain pnpm workspaces (`client`, `server`, `shared`, `infra`). Root scripts become `pnpm -r <target>` / `pnpm --filter <pkg> <target>`.
-**Why:** the audit found Nx earns nothing today — 3 plugins, every target is `nx:run-script` wrapping pnpm scripts, `nx affected` unused in CI, caching has 2 trivial projects to cache. One Nest app + one React app + shared contract + infra do not need Nx's package orchestration. Folders-in-one-app (ARCH-HEX-1) is also more NestJS-native — `nest g` scaffolds into `src/` folders, not across packages, so keeping Nx packages would *fight* the generators. Migration cost now ≈ 8-12 files; it only rises as packages are added.
+**Why:** the audit found Nx earns nothing today — 3 plugins, every target is `nx:run-script` wrapping pnpm scripts, and caching has 2 trivial projects. One Nest app + one React app + shared contract + infra do not need Nx's package orchestration. Folders-in-one-app (ARCH-HEX-1) is also more NestJS-native — `nest g` scaffolds into `src/` folders, not across packages, so keeping Nx packages would *fight* the generators. **Audit correction:** `nx affected` does no real *filtering* in CI (scripts call `nx run-many`), but it **is** wired in the lefthook `pre-commit`/`pre-push` hooks and `nrwl/nx-set-shas` runs in two CI jobs — so removing Nx breaks local commits unless those are rewritten first. **Portfolio note:** dropping Nx also retires the `nx affected`-graph "differentiating portfolio signal" the tooling DACI counted — plain pnpm workspaces is still a legitimate signal, and the folder-level depcruise fence (ARCH-GUARD-1) now carries the "named architectural enforcement" story in its place (naming the tradeoff, *not* a reason to keep Nx).
+**Migration — do this FIRST (Phase 0 of the plan):** "remove everything Nx" before anything else, preferably by **regenerating a clean root `package.json`** rather than surgically un-picking it. Inventory to delete/rewrite (≈15+ files, not the earlier "8-12"): `nx.json`, `.nx/`, `.nxignore`, 2× `project.json`, root `package.json` (`nx`/`@nx/*` devDeps + nx-wrapped scripts → `pnpm -r`), `pnpm-workspace.yaml` (→ `client`/`server`/`shared`/`infra`), `lefthook.yml` (the `nx affected` hook steps → `pnpm -r`/changed-files filter), `ci.yml` (the two `nrwl/nx-set-shas` steps + `nx.json` path-filter entries), `knip.json` (`@nx/*` ignores), `.eslintrc.cjs` (drop the `@nx` plugin + `@nx/enforce-module-boundaries` rule; re-point `eslint-plugin-boundaries` elements to `server/src/*`), `tooling/check-layout.sh` (relax suffix vocab per ARCH-NAME-1 **and** re-scope paths `core/adapters/apps` → `server/src`), `AGENTS.md`.
 **Supersedes:** `L1` (Nx orchestrator), `L2-tags` (`@nx/enforce-module-boundaries`), `L7-set-shas` (Nx affected SHAs).
 
 ### ARCH-PM-1 — Keep pnpm (bun stays dropped)
@@ -74,11 +76,13 @@ server/src/
 { name:'no-core-to-adapters', from:{path:'^server/src/core'}, to:{path:'^server/src/adapters'}, severity:'error' },
 { name:'no-core-to-nestjs',   from:{path:'^server/src/core'}, to:{path:'node_modules/@nestjs'},  severity:'error' },
 ```
-**Supersedes:** `H8`-`H14` rule *paths* (rewritten folder-level), `L2-tags` (removed), `STRUCT-sibling` (re-pointed).
+**Fail-closed core-purity — don't rely on per-package deny-rules:** the two examples above are a *deny-list*, and depcruise's live `doNotFollow: { path: 'node_modules' }` can make `to: node_modules/@nestjs` match **zero edges and pass green** while `core/` imports `@nestjs`. Enforce purity with a **positive allow-rule** instead — `core/` may resolve only Node builtins + `^server/src/core` + a tiny explicit allowlist (e.g. `zod`), forbidding everything else (fails *closed*: any unlisted framework import errors by default). **Prove it fires:** add a CI "canary" — a deliberate `import '@nestjs/common'` in a throwaway core file that the depcruise step MUST flag red — so the fence is verified, not assumed.
+**Supersedes:** `H8`-`H14` rule *paths* (rewritten folder-level), `STRUCT-sibling` (re-pointed). (`L2-tags` dies with Nx — owned by ARCH-MONO-1, not double-listed here.)
 
 ### ARCH-NAME-1 — Relax the suffix-everything ADR to NestJS-native filenames
 **Decision:** Replace the strict "suffix everything" file taxonomy with **NestJS + React framework-native filenames** (`.module.ts`, `.guard.ts`, `.controller.ts`, `.pipe.ts`, `.interceptor.ts`, `.filter.ts`, Drizzle `.schema.ts`, the `main.ts`/entry files, `*.e2e-spec.ts`). Keep kebab-case (Nest emits it by default → zero fight) and co-located tests.
 **Why:** the locked `check-layout.sh` allowlist would fail NestJS on its first commit; per the "tooling conforms to the framework" principle, we relax the rule rather than rename framework files.
+**Concrete `approved_suffix` (commit this exact set — don't leave it to the implementer):** extend the allowlist with `module|guard|pipe|interceptor|filter|middleware|strategy|resolver|schema` (on top of the existing `controller|dto|…`). Keep `server/src/core/` on the **strict pure-domain subset** (`entity|port|policy|value-object` — no framework suffixes), while `modules/` + `adapters/` admit the framework suffixes. This is the same `check-layout.sh` edit the ARCH-MONO-1 migration inventory calls out (relax vocab + re-scope paths to `server/src`).
 **Supersedes:** `NAME-suffix` (suffix-everything), the relevant `check-layout.sh` allowlist; co-location (`CONV-1`/`CONV-2`) is kept.
 
 ---
@@ -95,6 +99,7 @@ server/src/
 ### ARCH-LAMBDA-1 — One API Lambda now; workers later from the same codebase
 **Decision:**
 - **HTTP API:** `server/src/entry/http.ts` bootstraps NestJS **once at module scope** (cached singleton), via **`@codegenie/serverless-express`** (the maintained fork; v5 supports Node 24), behind a **Function URL** (Always-Free; payload = API-Gateway-v2 format, so the adapter works as-is). No API Gateway (12-month-only on this account).
+  - **Origin lockdown (security — don't leave the Function URL public):** set `authorizationType: 'AWS_IAM'` and grant **only** CloudFront via `aws.lambda.Permission` (`principal: cloudfront.amazonaws.com` + `sourceArn: <distribution_arn>`, pinned to the one distribution), with the `AllViewerExceptHostHeader` origin-request policy on `/api/*` so bodies forward for SigV4. Default `AuthType: NONE` leaves the raw `*.lambda-url` endpoint internet-reachable, **bypassing CloudFront/WAF** (the JWT guard would be the only gate). OAC-for-Function-URLs is GA (Apr 2024); cost-neutral, still no API Gateway.
 - **Async workers (when they land):** `server/src/entry/worker-*.ts` using **`NestFactory.createApplicationContext`** (DI container, no HTTP server), each importing a **slim per-worker module** (only what it needs → smaller bundle, faster cold start), resolving providers via `ctx.get(Service)`. This is the idiomatic "many entry points, one codebase" — **not** more apps.
 **Why:** matches the locked north-star; research-verified current packages (codegenie v5, Apr 2026) and idiom.
 
@@ -102,27 +107,32 @@ server/src/
 **Decision:** `server/` (Lambda) emits **CommonJS**; `client/` (browser) emits **ESM**.
 **Why:** tree-shaking happens at *bundle time* from ESM **source**, independent of output format — so CJS output keeps tree-shaking. The real axis is runtime ergonomics: NestJS + decorators + `reflect-metadata` + serverless-express are CJS-rooted (ESM-on-Lambda adds `__dirname`/interop/`"type":"module"` friction for zero gain), while browsers run ESM natively (smaller downloads).
 **SWC/esbuild settings:** `.swcrc` `legacyDecorator + decoratorMetadata + keepClassNames`, `module.type=commonjs`, target es2022. esbuild per entry: `--format=cjs --platform=node --target=node24 --minify --keep-names --external:@aws-sdk/*`. Pulumi zips each entry → arm64 `nodejs24.x`.
+**ESM-only deps must be bundled, not externalized:** the oRPC packages the server imports (`@orpc/server`, `@orpc/contract`, `@orpc/nest`) are **ESM-only** (`"type":"module"`, no `require` path) — a CJS Lambda cannot `require()` them, so esbuild MUST bundle them into the artifact (never add oRPC to `--external`). `zod`/`drizzle` ship dual-format and are safe either way.
+**`shared/` output strategy:** `shared/` (oRPC contract + Zod = runtime values, not just types) is consumed by both the CJS server and the ESM client — ship it as **TS source compiled by each app's own build** (server→CJS via SWC/esbuild, client→ESM via Vite), so no dual-format package or `exports` map is needed.
+**Node runtime alignment:** the repo currently pins **Node 22** in three places (`engines.node >=22.18`, the placeholder esbuild `--target=node22`, and infra `runtime` default `nodejs22.x`); only `.nvmrc` is 24. The Nx-removal migration must bump all three to **Node 24** (`nodejs24.x` is GA in every region incl. `ap-southeast-2` since Nov 2025).
 **Note:** the `@nestjs/swagger` CLI plugin does not run under SWC — **moot** because oRPC (ARCH-CONTRACT-1) emits OpenAPI from the contract; `@nestjs/swagger` is not used.
 
 ### ARCH-EDGE-1 — One CloudFront distribution, two origins
 **Decision:** a single CloudFront distribution (custom domain + TLS) with two origins: default behavior `/*` → **S3** (static FE assets, edge-cached), `/api/*` → **Lambda Function URL** (dynamic, ~uncached). The Lambda *code bundle* is loaded by the Lambda runtime from Lambda storage at cold start — never via CloudFront, never downloaded by the browser.
-**Why:** same-origin (kills CORS), one domain, one TLS cert, edge-cache the FE — the `S3 + CloudFront + OAC` item on the AWS learning-map.
+**Why:** same-origin (kills CORS), one domain, one TLS cert, edge-cache the FE — the `S3 + CloudFront + OAC` item on the AWS learning-map. The `/api/*` origin (the Lambda Function URL) is locked to this distribution via OAC + `AWS_IAM` (see ARCH-LAMBDA-1), so it can't be reached directly.
+
+### ARCH-ORM-1 — Drizzle (reaffirmed over Prisma/TypeORM/Kysely) *(moved here from §3 — it's a backend/data-layer decision)*
+**Decision:** keep **Drizzle** (`drizzle-orm/neon-http` + `drizzle-kit` + `drizzle-zod`), wired as a custom `DRIZZLE` provider in an adapter behind the repository port.
+**Why:** the 🔬 ORM spike confirmed Drizzle is the best fit for *this* stack — only true ORM that natively rides Neon's **HTTP driver** (best cold-start), **zero SWC/decorator friction** (schema-as-TS, no `emitDecoratorMetadata`), and lets the **raw SQL DDL stay source of truth** (references the `GENERATED` tsvector column, doesn't fight it). There is **no built-in NestJS ORM** (Nest is ORM-agnostic; `@nestjs/typeorm` is the most "blessed" but is TCP-pool-only on Neon + has SWC decorator footguns). Neon's own NestJS guide uses raw `pg` (no ORM).
+**Caveat:** Drizzle `latest` is still 0.x with a 1.0 RC mid-flight (no GA date) — track the v1 / Relational-Queries-V2 migration. **Flip:** Kysely if the adapter ends up in the raw `sql` tag for most JSONB/tsvector queries anyway.
+**Reaffirms:** `DS-1` (Neon Postgres catalogue store).
 
 ---
 
 ## §3 — Client stack (Q4 + the contract)
+
+> **FE-stack learning-budget note:** oRPC, TanStack Router/Query and RxDB are net-new libraries, but the owner already has hands-on experience with them and they're agent-assisted, so the marginal learning cost is low and does not displace the AWS-learning priority. Per §11, FE libraries are layered in **as CRUD actually needs them**, not all up front.
 
 ### ARCH-CONTRACT-1 — oRPC for the typed API contract (not ts-rest); ditch kanel-zod
 **Decision:** use **oRPC** (`@orpc/*`): the contract lives framework-free in `shared/` (`oc.route().input(zod).output(zod)`), `server/` implements it via `@orpc/nest` (`@Implement`), `client/` consumes it via `@orpc/tanstack-query`. **Ditch kanel-zod** — the DB→Zod layer is owned by Drizzle + `drizzle-zod` (derive a base from the DB schema, then `.omit()/.extend()` to curate the API DTO — DB-change awareness without coupling the API to the DB).
 **Why:** the 🔬 contract spike found **ts-rest is effectively frozen** (0 commits to `main` in 2026; issue #797 "Future of ts-rest" — its own users are migrating to oRPC). oRPC is actively shipping (v1.14.x, weekly releases, post-1.0), has a first-class Nest adapter, pure TS inference (no codegen), shared Zod runtime validation, native OpenAPI (for the future admin CMS / 3rd-parties), and a ~3.4 KB client (good for Capacitor).
 **Three type-safety layers (the mental model):** ① DB↔server = Drizzle; ② server↔client = oRPC; ③ Zod = the shared validation currency. The API shape ≠ the DB shape (the hexagon maps row→entity→DTO), so the contract is hand-authored, not auto-mirrored from the DB.
 **Caveat:** oRPC is primarily one maintainer (same risk class ts-rest had) — mitigated because it emits standard OpenAPI, so the exit ramp (regenerate a client from the spec) is cheap. **Flip:** `@hey-api/openapi-ts` if the OpenAPI spec should be the single source of truth from day one (accepts a codegen step).
-
-### ARCH-ORM-1 — Drizzle (reaffirmed over Prisma/TypeORM/Kysely)
-**Decision:** keep **Drizzle** (`drizzle-orm/neon-http` + `drizzle-kit` + `drizzle-zod`), wired as a custom `DRIZZLE` provider in an adapter behind the repository port.
-**Why:** the 🔬 ORM spike confirmed Drizzle is the best fit for *this* stack — only true ORM that natively rides Neon's **HTTP driver** (best cold-start), **zero SWC/decorator friction** (schema-as-TS, no `emitDecoratorMetadata`), and lets the **raw SQL DDL stay source of truth** (references the `GENERATED` tsvector column, doesn't fight it). There is **no built-in NestJS ORM** (Nest is ORM-agnostic; `@nestjs/typeorm` is the most "blessed" but is TCP-pool-only on Neon + has SWC decorator footguns). Neon's own NestJS guide uses raw `pg` (no ORM).
-**Caveat:** Drizzle `latest` is still 0.x with a 1.0 RC mid-flight (no GA date) — track the v1 / Relational-Queries-V2 migration. **Flip:** Kysely if the adapter ends up in the raw `sql` tag for most JSONB/tsvector queries anyway.
-**Reaffirms:** `DS-1` (Neon Postgres catalogue store).
 
 ### ARCH-FE-1 — Vite + TanStack Router + TanStack Query
 **Decision:** **Vite 8** (build/dev) + **TanStack Router** (type-safe routes + typed search params) + **TanStack Query** (server cache, pairs with `@orpc/tanstack-query`). Scaffold: `npx @tanstack/cli create --router-only` (NOT the deprecated `create-tsrouter-app`).
@@ -131,7 +141,8 @@ server/src/
 
 ### ARCH-OFFLINE-1 — RxDB (free Dexie storage), syncs via the API
 **Decision:** **RxDB** with the free **Dexie/IndexedDB** storage; offline-first; replication (pull/push HTTP handlers) to the NestJS API, which persists per-user data to **DynamoDB** and serves the catalogue from **Neon**. RxDB is backend-agnostic — it talks to *our API*, not to Neon/Dynamo directly.
-**Why:** purpose-built for "sync with your own backend" + a real local query engine; matches the locked data split. **Caveat:** fast storages (OPFS/SQLite) are paid (€99/mo); on iOS WebView IndexedDB can be evicted — acceptable since DynamoDB is the source of truth (local = cache). **Flip:** paid SQLite storage only if iOS eviction bites in device testing. **Rejected:** Legend-State (sync engine still `@beta` after ~2 years; custom-backend sync more DIY).
+**Why:** purpose-built for "sync with your own backend" + a real local query engine; matches the locked data split. **Caveat:** fast storages (OPFS/SQLite) are paid (€99/mo); on iOS WebView IndexedDB can be evicted — acceptable for *reads* since DynamoDB is the source of truth (local = cache). **Flip:** paid SQLite storage only if iOS eviction bites in device testing. **Rejected:** Legend-State (sync engine still `@beta` after ~2 years; custom-backend sync more DIY).
+**Open (offline-first stays — it's a PWA; see §"Deferred / Open Questions"):** four sync-DB design points are deferred for a dedicated revisit and do NOT block the admin-CMS v1 — (a) **un-synced-write durability** on iOS eviction (the "local = cache" claim is read-only; offline writes not yet pushed can be lost), (b) **RxDB push conflict resolution**, (c) the **DynamoDB single-table keys / access-patterns / change-feed GSI** that `pull` depends on, and (d) whether RxDB is **fully wired at v1 or stubbed** until the sync milestone.
 
 ### ARCH-MOBILE-1 — Plain Capacitor (no Ionic)
 **Decision:** add **Capacitor** to the plain Vite/React app; **do not** use the Ionic UI framework.
@@ -151,12 +162,14 @@ server/src/
 **Why:** RBAC via groups is the cheap, standard model; modeling for end-users now (one pool) avoids a later migration.
 
 ### ARCH-AUTHZ-1 — `can(user, item, action)` policy port (minimal v1)
-**Decision:** split **authentication** (Cognito guard: valid token? which group?) from **authorization** (a small **framework-free `can(user, item, action)` in `core/`**, called by use-cases). v1 implementation: admin → any action; anyone → read `published` + `curated` only (~15 lines, no UGC logic yet).
+**Decision:** split **authentication** (Cognito guard: valid token? which group?) from **authorization** (a small **framework-free `can(user, item, action)` in `core/`**, called by use-cases). v1 implementation: admin → any action; anyone → read items that are **`status = 'published'` AND `source = 'curated'`** — both conditions ANDed. `status` defaults to `draft` (companion R3), so the status filter is **mandatory** or anonymous callers could read drafts/archived. Enforce it at the **DB layer too** (a query filter or a CHECK-guarded view), so the adapter can never accidentally omit the status check. (~15 lines, no UGC logic yet.)
 **Why:** the forward-compat goal wants authorization as a domain policy so UGC is *additive* (extend the policy: `owner can edit own draft`) instead of unpicking hardcoded guards. Fits the hexagon (domain policy in core).
 
 ### ARCH-OWN-1 — Add `created_by` (ownership-by-identity seam)
 **Decision:** add a **`created_by`** field (the Cognito `sub`) to the catalogue item. v1 admin items set it to the admin's sub; later UGC items set the uploader's sub → v1-vs-UGC differ only by **column values**, not schema. Stated abstractly in the companion data-layer-requirements doc (the parallel schema redesign satisfies it under whatever name).
 **Why:** the schema audit found `created_by` **does not exist** today (only `source` provenance-by-category + `status`). This is the cheap UGC ownership seam the north-star asks for.
+**Backfill (v1 migration):** existing curated rows get `created_by = <admin sub>` in the **same** migration that adds the column (an `UPDATE` before any NOT-NULL-dependent or owner-based policy ships); NULL is reserved for legacy-unowned rows, which the `can()` policy treats as admin-only-editable.
+**PII / exposure:** the Cognito `sub` is an internal identity key — `.omit()` it from public/list DTOs by default (expose only to admin/owner), and on user deletion anonymize or reassign it (GDPR right-to-erasure) per the future UGC spec. The catalogue is otherwise "not a PII landing zone"; `created_by` is the one identity column, so it carries this guardrail. (Mirrored in companion R1.)
 **Deferred (future specs):** the upload pipeline itself (M1) — but the **untrusted-uploader seam** is noted: presigned S3 → quarantine prefix → magic-byte validate → promote (the schema spec already has the quarantine prefix design).
 
 ---
@@ -166,7 +179,28 @@ server/src/
 Recorded in response to the "is a JWT in localStorage hackable like an MD5?" concern. Two distinct threats:
 
 - **Tampering / privilege-escalation — prevented by design.** Cognito signs every token with its private RS256 key; `aws-jwt-verify` checks the signature against Cognito's public JWKS on **every** request. Editing the token to add `"admin"` to `cognito:groups` invalidates the signature → rejected. Forging requires Cognito's private key (AWS-only). The group check is a cryptographic, server-side double-check on every call — fundamentally unlike a recomputable hash.
-- **Token theft (the real risk) — mitigated.** XSS could steal and replay a legitimately-signed token. Mitigations: tokens in **memory/sessionStorage** (not localStorage); **short access-token lifetime (60 min) + refresh-token rotation**; **strict Content-Security-Policy** + input sanitization; the server re-verifies signature + expiry + group every request (never trusts client state).
+- **Token theft (the real risk) — mitigated.** XSS could steal and replay a legitimately-signed token. Mitigations: tokens in **memory only** — a module-scoped variable, **not** localStorage *or* `sessionStorage` (both are equally readable by any same-origin script under XSS, so `oidc-client-ts` must be pointed at an in-memory store, off its `sessionStorage` default); **short access-token lifetime (60 min) + refresh-token rotation**; a **strict Content-Security-Policy** (see ARCH-SEC-2) + Zod input validation; the server re-verifies signature + expiry + group every request (never trusts client state).
+
+### ARCH-SEC-2 — CSP baseline (CloudFront Response Headers Policy + native `<meta>`)
+
+**Decision:** enforce a strict CSP via a **CloudFront Response Headers Policy** on the SPA's HTML, and ship a **mirrored `<meta http-equiv>` CSP in `index.html`** for the Capacitor native build — the CloudFront header does **not** reach the WebView (native loads from `capacitor://localhost` / `https://localhost`), so the native policy needs a wider `connect-src`.
+
+Baseline (web):
+```
+default-src 'self';
+script-src 'self';
+style-src 'self' 'unsafe-inline';
+img-src 'self' data: blob:;
+font-src 'self';
+connect-src 'self' https://<pool>.auth.<region>.amazoncognito.com https://cognito-idp.<region>.amazonaws.com <rxdb-origin-if-separate>;
+frame-src https://<pool>.auth.<region>.amazoncognito.com;
+form-action 'self' https://<pool>.auth.<region>.amazoncognito.com;
+frame-ancestors 'none'; base-uri 'self'; object-src 'none';
+worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
+```
+**Key points:** the Cognito Hosted-UI domain must appear in **three** directives — `connect-src` (token/JWKS fetch), `frame-src` (the `oidc-client-ts` silent-renew iframe navigates *to* Cognito), and `form-action` (Hosted-UI login + Google button). Google federation is brokered by Cognito → the SPA never calls Google directly, so **no** Google hosts. `script-src 'self'` (no `unsafe-inline`/`unsafe-eval`) is achievable by **externalizing Vite's inline bootstrap** (`build.modulePreload.polyfill:false`) or SHA-256-hashing it; `oidc-client-ts` uses Web Crypto (no WASM). Roll out as `Content-Security-Policy-Report-Only` first, then enforce.
+**Input "sanitization" = validation, not scrubbing:** oRPC + **Zod** validates every API input at the Lambda boundary; rely on React's default escaping in the UI and add **DOMPurify only** in the admin-CMS rich-text render path (if it ever renders authored HTML). Don't bolt string sanitizers onto Zod.
+**Confirm before enforcing (2 flags):** (a) does **AlphaTab** ship a **WASM** build? → if yes, add `wasm-unsafe-eval` to `script-src`. (b) is **RxDB replication** same-origin under `/api` or a separate host/`wss://`? → if separate, add it to `connect-src` (ties into the offline Open Question).
 
 ---
 
@@ -202,7 +236,7 @@ Recorded in response to the "is a JWT in localStorage hackable like an MD5?" con
 | ARCH-PM-1 | Keep pnpm (bun stays dropped) | reaffirms `PM-1`, `F6-bun` |
 | ARCH-LAYOUT-1 | `client/ server/ shared/ infra/` | supersedes Nx `apps/core/adapters/infra` |
 | ARCH-HEX-1 | Hexagon = folders in one Nest app | supersedes `FOLD-hex` |
-| ARCH-GUARD-1 | Keep depcruise (folder-level); drop Nx tag rule | supersedes `H8`-`H14` paths, `L2-tags`, `STRUCT-sibling` |
+| ARCH-GUARD-1 | Keep depcruise (folder-level); drop Nx tag rule | supersedes `H8`-`H14` paths, `STRUCT-sibling` |
 | ARCH-NAME-1 | NestJS-native filenames (relax suffix ADR) | supersedes `NAME-suffix` |
 | ARCH-BUILD-1 | pnpm runner + SWC compiler everywhere; bundler by target | new |
 | ARCH-LAMBDA-1 | One API Lambda now; workers via createApplicationContext | implements north-star |
@@ -218,6 +252,7 @@ Recorded in response to the "is a JWT in localStorage hackable like an MD5?" con
 | ARCH-AUTHZ-1 | `can(user,item,action)` policy port | new |
 | ARCH-OWN-1 | Add `created_by` ownership seam | extends catalogue schema |
 | ARCH-SEC-1 | JWT security model | new |
+| ARCH-SEC-2 | CSP baseline (CloudFront RHP + native `<meta>`) | new |
 
 ---
 
@@ -247,6 +282,26 @@ These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reope
 This brainstorm ends at a committed, reviewable spec. **After approval (in a separate review session):**
 
 1. **Rewrite the DACI + file-structure ADR text** (the W2 deferral) — supersede `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (`NAME-suffix`) per §9, and flip the affected decision-registry rows.
-2. **Invoke `writing-plans`** for the phased implementation plan (foundation migration → scaffolding → first feature), then execute.
+2. **Invoke `writing-plans`** for the phased implementation plan, sequenced **slice-first** so the build stays deployable and the FE scaffold can't balloon into "whole stack first":
+   - **Phase 0 — remove everything Nx** (per the ARCH-MONO-1 migration inventory; regenerate a clean root `package.json`).
+   - **Phase 1 — a thin deployable AWS slice:** an **About-page hello-world wired end-to-end** (CloudFront → Function URL → Lambda), so the recruiter-clickable artifact exists early (honours the DACI 4-week-pivot guardrail).
+   - **Phase 2 — CRUD (the admin catalogue CMS)** next, **layering the FE libraries (oRPC / TanStack Router+Query / RxDB / auth) only as CRUD actually needs them** — not all up front.
 
-Until then: ✅ decided · ⏳ no code/config changed.
+   Then execute.
+
+Until then: ✅ decided · ⏳ no repo code/config changed (this doc refined by the 2026-06-17 spec review).
+
+---
+
+## Deferred / Open Questions
+
+### From the 2026-06-17 spec review (ce-doc-review, NH-194)
+
+Offline-first **stays** (the client is a PWA + Capacitor). These offline / sync-DB design points are deferred to a dedicated revisit before the sync milestone — they do **not** block the admin-CMS v1:
+
+1. **Un-synced offline-write durability (#3, ARCH-OFFLINE-1).** "local = cache, eviction acceptable" holds for *reads* only — writes made offline live only in IndexedDB until the next push, so iOS WebView eviction can lose them permanently. Decide the stance (push-on-reconnect + flush-before-background, `navigator.storage.persist()`, an "unsynced changes" indicator) and **which doc owns offline-write durability** (this ADR vs the per-user DynamoDB spec).
+2. **RxDB push conflict resolution (#9, ARCH-OFFLINE-1).** Define how a per-user doc edited both offline and server-side reconciles on push (e.g. per-doc revision + DynamoDB conditional write; LWW by `updatedAt` or field-merge) + tombstone/TTL soft-delete so deletes replicate.
+3. **DynamoDB single-table key design (#11, ARCH-OFFLINE-1).** Specify PK/SK + access patterns + the **change-feed GSI** RxDB `pull` depends on, in a short per-user companion (mirroring the catalogue data-layer doc), **before the table is provisioned** (a partition key can't be changed in place).
+4. **RxDB v1 wiring scope (#13, ARCH-OFFLINE-1).** Decide whether RxDB pull/push is **fully wired at v1** (requires the NestJS replication endpoints before the CMS) or **installed-but-stubbed** until the sync milestone (v1 = one admin, one device).
+
+These feed the `writing-plans` stage and the parallel schema/data-layer redesign; the DACI + file-structure ADR text rewrite (§11 step 1) remains separate.

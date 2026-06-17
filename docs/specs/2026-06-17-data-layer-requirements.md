@@ -18,7 +18,7 @@ Each requirement is a **capability the architecture depends on**, named by inten
 
 | # | Requirement (capability) | Today's shape (e.g.) | Consumed by |
 |---|---|---|---|
-| **R1** ⭐ | **Ownership-by-identity** — every catalogue item records the identity that created it: the Cognito `sub` (string), nullable. v1 = admin's sub; later UGC = uploader's sub. v1-vs-UGC must differ **only by value**, not schema. | **net-new** `created_by text` (does not exist today) | ARCH-OWN-1, ARCH-AUTHZ-1 |
+| **R1** ⭐ | **Ownership-by-identity** — every catalogue item records the identity that created it: the Cognito `sub` (string), nullable. v1 = admin's sub; later UGC = uploader's sub. v1-vs-UGC must differ **only by value**, not schema. **Backfill:** existing curated rows get the admin sub in the same migration that adds the column (NULL reserved for legacy-unowned = admin-only-editable). **PII:** the sub is an internal identity key — omit from public/list DTOs by default; anonymize/reassign on user deletion (GDPR). | **net-new** `created_by text` (does not exist today) | ARCH-OWN-1, ARCH-AUTHZ-1 |
 | **R2** | **Provenance** — a write-once category distinguishing curated vs user-contributed content. | `source text` (`'curated'｜'user-upload'`), write-once | ARCH-AUTHZ-1, UGC seam |
 | **R3** | **Lifecycle / visibility** — a status with at least *draft / published / archived* (archived = soft-delete tombstone; never hard-delete). | `status text` default `'draft'` | ARCH-AUTHZ-1 |
 | **R4** | **Curated-only-publish invariant (v1)** — nothing user-contributed can be published to the shared catalogue: `published ⇒ curated`. | `CHECK (status<>'published' OR source='curated')` | ARCH-AUTHZ-1 |
@@ -46,4 +46,4 @@ Each requirement is a **capability the architecture depends on**, named by inten
 
 ## Open item
 
-- **R1 `created_by`** needs to be added in your redesign (nullable `text`, holds the Cognito `sub`). It is the single schema change the architecture introduces; everything else (R2-R12) the current schema already provides.
+- **R1 `created_by`** needs to be added in your redesign (nullable `text`, holds the Cognito `sub`). It is the single schema change the architecture introduces; everything else (R2-R12) the current schema already provides. **Backfill existing curated rows with the admin sub in the same migration**, and treat the `sub` as an internal identity key (omit from public DTOs; anonymize on deletion). See ARCH-OWN-1.
