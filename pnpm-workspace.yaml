@@ -8,6 +8,7 @@ packages:
   - 'apps/*'
   - 'infra'
   - 'server'
+  - 'client'
 # Build-script approval. pnpm 11.5.2 uses the `allowBuilds: {pkg: true|false}` map
 # (it IGNORES the older `onlyBuiltDependencies` list and re-injects this block as a
 # prompt). @swc/core ships a postinstall build — it backs the NestJS server's SWC
@@ -20,6 +21,9 @@ allowBuilds:
   # Lambda build (apps/handler-hello) bundles with it. Approve so a frozen CI
   # install stays green (ERR_PNPM_IGNORED_BUILDS otherwise).
   esbuild: true
+  # lightningcss ships a native binary; Tailwind v4 (client/) uses it for CSS
+  # transforms. Approve so a frozen CI install stays green (ERR_PNPM_IGNORED_BUILDS otherwise).
+  lightningcss: true
   # import-x@4's native (Rust) module resolver. FALSE on purpose: the enforcement bundle uses
   # only import-x/no-default-export + import-x/order, neither of which needs the native resolver
   # (group classification works off node builtins + static heuristics). An explicit `false`
