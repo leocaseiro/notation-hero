@@ -2,7 +2,7 @@
 
 - **Date:** 2026-06-18
 - **Ticket:** decision input for [NH-42](https://leocaseiro.atlassian.net/browse/NH-42) (Migrate ESLint to flat config — `L3-eslint`)
-- **Status:** Spike complete · tool choice **deferred to NH-42** (Leo, 2026-06-18)
+- **Status:** Spike complete · ⚠️ **decision REOPENED 2026-06-18** — Leo asked for a Biome-free follow-up spike: *"Can we use **everything default from NestJS** (their linting + generators)?"*, comparing the ESLint-default path vs Biome on benefits. So the "formatter=Biome, lint=ESLint" shape below is a **prior recommendation, NOT final**. Tool choice still tracked under NH-42. (Companion spikes: [generators/no-fight](2026-06-18-nestjs-generators-and-nofight.md).)
 - **Method:** current-doc research (verified against biomejs.dev / typescript-eslint.io / tanstack.com / npm / GitHub, **no training assumptions**) + an **empirical Biome run on the real scaffolds** + **adversarial fact-check** of the load-bearing claims.
 - **Supersedes nothing yet:** the registry rows `L3-eslint` / `L3-prettier` stay 🔒 locked-active until NH-42 picks a tool and revises them.
 
