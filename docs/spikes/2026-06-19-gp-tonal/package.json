@@ -1,0 +1,15 @@
+{
+  "name": "gp-tonal-spike",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway spike for NH-196 — proves AlphaTab + tonal can extract tonal elements from Guitar Pro / MusicXML. Not part of the workspace build.",
+  "scripts": {
+    "spike": "node spike.mjs",
+    "spike:deep": "node spike2.mjs",
+    "spike:export": "node spike3-export.mjs"
+  },
+  "dependencies": {
+    "@coderline/alphatab": "^1.8.3",
+    "tonal": "^6.4.3"
+  }
+}
