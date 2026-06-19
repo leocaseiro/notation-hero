@@ -249,7 +249,7 @@ INSERT INTO playable (id, kind, title, notation_id, level, artist, bpm, time_sig
 INSERT INTO playable (id, kind, title, notation_id, level, artist, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, origin, status, license, data) VALUES
  ('let-it-be', 'song', 'Let It Be',             'n-let-it-be', 2, 'The Beatles',  73,  4, 4, 'pop',  '{guitar,keys}', 'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":8,"key":"C major","progression":"I-V-vi-IV"},{"label":"Chorus","startBar":9,"endBar":16,"key":"C major","progression":"I-V-vi-IV"}]}'),
- ('im-yours',  'song', "I'm Yours",             'n-im-yours',  2, 'Jason Mraz',   151, 4, 4, 'pop',  '{guitar}',      'curated', 'published', 'royalty-free',
+ ('im-yours',  'song', 'I''m Yours',            'n-im-yours',  2, 'Jason Mraz',   151, 4, 4, 'pop',  '{guitar}',      'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":16,"key":"B major","progression":"I-V-vi-IV"}]}'),
  ('zombie',    'song', 'Zombie',                'n-zombie',    3, 'The Cranberries', 84, 4, 4, 'rock', '{guitar}',  'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":8,"key":"G major","progression":"vi-IV-I-V"}]}'),
