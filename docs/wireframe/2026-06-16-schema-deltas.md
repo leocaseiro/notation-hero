@@ -33,7 +33,7 @@ The round-by-round log below is **historical**. After the locked Playable model 
 | SD-12                     | 🔵 deferred       | score filter/sort → per-user (DynamoDB), with the scores build.                                                                                                                          |
 | SD-13                     | ✅ evolved         | `artist` → `author text[]` + `author_type`; filterable (GIN).                                                                                                                            |
 | SD-14                     | ✅ resolved        | patterns are first-class playables; "Used in" = reverse `playable_link`; browse = a read view.                                                                                           |
-| SD-15                     | 🟡 partial        | `drum_profile.kit_pieces[]` (ingest-derived) + `data.sections[].voices` cover search/display; deep note/voice_map decomposition deferred (notes stay in AlphaTab — Thin model).          |
+| SD-15                     | 🟡 partial        | `track` relation now EXISTS (Group D D-1) — the track identity SD-15 needed. **Unify:** per-section voicing folds into the D-3 grid cell → `data.sections[].tracks[]` = {track, level, techniques[], **voices[]**}. Deep note/voice_map decomposition still deferred (notes in AlphaTab — Thin). See Group D reconciliation 2026-06-20.          |
 | SD-16                     | ✅ resolved        | repeated parts = `data.sections[].ranges[[s,e],…]` jsonb.                                                                                                                                |
 | SD-17                     | 🔵 small/deferred | step description → `step.data.description` (not yet added).                                                                                                                              |
 | SD-18                     | ✅ no change       | items w/o steps/sections — UI/validation only.                                                                                                                                           |
@@ -44,12 +44,29 @@ The round-by-round log below is **historical**. After the locked Playable model 
 | SD-23                     | 🔵 open (Group C) | GP file = song or pattern — upload must classify.                                                                                                                                        |
 | Lesson↔Step↔Pattern model | ✅ resolved        | locked Playable model (umbrella + `step` junction + parts first-class + `lesson_type` dropped) settled the tangle; GP-file role (SD-23) remains for Group C.                             |
 
-**Still open:** SD-10, SD-11, SD-12, SD-17, SD-20, SD-21 (mostly per-user/DynamoDB or minor UI) · **Group C:** SD-22, SD-23 · **partial:** SD-15. Everything else is resolved.
+**Still open:** SD-10, SD-11, SD-12, SD-17, SD-20, SD-21 (mostly per-user/DynamoDB or minor UI) · **Group C:** SD-22, SD-23 · **partial:** SD-15 (advanced by Group D) · **new (deferred):** SD-25 technique facet, SD-26 instrument family. **Group D (Round-6 track/media/difficulty) — ✅ resolved 2026-06-20** (see the Group D reconciliation section below + spec). Everything else is resolved.
 
 ### 🆕 New deltas (2026-06-19 pm)
 
 - **`description` (universal field) — ✅ added.** Every playable gets `description text` (≤255 via CHECK) — a one-liner under the title. Supersedes the per-lesson/step `data.description` idea (SD-17/SD-19); applied to the draft SQL.
 - **SD-24 — Song slice as a *derived* part (NH-137).** Spike: `agent-a6595b9997a45d9bc/docs/spikes/2026-06-19-nh137-song-slice/FINDINGS.md`. **Decided shape (memory `notation-hero-song-slice-storage`): positions-only + pointers, NO per-slice notation or blob.** A slice (bars A–B) = a **`kind='part'`** playable (`parent_id`=source + `start_bar`/`end_bar`=range — **existing** fields). The shared media ref (`audioRef` = one S3 key for the FULL-song audio, or `youtubeId`) lives on the **source song** (not duplicated per slice). The sliced **alphaTex + rebased sync points are derived at runtime** (AlphaTab ~35 ms) — **not stored**; optionally *cache* them in the part's `data` purely to skip re-slicing. `msOffsetBaseline` is optional/derivable. **No new columns;** the rhythm-game Score stays separate. **Open (OQ-1..6):** audio-storage shape · A0 read-only "play a part" as a separate cheaper feature · alphaTex fidelity on a broader corpus · AlphaTab version pin (1.8.3 vs the site's 1.7.0-alpha) · repeats/alternate-endings crossing the cut. **Not Group D** — its own NH-137 thread (only the source's shared `audioRef` home overlaps D-2).
+
+### 🆕 Group D resolved + delta reconciliation (2026-06-20)
+
+Group D (track · media · per-instrument difficulty) is **designed, validated on `nh_tonal_scratch`, on PR #52** — spec `docs/wireframe/2026-06-20-group-d-spec.md`, DDL `docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql`. This **resolves the Round-6 track/media/difficulty items**:
+
+- **Round-6 · Tracks → ✅ RESOLVED (D-1).** `track` relation (multi-track same instrument via `role`) + `playable.instruments text[]` kept as a DERIVED facet (`DISTINCT track.instrument`, GIN). bass = own instrument; share + `notation_track_index` + nullable `notation_id` override; `track.data` for tuning (NH-196 F7: tuning ≠ tonal search). **Invariant: every playable owns ≥1 track.**
+- **Round-6 · Media (F7) → ✅ RESOLVED (D-2).** `media(playable_id, track_id?)` — song-level + per-track, many per scope; **3 sources** (`gp-embedded` | `s3` | `youtube`) via a location CHECK; `has_audio`/`has_video` now DERIVED facets; NH-137 shared audioRef = a song-level row, slices resolve via `parent_id`.
+- **Round-6 · Per-instrument difficulty → ✅ RESOLVED (D-3).** 3 layers — `playable.level` (browse headline) / `track.level` (per-instrument) / `data.sections[].tracks[]` (per-section × per-track grid `{track, level, techniques[]}`). Curve renames: `by:'fingering'`→`'technique'`, `by:'bpm'`→`'tempo'`.
+
+**Delta check — interactions + new items surfaced:**
+
+- **SD-15 (voicing) advanced.** The `track` identity SD-15 needed now exists (D-1). **Unify:** per-section voicing folds into the D-3 grid cell → `data.sections[].tracks[]` = `{track, level, techniques[], voices[]}` (one per-(section,track) record; supersedes a separate `data.sections[].voices`). Deep note/voice_map decomposition stays deferred (notes in AlphaTab — Thin model).
+- **🆕 SD-25 (deferred) — searchable per-instrument technique facet.** Guitar/bass/piano want a searchable `techniques[]` like `drum_profile.techniques[]` ("find slap-bass songs"). The L3 grid cell is the *descriptive* home; this is the *searchable* facet — design where pitched techniques live + reconcile with drums. Pairs with Rockschool.
+- **🆕 SD-26 (deferred) — instrument family grouping.** guitar→electric/acoustic; families (strings/wind/brass). Flat open vocab + GIN facet stays for now.
+- **Ingest note (not a numbered SD):** `gp-embedded` audio (7.9 MB in the `.gp`) — ingest policy to extract to S3 (`provider='s3'`) vs keep embedded; schema supports both.
+
+**Confirmed still-open (unchanged — correctly OUT of Group D scope):** SD-10/SD-11 (v1.3 UI), SD-12/SD-20/SD-21 (per-user → DynamoDB), SD-17 (step description, tiny), **Group C** SD-22/SD-23 (upload UX). **No catalogue-schema delta is missing** — Group D closed the Round-6 structural items; the remainder are per-user, UI-only, or upload-flow.
 
 ---
 
