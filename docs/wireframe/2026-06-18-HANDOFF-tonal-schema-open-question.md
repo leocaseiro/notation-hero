@@ -161,7 +161,7 @@ still has to happen (was the next batch when we paused):
 
 ## 5 · Next session — how to run it
 
-**Recommended setup:**
+**Recommended setup -- confirm with Leo first:**
 - **`superpowers:brainstorming`** to run the session (one decision at a time, design → approval → spec).
 - **MemStack `Migration Planner`** skill for the **add-a-field / expand-without-disturbing-data** cost
   analysis (there is **no skill literally named "Database Architect"**; Migration Planner is the on-point
