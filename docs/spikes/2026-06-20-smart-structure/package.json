@@ -1,0 +1,15 @@
+{
+  "name": "smart-structure-spike",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway spike for NH-200 — marker-less section approximation + windowed key-change timeline. Builds on NH-196 (gp-tonal). Not part of the workspace build.",
+  "scripts": {
+    "keychanges": "node keychanges.mjs",
+    "sections": "node sections.mjs",
+    "validate": "node validate.mjs"
+  },
+  "dependencies": {
+    "@coderline/alphatab": "^1.8.3",
+    "tonal": "^6.4.3"
+  }
+}
