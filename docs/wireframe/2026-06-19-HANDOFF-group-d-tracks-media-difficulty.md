@@ -56,7 +56,7 @@ CREATE TABLE track (
 
 ### D-2 · `media` model (per-track + song-level audio/video)  — relates to SD-24
 **Today:** song-level only — `playable.has_audio`/`has_video` booleans + `data.media` jsonb (Thin model). **F7 wants** each **track** to carry its own n audio + n video (drum-cam, bass stem, lead-guitar cam…).
-**Decision to make:** keep `data.media` jsonb vs promote to a `media` table keyed by `playable_id` + optional `track_id` (NULL = song-level). A table makes per-track media + the SD-24 slice `audioRef` (S3 key of the full-song audio) first-class; jsonb stays lightest.
+**Decision to make:** keep `data.media` jsonb vs promote to a `media` table keyed by `playable_id` + optional `track_id` (NULL = song-level). A table makes per-track media + the source song's shared `audioRef` (the SD-24 slice resolves it via `parent_id`, not a per-slice copy) first-class; jsonb stays lightest.
 ```sql
 -- sketch (decide in the brainstorm)
 CREATE TABLE media (
@@ -66,7 +66,7 @@ CREATE TABLE media (
   provider text, url text, s3_key text, label text, sort_order int
 );
 ```
-**Tie-in:** the **NH-137 song-slice** spike (SD-24) stores `data.slice = {audioRef, msOffsetBaseline, rebasedSyncPoints}` — audio stored once (full song) + referenced. Reconcile the slice's `audioRef` with whatever media shape D-2 picks (a `media.id` / S3 key). **Sync points** (bar↔ms) also need a home (media row jsonb vs `notation.data`).
+**Tie-in:** the **NH-137 song-slice** (SD-24) is **positions-only** — its shared `audioRef` (one S3 key / `youtubeId` for the FULL-song audio) lives on the **source song**, and the sliced alphaTex + rebased sync are **derived at runtime, not stored** (memory `notation-hero-song-slice-storage`). So D-2 should give the **source** a clean home for that shared audio ref + its sync points (media row vs `notation.data`); the slice resolves it via `parent_id`. No per-slice media.
 
 ### D-3 · per-instrument difficulty
 **Problem:** one scalar `playable.level` is insufficient — the **same** chord/notation is hard on guitar (CMaj7 / F-barre, L4–6) and easy on piano (L1). The wireframe proved a `data.difficulty(by:'instrument', tiers:[{when:'piano',level},{when:'guitar',level}])` curve on the F chord.
