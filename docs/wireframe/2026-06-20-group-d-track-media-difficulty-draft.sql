@@ -47,13 +47,15 @@ CREATE TABLE track (
   role                 text,                                      -- D-1b: same-instrument variant (solo|rhythm|lead|pad|harmony); NULL when unambiguous
   name                 text,                                      -- optional display label ("Lead Guitar")
   sort_order           int  NOT NULL,                             -- display order within the playable
+  level                smallint,                                  -- D-3 L2: per-track = per-instrument difficulty (0–10, nullable)
   notation_id          text REFERENCES notation(id) ON DELETE SET NULL DEFERRABLE INITIALLY IMMEDIATE,            -- D-1c: OPTIONAL per-track score override; NULL = share playable's
   notation_track_index int,                                      -- D-1c: which track inside the SHARED notation file (ingest-set)
   data                 jsonb NOT NULL DEFAULT '{}',               -- D-1d: per-track long-tail {tuning:{strings[],label}, capo, ...}
   created_at           timestamptz NOT NULL DEFAULT now(),
   updated_at           timestamptz NOT NULL DEFAULT now(),
   created_by           text,                                      -- R1: Cognito sub
-  updated_by           text
+  updated_by           text,
+  CONSTRAINT track_level CHECK (level IS NULL OR level BETWEEN 0 AND 10)   -- D-3: mirror playable.level scale (0=Debut..10)
 );
 
 -- ordering integrity: one sort_order per playable (architect refinement; mirrors step's PK)
@@ -63,6 +65,7 @@ CREATE INDEX track_playable  ON track (playable_id);
 CREATE INDEX track_notation  ON track (notation_id);
 -- per-instrument lookups across tracks ("songs that HAVE a bass track")
 CREATE INDEX track_instrument ON track (instrument);
+CREATE INDEX track_instrument_level ON track (instrument, level);   -- D-3 L2: "easy on <instrument>" (e.g. guitar tracks <= L3)
 
 -- ============================================================================
 -- SAMPLE DATA (D-1)
@@ -213,4 +216,96 @@ WHERE EXISTS (SELECT 1 FROM media m WHERE m.playable_id = p.id);
 --
 -- 6) location CHECK holds per provider (embedded has neither key nor url)
 --   SELECT provider, (s3_key IS NOT NULL) AS has_key, (url IS NOT NULL) AS has_url FROM media WHERE playable_id='sna' ORDER BY provider;
+-- ============================================================================
+
+
+-- ============================================================================
+-- D-3 · per-instrument difficulty — DECISION RATIFIED 2026-06-20 (3 layers)
+-- ----------------------------------------------------------------------------
+--   Difficulty is per-track (a track IS one instrument) AND per-section. THREE layers:
+--     L1  playable.level (smallint)  — BROWSE HEADLINE (catalogue sort); derivable from track levels.
+--     L2  track.level   (smallint)   — PER-INSTRUMENT (column added to track above). "easy on guitar".
+--     L3  data.sections[i].tracks[]  — PER-SECTION x PER-TRACK grid {track, level, techniques[]} (jsonb detail).
+--   Curve (other axes) stays in data.difficulty{by,tiers}:  by:'fingering' -> by:'technique', by:'bpm' -> by:'tempo'.
+--   INVARIANT (app-layer, NOT a DB CHECK — Postgres can't cheaply enforce ">=1 child row"):
+--     EVERY playable owns >= 1 track (song/part/lesson/pattern). So instruments[] is always derived
+--     and difficulty always has a track home.
+--   Techniques get a HOME now (L3 cell.techniques[]); the SEARCHABLE cross-catalogue technique facet
+--     (reconciled with drum_profile.techniques[], Rockschool-grounded) is the FOLLOW-UP.
+-- ============================================================================
+
+-- L2 · per-instrument track levels (sna + let-it-be already have tracks from D-1) -----
+UPDATE track SET level = 3 WHERE id = 'track-sna-drums';
+UPDATE track SET level = 5 WHERE id = 'track-sna-guitar-lead';
+UPDATE track SET level = 4 WHERE id = 'track-sna-guitar-rhythm';
+UPDATE track SET level = 2 WHERE id = 'track-sna-bass';
+UPDATE track SET level = 1 WHERE id = 'track-letitbe-piano';
+UPDATE track SET level = 2 WHERE id = 'track-letitbe-guitar';
+UPDATE track SET level = 2 WHERE id = 'track-letitbe-vocals';
+
+-- LEAF-PATTERN per-instrument difficulty via track.level (the unified model):
+-- the F chord is L3 on guitar (barre) but L1 on piano — TWO tracks over the same chord.
+INSERT INTO track (id, playable_id, instrument, role, name, sort_order, level, notation_id, notation_track_index, data) VALUES
+ ('track-chord-f-guitar', 'chord-f', 'guitar', NULL, 'Guitar (barre)', 1, 3, NULL, 0, '{}'),
+ ('track-chord-f-piano',  'chord-f', 'keys',   NULL, 'Piano',          2, 1, NULL, 1, '{}');
+
+-- INVARIANT demo: a LESSON is a playable, so it OWNS >= 1 track (the instrument it teaches).
+INSERT INTO track (id, playable_id, instrument, role, name, sort_order, level, notation_id, notation_track_index, data) VALUES
+ ('track-rock-lesson-drums', 'rock-lesson', 'drums', NULL, 'Drums', 1, 2, NULL, NULL, '{}');
+
+-- re-run the D-1a DERIVE so the new tracks' playables get their instruments[] facet
+UPDATE playable p
+SET instruments = sub.instruments, updated_at = now()
+FROM (SELECT playable_id, array_agg(DISTINCT instrument ORDER BY instrument) AS instruments FROM track GROUP BY playable_id) sub
+WHERE p.id = sub.playable_id;
+
+-- L3 · per-section x per-track GRID (level + techniques per cell) on SNA ---------
+UPDATE playable SET data = '{
+  "album":"Elephant","year":2003,
+  "sections":[
+    {"label":"Intro","startBar":1,"endBar":8,"tracks":[
+      {"track":"track-sna-guitar-lead","level":2,"techniques":[]},
+      {"track":"track-sna-drums","level":2,"techniques":[]}]},
+    {"label":"Verse","startBar":9,"endBar":24,"tracks":[
+      {"track":"track-sna-guitar-lead","level":3,"techniques":["palm-mute"]},
+      {"track":"track-sna-bass","level":2,"techniques":[]},
+      {"track":"track-sna-drums","level":3,"techniques":[]}]},
+    {"label":"Chorus","startBar":25,"endBar":40,"tracks":[
+      {"track":"track-sna-guitar-lead","level":5,"techniques":["palm-mute","accents"]},
+      {"track":"track-sna-guitar-rhythm","level":4,"techniques":["power-chords"]},
+      {"track":"track-sna-drums","level":3,"techniques":[]}]}
+  ]}'::jsonb
+WHERE id = 'sna';
+
+-- Curve (renamed axes): by:'tempo' (harder faster) + by:'technique' (hands separate -> together)
+UPDATE playable SET data = '{"difficulty":{"by":"tempo","tiers":[{"upTo":90,"level":1},{"upTo":140,"level":2},{"upTo":null,"level":3}]}}'::jsonb
+WHERE id = 'paradiddle';
+UPDATE playable SET data = '{"difficulty":{"by":"technique","tiers":[{"when":"hands separate","level":1},{"when":"hands together","level":2}]}}'::jsonb
+WHERE id = 'cmaj-scale';
+
+-- ============================================================================
+-- POKE-AROUND QUERIES (D-3)
+-- ============================================================================
+-- 1) L2 per-instrument levels on a song (hardest first)
+--   SELECT instrument, role, level FROM track WHERE playable_id='sna' ORDER BY level DESC;
+--
+-- 2) L2 "easy on guitar" across the catalogue (uses track_instrument_level index)
+--   SELECT p.title, t.level FROM track t JOIN playable p ON p.id=t.playable_id WHERE t.instrument='guitar' AND t.level<=3 ORDER BY t.level;
+--
+-- 3) LEAF per-instrument difficulty via track.level: F chord = guitar L3, piano L1
+--   SELECT p.title, t.instrument, t.level FROM track t JOIN playable p ON p.id=t.playable_id WHERE p.id='chord-f' ORDER BY t.level;
+--
+-- 4) L3 per-section x per-track GRID (SNA chorus: level + techniques per cell)
+--   SELECT sec->>'label' AS section, cell->>'track' AS track, cell->>'level' AS level, cell->'techniques' AS techniques
+--   FROM playable p, jsonb_array_elements(p.data->'sections') sec, jsonb_array_elements(sec->'tracks') cell
+--   WHERE p.id='sna' AND sec->>'label'='Chorus';
+--
+-- 5) Curve renames in action: by:'tempo' and by:'technique'
+--   SELECT id, data->'difficulty'->>'by' AS axis, data->'difficulty'->'tiers' AS tiers FROM playable WHERE data ? 'difficulty' ORDER BY id;
+--
+-- 6) INVARIANT: a lesson (a playable) OWNS a track
+--   SELECT p.kind, p.title, t.instrument, t.level FROM track t JOIN playable p ON p.id=t.playable_id WHERE p.id='rock-lesson';
+--
+-- 7) L1 headline derivable from track levels (max as the representative)
+--   SELECT p.title, p.level AS headline, max(t.level) AS max_track FROM playable p JOIN track t ON t.playable_id=p.id WHERE p.id='sna' GROUP BY p.title, p.level;
 -- ============================================================================
