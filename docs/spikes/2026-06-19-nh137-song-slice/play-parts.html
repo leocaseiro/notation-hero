@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NH-137 — Play song parts (each part rendered standalone, with cursor + sync)</title>
+<script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.8.3/dist/alphaTab.min.js"></script>
+<style>
+  :root { --tealx:#0F766E; --teal:#2DD4BF; --ink:#1f2933; --bg:#f7f8fa; --line:#e2e6ea; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+  header { padding:14px 18px; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+  h1 { font-size:16px; margin:0 0 10px; }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  #drop { border:2px dashed var(--teal); border-radius:10px; padding:12px 16px; text-align:center; color:var(--tealx); cursor:pointer; background:#f0fdfa; }
+  #drop.drag { background:#ccfbf1; }
+  fieldset { border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin:0; }
+  legend { color:#64748b; font-size:12px; padding:0 6px; }
+  label { font-size:13px; margin-right:10px; white-space:nowrap; }
+  button { font:inherit; border:1px solid var(--tealx); background:var(--tealx); color:#fff; border-radius:7px; padding:6px 12px; cursor:pointer; }
+  button.ghost { background:#fff; color:var(--tealx); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  input[type=text] { font:inherit; padding:6px 8px; border:1px solid var(--line); border-radius:7px; width:230px; }
+  textarea { font:12px ui-monospace,Menlo,monospace; width:100%; height:84px; border:1px solid var(--line); border-radius:7px; padding:8px; }
+  #parts { display:flex; gap:8px; flex-wrap:wrap; align-items:center; padding:12px 18px; background:#fff; border-bottom:1px solid var(--line); }
+  #parts .part { background:#fff; color:var(--tealx); border-color:var(--teal); }
+  #parts .part.active { background:var(--teal); color:#063b36; }
+  #parts .part b { display:block; font-size:11px; color:#64748b; font-weight:500; }
+  #parts .part.active b { color:#063b36; }
+  .sep { width:1px; height:26px; background:var(--line); }
+  #transport button { min-width:64px; }
+  details { margin:10px 18px 0; } summary { cursor:pointer; color:var(--tealx); font-size:13px; }
+  #youtube-wrap { padding:0 18px; } #youtube { margin:12px 0; }
+  /* render surface + cursor */
+  #at { margin:12px 18px 40px; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:auto; max-height:60vh; position:relative; }
+  .at-cursor-bar { background:rgba(45,212,191,.25); }
+  .at-cursor-beat { background:var(--tealx); width:3px; }
+  .at-highlight * { fill:var(--tealx); stroke:var(--tealx); }
+  #log { font:12px ui-monospace,Menlo,monospace; color:#475569; padding:8px 18px; white-space:pre-wrap; }
+  .pill { font-size:12px; background:#ecfeff; color:var(--tealx); border:1px solid var(--teal); border-radius:999px; padding:2px 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NH-137 — Play song parts <span class="pill">each part = its own slice</span></h1>
+  <div class="row">
+    <div id="drop">⬇︎ Drop a <b>.gp / .xml / .mxl</b> file (or click)</div>
+    <input id="file" type="file" accept=".gp,.gpx,.gp5,.gp4,.gp3,.xml,.musicxml,.mxl" hidden />
+    <fieldset>
+      <legend>Backing source</legend>
+      <label><input type="radio" name="mode" value="auto" checked /> Embedded audio</label>
+      <label><input type="radio" name="mode" value="synth" /> Synth</label>
+      <label><input type="radio" name="mode" value="youtube" /> YouTube</label>
+    </fieldset>
+    <fieldset id="transport">
+      <legend>Transport</legend>
+      <button id="play" class="ghost">▶ Play</button>
+      <button id="stop" class="ghost">■ Stop</button>
+    </fieldset>
+    <fieldset id="yt-controls" style="display:none">
+      <legend>YouTube</legend>
+      <input id="yt-id" type="text" placeholder="YouTube URL or video ID" />
+      <button id="yt-load" class="ghost">Load video</button>
+    </fieldset>
+  </div>
+  <details>
+    <summary>Paste sync points JSON (FlatSyncPoint[] — for a YouTube/video timeline). Applied in full-song bar numbering.</summary>
+    <div style="display:flex; gap:10px; align-items:flex-start; margin-top:8px;">
+      <textarea id="sync-json" placeholder='Paste either a bare array or "const syncPoints = [ {"barIndex":0,"barOccurence":0,"barPosition":0,"millisecondOffset":149}, ... ];"'></textarea>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <button id="sync-apply" class="ghost">Apply sync</button>
+        <button id="sync-clear" class="ghost">Use file's own</button>
+      </div>
+    </div>
+  </details>
+</header>
+
+<div id="parts"><span style="color:#94a3b8">Load a file to see its parts…</span></div>
+<div id="youtube-wrap"><div id="youtube"></div></div>
+<div id="at"></div>
+<div id="log"></div>
+
+<script>
+const $ = (s)=>document.querySelector(s);
+const log = (m)=>{ $('#log').textContent = `[${new Date().toLocaleTimeString()}] ${m}\n` + $('#log').textContent.slice(0, 5000); };
+const CDN = 'https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.8.3/dist/';
+const { ScoreLoader } = alphaTab.importer;
+const { Gp7Exporter } = alphaTab.exporter;
+const { JsonConverter, Automation, AutomationType } = alphaTab.model;
+
+let api=null, settings=null, origScore=null, origBytes=null;
+let sections=[], total=0, masterSync=[], curSel=null, capturing=false;
+let ytPlayer=null, ytInterval=0;
+
+const mode = ()=> document.querySelector('input[name=mode]:checked').value;
+
+function makeSettings(){
+  const PM = alphaTab.PlayerMode;
+  const m = mode();
+  return {
+    core: { fontDirectory: CDN+'font/' },
+    player: {
+      playerMode: m==='synth'?PM.EnabledSynthesizer : m==='youtube'?PM.EnabledExternalMedia : PM.EnabledAutomatic,
+      soundFont: CDN+'soundfont/sonivox.sf2',
+      scrollElement: $('#at'),
+      enableCursor: true, enableAnimatedBeatCursor: true, enableElementHighlighting: true,
+    },
+    display: { scale: 0.9 },
+  };
+}
+function initApi(){
+  if (api){ try{api.destroy();}catch(_){} api=null; }
+  settings = makeSettings();
+  api = new alphaTab.AlphaTabApi($('#at'), settings);
+  api.scoreLoaded.on((score)=>{
+    if (!capturing) return;       // only capture on the initial file load, not on slice re-renders
+    capturing=false;
+    origScore=score; total=score.masterBars.length;
+    if (!masterSync.length) masterSync = score.exportFlatSyncPoints();
+    const marks=[]; score.masterBars.forEach((mb,i)=>{ if(mb.section&&(mb.section.text||mb.section.marker)) marks.push({name:mb.section.text||mb.section.marker,start:i}); });
+    sections = marks.map((m,k)=>({name:m.name,a:m.start,b:k<marks.length-1?marks[k+1].start-1:total-1}));
+    buildParts(); log(`Loaded "${score.title||'(untitled)'}" — ${total} bars, ${sections.length} parts, embeddedAudio=${!!score.backingTrack}, syncPts=${masterSync.length}.`);
+  });
+  api.playerReady.on(()=> log('Player ready.'));
+  api.error.on((e)=> log('AlphaTab error: '+(e?.message||e)));
+}
+
+// ---- slice origScore to bars [a..b] -> standalone healed score (sync kept ABSOLUTE ms) ----
+function sliceScore(a, b, withAudio){
+  const s = JsonConverter.jsonToScore(JsonConverter.scoreToJson(origScore), settings);
+  // carry-forward tempo onto new first bar
+  let eff=s.tempo; for(let i=0;i<=a&&i<s.masterBars.length;i++){const au=s.masterBars[i].tempoAutomations; if(au&&au.length) eff=au[au.length-1].value;}
+  const fk=s.masterBars[a];
+  if(fk && !(fk.tempoAutomations&&fk.tempoAutomations.length)){ const x=new Automation(); x.type=AutomationType.Tempo; x.value=eff; x.ratioPosition=0; fk.tempoAutomations=[x]; }
+  const keep=(i)=>i>=a&&i<=b;
+  const km=s.masterBars.filter((_,i)=>keep(i)); km.forEach((mb,i)=>{mb.index=i;mb.previousMasterBar=i?km[i-1]:null;mb.nextMasterBar=i<km.length-1?km[i+1]:null;}); s.masterBars=km;
+  for(const t of s.tracks) for(const st of t.staves){ const kb=st.bars.filter((_,i)=>keep(i)); kb.forEach((bar,i)=>{bar.index=i;bar.previousBar=i?kb[i-1]:null;bar.nextBar=i<kb.length-1?kb[i+1]:null;}); st.bars=kb; }
+  for(const t of s.tracks) for(const st of t.staves) for(const bar of st.bars) for(const v of bar.voices) for(const be of v.beats) for(const n of be.notes){
+    for(const f of ['tieOriginNoteId','tieDestinationNoteId','slurOriginNoteId','slurDestinationNoteId','hammerPullOriginNoteId','hammerPullDestinationNoteId']) if(n[f]!==undefined&&n[f]!==-1) n[f]=-1;
+    n.isTieDestination=false;
+  }
+  s.finish(settings);
+  // heal dangling ties via a GP round-trip (re-derives links from musical context)
+  if (withAudio && origScore.backingTrack?.rawAudioFile && s.backingTrack) s.backingTrack.rawAudioFile = origScore.backingTrack.rawAudioFile;
+  const healed = ScoreLoader.loadScoreFromBytes(new Uint8Array(new Gp7Exporter().export(s, settings)), settings);
+  // sync points for this slice: re-index bar to slice space, KEEP absolute ms (so full media seeks correctly)
+  const sliceSync = masterSync.filter(p=>keep(p.barIndex)).map(p=>({...p, barIndex:p.barIndex-a}));
+  if (sliceSync.length) healed.applyFlatSyncPoints(sliceSync);
+  return healed;
+}
+
+function renderSelection(sel){
+  curSel=sel;
+  document.querySelectorAll('#parts .part').forEach(b=> b.classList.toggle('active', b.dataset.key===sel.key));
+  if (sel.a===0 && sel.b===total-1){
+    if (masterSync.length) origScore.applyFlatSyncPoints(masterSync);
+    api.renderScore(origScore);
+  } else {
+    log(`Preparing slice bars ${sel.a+1}–${sel.b+1}${mode()==='auto'?' (with embedded audio)':''}…`);
+    api.renderScore(sliceScore(sel.a, sel.b, mode()==='auto'));
+  }
+  log(`Showing "${sel.label}" (bars ${sel.a+1}–${sel.b+1}). Press ▶ Play.`);
+}
+
+function buildParts(){
+  const box=$('#parts'); box.innerHTML='';
+  const mk=(key,label,sub,a,b)=>{ const el=document.createElement('button'); el.className='part'; el.dataset.key=key; el.innerHTML=`${label}<b>${sub}</b>`; el.onclick=()=>renderSelection({key,label,a,b}); box.appendChild(el); };
+  mk('full','▶ Full song',`bars 1–${total}`,0,total-1);
+  const sep=document.createElement('span'); sep.className='sep'; box.appendChild(sep);
+  if (!sections.length){ const s=document.createElement('span'); s.style.color='#94a3b8'; s.textContent='(no section markers — only Full song)'; box.appendChild(s); }
+  sections.forEach((s,i)=> mk('s'+i, s.name, `bars ${s.a+1}–${s.b+1}`, s.a, s.b));
+}
+
+// transport
+$('#play').onclick=()=>{ if(!api){return;} api.play(); };
+$('#stop').onclick=()=>{ if(api) api.stop(); };
+
+// ---- file load ----
+function loadBytes(buf){ origBytes=buf; capturing=true; initApi(); api.load(new Uint8Array(buf)); }
+function readFile(f){ const r=new FileReader(); r.onload=()=>loadBytes(r.result); r.readAsArrayBuffer(f); }
+$('#file').addEventListener('change',e=>{ if(e.target.files[0]) readFile(e.target.files[0]); });
+$('#drop').addEventListener('click',()=>$('#file').click());
+['dragover','dragenter'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.add('drag');}));
+['dragleave','drop'].forEach(ev=>$('#drop').addEventListener(ev,e=>{e.preventDefault();$('#drop').classList.remove('drag');}));
+$('#drop').addEventListener('drop',e=>{ const f=e.dataTransfer.files[0]; if(f) readFile(f); });
+
+// ---- mode switch (re-init + re-render current selection) ----
+document.querySelectorAll('input[name=mode]').forEach(r=> r.addEventListener('change',()=>{
+  $('#yt-controls').style.display = mode()==='youtube'?'':'none';
+  if (origBytes){ capturing=true; initApi(); api.load(new Uint8Array(origBytes));
+    // after reload, re-apply current selection once captured
+    const want=curSel; const t=setInterval(()=>{ if(!capturing && origScore){ clearInterval(t); if(want) renderSelection(want); } },80);
+  }
+  log('Mode → '+mode());
+}));
+
+// ---- sync points textarea ----
+function parseSync(txt){ const a=txt.indexOf('['), b=txt.lastIndexOf(']'); if(a<0||b<0) throw new Error('no [ ] array found'); return JSON.parse(txt.slice(a,b+1)); }
+$('#sync-apply').onclick=()=>{ try{ masterSync=parseSync($('#sync-json').value); log(`Applied ${masterSync.length} sync points (full-song numbering). Re-rendering selection.`); if(curSel) renderSelection(curSel); }catch(e){ log('sync parse error: '+e.message); } };
+$('#sync-clear').onclick=()=>{ if(origScore){ masterSync=origScore.exportFlatSyncPoints(); log(`Reverted to file's own ${masterSync.length} sync points.`); if(curSel) renderSelection(curSel); } };
+
+// ---- YouTube wiring (per AlphaTab guide; for the CURRENT rendered slice/score) ----
+function parseVideoId(s){ const m=s.match(/(?:v=|youtu\.be\/|embed\/)([\w-]{11})/); return m?m[1]:s.trim(); }
+function loadYTApi(){ if(window.YT&&window.YT.Player) return Promise.resolve(); return new Promise(res=>{ const t=document.createElement('script'); t.src='https://www.youtube.com/iframe_api'; window.onYouTubeIframeAPIReady=res; document.head.appendChild(t); }); }
+$('#yt-load').addEventListener('click', async ()=>{
+  if(!origBytes){ log('Load a file first.'); return; }
+  if(mode()!=='youtube'){ document.querySelector('input[value=youtube]').checked=true; document.querySelector('input[value=youtube]').dispatchEvent(new Event('change')); await new Promise(r=>setTimeout(r,400)); }
+  const id=parseVideoId($('#yt-id').value); if(!id){ log('Enter a YouTube URL or ID.'); return; }
+  log('Loading YouTube IFrame API…'); await loadYTApi();
+  if(ytPlayer){ try{ytPlayer.destroy();}catch(_){} }
+  ytPlayer=new YT.Player('youtube',{ height:'300', width:'533', videoId:id, playerVars:{autoplay:0}, events:{
+    onReady:()=>{ api.player.output.handler=ytHandler(); log('YouTube ready + handler wired. Pick a part, then ▶ Play — alphaTab will seek the video.'); },
+    onStateChange:(e)=>{ if(e.data===YT.PlayerState.PLAYING){ ytInterval=setInterval(()=>api.player.output.updatePosition(ytPlayer.getCurrentTime()*1000),50); api.play(); } else if(e.data===YT.PlayerState.PAUSED){ clearInterval(ytInterval); api.pause(); } else if(e.data===YT.PlayerState.ENDED){ clearInterval(ytInterval); api.stop(); } },
+    onError:(e)=> log('YouTube error: '+e.data),
+  }});
+});
+function ytHandler(){ return {
+  get backingTrackDuration(){ return ytPlayer.getDuration()*1000; },
+  get playbackRate(){ return ytPlayer.getPlaybackRate(); }, set playbackRate(v){ ytPlayer.setPlaybackRate(v); },
+  get masterVolume(){ return ytPlayer.getVolume()/100; }, set masterVolume(v){ ytPlayer.setVolume(v*100); },
+  seekTo(t){ ytPlayer.seekTo(t/1000,true); }, play(){ ytPlayer.playVideo(); }, pause(){ ytPlayer.pauseVideo(); },
+}; }
+log('Ready. Drop a file → click a part (renders it standalone) → ▶ Play. Cursor shows during playback.');
+</script>
+</body>
+</html>
