@@ -8,7 +8,7 @@
     "node": ">=22.18"
   },
   "scripts": {
-    "prepare": "lefthook install",
+    "prepare": "lefthook install --reset-hooks-path",
     "lint": "nx run-many --target=lint",
     "typecheck": "nx run-many --target=typecheck",
     "test": "nx run-many --target=test",
