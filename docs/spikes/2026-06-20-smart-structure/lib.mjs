@@ -173,6 +173,48 @@ export function perBarEnergy(score) {
   return { energy, register, density, active, velocity: veloAvg };
 }
 
+// Explicit chord-diagram name per bar (Beat.chordId → Staff.chords map), or null.
+// Richer/cleaner than chord-from-notes (research roadmap Tier-1).
+export function perBarExplicitChords(score) {
+  const n = barCount(score);
+  const out = new Array(n).fill(null);
+  for (const track of score.tracks) {
+    for (const staff of track.staves) {
+      const chords = staff.chords;
+      if (!chords || !chords.size) continue;
+      for (let bi = 0; bi < staff.bars.length && bi < n; bi++) {
+        for (const voice of staff.bars[bi].voices) {
+          for (const beat of voice.beats) {
+            if (beat.chordId && !out[bi]) {
+              const c = chords.get(beat.chordId);
+              if (c && c.name) out[bi] = c.name;
+            }
+          }
+        }
+      }
+    }
+  }
+  return out;
+}
+
+// Per-bar vocal activity — is any vocal-named track sounding in the bar? Vocal
+// presence helps separate sung sections (verse/chorus) from instrumental ones.
+export function perBarVocalActive(score) {
+  const n = barCount(score);
+  const out = new Array(n).fill(false);
+  const isVocal = (t) => /voc|sing|vox|melod/i.test(t.name || '');
+  for (const track of score.tracks) {
+    if (!isVocal(track)) continue;
+    for (const staff of track.staves) {
+      for (let bi = 0; bi < staff.bars.length && bi < n; bi++) {
+        const bar = staff.bars[bi];
+        if (bar && !bar.isRestOnly) out[bi] = true;
+      }
+    }
+  }
+  return out;
+}
+
 // Structure read straight from the file (markers, time sigs, tempo, repeats).
 export function readStructure(score) {
   const sections = [];

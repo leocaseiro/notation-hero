@@ -10,7 +10,7 @@
 //
 // Usage: node sections.mjs "<path to .gp>"
 import { Chord, Note } from 'tonal';
-import { loadScore, meta, perBarHistograms, perBarChordLabels, perBarEnergy, normalize, cosine } from './lib.mjs';
+import { loadScore, meta, perBarHistograms, perBarChordLabels, perBarExplicitChords, perBarEnergy, normalize, cosine } from './lib.mjs';
 
 export const KERNEL_H = 4; // Foote checkerboard half-width (bars)
 export const CHORD_WIN = 4; // method (b) comparison window (bars)
@@ -42,11 +42,9 @@ function chordRootPc(label) {
   return Number.isInteger(c) ? c : -1;
 }
 
-export function boundariesFromChords(score, win = CHORD_WIN) {
-  const labels = perBarChordLabels(score);
-  const n = labels.length;
-  const roots = labels.map(chordRootPc);
-  // root histogram over a window
+// shared: change-points from a per-bar chord-root sequence (windowed root novelty)
+function rootChangePoints(roots, win) {
+  const n = roots.length;
   const rootHist = (from, to) => {
     const h = new Array(12).fill(0);
     for (let i = from; i <= to; i++) if (i >= 0 && i < n && roots[i] >= 0) h[roots[i]]++;
@@ -57,11 +55,25 @@ export function boundariesFromChords(score, win = CHORD_WIN) {
   for (let i = 1; i < n; i++) {
     const before = rootHist(i - win, i - 1);
     const after = rootHist(i, i + win - 1);
-    // a chordless window has no harmonic info: 1-cosine(empty,x)=1 would fake a
-    // change. Treat "no chords" as "no signal", not "maximum change".
+    // a chordless window has no harmonic info: 1-cosine(empty,x)=1 would fake a change
     novelty[i] = empty(before) || empty(after) ? 0 : 1 - cosine(before, after);
   }
   return pickPeaks(novelty, n);
+}
+
+export function boundariesFromChords(score, win = CHORD_WIN) {
+  return rootChangePoints(perBarChordLabels(score).map(chordRootPc), win);
+}
+
+// 4th boundary voter — change-points from EXPLICIT chord diagrams when the file
+// carries them. Strong when chord changes align with sections (Yellow boundary
+// F1 reached 95%); returns [] when no diagrams exist (e.g. drum-only charts), so
+// it only ever ADDS signal — it never replaces the detected-chord voter, which
+// stays useful on uniform chord-loop songs (I'm Yours) where diagrams are sparse.
+export function boundariesFromExplicitChords(score, win = CHORD_WIN) {
+  const explicit = perBarExplicitChords(score);
+  if (!explicit.some((x) => x)) return [];
+  return rootChangePoints(explicit.map((x) => (x ? chordRootPc(x) : -1)), win);
 }
 
 // ---- method (c): self-similarity matrix + Foote checkerboard novelty ----
@@ -218,6 +230,9 @@ export function nameSections(segments) {
   const regs = segs.map((s) => s.register || 0).filter((x) => x > 0);
   const rMin = Math.min(...regs, 0);
   const rMax = Math.max(...regs, 1);
+  // intensity = energy + a register bonus. NOTE: tonic-stability and vocal-presence
+  // bonuses were tried (step 2) and REGRESSED naming (Yellow 86%->57%) — vocals/tonic
+  // are present in both verse and chorus here, so they're non-discriminating. Reverted.
   const intensity = (s) => energyOf(s) + 0.5 * (s.register > 0 ? (s.register - rMin) / (rMax - rMin || 1) : 0);
   // split recurring segments into chorus (loud) vs verse (quiet) at their mean intensity
   const recurring = segs.filter((s) => counts[s.label] >= 2);
@@ -253,11 +268,12 @@ export function nameSections(segments) {
 export function approximate(score, opts = {}) {
   const repeats = boundariesFromRepeats(score);
   const chords = boundariesFromChords(score);
+  const explicitChords = boundariesFromExplicitChords(score);
   const novelty = boundariesFromNovelty(score);
-  const merged = mergeBoundaries({ repeats, chords, novelty }, opts.tol ?? 1);
+  const merged = mergeBoundaries({ repeats, chords, explicitChords, novelty }, opts.tol ?? 1);
   const mergedBars = merged.map((m) => m.bar);
   const segments = nameSections(attachEnergy(score, labelSegments(score, mergedBars)));
-  return { repeats, chords, novelty, merged, segments };
+  return { repeats, chords, explicitChords, novelty, merged, segments };
 }
 
 function main() {
