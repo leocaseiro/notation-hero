@@ -3,3 +3,5 @@ package-lock.json
 *.log
 out/
 out-*.txt
+
+sample.gp

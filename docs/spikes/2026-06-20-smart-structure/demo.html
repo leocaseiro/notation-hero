@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NH-200 — Smart structure detection (key changes + sections)</title>
+<script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.8.3/dist/alphaTab.min.js"></script>
+<style>
+  :root { --tealx:#0F766E; --teal:#2DD4BF; --ink:#1f2933; --bg:#f7f8fa; --line:#e2e6ea; --muted:#64748b; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--ink); background:var(--bg); }
+  header { padding:14px 18px; background:#fff; border-bottom:1px solid var(--line); position:sticky; top:0; z-index:5; }
+  h1 { font-size:16px; margin:0 0 10px; }
+  .pill { font-size:12px; background:#ecfeff; color:var(--tealx); border:1px solid var(--teal); border-radius:999px; padding:2px 8px; }
+  .row { display:flex; gap:14px; flex-wrap:wrap; align-items:center; }
+  #drop { border:2px dashed var(--teal); border-radius:10px; padding:12px 16px; text-align:center; color:var(--tealx); cursor:pointer; background:#f0fdfa; }
+  #drop.drag { background:#ccfbf1; }
+  fieldset { border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin:0; }
+  legend { color:var(--muted); font-size:12px; padding:0 6px; }
+  label { font-size:13px; margin-right:8px; }
+  input[type=number] { width:56px; font:inherit; padding:4px 6px; border:1px solid var(--line); border-radius:6px; }
+  button { font:inherit; border:1px solid var(--tealx); background:#fff; color:var(--tealx); border-radius:7px; padding:6px 12px; cursor:pointer; }
+  #panel { padding:14px 18px; background:#fff; border-bottom:1px solid var(--line); }
+  .lab { font-size:12px; color:var(--muted); margin:14px 0 6px; }
+  .lab:first-child { margin-top:0; }
+  .track { position:relative; height:30px; width:100%; border-radius:6px; overflow:hidden; display:flex; background:#eef1f4; }
+  .seg { font-size:11px; display:flex; align-items:center; justify-content:center; border-right:1px solid #fff; overflow:hidden; white-space:nowrap; }
+  .ticks { position:relative; height:14px; width:100%; margin-top:2px; }
+  .tick { position:absolute; top:0; width:0; height:0; border-left:4px solid transparent; border-right:4px solid transparent; border-top:7px solid var(--muted); transform:translateX(-4px); }
+  #meta { font-size:14px; }
+  #meta b { color:var(--tealx); }
+  #summary { font:12px ui-monospace,Menlo,monospace; color:#475569; margin-top:12px; white-space:pre-wrap; }
+  #at { margin:12px 18px 40px; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:auto; max-height:55vh; }
+  #log { font:12px ui-monospace,Menlo,monospace; color:#475569; padding:8px 18px; white-space:pre-wrap; max-height:120px; overflow:auto; }
+  .legend { display:flex; flex-wrap:wrap; gap:16px; font-size:12px; color:var(--muted); margin-bottom:4px; }
+  .legend i { width:22px; height:12px; border-radius:3px; background:#9FE1CB; display:inline-block; vertical-align:-1px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NH-200 — Smart structure detection <span class="pill">key-change timeline · section approximation</span></h1>
+  <div class="row">
+    <div id="drop">⬇︎ Drop a <b>.gp / .gpx / .xml / .mxl</b> file (or click)</div>
+    <input id="file" type="file" accept=".gp,.gpx,.gp5,.gp4,.gp3,.xml,.musicxml,.mxl" hidden />
+    <fieldset>
+      <legend>Key-change tuning</legend>
+      <label>window <input id="win" type="number" value="8" min="2" max="16" /></label>
+      <label>minSeg <input id="minseg" type="number" value="4" min="1" max="12" /></label>
+      <button id="rerun">Re-run</button>
+    </fieldset>
+  </div>
+</header>
+
+<section id="panel" hidden>
+  <div id="meta"></div>
+  <div class="legend">
+    <span><i></i> detected key span (colour = key identity)</span>
+    <span><span class="tick" style="position:relative;display:inline-block;transform:none;"></span>&nbsp;inferred section boundary</span>
+  </div>
+  <div class="lab">Detected key spans (windowed Krumhansl-Schmuckler + hysteresis)</div>
+  <div id="keytl" class="track"></div>
+  <div id="keyticks" class="ticks"></div>
+  <div class="lab">Inferred section boundaries — merged(votes ≥ 2) <span id="filemarkers"></span></div>
+  <div id="sectl" class="track"></div>
+  <div id="secticks" class="ticks"></div>
+  <div id="summary"></div>
+</section>
+
+<div id="at"></div>
+<div id="log"></div>
+
+<script type="module">
+import { Note, Chord } from 'https://esm.sh/tonal@6.4.3';
+
+const $ = (s) => document.querySelector(s);
+const log = (m) => { $('#log').textContent = `[${new Date().toLocaleTimeString()}] ${m}\n` + $('#log').textContent.slice(0, 5000); };
+const CDN = 'https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.8.3/dist/';
+const { ScoreLoader } = alphaTab.importer;
+
+// ---------- detection core (ported verbatim from the spike's lib/keychanges/sections) ----------
+const PCS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const MAJ = [6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+const MIN = [6.33,2.68,3.52,5.38,2.6,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+const pearson = (a,b)=>{const n=a.length,ma=a.reduce((s,x)=>s+x,0)/n,mb=b.reduce((s,x)=>s+x,0)/n;let nu=0,da=0,db=0;for(let i=0;i<n;i++){const x=a[i]-ma,y=b[i]-mb;nu+=x*y;da+=x*x;db+=y*y;}return nu/(Math.sqrt(da*db)||1);};
+const rotate = (a,n)=>a.map((_,i)=>a[(i+n)%12]);
+function detectKey(h){const t=h.reduce((s,x)=>s+x,0);if(t===0)return null;let best=null;for(let k=0;k<12;k++){const cM=pearson(h,rotate(MAJ,(12-k)%12));const cm=pearson(h,rotate(MIN,(12-k)%12));if(!best||cM>best.score)best={tonic:k,type:'major',score:cM};if(cm>best.score)best={tonic:k,type:'minor',score:cm};}return{tonic:PCS[best.tonic],type:best.type,confidence:+best.score.toFixed(3)};}
+const durWeight = (b)=>{const d=b.duration;return d>0?4/d:1;};
+function perBarHistograms(score){const n=score.masterBars.length;const H=Array.from({length:n},()=>new Array(12).fill(0));for(const t of score.tracks)for(const st of t.staves)for(let bi=0;bi<st.bars.length&&bi<n;bi++)for(const v of st.bars[bi].voices)for(const be of v.beats){const w=durWeight(be);for(const nt of be.notes){if(nt.isPercussion)continue;const pc=(((nt.realValue%12)+12)%12);if(Number.isInteger(pc))H[bi][pc]+=w;}}return H;}
+function perBarChordLabels(score){const n=score.masterBars.length;const out=new Array(n).fill('NC');const sets=Array.from({length:n},()=>new Set());for(const t of score.tracks)for(const st of t.staves)for(let bi=0;bi<st.bars.length&&bi<n;bi++)for(const v of st.bars[bi].voices)for(const be of v.beats)for(const nt of be.notes){if(nt.isPercussion)continue;const pc=(((nt.realValue%12)+12)%12);if(Number.isInteger(pc))sets[bi].add(PCS[pc]);}for(let i=0;i<n;i++){const names=[...sets[i]];if(names.length<2)continue;const d=Chord.detect(names,{assumePerfectFifth:true});if(d.length)out[i]=d[0];}return out;}
+const cosine=(a,b)=>{let d=0,na=0,nb=0;for(let i=0;i<a.length;i++){d+=a[i]*b[i];na+=a[i]*a[i];nb+=b[i]*b[i];}return na===0||nb===0?0:d/(Math.sqrt(na)*Math.sqrt(nb));};
+const normalize=(v)=>{const s=v.reduce((x,y)=>x+y,0);return s===0?v.slice():v.map((x)=>x/s);};
+
+// key timeline
+function aggregate(H,a,b){const s=new Array(12).fill(0);for(let i=a;i<=b;i++){if(i<0||i>=H.length)continue;for(let p=0;p<12;p++)s[p]+=H[i][p];}return s;}
+function keyTimeline(score,{window=8,minSeg=4}={}){const H=perBarHistograms(score);if(!H.length)return[];const half=Math.floor(window/2);const per=H.map((_,i)=>{const k=detectKey(aggregate(H,i-half,i+half));return k?{label:`${k.tonic} ${k.type}`,...k}:{label:null};});const labels=per.map((p)=>({label:p.label}));const toRuns=(L)=>{const r=[];for(let i=0;i<L.length;i++){const l=L[i].label,last=r[r.length-1];if(last&&last.label===l)last.end=i;else r.push({start:i,end:i,label:l});}return r;};for(;;){const runs=toRuns(labels);if(runs.length<=1)break;let sh=null;for(const r of runs){const len=r.end-r.start+1;if(len<minSeg&&(!sh||len<sh.len))sh={...r,len};}if(!sh)break;const idx=runs.findIndex((r)=>r.start===sh.start);const conf=(r)=>{if(!r)return -1;let s=0,c=0;for(let i=r.start;i<=r.end;i++)if(per[i].confidence!=null){s+=per[i].confidence;c++;}return c?s/c:-1;};const ab=conf(runs[idx-1])>=conf(runs[idx+1])?runs[idx-1]:runs[idx+1];if(!ab)break;for(let i=sh.start;i<=sh.end;i++)labels[i].label=ab.label;}return toRuns(labels).map((r)=>{const k=detectKey(aggregate(H,r.start,r.end));return{barStart:r.start+1,barEnd:r.end+1,key:k?{tonic:k.tonic,type:k.type}:null,confidence:k?k.confidence:0};});}
+
+// sections
+const KH=4,CW=4,MINSP=4,LSIM=0.9,NK=0.5;
+function boundariesFromRepeats(score){const b=new Set([1]);const n=score.masterBars.length;score.masterBars.forEach((mb,i)=>{const bar=i+1;if(mb.isRepeatStart)b.add(bar);if(mb.isRepeatEnd&&bar+1<=n)b.add(bar+1);if(mb.alternateEndings)b.add(bar);});return[...b].filter((x)=>x>=1&&x<=n).sort((x,y)=>x-y);}
+function chordRootPc(label){if(!label||label==='NC')return -1;const g=Chord.get(label);if(!g||!g.tonic)return -1;const c=Note.chroma(g.tonic);return Number.isInteger(c)?c:-1;}
+function pickPeaks(nov,n){if(n<1)return[];const vals=nov.filter((v)=>v!==0);const mean=vals.reduce((s,x)=>s+x,0)/(vals.length||1);const std=Math.sqrt(vals.reduce((s,x)=>s+(x-mean)**2,0)/(vals.length||1))||1;const th=mean+NK*std;const peaks=[1];let last=1-MINSP;for(let i=1;i<n-1;i++){const bar=i+1;if(nov[i]>=th&&nov[i]>=nov[i-1]&&nov[i]>=nov[i+1]&&bar-last>=MINSP){peaks.push(bar);last=bar;}}return peaks;}
+function boundariesFromChords(score){const labels=perBarChordLabels(score);const n=labels.length;const roots=labels.map(chordRootPc);const rh=(a,b)=>{const h=new Array(12).fill(0);for(let i=a;i<=b;i++)if(i>=0&&i<n&&roots[i]>=0)h[roots[i]]++;return h;};const nov=new Array(n).fill(0);const empty=(h)=>h.every((x)=>x===0);for(let i=1;i<n;i++){const bef=rh(i-CW,i-1),aft=rh(i,i+CW-1);nov[i]=empty(bef)||empty(aft)?0:1-cosine(bef,aft);}return pickPeaks(nov,n);}
+function boundariesFromNovelty(score){const F=perBarHistograms(score).map(normalize);const n=F.length;const ssm=Array.from({length:n},()=>new Array(n).fill(0));for(let i=0;i<n;i++)for(let j=i;j<n;j++){const s=cosine(F[i],F[j]);ssm[i][j]=s;ssm[j][i]=s;}const nov=new Array(n).fill(0);for(let c=0;c<n;c++){let sum=0;for(let a=-KH;a<KH;a++)for(let b=-KH;b<KH;b++){const i=c+a,j=c+b;if(i<0||j<0||i>=n||j>=n)continue;sum+=((a<0)===(b<0)?1:-1)*ssm[i][j];}nov[c]=sum;}return pickPeaks(nov,n);}
+function mergeBoundaries(sets,tol=1){const all=[];for(const[m,list]of Object.entries(sets))for(const b of list)all.push({bar:b,method:m});all.sort((a,b)=>a.bar-b.bar);const cl=[];for(const{bar,method}of all){const last=cl[cl.length-1];if(last&&bar-last.bars[0]<=tol&&bar-last.bars[last.bars.length-1]<=tol){last.bars.push(bar);last.methods.add(method);}else cl.push({bars:[bar],methods:new Set([method])});}return cl.map((c)=>({bar:c.bars[Math.floor((c.bars.length-1)/2)],votes:c.methods.size})).sort((a,b)=>a.bar-b.bar);}
+function labelSegments(score,bounds){const F=perBarHistograms(score).map(normalize);const n=F.length;if(n===0)return[];const sorted=[...new Set(bounds)].filter((b)=>b>=1&&b<=n).sort((a,b)=>a-b);if(!sorted.length||sorted[0]!==1)sorted.unshift(1);const segs=[];for(let s=0;s<sorted.length;s++){const start=sorted[s],end=s+1<sorted.length?sorted[s+1]-1:n;const acc=new Array(12).fill(0);for(let i=start-1;i<=end-1;i++)if(i>=0&&i<n)for(let p=0;p<12;p++)acc[p]+=F[i][p];segs.push({barStart:start,barEnd:end,centroid:normalize(acc)});}const classes=[];const A='A'.charCodeAt(0);for(const seg of segs){let best=-1,bs=0;classes.forEach((c,ci)=>{const sim=cosine(seg.centroid,c);if(sim>bs){bs=sim;best=ci;}});if(best>=0&&bs>=LSIM)seg.label=String.fromCharCode(A+best);else{classes.push(seg.centroid);seg.label=String.fromCharCode(A+classes.length-1);}delete seg.centroid;}return segs;}
+function fileMarkers(score){const m=[];score.masterBars.forEach((mb,i)=>{if(mb.section&&(mb.section.text||mb.section.marker))m.push({bar:i+1,name:mb.section.text||mb.section.marker});});return m;}
+
+// ---------- rendering ----------
+const keyColors={'B major':['#C0DD97','#173404'],'A major':['#B5D4F4','#042C53'],'E major':['#D3D1C7','#2C2C2A'],'A# major':['#9FE1CB','#04342C'],'G minor':['#CECBF6','#26215C'],'C minor':['#F5C4B3','#4A1B0C'],'D# major':['#FAC775','#412402'],'F major':['#F4C0D1','#4B1528']};
+const palette=['#9FE1CB','#CECBF6','#F5C4B3','#B5D4F4','#FAC775','#F4C0D1','#C0DD97','#D3D1C7'];
+const darks=['#04342C','#26215C','#4A1B0C','#042C53','#412402','#4B1528','#173404','#2C2C2A'];
+const shortKey=(k)=>{const[t,ty]=k.split(' ');return ty==='minor'?t+'m':t;};
+let assigned={},palIdx=0;
+function colorFor(key){if(keyColors[key])return keyColors[key];if(!assigned[key]){assigned[key]=[palette[palIdx%palette.length],darks[palIdx%darks.length]];palIdx++;}return assigned[key];}
+
+let curScore=null;
+function renderTimelines(score){
+  assigned={};palIdx=0;
+  const bars=score.masterBars.length;
+  const win=+$('#win').value||8, minSeg=+$('#minseg').value||4;
+  const spans=keyTimeline(score,{window:win,minSeg});
+  const repeats=boundariesFromRepeats(score), chords=boundariesFromChords(score), nov=boundariesFromNovelty(score);
+  const merged=mergeBoundaries({repeats,chords,nov});
+  const votes2=merged.filter((m)=>m.votes>=2).map((m)=>m.bar);
+  const allB=merged.map((m)=>m.bar);
+  const segs=labelSegments(score,allB);
+  const markers=fileMarkers(score);
+
+  $('#meta').innerHTML=`<b>${score.title||'(untitled)'}</b>${score.artist?' — '+score.artist:''} · ${bars} bars · ${spans.length} key span${spans.length>1?'s':''} · ${markers.length} file marker${markers.length===1?'':'s'}`;
+  // key track
+  const kt=$('#keytl');kt.innerHTML='';
+  spans.forEach((sp)=>{const k=sp.key?`${sp.key.tonic} ${sp.key.type}`:'(none)';const[fill,text]=sp.key?colorFor(k):['#eef1f4','#475569'];const seg=document.createElement('div');seg.className='seg';seg.style.cssText+=`width:${((sp.barEnd-sp.barStart+1)/bars)*100}%;background:${fill};color:${text};`;seg.textContent=sp.key?shortKey(k):'?';seg.title=`${k} — bars ${sp.barStart}-${sp.barEnd} (conf ${sp.confidence})`;kt.appendChild(seg);});
+  $('#keyticks').innerHTML='';
+  // section track: segments A/B/C + ticks at votes>=2
+  const st=$('#sectl');st.innerHTML='';
+  segs.forEach((sg,i)=>{const seg=document.createElement('div');seg.className='seg';const[fill,text]=colorFor('seg'+sg.label);seg.style.cssText+=`width:${((sg.barEnd-sg.barStart+1)/bars)*100}%;background:${i%2?'#e2e8f0':'#eef1f4'};color:#334155;`;seg.textContent=sg.label;seg.title=`section ${sg.label} — bars ${sg.barStart}-${sg.barEnd}`;st.appendChild(seg);});
+  const tickRow=$('#secticks');tickRow.innerHTML='';
+  votes2.forEach((b)=>{const t=document.createElement('div');t.className='tick';t.style.left=`${((b-1)/bars)*100}%`;t.title=`section boundary (votes≥2) @ bar ${b}`;tickRow.appendChild(t);});
+  $('#filemarkers').textContent=markers.length?`· ground-truth markers in file: ${markers.map((m)=>m.bar+':'+m.name).join('  ')}`:'· (no file markers — marker-less)';
+  $('#summary').textContent =
+    `key spans: ${spans.map((s)=>`${s.key?s.key.tonic+' '+s.key.type:'?'} [${s.barStart}-${s.barEnd}]`).join('  ')}\n`+
+    `repeats: [${repeats.join(', ')}]   chords: [${chords.join(', ')}]   novelty: [${nov.join(', ')}]\n`+
+    `merged(votes≥2): [${votes2.join(', ')}]   merged(all): ${allB.length}\n`+
+    `segments: ${segs.map((s)=>`${s.label}(${s.barStart}-${s.barEnd})`).join('  ')}`;
+  $('#panel').hidden=false;
+}
+
+let api=null;
+function renderScore(score){
+  if(api){try{api.destroy();}catch(_){}}
+  api=new alphaTab.AlphaTabApi($('#at'),{core:{fontDirectory:CDN+'font/'},display:{scale:0.8},player:{enablePlayer:false}});
+  api.renderScore(score);
+}
+
+function loadBytes(bytes,label){
+  try{
+    const score=ScoreLoader.loadScoreFromBytes(new Uint8Array(bytes));
+    curScore=score;
+    log(`Loaded "${label}" — ${score.masterBars.length} bars. Running detection…`);
+    renderTimelines(score);
+    renderScore(score);
+    log('Detection rendered. Adjust window/minSeg and Re-run to retune the key timeline.');
+  }catch(e){log('Load/parse error: '+(e?.message||e));console.error(e);}
+}
+
+// wiring
+const drop=$('#drop'),file=$('#file');
+drop.onclick=()=>file.click();
+file.onchange=(e)=>{const f=e.target.files[0];if(!f)return;f.arrayBuffer().then((b)=>loadBytes(b,f.name));};
+['dragenter','dragover'].forEach((ev)=>drop.addEventListener(ev,(e)=>{e.preventDefault();drop.classList.add('drag');}));
+['dragleave','drop'].forEach((ev)=>drop.addEventListener(ev,(e)=>{e.preventDefault();drop.classList.remove('drag');}));
+drop.addEventListener('drop',(e)=>{const f=e.dataTransfer.files[0];if(f)f.arrayBuffer().then((b)=>loadBytes(b,f.name));});
+$('#rerun').onclick=()=>{if(curScore)renderTimelines(curScore);};
+
+// convenience: auto-load ./sample.gp if present (gitignored; used for local screenshots). 404 → drop zone.
+fetch('./sample.gp').then((r)=>{if(r.ok)return r.arrayBuffer();throw 0;}).then((b)=>loadBytes(b,'sample.gp')).catch(()=>log('Drop a .gp/.xml/.mxl to begin (or place sample.gp next to this file to auto-load).'));
+</script>
+</body>
+</html>

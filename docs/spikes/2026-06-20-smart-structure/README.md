@@ -18,6 +18,16 @@ node validate.mjs                            # accuracy vs ground-truth markers 
 
 `keychanges.mjs` takes optional `[windowBars] [minSegBars]` args (defaults 8, 4).
 
+## Browser demo (visual)
+
+`demo.html` is a standalone served page (same approach as the NH-137 play-parts demo): AlphaTab from CDN, drop a `.gp`/`.xml`/`.mxl`, and it renders the score **plus** the detected key-span timeline and inferred section boundaries overlaid. The detection logic is the same as the `.mjs` core, ported inline.
+
+```bash
+python3 -m http.server 8201 --directory .   # then open http://localhost:8201/demo.html
+```
+
+Drop any file to analyse it; tune `window`/`minSeg` and press Re-run. Optionally place a `sample.gp` next to `demo.html` (gitignored) to auto-load it on open.
+
 ## Files
 
 | File | What |
@@ -26,6 +36,7 @@ node validate.mjs                            # accuracy vs ground-truth markers 
 | `keychanges.mjs` | R1 — sliding-window key detection + hysteresis collapse → `keyChanges[]` |
 | `sections.mjs` | R2 — (a) GP repeats, (b) chord-root change-points, (c) self-similarity + Foote checkerboard novelty; vote-merge + A/B/C labelling |
 | `validate.mjs` | R3 — precision/recall/F1 vs file markers (±1/±2 bars) + key-change timeline checks |
+| `demo.html` | browser demo — AlphaTab renders the score + detected key-span timeline + section boundaries overlay |
 | `FINDINGS.md` | R3/R4 — measured numbers, failure modes, recommendation |
 
 ## Corpus
