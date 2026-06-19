@@ -23,8 +23,18 @@
 --   * data.sections[] gains optional per-section {key, scale, bpm, timeSignature, progression}
 --     (the multi-key / multi-tempo / multi-meter timeline — D6).
 --
+-- BASE-MODEL RECONCILIATION applied this pass (Groups A + B + R15):
+--   * R16  — cross-row FKs are DEFERRABLE INITIALLY IMMEDIATE (whole-graph batch commit).
+--   * R1   — created_by holds the Cognito `sub` (backfill curated rows w/ admin sub; PII: omit from public DTOs).
+--   * SD-3 — playable.visibility (public|private|shared) for the UI's public/private/shared icons.
+--   * R15  — notation.upload_status (pending_blob|ready|client) + relaxed one-of CHECK
+--            (file backfills for 'pending_blob', or stays device-local for 'client' — no server copy).
+--   * R2   — provenance column kept as `origin` (NOT `source`). ⚠️ UPDATE ADR R2 + docs + Jira to match this rename.
+--   * Deferred: ULID *values* (R13 — column is already text; slugs shown for readability),
+--               Group C upload UX (SD-22/SD-23), Group D (track / media / per-instrument difficulty).
+--
 -- Re-runnable (DROP clears prior runs). Open the DBeaver "ER Diagram" tab.
--- text PKs here are human slugs for readability; real schema uses ULIDs (R13).
+-- text PKs here are human slugs for readability; real schema mints client-side ULIDs (R13).
 -- ============================================================================
 
 DROP TABLE IF EXISTS tonal_profile, drum_profile, step, playable_link, playable, notation CASCADE;
@@ -39,12 +49,19 @@ CREATE TABLE notation (
   notation_alphatex text,
   checksum          text,
   bytes             int,
+  upload_status     text NOT NULL DEFAULT 'ready',  -- R15: 'ready' (blob/text present) | 'pending_blob' (synced, S3 file backfills) | 'client' (lives on the user's device, no server copy)
   created_at        timestamptz NOT NULL DEFAULT now(),
   updated_at        timestamptz NOT NULL DEFAULT now(),
-  created_by        text,
+  created_by        text,                            -- R1: Cognito `sub`
   updated_by        text,
   CONSTRAINT notation_format CHECK (format IN ('gp','midi','alphatex','xml')),
-  CONSTRAINT notation_one_of CHECK ((s3_key IS NOT NULL)::int + (notation_alphatex IS NOT NULL)::int = 1)
+  CONSTRAINT notation_status CHECK (upload_status IN ('ready','pending_blob','client')),
+  -- exactly-one-of s3_key/alphatex enforced ONLY when the blob is here ('ready');
+  -- waived while staged ('pending_blob' → S3 file backfills) or device-local ('client' → no server copy).
+  CONSTRAINT notation_one_of CHECK (
+    upload_status <> 'ready'
+    OR (s3_key IS NOT NULL)::int + (notation_alphatex IS NOT NULL)::int = 1
+  )
 );
 
 -- ─────────────────────────────────────────────────────────────────
@@ -55,8 +72,8 @@ CREATE TABLE playable (
   id             text PRIMARY KEY,
   kind           text NOT NULL,
   title          text NOT NULL,
-  parent_id      text REFERENCES playable(id) ON DELETE CASCADE,
-  notation_id    text REFERENCES notation(id) ON DELETE RESTRICT,
+  parent_id      text REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,    -- R16
+  notation_id    text REFERENCES notation(id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,   -- R16
   start_bar      int,
   end_bar        int,
   sort_order     int,
@@ -76,7 +93,8 @@ CREATE TABLE playable (
   family         text,
 
   -- lifecycle / provenance ──────────────────────────────
-  origin         text NOT NULL DEFAULT 'curated',
+  origin         text NOT NULL DEFAULT 'curated',     -- R2: provenance (curated|user-upload). Name kept 'origin' (not 'source') — update ADR/docs/Jira.
+  visibility     text NOT NULL DEFAULT 'public',      -- SD-3: 'public'|'private'|'shared' (per-item; UI icons). Curated⇒public; app sets user-uploads 'private'.
   status         text NOT NULL DEFAULT 'draft',
   license        text,
   has_audio      boolean NOT NULL DEFAULT false,
@@ -87,12 +105,14 @@ CREATE TABLE playable (
 
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now(),
-  created_by     text,
+  created_by     text,                                -- R1: Cognito `sub`; backfill curated rows w/ admin sub; PII → omit from public DTOs, anonymize on delete
   updated_by     text,
 
-  CONSTRAINT p_kind    CHECK (kind   IN ('song','part','lesson','pattern')),
-  CONSTRAINT p_status  CHECK (status IN ('draft','published','archived')),
-  CONSTRAINT p_origin  CHECK (origin IN ('curated','user-upload')),
+  CONSTRAINT p_kind       CHECK (kind   IN ('song','part','lesson','pattern')),
+  CONSTRAINT p_status     CHECK (status IN ('draft','published','archived')),
+  CONSTRAINT p_origin     CHECK (origin IN ('curated','user-upload')),
+  CONSTRAINT p_visibility CHECK (visibility IN ('public','private','shared')),
+  CONSTRAINT p_curated_public CHECK (origin <> 'curated' OR visibility = 'public'),  -- curated content is always public
   CONSTRAINT p_level   CHECK (level IS NULL OR level BETWEEN 0 AND 10),
   CONSTRAINT p_no_self CHECK (parent_id IS NULL OR parent_id <> id),
   CONSTRAINT p_time_signature CHECK ((time_signature_numerator IS NULL AND time_signature_denominator IS NULL) OR (time_signature_numerator > 0 AND time_signature_denominator IN (1,2,4,8,16,32))),
@@ -106,8 +126,8 @@ CREATE TABLE playable (
 -- step — ordered self-referencing junction (parent -> child playable)
 -- ─────────────────────────────────────────────────────────────────
 CREATE TABLE step (
-  parent_id   text NOT NULL REFERENCES playable(id) ON DELETE CASCADE,
-  child_id    text NOT NULL REFERENCES playable(id) ON DELETE RESTRICT,
+  parent_id   text NOT NULL REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,   -- R16
+  child_id    text NOT NULL REFERENCES playable(id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,  -- R16
   sort_order  int  NOT NULL,
   start_bpm   int,
   goal_bpm    int,
@@ -121,8 +141,8 @@ CREATE TABLE step (
 -- playable_link — lightweight refs (a SONG 'uses' a progression / groove)
 -- ─────────────────────────────────────────────────────────────────
 CREATE TABLE playable_link (
-  from_id   text NOT NULL REFERENCES playable(id) ON DELETE CASCADE,
-  to_id     text NOT NULL REFERENCES playable(id) ON DELETE CASCADE,
+  from_id   text NOT NULL REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,   -- R16
+  to_id     text NOT NULL REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,   -- R16
   relation  text NOT NULL,
   PRIMARY KEY (from_id, to_id, relation),
   CONSTRAINT pl_no_self CHECK (from_id <> to_id)
@@ -132,7 +152,7 @@ CREATE TABLE playable_link (
 -- tonal_profile — PITCHED-only attributes (1:0..1). Drums never get a row.
 -- ─────────────────────────────────────────────────────────────────
 CREATE TABLE tonal_profile (
-  playable_id          text PRIMARY KEY REFERENCES playable(id) ON DELETE CASCADE,
+  playable_id          text PRIMARY KEY REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,  -- R16
   musical_key          text,                        -- headline 'C major','G mixolydian'
   keys                 text[] NOT NULL DEFAULT '{}',-- every key touched (modulation) → multi-key search
   scales               text[] NOT NULL DEFAULT '{}',-- 'minor pentatonic','blues',…    → S3
@@ -149,7 +169,7 @@ CREATE TABLE tonal_profile (
 -- drum_profile — DRUMS-only attributes (1:0..1). Pitched-only never gets a row.
 -- ─────────────────────────────────────────────────────────────────
 CREATE TABLE drum_profile (
-  playable_id   text PRIMARY KEY REFERENCES playable(id) ON DELETE CASCADE,
+  playable_id   text PRIMARY KEY REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,  -- R16
   beats         text[] NOT NULL DEFAULT '{}',
   fills         text[] NOT NULL DEFAULT '{}',
   rudiments     text[] NOT NULL DEFAULT '{}',       -- 'single-paradiddle','double-stroke'

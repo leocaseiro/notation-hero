@@ -53,11 +53,11 @@ this spec only adds two side-tables and moves one column.
 multi-key), CP-1 reconciliation, the tonaljs vocabulary + ingest derivation, the schema-evolution
 cost, and confirmation that all 14 wireframe filters still work.
 
-**Out of scope (separate base-model reconciliation pass — handoff §4):** `created_by` (R1 Cognito
-`sub`), client-minted ULID `text` PKs (R13), `source` vs `origin` naming (R2), `notation.upload_status`
-(R15), `DEFERRABLE INITIALLY IMMEDIATE` FKs (R16), dropping the vestigial PATTERNS dict, the
-`track`/`media`/per-instrument-difficulty Round-6 items. This spec assumes the locked Playable model
-and uses `text` PKs (ULID at real-schema time).
+**Base-model reconciliation — Groups A+B+R15 now APPLIED in the draft SQL** (R1 `created_by`, R2 `origin`
+naming, R16 `DEFERRABLE` FKs, SD-3 `visibility`, R15 `upload_status`). **Still out of scope:** ULID
+*values* (R13 — column already `text`), `POST /sync/batch` (R14, M1), Group C upload UX (SD-22/SD-23),
+and the `track`/`media`/per-instrument-difficulty Round-6 items (Group D). The PATTERNS dict is already
+absent from the SQL.
 
 ---
 
@@ -360,15 +360,21 @@ faceted search.**
 2. **Add** the two side-tables + indexes (§2, §9).
 3. **Extend** `playable.data.sections[]` objects with optional `bpm?, timeSignature?, key?, scale?, progression?`
    (jsonb — no DDL).
-4. **No change** to `bpm`, `time_signature_numerator/denominator`, `instruments[]`, `genre`, `tags`,
-   `skill`, or any other column.
+4. **Add** `playable.visibility` (`public｜private｜shared`, SD-3) + `CHECK` (curated ⇒ public).
+5. **Add** `notation.upload_status` (`pending_blob｜ready｜client`, R15) + relax the one-of CHECK while not `ready`.
+6. **Make** all cross-row FKs `DEFERRABLE INITIALLY IMMEDIATE` (R16).
+7. **Document** `created_by` = Cognito `sub` (R1: backfill curated rows w/ admin sub; PII → omit from public DTOs).
+8. **Keep** provenance column name `origin` (R2 — rename allowed); ⚠️ update ADR R2 + docs + Jira to match.
+9. **No change** to `bpm`, `time_signature_numerator/denominator`, `instruments[]`, `genre`, `tags`, `skill`.
 
 ---
 
 ## 11 · Out of scope / open questions / spikes
 
-- **Base-model reconciliation (handoff §4):** `created_by`/ULID PKs/`source`-vs-`origin`/
-  `upload_status`/DEFERRABLE FKs/drop-PATTERNS-dict — separate pass.
+- **Base-model reconciliation (handoff §4) — Groups A+B+R15 APPLIED** in the draft SQL (R1 created_by,
+  R2 `origin` naming, R16 DEFERRABLE FKs, SD-3 visibility, R15 upload_status; PATTERNS dict already
+  absent in the SQL). **Still deferred:** ULID *values* (R13 — column already `text`),
+  `POST /sync/batch` (R14, M1), Group C upload UX (SD-22/SD-23).
 - **Round-6 items:** `track` relation, `media` table, per-instrument difficulty curve — separate;
   this spec does not conflict (per-instrument difficulty stays a `data.difficulty(by:'instrument')`
   curve).
@@ -386,7 +392,7 @@ faceted search.**
    backfill `tonal_profile` from existing pitched rows.
 2. **S1 — ingest derivation:** AlphaTab + tonaljs pipeline writes the facets + `data.sections[]` at
    upload (build on the NH-196 spike).
-3. **S2 — read contract:** extend `CatalogueFilter` with `chords`, `prog{concrete,roman,family}`,
+3. **S2 — read contract:** extend `CatalogueFilter` with `chords`, `progression_{concrete,roman,family}`,
    `scales`, `keys`, and drum `beats/fills/rudiments/techniques/kit_pieces` (+ ONLY/OR/AND op per
    facet); SQL adapter maps to `<@`/`&&`/`@>`.
 4. **S3 — UI:** wire the new filters (conditional pitched/drum), the transposed-chord display, and
