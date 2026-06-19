@@ -6,3 +6,8 @@
 # tool with no subresource-integrity hash — the missing-integrity SAST rule is a
 # false positive here. Keep SAST scoped to real app/infra code.
 docs/mockups/
+
+# Spikes are throwaway feasibility/research code (scripts + test harnesses), not
+# part of the workspace build or anything served. Same CDN missing-integrity false
+# positive (e.g. AlphaTab/YouTube in play-parts.html) plus console.log diagnostics.
+docs/spikes/
