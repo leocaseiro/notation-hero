@@ -197,7 +197,9 @@ This is the reframe that changed the project's *purpose* (2026-06-03 ~01:04).
 
 ## 4. Open questions (then → now)
 
-Every question left open in these sessions, with its current status:
+Every question left open in these sessions, with its current status. A standalone, trackable
+ledger of just these — foregrounding the one still-live item (OQ-5) — lives in the companion
+[`2026-06-04-drum-tutor-clone-open-questions.md`](2026-06-04-drum-tutor-clone-open-questions.md).
 
 | # | Open question (as of Jun 2–4) | `Now:` |
 |---|---|---|
