@@ -142,13 +142,15 @@ export function mergeBoundaries(sets, tol = 1) {
 }
 
 // ---- label segments by structural class (A/B/C…) ----
-export function labelSegments(score, boundaries) {
+export function labelSegments(score, boundaries, forceFirstBar = true) {
   const feats = perBarHistograms(score).map(normalize);
   const n = feats.length;
   if (n === 0) return [];
-  // clamp to real bars + always start at bar 1, so segments never invert or run past the song
+  // clamp to real bars; optionally force a bar-1 start (off when caller's boundaries
+  // are exact section starts, e.g. validation, so no phantom pre-segment is created)
   const sorted = [...new Set(boundaries)].filter((b) => b >= 1 && b <= n).sort((a, b) => a - b);
-  if (!sorted.length || sorted[0] !== 1) sorted.unshift(1);
+  if (forceFirstBar && (!sorted.length || sorted[0] !== 1)) sorted.unshift(1);
+  if (!sorted.length) return [];
   const segs = [];
   for (let s = 0; s < sorted.length; s++) {
     const start = sorted[s];
@@ -220,12 +222,19 @@ export function nameSections(segments) {
   // split recurring segments into chorus (loud) vs verse (quiet) at their mean intensity
   const recurring = segs.filter((s) => counts[s.label] >= 2);
   const meanRecInt = recurring.length ? recurring.reduce((a, s) => a + intensity(s), 0) / recurring.length : Infinity;
+  const lengths = segs.map((s) => s.barEnd - s.barStart + 1);
+  const medianLen = [...lengths].sort((a, b) => a - b)[Math.floor(lengths.length / 2)] || 1;
+  const meanEnergy = segs.reduce((a, s) => a + energyOf(s), 0) / n;
   segs.forEach((s, i) => {
     const pos = s.barStart / totalBars;
-    if (counts[s.label] >= 2) s.role = intensity(s) >= meanRecInt ? 'Chorus' : 'Verse';
-    else if (i === 0) s.role = 'Intro';
-    else if (i === n - 1) s.role = 'Outro';
-    else if (pos > 0.55) s.role = 'Bridge';
+    const len = s.barEnd - s.barStart + 1;
+    const recurs = counts[s.label] >= 2;
+    // position/length priors take precedence over the energy split (research N4):
+    // first short/quiet = intro; last quiet/unique = outro; unique mid-late = bridge.
+    if (i === 0 && (energyOf(s) < meanEnergy || len <= medianLen)) s.role = 'Intro';
+    else if (i === n - 1 && (!recurs || intensity(s) < meanRecInt)) s.role = 'Outro';
+    else if (!recurs && pos >= 0.5 && pos <= 0.9) s.role = 'Bridge';
+    else if (recurs) s.role = intensity(s) >= meanRecInt ? 'Chorus' : 'Verse';
     else s.role = 'Section';
   });
   // number repeated roles: Verse 1, Verse 2, Chorus 1 …

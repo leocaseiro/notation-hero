@@ -128,7 +128,7 @@ for (const f of GROUND_TRUTH) {
   if (!s) continue;
   const m = meta(s, f);
   const st = readStructure(s);
-  const named = nameSections(attachEnergy(s, labelSegments(s, st.sections.map((x) => x.bar))));
+  const named = nameSections(attachEnergy(s, labelSegments(s, st.sections.map((x) => x.bar), false)));
   const predByStart = {};
   named.forEach((seg) => { predByStart[seg.barStart] = seg.role; });
   let hit = 0;
