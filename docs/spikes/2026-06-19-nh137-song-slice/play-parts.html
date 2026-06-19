@@ -89,7 +89,7 @@ const PM = alphaTab.PlayerMode;
 
 let api=null, settings=new alphaTab.Settings();
 let origScore=null, total=0, sections=[], masterSync=[], curSel=null;
-let hasAudio=false, audioUrl=null, posLoop=0, ytPlayer=null, ytInterval=0;
+let hasAudio=false, audioUrl=null, posLoop=0, ytPlayer=null, ytInterval=0, rangeEndMs=null;
 const audioEl=$('#song-audio');
 const mode=()=> document.querySelector('input[name=mode]:checked').value;
 
@@ -134,8 +134,12 @@ function sliceScore(a,b){
   return healed;
 }
 
+// media stop-time for a slice = absolute ms where the NEXT bar after the slice starts
+function computeRangeEndMs(b){ const after=masterSync.filter(p=>p.barIndex>b).sort((x,y)=>x.barIndex-y.barIndex); return after.length?after[0].millisecondOffset:null; }
+
 function renderSelection(sel){
   curSel=sel;
+  rangeEndMs = (sel.a===0 && sel.b===total-1) ? null : computeRangeEndMs(sel.b);   // null = play to end
   document.querySelectorAll('#parts .part').forEach(b=> b.classList.toggle('active', b.dataset.key===sel.key));
   try{
     if (sel.a===0 && sel.b===total-1){ if (masterSync.length) origScore.applyFlatSyncPoints(masterSync); api.renderScore(origScore); }
@@ -197,7 +201,7 @@ $('#sync-apply').onclick=()=>{ try{ masterSync=parseSync($('#sync-json').value);
 $('#sync-clear').onclick=()=>{ if(origScore){ masterSync=origScore.exportFlatSyncPoints(); log(`Reverted to file's own ${masterSync.length} sync points.`); if(curSel) renderSelection(curSel); } };
 
 // ---------- shared local <audio> as external media ----------
-function startPosLoop(){ stopPosLoop(); posLoop=setInterval(()=>{ try{ api.player.output.updatePosition(audioEl.currentTime*1000); }catch(_){} },50); }
+function startPosLoop(){ stopPosLoop(); posLoop=setInterval(()=>{ const t=audioEl.currentTime*1000; try{ api.player.output.updatePosition(t); }catch(_){} if(rangeEndMs!=null && t>=rangeEndMs){ try{api.stop();}catch(_){} audioEl.pause(); stopPosLoop(); log('Part end reached — stopped.'); } },50); }
 function stopPosLoop(){ if(posLoop){ clearInterval(posLoop); posLoop=0; } }
 audioEl.addEventListener('ended', stopPosLoop);
 function localAudioHandler(){ return {
@@ -218,7 +222,7 @@ $('#yt-load').addEventListener('click', async ()=>{
   if(ytPlayer){ try{ytPlayer.destroy();}catch(_){} }
   ytPlayer=new YT.Player('youtube',{ height:'300', width:'533', videoId:id, playerVars:{autoplay:0}, events:{
     onReady:()=>{ if(api.player?.output) api.player.output.handler=ytHandler(); log('YouTube ready + wired. Pick a part, then ▶ Play.'); },
-    onStateChange:(e)=>{ if(e.data===YT.PlayerState.PLAYING){ ytInterval=setInterval(()=>{try{api.player.output.updatePosition(ytPlayer.getCurrentTime()*1000);}catch(_){}} ,50); api.play(); } else if(e.data===YT.PlayerState.PAUSED){ clearInterval(ytInterval); api.pause(); } else if(e.data===YT.PlayerState.ENDED){ clearInterval(ytInterval); api.stop(); } },
+    onStateChange:(e)=>{ if(e.data===YT.PlayerState.PLAYING){ ytInterval=setInterval(()=>{ const t=ytPlayer.getCurrentTime()*1000; try{api.player.output.updatePosition(t);}catch(_){} if(rangeEndMs!=null && t>=rangeEndMs){ clearInterval(ytInterval); try{api.stop();}catch(_){} ytPlayer.pauseVideo(); log('Part end reached — stopped.'); } } ,50); api.play(); } else if(e.data===YT.PlayerState.PAUSED){ clearInterval(ytInterval); api.pause(); } else if(e.data===YT.PlayerState.ENDED){ clearInterval(ytInterval); api.stop(); } },
     onError:(e)=> log('YouTube error: '+e.data),
   }});
 });
