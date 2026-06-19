@@ -21,3 +21,7 @@ allowBuilds:
 overrides:
   form-data: 4.0.6 # GHSA-hmw2-7cc7-3qxx
   tmp: 0.2.7 # GHSA-7c78-jf6q-g5cm
+  multer: ^2.2.0 # GHSA-72gw-mp4g-v24j (High) + GHSA-3p4h-7m6x-2hcm — via @nestjs/platform-express
+  file-type: ^21.3.4 # GHSA-5v7r-6r5c-r473 + GHSA-j47w-4g3g-c36v — dev-only via @nestjs/cli
+  # No undici override: jsdom@29 (client tests) needs undici 7.x; master's 6.27.0 pin
+  # was for the removed Nx/handler-hello tree and breaks jsdom's dispatcher here.

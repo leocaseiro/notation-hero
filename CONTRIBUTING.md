@@ -42,3 +42,32 @@ The PR template includes this line ready to fill in.
 > commit, or PR has referenced that key yet — not a broken connection.
 
 [autolinks]: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/managing-repository-settings/configuring-autolinks-to-reference-external-resources
+
+## Git hooks in worktrees
+
+Hooks are managed by [lefthook] and live in the **shared** `.git/hooks` directory,
+so every worktree uses the same installed hooks automatically.
+
+Heads-up: `git worktree add` can copy a stray `core.hooksPath` (pointing at the
+main repo's `.git/hooks`) into a new worktree's `config.worktree`. Older lefthook
+versions then refuse to run (`core.hooksPath is set locally … not supported`),
+which can block the first commit.
+
+The `prepare` script handles this for you — `pnpm install` runs
+`lefthook install --reset-hooks-path`, which normalizes the hooks path. So the
+normal first step in a fresh worktree just works:
+
+```sh
+git worktree add ../my-worktree my-branch
+cd ../my-worktree
+pnpm install          # runs prepare → lefthook install --reset-hooks-path
+```
+
+If you ever still see a `core.hooksPath` error, run the binary **directly**
+(not `pnpm exec`, which re-triggers the failing `prepare` and loops):
+
+```sh
+./node_modules/.bin/lefthook install --reset-hooks-path
+```
+
+[lefthook]: https://lefthook.dev/
