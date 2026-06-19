@@ -48,8 +48,16 @@ Drum hits feel "right" under ~10ms round-trip; ~20ms is mushy; ~40ms is broken. 
 
 ## The iOS shim / plugin options
 
-- **`WebMIDIAPIShimForiOS`** ([mizuhiki](https://github.com/mizuhiki/WebMIDIAPIShimForiOS)) — a native-bridge **polyfill** that exposes the Web MIDI API *shape* backed by CoreMIDI inside a WebView. Proves the pattern; old/reference.
+- **`WebMIDIAPIShimForiOS`** ([mizuhiki](https://github.com/mizuhiki/WebMIDIAPIShimForiOS)) — a polyfill used by the third-party **"Web MIDI Browser"** iOS app to expose the Web MIDI API shape on iOS. It actually **works** — Leo got it running (AlphaTab drum render + Web MIDI scoring) even on a **2016 iPad mini in 2026**. **BUT it is a dead end for production** (see the gotcha below). Old/reference.
 - **`capacitor-musetrainer-midi`** ([npm](https://registry.npmjs.org/capacitor-musetrainer-midi)) — the only community **Capacitor** MIDI plugin: wraps the `webmidi` JS lib on web, bridges **CoreMIDI** on iOS. **Stale:** v0.2.3 (2023), Capacitor 4, **iOS + Web only, NO Android**. Exposes `listDevices()`, `sendCommand()`, `addListener('deviceChange'|'commandReceive'|'connectError')`. → realistically **fork it or write a custom native plugin** (and add the Android side).
+
+### ⚠️ Gotcha — the iOS Web-MIDI *shim* (Web MIDI Browser) is a dead end for the PWA
+
+The "Web MIDI Browser" app + `WebMIDIAPIShimForiOS` runs an **ancient JS engine** (that's *why* it still runs on a 2016 iPad mini). That old engine's iterator protocol **doesn't satisfy `Array.from`**: `Array.from(midiAccess.inputs.values())` **silently returns an empty array** even though the inputs are there. Leo filed this himself — **[mizuhiki/WebMIDIAPIShimForiOS#11](https://github.com/mizuhiki/WebMIDIAPIShimForiOS/issues/11)** (open since 2023-04-12, no maintainer fix).
+
+- **Knock-on:** **Tone.js breaks** on the shim (it uses the modern `Array.from`/iterator path internally). So the shim forces you to avoid modern JS or polyfill everything — *and* it requires users to install a specific third-party browser app (not a real installable PWA).
+- **The fix is not to patch the shim — you outgrow it.** Going **native Capacitor (modern WKWebView)** gives a **modern JS engine** (`Array.from` + Tone.js work) **and** MIDI via the native CoreMIDI bridge. The iOS bug is a **delivery-method symptom, not a code bug** — it disappears the moment iOS is a Capacitor app.
+- **Therefore:** do **not** plan a shim-based iOS *PWA* MIDI path for production. iOS MIDI = **native Capacitor + CoreMIDI bridge**, full stop. (The shim stays a neat "it's possible in a browser" demo only.)
 - Prior art from the old repo: a real commit `fix iOS support with navigator.requestMIDIAccess, removing .catch` — there *was* a working iOS Web-MIDI workaround in the earlier codebase worth digging up.
 - File parsing (not input): **`@tonejs/midi`** for `.mid` files; **AlphaTab** for `.gp/.gpx`.
 
