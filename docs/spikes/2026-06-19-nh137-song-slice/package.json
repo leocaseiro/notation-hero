@@ -1,0 +1,14 @@
+{
+  "name": "nh137-song-slice-spike",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway spike for NH-137 — slice bars A-B of a Guitar Pro song into a standalone notation (GP / JSON / alphaTex), with sync-point rebasing. Not part of the workspace build.",
+  "scripts": {
+    "slice": "node slice.mjs",
+    "checksync": "node checksync.mjs",
+    "parts": "node parts.mjs"
+  },
+  "dependencies": {
+    "@coderline/alphatab": "^1.8.3"
+  }
+}
