@@ -117,3 +117,100 @@ WHERE p.id = sub.playable_id;
 -- 5) per-track tuning (D-1d jsonb): lead = Standard, rhythm = Drop D
 --   SELECT name, data->'tuning'->>'label' AS tuning FROM track WHERE playable_id='sna' AND data ? 'tuning' ORDER BY sort_order;
 -- ============================================================================
+
+
+-- ============================================================================
+-- D-2 · media model — DECISION RATIFIED 2026-06-20 (Option A: a media table)
+-- ----------------------------------------------------------------------------
+--   media keyed by playable_id + OPTIONAL track_id (NULL = song-level; set = per-track).
+--   A track can have MANY media (drumless / drums-only / full mix / drum-cam) → 1:N, no limit.
+--   THREE audio/video SOURCES, validated by a location CHECK (Leo's call-out):
+--     provider='gp-embedded' — audio lives INSIDE the playable's/track's notation .gp file
+--                              (no s3_key/url; resolve via that notation). NH-137: 7.9 MB blob —
+--                              ingest may EXTRACT it to S3 (then it becomes provider='s3').
+--     provider='s3'          — external file in our S3 bucket (s3_key set). The NH-137 shared
+--                              FULL-song audioRef is one such SONG-LEVEL row; sync points live in data.
+--     provider='youtube'     — external link (url set).  (extensible: add 'vimeo' etc. via ALTER)
+--   has_audio / has_video become DERIVED facets (EXISTS over media), recomputed on write —
+--   same pattern as the D-1a instruments[] facet. Kept as columns for the fast list filter.
+--   NH-137 slice (a kind='part') carries NO media of its own — it resolves the SOURCE song's
+--   audio via parent_id (memory notation-hero-song-slice-storage). No per-slice copy.
+-- ============================================================================
+
+DROP TABLE IF EXISTS media CASCADE;
+
+CREATE TABLE media (
+  id          text PRIMARY KEY,                          -- ULID at real-schema time
+  playable_id text NOT NULL REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,  -- R16
+  track_id    text REFERENCES track(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,              -- NULL = song-level; set = per-track
+  kind        text NOT NULL,                             -- 'audio' | 'video'
+  provider    text NOT NULL,                             -- WHERE it lives: 'gp-embedded' | 's3' | 'youtube' (extensible)
+  url         text,                                      -- external link (youtube/vimeo/...)
+  s3_key      text,                                      -- object key in our S3 bucket
+  label       text,                                      -- 'Full mix' | 'Drumless' | 'Drums only' | 'Drum-cam' | 'Official video'
+  sort_order  int  NOT NULL DEFAULT 0,                   -- order within its (playable, track) scope
+  data        jsonb NOT NULL DEFAULT '{}',               -- syncPoints[], msOffsetBaseline, durationMs, mixType, ...
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  created_by  text,                                      -- R1: Cognito sub
+  updated_by  text,
+  CONSTRAINT media_kind     CHECK (kind     IN ('audio','video')),
+  CONSTRAINT media_provider CHECK (provider IN ('gp-embedded','s3','youtube')),
+  -- location matches the source: embedded lives in the notation; s3 needs a key; external needs a url
+  CONSTRAINT media_location CHECK (
+       (provider = 'gp-embedded' AND s3_key IS NULL     AND url IS NULL)
+    OR (provider = 's3'          AND s3_key IS NOT NULL  AND url IS NULL)
+    OR (provider = 'youtube'     AND url    IS NOT NULL  AND s3_key IS NULL)
+  )
+);
+
+CREATE INDEX media_playable ON media (playable_id);
+CREATE INDEX media_track    ON media (track_id);
+CREATE INDEX media_kind     ON media (playable_id, kind);
+
+-- ============================================================================
+-- SAMPLE DATA (D-2)
+-- ============================================================================
+
+-- SEVEN NATION ARMY — all 3 sources, song-level AND per-track, multiple per scope.
+INSERT INTO media (id, playable_id, track_id, kind, provider, url, s3_key, label, sort_order, data) VALUES
+ -- song-level (track_id NULL):
+ ('media-sna-yt',        'sna', NULL, 'video', 'youtube',     'https://youtu.be/0J2QdDbelmY', NULL,                         'Official video', 1, '{}'),
+ ('media-sna-full',      'sna', NULL, 'audio', 's3',          NULL,  'catalogue/sna/audio/full-mix.m4a',  'Full mix',     2, '{"syncPoints":[{"bar":1,"ms":0}],"msOffsetBaseline":0}'),  -- NH-137 shared audioRef
+ ('media-sna-drumless',  'sna', NULL, 'audio', 's3',          NULL,  'catalogue/sna/audio/drumless.m4a',  'Drumless',     3, '{"mixType":"minus","excludes":"drums"}'),
+ ('media-sna-embedded',  'sna', NULL, 'audio', 'gp-embedded', NULL,  NULL,                                'Embedded backing', 4, '{"note":"lives in n-sna-gp; ingest may extract to S3"}'),
+ -- per-track (track_id set) — the drums track has TWO media (stem + cam):
+ ('media-sna-drumsonly', 'sna', 'track-sna-drums',       'audio', 's3',     NULL, 'catalogue/sna/audio/drums-only.m4a', 'Drums only', 1, '{"mixType":"isolated"}'),
+ ('media-sna-drumcam',   'sna', 'track-sna-drums',       'video', 'youtube','https://youtu.be/drumcam', NULL,            'Drum-cam',   2, '{}'),
+ ('media-sna-leadcam',   'sna', 'track-sna-guitar-lead', 'video', 'youtube','https://youtu.be/leadcam', NULL,            'Lead-cam',   1, '{}');
+
+-- ── D-2 DERIVE: has_audio / has_video := EXISTS(media …) ──────────────────────
+UPDATE playable p SET
+  has_audio  = EXISTS (SELECT 1 FROM media m WHERE m.playable_id = p.id AND m.kind = 'audio'),
+  has_video  = EXISTS (SELECT 1 FROM media m WHERE m.playable_id = p.id AND m.kind = 'video'),
+  updated_at = now()
+WHERE EXISTS (SELECT 1 FROM media m WHERE m.playable_id = p.id);
+
+-- ============================================================================
+-- POKE-AROUND QUERIES (D-2)
+-- ============================================================================
+-- 1) All THREE sources represented on one song (Leo's call-out)
+--   SELECT label, kind, provider, coalesce(s3_key,url) AS location FROM media WHERE playable_id='sna' AND track_id IS NULL ORDER BY sort_order;
+--
+-- 2) A track with MULTIPLE media (drums track: stem + cam)
+--   SELECT t.name AS track, m.label, m.kind, m.provider FROM media m JOIN track t ON t.id=m.track_id WHERE m.track_id='track-sna-drums' ORDER BY m.sort_order;
+--
+-- 3) Song-level vs per-track split
+--   SELECT CASE WHEN track_id IS NULL THEN 'song-level' ELSE 'per-track' END AS scope, count(*) FROM media WHERE playable_id='sna' GROUP BY 1;
+--
+-- 4) Derived has_audio/has_video facets (SNA now true)
+--   SELECT title, has_audio, has_video FROM playable WHERE id='sna';
+--
+-- 5) NH-137 — a slice (part) resolves the SOURCE song's audio via parent_id (no per-slice copy)
+--   SELECT part.title AS slice, m.label AS resolved_audio, m.s3_key
+--   FROM playable part JOIN media m ON m.playable_id = part.parent_id AND m.track_id IS NULL AND m.kind='audio' AND m.provider='s3'
+--   WHERE part.id='sna-intro';
+--
+-- 6) location CHECK holds per provider (embedded has neither key nor url)
+--   SELECT provider, (s3_key IS NOT NULL) AS has_key, (url IS NOT NULL) AS has_url FROM media WHERE playable_id='sna' ORDER BY provider;
+-- ============================================================================
