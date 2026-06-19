@@ -11,119 +11,156 @@ Nothing changes unilaterally.
 
 ---
 
-## 🔵 SD-1 — Are **Fills** a `lesson_type` or only a `pattern.kind`?
+## ✅ Current status — 2026-06-19 reconciliation (READ THIS FIRST)
+
+The round-by-round log below is **historical**. After the locked Playable model (C1–C5) and the
+2026-06-19 tonal/drum schema pass, here is the **current truth** for every SD. Resolutions point to
+`2026-06-19-tonal-drum-schema-draft.sql` + `2026-06-19-tonal-drum-extensible-schema-spec.md`.
+
+| SD | Status | Current resolution |
+|----|--------|--------------------|
+| SD-1 | ✅ resolved | `lesson_type` **dropped** (C5); fills = `pattern_kind='fill'`; lesson kind derived from its step patterns. The Round-4 "add `lesson_type='fill'`" is **moot** (no `lesson_type` at all). |
+| SD-2 | ✅ no DDL | breakdown found by reverse query (`parent_id` for parts / `step` for lessons). |
+| SD-3 | ✅ resolved | owner = `created_by` (R1); `visibility` (public｜private｜shared) column added. |
+| SD-4 | ✅ no change | per-user score/history → DynamoDB, joined client-side. |
+| SD-5 | ✅ resolved | hasParts/hasSteps derived (no column). |
+| SD-6 | ✅ resolved | numbered pagination (OFFSET+COUNT). |
+| SD-7 | ✅ resolved | `level BETWEEN 0 AND 10` (0 = Debut). |
+| SD-8 | ✅ evolved | `genre`/`family` are now `text[]` collections (overlap filter) — supersedes "columns stay single" for those two. |
+| SD-9 | ✅ evolved | `musical_key` moved to `tonal_profile` (D2); "hidden for drums" = no `tonal_profile` row. |
+| SD-10 | 🔵 deferred | sort direction (asc/desc) — v1.3 UI. |
+| SD-11 | 🔵 deferred | flag filters (audio/video/parts) — v1.3. |
+| SD-12 | 🔵 deferred | score filter/sort → per-user (DynamoDB), with the scores build. |
+| SD-13 | ✅ evolved | `artist` → `author text[]` + `author_type`; filterable (GIN). |
+| SD-14 | ✅ resolved | patterns are first-class playables; "Used in" = reverse `playable_link`; browse = a read view. |
+| SD-15 | 🟡 partial | `drum_profile.kit_pieces[]` (ingest-derived) + `data.sections[].voices` cover search/display; deep note/voice_map decomposition deferred (notes stay in AlphaTab — Thin model). |
+| SD-16 | ✅ resolved | repeated parts = `data.sections[].ranges[[s,e],…]` jsonb. |
+| SD-17 | 🔵 small/deferred | step description → `step.data.description` (not yet added). |
+| SD-18 | ✅ no change | items w/o steps/sections — UI/validation only. |
+| SD-19 | ✅ resolved | lesson description → `data.description` (jsonb). |
+| SD-20 | 🔵 deferred | per-part/step score → per-user (DynamoDB). |
+| SD-21 | 🔵 deferred | completed flag + reset → per-user (DynamoDB). |
+| SD-22 | 🔵 open (Group C) | load-and-go upload — pairs with `notation.upload_status` (seam added). |
+| SD-23 | 🔵 open (Group C) | GP file = song or pattern — upload must classify. |
+| Lesson↔Step↔Pattern model | ✅ resolved | locked Playable model (umbrella + `step` junction + parts first-class + `lesson_type` dropped) settled the tangle; GP-file role (SD-23) remains for Group C. |
+
+**Still open:** SD-10, SD-11, SD-12, SD-17, SD-20, SD-21 (mostly per-user/DynamoDB or minor UI) · **Group C:** SD-22, SD-23 · **partial:** SD-15. Everything else is resolved.
+
+---
+
+## ✅ SD-1 — Are **Fills** a `lesson_type` or only a `pattern.kind`?  *(resolved 2026-06-19 — `lesson_type` dropped; see Current status)*
 
 - **What the UI needs:** the Lessons tab shows sub-kinds **Beats · Rudiments · Fills** (locked UI). To list a
-  "Fill" as a browsable lesson, an item needs `lesson_type='fill'`.
+"Fill" as a browsable lesson, an item needs `lesson_type='fill'`.
 - **Schema today:** `catalogue_item.lesson_type` open vocab = `'song-breakdown' | 'beat' | 'rudiment'`.
-  `'fill'` exists only as `pattern.kind='fill'` (a reusable vocabulary entry, not a browsable lesson).
+`'fill'` exists only as `pattern.kind='fill'` (a reusable vocabulary entry, not a browsable lesson).
 - **Why it matters:** without `lesson_type='fill'`, the Fills sub-tab has nothing to list (or must query
-  `pattern`, which is a different entity with no steps/BPM-ladder).
+`pattern`, which is a different entity with no steps/BPM-ladder).
 - **Proposed change:** add `'fill'` to the `lesson_type` open vocab (no DDL change — it's a free-text column;
-  just a documented value + a seed). Keep `pattern.kind='fill'` for the reusable-vocabulary role.
+just a documented value + a seed). Keep `pattern.kind='fill'` for the reusable-vocabulary role.
 - **Cheapest alternative:** point the Fills sub-tab at `pattern` rows instead of lessons (changes what "Fills"
-  means — vocabulary, not practiceable lessons).
-- **Prior art:** the catalog-UI memory already flagged *"Fills → add `lesson_type='fill'` (schema tweak, open
-  vocab)."* This delta just formalises the decision.
+means — vocabulary, not practiceable lessons).
+- **Prior art:** the catalog-UI memory already flagged *"Fills → add `lesson_type='fill'` (schema tweak, open*
+*vocab)."* This delta just formalises the decision.
 
-## 🔵 SD-2 — How does a **Song** find its "Practice in parts" lesson?
+## ✅ SD-2 — How does a **Song** find its "Practice in parts" lesson?  *(resolved — reverse query; see Current status)*
 
 - **What the UI needs:** Song detail shows **Practice in parts** → a song-breakdown lesson whose steps slice
-  that song.
+that song.
 - **Schema today:** the link is *one-way* — a song-breakdown `exercise` points **up** to the song via
-  `source_item_id`. There's no pointer **down** from the song to its breakdown lesson(s).
+`source_item_id`. There's no pointer **down** from the song to its breakdown lesson(s).
 - **Why it matters:** to render the button, the app must reverse-query `exercise WHERE source_item_id = :song`
-  and group by `lesson_id` (works, but it's an implicit relationship the K-3 list projection doesn't carry).
+and group by `lesson_id` (works, but it's an implicit relationship the K-3 list projection doesn't carry).
 - **Proposed change:** none to DDL — document the reverse lookup as the supported pattern, and (optionally)
-  expose a `breakdownLessonIds[]` convenience field on `GET /catalogue/{id}` computed at read time.
+expose a `breakdownLessonIds[]` convenience field on `GET /catalogue/{id}` computed at read time.
 - **Cheapest alternative:** keep it purely query-driven (current assumption). ⚪ leaning no-change.
 
-## 🔵 SD-3 — Where does a **user-upload's owner** live (for the "my uploads" view)?
+## ✅ SD-3 — Where does a **user-upload's owner** live (for the "my uploads" view)?  *(resolved 2026-06-19 — created_by + visibility; see Current status)*
 
 - **What the UI needs:** a signed-in **User** sees their own uploaded drafts (e.g. *"My practice loop"*) that
-  aren't in the shared published catalog; **Admin** sees all.
-- **Schema today:** `catalogue_item.source='user-upload'` + `status` exist, but there is **no `owner` / `uploader_id`**
-  column. Deferred-slots note says user files are *"keyed by uploader, never auto-published"* — but doesn't say
-  where the uploader key lives.
+aren't in the shared published catalog; **Admin** sees all.
+- **Schema today:** `catalogue_item.source='user-upload'` + `status` exist, but there is **no `owner` / `uploader_id**`
+column. Deferred-slots note says user files are *"keyed by uploader, never auto-published"* — but doesn't say
+where the uploader key lives.
 - **Why it matters:** filtering "items owned by *this* user" needs an owner reference somewhere queryable.
 - **Proposed change (options to decide):** (a) add `owner_id text` to `catalogue_item` (NULL for curated);
-  (b) keep user-upload pointers **per-user in DynamoDB** and never list them from the catalog query; (c) a
-  separate `user_upload` table.
+(b) keep user-upload pointers **per-user in DynamoDB** and never list them from the catalog query; (c) a
+separate `user_upload` table.
 - **Cheapest alternative:** (b) — matches "per-user data → DynamoDB"; the catalog stays curated-only. Likely
-  the right call, but it changes how the User role's library is assembled (two sources merged client-side).
+the right call, but it changes how the User role's library is assembled (two sources merged client-side).
 
 ## ⚪ SD-4 — Per-user score/history on list + detail (confirmed, no change)
 
 - Best score, sessions, trend, top-BPM are **per-user (DynamoDB)**, joined **client-side** — never in the
-  catalog tables. The wireframe fakes them on the item for demo only. The K-3 list projection (catalog fields
-  only) + client-side join **holds** under the UI. **No schema change.**
+catalog tables. The wireframe fakes them on the item for demo only. The K-3 list projection (catalog fields
+only) + client-side join **holds** under the UI. **No schema change.**
 
 ## ⚪ SD-5 — Row flags `hasParts` / `hasSteps` (no new column — derive)
 
 - **What the UI needs:** row indicators for audio / video / "has parts-or-steps" (`volume_up` · `smart_display`
-  · `splitscreen`).
+· `splitscreen`).
 - **Decision (you, 2026-06-16):** **no extra schema flag.** `has_audio` / `has_video` are already columns (and
-  in the K-3 projection). "Has parts" = a song has `data.sections[]`; "has steps" = a lesson has `exercise`
-  rows — both **derivable**. To show them in the *list* without shipping `data jsonb`, the **K-3 projection
-  computes two booleans** at read time: `has_parts := jsonb_array_length(data->'sections') > 0` (songs) and
-  `has_steps := EXISTS(SELECT 1 FROM exercise WHERE lesson_id = ci.id)` (lessons). **No DDL change.**
+in the K-3 projection). "Has parts" = a song has `data.sections[]`; "has steps" = a lesson has `exercise`
+rows — both **derivable**. To show them in the *list* without shipping `data jsonb`, the **K-3 projection**
+**computes two booleans** at read time: `has_parts := jsonb_array_length(data->'sections') > 0` (songs) and
+`has_steps := EXISTS(SELECT 1 FROM exercise WHERE lesson_id = ci.id)` (lessons). **No DDL change.**
 
 ## 🟢 SD-6 — Pagination = numbered (`OFFSET` + `COUNT`), not load-more/keyset
 
 - **What the UI needs (you, 2026-06-16):** **numbered** pagination, not "load more".
 - **Feasible?** Yes — JSONB doesn't block it. Numbered pages = `SELECT … LIMIT :n OFFSET :(page-1)*n` plus a
-  `SELECT COUNT(*)` for the page count, over the **typed/indexed** filter columns (`ci_btree_filters`, GIN,
-  FTS). Fine at catalog scale (hundreds–low thousands).
-- **Supersedes:** the earlier "pagination = keyset/cursor" note (a scale optimisation). **v1 = OFFSET+COUNT
-  numbered**; revisit keyset only if the catalog grows large enough that deep `OFFSET` hurts. **No DDL change.**
+`SELECT COUNT(*)` for the page count, over the **typed/indexed** filter columns (`ci_btree_filters`, GIN,
+FTS). Fine at catalog scale (hundreds–low thousands).
+- **Supersedes:** the earlier "pagination = keyset/cursor" note (a scale optimisation). **v1 = OFFSET+COUNT**
+**numbered**; revisit keyset only if the catalog grows large enough that deep `OFFSET` hurts. **No DDL change.**
 
 ## 🟢 SD-7 — Level `0 = Debut` (extend the grade scale to 0–10)
 
 - **Decision (you, 2026-06-16):** add a **Debut** tier as `level = 0` (below grade 1). Keeps a single integer
-  scale; `NULL` stays "ungraded" and **distinct** from Debut.
-- **Schema change:** `ci_level CHECK (level BETWEEN 1 AND 10)` → **`BETWEEN 0 AND 10`**. UI renders `0` as a
-  "Debut" pill. The bounded-level filter still excludes ungraded `NULL` by design (§9).
+scale; `NULL` stays "ungraded" and **distinct** from Debut.
+- **Schema change:** `ci_level CHECK (level BETWEEN 1 AND 10)` → `**BETWEEN 0 AND 10**`. UI renders `0` as a
+"Debut" pill. The bounded-level filter still excludes ungraded `NULL` by design (§9).
 
 ## 🟢 SD-8 — Multi-select *filter* over single-valued columns (genre / time / kind)
 
 - **Decision (you, 2026-06-16):** the **item columns stay single-valued** (a song has one genre, a lesson one
-  `lesson_type`, one `time_sig`) — *schema unchanged*. Only the **filter contract** gains list inputs so the
-  user can OR-match several.
+`lesson_type`, one `time_sig`) — *schema unchanged*. Only the **filter contract** gains list inputs so the
+user can OR-match several.
 - **Filter-contract change:** `genre`, `timeSig`, `lessonType` go `string → string[]` in `CatalogueFilter`;
-  the SQL adapter maps them to `col = ANY($1)` (OR). `instruments` stays single-select for now (`@> ARRAY[$1]`).
-  Tags/Skill keep **ALL-of** (`@>`). No `catalogue_item` column changes.
+the SQL adapter maps them to `col = ANY($1)` (OR). `instruments` stays single-select for now (`@> ARRAY[$1]`).
+Tags/Skill keep **ALL-of** (`@>`). No `catalogue_item` column changes.
 
 ## 🟢 SD-9 — Add `musicalKey` filter, instrument-conditional (drums vs pitched)
 
-- **Decision (you, 2026-06-16):** add **`musicalKey`** to the filter contract — the `musical_key` column
-  already exists; it was just missing from `CatalogueFilter`. Expose it **only when the instrument filter is a
-  pitched one** (guitar / keys); **drums are unpitched** (no key/scale) so Key is hidden for drums / "Any".
+- **Decision (you, 2026-06-16):** add `**musicalKey**` to the filter contract — the `musical_key` column
+already exists; it was just missing from `CatalogueFilter`. Expose it **only when the instrument filter is a**
+**pitched one** (guitar / keys); **drums are unpitched** (no key/scale) so Key is hidden for drums / "Any".
 - **Filter-contract change:** add `musicalKey?: string[]` → `musical_key = ANY($1)` (OR). Conditional UI only;
-  no column change. A future `scale`/`mode` filter can join it for piano content (§13 "controlled list with
-  piano content").
+no column change. A future `scale`/`mode` filter can join it for piano content (§13 "controlled list with
+piano content").
 
 ## 🟢 SD-10 — Sort **direction** (ASC / DESC) — `$10`
 
 - **What the UI needs:** a direction toggle next to Sort. *Relevance* and *Curated* have a natural order
-  (relevance = best-match DESC; curated = `sort_order` ASC) → no toggle. *Level / BPM / Newest / A–Z* get an
-  ASC/DESC switch.
+(relevance = best-match DESC; curated = `sort_order` ASC) → no toggle. *Level / BPM / Newest / A–Z* get an
+ASC/DESC switch.
 - **Filter-contract change:** add `sortDir?: 'asc' | 'desc'` (default per field). No column change. **Build in v1.3.**
 
 ## 🟢 SD-11 — Filter by **flags** (has audio / video / parts-or-steps) — `$11`
 
 - **What the UI needs:** toggle filters matching the row flags. `has_audio` / `has_video` are **columns** →
-  `has_audio = true`. "Has parts/steps" = derived (SD-5) → `EXISTS(...)` / `jsonb_array_length(...) > 0`.
+`has_audio = true`. "Has parts/steps" = derived (SD-5) → `EXISTS(...)` / `jsonb_array_length(...) > 0`.
 - **Filter-contract change:** add `hasAudio?` / `hasVideo?` / `hasParts?` booleans. No new column. **Build in v1.3.**
 
 ## 🔵 SD-12 — Filter **and sort by score** — `$12` ⚠️ crosses the catalogue / per-user boundary
 
 - **What the UI needs:** "show all below 90%", sort by best-score.
 - **The catch:** best-score is **per-user (DynamoDB)** — **not in the catalogue** (SD-4) and not in the K-3 query.
-  A pure catalogue query *cannot* filter/sort by it.
+A pure catalogue query *cannot* filter/sort by it.
 - **Options:** (a) **client-side** post-filter/sort of the fetched page (simple, but breaks server-side
-  pagination + global sort — only sorts the current page); (b) a **per-user "my library" index** in DynamoDB
-  (proper: query scores → ids, then hydrate from catalogue) — more work, belongs with the scores/player build;
-  (c) **defer** until per-user data is wired. **Recommend (c)/defer** — revisit with the DynamoDB scores work.
+pagination + global sort — only sorts the current page); (b) a **per-user "my library" index** in DynamoDB
+(proper: query scores → ids, then hydrate from catalogue) — more work, belongs with the scores/player build;
+(c) **defer** until per-user data is wired. **Recommend (c)/defer** — revisit with the DynamoDB scores work.
 - **No catalogue column change either way.**
 
 ---
@@ -131,96 +168,98 @@ Nothing changes unilaterally.
 ## Filter / UI notes (not schema changes)
 
 - **N-13 (`$13`) — show Key for drums / no-instrument too?** You're reconsidering SD-9's strict hide-for-drums.
-  Likely: show Key when **no instrument is selected** (mixed catalogue) and for pitched; hide only when
-  instrument = drums. *Explore later* — flagged on SD-9.
+Likely: show Key when **no instrument is selected** (mixed catalogue) and for pitched; hide only when
+instrument = drums. *Explore later* — flagged on SD-9.
 - **N-14 (`$14`) — group levels into named bands** (Debut · Beginner · Intermediate · Advanced, RSL-style) via
-  `<optgroup>` in the Level picker. **Display only** (level stays 0–10); band ranges TBD (RSL-style, unverified).
-  Nice-to-have, candidate for v1.3.
+`<optgroup>` in the Level picker. **Display only** (level stays 0–10); band ranges TBD (RSL-style, unverified).
+Nice-to-have, candidate for v1.3.
 - **N-15 (`$15`) — range UI = from-to selects** (min/max), **confirmed** — no dual-handle slider needed in the
-  wireframe (already built this way). Documented here + in `filter-review.md`.
+wireframe (already built this way). Documented here + in `filter-review.md`.
 
 ---
 
 ## Round-2 resolutions (2026-06-16)
 
-- **SD-1 → RESOLVED:** Fills = **`pattern.kind`**, *not* a `lesson_type`. *UI follow-up:* drop "Fills" from the
-  Lessons **Kind** filter; patterns (beats / fills / rudiments) get a future **Patterns browse** (the `pattern`
-  table already exists). Wireframe keeps a placeholder until that browse is designed.
-- **SD-3 → DIRECTION:** add **`owner_id`** + a **`visibility`** enum to user-uploads — `public` (curated /
-  shared) · `private` (owner-only) · `shared` / friends *(TBD)*. This is the per-item ACL. Full model lands
-  with auth / CRUD; wireframe shows a "Private" tag on a user's own uploads.
+- **SD-1 → RESOLVED:** Fills = `**pattern.kind**`, *not* a `lesson_type`. *UI follow-up:* drop "Fills" from the
+Lessons **Kind** filter; patterns (beats / fills / rudiments) get a future **Patterns browse** (the `pattern`
+table already exists). Wireframe keeps a placeholder until that browse is designed.
+- **SD-3 → DIRECTION:** add `**owner_id**` + a `**visibility**` enum to user-uploads — `public` (curated /
+shared) · `private` (owner-only) · `shared` / friends *(TBD)*. This is the per-item ACL. Full model lands
+with auth / CRUD; wireframe shows a "Private" tag on a user's own uploads.
 - **SD-10 → OPEN QUESTIONS:** sort direction (asc / desc) deferred (your call).
 - **SD-11 → v1.3 (deferred):** flag filters (audio / video / parts) — batched, not now.
 - **SD-12 → BUILDING (client-side):** score filter + sort-by-score wireframed client-side (per-user caveat
-  shown in-UI); the real impl needs the DynamoDB join (per SD-4).
+shown in-UI); the real impl needs the DynamoDB join (per SD-4).
 - **N-16 — indexes (your PS):** per-sort indexes + (if keyset is ever revisited) e.g.
-  `CREATE INDEX ci_keyset ON catalogue_item (updated_at DESC, id DESC)` — go in the spec when deltas are
-  applied. We chose numbered `OFFSET` pagination (SD-6), so keyset is optional.
+`CREATE INDEX ci_keyset ON catalogue_item (updated_at DESC, id DESC)` — go in the spec when deltas are
+applied. We chose numbered `OFFSET` pagination (SD-6), so keyset is optional.
 
 ## Round-3 — inside-page deltas (2026-06-16, from READ-page review)
 
-- **SD-13 — Artist as filter + clickable.** `artist` is a column and already FTS-weighted (B), but there's **no
-  artist facet** in `CatalogueFilter`. Add `artist?: string` (or `string[]`); clicking an artist on a row/detail
-  sets the filter. *No item-schema change* (column exists).
+- **SD-13 — Artist as filter + clickable.** `artist` is a column and already FTS-weighted (B), but there's **no**
+**artist facet** in `CatalogueFilter`. Add `artist?: string` (or `string[]`); clicking an artist on a row/detail
+sets the filter. *No item-schema change* (column exists).
 - **SD-14 — Patterns are STANDALONE + need a browse/detail.** `pattern` is a first-class table; `item_pattern`
-  links are optional (0..n) → a pattern can exist with no parent. Add a **Pattern detail** (route + clickable
-  links from song/lesson) with a **reverse `item_pattern` lookup** ("Used in: songs + lessons"). Resolves SD-1's
-  deferred Patterns browse. *No schema change* — it's a new read view + the existing m:n.
+links are optional (0..n) → a pattern can exist with no parent. Add a **Pattern detail** (route + clickable
+links from song/lesson) with a **reverse `item_pattern` lookup** ("Used in: songs + lessons"). Resolves SD-1's
+deferred Patterns browse. *No schema change* — it's a new read view + the existing m:n.
 - **SD-15 — ⭐ Per-part / per-step VOICING (NEW, biggest).** Which kit voices are active per section/step
-  (hi-hat · kick · snare · crash · toms · ride …). Enables "intro = hats+kick; chorus = +snare+crash" and
-  partial-groove lessons. **Not in schema today** — `data.sections[]` = `{label,startBar,endBar}` only.
-  *Proposed:* add `voices: string[]` to each section AND to `exercise` (steps). Open: controlled vocab for kit
-  voices? per-instrument (drums vs guitar pieces)? Affects ingest + CRUD. **Needs design.**
+(hi-hat · kick · snare · crash · toms · ride …). Enables "intro = hats+kick; chorus = +snare+crash" and
+partial-groove lessons. **Not in schema today** — `data.sections[]` = `{label,startBar,endBar}` only.
+*Proposed:* add `voices: string[]` to each section AND to `exercise` (steps). Open: controlled vocab for kit
+voices? per-instrument (drums vs guitar pieces)? Affects ingest + CRUD. **Needs design.**
 - **SD-16 — Repeated parts.** A section label can occur at multiple bar ranges (Chorus = 25–40 **and** 60–80).
-  *Proposed:* either allow repeated `{label}` entries in `data.sections[]`, or group as
-  `{label, ranges:[[s,e],…]}`. Affects how a song-breakdown step maps to a repeated section.
+*Proposed:* either allow repeated `{label}` entries in `data.sections[]`, or group as
+`{label, ranges:[[s,e],…]}`. Affects how a song-breakdown step maps to a repeated section.
 - **SD-17 — Step description.** Add a short `description` to `exercise` (or `exercise.data.description`) — a
-  one-liner under the step title ("Hit on the 1 & 3"). Tiny.
+one-liner under the step title ("Hit on the 1 & 3"). Tiny.
 - **SD-18 — Items without multiple steps/sections.** A 1-step lesson (no ladder emphasis) / a song with no
-  sections (no "Practice in parts"). UI adapts; publish gate unchanged (a lesson needs ≥1 `exercise`). UI +
-  validation note, not a structural change.
+sections (no "Practice in parts"). UI adapts; publish gate unchanged (a lesson needs ≥1 `exercise`). UI +
+validation note, not a structural change.
 
 ## Round-4 — fill-lessons, descriptions, per-step scores (2026-06-16)
 
-- **SD-1 REFINED (reopen):** a **lesson can teach a fill**, like a beat/rudiment — so **`lesson_type` *does*
-  include `'fill'`** (what the lesson drills) **AND** `pattern.kind='fill'` is the pattern entity it links to.
-  They **coexist** (not either/or). *Action:* restore the **Fills** Lessons sub-kind + fill-lessons (the v1.2
-  removal over-corrected). `lesson_type ∈ {beat, rudiment, fill, song-breakdown}`; `pattern.kind ∈ {beat, fill,
-  rudiment, …}`.
+- **SD-1 REFINED (reopen):** a **lesson can teach a fill**, like a beat/rudiment — so `**lesson_type` *does***
+**include `'fill'**` (what the lesson drills) **AND** `pattern.kind='fill'` is the pattern entity it links to.
+They **coexist** (not either/or). *Action:* restore the **Fills** Lessons sub-kind + fill-lessons (the v1.2
+removal over-corrected). `lesson_type ∈ {beat, rudiment, fill, song-breakdown}`; `pattern.kind ∈ {beat, fill, rudiment, …}`.
 - **SD-19 — Lesson description ("what you'll learn").** Lesson-level blurb (distinct from per-step SD-17). Add
-  `description` to `catalogue_item` (or `data.description`); shown on lesson detail.
-- **SD-20 — ⭐ Per-PART / per-STEP score (per-user).** Best-score is per *item* today; show the donut on **each
-  song part** + **each lesson step**. Implies per-user scoring at **section/step granularity** (DynamoDB, e.g.
-  `user#item#step`), joined client-side — not catalogue. Also **Play → "Continue"** when partially done.
+`description` to `catalogue_item` (or `data.description`); shown on lesson detail.
+- **SD-20 — ⭐ Per-PART / per-STEP score (per-user).** Best-score is per *item* today; show the donut on **each**
+**song part** + **each lesson step**. Implies per-user scoring at **section/step granularity** (DynamoDB, e.g.
+`user#item#step`), joined client-side — not catalogue. Also **Play → "Continue"** when partially done.
 - **SD-21 — Per-user 'completed' flag + reset-score-keep-history.** Mark items/steps completed; let a user
-  **clear the current best but keep attempt history**. Per-user (DynamoDB) — extra joins, not catalogue.
+**clear the current best but keep attempt history**. Per-user (DynamoDB) — extra joins, not catalogue.
 - **SD-15 note (voicing legend):** kit-piece icons (hi-hat·kick·snare·toms·crash·ride) marking active voices per
-  part/step — built as **our own** glyphs (teal/Material), **not** a copy of any competitor's; competitor names
-  stay out of repo docs (project rule).
+part/step — built as **our own** glyphs (teal/Material), **not** a copy of any competitor's; competitor names
+stay out of repo docs (project rule).
 
 ---
 
 ## ⏸ PAUSED — Lesson ↔ Step ↔ Pattern model needs a brainstorm (2026-06-16)
 
 The READ-page review surfaced a model tangle worth a dedicated brainstorm (Leo's call; resuming tomorrow). See
-**`2026-06-16-brainstorm-prep-patterns-lessons.md`** for the framing. **v1.4 build is PAUSED** — building
+`**2026-06-16-brainstorm-prep-patterns-lessons.md**` for the framing. **v1.4 build is PAUSED** — building
 lesson/pattern UI on a fuzzy model = wasted work. v1.3 (songs + catalog/search/filters + READ) is solid.
 
 - **Core tension:** schema has `pattern` standalone + `item_pattern` (m:n) + `exercise` steps; Leo's UI model is
-  **"a Lesson = 1+ patterns"** (no standalone-pattern browse; Lessons = the browse: drums beats/fills/rudiments,
-  piano scales). Reconcile `exercise` (step) vs `pattern`.
+**"a Lesson = 1+ patterns"** (no standalone-pattern browse; Lessons = the browse: drums beats/fills/rudiments,
+piano scales). Reconcile `exercise` (step) vs `pattern`.
 - **SD-22 — Load & go (OPEN):** drop a `.gp` → play now (private/draft, no required fields). Ties to SD-23.
 - **SD-23 — GP file = song OR pattern (flaw, OPEN):** a GuitarPro file isn't always a song — it can be a
-  pattern/groove. "Upload → always song" is too narrow. Upload must decide song vs pattern vs step.
+pattern/groove. "Upload → always song" is too narrow. Upload must decide song vs pattern vs step.
 
 ---
 
 ### 🧠 Tomorrow: brainstorm Lesson↔Step↔Pattern + the GP-file role, THEN build v1.4 on the settled model.
+
 ### ✅ Resolved: SD-4 · SD-5 · SD-6 · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional)
-### 🔵 Open: SD-2 · SD-3 · SD-12 · SD-15 · SD-16 · SD-20 · SD-21 · SD-22 · SD-23 + the patterns/lessons model
-*(**Applying** resolved deltas to the locked spec is a SEPARATE deliberate pass — on your go, a changelog line
-each, likely after CRUD. The item schema stayed almost entirely intact, as you predicted — most changes are
-filter-side.)*
+
+### 🔵 Open *(2026-06-16 snapshot — SUPERSEDED by the "Current status" table at the top, 2026-06-19; SD-2/3/16 now resolved)*: SD-2 · SD-3 · SD-12 · SD-15 · SD-16 · SD-20 · SD-21 · SD-22 · SD-23 + the patterns/lessons model
+
+*(**Applying** resolved deltas to the locked spec is a SEPARATE deliberate pass — on your go, a changelog line*
+*each, likely after CRUD. The item schema stayed almost entirely intact, as you predicted — most changes are*
+*filter-side.)*
 
 ---
 
@@ -231,8 +270,9 @@ of UX deltas were built (E1–E6) on branch `docs/wireframe-pattern-lesson-model
 changed — DB-side items that surfaced are written down here for the separate spec-apply pass.
 
 ### SD-15 — voicing model (per Leo, 2026-06-18). UI **placeholder shipped** (a `voices[]` chip line on parts). DB model:
+
 - A **playable has N tracks**; a **track has N notes (MIDI)**. A **voice** is *derived* from the MIDI note
-  numbers via a **note→voice map** (General-MIDI style) — voices are **not** stored per note.
+numbers via a **note→voice map** (General-MIDI style) — voices are **not** stored per note.
 - Example drum map (a voice can cover several notes): `snare: 37,38,39,40` · `hi-hat foot: 44` · `bass drum: 35,36`.
 - "Active voices for a part/step" = the distinct voices present across that slice's track notes — **computed**.
 - DDL sketch (for the spec pass):
@@ -247,19 +287,22 @@ changed — DB-side items that surfaced are written down here for the separate s
   ```
 
 ### SD-16 — repeated parts. UI **shipped** (a part renders >1 bar range). DB options to choose at spec time:
+
 - **(a) multiple `part` rows** sharing a label, each its own row + range — simplest; each range independently scorable.
-- **(b) one part with `ranges jsonb = [[s,e],…]`** — one row, one score, many ranges.
+- **(b) one part with `ranges jsonb = [[s,e],…]**` — one row, one score, many ranges.
 - The wireframe used (b) as a `ranges[]` display field on the part. Decide (a) vs (b) when applying.
 
 ### Play-next on the **score / play screen** (Leo, 2026-06-18) — write-down:
+
 - The play/score screen (separate draft; stubbed here) should offer **"play next"** — chain to the next
-  part / step / lesson without returning to the catalog. Step/part **prev-next** live on the *detail* views;
-  the player itself stays minimal and is exited via the topbar **back** button.
+part / step / lesson without returning to the catalog. Step/part **prev-next** live on the *detail* views;
+the player itself stays minimal and is exited via the topbar **back** button.
 
 ### Wart — PATTERNS-dict vs pattern-playable id duality (noticed during E5):
+
 - Lessons/songs reference vocabulary patterns via `patterns:['rock-8th']` (a PATTERNS lookup) while the `step`
-  junction references **pattern playables** (`p-rock-8th`, …) — two id namespaces. `usedIn()` unions both so
-  relationships render, but the real model should pick **one** (pattern playables). Reconcile in the spec pass.
+junction references **pattern playables** (`p-rock-8th`, …) — two id namespaces. `usedIn()` unions both so
+relationships render, but the real model should pick **one** (pattern playables). Reconcile in the spec pass.
 
 ---
 
@@ -268,53 +311,59 @@ changed — DB-side items that surfaced are written down here for the separate s
 UX deltas F1–F7 built on branch `docs/wireframe-pattern-lesson-model`. New DB-side notes for the spec pass:
 
 ### $N / $CP1 — chord vs chord progression + per-instrument difficulty
+
 - A **chord** is a single pattern (`pattern_kind='chord'`); a **chord progression** is a **sequence** of chords —
-  modelled as a **composite pattern** whose `step`s are the chords, exactly like a composite groove. Built in the
-  wireframe: chords C/G/Am/F + the composite `I–V–vi–IV (C major)` + a chord-progression lesson.
+modelled as a **composite pattern** whose `step`s are the chords, exactly like a composite groove. Built in the
+wireframe: chords C/G/Am/F + the composite `I–V–vi–IV (C major)` + a chord-progression lesson.
 - **Abstract vs concrete:** a progression is abstract (I–V–vi–IV) but realised per key (C→G→Am→F in C; G→D→Em→C in
-  G; F→C→Dm→B♭ in F). Open: store the abstract roman-numeral progression once + derive concrete chords per key, OR
-  store each key's concrete progression as its own composite. (Wireframe stored one concrete C-major composite.)
+G; F→C→Dm→B♭ in F). Open: store the abstract roman-numeral progression once + derive concrete chords per key, OR
+store each key's concrete progression as its own composite. (Wireframe stored one concrete C-major composite.)
 - **Songs use progressions** — via the same m:n / `playable_link` as any pattern (wireframe: `clocks` → the progression).
 - **⭐ Per-instrument difficulty (the real find):** the same chord/notation plays on **keys AND guitar**
-  (`instruments[]` — no DB change for that). BUT **difficulty/level differs by instrument** (CMaj6 / F-barre is hard
-  on guitar L4–6, easy on piano L1). So a single scalar `level` is **insufficient** — level (and the difficulty
-  curve) likely needs to be **per-instrument**. Options: `level → level_by_instrument jsonb`, or a
-  `difficulty(by:'instrument', tiers:[{when:'piano',level},{when:'guitar',level}])` curve (wireframe used the latter
-  on the F chord). **Decide in the spec pass.**
+(`instruments[]` — no DB change for that). BUT **difficulty/level differs by instrument** (CMaj6 / F-barre is hard
+on guitar L4–6, easy on piano L1). So a single scalar `level` is **insufficient** — level (and the difficulty
+curve) likely needs to be **per-instrument**. Options: `level → level_by_instrument jsonb`, or a
+`difficulty(by:'instrument', tiers:[{when:'piano',level},{when:'guitar',level}])` curve (wireframe used the latter
+on the F chord). **Decide in the spec pass.**
 
 ### Media (F7) — multi-level
+
 - A playable (song) has **n media** (audio/video) at the **playable level**, AND it has **n tracks** (instruments),
-  each track carrying its **own n media**. DB: a `media` table keyed by **`playable_id` + optional `track_id`**
-  (NULL track_id = song-level); a `track` table (`playable_id`, `instrument`, …). Wireframe: song-level media[] +
-  `tracks:[{instrument, media:[]}]`.
+each track carrying its **own n media**. DB: a `media` table keyed by `**playable_id` + optional `track_id**`
+(NULL track_id = song-level); a `track` table (`playable_id`, `instrument`, …). Wireframe: song-level media[] +
+`tracks:[{instrument, media:[]}]`.
 
 ### $S7 — time signature / key: UI-vs-storage (no gap)
+
 - UI shows a single `4/4` and a `Key` badge; the model stores time signature as **numerator + denominator** (two
-  columns) and `musical_key` separately. Display-vs-storage difference; both surface in the field inspector. No change.
+columns) and `musical_key` separately. Display-vs-storage difference; both surface in the field inspector. No change.
 
 ### Reconciled (F2a) — patterns[] now reference real pattern playables
+
 - Songs' `patterns[]` repointed from PATTERNS-dict ids to **pattern-playable ids** (`p-rock-8th` …) so each shows
-  its own score + links to its playable; `usedIn()` spans songs (patterns[]) + lessons (steps). The PATTERNS dict is
-  now largely vestigial — drop it in the spec pass. (Partially resolves the Round-5 wart.)
+its own score + links to its playable; `usedIn()` spans songs (patterns[]) + lessons (steps). The PATTERNS dict is
+now largely vestigial — drop it in the spec pass. (Partially resolves the Round-5 wart.)
 
 ### 4b coverage — scales/chords now have relationships
+
 - The chord lesson/progression gave chords real Used-in relationships; the earlier "empty relationships" was on
-  scale patterns that nothing referenced yet.
+scale patterns that nothing referenced yet.
 
 ### ⭐ Tracks — `instruments[]` → a track relation (brainstorm, 2026-06-18)
+
 **Ask (Leo):** rename `instruments text[]` → `tracks`. **Catch:** a song can have MULTIPLE tracks of the SAME
 instrument — e.g. guitar `solo` + guitar `bass`/`rhythm`. A flat `instruments text[]` can't represent that, and
 per-track media (F7) / voicing (SD-15) / per-instrument difficulty ($N) all need a track identity.
 
 - **A — `track` relation (RECOMMENDED):** `track(id, playable_id, instrument, role, name?, sort_order)`. Two
-  same-instrument tracks = two rows, same `instrument`, different `role` (+ id). Media → `media.track_id`,
-  voicing → notes per track. **Keep a denormalised `playable.instruments text[]` (DISTINCT instrument across
-  tracks)** for the fast catalog filter (`@> ARRAY[$1]`), derived from tracks. So the "rename" is really a
-  **split**: promote the detail into a `track` table, keep `instruments[]` as a derived facet.
-- **B — `tracks jsonb`** `[{instrument, role, media}]` on the playable (matches the wireframe's current shape):
-  simplest, no join, but weak for filtering/indexing and for joining media/notes by track.
+same-instrument tracks = two rows, same `instrument`, different `role` (+ id). Media → `media.track_id`,
+voicing → notes per track. **Keep a denormalised `playable.instruments text[]` (DISTINCT instrument across**
+**tracks)** for the fast catalog filter (`@> ARRAY[$1]`), derived from tracks. So the "rename" is really a
+**split**: promote the detail into a `track` table, keep `instruments[]` as a derived facet.
+- **B — `tracks jsonb**` `[{instrument, role, media}]` on the playable (matches the wireframe's current shape):
+simplest, no join, but weak for filtering/indexing and for joining media/notes by track.
 - **C — instrument vocab only** (treat `bass` as its own instrument): solves bass-vs-guitar but NOT two of the
-  same (lead + rhythm guitar, two vocal harmonies). Insufficient alone.
+same (lead + rhythm guitar, two vocal harmonies). Insufficient alone.
 
 **Recommendation: A.** `role` (+ id) disambiguates same-instrument tracks; `instruments[]` stays the derived
 filter facet. Wireframe now demonstrates it — SNA tracks = drums(kit) · guitar(solo) · guitar(bass) · keys(pad),

@@ -18,4 +18,4 @@ so they're not lost, not actioned yet.
 - **Rename `notation_tex` → `notation_alphaTex`** (the inline alphaTex field — `notation_tex` in the wireframe, `alphatex` in the draft SQL `source` table). Do during the real schema pass, not now.
 
 ## Wireframe / layout open questions
-- **OQ1 — Artist in the catalog Song list.** Display the (optional) `artist` on screen when listing Songs in the catalog list, **and** allow **filtering by artist**.
+- **OQ1 — Artist in the catalog Song list.** Display the (optional) `artist` on screen when listing Songs in the catalog list, **and** allow **filtering by artist**. *(✅ resolved 2026-06-19: `artist` → `author text[]` + `author_type`, GIN-filterable — see `2026-06-19-tonal-drum-schema-draft.sql`.)*
