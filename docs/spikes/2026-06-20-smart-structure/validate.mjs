@@ -21,6 +21,7 @@ import {
   boundariesFromChords,
   boundariesFromExplicitChords,
   boundariesFromNovelty,
+  boundariesFromLag,
   mergeBoundaries,
   labelSegments,
   attachEnergy,
@@ -82,12 +83,13 @@ function methodsFor(score_) {
   const chords = boundariesFromChords(score_);
   const explicitChords = boundariesFromExplicitChords(score_);
   const novelty = boundariesFromNovelty(score_);
-  const sets = { repeats, chords, explicitChords, novelty };
+  const lag = boundariesFromLag(score_);
+  const sets = { repeats, chords, explicitChords, novelty, lag };
   const mergedAll = mergeBoundaries(sets).map((m) => m.bar);
   const mergedVote2 = mergeBoundaries(sets)
     .filter((m) => m.votes >= 2)
     .map((m) => m.bar);
-  return { repeats, chords, explicitChords, novelty, 'merged(all)': mergedAll, 'merged(votes>=2)': mergedVote2 };
+  return { repeats, chords, explicitChords, novelty, lag, 'merged(all)': mergedAll, 'merged(votes>=2)': mergedVote2 };
 }
 
 console.log('\n================  SECTION-BOUNDARY ACCURACY (vs file markers)  ================\n');

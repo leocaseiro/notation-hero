@@ -109,6 +109,25 @@ export function boundariesFromNovelty(score, h = KERNEL_H) {
   return pickPeaks(novelty, n);
 }
 
+// ---- method (d): time-lag structure features (research roadmap B1) ----
+// Foote novelty catches LOCAL change; this catches REPETITION change. Build a
+// time-lag matrix TL[bar][lag] = similarity of a bar to the bar `lag` bars back,
+// then place a boundary where a bar's whole repetition profile shifts. This is
+// the "structure features" idea (Serra) — the repetition principle our SSM lacked.
+export function boundariesFromLag(score) {
+  const feats = perBarHistograms(score).map(normalize);
+  const n = feats.length;
+  if (n < 4) return [];
+  const maxLag = Math.max(1, Math.floor(n / 2));
+  const TL = Array.from({ length: n }, () => new Array(maxLag + 1).fill(0));
+  for (let i = 0; i < n; i++) for (let lag = 1; lag <= maxLag; lag++) {
+    if (i - lag >= 0) TL[i][lag] = cosine(feats[i], feats[i - lag]);
+  }
+  const novelty = new Array(n).fill(0);
+  for (let i = 1; i < n; i++) novelty[i] = 1 - cosine(TL[i], TL[i - 1]);
+  return pickPeaks(novelty, n);
+}
+
 // ---- shared peak picker: local maxima above mean+K*std, min spacing, bar 1 forced ----
 function pickPeaks(novelty, n) {
   if (n < 1) return []; // 0-bar score → no boundaries (consistent with boundariesFromRepeats)
@@ -270,10 +289,11 @@ export function approximate(score, opts = {}) {
   const chords = boundariesFromChords(score);
   const explicitChords = boundariesFromExplicitChords(score);
   const novelty = boundariesFromNovelty(score);
-  const merged = mergeBoundaries({ repeats, chords, explicitChords, novelty }, opts.tol ?? 1);
+  const lag = boundariesFromLag(score);
+  const merged = mergeBoundaries({ repeats, chords, explicitChords, novelty, lag }, opts.tol ?? 1);
   const mergedBars = merged.map((m) => m.bar);
   const segments = nameSections(attachEnergy(score, labelSegments(score, mergedBars)));
-  return { repeats, chords, explicitChords, novelty, merged, segments };
+  return { repeats, chords, explicitChords, novelty, lag, merged, segments };
 }
 
 function main() {
