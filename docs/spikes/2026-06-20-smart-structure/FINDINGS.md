@@ -3,7 +3,7 @@
 **Ticket:** [NH-200](https://leocaseiro.atlassian.net/browse/NH-200) (builds on [NH-196](https://leocaseiro.atlassian.net/browse/NH-196); feeds [NH-137](https://leocaseiro.atlassian.net/browse/NH-137))
 **Date:** 2026-06-20
 **Question:** For songs with **no section markers**, can we infer (1) a **key-change (modulation) timeline** and (2) **section/part boundaries** with rule-based methods — and how accurate is it?
-**Answer:** **Key-change timeline — yes, ship it.** Windowed Krumhansl-Schmuckler + hysteresis cleanly separates single-key from modulating songs (all corpus checks pass). **Section approximation — partial.** Rule-based gives a rough first guess (best F1 ≈ 67–70%, precision often < 50%); good enough for *candidate* cut-points with a human in the loop, not for unattended labelling. Full semantic naming (intro/verse/chorus) is NOT solved here and is the ML/LLM candidate.
+**Answer:** **Key-change timeline — yes, ship it.** Windowed Krumhansl-Schmuckler + hysteresis cleanly separates single-key from modulating songs (all corpus checks pass). **Section approximation — partial.** Rule-based gives a rough first guess (best F1 ≈ 67–70%, precision often < 50%); good enough for *candidate* cut-points with a human in the loop, not for unattended labelling. Section *naming* (verse/chorus) was then tried rule-based and **measured at 14–30%** (S14) — too weak to rely on; it shows in the demo as a rough guess and genuinely needs an LLM.
 
 ## How to run
 
@@ -46,6 +46,7 @@ Reuses NH-196's proven `detectKey` (Krumhansl profiles + Pearson) and histogram,
 | S11 | ❌ **The "Bohemian Rhapsody with sections.gp" file is not bar-aligned ground truth.** It carries only **3 annotation texts** ("gtrs enter", "tempo 144", "tempo 207"), not intro/verse/chorus markers, and a **different bar count** (139 vs 122 — verified manually via the loader; `validate.mjs` does not load this file). Excluded from scored accuracy; the marker-less Bohemian is reported qualitatively only. |
 | S12 | ✅ **Time-signature + tempo + repeat timelines come free** from master bars (confirms NH-196 F10/F16). Happiness is a Warm Gun has ~18 meter changes; Bohemian ~16. These are read-not-inferred and need no spike. |
 | S13 | 🔧 **Post-review hardening — numbers re-measured.** A code-review pass fixed three real bugs: boundary-cluster center *drift* (clusters could exceed the ±tol contract and inflate vote counts), *early-boundary suppression* in the peak-picker (a section change in bars 2–4 was silently dropped), and *chordless-window novelty* read as maximum change. The **scored** accuracy was unchanged after the fixes (the two scored songs have no early/short sections and no drift-affected clusters); the **marker-less qualitative** boundaries shifted by ≈1 bar (and Africa gained an early boundary). All numbers in this document are the post-fix re-measurement. |
+| S14 | ❌ **Rule-based role *naming* (verse/chorus/…) is weak — measured 30% (I'm Yours) and 14% (Yellow).** Given the *true* boundaries (so this isolates naming from boundary detection), a heuristic (most-repeated class → chorus, the class preceding choruses → verse, position/uniqueness → intro/outro/bridge) barely beats chance. **Failure mode:** verse and chorus *in the same key* have near-identical pitch-class content, so the structural-similarity classes cannot separate them and the namer over-applies "chorus". This is the direct, measured answer to "can we name parts from chord/pitch repetition alone?" — **no**; naming needs richer signal (an LLM over the structure, or features like dynamics/energy/lyrics), confirming S10 and the recommendation. |
 
 ## Measured accuracy
 
@@ -82,6 +83,13 @@ Marker-less section approximation (qualitative — no bar-aligned ground truth; 
 | Bohemian Rhapsody (0 repeats) | 1, 5, 14, 25, 61, 90, 95, 108 | 26 |
 | Happiness is a Warm Gun (2 repeats) | 1, 13 | 9 |
 
+Section-role *naming* accuracy (rule-based, scored on the **true** boundaries so it isolates naming from boundary detection; 'Other' = interlude/instrumental, unscored):
+
+| Song | naming accuracy | failure shape |
+|---|---|---|
+| I'm Yours | **30%** (3/10) | over-labels "chorus"; misses verse / intro / outro |
+| Yellow | **14%** (1/7) | only "Intro" correct; verse↔chorus swapped |
+
 ---
 
 ## Recommendation — rule-based vs ML/LLM
@@ -93,7 +101,7 @@ Marker-less section approximation (qualitative — no bar-aligned ground truth; 
 1. **Prefer file markers when present** (NH-196 F9). Most curated files in the corpus (I'm Yours, Yellow) already carry intro/verse/chorus markers — read them, don't infer.
 2. **When markers are absent, use `merged(all)` boundaries as rough cut-point candidates** (recall 73–78% @±2) feeding a *human-in-the-loop* picker (this is exactly what NH-137's song-slice picker needs — approximate bars a user nudges, not authoritative sections). Do **not** present them as authoritative labelled sections (precision is too low, ~28–67%).
 3. **Repeat structure is a free high-precision signal** — always fold it in when the file has it.
-4. **ML/LLM is the right tool for *accurate, named* sections, but only if that becomes a product need.** The promising, cheap path is an **LLM over the symbolic features** this spike already extracts (per-bar chord/key/repeat/novelty series) — not raw audio — asked to label intro/verse/chorus. Cost: prompt design + a small labelled eval set + per-file inference. A **trained segmenter** (SALAMI-style supervised model) is heavier (labelled dataset + training/serving) and likely overkill at catalogue scale. Recommend a follow-up spike *only* when accurate auto-naming is actually required; today's rule-based candidates + file markers cover the near-term need.
+4. **Naming verse/chorus needs an LLM — rule-based naming was tried and measured at 14–30% (S14).** The rule-based namer is shipped (it labels parts in the demo) but is honestly a *rough guess*: same-key verse/chorus share too much pitch/chord content for similarity classes to separate. The reliable path is an **LLM over the symbolic features** this spike already extracts (per-section chord progression, key, repeat structure, bar lengths, position) — not raw audio — asked to label intro/verse/chorus/bridge. Cost: prompt design + a small labelled eval set (I'm Yours / Yellow markers are ready-made) + per-file inference. A **trained segmenter** (SALAMI-style supervised model) is heavier and likely overkill at catalogue scale. **Recommended next step if named sections matter:** a small LLM-naming spike using the structure this one outputs.
 
 ### Honest limitations
 

@@ -21,6 +21,8 @@ import {
   boundariesFromChords,
   boundariesFromNovelty,
   mergeBoundaries,
+  labelSegments,
+  nameSections,
 } from './sections.mjs';
 import { keyTimeline } from './keychanges.mjs';
 
@@ -105,6 +107,41 @@ for (const f of GROUND_TRUTH) {
       ),
     );
   }
+  console.log('');
+}
+
+console.log('\n================  SECTION-ROLE NAMING (given true boundaries)  ================\n');
+console.log('Isolates naming from boundary detection: segments are built from the FILE');
+console.log('markers, then the rule-based namer guesses each role; compared to the marker.\n');
+const normRole = (name) => {
+  const t = name.toLowerCase();
+  if (t.includes('chorus')) return 'Chorus';
+  if (t.includes('verse')) return 'Verse';
+  if (t.includes('intro')) return 'Intro';
+  if (t.includes('outro')) return 'Outro';
+  if (t.includes('bridge')) return 'Bridge';
+  return 'Other';
+};
+for (const f of GROUND_TRUTH) {
+  const s = tryLoad(f);
+  if (!s) continue;
+  const m = meta(s, f);
+  const st = readStructure(s);
+  const named = nameSections(labelSegments(s, st.sections.map((x) => x.bar)));
+  const predByStart = {};
+  named.forEach((seg) => { predByStart[seg.barStart] = seg.role; });
+  let hit = 0;
+  let total = 0;
+  const rows = [];
+  st.sections.forEach((sec) => {
+    const truth = normRole(sec.name);
+    const pred = predByStart[sec.bar] || '?';
+    const scored = truth !== 'Other';
+    if (scored) { total++; if (pred === truth) hit++; }
+    rows.push(`  bar ${String(sec.bar).padStart(2)}: "${sec.name}" -> truth ${truth.padEnd(7)} | predicted ${(pred || '?').padEnd(7)} ${scored ? (pred === truth ? 'OK' : 'X') : '(unscored)'}`);
+  });
+  console.log(`${m.title} — naming accuracy ${total ? Math.round((hit / total) * 100) : 0}% (${hit}/${total} scored sections; 'Other' = interlude/instrumental, unscored)`);
+  rows.forEach((r) => console.log(r));
   console.log('');
 }
 

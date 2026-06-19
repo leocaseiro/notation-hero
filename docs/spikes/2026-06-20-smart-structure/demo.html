@@ -60,7 +60,7 @@
   <div class="lab">Detected key spans (windowed Krumhansl-Schmuckler + hysteresis)</div>
   <div id="keytl" class="track"></div>
   <div id="keyticks" class="ticks"></div>
-  <div class="lab">Inferred section boundaries — merged(votes ≥ 2) <span id="filemarkers"></span></div>
+  <div class="lab">Inferred sections — rule-based role guess (rough: ~14–30% naming accuracy vs named markers; boundaries = merged votes ≥ 2) <span id="filemarkers"></span></div>
   <div id="sectl" class="track"></div>
   <div id="secticks" class="ticks"></div>
   <div id="summary"></div>
@@ -103,6 +103,7 @@ function boundariesFromChords(score){const labels=perBarChordLabels(score);const
 function boundariesFromNovelty(score){const F=perBarHistograms(score).map(normalize);const n=F.length;const ssm=Array.from({length:n},()=>new Array(n).fill(0));for(let i=0;i<n;i++)for(let j=i;j<n;j++){const s=cosine(F[i],F[j]);ssm[i][j]=s;ssm[j][i]=s;}const nov=new Array(n).fill(0);for(let c=0;c<n;c++){let sum=0;for(let a=-KH;a<KH;a++)for(let b=-KH;b<KH;b++){const i=c+a,j=c+b;if(i<0||j<0||i>=n||j>=n)continue;sum+=((a<0)===(b<0)?1:-1)*ssm[i][j];}nov[c]=sum;}return pickPeaks(nov,n);}
 function mergeBoundaries(sets,tol=1){const all=[];for(const[m,list]of Object.entries(sets))for(const b of list)all.push({bar:b,method:m});all.sort((a,b)=>a.bar-b.bar);const cl=[];for(const{bar,method}of all){const last=cl[cl.length-1];if(last&&bar-last.bars[0]<=tol&&bar-last.bars[last.bars.length-1]<=tol){last.bars.push(bar);last.methods.add(method);}else cl.push({bars:[bar],methods:new Set([method])});}return cl.map((c)=>({bar:c.bars[Math.floor((c.bars.length-1)/2)],votes:c.methods.size})).sort((a,b)=>a.bar-b.bar);}
 function labelSegments(score,bounds){const F=perBarHistograms(score).map(normalize);const n=F.length;if(n===0)return[];const sorted=[...new Set(bounds)].filter((b)=>b>=1&&b<=n).sort((a,b)=>a-b);if(!sorted.length||sorted[0]!==1)sorted.unshift(1);const segs=[];for(let s=0;s<sorted.length;s++){const start=sorted[s],end=s+1<sorted.length?sorted[s+1]-1:n;const acc=new Array(12).fill(0);for(let i=start-1;i<=end-1;i++)if(i>=0&&i<n)for(let p=0;p<12;p++)acc[p]+=F[i][p];segs.push({barStart:start,barEnd:end,centroid:normalize(acc)});}const classes=[];const A='A'.charCodeAt(0);for(const seg of segs){let best=-1,bs=0;classes.forEach((c,ci)=>{const sim=cosine(seg.centroid,c);if(sim>bs){bs=sim;best=ci;}});if(best>=0&&bs>=LSIM)seg.label=String.fromCharCode(A+best);else{classes.push(seg.centroid);seg.label=String.fromCharCode(A+classes.length-1);}delete seg.centroid;}return segs;}
+function nameSections(segments){const segs=segments.map((s)=>({...s}));const n=segs.length;if(!n)return segs;const counts={};segs.forEach((s)=>{counts[s.label]=(counts[s.label]||0)+1;});const totalBars=segs[n-1].barEnd;let chorusClass=null,maxC=1;for(const[c,k]of Object.entries(counts))if(k>maxC){maxC=k;chorusClass=c;}let verseClass=null;if(chorusClass){const pre={};for(let i=1;i<n;i++)if(segs[i].label===chorusClass&&segs[i-1].label!==chorusClass)pre[segs[i-1].label]=(pre[segs[i-1].label]||0)+1;const top=Object.entries(pre).sort((a,b)=>b[1]-a[1])[0];if(top)verseClass=top[0];if(!verseClass){const rep=Object.entries(counts).filter(([c])=>c!==chorusClass).sort((a,b)=>b[1]-a[1]);if(rep.length&&rep[0][1]>=2)verseClass=rep[0][0];}}segs.forEach((s,i)=>{const pos=s.barStart/totalBars;if(s.label===chorusClass)s.role='Chorus';else if(s.label===verseClass)s.role='Verse';else if(i===0&&counts[s.label]===1)s.role='Intro';else if(i===n-1&&counts[s.label]===1)s.role='Outro';else if(counts[s.label]===1&&pos>0.55)s.role='Bridge';else s.role='Section';});const tot={};segs.forEach((s)=>{tot[s.role]=(tot[s.role]||0)+1;});const seen={};segs.forEach((s)=>{if(s.role!=='Section'&&tot[s.role]>1){seen[s.role]=(seen[s.role]||0)+1;s.roleName=`${s.role} ${seen[s.role]}`;}else s.roleName=s.role;});return segs;}
 function fileMarkers(score){const m=[];score.masterBars.forEach((mb,i)=>{if(mb.section&&(mb.section.text||mb.section.marker))m.push({bar:i+1,name:mb.section.text||mb.section.marker});});return m;}
 
 // ---------- rendering ----------
@@ -123,7 +124,7 @@ function renderTimelines(score){
   const merged=mergeBoundaries({repeats,chords,nov});
   const votes2=merged.filter((m)=>m.votes>=2).map((m)=>m.bar);
   const allB=merged.map((m)=>m.bar);
-  const segs=labelSegments(score,allB);
+  const segs=nameSections(labelSegments(score,allB));
   const markers=fileMarkers(score);
 
   $('#meta').innerHTML=`<b>${score.title||'(untitled)'}</b>${score.artist?' — '+score.artist:''} · ${bars} bars · ${spans.length} key span${spans.length>1?'s':''} · ${markers.length} file marker${markers.length===1?'':'s'}`;
@@ -133,7 +134,7 @@ function renderTimelines(score){
   $('#keyticks').innerHTML='';
   // section track: segments A/B/C + ticks at votes>=2
   const st=$('#sectl');st.innerHTML='';
-  segs.forEach((sg,i)=>{const seg=document.createElement('div');seg.className='seg';const[fill,text]=colorFor('seg'+sg.label);seg.style.cssText+=`width:${((sg.barEnd-sg.barStart+1)/bars)*100}%;background:${i%2?'#e2e8f0':'#eef1f4'};color:#334155;`;seg.textContent=sg.label;seg.title=`section ${sg.label} — bars ${sg.barStart}-${sg.barEnd}`;st.appendChild(seg);});
+  segs.forEach((sg,i)=>{const seg=document.createElement('div');seg.className='seg';seg.style.cssText+=`width:${((sg.barEnd-sg.barStart+1)/bars)*100}%;background:${i%2?'#e2e8f0':'#eef1f4'};color:#334155;`;seg.textContent=sg.roleName;seg.title=`${sg.roleName} (structural class ${sg.label}) — bars ${sg.barStart}-${sg.barEnd}`;st.appendChild(seg);});
   const tickRow=$('#secticks');tickRow.innerHTML='';
   votes2.forEach((b)=>{const t=document.createElement('div');t.className='tick';t.style.left=`${((b-1)/bars)*100}%`;t.title=`section boundary (votes≥2) @ bar ${b}`;tickRow.appendChild(t);});
   $('#filemarkers').textContent=markers.length?`· ground-truth markers in file: ${markers.map((m)=>m.bar+':'+m.name).join('  ')}`:'· (no file markers — marker-less)';
@@ -141,7 +142,7 @@ function renderTimelines(score){
     `key spans: ${spans.map((s)=>`${s.key?s.key.tonic+' '+s.key.type:'?'} [${s.barStart}-${s.barEnd}]`).join('  ')}\n`+
     `repeats: [${repeats.join(', ')}]   chords: [${chords.join(', ')}]   novelty: [${nov.join(', ')}]\n`+
     `merged(votes≥2): [${votes2.join(', ')}]   merged(all): ${allB.length}\n`+
-    `segments: ${segs.map((s)=>`${s.label}(${s.barStart}-${s.barEnd})`).join('  ')}`;
+    `sections (role · class): ${segs.map((s)=>`${s.roleName}/${s.label}[${s.barStart}-${s.barEnd}]`).join('  ')}`;
   $('#panel').hidden=false;
 }
 

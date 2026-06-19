@@ -179,13 +179,63 @@ export function labelSegments(score, boundaries) {
   return segs;
 }
 
+// ---- rule-based role naming (intro/verse/chorus/bridge/outro) ----
+// Heuristic on top of the structural classes: the most-repeated class is usually
+// the chorus; the class that most often precedes it is the verse; a unique first/
+// last/late section is intro/outro/bridge. Honest: works for conventional song
+// forms, breaks on through-composed material — measured in validate.mjs.
+export function nameSections(segments) {
+  const segs = segments.map((s) => ({ ...s }));
+  const n = segs.length;
+  if (!n) return segs;
+  const counts = {};
+  segs.forEach((s) => { counts[s.label] = (counts[s.label] || 0) + 1; });
+  const totalBars = segs[n - 1].barEnd;
+  // chorus = most-repeated class (must repeat at least twice)
+  let chorusClass = null;
+  let maxC = 1;
+  for (const [c, k] of Object.entries(counts)) if (k > maxC) { maxC = k; chorusClass = c; }
+  // verse = class that most often immediately precedes a chorus; else 2nd most-repeated
+  let verseClass = null;
+  if (chorusClass) {
+    const precede = {};
+    for (let i = 1; i < n; i++) if (segs[i].label === chorusClass && segs[i - 1].label !== chorusClass) precede[segs[i - 1].label] = (precede[segs[i - 1].label] || 0) + 1;
+    const top = Object.entries(precede).sort((a, b) => b[1] - a[1])[0];
+    if (top) verseClass = top[0];
+    if (!verseClass) {
+      const rep = Object.entries(counts).filter(([c]) => c !== chorusClass).sort((a, b) => b[1] - a[1]);
+      if (rep.length && rep[0][1] >= 2) verseClass = rep[0][0];
+    }
+  }
+  segs.forEach((s, i) => {
+    const pos = s.barStart / totalBars;
+    if (s.label === chorusClass) s.role = 'Chorus';
+    else if (s.label === verseClass) s.role = 'Verse';
+    else if (i === 0 && counts[s.label] === 1) s.role = 'Intro';
+    else if (i === n - 1 && counts[s.label] === 1) s.role = 'Outro';
+    else if (counts[s.label] === 1 && pos > 0.55) s.role = 'Bridge';
+    else s.role = 'Section';
+  });
+  // number repeated roles: Verse 1, Verse 2, Chorus 1 …
+  const totalRole = {};
+  segs.forEach((s) => { totalRole[s.role] = (totalRole[s.role] || 0) + 1; });
+  const seen = {};
+  segs.forEach((s) => {
+    if (s.role !== 'Section' && totalRole[s.role] > 1) {
+      seen[s.role] = (seen[s.role] || 0) + 1;
+      s.roleName = `${s.role} ${seen[s.role]}`;
+    } else s.roleName = s.role;
+  });
+  return segs;
+}
+
 export function approximate(score, opts = {}) {
   const repeats = boundariesFromRepeats(score);
   const chords = boundariesFromChords(score);
   const novelty = boundariesFromNovelty(score);
   const merged = mergeBoundaries({ repeats, chords, novelty }, opts.tol ?? 1);
   const mergedBars = merged.map((m) => m.bar);
-  const segments = labelSegments(score, mergedBars);
+  const segments = nameSections(labelSegments(score, mergedBars));
   return { repeats, chords, novelty, merged, segments };
 }
 
@@ -203,8 +253,8 @@ function main() {
   console.log(`  (b) chords   boundaries: ${r.chords.join(', ')}`);
   console.log(`  (c) novelty  boundaries: ${r.novelty.join(', ')}`);
   console.log(`  merged (bar:votes): ${r.merged.map((x) => `${x.bar}:${x.votes}`).join('  ')}`);
-  console.log('  segments:');
-  for (const s of r.segments) console.log(`    ${s.label}  bars ${s.barStart}-${s.barEnd}`);
+  console.log('  segments (rule-based role · structural class):');
+  for (const s of r.segments) console.log(`    ${s.roleName.padEnd(10)} (class ${s.label})  bars ${s.barStart}-${s.barEnd}`);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) main();
