@@ -9,8 +9,8 @@
 // NOT guessed intro/verse/chorus names (that is a harder semantic problem).
 //
 // Usage: node sections.mjs "<path to .gp>"
-import { Chord } from 'tonal';
-import { loadScore, meta, perBarHistograms, perBarChordLabels, normalize, cosine, PCS } from './lib.mjs';
+import { Chord, Note } from 'tonal';
+import { loadScore, meta, perBarHistograms, perBarChordLabels, normalize, cosine } from './lib.mjs';
 
 export const KERNEL_H = 4; // Foote checkerboard half-width (bars)
 export const CHORD_WIN = 4; // method (b) comparison window (bars)
@@ -36,8 +36,10 @@ function chordRootPc(label) {
   if (!label || label === 'NC') return -1;
   const got = Chord.get(label);
   if (!got || !got.tonic) return -1;
-  const idx = PCS.indexOf(got.tonic.replace('Db', 'C#').replace('Eb', 'D#').replace('Gb', 'F#').replace('Ab', 'G#').replace('Bb', 'A#'));
-  return idx;
+  // tonal's chroma handles every spelling (Cb/Fb/B#/E#/double-accidentals); the
+  // old hand-rolled .replace() chain silently dropped them to -1.
+  const c = Note.chroma(got.tonic);
+  return Number.isInteger(c) ? c : -1;
 }
 
 export function boundariesFromChords(score, win = CHORD_WIN) {
@@ -51,10 +53,13 @@ export function boundariesFromChords(score, win = CHORD_WIN) {
     return h;
   };
   const novelty = new Array(n).fill(0);
+  const empty = (h) => h.every((x) => x === 0);
   for (let i = 1; i < n; i++) {
     const before = rootHist(i - win, i - 1);
     const after = rootHist(i, i + win - 1);
-    novelty[i] = 1 - cosine(before, after);
+    // a chordless window has no harmonic info: 1-cosine(empty,x)=1 would fake a
+    // change. Treat "no chords" as "no signal", not "maximum change".
+    novelty[i] = empty(before) || empty(after) ? 0 : 1 - cosine(before, after);
   }
   return pickPeaks(novelty, n);
 }
@@ -94,12 +99,15 @@ export function boundariesFromNovelty(score, h = KERNEL_H) {
 
 // ---- shared peak picker: local maxima above mean+K*std, min spacing, bar 1 forced ----
 function pickPeaks(novelty, n) {
+  if (n < 1) return []; // 0-bar score → no boundaries (consistent with boundariesFromRepeats)
   const vals = novelty.filter((v) => v !== 0);
   const mean = vals.reduce((s, x) => s + x, 0) / (vals.length || 1);
   const std = Math.sqrt(vals.reduce((s, x) => s + (x - mean) ** 2, 0) / (vals.length || 1)) || 1;
   const thresh = mean + NOVELTY_K * std;
   const peaks = [1];
-  let lastPeak = 1;
+  // seed below 1 so the trivial bar-1 boundary never spacing-gates the first real
+  // peak (a section change in bars 2-4 would otherwise be silently dropped).
+  let lastPeak = 1 - MIN_SPACING;
   for (let i = 1; i < n - 1; i++) {
     const bar = i + 1;
     if (novelty[i] >= thresh && novelty[i] >= novelty[i - 1] && novelty[i] >= novelty[i + 1] && bar - lastPeak >= MIN_SPACING) {
@@ -118,22 +126,29 @@ export function mergeBoundaries(sets, tol = 1) {
   const clusters = [];
   for (const { bar, method } of all) {
     const last = clusters[clusters.length - 1];
-    if (last && bar - last.center <= tol) {
+    // Join only if within tol of BOTH ends — a fixed anchor, not a drifting mean.
+    // (A running rounded-mean center let evenly-spaced runs grow past tol and
+    // collapse distinct boundaries into one inflated-vote cluster.)
+    if (last && bar - last.bars[0] <= tol && bar - last.bars[last.bars.length - 1] <= tol) {
       last.bars.push(bar);
       last.methods.add(method);
-      last.center = Math.round(last.bars.reduce((s, x) => s + x, 0) / last.bars.length);
     } else {
-      clusters.push({ center: bar, bars: [bar], methods: new Set([method]) });
+      clusters.push({ bars: [bar], methods: new Set([method]) });
     }
   }
-  return clusters.map((c) => ({ bar: c.center, votes: c.methods.size, methods: [...c.methods] })).sort((a, b) => a.bar - b.bar);
+  return clusters
+    .map((c) => ({ bar: c.bars[Math.floor((c.bars.length - 1) / 2)], votes: c.methods.size, methods: [...c.methods] }))
+    .sort((a, b) => a.bar - b.bar);
 }
 
 // ---- label segments by structural class (A/B/C…) ----
 export function labelSegments(score, boundaries) {
   const feats = perBarHistograms(score).map(normalize);
   const n = feats.length;
-  const sorted = [...new Set(boundaries)].sort((a, b) => a - b);
+  if (n === 0) return [];
+  // clamp to real bars + always start at bar 1, so segments never invert or run past the song
+  const sorted = [...new Set(boundaries)].filter((b) => b >= 1 && b <= n).sort((a, b) => a - b);
+  if (!sorted.length || sorted[0] !== 1) sorted.unshift(1);
   const segs = [];
   for (let s = 0; s < sorted.length; s++) {
     const start = sorted[s];

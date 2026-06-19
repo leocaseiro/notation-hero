@@ -31,7 +31,17 @@ const GROUND_TRUTH = ["I'm Yours - Jason Mraz.gp", 'Coldplay-Yellow-06-26-2025.g
 // marker-less targets (qualitative — no bar-aligned ground truth)
 const MARKERLESS = ['Toto - Africa.gp', 'Bohemian Rhapsody.gp', 'Happiness is a Warm Gun.gp'];
 
-function score(predicted, truth, tol) {
+// one unreadable/renamed corpus file should not abort the whole run
+function tryLoad(f) {
+  try {
+    return loadScore(`${CORPUS}/${f}`);
+  } catch (e) {
+    console.log(`  ! skip ${f}: ${e.message}`);
+    return null;
+  }
+}
+
+function scoreBoundaries(predicted, truth, tol) {
   const pred = predicted.filter((b) => b !== 1);
   const tru = truth.filter((b) => b !== 1);
   const used = new Array(tru.length).fill(false);
@@ -79,14 +89,15 @@ const W = [26, 18, 11, 11, 11];
 console.log(row(['song / method', 'pred boundaries', 'P@1/R@1', 'P@2/R@2', 'F1@2'], W));
 console.log('-'.repeat(80));
 for (const f of GROUND_TRUTH) {
-  const s = loadScore(`${CORPUS}/${f}`);
+  const s = tryLoad(f);
+  if (!s) continue;
   const m = meta(s, f);
   const truth = markerBoundaries(s);
   console.log(`${m.title} — ${truth.length} true markers, ${m.bars} bars`);
   const methods = methodsFor(s);
   for (const [name, pred] of Object.entries(methods)) {
-    const a = score(pred, truth, 1);
-    const b = score(pred, truth, 2);
+    const a = scoreBoundaries(pred, truth, 1);
+    const b = scoreBoundaries(pred, truth, 2);
     console.log(
       row(
         ['  ' + name, pred.filter((x) => x !== 1).length, `${pct(a.precision)}/${pct(a.recall)}`, `${pct(b.precision)}/${pct(b.recall)}`, pct(b.f1)],
@@ -110,7 +121,8 @@ const keyExpect = {
   'Happiness is a Warm Gun.gp': { spans: '?', note: 'exploratory', ok: () => true },
 };
 for (const f of [...GROUND_TRUTH, ...MARKERLESS]) {
-  const s = loadScore(`${CORPUS}/${f}`);
+  const s = tryLoad(f);
+  if (!s) continue;
   const m = meta(s, f);
   const t = keyTimeline(s);
   const exp = keyExpect[f];
@@ -121,7 +133,8 @@ for (const f of [...GROUND_TRUTH, ...MARKERLESS]) {
 
 console.log('\n================  MARKER-LESS SECTION APPROXIMATION (qualitative)  ================\n');
 for (const f of MARKERLESS) {
-  const s = loadScore(`${CORPUS}/${f}`);
+  const s = tryLoad(f);
+  if (!s) continue;
   const m = meta(s, f);
   const st = readStructure(s);
   const methods = methodsFor(s);

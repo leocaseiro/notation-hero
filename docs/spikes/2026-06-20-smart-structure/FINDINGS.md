@@ -41,10 +41,11 @@ Reuses NH-196's proven `detectKey` (Krumhansl profiles + Pearson) and histogram,
 | S6 | ⚠️ **Method (a) GP-repeats: high precision but usually absent.** I'm Yours / Yellow / Bohemian have **0 repeat marks** → 0 recall there; Africa has 7 → genuinely useful. Free signal when present, nothing when not. |
 | S7 | ⚠️ **Method (b) chords over-segments + lands ~2 bars off.** Harmonic phrases (≈4–8 bars) are finer than sections (≈8–20). Yellow: precision **7% @±1 but 50% @±2** — boundaries are near-misses, not random. |
 | S8 | ⚠️ **Method (c) novelty is inconsistent.** Under-segments I'm Yours (2 boundaries, 9% recall); decent on Yellow (R 56% @±2). Sensitive to kernel size / threshold; would need per-song tuning. |
-| S9 | ⚠️ **Vote-merge (≥2 methods agree) collapses to near-nothing.** The three signals capture *different* structure, so they rarely coincide within ±1 bar → `merged(votes>=2)` is almost empty. **Union (`merged-all`) is the useful mode**: recall 73–78% @±2 at a precision cost. |
+| S9 | ⚠️ **Vote-merge (≥2 methods agree) only pays off when repeat structure is present.** On the two *scored* songs (no repeat marks) the three signals rarely coincide within ±1 bar, so `merged(votes>=2)` yields 0–1 boundaries — too sparse to use. But on repeat-rich Africa (7 repeat marks) it gives **6 non-trivial boundaries** — productive exactly when method (a) fires. When no repeats exist, **union (`merged-all`) is the useful mode**: recall 73–78% @±2 at a precision cost. |
 | S10 | ⚠️ **Structural-class labels (A/B/C) conflate same-key sections.** Labelling by per-segment pitch-class histogram makes most sections collapse to "A" (they share the key's notes). This is boundary detection, NOT verse/chorus naming — naming is deliberately out of scope (it's the ML/LLM job). |
-| S11 | ❌ **The "Bohemian Rhapsody with sections.gp" file is not bar-aligned ground truth.** It carries only **3 annotation texts** ("gtrs enter", "tempo 144", "tempo 207"), not intro/verse/chorus markers, and a **different bar count** (139 vs 122). Excluded from scored accuracy; the marker-less Bohemian is reported qualitatively only. |
+| S11 | ❌ **The "Bohemian Rhapsody with sections.gp" file is not bar-aligned ground truth.** It carries only **3 annotation texts** ("gtrs enter", "tempo 144", "tempo 207"), not intro/verse/chorus markers, and a **different bar count** (139 vs 122 — verified manually via the loader; `validate.mjs` does not load this file). Excluded from scored accuracy; the marker-less Bohemian is reported qualitatively only. |
 | S12 | ✅ **Time-signature + tempo + repeat timelines come free** from master bars (confirms NH-196 F10/F16). Happiness is a Warm Gun has ~18 meter changes; Bohemian ~16. These are read-not-inferred and need no spike. |
+| S13 | 🔧 **Post-review hardening — numbers re-measured.** A code-review pass fixed three real bugs: boundary-cluster center *drift* (clusters could exceed the ±tol contract and inflate vote counts), *early-boundary suppression* in the peak-picker (a section change in bars 2–4 was silently dropped), and *chordless-window novelty* read as maximum change. The **scored** accuracy was unchanged after the fixes (the two scored songs have no early/short sections and no drift-affected clusters); the **marker-less qualitative** boundaries shifted by ≈1 bar (and Africa gained an early boundary). All numbers in this document are the post-fix re-measurement. |
 
 ## Measured accuracy
 
@@ -73,13 +74,13 @@ Key-change timeline check (legend M = major, m = minor):
 | Bohemian Rhapsody | 11 | A♯M + Gm/Cm/D♯M/Fm… | modulates | ✅ PASS |
 | Happiness is a Warm Gun | 3 | Am [1–16] Em [17–23] CM [24–42] | (exploratory) | ✅ PASS |
 
-Marker-less section approximation (qualitative — no bar-aligned ground truth):
+Marker-less section approximation (qualitative — no bar-aligned ground truth; bar 1 is the trivial song-start, always present):
 
 | Song | merged(votes≥2) boundaries | merged(all) count |
 |---|---|---|
-| Africa (7 repeats) | 1, 8, 19, 23, 31 | 10 |
-| Bohemian Rhapsody (0 repeats) | 1, 5, 15, 26, 62, 91, 96, 109 | 26 |
-| Happiness is a Warm Gun (2 repeats) | 1, 5, 13 | 8 |
+| Africa (7 repeats) | 1, 3, 8, 15, 19, 23, 41 | 9 |
+| Bohemian Rhapsody (0 repeats) | 1, 5, 14, 25, 61, 90, 95, 108 | 26 |
+| Happiness is a Warm Gun (2 repeats) | 1, 13 | 9 |
 
 ---
 
@@ -99,6 +100,8 @@ Marker-less section approximation (qualitative — no bar-aligned ground truth):
 - Two clean-ground-truth songs only (I'm Yours, Yellow) — small sample; treat F1 figures as indicative, not definitive.
 - Parameters (window 8, minSeg 4, kernel ±4, novelty threshold mean+0.5σ, label sim 0.9) are sensible defaults, **not** tuned per song — deliberately, to avoid overfitting to two files.
 - Boundary detection ≠ part naming. This spike finds *where* sections change, not *what* they are.
+- **Read recall with precision, never alone.** A "predict every bar" detector would score 100% recall; the F1 and precision columns are what keep the read honest, so quote them together.
+- Per-bar features assume each track's bar list is index-aligned with the song's master bars (true for all six corpus files). A track that enters late or ends early would contribute empty (zero) bars for its missing tail, slightly distorting the self-similarity and key windows there.
 
 ## Feed-forward
 

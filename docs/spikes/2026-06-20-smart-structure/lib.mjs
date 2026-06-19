@@ -81,7 +81,8 @@ export function perBarHistograms(score) {
             const w = durWeight(beat);
             for (const note of beat.notes) {
               if (note.isPercussion) continue;
-              hists[bi][note.realValue % 12] += w;
+              const pc = (((note.realValue % 12) + 12) % 12); // sign-safe; skip non-finite
+              if (Number.isInteger(pc)) hists[bi][pc] += w;
             }
           }
         }
@@ -106,7 +107,8 @@ export function perBarChordLabels(score) {
           for (const beat of voice.beats) {
             for (const note of beat.notes) {
               if (note.isPercussion) continue;
-              pcSets[bi].add(PCS[note.realValue % 12]);
+              const pc = (((note.realValue % 12) + 12) % 12); // sign-safe; skip non-finite
+              if (Number.isInteger(pc)) pcSets[bi].add(PCS[pc]);
             }
           }
         }
