@@ -13,6 +13,7 @@
     "lint": "pnpm -r --if-present run lint",
     "typecheck": "pnpm -r --if-present run typecheck",
     "test": "pnpm -r --if-present run test",
+    "test:tooling": "node --test tooling/*.test.mjs",
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown .",
     "depcheck": "depcruise server/src --config .dependency-cruiser.cjs",
