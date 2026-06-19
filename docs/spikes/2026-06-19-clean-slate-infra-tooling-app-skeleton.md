@@ -19,8 +19,8 @@ Per area (§2–§7): **Recommendation → one-line Why → concrete command/con
 | 9.1 | IaC | **Pulumi (TypeScript)** | TS-native, direct-SDK AWS-learning, already wired in `infra/` | local backend or free Individual Pulumi Cloud = $0 |
 | 9.2 | Lambda packaging | **`@codegenie/serverless-express` v5 + esbuild** | only adapter declaring `node>=24`, active fork of archived vendia | free |
 | 9.3 | ORM | **Drizzle + drizzle-zod + `@neondatabase/serverless` (neon-http)** | only option that is Neon-HTTP-native **and** SWC-clean (no decorators) | MIT + Neon free tier |
-| 9.4 | Analytics | **PostHog Cloud free** to start (GA4 = simpler fallback) | 1 M events/mo permanent free + session replay; CloudFront→Athena added later for infra logs | 1 M events/mo free |
-| 9.5 | Linter/formatter | **Biome (format-only, lineWidth 100) + ESLint flat-config (lint-only, typed)** | Biome formats `nest g` byte-clean & fast; ESLint gives type-aware `no-floating-promises`; neither fights DI | all MIT |
+| 9.4 | Analytics | **GA4 for v1** *(ratified 2026-06-19)* | unblocks v1, simplest; ⚠️ ~99% adblocked → undercounts. Post-v1 revisit: PostHog vs Amplitude vs Statsig vs server-side Athena | free |
+| 9.5 | Linter/formatter | **NEW spike: NestJS-default-first (Biome-free)** *(ratified 2026-06-19)* | prior Biome-vs-ESLint analysis dropped; fresh spike under NH-42 | OSS |
 | 9.6 | Monorepo | **plain pnpm workspaces (`pnpm -r`)** | 4 packages, 1 dep edge → Turborepo cache saves ~5–10 s for real config cost | free |
 | 9.7 | State | **TanStack Store** now; **XState** for the gameplay loop later | Store is a tiny reactive primitive that doesn't fight Query/offline | free |
 | 9.8 | iOS MIDI | **v1 = "Web MIDI Browser" shim** (proven); fast-follow = **fork `capacitor-musetrainer-midi`** | shim already validated with AlphaTab on Leo's prototype; fork reuses the hard CoreMIDI/Swift part | free/MIT |
@@ -100,7 +100,7 @@ Per area (§2–§7): **Recommendation → one-line Why → concrete command/con
 - **`$0`:** pure TS inference, no codegen.
 
 ### Validation — Zod
-- **Rec:** **pin Zod v4** (`^4.4.x`, current `latest`; drizzle-zod and oRPC-via-Standard-Schema both support it). Verify `@hookform/resolvers ≥ 3.10` for v4 if client forms use it (see Open decisions).
+- **Rec:** **pin Zod v4** (`^4.4.x`, current `latest`; drizzle-zod and oRPC-via-Standard-Schema both support it) *(ratified — validate during NH-42)*. Validate `@hookform/resolvers ≥ 3.10` + v4 error-shape/`.merge()` breaking changes when the tooling lands.
 
 ### Auth-in-Nest — guard + framework-free `can()`
 - **Rec:** `aws-jwt-verify@5` `CognitoJwtVerifier` as a module-singleton guard (caches JWKS, no cold-start penalty) that attaches `{ sub, groups }`; a **framework-free `can(user, item, action)`** in `server/src/core/auth/` (zero `@nestjs/*` imports → the dependency-cruiser core-purity fence proves it).
@@ -158,25 +158,25 @@ Per area (§2–§7): **Recommendation → one-line Why → concrete command/con
 
 ### iOS MIDI path (§9.8)
 - **v1 = the shim** — AlphaTab render + synth + Web MIDI scoring already validated on Leo's prototype (incl. a 2016 iPad mini); the manual `iter.next()` enumeration is what makes it work. Latency ~15–25 ms on old iPads (acceptable for casual v1; not the ~5–10 ms CoreMIDI floor).
-- **Fast-follow = fork `capacitor-musetrainer-midi`** (MIT, but stale: v0.2.3 / Cap-4 / iOS+Web, no Android, last commit 2023) — **fork over custom** because the hard Swift/CoreMIDI wiring already exists; ~1–2 days to migrate to Cap 6, add the Android Kotlin bridge, and move scoring native-side. Keep it as a local workspace package.
+- **Fast-follow = fork `capacitor-musetrainer-midi`** *(ratified as direction; scheduled AFTER NH-42 — not v1)* (MIT, but stale: v0.2.3 / Cap-4 / iOS+Web, no Android, last commit 2023) — **fork over custom** because the hard Swift/CoreMIDI wiring already exists; ~1–2 days to migrate to Cap 6, add the Android Kotlin bridge, and move scoring native-side. Keep it as a local workspace package. For v1, **MIDI PWA → Capacitor** stays architecture context only (the `MidiInputPort` seam covers it).
 - **Hard rule:** smoke-test **any** new JS audio/timing lib on the iOS-shim WebView before depending on it (e.g. **Tone.js** for a future waterfall-view player is **untested** there; AlphaTab's own backing-track mode is the Tone-free fallback).
 
 ---
 
 ## §6 Cross-cutting — type-safety + linting + autofix
 
-### Linter/formatter (§9.5) — the spine
-- **Rec:** **Biome (format-only, `linter.enabled:false`, `lineWidth:100`, single quotes, trailing commas)** + **ESLint flat-config (lint-only, no Prettier plugin)** with `typescript-eslint recommendedTypeChecked` on `server/`.
-- **Why:** Biome formats `nest g` output byte-clean at ~35× Prettier speed; ESLint delivers GA type-aware `no-floating-promises`/`no-misused-promises` (Biome's are still nursery); neither fights DI — Biome's `useImportType` is **off** (linter disabled), and ESLint `consistent-type-imports` is DI-safe with `emitDecoratorMetadata` on. (oxlint rejected: no type-aware rules in 2026. Biome-only rejected: `useImportType` breaks DI. ESLint+Prettier rejected: slower, buys nothing Biome-format doesn't.)
-- ESLint also carries the structural rules: `import-x/no-default-export`, `check-file` kebab-case + role-suffix, `eslint-comments/no-unlimited-disable` (no escape hatches), and `no-restricted-imports` banning `@nestjs/*`/`@aws-sdk/*`/`@pulumi/*` from `core/` (belt-and-suspenders with depcruise).
+### Linter/formatter (§9.5) — NEW spike (ratified 2026-06-19)
+- **Decision (Leo):** the linter is decided by a **NEW spike that starts from NestJS defaults (ESLint, Biome-free)**. The earlier "Biome-format + ESLint-lint" recommendation is **dropped**; the prior Biome-vs-ESLint spikes are **superseded** and must **not** be referenced by the new work — fresh evaluation. Tracked under [NH-42](https://leocaseiro.atlassian.net/browse/NH-42).
+- **Question for the new spike:** does NestJS's default ESLint (flat-config) + generator formatting cover the needs (no-fight `nest g`, type-aware async rules, flawless autofix) with **no Biome at all**? If a formatter is still wanted, evaluate it fresh.
+- **Locked, tool-independent (DI-safety):** whatever lints `server/` must NOT rewrite injected-service imports to `import type` (breaks Nest dependency injection). Structural rules still apply: `import-x/no-default-export`, `check-file` kebab-case + role-suffix, `eslint-comments/no-unlimited-disable`, `no-restricted-imports` banning `@nestjs/*`/`@aws-sdk/*`/`@pulumi/*` from `core/`.
 
 ### The rest
-- **EditorConfig:** root `.editorconfig` — `lf`, final newline, 2-space; leave quote style to Biome.
-- **Lefthook:** the existing `lefthook.yml` is sound; add `biome format --write {staged_files}` as pre-commit step 0; keep layout-guard / gitleaks / semgrep / lint+typecheck; `pre-push` runs lint+typecheck+test. (Lefthook 2.1.9 pinned — fixes the worktree shim bug.)
+- **EditorConfig:** root `.editorconfig` — `lf`, final newline, 2-space; leave quote style to the formatter (TBD by the NH-42 linter spike).
+- **Lefthook:** the existing `lefthook.yml` is sound; add the formatter step (tool TBD by the NH-42 linter spike) as pre-commit step 0; keep layout-guard / gitleaks / semgrep / lint+typecheck; `pre-push` runs lint+typecheck+test. (Lefthook 2.1.9 pinned — fixes the worktree shim bug.)
 - **commitlint:** existing `commitlint.config.cjs` (`config-conventional` + `body-max-line-length: [1,'always',200]`) — keep as-is.
 - **TypeScript strict:** `tsconfig.base.json` already `strict`; **add `noUncheckedIndexedAccess: true`** (highest-signal) and `exactOptionalPropertyTypes: true`. Defer `isolatedDeclarations` (that's the NH-42 public-API work). Server `tsconfig.json` keeps Nest's `noImplicitAny:false` scaffold default for now.
 - **dependency-cruiser:** the existing fail-closed `core-purity` allow-rule is correct; add a named `no-core-to-pulumi` rule for symmetry with the ESLint ban. `pnpm exec depcruise server shared infra`.
-- **Dep health:** **Knip** (extend `knip.json` to cover root + client + infra workspaces, not just server), **Syncpack** (`versionGroups` pinning `typescript`/`@types/node` identical across packages), **Renovate** (grouped patch-automerge + `lockFileMaintenance` automerge) — Renovate preferred over Dependabot for monorepo signal-to-noise (see Open decisions).
+- **Dep health:** **Knip** (extend `knip.json` to cover root + client + infra workspaces, not just server), **Syncpack** (`versionGroups` pinning `typescript`/`@types/node` identical across packages), **Renovate** *(ratified)* — grouped updates avoid Dependabot's 50+ `chore(deps): bump` PRs/day; flip to Dependabot only if the repo goes private.
 - **Security (CI):** **gitleaks** (`gitleaks detect --no-banner --exit-code 1` — CLI form avoids the action's private-repo license gate), **semgrep** (`--config auto`), **osv-scanner** (`google/osv-scanner-action@v2` reads the existing `osv-scanner.toml`). All free for this use.
 - **Package manager / monorepo (§9.6):** **pnpm workspaces**, orchestrated by plain `pnpm -r --if-present run <target>` (already in root `package.json`) — **no Turborepo** (flip when packages > ~8 or server build > ~30 s).
 
@@ -184,7 +184,7 @@ Per area (§2–§7): **Recommendation → one-line Why → concrete command/con
 
 ## §7 Testing + CI/CD
 
-- **Server tests:** **Jest** (what `nest g` emits) with the **`@swc/jest`** transformer (reads the same `server/.swcrc` → one source of truth for decorator metadata). Vitest-on-server is a deferred ADR migration (see Open decisions).
+- **Server tests:** **Vitest** *(ratified 2026-06-19 — flip from Jest)* — unifies client+server on one runner. NestJS officially supports it via the [SWC + Vitest recipe](https://docs.nestjs.com/recipes/swc#vitest) (small setup: a `vitest.config.ts` with `globals: true` + the `unplugin-swc` plugin; `nest g`'s Jest-style specs run unchanged under Vitest globals).
 - **Client tests:** **Vitest 4** + (nice-to-have) React Testing Library — shares Vite's transform pipeline; TanStack Query has Vitest-friendly test utils.
 - **E2E:** **Playwright 1.61** with `trace: 'on-first-retry'` + `screenshot: 'only-on-failure'`; upload `test-results/` as a CI artifact `if: always()` (NH-197). Artifacts free ≤ 500 MB/mo.
 - **Visual regression:** **Playwright `toHaveScreenshot()`** (free, baselines in git) over **Chromatic** — Chromatic's 5 000-snapshot/mo free cap (story × viewport × browser) is blown in days by a solo dev's push rate, then gates CI (~$149/mo). See Open decisions.
@@ -199,22 +199,24 @@ Per area (§2–§7): **Recommendation → one-line Why → concrete command/con
 ## Reconciled cross-cutting calls (where the research tracks differed)
 
 1. **Lambda entry = serverless-express, oRPC mounts inside Nest.** The backend track showed both a Nest-hosted (`@orpc/nest`) path and a standalone `@orpc/standard-server-aws-lambda` handler. They're mutually exclusive — we keep **NestJS as the door** (ADR-locked), so the handler is **serverless-express wrapping the Nest Express instance**, with oRPC mounted *inside* Nest via `@orpc/nest`. The standalone oRPC-Lambda adapter is not used.
-2. **Server test runner = Jest now.** The testing track says keep Jest (nest-g-native); the backend track says swap the *transformer* `ts-jest → @swc/jest` (still Jest). Both agree the runner stays **Jest** for v1; only the transformer changes. Vitest-on-server is the deferred ADR item.
+2. **Server test runner = Vitest** *(Leo ratified 2026-06-19)*. The tracks proposed Jest; Leo flipped to Vitest per the NestJS SWC + Vitest recipe — small setup, unifies client+server (the ADR already had Vitest as the intended direction). `nest g`'s Jest-style specs run unchanged under Vitest's `globals: true`.
 3. **One `.swcrc`, two consumers.** `nest build --builder swc` (bundle) and `@swc/jest` (test) read the **same** `server/.swcrc` — don't duplicate decorator-metadata config.
 
 ---
 
-## Open decisions (≤7) — needs Leo
+## Decisions — ratified by Leo 2026-06-19
 
-Each has a recommendation; most are "confirm or flip", not open-ended.
+All 7 reviewed and decided. (D1 / D6 / D7 carry follow-up conditions.)
 
-1. **§9.5 Linter shape** — *Rec:* Biome (format-only, lineWidth 100) + ESLint flat-config (lint-only, typed). *Flip to* ESLint+Prettier only if you'd rather one fewer tool.
-2. **§9.4 Analytics start** — *Rec:* PostHog Cloud free (1 M events/mo + session replay). *Flip to* GA4 if you want zero SDK weight / no CSP entry. (CloudFront→Athena is additive infra-logs either way.)
-3. **Server test runner** — *Rec:* keep **Jest + @swc/jest** for v1 (nest-g-native); migrate to Vitest later. *Flip* only if you want one runner across client+server now.
-4. **Dependency bot** — *Rec:* **Renovate** (grouped, lockfile-maintenance automerge). *Flip to* Dependabot for zero-setup (noisier on a monorepo).
-5. **Visual regression** — *Rec:* **Playwright snapshots** (free). *Flip to* Chromatic only if its review UI is worth the 5 k-snapshot cliff.
-6. **Zod v4 vs v3** — *Rec:* **pin v4** (current latest; drizzle-zod + oRPC compatible). Confirm — needs `@hookform/resolvers ≥ 3.10` if client forms use Zod.
-7. **iOS native-MIDI fast-follow** — *Rec:* **fork `capacitor-musetrainer-midi`** (→ Cap 6 + Android + native scoring) over custom. Confirms direction for post-v1 planning, not v1.
+1. **Linter (§9.5) → NEW spike, NestJS-default-first (Biome-free).** Prior "Biome-format + ESLint-lint" rec dropped; the earlier Biome-vs-ESLint spikes are **superseded** and must not be referenced by the new work. Tracked under [NH-42](https://leocaseiro.atlassian.net/browse/NH-42). DI-safety constraint stays (no `import type` on injected services).
+2. **Analytics (§9.4) → GA4 for v1** (simplest, unblocks). ⚠️ Acknowledged: GA4 is ~99% adblocked → undercounts. **Follow-up (post-v1): revisit PostHog vs Amplitude vs Statsig vs server-side CloudFront-logs→Athena** (Athena is adblock-proof — server-side).
+3. **Server tests → Vitest** (flip from Jest). Per the NestJS [SWC + Vitest recipe](https://docs.nestjs.com/recipes/swc#vitest) — small setup, unifies client+server on one runner.
+4. **Dependency bot → Renovate** (already agreed). Grouping avoids Dependabot's 50+ `chore(deps): bump` PRs/day; flip to Dependabot only if the repo goes private.
+5. **Visual regression → Playwright snapshots.** Chromatic is a nice-to-have later only.
+6. **Zod → v4** — ratified, **validate during NH-42** (`@hookform/resolvers ≥ 3.10`; v4 error-shape / `.merge()` breaking changes).
+7. **iOS native-MIDI → fork `capacitor-musetrainer-midi`** — accepted as direction, **after NH-42** (not now). For v1, keep **MIDI PWA → Capacitor** as architecture context only (the `MidiInputPort` seam in §5 covers it).
+
+**Net-new follow-ups to track:** (a) **NH-42** = the new NestJS-default-first linter spike (D1); (b) a post-v1 **"analytics revisit"** ticket (D2 — PostHog / Amplitude / Statsig / Athena).
 
 ---
 
@@ -224,7 +226,7 @@ Each has a recommendation; most are "confirm or flip", not open-ended.
 - **Function URL authType:** flip `infra/` Function URL from `NONE` → `AWS_IAM` + add the CloudFront-OAC `aws.lambda.Permission` before any real data ships.
 - **`nest g` clean pass:** confirm `nest g resource modules/<x>` output passes `biome format` + ESLint with zero churn at lineWidth 100.
 - **AlphaTab bundle:** lazy-chunk AlphaTab and re-tune the 200 kB size-limit budget when it's wired (NH-198).
-- **CSP hosts:** add Cognito (frame-src) + PostHog `eu.i.posthog.com` (connect-src) when each is wired; roll CSP out report-only first.
+- **CSP hosts:** add Cognito (frame-src) + the analytics host (GA4 → `www.googletagmanager.com` / `www.google-analytics.com` in script-src/connect-src; PostHog host if revisited) when wired; roll CSP out report-only first.
 - **Tone.js on shim:** if a future waterfall-view player needs Tone.js, smoke-test it on the "Web MIDI Browser" WebView on a real old iPad first.
 
 ---
