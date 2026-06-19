@@ -154,3 +154,24 @@ node parts.mjs "<path to .gp>"              # identify parts (sections) + export
 Sync points across parts sum to 107 (the whole song). Re-imported the Refrão chunk standalone → 22 bars, 237 notes, **tempo 145** (correctly carried forward), 20 sync points. The whole song splits into 6 standalone synced chunks for **~4.7 KB gzipped total** vs the 4.65 MB audio. This combines NH-196 (section detection → bar ranges) with the NH-137 slice.
 
 **YouTube / video sync (was it missed?):** No new data spike needed. AlphaTab's sync is media-agnostic — the same sync points drive an `<audio>`, `<video>`, **or** a YouTube player. AlphaTab ships *no* built-in YouTube integration (cross-platform / GDPR / UI reasons) but documents a recipe wiring the YouTube IFrame Player API to `alphaTab.synth.IExternalMediaHandler` (feed time updates ~50 ms; handle seek/play/pause). It's a **frontend runtime integration**, not a data-model problem — the slice's rebased `msOffsetBaseline` is exactly the seek target into the shared video. Browser-only, so validate during build, not headless. Ref: `alphaTabWebsite/docs/guides/audio-video-sync.mdx`.
+
+## Live UI verification (`play-parts.html`)
+
+A browser test harness (`play-parts.html`, served on `localhost`) was built and **verified by Leo in a real browser**:
+- Drop a `.gp`/`.xml`/`.mxl` → parts (sections) auto-listed.
+- Click a part → it **renders as its own standalone slice** (probe via `ScoreLoader`, fast no-audio slice, ties healed, tempo carried) — not a range on the full sheet.
+- **Cursor** follows playback (visual sync check). ✔
+- **Embedded audio** plays via a **shared `<audio>`** element seeking to the part's start (the recommended reference-shared-audio model). ✔
+- **YouTube** sync verified via the IFrame API + `IExternalMediaHandler`, seeking the video to the part. ✔
+- Single part **stops at its boundary** (next bar's sync ms) for audio + YouTube. ✔
+
+This confirms the recommended model works end-to-end with both embedded audio and an external YouTube video, with no per-slice audio storage.
+
+## Storage / DB conclusion (resolves OQ-1 / OQ-2)
+
+- **S3:** no new object *per slice*. The audio is shared **per song** — extract once (or keep inside the source `.gp`); the YouTube path needs no audio storage, just a `youtubeId` on the song.
+- **DB (leanest viable):** a slice is **positions-only + pointers** — `sourcePlayableId`, `barStart`, `barEnd`, a shared media ref (`audioRef` | `youtubeId`, ideally on the source song), and an optional `msOffsetBaseline` (derivable from the source's sync point at `barStart`).
+- The sliced alphaTex **and** rebased sync points are **derivable at runtime** (slicing is deterministic, ~35 ms) — **not** stored per slice. Optionally cache the alphaTex (~1 KB gz) + rebased sync in the row purely to skip re-slicing.
+- The rhythm-game **Score stays a separate item**, as today.
+
+**Bottom line:** persist `sourcePlayableId + barStart + barEnd` (+ shared media ref on the source). No new per-slice S3 blob, no per-slice notation row.
