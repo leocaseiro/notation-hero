@@ -365,7 +365,8 @@ faceted search.**
 6. **Make** all cross-row FKs `DEFERRABLE INITIALLY IMMEDIATE` (R16).
 7. **Document** `created_by` = Cognito `sub` (R1: backfill curated rows w/ admin sub; PII → omit from public DTOs).
 8. **Keep** provenance column name `origin` (R2 — rename allowed); ⚠️ update ADR R2 + docs + Jira to match.
-9. **No change** to `bpm`, `time_signature_numerator/denominator`, `instruments[]`, `genre`, `tags`, `skill`.
+9. **Polish (2026-06-19, DBeaver review):** `genre`/`family` → `text[]` (collections; array-overlap filter like `tags`); `artist` → `author` + `author_type` (`artist｜teacher｜user` — display attribution, **distinct from `created_by`** ownership); audit columns (`created_at/updated_at/created_by/updated_by`) standardized on **every** table.
+10. **No change** to `bpm`, `time_signature_numerator/denominator`, `instruments[]`, `tags`, `skill`.
 
 ---
 

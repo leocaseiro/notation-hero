@@ -23,15 +23,21 @@
 --   * data.sections[] gains optional per-section {key, scale, bpm, timeSignature, progression}
 --     (the multi-key / multi-tempo / multi-meter timeline — D6).
 --
--- BASE-MODEL RECONCILIATION applied this pass (Groups A + B + R15):
+-- BASE-MODEL RECONCILIATION applied (Groups A + B + R15):
 --   * R16  — cross-row FKs are DEFERRABLE INITIALLY IMMEDIATE (whole-graph batch commit).
 --   * R1   — created_by holds the Cognito `sub` (backfill curated rows w/ admin sub; PII: omit from public DTOs).
 --   * SD-3 — playable.visibility (public|private|shared) for the UI's public/private/shared icons.
 --   * R15  — notation.upload_status (pending_blob|ready|client) + relaxed one-of CHECK
 --            (file backfills for 'pending_blob', or stays device-local for 'client' — no server copy).
---   * R2   — provenance column kept as `origin` (NOT `source`). ⚠️ UPDATE ADR R2 + docs + Jira to match this rename.
+--   * R2   — provenance column kept as `origin` (NOT `source`). [ADR R2 + docs + Jira NH-194 updated 2026-06-19.]
 --   * Deferred: ULID *values* (R13 — column is already text; slugs shown for readability),
 --               Group C upload UX (SD-22/SD-23), Group D (track / media / per-instrument difficulty).
+--
+-- POLISH PASS (2026-06-19, from the DBeaver review):
+--   * artist -> author + author_type ('artist'|'teacher'|'user') — DISPLAY attribution
+--     (the performer/teacher/uploader), distinct from created_by (ownership = the Cognito sub).
+--   * genre -> text[] and family -> text[] — collections (array-overlap filter, like tags).
+--   * audit columns (created_at/updated_at/created_by/updated_by) standardized on EVERY table.
 --
 -- Re-runnable (DROP clears prior runs). Open the DBeaver "ER Diagram" tab.
 -- text PKs here are human slugs for readability; real schema mints client-side ULIDs (R13).
@@ -81,19 +87,20 @@ CREATE TABLE playable (
 
   -- hot facets (universal; typed) ───────────────────────
   level          smallint,
-  artist         text,
+  author         text,                              -- DISPLAY attribution: performer/teacher/uploader name (NOT created_by, which is ownership)
+  author_type    text,                              -- 'artist' | 'teacher' | 'user'
   bpm            int,                                -- headline beats-per-minute (full timeline in data.sections)
   time_signature_numerator   smallint,              -- headline meter numerator (e.g. 4 in 4/4)
   time_signature_denominator smallint,              -- headline meter denominator (1,2,4,8,16,32)
-  genre          text,
+  genre          text[],                            -- collection: e.g. {pop,singer-songwriter}  (array-overlap filter)
   instruments    text[],
   skill          text[],
   tags           text[],
   pattern_kind   text,                              -- beat|fill|rudiment|scale|chord|progression
-  family         text,
+  family         text[],                            -- collection: pattern grouping(s), e.g. {Rock} {Diddle} {major}
 
   -- lifecycle / provenance ──────────────────────────────
-  origin         text NOT NULL DEFAULT 'curated',     -- R2: provenance (curated|user-upload). Name kept 'origin' (not 'source') — update ADR/docs/Jira.
+  origin         text NOT NULL DEFAULT 'curated',     -- R2: provenance (curated|user-upload). Name kept 'origin' (not 'source').
   visibility     text NOT NULL DEFAULT 'public',      -- SD-3: 'public'|'private'|'shared' (per-item; UI icons). Curated⇒public; app sets user-uploads 'private'.
   status         text NOT NULL DEFAULT 'draft',
   license        text,
@@ -108,10 +115,11 @@ CREATE TABLE playable (
   created_by     text,                                -- R1: Cognito `sub`; backfill curated rows w/ admin sub; PII → omit from public DTOs, anonymize on delete
   updated_by     text,
 
-  CONSTRAINT p_kind       CHECK (kind   IN ('song','part','lesson','pattern')),
-  CONSTRAINT p_status     CHECK (status IN ('draft','published','archived')),
-  CONSTRAINT p_origin     CHECK (origin IN ('curated','user-upload')),
-  CONSTRAINT p_visibility CHECK (visibility IN ('public','private','shared')),
+  CONSTRAINT p_kind        CHECK (kind   IN ('song','part','lesson','pattern')),
+  CONSTRAINT p_status      CHECK (status IN ('draft','published','archived')),
+  CONSTRAINT p_origin      CHECK (origin IN ('curated','user-upload')),
+  CONSTRAINT p_visibility  CHECK (visibility IN ('public','private','shared')),
+  CONSTRAINT p_author_type CHECK (author_type IS NULL OR author_type IN ('artist','teacher','user')),
   CONSTRAINT p_curated_public CHECK (origin <> 'curated' OR visibility = 'public'),  -- curated content is always public
   CONSTRAINT p_level   CHECK (level IS NULL OR level BETWEEN 0 AND 10),
   CONSTRAINT p_no_self CHECK (parent_id IS NULL OR parent_id <> id),
@@ -132,6 +140,9 @@ CREATE TABLE step (
   start_bpm   int,
   goal_bpm    int,
   created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  created_by  text,
+  updated_by  text,
   PRIMARY KEY (parent_id, sort_order),
   CONSTRAINT step_no_self CHECK (parent_id <> child_id),
   CONSTRAINT step_ladder  CHECK (start_bpm IS NULL OR goal_bpm IS NULL OR goal_bpm >= start_bpm)
@@ -141,9 +152,13 @@ CREATE TABLE step (
 -- playable_link — lightweight refs (a SONG 'uses' a progression / groove)
 -- ─────────────────────────────────────────────────────────────────
 CREATE TABLE playable_link (
-  from_id   text NOT NULL REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,   -- R16
-  to_id     text NOT NULL REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,   -- R16
-  relation  text NOT NULL,
+  from_id    text NOT NULL REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,   -- R16
+  to_id      text NOT NULL REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,   -- R16
+  relation   text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  created_by text,
+  updated_by text,
   PRIMARY KEY (from_id, to_id, relation),
   CONSTRAINT pl_no_self CHECK (from_id <> to_id)
 );
@@ -162,7 +177,9 @@ CREATE TABLE tonal_profile (
   progression_family   text[] NOT NULL DEFAULT '{}',-- rotation-normalised roman → S2 mode C (loop)
   data                 jsonb  NOT NULL DEFAULT '{}',-- {mode, borrowed[], modulation[], per-section tonal}
   created_at           timestamptz NOT NULL DEFAULT now(),
-  updated_at           timestamptz NOT NULL DEFAULT now()
+  updated_at           timestamptz NOT NULL DEFAULT now(),
+  created_by           text,
+  updated_by           text
 );
 
 -- ─────────────────────────────────────────────────────────────────
@@ -177,18 +194,22 @@ CREATE TABLE drum_profile (
   kit_pieces    text[] NOT NULL DEFAULT '{}',       -- 'hi-hat','kick','snare','crash','ride','tom'
   data          jsonb  NOT NULL DEFAULT '{}',
   created_at    timestamptz NOT NULL DEFAULT now(),
-  updated_at    timestamptz NOT NULL DEFAULT now()
+  updated_at    timestamptz NOT NULL DEFAULT now(),
+  created_by    text,
+  updated_by    text
 );
 
 -- ─────────────────────────────────────────────────────────────────
 -- indexes  (index names spell out the column they cover)
 -- ─────────────────────────────────────────────────────────────────
-CREATE INDEX playable_parent     ON playable (parent_id);
-CREATE INDEX playable_notation   ON playable (notation_id);
-CREATE INDEX playable_browse     ON playable (kind, status, level, bpm) WHERE listable;
+CREATE INDEX playable_parent      ON playable (parent_id);
+CREATE INDEX playable_notation    ON playable (notation_id);
+CREATE INDEX playable_browse      ON playable (kind, status, level, bpm) WHERE listable;
 CREATE INDEX playable_instruments ON playable USING gin (instruments);
-CREATE INDEX step_by_child       ON step (child_id);
-CREATE INDEX playable_link_to    ON playable_link (to_id);
+CREATE INDEX playable_genre       ON playable USING gin (genre);
+CREATE INDEX playable_family      ON playable USING gin (family);
+CREATE INDEX step_by_child        ON step (child_id);
+CREATE INDEX playable_link_to     ON playable_link (to_id);
 
 CREATE INDEX idx_tonal_musical_key          ON tonal_profile (musical_key);
 CREATE INDEX idx_tonal_keys                 ON tonal_profile USING gin (keys);
@@ -230,52 +251,52 @@ INSERT INTO notation (id, format, s3_key, notation_alphatex, bytes) VALUES
 
 -- DRUM SONG + its PARTS (instruments has drums; gets a drum_profile) -----------
 INSERT INTO playable (id, kind, title, parent_id, notation_id, start_bar, end_bar, sort_order,
-                      listable, level, artist, bpm, time_signature_numerator, time_signature_denominator, genre, instruments,
+                      listable, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments,
                       origin, status, license, data) VALUES
  ('sna', 'song', 'Seven Nation Army', NULL, 'n-sna-gp', NULL, NULL, NULL,
-   true, 2, 'The White Stripes', 124, 4, 4, 'rock', '{drums,guitar}', 'curated', 'published', 'royalty-free',
+   true, 2, 'The White Stripes', 'artist', 124, 4, 4, '{rock}', '{drums,guitar}', 'curated', 'published', 'royalty-free',
    '{"album":"Elephant","year":2003,"sections":[{"label":"Intro","startBar":1,"endBar":8},{"label":"Verse","startBar":9,"endBar":24},{"label":"Chorus","startBar":25,"endBar":40}]}'),
- ('sna-intro',  'part', 'Intro',  'sna', 'n-sna-gp', 1,  8,  1, false, NULL, NULL, 124, 4, 4, NULL, '{drums,guitar}', 'curated', 'published', NULL, NULL),
- ('sna-verse',  'part', 'Verse',  'sna', 'n-sna-gp', 9,  24, 2, false, NULL, NULL, 124, 4, 4, NULL, '{drums,guitar}', 'curated', 'published', NULL, NULL),
- ('sna-chorus', 'part', 'Chorus', 'sna', 'n-sna-gp', 25, 40, 3, false, NULL, NULL, 124, 4, 4, NULL, '{drums,guitar}', 'curated', 'published', NULL, NULL);
+ ('sna-intro',  'part', 'Intro',  'sna', 'n-sna-gp', 1,  8,  1, false, NULL, NULL, NULL, 124, 4, 4, NULL, '{drums,guitar}', 'curated', 'published', NULL, NULL),
+ ('sna-verse',  'part', 'Verse',  'sna', 'n-sna-gp', 9,  24, 2, false, NULL, NULL, NULL, 124, 4, 4, NULL, '{drums,guitar}', 'curated', 'published', NULL, NULL),
+ ('sna-chorus', 'part', 'Chorus', 'sna', 'n-sna-gp', 25, 40, 3, false, NULL, NULL, NULL, 124, 4, 4, NULL, '{drums,guitar}', 'curated', 'published', NULL, NULL);
 
 -- MORE DRUM SONGS (for the ONLY/OR/AND drum demo) -----------------------------
-INSERT INTO playable (id, kind, title, notation_id, level, artist, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, origin, status, license, data) VALUES
- ('rosanna',  'song', 'Rosanna (half-time shuffle)', 'n-rosanna', 8, 'Toto',       86,  4, 4, 'rock',  '{drums}', 'curated', 'published', 'royalty-free', NULL),
- ('sandman',  'song', 'Enter Sandman',               'n-sandman', 5, 'Metallica',  123, 4, 4, 'metal', '{drums}', 'curated', 'published', 'royalty-free', NULL),
- ('billie',   'song', 'Billie Jean',                 'n-billie',  3, 'M. Jackson', 117, 4, 4, 'pop',   '{drums}', 'curated', 'published', 'royalty-free', NULL);
+INSERT INTO playable (id, kind, title, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, origin, status, license, data) VALUES
+ ('rosanna',  'song', 'Rosanna (half-time shuffle)', 'n-rosanna', 8, 'Toto',       'artist', 86,  4, 4, '{rock}',  '{drums}', 'curated', 'published', 'royalty-free', NULL),
+ ('sandman',  'song', 'Enter Sandman',               'n-sandman', 5, 'Metallica',  'artist', 123, 4, 4, '{metal}', '{drums}', 'curated', 'published', 'royalty-free', NULL),
+ ('billie',   'song', 'Billie Jean',                 'n-billie',  3, 'M. Jackson', 'artist', 117, 4, 4, '{pop}',   '{drums}', 'curated', 'published', 'royalty-free', NULL);
 
 -- PITCHED SONGS (get a tonal_profile; NO drum_profile) ------------------------
-INSERT INTO playable (id, kind, title, notation_id, level, artist, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, origin, status, license, data) VALUES
- ('let-it-be', 'song', 'Let It Be',             'n-let-it-be', 2, 'The Beatles',  73,  4, 4, 'pop',  '{guitar,keys}', 'curated', 'published', 'royalty-free',
+INSERT INTO playable (id, kind, title, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, origin, status, license, data) VALUES
+ ('let-it-be', 'song', 'Let It Be',  'n-let-it-be', 2, 'The Beatles',     'artist', 73,  4, 4, '{pop}',                  '{guitar,keys}', 'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":8,"key":"C major","progression":"I-V-vi-IV"},{"label":"Chorus","startBar":9,"endBar":16,"key":"C major","progression":"I-V-vi-IV"}]}'),
- ('im-yours',  'song', 'I''m Yours',            'n-im-yours',  2, 'Jason Mraz',   151, 4, 4, 'pop',  '{guitar}',      'curated', 'published', 'royalty-free',
+ ('im-yours',  'song', 'I''m Yours', 'n-im-yours',  2, 'Jason Mraz',      'artist', 151, 4, 4, '{pop,singer-songwriter}','{guitar}',      'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":16,"key":"B major","progression":"I-V-vi-IV"}]}'),
- ('zombie',    'song', 'Zombie',                'n-zombie',    3, 'The Cranberries', 84, 4, 4, 'rock', '{guitar}',  'curated', 'published', 'royalty-free',
+ ('zombie',    'song', 'Zombie',     'n-zombie',    3, 'The Cranberries', 'artist', 84,  4, 4, '{rock}',                 '{guitar}',  'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":8,"key":"G major","progression":"vi-IV-I-V"}]}'),
- ('creep',     'song', 'Creep',                 'n-creep',     3, 'Radiohead',    92,  4, 4, 'rock', '{guitar}',      'curated', 'published', 'royalty-free',
+ ('creep',     'song', 'Creep',      'n-creep',     3, 'Radiohead',       'artist', 92,  4, 4, '{rock}',                 '{guitar}',      'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":8,"key":"G major","progression":"I-III-IV-iv"}]}'),
  -- MULTI-KEY / MULTI-TEMPO / MULTI-METER (D6): headline + keys[] + per-section timeline
- ('bohemian',  'song', 'Bohemian Rhapsody',     'n-bohemian',  9, 'Queen',        72,  4, 4, 'rock', '{keys,guitar}', 'curated', 'published', 'royalty-free',
+ ('bohemian',  'song', 'Bohemian Rhapsody', 'n-bohemian', 9, 'Queen',     'artist', 72,  4, 4, '{rock}',                 '{keys,guitar}', 'curated', 'published', 'royalty-free',
    '{"album":"A Night at the Opera","year":1975,"sections":[{"label":"Ballad","startBar":1,"endBar":48,"key":"Bb major","bpm":72,"timeSignature":"4/4"},{"label":"Opera","startBar":49,"endBar":80,"key":"A major","bpm":63,"timeSignature":"4/4"},{"label":"Rock","startBar":81,"endBar":110,"key":"Eb major","bpm":140,"timeSignature":"4/4"}]}');
 
 -- LEAF DRUM PATTERNS (reusable; get a drum_profile) ---------------------------
 INSERT INTO playable (id, kind, title, notation_id, level, instruments, pattern_kind, family, genre, origin, status, listable) VALUES
- ('hihat-8',    'pattern', 'Straight 8th Hi-hats', 'n-hihat-8',    1, '{drums}', 'beat',     'Rock',   'rock', 'curated', 'published', true),
- ('rock8-kick', 'pattern', 'Rock Kick Pattern',    'n-rock8-kick', 1, '{drums}', 'beat',     'Rock',   'rock', 'curated', 'published', true),
- ('paradiddle', 'pattern', 'Single Paradiddle',    'n-paradiddle', 2, '{drums}', 'rudiment', 'Diddle', NULL,   'curated', 'published', true);
+ ('hihat-8',    'pattern', 'Straight 8th Hi-hats', 'n-hihat-8',    1, '{drums}', 'beat',     '{Rock}',   '{rock}', 'curated', 'published', true),
+ ('rock8-kick', 'pattern', 'Rock Kick Pattern',    'n-rock8-kick', 1, '{drums}', 'beat',     '{Rock}',   '{rock}', 'curated', 'published', true),
+ ('paradiddle', 'pattern', 'Single Paradiddle',    'n-paradiddle', 2, '{drums}', 'rudiment', '{Diddle}', NULL,     'curated', 'published', true);
 
 -- LEAF PITCHED PATTERNS (scale + chords; get a tonal_profile) ------------------
 INSERT INTO playable (id, kind, title, notation_id, level, instruments, pattern_kind, family, origin, status, listable) VALUES
- ('cmaj-scale', 'pattern', 'C Major Scale', 'n-cmaj-scale', 1, '{keys}',         'scale', 'major', 'curated', 'published', true),
- ('chord-c',    'pattern', 'C major chord', 'n-chord-c',    1, '{keys,guitar}',  'chord', NULL,    'curated', 'published', true),
- ('chord-g',    'pattern', 'G major chord', 'n-chord-g',    1, '{keys,guitar}',  'chord', NULL,    'curated', 'published', true),
- ('chord-am',   'pattern', 'A minor chord', 'n-chord-am',   1, '{keys,guitar}',  'chord', NULL,    'curated', 'published', true),
- ('chord-f',    'pattern', 'F major chord', 'n-chord-f',    3, '{keys,guitar}',  'chord', NULL,    'curated', 'published', true);
+ ('cmaj-scale', 'pattern', 'C Major Scale', 'n-cmaj-scale', 1, '{keys}',         'scale', '{major}', 'curated', 'published', true),
+ ('chord-c',    'pattern', 'C major chord', 'n-chord-c',    1, '{keys,guitar}',  'chord', NULL,      'curated', 'published', true),
+ ('chord-g',    'pattern', 'G major chord', 'n-chord-g',    1, '{keys,guitar}',  'chord', NULL,      'curated', 'published', true),
+ ('chord-am',   'pattern', 'A minor chord', 'n-chord-am',   1, '{keys,guitar}',  'chord', NULL,      'curated', 'published', true),
+ ('chord-f',    'pattern', 'F major chord', 'n-chord-f',    3, '{keys,guitar}',  'chord', NULL,      'curated', 'published', true);
 
 -- COMPOSITE PROGRESSION pattern (CP-1 entity): steps ARE the chords ------------
 INSERT INTO playable (id, kind, title, notation_id, level, instruments, pattern_kind, family, origin, status, listable, data) VALUES
- ('progression-axis-c', 'pattern', 'Axis Progression I-V-vi-IV (C)', NULL, 2, '{keys,guitar}', 'progression', 'Axis', 'curated', 'published', true,
+ ('progression-axis-c', 'pattern', 'Axis Progression I-V-vi-IV (C)', NULL, 2, '{keys,guitar}', 'progression', '{Axis}', 'curated', 'published', true,
    '{"roman":["I","V","vi","IV"],"quality":"Major"}');
 
 -- ── tonal_profile rows (pitched only) ───────────────────────────────────────
@@ -322,10 +343,11 @@ INSERT INTO notation (id, format, notation_alphatex) VALUES
  ('n-groove-g', 'alphatex', ':8 (x.42 x.36) x (x.42 x.38) x');
 
 INSERT INTO playable (id, kind, title, notation_id, level, instruments, pattern_kind, family, genre, origin, status, listable) VALUES
- ('groove-g', 'pattern', 'Rock Groove (full)', 'n-groove-g', 3, '{drums}', 'beat', 'Rock', 'rock', 'curated', 'published', true);
+ ('groove-g', 'pattern', 'Rock Groove (full)', 'n-groove-g', 3, '{drums}', 'beat', '{Rock}', '{rock}', 'curated', 'published', true);
 
-INSERT INTO playable (id, kind, title, level, instruments, skill, genre, origin, status, listable, data) VALUES
- ('rock-lesson', 'lesson', 'Play a Rock Song', 2, '{drums}', '{timing,coordination}', 'rock', 'curated', 'published', true, '{"passMark":80}');
+-- a teacher-authored lesson (shows author_type='teacher', distinct from a song's 'artist')
+INSERT INTO playable (id, kind, title, level, author, author_type, instruments, skill, genre, origin, status, listable, data) VALUES
+ ('rock-lesson', 'lesson', 'Play a Rock Song', 2, 'NotationHero', 'teacher', '{drums}', '{timing,coordination}', '{rock}', 'curated', 'published', true, '{"passMark":80}');
 
 INSERT INTO drum_profile (playable_id, beats, kit_pieces) VALUES
  ('groove-g', '{Rock}', '{hi-hat,kick,snare}');
@@ -372,6 +394,9 @@ INSERT INTO playable_link (from_id, to_id, relation) VALUES
 --   SELECT p.title, t.keys FROM tonal_profile t JOIN playable p ON p.id=t.playable_id
 --   WHERE t.keys && ARRAY['A major'];                             -- Bohemian Rhapsody
 
+-- GENRE (now a collection) · songs tagged pop OR singer-songwriter
+--   SELECT p.title, p.genre FROM playable p WHERE p.genre && ARRAY['singer-songwriter'];   -- I'm Yours
+
 -- COMBINE · Axis loop + playable with my chords + beginner
 --   SELECT p.title FROM tonal_profile t JOIN playable p ON p.id=t.playable_id
 --   WHERE t.progression_family @> ARRAY['I-V-vi-IV']
@@ -393,6 +418,9 @@ INSERT INTO playable_link (from_id, to_id, relation) VALUES
 -- CP-1 · the progression entity, its chord steps, and songs that use it
 --   SELECT s.sort_order, c.title FROM step s JOIN playable c ON c.id=s.child_id WHERE s.parent_id='progression-axis-c' ORDER BY s.sort_order;
 --   SELECT from_id AS song FROM playable_link WHERE to_id='progression-axis-c' AND relation='uses';
+
+-- AUTHOR attribution (display) vs created_by (ownership)
+--   SELECT title, author, author_type FROM playable WHERE author IS NOT NULL ORDER BY author_type, title;
 
 -- the per-section timeline (multi-key / tempo / meter)
 --   SELECT p.title, jsonb_pretty(p.data->'sections') FROM playable p WHERE p.id='bohemian';
