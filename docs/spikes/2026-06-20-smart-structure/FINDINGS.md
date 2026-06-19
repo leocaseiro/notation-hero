@@ -3,7 +3,7 @@
 **Ticket:** [NH-200](https://leocaseiro.atlassian.net/browse/NH-200) (builds on [NH-196](https://leocaseiro.atlassian.net/browse/NH-196); feeds [NH-137](https://leocaseiro.atlassian.net/browse/NH-137))
 **Date:** 2026-06-20
 **Question:** For songs with **no section markers**, can we infer (1) a **key-change (modulation) timeline** and (2) **section/part boundaries** with rule-based methods — and how accurate is it?
-**Answer:** **Key-change timeline — yes, ship it.** Windowed Krumhansl-Schmuckler + hysteresis cleanly separates single-key from modulating songs (all corpus checks pass). **Section approximation — partial.** Rule-based gives a rough first guess (best F1 ≈ 67–70%, precision often < 50%); good enough for *candidate* cut-points with a human in the loop, not for unattended labelling. Section *naming* (verse/chorus): pitch/repetition alone scored 14–30%, but adding an **energy/texture** signal (loudness + density + register) lifted it to **50–71%** (S14) — algorithmically, no ML.
+**Answer:** **Key-change timeline — yes, ship it.** Windowed Krumhansl-Schmuckler + hysteresis cleanly separates single-key from modulating songs (all corpus checks pass). **Section approximation — partial.** Rule-based gives a rough first guess (best F1 ≈ 67–70%, precision often < 50%); good enough for *candidate* cut-points with a human in the loop, not for unattended labelling. Section *naming* (verse/chorus): pitch/repetition alone scored 14–30%; adding **energy/texture** (loudness + density + register) then **position priors** lifted it to **60–86%** (S14) — algorithmically, no ML.
 
 ## How to run
 
@@ -21,8 +21,10 @@ node validate.mjs                            # accuracy vs ground-truth markers 
 bytes ─► AlphaTab Score ─► per-bar duration-weighted 12-bin pitch-class histograms (realValue%12, skip percussion)
    │                         │
    │                         ├─► keychanges: sliding window (8 bars) ► Krumhansl detectKey ► hysteresis (minSeg 4) ► keyChanges[]
-   │                         └─► sections:  (a) GP repeats  (b) chord-root change-points  (c) self-similarity + Foote novelty ► vote-merge ► labels
+   │                         ├─► boundaries: 5 voters (GP repeats · detected-chord change-pts · explicit-chord change-pts · Foote novelty · time-lag structure features) ► vote-merge
+   │                         └─► naming: energy/texture (loudness+density+register) split + position/length priors ► intro/verse/chorus/bridge/outro
    └─► masterBars: section markers (ground truth), time-sig, tempo, repeat flags
+   └─► per-bar energy (DynamicValue + onset density + active-track count) + explicit chord diagrams (Beat.chordId)
 ```
 
 Reuses NH-196's proven `detectKey` (Krumhansl profiles + Pearson) and histogram, reproduced in `lib.mjs` (NH-196 spike lives on branch `alphatab-tonal-spike`).
@@ -46,7 +48,8 @@ Reuses NH-196's proven `detectKey` (Krumhansl profiles + Pearson) and histogram,
 | S11 | ❌ **The "Bohemian Rhapsody with sections.gp" file is not bar-aligned ground truth.** It carries only **3 annotation texts** ("gtrs enter", "tempo 144", "tempo 207"), not intro/verse/chorus markers, and a **different bar count** (139 vs 122 — verified manually via the loader; `validate.mjs` does not load this file). Excluded from scored accuracy; the marker-less Bohemian is reported qualitatively only. |
 | S12 | ✅ **Time-signature + tempo + repeat timelines come free** from master bars (confirms NH-196 F10/F16). Happiness is a Warm Gun has ~18 meter changes; Bohemian ~16. These are read-not-inferred and need no spike. |
 | S13 | 🔧 **Post-review hardening — numbers re-measured.** A code-review pass fixed three real bugs: boundary-cluster center *drift* (clusters could exceed the ±tol contract and inflate vote counts), *early-boundary suppression* in the peak-picker (a section change in bars 2–4 was silently dropped), and *chordless-window novelty* read as maximum change. The **scored** accuracy was unchanged after the fixes (the two scored songs have no early/short sections and no drift-affected clusters); the **marker-less qualitative** boundaries shifted by ≈1 bar (and Africa gained an early boundary). All numbers in this document are the post-fix re-measurement. |
-| S14 | ⚠️→✅ **Energy/texture roughly doubles naming — 14–30% → 50–71%, no ML.** Pitch/repetition alone can't split verse from chorus (same key, same notes): repetition-only naming scored 30% (I'm Yours) / 14% (Yellow). Adding a per-segment **energy** signal (note loudness `DynamicValue` + onset density + active-track count) plus **register**, and splitting recurring segments at their mean intensity (loud/high = chorus, quiet/low = verse), lifts it to **50% / 71%** (measured on true boundaries). This is the direct answer to "can we name parts algorithmically?" — **yes, much better with energy**, confirming research roadmap N1. Remaining misses are recurring intros/outros (position priors not yet enforced over the energy split) and through-composed songs. |
+| S14 | ✅ **Naming reaches 60–86% algorithmically (no ML) — energy + position priors.** Pitch/repetition alone can't split verse from chorus (same key, same notes): 30% / 14%. Adding **energy** (loudness `DynamicValue` + onset density + active-track count + register), splitting recurring segments at mean intensity → 50% / 71%. Adding **position/length priors** (intro-first, outro-last, bridge-mid, over the energy split) → **60% (I'm Yours) / 86% (Yellow)**, on true boundaries. Confirms research roadmap N1+N4. Remaining misses: recurring intros/outros sharing a class, and through-composed songs. |
+| S15 | ⚖️ **Boundary voters — keep the additive wins, drop the replacements.** Five voters: repeats, detected-chords, **explicit-chords** (Yellow boundary recall 78→100% @±2), Foote novelty, **time-lag structure features** (I'm Yours merged F1 70→74; 100% precision @±2 alone). Each returns `[]` when its signal is absent, so it only ever adds. **Reverted (honest negatives):** explicit chords *replacing* detected (collapsed I'm Yours' uniform B–F#–G#m–E loop) and tonic-stability + vocal-presence naming cues (present in verse *and* chorus → non-discriminating → regressed Yellow 86→57%). |
 
 ## Measured accuracy
 
@@ -85,10 +88,16 @@ Marker-less section approximation (qualitative — no bar-aligned ground truth; 
 
 Section-role *naming* accuracy (rule-based, scored on the **true** boundaries so it isolates naming from boundary detection; 'Other' = interlude/instrumental, unscored):
 
-| Song | repetition-only | **+ energy/texture** | what energy fixed |
+Naming accuracy progression as the algorithmic signals were added (no ML), scored on true boundaries:
+
+| Song | repetition only | + energy/texture | + position priors |
 |---|---|---|---|
-| I'm Yours | 30% (3/10) | **50%** (5/10) | verses now split from choruses correctly |
-| Yellow | 14% (1/7) | **71%** (5/7) | intro + both verses + both choruses correct; only the 2 outros miss |
+| I'm Yours | 30% (3/10) | 50% (5/10) | **60%** (6/10) |
+| Yellow | 14% (1/7) | 71% (5/7) | **86%** (6/7) |
+
+Energy splits verse from chorus (loudness + density + register); position priors recover intro/outro that recur. Boundary detection also improved: I'm Yours merged F1 70→**74** (time-lag voter, 100% precision @±2 alone), Yellow boundary recall 78→**100%** @±2 (explicit-chord voter).
+
+**Reverted (honest negatives):** tonic-stability + vocal-presence naming bonuses (both present in verse *and* chorus → non-discriminating → regressed Yellow 86→57%); explicit chords *replacing* detected (collapsed I'm Yours' uniform chord loop). Kept explicit chords only as an additive boundary voter.
 
 ---
 
@@ -101,13 +110,14 @@ Section-role *naming* accuracy (rule-based, scored on the **true** boundaries so
 1. **Prefer file markers when present** (NH-196 F9). Most curated files in the corpus (I'm Yours, Yellow) already carry intro/verse/chorus markers — read them, don't infer.
 2. **When markers are absent, use `merged(all)` boundaries as rough cut-point candidates** (recall 73–78% @±2) feeding a *human-in-the-loop* picker (this is exactly what NH-137's song-slice picker needs — approximate bars a user nudges, not authoritative sections). Do **not** present them as authoritative labelled sections (precision is too low, ~28–67%).
 3. **Repeat structure is a free high-precision signal** — always fold it in when the file has it.
-4. **Naming verse/chorus works algorithmically — energy lifted it to 50–71% (S14), no ML.** The shipped namer splits recurring sections by **energy/texture** (loudness + onset density + active-track count + register). To push higher *without ML*, add the rest of the research roadmap's signals: explicit chord diagrams, instrumentation / track names (a track named "Vocals" entering = chorus), and position/length priors enforced over the energy split (fixes the recurring intro/outro misses). See `RESEARCH-algorithmic-roadmap.md` for the prioritised list and realistic ceiling (~65–80% on pop/rock). An LLM would only be worth it to chase the last few points past that algorithmic ceiling — not needed for the near-term.
+4. **Naming verse/chorus works algorithmically — 60–86% (S14), no ML.** The shipped namer splits recurring sections by **energy/texture** (loudness + density + active-track count + register) and applies **position/length priors** (intro/outro/bridge). The research roadmap's top no-ML upgrades (N1 energy, N4 position priors, B1 time-lag boundaries, explicit-chord voter) are all **implemented and measured** here. Further gains are diminishing (more corpus + per-genre tuning, not new signals). Tonic-stability and vocal-presence were tried and reverted (S15). An LLM would only be worth chasing the last points past the ~65–80% pop/rock ceiling — not needed near-term. See `RESEARCH-algorithmic-roadmap.md`.
 
 ### Honest limitations
 
 - Two clean-ground-truth songs only (I'm Yours, Yellow) — small sample; treat F1 figures as indicative, not definitive.
 - Parameters (window 8, minSeg 4, kernel ±4, novelty threshold mean+0.5σ, label sim 0.9) are sensible defaults, **not** tuned per song — deliberately, to avoid overfitting to two files.
-- Boundary detection ≠ part naming. This spike finds *where* sections change, not *what* they are.
+- Naming (60–86%) is measured on **true** boundaries — it isolates the namer from boundary error. End-to-end (inferred boundaries + naming) is lower; the demo runs end-to-end.
+- Position/length priors assume conventional pop/rock form; they help verse/chorus songs and hurt through-composed material (Bohemian Rhapsody).
 - **Read recall with precision, never alone.** A "predict every bar" detector would score 100% recall; the F1 and precision columns are what keep the read honest, so quote them together.
 - Per-bar features assume each track's bar list is index-aligned with the song's master bars (true for all six corpus files). A track that enters late or ends early would contribute empty (zero) bars for its missing tail, slightly distorting the self-similarity and key windows there.
 

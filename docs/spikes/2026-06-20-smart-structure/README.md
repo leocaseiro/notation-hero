@@ -34,7 +34,7 @@ Drop any file to analyse it; tune `window`/`minSeg` and press Re-run. Optionally
 |------|------|
 | `lib.mjs` | shared core: score loading, per-bar pitch-class histograms, `detectKey` (Krumhansl-Schmuckler, from NH-196), structure readers (markers / time-sig / tempo / repeats) |
 | `keychanges.mjs` | R1 — sliding-window key detection + hysteresis collapse → `keyChanges[]` |
-| `sections.mjs` | R2 — (a) GP repeats, (b) chord-root change-points, (c) self-similarity + Foote checkerboard novelty; vote-merge + A/B/C labelling |
+| `sections.mjs` | R2 — boundaries from 5 voters (GP repeats · detected-chord change-pts · explicit-chord change-pts · Foote novelty · time-lag structure features) + vote-merge; energy/texture + position-prior role naming (intro/verse/chorus/bridge/outro, ~60–86% vs markers) |
 | `validate.mjs` | R3 — precision/recall/F1 vs file markers (±1/±2 bars) + key-change timeline checks |
 | `demo.html` | browser demo — AlphaTab renders the score + detected key-span timeline + section boundaries overlay |
 | `FINDINGS.md` | R3/R4 — measured numbers, failure modes, recommendation |
