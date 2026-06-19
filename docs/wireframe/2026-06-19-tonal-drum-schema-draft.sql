@@ -78,6 +78,7 @@ CREATE TABLE playable (
   id             text PRIMARY KEY,
   kind           text NOT NULL,
   title          text NOT NULL,
+  description    text,                              -- one-liner under the title (universal: song/part/lesson/pattern); ≤255 via CHECK (supersedes per-lesson/step data.description)
   parent_id      text REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,    -- R16
   notation_id    text REFERENCES notation(id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,   -- R16
   start_bar      int,
@@ -120,6 +121,7 @@ CREATE TABLE playable (
   CONSTRAINT p_origin      CHECK (origin IN ('curated','user-upload')),
   CONSTRAINT p_visibility  CHECK (visibility IN ('public','private','shared')),
   CONSTRAINT p_author_type CHECK (author_type IS NULL OR author_type IN ('artist','teacher','user')),
+  CONSTRAINT p_description_len CHECK (description IS NULL OR char_length(description) <= 255),
   CONSTRAINT p_curated_public CHECK (origin <> 'curated' OR visibility = 'public'),  -- curated content is always public
   CONSTRAINT p_level   CHECK (level IS NULL OR level BETWEEN 0 AND 10),
   CONSTRAINT p_no_self CHECK (parent_id IS NULL OR parent_id <> id),

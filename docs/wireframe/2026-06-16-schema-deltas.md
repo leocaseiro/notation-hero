@@ -17,34 +17,39 @@ The round-by-round log below is **historical**. After the locked Playable model 
 2026-06-19 tonal/drum schema pass, here is the **current truth** for every SD. Resolutions point to
 `2026-06-19-tonal-drum-schema-draft.sql` + `2026-06-19-tonal-drum-extensible-schema-spec.md`.
 
-| SD | Status | Current resolution |
-|----|--------|--------------------|
-| SD-1 | ✅ resolved | `lesson_type` **dropped** (C5); fills = `pattern_kind='fill'`; lesson kind derived from its step patterns. The Round-4 "add `lesson_type='fill'`" is **moot** (no `lesson_type` at all). |
-| SD-2 | ✅ no DDL | breakdown found by reverse query (`parent_id` for parts / `step` for lessons). |
-| SD-3 | ✅ resolved | owner = `created_by` (R1); `visibility` (public｜private｜shared) column added. |
-| SD-4 | ✅ no change | per-user score/history → DynamoDB, joined client-side. |
-| SD-5 | ✅ resolved | hasParts/hasSteps derived (no column). |
-| SD-6 | ✅ resolved | numbered pagination (OFFSET+COUNT). |
-| SD-7 | ✅ resolved | `level BETWEEN 0 AND 10` (0 = Debut). |
-| SD-8 | ✅ evolved | `genre`/`family` are now `text[]` collections (overlap filter) — supersedes "columns stay single" for those two. |
-| SD-9 | ✅ evolved | `musical_key` moved to `tonal_profile` (D2); "hidden for drums" = no `tonal_profile` row. |
-| SD-10 | 🔵 deferred | sort direction (asc/desc) — v1.3 UI. |
-| SD-11 | 🔵 deferred | flag filters (audio/video/parts) — v1.3. |
-| SD-12 | 🔵 deferred | score filter/sort → per-user (DynamoDB), with the scores build. |
-| SD-13 | ✅ evolved | `artist` → `author text[]` + `author_type`; filterable (GIN). |
-| SD-14 | ✅ resolved | patterns are first-class playables; "Used in" = reverse `playable_link`; browse = a read view. |
-| SD-15 | 🟡 partial | `drum_profile.kit_pieces[]` (ingest-derived) + `data.sections[].voices` cover search/display; deep note/voice_map decomposition deferred (notes stay in AlphaTab — Thin model). |
-| SD-16 | ✅ resolved | repeated parts = `data.sections[].ranges[[s,e],…]` jsonb. |
-| SD-17 | 🔵 small/deferred | step description → `step.data.description` (not yet added). |
-| SD-18 | ✅ no change | items w/o steps/sections — UI/validation only. |
-| SD-19 | ✅ resolved | lesson description → `data.description` (jsonb). |
-| SD-20 | 🔵 deferred | per-part/step score → per-user (DynamoDB). |
-| SD-21 | 🔵 deferred | completed flag + reset → per-user (DynamoDB). |
-| SD-22 | 🔵 open (Group C) | load-and-go upload — pairs with `notation.upload_status` (seam added). |
-| SD-23 | 🔵 open (Group C) | GP file = song or pattern — upload must classify. |
-| Lesson↔Step↔Pattern model | ✅ resolved | locked Playable model (umbrella + `step` junction + parts first-class + `lesson_type` dropped) settled the tangle; GP-file role (SD-23) remains for Group C. |
+| SD                        | Status            | Current resolution                                                                                                                                                                       |
+| ------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SD-1                      | ✅ resolved        | `lesson_type` **dropped** (C5); fills = `pattern_kind='fill'`; lesson kind derived from its step patterns. The Round-4 "add `lesson_type='fill'`" is **moot** (no `lesson_type` at all). |
+| SD-2                      | ✅ no DDL          | breakdown found by reverse query (`parent_id` for parts / `step` for lessons).                                                                                                           |
+| SD-3                      | ✅ resolved        | owner = `created_by` (R1); `visibility` (public｜private｜shared) column added.                                                                                                            |
+| SD-4                      | ✅ no change       | per-user score/history → DynamoDB, joined client-side.                                                                                                                                   |
+| SD-5                      | ✅ resolved        | hasParts/hasSteps derived (no column).                                                                                                                                                   |
+| SD-6                      | ✅ resolved        | numbered pagination (OFFSET+COUNT).                                                                                                                                                      |
+| SD-7                      | ✅ resolved        | `level BETWEEN 0 AND 10` (0 = Debut).                                                                                                                                                    |
+| SD-8                      | ✅ evolved         | `genre`/`family` are now `text[]` collections (overlap filter) — supersedes "columns stay single" for those two.                                                                         |
+| SD-9                      | ✅ evolved         | `musical_key` moved to `tonal_profile` (D2); "hidden for drums" = no `tonal_profile` row.                                                                                                |
+| SD-10                     | 🔵 deferred       | sort direction (asc/desc) — v1.3 UI.                                                                                                                                                     |
+| SD-11                     | 🔵 deferred       | flag filters (audio/video/parts) — v1.3.                                                                                                                                                 |
+| SD-12                     | 🔵 deferred       | score filter/sort → per-user (DynamoDB), with the scores build.                                                                                                                          |
+| SD-13                     | ✅ evolved         | `artist` → `author text[]` + `author_type`; filterable (GIN).                                                                                                                            |
+| SD-14                     | ✅ resolved        | patterns are first-class playables; "Used in" = reverse `playable_link`; browse = a read view.                                                                                           |
+| SD-15                     | 🟡 partial        | `drum_profile.kit_pieces[]` (ingest-derived) + `data.sections[].voices` cover search/display; deep note/voice_map decomposition deferred (notes stay in AlphaTab — Thin model).          |
+| SD-16                     | ✅ resolved        | repeated parts = `data.sections[].ranges[[s,e],…]` jsonb.                                                                                                                                |
+| SD-17                     | 🔵 small/deferred | step description → `step.data.description` (not yet added).                                                                                                                              |
+| SD-18                     | ✅ no change       | items w/o steps/sections — UI/validation only.                                                                                                                                           |
+| SD-19                     | ✅ resolved        | lesson description → `data.description` (jsonb).                                                                                                                                         |
+| SD-20                     | 🔵 deferred       | per-part/step score → per-user (DynamoDB).                                                                                                                                               |
+| SD-21                     | 🔵 deferred       | completed flag + reset → per-user (DynamoDB).                                                                                                                                            |
+| SD-22                     | 🔵 open (Group C) | load-and-go upload — pairs with `notation.upload_status` (seam added).                                                                                                                   |
+| SD-23                     | 🔵 open (Group C) | GP file = song or pattern — upload must classify.                                                                                                                                        |
+| Lesson↔Step↔Pattern model | ✅ resolved        | locked Playable model (umbrella + `step` junction + parts first-class + `lesson_type` dropped) settled the tangle; GP-file role (SD-23) remains for Group C.                             |
 
 **Still open:** SD-10, SD-11, SD-12, SD-17, SD-20, SD-21 (mostly per-user/DynamoDB or minor UI) · **Group C:** SD-22, SD-23 · **partial:** SD-15. Everything else is resolved.
+
+### 🆕 New deltas (2026-06-19 pm)
+
+- **`description` (universal field) — ✅ added.** Every playable gets `description text` (≤255 via CHECK) — a one-liner under the title. Supersedes the per-lesson/step `data.description` idea (SD-17/SD-19); applied to the draft SQL.
+- **SD-24 — Song slice as a standalone part (NH-137).** Spike: `agent-a6595b9997a45d9bc/docs/spikes/2026-06-19-nh137-song-slice/FINDINGS.md`. A slice (bars A–B) = a **`kind='part'`** playable (`parent_id`=song + `start_bar`/`end_bar`=range — **existing** fields) whose notation is **alphaTex** (`notation.notation_alphatex`; spike Approach 3 — ~1 KB gzipped, smallest, standalone, preserves tempo/time-sig/tuning/chord-diagrams/sync-points). **New (jsonb, no columns):** `data.slice = { audioRef (S3 key of the FULL-song audio), msOffsetBaseline, rebasedSyncPoints[] }` — full-song audio stored once + referenced (not split, not embedded per-slice). **Open (OQ-1..6):** audio-storage shape · A0 read-only "play a part" as a separate cheaper feature · alphaTex fidelity on a broader corpus · AlphaTab version pin (1.8.3 vs the site's 1.7.0-alpha) · repeats/alternate-endings crossing the cut. **Not Group D** — its own NH-137 thread.
 
 ---
 
@@ -139,14 +144,14 @@ already exists; it was just missing from `CatalogueFilter`. Expose it **only whe
 no column change. A future `scale`/`mode` filter can join it for piano content (§13 "controlled list with
 piano content").
 
-## 🟢 SD-10 — Sort **direction** (ASC / DESC) — `$10`
+## 🔵 SD-10 — Sort **direction** (ASC / DESC) — `$10`  *(deferred — v1.3 UI, not built; corrected from 🟢 2026-06-19)*
 
 - **What the UI needs:** a direction toggle next to Sort. *Relevance* and *Curated* have a natural order
 (relevance = best-match DESC; curated = `sort_order` ASC) → no toggle. *Level / BPM / Newest / A–Z* get an
 ASC/DESC switch.
 - **Filter-contract change:** add `sortDir?: 'asc' | 'desc'` (default per field). No column change. **Build in v1.3.**
 
-## 🟢 SD-11 — Filter by **flags** (has audio / video / parts-or-steps) — `$11`
+## 🔵 SD-11 — Filter by **flags** (has audio / video / parts-or-steps) — `$11`  *(deferred — v1.3; corrected from 🟢 2026-06-19)*
 
 - **What the UI needs:** toggle filters matching the row flags. `has_audio` / `has_video` are **columns** →
 `has_audio = true`. "Has parts/steps" = derived (SD-5) → `EXISTS(...)` / `jsonb_array_length(...) > 0`.
