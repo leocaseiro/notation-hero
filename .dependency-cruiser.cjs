@@ -73,7 +73,6 @@ module.exports = {
   ],
   options: {
     tsPreCompilationDeps: true,
-    tsConfig: { fileName: "server/tsconfig.json" },
     doNotFollow: { path: "node_modules" },
     exclude: { path: "(^|/)dist/" },
     enhancedResolveOptions: {

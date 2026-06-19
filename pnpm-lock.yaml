@@ -127,11 +127,11 @@ importers:
   infra:
     dependencies:
       "@pulumi/aws":
-        specifier: ^7.32.0
-        version: 7.34.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@5.9.3)
+        specifier: ^7.34.0
+        version: 7.34.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@6.0.3)
       "@pulumi/pulumi":
-        specifier: ^3.246.0
-        version: 3.247.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@5.9.3)
+        specifier: ^3.247.0
+        version: 3.247.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@6.0.3)
 
   server:
     dependencies:
@@ -217,6 +217,8 @@ importers:
       vitest:
         specifier: ^4.1.0
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@24.13.2)(@vitest/coverage-v8@4.1.9)(jsdom@29.1.1)(vite@8.0.16(@types/node@24.13.2)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
+
+  shared: {}
 
 packages:
   "@adobe/css-tools@4.5.0":
@@ -9841,16 +9843,16 @@ snapshots:
 
   "@protobufjs/utf8@1.1.1": {}
 
-  "@pulumi/aws@7.34.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@5.9.3)":
+  "@pulumi/aws@7.34.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@6.0.3)":
     dependencies:
-      "@pulumi/pulumi": 3.247.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@5.9.3)
+      "@pulumi/pulumi": 3.247.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@6.0.3)
       mime: 2.6.0
     transitivePeerDependencies:
       - supports-color
       - ts-node
       - typescript
 
-  "@pulumi/pulumi@3.247.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@5.9.3)":
+  "@pulumi/pulumi@3.247.0(ts-node@10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3))(typescript@6.0.3)":
     dependencies:
       "@grpc/grpc-js": 1.14.4
       "@logdna/tail-file": 2.2.0
@@ -9881,7 +9883,7 @@ snapshots:
       upath: 1.2.0
     optionalDependencies:
       ts-node: 10.9.2(@swc/core@1.15.41)(@types/node@24.13.2)(typescript@6.0.3)
-      typescript: 5.9.3
+      typescript: 6.0.3
     transitivePeerDependencies:
       - supports-color
 
