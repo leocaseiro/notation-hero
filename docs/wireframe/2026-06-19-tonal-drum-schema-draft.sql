@@ -314,6 +314,35 @@ INSERT INTO playable_link (from_id, to_id, relation) VALUES
  ('let-it-be', 'progression-axis-c', 'uses'),
  ('im-yours',  'progression-axis-c', 'uses');
 
+-- ── LESSON + COMPOSITE GROOVE + STEPS (shows the `step` relationship) ────────
+-- A lesson's ordered exercises AND a composite pattern's own building blocks both
+-- live in ONE table: `step` (parent_id -> child_id + order + bpm ladder). No separate
+-- "beat_step" type — a composite beat is just a pattern that HAS steps.
+INSERT INTO notation (id, format, notation_alphatex) VALUES
+ ('n-groove-g', 'alphatex', ':8 (x.42 x.36) x (x.42 x.38) x');
+
+INSERT INTO playable (id, kind, title, notation_id, level, instruments, pattern_kind, family, genre, origin, status, listable) VALUES
+ ('groove-g', 'pattern', 'Rock Groove (full)', 'n-groove-g', 3, '{drums}', 'beat', 'Rock', 'rock', 'curated', 'published', true);
+
+INSERT INTO playable (id, kind, title, level, instruments, skill, genre, origin, status, listable, data) VALUES
+ ('rock-lesson', 'lesson', 'Play a Rock Song', 2, '{drums}', '{timing,coordination}', 'rock', 'curated', 'published', true, '{"passMark":80}');
+
+INSERT INTO drum_profile (playable_id, beats, kit_pieces) VALUES
+ ('groove-g', '{Rock}', '{hi-hat,kick,snare}');
+
+INSERT INTO step (parent_id, child_id, sort_order, start_bpm, goal_bpm) VALUES
+ -- the LESSON's ordered exercises (a step may point at a leaf pattern OR a composite)
+ ('rock-lesson', 'paradiddle', 1, 60, 110),
+ ('rock-lesson', 'rock8-kick', 2, 60, 120),
+ ('rock-lesson', 'groove-g',   3, 70, 124),
+ -- the COMPOSITE groove is itself built from steps (same table)
+ ('groove-g',    'hihat-8',    1, 70, 124),
+ ('groove-g',    'rock8-kick', 2, 70, 124);
+
+-- a SONG uses a BEAT  → "songs with this beat" (same m:n shape as songs↔progressions)
+INSERT INTO playable_link (from_id, to_id, relation) VALUES
+ ('sna', 'groove-g', 'uses');
+
 -- ============================================================================
 -- POKE-AROUND QUERIES  (run in DBeaver / psql)
 -- ============================================================================
