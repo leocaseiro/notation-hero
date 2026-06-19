@@ -169,7 +169,7 @@ v1; an optional reference table can come later for DB-level integrity):
 |-------|-------------|----------------|
 | key | `'C major'`, `'G mixolydian'` | `Key`, `Mode` |
 | scale | `'minor pentatonic'`, `'blues'`, `'dorian'` | `Scale.names()` |
-| chord | concrete symbol `'Cmaj7'`, `'Am'` | `Chord` |
+| chord | tonaljs symbol `'Cmaj7'`, `'Am'`, `'Cmaj7/B'` | `Chord.get(sym)` → `{tonic, type, bass}` |
 | progression (concrete) | `'C-G-Am-F'` | derived from chords + key |
 | progression (roman) | `'I-V-vi-IV'` | `Progression.toRomanNumerals(key, chords)` |
 | progression (family) | rotation-normalised roman — rotate to start at `I`; fallback: lexicographically-smallest rotation when no `I` is present | computed from roman |
@@ -177,6 +177,14 @@ v1; an optional reference table can come later for DB-level integrity):
 `Progression.fromRomanNumerals(key, roman)` lets us **derive concrete chords per key** from an
 abstract progression — so "store abstract + render per key" is viable without a hand-built theory
 engine (resolves the old CP-1 "abstract vs concrete" open question).
+
+**Structured values are derived, not stored decomposed (tonaljs round-trip).** Every facet string is
+a tonaljs *canonical form* that parses losslessly back to its components — `Key.majorKey('C')` ⇄
+`'C major'` (`{tonic:'C', type:'major'}`); `Chord.get('Cmaj7/B')` ⇄ `'Cmaj7/B'` (`{tonic:'C',
+type:'maj7', bass:'B'}`). So we store the **flat string** (GIN-searchable) and **derive `{tonic, type,
+bass}` on read** — no fidelity lost, no decomposed columns to maintain. If component-level filtering
+becomes a real need ("any maj7 chord", "any minor key"), promote a derived facet (`chord_types[]`,
+`key_modes[]`) — the same born-in-jsonb-then-promote rule as any other field.
 
 ### 3.3 Derivation pipeline (ingest)
 
@@ -365,7 +373,7 @@ faceted search.**
 6. **Make** all cross-row FKs `DEFERRABLE INITIALLY IMMEDIATE` (R16).
 7. **Document** `created_by` = Cognito `sub` (R1: backfill curated rows w/ admin sub; PII → omit from public DTOs).
 8. **Keep** provenance column name `origin` (R2 — rename allowed); ⚠️ update ADR R2 + docs + Jira to match.
-9. **Polish (2026-06-19, DBeaver review):** `genre`/`family` → `text[]` (collections; array-overlap filter like `tags`); `artist` → `author` + `author_type` (`artist｜teacher｜user` — display attribution, **distinct from `created_by`** ownership); audit columns (`created_at/updated_at/created_by/updated_by`) standardized on **every** table.
+9. **Polish (2026-06-19, DBeaver review):** `genre`/`family` → `text[]` (collections; array-overlap filter like `tags`); `artist` → `author text[]` + `author_type` (`artist｜teacher｜user`; **multi-artist** — e.g. Queen + David Bowie; display attribution, **distinct from `created_by`** ownership); audit columns (`created_at/updated_at/created_by/updated_by`) standardized on **every** table.
 10. **No change** to `bpm`, `time_signature_numerator/denominator`, `instruments[]`, `tags`, `skill`.
 
 ---

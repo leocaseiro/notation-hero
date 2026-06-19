@@ -87,7 +87,7 @@ CREATE TABLE playable (
 
   -- hot facets (universal; typed) ───────────────────────
   level          smallint,
-  author         text,                              -- DISPLAY attribution: performer/teacher/uploader name (NOT created_by, which is ownership)
+  author         text[],                            -- DISPLAY attribution(s): performer/teacher/uploader name(s) — a collection (a song may have several artists, e.g. Queen + David Bowie). NOT created_by (ownership).
   author_type    text,                              -- 'artist' | 'teacher' | 'user'
   bpm            int,                                -- headline beats-per-minute (full timeline in data.sections)
   time_signature_numerator   smallint,              -- headline meter numerator (e.g. 4 in 4/4)
@@ -208,6 +208,7 @@ CREATE INDEX playable_browse      ON playable (kind, status, level, bpm) WHERE l
 CREATE INDEX playable_instruments ON playable USING gin (instruments);
 CREATE INDEX playable_genre       ON playable USING gin (genre);
 CREATE INDEX playable_family      ON playable USING gin (family);
+CREATE INDEX playable_author      ON playable USING gin (author);
 CREATE INDEX step_by_child        ON step (child_id);
 CREATE INDEX playable_link_to     ON playable_link (to_id);
 
@@ -254,7 +255,7 @@ INSERT INTO playable (id, kind, title, parent_id, notation_id, start_bar, end_ba
                       listable, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments,
                       origin, status, license, data) VALUES
  ('sna', 'song', 'Seven Nation Army', NULL, 'n-sna-gp', NULL, NULL, NULL,
-   true, 2, 'The White Stripes', 'artist', 124, 4, 4, '{rock}', '{drums,guitar}', 'curated', 'published', 'royalty-free',
+   true, 2, '{"The White Stripes"}', 'artist', 124, 4, 4, '{rock}', '{drums,guitar}', 'curated', 'published', 'royalty-free',
    '{"album":"Elephant","year":2003,"sections":[{"label":"Intro","startBar":1,"endBar":8},{"label":"Verse","startBar":9,"endBar":24},{"label":"Chorus","startBar":25,"endBar":40}]}'),
  ('sna-intro',  'part', 'Intro',  'sna', 'n-sna-gp', 1,  8,  1, false, NULL, NULL, NULL, 124, 4, 4, NULL, '{drums,guitar}', 'curated', 'published', NULL, NULL),
  ('sna-verse',  'part', 'Verse',  'sna', 'n-sna-gp', 9,  24, 2, false, NULL, NULL, NULL, 124, 4, 4, NULL, '{drums,guitar}', 'curated', 'published', NULL, NULL),
@@ -262,22 +263,22 @@ INSERT INTO playable (id, kind, title, parent_id, notation_id, start_bar, end_ba
 
 -- MORE DRUM SONGS (for the ONLY/OR/AND drum demo) -----------------------------
 INSERT INTO playable (id, kind, title, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, origin, status, license, data) VALUES
- ('rosanna',  'song', 'Rosanna (half-time shuffle)', 'n-rosanna', 8, 'Toto',       'artist', 86,  4, 4, '{rock}',  '{drums}', 'curated', 'published', 'royalty-free', NULL),
- ('sandman',  'song', 'Enter Sandman',               'n-sandman', 5, 'Metallica',  'artist', 123, 4, 4, '{metal}', '{drums}', 'curated', 'published', 'royalty-free', NULL),
- ('billie',   'song', 'Billie Jean',                 'n-billie',  3, 'M. Jackson', 'artist', 117, 4, 4, '{pop}',   '{drums}', 'curated', 'published', 'royalty-free', NULL);
+ ('rosanna',  'song', 'Rosanna (half-time shuffle)', 'n-rosanna', 8, '{Toto}',       'artist', 86,  4, 4, '{rock}',  '{drums}', 'curated', 'published', 'royalty-free', NULL),
+ ('sandman',  'song', 'Enter Sandman',               'n-sandman', 5, '{Metallica}',  'artist', 123, 4, 4, '{metal}', '{drums}', 'curated', 'published', 'royalty-free', NULL),
+ ('billie',   'song', 'Billie Jean',                 'n-billie',  3, '{"M. Jackson"}', 'artist', 117, 4, 4, '{pop}',   '{drums}', 'curated', 'published', 'royalty-free', NULL);
 
 -- PITCHED SONGS (get a tonal_profile; NO drum_profile) ------------------------
 INSERT INTO playable (id, kind, title, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, origin, status, license, data) VALUES
- ('let-it-be', 'song', 'Let It Be',  'n-let-it-be', 2, 'The Beatles',     'artist', 73,  4, 4, '{pop}',                  '{guitar,keys}', 'curated', 'published', 'royalty-free',
+ ('let-it-be', 'song', 'Let It Be',  'n-let-it-be', 2, '{"The Beatles"}',     'artist', 73,  4, 4, '{pop}',                  '{guitar,keys}', 'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":8,"key":"C major","progression":"I-V-vi-IV"},{"label":"Chorus","startBar":9,"endBar":16,"key":"C major","progression":"I-V-vi-IV"}]}'),
- ('im-yours',  'song', 'I''m Yours', 'n-im-yours',  2, 'Jason Mraz',      'artist', 151, 4, 4, '{pop,singer-songwriter}','{guitar}',      'curated', 'published', 'royalty-free',
+ ('im-yours',  'song', 'I''m Yours', 'n-im-yours',  2, '{"Jason Mraz"}',      'artist', 151, 4, 4, '{pop,singer-songwriter}','{guitar}',      'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":16,"key":"B major","progression":"I-V-vi-IV"}]}'),
- ('zombie',    'song', 'Zombie',     'n-zombie',    3, 'The Cranberries', 'artist', 84,  4, 4, '{rock}',                 '{guitar}',  'curated', 'published', 'royalty-free',
+ ('zombie',    'song', 'Zombie',     'n-zombie',    3, '{"The Cranberries"}', 'artist', 84,  4, 4, '{rock}',                 '{guitar}',  'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":8,"key":"G major","progression":"vi-IV-I-V"}]}'),
- ('creep',     'song', 'Creep',      'n-creep',     3, 'Radiohead',       'artist', 92,  4, 4, '{rock}',                 '{guitar}',      'curated', 'published', 'royalty-free',
+ ('creep',     'song', 'Creep',      'n-creep',     3, '{Radiohead}',       'artist', 92,  4, 4, '{rock}',                 '{guitar}',      'curated', 'published', 'royalty-free',
    '{"sections":[{"label":"Verse","startBar":1,"endBar":8,"key":"G major","progression":"I-III-IV-iv"}]}'),
  -- MULTI-KEY / MULTI-TEMPO / MULTI-METER (D6): headline + keys[] + per-section timeline
- ('bohemian',  'song', 'Bohemian Rhapsody', 'n-bohemian', 9, 'Queen',     'artist', 72,  4, 4, '{rock}',                 '{keys,guitar}', 'curated', 'published', 'royalty-free',
+ ('bohemian',  'song', 'Bohemian Rhapsody', 'n-bohemian', 9, '{Queen}',     'artist', 72,  4, 4, '{rock}',                 '{keys,guitar}', 'curated', 'published', 'royalty-free',
    '{"album":"A Night at the Opera","year":1975,"sections":[{"label":"Ballad","startBar":1,"endBar":48,"key":"Bb major","bpm":72,"timeSignature":"4/4"},{"label":"Opera","startBar":49,"endBar":80,"key":"A major","bpm":63,"timeSignature":"4/4"},{"label":"Rock","startBar":81,"endBar":110,"key":"Eb major","bpm":140,"timeSignature":"4/4"}]}');
 
 -- LEAF DRUM PATTERNS (reusable; get a drum_profile) ---------------------------
@@ -347,7 +348,7 @@ INSERT INTO playable (id, kind, title, notation_id, level, instruments, pattern_
 
 -- a teacher-authored lesson (shows author_type='teacher', distinct from a song's 'artist')
 INSERT INTO playable (id, kind, title, level, author, author_type, instruments, skill, genre, origin, status, listable, data) VALUES
- ('rock-lesson', 'lesson', 'Play a Rock Song', 2, 'NotationHero', 'teacher', '{drums}', '{timing,coordination}', '{rock}', 'curated', 'published', true, '{"passMark":80}');
+ ('rock-lesson', 'lesson', 'Play a Rock Song', 2, '{NotationHero}', 'teacher', '{drums}', '{timing,coordination}', '{rock}', 'curated', 'published', true, '{"passMark":80}');
 
 INSERT INTO drum_profile (playable_id, beats, kit_pieces) VALUES
  ('groove-g', '{Rock}', '{hi-hat,kick,snare}');
@@ -364,6 +365,14 @@ INSERT INTO step (parent_id, child_id, sort_order, start_bpm, goal_bpm) VALUES
 -- a SONG uses a BEAT  → "songs with this beat" (same m:n shape as songs↔progressions)
 INSERT INTO playable_link (from_id, to_id, relation) VALUES
  ('sna', 'groove-g', 'uses');
+
+-- ── MULTI-ARTIST example (a song can credit several artists) ─────────────────
+INSERT INTO notation (id, format, s3_key, bytes) VALUES
+ ('n-under-pressure', 'gp', 'catalogue/underpressure/source.gp', 45000);
+INSERT INTO playable (id, kind, title, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, origin, status, license) VALUES
+ ('under-pressure', 'song', 'Under Pressure', 'n-under-pressure', 4, '{Queen,"David Bowie"}', 'artist', 114, 4, 4, '{rock}', '{keys,guitar,bass}', 'curated', 'published', 'royalty-free');
+INSERT INTO tonal_profile (playable_id, musical_key, keys, chords) VALUES
+ ('under-pressure', 'D major', '{"D major"}', '{D,A,G}');
 
 -- ============================================================================
 -- POKE-AROUND QUERIES  (run in DBeaver / psql)
@@ -419,8 +428,10 @@ INSERT INTO playable_link (from_id, to_id, relation) VALUES
 --   SELECT s.sort_order, c.title FROM step s JOIN playable c ON c.id=s.child_id WHERE s.parent_id='progression-axis-c' ORDER BY s.sort_order;
 --   SELECT from_id AS song FROM playable_link WHERE to_id='progression-axis-c' AND relation='uses';
 
--- AUTHOR attribution (display) vs created_by (ownership)
+-- AUTHOR attribution (display, now a collection) vs created_by (ownership)
 --   SELECT title, author, author_type FROM playable WHERE author IS NOT NULL ORDER BY author_type, title;
+-- MULTI-ARTIST · songs crediting Queen (expect Bohemian Rhapsody + Under Pressure)
+--   SELECT title, author FROM playable WHERE author && ARRAY['Queen'];
 
 -- the per-section timeline (multi-key / tempo / meter)
 --   SELECT p.title, jsonb_pretty(p.data->'sections') FROM playable p WHERE p.id='bohemian';
