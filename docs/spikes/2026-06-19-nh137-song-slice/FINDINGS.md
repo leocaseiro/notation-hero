@@ -175,3 +175,13 @@ This confirms the recommended model works end-to-end with both embedded audio an
 - The rhythm-game **Score stays a separate item**, as today.
 
 **Bottom line:** persist `sourcePlayableId + barStart + barEnd` (+ shared media ref on the source). No new per-slice S3 blob, no per-slice notation row.
+
+## Edge cases — songs that change tempo / meter / key (no new spike needed)
+
+Tested on `Bohemian Rhapsody.gp` (Queen) and `Happiness is a Warm Gun.gp` (Beatles) — both change meter, tempo, and key repeatedly.
+- **Time-signature changes:** fully captured as a timeline (Bohemian: `4/4→2/4→5/4→…→12/8→6/8→12/8→9/8→4/4`; Happiness adds `9/8/10/8` etc.). They **survive slicing** — slicing Happiness bars 18–26 (spanning `12/8→9/8→10/8`) kept every `\ts` in the alphaTex.
+- **Tempo changes:** captured when the file encodes them (Happiness: `70→85→70→50→70 bpm`). They **survive slicing** (mid-slice `\tempo 70→85→70` preserved; the initial tempo is carry-forwarded onto bar A).
+- **Key changes (modulation):** the only genuine frontier. Whole-song/per-track detection returns the **dominant** key (Bohemian → A#/Bb major ~0.9) and blurs the modulations. This is the windowed `keyChanges[]` work already identified in the **NH-196** design (F15) — build-and-tune, not a new spike. Slicing itself is key-agnostic (a slice just carries its notes), so a slice spanning a key change is fine.
+- **Still verify at NH-137 build time:** repeats / alternate endings crossing a slice edge (OQ-6) — Bohemian Rhapsody is a good stress test.
+
+**Verdict:** both edge cases fall within the existing two spikes' designs. No new spike — fold windowed key detection into the NH-196 analyzer build, and test repeats-across-cut during the NH-137 build.
