@@ -10,7 +10,7 @@
 //
 // Usage: node sections.mjs "<path to .gp>"
 import { Chord, Note } from 'tonal';
-import { loadScore, meta, perBarHistograms, perBarChordLabels, normalize, cosine } from './lib.mjs';
+import { loadScore, meta, perBarHistograms, perBarChordLabels, perBarEnergy, normalize, cosine } from './lib.mjs';
 
 export const KERNEL_H = 4; // Foote checkerboard half-width (bars)
 export const CHORD_WIN = 4; // method (b) comparison window (bars)
@@ -179,11 +179,32 @@ export function labelSegments(score, boundaries) {
   return segs;
 }
 
-// ---- rule-based role naming (intro/verse/chorus/bridge/outro) ----
-// Heuristic on top of the structural classes: the most-repeated class is usually
-// the chorus; the class that most often precedes it is the verse; a unique first/
-// last/late section is intro/outro/bridge. Honest: works for conventional song
-// forms, breaks on through-composed material — measured in validate.mjs.
+// ---- per-segment energy + register (research roadmap N1) ----
+// Choruses are louder / denser / higher than verses even in the same key — the
+// signal pitch-class similarity misses. attachEnergy adds a 0..1 `energy` and a
+// mean `register` (MIDI) to each segment from perBarEnergy. Call before nameSections.
+export function attachEnergy(score, segments) {
+  const { energy, register } = perBarEnergy(score);
+  return segments.map((s) => {
+    let e = 0;
+    let ec = 0;
+    let r = 0;
+    let rc = 0;
+    for (let i = s.barStart - 1; i <= s.barEnd - 1; i++) {
+      if (i < 0 || i >= energy.length) continue;
+      e += energy[i];
+      ec++;
+      if (register[i] > 0) { r += register[i]; rc++; }
+    }
+    return { ...s, energy: ec ? e / ec : 0, register: rc ? r / rc : 0 };
+  });
+}
+
+// ---- rule-based role naming, ENERGY-AWARE (intro/verse/chorus/bridge/outro) ----
+// Repetition says "this recurs"; energy says "this is the loud one" → it splits
+// verse from chorus where pitch content can't. A recurring segment with above-mean
+// intensity (energy + a register bonus) is a chorus; a recurring quieter one is a
+// verse; unique first/last/late segments are intro/outro/bridge.
 export function nameSections(segments) {
   const segs = segments.map((s) => ({ ...s }));
   const n = segs.length;
@@ -191,29 +212,20 @@ export function nameSections(segments) {
   const counts = {};
   segs.forEach((s) => { counts[s.label] = (counts[s.label] || 0) + 1; });
   const totalBars = segs[n - 1].barEnd;
-  // chorus = most-repeated class (must repeat at least twice)
-  let chorusClass = null;
-  let maxC = 1;
-  for (const [c, k] of Object.entries(counts)) if (k > maxC) { maxC = k; chorusClass = c; }
-  // verse = class that most often immediately precedes a chorus; else 2nd most-repeated
-  let verseClass = null;
-  if (chorusClass) {
-    const precede = {};
-    for (let i = 1; i < n; i++) if (segs[i].label === chorusClass && segs[i - 1].label !== chorusClass) precede[segs[i - 1].label] = (precede[segs[i - 1].label] || 0) + 1;
-    const top = Object.entries(precede).sort((a, b) => b[1] - a[1])[0];
-    if (top) verseClass = top[0];
-    if (!verseClass) {
-      const rep = Object.entries(counts).filter(([c]) => c !== chorusClass).sort((a, b) => b[1] - a[1]);
-      if (rep.length && rep[0][1] >= 2) verseClass = rep[0][0];
-    }
-  }
+  const energyOf = (s) => (Number.isFinite(s.energy) ? s.energy : 0);
+  const regs = segs.map((s) => s.register || 0).filter((x) => x > 0);
+  const rMin = Math.min(...regs, 0);
+  const rMax = Math.max(...regs, 1);
+  const intensity = (s) => energyOf(s) + 0.5 * (s.register > 0 ? (s.register - rMin) / (rMax - rMin || 1) : 0);
+  // split recurring segments into chorus (loud) vs verse (quiet) at their mean intensity
+  const recurring = segs.filter((s) => counts[s.label] >= 2);
+  const meanRecInt = recurring.length ? recurring.reduce((a, s) => a + intensity(s), 0) / recurring.length : Infinity;
   segs.forEach((s, i) => {
     const pos = s.barStart / totalBars;
-    if (s.label === chorusClass) s.role = 'Chorus';
-    else if (s.label === verseClass) s.role = 'Verse';
-    else if (i === 0 && counts[s.label] === 1) s.role = 'Intro';
-    else if (i === n - 1 && counts[s.label] === 1) s.role = 'Outro';
-    else if (counts[s.label] === 1 && pos > 0.55) s.role = 'Bridge';
+    if (counts[s.label] >= 2) s.role = intensity(s) >= meanRecInt ? 'Chorus' : 'Verse';
+    else if (i === 0) s.role = 'Intro';
+    else if (i === n - 1) s.role = 'Outro';
+    else if (pos > 0.55) s.role = 'Bridge';
     else s.role = 'Section';
   });
   // number repeated roles: Verse 1, Verse 2, Chorus 1 …
@@ -235,7 +247,7 @@ export function approximate(score, opts = {}) {
   const novelty = boundariesFromNovelty(score);
   const merged = mergeBoundaries({ repeats, chords, novelty }, opts.tol ?? 1);
   const mergedBars = merged.map((m) => m.bar);
-  const segments = nameSections(labelSegments(score, mergedBars));
+  const segments = nameSections(attachEnergy(score, labelSegments(score, mergedBars)));
   return { repeats, chords, novelty, merged, segments };
 }
 

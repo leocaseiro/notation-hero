@@ -124,6 +124,55 @@ export function perBarChordLabels(score) {
   return labels;
 }
 
+// Per-bar ENERGY/TEXTURE signal — the discriminator pitch-class content lacks.
+// Combines three always-available cues (research roadmap N1): note loudness
+// (DynamicValue enum 0=PPP..louder), onset density (notes/bar incl. percussion),
+// and active-track count (instrumentation entering = chorus). Returns a 0..1
+// normalized energy per bar plus the mean register (mean sounding MIDI of pitched
+// notes), which tends to be higher in choruses.
+export function perBarEnergy(score) {
+  const n = barCount(score);
+  const veloSum = new Array(n).fill(0);
+  const veloCnt = new Array(n).fill(0);
+  const density = new Array(n).fill(0);
+  const active = new Array(n).fill(0);
+  const regSum = new Array(n).fill(0);
+  const regCnt = new Array(n).fill(0);
+  for (const track of score.tracks) {
+    for (let bi = 0; bi < n; bi++) {
+      let trackActive = false;
+      for (const staff of track.staves) {
+        const bar = staff.bars[bi];
+        if (!bar) continue;
+        for (const voice of bar.voices) {
+          for (const beat of voice.beats) {
+            if (beat.isRest) continue;
+            for (const note of beat.notes) {
+              density[bi] += 1;
+              veloSum[bi] += Number.isFinite(note.dynamics) ? note.dynamics : 4; // default ~MF
+              veloCnt[bi] += 1;
+              trackActive = true;
+              if (!note.isPercussion && Number.isFinite(note.realValue)) {
+                regSum[bi] += note.realValue;
+                regCnt[bi] += 1;
+              }
+            }
+          }
+        }
+      }
+      if (trackActive) active[bi] += 1;
+    }
+  }
+  const veloAvg = veloSum.map((v, i) => (veloCnt[i] ? v / veloCnt[i] : 0));
+  const register = regSum.map((v, i) => (regCnt[i] ? v / regCnt[i] : 0));
+  const norm = (arr) => { const mx = Math.max(...arr, 1e-9); return arr.map((v) => v / mx); };
+  const nd = norm(density);
+  const na = norm(active);
+  const nv = norm(veloAvg);
+  const energy = nd.map((_, i) => (nd[i] + na[i] + nv[i]) / 3);
+  return { energy, register, density, active, velocity: veloAvg };
+}
+
 // Structure read straight from the file (markers, time sigs, tempo, repeats).
 export function readStructure(score) {
   const sections = [];
