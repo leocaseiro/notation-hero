@@ -152,6 +152,17 @@ its status. Keep it alive:
   (⏳→✅, 📄→🤖, clear the 🟥 gap). The register update travels with the PR so it lands
   atomically on merge.
 
+## Referencing files in messages — full paths, incl. the worktree dir
+
+When you reference a file in ANY message to leocaseiro (summaries, briefs, handoffs,
+findings, review walk-throughs), print the **full path including the worktree
+directory** — e.g.
+`/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/<branch>/docs/plans/foo.md`,
+or at minimum the worktree-rooted form `…/worktrees/<branch>/docs/plans/foo.md`.
+**Never a bare repo-relative path** (`docs/plans/foo.md`) — dozens of worktrees are
+active at once, so a relative path is ambiguous and sends the reader hunting. This
+applies to every agent whose output reaches leocaseiro, interactive or not.
+
 ## Working with leocaseiro
 
 leocaseiro is ADHD-diagnosed; reduce cognitive load and let him drive decisions.
