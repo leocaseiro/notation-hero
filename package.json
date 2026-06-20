@@ -20,7 +20,8 @@
     "check:core-purity": "bash tooling/check-core-purity-canary.sh",
     "knip": "knip",
     "syncpack": "syncpack lint",
-    "check:layout": "bash tooling/check-layout.sh"
+    "check:layout": "bash tooling/check-layout.sh",
+    "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",

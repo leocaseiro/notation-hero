@@ -170,11 +170,25 @@ jobs:
   ci-green:
     name: CI Green
     if: always()
-    needs: [quality, build, secret-scan, sast, deps-cve, pr-title, pr-checklist]
+    needs:
+      [
+        changes,
+        quality,
+        build,
+        secret-scan,
+        sast,
+        deps-cve,
+        pr-title,
+        pr-checklist,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
         run: |
+          # The gatekeeper `changes` job is checked explicitly: if it FAILS, the
+          # path-gated jobs (quality/build/sast/deps-cve) are SKIPPED, and skipped
+          # must not read as green. Treat a non-success `changes` result as fatal.
+          ch="${{ needs.changes.result }}"
           q="${{ needs.quality.result }}"
           b="${{ needs.build.result }}"
           s="${{ needs.secret-scan.result }}"
@@ -182,10 +196,14 @@ jobs:
           d="${{ needs.deps-cve.result }}"
           p="${{ needs.pr-title.result }}"
           c="${{ needs.pr-checklist.result }}"
-          echo "quality=$q build=$b secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
-          for r in "$q" "$b" "$s" "$a" "$d" "$p" "$c"; do
+          echo "changes=$ch quality=$q build=$b secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
+          if [[ "$ch" != "success" ]]; then
+            echo "::error::Gatekeeper job 'changes' did not succeed (result=$ch); path-gated jobs may have silently skipped"; exit 1
+          fi
+          for job in quality:$q build:$b secret-scan:$s sast:$a deps-cve:$d pr-title:$p pr-checklist:$c; do
+            name="${job%%:*}"; r="${job#*:}"
             if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
-              echo "::error::A required CI job did not pass"; exit 1
+              echo "::error::Required CI job '$name' did not pass (result=$r)"; exit 1
             fi
           done
           echo "All required jobs passed (skipped is OK)."
