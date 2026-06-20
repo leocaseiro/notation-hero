@@ -3,11 +3,12 @@
 # Core-purity canary (ARCH-GUARD-1) — proves the dependency-cruiser hexagon fence actually
 # REJECTS a forbidden core -> framework import, so the fence is verified, not assumed.
 #
-# #56's fence (.dependency-cruiser.cjs) is a DENY-LIST: separate rules forbid core/ -> @nestjs,
-# @aws-sdk, @pulumi, adapters, and modules. A deny-list can silently match zero edges and pass
-# green (e.g. if a `from`/`to` path regex breaks), so this canary guards against that: it plants
-# an ephemeral `server/src/core` file with a deliberate `import '@nestjs/common'`, runs depcruise
-# on it, and asserts depcruise exits non-zero AND names the `no-core-to-nestjs` rule. Then cleans up.
+# The fence (.dependency-cruiser.cjs) is a fail-CLOSED ALLOW-LIST (ARCH-GUARD-1): the single
+# `core-purity` rule permits core/ to import ONLY Node builtins + own-core + zod, and errors on
+# everything else by default. An allow-list can't silently pass green on a new/unlisted framework
+# import — but we still prove it actually fires: this canary plants an ephemeral `server/src/core`
+# file with a deliberate `import '@nestjs/common'`, runs depcruise on it, and asserts depcruise
+# exits non-zero AND names the `core-purity` rule. Then cleans up.
 #
 # Wired as a REQUIRED CI step in the `quality` job (so it gates merges via "CI Green"). Run
 # locally with `pnpm run check:core-purity`. The canary file is ephemeral — never committed,
@@ -31,11 +32,11 @@ printf "import '@nestjs/common';\nexport const canary = true;\n" > "$CANARY" || 
 OUT="$(pnpm exec depcruise "$CANARY" --config .dependency-cruiser.cjs 2>&1)"
 RC=$?
 
-if [ "$RC" -ne 0 ] && printf '%s' "$OUT" | grep -q 'no-core-to-nestjs'; then
+if [ "$RC" -ne 0 ] && printf '%s' "$OUT" | grep -q 'core-purity'; then
   echo "Core-purity canary OK — the fence rejects a deliberate core -> @nestjs/common import."
   exit 0
 fi
 
-printf '::error::Core-purity canary did NOT fire — the hexagon fence is not enforcing core purity (depcruise rc=%s, no no-core-to-nestjs violation).\n' "$RC" >&2
+printf '::error::Core-purity canary did NOT fire — the hexagon fence is not enforcing core purity (depcruise rc=%s, no core-purity violation).\n' "$RC" >&2
 printf '%s\n' "$OUT" >&2
 exit 1
