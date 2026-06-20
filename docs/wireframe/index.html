@@ -266,7 +266,8 @@ body.showall .fielddock{display:block}
 .tracklens .lenstune{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:3px 9px}
 .tracklens .lenshint{color:var(--faint);font-size:12px;margin-left:auto}
 .mediscope{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin:12px 0 6px}
-.techs{display:inline-flex;gap:5px;flex-wrap:wrap;margin-left:8px}
+.techs{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;margin-left:8px;min-width:96px}
+.technone{color:var(--faint);opacity:.5}
 .empty{text-align:center;color:var(--faint);padding:50px 20px}
 .empty .material-symbols-outlined{font-size:44px;display:block;margin-bottom:8px}
 @media(max-width:640px){
@@ -967,13 +968,16 @@ function sectionCell(it, startBar, trackId){
   const sec=secs.find(s=>s.startBar===startBar);
   return sec ? ((sec.tracks||[]).find(c=>c.track===trackId)||null) : null;
 }
-/* D-3 — the two inline columns (level + techniques) folded into a Song-structure row, scoped to the selected track */
-function diffCols(cell){
-  if(!cell) return `<span class="lvlpill" style="opacity:.4" title="this track is silent in this section">—</span><span class="techs"></span>`;
-  const techs = (cell.techniques&&cell.techniques.length)
-    ? `<span class="techs">${cell.techniques.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</span>`
-    : `<span class="techs"></span>`;
-  return `<span class="lvlpill ${cell.level===0?'debut':''}">${lvlText(cell.level)}</span>${techs}`;
+/* D-3 — the Techniques column (sits between title and bars), scoped to the selected track */
+function diffTechs(cell){
+  const t = (cell && cell.techniques) ? cell.techniques : [];
+  if(!t.length) return `<span class="techs"><span class="technone">—</span></span>`;
+  return `<span class="techs">${t.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</span>`;
+}
+/* D-3 — the Level column, scoped to the selected track ("—" = the track is silent here) */
+function diffLevel(cell){
+  if(!cell) return `<span class="lvlpill" style="opacity:.4" title="this track is silent in this section">—</span>`;
+  return `<span class="lvlpill ${cell.level===0?'debut':''}">${lvlText(cell.level)}</span>`;
 }
 /* D-2 — one media row with its 3-source provider badge */
 function mediaRow(m){
@@ -1042,17 +1046,18 @@ function renderSong(id){
     <div class="card">
       <h3><span class="material-symbols-outlined">segment</span> Song structure <span style="font-weight:400;color:var(--faint)">· levels &amp; techniques for <b style="color:var(--accent);font-weight:600">${esc(sel?(sel.name||cap(sel.instrument)):'—')}</b> (D-3)${parts.length?' · each part is its own playable':''}</span></h3>
       ${(()=>{ const occ=songOccurrences(it.id); return occ.length
-        ? `<div class="stephead"><span style="flex:1">Part · section</span><span>Bars</span><span>Level · tech</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`
-          + occ.map(o=>{ const p=o.part; return `<div class="stepwrap"><div class="step">
+        ? `<div class="stephead"><span style="flex:1">Part · section</span><span style="min-width:96px">Techniques</span><span>Bars</span><span style="width:48px">Level</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`
+          + occ.map(o=>{ const p=o.part; const cell=sectionCell(it, o.start, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
           <span class="material-symbols-outlined" style="color:var(--accent)">play_circle</span>
           <div class="si" data-nav="#/part/${p.id}"><b>${esc(p.title)}${o.repTotal>1?` <span style="color:var(--faint);font-weight:400">(${o.rep} of ${o.repTotal})</span>`:''}</b><small style="color:var(--faint);display:block">${descOf(p)?esc(descOf(p)):'kind=part · parent '+esc(it.title)}</small></div>
+          ${diffTechs(cell)}
           <span class="bars">bars ${o.start}–${o.end}</span>
-          ${diffCols(sectionCell(it, o.start, sel?sel.id:null))}
+          ${diffLevel(cell)}
           ${donut(p.best)}
           <button class="play" title="Play this part" data-nav="#/play/${p.id}"><span class="material-symbols-outlined">play_arrow</span></button>
         </div>${o.rep<=1?allFieldsPanel(p):''}</div>`; }).join('')
         : sections.length
-        ? sections.map(s=>`<div class="part"><span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span><div style="flex:1"><b>${esc(s.label)}</b></div><span class="bars">bars ${s.startBar}–${s.endBar}</span>${diffCols(sectionCell(it, s.startBar, sel?sel.id:null))}</div>`).join('')
+        ? sections.map(s=>{ const cell=sectionCell(it, s.startBar, sel?sel.id:null); return `<div class="part"><span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span><div style="flex:1"><b>${esc(s.label)}</b></div>${diffTechs(cell)}<span class="bars">bars ${s.startBar}–${s.endBar}</span>${diffLevel(cell)}</div>`; }).join('')
         : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`; })()}
       <small style="color:var(--faint);display:block;margin-top:8px">Level + techniques = this track's per-section difficulty (D-3 <code>data.sections[].tracks[]</code>). L1 song range <b>${rangeText(levelRange(tracksOf(it)))}</b> · L2 this track <b>${lvlText(sel?sel.level:null)}</b> · “—” = silent here.</small>
     </div>
