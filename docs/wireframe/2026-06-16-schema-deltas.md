@@ -192,9 +192,11 @@ pagination + global sort — only sorts the current page); (b) a **per-user "my 
 - **N-13 (`$13`) — show Key for drums / no-instrument too?** You're reconsidering SD-9's strict hide-for-drums.
 Likely: show Key when **no instrument is selected** (mixed catalogue) and for pitched; hide only when
 instrument = drums. *Explore later* — flagged on SD-9.
-- **N-14 (`$14`) — group levels into named bands** (Debut · Beginner · Intermediate · Advanced, RSL-style) via
-`<optgroup>` in the Level picker. **Display only** (level stays 0–10); band ranges TBD (RSL-style, unverified).
-Nice-to-have, candidate for v1.3.
+- **N-14 (`$14`) — group levels into named bands** via `<optgroup>` in the Level picker. **Display only**
+(level stays a 0–10 integer). **✅ RESOLVED (Leo, 2026-06-21) — band ranges fixed:**
+**Debut 0 · Beginner 1–3 · Intermediate 4–6 · Advanced 7–8 · Expert 9–10** (Rockschool grades 0–8 + an
+Expert tier for the extended 9–10). Implemented in `index.html` `levelPop()` (optgroup). Seed covers
+Debut→Advanced with 2 rudiments per group; Expert via the Angra song's drums track (L9).
 - **N-15 (`$15`) — range UI = from-to selects** (min/max), **confirmed** — no dual-handle slider needed in the
 wireframe (already built this way). Documented here + in `filter-review.md`.
 
@@ -404,7 +406,51 @@ the *techniques / kit_pieces* to the drums track — yet the profiles sit on the
 - **For per-instrument precision** ("the BASS plays these notes", "the guitar uses these chords") the
   per-song profile is lossy.
 
-**Open:** keep profiles per-playable (today) **or** move/extend them per-track (a `track`-keyed profile,
-or profile facets on `track.data`). Pairs with **SD-25** (searchable per-instrument technique facet) and
-**OQ2** (multi-track which-to-learn). **Parked — needs its own decision; do NOT change the locked schema
-unilaterally.** (Leo: "log as a schema-delta", 2026-06-20.)
+**~~Open~~ ✅ RESOLVED (Leo, 2026-06-21) — move them per-track.** `tonal_profile` + `drum_profile` re-key
+from `playable_id` PK → **`track_id` PK** `REFERENCES track(id)`. A track is one instrument, so the
+chords/progressions hang off each pitched track (the bass carries its own notes) and the beats/fills/
+kit_pieces off the drums track. **Shape unchanged — only the key flips.** The instrument-conditional
+ownership (a drums track may own a `drum_profile`, a pitched track a `tonal_profile`, never both) is an
+**app-layer invariant** keyed off `track.instrument` (Postgres can't cheaply enforce the cross-FK match).
+Search now joins via `track` (one extra join; no per-song rollup needed at v1 scale).
+
+- **DDL + seed:** `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` — validated on
+  `nh_tonal_scratch` (profile-instrument invariant holds 0/0/0; poke queries pass: "max on guitar",
+  per-track bass notes, double-bass search, I–V–vi–IV search).
+- Still pairs with **SD-25** (searchable per-instrument *technique* facet for pitched) and **OQ2**
+  (multi-track which-to-learn) — both remain open and orthogonal.
+
+---
+
+### SD-28 — lead vs rhythm: the required instrument selector (2026-06-21)
+
+**Context (Leo, 2026-06-21):** every Notation Hero search has a **required single instrument** field
+(default Drums, user-settings-overridable) — like Songsterr/UltimateGuitar/CifraClub defaulting to guitar.
+The model already disambiguates same-instrument variants via **`track.role`** (lead/rhythm/solo/pad/harmony).
+
+**Open (parked — needs its own brainstorm):** what exactly does the user pick? Is the selector just the
+**instrument** (`guitar`), or **instrument + role** (`guitar — lead` vs `guitar — rhythm`)? For now we ship
+"**choose lead OR rhythm**" (Yousician-style) — one selection resolves to one track. Decide later whether
+role is a second selector, a sub-filter, or folded into the instrument list. Pairs with **SD-27** (per-track
+profiles now make "the lead guitar's chords" addressable) and **OQ2**.
+
+---
+
+### TS-4 — seed data log (2026-06-21)
+
+First real catalogue seed: `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` (validated on
+`nh_tonal_scratch`). **19 playables / 37 tracks / 17 tonal / 19 drum / 7 media.**
+
+- **Drum patterns (real, from `groovescribe-import.json`):** 8 leveled rudiments — **2 per group**,
+  Debut→Advanced (Single/Double Stroke Roll Debut · Single Stroke Roll L2 · Single Stroke Four L3 · Five
+  Stroke Roll L4 · Seven Stroke Roll L6 · Swiss Army Triplet L7 · Single Stroke Roll L8) + 1 beat (Basic
+  Rock) + 1 fill (16th Snare L4) + 1 **composite beat** built from hi-hat/snare/kick **voice leaves via
+  `step`** (real masked views of Basic Rock). Each stores its GrooveScribe share URL in `playable.data`;
+  patterns use `notation_id` NULL (no fabricated alphaTex — backfill via the groovescribe skill later).
+- **Songs:** Bohemian Rhapsody, Yellow, Zoio de Lula, I'm Yours (single I–V–vi–IV progression), Angra –
+  Nothing To Say (Expert drums L9). Per-instrument `track.level` (headline = MAX per selected instrument)
+  + per-track `tonal_profile`/`drum_profile`. Only Angra has a real `.gp`; others are catalogue rows with
+  placeholder s3 keys.
+- **Open follow-ups:** (a) only **one Expert (9–10)** example (Angra drums) — needs a 2nd Expert pick;
+  (b) **Zoio** artist (Charlie Brown Jr.) unconfirmed; (c) real alphaTex/`.gp` blobs for the non-Angra songs
+  and the drum patterns when ingest is built.
