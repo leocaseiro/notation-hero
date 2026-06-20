@@ -457,3 +457,65 @@ First real catalogue seed: `docs/wireframe/2026-06-21-per-track-profiles-and-see
 - **Open follow-ups:** (a) **Zoio** artist (Charlie Brown Jr.) unconfirmed; (b) the non-Angra song levels are
   estimates (Bohemian 8 · Yellow 3 · I'm Yours 2) — calibrate in the Rockschool grounding pass; (c) real
   alphaTex/`.gp` blobs for the non-Angra songs and the drum patterns when ingest is built.
+
+---
+
+### TS-4 grounding — real `.gp` source data (2026-06-21, autonomous /lfg)
+
+The 5 seed songs are now grounded in their **real Guitar Pro files** via
+`docs/wireframe/tools/gp-extract.mjs` (`@coderline/alphatab`, run from
+`~/Sites/alphaTabWebsite`). Raw extractions: `docs/wireframe/data/gp-extract-*.json`.
+Objective fields are now real in **both** the wireframe (`index.html`) and the SQL seed.
+
+**Real values applied (high confidence):** tempo, bar count, time signature, full track
+list (names + percussion flag), section markers + bar ranges.
+
+| Song | tempo | bars | tracks (real) | sections | note |
+|---|---|---|---|---|---|
+| Bohemian | 72 | 139 | 13 (5 gtrs + 2 print-dupe pianos) | 3 informal | mapped 6 primaries |
+| Yellow | 87 | 97 | 8 | 10 | +keys +vocals added |
+| Zoio | 76 | 79 | 5 | **0 (marker-less)** | no vocals track; NH-200 case |
+| I'm Yours | 73 | 76 | 5 | 11 | classical+electric guitar, **not ukulele** |
+| Angra | 138 | 221 | 9 (+1 empty) | 15 (E→G modulation) | +vocals; player-named tracks |
+
+**Guesses corrected by the real files:** Zoio **140→76** bpm; I'm Yours 75→73; Angra
+150→138; Zoio's fabricated **vocals** track removed; I'm Yours' fabricated **ukulele**
+→ real classical + electric guitar; Yellow & Angra were missing **keys/vocals**.
+
+**OPEN ITEMS — flagged + SKIPPED (no assumptions acted on):**
+
+1. **Per-track difficulty levels (0–10) + techniques are HUMAN ESTIMATES, not extracted.**
+   AlphaTab does not carry difficulty. Seed levels (Zoio drums L9 / guitar L3–4 per Leo;
+   Bohemian guitar lead L7; etc.) are estimates pending calibration (Rockschool / NH-196).
+   Do **not** present them as real-extracted.
+2. **Musical key is LOW CONFIDENCE (GP defaults).** File keys read as defaults: Yellow→C
+   (really B major), Zoio→C, Angra→C (but it modulates **E→G** per its section labels).
+   Wireframe/SQL keep prior key estimates; the file key field is unreliable. Raw key per
+   song is in the JSON. → real tonal analysis (NH-196) deferred.
+3. **Aux / FX / print-duplicate tracks have no model home.** Bohemian = 5 guitars + 2
+   print-only pianos; Yellow = an "Overdrive" FX layer + separate Strings + Piano; Angra
+   = 3 keyboards + 1 empty track. The seed maps **primary instruments only** (KTD-5) and
+   folds/omits the rest. **Open Q:** should the model carry multi-track-same-instrument
+   (5 guitars) and FX layers as first-class? → skipped, logged.
+4. **Bohemian sections are sparse/informal** — only 3 markers ("gtrs enter", "tempo 144",
+   "tempo 207"), covering bars 42–139 only (1–41 unmarked); not clean verse/chorus. Used
+   verbatim. (Contrast Angra's 15 clean sections.)
+5. **Zoio is marker-less (0 sections)** — exactly the **NH-200** smart-structure-inference
+   case. Left empty (`markerless:true`); inferring sections is a separate spike, not extraction.
+6. **"We no longer need sections" vs the with-sections file.** Leo said sections were no
+   longer needed, then provided `Bohemian Rhapsody with sections.gp` + asked to use the
+   original sources. Resolved by extracting the real markers (the provided file IS the
+   decided source). Flag if this should be reverted.
+7. **Per-section × per-track difficulty grid (`data.sections[].tracks[]`) NOT populated.**
+   The section UI can show per-section per-track level + techniques (D-3), but those are
+   subjective and not in the file. Sections carry **label + bar range only**; grid cells
+   render "—". → needs human authoring, skipped.
+8. **Zoio + I'm Yours carry no embedded title/artist** in the file (Zoio title empty);
+   artist comes from the filename. Zoio artist (Charlie Brown Jr.) still unconfirmed.
+
+**Available but NOT imported (decided seed is the 5 above):** the folder
+`/Users/leocaseiro/Music/AlphaTab-RhythmGame/` also has real `.gp` for Toto – Africa,
+Hotel California, Black Sabbath – Paranoid, Bob Marley – Is This Love, Green Day, Michael
+Jackson – Man In The Mirror, Mamonas, etc. → catalogue-expansion follow-up.
+
+**Raw JSON for UI/DB verification (R4):** `docs/wireframe/data/gp-extract-{bohemian,yellow,zoio,imyours,angra}.json`.
