@@ -360,42 +360,47 @@ INSERT INTO notation (id, format, s3_key, upload_status, created_by) VALUES
  ('not_angra','gp','s3://nh-notation/seed/angra-nothing-to-say.gp','ready','seed');
 
 INSERT INTO playable (id, kind, title, description, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, tags, family, origin, visibility, status, has_audio, has_video, created_by, data) VALUES
- ('song_bohemian','song','Bohemian Rhapsody','Queen''s multi-section epic — ballad, opera and hard-rock parts.','not_bohemian',8,'{Queen}','artist',72,4,4,'{rock,progressive}','{keys,guitar,bass,drums,vocals}','{classic-rock}','{Rock}','curated','public','published',true,true,'seed','{}'),
- ('song_yellow','song','Yellow','Coldplay — a steady, ringing guitar anthem in B major.','not_yellow',3,'{Coldplay}','artist',87,4,4,'{rock,alternative}','{guitar,bass,drums,vocals}','{}','{Rock}','curated','public','published',false,true,'seed','{}'),
- ('song_zoio','song','Zoio de Lula','Charlie Brown Jr. — Brazilian rock (artist unconfirmed; flagged).','not_zoio',9,'{Charlie Brown Jr.}','artist',140,4,4,'{rock,brazilian}','{guitar,bass,drums,vocals}','{}','{Rock}','curated','public','published',false,true,'seed','{}'),
- ('song_imyours','song','I''m Yours','Jason Mraz — one I–V–vi–IV progression carries the whole song.','not_imyours',2,'{Jason Mraz}','artist',75,4,4,'{pop,reggae}','{guitar,ukulele,bass,drums,vocals}','{}','{Pop}','curated','public','published',false,true,'seed','{"singleSection":true}'),
- ('song_angra','song','Nothing To Say','Angra — neoclassical power metal; Expert-level double-bass drumming.','not_angra',9,'{Angra}','artist',150,4,4,'{metal,power-metal}','{drums,guitar,bass,keys}','{neoclassical}','{Metal}','curated','public','published',true,true,'seed','{}');
+ ('song_bohemian','song','Bohemian Rhapsody','Queen''s multi-section epic — ballad, opera and hard-rock parts.','not_bohemian',8,'{Queen}','artist',72,4,4,'{rock,progressive}','{keys,guitar,bass,drums,vocals}','{classic-rock}','{Rock}','curated','public','published',true,true,'seed','{"bars":139,"sections":[{"label":"gtrs enter","startBar":42,"endBar":54},{"label":"tempo 144","startBar":55,"endBar":95},{"label":"tempo 207","startBar":96,"endBar":139}]}'),
+ ('song_yellow','song','Yellow','Coldplay — a steady, ringing guitar anthem.','not_yellow',3,'{Coldplay}','artist',87,4,4,'{rock,alternative}','{guitar,bass,drums,keys,vocals}','{}','{Rock}','curated','public','published',false,true,'seed','{"bars":97}'),
+ ('song_zoio','song','Zoio de Lula','Charlie Brown Jr. — Brazilian rock (artist unconfirmed; flagged).','not_zoio',9,'{Charlie Brown Jr.}','artist',76,4,4,'{rock,brazilian}','{guitar,bass,drums}','{}','{Rock}','curated','public','published',false,true,'seed','{"bars":79,"markerless":true}'),
+ ('song_imyours','song','I''m Yours','Jason Mraz — one I–V–vi–IV progression carries the whole song.','not_imyours',2,'{Jason Mraz}','artist',73,4,4,'{pop,reggae}','{guitar,bass,drums,vocals}','{}','{Pop}','curated','public','published',false,true,'seed','{"singleSection":true,"bars":76}'),
+ ('song_angra','song','Nothing To Say','Angra — neoclassical power metal; Expert-level double-bass drumming.','not_angra',9,'{Angra}','artist',138,4,4,'{metal,power-metal}','{drums,guitar,bass,keys,vocals}','{neoclassical}','{Metal}','curated','public','published',true,true,'seed','{"bars":221}');
 
 -- ── tracks: per-instrument, per-role, with per-instrument LEVELS ─────────────
 INSERT INTO track (id, playable_id, instrument, role, name, sort_order, level, notation_track_index, created_by) VALUES
- -- Bohemian Rhapsody: guitar lead(7) vs rhythm(4) → "max on guitar" = 7
+ -- Bohemian Rhapsody (real .gp: 13 tracks incl. 5 guitars + 2 print-dupe pianos; primaries mapped). guitar lead(7) vs rhythm(4) → max-on-guitar = 7
  ('trk_boh_keys','song_bohemian','keys',NULL,'Piano',1,6,1,'seed'),
- ('trk_boh_glead','song_bohemian','guitar','lead','Lead Guitar',2,7,2,'seed'),
- ('trk_boh_grhythm','song_bohemian','guitar','rhythm','Rhythm Guitar',3,4,3,'seed'),
- ('trk_boh_bass','song_bohemian','bass',NULL,'Bass',4,5,4,'seed'),
- ('trk_boh_drums','song_bohemian','drums',NULL,'Drums',5,5,5,'seed'),
- ('trk_boh_vox','song_bohemian','vocals',NULL,'Vocals',6,8,6,'seed'),
- -- Yellow
- ('trk_yel_glead','song_yellow','guitar','lead','Lead Guitar',1,3,1,'seed'),
- ('trk_yel_grhythm','song_yellow','guitar','rhythm','Rhythm Guitar',2,2,2,'seed'),
- ('trk_yel_bass','song_yellow','bass',NULL,'Bass',3,2,3,'seed'),
- ('trk_yel_drums','song_yellow','drums',NULL,'Drums',4,2,4,'seed'),
- -- Zoio
- ('trk_zoio_glead','song_zoio','guitar','lead','Lead Guitar',1,4,1,'seed'),
- ('trk_zoio_grhythm','song_zoio','guitar','rhythm','Rhythm Guitar',2,3,2,'seed'),
- ('trk_zoio_bass','song_zoio','bass',NULL,'Bass',3,4,3,'seed'),
- ('trk_zoio_drums','song_zoio','drums',NULL,'Drums',4,9,4,'seed'),
- -- I'm Yours (single progression)
- ('trk_imy_grhythm','song_imyours','guitar','rhythm','Rhythm Guitar',1,2,1,'seed'),
- ('trk_imy_uke','song_imyours','ukulele',NULL,'Ukulele',2,2,2,'seed'),
- ('trk_imy_bass','song_imyours','bass',NULL,'Bass',3,2,3,'seed'),
- ('trk_imy_drums','song_imyours','drums',NULL,'Drums',4,1,4,'seed'),
- -- Angra – Nothing To Say (Expert drums)
- ('trk_angra_drums','song_angra','drums',NULL,'Drums',1,9,1,'seed'),
- ('trk_angra_glead','song_angra','guitar','lead','Lead Guitar',2,9,2,'seed'),
- ('trk_angra_grhythm','song_angra','guitar','rhythm','Rhythm Guitar',3,7,3,'seed'),
- ('trk_angra_bass','song_angra','bass',NULL,'Bass',4,8,4,'seed'),
- ('trk_angra_keys','song_angra','keys',NULL,'Keys',5,6,5,'seed');
+ ('trk_boh_glead','song_bohemian','guitar','lead','Gtr 1',2,7,0,'seed'),
+ ('trk_boh_grhythm','song_bohemian','guitar','rhythm','Gtr 2',3,4,3,'seed'),
+ ('trk_boh_bass','song_bohemian','bass',NULL,'Bass',4,5,7,'seed'),
+ ('trk_boh_drums','song_bohemian','drums',NULL,'Percussions',5,5,10,'seed'),
+ ('trk_boh_vox','song_bohemian','vocals',NULL,'Voice',6,8,8,'seed'),
+ -- Yellow (real .gp: 8 tracks)
+ ('trk_yel_glead','song_yellow','guitar','lead','Lead Guitar',1,3,2,'seed'),
+ ('trk_yel_grhythm','song_yellow','guitar','rhythm','Rhythm Guitar',2,2,1,'seed'),
+ ('trk_yel_bass','song_yellow','bass',NULL,'Bass',3,2,4,'seed'),
+ ('trk_yel_drums','song_yellow','drums',NULL,'Drums',4,2,7,'seed'),
+ ('trk_yel_keys','song_yellow','keys',NULL,'Strings / Piano',5,3,5,'seed'),
+ ('trk_yel_vox','song_yellow','vocals',NULL,'Lead Vocals',6,3,0,'seed'),
+ -- Zoio de Lula (real .gp: marker-less; 3 guitars + bass + drums; NO vocals track)
+ ('trk_zoio_glead','song_zoio','guitar','solo','Guitarra Solo',1,4,1,'seed'),
+ ('trk_zoio_grhythm','song_zoio','guitar','rhythm','Guitarra Base',2,3,0,'seed'),
+ ('trk_zoio_gtr3','song_zoio','guitar',NULL,'Guitarra 3',3,3,2,'seed'),
+ ('trk_zoio_bass','song_zoio','bass',NULL,'Baixo',4,4,3,'seed'),
+ ('trk_zoio_drums','song_zoio','drums',NULL,'Bateria',5,9,4,'seed'),
+ -- I'm Yours (real .gp: classical + electric guitar, NOT ukulele; + vocals)
+ ('trk_imy_grhythm','song_imyours','guitar','rhythm','Classical Guitar',1,2,0,'seed'),
+ ('trk_imy_uke','song_imyours','guitar','lead','Electric Guitar',2,2,1,'seed'),
+ ('trk_imy_bass','song_imyours','bass',NULL,'Bass',3,2,2,'seed'),
+ ('trk_imy_drums','song_imyours','drums',NULL,'Drums',4,1,3,'seed'),
+ ('trk_imy_vox','song_imyours','vocals',NULL,'Lead Vocal Harmonies',5,2,4,'seed'),
+ -- Angra – Nothing To Say (real .gp: 15 sections, E→G modulation; player-named tracks)
+ ('trk_angra_drums','song_angra','drums',NULL,'Ricardo (Drums)',1,9,4,'seed'),
+ ('trk_angra_glead','song_angra','guitar','lead','Kiko (Lead Guitar)',2,9,1,'seed'),
+ ('trk_angra_grhythm','song_angra','guitar','rhythm','Rafael (Rhythm Guitar)',3,7,2,'seed'),
+ ('trk_angra_bass','song_angra','bass',NULL,'Luis (Bass)',4,8,3,'seed'),
+ ('trk_angra_keys','song_angra','keys',NULL,'Keyboards',5,6,5,'seed'),
+ ('trk_angra_vox','song_angra','vocals',NULL,'Andre (Vocals)',6,8,0,'seed');
 
 -- ── tonal_profile per PITCHED track (SD-27: the bass carries its OWN notes) ──
 INSERT INTO tonal_profile (track_id, musical_key, keys, scales, chords, progression_concrete, progression_roman, progression_family) VALUES
