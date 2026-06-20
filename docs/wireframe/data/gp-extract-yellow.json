@@ -1,0 +1,169 @@
+{
+  "file": "Coldplay-Yellow-06-26-2025.gp",
+  "title": "Yellow",
+  "artist": "Coldplay",
+  "album": null,
+  "tempo": 87,
+  "bars": 97,
+  "timeSig": "4/4",
+  "key": "C major",
+  "trackCount": 8,
+  "tracks": [
+    {
+      "idx": 0,
+      "name": "Lead Vocals | Chris Martin",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 1,
+      "name": "Rhythm Guitar | Takamine EN15 | Chris Martin",
+      "isPercussion": false,
+      "tuning": [
+        63,
+        59,
+        55,
+        47,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 2,
+      "name": "Lead Guitar | Fender Telecaster | Jonny Buckland",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 3,
+      "name": "Overdrive | Tube Screamer | Jonny Buckland",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 4,
+      "name": "Bass | Fender Precision | Guy Berryman",
+      "isPercussion": false,
+      "tuning": [
+        43,
+        38,
+        33,
+        28
+      ],
+      "stringCount": 4
+    },
+    {
+      "idx": 5,
+      "name": "Orchestral Strings | Keyboard 1",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 6,
+      "name": "Piano Overdub | Keyboard 2",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 7,
+      "name": "Drums | Yamaha Maple Custom | Will Champion",
+      "isPercussion": true,
+      "tuning": null,
+      "stringCount": null
+    }
+  ],
+  "sectionCount": 10,
+  "sections": [
+    {
+      "label": "Intro",
+      "startBar": 1,
+      "endBar": 4
+    },
+    {
+      "label": "Instrumental 1",
+      "startBar": 5,
+      "endBar": 12
+    },
+    {
+      "label": "Verse 1",
+      "startBar": 13,
+      "endBar": 32
+    },
+    {
+      "label": "Chorus 1",
+      "startBar": 33,
+      "endBar": 40
+    },
+    {
+      "label": "Interlude 1",
+      "startBar": 41,
+      "endBar": 48
+    },
+    {
+      "label": "Verse 2",
+      "startBar": 49,
+      "endBar": 62
+    },
+    {
+      "label": "Chorus 2",
+      "startBar": 63,
+      "endBar": 70
+    },
+    {
+      "label": "Interlude 2",
+      "startBar": 71,
+      "endBar": 78
+    },
+    {
+      "label": "Outro",
+      "startBar": 79,
+      "endBar": 90
+    },
+    {
+      "label": "Outro",
+      "startBar": 91,
+      "endBar": 97
+    }
+  ]
+}

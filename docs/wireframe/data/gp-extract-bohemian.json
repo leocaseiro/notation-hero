@@ -1,0 +1,204 @@
+{
+  "file": "Bohemian Rhapsody with sections.gp",
+  "title": "Bohemian Rhapsody",
+  "artist": "Queen",
+  "album": null,
+  "tempo": 72,
+  "bars": 139,
+  "timeSig": "4/4",
+  "key": "Bb major",
+  "trackCount": 13,
+  "tracks": [
+    {
+      "idx": 0,
+      "name": "Gtr 1",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 1,
+      "name": "Piano (RH)",
+      "isPercussion": false,
+      "tuning": [
+        65,
+        60,
+        53,
+        48,
+        41,
+        36
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 2,
+      "name": "Piano (LH)",
+      "isPercussion": false,
+      "tuning": [
+        41,
+        36,
+        29,
+        24,
+        17,
+        12
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 3,
+      "name": "Gtr 2",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 4,
+      "name": "Gtr 3",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 5,
+      "name": "Gtr 4",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 6,
+      "name": "Gtr 5",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 7,
+      "name": "Bass",
+      "isPercussion": false,
+      "tuning": [
+        43,
+        38,
+        33,
+        28
+      ],
+      "stringCount": 4
+    },
+    {
+      "idx": 8,
+      "name": "Voice",
+      "isPercussion": false,
+      "tuning": [
+        76,
+        71,
+        67,
+        62,
+        57,
+        52
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 9,
+      "name": "Choir",
+      "isPercussion": false,
+      "tuning": [
+        76,
+        71,
+        67,
+        62,
+        57,
+        52
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 10,
+      "name": "Percussions",
+      "isPercussion": true,
+      "tuning": null,
+      "stringCount": null
+    },
+    {
+      "idx": 11,
+      "name": "Piano (RH) [Print]",
+      "isPercussion": false,
+      "tuning": [
+        65,
+        60,
+        53,
+        48,
+        41,
+        36
+      ],
+      "stringCount": 6
+    },
+    {
+      "idx": 12,
+      "name": "Piano (LH) (Print)",
+      "isPercussion": false,
+      "tuning": [
+        41,
+        36,
+        29,
+        24,
+        17,
+        12
+      ],
+      "stringCount": 6
+    }
+  ],
+  "sectionCount": 3,
+  "sections": [
+    {
+      "label": "gtrs enter",
+      "startBar": 42,
+      "endBar": 54
+    },
+    {
+      "label": "tempo 144",
+      "startBar": 55,
+      "endBar": 95
+    },
+    {
+      "label": "tempo 207",
+      "startBar": 96,
+      "endBar": 139
+    }
+  ]
+}
