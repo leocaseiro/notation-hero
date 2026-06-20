@@ -259,6 +259,14 @@ body.showall .fielddock{display:block}
 .vchip{font-size:11px;padding:2px 8px;border-radius:var(--pill);border:1px solid var(--line);color:var(--ink);background:var(--panel2)}
 .vlbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-right:2px}
 .vnote{font-size:11px;color:var(--faint)}
+.tracklens{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 10%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:11px 14px;margin:16px 0;flex-wrap:wrap}
+.tracklens label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700}
+.tracklens select{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:14px;font-weight:600}
+.tracklens select:hover{border-color:var(--accent)}
+.tracklens .lenstune{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:3px 9px}
+.tracklens .lenshint{color:var(--faint);font-size:12px;margin-left:auto}
+.mediscope{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin:12px 0 6px}
+.techs{display:inline-flex;gap:5px;flex-wrap:wrap;margin-left:8px}
 .empty{text-align:center;color:var(--faint);padding:50px 20px}
 .empty .material-symbols-outlined{font-size:44px;display:block;margin-bottom:8px}
 @media(max-width:640px){
@@ -852,7 +860,17 @@ function playableGrid(it){
     const loc = it.notation_format ? ('s3_key · catalogue/'+it.id+'/source.'+it.notation_format) : ('alphatex · '+esc(it.notation_alphaTex||''));
     src = `<div class="nfsub">↳ notation · ${esc(n.notation_id)}</div><div class="nfgrid"><span class="nfk">format</span><span class="nfv">${esc(fmt)}</span><span class="nfk">key / tex</span><span class="nfv">${loc}</span></div>`;
   }
-  return `<div class="nfsub">playable · all columns</div><div class="nfgrid">${grid}</div>${src}`;
+  let tk='';
+  if(it.tracks && it.tracks.length){
+    tk = `<div class="nfsub">↳ track · ${it.tracks.length} (every playable owns ≥1 — D-3 invariant)</div>` +
+      it.tracks.map(t=>`<div class="nfgrid"><span class="nfk">instrument</span>${nfv(t.instrument)}<span class="nfk">role</span>${nfv(t.role)}<span class="nfk">name</span>${nfv(t.name)}<span class="nfk">level</span>${nfv(t.level)}<span class="nfk">notation_track_index</span>${nfv(t.notation_track_index)}<span class="nfk">data.tuning</span>${nfv(t.tuning||null)}</div>`).join('');
+  }
+  let md='';
+  if(it.media && it.media.length){
+    md = `<div class="nfsub">↳ media · ${it.media.length} (song-level + per-track · 3 sources)</div>` +
+      it.media.map(m=>`<div class="nfgrid"><span class="nfk">scope</span>${nfv(m.scope==='track'?('track:'+m.track):'song')}<span class="nfk">kind</span>${nfv(m.kind)}<span class="nfk">provider</span>${nfv(m.provider)}<span class="nfk">location</span>${nfv(m.url||m.s3_key||'(in .gp)')}<span class="nfk">label</span>${nfv(m.label)}</div>`).join('');
+  }
+  return `<div class="nfsub">playable · all columns</div><div class="nfgrid">${grid}</div>${src}${tk}${md}`;
 }
 function allFieldsPanel(it){ return `<div class="nfields">${playableGrid(it)}</div>`; }              // inline, under list rows
 function detailFieldsPanel(it){ return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> fields · drag the corner to resize</div><div class="fdbody">${playableGrid(it)}</div></aside>`; }  // floating, on detail pages
@@ -873,7 +891,8 @@ function rowHTML(it){
     ? `${PATTERN_KINDS[it.pattern_kind]?.label||it.pattern_kind}${it.family?' <span class="dot"></span> '+esc(it.family):''}${it.musical_key?' <span class="dot"></span> '+it.musical_key:(it.genre?' <span class="dot"></span> '+cap(it.genre):'')}${diffHl}`
     : `${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}${it.musical_key?' <span class="dot"></span> '+it.musical_key:''}`;
   const bpm = isLesson ? lessonLadder(it) : isPat ? '—' : (it.bpm||'—');
-  const lvl = it.level===0 ? '<span class="lvlpill debut">Debut</span>' : `<span class="lvlpill">${it.level??'—'}</span>`;
+  const lvlTxt = rowLevelText(it);                                   // L1 range across tracks, or the lens instrument's track level
+  const lvl = `<span class="lvlpill ${lvlTxt==='Debut'?'debut':''}">${lvlTxt}</span>`;
   const nav = ` data-nav="#/${it.kind}/${it.id}"`;
   return `<div class="row">
     <div class="name">
@@ -929,14 +948,53 @@ function mediaLinks(it){
   if(!m.length) return '';
   return `<div class="media">${m.map(x=>`<span class="medialink"><span class="material-symbols-outlined">${x.i}</span>${esc(x.l)}</span>`).join('')}</div>`;
 }
-function tracksCard(it){   // F7: a song has n tracks (instruments); each track carries its own n audio/video (plus song-level media)
-  if(!it.tracks||!it.tracks.length) return '';
-  const ic=i=>i==='drums'?'graphic_eq':i==='guitar'?'queue_music':'piano';
-  return `<div class="card"><h3><span class="material-symbols-outlined">library_music</span> Tracks &amp; media <span style="font-weight:400;color:var(--faint)">· each instrument can carry its own audio / video</span></h3>
-    ${it.tracks.map(t=>{ const m=t.media||[]; return `<div class="patrow" style="cursor:default"><span class="material-symbols-outlined" style="color:var(--accent)">${ic(t.instrument)}</span>
-      <div style="flex:1"><b>${cap(t.instrument)}${t.role?` <span style="color:var(--faint);font-weight:400">· ${esc(t.role)}</span>`:''}</b><small style="color:var(--faint);display:block">${m.length?m.map(x=>`<span class="material-symbols-outlined" style="font-size:13px;vertical-align:-2px">${x.kind==='video'?'smart_display':'volume_up'}</span> ${esc(x.label)}`).join(' &nbsp; '):'no media yet'}</small></div>
-      <span class="src tex">${m.length} media</span></div>`; }).join('')}
-    <small style="color:var(--faint);display:block;margin-top:4px">A song has n tracks; each track has its own n audio/video — plus song-level media (above). DB: media keyed by playable_id + optional track_id.</small>
+/* D-1/D-2/D-3 — the instrument+track LENS: every detail page is scoped to ONE track (Leo's model). */
+function trackLens(it){
+  const ts = tracksOf(it); const sel = selectedTrack(it);
+  if(!sel) return '';
+  const opts = ts.map(t=>`<option value="${esc(t.id)}" ${t.id===sel.id?'selected':''}>${esc(t.name||cap(t.instrument))}${t.role?' · '+esc(t.role):''} — ${lvlText(t.level)}</option>`).join('');
+  return `<div class="tracklens">
+    <span class="material-symbols-outlined" style="color:var(--accent)">${instIcon(sel.instrument)}</span>
+    <label for="trackSel">Playing</label>
+    <select id="trackSel" data-track-sel>${opts}</select>
+    ${sel.tuning?`<span class="lenstune"><span class="material-symbols-outlined" style="font-size:15px">tune</span>${esc(sel.tuning)}</span>`:''}
+    <span class="lenshint">${ts.length>1?`${ts.length} tracks — one song, pick what you play`:'1 track'}</span>
+  </div>`;
+}
+/* D-3 L3 collapsed to the selected track: its level + techniques per section (only sections where it plays) */
+function trackDifficulty(it, track){
+  if(!track) return '';
+  const secs = (it.data&&it.data.sections)||[];
+  const rows = secs.map(s=>({s, cell:(s.tracks||[]).find(c=>c.track===track.id)})).filter(x=>x.cell);
+  if(!rows.length) return '';
+  return `<div class="card"><h3><span class="material-symbols-outlined">trending_up</span> Difficulty by section <span style="font-weight:400;color:var(--faint)">· ${esc(track.name||cap(track.instrument))} · per-instrument (D-3)</span></h3>
+    <div class="stephead"><span style="flex:1">Section</span><span style="width:70px">Bars</span><span style="width:48px;text-align:right">Level</span></div>
+    ${rows.map(({s,cell})=>`<div class="part">
+      <div style="flex:1"><b>${esc(s.label)}</b>${cell.techniques&&cell.techniques.length?`<span class="techs">${cell.techniques.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</span>`:''}</div>
+      <span class="bars">${s.startBar}–${s.endBar}</span>
+      <span class="lvlpill ${cell.level===0?'debut':''}">${lvlText(cell.level)}</span></div>`).join('')}
+    <small style="color:var(--faint);display:block;margin-top:6px">L1 song headline <b>${rangeText(levelRange(tracksOf(it)))}</b> · L2 this track <b>${lvlText(track.level)}</b> · L3 the per-section grid above. Stored in <code>data.sections[].tracks[]</code>.</small>
+  </div>`;
+}
+/* D-2 — one media row with its 3-source provider badge */
+function mediaRow(m){
+  const kindIcon = m.kind==='video'?'smart_display':'volume_up';
+  const prov = PROVIDER[m.provider]||{label:m.provider,cls:''};
+  const loc = m.provider==='youtube'?esc(m.url):m.provider==='s3'?esc(m.s3_key):'lives inside the .gp file';
+  return `<div class="patrow" style="cursor:default">
+    <span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon}</span>
+    <div style="flex:1;min-width:0"><b>${esc(m.label)}</b><small style="color:var(--faint);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${loc}${m.note?' · '+esc(m.note):''}</small></div>
+    <span class="src ${prov.cls}" title="provider=${esc(m.provider)}">${prov.label}</span></div>`;
+}
+/* D-2 — media for the selected track + the whole song; 3 sources */
+function mediaCard(it, track){
+  const tm = track ? trackMedia(it, track.id) : [];
+  const sm = songMedia(it);
+  if(!tm.length && !sm.length) return '';
+  return `<div class="card"><h3><span class="material-symbols-outlined">library_music</span> Audio &amp; video <span style="font-weight:400;color:var(--faint)">· song-level + per-track · 3 sources (D-2)</span></h3>
+    ${tm.length?`<div class="mediscope">This track · ${esc(track.name||cap(track.instrument))}</div>${tm.map(mediaRow).join('')}`:''}
+    ${sm.length?`<div class="mediscope">Whole song</div>${sm.map(mediaRow).join('')}`:''}
+    <small style="color:var(--faint);display:block;margin-top:6px">DB: <code>media</code> keyed by <code>playable_id</code> + optional <code>track_id</code> — many per scope. <code>has_audio/has_video</code> are derived facets.</small>
   </div>`;
 }
 function metaFoot(it){
@@ -965,8 +1023,8 @@ function renderSong(id){
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
           <span class="badge"><span class="material-symbols-outlined">schedule</span>${it.time_sig}</span>
-          <span class="badge"><span class="material-symbols-outlined">bar_chart</span>${it.level===0?'Debut':'Level '+(it.level??'—')}</span>
-          <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.instruments||[]).join('·')}</span>
+          <span class="badge" title="difficulty range across tracks (L1 headline)"><span class="material-symbols-outlined">bar_chart</span>Level ${rangeText(levelRange(tracksOf(it)))}</span>
+          <span class="badge" title="derived facet: DISTINCT track.instrument"><span class="material-symbols-outlined">music_note</span>${derivedInstruments(it).join(' · ')}</span>
           ${it.musical_key?`<span class="badge"><span class="material-symbols-outlined">piano</span>Key ${it.musical_key}</span>`:''}
         </div>
         ${mediaLinks(it)}
@@ -980,6 +1038,7 @@ function renderSong(id){
       </div>
       ${historyCard(it)}
     </div>
+    ${trackLens(it)}
     <div class="card">
       <h3><span class="material-symbols-outlined">segment</span> Song structure ${parts.length?'· <span style="font-weight:400;color:var(--faint)">each part is its own playable — practice &amp; score it on its own; repeats appear in order</span>':''}</h3>
       ${(()=>{ const occ=songOccurrences(it.id); return occ.length
@@ -995,8 +1054,9 @@ function renderSong(id){
         ? sections.map(s=>`<div class="part"><span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span><div style="flex:1"><b>${esc(s.label)}</b></div><span class="bars">bars ${s.startBar}–${s.endBar}</span></div>`).join('')
         : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`; })()}
     </div>
+    ${trackDifficulty(it, selectedTrack(it))}
+    ${mediaCard(it, selectedTrack(it))}
     ${patternsCard(it)}
-    ${tracksCard(it)}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
   `;
@@ -1340,6 +1400,7 @@ document.addEventListener('click', e=>{
   if(e.target.closest('#uploadBtn')){ navigate('#/admin/new?type=upload'); return; }
 });
 document.addEventListener('change', e=>{
+  if(e.target.matches('[data-track-sel]')){ state.track = e.target.value; render(); return; }
   const r = e.target.dataset.range; if(!r) return;
   let val = e.target.value===''?null:+e.target.value;
   if(val!=null && (r==='scoreMin'||r==='scoreMax')) val=Math.max(0,Math.min(100,val));
