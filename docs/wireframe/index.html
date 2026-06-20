@@ -1109,7 +1109,14 @@ function renderSong(id){
           <button class="play" title="Play this part" data-nav="#/play/${p.id}"><span class="material-symbols-outlined">play_arrow</span></button>
         </div>${o.rep<=1?allFieldsPanel(p):''}</div>`; }).join('')
         : sections.length
-        ? sections.map(s=>{ const cell=sectionCell(it, s.startBar, sel?sel.id:null); return `<div class="part"><span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span><div style="flex:1"><b>${esc(s.label)}</b></div>${diffTechs(cell)}<span class="bars">bars ${s.startBar}–${s.endBar}</span>${diffLevel(cell)}</div>`; }).join('')
+        ? sections.map(s=>{ const cell=sectionCell(it, s.startBar, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
+          <span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span>
+          <div class="si" data-nav="#/play/${it.id}?from=${s.startBar}"><b>${esc(s.label)}</b><small style="color:var(--faint);display:block">open the score at bar ${s.startBar}</small></div>
+          ${diffTechs(cell)}
+          <span class="bars">bars ${s.startBar}–${s.endBar}</span>
+          ${diffLevel(cell)}
+          <button class="play" title="Play from this section" data-nav="#/play/${it.id}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span></button>
+        </div></div>`; }).join('')
         : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`; })()}
       <small style="color:var(--faint);display:block;margin-top:8px">Level + techniques = this track's per-section difficulty (D-3 <code>data.sections[].tracks[]</code>). L1 song range <b>${rangeText(levelRange(tracksOf(it)))}</b> · L2 this track <b>${lvlText(sel?sel.level:null)}</b> · “—” = silent here.</small>
     </div>
