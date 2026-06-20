@@ -346,9 +346,10 @@ INSERT INTO drum_profile (track_id, beats, fills, rudiments, techniques, kit_pie
 -- MAX(track.level) WHERE instrument = <selected> — see the poke queries.
 -- Only Angra – Nothing To Say has a real .gp on disk; the others are catalogue
 -- rows with placeholder s3 keys (the seed exercises metadata + tags, not blobs).
--- Expert (9-10): Angra's drums track (L9). NOTE: the seed has only ONE Expert
--- example — the rudiment source tops out at L8 and no 2nd Expert song was
--- supplied; flagged for a follow-up pick.
+-- Expert (9-10): TWO examples — Angra (Nothing To Say, drums + lead L9) and
+-- Zoio de Lula (DRUMS L9; guitar only L3-4). The rudiment source tops out at L8,
+-- so Expert coverage comes from songs. Zoio shows the per-instrument point well:
+-- hard on drums, easy on guitar — so its guitar headline is 4, drums headline 9.
 -- ============================================================================
 
 INSERT INTO notation (id, format, s3_key, upload_status, created_by) VALUES
@@ -361,7 +362,7 @@ INSERT INTO notation (id, format, s3_key, upload_status, created_by) VALUES
 INSERT INTO playable (id, kind, title, description, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, tags, family, origin, visibility, status, has_audio, has_video, created_by, data) VALUES
  ('song_bohemian','song','Bohemian Rhapsody','Queen''s multi-section epic — ballad, opera and hard-rock parts.','not_bohemian',8,'{Queen}','artist',72,4,4,'{rock,progressive}','{keys,guitar,bass,drums,vocals}','{classic-rock}','{Rock}','curated','public','published',true,true,'seed','{}'),
  ('song_yellow','song','Yellow','Coldplay — a steady, ringing guitar anthem in B major.','not_yellow',3,'{Coldplay}','artist',87,4,4,'{rock,alternative}','{guitar,bass,drums,vocals}','{}','{Rock}','curated','public','published',false,true,'seed','{}'),
- ('song_zoio','song','Zoio de Lula','Charlie Brown Jr. — Brazilian rock (artist unconfirmed; flagged).','not_zoio',4,'{Charlie Brown Jr.}','artist',140,4,4,'{rock,brazilian}','{guitar,bass,drums,vocals}','{}','{Rock}','curated','public','published',false,true,'seed','{}'),
+ ('song_zoio','song','Zoio de Lula','Charlie Brown Jr. — Brazilian rock (artist unconfirmed; flagged).','not_zoio',9,'{Charlie Brown Jr.}','artist',140,4,4,'{rock,brazilian}','{guitar,bass,drums,vocals}','{}','{Rock}','curated','public','published',false,true,'seed','{}'),
  ('song_imyours','song','I''m Yours','Jason Mraz — one I–V–vi–IV progression carries the whole song.','not_imyours',2,'{Jason Mraz}','artist',75,4,4,'{pop,reggae}','{guitar,ukulele,bass,drums,vocals}','{}','{Pop}','curated','public','published',false,true,'seed','{"singleSection":true}'),
  ('song_angra','song','Nothing To Say','Angra — neoclassical power metal; Expert-level double-bass drumming.','not_angra',9,'{Angra}','artist',150,4,4,'{metal,power-metal}','{drums,guitar,bass,keys}','{neoclassical}','{Metal}','curated','public','published',true,true,'seed','{}');
 
@@ -382,8 +383,8 @@ INSERT INTO track (id, playable_id, instrument, role, name, sort_order, level, n
  -- Zoio
  ('trk_zoio_glead','song_zoio','guitar','lead','Lead Guitar',1,4,1,'seed'),
  ('trk_zoio_grhythm','song_zoio','guitar','rhythm','Rhythm Guitar',2,3,2,'seed'),
- ('trk_zoio_bass','song_zoio','bass',NULL,'Bass',3,3,3,'seed'),
- ('trk_zoio_drums','song_zoio','drums',NULL,'Drums',4,4,4,'seed'),
+ ('trk_zoio_bass','song_zoio','bass',NULL,'Bass',3,4,3,'seed'),
+ ('trk_zoio_drums','song_zoio','drums',NULL,'Drums',4,9,4,'seed'),
  -- I'm Yours (single progression)
  ('trk_imy_grhythm','song_imyours','guitar','rhythm','Rhythm Guitar',1,2,1,'seed'),
  ('trk_imy_uke','song_imyours','ukulele',NULL,'Ukulele',2,2,2,'seed'),

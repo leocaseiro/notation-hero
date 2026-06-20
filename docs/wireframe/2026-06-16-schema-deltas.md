@@ -451,6 +451,9 @@ First real catalogue seed: `docs/wireframe/2026-06-21-per-track-profiles-and-see
   Nothing To Say (Expert drums L9). Per-instrument `track.level` (headline = MAX per selected instrument)
   + per-track `tonal_profile`/`drum_profile`. Only Angra has a real `.gp`; others are catalogue rows with
   placeholder s3 keys.
-- **Open follow-ups:** (a) only **one Expert (9–10)** example (Angra drums) — needs a 2nd Expert pick;
-  (b) **Zoio** artist (Charlie Brown Jr.) unconfirmed; (c) real alphaTex/`.gp` blobs for the non-Angra songs
-  and the drum patterns when ingest is built.
+- **Expert (9–10):** **two** examples — Angra (Nothing To Say, drums + lead L9) + Zoio de Lula (**drums L9**;
+  guitar only L3–4 — the per-instrument point: hard on drums, easy on guitar). Zoio's drums set Expert per
+  Leo, 2026-06-21. The 8 rudiments cover Debut→Advanced (source tops out at L8).
+- **Open follow-ups:** (a) **Zoio** artist (Charlie Brown Jr.) unconfirmed; (b) the non-Angra song levels are
+  estimates (Bohemian 8 · Yellow 3 · I'm Yours 2) — calibrate in the Rockschool grounding pass; (c) real
+  alphaTex/`.gp` blobs for the non-Angra songs and the drum patterns when ingest is built.
