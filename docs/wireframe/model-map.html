@@ -59,6 +59,8 @@
   .entity.notation .ehead{background:color-mix(in srgb,var(--note) 15%,var(--panel))}
   .entity.step .ehead{background:color-mix(in srgb,var(--step) 15%,var(--panel))}
   .entity.score .ehead{background:color-mix(in srgb,var(--part) 15%,var(--panel))}
+  .entity.track .ehead{background:color-mix(in srgb,var(--pattern) 15%,var(--panel))}
+  .entity.media .ehead{background:color-mix(in srgb,var(--lesson) 15%,var(--panel))}
   .entity .ebody{padding:6px 11px;font-family:"Geist Mono",ui-monospace,monospace;font-size:11px}
   .entity .f{display:flex;justify-content:space-between;gap:14px;padding:2px 0;color:var(--muted)}
   .entity .f .fk{color:var(--faint)}
@@ -206,6 +208,61 @@
         </div>
       </div>
       <p class="ermnote">↳ Each Playable is scored on its <b>own</b> id. A Lesson's score = playing the <b>whole</b> lesson (the "final exam"); its Steps keep their <b>own</b> scores. <b>Never</b> an average.</p>
+
+    </div>
+  </div>
+
+  <h2>Group D — track · media · per-instrument difficulty <span class="draft">2026-06-20</span></h2>
+  <p class="sub" style="margin-bottom:10px">On top of the locked Playable shape: a song has many <b>tracks</b> (instruments), each a place to hang <b>media</b> and difficulty. The hot filter facets stay denormalised on Playable.</p>
+  <div class="diagram">
+    <div class="erm">
+
+      <div class="ermrow">
+        <div class="entity playable">
+          <div class="ehead">Playable <small>song / part / lesson / pattern</small></div>
+          <div class="ebody">
+            <div class="f pk"><b>id</b><span class="fk">PK</span></div>
+            <div class="f"><span>level</span><span class="fk">L1 headline · smallint</span></div>
+            <div class="f"><span>instruments[]</span><span class="fk">DERIVED ← DISTINCT track.instrument</span></div>
+            <div class="f"><span>has_audio/video</span><span class="fk">DERIVED ← media</span></div>
+            <div class="f"><span>data.sections[].tracks[]</span><span class="fk">L3 grid {track,level,techniques[]}</span></div>
+          </div>
+        </div>
+        <div class="relarrow"><span>owns ≥1<br>(D-3 invariant)</span><span class="ln">──▶</span><span>1 .. N</span></div>
+        <div class="entity track">
+          <div class="ehead">track <small>D-1 · one instrument line</small></div>
+          <div class="ebody">
+            <div class="f pk"><b>id</b><span class="fk">PK</span></div>
+            <div class="f"><span>playable_id</span><span class="fk">FK→Playable</span></div>
+            <div class="f"><span>instrument · role</span><span class="fk">flat vocab · same-instr variant</span></div>
+            <div class="f"><span>name · sort_order</span><span class="fk">text · int</span></div>
+            <div class="f"><span>level</span><span class="fk">L2 per-instrument · 0–10</span></div>
+            <div class="f"><span>notation_id? · notation_track_index</span><span class="fk">override / which track in shared .gp</span></div>
+            <div class="f"><span>data</span><span class="fk">tuning, capo …</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="ermnote">↳ <b>Two tracks may share an instrument</b> (guitar lead + guitar rhythm), split by <code>role</code>. <code>instruments[]</code> stays the hot GIN facet, recomputed = DISTINCT track.instrument.</p>
+
+      <div class="ermrow">
+        <div class="entity track">
+          <div class="ehead">track <small>or NULL = song-level</small></div>
+          <div class="ebody"><div class="f"><span>id</span><span class="fk">the per-track scope</span></div></div>
+        </div>
+        <div class="relarrow"><span>has many<br>(track_id NULL=song)</span><span class="ln">──▶</span><span>0 .. N</span></div>
+        <div class="entity media">
+          <div class="ehead">media <small>D-2 · audio / video</small></div>
+          <div class="ebody">
+            <div class="f pk"><b>id</b><span class="fk">PK</span></div>
+            <div class="f"><span>playable_id</span><span class="fk">FK→Playable</span></div>
+            <div class="f"><span>track_id?</span><span class="fk">FK→track · NULL = song-level</span></div>
+            <div class="f"><span>kind · provider</span><span class="fk">audio·video · youtube|s3|gp-embedded</span></div>
+            <div class="f"><span>url? · s3_key?</span><span class="fk">location (per-provider CHECK)</span></div>
+            <div class="f"><span>label · sort_order · data</span><span class="fk">syncPoints, mixType …</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="ermnote">↳ <b>3 sources</b>: <code>gp-embedded</code> (inside the .gp) · <code>s3</code> (our bucket — NH-137 shared full-song audioRef is one song-level row) · <code>youtube</code> (link). A slice (kind=part) carries no media — it resolves the source song's audio via <code>parent_id</code>.</p>
 
     </div>
   </div>
