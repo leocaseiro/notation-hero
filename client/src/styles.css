@@ -1,0 +1,23 @@
+@import 'tailwindcss';
+
+/* Notation Hero brand tokens (teal). CSS-first @theme — Tailwind v4.
+   Brand is teal; purple is NOT a brand color. */
+@theme {
+  --color-brand-400: #2dd4bf;
+  --color-brand-700: #0f766e;
+  --color-primary: var(--color-brand-400);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+}

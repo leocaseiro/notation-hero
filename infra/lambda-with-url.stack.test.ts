@@ -38,11 +38,16 @@ const inputsOf = (typeSuffix: string): Record<string, unknown> => {
   return match.inputs;
 };
 
-const makeComponent = (name: string, args: Partial<{ runtime: string; logRetentionDays: number }> = {}): LambdaWithUrl =>
+const makeComponent = (
+  name: string,
+  args: Partial<{ runtime: string; logRetentionDays: number }> = {},
+): LambdaWithUrl =>
   new LambdaWithUrl(name, {
     functionName: name,
     code: new pulumi.asset.AssetArchive({
-      "index.js": new pulumi.asset.StringAsset("exports.handler = async () => ({ statusCode: 200 });"),
+      "index.js": new pulumi.asset.StringAsset(
+        "exports.handler = async () => ({ statusCode: 200 });",
+      ),
     }),
     handler: "index.handler",
     ...args,
@@ -56,10 +61,13 @@ test("provisions a public Lambda Function URL over a 14-day-retention log group"
   const url = await resolveOutput(component.url);
   assert.ok(url.startsWith("https://"), `expected an https URL, got: ${url}`);
 
-  assert.equal(await resolveOutput(component.logGroupName), "/aws/lambda/nh-hello");
+  assert.equal(
+    await resolveOutput(component.logGroupName),
+    "/aws/lambda/nh-hello",
+  );
 
   const fn = inputsOf(":Function");
-  assert.equal(fn.runtime, "nodejs22.x");
+  assert.equal(fn.runtime, "nodejs24.x");
   assert.deepEqual(fn.architectures, ["arm64"]);
 
   // KTD4: loggingConfig.logGroup (not bare dependsOn) is what redirects logging
@@ -79,7 +87,10 @@ test("provisions a public Lambda Function URL over a 14-day-retention log group"
 
 test("honors runtime and retention overrides", async () => {
   created.length = 0;
-  const component = makeComponent("nh-custom", { runtime: "nodejs20.x", logRetentionDays: 30 });
+  const component = makeComponent("nh-custom", {
+    runtime: "nodejs20.x",
+    logRetentionDays: 30,
+  });
   await resolveOutput(component.url);
 
   assert.equal(inputsOf(":Function").runtime, "nodejs20.x");
