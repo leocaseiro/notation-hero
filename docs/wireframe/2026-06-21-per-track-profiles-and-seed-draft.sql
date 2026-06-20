@@ -257,5 +257,87 @@ CREATE INDEX idx_drum_techniques ON drum_profile USING gin (techniques);
 CREATE INDEX idx_drum_kit_pieces ON drum_profile USING gin (kit_pieces);
 
 -- ============================================================================
--- SEED DATA + POKE QUERIES  — appended in step 3.
+-- SEED DATA
+-- ----------------------------------------------------------------------------
+-- Provenance: drum patterns are REAL grooves from
+--   ~/Sites/notation-hero-resources/groovescribe-import.json
+-- Each pattern stores its real GrooveScribe share URL in playable.data
+-- (the authoritative score). Patterns/lessons may have notation_id NULL
+-- (constraint p_needs_score), so no fabricated alphaTex blob is invented; the
+-- GrooveScribe URL renders/round-trips and a real alphaTex can be backfilled
+-- later via the groovescribe skill. The drum_profile (rudiments/beats/fills/
+-- techniques/kit_pieces) hangs off each pattern's DRUMS track (SD-27).
+--
+-- Level groups (display-only, N-14): Debut 0 · Beginner 1-3 · Intermediate 4-6
+--                                   · Advanced 7-8 · Expert 9-10
+-- 2 rudiments per group, Debut→Advanced (the source tops out at L8; Expert 9-10
+-- is covered by the Angra song's drums track in the songs block).
+-- ============================================================================
+
+-- ── DRUM PATTERNS: 8 leveled rudiments (2 per group) ────────────────────────
+INSERT INTO playable (id, kind, title, description, level, pattern_kind, family, instruments, tags, origin, visibility, status, created_by, data) VALUES
+ ('pat_ssr_debut','pattern','Single Stroke Roll (Debut)','Alternating single strokes, 8th notes — the first rudiment.',0,'rudiment','{Roll,Single}','{drums}','{rudiment,roll}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Single%20Stroke%20Roll%20(Level%20Debut)&Tempo=70&Measures=1&H=|--------|&S=|oooooooo|&K=|--------|&Stickings=|RLRLRLRL|","source":"groovescribe-import.json"}'),
+ ('pat_dsr_debut','pattern','Double Stroke Roll (Debut)','Open roll, RRLL — 8th notes.',0,'rudiment','{Roll,Diddle}','{drums}','{rudiment,roll}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Double%20Stroke%20Roll%20(Level%20Debut)&Tempo=70&Measures=1&H=|--------|&S=|oooooooo|&K=|--------|&Stickings=|RRLLRRLL|","source":"groovescribe-import.json"}'),
+ ('pat_ssr_l2','pattern','Single Stroke Roll (L2)','Single strokes at 16th notes.',2,'rudiment','{Roll,Single}','{drums}','{rudiment,roll}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Single%20Stroke%20Roll%20(Level%202)&Tempo=80&Measures=1&H=|----------------|&S=|oooooooooooooooo|&K=|----------------|&Stickings=|RLRLRLRLRLRLRLRL|","source":"groovescribe-import.json"}'),
+ ('pat_ss4_l3','pattern','Single Stroke Four (L3)','Four singles resolving to an accent.',3,'rudiment','{Single,Accent}','{drums}','{rudiment}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Single%20Stroke%20Four%20(Level%203)&Tempo=90&Measures=1&H=|----------------|&S=|oooOoooOoooOoooO|&K=|----------------|&Stickings=|RLRLRLRLRLRLRLRL|","source":"groovescribe-import.json"}'),
+ ('pat_5sr_l4','pattern','Five Stroke Roll (L4)','RR LL R — two diddles plus an accent.',4,'rudiment','{Roll,Diddle}','{drums}','{rudiment,roll}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Five%20Stroke%20Roll%20(Level%204)&Tempo=75&Measures=1&H=|----------------|&S=|ooooO-----------|&K=|----------------|&Stickings=|RRLLR-----------|","source":"groovescribe-import.json"}'),
+ ('pat_7sr_l6','pattern','Seven Stroke Roll (L6)','Three diddles plus an accent.',6,'rudiment','{Roll,Diddle}','{drums}','{rudiment,roll}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Seven%20Stroke%20Roll%20(Level%206)&Tempo=85&Measures=1&H=|----------------|&S=|ooooooO---------|&K=|----------------|&Stickings=|RRLLRRL---------|","source":"groovescribe-import.json"}'),
+ ('pat_swiss_l7','pattern','Swiss Army Triplet (L7)','Flam plus two singles per triplet (RRL feel).',7,'rudiment','{Flam,Triplet}','{drums}','{rudiment,flam}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=12&Title=Swiss%20Army%20Triplet%20(Level%207)&Tempo=85&Measures=1&H=|------------|&S=|foofoofoofoo|&K=|------------|&Stickings=|RRLRRLRRLRRL|","source":"groovescribe-import.json"}'),
+ ('pat_ssr_l8','pattern','Single Stroke Roll (L8)','Single strokes at 32nd notes.',8,'rudiment','{Roll,Single}','{drums}','{rudiment,roll}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=32&Title=Single%20Stroke%20Roll%20(Level%208)&Tempo=65&Measures=1&H=|--------------------------------|&S=|oooooooooooooooooooooooooooooooo|&K=|--------------------------------|&Stickings=|RLRLRLRLRLRLRLRLRLRLRLRLRLRLRLRL|","source":"groovescribe-import.json"}');
+
+-- ── DRUM PATTERNS: 1 standalone beat + 1 fill ───────────────────────────────
+INSERT INTO playable (id, kind, title, description, level, bpm, time_signature_numerator, time_signature_denominator, pattern_kind, family, instruments, tags, origin, visibility, status, created_by, data) VALUES
+ ('pat_basic_rock','pattern','Basic Rock Beat','Backbeat on 2 & 4, kick on 1 & 3 — the first groove.',1,100,4,4,'beat','{Rock}','{drums}','{beat,rock}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Basic%20Rock%20Beat&Tempo=100&Measures=1&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|","source":"groovescribe-import.json"}'),
+ ('pat_snare_fill_l4','pattern','16th-Note Snare Fill (L4)','Continuous 16th-note snare fill.',4,120,4,4,'fill','{Fill,Snare}','{drums}','{fill}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=16th-Note%20Snare%20Fill%20(Level%204)&Tempo=120&Measures=1&H=|----------------|&S=|oooooooooooooooo|&K=|----------------|&Stickings=|RLRLRLRLRLRLRLRL|","source":"groovescribe-import.json"}');
+
+-- ── COMPOSITE BEAT: full beat = hi-hat + snare + kick voices (via step) ──────
+-- The 3 single-voice leaves are masked views of Basic Rock Beat (real data).
+INSERT INTO playable (id, kind, title, description, level, bpm, time_signature_numerator, time_signature_denominator, pattern_kind, family, instruments, tags, origin, visibility, status, created_by, data) VALUES
+ ('pat_voice_hh','pattern','Hi-Hat Voice (8ths)','Just the hi-hats — eight straight 8th notes.',0,100,4,4,'beat','{Rock,Voice}','{drums}','{beat,voice,hi-hat}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Hi-Hat%20Voice&Tempo=100&Measures=1&H=|xxxxxxxx|&S=|--------|&K=|--------|","source":"masked from Basic Rock Beat"}'),
+ ('pat_voice_sn','pattern','Snare Voice (backbeat)','Just the snare — backbeat on 2 & 4.',1,100,4,4,'beat','{Rock,Voice}','{drums}','{beat,voice,snare}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Snare%20Voice&Tempo=100&Measures=1&H=|--------|&S=|--o---o-|&K=|--------|","source":"masked from Basic Rock Beat"}'),
+ ('pat_voice_kick','pattern','Kick Voice (1 & 3)','Just the kick — on beats 1 & 3.',1,100,4,4,'beat','{Rock,Voice}','{drums}','{beat,voice,kick}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Kick%20Voice&Tempo=100&Measures=1&H=|--------|&S=|--------|&K=|o---o---|","source":"masked from Basic Rock Beat"}'),
+ ('pat_rock_composite','pattern','Rock Beat — built from voices','The full beat assembled from its hi-hat, snare and kick voices.',1,100,4,4,'beat','{Rock,Composite}','{drums}','{beat,rock,composite}','curated','public','published','seed','{"grooveScribeUrl":"https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Rock%20Beat%20(composite)&Tempo=100&Measures=1&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|","source":"composed from voices"}');
+
+-- composite -> voice leaves (ordered)
+INSERT INTO step (parent_id, child_id, sort_order, created_by) VALUES
+ ('pat_rock_composite','pat_voice_hh',  1,'seed'),
+ ('pat_rock_composite','pat_voice_sn',  2,'seed'),
+ ('pat_rock_composite','pat_voice_kick',3,'seed');
+
+-- ── one DRUMS track per drum pattern (the drum_profile's home; level mirrors) ─
+INSERT INTO track (id, playable_id, instrument, sort_order, level, created_by) VALUES
+ ('trk_ssr_debut','pat_ssr_debut','drums',1,0,'seed'),
+ ('trk_dsr_debut','pat_dsr_debut','drums',1,0,'seed'),
+ ('trk_ssr_l2','pat_ssr_l2','drums',1,2,'seed'),
+ ('trk_ss4_l3','pat_ss4_l3','drums',1,3,'seed'),
+ ('trk_5sr_l4','pat_5sr_l4','drums',1,4,'seed'),
+ ('trk_7sr_l6','pat_7sr_l6','drums',1,6,'seed'),
+ ('trk_swiss_l7','pat_swiss_l7','drums',1,7,'seed'),
+ ('trk_ssr_l8','pat_ssr_l8','drums',1,8,'seed'),
+ ('trk_basic_rock','pat_basic_rock','drums',1,1,'seed'),
+ ('trk_snare_fill_l4','pat_snare_fill_l4','drums',1,4,'seed'),
+ ('trk_voice_hh','pat_voice_hh','drums',1,0,'seed'),
+ ('trk_voice_sn','pat_voice_sn','drums',1,1,'seed'),
+ ('trk_voice_kick','pat_voice_kick','drums',1,1,'seed'),
+ ('trk_rock_composite','pat_rock_composite','drums',1,1,'seed');
+
+-- ── drum_profile per drums track (SD-27: keyed by track_id) ──────────────────
+INSERT INTO drum_profile (track_id, beats, fills, rudiments, techniques, kit_pieces) VALUES
+ ('trk_ssr_debut','{}','{}','{single-stroke-roll}','{}','{snare}'),
+ ('trk_dsr_debut','{}','{}','{double-stroke-roll}','{}','{snare}'),
+ ('trk_ssr_l2','{}','{}','{single-stroke-roll}','{}','{snare}'),
+ ('trk_ss4_l3','{}','{}','{single-stroke-four}','{accent}','{snare}'),
+ ('trk_5sr_l4','{}','{}','{five-stroke-roll}','{}','{snare}'),
+ ('trk_7sr_l6','{}','{}','{seven-stroke-roll}','{}','{snare}'),
+ ('trk_swiss_l7','{}','{}','{swiss-army-triplet}','{flam}','{snare}'),
+ ('trk_ssr_l8','{}','{}','{single-stroke-roll}','{}','{snare}'),
+ ('trk_basic_rock','{rock,basic-rock}','{}','{}','{}','{hi-hat,snare,kick}'),
+ ('trk_snare_fill_l4','{}','{snare-fill}','{single-stroke-roll}','{16th}','{snare}'),
+ ('trk_voice_hh','{}','{}','{}','{}','{hi-hat}'),
+ ('trk_voice_sn','{}','{}','{}','{}','{snare}'),
+ ('trk_voice_kick','{}','{}','{}','{}','{kick}'),
+ ('trk_rock_composite','{rock,basic-rock}','{}','{}','{}','{hi-hat,snare,kick}');
+
+-- ============================================================================
+-- SONGS + POKE QUERIES  — appended next.
 -- ============================================================================
