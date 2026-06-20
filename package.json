@@ -17,6 +17,7 @@
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown .",
     "depcheck": "depcruise server/src --config .dependency-cruiser.cjs",
+    "check:core-purity": "bash tooling/check-core-purity-canary.sh",
     "knip": "knip",
     "syncpack": "syncpack lint",
     "check:layout": "bash tooling/check-layout.sh"
