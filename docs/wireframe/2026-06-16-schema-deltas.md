@@ -392,3 +392,19 @@ filter facet. Wireframe now demonstrates it — SNA tracks = drums(kit) · guita
 while its `instruments` facet stays `[drums, guitar, keys]`. **Open:** is `bass` a guitar `role` or its own
 instrument (vocab)? Per-instrument difficulty per-track or a by-instrument curve? DDL sketch in
 `2026-06-17-notation-model-draft.sql` (Round-6).
+
+### SD-27 — per-track tonal/drum profiles? (2026-06-20)
+
+**Catch (wireframe ↔ schema reconciliation):** `tonal_profile` and `drum_profile` attach to the
+**playable** (the whole song), but Group D added a **`track`** relation (e.g. guitar `lead` + guitar
+`rhythm` + bass + drums on one song). So the *chords / progressions* belong to the pitched tracks and
+the *techniques / kit_pieces* to the drums track — yet the profiles sit on the song, not the track.
+
+- **For search** ("songs using I–V–vi–IV", "songs with a shuffle") per-song facets are sufficient and cheap.
+- **For per-instrument precision** ("the BASS plays these notes", "the guitar uses these chords") the
+  per-song profile is lossy.
+
+**Open:** keep profiles per-playable (today) **or** move/extend them per-track (a `track`-keyed profile,
+or profile facets on `track.data`). Pairs with **SD-25** (searchable per-instrument technique facet) and
+**OQ2** (multi-track which-to-learn). **Parked — needs its own decision; do NOT change the locked schema
+unilaterally.** (Leo: "log as a schema-delta", 2026-06-20.)
