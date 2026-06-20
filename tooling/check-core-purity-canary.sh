@@ -22,7 +22,8 @@ ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 [ -n "$ROOT" ] || { printf '::error::check-core-purity-canary.sh must run inside the git work tree\n' >&2; exit 1; }
 cd "$ROOT"
 
-CANARY="server/src/core/__core_purity_canary__.policy.ts"
+# Unique per-process filename so concurrent runs never delete each other's canary mid-cruise.
+CANARY="server/src/core/__core_purity_canary_$$__.policy.ts"
 cleanup() { rm -f "$CANARY"; }
 trap cleanup EXIT
 
@@ -32,7 +33,9 @@ printf "import '@nestjs/common';\nexport const canary = true;\n" > "$CANARY" || 
 OUT="$(pnpm exec depcruise "$CANARY" --config .dependency-cruiser.cjs 2>&1)"
 RC=$?
 
-if [ "$RC" -ne 0 ] && printf '%s' "$OUT" | grep -q 'core-purity'; then
+# Match the EXACT rule name — `core-purity` NOT followed by a hyphen, so a renamed rule
+# (e.g. `core-purity-RENAMED`) can't keep the canary green by accident.
+if [ "$RC" -ne 0 ] && printf '%s' "$OUT" | grep -qE 'core-purity([^-]|$)'; then
   echo "Core-purity canary OK — the fence rejects a deliberate core -> @nestjs/common import."
   exit 0
 fi
