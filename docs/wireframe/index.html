@@ -919,6 +919,14 @@ function playableGrid(it){
 }
 function allFieldsPanel(it){ return `<div class="nfields">${playableGrid(it)}</div>`; }              // inline, under list rows
 function detailFieldsPanel(it){ return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> fields · drag the corner to resize</div><div class="fdbody">${playableGrid(it)}</div></aside>`; }  // floating, on detail pages
+// Raw AlphaTab extraction, shown verbatim when the mapped UI can't display all of it (aux/FX/print tracks, tuning, every section). Leo: "the wireframe should have RAW data if you are confused how to display on the UI."
+function rawSourceCard(it){
+  const raw = (typeof GP_RAW!=='undefined') && GP_RAW[it.id]; if(!raw) return '';
+  return `<details style="margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px">
+    <summary style="cursor:pointer;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px"><span class="material-symbols-outlined" style="font-size:16px;color:var(--accent)">data_object</span> Raw source data — AlphaTab extraction (every track + section, verbatim)</summary>
+    <div style="font-size:11.5px;color:var(--faint);margin:8px 0 2px">Objective data straight from the <code>.gp</code> file. Shown raw because the mapped fields above can't display all of it (aux / FX / print-only tracks, tuning, every section marker). Per-track <b>difficulty levels are NOT here</b> — those are human estimates, flagged in the schema-delta.</div>
+    <pre class="nfjson">${jsonHL(raw)}</pre></details>`;
+}
 function rowHTML(it){
   const isLesson = it.kind==='lesson', isPat = it.kind==='pattern';
   const lkPrimary = isLesson ? (patternKindsOf(it)[0]||null) : null;
@@ -1107,6 +1115,7 @@ function renderSong(id){
     </div>
     ${mediaCard(it, sel)}
     ${patternsCard(it)}
+    ${rawSourceCard(it)}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
   `;
