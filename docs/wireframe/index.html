@@ -745,7 +745,7 @@ function singlePop(id, opts){
 }
 function levelPop(){
   const opt = (n,v)=>`<option value="${v}" ${state.level[n]===v?'selected':''}>${gradeLabel(v)}</option>`;
-  const optEls = n => `<optgroup label="Debut">${opt(n,0)}</optgroup><optgroup label="Beginner">${[1,2,3].map(v=>opt(n,v)).join('')}</optgroup><optgroup label="Intermediate">${[4,5,6].map(v=>opt(n,v)).join('')}</optgroup><optgroup label="Advanced">${[7,8,9,10].map(v=>opt(n,v)).join('')}</optgroup>`;   // N-14 level bands (display-only)
+  const optEls = n => `<optgroup label="Debut">${opt(n,0)}</optgroup><optgroup label="Beginner">${[1,2,3].map(v=>opt(n,v)).join('')}</optgroup><optgroup label="Intermediate">${[4,5,6].map(v=>opt(n,v)).join('')}</optgroup><optgroup label="Advanced">${[7,8].map(v=>opt(n,v)).join('')}</optgroup><optgroup label="Expert">${[9,10].map(v=>opt(n,v)).join('')}</optgroup>`;   // N-14 level bands (display-only): Debut 0 · Beginner 1-3 · Intermediate 4-6 · Advanced 7-8 · Expert 9-10 (Rockschool 0-8 + Expert 9-10)
   return `<div class="fpop ${state.openPop==='lvlPop'?'open':''}" id="lvlPop" style="min-width:230px">
     <div class="opsel">difficulty range (0 = Debut)</div>
     <div class="rangerow"><label>Min</label><select data-range="levelMin"><option value="">—</option>${optEls('min')}</select>
