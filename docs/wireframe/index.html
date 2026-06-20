@@ -1114,7 +1114,7 @@ function renderSong(id){
           <div class="si" data-nav="#/play/${it.id}?from=${s.startBar}"><b>${esc(s.label)}</b><small style="color:var(--faint);display:block">open the score at bar ${s.startBar}</small></div>
           ${diffTechs(cell)}
           <span class="bars">bars ${s.startBar}–${s.endBar}</span>
-          ${diffLevel(cell)}
+          ${cell ? diffLevel(cell) : (sel ? `<span class="lvlpill ${sel.level===0?'debut':''}" title="${cap(sel.instrument)} track level — no per-section breakdown in the file yet">${lvlText(sel.level)}</span>` : diffLevel(null))}
           <button class="play" title="Play from this section" data-nav="#/play/${it.id}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span></button>
         </div></div>`; }).join('')
         : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`; })()}
