@@ -710,8 +710,13 @@ function matches(it){
   if(state.timeSig.length && !state.timeSig.includes(it.time_sig)) return false;
   if(state.instrument && !(it.instruments||[]).includes(state.instrument)) return false;
   if(state.level.min!=null || state.level.max!=null){
-    if(it.level==null){ if(!state.inclUngraded) return false; }
-    else { if(state.level.min!=null && it.level<state.level.min) return false; if(state.level.max!=null && it.level>state.level.max) return false; }
+    // per-instrument: when an instrument is selected, filter on THAT instrument's
+    // headline (max of its tracks), not the song's overall headline (SD-27 / T3).
+    // e.g. Zoio guitar = L3-4, so "Guitar + level>=9" must NOT match it (drums L9 does).
+    let lv = it.level;
+    if(state.instrument){ const ls=tracksOf(it).filter(t=>t.instrument===state.instrument).map(t=>t.level).filter(v=>v!=null); if(ls.length) lv=Math.max(...ls); }
+    if(lv==null){ if(!state.inclUngraded) return false; }
+    else { if(state.level.min!=null && lv<state.level.min) return false; if(state.level.max!=null && lv>state.level.max) return false; }
   }
   if(state.bpm.min!=null && (it.bpm==null || it.bpm<state.bpm.min)) return false;
   if(state.bpm.max!=null && (it.bpm==null || it.bpm>state.bpm.max)) return false;
