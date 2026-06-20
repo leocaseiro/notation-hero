@@ -339,5 +339,118 @@ INSERT INTO drum_profile (track_id, beats, fills, rudiments, techniques, kit_pie
  ('trk_rock_composite','{rock,basic-rock}','{}','{}','{}','{hi-hat,snare,kick}');
 
 -- ============================================================================
--- SONGS + POKE QUERIES  — appended next.
+-- SONGS  — multi-track, per-instrument levels + per-track tonal/drum profiles
+-- ----------------------------------------------------------------------------
+-- playable.level = headline = MAX(track.level) overall (default-sort number).
+-- The per-instrument headline ("max on guitar") is derived at query time as
+-- MAX(track.level) WHERE instrument = <selected> — see the poke queries.
+-- Only Angra – Nothing To Say has a real .gp on disk; the others are catalogue
+-- rows with placeholder s3 keys (the seed exercises metadata + tags, not blobs).
+-- Expert (9-10): Angra's drums track (L9). NOTE: the seed has only ONE Expert
+-- example — the rudiment source tops out at L8 and no 2nd Expert song was
+-- supplied; flagged for a follow-up pick.
+-- ============================================================================
+
+INSERT INTO notation (id, format, s3_key, upload_status, created_by) VALUES
+ ('not_bohemian','gp','s3://nh-notation/seed/bohemian-rhapsody.gp','ready','seed'),
+ ('not_yellow','gp','s3://nh-notation/seed/yellow.gp','ready','seed'),
+ ('not_zoio','gp','s3://nh-notation/seed/zoio.gp','ready','seed'),
+ ('not_imyours','gp','s3://nh-notation/seed/im-yours.gp','ready','seed'),
+ ('not_angra','gp','s3://nh-notation/seed/angra-nothing-to-say.gp','ready','seed');
+
+INSERT INTO playable (id, kind, title, description, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, tags, family, origin, visibility, status, has_audio, has_video, created_by, data) VALUES
+ ('song_bohemian','song','Bohemian Rhapsody','Queen''s multi-section epic — ballad, opera and hard-rock parts.','not_bohemian',8,'{Queen}','artist',72,4,4,'{rock,progressive}','{keys,guitar,bass,drums,vocals}','{classic-rock}','{Rock}','curated','public','published',true,true,'seed','{}'),
+ ('song_yellow','song','Yellow','Coldplay — a steady, ringing guitar anthem in B major.','not_yellow',3,'{Coldplay}','artist',87,4,4,'{rock,alternative}','{guitar,bass,drums,vocals}','{}','{Rock}','curated','public','published',false,true,'seed','{}'),
+ ('song_zoio','song','Zoio de Lula','Charlie Brown Jr. — Brazilian rock (artist unconfirmed; flagged).','not_zoio',4,'{Charlie Brown Jr.}','artist',140,4,4,'{rock,brazilian}','{guitar,bass,drums,vocals}','{}','{Rock}','curated','public','published',false,true,'seed','{}'),
+ ('song_imyours','song','I''m Yours','Jason Mraz — one I–V–vi–IV progression carries the whole song.','not_imyours',2,'{Jason Mraz}','artist',75,4,4,'{pop,reggae}','{guitar,ukulele,bass,drums,vocals}','{}','{Pop}','curated','public','published',false,true,'seed','{"singleSection":true}'),
+ ('song_angra','song','Nothing To Say','Angra — neoclassical power metal; Expert-level double-bass drumming.','not_angra',9,'{Angra}','artist',150,4,4,'{metal,power-metal}','{drums,guitar,bass,keys}','{neoclassical}','{Metal}','curated','public','published',true,true,'seed','{}');
+
+-- ── tracks: per-instrument, per-role, with per-instrument LEVELS ─────────────
+INSERT INTO track (id, playable_id, instrument, role, name, sort_order, level, notation_track_index, created_by) VALUES
+ -- Bohemian Rhapsody: guitar lead(7) vs rhythm(4) → "max on guitar" = 7
+ ('trk_boh_keys','song_bohemian','keys',NULL,'Piano',1,6,1,'seed'),
+ ('trk_boh_glead','song_bohemian','guitar','lead','Lead Guitar',2,7,2,'seed'),
+ ('trk_boh_grhythm','song_bohemian','guitar','rhythm','Rhythm Guitar',3,4,3,'seed'),
+ ('trk_boh_bass','song_bohemian','bass',NULL,'Bass',4,5,4,'seed'),
+ ('trk_boh_drums','song_bohemian','drums',NULL,'Drums',5,5,5,'seed'),
+ ('trk_boh_vox','song_bohemian','vocals',NULL,'Vocals',6,8,6,'seed'),
+ -- Yellow
+ ('trk_yel_glead','song_yellow','guitar','lead','Lead Guitar',1,3,1,'seed'),
+ ('trk_yel_grhythm','song_yellow','guitar','rhythm','Rhythm Guitar',2,2,2,'seed'),
+ ('trk_yel_bass','song_yellow','bass',NULL,'Bass',3,2,3,'seed'),
+ ('trk_yel_drums','song_yellow','drums',NULL,'Drums',4,2,4,'seed'),
+ -- Zoio
+ ('trk_zoio_glead','song_zoio','guitar','lead','Lead Guitar',1,4,1,'seed'),
+ ('trk_zoio_grhythm','song_zoio','guitar','rhythm','Rhythm Guitar',2,3,2,'seed'),
+ ('trk_zoio_bass','song_zoio','bass',NULL,'Bass',3,3,3,'seed'),
+ ('trk_zoio_drums','song_zoio','drums',NULL,'Drums',4,4,4,'seed'),
+ -- I'm Yours (single progression)
+ ('trk_imy_grhythm','song_imyours','guitar','rhythm','Rhythm Guitar',1,2,1,'seed'),
+ ('trk_imy_uke','song_imyours','ukulele',NULL,'Ukulele',2,2,2,'seed'),
+ ('trk_imy_bass','song_imyours','bass',NULL,'Bass',3,2,3,'seed'),
+ ('trk_imy_drums','song_imyours','drums',NULL,'Drums',4,1,4,'seed'),
+ -- Angra – Nothing To Say (Expert drums)
+ ('trk_angra_drums','song_angra','drums',NULL,'Drums',1,9,1,'seed'),
+ ('trk_angra_glead','song_angra','guitar','lead','Lead Guitar',2,9,2,'seed'),
+ ('trk_angra_grhythm','song_angra','guitar','rhythm','Rhythm Guitar',3,7,3,'seed'),
+ ('trk_angra_bass','song_angra','bass',NULL,'Bass',4,8,4,'seed'),
+ ('trk_angra_keys','song_angra','keys',NULL,'Keys',5,6,5,'seed');
+
+-- ── tonal_profile per PITCHED track (SD-27: the bass carries its OWN notes) ──
+INSERT INTO tonal_profile (track_id, musical_key, keys, scales, chords, progression_concrete, progression_roman, progression_family) VALUES
+ ('trk_boh_keys','Bb major','{Bb major,Eb major}','{major}','{Bb,Gm,Cm7,F,Eb,Cdim}','{Bb-Gm-Cm7-F}','{I-vi-ii-V}','{I-vi-ii-V}'),
+ ('trk_boh_glead','Eb major','{Eb major}','{major,minor pentatonic}','{Eb,Bb,Ab,Cm}','{}','{}','{}'),
+ ('trk_boh_grhythm','Bb major','{Bb major}','{major}','{Bb,Eb,F}','{Bb-Eb-F}','{I-IV-V}','{I-IV-V}'),
+ ('trk_boh_bass','Bb major','{Bb major}','{major}','{Bb,Gm,Cm,F,Eb}','{}','{}','{}'),
+ ('trk_yel_glead','B major','{B major}','{major}','{B,F#,E}','{}','{}','{}'),
+ ('trk_yel_grhythm','B major','{B major}','{major}','{B,F#sus4,Emaj7,E}','{B-F#-E}','{I-V-IV}','{I-IV-V}'),
+ ('trk_yel_bass','B major','{B major}','{major}','{B,F#,E}','{}','{}','{}'),
+ ('trk_zoio_glead','E minor','{E minor}','{minor pentatonic,minor}','{Em,G,D,C}','{}','{}','{}'),
+ ('trk_zoio_grhythm','E minor','{E minor}','{minor}','{Em,C,G,D}','{Em-C-G-D}','{i-VI-III-VII}','{i-VI-III-VII}'),
+ ('trk_zoio_bass','E minor','{E minor}','{minor}','{Em,C,G,D}','{}','{}','{}'),
+ ('trk_imy_grhythm','C major','{C major}','{major}','{C,G,Am,F}','{C-G-Am-F}','{I-V-vi-IV}','{I-V-vi-IV}'),
+ ('trk_imy_uke','C major','{C major}','{major}','{C,G,Am,F}','{C-G-Am-F}','{I-V-vi-IV}','{I-V-vi-IV}'),
+ ('trk_imy_bass','C major','{C major}','{major}','{C,G,Am,F}','{C-G-Am-F}','{I-V-vi-IV}','{I-V-vi-IV}'),
+ ('trk_angra_glead','E minor','{E minor,E harmonic minor}','{harmonic minor,minor,diminished}','{Em,B7,Am,C,D}','{}','{}','{}'),
+ ('trk_angra_grhythm','E minor','{E minor}','{harmonic minor,minor}','{Em,C,D,B7}','{Em-C-D-B7}','{i-VI-VII-V}','{i-VI-VII-V}'),
+ ('trk_angra_bass','E minor','{E minor}','{minor}','{Em,C,D,B}','{}','{}','{}'),
+ ('trk_angra_keys','E minor','{E minor}','{harmonic minor}','{Em,B7,Am}','{}','{}','{}');
+
+-- ── drum_profile per DRUMS track (the drum side of the same per-track model) ──
+INSERT INTO drum_profile (track_id, beats, fills, rudiments, techniques, kit_pieces) VALUES
+ ('trk_boh_drums','{rock}','{tom-fill}','{}','{}','{hi-hat,snare,kick,crash,tom}'),
+ ('trk_yel_drums','{rock,pop}','{}','{}','{}','{hi-hat,snare,kick}'),
+ ('trk_zoio_drums','{rock,punk}','{snare-fill}','{}','{}','{hi-hat,snare,kick,crash}'),
+ ('trk_imy_drums','{pop,reggae}','{}','{}','{cross-stick}','{hi-hat,snare,kick}'),
+ ('trk_angra_drums','{metal,double-bass}','{around-the-kit}','{}','{double-bass,blast-beat}','{hi-hat,snare,kick,ride,crash,tom}');
+
+-- ── media: one official video per song; audio stems where we flagged has_audio
+INSERT INTO media (id, playable_id, kind, provider, url, s3_key, label, sort_order, created_by) VALUES
+ ('med_boh_vid','song_bohemian','video','youtube','https://www.youtube.com/watch?v=fJ9rUzIMcZQ',NULL,'Official video',0,'seed'),
+ ('med_boh_aud','song_bohemian','audio','s3',NULL,'s3://nh-notation/seed/bohemian-rhapsody.mp3','Full mix',1,'seed'),
+ ('med_yel_vid','song_yellow','video','youtube','https://www.youtube.com/watch?v=yKNxeF4KMsY',NULL,'Official video',0,'seed'),
+ ('med_zoio_vid','song_zoio','video','youtube','https://www.youtube.com/watch?v=placeholder-zoio',NULL,'Official video',0,'seed'),
+ ('med_imy_vid','song_imyours','video','youtube','https://www.youtube.com/watch?v=EkHTsc9PU2A',NULL,'Official video',0,'seed'),
+ ('med_angra_vid','song_angra','video','youtube','https://www.youtube.com/watch?v=placeholder-angra',NULL,'Official video',0,'seed'),
+ ('med_angra_aud','song_angra','audio','s3',NULL,'s3://nh-notation/seed/angra-nothing-to-say.mp3','Full mix',1,'seed');
+
+-- ============================================================================
+-- POKE QUERIES (verification) — run read-only after the seed loads
+-- ============================================================================
+-- 1) Per-instrument headline ("max on guitar") for Bohemian Rhapsody → 7
+--    SELECT max(level) FROM track WHERE playable_id='song_bohemian' AND instrument='guitar';
+-- 2) "Easy on guitar" browse (guitar tracks <= L3) → Yellow, I'm Yours
+--    SELECT p.title, t.level FROM track t JOIN playable p ON p.id=t.playable_id
+--      WHERE t.instrument='guitar' AND t.level <= 3 ORDER BY t.level;
+-- 3) Songs using a I–V–vi–IV progression (per-track tonal_profile) → I'm Yours
+--    SELECT DISTINCT p.title FROM tonal_profile tp JOIN track t ON t.id=tp.track_id
+--      JOIN playable p ON p.id=t.playable_id WHERE tp.progression_family @> ARRAY['I-V-vi-IV'];
+-- 4) Songs with double-bass drumming (per-track drum_profile) → Angra
+--    SELECT DISTINCT p.title FROM drum_profile d JOIN track t ON t.id=d.track_id
+--      JOIN playable p ON p.id=t.playable_id WHERE d.techniques @> ARRAY['double-bass'];
+-- 5) "The BASS plays these notes" — per-track precision SD-27 unlocks
+--    SELECT p.title, tp.chords FROM tonal_profile tp JOIN track t ON t.id=tp.track_id
+--      JOIN playable p ON p.id=t.playable_id WHERE t.instrument='bass' AND p.id='song_bohemian';
+-- 6) Expert-tier playables (level 9-10) → Angra
+--    SELECT title, level FROM playable WHERE level BETWEEN 9 AND 10;
 -- ============================================================================
