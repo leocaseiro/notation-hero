@@ -73,7 +73,7 @@ Recommend the $0 shape, per item:
 
 ## 7. Testing + CI/CD
 
-- Server: **Vitest** (NestJS `swc#vitest` recipe — `nest g`'s Jest-style specs run under Vitest globals; decided — DACI L5 + D3).  Client: **Vitest** (or whatever TanStack favors).  E2E: **Playwright** + **trace artifacts in CI** (NH-197).  **Visual regression** (Chromatic / Playwright snapshots / Storybook test-runner).  **Storybook**.  react-testing-library = nice-to-have if it doesn't fight TanStack.  Later: LocalStack, coverage-ratchet, Stryker.
+- Server: **Jest** (what `nest g` emits).  Client: **Vitest** (or whatever TanStack favors).  E2E: **Playwright** + **trace artifacts in CI** (NH-197).  **Visual regression** (Chromatic / Playwright snapshots / Storybook test-runner).  **Storybook**.  react-testing-library = nice-to-have if it doesn't fight TanStack.  Later: LocalStack, coverage-ratchet, Stryker.
 - **GitHub Actions + OIDC-to-AWS**; autofix enforced in CI + hooks; **size-limit** budget. (We DO want CI — only the *old CI decisions* are forgotten.)
 - Perf plan (NH-198): route code-splitting + lazy-loading (AlphaTab/player) + bundle budgets.
 
@@ -84,7 +84,7 @@ Recommend the $0 shape, per item:
 - Amplify abstracts AWS → less learning value → Cognito + your-IaC directly. (`…amplify-auth-cognito-admin-onramp.md`)
 - ElectricSQL is Postgres-only → can't sync DynamoDB → sync frameworks (TanStack DB/Replicache/Zero/RxDB) deferred; v1 = insert-only outbox. (`…tanstack-db-fit.md`, `…offline-first-sync.md`)
 - Biome's `useImportType` autofix breaks Nest DI on decorated files → if Biome, format-only; ESLint is DI-safe. (`…biome-vs-eslint-spike.md`, `…nestjs-generators-and-nofight.md`)
-- `nest g` emits Jest specs + Prettier-flavored code (default 80-col wraps a `nest g resource` import) → run the generated specs under **Vitest** (NestJS `swc#vitest` recipe), NOT Jest (decided — DACI L5 + D3); lineWidth ≥ 100. (`…nestjs-generators-and-nofight.md`)
+- `nest g` emits Jest specs + Prettier-flavored code (default 80-col wraps a `nest g resource` import) → Jest on server; lineWidth ≥ 100. (`…nestjs-generators-and-nofight.md`)
 - **Web MIDI is unsupported on ALL of iOS in 2026** (Safari, WKWebView, installed PWA — all WebKit); Android + desktop-Chromium DO support it. **DECISION (2026-06-19): iOS v1 ships on the WEB via the third-party "Web MIDI Browser" shim** (`WebMIDIAPIShimForiOS`) — proven on a 2016 iPad mini (AlphaTab render + Web MIDI scoring) — with an in-app nudge to install it; native Capacitor + CoreMIDI is a **fast-follow** soon after v1, not the v1 gate. **Two hard constraints keep the shim path alive:** (1) MIDI enumeration must use a **manual `iter.next()` loop, not `Array.from(midiAccess.inputs.values())`** (the latter silently returns `[]` on the shim — the iterator isn't seen as iterable → array-like fallback → empty; mizuhiki#11; WebMIDI.js v3.x uses the breaking form internally); (2) **smoke-test every JS library on the iOS-shim WebView** (its ancient engine breaks some modern libs). **AlphaTab notation player + synth + scoring are ALREADY validated on the shim** (Leo's PWA prototype); a future waterfall-view player is not — if it uses Tone.js/another audio lib, test that on the shim first (Tone.js untested there). Abstract MIDI behind the port; native-side scoring is for the native bridges only. (`docs/spikes/2026-06-18-webmidi-input-ios-bridge.md`)
 - Rejected early (don't re-propose unless free-tier+learning changes): Firebase, Supabase; Expo/Flutter/React Native/Electron-in-v1 (Capacitor+React won; Electron = desktop v2); **Tauri** (WKWebView lacks Web MIDI); Bun; Aurora/RDS (Neon $0); API Gateway (Function URL $0); RxDB (premium-storage paywall).
 
@@ -94,7 +94,7 @@ Recommend the $0 shape, per item:
 2. **Lambda packaging**: adapter + bundler (e.g. serverless-express + esbuild vs alternatives).
 3. **ORM**: Drizzle vs Prisma vs Kysely vs TypeORM (+ Kanel if DB-first). Must be Neon-HTTP + SWC friendly.
 4. **Traffic analytics**: GA4-now vs PostHog vs Plausible vs CloudFront-logs+Athena (MUST v1; pick simplest free start + a graduate path).
-5. **Linter/formatter**: evaluate **NestJS-default ESLint first (Biome-free)** under NH-42 (generator-fit + autofix + type-safety); do NOT re-run the dropped Biome-vs-ESLint comparison.
+5. **Linter/formatter**: ESLint vs Biome (generator-fit + autofix + type-safety; not speed).
 6. **Monorepo orchestration**: plain pnpm workspaces vs Turborepo.
 7. **State**: TanStack Store vs XState (offline-first compatibility).
 8. **iOS MIDI path (v1 = the shim).** v1: ship iOS on the **"Web MIDI Browser" shim** (AlphaTab + MIDI already proven on Leo's JS-PWA prototype) — confirm shim-safe MIDI enumeration (**manual `iter.next()` loop, not `Array.from`**) + acceptable latency + wire the iOS install-nudge. **Rule:** smoke-test any NEW JS lib on the shim WebView before depending on it (e.g. **Tone.js** for a future waterfall-view player — untested on the shim). Fast-follow (post-v1): native CoreMIDI Capacitor plugin — fork stale `capacitor-musetrainer-midi` (v0.2.3 / Cap-4, iOS + Web only, **no Android**) vs custom. See the WebMIDI spike.
