@@ -961,20 +961,19 @@ function trackLens(it){
     <span class="lenshint">${ts.length>1?`${ts.length} tracks — one song, pick what you play`:'1 track'}</span>
   </div>`;
 }
-/* D-3 L3 collapsed to the selected track: its level + techniques per section (only sections where it plays) */
-function trackDifficulty(it, track){
-  if(!track) return '';
-  const secs = (it.data&&it.data.sections)||[];
-  const rows = secs.map(s=>({s, cell:(s.tracks||[]).find(c=>c.track===track.id)})).filter(x=>x.cell);
-  if(!rows.length) return '';
-  return `<div class="card"><h3><span class="material-symbols-outlined">trending_up</span> Difficulty by section <span style="font-weight:400;color:var(--faint)">· ${esc(track.name||cap(track.instrument))} · per-instrument (D-3)</span></h3>
-    <div class="stephead"><span style="flex:1">Section</span><span style="width:70px">Bars</span><span style="width:48px;text-align:right">Level</span></div>
-    ${rows.map(({s,cell})=>`<div class="part">
-      <div style="flex:1"><b>${esc(s.label)}</b>${cell.techniques&&cell.techniques.length?`<span class="techs">${cell.techniques.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</span>`:''}</div>
-      <span class="bars">${s.startBar}–${s.endBar}</span>
-      <span class="lvlpill ${cell.level===0?'debut':''}">${lvlText(cell.level)}</span></div>`).join('')}
-    <small style="color:var(--faint);display:block;margin-top:6px">L1 song headline <b>${rangeText(levelRange(tracksOf(it)))}</b> · L2 this track <b>${lvlText(track.level)}</b> · L3 the per-section grid above. Stored in <code>data.sections[].tracks[]</code>.</small>
-  </div>`;
+/* D-3 — find the selected track's per-section cell (level + techniques) by the section's start bar */
+function sectionCell(it, startBar, trackId){
+  const secs=(it.data&&it.data.sections)||[];
+  const sec=secs.find(s=>s.startBar===startBar);
+  return sec ? ((sec.tracks||[]).find(c=>c.track===trackId)||null) : null;
+}
+/* D-3 — the two inline columns (level + techniques) folded into a Song-structure row, scoped to the selected track */
+function diffCols(cell){
+  if(!cell) return `<span class="lvlpill" style="opacity:.4" title="this track is silent in this section">—</span><span class="techs"></span>`;
+  const techs = (cell.techniques&&cell.techniques.length)
+    ? `<span class="techs">${cell.techniques.map(t=>`<span class="tag">${esc(t)}</span>`).join('')}</span>`
+    : `<span class="techs"></span>`;
+  return `<span class="lvlpill ${cell.level===0?'debut':''}">${lvlText(cell.level)}</span>${techs}`;
 }
 /* D-2 — one media row with its 3-source provider badge */
 function mediaRow(m){
@@ -1011,6 +1010,7 @@ function renderSong(id){
   const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
   const sections = it.data?.sections||[];
   const parts = songParts(it.id);
+  const sel = selectedTrack(it);   // the page is scoped to one track (instrument lens)
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Song · '+esc(it.title)]])}
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
@@ -1040,22 +1040,23 @@ function renderSong(id){
     </div>
     ${trackLens(it)}
     <div class="card">
-      <h3><span class="material-symbols-outlined">segment</span> Song structure ${parts.length?'· <span style="font-weight:400;color:var(--faint)">each part is its own playable — practice &amp; score it on its own; repeats appear in order</span>':''}</h3>
+      <h3><span class="material-symbols-outlined">segment</span> Song structure <span style="font-weight:400;color:var(--faint)">· levels &amp; techniques for <b style="color:var(--accent);font-weight:600">${esc(sel?(sel.name||cap(sel.instrument)):'—')}</b> (D-3)${parts.length?' · each part is its own playable':''}</span></h3>
       ${(()=>{ const occ=songOccurrences(it.id); return occ.length
-        ? `<div class="stephead"><span style="flex:1">Part · section</span><span>Bars</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`
+        ? `<div class="stephead"><span style="flex:1">Part · section</span><span>Bars</span><span>Level · tech</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`
           + occ.map(o=>{ const p=o.part; return `<div class="stepwrap"><div class="step">
           <span class="material-symbols-outlined" style="color:var(--accent)">play_circle</span>
           <div class="si" data-nav="#/part/${p.id}"><b>${esc(p.title)}${o.repTotal>1?` <span style="color:var(--faint);font-weight:400">(${o.rep} of ${o.repTotal})</span>`:''}</b><small style="color:var(--faint);display:block">${descOf(p)?esc(descOf(p)):'kind=part · parent '+esc(it.title)}</small></div>
           <span class="bars">bars ${o.start}–${o.end}</span>
+          ${diffCols(sectionCell(it, o.start, sel?sel.id:null))}
           ${donut(p.best)}
           <button class="play" title="Play this part" data-nav="#/play/${p.id}"><span class="material-symbols-outlined">play_arrow</span></button>
         </div>${o.rep<=1?allFieldsPanel(p):''}</div>`; }).join('')
         : sections.length
-        ? sections.map(s=>`<div class="part"><span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span><div style="flex:1"><b>${esc(s.label)}</b></div><span class="bars">bars ${s.startBar}–${s.endBar}</span></div>`).join('')
+        ? sections.map(s=>`<div class="part"><span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span><div style="flex:1"><b>${esc(s.label)}</b></div><span class="bars">bars ${s.startBar}–${s.endBar}</span>${diffCols(sectionCell(it, s.startBar, sel?sel.id:null))}</div>`).join('')
         : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`; })()}
+      <small style="color:var(--faint);display:block;margin-top:8px">Level + techniques = this track's per-section difficulty (D-3 <code>data.sections[].tracks[]</code>). L1 song range <b>${rangeText(levelRange(tracksOf(it)))}</b> · L2 this track <b>${lvlText(sel?sel.level:null)}</b> · “—” = silent here.</small>
     </div>
-    ${trackDifficulty(it, selectedTrack(it))}
-    ${mediaCard(it, selectedTrack(it))}
+    ${mediaCard(it, sel)}
     ${patternsCard(it)}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
