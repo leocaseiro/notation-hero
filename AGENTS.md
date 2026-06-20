@@ -141,21 +141,24 @@ progress is visible and any step is one `git revert` away. Never pass
 
 ## PR checklist (CI-gated)
 
-Every PR carries an **acknowledgement checklist** (`.github/pull_request_template.md`).
+Every PR carries a **checklist of past-tense claims** (`.github/pull_request_template.md`).
 The `pr-checklist` CI job (`tooling/pr-checklist.mjs`, required via *CI Green*) enforces:
 
-- **Every box ticked `[x]` — there is no `N/A`.** The items are standing acknowledgements
-  ("I am aware I must … if …"), phrased to stay true whether or not their condition
-  applies, so you can always tick them. Any blank `[ ]` fails the gate. No checked, no merge.
+- **Every box ticked `[x]` — there is no `N/A`.** Each item states what you DID; the
+  conditional ones ("If this PR changed X, I did Y") stay true even when the condition
+  doesn't apply, so every box is always tickable. Any blank `[ ]` fails the gate. Tick only
+  what is TRUE — a tick whose condition applied but whose work you skipped is a false claim
+  (caught by review + the NH-16 v2 gate, not by this presence-only check).
 - **All canonical items present** — the items are read from the PR template, so deleting
   or rewording them fails the gate (you can't delete the checklist to pass).
 - **A real Jira key** — `NH-####` (or legacy `KAN-####`) in the PR title, branch, or a
   prose line (e.g. `Closes [NH-16](…)`). Keys inside HTML comments, code fences, or
   checklist-label examples don't count. Un-skippable — the one check with real teeth.
 
-Bots (dependabot etc.) are exempt. This is v1.1; smart/DangerJS rules (green-fake catch,
-first-use triggers, real Jira validation, diff-aware UI/test detection) are the deferred
-NH-16 v2 backlog. Spec: `docs/specs/2026-06-15-pr-merge-checklist.md`.
+Bots (dependabot etc.) are exempt. This is v1.2 — items are past-tense claims, not "I am
+aware" acknowledgements, so a ticked box is a checkable statement. Smart/DangerJS rules
+(green-fake catch, first-use triggers, real Jira validation, diff-aware UI/test detection)
+remain the deferred NH-16 v2 backlog. Spec: `docs/specs/2026-06-15-pr-merge-checklist.md`.
 
 ## Decision governance
 

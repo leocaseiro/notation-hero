@@ -10,6 +10,12 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-21 — NH-16 checklist reworded to past-tense claims (v1.2)
+
+Reworded `.github/pull_request_template.md` from "I am aware I must … (if …)" standing acknowledgements to **past-tense statements of what was done** ("I linked …"; conditional ones as "If this PR changed X, I did Y"). **Enforcement unchanged:** the `pr-checklist` gate still requires every box `[x]` + a real `(NH|KAN)-\d+` key — no `N/A`, no `required:`/`warn:` (both already dropped in v1.1). The conditional phrasing keeps every box always-tickable (vacuously true when its condition doesn't apply) while making a tick a **checkable claim**: ticking "If this PR changed a decision, I updated the decision log" when you did change one and skipped the log is now a false statement, not a true "awareness". No gate/test code change — `tooling/pr-checklist.mjs` reads items dynamically (presence + ticked); `tooling/pr-checklist.test.mjs` stays green.
+
+**Still honesty-based** (presence + ticked, not truth). Verifying the work behind a tick is the deferred **NH-16 v2**: a project-local "checklist auditor" persona that checks each ticked claim against the diff, later promoted to a diff-aware gate. `AGENTS.md` "PR checklist (CI-gated)" updated to v1.2. Reword decided by leocaseiro 2026-06-21: "agents ignore `warn`; say it in the past."
+
 ### 2026-06-18 — Architecture ADR approved + foundation supersession ratified (NH-194)
 
 Expert review of `2026-06-17-architecture-decisions.md` complete (6-engineer ce-doc-review panel, NH-194); **leocaseiro approved the ADR.** 20 review findings applied or resolved — incl. **SEC-4:** AlphaTab ships no WebAssembly (verified in `~/Sites/alphaTab`) → no `wasm-unsafe-eval`; **Next.js confirmed dropped** (not a portfolio need + SSR fights the AWS $0 free tier). The W2 deferral (DACI/ADR text rewrites) is now executed:
