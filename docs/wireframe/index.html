@@ -343,8 +343,32 @@ const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',
 
 /* ---------- sample data (playable — the locked umbrella; kind = the role) ---------- */
 const PLAYABLES = [
-  {id:'seven-nation-army', kind:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], tags:['riff','syncopation'], patterns:['p-rock-8th'], musical_key:null, status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Backing track'},{label:'Click track'}], video:[{provider:'youtube',label:'Official video'},{provider:'youtube',label:'Live 2003'}], tracks:[{instrument:'drums',role:'kit',media:[{kind:'video',label:'Drum cam'},{kind:'audio',label:'Drums-only stem'}]},{instrument:'guitar',role:'solo',media:[{kind:'video',label:'Lead guitar cam'}]},{instrument:'guitar',role:'bass',media:[{kind:'audio',label:'Bass stem'}]},{instrument:'keys',role:'pad',media:[]}], best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
-    data:{bars:64, sections:[{label:'Intro',startBar:1,endBar:8},{label:'Chorus',startBar:9,endBar:24},{label:'Verse',startBar:25,endBar:40},{label:'Chorus',startBar:41,endBar:56},{label:'Outro',startBar:57,endBar:64}]}},
+  {id:'seven-nation-army', kind:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['bass','drums','guitar'], tags:['riff','syncopation'], patterns:['p-rock-8th'], musical_key:null, status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true,
+    /* D-1 tracks: TWO guitars (lead+rhythm) of the SAME instrument by role, + bass (its OWN instrument) + drums; all share the song's .gp via notation_track_index. instruments[] above = DERIVED facet (DISTINCT track.instrument). */
+    tracks:[
+      {id:'t-sna-drums',  instrument:'drums',  role:null,     name:'Drums',         level:3, notation_track_index:0},
+      {id:'t-sna-lead',   instrument:'guitar', role:'lead',   name:'Lead Guitar',   level:5, notation_track_index:1, tuning:'Standard'},
+      {id:'t-sna-rhythm', instrument:'guitar', role:'rhythm', name:'Rhythm Guitar', level:4, notation_track_index:2, tuning:'Drop D'},
+      {id:'t-sna-bass',   instrument:'bass',   role:null,     name:'Bass',          level:2, notation_track_index:3},
+    ],
+    /* D-2 media: song-level (track NULL) AND per-track; THREE sources youtube | s3 | gp-embedded. */
+    media:[
+      {scope:'song',  kind:'video', provider:'youtube',     label:'Official video',   url:'https://youtu.be/0J2QdDbelmY'},
+      {scope:'song',  kind:'audio', provider:'s3',          label:'Full mix',         s3_key:'catalogue/sna/audio/full-mix.m4a', note:'NH-137 shared audioRef'},
+      {scope:'song',  kind:'audio', provider:'s3',          label:'Drumless',         s3_key:'catalogue/sna/audio/drumless.m4a'},
+      {scope:'song',  kind:'audio', provider:'gp-embedded', label:'Embedded backing'},
+      {scope:'track', track:'t-sna-drums', kind:'audio', provider:'s3',      label:'Drums only', s3_key:'catalogue/sna/audio/drums-only.m4a'},
+      {scope:'track', track:'t-sna-drums', kind:'video', provider:'youtube', label:'Drum-cam',   url:'https://youtu.be/drumcam'},
+      {scope:'track', track:'t-sna-lead',  kind:'video', provider:'youtube', label:'Lead-cam',   url:'https://youtu.be/leadcam'},
+    ],
+    best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
+    data:{bars:64, sections:[
+      {label:'Intro',  startBar:1,  endBar:8,  tracks:[{track:'t-sna-lead',level:2,techniques:[]},{track:'t-sna-drums',level:2,techniques:[]}]},
+      {label:'Chorus', startBar:9,  endBar:24, tracks:[{track:'t-sna-lead',level:5,techniques:['palm-mute','accents']},{track:'t-sna-rhythm',level:4,techniques:['power-chords']},{track:'t-sna-drums',level:3,techniques:[]}]},
+      {label:'Verse',  startBar:25, endBar:40, tracks:[{track:'t-sna-lead',level:3,techniques:['palm-mute']},{track:'t-sna-bass',level:2,techniques:[]},{track:'t-sna-drums',level:3,techniques:[]}]},
+      {label:'Chorus', startBar:41, endBar:56, tracks:[{track:'t-sna-lead',level:5,techniques:['palm-mute','accents']},{track:'t-sna-rhythm',level:4,techniques:['power-chords']},{track:'t-sna-drums',level:3,techniques:[]}]},
+      {label:'Outro',  startBar:57, endBar:64, tracks:[{track:'t-sna-bass',level:2,techniques:[]},{track:'t-sna-drums',level:2,techniques:[]}]},
+    ]}},
   {id:'billie-jean', kind:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], tags:['groove'], patterns:['p-four-floor'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
     data:{bars:64, sections:[{label:'Groove',startBar:1,endBar:16},{label:'Verse',startBar:17,endBar:32},{label:'Chorus',startBar:33,endBar:48}]}},
   {id:'rosanna', kind:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['shuffle','ghost-notes'], patterns:['p-paradiddle'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp5', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Drum cam'}], best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
@@ -462,7 +486,7 @@ const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',
 const GENRES = ['rock','pop','jazz','metal','funk','soul'];
 const ARTISTS = [...new Set(PLAYABLES.filter(p=>p.kind==='song'&&p.artist).map(p=>p.artist))].sort();   // $C1 distinct song artists for a discoverable catalog filter
 const TIMES = ['4/4','3/4','5/4','6/8','7/8'];
-const INSTRUMENTS = ['drums','guitar','keys'];
+const INSTRUMENTS = ['drums','guitar','bass','keys'];
 const KEYS = ['C','G','D','A','E','F#m','Am','Em','Bb','Eb'];
 const SKILLS = ['timing','coordination','independence','control','speed','fills','chords'];
 const SORTS = {relevance:'Relevance', level:'Level', bpm:'BPM', best:'Best score', newest:'Newest', title:'A–Z', curated:'Curated'};
@@ -478,7 +502,7 @@ const state = {
   advanced: false,
   page: 1,
   openPop: null,
-  genre: [], kind: [], timeSig: [], instrument: null, artist: null, showAll: false,
+  genre: [], kind: [], timeSig: [], instrument: null, artist: null, track: null, showAll: false,
   level: { min:null, max:null }, inclUngraded: false,
   bpm: { min:null, max:null },
   score: { min:null, max:null }, inclUnplayed: false,   // SD-12 (per-user, client-side)
@@ -580,6 +604,33 @@ function itemFlags(it){
   return f.length?`<span class="flags">${f.join('')}</span>`:'';
 }
 function lessonLadder(it){ const s=stepsFor(it.id); if(!s.length) return '—'; const a=Math.min(...s.map(x=>x.start_bpm||1e9)), b=Math.max(...s.map(x=>x.goal_bpm||0)); return (a<1e9&&b)?`${a}→${b}`:'—'; }
+
+/* ---------- Group D: tracks · media · per-instrument difficulty ---------- */
+const INSTRUMENT_ICON = {drums:'graphic_eq', guitar:'queue_music', bass:'queue_music', keys:'piano', vocals:'mic', ukulele:'queue_music'};
+const instIcon = i => INSTRUMENT_ICON[i] || 'music_note';
+const PROVIDER = {youtube:{label:'YouTube', cls:'tex'}, s3:{label:'S3 file', cls:'upload'}, 'gp-embedded':{label:'in .gp', cls:'slice'}};
+/* every playable owns ≥1 track (D-3 invariant). No explicit tracks[] → synthesize one per instrument from instruments[] (level = headline). */
+function tracksOf(it){
+  if(it.tracks && it.tracks.length) return it.tracks;
+  return (it.instruments||[]).map((inst,i)=>({id:it.id+'-'+inst, instrument:inst, role:null, name:cap(inst), level:it.level??null, notation_track_index:i, synthetic:true}));
+}
+const mediaOf    = it => it.media || [];
+const songMedia  = it => mediaOf(it).filter(m=>m.scope!=='track');
+const trackMedia = (it,tid) => mediaOf(it).filter(m=>m.scope==='track' && m.track===tid);
+const derivedInstruments = it => [...new Set(tracksOf(it).map(t=>t.instrument))].sort();   // D-1a facet = DISTINCT track.instrument
+function levelRange(tracks){ const ls=tracks.map(t=>t.level).filter(v=>v!=null); if(!ls.length) return null; return {lo:Math.min(...ls), hi:Math.max(...ls)}; }
+const lvlText   = v => v==null?'—':(v===0?'Debut':'L'+v);
+const rangeText = r => !r ? '—' : (r.lo===r.hi ? lvlText(r.lo) : `${r.lo===0?'Debut':'L'+r.lo}–${r.hi}`);
+/* the track the detail page is scoped to: explicit selection → instrument-lens match → first track */
+function defaultTrackId(it){ const ts=tracksOf(it); if(state.instrument){ const m=ts.find(t=>t.instrument===state.instrument); if(m) return m.id; } return ts[0]?.id || null; }
+function selectedTrack(it){ const ts=tracksOf(it); return ts.find(t=>t.id===state.track) || ts.find(t=>t.id===defaultTrackId(it)) || ts[0] || null; }
+/* what the catalog row shows for Level: instrument-lens → that instrument's track level(s); else the full range across tracks */
+function rowLevelText(it){
+  const ts=tracksOf(it);
+  const scoped = state.instrument ? ts.filter(t=>t.instrument===state.instrument) : ts;
+  const r = levelRange(scoped.length?scoped:ts);
+  return r ? rangeText(r) : lvlText(it.level);
+}
 
 /* ---------- router ---------- */
 function parseHash(){
