@@ -1,3 +1,13 @@
+# Spike: NestJS generators + "generators === our linting" (no-fight)
+
+- **Date:** 2026-06-18
+- **Principle (Leo's):** _"Native NestJS generators === notation-hero linting."_ Whatever `nest g` emits should pass our formatter/linter **unchanged** — config conforms to the generators, never fights them with auto-fix.
+- **Method:** read `@nestjs/schematics` 11.1.0 + actually ran `nest g` + formatters in throwaway `/tmp` (repo untouched). No training assumptions.
+
+> ⚠️ **Status:** the formatter half of this assumed _Biome_. Leo has since asked to **re-spike Biome-free** — "Can we use _everything_ default from NestJS (linting + generators)?" comparing the ESLint-default path vs Biome on benefits. So the Biome config below is the **"if Biome"** answer, not a final decision. The generator catalog + agent findings are tool-independent and stand.
+
+---
+
 ## Does the no-fight principle hold? → **Yes, tunable in one config line.**
 
 The "fight" is **inherent to the generators**, not a Biome problem: Biome and **Prettier make byte-identical changes** to `nest g` output (the generators emit code that isn't even Prettier-clean, despite Nest shipping a `.prettierrc` it never runs — the `format` flag defaults false and `nest g` never sets it). So **Prettier-on-server buys nothing.**
