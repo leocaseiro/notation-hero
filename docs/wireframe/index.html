@@ -702,7 +702,7 @@ function render(){
     state.page = +(qp.get('page')||1);
     return renderCatalog();
   }
-  if(seg[0]==='song')   return renderSong(seg[1]);
+  if(seg[0]==='song')   return seg[2]==='section' ? renderSongSection(seg[1], +seg[3]) : renderSong(seg[1]);
   if(seg[0]==='part')   return renderPart(seg[1]);
   if(seg[0]==='pattern') return renderPattern(seg[1]);
   if(seg[0]==='lesson') return seg[2]==='step' ? renderStep(seg[1], +seg[3]) : renderLesson(seg[1]);
@@ -1109,9 +1109,9 @@ function renderSong(id){
           <button class="play" title="Play this part" data-nav="#/play/${p.id}"><span class="material-symbols-outlined">play_arrow</span></button>
         </div>${o.rep<=1?allFieldsPanel(p):''}</div>`; }).join('')
         : sections.length
-        ? sections.map(s=>{ const cell=sectionCell(it, s.startBar, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
+        ? sections.map((s,i)=>{ const cell=sectionCell(it, s.startBar, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
           <span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span>
-          <div class="si" data-nav="#/play/${it.id}?from=${s.startBar}"><b>${esc(s.label)}</b><small style="color:var(--faint);display:block">open the score at bar ${s.startBar}</small></div>
+          <div class="si" data-nav="#/song/${it.id}/section/${i+1}"><b>${esc(s.label)}</b><small style="color:var(--faint);display:block">open the score · bars ${s.startBar}–${s.endBar}</small></div>
           ${diffTechs(cell)}
           <span class="bars">bars ${s.startBar}–${s.endBar}</span>
           ${cell ? diffLevel(cell) : (sel ? `<span class="lvlpill ${sel.level===0?'debut':''}" title="${cap(sel.instrument)} track level — no per-section breakdown in the file yet">${lvlText(sel.level)}</span>` : diffLevel(null))}
@@ -1208,6 +1208,40 @@ function renderStep(lessonId, n){
       <div class="gate"><span class="material-symbols-outlined">info</span>This step drills the reusable pattern <b>${esc(child.title)}</b> (<code>child_id=${esc(s.child_id)}</code>). The notation lives on the pattern; the step adds order + the ${s.start_bpm}→${s.goal_bpm} BPM ladder.</div>
     </div>
     ${stepFieldsPanel(it,s)}
+  `;
+}
+
+/* ---------- screen: SONG SECTION "score" page (the #/song/<id>/section/<n> equivalent of a lesson step) ---------- */
+function renderSongSection(songId, n){
+  const it = PLAYABLES.find(x=>x.id===songId); if(!it || it.kind!=='song') return notFound();
+  const secs = (it.data&&it.data.sections)||[];
+  const idx = n-1; const s = secs[idx]; if(!s) return notFound();
+  const prevN = idx>0 ? n-1 : null, nextN = idx<secs.length-1 ? n+1 : null;
+  const sel = defaultTrackId(it) ? tracksOf(it).find(t=>t.id===defaultTrackId(it)) : null;
+  const cell = sectionCell(it, s.startBar, sel?sel.id:null);
+  const lvl = cell ? cell.level : (sel ? sel.level : null);
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'],['#/song/'+it.id,'Song · '+esc(it.title)],['','Section · '+esc(s.label)]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back to song</button>
+    <div class="hero">
+      <div class="meta">
+        <div class="sub" style="margin-bottom:4px">Section ${n} of ${secs.length} · ${esc(it.title)}${sel?` · ${esc(sel.name||cap(sel.instrument))}`:''}</div>
+        <h1>${esc(s.label)}</h1>
+        <div class="badges">
+          <span class="badge"><span class="material-symbols-outlined">straighten</span>bars ${s.startBar}–${s.endBar}</span>
+          ${it.bpm?`<span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>`:''}
+          ${lvl!=null?`<span class="badge"><span class="material-symbols-outlined">bar_chart</span>${lvlText(lvl)}</span>`:''}
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn primary" data-nav="#/play/${it.id}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span> Play from here</button>
+          ${prevN?`<button class="btn secondary" data-nav="#/song/${it.id}/section/${prevN}"><span class="material-symbols-outlined">arrow_back</span> Previous section</button>`:''}
+          ${nextN?`<button class="btn secondary" data-nav="#/song/${it.id}/section/${nextN}">Next section <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+        </div>
+      </div>
+    </div>
+    <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation</h3>
+      <div class="gate"><span class="material-symbols-outlined">info</span>Score for <b>${esc(s.label)}</b> — bars <b>${s.startBar}–${s.endBar}</b> of <b>${esc(it.title)}</b>. The notation lives on the song's <code>.gp</code>; this section is that bar range (a derived view, not a separate playable). Press <b>Play from here</b> to start at bar ${s.startBar}.</div>
+    </div>
   `;
 }
 
