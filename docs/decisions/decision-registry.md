@@ -10,6 +10,17 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-21 — Phase 1 deployable AWS slice: About page end-to-end (NH-206)
+
+**PR #PENDING** (branch `worktree-nh-206-phase1-aws-slice`) implements ADR §11 **Phase 1** on top of #56 — the recruiter-clickable **About page** served end-to-end through AWS. Realizes two previously-📄 ADR decisions in code:
+
+- `ARCH-EDGE-1` (one CloudFront, two origins) → **implemented** (`infra/cloudfront-site.stack.ts`). `/*` → a **private** S3 bucket (Block-Public-Access + BucketOwnerEnforced) reachable only via **OAC**, edge-cached; `/api/*` → the NestJS Lambda **Function URL** via OAC with the managed `AllViewerExceptHostHeader` policy and caching disabled. SPA deep links: 403/404 → `/index.html`.
+- `ARCH-LAMBDA-1` (Function URL lockdown) → **implemented**. Function URL flipped **`NONE` → `AWS_IAM`**; CloudFront granted **both** `lambda:InvokeFunctionUrl` and `lambda:InvokeFunction`, pinned by `AWS:SourceArn` to the one distribution; wildcard CORS dropped. The raw `*.lambda-url` is no longer publicly invocable.
+
+**Slice shape (leocaseiro, 2026-06-21): option (c)** — the **real** NestJS app runs on Lambda via `@codegenie/serverless-express` (a lambdalith), not a throwaway. `server/build:lambda` = SWC compile (emits decorator metadata — esbuild alone strips it and breaks Nest DI) → esbuild bundle to one CJS file. The About page is a real `client/` SPA route calling `GET /api/about` to prove the Lambda leg live.
+
+**Free-tier posture:** plain pay-as-you-go CloudFront (the 1 TB / 10M perpetual tier) — deliberately **not** the Nov-2025 flat-rate "Free" plan (100 GB / 1M); `PriceClass_100`; arm64 Lambda, 10s timeout / 512 MB. Verified by 8 infra unit tests (Pulumi mocks) + `pulumi preview` (26-resource graph). **Deploy (`pulumi up`) + live-URL capture is the local capstone** (AWS creds + Pulumi passphrase are local-only, never CI). Deferred to their own tickets (foundation accommodates, zero refactor): Dexie caching, Cognito, Sentry, SRE, the CMS CRUD.
+
 ### 2026-06-21 — Foundation Phase 0 implemented + enforcement live (NH-199 / NH-195, PR #56)
 
 The W2-deferred code/config from the 2026-06-18 entry is now executed in **PR #56** (clean-slate redo; **supersedes #50/#51/#59/#60**, which are closed). #56 delivers the **NH-195** Foundation Phase-0 scope under the **NH-199** clean-slate banner. Enforcement flips:
