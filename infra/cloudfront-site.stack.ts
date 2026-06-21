@@ -17,13 +17,15 @@ export interface CloudFrontSiteArgs {
   lambdaFunctionName: pulumi.Input<string>;
 }
 
-// Stable AWS-managed policy IDs (global, documented). Using the IDs avoids a data-source
-// lookup and keeps the component pure + unit-testable.
-const CACHE_OPTIMIZED = "658327ea-f89d-4fab-a63d-7e88639e58f6"; // Managed-CachingOptimized
-const CACHE_DISABLED = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"; // Managed-CachingDisabled
+// Stable AWS-managed policy IDs (global, documented). Exported so the test asserts the SAME
+// policy the stack applies. Using the IDs avoids a data-source lookup and keeps the component
+// pure + unit-testable.
+export const CACHE_OPTIMIZED = "658327ea-f89d-4fab-a63d-7e88639e58f6"; // Managed-CachingOptimized
+export const CACHE_DISABLED = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"; // Managed-CachingDisabled
 // Managed-AllViewerExceptHostHeader — strips the viewer Host so CloudFront signs SigV4 against
 // the Lambda URL's own domain (otherwise the Function URL returns 403 SignatureDoesNotMatch).
-const ORP_ALL_VIEWER_EXCEPT_HOST = "b689b0a8-53d0-40ab-baf2-68738e2966ac";
+export const ORP_ALL_VIEWER_EXCEPT_HOST =
+  "b689b0a8-53d0-40ab-baf2-68738e2966ac";
 
 const S3_ORIGIN_ID = "s3-spa";
 const LAMBDA_ORIGIN_ID = "lambda-api";
@@ -87,6 +89,31 @@ export class CloudFrontSite extends pulumi.ComponentResource {
       .output(args.functionUrl)
       .apply((u) => new URL(u).hostname);
 
+    // SPA client-side routing, scoped to the S3 (default) behaviour ONLY — so it can never
+    // rewrite genuine /api/* error responses. (A distribution-wide customErrorResponses
+    // 403->index.html would mask real API 401/403/404s — a Phase-2 auth/CRUD hazard.) Here a
+    // non-/api, extensionless path is served the app shell and TanStack Router takes over
+    // client-side; assets (a file extension) and /api/* pass through untouched.
+    const spaRouter = new aws.cloudfront.Function(
+      `${name}-spa-router`,
+      {
+        runtime: "cloudfront-js-2.0",
+        publish: true,
+        code: [
+          "function handler(event) {",
+          "  var req = event.request;",
+          "  var uri = req.uri;",
+          "  if (uri.indexOf('/api/') === 0) { return req; }",
+          "  var seg = uri.substring(uri.lastIndexOf('/') + 1);",
+          "  if (seg.indexOf('.') !== -1) { return req; }",
+          "  req.uri = '/index.html';",
+          "  return req;",
+          "}",
+        ].join("\n"),
+      },
+      { parent: this },
+    );
+
     // --- The distribution ---
     const distribution = new aws.cloudfront.Distribution(
       `${name}-cdn`,
@@ -121,6 +148,9 @@ export class CloudFrontSite extends pulumi.ComponentResource {
           cachedMethods: ["GET", "HEAD"],
           compress: true,
           cachePolicyId: CACHE_OPTIMIZED,
+          functionAssociations: [
+            { eventType: "viewer-request", functionArn: spaRouter.arn },
+          ],
         },
         // Dynamic API: no caching, forward everything except Host (so SigV4 stays valid).
         orderedCacheBehaviors: [
@@ -142,22 +172,8 @@ export class CloudFrontSite extends pulumi.ComponentResource {
             originRequestPolicyId: ORP_ALL_VIEWER_EXCEPT_HOST,
           },
         ],
-        // SPA deep links: a private OAC bucket returns 403 (not 404) for a missing key, so the
-        // 403 -> /index.html mapping is the load-bearing one; 404 is included for safety.
-        customErrorResponses: [
-          {
-            errorCode: 403,
-            responseCode: 200,
-            responsePagePath: "/index.html",
-            errorCachingMinTtl: 0,
-          },
-          {
-            errorCode: 404,
-            responseCode: 200,
-            responsePagePath: "/index.html",
-            errorCachingMinTtl: 0,
-          },
-        ],
+        // No distribution-wide customErrorResponses: SPA deep-link routing is handled by the
+        // spaRouter CloudFront Function (default behaviour only), so /api/* errors are NOT masked.
         restrictions: { geoRestriction: { restrictionType: "none" } },
         viewerCertificate: { cloudfrontDefaultCertificate: true },
       },

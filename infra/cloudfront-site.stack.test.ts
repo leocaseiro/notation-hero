@@ -3,11 +3,6 @@ import { test } from "node:test";
 
 import * as pulumi from "@pulumi/pulumi";
 
-// Well-known AWS-managed policy IDs (mirrors the constants in cloudfront-site.stack.ts).
-const CACHE_OPTIMIZED = "658327ea-f89d-4fab-a63d-7e88639e58f6";
-const CACHE_DISABLED = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad";
-const ORP_ALL_VIEWER_EXCEPT_HOST = "b689b0a8-53d0-40ab-baf2-68738e2966ac";
-
 const created: Array<{ type: string; inputs: Record<string, unknown> }> = [];
 
 pulumi.runtime.setMocks({
@@ -27,7 +22,12 @@ pulumi.runtime.setMocks({
   call: (args) => args.inputs,
 });
 
-const { CloudFrontSite } = await import("./cloudfront-site.stack.ts");
+const {
+  CloudFrontSite,
+  CACHE_OPTIMIZED,
+  CACHE_DISABLED,
+  ORP_ALL_VIEWER_EXCEPT_HOST,
+} = await import("./cloudfront-site.stack.ts");
 
 const resolveOutput = <T>(o: pulumi.Output<T>): Promise<T> =>
   new Promise<T>((res) => {
@@ -118,10 +118,14 @@ test("distribution has two origins and a distinct /api/* behavior", async () => 
   };
   assert.equal(customCfg.originProtocolPolicy, "https-only");
 
-  // Default /* caches (SPA); /api/* does not, and forwards all-except-Host.
+  // Free-tier guard: pay-as-you-go cheapest edge set (NOT a flat-rate plan).
+  assert.equal(dist.priceClass, "PriceClass_100");
+
+  // Default /* caches (SPA); /api/* does not, and forwards all-except-Host. Both force HTTPS.
   const def = dist.defaultCacheBehavior as Record<string, unknown>;
   assert.equal(def.targetOriginId, "s3-spa");
   assert.equal(def.cachePolicyId, CACHE_OPTIMIZED);
+  assert.equal(def.viewerProtocolPolicy, "redirect-to-https");
 
   const ordered = dist.orderedCacheBehaviors as Array<Record<string, unknown>>;
   assert.equal(ordered.length, 1);
@@ -129,18 +133,30 @@ test("distribution has two origins and a distinct /api/* behavior", async () => 
   assert.equal(ordered[0]!.targetOriginId, "lambda-api");
   assert.equal(ordered[0]!.cachePolicyId, CACHE_DISABLED);
   assert.equal(ordered[0]!.originRequestPolicyId, ORP_ALL_VIEWER_EXCEPT_HOST);
+  assert.equal(ordered[0]!.viewerProtocolPolicy, "redirect-to-https");
 });
 
-test("SPA deep-link error responses map 403 and 404 to /index.html (200)", async () => {
+test("SPA routing is a default-behaviour CloudFront Function and does NOT mask /api errors", async () => {
   await buildSite();
   const dist = findOne(":Distribution");
-  const errs = dist.customErrorResponses as Array<Record<string, unknown>>;
-  const codes = errs.map((e) => e.errorCode).sort();
-  assert.deepEqual(codes, [403, 404]);
-  for (const e of errs) {
-    assert.equal(e.responseCode, 200);
-    assert.equal(e.responsePagePath, "/index.html");
-  }
+
+  // No distribution-wide error rewrite (which would turn /api/* 403/404 into 200 + index.html).
+  assert.equal(dist.customErrorResponses, undefined);
+
+  // A viewer-request Function serves the SPA shell for non-/api, extensionless paths.
+  const fn = findOne(":Function");
+  assert.equal(fn.runtime, "cloudfront-js-2.0");
+  assert.match(fn.code as string, /index\.html/);
+  assert.match(fn.code as string, /\/api\//); // it special-cases /api/ to pass through
+
+  const def = dist.defaultCacheBehavior as Record<string, unknown>;
+  const assoc = def.functionAssociations as Array<Record<string, unknown>>;
+  assert.equal(assoc.length, 1);
+  assert.equal(assoc[0]!.eventType, "viewer-request");
+
+  // The /api/* behaviour has NO function association — API responses pass through unchanged.
+  const ordered = dist.orderedCacheBehaviors as Array<Record<string, unknown>>;
+  assert.equal(ordered[0]!.functionAssociations, undefined);
 });
 
 test("grants CloudFront BOTH invoke permissions, pinned to the distribution", async () => {

@@ -54,6 +54,15 @@ test('renders the live /api/about payload on success', async () => {
       screen.getByText(/Phase 1 — deployable AWS slice/),
     ).toBeInTheDocument(),
   )
+  // The `name` field is rendered, so a server-side rename would fail this test.
+  expect(screen.getByText('Notation Hero')).toBeInTheDocument()
+})
+
+test('shows a loading state while /api/about is in flight', () => {
+  // A never-resolving fetch keeps the query in its pending state.
+  vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise<never>(() => {})))
+  renderAbout()
+  expect(screen.getByText(/Loading live data/i)).toBeInTheDocument()
 })
 
 test('shows a graceful fallback when /api/about fails', async () => {

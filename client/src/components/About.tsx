@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 
+// Mirrors the server's AboutResponse (server/src/modules/about/about.controller.ts). Kept in
+// sync by hand for Phase 1; both collapse into the shared/ oRPC contract when it lands (Phase 2).
 interface AboutResponse {
   name: string
   phase: string
@@ -8,12 +10,20 @@ interface AboutResponse {
 }
 
 async function fetchAbout(): Promise<AboutResponse> {
-  // Same-origin behind CloudFront: `/api/*` is routed to the Lambda Function URL.
-  const res = await fetch('/api/about')
-  if (!res.ok) {
-    throw new Error(`/api/about responded ${res.status}`)
+  // Abort well inside the 10s Lambda timeout so a hung origin surfaces the error state quickly
+  // instead of spinning until CloudFront's much longer origin read-timeout.
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 8000)
+  try {
+    // Same-origin behind CloudFront: `/api/*` is routed to the Lambda Function URL.
+    const res = await fetch('/api/about', { signal: controller.signal })
+    if (!res.ok) {
+      throw new Error(`/api/about responded ${res.status}`)
+    }
+    return (await res.json()) as AboutResponse
+  } finally {
+    clearTimeout(timer)
   }
-  return (await res.json()) as AboutResponse
 }
 
 export function About() {
@@ -43,6 +53,10 @@ export function About() {
         )}
         {data && (
           <dl className="mt-2 space-y-1">
+            <div>
+              <dt className="inline font-medium">App: </dt>
+              <dd className="inline">{data.name}</dd>
+            </div>
             <div>
               <dt className="inline font-medium">Phase: </dt>
               <dd className="inline">{data.phase}</dd>

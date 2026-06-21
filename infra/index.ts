@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -59,7 +60,10 @@ function uploadDir(
       uploadDir(bucket, abs, key);
       continue;
     }
-    const resourceName = `spa-${key.replace(/[^a-zA-Z0-9-]/g, "_")}`;
+    // The S3 key is unique, but sanitizing non-alnum chars to "_" is lossy and could collapse
+    // two distinct keys to one Pulumi name. Append a hash of the key to keep the name injective.
+    const keyHash = createHash("sha1").update(key).digest("hex").slice(0, 8);
+    const resourceName = `spa-${key.replace(/[^a-zA-Z0-9-]/g, "_")}-${keyHash}`;
     new aws.s3.BucketObjectv2(resourceName, {
       bucket,
       key,
