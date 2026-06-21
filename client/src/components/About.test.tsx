@@ -23,49 +23,56 @@ function mockFetch(value: unknown, ok = true, status = 200): void {
   )
 }
 
+const sampleCatalogue = {
+  count: 2,
+  items: [
+    {
+      id: 'single-stroke-roll',
+      title: 'Single Stroke Roll',
+      kind: 'pattern',
+      difficulty: 'Debut',
+    },
+    {
+      id: 'demo-groove',
+      title: 'Demo Groove',
+      kind: 'song',
+      difficulty: 'Intermediate 4',
+    },
+  ],
+}
+
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
 
 test('renders the About heading and static copy', () => {
-  mockFetch({
-    name: 'Notation Hero',
-    phase: 'Phase 1',
-    message: 'x',
-    timestamp: 't',
-  })
+  mockFetch(sampleCatalogue)
   renderAbout()
   expect(
     screen.getByRole('heading', { name: /About Notation Hero/i }),
   ).toBeInTheDocument()
 })
 
-test('renders the live /api/about payload on success', async () => {
-  mockFetch({
-    name: 'Notation Hero',
-    phase: 'Phase 1 — deployable AWS slice',
-    message: 'Served end-to-end through AWS',
-    timestamp: '2026-06-21T00:00:00.000Z',
-  })
+test('renders the live catalogue from /api/catalogue on success', async () => {
+  mockFetch(sampleCatalogue)
   renderAbout()
   await waitFor(() =>
-    expect(
-      screen.getByText(/Phase 1 — deployable AWS slice/),
-    ).toBeInTheDocument(),
+    expect(screen.getByText('Single Stroke Roll')).toBeInTheDocument(),
   )
-  // The `name` field is rendered, so a server-side rename would fail this test.
-  expect(screen.getByText('Notation Hero')).toBeInTheDocument()
+  // The count is rendered, so a server-side shape change would fail this test.
+  expect(screen.getByText('2 pieces')).toBeInTheDocument()
+  expect(screen.getByText('Demo Groove')).toBeInTheDocument()
 })
 
-test('shows a loading state while /api/about is in flight', () => {
+test('shows a loading state while /api/catalogue is in flight', () => {
   // A never-resolving fetch keeps the query in its pending state.
   vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise<never>(() => {})))
   renderAbout()
-  expect(screen.getByText(/Loading live data/i)).toBeInTheDocument()
+  expect(screen.getByText(/Loading the catalogue/i)).toBeInTheDocument()
 })
 
-test('shows a graceful fallback when /api/about fails', async () => {
+test('shows a graceful fallback when /api/catalogue fails', async () => {
   mockFetch(undefined, false, 500)
   renderAbout()
   await waitFor(() =>

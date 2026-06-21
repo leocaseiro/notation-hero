@@ -26,6 +26,12 @@ This is the zero-refactor base the Phase-2 CMS extends.
   long edge-cache) + `/api/*` → Nest Function URL (AWS_IAM + OAC, no/short cache).
 - **Function URL auth = AWS_IAM + CloudFront OAC** (ADR ARCH-LAMBDA-1).
 
+> **Update (post-review, leocaseiro):** the throwaway `GET /api/about` proof endpoint (U2) was
+> replaced by a **real** `GET /api/catalogue` — the first real feature, returning placeholder
+> data now and Neon-backed in Phase 2. The SPA About page renders that live catalogue preview.
+> The U2 sections below still describe the original `/api/about`; only the endpoint name/shape
+> changed (a real listing instead of a stub `about` payload).
+
 ---
 
 ## Problem Frame
@@ -304,7 +310,7 @@ with the Function URL locked to CloudFront.
   to `cloudfront.amazonaws.com`, each with a non-wildcard `sourceArn`.
 - The Function URL `authorizationType` is `AWS_IAM` (regression guard on the lockdown).
 - The Lambda-origin OAC uses `originAccessControlOriginType: "lambda"`, `signingBehavior:
-  "always"`, `signingProtocol: "sigv4"`.
+"always"`, `signingProtocol: "sigv4"`.
   **Verification:** `pnpm --filter @notation-hero/infra run test` green; `pulumi preview`
   plans the full graph with no errors; `pnpm run depcheck` / `check:layout` stay green for
   `infra/`.
