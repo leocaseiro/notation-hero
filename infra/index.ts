@@ -14,11 +14,9 @@ import { LambdaWithUrl } from "./lambda-with-url.stack.ts";
  */
 const api = new LambdaWithUrl("api", {
   functionName: "notation-hero-api",
-  code: new pulumi.asset.AssetArchive({
-    "index.js": new pulumi.asset.StringAsset(
-      "exports.handler = async () => ({ statusCode: 200, body: 'Notation Hero API — skeleton' });",
-    ),
-  }),
+  // The real NestJS lambdalith bundle (server `pnpm run build:lambda` -> dist-lambda/index.js,
+  // which exports `handler`). Build the bundle before `pulumi preview`/`up`.
+  code: new pulumi.asset.FileArchive("../server/dist-lambda"),
   handler: "index.handler",
 });
 

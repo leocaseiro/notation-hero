@@ -25,6 +25,17 @@ export interface LambdaWithUrlArgs {
   runtime?: pulumi.Input<string>;
   /** CloudWatch log retention; defaults to 14 days. */
   logRetentionDays?: pulumi.Input<number>;
+  /**
+   * Function URL auth: "NONE" (public, curl-able) or "AWS_IAM" (only a SigV4 caller —
+   * e.g. CloudFront via OAC — can invoke). Defaults to "NONE".
+   */
+  authorizationType?: pulumi.Input<string>;
+  /** Function URL CORS. Omit when fronted same-origin by CloudFront. */
+  cors?: pulumi.Input<aws.types.input.lambda.FunctionUrlCors>;
+  /** Lambda timeout in seconds; defaults to 10 (low, to bound free-tier compute). */
+  timeoutSeconds?: pulumi.Input<number>;
+  /** Lambda memory in MB; defaults to 512. */
+  memorySize?: pulumi.Input<number>;
 }
 
 export class LambdaWithUrl extends pulumi.ComponentResource {
@@ -84,6 +95,8 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
         handler: args.handler,
         runtime: args.runtime ?? "nodejs24.x",
         architectures: ["arm64"],
+        timeout: args.timeoutSeconds ?? 10,
+        memorySize: args.memorySize ?? 512,
         code: args.code,
         // loggingConfig.logGroup (not bare dependsOn) is what redirects logging
         // to the managed group; dependsOn makes the ordering explicit.
@@ -96,11 +109,11 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
       `${name}-url`,
       {
         functionName: this.function.name,
-        // Public endpoint (no SigV4) so it is curl-able — throwaway hello-world,
-        // no data/secrets. AWS auto-attaches the public-access policy; no
-        // aws.lambda.Permission resource is required.
-        authorizationType: "NONE",
-        cors: { allowOrigins: ["*"], allowMethods: ["GET"] },
+        // Default "NONE" is public/curl-able; pass "AWS_IAM" to lock the URL so only a
+        // SigV4 signer (CloudFront via OAC) can invoke it. CORS is omitted by default —
+        // when CloudFront fronts the URL the browser request is same-origin.
+        authorizationType: args.authorizationType ?? "NONE",
+        cors: args.cors,
       },
       { parent: this },
     );

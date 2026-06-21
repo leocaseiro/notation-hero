@@ -40,7 +40,13 @@ const inputsOf = (typeSuffix: string): Record<string, unknown> => {
 
 const makeComponent = (
   name: string,
-  args: Partial<{ runtime: string; logRetentionDays: number }> = {},
+  args: Partial<{
+    runtime: string;
+    logRetentionDays: number;
+    authorizationType: string;
+    timeoutSeconds: number;
+    memorySize: number;
+  }> = {},
 ): LambdaWithUrl =>
   new LambdaWithUrl(name, {
     functionName: name,
@@ -69,6 +75,9 @@ test("provisions a public Lambda Function URL over a 14-day-retention log group"
   const fn = inputsOf(":Function");
   assert.equal(fn.runtime, "nodejs24.x");
   assert.deepEqual(fn.architectures, ["arm64"]);
+  // Free-tier guard: a low default timeout + bounded memory.
+  assert.equal(fn.timeout, 10);
+  assert.equal(fn.memorySize, 512);
 
   // KTD4: loggingConfig.logGroup (not bare dependsOn) is what redirects logging
   // to the managed group — assert the linkage so a regression to the unmanaged
@@ -95,4 +104,20 @@ test("honors runtime and retention overrides", async () => {
 
   assert.equal(inputsOf(":Function").runtime, "nodejs20.x");
   assert.equal(inputsOf(":LogGroup").retentionInDays, 30);
+});
+
+test("locks the Function URL to AWS_IAM and applies timeout/memory overrides", async () => {
+  created.length = 0;
+  const component = makeComponent("nh-locked", {
+    authorizationType: "AWS_IAM",
+    timeoutSeconds: 5,
+    memorySize: 256,
+  });
+  await resolveOutput(component.url);
+
+  // AWS_IAM is the Phase-1 lockdown — only a SigV4 caller (CloudFront OAC) may invoke.
+  assert.equal(inputsOf(":FunctionUrl").authorizationType, "AWS_IAM");
+  const fn = inputsOf(":Function");
+  assert.equal(fn.timeout, 5);
+  assert.equal(fn.memorySize, 256);
 });
