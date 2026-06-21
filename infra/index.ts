@@ -1,24 +1,91 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+import * as aws from "@pulumi/aws";
 import * as pulumi from "@pulumi/pulumi";
 
+import { CloudFrontSite } from "./cloudfront-site.stack.ts";
 import { LambdaWithUrl } from "./lambda-with-url.stack.ts";
 
 /**
- * Pulumi composition root. Deploys a placeholder API Lambda behind a public
- * Function URL — the `$0` compute shape from the 2026-06-20 spike (§2). The
- * inline handler is a skeleton STUB; the real NestJS app (serverless-express +
- * esbuild bundle from `server/dist`) replaces `code` when Lambda packaging lands.
+ * Pulumi composition root — the ARCH-EDGE-1 two-origin slice (NH-206 Phase 1):
+ *   browser -> CloudFront -> { `/*` = S3 (SPA static), `/api/*` = NestJS Lambda Function URL }.
  *
- * Phase-1 (spike must-verify): flip the Function URL `authType` NONE -> AWS_IAM
- * and add the CloudFront OAC `lambda:InvokeFunctionUrl` permission before any
- * real data ships. Today it is a public, curl-able hello endpoint (no secrets).
+ * The Function URL is locked to AWS_IAM and reachable only by CloudFront (via OAC); the SPA
+ * bucket is private (OAC). Build both artifacts before `pulumi preview`/`up`:
+ *   pnpm --filter @notation-hero/server run build:lambda   (-> server/dist-lambda)
+ *   pnpm --filter @notation-hero/client run build          (-> client/dist)
  */
 const api = new LambdaWithUrl("api", {
   functionName: "notation-hero-api",
-  // The real NestJS lambdalith bundle (server `pnpm run build:lambda` -> dist-lambda/index.js,
-  // which exports `handler`). Build the bundle before `pulumi preview`/`up`.
   code: new pulumi.asset.FileArchive("../server/dist-lambda"),
   handler: "index.handler",
+  // Lockdown (ADR ARCH-LAMBDA-1): only a SigV4 caller (CloudFront OAC) may invoke. No CORS —
+  // the browser reaches /api/* same-origin through CloudFront.
+  authorizationType: "AWS_IAM",
 });
 
-export const url: pulumi.Output<string> = api.url;
+const site = new CloudFrontSite("site", {
+  functionUrl: api.url,
+  lambdaFunctionName: api.function.name,
+});
+
+// --- Upload the built SPA (client/dist) to the private bucket, declaratively ---
+const SPA_DIR = path.resolve("../client/dist");
+
+const CONTENT_TYPES: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".webmanifest": "application/manifest+json",
+  ".ico": "image/x-icon",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".txt": "text/plain; charset=utf-8",
+  ".woff2": "font/woff2",
+  ".map": "application/json",
+};
+
+function uploadDir(
+  bucket: pulumi.Input<string>,
+  dir: string,
+  prefix = "",
+): void {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const abs = path.join(dir, entry.name);
+    const key = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) {
+      uploadDir(bucket, abs, key);
+      continue;
+    }
+    const resourceName = `spa-${key.replace(/[^a-zA-Z0-9-]/g, "_")}`;
+    new aws.s3.BucketObjectv2(resourceName, {
+      bucket,
+      key,
+      source: new pulumi.asset.FileAsset(abs),
+      contentType:
+        CONTENT_TYPES[path.extname(entry.name).toLowerCase()] ??
+        "application/octet-stream",
+      // The SPA shell must revalidate (it points at hashed assets); the hashed assets are immutable.
+      cacheControl:
+        key === "index.html"
+          ? "no-cache"
+          : "public, max-age=31536000, immutable",
+    });
+  }
+}
+
+if (!fs.existsSync(SPA_DIR)) {
+  throw new Error(
+    `SPA build not found at ${SPA_DIR}. Run \`pnpm --filter @notation-hero/client run build\` before pulumi.`,
+  );
+}
+uploadDir(site.bucketName, SPA_DIR);
+
+// The public, recruiter-clickable URL.
+export const cloudfrontUrl: pulumi.Output<string> = site.url;
+// The raw Function URL (now private — curling it directly should return 403).
+export const functionUrl: pulumi.Output<string> = api.url;
 export const logGroupName: pulumi.Output<string> = api.logGroupName;
+export const spaBucket: pulumi.Output<string> = site.bucketName;
