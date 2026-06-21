@@ -12,7 +12,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 ### 2026-06-21 — Phase 1 deployable AWS slice: About page end-to-end (NH-206)
 
-**PR #PENDING** (branch `worktree-nh-206-phase1-aws-slice`) implements ADR §11 **Phase 1** on top of #56 — the recruiter-clickable **About page** served end-to-end through AWS. Realizes two previously-📄 ADR decisions in code:
+**PR #64** (branch `worktree-nh-206-phase1-aws-slice`) implements ADR §11 **Phase 1** on top of #56 — the recruiter-clickable **About page** served end-to-end through AWS. Realizes two previously-📄 ADR decisions in code:
 
 - `ARCH-EDGE-1` (one CloudFront, two origins) → **implemented** (`infra/cloudfront-site.stack.ts`). `/*` → a **private** S3 bucket (Block-Public-Access + BucketOwnerEnforced) reachable only via **OAC**, edge-cached; `/api/*` → the NestJS Lambda **Function URL** via OAC with the managed `AllViewerExceptHostHeader` policy and caching disabled. SPA deep links: 403/404 → `/index.html`.
 - `ARCH-LAMBDA-1` (Function URL lockdown) → **implemented**. Function URL flipped **`NONE` → `AWS_IAM`**; CloudFront granted **both** `lambda:InvokeFunctionUrl` and `lambda:InvokeFunction`, pinned by `AWS:SourceArn` to the one distribution; wildcard CORS dropped. The raw `*.lambda-url` is no longer publicly invocable.
