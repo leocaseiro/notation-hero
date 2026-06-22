@@ -1,0 +1,74 @@
+name: Deploy
+
+# CD for the ARCH-EDGE-1 AWS slice (NH-206). Auth = GitHub -> AWS OIDC (no stored keys);
+# Pulumi state = self-managed S3 backend (pinned in infra/Pulumi.yaml). PR -> `pulumi preview`
+# (plan commented on the PR); push to master -> `pulumi up`.
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+# id-token: assume the AWS role via OIDC. pull-requests: let preview comment the plan.
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  preview:
+    name: Pulumi preview
+    # Same-repo PRs only — GitHub withholds OIDC tokens from fork PRs; this is defence-in-depth.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-preview-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-js
+      - name: Build Lambda + SPA (pulumi reads server/dist-lambda + client/dist)
+        run: |
+          pnpm --filter @notation-hero/server run build:lambda
+          pnpm --filter @notation-hero/client run build
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: pulumi/actions@v6
+        with:
+          command: preview
+          stack-name: dev
+          work-dir: infra
+          cloud-url: s3://${{ vars.PULUMI_STATE_BUCKET }}
+          comment-on-pr: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+
+  up:
+    name: Pulumi up
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    # Never cancel an in-flight `up` — a half-applied deploy can corrupt stack state.
+    concurrency:
+      group: deploy-up-dev
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/setup-js
+      - name: Build Lambda + SPA (pulumi reads server/dist-lambda + client/dist)
+        run: |
+          pnpm --filter @notation-hero/server run build:lambda
+          pnpm --filter @notation-hero/client run build
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+      - uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: dev
+          work-dir: infra
+          cloud-url: s3://${{ vars.PULUMI_STATE_BUCKET }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
