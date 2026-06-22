@@ -10,6 +10,16 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-23 — CI/CD: GitHub-OIDC Pulumi deploy + self-managed S3 backend (NH-206)
+
+**PR #64.** **Revises** the 2026-06-21 entry below: _"`pulumi up` … AWS creds + Pulumi passphrase are local-only, never CI"_ — `pulumi up` now **also runs in CI** (local deploys remain). Approved by leocaseiro 2026-06-23.
+
+- **State backend:** the `dev` stack moved off `file://~` to a private, versioned **S3 bucket** (`s3://notation-hero-pulumi-state-apse2`, pinned in `infra/Pulumi.yaml`). No Pulumi Cloud, **no DynamoDB** — Pulumi locks via the bucket.
+- **CI auth:** **GitHub → AWS OIDC** (`aws-actions/configure-aws-credentials@v4`) assumes a least-privileged `notation-hero-ci-deploy` role; trust scoped to `repo:leocaseiro/notation-hero` (master ref + same-repo PRs) — zero long-lived keys. Bootstrap runbook: `docs/runbooks/aws-ci-oidc-bootstrap.sh` (+ `aws-iam-ci-deploy.json`).
+- **Secrets:** the passphrase secrets provider is fed to CI via the `PULUMI_CONFIG_PASSPHRASE` Actions secret (the committed `encryptionsalt` is unchanged). **No KMS** (no Pulumi-managed secrets yet).
+- **Workflow:** `.github/workflows/deploy.yml` — PR → `pulumi preview` (plan commented on the PR); push to `master` → `pulumi up`. Mirrors `ci.yml` (setup-js, Node 24). Account id kept out of committed files (wildcard ARNs; role ARN in a GH variable, masked in logs).
+- **`L7-oidc`** flips `💤 deferred-trigger → ✅ done` (OIDC now live in `deploy.yml`; reconciles into the status table on the next `docs(registry)` regen pass).
+
 ### 2026-06-21 — Phase 1 deployable AWS slice: About page end-to-end (NH-206)
 
 **PR #64** (branch `worktree-nh-206-phase1-aws-slice`) implements ADR §11 **Phase 1** on top of #56 — the recruiter-clickable **About page** served end-to-end through AWS. Realizes two previously-📄 ADR decisions in code:
@@ -19,7 +29,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 **Slice shape (leocaseiro, 2026-06-21): option (c)** — the **real** NestJS app runs on Lambda via `@codegenie/serverless-express` (a lambdalith), not a throwaway. `server/build:lambda` = SWC compile (emits decorator metadata — esbuild alone strips it and breaks Nest DI) → esbuild bundle to one CJS file. The About page is a real `client/` SPA route calling `GET /api/catalogue` (the first real feature — placeholder data now, Neon-backed in Phase 2) to prove the Lambda leg live; the throwaway `/api/about` was rejected (leocaseiro: build toward the real API, not a stub endpoint).
 
-**Free-tier posture:** plain pay-as-you-go CloudFront (the 1 TB / 10M perpetual tier) — deliberately **not** the Nov-2025 flat-rate "Free" plan (100 GB / 1M); `PriceClass_100`; arm64 Lambda, 10s timeout / 512 MB. Verified by 8 infra unit tests (Pulumi mocks) + `pulumi preview` (26-resource graph). **Deploy (`pulumi up`) + live-URL capture is the local capstone** (AWS creds + Pulumi passphrase are local-only, never CI). Deferred to their own tickets (foundation accommodates, zero refactor): Dexie caching, Cognito, Sentry, SRE, the CMS CRUD.
+**Free-tier posture:** plain pay-as-you-go CloudFront (the 1 TB / 10M perpetual tier) — deliberately **not** the Nov-2025 flat-rate "Free" plan (100 GB / 1M); `PriceClass_100`; arm64 Lambda, 10s timeout / 512 MB. Verified by 8 infra unit tests (Pulumi mocks) + `pulumi preview` (26-resource graph). **Deploy (`pulumi up`) + live-URL capture is the local capstone** (AWS creds + Pulumi passphrase are local-only — _revised 2026-06-23: `pulumi up` now also runs in CI via GitHub OIDC + an S3 state backend; see the top Change-log entry_). Deferred to their own tickets (foundation accommodates, zero refactor): Dexie caching, Cognito, Sentry, SRE, the CMS CRUD.
 
 ### 2026-06-21 — Foundation Phase 0 implemented + enforcement live (NH-199 / NH-195, PR #56)
 

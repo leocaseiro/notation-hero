@@ -20,8 +20,9 @@ deliberate "swappable backend" system-design portfolio piece.
 - **Cloud:** AWS via Pulumi (TypeScript) — **one CloudFront distribution, two origins**:
   `/*` → private S3 (SPA static, via Origin Access Control); `/api/*` → Lambda Function URL
   (locked to `AWS_IAM`, reachable only by CloudFront via Origin Access Control)
-- **CI:** GitHub Actions (lint / typecheck / test / build). A CI-driven deploy
-  (GitHub OIDC → assumed role) is deferred (NH-151/115); **deploys run locally for now**.
+- **CI / CD:** GitHub Actions — `ci.yml` (lint / typecheck / test / build); `deploy.yml`
+  runs `pulumi preview` on PRs and `pulumi up` on `master` via **GitHub → AWS OIDC** (no
+  stored keys). Local deploys still work — see **Deploy (AWS)** below.
 
 ## Layout
 
@@ -68,11 +69,28 @@ the proxy. Hit the API directly with `curl http://localhost:3001/api/catalogue`.
 
 ## Deploy (AWS)
 
-Infrastructure is **Pulumi (TypeScript)**. Deploys run **locally** for now (the
-CI-driven deploy via GitHub OIDC is deferred — NH-151/115). They run as the dedicated
-`notation-hero-pulumi-local` IAM user — **never as an admin identity**. That user needs
-S3 + CloudFront + `lambda:AddPermission` rights; granting them is a one-time
-IAM-administration task, separate from the deploy itself.
+Infrastructure is **Pulumi (TypeScript)** with a self-managed **S3 state backend**
+(`s3://notation-hero-pulumi-state-apse2`, pinned in `infra/Pulumi.yaml`). There are two
+ways to deploy — **CI/CD** (default) and **local**.
+
+### CI/CD — GitHub Actions + AWS OIDC
+
+`.github/workflows/deploy.yml` deploys with **no stored AWS keys**, assuming the
+`notation-hero-ci-deploy` role via **GitHub → AWS OIDC**:
+
+- **Pull request →** `pulumi preview` (the plan is commented on the PR).
+- **Push to `master` →** `pulumi up`.
+
+One-time admin bootstrap of the OIDC provider + role: `docs/runbooks/aws-ci-oidc-bootstrap.sh`
+(permissions in `docs/runbooks/aws-iam-ci-deploy.json`). CI config = the `PULUMI_CONFIG_PASSPHRASE`
+secret + the `AWS_DEPLOY_ROLE_ARN` / `AWS_REGION` / `PULUMI_STATE_BUCKET` variables.
+
+### Local
+
+Local deploys run as the dedicated `notation-hero-pulumi-local` IAM user — **never as an
+admin identity**. That user needs S3 (site + state buckets) + CloudFront +
+`lambda:AddPermission` rights (`docs/runbooks/aws-iam-pulumi-local-deploy.json`); granting
+them is a one-time IAM task, separate from the deploy itself.
 
 Build both artifacts, preview, then deploy:
 
