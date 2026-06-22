@@ -17,39 +17,39 @@ The round-by-round log below is **historical**. After the locked Playable model 
 2026-06-19 tonal/drum schema pass, here is the **current truth** for every SD. Resolutions point to
 `2026-06-19-tonal-drum-schema-draft.sql` + `2026-06-19-tonal-drum-extensible-schema-spec.md`.
 
-| SD                        | Status            | Current resolution                                                                                                                                                                       |
-| ------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SD-1                      | ✅ resolved        | `lesson_type` **dropped** (C5); fills = `pattern_kind='fill'`; lesson kind derived from its step patterns. The Round-4 "add `lesson_type='fill'`" is **moot** (no `lesson_type` at all). |
-| SD-2                      | ✅ no DDL          | breakdown found by reverse query (`parent_id` for parts / `step` for lessons).                                                                                                           |
-| SD-3                      | ✅ resolved        | owner = `created_by` (R1); `visibility` (public｜private｜shared) column added.                                                                                                            |
-| SD-4                      | ✅ no change       | per-user score/history → DynamoDB, joined client-side.                                                                                                                                   |
-| SD-5                      | ✅ resolved        | hasParts/hasSteps derived (no column).                                                                                                                                                   |
-| SD-6                      | ✅ resolved        | numbered pagination (OFFSET+COUNT).                                                                                                                                                      |
-| SD-7                      | ✅ resolved        | `level BETWEEN 0 AND 10` (0 = Debut).                                                                                                                                                    |
-| SD-8                      | ✅ evolved         | `genre`/`family` are now `text[]` collections (overlap filter) — supersedes "columns stay single" for those two.                                                                         |
-| SD-9                      | ✅ evolved         | `musical_key` moved to `tonal_profile` (D2); "hidden for drums" = no `tonal_profile` row.                                                                                                |
-| SD-10                     | 🔵 deferred       | sort direction (asc/desc) — v1.3 UI.                                                                                                                                                     |
-| SD-11                     | 🔵 deferred       | flag filters (audio/video/parts) — v1.3.                                                                                                                                                 |
-| SD-12                     | 🔵 deferred       | score filter/sort → per-user (DynamoDB), with the scores build.                                                                                                                          |
-| SD-13                     | ✅ evolved         | `artist` → `author text[]` + `author_type`; filterable (GIN).                                                                                                                            |
-| SD-14                     | ✅ resolved        | patterns are first-class playables; "Used in" = reverse `playable_link`; browse = a read view.                                                                                           |
-| SD-15                     | 🟡 partial        | `track` relation now EXISTS (Group D D-1) — the track identity SD-15 needed. **Unify:** per-section voicing folds into the D-3 grid cell → `data.sections[].tracks[]` = {track, level, techniques[], **voices[]**}. Deep note/voice_map decomposition still deferred (notes in AlphaTab — Thin). See Group D reconciliation 2026-06-20.          |
-| SD-16                     | ✅ resolved        | repeated parts = `data.sections[].ranges[[s,e],…]` jsonb.                                                                                                                                |
-| SD-17                     | 🔵 small/deferred | step description → `step.data.description` (not yet added).                                                                                                                              |
-| SD-18                     | ✅ no change       | items w/o steps/sections — UI/validation only.                                                                                                                                           |
-| SD-19                     | ✅ resolved        | lesson description → `data.description` (jsonb).                                                                                                                                         |
-| SD-20                     | 🔵 deferred       | per-part/step score → per-user (DynamoDB).                                                                                                                                               |
-| SD-21                     | 🔵 deferred       | completed flag + reset → per-user (DynamoDB).                                                                                                                                            |
-| SD-22                     | 🔵 open (Group C) | load-and-go upload — pairs with `notation.upload_status` (seam added).                                                                                                                   |
-| SD-23                     | 🔵 open (Group C) | GP file = song or pattern — upload must classify.                                                                                                                                        |
-| Lesson↔Step↔Pattern model | ✅ resolved        | locked Playable model (umbrella + `step` junction + parts first-class + `lesson_type` dropped) settled the tangle; GP-file role (SD-23) remains for Group C.                             |
+| SD                        | Status            | Current resolution                                                                                                                                                                                                                                                                                                                      |
+| ------------------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SD-1                      | ✅ resolved        | `lesson_type` **dropped** (C5); fills = `pattern_kind='fill'`; lesson kind derived from its step patterns. The Round-4 "add `lesson_type='fill'`" is **moot** (no `lesson_type` at all).                                                                                                                                                |
+| SD-2                      | ✅ no DDL          | breakdown found by reverse query (`parent_id` for parts / `step` for lessons).                                                                                                                                                                                                                                                          |
+| SD-3                      | ✅ resolved        | owner = `created_by` (R1); `visibility` (public｜private｜shared) column added.                                                                                                                                                                                                                                                           |
+| SD-4                      | ✅ no change       | per-user score/history → DynamoDB, joined client-side.                                                                                                                                                                                                                                                                                  |
+| SD-5                      | ✅ resolved        | hasParts/hasSteps derived (no column).                                                                                                                                                                                                                                                                                                  |
+| SD-6                      | ✅ resolved        | numbered pagination (OFFSET+COUNT).                                                                                                                                                                                                                                                                                                     |
+| SD-7                      | ✅ resolved        | `level BETWEEN 0 AND 10` (0 = Debut).                                                                                                                                                                                                                                                                                                   |
+| SD-8                      | ✅ evolved         | `genre`/`family` are now `text[]` collections (overlap filter) — supersedes "columns stay single" for those two.                                                                                                                                                                                                                        |
+| SD-9                      | ✅ evolved         | `musical_key` moved to `tonal_profile` (D2); "hidden for drums" = no `tonal_profile` row.                                                                                                                                                                                                                                               |
+| SD-10                     | 🔵 deferred       | sort direction (asc/desc) — v1.3 UI.                                                                                                                                                                                                                                                                                                    |
+| SD-11                     | 🔵 deferred       | flag filters (audio/video/parts) — v1.3.                                                                                                                                                                                                                                                                                                |
+| SD-12                     | 🔵 deferred       | score filter/sort → per-user (DynamoDB), with the scores build.                                                                                                                                                                                                                                                                         |
+| SD-13                     | ✅ evolved         | `artist` → `author text[]` + `author_type`; filterable (GIN).                                                                                                                                                                                                                                                                           |
+| SD-14                     | ✅ resolved        | patterns are first-class playables; "Used in" = reverse `playable_link`; browse = a read view.                                                                                                                                                                                                                                          |
+| SD-15                     | 🟡 partial        | `track` relation now EXISTS (Group D D-1) — the track identity SD-15 needed. **Unify:** per-section voicing folds into the D-3 grid cell → `data.sections[].tracks[]` = {track, level, techniques[], **voices[]**}. Deep note/voice_map decomposition still deferred (notes in AlphaTab — Thin). See Group D reconciliation 2026-06-20. |
+| SD-16                     | ✅ resolved        | repeated parts = `data.sections[].ranges[[s,e],…]` jsonb.                                                                                                                                                                                                                                                                               |
+| SD-17                     | 🔵 small/deferred | step description → `step.data.description` (not yet added).                                                                                                                                                                                                                                                                             |
+| SD-18                     | ✅ no change       | items w/o steps/sections — UI/validation only.                                                                                                                                                                                                                                                                                          |
+| SD-19                     | ✅ resolved        | lesson description → `data.description` (jsonb).                                                                                                                                                                                                                                                                                        |
+| SD-20                     | 🔵 deferred       | per-part/step score → per-user (DynamoDB).                                                                                                                                                                                                                                                                                              |
+| SD-21                     | 🔵 deferred       | completed flag + reset → per-user (DynamoDB).                                                                                                                                                                                                                                                                                           |
+| SD-22                     | 🔵 open (Group C) | load-and-go upload — pairs with `notation.upload_status` (seam added).                                                                                                                                                                                                                                                                  |
+| SD-23                     | 🔵 open (Group C) | GP file = song or pattern — upload must classify.                                                                                                                                                                                                                                                                                       |
+| Lesson↔Step↔Pattern model | ✅ resolved        | locked Playable model (umbrella + `step` junction + parts first-class + `lesson_type` dropped) settled the tangle; GP-file role (SD-23) remains for Group C.                                                                                                                                                                            |
 
 **Still open:** SD-10, SD-11, SD-12, SD-17, SD-20, SD-21 (mostly per-user/DynamoDB or minor UI) · **Group C:** SD-22, SD-23 · **partial:** SD-15 (advanced by Group D) · **new (deferred):** SD-25 technique facet, SD-26 instrument family. **Group D (Round-6 track/media/difficulty) — ✅ resolved 2026-06-20** (see the Group D reconciliation section below + spec). Everything else is resolved.
 
 ### 🆕 New deltas (2026-06-19 pm)
 
-- **`description` (universal field) — ✅ added.** Every playable gets `description text` (≤255 via CHECK) — a one-liner under the title. Supersedes the per-lesson/step `data.description` idea (SD-17/SD-19); applied to the draft SQL.
-- **SD-24 — Song slice as a *derived* part (NH-137).** Spike: `agent-a6595b9997a45d9bc/docs/spikes/2026-06-19-nh137-song-slice/FINDINGS.md`. **Decided shape (memory `notation-hero-song-slice-storage`): positions-only + pointers, NO per-slice notation or blob.** A slice (bars A–B) = a **`kind='part'`** playable (`parent_id`=source + `start_bar`/`end_bar`=range — **existing** fields). The shared media ref (`audioRef` = one S3 key for the FULL-song audio, or `youtubeId`) lives on the **source song** (not duplicated per slice). The sliced **alphaTex + rebased sync points are derived at runtime** (AlphaTab ~35 ms) — **not stored**; optionally *cache* them in the part's `data` purely to skip re-slicing. `msOffsetBaseline` is optional/derivable. **No new columns;** the rhythm-game Score stays separate. **Open (OQ-1..6):** audio-storage shape · A0 read-only "play a part" as a separate cheaper feature · alphaTex fidelity on a broader corpus · AlphaTab version pin (1.8.3 vs the site's 1.7.0-alpha) · repeats/alternate-endings crossing the cut. **Not Group D** — its own NH-137 thread (only the source's shared `audioRef` home overlaps D-2).
+- `**description` (universal field) — ✅ added.** Every playable gets `description text` (≤255 via CHECK) — a one-liner under the title. Supersedes the per-lesson/step `data.description` idea (SD-17/SD-19); applied to the draft SQL.
+- **SD-24 — Song slice as a *derived* part (NH-137).** Spike: `agent-a6595b9997a45d9bc/docs/spikes/2026-06-19-nh137-song-slice/FINDINGS.md`. **Decided shape (memory `notation-hero-song-slice-storage`): positions-only + pointers, NO per-slice notation or blob.** A slice (bars A–B) = a `**kind='part'**` playable (`parent_id`=source + `start_bar`/`end_bar`=range — **existing** fields). The shared media ref (`audioRef` = one S3 key for the FULL-song audio, or `youtubeId`) lives on the **source song** (not duplicated per slice). The sliced **alphaTex + rebased sync points are derived at runtime** (AlphaTab ~35 ms) — **not stored**; optionally *cache* them in the part's `data` purely to skip re-slicing. `msOffsetBaseline` is optional/derivable. **No new columns;** the rhythm-game Score stays separate. **Open (OQ-1..6):** audio-storage shape · A0 read-only "play a part" as a separate cheaper feature · alphaTex fidelity on a broader corpus · AlphaTab version pin (1.8.3 vs the site's 1.7.0-alpha) · repeats/alternate-endings crossing the cut. **Not Group D** — its own NH-137 thread (only the source's shared `audioRef` home overlaps D-2).
 
 ### 🆕 Group D resolved + delta reconciliation (2026-06-20)
 
@@ -102,7 +102,7 @@ expose a `breakdownLessonIds[]` convenience field on `GET /catalogue/{id}` compu
 - **What the UI needs:** a signed-in **User** sees their own uploaded drafts (e.g. *"My practice loop"*) that
 aren't in the shared published catalog; **Admin** sees all.
 - **Schema today:** `catalogue_item.source='user-upload'` + `status` exist, but there is **no `owner` / `uploader_id**`
-column. Deferred-slots note says user files are *"keyed by uploader, never auto-published"* — but doesn't say
+columnPhase 1 — a thin deployable AWS slice. Deferred-slots note says user files are *"keyed by uploader, never auto-published"* — but doesn't say
 where the uploader key lives.
 - **Why it matters:** filtering "items owned by *this* user" needs an owner reference somewhere queryable.
 - **Proposed change (options to decide):** (a) add `owner_id text` to `catalogue_item` (NULL for curated);
@@ -398,16 +398,16 @@ instrument (vocab)? Per-instrument difficulty per-track or a by-instrument curve
 ### SD-27 — per-track tonal/drum profiles? (2026-06-20)
 
 **Catch (wireframe ↔ schema reconciliation):** `tonal_profile` and `drum_profile` attach to the
-**playable** (the whole song), but Group D added a **`track`** relation (e.g. guitar `lead` + guitar
+**playable** (the whole song), but Group D added a `**track**` relation (e.g. guitar `lead` + guitar
 `rhythm` + bass + drums on one song). So the *chords / progressions* belong to the pitched tracks and
 the *techniques / kit_pieces* to the drums track — yet the profiles sit on the song, not the track.
 
 - **For search** ("songs using I–V–vi–IV", "songs with a shuffle") per-song facets are sufficient and cheap.
 - **For per-instrument precision** ("the BASS plays these notes", "the guitar uses these chords") the
-  per-song profile is lossy.
+per-song profile is lossy.
 
-**~~Open~~ ✅ RESOLVED (Leo, 2026-06-21) — move them per-track.** `tonal_profile` + `drum_profile` re-key
-from `playable_id` PK → **`track_id` PK** `REFERENCES track(id)`. A track is one instrument, so the
+~~**Open~~ ✅ RESOLVED (Leo, 2026-06-21) — move them per-track.** `tonal_profile` + `drum_profile` re-key
+from `playable_id` PK → `**track_id` PK** `REFERENCES track(id)`. A track is one instrument, so the
 chords/progressions hang off each pitched track (the bass carries its own notes) and the beats/fills/
 kit_pieces off the drums track. **Shape unchanged — only the key flips.** The instrument-conditional
 ownership (a drums track may own a `drum_profile`, a pitched track a `tonal_profile`, never both) is an
@@ -415,10 +415,10 @@ ownership (a drums track may own a `drum_profile`, a pitched track a `tonal_prof
 Search now joins via `track` (one extra join; no per-song rollup needed at v1 scale).
 
 - **DDL + seed:** `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` — validated on
-  `nh_tonal_scratch` (profile-instrument invariant holds 0/0/0; poke queries pass: "max on guitar",
-  per-track bass notes, double-bass search, I–V–vi–IV search).
+`nh_tonal_scratch` (profile-instrument invariant holds 0/0/0; poke queries pass: "max on guitar",
+per-track bass notes, double-bass search, I–V–vi–IV search).
 - Still pairs with **SD-25** (searchable per-instrument *technique* facet for pitched) and **OQ2**
-  (multi-track which-to-learn) — both remain open and orthogonal.
+(multi-track which-to-learn) — both remain open and orthogonal.
 
 ---
 
@@ -426,7 +426,7 @@ Search now joins via `track` (one extra join; no per-song rollup needed at v1 sc
 
 **Context (Leo, 2026-06-21):** every Notation Hero search has a **required single instrument** field
 (default Drums, user-settings-overridable) — like Songsterr/UltimateGuitar/CifraClub defaulting to guitar.
-The model already disambiguates same-instrument variants via **`track.role`** (lead/rhythm/solo/pad/harmony).
+The model already disambiguates same-instrument variants via `**track.role**` (lead/rhythm/solo/pad/harmony).
 
 **Open (parked — needs its own brainstorm):** what exactly does the user pick? Is the selector just the
 **instrument** (`guitar`), or **instrument + role** (`guitar — lead` vs `guitar — rhythm`)? For now we ship
@@ -436,27 +436,44 @@ profiles now make "the lead guitar's chords" addressable) and **OQ2**.
 
 ---
 
+### SD-29 — component patterns hidden from browse via `listable:false` (2026-06-23)
+
+**Context (Leo, 2026-06-23):** the composed **voice leaves** of the composite beat
+(`pat_voice_hh` / `pat_voice_sn` / `pat_voice_kick` — the hi-hat/snare/kick that build `pat_rock_composite`
+via `step`) were appearing as standalone rows in the catalogue browse. They are building blocks, not
+destinations.
+
+**Resolved:** set **`listable:false`** on the three voices. No new column — reuses the existing `listable`
+seam (song parts already use it; `matches()` excludes `listable===false` from browse). The voices stay
+reachable **inside** their composite (the Steps card) and by deep-link, but never clutter the list.
+Generalises to: any pure building-block playable is `listable:false`.
+
+**Open:** `pat_rock_composite` (the teaching composite) duplicates the standalone `pat_basic_rock` groove —
+decide whether the composite itself should also be `listable:false` (teaching-only) or the two should merge.
+
+---
+
 ### TS-4 — seed data log (2026-06-21)
 
 First real catalogue seed: `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` (validated on
 `nh_tonal_scratch`). **19 playables / 37 tracks / 17 tonal / 19 drum / 7 media.**
 
 - **Drum patterns (real, from `groovescribe-import.json`):** 8 leveled rudiments — **2 per group**,
-  Debut→Advanced (Single/Double Stroke Roll Debut · Single Stroke Roll L2 · Single Stroke Four L3 · Five
-  Stroke Roll L4 · Seven Stroke Roll L6 · Swiss Army Triplet L7 · Single Stroke Roll L8) + 1 beat (Basic
-  Rock) + 1 fill (16th Snare L4) + 1 **composite beat** built from hi-hat/snare/kick **voice leaves via
-  `step`** (real masked views of Basic Rock). Each stores its GrooveScribe share URL in `playable.data`;
-  patterns use `notation_id` NULL (no fabricated alphaTex — backfill via the groovescribe skill later).
+Debut→Advanced (Single/Double Stroke Roll Debut · Single Stroke Roll L2 · Single Stroke Four L3 · Five
+Stroke Roll L4 · Seven Stroke Roll L6 · Swiss Army Triplet L7 · Single Stroke Roll L8) + 1 beat (Basic
+Rock) + 1 fill (16th Snare L4) + 1 **composite beat** built from hi-hat/snare/kick **voice leaves via**
+`**step**` (real masked views of Basic Rock). Each stores its GrooveScribe share URL in `playable.data`;
+patterns use `notation_id` NULL (no fabricated alphaTex — backfill via the groovescribe skill later).
 - **Songs:** Bohemian Rhapsody, Yellow, Zoio de Lula, I'm Yours (single I–V–vi–IV progression), Angra –
-  Nothing To Say (Expert drums L9). Per-instrument `track.level` (headline = MAX per selected instrument)
-  + per-track `tonal_profile`/`drum_profile`. Only Angra has a real `.gp`; others are catalogue rows with
+Nothing To Say (Expert drums L9). Per-instrument `track.level` (headline = MAX per selected instrument)
+  - per-track `tonal_profile`/`drum_profile`. Only Angra has a real `.gp`; others are catalogue rows with
   placeholder s3 keys.
 - **Expert (9–10):** **two** examples — Angra (Nothing To Say, drums + lead L9) + Zoio de Lula (**drums L9**;
-  guitar only L3–4 — the per-instrument point: hard on drums, easy on guitar). Zoio's drums set Expert per
-  Leo, 2026-06-21. The 8 rudiments cover Debut→Advanced (source tops out at L8).
+guitar only L3–4 — the per-instrument point: hard on drums, easy on guitar). Zoio's drums set Expert per
+Leo, 2026-06-21. The 8 rudiments cover Debut→Advanced (source tops out at L8).
 - **Open follow-ups:** (a) **Zoio** artist (Charlie Brown Jr.) unconfirmed; (b) the non-Angra song levels are
-  estimates (Bohemian 8 · Yellow 3 · I'm Yours 2) — calibrate in the Rockschool grounding pass; (c) real
-  alphaTex/`.gp` blobs for the non-Angra songs and the drum patterns when ingest is built.
+estimates (Bohemian 8 · Yellow 3 · I'm Yours 2) — calibrate in the Rockschool grounding pass; (c) real
+alphaTex/`.gp` blobs for the non-Angra songs and the drum patterns when ingest is built.
 
 ---
 
@@ -470,13 +487,13 @@ Objective fields are now real in **both** the wireframe (`index.html`) and the S
 **Real values applied (high confidence):** tempo, bar count, time signature, full track
 list (names + percussion flag), section markers + bar ranges.
 
-| Song | tempo | bars | tracks (real) | sections | note |
-|---|---|---|---|---|---|
-| Bohemian | 72 | 139 | 13 (5 gtrs + 2 print-dupe pianos) | 3 informal | mapped 6 primaries |
-| Yellow | 87 | 97 | 8 | 10 | +keys +vocals added |
-| Zoio | 76 | 79 | 5 | **0 (marker-less)** | no vocals track; NH-200 case |
-| I'm Yours | 73 | 76 | 5 | 11 | classical+electric guitar, **not ukulele** |
-| Angra | 138 | 221 | 9 (+1 empty) | 15 (E→G modulation) | +vocals; player-named tracks |
+| Song      | tempo | bars | tracks (real)                     | sections            | note                                       |
+| --------- | ----- | ---- | --------------------------------- | ------------------- | ------------------------------------------ |
+| Bohemian  | 72    | 139  | 13 (5 gtrs + 2 print-dupe pianos) | 3 informal          | mapped 6 primaries                         |
+| Yellow    | 87    | 97   | 8                                 | 10                  | +keys +vocals added                        |
+| Zoio      | 76    | 79   | 5                                 | **0 (marker-less)** | no vocals track; NH-200 case               |
+| I'm Yours | 73    | 76   | 5                                 | 11                  | classical+electric guitar, **not ukulele** |
+| Angra     | 138   | 221  | 9 (+1 empty)                      | 15 (E→G modulation) | +vocals; player-named tracks               |
 
 **Guesses corrected by the real files:** Zoio **140→76** bpm; I'm Yours 75→73; Angra
 150→138; Zoio's fabricated **vocals** track removed; I'm Yours' fabricated **ukulele**
@@ -485,33 +502,33 @@ list (names + percussion flag), section markers + bar ranges.
 **OPEN ITEMS — flagged + SKIPPED (no assumptions acted on):**
 
 1. **Per-track difficulty levels (0–10) + techniques are HUMAN ESTIMATES, not extracted.**
-   AlphaTab does not carry difficulty. Seed levels (Zoio drums L9 / guitar L3–4 per Leo;
+  AlphaTab does not carry difficulty. Seed levels (Zoio drums L9 / guitar L3–4 per Leo;
    Bohemian guitar lead L7; etc.) are estimates pending calibration (Rockschool / NH-196).
    Do **not** present them as real-extracted.
 2. **Musical key is LOW CONFIDENCE (GP defaults).** File keys read as defaults: Yellow→C
-   (really B major), Zoio→C, Angra→C (but it modulates **E→G** per its section labels).
+  (really B major), Zoio→C, Angra→C (but it modulates **E→G** per its section labels).
    Wireframe/SQL keep prior key estimates; the file key field is unreliable. Raw key per
    song is in the JSON. → real tonal analysis (NH-196) deferred.
 3. **Aux / FX / print-duplicate tracks have no model home.** Bohemian = 5 guitars + 2
-   print-only pianos; Yellow = an "Overdrive" FX layer + separate Strings + Piano; Angra
+  print-only pianos; Yellow = an "Overdrive" FX layer + separate Strings + Piano; Angra
    = 3 keyboards + 1 empty track. The seed maps **primary instruments only** (KTD-5) and
    folds/omits the rest. **Open Q:** should the model carry multi-track-same-instrument
    (5 guitars) and FX layers as first-class? → skipped, logged.
 4. **Bohemian sections are sparse/informal** — only 3 markers ("gtrs enter", "tempo 144",
-   "tempo 207"), covering bars 42–139 only (1–41 unmarked); not clean verse/chorus. Used
+  "tempo 207"), covering bars 42–139 only (1–41 unmarked); not clean verse/chorus. Used
    verbatim. (Contrast Angra's 15 clean sections.)
 5. **Zoio is marker-less (0 sections)** — exactly the **NH-200** smart-structure-inference
-   case. Left empty (`markerless:true`); inferring sections is a separate spike, not extraction.
+  case. Left empty (`markerless:true`); inferring sections is a separate spike, not extraction.
 6. **"We no longer need sections" vs the with-sections file.** Leo said sections were no
-   longer needed, then provided `Bohemian Rhapsody with sections.gp` + asked to use the
+  longer needed, then provided `Bohemian Rhapsody with sections.gp` + asked to use the
    original sources. Resolved by extracting the real markers (the provided file IS the
    decided source). Flag if this should be reverted.
 7. **Per-section × per-track difficulty grid (`data.sections[].tracks[]`) NOT populated.**
-   The section UI can show per-section per-track level + techniques (D-3), but those are
+  The section UI can show per-section per-track level + techniques (D-3), but those are
    subjective and not in the file. Sections carry **label + bar range only**; grid cells
    render "—". → needs human authoring, skipped.
 8. **Zoio + I'm Yours carry no embedded title/artist** in the file (Zoio title empty);
-   artist comes from the filename. Zoio artist (Charlie Brown Jr.) still unconfirmed.
+  artist comes from the filename. Zoio artist (Charlie Brown Jr.) still unconfirmed.
 
 **Available but NOT imported (decided seed is the 5 above):** the folder
 `/Users/leocaseiro/Music/AlphaTab-RhythmGame/` also has real `.gp` for Toto – Africa,
