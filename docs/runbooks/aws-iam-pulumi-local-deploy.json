@@ -37,6 +37,29 @@
       ]
     },
     {
+      "Sid": "ManageLambdaExecRoles",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::*:role/*-role-*",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:ListRoleTags",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:ListAttachedRolePolicies",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:PassRole",
+        "iam:UpdateAssumeRolePolicy",
+        "iam:ListInstanceProfilesForRole"
+      ]
+    },
+    {
       "Sid": "LambdaInvokeGrantForCloudFront",
       "Effect": "Allow",
       "Action": [
