@@ -345,94 +345,16 @@ const MARK_SVG = '<svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circl
 const MIDI_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M20.18,12C20.18,8.18 17.55,4.96 14,4.07V6H10V4.07C6.45,4.96 3.82,8.18 3.82,12A8.18,8.18 0 0,0 12,20.18A8.18,8.18 0 0,0 20.18,12M7,10.64A1.36,1.36 0 0,1 8.36,12A1.36,1.36 0 0,1 7,13.36C6.25,13.36 5.64,12.75 5.64,12C5.64,11.25 6.25,10.64 7,10.64M17,10.64A1.36,1.36 0 0,1 18.36,12A1.36,1.36 0 0,1 17,13.36A1.36,1.36 0 0,1 15.64,12A1.36,1.36 0 0,1 17,10.64M8.36,14.27A1.37,1.37 0 0,1 9.73,15.64C9.73,16.39 9.12,17 8.36,17A1.36,1.36 0 0,1 7,15.64C7,14.88 7.61,14.27 8.36,14.27M15.64,14.27C16.39,14.27 17,14.88 17,15.64A1.36,1.36 0 0,1 15.64,17C14.88,17 14.27,16.39 14.27,15.64A1.37,1.37 0 0,1 15.64,14.27M12,15.64A1.36,1.36 0 0,1 13.36,17A1.36,1.36 0 0,1 12,18.36A1.36,1.36 0 0,1 10.64,17A1.36,1.36 0 0,1 12,15.64Z"/></svg>';
 
 /* ---------- patterns (the reusable vocabulary — beats/fills/rudiments) ---------- */
-const PATTERNS = {
-  'rock-8th':         {kind:'beat',     name:'8th-Note Rock',     family:'Rock',  subdivision:'8th',  level:1},
-  'four-floor':       {kind:'beat',     name:'Four-on-the-Floor', family:'House', subdivision:'quarter', level:1},
-  'single-paradiddle':{kind:'rudiment', name:'Single Paradiddle', family:'Diddle',subdivision:'16th', level:2},
-  'double-stroke':    {kind:'rudiment', name:'Double Stroke Roll',family:'Roll',  subdivision:'16th', level:3},
-  'linear-6stroke':   {kind:'fill',     name:'Linear 6-Stroke',   family:'Linear',subdivision:'16th', level:5},
-};
+const PATTERNS = {};
 const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',label:'Fill'}, rudiment:{icon:'drag_indicator',label:'Rudiment'}, scale:{icon:'piano',label:'Scale'}, chord:{icon:'piano',label:'Chord'}};
 
 /* ---------- sample data (playable — the locked umbrella; kind = the role) ---------- */
 const PLAYABLES = [
-  {id:'seven-nation-army', kind:'song', title:'Seven Nation Army', artist:'The White Stripes', level:2, bpm:124, time_sig:'4/4', genre:'rock', instruments:['bass','drums','guitar'], tags:['riff','syncopation'], patterns:['p-rock-8th'], musical_key:null, status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true,
-    /* D-1 tracks: TWO guitars (lead+rhythm) of the SAME instrument by role, + bass (its OWN instrument) + drums; all share the song's .gp via notation_track_index. instruments[] above = DERIVED facet (DISTINCT track.instrument). */
-    tracks:[
-      {id:'t-sna-drums',  instrument:'drums',  role:null,     name:'Drums',         level:3, notation_track_index:0},
-      {id:'t-sna-lead',   instrument:'guitar', role:'lead',   name:'Lead Guitar',   level:5, notation_track_index:1, tuning:'Standard'},
-      {id:'t-sna-rhythm', instrument:'guitar', role:'rhythm', name:'Rhythm Guitar', level:4, notation_track_index:2, tuning:'Drop D'},
-      {id:'t-sna-bass',   instrument:'bass',   role:null,     name:'Bass',          level:2, notation_track_index:3},
-    ],
-    /* D-2 media: song-level (track NULL) AND per-track; THREE sources youtube | s3 | gp-embedded. */
-    media:[
-      {scope:'song',  kind:'video', provider:'youtube',     label:'Official video',   url:'https://youtu.be/0J2QdDbelmY'},
-      {scope:'song',  kind:'audio', provider:'s3',          label:'Full mix',         s3_key:'catalogue/sna/audio/full-mix.m4a', note:'NH-137 shared audioRef'},
-      {scope:'song',  kind:'audio', provider:'s3',          label:'Drumless',         s3_key:'catalogue/sna/audio/drumless.m4a'},
-      {scope:'song',  kind:'audio', provider:'gp-embedded', label:'Embedded backing'},
-      {scope:'track', track:'t-sna-drums', kind:'audio', provider:'s3',      label:'Drums only', s3_key:'catalogue/sna/audio/drums-only.m4a'},
-      {scope:'track', track:'t-sna-drums', kind:'video', provider:'youtube', label:'Drum-cam',   url:'https://youtu.be/drumcam'},
-      {scope:'track', track:'t-sna-lead',  kind:'video', provider:'youtube', label:'Lead-cam',   url:'https://youtu.be/leadcam'},
-    ],
-    best:78, sessions:6, top_bpm:118, trend:[40,55,52,63,70,78],
-    data:{bars:64, sections:[
-      {label:'Intro',  startBar:1,  endBar:8,  tracks:[{track:'t-sna-lead',level:2,techniques:[]},{track:'t-sna-drums',level:2,techniques:[]}]},
-      {label:'Chorus', startBar:9,  endBar:24, tracks:[{track:'t-sna-lead',level:5,techniques:['palm-mute','accents']},{track:'t-sna-rhythm',level:4,techniques:['power-chords']},{track:'t-sna-drums',level:3,techniques:['ghost-notes']}]},
-      {label:'Verse',  startBar:25, endBar:40, tracks:[{track:'t-sna-lead',level:3,techniques:['palm-mute']},{track:'t-sna-bass',level:2,techniques:[]},{track:'t-sna-drums',level:3,techniques:['ghost-notes']}]},
-      {label:'Chorus', startBar:41, endBar:56, tracks:[{track:'t-sna-lead',level:5,techniques:['palm-mute','accents']},{track:'t-sna-rhythm',level:4,techniques:['power-chords']},{track:'t-sna-drums',level:3,techniques:['ghost-notes']}]},
-      {label:'Outro',  startBar:57, endBar:64, tracks:[{track:'t-sna-bass',level:2,techniques:[]},{track:'t-sna-drums',level:2,techniques:[]}]},
-    ]}},
-  {id:'billie-jean', kind:'song', title:'Billie Jean', artist:'Michael Jackson', level:3, bpm:117, time_sig:'4/4', genre:'pop', instruments:['drums'], tags:['groove'], patterns:['p-four-floor'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:100, sessions:14, top_bpm:117, trend:[60,72,80,88,95,100],
-    data:{bars:64, sections:[{label:'Groove',startBar:1,endBar:16},{label:'Verse',startBar:17,endBar:32},{label:'Chorus',startBar:33,endBar:48}]}},
-  {id:'rosanna', kind:'song', title:'Rosanna (half-time shuffle)', artist:'Toto', level:8, bpm:86, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['shuffle','ghost-notes'], patterns:['p-paradiddle'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp5', has_audio:true, has_video:true, audio:[{label:'Backing track'}], video:[{provider:'youtube',label:'Drum cam'}], best:34, sessions:2, top_bpm:72, trend:[20,28,34]},
-  {id:'enter-sandman', kind:'song', title:'Enter Sandman', artist:'Metallica', level:5, bpm:123, time_sig:'4/4', genre:'metal', instruments:['drums'], tags:['double-bass'], patterns:['p-rock-8th'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[], new:true},
-  {id:'take-five', kind:'song', title:'Take Five', artist:'Dave Brubeck', level:6, bpm:174, time_sig:'5/4', genre:'jazz', instruments:['drums'], tags:['syncopation'], status:'published', origin:'curated', license:'public-domain', notation_format:'xml', has_video:true, video:[{provider:'youtube',label:'Live 1966'}], best:52, sessions:4, top_bpm:150, trend:[30,40,48,52]},
-  {id:'creep', kind:'song', title:'Creep', artist:'Radiohead', level:3, bpm:92, time_sig:'4/4', genre:'rock', instruments:['drums'], tags:['groove'], patterns:['p-four-floor'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:67, sessions:3, top_bpm:88, trend:[44,58,67]},
-  {id:'wonderwall', kind:'song', title:'Wonderwall', artist:'Oasis', level:0, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar'], musical_key:'F#m', tags:['strumming'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, audio:[{label:'Backing track'}], best:null, sessions:0, trend:[]},
-  {id:'clocks', kind:'song', title:'Clocks', artist:'Coldplay', level:4, bpm:131, time_sig:'4/4', genre:'rock', instruments:['keys'], musical_key:'Eb', tags:['arpeggio'], patterns:['p-prog-1564-c'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gpx', has_audio:true, audio:[{label:'Backing track'}], best:60, sessions:2, top_bpm:120, trend:[40,60]},
-  /* TS-4 seed songs (mirror of 2026-06-21-per-track-profiles-and-seed-draft.sql). level = headline = max(track.level) for the song; per-track levels/profiles live in the SQL seed. */
   {id:'bohemian-rhapsody', kind:'song', title:'Bohemian Rhapsody', artist:'Queen', level:8, bpm:72, time_sig:'4/4', genre:'rock', instruments:['keys','guitar','bass','drums','vocals'], musical_key:'Bb', tags:['progressive','classic-rock'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Full mix'}], video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-boh-keys',instrument:'keys',role:null,name:'Piano',level:6,notation_track_index:1},{id:'t-boh-lead',instrument:'guitar',role:'lead',name:'Gtr 1',level:7,notation_track_index:0},{id:'t-boh-rhythm',instrument:'guitar',role:'rhythm',name:'Gtr 2',level:4,notation_track_index:3},{id:'t-boh-bass',instrument:'bass',role:null,name:'Bass',level:5,notation_track_index:7},{id:'t-boh-drums',instrument:'drums',role:null,name:'Percussions',level:5,notation_track_index:10},{id:'t-boh-vox',instrument:'vocals',role:null,name:'Voice',level:8,notation_track_index:8}], data:{bars:139, sections:[{label:'gtrs enter',startBar:42,endBar:54},{label:'tempo 144',startBar:55,endBar:95},{label:'tempo 207',startBar:96,endBar:139}]}, best:null, sessions:0, trend:[]},
   {id:'yellow', kind:'song', title:'Yellow', artist:'Coldplay', level:3, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar','bass','drums','keys','vocals'], musical_key:'B', chords:['B','Badd9','F#6','E7M','Badd11','G#m','Eadd9','F#m7add11'], tags:['alternative'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-yel-lead',instrument:'guitar',role:'lead',name:'Lead Guitar',level:3,notation_track_index:2},{id:'t-yel-rhythm',instrument:'guitar',role:'rhythm',name:'Rhythm Guitar',level:2,notation_track_index:1},{id:'t-yel-bass',instrument:'bass',role:null,name:'Bass',level:2,notation_track_index:4},{id:'t-yel-drums',instrument:'drums',role:null,name:'Drums',level:2,notation_track_index:7},{id:'t-yel-keys',instrument:'keys',role:null,name:'Strings / Piano',level:3,notation_track_index:5},{id:'t-yel-vox',instrument:'vocals',role:null,name:'Lead Vocals',level:3,notation_track_index:0}], data:{bars:97, sections:[{label:'Intro',startBar:1,endBar:4},{label:'Instrumental 1',startBar:5,endBar:12},{label:'Verse 1',startBar:13,endBar:32},{label:'Chorus 1',startBar:33,endBar:40},{label:'Interlude 1',startBar:41,endBar:48},{label:'Verse 2',startBar:49,endBar:62},{label:'Chorus 2',startBar:63,endBar:70},{label:'Interlude 2',startBar:71,endBar:78},{label:'Outro',startBar:79,endBar:90},{label:'Outro',startBar:91,endBar:97}]}, best:null, sessions:0, trend:[]},
   {id:'zoio-de-lula', kind:'song', title:'Zoio de Lula', artist:'Charlie Brown Jr.', level:9, bpm:76, time_sig:'4/4', genre:'rock', instruments:['guitar','bass','drums'], musical_key:null, tags:['brazilian'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-zoio-drums',instrument:'drums',role:null,name:'Bateria',level:9,notation_track_index:4},{id:'t-zoio-lead',instrument:'guitar',role:'solo',name:'Guitarra Solo',level:4,notation_track_index:1},{id:'t-zoio-rhythm',instrument:'guitar',role:'rhythm',name:'Guitarra Base',level:3,notation_track_index:0},{id:'t-zoio-gtr3',instrument:'guitar',role:null,name:'Guitarra 3',level:3,notation_track_index:2},{id:'t-zoio-bass',instrument:'bass',role:null,name:'Baixo',level:4,notation_track_index:3}], data:{bars:79, markerless:true}, best:null, sessions:0, trend:[]},
   {id:'im-yours', kind:'song', title:"I'm Yours", artist:'Jason Mraz', level:2, bpm:73, time_sig:'4/4', genre:'pop', instruments:['guitar','bass','drums','vocals'], musical_key:'B', chords:['B','F#','G#m','E','Fdim','F#/A#'], tags:['reggae','I-V-vi-IV'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-imy-rhythm',instrument:'guitar',role:'rhythm',name:'Classical Guitar',level:2,notation_track_index:0},{id:'t-imy-lead',instrument:'guitar',role:'lead',name:'Electric Guitar',level:2,notation_track_index:1},{id:'t-imy-bass',instrument:'bass',role:null,name:'Bass',level:2,notation_track_index:2},{id:'t-imy-drums',instrument:'drums',role:null,name:'Drums',level:1,notation_track_index:3},{id:'t-imy-vox',instrument:'vocals',role:null,name:'Lead Vocal Harmonies',level:2,notation_track_index:4}], data:{bars:76, singleSection:true, sections:[{label:'Intro',startBar:2,endBar:5},{label:'Verse 1',startBar:6,endBar:13},{label:'Chorus 1',startBar:14,endBar:17},{label:'Interlude',startBar:18,endBar:21},{label:'Verse 2',startBar:22,endBar:30},{label:'Chorus 2',startBar:31,endBar:38},{label:'Bridge',startBar:39,endBar:46},{label:'Verse 3',startBar:47,endBar:54},{label:'Breakdown Chorus',startBar:55,endBar:58},{label:'Chorus 3',startBar:59,endBar:68},{label:'Outro',startBar:69,endBar:76}]}, best:null, sessions:0, trend:[]},
   {id:'nothing-to-say', kind:'song', title:'Nothing To Say', artist:'Angra', level:9, bpm:138, time_sig:'4/4', genre:'metal', instruments:['drums','guitar','bass','keys','vocals'], musical_key:'Em', tags:['double-bass','neoclassical'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Full mix'}], video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-angra-drums',instrument:'drums',role:null,name:'Ricardo (Drums)',level:9,notation_track_index:4},{id:'t-angra-lead',instrument:'guitar',role:'lead',name:'Kiko (Lead Guitar)',level:9,notation_track_index:1},{id:'t-angra-rhythm',instrument:'guitar',role:'rhythm',name:'Rafael (Rhythm Guitar)',level:7,notation_track_index:2},{id:'t-angra-bass',instrument:'bass',role:null,name:'Luis (Bass)',level:8,notation_track_index:3},{id:'t-angra-keys',instrument:'keys',role:null,name:'Keyboards',level:6,notation_track_index:5},{id:'t-angra-vox',instrument:'vocals',role:null,name:'Andre (Vocals)',level:8,notation_track_index:0}], data:{bars:221, sections:[{label:'Intro',startBar:1,endBar:22},{label:'Main Riff',startBar:23,endBar:34},{label:'Verses I',startBar:35,endBar:55},{label:'Chorus I',startBar:56,endBar:63},{label:'Verses II',startBar:64,endBar:86},{label:'Chorus II',startBar:87,endBar:102},{label:'Bridge',startBar:103,endBar:118},{label:'Pre-Solo',startBar:119,endBar:126},{label:'Guitar Solo (Kiko)',startBar:127,endBar:134},{label:'Guitar Solo (Rafael)',startBar:135,endBar:141},{label:'Orchestra Interlude',startBar:142,endBar:153},{label:'Verses III',startBar:154,endBar:166},{label:'Chorus III - (E key)',startBar:167,endBar:182},{label:'Chorus III - (G Key)',startBar:183,endBar:198},{label:'Ending',startBar:199,endBar:221}]}, best:null, sessions:0, trend:[]},
-  {id:'my-demo-upload', kind:'song', title:'My practice loop (upload)', artist:null, level:null, bpm:100, time_sig:'4/4', genre:null, instruments:['drums'], status:'draft', origin:'user-upload', owner:'you', visibility:'private', notation_format:'gp', best:12, sessions:1, trend:[12], ownedByUser:true},
-
-  {id:'first-beat', kind:'lesson', title:'Your First Beat', level:0, instruments:['drums'], skill:['timing'], patterns:['p-rock-8th'], status:'published', origin:'curated', license:'owned', best:90, sessions:9, trend:[60,75,90], new:true},
-  {id:'rock-8th-beat', kind:'lesson', title:'8th-Note Rock Beat', level:1, instruments:['drums'], skill:['timing','coordination'], patterns:['p-rock-8th'], status:'published', origin:'curated', license:'owned', best:64, sessions:3, trend:[30,48,64]},
-  {id:'four-on-floor', kind:'lesson', title:'Four-on-the-Floor', level:1, instruments:['drums'], skill:['timing'], patterns:['p-four-floor'], status:'published', origin:'curated', license:'owned', best:88, sessions:7, trend:[55,66,74,80,88]},
-  {id:'funk-16ths', kind:'lesson', title:'Funk Groove — 16th Hats', level:4, instruments:['drums'], skill:['independence','timing','coordination'], tags:['ghost-notes','syncopation'], patterns:['p-rock-8th'], status:'published', origin:'curated', license:'owned', best:41, sessions:2, trend:[22,41]},
-  {id:'single-paradiddle', kind:'lesson', title:'Single Paradiddle', level:2, instruments:['drums'], skill:['independence','control'], patterns:['p-paradiddle'], status:'published', origin:'curated', license:'owned', best:73, sessions:5, trend:[40,52,60,68,73]},
-  {id:'double-stroke', kind:'lesson', title:'Double Stroke Roll', level:3, instruments:['drums'], skill:['control'], patterns:['p-double-stroke'], status:'published', origin:'curated', license:'owned', best:null, sessions:0, trend:[]},
-  {id:'linear-fill-1', kind:'lesson', title:'Linear Fill — 6-stroke', level:5, instruments:['drums'], skill:['fills'], patterns:['linear-6stroke'], status:'published', origin:'curated', license:'owned', best:20, sessions:1, trend:[20], note:'kind derived from its step patterns (fill + rudiment) — fills are a pattern_kind, not a lesson type (SD-1)'},
-  {id:'chord-prog-1564', kind:'lesson', title:'Chord Progression — I–V–vi–IV', level:2, instruments:['keys','guitar'], skill:['chords','coordination'], status:'published', origin:'curated', license:'owned', best:58, sessions:3, trend:[40,52,58]},
-  /* SONG PARTS — kind=part, parent_id -> the song, bar range, listable:false (hidden from browse; reached via the song's "Practice in parts"). Each part is its OWN playable, scored on its own id. */
-  {id:'sna-intro',  kind:'part', title:'Intro',  parent_id:'seven-nation-army', start_bar:1,  end_bar:8,  sort_order:1, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:78, sessions:4, top_bpm:120, trend:[55,68,78], voices:['hi-hat','kick']},
-  {id:'sna-verse',  kind:'part', title:'Verse',  parent_id:'seven-nation-army', start_bar:25, end_bar:40, sort_order:3, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:60, sessions:3, top_bpm:110, trend:[40,52,60], voices:['hi-hat','kick','snare']},
-  {id:'sna-chorus', kind:'part', title:'Chorus', parent_id:'seven-nation-army', start_bar:9, end_bar:24, sort_order:2, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:45, sessions:2, top_bpm:100, trend:[30,45], ranges:[[9,24],[41,56]], voices:['hi-hat','kick','snare','crash']},
-  {id:'sna-outro',  kind:'part', title:'Outro',  parent_id:'seven-nation-army', start_bar:57, end_bar:64, sort_order:4, listable:false, bpm:124, time_sig:'4/4', genre:'rock', instruments:['drums','guitar'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', best:null, sessions:0, trend:[], voices:['hi-hat','kick','crash']},
-
-  /* patterns — reusable building blocks, now browsable (kind=pattern). They live under the Lessons tab. */
-  {id:'p-hihat-8',   kind:'pattern', title:'Straight 8th Hi-hats',  pattern_kind:'beat',     family:'Rock',   level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 x x x x x x x x', best:90, sessions:8, top_bpm:140, trend:[70,82,90], data:{difficulty:{by:'bpm',tiers:[{upTo:90,level:1,score:95},{upTo:140,level:2,score:78},{upTo:null,level:3,score:null}]}}},
-  {id:'p-rock-8th',  kind:'pattern', title:'8th-Note Rock Groove',  pattern_kind:'beat',     family:'Rock',   level:2, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 (x.42 x.36) x', best:71, sessions:4, top_bpm:118, trend:[55,63,71], data:{difficulty:{by:'bpm',tiers:[{upTo:80,level:2,score:82},{upTo:120,level:3,score:60},{upTo:null,level:4,score:null}]}}},
-  {id:'p-paradiddle',kind:'pattern', title:'Single Paradiddle',     pattern_kind:'rudiment', family:'Diddle', level:2, instruments:['drums'], status:'published', origin:'curated', license:'owned', notation_alphaTex:'R L R R  L R L L', best:78, sessions:5, top_bpm:130, trend:[50,66,78], data:{difficulty:{by:'bpm',tiers:[{upTo:60,level:1,score:95},{upTo:120,level:2,score:72},{upTo:null,level:3,score:null}]}}},
-  {id:'p-tom-fill',  kind:'pattern', title:'Descending Tom Fill',   pattern_kind:'fill',     family:'Tom',    level:2, instruments:['drums'], status:'published', origin:'curated', license:'owned', notation_alphaTex:':16 38 40 43 45', has_audio:true, audio:[{label:'Demo'}], best:48, sessions:2, trend:[30,48]},
-  {id:'p-cmaj-scale',kind:'pattern', title:'C Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'C', status:'published', origin:'curated', license:'public-domain', notation_alphaTex:'C4 D4 E4 F4 G4 A4 B4 C5', best:60, sessions:3, top_bpm:100, trend:[40,52,60], data:{difficulty:{by:'fingering',tiers:[{when:'hands separate',level:1,score:90},{when:'hands together',level:2,score:55}]}}},
-  {id:'p-gmaj-scale',kind:'pattern', title:'G Major Scale',         pattern_kind:'scale',    family:'major',  level:1, instruments:['keys'], musical_key:'G', status:'published', origin:'curated', license:'public-domain', notation_alphaTex:'G4 A4 B4 C5 D5 E5 F#5 G5', best:null, sessions:0, trend:[]},
-
-  {id:'p-rock-kick',   kind:'pattern', title:'Rock Kick Pattern',    pattern_kind:'beat',     family:'Rock',  level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 (x.36) x (x.36) x', best:80, sessions:5, top_bpm:120, trend:[60,72,80]},
-  {id:'p-four-floor',  kind:'pattern', title:'Four-on-the-Floor',    pattern_kind:'beat',     family:'House', level:1, instruments:['drums'], genre:'pop',  status:'published', origin:'curated', license:'owned', notation_alphaTex:':4 (x.36) (x.36) (x.36) (x.36)', best:66, sessions:3, top_bpm:128, trend:[48,60,66]},
-  {id:'p-double-stroke',kind:'pattern',title:'Double Stroke Roll',   pattern_kind:'rudiment', family:'Roll',  level:3, instruments:['drums'], status:'published', origin:'curated', license:'owned', notation_alphaTex:'R R L L R R L L', best:88, sessions:4, top_bpm:110, trend:[55,72,88], data:{difficulty:{by:'bpm',tiers:[{upTo:80,level:2,score:88},{upTo:120,level:3,score:60},{upTo:null,level:4,score:null}]}}},
-  /* COMPOSITE pattern — a groove with its OWN steps (reuses leaf patterns) + a whole-play notation. Same shape as a lesson; role=pattern. */
-  {id:'p-rock-groove', kind:'pattern', title:'Rock Groove (full)',   pattern_kind:'beat',     family:'Rock',  level:3, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', notation_alphaTex:':8 (x.42 x.36) x (x.42 x.38) x', best:58, sessions:2, top_bpm:118, trend:[42,58]},
-  /* CHORDS — kind=pattern, pattern_kind=chord. Same notation plays on keys AND guitar (instruments[]); difficulty can differ per instrument (see p-chord-f). */
-  {id:'p-chord-c',  kind:'pattern', title:'C major', pattern_kind:'chord', family:'Triad', level:1, instruments:['keys','guitar'], musical_key:'C',  status:'published', origin:'curated', license:'owned', notation_alphaTex:'(C4 E4 G4)', best:82, sessions:3, trend:[60,74,82]},
-  {id:'p-chord-g',  kind:'pattern', title:'G major', pattern_kind:'chord', family:'Triad', level:1, instruments:['keys','guitar'], musical_key:'G',  status:'published', origin:'curated', license:'owned', notation_alphaTex:'(G4 B4 D5)', best:70, sessions:2, trend:[55,70]},
-  {id:'p-chord-am', kind:'pattern', title:'A minor', pattern_kind:'chord', family:'Triad', level:1, instruments:['keys','guitar'], musical_key:'Am', status:'published', origin:'curated', license:'owned', notation_alphaTex:'(A3 C4 E4)', best:null, sessions:0, trend:[]},
-  {id:'p-chord-f',  kind:'pattern', title:'F major', pattern_kind:'chord', family:'Triad', level:1, instruments:['keys','guitar'], musical_key:'F',  status:'published', origin:'curated', license:'owned', notation_alphaTex:'(F4 A4 C5)', best:48, sessions:2, trend:[30,48], data:{difficulty:{by:'instrument',tiers:[{when:'piano',level:1,score:80},{when:'guitar (barre)',level:4,score:48}]}}},
-  /* CHORD PROGRESSION — a COMPOSITE pattern: a sequence of chords (I–V–vi–IV realised in C). Songs use progressions. */
-  {id:'p-prog-1564-c', kind:'pattern', title:'I–V–vi–IV (C major)', pattern_kind:'chord', family:'Progression', level:2, instruments:['keys','guitar'], musical_key:'C', genre:'pop', status:'published', origin:'curated', license:'owned', notation_alphaTex:'(C4 E4 G4) (G4 B4 D5) (A3 C4 E4) (F4 A4 C5)', best:65, sessions:2, trend:[50,65]},
-  /* ---- real drum patterns from groovescribe-import.json (8 leveled rudiments + beat + fill + composite-from-voices) ---- */
   {id:'pat_ssr_debut', kind:'pattern', title:'Single Stroke Roll (Debut)', pattern_kind:'rudiment', family:'Roll', level:0, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Single%20Stroke%20Roll%20(Level%20Debut)&Tempo=70&Measures=1&H=|--------|&S=|oooooooo|&K=|--------|&Stickings=|RLRLRLRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
   {id:'pat_dsr_debut', kind:'pattern', title:'Double Stroke Roll (Debut)', pattern_kind:'rudiment', family:'Diddle', level:0, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Double%20Stroke%20Roll%20(Level%20Debut)&Tempo=70&Measures=1&H=|--------|&S=|oooooooo|&K=|--------|&Stickings=|RRLLRRLL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
   {id:'pat_ssr_l2', kind:'pattern', title:'Single Stroke Roll (L2)', pattern_kind:'rudiment', family:'Roll', level:2, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Single%20Stroke%20Roll%20(Level%202)&Tempo=80&Measures=1&H=|----------------|&S=|oooooooooooooooo|&K=|----------------|&Stickings=|RLRLRLRLRLRLRLRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
@@ -447,7 +369,6 @@ const PLAYABLES = [
   {id:'pat_voice_sn', kind:'pattern', title:'Snare Voice (backbeat)', pattern_kind:'beat', family:'Voice', level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Snare%20Voice&Tempo=100&Measures=1&H=|--------|&S=|--o---o-|&K=|--------|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
   {id:'pat_voice_kick', kind:'pattern', title:'Kick Voice (1 & 3)', pattern_kind:'beat', family:'Voice', level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Kick%20Voice&Tempo=100&Measures=1&H=|--------|&S=|--------|&K=|o---o---|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
   {id:'pat_rock_composite', kind:'pattern', title:'Rock Beat — built from voices', pattern_kind:'beat', family:'Composite', level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Rock%20Beat%20(composite)&Tempo=100&Measures=1&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
-
 ];
 
 /* ---------- sample data — the `step` JUNCTION (parent playable -> child pattern) ----------
@@ -461,63 +382,6 @@ const STEP = {
     {child_id:'pat_voice_hh',   sort_order:1, start_bpm:70, goal_bpm:100},
     {child_id:'pat_voice_sn',   sort_order:2, start_bpm:70, goal_bpm:100},
     {child_id:'pat_voice_kick', sort_order:3, start_bpm:70, goal_bpm:100},
-  ],
-  // beginner: kick then hats — both reused by other lessons
-  'first-beat':[
-    {child_id:'p-rock-kick', sort_order:1, start_bpm:50, goal_bpm:70},
-    {child_id:'p-hihat-8',   sort_order:2, start_bpm:50, goal_bpm:80},
-  ],
-  // builds up to the COMPOSITE groove as its final step
-  'rock-8th-beat':[
-    {child_id:'p-hihat-8',     sort_order:1, start_bpm:60, goal_bpm:90},
-    {child_id:'p-rock-kick',   sort_order:2, start_bpm:60, goal_bpm:100},
-    {child_id:'p-rock-groove', sort_order:3, start_bpm:70, goal_bpm:120},
-  ],
-  // REUSE: four-on-floor reuses p-hihat-8 (also in first-beat / rock-8th-beat / funk)
-  'four-on-floor':[
-    {child_id:'p-four-floor', sort_order:1, start_bpm:70, goal_bpm:110},
-    {child_id:'p-hihat-8',    sort_order:2, start_bpm:70, goal_bpm:128},
-  ],
-  // REUSE: funk reuses p-hihat-8 + the COMPOSITE p-rock-groove (both also in rock-8th-beat)
-  'funk-16ths':[
-    {child_id:'p-hihat-8',     sort_order:1, start_bpm:50, goal_bpm:92},
-    {child_id:'p-rock-groove', sort_order:2, start_bpm:60, goal_bpm:104},
-  ],
-  // SAME CHILD REPEATS: one pattern drilled slow / medium / fast (same child, 3 positions)
-  'single-paradiddle':[
-    {child_id:'p-paradiddle', sort_order:1, start_bpm:40,  goal_bpm:60},
-    {child_id:'p-paradiddle', sort_order:2, start_bpm:60,  goal_bpm:100},
-    {child_id:'p-paradiddle', sort_order:3, start_bpm:100, goal_bpm:160},
-  ],
-  // SAME CHILD REPEATS again (double stroke slow -> fast)
-  'double-stroke':[
-    {child_id:'p-double-stroke', sort_order:1, start_bpm:40, goal_bpm:70},
-    {child_id:'p-double-stroke', sort_order:2, start_bpm:70, goal_bpm:120},
-  ],
-  // REUSE: a fill lesson that also reuses p-paradiddle (shared with single-paradiddle)
-  'linear-fill-1':[
-    {child_id:'p-tom-fill',   sort_order:1, start_bpm:60, goal_bpm:90},
-    {child_id:'p-paradiddle', sort_order:2, start_bpm:70, goal_bpm:110},
-  ],
-  // COMPOSITE PATTERN: p-rock-groove has its OWN steps (a pattern built from patterns)
-  'p-rock-groove':[
-    {child_id:'p-hihat-8',   sort_order:1, start_bpm:70, goal_bpm:120},
-    {child_id:'p-rock-kick', sort_order:2, start_bpm:70, goal_bpm:120},
-  ],
-  // chord-progression lesson: drill each chord, then play the whole progression (final step = the composite)
-  'chord-prog-1564':[
-    {child_id:'p-chord-c',     sort_order:1, start_bpm:50, goal_bpm:80},
-    {child_id:'p-chord-g',     sort_order:2, start_bpm:50, goal_bpm:80},
-    {child_id:'p-chord-am',    sort_order:3, start_bpm:50, goal_bpm:80},
-    {child_id:'p-chord-f',     sort_order:4, start_bpm:50, goal_bpm:80},
-    {child_id:'p-prog-1564-c', sort_order:5, start_bpm:50, goal_bpm:90},
-  ],
-  // the progression composite — the 4 chords in sequence
-  'p-prog-1564-c':[
-    {child_id:'p-chord-c',  sort_order:1, start_bpm:60, goal_bpm:100},
-    {child_id:'p-chord-g',  sort_order:2, start_bpm:60, goal_bpm:100},
-    {child_id:'p-chord-am', sort_order:3, start_bpm:60, goal_bpm:100},
-    {child_id:'p-chord-f',  sort_order:4, start_bpm:60, goal_bpm:100},
   ],
 };
 
@@ -571,47 +435,11 @@ const isPitched = () => state.instrument && PITCHED.includes(state.instrument);
 
 /* SD-17/SD-19 — a short description per playable. The model field is `description`; sourced here as a lookup for the wireframe (rows stay lean; toPlayable surfaces it as a column). */
 const DESCRIPTIONS = {
-  'p-chord-c':'C major triad — the home chord (I).',
-  'p-chord-g':'G major triad — the V (dominant) in C major.',
-  'p-chord-am':'A minor triad — the vi (relative minor) in C major.',
-  'p-chord-f':'F major triad — the IV; a barre chord on guitar, easy on piano.',
-  'p-prog-1564-c':'The I–V–vi–IV pop progression in C: C → G → Am → F.',
-  'chord-prog-1564':'Learn the most common pop progression — each chord, then the changes.',
-  'seven-nation-army':'A one-riff rock anthem — lock the kick to that iconic bass-line riff.',
-  'billie-jean':'Machine-tight four-on-the-floor pop groove; all about steady time.',
-  'rosanna':'The famous half-time shuffle — ghost notes and a slippery triplet feel.',
-  'enter-sandman':'Driving metal eighths with a double-bass-friendly main groove.',
-  'take-five':'Cool-jazz classic in 5/4 — count the odd meter, ride the brushes.',
-  'creep':'Slow, spacious rock ballad — restraint and dynamics over chops.',
-  'wonderwall':'Beginner-friendly strummer — steady down-up acoustic pattern in F#m.',
-  'clocks':'Arpeggiated piano ostinato in Eb — even eighths, gentle dynamic swells.',
   'bohemian-rhapsody':"Queen's multi-section epic — ballad, opera and hard-rock parts (guitar lead L7 vs rhythm L4).",
   'yellow':'Coldplay — a steady, ringing guitar anthem in B major.',
   'zoio-de-lula':'Charlie Brown Jr. — Brazilian rock (artist unconfirmed; flagged in the seed).',
   'im-yours':'Jason Mraz — one I–V–vi–IV progression carries the whole song.',
   'nothing-to-say':'Angra — neoclassical power metal; Expert-level double-bass drumming (L9).',
-  'my-demo-upload':'A private practice-loop upload (draft, not in the shared catalog).',
-  'first-beat':'Your very first groove: kick on the beat, then add steady hi-hats.',
-  'rock-8th-beat':'Build the classic rock beat one layer at a time, up to the full groove.',
-  'four-on-floor':'Kick on every beat under straight hats — the dance-floor foundation.',
-  'funk-16ths':'Sixteenth-note hats with ghost snares — independence and pocket.',
-  'single-paradiddle':'The RLRR-LRLL sticking, drilled slow to fast for control.',
-  'double-stroke':'Two strokes per hand — the roll that powers buzz and speed.',
-  'linear-fill-1':'A 6-stroke linear fill moved around the kit — fill plus rudiment hands.',
-  'sna-intro':'The riff stated alone — set the tempo and feel.',
-  'sna-verse':'The groove settles in under the riff.',
-  'sna-chorus':'The fullest section — lock the backbeat.',
-  'sna-outro':'Wind it down to the finish.',
-  'p-hihat-8':'Eight steady right-hand hi-hats per bar — the timekeeping backbone.',
-  'p-rock-8th':'Kick and snare under eighth hats — the everyday rock groove.',
-  'p-paradiddle':'RLRR LRLL — the first and most useful rudiment.',
-  'p-tom-fill':'A descending tom fill to land on beat one.',
-  'p-cmaj-scale':'C major, one octave — hands separate, then together.',
-  'p-gmaj-scale':'G major, one octave — one sharp (F#).',
-  'p-rock-kick':'The kick-drum part of the rock groove, on its own.',
-  'p-four-floor':'Kick on all four beats — the house and disco pulse.',
-  'p-double-stroke':'RRLL doubles — control the bounce, then build speed.',
-  'p-rock-groove':'Hi-hats plus kick combined into the full rock groove (composite).',
 };
 function descOf(it){ return it.description || DESCRIPTIONS[it.id] || null; }
 function songParts(songId){ return PLAYABLES.filter(p=>p.kind==='part' && p.parent_id===songId).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
@@ -633,11 +461,7 @@ function usedIn(patternId){   // SD-14 reverse lookup: every playable referencin
   return out;
 }
 /* playable_link — lightweight relationships (a song uses a groove; a fill uses a rudiment). SD-14. */
-const LINKS = [
-  {from:'seven-nation-army', to:'p-rock-8th',   relation:'uses'},
-  {from:'p-tom-fill',        to:'p-paradiddle', relation:'uses'},
-  {from:'p-rock-groove',     to:'p-rock-8th',   relation:'related'},
-];
+const LINKS = [];
 
 /* ---------- RAW AlphaTab extraction per song (docs/wireframe/data/gp-extract-*.json) ----------
    Surfaced verbatim in the UI (raw-source panel) so nothing extracted is hidden when the
@@ -876,7 +700,7 @@ function renderCatalog(){
         ? `<div class="fdrop"><button class="fbtn ${state.musicalKey.length?'on':''}" data-pop="keyPop">${multiFace('Key',state.musicalKey,x=>x)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('keyPop','musicalKey',KEYS.map(k=>({val:k,label:k})))}</div>`
         : `<span class="advsec" title="Key applies to pitched instruments (guitar/keys)"><span class="albl">Key</span><span style="color:var(--faint);font-size:12px">— pick a pitched instrument</span></span>`}
     </div>
-    ${signedIn()?`<div class="continue" data-nav="#/lesson/rock-8th-beat"><span class="material-symbols-outlined">resume</span><div style="flex:1"><b>Continue:</b> 8th-Note Rock Beat — Step 3 of 4 <small style="color:var(--faint);display:block">last best 64%</small></div><span class="material-symbols-outlined">chevron_right</span></div>`:''}
+    ${'' /* continue banner removed with demo data */}
     ${ list.length ? `
       <div class="tablehead"><span>Name</span><span>Level</span><span>BPM</span><span>Best</span><span></span></div>
       ${list.map(rowHTML).join('')}
