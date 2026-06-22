@@ -404,23 +404,28 @@ INSERT INTO track (id, playable_id, instrument, role, name, sort_order, level, n
 
 -- ── tonal_profile per PITCHED track (SD-27: the bass carries its OWN notes) ──
 INSERT INTO tonal_profile (track_id, musical_key, keys, scales, chords, progression_concrete, progression_roman, progression_family) VALUES
- ('trk_boh_keys','Bb major','{Bb major,Eb major}','{major}','{Bb,Gm,Cm7,F,Eb,Cdim}','{Bb-Gm-Cm7-F}','{I-vi-ii-V}','{I-vi-ii-V}'),
- ('trk_boh_glead','Eb major','{Eb major}','{major,minor pentatonic}','{Eb,Bb,Ab,Cm}','{}','{}','{}'),
- ('trk_boh_grhythm','Bb major','{Bb major}','{major}','{Bb,Eb,F}','{Bb-Eb-F}','{I-IV-V}','{I-IV-V}'),
- ('trk_boh_bass','Bb major','{Bb major}','{major}','{Bb,Gm,Cm,F,Eb}','{}','{}','{}'),
- ('trk_yel_glead','B major','{B major}','{major}','{B,F#,E}','{}','{}','{}'),
- ('trk_yel_grhythm','B major','{B major}','{major}','{B,F#sus4,Emaj7,E}','{B-F#-E}','{I-V-IV}','{I-IV-V}'),
- ('trk_yel_bass','B major','{B major}','{major}','{B,F#,E}','{}','{}','{}'),
- ('trk_zoio_glead','E minor','{E minor}','{minor pentatonic,minor}','{Em,G,D,C}','{}','{}','{}'),
- ('trk_zoio_grhythm','E minor','{E minor}','{minor}','{Em,C,G,D}','{Em-C-G-D}','{i-VI-III-VII}','{i-VI-III-VII}'),
- ('trk_zoio_bass','E minor','{E minor}','{minor}','{Em,C,G,D}','{}','{}','{}'),
- ('trk_imy_grhythm','C major','{C major}','{major}','{C,G,Am,F}','{C-G-Am-F}','{I-V-vi-IV}','{I-V-vi-IV}'),
- ('trk_imy_uke','C major','{C major}','{major}','{C,G,Am,F}','{C-G-Am-F}','{I-V-vi-IV}','{I-V-vi-IV}'),
- ('trk_imy_bass','C major','{C major}','{major}','{C,G,Am,F}','{C-G-Am-F}','{I-V-vi-IV}','{I-V-vi-IV}'),
- ('trk_angra_glead','E minor','{E minor,E harmonic minor}','{harmonic minor,minor,diminished}','{Em,B7,Am,C,D}','{}','{}','{}'),
- ('trk_angra_grhythm','E minor','{E minor}','{harmonic minor,minor}','{Em,C,D,B7}','{Em-C-D-B7}','{i-VI-VII-V}','{i-VI-VII-V}'),
- ('trk_angra_bass','E minor','{E minor}','{minor}','{Em,C,D,B}','{}','{}','{}'),
- ('trk_angra_keys','E minor','{E minor}','{harmonic minor}','{Em,B7,Am}','{}','{}','{}');
+ -- Bohemian: the chart has NO chord symbols → chords empty (not invented); key Bb from the file (plausible).
+ ('trk_boh_keys','Bb major','{Bb major}','{}','{}','{}','{}','{}'),
+ ('trk_boh_glead','Bb major','{Bb major}','{}','{}','{}','{}','{}'),
+ ('trk_boh_grhythm','Bb major','{Bb major}','{}','{}','{}','{}','{}'),
+ ('trk_boh_bass','Bb major','{Bb major}','{}','{}','{}','{}','{}'),
+ -- Yellow: REAL chords from the .gp (B major).
+ ('trk_yel_glead','B major','{B major}','{}','{B,Badd9,F#6,E7M,Badd11,G#m,Eadd9,F#m7add11}','{B-Badd9-F#6-E7M}','{I-V-IV}','{I-IV-V}'),
+ ('trk_yel_grhythm','B major','{B major}','{}','{B,Badd9,F#6,E7M,Badd11,G#m,Eadd9,F#m7add11}','{B-Badd9-F#6-E7M}','{I-V-IV}','{I-IV-V}'),
+ ('trk_yel_bass','B major','{B major}','{}','{B,F#,E}','{}','{}','{}'),
+ -- Zoio: chart has NO chord symbols + GP key is a default → tonal honestly unknown.
+ ('trk_zoio_glead',NULL,'{}','{}','{}','{}','{}','{}'),
+ ('trk_zoio_grhythm',NULL,'{}','{}','{}','{}','{}','{}'),
+ ('trk_zoio_bass',NULL,'{}','{}','{}','{}','{}','{}'),
+ -- I'm Yours: REAL chords from the .gp — B major, I-V-vi-IV (fixes the earlier wrong "C major").
+ ('trk_imy_grhythm','B major','{B major}','{}','{B,F#,G#m,E,Fdim,F#/A#}','{B-F#-G#m-E}','{I-V-vi-IV}','{I-V-vi-IV}'),
+ ('trk_imy_uke','B major','{B major}','{}','{B,F#,G#m,E,Fdim,F#/A#}','{B-F#-G#m-E}','{I-V-vi-IV}','{I-V-vi-IV}'),
+ ('trk_imy_bass','B major','{B major}','{}','{B,F#,G#m,E}','{}','{}','{}'),
+ -- Angra: NO chord symbols; keys from the real section labels (Chorus III modulates E→G).
+ ('trk_angra_glead','E minor','{E minor,G major}','{}','{}','{}','{}','{}'),
+ ('trk_angra_grhythm','E minor','{E minor,G major}','{}','{}','{}','{}','{}'),
+ ('trk_angra_bass','E minor','{E minor,G major}','{}','{}','{}','{}','{}'),
+ ('trk_angra_keys','E minor','{E minor,G major}','{}','{}','{}','{}','{}');
 
 -- ── drum_profile per DRUMS track (the drum side of the same per-track model) ──
 INSERT INTO drum_profile (track_id, beats, fills, rudiments, techniques, kit_pieces) VALUES
