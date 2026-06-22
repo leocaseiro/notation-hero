@@ -2,3 +2,5 @@ name: notation-hero
 runtime: nodejs
 description: Notation Hero AWS infrastructure — NH-150 hello-world Lambda Function URL proof-of-life.
 main: index.ts
+backend:
+  url: s3://notation-hero-pulumi-state-apse2

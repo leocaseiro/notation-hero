@@ -8,6 +8,15 @@
       "Resource": ["arn:aws:s3:::site-spa-*", "arn:aws:s3:::site-spa-*/*"]
     },
     {
+      "Sid": "PulumiStateBucket",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::notation-hero-pulumi-state-*",
+        "arn:aws:s3:::notation-hero-pulumi-state-*/*"
+      ]
+    },
+    {
       "Sid": "CloudFrontEdge",
       "Effect": "Allow",
       "Resource": "*",
