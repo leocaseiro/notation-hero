@@ -11,13 +11,53 @@ approved colours + final icons so it *feels* like the app without committing to 
 
 ## Run it
 
+No build step, no dependencies (fonts + Material Symbols load from a CDN; they degrade gracefully offline).
+
 ```bash
-# from the repo root (or this folder)
-python3 -m http.server 8780
-# then open:  http://localhost:8780/docs/wireframe/
+# serve from this folder (any free port — 8131 is just an example)
+cd docs/wireframe && python3 -m http.server 8131
 ```
 
-No build step, no dependencies (fonts + Material Symbols load from CDN; degrade gracefully offline).
+Then open in a browser:
+
+| Page | URL |
+| --- | --- |
+| **Main app** (the catalogue flow — start here) | http://localhost:8131/index.html |
+| **Model map** (the Playable-model / schema diagram) | http://localhost:8131/model-map.html |
+| **Notation explorer** (notation + field explorer) | http://localhost:8131/notation-explorer.html |
+
+The main app is a single-page app — reach every screen by clicking, or by deep-linking the hash:
+
+```
+#/catalog                              ← default (search + Songs/Lessons tabs)
+#/song/bohemian-rhapsody               ← song detail
+#/song/bohemian-rhapsody/section/2     ← section "score" page
+#/part/sna-intro                       ← song part
+#/lesson/funk-16ths                    ← lesson  ·  #/lesson/funk-16ths/step/1 ← lesson step
+#/pattern/p-rock-8th                   ← pattern
+#/play/bohemian-rhapsody               ← player stub
+```
+
+Top bar: flip **Role** (Anonymous / User / Admin) and **Inspector: Show all fields** to see the role-gated
+UI and the raw JSON behind each screen.
+
+### Regenerate the real-source data (optional)
+
+The 5 seed songs are grounded in their real Guitar Pro files via AlphaTab.
+
+```bash
+# tools/gp-extract.mjs requires @coderline/alphatab — run from a folder where it resolves,
+# e.g. copy it into ~/Sites/alphaTabWebsite/ and run there:
+node gp-extract.mjs "/path/to/song.gp"      # prints objective JSON: tempo, bars, time sig, tracks, sections
+```
+
+Raw extractions are committed under `data/gp-extract-*.json`. The catalogue SQL seed
+`2026-06-21-per-track-profiles-and-seed-draft.sql` loads on a throwaway Postgres DB:
+
+```bash
+createdb nh_tonal_scratch    # once
+psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f 2026-06-21-per-track-profiles-and-seed-draft.sql
+```
 
 ## What's in v1 (the browse flow)
 
