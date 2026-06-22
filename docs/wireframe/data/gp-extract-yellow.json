@@ -7,6 +7,16 @@
   "bars": 97,
   "timeSig": "4/4",
   "key": "C major",
+  "chords": [
+    "B",
+    "Badd9",
+    "F#6",
+    "E7M",
+    "Badd11",
+    "G#m",
+    "Eadd9",
+    "F#m7add11"
+  ],
   "trackCount": 8,
   "tracks": [
     {
@@ -21,7 +31,9 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 1,
@@ -35,7 +47,51 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [
+        "B",
+        "Badd9",
+        "F#6",
+        "E7M",
+        "Badd11",
+        "G#m",
+        "Eadd9",
+        "F#m7add11"
+      ],
+      "progression": [
+        "B",
+        "Badd9",
+        "F#6",
+        "E7M",
+        "B",
+        "Badd9",
+        "B",
+        "F#6",
+        "E7M",
+        "B",
+        "F#6",
+        "E7M",
+        "B",
+        "F#6",
+        "E7M",
+        "B",
+        "Badd11",
+        "E7M",
+        "G#m",
+        "F#6",
+        "E7M",
+        "G#m",
+        "F#6",
+        "E7M",
+        "G#m",
+        "F#6",
+        "Eadd9",
+        "B",
+        "Badd9",
+        "F#6",
+        "E7M",
+        "B"
+      ]
     },
     {
       "idx": 2,
@@ -49,7 +105,13 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [
+        "B"
+      ],
+      "progression": [
+        "B"
+      ]
     },
     {
       "idx": 3,
@@ -63,7 +125,9 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 4,
@@ -75,7 +139,9 @@
         33,
         28
       ],
-      "stringCount": 4
+      "stringCount": 4,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 5,
@@ -89,7 +155,9 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 6,
@@ -103,14 +171,18 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 7,
       "name": "Drums | Yamaha Maple Custom | Will Champion",
       "isPercussion": true,
       "tuning": null,
-      "stringCount": null
+      "stringCount": null,
+      "chords": [],
+      "progression": []
     }
   ],
   "sectionCount": 10,

@@ -7,6 +7,14 @@
   "bars": 76,
   "timeSig": "4/4",
   "key": "B major",
+  "chords": [
+    "B",
+    "F#",
+    "G#m",
+    "E",
+    "Fdim",
+    "F#/A#"
+  ],
   "trackCount": 5,
   "tracks": [
     {
@@ -21,7 +29,49 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "F#/A#"
+      ],
+      "progression": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "B",
+        "F#",
+        "G#m"
+      ]
     },
     {
       "idx": 1,
@@ -35,7 +85,49 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "F#/A#"
+      ],
+      "progression": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "B",
+        "F#",
+        "G#m"
+      ]
     },
     {
       "idx": 2,
@@ -47,14 +139,58 @@
         33,
         28
       ],
-      "stringCount": 4
+      "stringCount": 4,
+      "chords": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "F#/A#"
+      ],
+      "progression": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#/A#",
+        "G#m",
+        "F#",
+        "E",
+        "Fdim",
+        "B",
+        "F#/A#",
+        "G#m",
+        "F#",
+        "E",
+        "Fdim",
+        "B",
+        "F#",
+        "G#m"
+      ]
     },
     {
       "idx": 3,
       "name": "Drums",
       "isPercussion": true,
       "tuning": null,
-      "stringCount": null
+      "stringCount": null,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 4,
@@ -68,7 +204,9 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
     }
   ],
   "sectionCount": 11,

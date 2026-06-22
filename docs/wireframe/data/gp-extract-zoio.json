@@ -7,6 +7,7 @@
   "bars": 79,
   "timeSig": "4/4",
   "key": "C major",
+  "chords": [],
   "trackCount": 5,
   "tracks": [
     {
@@ -21,7 +22,9 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 1,
@@ -35,7 +38,9 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 2,
@@ -49,7 +54,9 @@
         45,
         40
       ],
-      "stringCount": 6
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 3,
@@ -61,14 +68,18 @@
         32,
         27
       ],
-      "stringCount": 4
+      "stringCount": 4,
+      "chords": [],
+      "progression": []
     },
     {
       "idx": 4,
       "name": "Bateria",
       "isPercussion": true,
       "tuning": null,
-      "stringCount": null
+      "stringCount": null,
+      "chords": [],
+      "progression": []
     }
   ],
   "sectionCount": 0,
