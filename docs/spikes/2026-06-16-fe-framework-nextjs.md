@@ -12,11 +12,11 @@
 1. **Web → SSR** via **OpenNext → Lambda + CloudFront**, provisioned in **Pulumi**, on AWS free-tier. Server-render + hydration → SEO + the portfolio showcase.
 2. **iOS / Android → static-export** (`output:'export'`) → **Capacitor** native shell. No server; offline-capable.
 
-Build the **catalogue routes first** (SSR is most valuable there). Player routes migrate into the same app from the fork over time. **No Amplify** (it would sideline Pulumi + hide the AWS depth that is the job-hunt goal). **Not a micro-frontend; not two apps.**
+Build the **catalog routes first** (SSR is most valuable there). Player routes migrate into the same app from the fork over time. **No Amplify** (it would sideline Pulumi + hide the AWS depth that is the job-hunt goal). **Not a micro-frontend; not two apps.**
 
 ## TL;DR
 
-One Next.js codebase, two `next build` modes (SSR for web, static for Capacitor), one router, one state model. Shared `core` + `adapters`. Catalogue-first. ~$0 on AWS free-tier, keeps Pulumi as the single IaC.
+One Next.js codebase, two `next build` modes (SSR for web, static for Capacitor), one router, one state model. Shared `core` + `adapters`. Catalog-first. ~$0 on AWS free-tier, keeps Pulumi as the single IaC.
 
 ## Prior decision (via `/ce-sessions`, 2026-06-16)
 
@@ -37,7 +37,7 @@ Capacitor loads a static `dist/` in a WebView; **no server runtime**. SSR can't 
 - `next.config.mjs`: `output: process.env.BUILD_TARGET === 'capacitor' ? 'export' : undefined`.
 - `build:web` → SSR; `build:ios`/`:android` → export → `out/` → `npx cap copy`.
 - **One router, one state model, one component tree.** Shared via `core`/`adapters` (build-time) and the backend (data). **No micro-frontend; no cross-app state bridge.**
-- _Optional later:_ split a lean SEO-only marketing app if the game bundle ever hurts catalogue page-load (route-level code-splitting likely makes this unnecessary). Additive — the hexagon keeps catalogue logic in `core`/`adapters`.
+- _Optional later:_ split a lean SEO-only marketing app if the game bundle ever hurts catalog page-load (route-level code-splitting likely makes this unnecessary). Additive — the hexagon keeps catalog logic in `core`/`adapters`.
 
 ### F-3 — Free-tier SSR on AWS, keeping Pulumi
 **OpenNext → Lambda + CloudFront**: compiles Next SSR to a Lambda + static assets; **you wire it in Pulumi**. Always-free Lambda (1M req) + CloudFront (1 TB) ⇒ ~$0. **Amplify** has a free SSR allowance but provisions its own infra (**not in Pulumi**) and hides the IAM/CloudFront/Lambda depth → rejected.
@@ -61,13 +61,13 @@ One source = **one router**, **no subdomain needed**. Web served at one domain v
 - `next.config.mjs`: conditional `output`, `images.unoptimized: true` (export), consider `trailingSlash: true` for Capacitor.
 - `capacitor.config.ts`: `webDir: 'out'`; `npx cap copy ios|android`.
 - App Router server components render at **build time** in export mode; **no server actions** in shared pages.
-- Catalogue data: **web** = server-render from Neon (serverless driver) for SEO; **Capacitor** = client-fetch from the Lambda catalogue API (`K-3`).
+- Catalog data: **web** = server-render from Neon (serverless driver) for SEO; **Capacitor** = client-fetch from the Lambda catalog API (`K-3`).
 - Pin **Next.js version** against **OpenNext** adapter support (Next 16 in 2026 — verify before wiring).
 
 ## Open questions
 
 - Next.js ↔ OpenNext version pinning at build time.
-- Player fork → Next app migration sequencing (catalogue ships first regardless).
+- Player fork → Next app migration sequencing (catalog ships first regardless).
 - Whether/when to split a lean SEO-only marketing app (F-2) — defer.
 
 ## Sources

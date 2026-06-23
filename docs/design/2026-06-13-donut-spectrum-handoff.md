@@ -1,11 +1,11 @@
-# 🤝 Handoff — Catalogue best-score **donut colour system** (decided) + layout polish (next)
+# 🤝 Handoff — Catalog best-score **donut colour system** (decided) + layout polish (next)
 
 > **Status:** 🟢 Q1 colour DONE (**System G "Spectrum"** + **gold-100**, approved 2026-06-13) · 🟡 mastered-trophy **glow** = 6 options built, awaiting Leo's pick · 🔜 Q2 layout polish NOT started.
-> **Jira:** [KAN-161](https://leocaseiro.atlassian.net/browse/KAN-161) (Catalogue UI design) · related KAN-27 (score display), KAN-49 (design-shotgun).
+> **Jira:** [KAN-161](https://leocaseiro.atlassian.net/browse/KAN-161) (Catalog UI design) · related KAN-27 (score display), KAN-49 (design-shotgun).
 > **Branch:** `claude/epic-easley-b661e6` · all work committed (baby commits, all green).
 > **Worktree:** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/epic-easley-b661e6` (work happens HERE, not the repo root).
 
-This session ran `/design-consultation` on the catalogue's **best-score donut**, scoped tightly to two brief questions: (Q1) donut colour system, (Q2) layout polish. **Only Q1 was completed.**
+This session ran `/design-consultation` on the catalog's **best-score donut**, scoped tightly to two brief questions: (Q1) donut colour system, (Q2) layout polish. **Only Q1 was completed.**
 
 ---
 
@@ -17,7 +17,7 @@ python3 -m http.server 8780
 ```
 - **`docs/mockups/catalog-donut-bands.html`** — the donut colour lab (this session). `🌙` toggles light/dark. Shows **★ Spectrum** (the pick) vs `(was red)` vs `Uniform`, across the full score range, a 24–30px size check, in-context rows, and a thresholds legend.
 - `docs/mockups/catalog-score-options.html` — the older score-cell compare board (8 treatments; donut + neutral level pill were chosen here).
-- `docs/mockups/catalog.html` — the canonical catalogue layout (⚠ still shows the OLD `%`/🏆 score cell + circular grade bullet — see "apply-back" below).
+- `docs/mockups/catalog.html` — the canonical catalog layout (⚠ still shows the OLD `%`/🏆 score cell + circular grade bullet — see "apply-back" below).
 
 ---
 

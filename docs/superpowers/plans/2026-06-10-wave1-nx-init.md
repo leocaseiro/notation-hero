@@ -2,13 +2,13 @@
 
 > [!WARNING]
 > ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
-> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> (pnpm + Nx replaced Bun; the song/lesson catalog moved to **Neon Postgres + JSONB**,
 > DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
 > struck lines below.**
 >
 > **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
-> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
-> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalog-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalog-schema.md`, `AGENTS.md`.
 >
 > _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
 
@@ -455,7 +455,7 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
 
 ### Task 5: Generate + seed `adapters/aws-dynamodb` (`@notation-hero/aws-dynamodb`, type:adapter)
 
-Hexagonal template adapter: a per-user persistence port + an in-memory stub implementation. **No `@aws-sdk/*` dependency in Wave 1** (real SDK wiring is a later lane). It must NOT import `apps/` or `infra/`. (Reminder per scope: DynamoDB is per-user data only — the song/lesson catalogue lives in Neon Postgres+JSONB, a future `adapters/neon-postgres`, out of Wave 1.)
+Hexagonal template adapter: a per-user persistence port + an in-memory stub implementation. **No `@aws-sdk/*` dependency in Wave 1** (real SDK wiring is a later lane). It must NOT import `apps/` or `infra/`. (Reminder per scope: DynamoDB is per-user data only — the song/lesson catalog lives in Neon Postgres+JSONB, a future `adapters/neon-postgres`, out of Wave 1.)
 
 **Files:** Create the `adapters/aws-dynamodb/*` tree; remove `adapters/.gitkeep`.
 
@@ -497,7 +497,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
   ```ts
   /**
    * Per-user progress persistence PORT. DynamoDB is the canonical per-user
-   * (NOT catalogue) data home; the catalogue lives in Neon Postgres + JSONB
+   * (NOT catalog) data home; the catalog lives in Neon Postgres + JSONB
    * (out of Wave 1 scope). This adapter is the hexagonal TEMPLATE for per-user
    * persistence. Wave 1 ships a typed port + in-memory stub; real @aws-sdk
    * wiring lands in a later lane.
@@ -595,7 +595,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
   feat(aws-dynamodb): @notation-hero/aws-dynamodb adapter stub (type:adapter)
 
   Hexagonal template adapter: UserProgressPort + in-memory stub (per-user data
-  only; catalogue is future adapters/neon-postgres). No @aws-sdk dep in Wave 1.
+  only; catalog is future adapters/neon-postgres). No @aws-sdk dep in Wave 1.
   Generated via @nx/js:library --linter=none --useProjectJson; tags=[type:adapter].
 
   Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
@@ -884,7 +884,7 @@ Create a tracked `AGENTS.md` at the worktree root. Fold in the content of the un
 
   Naming is `@notation-hero/*` (hyphen — matches root `name: "notation-hero"`).
   The DACI's `@notationhero/*` (no hyphen, M-7) is a typo; do not adopt it.
-  DynamoDB is per-user data only; the song/lesson catalogue lives in Neon
+  DynamoDB is per-user data only; the song/lesson catalog lives in Neon
   Postgres + JSONB (future `adapters/neon-postgres`, out of Wave 1).
 
   ## Targets & how to run them
@@ -1083,4 +1083,4 @@ A decision was made (Approver: leocaseiro) to bump CI to **Node 24**, amending t
 
 ## What comes next
 
-This PR is the single gated foundation that Wave 2/3 lanes depend on — **do NOT fan those out here.** Once `chore/nx-init` merges to `master`, the gated follow-ups unlock as their own scoped PRs: DACI Step 2 / L3 (ESLint flat-config migration, retiring the per-package `ESLINT_USE_FLAT_CONFIG=false`), Step 3 (CI `nrwl/nx-set-shas@v4` + adding `nx.json`/`**/project.json` to the `code:` paths-filter — itself a `.github` edit, deliberately excluded from this PR, whose only CI edit is the Approver-approved Node 22→24 bump in Task 11), L4 (TS composite project references via `@nx/js/typescript` inference + `nx sync`/`nx sync:check` in CI), L5 (Vitest + `@nx/vite` + coverage-ratchet replacing the `node --test` stubs and the infra echo scripts), the `apps → @pulumi` + handler-level depcruise/lint bans (the pending Step-1 boundary item), and the real `apps/player-pwa` Vite/PWA shell + `adapters/neon-postgres` catalogue persistence. Each is gated on this merge; keep them sequential per the DACI Sequencing.
+This PR is the single gated foundation that Wave 2/3 lanes depend on — **do NOT fan those out here.** Once `chore/nx-init` merges to `master`, the gated follow-ups unlock as their own scoped PRs: DACI Step 2 / L3 (ESLint flat-config migration, retiring the per-package `ESLINT_USE_FLAT_CONFIG=false`), Step 3 (CI `nrwl/nx-set-shas@v4` + adding `nx.json`/`**/project.json` to the `code:` paths-filter — itself a `.github` edit, deliberately excluded from this PR, whose only CI edit is the Approver-approved Node 22→24 bump in Task 11), L4 (TS composite project references via `@nx/js/typescript` inference + `nx sync`/`nx sync:check` in CI), L5 (Vitest + `@nx/vite` + coverage-ratchet replacing the `node --test` stubs and the infra echo scripts), the `apps → @pulumi` + handler-level depcruise/lint bans (the pending Step-1 boundary item), and the real `apps/player-pwa` Vite/PWA shell + `adapters/neon-postgres` catalog persistence. Each is gated on this merge; keep them sequential per the DACI Sequencing.

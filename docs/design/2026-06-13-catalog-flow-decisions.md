@@ -1,14 +1,14 @@
-# Catalogue — UI Flow Decisions (low-fi brainstorm)
+# Catalog — UI Flow Decisions (low-fi brainstorm)
 
 > **Status:** 🟢 FLOW LOCKED (2026-06-13) — ready for the design pass (positions, polish, motion).
 > **Artifact:** served mockup `docs/mockups/catalog-flow.html` (`python3 -m http.server 8780` → `/docs/mockups/catalog-flow.html`).
-> **Schema:** `docs/specs/2026-06-10-catalogue-schema.md` (authoritative).
+> **Schema:** `docs/specs/2026-06-10-catalog-schema.md` (authoritative).
 > **Design system:** PR #23 (teal `#2DD4BF`/`#0F766E` · D3 type · states · components).
 > **Owner:** leocaseiro
 
 ## North star
 
-The catalogue's job is **"find a piece to play"** — search / discovery of songs & lessons by type — **not** a progress dashboard. Score & progress are a **garnish** (per-user, from DynamoDB), shown on the **detail** screen, never on the list spine. *(This corrects the earlier "macro-progress home" framing in the design-system handoff.)*
+The catalog's job is **"find a piece to play"** — search / discovery of songs & lessons by type — **not** a progress dashboard. Score & progress are a **garnish** (per-user, from DynamoDB), shown on the **detail** screen, never on the list spine. *(This corrects the earlier "macro-progress home" framing in the design-system handoff.)*
 
 ## Locked flow
 

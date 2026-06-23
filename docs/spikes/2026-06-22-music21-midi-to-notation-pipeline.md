@@ -11,7 +11,7 @@
 
 1. **Bridge = MIDI → MusicXML via `music21`** (Python, BSD-3, v10.5.0). Validated live: pitched instruments convert well; drums need a custom layer (below).
 2. **Drums = a pitch-keyed drum-map layer we own.** music21 identifies drums but never assigns staff positions (everything defaults to one line). Fix: map **raw MIDI pitch → staff line + notehead**. Proven on a synthetic kit (kick/snare/4 toms/ride/crash → distinct lines, ✗ noteheads, percussion clef).
-3. **Hosting = $0, no Python server.** Two cases: catalogue → convert **offline in CI**; user uploads → run music21 **in the browser via Pyodide (WASM)**. Confirmed working.
+3. **Hosting = $0, no Python server.** Two cases: catalog → convert **offline in CI**; user uploads → run music21 **in the browser via Pyodide (WASM)**. Confirmed working.
 4. **AlphaTab exports Guitar Pro.** AlphaTab 1.8.3 has `Gp7Exporter`. So the whole thing is client-side: **MIDI → music21(WASM) → MusicXML → AlphaTab render (+ optional `.gp` download)**. No backend.
 5. **Upstream contribution opportunity:** music21 issue [#1659](https://github.com/cuthbertLab/music21/issues/1659) (open, maintainer engaged) + the missing drum-layout map = a clean, portfolio-worthy PR.
 
@@ -82,7 +82,7 @@ PITCH_MAP = {
 
 ### 3. $0 hosting — confirmed
 
-- **Catalogue pieces:** convert **offline** (local or free GitHub Actions) → ship static MusicXML. $0.
+- **Catalog pieces:** convert **offline** (local or free GitHub Actions) → ship static MusicXML. $0.
 - **User uploads:** run music21 **in-browser via Pyodide** (Python→WASM, `micropip.install("music21")`). **Confirmed:** music21 10.5.0 installed in Pyodide, parsed a MIDI, emitted well-formed MusicXML — no server.
   - First-load payload ≈ **27 MB** (Pyodide core + music21 + deps), browser-cached after. ~9 MB is matplotlib/pillow/fonttools, which MIDI→MusicXML does **not** use → installing with deps trimmed should cut first-load to ≈ **18 MB**.
 - **Google Colab** (the gist idea): fine as a **manual tool** for you/testers (upload→download), but **cannot** be the app's backend — Colab ToS forbids "web service offerings not related to interactive compute," it's not an API, and runtimes are ephemeral.
@@ -106,7 +106,7 @@ No drop-in, pipeline-ready MIDI→GP tool exists. **PyGuitarPro** (Python, LGPL-
 - [ ] Productionize the **pitch-based drum-map** (full GM table + open-hat `o` articulation, ghost notes/accents).
 - [ ] Verify drum **voicing fidelity** through MusicXML → AlphaTab → GP.
 - [ ] **Trim Pyodide payload** (install music21 without matplotlib/pillow) and measure first-load.
-- [ ] Decide conversion **timing**: offline-CI for catalogue (now) vs in-browser Pyodide for user uploads (when that feature lands).
+- [ ] Decide conversion **timing**: offline-CI for catalog (now) vs in-browser Pyodide for user uploads (when that feature lands).
 - [ ] **Upstream contribution** (portfolio): engage music21 #1659 (preserve `percMapPitch` for unrecognized sounds) and/or propose the drum-layout map.
 - [ ] Quantization quality pass on human-performance MIDI.
 

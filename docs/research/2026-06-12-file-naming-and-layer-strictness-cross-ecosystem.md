@@ -64,17 +64,17 @@ A sharp split — three camps, and they fall along **language type, not preferen
 
 Two camps:
 
-**Suffix camp** (NestJS, legacy Angular): `catalogue-item.entity.ts`, `catalogue.repository.ts`, `create-item.dto.ts`.
+**Suffix camp** (NestJS, legacy Angular): `catalog-item.entity.ts`, `catalog.repository.ts`, `create-item.dto.ts`.
 
 - ✅ Self-describing per file; greps/lints easily; **closes the Pascal-vs-camel gap deterministically** (`*.entity.ts` → must be PascalCase; `*.util.ts` → camelCase).
 - ❌ Verbose; the one **Angular is actively retreating from** (v20 dropped it).
 
-**Folder + role-name camp** (DDD repos, modern Angular, React): `core/CatalogueItem.ts`, `adapters/NeonCatalogueAdapter.ts`, ports in `ports.ts`.
+**Folder + role-name camp** (DDD repos, modern Angular, React): `core/CatalogItem.ts`, `adapters/NeonCatalogAdapter.ts`, ports in `ports.ts`.
 
 - ✅ Cleaner names; role comes from the folder you already have.
 - ❌ No enforcement; you must trust the folder; doesn't close the casing gap by itself.
 
-**Lean (not a decision — your call in the spike):** the hexagon **already has the folders**, so folder-based is the lower-friction base. The strongest middle path observed across ecosystems (.NET especially): **folder signals the layer, a light suffix signals the role** — entities stay suffix-free (`CatalogueItem.ts` in `core/`), but role-bearing files carry a suffix (`.port.ts`, `.adapter.ts`, `.repository.ts`, `.dto.ts`). That selective suffix is exactly what lets ESLint `check-file` enforce casing per-role and **makes the KAN-125 DangerJS task redundant**.
+**Lean (not a decision — your call in the spike):** the hexagon **already has the folders**, so folder-based is the lower-friction base. The strongest middle path observed across ecosystems (.NET especially): **folder signals the layer, a light suffix signals the role** — entities stay suffix-free (`CatalogItem.ts` in `core/`), but role-bearing files carry a suffix (`.port.ts`, `.adapter.ts`, `.repository.ts`, `.dto.ts`). That selective suffix is exactly what lets ESLint `check-file` enforce casing per-role and **makes the KAN-125 DangerJS task redundant**.
 
 ---
 

@@ -9,7 +9,7 @@
 
 ## TL;DR
 
-In the drum-tutor-clone phase, Leo proposed a **"song search by reference"** feature: instead of hosting song files, a catalogue entry would store a **`{source + id}`** pair (e.g. `source = "songsterr"`, `id = 12345`) that **points at an external tab source** (Songsterr, Ultimate Guitar, …). His words: _"we could use the same approach from tablatures which searchs songs via songsterr api, ultimate guitar and so on, and perhaps save an id for each song."_
+In the drum-tutor-clone phase, Leo proposed a **"song search by reference"** feature: instead of hosting song files, a catalog entry would store a **`{source + id}`** pair (e.g. `source = "songsterr"`, `id = 12345`) that **points at an external tab source** (Songsterr, Ultimate Guitar, …). His words: _"we could use the same approach from tablatures which searchs songs via songsterr api, ultimate guitar and so on, and perhaps save an id for each song."_
 
 The plan-side reasoning landed on four durable points:
 
@@ -18,13 +18,13 @@ The plan-side reasoning landed on four durable points:
 3. **Two banked caveats:** **ToS/legal gray area** (esp. Ultimate Guitar, which guards its tabs) and **scraper fragility** (unofficial endpoints break when sites change).
 4. **Reference project exists.** The open-source **`tablatures` / `tablatures-api`** repos already implement per-source adapters (Songsterr, Ultimate Guitar). Cloned locally; to be studied **for approach only**, license checked before reusing any code.
 
-It was explicitly **deferred** (nice-to-have / later), **not MVP**. This is **distinct from the current Notation Hero catalogue** (first-party content search) — it's about _importing/referencing third-party external sources_.
+It was explicitly **deferred** (nice-to-have / later), **not MVP**. This is **distinct from the current Notation Hero catalog** (first-party content search) — it's about _importing/referencing third-party external sources_.
 
 ---
 
 ## Findings / spec (as captured then) — labeled prior art
 
-### 1. The data model: `source + id` (catalogue-by-reference)
+### 1. The data model: `source + id` (catalog-by-reference)
 
 The proposal was to **not host the song file** at all in the common case, but to store a reference:
 
@@ -36,12 +36,12 @@ Shape (reconstructed from the discussion — never formalized in code):
 
 ```
 song_reference = {
-  source: "songsterr" | "ultimate_guitar" | ...,   // which external catalogue
-  id:     "<external song id>"                       // that catalogue's own id
+  source: "songsterr" | "ultimate_guitar" | ...,   // which external catalog
+  id:     "<external song id>"                       // that catalog's own id
 }
 ```
 
-A catalogue entry therefore had **two possible backings**, discussed as a spectrum:
+A catalog entry therefore had **two possible backings**, discussed as a spectrum:
 
 | Backing                         | What's stored                  | Cost / sync                   | Notes                                                              |
 | ------------------------------- | ------------------------------ | ----------------------------- | ------------------------------------------------------------------ |
@@ -95,7 +95,7 @@ And in the open-decisions framing it was never on the MVP critical path — the 
 
 ## Decisions reached then (prior art — may be superseded)
 
-1. **Adopt the `source + id` reference model** for catalogue entries — _"exactly right"_ — instead of hosting files for the search case. ✅ (conceptually endorsed)
+1. **Adopt the `source + id` reference model** for catalog entries — _"exactly right"_ — instead of hosting files for the search case. ✅ (conceptually endorsed)
 2. **Reference syncs; blobs don't (yet).** Keep synced per-user data small (`source + id` refs); defer file-blob sync/upload to Storage. ✅
 3. **A server proxy is required** for this feature; it was the designated _first_ serverless function in that era. ✅ (architecturally; host choice now changed)
 4. **Use `tablatures` / `tablatures-api` as approach reference only**; check license before reusing code; build the integration _only when search is actually scheduled_. ✅ (deferred study)
@@ -106,19 +106,19 @@ And in the open-decisions framing it was never on the MVP critical path — the 
 
 ---
 
-## Distinction from the current Notation Hero catalogue
+## Distinction from the current Notation Hero catalog
 
-This prior art is **NOT** the catalogue work happening now. They are two different things:
+This prior art is **NOT** the catalog work happening now. They are two different things:
 
-|                     | This prior art (catalogue-by-reference)                       | Current Notation Hero catalogue                              |
+|                     | This prior art (catalog-by-reference)                       | Current Notation Hero catalog                              |
 | ------------------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
 | **What it indexes** | third-party external sources (Songsterr/UG) by `{source, id}` | first-party / owned content (the Playable model)             |
-| **Storage**         | a reference; resolve via proxy at play time                   | Neon Postgres (catalogue) + DynamoDB (per-user)              |
-| **Search purpose**  | _import_ a song from an external tab site                     | _find a piece to play_ within owned catalogue (find-a-piece) |
+| **Storage**         | a reference; resolve via proxy at play time                   | Neon Postgres (catalog) + DynamoDB (per-user)              |
+| **Search purpose**  | _import_ a song from an external tab site                     | _find a piece to play_ within owned catalog (find-a-piece) |
 | **Legal posture**   | ToS / scraping gray area                                      | first-party, no third-party ToS exposure                     |
 | **Status**          | deferred nice-to-have, never built                            | active, first real feature                                   |
 
-If external-source import is ever revived, it should be modeled as an **import/reference layer that feeds INTO** the current catalogue (an external `{source,id}` becomes one possible backing of a Playable), not as a replacement for it.
+If external-source import is ever revived, it should be modeled as an **import/reference layer that feeds INTO** the current catalog (an external `{source,id}` becomes one possible backing of a Playable), not as a replacement for it.
 
 ---
 

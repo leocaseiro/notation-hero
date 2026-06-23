@@ -4,7 +4,7 @@
 > **Scope:** the 8 open questions in `docs/prompts/2026-06-17-architecture-brainstorm.md`. The north-star (NestJS modular monolith + hexagon, one Lambda behind a Function URL, React SPA + Capacitor) was already locked; this doc decides the open questions and **deliberately reopens** the DACI-locked foundation (Nx, hexagon physical form, file-structure ADR).
 > **Companion:** [`docs/specs/2026-06-17-data-layer-requirements.md`](../specs/2026-06-17-data-layer-requirements.md) — what the data layer must provide, decoupled from the parallel schema redesign.
 > **Supersedes (pending ratification):** parts of `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (suffix-everything). See §9.
-> **Reaffirms:** `2026-06-09-catalogue-store-postgres-neon.md` (`DS-1`), the Cognito-not-Amplify decision (NH-193).
+> **Reaffirms:** `2026-06-09-catalog-store-postgres-neon.md` (`DS-1`), the Cognito-not-Amplify decision (NH-193).
 > **Owner:** leocaseiro
 ---
 
@@ -24,7 +24,7 @@ Each section maps to the brainstorm's open questions: §1 → Q1-3, §2 → Q5-7
 - **One backend service = a single NestJS 11 app** (modular monolith), **hexagonal/DDD inside**: framework-free domain core, ports (interfaces), adapters (I/O), Nest as the delivery "door".
 - Deployed as **one AWS Lambda** (HTTP API) behind a **Function URL** (→ CloudFront). Async work = **extra Lambda entry points from the SAME codebase**, not more apps.
 - **One React SPA** client, separate from the backend, over HTTPS; **Capacitor** for mobile; offline-first.
-- **Data:** Neon Postgres (catalogue, v1) + DynamoDB single-table (per-user, **M1** — v1 stores no per-user data, so no DynamoDB table is provisioned yet; it lands as an additive adapter behind a repository port). **Auth:** Cognito (Pulumi) + `aws-jwt-verify`. **Infra:** Pulumi (TS), deploy via GitHub Actions OIDC. **Runtime:** Node 24 (`nodejs24.x`), arm64.
+- **Data:** Neon Postgres (catalog, v1) + DynamoDB single-table (per-user, **M1** — v1 stores no per-user data, so no DynamoDB table is provisioned yet; it lands as an additive adapter behind a repository port). **Auth:** Cognito (Pulumi) + `aws-jwt-verify`. **Infra:** Pulumi (TS), deploy via GitHub Actions OIDC. **Runtime:** Node 24 (`nodejs24.x`), arm64.
 
 ---
 
@@ -118,7 +118,7 @@ server/src/
 **Decision:** keep **Drizzle** (`drizzle-orm/neon-http` + `drizzle-kit` + `drizzle-zod`), wired as a custom `DRIZZLE` provider in an adapter behind the repository port.
 **Why:** the 🔬 ORM spike confirmed Drizzle is the best fit for *this* stack — only true ORM that natively rides Neon's **HTTP driver** (best cold-start), **zero SWC/decorator friction** (schema-as-TS, no `emitDecoratorMetadata`), and lets the **raw SQL DDL stay source of truth** (references the `GENERATED` tsvector column, doesn't fight it). There is **no built-in NestJS ORM** (Nest is ORM-agnostic; `@nestjs/typeorm` is the most "blessed" but is TCP-pool-only on Neon + has SWC decorator footguns). Neon's own NestJS guide uses raw `pg` (no ORM).
 **Caveat:** Drizzle `latest` is still 0.x with a 1.0 RC mid-flight (no GA date) — track the v1 / Relational-Queries-V2 migration. **Flip:** Kysely if the adapter ends up in the raw `sql` tag for most JSONB/tsvector queries anyway.
-**Reaffirms:** `DS-1` (Neon Postgres catalogue store).
+**Reaffirms:** `DS-1` (Neon Postgres catalog store).
 
 ---
 
@@ -138,10 +138,10 @@ server/src/
 **Supersedes:** the **2026-06-16 Next.js FE ADR** (`2026-06-16-fe-framework-nextjs-adr.md`, NH-185) — leocaseiro chose 2026-06-17 to supersede yesterday's Next.js decision; the OpenNext SSR target + the one-source/two-target build are dropped (pure Vite SPA; Capacitor wraps the static build). **Decision recorded 2026-06-18 (PROD-1):** Next.js is no longer an option. A Next.js front-end is not a portfolio piece leocaseiro needs (he already has that experience), and Next.js as front-end-only is not useful; making its SSR fit the AWS perpetual-free-tier is a battle not worth fighting. The visible SPA UI plus the AWS depth is the portfolio signal — dropping SSR needs no replacement.
 
 ### ARCH-OFFLINE-1 — Plain Dexie + insert-only outbox, syncs via the API
-**Decision:** offline store = **plain Dexie** (`dexie` + `dexie-react-hooks` + `ulid`) with a **hand-rolled insert-outbox + blob queue** — **no sync framework** (RxDB / Replicache / Dexie Cloud). Offline-first; the outbox pushes to the NestJS API (`POST /api/sync/batch`), which persists per-user data to **DynamoDB** and serves the catalogue from **Neon**. Dexie talks only to *our API*, never to Neon/Dynamo directly.
+**Decision:** offline store = **plain Dexie** (`dexie` + `dexie-react-hooks` + `ulid`) with a **hand-rolled insert-outbox + blob queue** — **no sync framework** (RxDB / Replicache / Dexie Cloud). Offline-first; the outbox pushes to the NestJS API (`POST /api/sync/batch`), which persists per-user data to **DynamoDB** and serves the catalog from **Neon**. Dexie talks only to *our API*, never to Neon/Dynamo directly.
 **Load-bearing constraint (makes it free AND conflict-free):** **offline writes are INSERT-ONLY; updates & deletes are online-first; the client mints its own ULID PKs; settings are the one exception → last-write-wins by `updated_at`.** A row created offline is immutable until it syncs, the server is authoritative, and re-sends are idempotent upserts by client ULID — so **merge conflicts are avoided by the insert-only rule, not made impossible** — settings are the one accepted exception (last-write-wins, which discards the older concurrent write), and offline edits of shared rows are deferred precisely because they would bring real conflicts back (this is why the old "push conflict resolution" question is **N/A for v1's write model**).
 **Why plain Dexie (not RxDB):** the only thing a sync framework buys here — conflict resolution — is *designed away* by the constraint above, and RxDB's fast storages (OPFS/SQLite) are paid (€99/mo) while its free Dexie/IndexedDB tier is what we'd hand-roll anyway. Plain Dexie is free, has a real local query engine, and doesn't fight the fixed NestJS/oRPC/Neon/S3 stack. **Rejected:** RxDB (premium-storage paywall + a sync engine we don't need), Legend-State (sync still `@beta` after ~2 yrs).
-**Sync topology:** curated catalogue (Neon) → pull-to-cache, read-only mirror, disposable (re-pull if evicted); user-created notation/source (Neon, `origin='user-upload'`, `listable=false`) → insert-outbox, push when online; per-user scores (DynamoDB) → append-only outbox; settings → LWW; binary files (S3) → Capacitor Filesystem (offline, eviction-safe) → presigned S3 PUT → patch `source.s3_key`.
+**Sync topology:** curated catalog (Neon) → pull-to-cache, read-only mirror, disposable (re-pull if evicted); user-created notation/source (Neon, `origin='user-upload'`, `listable=false`) → insert-outbox, push when online; per-user scores (DynamoDB) → append-only outbox; settings → LWW; binary files (S3) → Capacitor Filesystem (offline, eviction-safe) → presigned S3 PUT → patch `source.s3_key`.
 **iOS durability:** Capacitor's WKWebView ≠ Safari, so 7-day ITP eviction doesn't apply; the real risk is **storage-pressure LRU**, and `navigator.storage.persist()` is unreliable on iOS. So **local = cache**: curated content is disposable (re-pull); the durable risk is *user-created-but-unsynced* rows → **sync eagerly** + keep blobs in **Capacitor Filesystem** (native, eviction-safe). Optional v1.x hardening: mirror the outbox to Capacitor Preferences/Filesystem — ship without it, add only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (no separate per-user durability doc).
 **4 gating schema/server changes (REQUIRED for the free Dexie path; formalized as companion R13-R16, fed to the parallel schema redesign):** (1) keep **client-minted `text` ULID PKs** (no server `uuid DEFAULT`/`bigint`); (2) a transactional **`POST /sync/batch`** (idempotent by `batchId`; **behind the Cognito guard + `can()` self-scope — each upsert limited to rows whose `created_by` = the caller's `sub`, no cross-user writes; per-user rate-limits → M1**) so an offline-created graph commits all-or-nothing; (3) **`source.upload_status`** (`pending_blob`｜`ready`) + relaxed `source_one_of` CHECK so a file-backed upload syncs first and the blob backfills; (4) **`DEFERRABLE INITIALLY IMMEDIATE`** on cross-row FKs so one batch txn commits a whole graph regardless of intra-batch order/cycles.
 **Flip conditions (when a framework WOULD be warranted):** drop insert-only → allow true offline edits of shared rows (real conflicts → TanStack DB / Zero / Replicache); real-time multi-device collaboration becomes a goal; the hand-rolled outbox sprawls past a few hundred lines / sprouts edge-case bugs; or Dexie stalls (no release in ~12+ months).
@@ -169,10 +169,10 @@ server/src/
 **Why:** the forward-compat goal wants authorization as a domain policy so UGC is *additive* (extend the policy: `owner can edit own draft`) instead of unpicking hardcoded guards. Fits the hexagon (domain policy in core).
 
 ### ARCH-OWN-1 — Add `created_by` (ownership-by-identity seam)
-**Decision:** add a **`created_by`** field (the Cognito `sub`) to the catalogue item. v1 admin items set it to the admin's sub; later UGC items set the uploader's sub → v1-vs-UGC differ only by **column values**, not schema. Stated abstractly in the companion data-layer-requirements doc (the parallel schema redesign satisfies it under whatever name).
+**Decision:** add a **`created_by`** field (the Cognito `sub`) to the catalog item. v1 admin items set it to the admin's sub; later UGC items set the uploader's sub → v1-vs-UGC differ only by **column values**, not schema. Stated abstractly in the companion data-layer-requirements doc (the parallel schema redesign satisfies it under whatever name).
 **Why:** the schema audit found `created_by` **does not exist** today (only `source` provenance-by-category + `status`). This is the cheap UGC ownership seam the north-star asks for.
 **Backfill (v1 migration):** existing curated rows get `created_by = <admin sub>` in the **same** migration that adds the column (an `UPDATE` before any NOT-NULL-dependent or owner-based policy ships); NULL is reserved for legacy-unowned rows, which the `can()` policy treats as admin-only-editable.
-**PII / exposure:** the Cognito `sub` is an internal identity key — `.omit()` it from public/list DTOs by default (expose only to admin/owner), and on user deletion anonymize or reassign it (GDPR right-to-erasure) per the future UGC spec. The catalogue is otherwise "not a PII landing zone"; `created_by` is the one identity column, so it carries this guardrail. (Mirrored in companion R1.)
+**PII / exposure:** the Cognito `sub` is an internal identity key — `.omit()` it from public/list DTOs by default (expose only to admin/owner), and on user deletion anonymize or reassign it (GDPR right-to-erasure) per the future UGC spec. The catalog is otherwise "not a PII landing zone"; `created_by` is the one identity column, so it carries this guardrail. (Mirrored in companion R1.)
 **Deferred (future specs):** the upload pipeline itself (M1; **forward-reference only — nothing in Phase 0-2 builds it**) — but the **untrusted-uploader seam** is noted: presigned S3 → quarantine prefix → magic-byte validate → promote (the schema spec already has the quarantine prefix design).
 
 ---
@@ -255,7 +255,7 @@ worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
 | ARCH-AUTH-1 | Cognito (Pulumi) + Google federation v1 | reaffirms Cognito-not-Amplify |
 | ARCH-ROLE-1 | Roles via Cognito groups; one pool | new |
 | ARCH-AUTHZ-1 | `can(user,item,action)` policy port | new |
-| ARCH-OWN-1 | Add `created_by` ownership seam | extends catalogue schema |
+| ARCH-OWN-1 | Add `created_by` ownership seam | extends catalog schema |
 | ARCH-SEC-1 | JWT security model | new |
 | ARCH-SEC-2 | CSP baseline (CloudFront RHP + native `<meta>`) | new |
 
@@ -267,7 +267,7 @@ These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reope
 
 - `2026-06-09-tooling-stack-daci.md`: `L1` (Nx) → **dropped** (ARCH-MONO-1); the `apps/core/adapters/infra` layout → **client/server/shared/infra** (ARCH-LAYOUT-1); `PM-1`/`F6-bun` → **unchanged** (pnpm kept).
 - `2026-06-12-file-level-structure-enforcement-adr.md`: `NAME-suffix` suffix-everything → **relaxed to NestJS-native filenames** (ARCH-NAME-1); co-location kept; depcruise rules → **folder-level** (ARCH-GUARD-1).
-- `2026-06-09-catalogue-store-postgres-neon.md` (`DS-1`) → **reaffirmed**; the schema gains `created_by` (ARCH-OWN-1, see companion doc).
+- `2026-06-09-catalog-store-postgres-neon.md` (`DS-1`) → **reaffirmed**; the schema gains `created_by` (ARCH-OWN-1, see companion doc).
 - **`2026-06-16-fe-framework-nextjs-adr.md` (NH-185) → ⛔ SUPERSEDED** by `ARCH-FE-1` (Vite + TanStack SPA). leocaseiro chose 2026-06-17 to supersede yesterday's Next.js decision; the OpenNext SSR target is dropped. That ADR's status header now points here.
 
 ---
@@ -291,7 +291,7 @@ These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reope
 2. **Invoke `writing-plans`** for the phased implementation plan, sequenced **slice-first** so the build stays deployable and the FE scaffold can't balloon into "whole stack first":
    - **Phase 0 — remove everything Nx** (per the ARCH-MONO-1 migration inventory; regenerate a clean root `package.json`). **Phase 0 is not complete until the ARCH-GUARD-1 core-purity canary passes as a *required* CI check** — a deliberate `import '@nestjs/common'` in `core/` that the depcruise step must reject (SCOPE-4).
    - **Phase 1 — a thin deployable AWS slice:** an **About-page hello-world wired end-to-end** (CloudFront → Function URL → Lambda), so the recruiter-clickable artifact exists early (honours the DACI 4-week-pivot guardrail).
-   - **Phase 2 — CRUD (the admin catalogue CMS)** next, **layering the FE libraries (oRPC / TanStack Router+Query / Dexie / auth) only as CRUD actually needs them** — not all up front.
+   - **Phase 2 — CRUD (the admin catalog CMS)** next, **layering the FE libraries (oRPC / TanStack Router+Query / Dexie / auth) only as CRUD actually needs them** — not all up front.
 
    Then execute.
 
@@ -303,7 +303,7 @@ Until then: ✅ decided · ⏳ no repo code/config changed.
 
 A couple of items are intentionally scoped out of v1 — recorded here so they're tracked, not overlooked:
 
-- **DynamoDB single-table key design → deferred to M1.** v1 (the admin catalogue CMS) stores no per-user data — scores/settings/sync are M1 features — so no DynamoDB table is provisioned in v1. This is **not a v1 refactor risk:** the per-user store slots in as an *additive* adapter behind a new repository port (ARCH-HEX-1); nothing is provisioned yet (so "a partition key can't change in place" doesn't bite); and the one cross-store seam — stable, client-mintable catalogue IDs (R13) — is already locked, so a future `SCORE#<songId>` reference is safe. **Guardrail:** lock the key schema *before* provisioning at M1 — starter sketch: PK=`USER#<sub>`; append-only `SCORE#<songId>#<ulid>`; `SONGSTAT#` rollup via DynamoDB Streams; `GSI1` for pull-since. Tracked in NH-120.
+- **DynamoDB single-table key design → deferred to M1.** v1 (the admin catalog CMS) stores no per-user data — scores/settings/sync are M1 features — so no DynamoDB table is provisioned in v1. This is **not a v1 refactor risk:** the per-user store slots in as an *additive* adapter behind a new repository port (ARCH-HEX-1); nothing is provisioned yet (so "a partition key can't change in place" doesn't bite); and the one cross-store seam — stable, client-mintable catalog IDs (R13) — is already locked, so a future `SCORE#<songId>` reference is safe. **Guardrail:** lock the key schema *before* provisioning at M1 — starter sketch: PK=`USER#<sub>`; append-only `SCORE#<songId>#<ulid>`; `SONGSTAT#` rollup via DynamoDB Streams; `GSI1` for pull-since. Tracked in NH-120.
 - **CSP × AlphaTab WASM — resolved 2026-06-18.** AlphaTab ships **no** WebAssembly build (verified in the local source `~/Sites/alphaTab`: no `.wasm` files, no `WebAssembly`/`wasm` references), so `script-src` needs **no** `wasm-unsafe-eval` (ARCH-SEC-2, flag a). Re-confirm only if AlphaTab is later upgraded to a WASM build.
 
 The offline-sync design — conflict handling (none, by the insert-only constraint), un-synced-write durability, and v1 wiring — is **decided in `ARCH-OFFLINE-1`**, not open. The locked decisions + these deferrals feed the implementation-planning stage and the parallel schema/data-layer redesign.

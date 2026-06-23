@@ -1,0 +1,1660 @@
+{
+  "songs": [
+    {
+      "file": "Angra - Nothing To Say.gp",
+      "artist": "Angra",
+      "title": "Nothing To Say",
+      "percTrack": "Ricardo",
+      "tempo": 138,
+      "bars": 221,
+      "playbackDurOk": true,
+      "distinctBars": 67,
+      "grooves": [
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:--o---o---o---o- K:oooooooooooooooo",
+          "count": 36,
+          "bars": [
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            87,
+            88,
+            89,
+            90,
+            91,
+            92,
+            93,
+            94,
+            97,
+            98,
+            101,
+            131,
+            132,
+            133,
+            134,
+            139,
+            140,
+            141,
+            167,
+            168,
+            169,
+            170,
+            171,
+            172,
+            173,
+            174,
+            177,
+            178,
+            181
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:--x---x---x---x- S:---o-------o---- K:o---ooooo---oooo",
+          "count": 20,
+          "bars": [
+            3,
+            4,
+            7,
+            8,
+            11,
+            12,
+            15,
+            16,
+            19,
+            20,
+            200,
+            201,
+            204,
+            205,
+            208,
+            209,
+            212,
+            213,
+            216,
+            217
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:--o---o---o---o- K:o--o-o---o-o-o--",
+          "count": 18,
+          "bars": [
+            43,
+            44,
+            47,
+            48,
+            51,
+            52,
+            74,
+            75,
+            78,
+            79,
+            82,
+            83,
+            154,
+            155,
+            158,
+            159,
+            162,
+            163
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:xx-xxx-xxx-xxx-x S:--o---o---o---o- K:oooooooooooooooo",
+          "count": 17,
+          "bars": [
+            127,
+            128,
+            130,
+            135,
+            136,
+            138,
+            184,
+            185,
+            186,
+            187,
+            188,
+            189,
+            192,
+            193,
+            194,
+            196,
+            197
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x---x---x---x- S:---o-------o---- K:o---ooooo---oooo",
+          "count": 11,
+          "bars": [
+            2,
+            6,
+            10,
+            14,
+            18,
+            64,
+            199,
+            203,
+            207,
+            211,
+            215
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:---------------- S:---------------- K:----------------",
+          "count": 8,
+          "bars": [
+            23,
+            24,
+            25,
+            26,
+            104,
+            145,
+            220,
+            221
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:--o---o---o---o- K:oo--oo--oo--oo--",
+          "count": 8,
+          "bars": [
+            36,
+            37,
+            40,
+            41,
+            67,
+            68,
+            71,
+            72
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:--o---o---o---o- K:o----o--o----o--",
+          "count": 6,
+          "bars": [
+            45,
+            53,
+            76,
+            84,
+            156,
+            164
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:xxxx-xxxxxxx-xxx S:----o-------o--- K:oooooooooooooooo",
+          "count": 6,
+          "bars": [
+            112,
+            113,
+            114,
+            115,
+            116,
+            117
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:--x---x---x-x-x- S:---o-----o-o---- K:o---ooooo---oooo",
+          "count": 5,
+          "bars": [
+            5,
+            9,
+            13,
+            17,
+            214
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:o-o-o-o-o-o-o-o- S:----o-------o--- K:oooo-o--o--o----",
+          "count": 5,
+          "bars": [
+            28,
+            29,
+            30,
+            31,
+            32
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:--o---o---o---o- K:o---oo--oo--oo--",
+          "count": 4,
+          "bars": [
+            35,
+            39,
+            66,
+            70
+          ],
+          "hasTom": false
+        }
+      ],
+      "fillCount": 45,
+      "fills": [
+        {
+          "bar": 1,
+          "sig": "H:---------------- S:---------------- K:--------------o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 21,
+          "sig": "H:---------------- S:oo-------------- K:--oo--oo--oooooo T:----oo--oo------",
+          "tomHits": 8,
+          "preSection": false
+        },
+        {
+          "bar": 22,
+          "sig": "H:--xxxxxxx------- S:---------------- K:o----------oo---",
+          "tomHits": 0,
+          "preSection": true
+        },
+        {
+          "bar": 27,
+          "sig": "H:x-o-o-o-o-o-o-o- S:----o-------o--- K:oooo-o--o--o----",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 33,
+          "sig": "H:o-o-o-o-o-o-o-o- S:----o---o---o--- K:oooo-o--oooo-o--",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 34,
+          "sig": "H:o-o-o-o--------- S:o---o-o-ooo-o-oo K:oooo------------",
+          "tomHits": 0,
+          "preSection": true
+        },
+        {
+          "bar": 54,
+          "sig": "H:x--------------- S:---oo--oo-o-ooo- K:o---o-----------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 55,
+          "sig": "H:---------------- S:o-ooo-ooo-ooo--- K:--------------o-",
+          "tomHits": 0,
+          "preSection": true
+        },
+        {
+          "bar": 63,
+          "sig": "H:x-x-----x--x--x- S:--o-----o--o--o- K:oooooooooooooooo",
+          "tomHits": 0,
+          "preSection": true
+        },
+        {
+          "bar": 65,
+          "sig": "H:--x------------- S:-o-o----oo------ K:o---ooooo---oooo T:-----------ooooo",
+          "tomHits": 6,
+          "preSection": false
+        },
+        {
+          "bar": 85,
+          "sig": "H:---------------- S:ooo---ooo---ooo- K:---o-o---o-o---o T:----oo----oo---o",
+          "tomHits": 5,
+          "preSection": false
+        },
+        {
+          "bar": 86,
+          "sig": "H:------------x--- S:--ooo-------o--- K:-o---o-o-o-o---- T:o-----oooooo----",
+          "tomHits": 7,
+          "preSection": true
+        },
+        {
+          "bar": 102,
+          "sig": "H:x-x------------- S:--o-oo---------- K:oooooooooooooooo T:--------oo-oo-oo",
+          "tomHits": 12,
+          "preSection": true
+        },
+        {
+          "bar": 103,
+          "sig": "H:---------------- S:---------------- K:o---------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 105,
+          "sig": "H:---------------- S:----oooooooooooo K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 106,
+          "sig": "H:---------------- S:oooooooooooooooo K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 107,
+          "sig": "H:x--------------- S:--o-----o-----oo K:oooooooooooooooo T:-----o-----o----",
+          "tomHits": 4,
+          "preSection": false
+        },
+        {
+          "bar": 108,
+          "sig": "H:---------------- S:--o-----o--o---- K:oooooooooooooooo T:-----o--------oo",
+          "tomHits": 3,
+          "preSection": false
+        },
+        {
+          "bar": 109,
+          "sig": "H:---------------- S:--o-----o-----oo K:oooooooooooooooo T:-----o-----o----",
+          "tomHits": 2,
+          "preSection": false
+        },
+        {
+          "bar": 110,
+          "sig": "H:---------------- S:--o-o-----oooooo K:oooooooooooooooo T:-----o----------",
+          "tomHits": 1,
+          "preSection": false
+        },
+        {
+          "bar": 111,
+          "sig": "H:x-xx-xxxxxxx-xxx S:----o-------o--- K:oooooooooooooooo",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 118,
+          "sig": "H:xxxx-xx--------- S:----o--oo------- K:oooooooooooooooo T:-----------ooooo",
+          "tomHits": 5,
+          "preSection": true
+        },
+        {
+          "bar": 119,
+          "sig": "H:xxxx--x-------x- S:----------oo---- K:oooo--o-------o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 120,
+          "sig": "H:xxxx------------ S:------oo-------- K:oooo------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 121,
+          "sig": "H:xxxx------x----- S:------oo------oo K:oooo------o-----",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 122,
+          "sig": "H:xxxx------------ S:------oo----o-oo K:oooo------oo-o--",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 125,
+          "sig": "H:------x---x---x- S:------o---o---o- K:oooooooooooooooo",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 126,
+          "sig": "H:---------------- S:o-o-ooooo-oooo-- K:oooooooooooooooo T:--------------oo",
+          "tomHits": 4,
+          "preSection": true
+        },
+        {
+          "bar": 142,
+          "sig": "H:---------------- S:---------------- K:------------o---",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 143,
+          "sig": "H:o--------------- S:---------------- K:------------o---",
+          "tomHits": 0,
+          "preSection": false
+        }
+      ],
+      "sectionCount": 15,
+      "sections": [
+        {
+          "label": "Intro",
+          "startBar": 1
+        },
+        {
+          "label": "Main Riff",
+          "startBar": 23
+        },
+        {
+          "label": "Verses I",
+          "startBar": 35
+        },
+        {
+          "label": "Chorus I",
+          "startBar": 56
+        },
+        {
+          "label": "Verses II",
+          "startBar": 64
+        },
+        {
+          "label": "Chorus II",
+          "startBar": 87
+        },
+        {
+          "label": "Bridge",
+          "startBar": 103
+        },
+        {
+          "label": "Pre-Solo",
+          "startBar": 119
+        },
+        {
+          "label": "Guitar Solo (Kiko)",
+          "startBar": 127
+        },
+        {
+          "label": "Guitar Solo (Rafael)",
+          "startBar": 135
+        },
+        {
+          "label": "Orchestra Interlude",
+          "startBar": 142
+        },
+        {
+          "label": "Verses III",
+          "startBar": 154
+        },
+        {
+          "label": "Chorus III - (E key)",
+          "startBar": 167
+        },
+        {
+          "label": "Chorus III - (G Key)",
+          "startBar": 183
+        },
+        {
+          "label": "Ending",
+          "startBar": 199
+        }
+      ]
+    },
+    {
+      "file": "charlie-brown-jr-charlie-brown-jr-zoio-de-lula_1419361331 (completa without timbale and without bell and without sticks) 76bpm - 79 bars - revisado Leo Drum stems - Jan-2026-FINAL.gp",
+      "artist": "",
+      "title": "",
+      "percTrack": "Bateria",
+      "tempo": 76,
+      "bars": 79,
+      "playbackDurOk": true,
+      "distinctBars": 56,
+      "grooves": [
+        {
+          "sig": "H:x-o-o-o-o-o-o-o- S:----o-------o--- K:o-------o--o--o-",
+          "count": 7,
+          "bars": [
+            17,
+            21,
+            33,
+            65,
+            67,
+            69,
+            71
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:--xx-xxxxxxxxx-x S:----o-ooo-ooo-oo K:--o---o---o---o-",
+          "count": 5,
+          "bars": [
+            41,
+            43,
+            45,
+            47,
+            75
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-xxxxxxxxo-xxo- S:----o-------o--- K:o-------o-o-----",
+          "count": 4,
+          "bars": [
+            3,
+            6,
+            9,
+            10
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-o-x-x-x-x- S:----o-------o--- K:o-------o--o--o-",
+          "count": 4,
+          "bars": [
+            27,
+            51,
+            54,
+            58
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-xxxxxxxxxxxxo- S:----o-------o--- K:o-------o--o----",
+          "count": 3,
+          "bars": [
+            7,
+            11,
+            13
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:o-o-ooooo-o-o-o- S:----o-------o--- K:o-------o-o-----",
+          "count": 2,
+          "bars": [
+            34,
+            38
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-ooooooooo-o-o- S:----o-------o--- K:o-------o--o--o-",
+          "count": 2,
+          "bars": [
+            35,
+            39
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:o-o-ooooo-o-o-o- S:----o-------o-o- K:o-------o-o-----",
+          "count": 2,
+          "bars": [
+            36,
+            70
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-o-x-x-xxo- S:----o-------o--- K:o-------o--o--o-",
+          "count": 2,
+          "bars": [
+            57,
+            61
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x--------------- S:---------------- K:o---------------",
+          "count": 2,
+          "bars": [
+            78,
+            79
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:---------------- S:---------------- K:---------------- T:------------ooo-",
+          "count": 1,
+          "bars": [
+            1
+          ],
+          "hasTom": true
+        },
+        {
+          "sig": "H:---------------- S:---------------- K:---------------- T:--------ooo-ooo-",
+          "count": 1,
+          "bars": [
+            2
+          ],
+          "hasTom": true
+        }
+      ],
+      "fillCount": 46,
+      "fills": [
+        {
+          "bar": 1,
+          "sig": "H:---------------- S:---------------- K:---------------- T:------------ooo-",
+          "tomHits": 4,
+          "preSection": false
+        },
+        {
+          "bar": 2,
+          "sig": "H:---------------- S:---------------- K:---------------- T:--------ooo-ooo-",
+          "tomHits": 8,
+          "preSection": false
+        },
+        {
+          "bar": 4,
+          "sig": "H:xxxxxxxxxxo-xxo- S:----o-------o--- K:o-------o-o-----",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 5,
+          "sig": "H:x-xxxxxxxxxxxxo- S:----o-------o--- K:o-------o--o--o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 8,
+          "sig": "H:xxxxxxx-x------- S:----o--oo------- K:o-----o-o-------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 12,
+          "sig": "H:xxxxxxo--------- S:----o----ooo-ooo K:o-------o---o--- T:--------o---o---",
+          "tomHits": 2,
+          "preSection": false
+        },
+        {
+          "bar": 14,
+          "sig": "H:x-xxxxxxxxo-xxo- S:----o-------o--- K:o-o-----o-o-----",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 15,
+          "sig": "H:x-xxxxxxxxxxxxxx S:----o-------o--- K:o-------o--o--o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 16,
+          "sig": "H:xxxxxxxxx-----x- S:----o---------o- K:o-------o------- T:---------ooooo--",
+          "tomHits": 8,
+          "preSection": false
+        },
+        {
+          "bar": 18,
+          "sig": "H:x-o-o-o-o-o-x-o- S:----o-------o--- K:o-------o-o-----",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 19,
+          "sig": "H:x-o-ooooo-o-o-o- S:----o-------o--- K:o-------o--o--o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 20,
+          "sig": "H:x-o-o-o-------x- S:----o----------- K:o-----o-o-o-ooo- T:-------oooooo---",
+          "tomHits": 9,
+          "preSection": false
+        },
+        {
+          "bar": 22,
+          "sig": "H:o-o-o-o-o-o-x-x- S:----o-------o-o- K:o-------o-o-----",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 23,
+          "sig": "H:o-o-ooooo-o-o-o- S:----o-------o--- K:o-------o--o--o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 24,
+          "sig": "H:o-o-o-o--------- S:----o---------o- K:o-----o-o-o-oo-- T:-------oooooo---",
+          "tomHits": 9,
+          "preSection": false
+        },
+        {
+          "bar": 25,
+          "sig": "H:x---x-x-x-x-xxxx S:----o-------o--- K:o-------o--o--o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 26,
+          "sig": "H:x-x-x-x-x-x-xxxx S:----o-------o--- K:o-------o-o-----",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 28,
+          "sig": "H:o-x-x-o-x-----x- S:----o---------o- K:o-------o------- T:---------ooooo--",
+          "tomHits": 7,
+          "preSection": false
+        },
+        {
+          "bar": 29,
+          "sig": "H:--xx-xx-xxxx-xx- S:----o-oo----o--o K:--o---o---o---o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 30,
+          "sig": "H:--xx-xx--xx-xx-x S:----o-ooo-oo---o K:--o---o---o---o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 31,
+          "sig": "H:--xx-xx-xxxx--x- S:----o--o----oo-o K:--o---o---o---o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 32,
+          "sig": "H:--x---x-------x- S:----o---------o- K:--o---o-o-o-oo-- T:-------oooooo---",
+          "tomHits": 9,
+          "preSection": false
+        },
+        {
+          "bar": 37,
+          "sig": "H:x-ooooooooo-o-o- S:----o-------o--- K:o-------o--o----",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 40,
+          "sig": "H:o-ooooo--x--x--- S:----o----o--o--- K:o--------------- T:-------oo-oo-ooo",
+          "tomHits": 10,
+          "preSection": false
+        },
+        {
+          "bar": 42,
+          "sig": "H:--x-x-xx-xx----x S:-----o--o------o K:--o----o--oo---- T:-----------oooo-",
+          "tomHits": 6,
+          "preSection": false
+        },
+        {
+          "bar": 44,
+          "sig": "H:--x-x-xx------x- S:-----o--o-----o- K:--o----o--o--o-- T:---------oooo---",
+          "tomHits": 6,
+          "preSection": false
+        },
+        {
+          "bar": 46,
+          "sig": "H:--xx--x--------x S:----o--o-------o K:--o---o---o----- T:------------o-o-",
+          "tomHits": 4,
+          "preSection": false
+        },
+        {
+          "bar": 48,
+          "sig": "H:--xx-xxxx------- S:----o---------o- K:--o---o---o--o-- T:---------ooooo--",
+          "tomHits": 7,
+          "preSection": false
+        },
+        {
+          "bar": 49,
+          "sig": "H:x-x-xxo-xxx-xxxx S:----o-------o--- K:o-------o--o--o-",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 50,
+          "sig": "H:o-xxxxxxx-x-x-x- S:----o-------o--- K:o-------o-o-----",
+          "tomHits": 0,
+          "preSection": false
+        }
+      ],
+      "sectionCount": 0,
+      "sections": []
+    },
+    {
+      "file": "Bohemian Rhapsody with sections.gp",
+      "artist": "Queen",
+      "title": "Bohemian Rhapsody",
+      "percTrack": "Percussions",
+      "tempo": 72,
+      "bars": 139,
+      "playbackDurOk": true,
+      "distinctBars": 35,
+      "grooves": [
+        {
+          "sig": "H:---------------- S:---------------- K:----------------",
+          "count": 48,
+          "bars": [
+            1,
+            2,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            32,
+            33,
+            34,
+            56,
+            57,
+            58,
+            59,
+            60,
+            64,
+            65,
+            67,
+            68,
+            69,
+            74,
+            75,
+            85,
+            122,
+            130,
+            131,
+            132,
+            133,
+            134,
+            135,
+            136,
+            137,
+            139
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x---x-x-x---x---x-x-x--- S:------------------------ K:------------------------",
+          "count": 18,
+          "bars": [
+            96,
+            97,
+            98,
+            99,
+            100,
+            101,
+            104,
+            105,
+            107,
+            108,
+            109,
+            110,
+            111,
+            112,
+            113,
+            114,
+            115,
+            116
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:---------------- K:----------------",
+          "count": 13,
+          "bars": [
+            26,
+            36,
+            37,
+            38,
+            39,
+            40,
+            47,
+            48,
+            50,
+            51,
+            126,
+            127,
+            128
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x---x-x-x-x-x-x- S:---------------- K:----------------",
+          "count": 8,
+          "bars": [
+            25,
+            27,
+            29,
+            35,
+            43,
+            44,
+            52,
+            123
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x------- S:---------------- K:----------------",
+          "count": 8,
+          "bars": [
+            30,
+            78,
+            80,
+            82,
+            83,
+            84,
+            89,
+            129
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x---x---x---x--- S:---------------- K:----------------",
+          "count": 4,
+          "bars": [
+            24,
+            62,
+            86,
+            125
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x---x-x-x---x--- S:---------------- K:----------------",
+          "count": 4,
+          "bars": [
+            53,
+            61,
+            70,
+            124
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x----------------------- S:------------------------ K:------------------------",
+          "count": 3,
+          "bars": [
+            118,
+            119,
+            120
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-xxx- S:---------------- K:----------------",
+          "count": 2,
+          "bars": [
+            28,
+            42
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:-------- S:-------- K:--------",
+          "count": 2,
+          "bars": [
+            31,
+            66
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-----x-x---x--- S:---------------- K:----------------",
+          "count": 2,
+          "bars": [
+            45,
+            90
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x---x--- S:---------------- K:----------------",
+          "count": 2,
+          "bars": [
+            49,
+            91
+          ],
+          "hasTom": false
+        }
+      ],
+      "fillCount": 19,
+      "fills": [
+        {
+          "bar": 41,
+          "sig": "H:x-x-x-x-x---x-x- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": true
+        },
+        {
+          "bar": 46,
+          "sig": "H:x-x-x-xxxxxxxxxx S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 54,
+          "sig": "H:x----x-xx---x--- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": true
+        },
+        {
+          "bar": 71,
+          "sig": "H:x-x-x---x---x--- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 72,
+          "sig": "H:x---x-x-x---x-x- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 73,
+          "sig": "H:x---x---x------- S:----------o----- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 76,
+          "sig": "H:------------x--- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 77,
+          "sig": "H:x---x---x-----x- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 87,
+          "sig": "H:x---x---x------- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 88,
+          "sig": "H:------------x-x- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 92,
+          "sig": "H:x---x--xx---x--- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 93,
+          "sig": "H:x---x---x--xx--- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 94,
+          "sig": "H:x---x---x---x--x S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 95,
+          "sig": "H:xx-xxx-xxx-xxx-- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": true
+        },
+        {
+          "bar": 102,
+          "sig": "H:x---x-x-----x-x-x-x-x-x- S:------------------------ K:------------------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 103,
+          "sig": "H:x---x------- S:------o----- K:------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 106,
+          "sig": "H:x---x-x-----x---x---x--- S:------------------o----- K:------------------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 117,
+          "sig": "H:x---x-x-x---x---x-x----- S:------------------------ K:------------------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 138,
+          "sig": "H:x--------------- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        }
+      ],
+      "sectionCount": 3,
+      "sections": [
+        {
+          "label": "gtrs enter",
+          "startBar": 42
+        },
+        {
+          "label": "tempo 144",
+          "startBar": 55
+        },
+        {
+          "label": "tempo 207",
+          "startBar": 96
+        }
+      ]
+    },
+    {
+      "file": "Coldplay-Yellow-06-26-2025.gp",
+      "artist": "Coldplay",
+      "title": "Yellow",
+      "percTrack": "Drums | Yamaha Maple Custom | Will Champion",
+      "tempo": 87,
+      "bars": 97,
+      "playbackDurOk": true,
+      "distinctBars": 12,
+      "grooves": [
+        {
+          "sig": "H:x-o-o-o-o-o-o-o- S:----o-------o--- K:o-------o-o-----",
+          "count": 18,
+          "bars": [
+            5,
+            7,
+            9,
+            11,
+            41,
+            43,
+            45,
+            47,
+            71,
+            73,
+            75,
+            77,
+            79,
+            81,
+            83,
+            85,
+            87,
+            89
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:o-o-o-o-o-o-o-o- S:----o-------o--- K:o-------o-o-----",
+          "count": 18,
+          "bars": [
+            6,
+            8,
+            10,
+            12,
+            42,
+            44,
+            46,
+            48,
+            72,
+            74,
+            76,
+            78,
+            80,
+            82,
+            84,
+            86,
+            88,
+            90
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:----o-------o--- K:o-o-----o-o-----",
+          "count": 13,
+          "bars": [
+            13,
+            15,
+            17,
+            19,
+            21,
+            23,
+            25,
+            27,
+            29,
+            49,
+            51,
+            53,
+            57
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:---------------- S:---------------- K:----------------",
+          "count": 12,
+          "bars": [
+            1,
+            2,
+            3,
+            4,
+            40,
+            70,
+            92,
+            93,
+            94,
+            95,
+            96,
+            97
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-o- S:----o-------o--- K:o-o-----o-o-----",
+          "count": 12,
+          "bars": [
+            14,
+            16,
+            18,
+            20,
+            22,
+            24,
+            26,
+            28,
+            30,
+            50,
+            52,
+            58
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:----o-------o--- K:o-----o---o-----",
+          "count": 10,
+          "bars": [
+            33,
+            35,
+            36,
+            37,
+            38,
+            63,
+            65,
+            66,
+            67,
+            68
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:o-o-o-o-o-o-o-o- S:----o-------o--- K:o-o-----o-o-----",
+          "count": 4,
+          "bars": [
+            31,
+            32,
+            61,
+            62
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x--------------- S:---------------- K:o---------------",
+          "count": 3,
+          "bars": [
+            39,
+            69,
+            91
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:----o-------o--o K:o-----o---o-----",
+          "count": 2,
+          "bars": [
+            34,
+            64
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:----o--o----o--o K:o-o-----o-o-----",
+          "count": 2,
+          "bars": [
+            55,
+            56
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-x- S:----o-------o--o K:o-o-----o-o-----",
+          "count": 2,
+          "bars": [
+            59,
+            60
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x-x-x-o- S:----o--o----o--- K:o-o-----o-o-----",
+          "count": 1,
+          "bars": [
+            54
+          ],
+          "hasTom": false
+        }
+      ],
+      "fillCount": 1,
+      "fills": [
+        {
+          "bar": 54,
+          "sig": "H:x-x-x-x-x-x-x-o- S:----o--o----o--- K:o-o-----o-o-----",
+          "tomHits": 0,
+          "preSection": false
+        }
+      ],
+      "sectionCount": 10,
+      "sections": [
+        {
+          "label": "Intro",
+          "startBar": 1
+        },
+        {
+          "label": "Instrumental 1",
+          "startBar": 5
+        },
+        {
+          "label": "Verse 1",
+          "startBar": 13
+        },
+        {
+          "label": "Chorus 1",
+          "startBar": 33
+        },
+        {
+          "label": "Interlude 1",
+          "startBar": 41
+        },
+        {
+          "label": "Verse 2",
+          "startBar": 49
+        },
+        {
+          "label": "Chorus 2",
+          "startBar": 63
+        },
+        {
+          "label": "Interlude 2",
+          "startBar": 71
+        },
+        {
+          "label": "Outro",
+          "startBar": 79
+        },
+        {
+          "label": "Outro",
+          "startBar": 91
+        }
+      ]
+    },
+    {
+      "file": "I'm Yours - Jason Mraz.gp",
+      "artist": "Jason Mraz",
+      "title": "I'm Yours",
+      "percTrack": "Drums",
+      "tempo": 73,
+      "bars": 76,
+      "playbackDurOk": true,
+      "distinctBars": 8,
+      "grooves": [
+        {
+          "sig": "H:---------------- S:---------------- K:----------------",
+          "count": 33,
+          "bars": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            47,
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            68
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-xxxxx-x-x- S:---------------- K:----------------",
+          "count": 31,
+          "bars": [
+            23,
+            24,
+            25,
+            27,
+            28,
+            31,
+            32,
+            33,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            43,
+            44,
+            45,
+            59,
+            60,
+            61,
+            62,
+            63,
+            64,
+            65,
+            70,
+            71,
+            73,
+            74,
+            75,
+            76
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:-x-x-x-xxxxx-x-x S:oo-------------- K:----------------",
+          "count": 6,
+          "bars": [
+            22,
+            26,
+            29,
+            34,
+            66,
+            69
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x--------------- S:---------------- K:----------------",
+          "count": 2,
+          "bars": [
+            30,
+            67
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:-------xxxx-x-x- S:---------------- K:----------------",
+          "count": 1,
+          "bars": [
+            21
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-xxxxx-x--- S:---------------- K:----------------",
+          "count": 1,
+          "bars": [
+            42
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-x-x------- S:---------------- K:----------------",
+          "count": 1,
+          "bars": [
+            46
+          ],
+          "hasTom": false
+        },
+        {
+          "sig": "H:x-x-x-xxx-x-xxxx S:---------------- K:----------------",
+          "count": 1,
+          "bars": [
+            72
+          ],
+          "hasTom": false
+        }
+      ],
+      "fillCount": 4,
+      "fills": [
+        {
+          "bar": 21,
+          "sig": "H:-------xxxx-x-x- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": true
+        },
+        {
+          "bar": 42,
+          "sig": "H:x-x-x-xxxxx-x--- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        },
+        {
+          "bar": 46,
+          "sig": "H:x-x-x-x-x------- S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": true
+        },
+        {
+          "bar": 72,
+          "sig": "H:x-x-x-xxx-x-xxxx S:---------------- K:----------------",
+          "tomHits": 0,
+          "preSection": false
+        }
+      ],
+      "sectionCount": 11,
+      "sections": [
+        {
+          "label": "Intro",
+          "startBar": 2
+        },
+        {
+          "label": "Verse 1",
+          "startBar": 6
+        },
+        {
+          "label": "Chorus 1",
+          "startBar": 14
+        },
+        {
+          "label": "Interlude",
+          "startBar": 18
+        },
+        {
+          "label": "Verse 2",
+          "startBar": 22
+        },
+        {
+          "label": "Chorus 2",
+          "startBar": 31
+        },
+        {
+          "label": "Bridge",
+          "startBar": 39
+        },
+        {
+          "label": "Verse 3",
+          "startBar": 47
+        },
+        {
+          "label": "Breakdown Chorus",
+          "startBar": 55
+        },
+        {
+          "label": "Chorus 3",
+          "startBar": 59
+        },
+        {
+          "label": "Outro",
+          "startBar": 69
+        }
+      ]
+    }
+  ],
+  "crossSongReuse": [
+    {
+      "sig": "H:---------------- S:---------------- K:----------------",
+      "songs": [
+        {
+          "file": "Angra - Nothing To Say.gp",
+          "count": 8
+        },
+        {
+          "file": "Bohemian Rhapsody with sections.gp",
+          "count": 48
+        },
+        {
+          "file": "Coldplay-Yellow-06-26-2025.gp",
+          "count": 12
+        },
+        {
+          "file": "I'm Yours - Jason Mraz.gp",
+          "count": 33
+        }
+      ]
+    },
+    {
+      "sig": "H:x--------------- S:---------------- K:o---------------",
+      "songs": [
+        {
+          "file": "charlie-brown-jr-charlie-brown-jr-zoio-de-lula_1419361331 (completa without timbale and without bell and without sticks) 76bpm - 79 bars - revisado Leo Drum stems - Jan-2026-FINAL.gp",
+          "count": 2
+        },
+        {
+          "file": "Coldplay-Yellow-06-26-2025.gp",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "sig": "H:x-x-x-x-x------- S:---------------- K:----------------",
+      "songs": [
+        {
+          "file": "Bohemian Rhapsody with sections.gp",
+          "count": 8
+        },
+        {
+          "file": "I'm Yours - Jason Mraz.gp",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

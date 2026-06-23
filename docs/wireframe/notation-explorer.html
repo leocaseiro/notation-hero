@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Notation model explorer (low-fi)</title>
+<style>
+:root{--teal:#0F766E;--teal2:#2DD4BF;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--bg:#f9fafb;--card:#fff}
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;color:var(--ink);background:var(--bg)}
+header{position:sticky;top:0;background:var(--card);border-bottom:1px solid var(--line);padding:.7rem 1rem;display:flex;flex-wrap:wrap;gap:.6rem 1.1rem;align-items:center;z-index:5}
+header h1{font-size:1rem;margin:0 1rem 0 0;color:var(--teal);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem 1.1rem;align-items:center;font-size:.85rem}
+.controls label{display:flex;gap:.35rem;align-items:center;cursor:pointer}
+select{font:inherit;font-size:.85rem;padding:.15rem .4rem;border:1px solid var(--line);border-radius:6px;background:#fff}
+main{padding:1rem;max-width:1000px;margin:0 auto}
+.note{font-size:.8rem;color:var(--muted);margin:0 0 1rem;line-height:1.5}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;margin-bottom:.7rem}
+.card.hiddenrow{opacity:.65;border-style:dashed;background:#fcfcfd}
+.cardhead{display:flex;flex-wrap:wrap;gap:.5rem;align-items:baseline}
+.badge{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.03em;padding:.12rem .42rem;border-radius:5px}
+.badge.song{background:#eef2ff;color:#4338ca}
+.badge.part{background:#f3f4f6;color:#6b7280}
+.badge.lesson{background:#ecfdf5;color:#047857}
+.badge.pattern{background:#fff7ed;color:#c2410c}
+.title{font-weight:600}
+.idtag{font-family:ui-monospace,SFMono-Regular,monospace;font-size:.72rem;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.4rem}
+.chip{font-size:.72rem;background:#f1f5f9;border-radius:20px;padding:.1rem .55rem;color:#334155}
+.sub{margin-top:.55rem;font-size:.82rem}
+.sub h4{margin:.35rem 0 .2rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.steplist{list-style:none;margin:0;padding:0}
+.steplist li{padding:.18rem 0;border-bottom:1px dashed var(--line);display:flex;gap:.5rem;align-items:baseline;font-size:.82rem}
+.allfields{display:none;margin-top:.55rem;border-top:1px dashed var(--line);padding-top:.45rem}
+body.showall .allfields{display:block}
+.fieldgrid{display:grid;grid-template-columns:max-content 1fr;gap:.12rem .9rem;font-size:.76rem;font-family:ui-monospace,SFMono-Regular,monospace;align-items:start}
+.fk{color:var(--muted)}
+.fv{color:var(--ink);word-break:break-word}
+.fv.null{color:#cbd5e1}
+.json{white-space:pre-wrap;background:#f8fafc;border:1px solid var(--line);border-radius:6px;padding:.3rem .5rem;font-size:.72rem;margin:.1rem 0}
+code{font-family:ui-monospace,SFMono-Regular,monospace;font-size:.92em;background:#f1f5f9;border-radius:4px;padding:0 .25rem}
+</style>
+</head>
+<body>
+<header>
+  <h1>Notation model — low-fi explorer</h1>
+  <div class="controls">
+    <label><input type="checkbox" id="showall"> Show all fields</label>
+    <label><input type="checkbox" id="showhidden"> Show hidden (parts/drafts)</label>
+    <label>Kind <select id="kindf"><option value="">all</option><option>song</option><option>lesson</option><option>pattern</option><option>part</option></select></label>
+    <span class="idtag" id="count"></span>
+  </div>
+</header>
+<main>
+  <p class="note">Sample data mirrors <code>2026-06-17-notation-model-draft.sql</code>. Toggle <b>Show all fields</b> to inspect every column (incl. <code>data</code> JSON + the linked <code>source</code>). <b>Show hidden</b> reveals non-<code>listable</code> rows — the song parts and the private draft — that never appear in browse/search.</p>
+  <div id="list"></div>
+</main>
+<script>
+const sources=[
+ {id:'src-yellow-gp',format:'gp',s3_key:'catalog/yellow/source.gp',alphatex:null,bytes:48213},
+ {id:'src-hihat-8',format:'alphatex',s3_key:null,alphatex:':8 x x x x x x x x',bytes:null},
+ {id:'src-rock8-kick',format:'alphatex',s3_key:null,alphatex:':8 (x.36) x (x.36) x (x.36) x (x.36) x',bytes:null},
+ {id:'src-rock8-full',format:'alphatex',s3_key:null,alphatex:':8 (x.42 x.36) x (x.42 x.38) x',bytes:null},
+ {id:'src-paradiddle',format:'alphatex',s3_key:null,alphatex:'R L R R  L R L L',bytes:null},
+ {id:'src-tom-fill',format:'alphatex',s3_key:null,alphatex:':16 38 40 43 45',bytes:null},
+ {id:'src-cmaj-scale',format:'alphatex',s3_key:null,alphatex:'C4 D4 E4 F4 G4 A4 B4 C5',bytes:null},
+ {id:'src-gmaj-scale',format:'alphatex',s3_key:null,alphatex:'G4 A4 B4 C5 D5 E5 F#5 G5',bytes:null},
+ {id:'src-user-loop',format:'gp',s3_key:'quarantine/u-123/loop.gp',alphatex:null,bytes:9210},
+];
+const notations=[
+ {id:'yellow',kind:'song',title:'Yellow',parent_id:null,source_id:'src-yellow-gp',start_bar:null,end_bar:null,sort_order:null,listable:true,level:3,artist:'Coldplay',bpm:86,time_signature_numerator:4,time_signature_denominator:4,genre:'rock',musical_key:null,instruments:['guitar','drums'],skill:null,tags:null,lesson_type:null,pattern_kind:null,family:null,origin:'curated',status:'published',license:'royalty-free',has_audio:false,has_video:false,data:{album:'Parachutes',year:2000,sections:[{label:'Intro',startBar:1,endBar:4},{label:'Chorus',startBar:17,endBar:24}]},created_by:null},
+ {id:'yellow-intro',kind:'part',title:'Intro',parent_id:'yellow',source_id:'src-yellow-gp',start_bar:1,end_bar:4,sort_order:1,listable:false,level:null,artist:null,bpm:86,time_signature_numerator:4,time_signature_denominator:4,genre:null,musical_key:null,instruments:['guitar','drums'],skill:null,tags:null,lesson_type:null,pattern_kind:null,family:null,origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:null,created_by:null},
+ {id:'yellow-chorus',kind:'part',title:'Chorus',parent_id:'yellow',source_id:'src-yellow-gp',start_bar:17,end_bar:24,sort_order:2,listable:false,level:null,artist:null,bpm:86,time_signature_numerator:4,time_signature_denominator:4,genre:null,musical_key:null,instruments:['guitar','drums'],skill:null,tags:null,lesson_type:null,pattern_kind:null,family:null,origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:null,created_by:null},
+ {id:'rock8-beat',kind:'lesson',title:'8th-Note Rock Beat',parent_id:null,source_id:null,start_bar:null,end_bar:null,sort_order:null,listable:true,level:1,artist:null,bpm:null,time_signature:null,genre:'rock',musical_key:null,instruments:['drums'],skill:['timing','coordination'],tags:null,lesson_type:'beat',pattern_kind:null,family:null,origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:{description:'The everyday rock groove, built one limb at a time.'},created_by:null},
+ {id:'funk-groove',kind:'lesson',title:'Funk Groove 1',parent_id:null,source_id:null,start_bar:null,end_bar:null,sort_order:null,listable:true,level:2,artist:null,bpm:null,time_signature:null,genre:'funk',musical_key:null,instruments:['drums'],skill:['independence'],tags:null,lesson_type:'beat',pattern_kind:null,family:null,origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:null,created_by:null},
+ {id:'major-scales',kind:'lesson',title:'Major Scales (RH)',parent_id:null,source_id:null,start_bar:null,end_bar:null,sort_order:null,listable:true,level:2,artist:null,bpm:null,time_signature:null,genre:null,musical_key:null,instruments:['keys'],skill:['technique'],tags:null,lesson_type:'scale',pattern_kind:null,family:null,origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:null,created_by:null},
+ {id:'hihat-8',kind:'pattern',title:'Straight 8th Hi-hats',parent_id:null,source_id:'src-hihat-8',start_bar:null,end_bar:null,sort_order:null,listable:true,level:1,artist:null,bpm:null,time_signature:null,genre:'rock',musical_key:null,instruments:['drums'],skill:null,tags:null,lesson_type:null,pattern_kind:'beat',family:'Rock',origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:{difficulty:{by:'bpm',tiers:[{upTo:90,level:1},{upTo:140,level:2},{upTo:null,level:3}]}},created_by:null},
+ {id:'rock8-kick',kind:'pattern',title:'Rock Kick Pattern',parent_id:null,source_id:'src-rock8-kick',start_bar:null,end_bar:null,sort_order:null,listable:true,level:1,artist:null,bpm:null,time_signature:null,genre:'rock',musical_key:null,instruments:['drums'],skill:null,tags:null,lesson_type:null,pattern_kind:'beat',family:'Rock',origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:null,created_by:null},
+ {id:'rock8-full',kind:'pattern',title:'8th-Note Rock Groove',parent_id:null,source_id:'src-rock8-full',start_bar:null,end_bar:null,sort_order:null,listable:true,level:2,artist:null,bpm:null,time_signature:null,genre:'rock',musical_key:null,instruments:['drums'],skill:null,tags:null,lesson_type:null,pattern_kind:'beat',family:'Rock',origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:{difficulty:{by:'bpm',tiers:[{upTo:80,level:2},{upTo:120,level:3},{upTo:null,level:4}]}},created_by:null},
+ {id:'paradiddle',kind:'pattern',title:'Single Paradiddle',parent_id:null,source_id:'src-paradiddle',start_bar:null,end_bar:null,sort_order:null,listable:true,level:2,artist:null,bpm:null,time_signature:null,genre:null,musical_key:null,instruments:['drums'],skill:null,tags:null,lesson_type:null,pattern_kind:'rudiment',family:'Diddle',origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:null,created_by:null},
+ {id:'tom-fill-1',kind:'pattern',title:'Descending Tom Fill',parent_id:null,source_id:'src-tom-fill',start_bar:null,end_bar:null,sort_order:null,listable:true,level:2,artist:null,bpm:null,time_signature:null,genre:null,musical_key:null,instruments:['drums'],skill:null,tags:null,lesson_type:null,pattern_kind:'fill',family:'Tom',origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:null,created_by:null},
+ {id:'cmaj-scale',kind:'pattern',title:'C Major Scale',parent_id:null,source_id:'src-cmaj-scale',start_bar:null,end_bar:null,sort_order:null,listable:true,level:1,artist:null,bpm:null,time_signature:null,genre:null,musical_key:'C',instruments:['keys'],skill:null,tags:null,lesson_type:null,pattern_kind:'scale',family:'major',origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:{difficulty:{by:'fingering',tiers:[{when:'hands separate',level:1},{when:'hands together',level:2}]}},created_by:null},
+ {id:'gmaj-scale',kind:'pattern',title:'G Major Scale',parent_id:null,source_id:'src-gmaj-scale',start_bar:null,end_bar:null,sort_order:null,listable:true,level:1,artist:null,bpm:null,time_signature:null,genre:null,musical_key:'G',instruments:['keys'],skill:null,tags:null,lesson_type:null,pattern_kind:'scale',family:'major',origin:'curated',status:'published',license:null,has_audio:false,has_video:false,data:null,created_by:null},
+ {id:'u123-loop',kind:'pattern',title:'My practice loop',parent_id:null,source_id:'src-user-loop',start_bar:null,end_bar:null,sort_order:null,listable:false,level:null,artist:null,bpm:null,time_signature:null,genre:null,musical_key:null,instruments:['drums'],skill:null,tags:null,lesson_type:null,pattern_kind:'beat',family:null,origin:'user-upload',status:'draft',license:null,has_audio:false,has_video:false,data:null,created_by:'user-123'},
+];
+const steps=[
+ {lesson_id:'rock8-beat',pattern_id:'hihat-8',sort_order:1,start_bpm:60,goal_bpm:120},
+ {lesson_id:'rock8-beat',pattern_id:'rock8-kick',sort_order:2,start_bpm:60,goal_bpm:120},
+ {lesson_id:'rock8-beat',pattern_id:'rock8-full',sort_order:3,start_bpm:60,goal_bpm:120},
+ {lesson_id:'funk-groove',pattern_id:'rock8-kick',sort_order:1,start_bpm:70,goal_bpm:130},
+ {lesson_id:'funk-groove',pattern_id:'hihat-8',sort_order:2,start_bpm:70,goal_bpm:130},
+ {lesson_id:'major-scales',pattern_id:'cmaj-scale',sort_order:1,start_bpm:null,goal_bpm:null},
+ {lesson_id:'major-scales',pattern_id:'gmaj-scale',sort_order:2,start_bpm:null,goal_bpm:null},
+];
+const links=[{from_id:'yellow',to_id:'rock8-full',relation:'uses'}];
+
+const byId=Object.fromEntries(notations.map(n=>[n.id,n]));
+const srcOf=id=>sources.find(s=>s.id===id);
+const stepsOf=lid=>steps.filter(s=>s.lesson_id===lid).sort((a,b)=>a.sort_order-b.sort_order);
+const partsOf=sid=>notations.filter(n=>n.parent_id===sid).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0));
+const lessonsUsing=pid=>[...new Set(steps.filter(s=>s.pattern_id===pid).map(s=>s.lesson_id))];
+const linksFrom=id=>links.filter(l=>l.from_id===id);
+const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function fmt(v){
+  if(v===null||v===undefined) return '<span class="fv null">&empty; null</span>';
+  if(Array.isArray(v)) return '<span class="fv">{'+v.map(esc).join(', ')+'}</span>';
+  if(typeof v==='object') return '<div class="json fv">'+esc(JSON.stringify(v,null,2))+'</div>';
+  return '<span class="fv">'+esc(v)+'</span>';
+}
+const FIELD_ORDER=['id','kind','title','parent_id','source_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','lesson_type','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
+function chipsFor(n){
+  const c=[];
+  if(n.level!=null)c.push('level '+n.level);
+  if(n.bpm)c.push(n.bpm+' bpm');
+  if(n.time_signature)c.push(n.time_signature);
+  if(n.musical_key)c.push('key '+n.musical_key);
+  if(n.lesson_type)c.push('lesson_type: '+n.lesson_type);
+  if(n.pattern_kind)c.push('pattern_kind: '+n.pattern_kind);
+  if(n.family)c.push(n.family);
+  if(n.instruments)c.push(n.instruments.join('+'));
+  if(n.origin!=='curated')c.push(n.origin);
+  if(n.status!=='published')c.push(n.status);
+  if(!n.listable)c.push('not listable');
+  return c;
+}
+function subsFor(n){
+  let s='';
+  if(n.kind==='lesson'){
+    const ss=stepsOf(n.id);
+    s+='<div class="sub"><h4>steps &mdash; '+ss.length+' (lesson_step &rarr; pattern)</h4><ul class="steplist">'+ss.map(x=>{const p=byId[x.pattern_id];return '<li><b>#'+x.sort_order+'</b> '+esc(p?p.title:x.pattern_id)+' <span class="idtag">'+esc(x.pattern_id)+(x.start_bpm?(' &middot; ladder '+x.start_bpm+'&rarr;'+x.goal_bpm):'')+'</span></li>';}).join('')+'</ul></div>';
+  }
+  if(n.kind==='song'){
+    const ps=partsOf(n.id);
+    if(ps.length)s+='<div class="sub"><h4>parts &mdash; '+ps.length+' (parent_id composition)</h4><ul class="steplist">'+ps.map(p=>'<li><b>#'+p.sort_order+'</b> '+esc(p.title)+' <span class="idtag">bars '+p.start_bar+'&ndash;'+p.end_bar+'</span></li>').join('')+'</ul></div>';
+    const lk=linksFrom(n.id);
+    if(lk.length)s+='<div class="sub"><h4>links (notation_link)</h4><span class="idtag">'+lk.map(l=>esc(l.relation)+' &rarr; '+esc(l.to_id)).join(', ')+'</span></div>';
+  }
+  if(n.kind==='pattern'){
+    if(n.data&&n.data.difficulty){const d=n.data.difficulty;s+='<div class="sub"><h4>difficulty curve &mdash; by '+esc(d.by)+'</h4><span class="idtag">'+d.tiers.map(t=>(t.upTo!==undefined?('&le;'+(t.upTo==null?'&infin;':t.upTo)):esc(t.when))+' = L'+t.level).join('  &middot;  ')+'</span></div>';}
+    const lu=lessonsUsing(n.id);
+    if(lu.length)s+='<div class="sub"><h4>used in lessons</h4><span class="idtag">'+lu.map(esc).join(', ')+'</span></div>';
+  }
+  return s;
+}
+function card(n){
+  const src=srcOf(n.source_id);
+  let af='<div class="allfields"><div class="fieldgrid">'+FIELD_ORDER.map(k=>'<span class="fk">'+k+'</span>'+fmt(n[k])).join('')+'</div>';
+  if(src)af+='<h4 style="margin:.45rem 0 .15rem;font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;color:#6b7280">&rarr; source: '+esc(src.id)+'</h4><div class="fieldgrid">'+['format','s3_key','alphatex','bytes'].map(k=>'<span class="fk">'+k+'</span>'+fmt(src[k])).join('')+'</div>';
+  af+='</div>';
+  return '<div class="card'+(n.listable?'':' hiddenrow')+'"><div class="cardhead"><span class="badge '+n.kind+'">'+n.kind+'</span><span class="title">'+esc(n.title)+'</span><span class="idtag">'+esc(n.id)+'</span></div><div class="chips">'+chipsFor(n).map(c=>'<span class="chip">'+esc(c)+'</span>').join('')+'</div>'+subsFor(n)+af+'</div>';
+}
+function render(){
+  const kf=document.getElementById('kindf').value;
+  const sh=document.getElementById('showhidden').checked;
+  const rows=notations.filter(n=>(!kf||n.kind===kf)&&(sh||n.listable));
+  document.getElementById('list').innerHTML=rows.map(card).join('');
+  document.getElementById('count').textContent=rows.length+' of '+notations.length+' notations';
+}
+document.getElementById('showall').addEventListener('change',e=>document.body.classList.toggle('showall',e.target.checked));
+document.getElementById('showhidden').addEventListener('change',render);
+document.getElementById('kindf').addEventListener('change',render);
+render();
+</script>
+</body>
+</html>

@@ -12,20 +12,20 @@ Let the app accept **MIDI files** and show them as notation in **AlphaTab** (whi
 
 - **Bridge:** MIDI → MusicXML via **music21** (BSD-3). AlphaTab renders MusicXML.
 - **Drums:** our own **pitch-keyed drum-map** layer (read channel-10 MIDI pitch → staff line + notehead + percussion clef). Do **not** rely on music21's lossy percussion labels.
-- **Hosting:** **$0** — offline CI for the catalogue; **Pyodide/WASM** in-browser for uploads. No Python server.
+- **Hosting:** **$0** — offline CI for the catalog; **Pyodide/WASM** in-browser for uploads. No Python server.
 - **Guitar Pro:** if a `.gp` download is ever needed, use AlphaTab's `Gp7Exporter` (no MIDI→GP converter to build).
 
 ## Phases
 
-### Phase 1 — Offline catalogue converter (MVP, lowest risk)
+### Phase 1 — Offline catalog converter (MVP, lowest risk)
 
-Goal: a reusable Python converter that turns a catalogue MIDI into AlphaTab-ready MusicXML, run in CI.
+Goal: a reusable Python converter that turns a catalog MIDI into AlphaTab-ready MusicXML, run in CI.
 
 1. **`midi_to_musicxml` module** — parse with music21, emit MusicXML. → _verify: well-formed MusicXML 4.0; pitched parts correct._
 2. **Drum-map layer** — read channel-10 pitches directly; apply full GM `pitch → (display-step, octave, notehead)` table + percussion clef, **and emit `<midi-unpitched>` per drum** (a distinct `UnpitchedPercussion` instrument per pitch, incl. ride — music21 writes none by default, so MIDI notes drop to 0 in GP). → _verify: ride/toms/open-hat on distinct lines **and** GP notes read the real GM numbers (not 0), on a real-kit test corpus._
-3. **CI conversion step** (GitHub Actions) — convert catalogue MIDIs → commit static MusicXML. → _verify: headless AlphaTab renders each output, drums included._
+3. **CI conversion step** (GitHub Actions) — convert catalog MIDIs → commit static MusicXML. → _verify: headless AlphaTab renders each output, drums included._
 
-**Done when:** catalogue MIDIs render correctly (incl. drums) in AlphaTab from committed MusicXML; golden-file tests pass.
+**Done when:** catalog MIDIs render correctly (incl. drums) in AlphaTab from committed MusicXML; golden-file tests pass.
 
 ### Phase 2 — In-browser conversion (Pyodide) for user uploads
 
@@ -52,4 +52,4 @@ Goal: client-side MIDI → MusicXML → AlphaTab, $0, no backend.
 ## Out of scope (for now)
 
 - MIDI→Guitar Pro converters (PyGuitarPro/TuxGuitar) — unnecessary; AlphaTab exports GP.
-- On-demand user uploads UI until pre-beta — catalogue (Phase 1) ships first.
+- On-demand user uploads UI until pre-beta — catalog (Phase 1) ships first.

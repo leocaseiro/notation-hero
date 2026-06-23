@@ -1,7 +1,7 @@
 # NotationHero — Admin / CMS Approach (area K) — Decision
 
 > [!IMPORTANT]
-> 🗄️ **Datastore update (2026-06-09):** this record predates the catalogue-store decision. The song/lesson **catalogue moved DynamoDB → Neon Postgres + JSONB** (DynamoDB is now per-user data only; Mongo/DocumentDB dropped). Read every "DynamoDB as the catalog store" reference below as **superseded** — see `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md` + `docs/decisions/decision-registry.md`. Everything else (React-Admin choice, "why not a headless CMS", S3/Lambda/CloudFront/edge-auth architecture, AWS-coverage matrix, license analysis) still stands.
+> 🗄️ **Datastore update (2026-06-09):** this record predates the catalog-store decision. The song/lesson **catalog moved DynamoDB → Neon Postgres + JSONB** (DynamoDB is now per-user data only; Mongo/DocumentDB dropped). Read every "DynamoDB as the catalog store" reference below as **superseded** — see `docs/decisions/2026-06-09-catalog-store-postgres-neon.md` + `docs/decisions/decision-registry.md`. Everything else (React-Admin choice, "why not a headless CMS", S3/Lambda/CloudFront/edge-auth architecture, AWS-coverage matrix, license analysis) still stands.
 
 > **Status:** ✅ **DECIDED 2026-06-05** — Track 4 (CMS tooling). Approach locked; implementation can proceed in parallel with Track 3 (schema finalize).
 > **Created:** 2026-06-05 · **Owner:** leocaseiro
