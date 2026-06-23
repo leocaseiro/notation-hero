@@ -1193,6 +1193,10 @@ function renderPattern(id){
       </div>
       ${historyCard(it)}
     </div>
+    <div class="card" style="border-color:#b5781e;background:rgba(181,120,30,.08)">
+      <h3 style="color:#c98a2e"><span class="material-symbols-outlined">warning</span> Router TODO · SD-31 / NH-221</h3>
+      <div style="font-size:13px;line-height:1.55">Labels now say <b>${k.label}</b>, but the <b>route</b> still uses the umbrella word: <code>#/pattern/${it.id}</code>. It should use the kind — <code>#/${it.pattern_kind||'kind'}/${it.id}</code> (or nested, e.g. <code>#/lesson/${it.pattern_kind||'kind'}/${it.id}</code>). Not changed yet — tracked as <b>NH-221</b>.</div>
+    </div>
     ${diff?`<div class="card"><h3><span class="material-symbols-outlined">trending_up</span> Difficulty <span style="font-weight:400;color:var(--faint)">· by ${esc(diff.by)}</span></h3>
       ${diff.tiers.map(t=>`<div class="part"><div style="flex:1"><b>${t.upTo!==undefined?(t.upTo==null?'fastest':'up to '+t.upTo+(diff.by==='bpm'?' BPM':'')):esc(t.when)}</b></div>${signedIn()&&t.score!==undefined?donut(t.score):''}<span class="lvlpill">L${t.level}</span></div>`).join('')}
       <small style="color:var(--faint);display:block;margin-top:6px">Stored in <code>data.difficulty {by, tiers}</code> — a lesson step's level = this curve at the step's goal BPM.</small></div>`:''}

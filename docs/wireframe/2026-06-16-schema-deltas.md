@@ -67,6 +67,7 @@ The round-by-round log below is **historical**. After the locked Playable model 
 | SD-29 | — | ✅ resolved — component voices `listable:false` |
 | SD-30 | — | ✅ resolved — playable_link relation vocabulary (uses/variation/similar) |
 | 🔤 Rename | [NH-220](https://leocaseiro.atlassian.net/browse/NH-220) | "catalog" (USA) spelling — wireframe swept 2026-06-23; repo-wide doc files + `CatalogueFilter` type remain |
+| SD-31 | [NH-221](https://leocaseiro.atlassian.net/browse/NH-221) | router/UI uses `pattern_kind`, not `pattern` (e.g. `#/fill/123`, not `#/pattern/123`) — a "Router TODO" warning is shown on the pattern page so it's not forgotten |
 
 > **Future note (per Leo, 2026-06-23):** a per-**relationship** description may be wanted later (a note on *why* two playables are `similar`, or a teaching note on a `uses` link). Cheapest path when needed: a `note` text field on `playable_link` — no new table. Not added yet (YAGNI).
 
