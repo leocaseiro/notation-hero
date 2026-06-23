@@ -1188,7 +1188,7 @@ function renderPattern(id){
         </div>
         ${mediaLinks(it)}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play pattern</button>
+          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play ${kindLabel(it)}</button>
         </div>
       </div>
       ${historyCard(it)}
