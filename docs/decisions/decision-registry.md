@@ -40,6 +40,7 @@ The catalog **wireframe** (`docs/wireframe/`) — a single-file low-fi clickable
 - `E-codeql-guard-impl` → **✅ done · 🤖**. A `visibility-check` job runs `gh api repos/${{ github.repository }} --jq .visibility`, exports it as a job output, and the `analyze` job is gated `if: needs.visibility-check.outputs.visibility == 'public'` — so CodeQL and its SARIF upload auto-disable on a private transition (no GitHub Advanced Security bill), covering `schedule` events specifically (DACI L9 §215).
 
 **Notes:** `workflow_dispatch` was added beyond the registry's "weekly schedule + push-to-main" text — with no `pull_request` trigger it's the only way to validate a run before the weekly cron. `AGENTS.md` is unchanged: it documents the local pre-commit hooks (gitleaks/semgrep), and CodeQL is CI-only/out-of-band, so it does not belong in that list.
+
 ### 2026-06-23 — CI/CD: GitHub-OIDC Pulumi deploy + self-managed S3 backend (NH-206)
 
 **PR #64.** **Revises** the 2026-06-21 entry below: _"`pulumi up` … AWS creds + Pulumi passphrase are local-only, never CI"_ — `pulumi up` now **also runs in CI** (local deploys remain). Approved by leocaseiro 2026-06-23.
@@ -385,7 +386,7 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 | L7-master-trigger       | Fix the `master`/`main` trigger so all on.push.branches / merge_group / OIDC trust-policy refs use refs/heads/master.                                                | ✅ done             | 🤖  | DACI:136 |     |
 | L7-merge-queue          | Use a merge-queue (`merge_group`) so two independently-green parallel-agent PRs can't combine into a broken master.                                                  | ✅ wired            | 🤖  | DACI:136 |     |
 | L7-merge-queue-fallback | If GitHub plan tier lacks merge_group, downgrade to branch-protection + linear history + required reviews until plan upgrade.                                        | 💤 deferred-trigger | —   | DACI:181 |     |
-| L7-oidc                 | OIDC stays reserved for deploy.yml (deploy-only short-lived AWS credential auth, not used in non-deploy CI).                                                         | 💤 deferred-trigger | —   | DACI:136 |     |
+| L7-oidc                 | OIDC stays reserved for deploy.yml (deploy-only short-lived AWS credential auth, not used in non-deploy CI).                                                         | ✅ done             | 🤖  | DACI:136 |     |
 | L7-reject-matrix        | Reject per-layer CI matrix (N-times install cost on a skeleton) and full hermetic/no-internet CI — defer until real code exists.                                     | 💤 deferred-trigger | —   | DACI:136 |     |
 | L7-set-shas             | Wire nrwl/nx-set-shas@v4 (or explicit NX_BASE/NX_HEAD) so nx affected gets correct base SHAs on pull_request, push:master, and merge_group.                          | ✅ done             | 🤖  | DACI:179 |     |
 | L7-nxcloud-cap          | Nx Cloud free tier has a monthly compute-credit cap; on exhaustion fall back to local-cache-only — never treat Nx Cloud as a hard dependency. Monitor first 30 days. | ⏳ pending          | —   | DACI:180 |     |

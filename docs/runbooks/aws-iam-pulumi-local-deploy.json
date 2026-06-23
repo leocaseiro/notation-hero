@@ -95,14 +95,55 @@
       }
     },
     {
-      "Sid": "LambdaInvokeGrantForCloudFront",
+      "Sid": "LambdaFunction",
       "Effect": "Allow",
+      "Resource": "arn:aws:lambda:ap-southeast-2:*:function:notation-hero-api",
       "Action": [
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:ListVersionsByFunction",
+        "lambda:PublishVersion",
+        "lambda:TagResource",
+        "lambda:UntagResource",
+        "lambda:ListTags",
         "lambda:AddPermission",
         "lambda:RemovePermission",
-        "lambda:GetPolicy"
+        "lambda:GetPolicy",
+        "lambda:CreateFunctionUrlConfig",
+        "lambda:GetFunctionUrlConfig",
+        "lambda:UpdateFunctionUrlConfig",
+        "lambda:DeleteFunctionUrlConfig"
+      ]
+    },
+    {
+      "Sid": "LambdaLogGroupManage",
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:logs:ap-southeast-2:*:log-group:/aws/lambda/notation-hero-api",
+        "arn:aws:logs:ap-southeast-2:*:log-group:/aws/lambda/notation-hero-api:*"
       ],
-      "Resource": "arn:aws:lambda:ap-southeast-2:*:function:notation-hero-api"
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DeleteRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:ListTagsForResource",
+        "logs:TagLogGroup",
+        "logs:UntagLogGroup",
+        "logs:ListTagsLogGroup"
+      ]
+    },
+    {
+      "Sid": "LogGroupDescribe",
+      "Effect": "Allow",
+      "Action": "logs:DescribeLogGroups",
+      "Resource": "arn:aws:logs:ap-southeast-2:*:log-group:*"
     }
   ]
 }
