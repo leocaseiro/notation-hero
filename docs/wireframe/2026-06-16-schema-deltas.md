@@ -68,6 +68,17 @@ The round-by-round log below is **historical**. After the locked Playable model 
 | SD-30 | — | ✅ resolved — playable_link relation vocabulary (uses/variation/similar) |
 | 🔤 Rename | [NH-220](https://leocaseiro.atlassian.net/browse/NH-220) | "catalog" (USA) spelling — wireframe swept 2026-06-23; repo-wide doc files + `CatalogueFilter` type remain |
 | SD-31 | [NH-221](https://leocaseiro.atlassian.net/browse/NH-221) | router/UI uses `pattern_kind`, not `pattern` (e.g. `#/fill/123`, not `#/pattern/123`) — a "Router TODO" warning is shown on the pattern page so it's not forgotten |
+| SD-32 | [NH-222](https://leocaseiro.atlassian.net/browse/NH-222) | structured song learning — a Lesson that `uses` a Song (F5); wireframe example gated on Song Parts |
+| SD-33 | [NH-223](https://leocaseiro.atlassian.net/browse/NH-223) | wireframe `artist` → `author[]` (schema already did via SD-13) · `schema` |
+| SD-34 | [NH-224](https://leocaseiro.atlassian.net/browse/NH-224) | per-instrument lesson-kind taxonomy · relates NH-218/NH-219 |
+| SD-35 | [NH-225](https://leocaseiro.atlassian.net/browse/NH-225) | gp-embedded audio → S3 ingest policy · `schema` |
+| SD-36 | [NH-226](https://leocaseiro.atlassian.net/browse/NH-226) | Rockschool 0–10 level + technique-vocab calibration |
+| SD-37 | [NH-228](https://leocaseiro.atlassian.net/browse/NH-228) | standalone pattern authoring (admin create a beat/fill/rudiment) |
+| ULID (R13) | [NH-183](https://leocaseiro.atlassian.net/browse/NH-183) | client-minted ULID PKs → folded into the Offline Sync epic (comment) |
+| `notation_tex` | rename branch | `notation_tex`/`alphatex` → `notation_alphaTex` — on `chore/nh-220-catalogue-to-catalog` |
+| Play-next | [NH-229](https://leocaseiro.atlassian.net/browse/NH-229) | play-next on the (future) play screen |
+| origin land | [NH-230](https://leocaseiro.atlassian.net/browse/NH-230) | land the `origin` decision on master (name **kept**, R2) |
+| `PATTERNS` dict | — | note: drop the vestigial `PATTERNS = {}` const + fallback refs when next touching the data layer (cleanup) |
 
 > **Future note (per Leo, 2026-06-23):** a per-**relationship** description may be wanted later (a note on *why* two playables are `similar`, or a teaching note on a `uses` link). Cheapest path when needed: a `note` text field on `playable_link` — no new table. Not added yet (YAGNI).
 
