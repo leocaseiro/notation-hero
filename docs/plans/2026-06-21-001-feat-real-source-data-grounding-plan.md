@@ -187,7 +187,7 @@ groovescribe sources, across the wireframe `index.html` and the SQL seed; the ex
 tool; the delta logging of open/flagged items.
 
 ### Deferred to Follow-Up Work
-- **Catalogue expansion** to the other real `.gp` files in the folder (Toto Africa,
+- **Catalog expansion** to the other real `.gp` files in the folder (Toto Africa,
   Hotel California, Paranoid, Man In The Mirror, Bob Marley, Green Day, Mamonas, etc.) —
   available but not the decided seed; log as available, do not import now.
 - **NH-200 algorithmic section inference** for marker-less files — separate spike.
