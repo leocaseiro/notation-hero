@@ -2,13 +2,13 @@
 
 > [!WARNING]
 > ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
-> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> (pnpm + Nx replaced Bun; the song/lesson catalog moved to **Neon Postgres + JSONB**,
 > DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
 > struck lines below.**
 >
 > **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
-> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
-> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalog-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalog-schema.md`, `AGENTS.md`.
 >
 > _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
 
@@ -147,7 +147,7 @@ The **SNS → SQS fan-out**: one event → SNS topic → (a) SQS analytics queue
 | **Lambda** (Function URLs, cold starts, event-source mappings) | **Kafka** (local Docker) + queue-vs-log model | FE framework + state (expert) |
 | **DynamoDB** (single-table, GSI, TTL, Streams) | **Kinesis / MSK / EventBridge** decision matrix | **CI/CD** basics (apply to AWS deploy) |
 | **Cognito** (PKCE, OIDC federation, JWT, Hosted UI) | **VPC / NAT / Gateway endpoints** (why serverless skips them) | **Docker** basics (reuse for Kafka/LocalStack) |
-| **SQS + SNS** (fan-out, DLQ, idempotency, visibility timeout) | ~~**DocumentDB / Atlas** doc modeling (optional detour)~~ <!-- SUPERSEDED: MongoDB/DocumentDB DROPPED 2026-06-09; catalogue = Neon Postgres + JSONB, talking-point only --> | **Kubernetes** (serverless ≠ K8s → separate project) |
+| **SQS + SNS** (fan-out, DLQ, idempotency, visibility timeout) | ~~**DocumentDB / Atlas** doc modeling (optional detour)~~ <!-- SUPERSEDED: MongoDB/DocumentDB DROPPED 2026-06-09; catalog = Neon Postgres + JSONB, talking-point only --> | **Kubernetes** (serverless ≠ K8s → separate project) |
 | **S3 + CloudFront** (OAC — the setup you've never done) | **burn-rate / error-budget** theory | **API Gateway** (use Function URL), **EC2** |
 | **CloudWatch + X-Ray** (SLI/SLO, alarms, dashboards, traces) | **Sentry** wiring for client errors | **QuickSight** (cost), **XState** (optional*) |
 | **Pulumi** (provision all of it as code) | **Terraform** HCL literacy | |
@@ -188,7 +188,7 @@ Everything fits in **this one project** except **Kafka** (local Docker, alongsid
 8. **S3 + Athena** — batch events to partitioned Parquet; SQL. *(Use case C)*
 9. **CloudWatch + X-Ray** — 2–3 SLOs, dashboard, alarms, a trace, then **burn-rate**. *(Use case B)*
 10. **Kafka (local Docker)** — produce/consume, consumer groups, offsets, replay; feel queue-vs-log. *(interview priority, off-AWS)*
-11. **(Optional)** ~~Atlas document modeling~~ <!-- SUPERSEDED: MongoDB/Atlas DROPPED 2026-06-09; do not provision Atlas. Catalogue = Neon Postgres + JSONB --> · the one XState game-mode FSM.
+11. **(Optional)** ~~Atlas document modeling~~ <!-- SUPERSEDED: MongoDB/Atlas DROPPED 2026-06-09; do not provision Atlas. Catalog = Neon Postgres + JSONB --> · the one XState game-mode FSM.
 
 ---
 

@@ -1,0 +1,227 @@
+{
+  "file": "Angra - Nothing To Say.gp",
+  "title": "Nothing To Say",
+  "artist": "Angra",
+  "album": null,
+  "tempo": 138,
+  "bars": 221,
+  "timeSig": "4/4",
+  "key": "C major",
+  "chords": [],
+  "trackCount": 9,
+  "tracks": [
+    {
+      "idx": 0,
+      "name": "Andre",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
+    },
+    {
+      "idx": 1,
+      "name": "Kiko",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
+    },
+    {
+      "idx": 2,
+      "name": "Rafael",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
+    },
+    {
+      "idx": 3,
+      "name": "Luis",
+      "isPercussion": false,
+      "tuning": [
+        43,
+        38,
+        33,
+        28
+      ],
+      "stringCount": 4,
+      "chords": [],
+      "progression": []
+    },
+    {
+      "idx": 4,
+      "name": "Ricardo",
+      "isPercussion": true,
+      "tuning": null,
+      "stringCount": null,
+      "chords": [],
+      "progression": []
+    },
+    {
+      "idx": 5,
+      "name": "Keyboard I",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
+    },
+    {
+      "idx": 6,
+      "name": "Keyboard II",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
+    },
+    {
+      "idx": 7,
+      "name": "Keyboard III",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
+    },
+    {
+      "idx": 8,
+      "name": "",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
+    }
+  ],
+  "sectionCount": 15,
+  "sections": [
+    {
+      "label": "Intro",
+      "startBar": 1,
+      "endBar": 22
+    },
+    {
+      "label": "Main Riff",
+      "startBar": 23,
+      "endBar": 34
+    },
+    {
+      "label": "Verses I",
+      "startBar": 35,
+      "endBar": 55
+    },
+    {
+      "label": "Chorus I",
+      "startBar": 56,
+      "endBar": 63
+    },
+    {
+      "label": "Verses II",
+      "startBar": 64,
+      "endBar": 86
+    },
+    {
+      "label": "Chorus II",
+      "startBar": 87,
+      "endBar": 102
+    },
+    {
+      "label": "Bridge",
+      "startBar": 103,
+      "endBar": 118
+    },
+    {
+      "label": "Pre-Solo",
+      "startBar": 119,
+      "endBar": 126
+    },
+    {
+      "label": "Guitar Solo (Kiko)",
+      "startBar": 127,
+      "endBar": 134
+    },
+    {
+      "label": "Guitar Solo (Rafael)",
+      "startBar": 135,
+      "endBar": 141
+    },
+    {
+      "label": "Orchestra Interlude",
+      "startBar": 142,
+      "endBar": 153
+    },
+    {
+      "label": "Verses III",
+      "startBar": 154,
+      "endBar": 166
+    },
+    {
+      "label": "Chorus III - (E key)",
+      "startBar": 167,
+      "endBar": 182
+    },
+    {
+      "label": "Chorus III - (G Key)",
+      "startBar": 183,
+      "endBar": 198
+    },
+    {
+      "label": "Ending",
+      "startBar": 199,
+      "endBar": 221
+    }
+  ]
+}

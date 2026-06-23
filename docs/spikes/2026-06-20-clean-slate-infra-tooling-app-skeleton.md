@@ -45,7 +45,7 @@ Per area (§2–§7): **Rec → one-line Why → concrete Cmd/config → `$0` no
 
 ### Data — Neon + DynamoDB (provisioned) + Streams
 
-- **Rec:** **Neon Postgres** (`@neondatabase/serverless` HTTP driver) for the catalogue + **DynamoDB in PROVISIONED mode** (25 RCU / 25 WCU, single-table `pk=USER#<sub>`) for per-user data + **Streams** (`NEW_AND_OLD_IMAGES`) → Lambda for the sync feed. (No table provisioned at v1 — lands at M1 as an additive adapter.)
+- **Rec:** **Neon Postgres** (`@neondatabase/serverless` HTTP driver) for the catalog + **DynamoDB in PROVISIONED mode** (25 RCU / 25 WCU, single-table `pk=USER#<sub>`) for per-user data + **Streams** (`NEW_AND_OLD_IMAGES`) → Lambda for the sync feed. (No table provisioned at v1 — lands at M1 as an additive adapter.)
 - **Why:** Neon is $0 Postgres+JSONB+tsvector with scale-to-zero and no TCP pool to warm on Lambda; the DynamoDB free tier exists **only** for provisioned mode; Stream→Lambda reads are free.
 - `**$0`:** Neon 0.5 GB + ~190 compute-hrs/mo permanent free. DynamoDB **25 GB + 25 WCU + 25 RCU always-free, provisioned-only** (on-demand bills from request #1). Streams: first 2.5M reads/mo free. ⚠️ Over-provisioned throughput **throttles, doesn't bill**; **GSIs share the same 25/25 pool\*\* — budget base table + all GSIs ≤ 25/25 (M1 concern).
 
@@ -179,7 +179,7 @@ Per area (§2–§7): **Rec → one-line Why → concrete Cmd/config → `$0` no
 
 ### TanStack Router + Query (+ Form + Table + Store)
 
-- **Rec:** all stable on `latest` — `@tanstack/react-router@1.170.16` (+ `router-plugin@1.168.18`), `react-query@5.101.0`, `react-form@1.33.0`, `react-table@8.21.3`, `react-store@0.11.0`. Router file-based; Form/Table/Store are headless (no providers). Router plugin goes **before** `react()`. (Add `@tanstack/react-virtual@3.14.3` for the catalogue table at scale.)
+- **Rec:** all stable on `latest` — `@tanstack/react-router@1.170.16` (+ `router-plugin@1.168.18`), `react-query@5.101.0`, `react-form@1.33.0`, `react-table@8.21.3`, `react-store@0.11.0`. Router file-based; Form/Table/Store are headless (no providers). Router plugin goes **before** `react()`. (Add `@tanstack/react-virtual@3.14.3` for the catalog table at scale.)
 
 ### State (§9.7)
 

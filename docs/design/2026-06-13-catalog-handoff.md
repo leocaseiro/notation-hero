@@ -2,7 +2,7 @@
 
 > **⚠ Score-cell + level visuals SUPERSEDED (2026-06-13)** — the "grade bullet (accent ring)" and the `—` / `X%` / `🏆 100%` status cell described below are replaced by the **best-score donut** (System G spectrum + **gold-100 trophy**, glow pending) and the **neutral level pill**. See [`2026-06-13-donut-spectrum-handoff.md`](2026-06-13-donut-spectrum-handoff.md).
 
-This session designed the **catalogue UI** (the "find a piece to play" surface). Flow is locked, the look/filter direction is chosen. The next session does **(1) another design review** and **(2) the lesson-steps work**.
+This session designed the **catalog UI** (the "find a piece to play" surface). Flow is locked, the look/filter direction is chosen. The next session does **(1) another design review** and **(2) the lesson-steps work**.
 
 Branch: `claude/epic-easley-b661e6` · all work committed (baby commits, all green).
 
@@ -15,7 +15,7 @@ Branch: `claude/epic-easley-b661e6` · all work committed (baby commits, all gre
 - Decisions doc: `docs/design/2026-06-13-catalog-flow-decisions.md`.
 
 ## North star
-Catalogue = **"find a piece to play"** — search/discovery of songs & lessons by type. **NOT** a progress dashboard. Score/progress is a **garnish** (per-user, DynamoDB) shown on the **detail** screen, never the list spine.
+Catalog = **"find a piece to play"** — search/discovery of songs & lessons by type. **NOT** a progress dashboard. Score/progress is a **garnish** (per-user, DynamoDB) shown on the **detail** screen, never the list spine.
 
 ---
 
@@ -57,7 +57,7 @@ Catalogue = **"find a piece to play"** — search/discovery of songs & lessons b
 - **Filter final positions** + narrow-width behaviour.
 
 ## Reference
-- Schema (authoritative): `docs/specs/2026-06-10-catalogue-schema.md`.
+- Schema (authoritative): `docs/specs/2026-06-10-catalog-schema.md`.
 - Design system (PR #23, teal/D3/states/components): tokens are inline in the mockups; full system in PR #23 branch `claude/hungry-chatterjee-a46716`.
 - Memory: [[notation_hero_catalog_ui]], [[notation_hero_design_system]], [[catalog_feature_state]] (backend Area-K — separate).
 

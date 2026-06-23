@@ -15,7 +15,7 @@
 
 2. **BUT depcruise's file-level *path/external bans* (H8–H11 + layer direction) ARE fully reproducible in pure ESLint** at equal-or-better precision — proven against identical fixtures. `import-x/no-restricted-paths` + `no-restricted-imports` caught **relative, alias, and workspace-package** forms (depcruise parity), and even caught `core→@pulumi`, which depcruise currently *misses*. So the overlap on bans is real and intentional belt-and-suspenders, not waste.
 
-3. **Suffix convention is genuinely open** and there are **two coherent, conflicting options**. PR #25 already committed *Option A* (PascalCase/camelCase split + folder-per-entity, **no role suffix**). The ecosystem evidence favours *Option B* (**kebab-case-everything + role suffix**, e.g. `catalogue-item.entity.ts`) as the most idiomatic choice for a hexagonal **Nx** repo — and it **collapses the naming lint into one rule** and dodges a real case-insensitive-filesystem trap I hit during testing. **🟦 DECIDE.**
+3. **Suffix convention is genuinely open** and there are **two coherent, conflicting options**. PR #25 already committed *Option A* (PascalCase/camelCase split + folder-per-entity, **no role suffix**). The ecosystem evidence favours *Option B* (**kebab-case-everything + role suffix**, e.g. `catalog-item.entity.ts`) as the most idiomatic choice for a hexagonal **Nx** repo — and it **collapses the naming lint into one rule** and dodges a real case-insensitive-filesystem trap I hit during testing. **🟦 DECIDE.**
 
 4. **A real collision exists in PR #25 today:** a PascalCase role-suffix file (`Brand.entity.ts`) **fails** the folder-per-entity guard (it demands a folder named `Brand.entity/`). So "keep folder-per-entity" and "adopt PascalCase role suffixes" are mutually exclusive unless `check-layout.sh` is patched.
 
@@ -219,7 +219,7 @@ So the article's blanket "ESLint can't" is mostly an artifact of testing the two
 
 | | **Option A — status quo (PR #25)** | **Option B — kebab + role suffix (ecosystem-recommended)** |
 |---|---|---|
-| Filenames | PascalCase entity *or* camelCase utility; **no role suffix** | **kebab-case everything** + role suffix: `catalogue-item.entity.ts`, `logger.port.ts` |
+| Filenames | PascalCase entity *or* camelCase utility; **no role suffix** | **kebab-case everything** + role suffix: `catalog-item.entity.ts`, `logger.port.ts` |
 | Folder-per-entity | required (`Brand/Brand.ts`) | dropped (role suffix carries the role) |
 | Lint rules | `check-file` (Pascal/camel) + `naming-convention` + bespoke `check-layout.sh` | **one** `check-file` rule → `KEBAB_CASE` |
 | Idiomatic for hexagonal+Nx | mixed (Stemmler/Nx-ADR camp) | **dominant** (Angular dropped suffixes but kept kebab; NestJS + canonical 12k★ `domain-driven-hexagon` use kebab+suffix) |
@@ -236,17 +236,17 @@ So the article's blanket "ESLint can't" is mostly an artifact of testing the two
 
 > Either option makes a **separate "PascalCase-vs-camelCase DangerJS naming task" redundant** — Option B because everything is kebab (one rule), Option A because `check-file` + `naming-convention` already encode it. Drop that task either way.
 
-**Co-located tests stack as `name.role.test.ts`** (e.g. `catalogue-item.entity.test.ts`) — empirically verified clean:
+**Co-located tests stack as `name.role.test.ts`** (e.g. `catalog-item.entity.test.ts`) — empirically verified clean:
 
 | Filename | `check-file` KEBAB + `ignoreMiddleExtensions:true` | flag `false` | Option A glob (bans kebab) |
 |---|---|---|---|
-| `catalogue-item.entity.ts` | ✅ pass | ❌ fail | ❌ fail |
-| `catalogue-item.entity.test.ts` | ✅ pass | ❌ fail | ❌ fail |
-| `catalogueItem.entity.ts` (camel) | ❌ fail | ❌ fail | ✅ pass |
-| `CatalogueItem.entity.ts` (Pascal) | ❌ fail | ❌ fail | ✅ pass |
+| `catalog-item.entity.ts` | ✅ pass | ❌ fail | ❌ fail |
+| `catalog-item.entity.test.ts` | ✅ pass | ❌ fail | ❌ fail |
+| `catalogItem.entity.ts` (camel) | ❌ fail | ❌ fail | ✅ pass |
+| `CatalogItem.entity.ts` (Pascal) | ❌ fail | ❌ fail | ✅ pass |
 
-- `ignoreMiddleExtensions:true` (**already set in PR #25**) strips **all** middle extensions (`.entity` *and* `.test`) → checks only `catalogue-item`. So one `KEBAB_CASE` rule covers source **and** stacked tests. The flag is load-bearing — `false` fails even `catalogue-item.entity.ts`.
-- Every `.test.ts`-anchored glob already handles the stack (matches the trailing `.test.ts`): Nx `production` exclusion `*.{test,spec,stories,fake}.{ts,tsx}`, depcruise `no-orphans` `\.(test|spec)\.(ts|tsx)$`, Vitest `**/*.test.{ts,tsx}`, `build:dts` `*.test.*`, and `check-layout.sh` Rule 3 (strips `.test` → finds `catalogue-item.entity.ts` sibling).
+- `ignoreMiddleExtensions:true` (**already set in PR #25**) strips **all** middle extensions (`.entity` *and* `.test`) → checks only `catalog-item`. So one `KEBAB_CASE` rule covers source **and** stacked tests. The flag is load-bearing — `false` fails even `catalog-item.entity.ts`.
+- Every `.test.ts`-anchored glob already handles the stack (matches the trailing `.test.ts`): Nx `production` exclusion `*.{test,spec,stories,fake}.{ts,tsx}`, depcruise `no-orphans` `\.(test|spec)\.(ts|tsx)$`, Vitest `**/*.test.{ts,tsx}`, `build:dts` `*.test.*`, and `check-layout.sh` Rule 3 (strips `.test` → finds `catalog-item.entity.ts` sibling).
 - This is a **point for Option B**: stacked role+test suffixes are clean with zero new tooling. Under Option A you'd use camelCase tests, and PascalCase+suffix collides with folder-per-entity.
 
 ### 6.2 Allowed unsuffixed files

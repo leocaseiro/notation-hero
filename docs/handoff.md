@@ -2,13 +2,13 @@
 
 > [!WARNING]
 > ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
-> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> (pnpm + Nx replaced Bun; the song/lesson catalog moved to **Neon Postgres + JSONB**,
 > DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
 > struck lines below.**
 >
 > **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
-> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
-> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalog-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalog-schema.md`, `AGENTS.md`.
 >
 > _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
 
@@ -25,8 +25,8 @@
   discontinued DT-1 V-Drums Tutor. Wedge vs Melodics: custom song upload
   (MIDI + Guitar Pro) and Android support.
 - ~~**Domain:** being acquired (`notation-hero.*` / `notationhero.*` — TBD)~~ <!-- SUPERSEDED: locked package namespace is @notation-hero/* (hyphen); @notationhero (no hyphen) is a typo to avoid -->
-- ~~**Stage:** pre-code. Repo currently holds docs only (`scope.md`,~~ <!-- SUPERSEDED: foundation landed (PR #7); catalogue (CMS) is the FIRST real feature — not generic pre-code -->
-  ~~`docs/design-stack.md`, this file).~~ <!-- SUPERSEDED: foundation landed; catalogue is the first real feature -->
+- ~~**Stage:** pre-code. Repo currently holds docs only (`scope.md`,~~ <!-- SUPERSEDED: foundation landed (PR #7); catalog (CMS) is the FIRST real feature — not generic pre-code -->
+  ~~`docs/design-stack.md`, this file).~~ <!-- SUPERSEDED: foundation landed; catalog is the first real feature -->
 
 ## How to resume this work later
 
@@ -60,9 +60,9 @@
 - **Native:** Capacitor shells (iOS Swift + Android Kotlin MIDI bridges, written
   from scratch). Hit scoring runs native-side; only verdict events cross the JS
   bridge.
-- ~~**Cloud (AWS, via Pulumi TS):** Lambda Function URL + DynamoDB (single-table +~~ <!-- SUPERSEDED: catalogue is Neon Postgres + JSONB (decision 2026-06-09); DynamoDB is per-user data ONLY -->
-  ~~GSI) + Cognito (Hosted UI + PKCE + Google) + SQS/SNS → S3/Athena analytics +~~ <!-- SUPERSEDED: omits Neon Postgres catalogue store -->
-  ~~CloudFront/OAC + CloudWatch/X-Ray + Sentry (client errors).~~ <!-- SUPERSEDED: omits Neon Postgres catalogue store -->
+- ~~**Cloud (AWS, via Pulumi TS):** Lambda Function URL + DynamoDB (single-table +~~ <!-- SUPERSEDED: catalog is Neon Postgres + JSONB (decision 2026-06-09); DynamoDB is per-user data ONLY -->
+  ~~GSI) + Cognito (Hosted UI + PKCE + Google) + SQS/SNS → S3/Athena analytics +~~ <!-- SUPERSEDED: omits Neon Postgres catalog store -->
+  ~~CloudFront/OAC + CloudWatch/X-Ray + Sentry (client errors).~~ <!-- SUPERSEDED: omits Neon Postgres catalog store -->
 - **Distribution:** App Store (iPad/iOS) + Play Store (Android) + PWA (Win/Mac).
 - **Default branch:** `master` (kept, not renamed to main).
 
@@ -116,7 +116,7 @@ git worktree list   # every path should now start with ~/Sites/notation-hero
 ## CI/CD plan (to build, post doc-review)
 
 1. ~~**Scaffold** `apps/web` (Vite + React 19 + TS + Vitest), proprietary LICENSE,~~ <!-- SUPERSEDED: locked structure is Nx hexagonal (core/adapters/apps/infra), not plain apps/web; Vitest is the DEFERRED L5 lane — node --test runs TODAY -->
-   ~~minimal landing so there's something to deploy.~~ <!-- SUPERSEDED: foundation PRs ship placeholders; catalogue (CMS) is the FIRST real feature -->
+   ~~minimal landing so there's something to deploy.~~ <!-- SUPERSEDED: foundation PRs ship placeholders; catalog (CMS) is the FIRST real feature -->
 2. ~~**CI workflow** (`.github/workflows/ci.yml`): install → lint (ESLint) →~~ <!-- SUPERSEDED: pipeline is pnpm + Nx task graph, not plain npm/Vite -->
    ~~typecheck (tsc) → test (Vitest) → build (Vite). Linux, path-filtered,~~ <!-- SUPERSEDED: live runner is `node --test`; Vitest is the DEFERRED L5 lane -->
    ~~concurrency-cancel, cached.~~ <!-- SUPERSEDED: rebase tooling refs onto pnpm + Nx -->
@@ -176,7 +176,7 @@ Goal: harden the plan before building. In a fresh session:
 2. Run `ce-doc-review`. It will likely flag the 3 contradictions above — that's
    expected; the resolution table is the answer.
 3. Feed findings into `design-stack.md`; fold in the friendly-notation UI design.
-4. ~~Return to the CI/CD build (scaffold → CI → AWS infra → branch protection).~~ <!-- SUPERSEDED: catalogue (CMS) is the FIRST real feature; foundation PRs ship placeholders — don't scaffold app ahead of the catalogue spec -->
+4. ~~Return to the CI/CD build (scaffold → CI → AWS infra → branch protection).~~ <!-- SUPERSEDED: catalog (CMS) is the FIRST real feature; foundation PRs ship placeholders — don't scaffold app ahead of the catalog spec -->
 
 > ⚠️ For another session to SEE `docs/design-stack.md` + `docs/handoff.md`, either
 > run it from THIS worktree, or commit `docs/` first (they're currently
@@ -187,6 +187,6 @@ Goal: harden the plan before building. In a fresh session:
 1. ⬜ Run `ce-doc-review` on `docs/design-stack.md` (user wants this before build).
 2. ⬜ ~~Confirm proposed defaults (public+proprietary / monorepo / IAM keys / bun).~~ <!-- SUPERSEDED: tooling LOCKED to pnpm + Nx (DACI 2026-06-09); Bun dropped -->
 3. ⬜ Configure AWS local creds + region (unblocks Pulumi).
-4. ⬜ ~~Scaffold app + CI; create GitHub repo; branch protection.~~ <!-- SUPERSEDED: catalogue (CMS) is the FIRST real feature; foundation PRs ship placeholders only — don't scaffold app/feature ahead of the catalogue spec -->
+4. ⬜ ~~Scaffold app + CI; create GitHub repo; branch protection.~~ <!-- SUPERSEDED: catalog (CMS) is the FIRST real feature; foundation PRs ship placeholders only — don't scaffold app/feature ahead of the catalog spec -->
 5. ⬜ ~~`/plan-eng-review` for the advanced PR policy (Danger/VR/Storybook).~~ <!-- SUPERSEDED: stories CO-LOCATED next to source; NO top-level stories/ dirs (locked convention) -->
 6. ⬜ ~~(Later, outside session) rename folder + `git worktree repair`.~~ <!-- SUPERSEDED: rename already done; no-op (`mv notation-hero notation-hero`) -->

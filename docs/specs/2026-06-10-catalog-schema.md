@@ -1,7 +1,7 @@
-# NotationHero — Catalogue Schema (Song / Lesson / Pattern) — v1 Design
+# NotationHero — Catalog Schema (Song / Lesson / Pattern) — v1 Design
 
 > **Status:** 🟢 DESIGN (brainstorm-approved 2026-06-10; ce-doc-review applied 2026-06-10) — ready for implementation planning
-> **Store:** Neon **PostgreSQL + JSONB** (per [2026-06-09 catalogue-store decision](../decisions/2026-06-09-catalogue-store-postgres-neon.md))
+> **Store:** Neon **PostgreSQL + JSONB** (per [2026-06-09 catalog-store decision](../decisions/2026-06-09-catalog-store-postgres-neon.md))
 > **Supersedes:** the `song-schema.md` drafts (2026-06-05 DynamoDB record; 2026-06-09 Postgres reframe) — this is the authoritative contract with the full brainstormed field design (patterns, exercises, lesson types).
 > **Feature-freeze refs:** `K-1`/`K-3` (CMS + catalog API), `H-11` (lesson library), `D-2` (MIDI mapping presets), `H-10` (upload validation). DynamoDB stays for **per-user** data only.
 > **Owner:** leocaseiro
@@ -10,7 +10,7 @@
 
 ## 1. What this is
 
-The shared **catalogue** contract the player app (reader) and the admin CMS (writer) both build to. It holds **songs** and **lessons** (and the **patterns** — beats / fills / rudiments — that connect them), with the search/filter surface a drum-practice library needs. Per-user data (scores, settings, mappings) is **out of scope** — that's DynamoDB.
+The shared **catalog** contract the player app (reader) and the admin CMS (writer) both build to. It holds **songs** and **lessons** (and the **patterns** — beats / fills / rudiments — that connect them), with the search/filter surface a drum-practice library needs. Per-user data (scores, settings, mappings) is **out of scope** — that's DynamoDB.
 
 **Governing principle (drives every column):** the database caches **only what we search / filter / sort / show in a list** without opening the file. Everything else AlphaTab derives at load time. Files live in **S3** (served via **CloudFront signed URLs**); Postgres stores **keys + searchable metadata only — never blobs.**
 
@@ -21,21 +21,21 @@ The shared **catalogue** contract the player app (reader) and the admin CMS (wri
 | Concern | Where | Notes |
 |---|---|---|
 | Searchable metadata (the tables below) | **Neon Postgres** | typed columns for filters; `data jsonb` for variable/nested; tiny rows (~few MB for thousands of items) |
-| Song notation files (`.gp`/`.gpx`/`.gp5`/`.gp4`/`.gp3`/`.xml`) | **S3** | uploaded binary; key in `catalogue_item.notation_key` |
+| Song notation files (`.gp`/`.gpx`/`.gp5`/`.gp4`/`.gp3`/`.xml`) | **S3** | uploaded binary; key in `catalog_item.notation_key` |
 | Exercise-step notation | **inline alphaTex** (a `text` column) | authored, tiny (~hundreds of bytes); no S3 object, no signed URL |
 | External audio/video | **links** in `audio`/`video` jsonb | YouTube URL or S3 key; embedded GP audio travels inside the `.gp` |
 | File delivery | **CloudFront — short-lived signed URL (private, never public)** | resolved by the `K-3` API on item open; signed so files can't be hotlinked/bulk-downloaded around the API (copyright) |
 
-**S3 key layout + quarantine (`H-10`).** Validated curated files live under a served prefix (`catalogue/<id>/source.<ext>`). User uploads (M1) land in a **quarantine prefix** (`quarantine/<id>/…`) first; only after validation are they promoted to the served prefix. IAM scopes the ingest Lambda to write `quarantine/` only; a separate step promotes. Bucket/IAM path separation keeps user-upload and curated objects access-controllable.
+**S3 key layout + quarantine (`H-10`).** Validated curated files live under a served prefix (`catalog/<id>/source.<ext>`). User uploads (M1) land in a **quarantine prefix** (`quarantine/<id>/…`) first; only after validation are they promoted to the served prefix. IAM scopes the ingest Lambda to write `quarantine/` only; a separate step promotes. Bucket/IAM path separation keeps user-upload and curated objects access-controllable.
 
-**Notation reality (locked, D1).** AlphaTab renders **Guitar Pro 3–8, MusicXML, Capella, alphaTex** — **not** standard MIDI (verified against the fork: it loads via the generic `api.load()` notation importers; there is no MIDI-notation path). MIDI is a **source format, converted *before* it becomes a catalogue item** (curators convert in Guitar Pro and upload the `.gp` — the existing workflow). So `notation_format` excludes `mid`. (⚠ `feature-freeze` A-1/B-1 say "renders `.mid`" — that is inaccurate and should be corrected there. Automated MIDI→MusicXML conversion is an **M1 / user-upload** concern, deferred.)
+**Notation reality (locked, D1).** AlphaTab renders **Guitar Pro 3–8, MusicXML, Capella, alphaTex** — **not** standard MIDI (verified against the fork: it loads via the generic `api.load()` notation importers; there is no MIDI-notation path). MIDI is a **source format, converted *before* it becomes a catalog item** (curators convert in Guitar Pro and upload the `.gp` — the existing workflow). So `notation_format` excludes `mid`. (⚠ `feature-freeze` A-1/B-1 say "renders `.mid`" — that is inaccurate and should be corrected there. Automated MIDI→MusicXML conversion is an **M1 / user-upload** concern, deferred.)
 
 ---
 
 ## 3. Entity model
 
 ```
-catalogue_item ──< exercise            (a lesson's ordered steps)
+catalog_item ──< exercise            (a lesson's ordered steps)
       │  │
       │  └──────< item_pattern >────── pattern        (beats / fills / rudiments; m:n, optional)
       │                                   └──< pattern_pairing  ⟂ DEFERRED (slot only)
@@ -43,7 +43,7 @@ catalogue_item ──< exercise            (a lesson's ordered steps)
         lesson_type = 'song-breakdown' | 'beat' | 'rudiment'   (lessons only)
 ```
 
-- **`catalogue_item`** — one row per song **or** lesson. Shared facets = typed columns → **unified cross-type search in one query**. Type-specific + parsed extras live in `data jsonb`.
+- **`catalog_item`** — one row per song **or** lesson. Shared facets = typed columns → **unified cross-type search in one query**. Type-specific + parsed extras live in `data jsonb`.
 - **`exercise`** — the ordered **steps** of a lesson (`Lesson 1 ──< * Exercise`). Each step has its own notation + its own start→goal BPM ladder.
 - **`pattern`** — a named, reusable groove vocabulary, discriminated by `kind` (`beat` | `fill` | `rudiment`; extensible to `ostinato`/`scale`/`chord` later). **`item_pattern`** links songs/lessons to patterns (m:n, optional).
 - **`pattern_pairing`** — *designed but NOT built in v1*: a self-referential m:n for "fills that go well with beats" (the future *suggest-a-fill* feature).
@@ -63,9 +63,9 @@ CREATE FUNCTION immutable_array_to_string(text[], text) RETURNS text
   LANGUAGE sql IMMUTABLE PARALLEL SAFE AS $$ SELECT array_to_string($1, $2) $$;
 
 -- ─────────────────────────────────────────────────────────────────────
--- ① catalogue_item — songs AND lessons (shared facets = typed columns)
+-- ① catalog_item — songs AND lessons (shared facets = typed columns)
 -- ─────────────────────────────────────────────────────────────────────
-CREATE TABLE catalogue_item (
+CREATE TABLE catalog_item (
   id               text PRIMARY KEY,              -- slug or uuid
   type             text       NOT NULL,           -- 'song' | 'lesson'
   title            text       NOT NULL,           -- seeded from file/filename, curator-editable
@@ -103,7 +103,7 @@ CREATE TABLE catalogue_item (
   CONSTRAINT ci_song_file CHECK (type <> 'song' OR notation_key IS NOT NULL),
   CONSTRAINT ci_song_fmt  CHECK (notation_format IS NULL OR notation_format IN ('gp','gpx','gp5','gp4','gp3','xml')),
   CONSTRAINT ci_lesson_type_only CHECK (type = 'lesson' OR lesson_type IS NULL),
-  CONSTRAINT ci_shared_curated   CHECK (status <> 'published' OR source = 'curated'),  -- v1: shared catalogue is curated-only; user-uploads stay private-per-user (M1)
+  CONSTRAINT ci_shared_curated   CHECK (status <> 'published' OR source = 'curated'),  -- v1: shared catalog is curated-only; user-uploads stay private-per-user (M1)
   CONSTRAINT ci_source           CHECK (source IN ('curated','user-upload')),           -- source is write-once (set by K-1 ingest; NOT CMS-updatable — the curated-only CHECK trusts it)
   CONSTRAINT ci_pub_license      CHECK (status <> 'published' OR source <> 'curated' OR license IS NOT NULL)  -- published curated items must carry a license
 );
@@ -113,7 +113,7 @@ CREATE TABLE catalogue_item (
 -- ─────────────────────────────────────────────────────────────────────
 CREATE TABLE exercise (
   id             text PRIMARY KEY,
-  lesson_id      text NOT NULL REFERENCES catalogue_item(id) ON DELETE CASCADE,
+  lesson_id      text NOT NULL REFERENCES catalog_item(id) ON DELETE CASCADE,
   step_no        int  NOT NULL,
   title          text NOT NULL,                   -- "Hi-hat only", "+ Kick"
   section_label  text,                            -- song-breakdown display label ("Chorus 1") — seeded from GP <Section> or curator
@@ -123,7 +123,7 @@ CREATE TABLE exercise (
   -- notation source: EXACTLY ONE of the three
   notation_tex   text,                            -- authored alphaTex inline (beat/rudiment steps) — the common case
   notation_key   text,                            -- rare: a step authored as a standalone GP/MusicXML S3 file
-  source_item_id text REFERENCES catalogue_item(id) ON DELETE RESTRICT,  -- song-breakdown slice; RESTRICT = can't hard-delete a sliced song (archive instead)
+  source_item_id text REFERENCES catalog_item(id) ON DELETE RESTRICT,  -- song-breakdown slice; RESTRICT = can't hard-delete a sliced song (archive instead)
   start_bar      int,
   end_bar        int,
 
@@ -162,7 +162,7 @@ CREATE TABLE pattern (
 
 -- ④ item_pattern — m:n link (songs↔beats, lessons↔patterns). Optional: an item may link 0..n.
 CREATE TABLE item_pattern (
-  item_id    text NOT NULL REFERENCES catalogue_item(id) ON DELETE CASCADE,
+  item_id    text NOT NULL REFERENCES catalog_item(id) ON DELETE CASCADE,
   pattern_id text NOT NULL REFERENCES pattern(id) ON DELETE CASCADE,
   PRIMARY KEY (item_id, pattern_id)
 );
@@ -199,7 +199,7 @@ Real files are messy/incomplete → **almost everything is optional, seeded from
 **Publish-gate rules (app/CMS-enforced — DDL can't express these):**
 - **A lesson must have ≥1 exercise** before `status` → `published` (else it is unplayable). *(D4)*
 - **`source` is write-once** — set by the K-1 ingest pipeline, never updatable via CMS CRUD. The `ci_shared_curated` gate trusts `source`, so re-labeling a `user-upload` as `curated` must be impossible (enforce in the K-1/K-3 API contract, or a DB trigger).
-- **The shared catalogue is curated-only (v1).** `CHECK (status<>'published' OR source='curated')` enforces that no `user-upload` row is ever published here. User uploads (M1) live in a **private per-user space** (separate, keyed by uploader — mirrors shared-vs-per-user data), never auto-surfaced in the shared library. `source` stays for provenance + future deliberate curate-in.
+- **The shared catalog is curated-only (v1).** `CHECK (status<>'published' OR source='curated')` enforces that no `user-upload` row is ever published here. User uploads (M1) live in a **private per-user space** (separate, keyed by uploader — mirrors shared-vs-per-user data), never auto-surfaced in the shared library. `source` stays for provenance + future deliberate curate-in.
 - **`source='curated'` items require a non-null `license`** before `published`.
 
 **Level → display (D6):** `level` 1–10 maps to the 5★ library display as `1–2→1★ · 3–4→2★ · 5–6→3★ · 7–8→4★ · 9–10→5★`; `NULL`→no stars ("—"). Library/CMS/player all use this mapping.
@@ -224,7 +224,7 @@ A lesson's `lesson_type` determines where each step's notation comes from:
 ## 7. Patterns — beats, fills, rudiments (and why `family` ≠ `genre`)
 
 - **One `pattern` table, discriminated by `kind`.** The UI shows "Beats" / "Rudiments" / "Fills" as `WHERE kind=…` views; the table is internal. *"What songs/lessons use pattern X"* is the same query for every kind.
-- **`genre` vs `family` are different axes (both kept):** `genre` (on `catalogue_item`) = musical style of the song/lesson (a library facet). `family` (on `pattern`) = kind-relative grouping: `beat`→groove style (Rock/Funk/Shuffle/Latin), `rudiment`→PAS families (Roll/Diddle/Flam/Drag), `scale`→major/minor. Rudiments/scales have no genre — `family` works across all kinds.
+- **`genre` vs `family` are different axes (both kept):** `genre` (on `catalog_item`) = musical style of the song/lesson (a library facet). `family` (on `pattern`) = kind-relative grouping: `beat`→groove style (Rock/Funk/Shuffle/Latin), `rudiment`→PAS families (Roll/Diddle/Flam/Drag), `scale`→major/minor. Rudiments/scales have no genre — `family` works across all kinds.
 - **`item_pattern` is optional** — "some songs we won't know the beat" (a song may link 0, 1, or many patterns).
 - **`fill` is a pattern kind, not a lesson type (v1).** Fills are linked to beats/songs via `item_pattern` (and to beats via the deferred `pattern_pairing`). There is intentionally **no `fill` lesson_type** yet — a dedicated fill lesson can be added when fill-teaching content is authored; until then a fill rides inside a beat lesson's step content.
 - **Fill↔beat compatibility = `pattern_pairing` (DEFERRED).** "Including a fill in a beat exercise" is just *content* (the step's alphaTex has the fill). The reusable "fills f1,f2 go well with beats b1,b2,b4" is the self-referential `pattern_pairing` slot — designed now, built when the *suggest-a-fill* feature lands.
@@ -246,21 +246,21 @@ Every facet the player browses by is a typed column or array → one query spans
 
 ```sql
 -- pg_trgm already enabled in §4.
-CREATE INDEX ci_gin_instruments ON catalogue_item USING gin (instruments);
-CREATE INDEX ci_gin_skill       ON catalogue_item USING gin (skill);
-CREATE INDEX ci_gin_tags        ON catalogue_item USING gin (tags);
-CREATE INDEX ci_btree_filters   ON catalogue_item (type, status, level, bpm, time_sig, genre);
-CREATE INDEX ci_updated         ON catalogue_item (updated_at);
+CREATE INDEX ci_gin_instruments ON catalog_item USING gin (instruments);
+CREATE INDEX ci_gin_skill       ON catalog_item USING gin (skill);
+CREATE INDEX ci_gin_tags        ON catalog_item USING gin (tags);
+CREATE INDEX ci_btree_filters   ON catalog_item (type, status, level, bpm, time_sig, genre);
+CREATE INDEX ci_updated         ON catalog_item (updated_at);
 -- fuzzy indexes are accent + case-insensitive (immutable_unaccent from §4) → "sao" matches "São"
-CREATE INDEX ci_trgm_title  ON catalogue_item USING gin (immutable_unaccent(lower(title)) gin_trgm_ops);
-CREATE INDEX ci_trgm_artist ON catalogue_item USING gin (immutable_unaccent(lower(coalesce(artist,''))) gin_trgm_ops);
+CREATE INDEX ci_trgm_title  ON catalog_item USING gin (immutable_unaccent(lower(title)) gin_trgm_ops);
+CREATE INDEX ci_trgm_artist ON catalog_item USING gin (immutable_unaccent(lower(coalesce(artist,''))) gin_trgm_ops);
 CREATE INDEX ip_by_pattern  ON item_pattern (pattern_id);
-ALTER TABLE catalogue_item ADD COLUMN search tsvector GENERATED ALWAYS AS (
+ALTER TABLE catalog_item ADD COLUMN search tsvector GENERATED ALWAYS AS (
     setweight(to_tsvector('simple', immutable_unaccent(coalesce(title,''))),  'A')
  || setweight(to_tsvector('simple', immutable_unaccent(coalesce(artist,''))), 'B')
  || setweight(to_tsvector('simple', immutable_unaccent(immutable_array_to_string(coalesce(tags,'{}'),' '))), 'C')
 ) STORED;
-CREATE INDEX ci_fts ON catalogue_item USING gin (search);
+CREATE INDEX ci_fts ON catalog_item USING gin (search);
 ```
 
 ```sql
@@ -278,7 +278,7 @@ WHERE type='song' AND status='published' AND bpm BETWEEN 80 AND 120
 -- full-text                      →  WHERE search @@ websearch_to_tsquery('simple','yellow coldplay')
 ```
 
-**`K-3` list projection (the library card contract).** `GET /catalogue` (list) returns exactly: `id, type, title, artist, genre, level, bpm, time_sig, instruments, has_audio, has_video, sort_order, cover_image_url, status, updated_at` — **excluding** `data jsonb`, `notation_key`, `notation_checksum`. `cover_image_url` is the API-resolved (signed/CDN) form of `cover_image_key`. Full record + signed notation URL is fetched on item open. Per-user fields (best score, "continue") are joined from DynamoDB at the app layer, not from the catalogue.
+**`K-3` list projection (the library card contract).** `GET /catalog` (list) returns exactly: `id, type, title, artist, genre, level, bpm, time_sig, instruments, has_audio, has_video, sort_order, cover_image_url, status, updated_at` — **excluding** `data jsonb`, `notation_key`, `notation_checksum`. `cover_image_url` is the API-resolved (signed/CDN) form of `cover_image_key`. Full record + signed notation URL is fetched on item open. Per-user fields (best score, "continue") are joined from DynamoDB at the app layer, not from the catalog.
 
 **UX (informs later UI spec):** *simple* filters always visible (search · type · level · bpm · time-sig · instrument); *advanced* behind "More" (genre · tags · skill · pattern · key · source/license). Sort: relevance · level · bpm · newest · most-practiced (later, from `H-6`) · A–Z · curated (`sort_order`).
 
@@ -297,7 +297,7 @@ Parse each uploaded file **once at upload**; never parse server-side again (the 
 3. **Normalize** controlled-vocab values to **lowercase** at ingest (`genre`, array facets) so the §9 equality filters match.
 4. **MIDI (D1):** convert **before** upload — curators convert MIDI→GP in **Guitar Pro** and upload the `.gp` (the existing workflow). Automated MIDI→MusicXML conversion is an **M1 / user-upload** concern (deferred); no v1 converter. `notation_format` never stores `mid`.
 5. **`H-10` validation:** binary/sniffable formats validate by magic bytes (`gp`=PK zip, `gpx`=BCFS, `gp5/4/3`=version header, `xml`=`<?xml`); compute `notation_checksum` (sha256) + `notation_bytes`; enforce max size (§8); land in the `quarantine/` prefix, promote on pass. alphaTex is CMS-authored (parse-validated), never in the user-upload path.
-6. **Publish gating** (see §5): lessons need ≥1 exercise; curated need a `license`; **user-uploads are never published to the shared catalogue** (curated-only v1; private per-user at M1).
+6. **Publish gating** (see §5): lessons need ≥1 exercise; curated need a `license`; **user-uploads are never published to the shared catalog** (curated-only v1; private per-user at M1).
 
 ---
 
@@ -310,12 +310,12 @@ Parse each uploaded file **once at upload**; never parse server-side again (the 
 | `pattern_pairing` (fill↔beat) | the *suggest-a-fill* feature; self-referential m:n slot designed in §4 |
 | `collection` (named curated shelves, m:n) | "Warm-ups", "Rock Essentials" shelves; v1 has `sort_order` for flat manual ordering |
 | `default_mapping_preset_id` (`D-2` link) | a per-item player **hint**, not a search field → lives in `data.defaultMappingPresetId`; mapping itself is per-user (localStorage/DynamoDB), so the lesson only suggests |
-| `most_practiced_count` | added to `catalogue_item` when `H-6` analytics lands (initially NULL; synced from DynamoDB counters); enables the "most-practiced" sort |
+| `most_practiced_count` | added to `catalog_item` when `H-6` analytics lands (initially NULL; synced from DynamoDB counters); enables the "most-practiced" sort |
 | Per-track media (video-per-track) | item-level `audio[]`/`video[]` now; additive later |
 | `course` (ordered lessons) | v1 stops at Lesson→Exercise; Course wraps lessons later |
-| Per-user "can-play pattern" skill graph | **DynamoDB** (per-user), joined at app layer — not the catalogue |
-| Multi-arrangement grouping (one "work", many versions/keys) | each version is its own `catalogue_item` row now |
-| **User-upload private per-user space** | M1: a user's own files live separately (keyed by uploader), never auto-published to the shared (curated) catalogue — see §5 |
+| Per-user "can-play pattern" skill graph | **DynamoDB** (per-user), joined at app layer — not the catalog |
+| Multi-arrangement grouping (one "work", many versions/keys) | each version is its own `catalog_item` row now |
+| **User-upload private per-user space** | M1: a user's own files live separately (keyed by uploader), never auto-published to the shared (curated) catalog — see §5 |
 
 > `pattern`/`item_pattern` ship in the v1 migration but stay empty until Beta content (`H-11`) is seeded — the CMS pattern-linking UI can arrive with that content.
 
@@ -324,11 +324,11 @@ Parse each uploaded file **once at upload**; never parse server-side again (the 
 ## 12. Extensibility, security & lifecycle
 
 - **`data jsonb`** on every entity absorbs late `/design-shotgun` findings with no migration.
-- **`data jsonb` known keys** (the load-bearing ones features read; the rest is freeform): on `catalogue_item` — `bars` (int), `sections` (`[{label, startBar, endBar}]`, used to auto-seed song-breakdown steps), `album`, `year`, `defaultMappingPresetId`, `meta`. Cross-row invariants (e.g. a slice's bars ≤ the source song's `data.bars`) are **app-enforced** (DDL can't reach into another row's JSONB). **`data` is not a PII landing zone.**
+- **`data jsonb` known keys** (the load-bearing ones features read; the rest is freeform): on `catalog_item` — `bars` (int), `sections` (`[{label, startBar, endBar}]`, used to auto-seed song-breakdown steps), `album`, `year`, `defaultMappingPresetId`, `meta`. Cross-row invariants (e.g. a slice's bars ≤ the source song's `data.bars`) are **app-enforced** (DDL can't reach into another row's JSONB). **`data` is not a PII landing zone.**
 - **Open `kind`/`lesson_type` vocabularies** add categories (incl. piano scales/chords) with no schema change.
-- **`status`** lifecycle `draft → published → archived`; `archived` = soft-delete tombstone (`updated_at` bumped → future change-feed carries it). The CMS **never hard-deletes** catalogue rows (archival is the retirement path; see §6 archived-source rule).
-- **Security notes (plan-level):** files served via **CloudFront signed URLs** (private, **~5 min TTL**); **shared catalogue is curated-only** (CHECK: only `source='curated'` can be `published`); **`source` is write-once** (set by K-1 ingest, never CMS-updatable — the curated-only CHECK trusts it); **published curated items require `license`** (DB CHECK `ci_pub_license`); **streaming upload size limits + quarantine prefix** (§8/§2/§10); **all SQL values parameterized** (§9). The `K-2` admin Basic-Auth credential should be stored in **SSM Parameter Store (SecureString)** and injected at deploy — not baked into the CloudFront Function source (IaC concern, tracked with `K-2`).
-- **Swappable behind the `K-3` catalog API** — the app reads catalogue + signed file URLs through `K-3`; the Postgres choice stays an implementation detail (AWS-managed equivalent = Aurora/RDS + RDS Proxy).
+- **`status`** lifecycle `draft → published → archived`; `archived` = soft-delete tombstone (`updated_at` bumped → future change-feed carries it). The CMS **never hard-deletes** catalog rows (archival is the retirement path; see §6 archived-source rule).
+- **Security notes (plan-level):** files served via **CloudFront signed URLs** (private, **~5 min TTL**); **shared catalog is curated-only** (CHECK: only `source='curated'` can be `published`); **`source` is write-once** (set by K-1 ingest, never CMS-updatable — the curated-only CHECK trusts it); **published curated items require `license`** (DB CHECK `ci_pub_license`); **streaming upload size limits + quarantine prefix** (§8/§2/§10); **all SQL values parameterized** (§9). The `K-2` admin Basic-Auth credential should be stored in **SSM Parameter Store (SecureString)** and injected at deploy — not baked into the CloudFront Function source (IaC concern, tracked with `K-2`).
+- **Swappable behind the `K-3` catalog API** — the app reads catalog + signed file URLs through `K-3`; the Postgres choice stays an implementation detail (AWS-managed equivalent = Aurora/RDS + RDS Proxy).
 
 ---
 

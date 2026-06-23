@@ -1,0 +1,270 @@
+{
+  "file": "I'm Yours - Jason Mraz.gp",
+  "title": "I'm Yours",
+  "artist": "Jason Mraz",
+  "album": "We Sing. We Dance. We Steal Things.",
+  "tempo": 73,
+  "bars": 76,
+  "timeSig": "4/4",
+  "key": "B major",
+  "chords": [
+    "B",
+    "F#",
+    "G#m",
+    "E",
+    "Fdim",
+    "F#/A#"
+  ],
+  "trackCount": 5,
+  "tracks": [
+    {
+      "idx": 0,
+      "name": "Classical Guitar",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "F#/A#"
+      ],
+      "progression": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "B",
+        "F#",
+        "G#m"
+      ]
+    },
+    {
+      "idx": 1,
+      "name": "Electric Guitar",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "F#/A#"
+      ],
+      "progression": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "B",
+        "F#",
+        "G#m"
+      ]
+    },
+    {
+      "idx": 2,
+      "name": "Bass",
+      "isPercussion": false,
+      "tuning": [
+        43,
+        38,
+        33,
+        28
+      ],
+      "stringCount": 4,
+      "chords": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "F#/A#"
+      ],
+      "progression": [
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "Fdim",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#",
+        "G#m",
+        "E",
+        "B",
+        "F#/A#",
+        "G#m",
+        "F#",
+        "E",
+        "Fdim",
+        "B",
+        "F#/A#",
+        "G#m",
+        "F#",
+        "E",
+        "Fdim",
+        "B",
+        "F#",
+        "G#m"
+      ]
+    },
+    {
+      "idx": 3,
+      "name": "Drums",
+      "isPercussion": true,
+      "tuning": null,
+      "stringCount": null,
+      "chords": [],
+      "progression": []
+    },
+    {
+      "idx": 4,
+      "name": "Lead Vocal Harmonies",
+      "isPercussion": false,
+      "tuning": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ],
+      "stringCount": 6,
+      "chords": [],
+      "progression": []
+    }
+  ],
+  "sectionCount": 11,
+  "sections": [
+    {
+      "label": "Intro",
+      "startBar": 2,
+      "endBar": 5
+    },
+    {
+      "label": "Verse 1",
+      "startBar": 6,
+      "endBar": 13
+    },
+    {
+      "label": "Chorus 1",
+      "startBar": 14,
+      "endBar": 17
+    },
+    {
+      "label": "Interlude",
+      "startBar": 18,
+      "endBar": 21
+    },
+    {
+      "label": "Verse 2",
+      "startBar": 22,
+      "endBar": 30
+    },
+    {
+      "label": "Chorus 2",
+      "startBar": 31,
+      "endBar": 38
+    },
+    {
+      "label": "Bridge",
+      "startBar": 39,
+      "endBar": 46
+    },
+    {
+      "label": "Verse 3",
+      "startBar": 47,
+      "endBar": 54
+    },
+    {
+      "label": "Breakdown Chorus",
+      "startBar": 55,
+      "endBar": 58
+    },
+    {
+      "label": "Chorus 3",
+      "startBar": 59,
+      "endBar": 68
+    },
+    {
+      "label": "Outro",
+      "startBar": 69,
+      "endBar": 76
+    }
+  ]
+}

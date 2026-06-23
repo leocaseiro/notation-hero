@@ -1,0 +1,66 @@
+# CodeQL deep SAST — out-of-band (deliberately NOT a `ci-green` gate): runs on a
+# weekly schedule + push-to-master, never on pull_request, so it stays off the PR
+# critical path and layers on top of the always-on Semgrep `sast` job (E-semgrep).
+#
+# Public-only: the `visibility-check` job gates the analysis + SARIF upload so the
+# whole workflow becomes a no-op if the repo ever goes private — CodeQL on a private
+# repo needs GitHub Advanced Security (paid), and this avoids that bill. The guard is
+# a job output (not `github.event.repository.visibility`) because that field isn't
+# populated reliably on `schedule` events. (E-codeql / E-codeql-guard-impl; DACI L9.)
+name: CodeQL
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    # Weekly — Mondays ~06:23 UTC (off the top of the hour per GitHub guidance).
+    # Catches newly-disclosed CVEs in code that hasn't changed since the last push.
+    - cron: "23 6 * * 1"
+  workflow_dispatch:
+
+# Cancel a superseded run on the same ref (a fresh push supersedes an in-flight scan).
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Gate: only proceed while the repo is public. Exports visibility as a job output
+  # so the analyze job can skip wholesale on a private transition — covers `schedule`
+  # events specifically (DACI L9). Inherits the top-level `contents: read`, which is
+  # enough for `gh api repos/...` metadata.
+  visibility-check:
+    runs-on: ubuntu-latest
+    outputs:
+      visibility: ${{ steps.check.outputs.visibility }}
+    steps:
+      - name: Read repository visibility
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          visibility="$(gh api "repos/${{ github.repository }}" --jq .visibility)"
+          echo "Repository visibility: $visibility"
+          echo "visibility=$visibility" >> "$GITHUB_OUTPUT"
+
+  analyze:
+    needs: visibility-check
+    if: needs.visibility-check.outputs.visibility == 'public'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          build-mode: none
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"

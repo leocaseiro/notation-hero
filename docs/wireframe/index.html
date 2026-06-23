@@ -1,0 +1,1414 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" /><meta http-equiv="Pragma" content="no-cache" /><meta http-equiv="Expires" content="0" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Notation Hero — Catalog Wireframe (low-fi flow sim)</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#0C1117; --panel:#121821; --panel2:#18202B; --elevate:#1C2530;
+  --ink:#E8EDF3; --muted:#9AA6B4; --faint:#818B9A;
+  --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
+  --time:#2F6DF6; --danger:#FF6B6B; --learn:#7FA9FF;
+  --line:#222C39;
+  --s-low:#E29CC4; --s-dev:#F0A92E; --s-climb:#56B4E9; --s-high:#1FBF8F; --s-gold:#FFD24A; --s-none:#3A4655;
+  --radius:12px; --pill:999px; --dur:.18s; --ease:cubic-bezier(.2,.6,.2,1);
+}
+html[data-theme="light"]{
+  --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
+  --ink:#0F151C; --muted:#5A6472; --faint:#6B7480;
+  --accent:#0F766E; --accenthi:#0D9488; --onaccent:#FFFFFF;
+  --danger:#DC2626; --learn:#1D4ED8; --line:#E2E8F0;
+  --s-low:#CC79A7; --s-dev:#E69F00; --s-climb:#0072B2; --s-high:#009E73; --s-gold:#B8860B; --s-none:#CBD5E1;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:15px;line-height:1.45}
+h1,h2,h3{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:600;margin:0}
+.mono{font-family:"Geist Mono",monospace;font-variant-numeric:tabular-nums}
+.material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;font-size:20px;line-height:1;vertical-align:middle;user-select:none;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
+.msf{font-variation-settings:'FILL' 1,'wght' 500,'GRAD' 0,'opsz' 24}
+button{font-family:inherit;font-size:inherit;cursor:pointer}
+a{color:inherit}
+
+.wf-banner{background:repeating-linear-gradient(45deg,var(--panel2),var(--panel2) 10px,var(--panel) 10px,var(--panel) 20px);
+  border-bottom:1px dashed var(--line);padding:5px 14px;font-size:12px;color:var(--muted);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.wf-banner b{color:var(--ink)}
+.wf-tg{display:inline-flex;gap:6px;align-items:center}
+.wf-tg button{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:var(--pill);padding:3px 10px;font-size:12px}
+.wf-tg button[aria-pressed="true"]{background:var(--accent);color:var(--onaccent);border-color:transparent;font-weight:600}
+
+.topbar{position:sticky;top:0;z-index:30;display:flex;gap:12px;align-items:center;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:9px;font-family:"Bricolage Grotesque";font-weight:700;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
+.mark{width:30px;height:27px;color:var(--accent);display:inline-grid;place-items:center;flex:none}
+.mark svg{width:100%;height:100%;overflow:visible}
+.search{flex:1;display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:8px 14px;max-width:560px}
+.search input{flex:1;background:none;border:none;outline:none;color:var(--ink);font-size:15px}
+.search .material-symbols-outlined{color:var(--faint)}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:10px;background:transparent;border:1px solid var(--line);color:var(--muted)}
+.iconbtn:hover{background:var(--panel2);color:var(--ink)}
+.midi{width:40px;height:40px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:var(--muted);background:transparent;border:1px solid var(--line);position:relative}
+.midi:hover{color:var(--ink);border-color:var(--accent)}
+.midi svg{width:22px;height:22px;fill:currentColor}
+.acct{display:inline-flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:5px 6px 5px 12px}
+.acct .role{font-size:12.5px;color:var(--muted)}
+.avatar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--onaccent);font-weight:700;font-size:13px}
+.avatar.anon{background:var(--panel);color:var(--faint);border:1px dashed var(--line)}
+
+.wrap{max-width:1080px;margin:0 auto;padding:18px 16px 80px}
+.crumbs{display:flex;gap:6px;align-items:center;color:var(--faint);font-size:13px;margin:4px 0 16px;flex-wrap:wrap}
+.crumbs a{color:var(--faint);text-decoration:none}
+.crumbs a:hover{color:var(--ink)}
+.crumbs .material-symbols-outlined{font-size:16px}
+.backlink{display:inline-flex;align-items:center;gap:5px;color:var(--muted);background:none;border:none;padding:6px 0;margin-bottom:6px}
+.backlink:hover{color:var(--ink)}
+
+.frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 14px}
+.seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--muted);padding:6px 13px;border-radius:8px;font-weight:600;font-size:13.5px}
+.seg button.sel{background:var(--bg);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+.seg .material-symbols-outlined{font-size:17px}
+.vsep{width:1px;height:24px;background:var(--line)}
+.fdrop{position:relative}
+.fbtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:var(--pill);padding:7px 12px;font-size:13.5px}
+.fbtn:hover{border-color:var(--accent)}
+.fbtn.on{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:var(--accent);color:var(--accent)}
+.fbtn.on .k{color:var(--accent)}
+.fbtn .k{color:var(--faint)}
+.fbtn .caret{font-size:17px;color:var(--faint)}
+.fpop{position:absolute;top:calc(100% + 6px);left:0;z-index:45;min-width:210px;background:var(--bg);border:1px solid var(--line);border-radius:12px;box-shadow:0 16px 44px rgba(0,0,0,.34);padding:7px;display:none}
+.fpop.open{display:block}
+.fpop.r{left:auto;right:0}
+.opsel{font-size:11.5px;color:var(--faint);padding:4px 8px 8px;text-transform:uppercase;letter-spacing:.05em}
+.fopt{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer}
+.fopt:hover{background:var(--panel2)}
+.fopt .box{width:17px;height:17px;border-radius:5px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;color:var(--onaccent)}
+.fopt .box .material-symbols-outlined{font-size:13px;opacity:0}
+.fopt.on .box{background:var(--accent);border-color:var(--accent)} .fopt.on .box .material-symbols-outlined{opacity:1}
+.fopt .radio{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line);flex:none;position:relative}
+.fopt.on .radio{border-color:var(--accent)} .fopt.on .radio::after{content:"";position:absolute;inset:3px;border-radius:50%;background:var(--accent)}
+.fopt .ic{color:var(--faint);font-size:18px}
+.fopt.on{color:var(--accent)} .fopt.on .ic{color:var(--accent)}
+.fpop .foot{border-top:1px solid var(--line);margin-top:5px;padding-top:5px;display:flex;justify-content:space-between;align-items:center}
+.fpop .foot a{color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer;padding:6px 9px}
+.rangerow{display:flex;align-items:center;gap:8px;padding:6px 8px}
+.rangerow label{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.04em}
+.rangerow select,.rangerow input{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:6px 8px;font-size:13px;font-family:inherit;width:84px}
+.rangerow .dash{color:var(--faint)}
+.sortwrap .caret{font-size:17px;color:var(--faint)}
+.advanced{display:none;gap:14px;flex-wrap:wrap;padding:12px 14px;background:var(--panel);border:1px dashed var(--line);border-radius:var(--radius);margin-bottom:12px;align-items:center}
+.advanced.open{display:flex}
+.advsec{display:flex;align-items:center;gap:8px}
+.advsec .albl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700}
+
+.continue{display:flex;align-items:center;gap:14px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 14%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:12px 16px;margin:6px 0 16px;cursor:pointer}
+.continue .material-symbols-outlined{color:var(--accent)}
+
+.tablehead,.row{display:grid;grid-template-columns:1fr 88px 84px 60px 44px;gap:10px;align-items:center}
+.tablehead{padding:6px 12px;color:var(--faint);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.stephead{display:flex;gap:14px;align-items:center;padding:0 14px 6px;color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+.tablehead span:nth-child(2){text-align:center}.tablehead span:nth-child(3){text-align:right}.tablehead span:nth-child(4){text-align:center}
+.row{padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px;transition:border-color var(--dur) var(--ease)}
+.row:hover{border-color:var(--accent);background:var(--panel2)}
+.name{display:flex;align-items:center;gap:11px;min-width:0}
+.cover{width:38px;height:38px;border-radius:10px;flex:none;display:grid;place-items:center;background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+.cover.lesson{background:color-mix(in srgb,var(--learn) 15%,transparent);color:var(--learn)}
+.cover .material-symbols-outlined{font-size:21px}
+.nm{flex:1;min-width:0;cursor:pointer}
+.nmtitle{font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.nmtitle b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nmsub{color:var(--muted);font-size:12px;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.badge2{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;padding:2px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--muted)}
+.badge2.beat{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.badge2.rudiment{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
+.badge2.fill{color:var(--s-dev);border-color:color-mix(in srgb,var(--s-dev) 40%,transparent)}
+.badge2.song-breakdown{color:var(--s-climb);border-color:color-mix(in srgb,var(--s-climb) 40%,transparent)}
+.pill-new{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:var(--pill);background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent)}
+.tag{font-size:11px;padding:1px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--muted)}
+.tag.song{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.tag.lesson{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
+.tag.private{color:var(--s-dev);border-color:color-mix(in srgb,var(--s-dev) 45%,transparent)}
+.flags{display:inline-flex;gap:6px;color:var(--faint);margin-left:auto;padding-left:10px;flex:none}
+.flags .material-symbols-outlined{font-size:16px}
+.flags .parts{color:var(--accent)}
+.dot{width:3px;height:3px;border-radius:50%;background:var(--faint);display:inline-block}
+.lvlpill{justify-self:center;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:var(--pill);padding:2px 9px;font-size:12px;font-weight:600;white-space:nowrap}
+.lvlpill.debut{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.bpm{color:var(--muted);text-align:right;font-size:13px}
+.play{justify-self:center;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--accent);color:var(--onaccent);border:none}
+.play:hover{background:var(--accenthi)}
+
+.donut{position:relative;width:34px;height:34px;justify-self:center}
+.donut svg{transform:rotate(-90deg)}
+.donut .val{position:absolute;inset:0;display:grid;place-items:center;font-size:11px;font-weight:700;font-family:"Geist Mono"}
+.donut.gold .val .material-symbols-outlined{font-size:18px;color:var(--s-gold)}
+.nfields{grid-column:1/-1;display:none;margin:8px 0 2px;border-top:1px dashed var(--line);padding-top:8px}
+body.showall .nfields{display:block}
+.nfsub{margin:7px 0 3px;font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.05em}
+.nfgrid{display:grid;grid-template-columns:max-content 1fr;gap:2px 16px;font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;align-items:start}
+.nfk{color:var(--faint)}
+.nfv{color:var(--ink);word-break:break-word;white-space:pre-wrap}
+.nfv.nul{color:var(--s-none)}
+.fielddock{display:none;position:fixed;top:64px;right:14px;width:460px;max-height:80vh;overflow:auto;resize:both;background:var(--panel);border:1px solid var(--accent);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.4);z-index:40}
+body.showall .fielddock{display:block}
+.fdhead{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);display:flex;align-items:center;gap:6px;font-weight:600}
+.fdbody{padding:10px 12px}
+[data-nav]{cursor:pointer}
+.logo[data-nav]:hover{color:var(--accent)}
+.patrow[data-nav]{cursor:pointer}
+.part[data-nav]:hover,.patrow[data-nav]:hover{border-color:var(--accent);background:var(--panel2)}
+
+.pager{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.pager button{min-width:34px;height:34px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);padding:0 8px;display:inline-flex;align-items:center;justify-content:center}
+.pager button[aria-current="true"]{background:var(--accent);color:var(--onaccent);border-color:transparent;font-weight:700}
+.pager button:hover:not([aria-current="true"]):not(:disabled){border-color:var(--accent)}
+.pager button:disabled{opacity:.4;cursor:default}
+.pager .info{color:var(--faint);font-size:12.5px;margin-left:8px}
+.loadmore{display:flex;justify-content:center;margin-top:14px;color:var(--faint);font-size:13px}
+
+.hero{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px}
+.hero .meta{flex:1;min-width:240px}
+.hero h1{font-size:30px;letter-spacing:-.02em}
+.hero .sub{color:var(--muted);margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.badges{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:5px 12px;font-size:13px;color:var(--muted)}
+.badge .material-symbols-outlined{font-size:17px;color:var(--faint)}
+.btn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:11px 20px;font-weight:600;border:1px solid transparent}
+.btn.primary{background:var(--accent);color:var(--onaccent)}
+.btn.primary:hover{background:var(--accenthi)}
+.btn.secondary{background:var(--panel2);color:var(--ink);border-color:var(--line)}
+.btn.secondary:hover{border-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-top:16px}
+.card h3{font-size:15px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.card h3 .material-symbols-outlined{color:var(--accent);font-size:19px}
+.history{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.history .big{display:flex;gap:18px;align-items:center}
+.stat{display:flex;flex-direction:column}
+.stat .n{font-family:"Geist Mono";font-size:22px;font-weight:700}
+.stat .l{color:var(--faint);font-size:12px}
+.trend{display:flex;gap:4px;align-items:flex-end;height:46px}
+.trend span{flex:1;background:var(--accent);border-radius:3px 3px 0 0;opacity:.75;min-height:4px}
+.gate{display:flex;gap:10px;align-items:center;background:var(--panel2);border:1px dashed var(--line);border-radius:var(--radius);padding:14px 16px;color:var(--muted)}
+.gate .material-symbols-outlined{color:var(--faint)}
+
+/* relationships: patterns / media / source */
+.patrow{display:flex;gap:11px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);margin-bottom:7px;cursor:default}
+.patrow .pk{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;padding:2px 7px;border-radius:var(--pill);border:1px solid var(--line)}
+.patrow .pk.beat{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.patrow .pk.fill{color:var(--s-dev);border-color:color-mix(in srgb,var(--s-dev) 40%,transparent)}
+.patrow .pk.rudiment{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
+.media{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.medialink{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:6px 12px;font-size:13px;color:var(--ink)}
+.medialink:hover{border-color:var(--accent)}
+.medialink .material-symbols-outlined{font-size:17px;color:var(--accent)}
+.metafoot{color:var(--faint);font-size:12.5px;margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.metafoot .material-symbols-outlined{font-size:15px}
+
+.step{display:flex;gap:14px;align-items:center;padding:13px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px}
+.step:hover{border-color:var(--accent)}
+.step .no{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--line);font-family:"Geist Mono";font-weight:700;font-size:13px;color:var(--muted)}
+.step .si{flex:1;min-width:0;cursor:pointer}
+.step .si b{font-weight:600}
+.step .si small{color:var(--faint);display:block}
+.stepwrap{margin-bottom:8px}
+.stepwrap .step{margin-bottom:0}
+.ladder{display:inline-flex;align-items:center;gap:5px;font-family:"Geist Mono";font-size:12.5px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:3px 9px}
+.src{font-size:11px;padding:1px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--faint)}
+.src.tex{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 35%,transparent)}
+.src.slice{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 35%,transparent)}
+.src.upload{color:var(--s-dev);border-color:color-mix(in srgb,var(--s-dev) 35%,transparent)}
+
+.part{display:flex;gap:12px;align-items:center;padding:11px 14px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px}
+.part .bars{font-family:"Geist Mono";font-size:12px;color:var(--faint);background:var(--panel2);border-radius:var(--pill);padding:2px 9px;border:1px solid var(--line)}
+
+.playerstub{display:grid;place-items:center;min-height:360px;border:2px dashed var(--line);border-radius:18px;background:repeating-linear-gradient(45deg,var(--panel),var(--panel) 14px,var(--panel2) 14px,var(--panel2) 28px);text-align:center;gap:8px;padding:30px}
+.playerstub .material-symbols-outlined{font-size:60px;color:var(--accent)}
+.playerstub h2{font-size:24px}
+.playerstub .ctx{color:var(--muted);max-width:440px}
+
+.adminbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--s-dev) 40%,var(--line));border-radius:var(--radius);background:color-mix(in srgb,var(--s-dev) 8%,var(--panel))}
+.adminbar .lbl{display:inline-flex;gap:6px;align-items:center;color:var(--s-dev);font-weight:600;font-size:12.5px;margin-right:auto}
+.adminbtn{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 13px;font-size:13.5px}
+.adminbtn:hover{border-color:var(--s-dev)}
+.adminbtn.danger{color:var(--danger)}
+
+.stubpanel{border:2px dashed var(--line);border-radius:18px;padding:28px;text-align:center;color:var(--muted)}
+.stubpanel .material-symbols-outlined{font-size:46px;color:var(--faint)}
+.stubpanel code{background:var(--panel2);padding:2px 7px;border-radius:6px;font-family:"Geist Mono";font-size:12.5px}
+
+.modalwrap{position:fixed;inset:0;z-index:60;display:none;place-items:center;background:color-mix(in srgb,#000 55%,transparent);padding:20px}
+.modalwrap.open{display:grid}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;max-width:380px;width:100%;box-shadow:0 24px 70px rgba(0,0,0,.4)}
+.modal h2{font-size:20px;margin-bottom:4px}
+.modal p{color:var(--muted);font-size:13.5px;margin:0 0 16px}
+.rolepick{display:flex;flex-direction:column;gap:9px}
+.rolepick button{display:flex;gap:12px;align-items:center;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px 14px;color:var(--ink)}
+.rolepick button:hover{border-color:var(--accent)}
+.rolepick .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--elevate);color:var(--accent)}
+.rolepick b{display:block}
+.rolepick small{color:var(--faint)}
+.modal .x{float:right;color:var(--faint);background:none;border:none}
+
+.lead{color:var(--muted);max-width:64ch;margin-top:10px;font-size:14px;line-height:1.5}
+.voices{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.vchip{font-size:11px;padding:2px 8px;border-radius:var(--pill);border:1px solid var(--line);color:var(--ink);background:var(--panel2)}
+.vlbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-right:2px}
+.vnote{font-size:11px;color:var(--faint)}
+.tracklens{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 10%,var(--panel)),var(--panel));border:1px solid var(--line);border-radius:var(--radius);padding:11px 14px;margin:16px 0;flex-wrap:wrap}
+.tracklens label{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700}
+.tracklens select{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 10px;font-family:inherit;font-size:14px;font-weight:600}
+.tracklens select:hover{border-color:var(--accent)}
+.tracklens .lenstune{display:inline-flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);background:var(--panel2);border:1px solid var(--line);border-radius:var(--pill);padding:3px 9px}
+.tracklens .lenshint{color:var(--faint);font-size:12px;margin-left:auto}
+.mediscope{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin:12px 0 6px}
+.techs{display:inline-flex;align-items:center;gap:5px;flex-wrap:wrap;margin-left:8px;min-width:96px}
+.technone{color:var(--faint);opacity:.5}
+.nfjson{font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;line-height:1.5;color:var(--ink);white-space:pre;overflow:auto;margin:6px 0 0}
+.nfjson .jk{color:var(--accent)}
+.nfjson .jnull{color:var(--faint);opacity:.75}
+.empty{text-align:center;color:var(--faint);padding:50px 20px}
+.empty .material-symbols-outlined{font-size:44px;display:block;margin-bottom:8px}
+@media(max-width:640px){
+  .tablehead{display:none}
+  .row{grid-template-columns:1fr 44px;grid-template-areas:"name play" "meta play"}
+  .row .name{grid-area:name}.row .play{grid-area:play}
+  .row .lvlpill,.row .bpm,.row .donut{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="wf-banner">
+  <b>WIREFRAME</b><span>low-fi flow sim · v1.4 · notation model + field inspector · not final styling</span>
+  <span class="wf-tg">Theme:
+    <button data-theme-set="dark" aria-pressed="true">Dark</button>
+    <button data-theme-set="light" aria-pressed="false">Light</button>
+  </span>
+  <span class="wf-tg">Role:
+    <button data-role-set="anon"  aria-pressed="false">Anonymous</button>
+    <button data-role-set="user"  aria-pressed="false">User</button>
+    <button data-role-set="admin" aria-pressed="false">Admin</button>
+  </span>
+  <span class="wf-tg">Inspector:
+    <button data-fields aria-pressed="false">Show all fields</button>
+  </span>
+  <span style="margin-left:auto;color:var(--faint)" id="routeEcho"></span>
+</div>
+
+<header class="topbar">
+  <button class="iconbtn" data-back id="topBack" title="Back" style="display:none"><span class="material-symbols-outlined">arrow_back_ios_new</span></button>
+  <div class="logo" role="button" data-nav="#/catalog" title="Notation Hero — home">
+    <span class="mark" id="brandMark"></span> Notation&nbsp;Hero
+  </div>
+  <div class="search">
+    <span class="material-symbols-outlined">search</span>
+    <input id="q" type="search" placeholder="Search songs &amp; lessons…" autocomplete="off" />
+  </div>
+  <button class="midi" id="midiBtn" title="MIDI device"></button>
+  <button class="iconbtn" id="uploadBtn" title="Upload"><span class="material-symbols-outlined">upload</span></button>
+  <button class="acct" id="acctBtn" title="Account / switch role">
+    <span class="role" id="acctRole">Sign in</span>
+    <span class="avatar anon" id="acctAvatar"><span class="material-symbols-outlined">person</span></span>
+  </button>
+</header>
+
+<main class="wrap" id="app"></main>
+
+<div class="modalwrap" id="modal">
+  <div class="modal">
+    <button class="x" id="modalX"><span class="material-symbols-outlined">close</span></button>
+    <h2>Sign in</h2>
+    <p>Wireframe stand-in for auth. Pick who you are — the whole app morphs to that role (persisted across reloads).</p>
+    <div class="rolepick">
+      <button data-role-set="user"><span class="ic"><span class="material-symbols-outlined">person</span></span><span><b>Sign in as User</b><small>Track scores &amp; history · upload your own files</small></span></button>
+      <button data-role-set="admin"><span class="ic"><span class="material-symbols-outlined">shield_person</span></span><span><b>Sign in as Admin</b><small>Curate catalog · add/edit songs, lessons &amp; steps</small></span></button>
+      <button data-role-set="anon"><span class="ic"><span class="material-symbols-outlined">visibility</span></span><span><b>Stay anonymous</b><small>Browse &amp; play · no saved progress</small></span></button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====================================================================
+   Notation Hero — Catalog wireframe (v1.3 · inside pages + relationships)
+   Adds: client-side score filter/sort (SD-12, per-user caveat); item↔pattern
+   links (SD-1 fills=pattern); media (audio/video); source/license; owner +
+   visibility (SD-3, public/private). Filters mirror the CatalogFilter contract.
+   ==================================================================== */
+
+const MARK_SVG = '<svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/><svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor"><path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z"/></svg></svg>';
+const MIDI_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M20.18,12C20.18,8.18 17.55,4.96 14,4.07V6H10V4.07C6.45,4.96 3.82,8.18 3.82,12A8.18,8.18 0 0,0 12,20.18A8.18,8.18 0 0,0 20.18,12M7,10.64A1.36,1.36 0 0,1 8.36,12A1.36,1.36 0 0,1 7,13.36C6.25,13.36 5.64,12.75 5.64,12C5.64,11.25 6.25,10.64 7,10.64M17,10.64A1.36,1.36 0 0,1 18.36,12A1.36,1.36 0 0,1 17,13.36A1.36,1.36 0 0,1 15.64,12A1.36,1.36 0 0,1 17,10.64M8.36,14.27A1.37,1.37 0 0,1 9.73,15.64C9.73,16.39 9.12,17 8.36,17A1.36,1.36 0 0,1 7,15.64C7,14.88 7.61,14.27 8.36,14.27M15.64,14.27C16.39,14.27 17,14.88 17,15.64A1.36,1.36 0 0,1 15.64,17C14.88,17 14.27,16.39 14.27,15.64A1.37,1.37 0 0,1 15.64,14.27M12,15.64A1.36,1.36 0 0,1 13.36,17A1.36,1.36 0 0,1 12,18.36A1.36,1.36 0 0,1 10.64,17A1.36,1.36 0 0,1 12,15.64Z"/></svg>';
+
+/* ---------- patterns (the reusable vocabulary — beats/fills/rudiments) ---------- */
+const PATTERNS = {};
+const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',label:'Fill'}, rudiment:{icon:'drag_indicator',label:'Rudiment'}, scale:{icon:'piano',label:'Scale'}, chord:{icon:'piano',label:'Chord'}};
+
+/* ---------- sample data (playable — the locked umbrella; kind = the role) ---------- */
+const PLAYABLES = [
+  {id:'bohemian-rhapsody', kind:'song', title:'Bohemian Rhapsody', artist:'Queen', level:8, bpm:72, time_sig:'4/4', genre:'rock', instruments:['keys','guitar','bass','drums','vocals'], musical_key:'Bb', tags:['progressive','classic-rock'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Full mix'}], video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-boh-keys',instrument:'keys',role:null,name:'Piano',level:6,notation_track_index:1},{id:'t-boh-lead',instrument:'guitar',role:'lead',name:'Gtr 1',level:7,notation_track_index:0},{id:'t-boh-rhythm',instrument:'guitar',role:'rhythm',name:'Gtr 2',level:4,notation_track_index:3},{id:'t-boh-bass',instrument:'bass',role:null,name:'Bass',level:5,notation_track_index:7},{id:'t-boh-drums',instrument:'drums',role:null,name:'Percussions',level:5,notation_track_index:10},{id:'t-boh-vox',instrument:'vocals',role:null,name:'Voice',level:8,notation_track_index:8}], data:{bars:139, sections:[{label:'gtrs enter',startBar:42,endBar:54},{label:'tempo 144',startBar:55,endBar:95},{label:'tempo 207',startBar:96,endBar:139}]}, best:null, sessions:0, trend:[]},
+  {id:'yellow', kind:'song', patterns:['pat_yellow_groove_closed','pat_yellow_groove_open'], title:'Yellow', artist:'Coldplay', level:3, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar','bass','drums','keys','vocals'], musical_key:'B', chords:['B','Badd9','F#6','E7M','Badd11','G#m','Eadd9','F#m7add11'], tags:['alternative'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-yel-lead',instrument:'guitar',role:'lead',name:'Lead Guitar',level:3,notation_track_index:2},{id:'t-yel-rhythm',instrument:'guitar',role:'rhythm',name:'Rhythm Guitar',level:2,notation_track_index:1},{id:'t-yel-bass',instrument:'bass',role:null,name:'Bass',level:2,notation_track_index:4},{id:'t-yel-drums',instrument:'drums',role:null,name:'Drums',level:2,notation_track_index:7},{id:'t-yel-keys',instrument:'keys',role:null,name:'Strings / Piano',level:3,notation_track_index:5},{id:'t-yel-vox',instrument:'vocals',role:null,name:'Lead Vocals',level:3,notation_track_index:0}], data:{bars:97, sections:[{label:'Intro',startBar:1,endBar:4},{label:'Instrumental 1',startBar:5,endBar:12},{label:'Verse 1',startBar:13,endBar:32},{label:'Chorus 1',startBar:33,endBar:40},{label:'Interlude 1',startBar:41,endBar:48},{label:'Verse 2',startBar:49,endBar:62},{label:'Chorus 2',startBar:63,endBar:70},{label:'Interlude 2',startBar:71,endBar:78},{label:'Outro',startBar:79,endBar:90},{label:'Outro',startBar:91,endBar:97}]}, best:null, sessions:0, trend:[]},
+  {id:'zoio-de-lula', kind:'song', patterns:['pat_zoio_fill'], title:'Zoio de Lula', artist:'Charlie Brown Jr.', level:9, bpm:76, time_sig:'4/4', genre:'rock', instruments:['guitar','bass','drums'], musical_key:null, tags:['brazilian'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-zoio-drums',instrument:'drums',role:null,name:'Bateria',level:9,notation_track_index:4},{id:'t-zoio-lead',instrument:'guitar',role:'solo',name:'Guitarra Solo',level:4,notation_track_index:1},{id:'t-zoio-rhythm',instrument:'guitar',role:'rhythm',name:'Guitarra Base',level:3,notation_track_index:0},{id:'t-zoio-gtr3',instrument:'guitar',role:null,name:'Guitarra 3',level:3,notation_track_index:2},{id:'t-zoio-bass',instrument:'bass',role:null,name:'Baixo',level:4,notation_track_index:3}], data:{bars:79, markerless:true}, best:null, sessions:0, trend:[]},
+  {id:'im-yours', kind:'song', patterns:['pat_imyours_groove'], title:"I'm Yours", artist:'Jason Mraz', level:2, bpm:73, time_sig:'4/4', genre:'pop', instruments:['guitar','bass','drums','vocals'], musical_key:'B', chords:['B','F#','G#m','E','Fdim','F#/A#'], tags:['reggae','I-V-vi-IV'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-imy-rhythm',instrument:'guitar',role:'rhythm',name:'Classical Guitar',level:2,notation_track_index:0},{id:'t-imy-lead',instrument:'guitar',role:'lead',name:'Electric Guitar',level:2,notation_track_index:1},{id:'t-imy-bass',instrument:'bass',role:null,name:'Bass',level:2,notation_track_index:2},{id:'t-imy-drums',instrument:'drums',role:null,name:'Drums',level:1,notation_track_index:3},{id:'t-imy-vox',instrument:'vocals',role:null,name:'Lead Vocal Harmonies',level:2,notation_track_index:4}], data:{bars:76, singleSection:true, sections:[{label:'Intro',startBar:2,endBar:5},{label:'Verse 1',startBar:6,endBar:13},{label:'Chorus 1',startBar:14,endBar:17},{label:'Interlude',startBar:18,endBar:21},{label:'Verse 2',startBar:22,endBar:30},{label:'Chorus 2',startBar:31,endBar:38},{label:'Bridge',startBar:39,endBar:46},{label:'Verse 3',startBar:47,endBar:54},{label:'Breakdown Chorus',startBar:55,endBar:58},{label:'Chorus 3',startBar:59,endBar:68},{label:'Outro',startBar:69,endBar:76}]}, best:null, sessions:0, trend:[]},
+  {id:'nothing-to-say', kind:'song', title:'Nothing To Say', artist:'Angra', level:9, bpm:138, time_sig:'4/4', genre:'metal', instruments:['drums','guitar','bass','keys','vocals'], musical_key:'Em', tags:['double-bass','neoclassical'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Full mix'}], video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-angra-drums',instrument:'drums',role:null,name:'Ricardo (Drums)',level:9,notation_track_index:4},{id:'t-angra-lead',instrument:'guitar',role:'lead',name:'Kiko (Lead Guitar)',level:9,notation_track_index:1},{id:'t-angra-rhythm',instrument:'guitar',role:'rhythm',name:'Rafael (Rhythm Guitar)',level:7,notation_track_index:2},{id:'t-angra-bass',instrument:'bass',role:null,name:'Luis (Bass)',level:8,notation_track_index:3},{id:'t-angra-keys',instrument:'keys',role:null,name:'Keyboards',level:6,notation_track_index:5},{id:'t-angra-vox',instrument:'vocals',role:null,name:'Andre (Vocals)',level:8,notation_track_index:0}], data:{bars:221, sections:[{label:'Intro',startBar:1,endBar:22},{label:'Main Riff',startBar:23,endBar:34},{label:'Verses I',startBar:35,endBar:55},{label:'Chorus I',startBar:56,endBar:63},{label:'Verses II',startBar:64,endBar:86},{label:'Chorus II',startBar:87,endBar:102},{label:'Bridge',startBar:103,endBar:118},{label:'Pre-Solo',startBar:119,endBar:126},{label:'Guitar Solo (Kiko)',startBar:127,endBar:134},{label:'Guitar Solo (Rafael)',startBar:135,endBar:141},{label:'Orchestra Interlude',startBar:142,endBar:153},{label:'Verses III',startBar:154,endBar:166},{label:'Chorus III - (E key)',startBar:167,endBar:182},{label:'Chorus III - (G Key)',startBar:183,endBar:198},{label:'Ending',startBar:199,endBar:221}]}, best:null, sessions:0, trend:[]},
+  {id:'pat_ssr_debut', kind:'pattern', title:'Single Stroke Roll (Debut)', pattern_kind:'rudiment', family:'Roll', level:0, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Single%20Stroke%20Roll%20(Level%20Debut)&Tempo=70&Measures=1&H=|--------|&S=|oooooooo|&K=|--------|&Stickings=|RLRLRLRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_dsr_debut', kind:'pattern', title:'Double Stroke Roll (Debut)', pattern_kind:'rudiment', family:'Diddle', level:0, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Double%20Stroke%20Roll%20(Level%20Debut)&Tempo=70&Measures=1&H=|--------|&S=|oooooooo|&K=|--------|&Stickings=|RRLLRRLL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_ssr_l2', kind:'pattern', title:'Single Stroke Roll (L2)', pattern_kind:'rudiment', family:'Roll', level:2, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Single%20Stroke%20Roll%20(Level%202)&Tempo=80&Measures=1&H=|----------------|&S=|oooooooooooooooo|&K=|----------------|&Stickings=|RLRLRLRLRLRLRLRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_ss4_l3', kind:'pattern', title:'Single Stroke Four (L3)', pattern_kind:'rudiment', family:'Single', level:3, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Single%20Stroke%20Four%20(Level%203)&Tempo=90&Measures=1&H=|----------------|&S=|oooOoooOoooOoooO|&K=|----------------|&Stickings=|RLRLRLRLRLRLRLRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_5sr_l4', kind:'pattern', title:'Five Stroke Roll (L4)', pattern_kind:'rudiment', family:'Roll', level:4, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Five%20Stroke%20Roll%20(Level%204)&Tempo=75&Measures=1&H=|----------------|&S=|ooooO-----------|&K=|----------------|&Stickings=|RRLLR-----------|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_7sr_l6', kind:'pattern', title:'Seven Stroke Roll (L6)', pattern_kind:'rudiment', family:'Roll', level:6, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Seven%20Stroke%20Roll%20(Level%206)&Tempo=85&Measures=1&H=|----------------|&S=|ooooooO---------|&K=|----------------|&Stickings=|RRLLRRL---------|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_swiss_l7', kind:'pattern', title:'Swiss Army Triplet (L7)', pattern_kind:'rudiment', family:'Flam', level:7, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=12&Title=Swiss%20Army%20Triplet%20(Level%207)&Tempo=85&Measures=1&H=|------------|&S=|foofoofoofoo|&K=|------------|&Stickings=|RRLRRLRRLRRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_ssr_l8', kind:'pattern', title:'Single Stroke Roll (L8)', pattern_kind:'rudiment', family:'Roll', level:8, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=32&Title=Single%20Stroke%20Roll%20(Level%208)&Tempo=65&Measures=1&H=|--------------------------------|&S=|oooooooooooooooooooooooooooooooo|&K=|--------------------------------|&Stickings=|RLRLRLRLRLRLRLRLRLRLRLRLRLRLRLRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_snare_fill_l4', kind:'pattern', title:'16th-Note Snare Fill (L4)', pattern_kind:'fill', family:'Fill', level:4, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=16th-Note%20Snare%20Fill%20(Level%204)&Tempo=120&Measures=1&H=|----------------|&S=|oooooooooooooooo|&K=|----------------|&Stickings=|RLRLRLRLRLRLRLRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_voice_hh', kind:'pattern', listable:false, title:'Hi-Hat Voice (8ths)', pattern_kind:'beat', family:'Voice', level:0, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Hi-Hat%20Voice&Tempo=100&Measures=1&H=|xxxxxxxx|&S=|--------|&K=|--------|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_voice_sn', kind:'pattern', listable:false, title:'Snare Voice (backbeat)', pattern_kind:'beat', family:'Voice', level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Snare%20Voice&Tempo=100&Measures=1&H=|--------|&S=|--o---o-|&K=|--------|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_voice_kick', kind:'pattern', listable:false, title:'Kick Voice (1 & 3)', pattern_kind:'beat', family:'Voice', level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Kick%20Voice&Tempo=100&Measures=1&H=|--------|&S=|--------|&K=|o---o---|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_basic_rock', kind:'pattern', title:'Basic Rock Beat', pattern_kind:'beat', family:'Rock', level:1, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Basic%20Rock%20Beat&Tempo=100&Measures=1&H=|xxxxxxxx|&S=|--o---o-|&K=|o---o---|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
+  // real grooves/fills extracted from the .gp sources (docs/wireframe/data/drum-grid-extract.json) — see NH-208
+  {id:'pat_yellow_groove_closed', kind:'pattern', title:'Yellow — groove (closed hat)', pattern_kind:'beat', family:'Rock', level:2, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'royalty-free', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Yellow%20%E2%80%94%20groove%20(closed%20hat)&Author=(Kind%3A%20Beat)&Comments=Level%3A%202&Tempo=87&Measures=1&H=|x-o-o-o-o-o-o-o-|&S=|----o-------o---|&K=|o-------o-o-----|&Stickings=|cccccccccccccccc|', source:'gp-extract-yellow.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_yellow_groove_open', kind:'pattern', title:'Yellow — groove (open hat)', pattern_kind:'beat', family:'Rock', level:2, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'royalty-free', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Yellow%20%E2%80%94%20groove%20(open%20hat)&Author=(Kind%3A%20Beat)&Comments=Level%3A%202&Tempo=87&Measures=1&H=|o-o-o-o-o-o-o-o-|&S=|----o-------o---|&K=|o-------o-o-----|&Stickings=|cccccccccccccccc|', source:'gp-extract-yellow.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_imyours_groove', kind:'pattern', title:"I'm Yours — groove", pattern_kind:'beat', family:'Reggae', level:1, instruments:['drums'], genre:'pop', status:'published', origin:'curated', license:'royalty-free', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=I%27m%20Yours%20%E2%80%94%20groove&Author=(Kind%3A%20Beat)&Comments=Level%3A%201&Tempo=73&Measures=1&H=|x-x-x-xxxxx-x-x-|&S=|----------------|&K=|----------------|&Stickings=|cccccccccccccccc|', source:'gp-extract-imyours.json'}, best:null, sessions:0, trend:[]},
+  {id:'pat_zoio_fill', kind:'pattern', title:'Zoio de Lula — tom fill', pattern_kind:'fill', family:'Fill', level:6, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'royalty-free', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Zoio%20de%20Lula%20%E2%80%94%20tom%20fill&Author=(Kind%3A%20Fill)&Comments=Level%3A%206&Tempo=76&Measures=1&H=|----------------|&S=|----------------|&K=|----------------|&T1=|--------ooo-----|&T2=|----------------|&T4=|------------ooo-|&Stickings=|cccccccccccccccc|', source:'gp-extract-zoio.json (bar 2)'}, best:null, sessions:0, trend:[]},
+  {id:'lesson_yellow_groove', kind:'lesson', title:'Yellow groove — hi-hat variations', level:2, instruments:['drums'], genre:'rock', skill:['timing','coordination'], status:'published', origin:'curated', license:'royalty-free', data:{description:'Coldplay "Yellow" main groove in two hi-hat articulations — closed vs open on beat 1.'}, best:null, sessions:0, trend:[]},
+];
+
+/* ---------- sample data — the `step` JUNCTION (parent playable -> child pattern) ----------
+   Replaces inline steps. A step links a parent (lesson OR composite pattern) to a REUSABLE
+   child pattern + order + bpm ladder. Mirrors the locked table
+   `step (parent_id, child_id, sort_order, start_bpm, goal_bpm)`.
+   Demonstrates: REUSE (same child across parents), SAME-CHILD-REPEATS (slow/med/fast),
+   and a COMPOSITE pattern (a pattern that itself has steps). */
+const STEP = {
+  'pat_basic_rock':[
+    {child_id:'pat_voice_hh',   sort_order:1, start_bpm:70, goal_bpm:100},
+    {child_id:'pat_voice_sn',   sort_order:2, start_bpm:70, goal_bpm:100},
+    {child_id:'pat_voice_kick', sort_order:3, start_bpm:70, goal_bpm:100},
+  ],
+  'lesson_yellow_groove':[
+    {child_id:'pat_yellow_groove_closed', sort_order:1, start_bpm:70, goal_bpm:87},
+    {child_id:'pat_yellow_groove_open',   sort_order:2, start_bpm:70, goal_bpm:87},
+  ],
+};
+
+/* Lessons tab = every listable playable that isn't a song (lessons + patterns). Song parts are listable:false (reached from their song), so they never appear here. The Kind filter is by pattern_kind — a pattern's own kind; a lesson's = the pattern_kinds of its step children (lesson_type dropped; kind is derived). */
+const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',label:'Fills'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, scale:{icon:'piano',label:'Scales'}, chord:{icon:'piano',label:'Chords'}};
+const GENRES = ['rock','pop','jazz','metal','funk','soul'];
+const ARTISTS = [...new Set(PLAYABLES.filter(p=>p.kind==='song'&&p.artist).map(p=>p.artist))].sort();   // $C1 distinct song artists for a discoverable catalog filter
+const TIMES = ['4/4','3/4','5/4','6/8','7/8'];
+const INSTRUMENTS = ['drums','guitar','bass','keys'];
+const KEYS = ['C','G','D','A','E','F#m','Am','Em','Bb','Eb'];
+const SKILLS = ['timing','coordination','independence','control','speed','fills','chords'];
+const SORTS = {relevance:'Relevance', level:'Level', bpm:'BPM', best:'Best score', newest:'Newest', title:'A–Z', curated:'Curated'};
+const PITCHED = ['guitar','keys'];
+const PAGE_SIZE = 6;
+
+/* ---------- state ---------- */
+const state = {
+  role: localStorage.getItem('nh_role') || 'anon',
+  theme: localStorage.getItem('nh_theme') || 'dark',
+  tab: 'songs',
+  q: '',
+  advanced: false,
+  page: 1,
+  openPop: null,
+  genre: [], kind: [], timeSig: [], instrument: null, artist: null, track: null, showAll: false,
+  level: { min:null, max:null }, inclUngraded: false,
+  bpm: { min:null, max:null },
+  score: { min:null, max:null }, inclUnplayed: false,   // SD-12 (per-user, client-side)
+  skill: [], musicalKey: [],
+  sort: 'relevance',
+};
+const el = sel => document.querySelector(sel);
+const app = el('#app');
+const esc = s => (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cap = s => s? s[0].toUpperCase()+s.slice(1):s;
+const gradeLabel = v => v===0?'Debut':String(v);
+
+function band(v){ if(v==null)return 'none'; if(v>=100)return 'gold'; if(v>=89)return 'high'; if(v>=70)return 'climb'; if(v>=50)return 'dev'; return 'low'; }
+function donut(v){
+  const b = band(v), col = {none:'--s-none',low:'--s-low',dev:'--s-dev',climb:'--s-climb',high:'--s-high',gold:'--s-gold'}[b];
+  const c=2*Math.PI*14, off=c*(1-(v==null?0:v)/100);
+  const inner = b==='gold' ? `<span class="val"><span class="material-symbols-outlined msf">trophy</span></span>` : `<span class="val">${v==null?'–':v}</span>`;
+  return `<span class="donut ${b}" title="${v==null?'Not attempted':'Best '+v+'%'}">
+    <svg width="34" height="34"><circle cx="17" cy="17" r="14" stroke="var(--s-none)" stroke-width="3.4" fill="none" opacity=".4"/>
+    <circle cx="17" cy="17" r="14" stroke="var(${col})" stroke-width="3.4" fill="none" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${off}"/></svg>${inner}</span>`;
+}
+
+const isAdmin = () => state.role==='admin';
+const signedIn= () => state.role!=='anon';
+const isPitched = () => state.instrument && PITCHED.includes(state.instrument);
+
+/* SD-17/SD-19 — a short description per playable. The model field is `description`; sourced here as a lookup for the wireframe (rows stay lean; toPlayable surfaces it as a column). */
+const DESCRIPTIONS = {
+  'bohemian-rhapsody':"Queen's multi-section epic — ballad, opera and hard-rock parts (guitar lead L7 vs rhythm L4).",
+  'yellow':'Coldplay — a steady, ringing guitar anthem in B major.',
+  'zoio-de-lula':'Charlie Brown Jr. — Brazilian rock (artist unconfirmed; flagged in the seed).',
+  'im-yours':'Jason Mraz — one I–V–vi–IV progression carries the whole song.',
+  'nothing-to-say':'Angra — neoclassical power metal; Expert-level double-bass drumming (L9).',
+};
+function descOf(it){ return it.description || DESCRIPTIONS[it.id] || null; }
+function songParts(songId){ return PLAYABLES.filter(p=>p.kind==='part' && p.parent_id===songId).sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
+function barsLabel(p){ const rs = (p.ranges && p.ranges.length) ? p.ranges : [[p.start_bar, p.end_bar]]; return rs.map(r=>r[0]+'–'+r[1]).join(' · '); }   // SD-16 repeated parts: a part may map to >1 bar range
+function songOccurrences(songId){   // $S8: one row PER bar-range occurrence, in playback (bar) order — a repeated part appears multiple times
+  const out=[];
+  songParts(songId).forEach(p=>{ const rs=(p.ranges&&p.ranges.length)?p.ranges:[[p.start_bar,p.end_bar]]; rs.forEach((r,i)=>out.push({part:p, start:r[0], end:r[1], rep:rs.length>1?i+1:0, repTotal:rs.length})); });
+  return out.sort((a,b)=>(a.start||0)-(b.start||0));
+}
+function voicesLine(p){ if(!p.voices||!p.voices.length) return ''; return `<div class="voices"><span class="vlbl">Voices</span>${p.voices.map(v=>`<span class="vchip">${esc(v)}</span>`).join('')}<span class="vnote">· placeholder — derived from the track MIDI (SD-15)</span></div>`; }
+function stepsFor(parentId){ return (STEP[parentId]||[]).slice().sort((a,b)=>(a.sort_order||0)-(b.sort_order||0)); }
+function childPlayable(childId){ return PLAYABLES.find(x=>x.id===childId) || null; }
+function reuseCount(childId){ return Object.keys(STEP).filter(pid=>STEP[pid].some(s=>s.child_id===childId)).length; }   // how many parents step to this pattern
+function usedBy(childId){ return Object.keys(STEP).filter(pid=>STEP[pid].some(s=>s.child_id===childId)).map(childPlayable).filter(Boolean); }
+function usedIn(patternId){   // SD-14 reverse lookup: every playable referencing this pattern — via STEP child OR via the patterns[] m:n
+  const out=[], seen=new Set();
+  Object.keys(STEP).forEach(pid=>{ if(STEP[pid].some(s=>s.child_id===patternId)){ const p=childPlayable(pid); if(p&&!seen.has(p.id)){seen.add(p.id);out.push(p);} } });
+  PLAYABLES.forEach(p=>{ if((p.patterns||[]).includes(patternId) && !seen.has(p.id)){ seen.add(p.id); out.push(p); } });
+  return out;
+}
+/* playable_link — lightweight relationships (a song uses a groove; a fill uses a rudiment). SD-14. */
+const LINKS = [
+  {from:'pat_yellow_groove_closed', to:'pat_yellow_groove_open', relation:'variation'},   // SD-30 closed↔open hi-hat variation pair (symmetric)
+  {from:'pat_zoio_fill', to:'pat_ssr_l8', relation:'uses'},                                // song → fill → rudiment: the tom fill is played as single strokes
+  {from:'pat_yellow_groove_closed', to:'pat_basic_rock', relation:'similar'},              // SD-30 n-n affinity: same backbeat skeleton, different song (symmetric)
+  {from:'yellow', to:'im-yours', relation:'similar'},                                      // similar songs (pop feel) — non-hierarchical
+  {from:'yellow', to:'lesson_yellow_groove', relation:'uses'},                             // song → its variation lesson
+];
+
+/* ---------- RAW AlphaTab extraction per song (docs/wireframe/data/gp-extract-*.json) ----------
+   Surfaced verbatim in the UI (raw-source panel) so nothing extracted is hidden when the
+   mapped fields cannot show it (aux/FX/print tracks, tuning, chords, every section). Objective data only. */
+const GP_RAW = {
+  "bohemian-rhapsody": {"file":"Bohemian Rhapsody with sections.gp","title":"Bohemian Rhapsody","artist":"Queen","album":null,"tempo":72,"bars":139,"timeSig":"4/4","key":"Bb major","chords":[],"trackCount":13,"tracks":[{"idx":0,"name":"Gtr 1","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":1,"name":"Piano (RH)","isPercussion":false,"tuning":[65,60,53,48,41,36],"stringCount":6,"chords":[],"progression":[]},{"idx":2,"name":"Piano (LH)","isPercussion":false,"tuning":[41,36,29,24,17,12],"stringCount":6,"chords":[],"progression":[]},{"idx":3,"name":"Gtr 2","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":4,"name":"Gtr 3","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":5,"name":"Gtr 4","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":6,"name":"Gtr 5","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":7,"name":"Bass","isPercussion":false,"tuning":[43,38,33,28],"stringCount":4,"chords":[],"progression":[]},{"idx":8,"name":"Voice","isPercussion":false,"tuning":[76,71,67,62,57,52],"stringCount":6,"chords":[],"progression":[]},{"idx":9,"name":"Choir","isPercussion":false,"tuning":[76,71,67,62,57,52],"stringCount":6,"chords":[],"progression":[]},{"idx":10,"name":"Percussions","isPercussion":true,"tuning":null,"stringCount":null,"chords":[],"progression":[]},{"idx":11,"name":"Piano (RH) [Print]","isPercussion":false,"tuning":[65,60,53,48,41,36],"stringCount":6,"chords":[],"progression":[]},{"idx":12,"name":"Piano (LH) (Print)","isPercussion":false,"tuning":[41,36,29,24,17,12],"stringCount":6,"chords":[],"progression":[]}],"sectionCount":3,"sections":[{"label":"gtrs enter","startBar":42,"endBar":54},{"label":"tempo 144","startBar":55,"endBar":95},{"label":"tempo 207","startBar":96,"endBar":139}]},
+  "yellow": {"file":"Coldplay-Yellow-06-26-2025.gp","title":"Yellow","artist":"Coldplay","album":null,"tempo":87,"bars":97,"timeSig":"4/4","key":"C major","chords":["B","Badd9","F#6","E7M","Badd11","G#m","Eadd9","F#m7add11"],"trackCount":8,"tracks":[{"idx":0,"name":"Lead Vocals | Chris Martin","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":1,"name":"Rhythm Guitar | Takamine EN15 | Chris Martin","isPercussion":false,"tuning":[63,59,55,47,45,40],"stringCount":6,"chords":["B","Badd9","F#6","E7M","Badd11","G#m","Eadd9","F#m7add11"],"progression":["B","Badd9","F#6","E7M","B","Badd9","B","F#6","E7M","B","F#6","E7M","B","F#6","E7M","B","Badd11","E7M","G#m","F#6","E7M","G#m","F#6","E7M","G#m","F#6","Eadd9","B","Badd9","F#6","E7M","B"]},{"idx":2,"name":"Lead Guitar | Fender Telecaster | Jonny Buckland","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":["B"],"progression":["B"]},{"idx":3,"name":"Overdrive | Tube Screamer | Jonny Buckland","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":4,"name":"Bass | Fender Precision | Guy Berryman","isPercussion":false,"tuning":[43,38,33,28],"stringCount":4,"chords":[],"progression":[]},{"idx":5,"name":"Orchestral Strings | Keyboard 1","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":6,"name":"Piano Overdub | Keyboard 2","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":7,"name":"Drums | Yamaha Maple Custom | Will Champion","isPercussion":true,"tuning":null,"stringCount":null,"chords":[],"progression":[]}],"sectionCount":10,"sections":[{"label":"Intro","startBar":1,"endBar":4},{"label":"Instrumental 1","startBar":5,"endBar":12},{"label":"Verse 1","startBar":13,"endBar":32},{"label":"Chorus 1","startBar":33,"endBar":40},{"label":"Interlude 1","startBar":41,"endBar":48},{"label":"Verse 2","startBar":49,"endBar":62},{"label":"Chorus 2","startBar":63,"endBar":70},{"label":"Interlude 2","startBar":71,"endBar":78},{"label":"Outro","startBar":79,"endBar":90},{"label":"Outro","startBar":91,"endBar":97}]},
+  "zoio-de-lula": {"file":"charlie-brown-jr-charlie-brown-jr-zoio-de-lula_1419361331 (completa without timbale and without bell and without sticks) 76bpm - 79 bars - revisado Leo Drum stems - Jan-2026-FINAL.gp","title":"","artist":"","album":null,"tempo":76,"bars":79,"timeSig":"4/4","key":"C major","chords":[],"trackCount":5,"tracks":[{"idx":0,"name":"Guitarra Base","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":1,"name":"Guitarra Solo","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":2,"name":"Guitarra 3","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":3,"name":"Baixo","isPercussion":false,"tuning":[42,37,32,27],"stringCount":4,"chords":[],"progression":[]},{"idx":4,"name":"Bateria","isPercussion":true,"tuning":null,"stringCount":null,"chords":[],"progression":[]}],"sectionCount":0,"sections":[]},
+  "im-yours": {"file":"I'm Yours - Jason Mraz.gp","title":"I'm Yours","artist":"Jason Mraz","album":"We Sing. We Dance. We Steal Things.","tempo":73,"bars":76,"timeSig":"4/4","key":"B major","chords":["B","F#","G#m","E","Fdim","F#/A#"],"trackCount":5,"tracks":[{"idx":0,"name":"Classical Guitar","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":["B","F#","G#m","E","Fdim","F#/A#"],"progression":["B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","Fdim","B","F#","G#m"]},{"idx":1,"name":"Electric Guitar","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":["B","F#","G#m","E","Fdim","F#/A#"],"progression":["B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","B","F#","G#m","E","Fdim","B","F#","G#m"]},{"idx":2,"name":"Bass","isPercussion":false,"tuning":[43,38,33,28],"stringCount":4,"chords":["B","F#","G#m","E","Fdim","F#/A#"],"progression":["B","F#","G#m","E","B","F#","G#m","E","Fdim","B","F#","G#m","E","B","F#","G#m","E","B","F#/A#","G#m","F#","E","Fdim","B","F#/A#","G#m","F#","E","Fdim","B","F#","G#m"]},{"idx":3,"name":"Drums","isPercussion":true,"tuning":null,"stringCount":null,"chords":[],"progression":[]},{"idx":4,"name":"Lead Vocal Harmonies","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]}],"sectionCount":11,"sections":[{"label":"Intro","startBar":2,"endBar":5},{"label":"Verse 1","startBar":6,"endBar":13},{"label":"Chorus 1","startBar":14,"endBar":17},{"label":"Interlude","startBar":18,"endBar":21},{"label":"Verse 2","startBar":22,"endBar":30},{"label":"Chorus 2","startBar":31,"endBar":38},{"label":"Bridge","startBar":39,"endBar":46},{"label":"Verse 3","startBar":47,"endBar":54},{"label":"Breakdown Chorus","startBar":55,"endBar":58},{"label":"Chorus 3","startBar":59,"endBar":68},{"label":"Outro","startBar":69,"endBar":76}]},
+  "nothing-to-say": {"file":"Angra - Nothing To Say.gp","title":"Nothing To Say","artist":"Angra","album":null,"tempo":138,"bars":221,"timeSig":"4/4","key":"C major","chords":[],"trackCount":9,"tracks":[{"idx":0,"name":"Andre","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":1,"name":"Kiko","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":2,"name":"Rafael","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":3,"name":"Luis","isPercussion":false,"tuning":[43,38,33,28],"stringCount":4,"chords":[],"progression":[]},{"idx":4,"name":"Ricardo","isPercussion":true,"tuning":null,"stringCount":null,"chords":[],"progression":[]},{"idx":5,"name":"Keyboard I","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":6,"name":"Keyboard II","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":7,"name":"Keyboard III","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]},{"idx":8,"name":"","isPercussion":false,"tuning":[64,59,55,50,45,40],"stringCount":6,"chords":[],"progression":[]}],"sectionCount":15,"sections":[{"label":"Intro","startBar":1,"endBar":22},{"label":"Main Riff","startBar":23,"endBar":34},{"label":"Verses I","startBar":35,"endBar":55},{"label":"Chorus I","startBar":56,"endBar":63},{"label":"Verses II","startBar":64,"endBar":86},{"label":"Chorus II","startBar":87,"endBar":102},{"label":"Bridge","startBar":103,"endBar":118},{"label":"Pre-Solo","startBar":119,"endBar":126},{"label":"Guitar Solo (Kiko)","startBar":127,"endBar":134},{"label":"Guitar Solo (Rafael)","startBar":135,"endBar":141},{"label":"Orchestra Interlude","startBar":142,"endBar":153},{"label":"Verses III","startBar":154,"endBar":166},{"label":"Chorus III - (E key)","startBar":167,"endBar":182},{"label":"Chorus III - (G Key)","startBar":183,"endBar":198},{"label":"Ending","startBar":199,"endBar":221}]},
+};
+function linksOf(id){ return { uses: LINKS.filter(l=>l.from===id), usedByLink: LINKS.filter(l=>l.to===id) }; }
+// "Used in" / where-is-used card — reverse references for any playable (deduped). Reused on pattern, step + part pages.
+// user-facing kind: patterns show their pattern_kind (Beat/Fill/Rudiment), never the umbrella word "pattern".
+const kindLabel = p => p.kind==='pattern' ? (PATTERN_KINDS[p.pattern_kind]?.label||'Pattern') : cap(p.kind);
+const kindIcon  = p => p.kind==='pattern' ? (PATTERN_KINDS[p.pattern_kind]?.icon||'extension') : p.kind==='song'?'music_note':p.kind==='part'?'segment':'school';
+function usedInCard(items, note){
+  const seen=new Set(); const u=(items||[]).filter(p=>p&&!seen.has(p.id)&&(seen.add(p.id),true));
+  if(!u.length) return '';
+  return `<div class="card"><h3><span class="material-symbols-outlined">hub</span> Used in${note?` <span style="font-weight:400;color:var(--faint)">· ${note}</span>`:''}</h3>
+    ${u.map(p=>`<div class="patrow" data-nav="#/${p.kind}/${p.id}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
+}
+function patternKindsOf(it){ if(it.kind==='pattern') return it.pattern_kind?[it.pattern_kind]:[]; return [...new Set(stepsFor(it.id).map(s=>childPlayable(s.child_id)).filter(Boolean).map(c=>c.pattern_kind).filter(Boolean))]; }   // a lesson's "kind" = the pattern_kinds of its step children (lesson_type is derived, not stored)
+function hasParts(it){ return it.kind==='song' ? (songParts(it.id).length>0 || !!(it.data&&it.data.sections&&it.data.sections.length)) : stepsFor(it.id).length>0; }
+function itemFlags(it){
+  const f=[];
+  if(it.has_audio) f.push('<span class="material-symbols-outlined" title="Has audio">volume_up</span>');
+  if(it.has_video) f.push('<span class="material-symbols-outlined" title="Has video">smart_display</span>');
+  if(hasParts(it)) f.push(`<span class="material-symbols-outlined parts" title="${it.kind==='song'?'Has parts':'Has steps'}">splitscreen</span>`);
+  return f.length?`<span class="flags">${f.join('')}</span>`:'';
+}
+function lessonLadder(it){ const s=stepsFor(it.id); if(!s.length) return '—'; const a=Math.min(...s.map(x=>x.start_bpm||1e9)), b=Math.max(...s.map(x=>x.goal_bpm||0)); return (a<1e9&&b)?`${a}→${b}`:'—'; }
+
+/* ---------- Group D: tracks · media · per-instrument difficulty ---------- */
+const INSTRUMENT_ICON = {drums:'graphic_eq', guitar:'queue_music', bass:'queue_music', keys:'piano', vocals:'mic', ukulele:'queue_music'};
+const instIcon = i => INSTRUMENT_ICON[i] || 'music_note';
+const PROVIDER = {youtube:{label:'YouTube', cls:'tex'}, s3:{label:'S3 file', cls:'upload'}, 'gp-embedded':{label:'in .gp', cls:'slice'}};
+/* every playable owns ≥1 track (D-3 invariant). No explicit tracks[] → synthesize one per instrument from instruments[] (level = headline). */
+function tracksOf(it){
+  if(it.tracks && it.tracks.length) return it.tracks;
+  return (it.instruments||[]).map((inst,i)=>({id:it.id+'-'+inst, instrument:inst, role:null, name:cap(inst), level:it.level??null, notation_track_index:i, synthetic:true}));
+}
+const mediaOf    = it => it.media || [];
+const songMedia  = it => mediaOf(it).filter(m=>m.scope!=='track');
+const trackMedia = (it,tid) => mediaOf(it).filter(m=>m.scope==='track' && m.track===tid);
+const derivedInstruments = it => [...new Set(tracksOf(it).map(t=>t.instrument))].sort();   // D-1a facet = DISTINCT track.instrument
+function levelRange(tracks){ const ls=tracks.map(t=>t.level).filter(v=>v!=null); if(!ls.length) return null; return {lo:Math.min(...ls), hi:Math.max(...ls)}; }
+const lvlText   = v => v==null?'—':(v===0?'Debut':'L'+v);
+const rangeText = r => !r ? '—' : (r.lo===r.hi ? lvlText(r.lo) : `${r.lo===0?'Debut':'L'+r.lo}–${r.hi}`);
+/* the track the detail page is scoped to: explicit selection → instrument-lens match → first track */
+function defaultTrackId(it){ const ts=tracksOf(it); if(state.instrument){ const m=ts.find(t=>t.instrument===state.instrument); if(m) return m.id; } return ts[0]?.id || null; }
+function selectedTrack(it){ const ts=tracksOf(it); return ts.find(t=>t.id===state.track) || ts.find(t=>t.id===defaultTrackId(it)) || ts[0] || null; }
+/* what the catalog row shows for Level: instrument-lens → that instrument's track level(s); else the full range across tracks */
+function rowLevelText(it){
+  const ts=tracksOf(it);
+  const scoped = state.instrument ? ts.filter(t=>t.instrument===state.instrument) : ts;
+  const r = levelRange(scoped.length?scoped:ts);
+  return r ? rangeText(r) : lvlText(it.level);
+}
+
+/* ---------- router ---------- */
+function parseHash(){
+  const raw = location.hash.replace(/^#/,'') || '/catalog';
+  const [path, query] = raw.split('?');
+  return {seg:path.split('/').filter(Boolean), qp:new URLSearchParams(query||''), raw};
+}
+function navigate(hash){ location.hash = hash; }
+function replaceHash(hash){ history.replaceState(null,'','#'+hash); el('#routeEcho').textContent = location.hash; }
+function syncCatalogHash(){
+  const p = new URLSearchParams();
+  p.set('tab', state.tab);
+  if(state.tab==='lessons' && state.kind.length) p.set('kind', state.kind.join(','));
+  if(state.genre.length) p.set('genre', state.genre.join(','));
+  if(state.artist) p.set('artist', state.artist);
+  if(state.q) p.set('q', state.q);
+  if(state.sort!=='relevance') p.set('sort', state.sort);
+  if(state.page>1) p.set('page', state.page);
+  replaceHash('/catalog?'+p.toString());
+}
+
+function render(){
+  document.documentElement.dataset.theme = state.theme;
+  paintRoleChrome();
+  const {seg, qp} = parseHash();
+  el('#routeEcho').textContent = location.hash || '#/catalog';
+  el('#topBack').style.display = (seg[0]===undefined||seg[0]==='catalog') ? 'none' : 'inline-flex';   // iPhone-style back, only on sub-pages
+  if(seg[0]===undefined || seg[0]==='catalog'){
+    if(qp.get('tab')) state.tab = qp.get('tab');
+    if(qp.get('kind')) state.kind = qp.get('kind').split(',');
+    if(qp.get('genre')) state.genre = qp.get('genre').split(',');
+    state.artist = qp.get('artist') || null;
+    if(qp.get('q')!=null) state.q = qp.get('q');
+    if(qp.get('sort')) state.sort = qp.get('sort');
+    state.page = +(qp.get('page')||1);
+    return renderCatalog();
+  }
+  if(seg[0]==='song')   return seg[2]==='section' ? renderSongSection(seg[1], +seg[3]) : renderSong(seg[1]);
+  if(seg[0]==='part')   return renderPart(seg[1]);
+  if(seg[0]==='pattern') return renderPattern(seg[1]);
+  if(seg[0]==='lesson') return seg[2]==='step' ? renderStep(seg[1], +seg[3]) : renderLesson(seg[1]);
+  if(seg[0]==='play')   return renderPlayer();
+  if(seg[0]==='admin')  return renderAdminStub(seg, qp);
+  app.innerHTML = `<div class="empty"><span class="material-symbols-outlined">help</span>Unknown route <code>${esc(location.hash)}</code><br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`;
+}
+
+/* ---------- filtering + sorting ---------- */
+function matches(it){
+  if(it.listable===false) return false;                                          // parts (and any listable:false playable) never appear in browse
+  if(state.tab==='songs' ? it.kind!=='song' : it.kind==='song') return false;   // Lessons tab = every non-song (lessons + patterns)
+  if(state.genre.length && !state.genre.includes(it.genre)) return false;
+  if(state.tab==='songs' && state.artist && it.artist!==state.artist) return false;   // SD-13 artist facet (songs)
+  if(state.tab==='lessons' && state.kind.length && !state.kind.some(k=>patternKindsOf(it).includes(k))) return false;   // Kind filter spans patterns (own kind) + lessons (derived from step children)
+  if(state.timeSig.length && !state.timeSig.includes(it.time_sig)) return false;
+  if(state.instrument && !(it.instruments||[]).includes(state.instrument)) return false;
+  if(state.level.min!=null || state.level.max!=null){
+    // per-instrument: when an instrument is selected, filter on THAT instrument's
+    // headline (max of its tracks), not the song's overall headline (SD-27 / T3).
+    // e.g. Zoio guitar = L3-4, so "Guitar + level>=9" must NOT match it (drums L9 does).
+    let lv = it.level;
+    if(state.instrument){ const ls=tracksOf(it).filter(t=>t.instrument===state.instrument).map(t=>t.level).filter(v=>v!=null); if(ls.length) lv=Math.max(...ls); }
+    if(lv==null){ if(!state.inclUngraded) return false; }
+    else { if(state.level.min!=null && lv<state.level.min) return false; if(state.level.max!=null && lv>state.level.max) return false; }
+  }
+  if(state.bpm.min!=null && (it.bpm==null || it.bpm<state.bpm.min)) return false;
+  if(state.bpm.max!=null && (it.bpm==null || it.bpm>state.bpm.max)) return false;
+  if(signedIn() && (state.score.min!=null || state.score.max!=null)){   // SD-12 (per-user; client-side here)
+    if(it.best==null){ if(!state.inclUnplayed) return false; }
+    else { if(state.score.min!=null && it.best<state.score.min) return false; if(state.score.max!=null && it.best>state.score.max) return false; }
+  }
+  if(state.skill.length && !state.skill.every(s=>(it.skill||[]).includes(s))) return false;
+  if(isPitched() && state.musicalKey.length && !state.musicalKey.includes(it.musical_key)) return false;
+  if(state.q){ const t=(it.title+' '+(it.artist||'')).toLowerCase(); if(!t.includes(state.q.toLowerCase())) return false; }
+  if(!isAdmin() && it.status!=='published' && !(it.ownedByUser && signedIn())) return false;
+  return true;
+}
+function sortItems(arr){
+  const c=[...arr], s=state.sort;
+  if(s==='level') c.sort((a,b)=>(a.level==null?99:a.level)-(b.level==null?99:b.level));
+  else if(s==='bpm') c.sort((a,b)=>(a.bpm==null?1e9:a.bpm)-(b.bpm==null?1e9:b.bpm));
+  else if(s==='best') c.sort((a,b)=>(b.best==null?-1:b.best)-(a.best==null?-1:a.best));
+  else if(s==='title') c.sort((a,b)=>a.title.localeCompare(b.title));
+  else if(s==='newest') c.sort((a,b)=>(b.new?1:0)-(a.new?1:0));
+  return c;
+}
+
+function multiFace(label, arr, fmt){ if(!arr.length) return `<span class="k">${label}:</span> Any`; const f=fmt||cap; return `<span class="k">${label}:</span> ${f(arr[0])}${arr.length>1?' +'+(arr.length-1):''}`; }
+function rangeFace(label, r, fmt){ const f=fmt||(x=>x); if(r.min==null&&r.max==null) return `<span class="k">${label}:</span> Any`; if(r.min!=null&&r.max!=null) return `<span class="k">${label}:</span> ${f(r.min)}–${f(r.max)}`; if(r.max!=null) return `<span class="k">${label}:</span> ≤ ${f(r.max)}`; return `<span class="k">${label}:</span> ≥ ${f(r.min)}`; }
+
+function multiPop(id, group, opts){
+  const sel = state[group];
+  return `<div class="fpop ${state.openPop===id?'open':''}" id="${id}">
+    <div class="opsel">is any of</div>
+    ${opts.map(o=>`<div class="fopt ${sel.includes(o.val)?'on':''}" data-mg="${group}" data-val="${o.val}">
+      <span class="box"><span class="material-symbols-outlined">check</span></span>
+      ${o.icon?`<span class="material-symbols-outlined ic">${o.icon}</span>`:''}${o.label}</div>`).join('')}
+    <div class="foot"><span></span><a data-clear="${group}">Clear</a></div></div>`;
+}
+function singlePop(id, opts){
+  return `<div class="fpop ${state.openPop===id?'open':''}" id="${id}">
+    <div class="opsel">is</div>
+    ${opts.map(o=>`<div class="fopt ${state.instrument===o.val?'on':''}" data-si="instrument" data-val="${o.val}">
+      <span class="radio"></span><span class="material-symbols-outlined ic">${o.icon}</span>${o.label}</div>`).join('')}
+    <div class="foot"><span></span><a data-clear="instrument">Clear</a></div></div>`;
+}
+function levelPop(){
+  const opt = (n,v)=>`<option value="${v}" ${state.level[n]===v?'selected':''}>${gradeLabel(v)}</option>`;
+  const optEls = n => `<optgroup label="Debut">${opt(n,0)}</optgroup><optgroup label="Beginner">${[1,2,3].map(v=>opt(n,v)).join('')}</optgroup><optgroup label="Intermediate">${[4,5,6].map(v=>opt(n,v)).join('')}</optgroup><optgroup label="Advanced">${[7,8].map(v=>opt(n,v)).join('')}</optgroup><optgroup label="Expert">${[9,10].map(v=>opt(n,v)).join('')}</optgroup>`;   // N-14 level bands (display-only): Debut 0 · Beginner 1-3 · Intermediate 4-6 · Advanced 7-8 · Expert 9-10 (Rockschool 0-8 + Expert 9-10)
+  return `<div class="fpop ${state.openPop==='lvlPop'?'open':''}" id="lvlPop" style="min-width:230px">
+    <div class="opsel">difficulty range (0 = Debut)</div>
+    <div class="rangerow"><label>Min</label><select data-range="levelMin"><option value="">—</option>${optEls('min')}</select>
+      <span class="dash">–</span><label>Max</label><select data-range="levelMax"><option value="">—</option>${optEls('max')}</select></div>
+    <div class="fopt ${state.inclUngraded?'on':''}" data-toggle="inclUngraded" style="margin-top:2px"><span class="box"><span class="material-symbols-outlined">check</span></span>Include ungraded</div>
+    <div class="foot"><span style="color:var(--faint);font-size:11.5px">bounded range excludes ungraded</span><a data-clear="level">Clear</a></div></div>`;
+}
+function bpmPop(){
+  return `<div class="fpop ${state.openPop==='bpmPop'?'open':''}" id="bpmPop" style="min-width:230px">
+    <div class="opsel">tempo range (BPM)</div>
+    <div class="rangerow"><label>Min</label><input type="number" min="0" step="1" data-range="bpmMin" value="${state.bpm.min??''}" placeholder="—">
+      <span class="dash">–</span><label>Max</label><input type="number" min="0" step="1" data-range="bpmMax" value="${state.bpm.max??''}" placeholder="—"></div>
+    <div class="foot"><span></span><a data-clear="bpm">Clear</a></div></div>`;
+}
+function scorePop(){
+  return `<div class="fpop ${state.openPop==='scorePop'?'open':''}" id="scorePop" style="min-width:250px">
+    <div class="opsel">your best score % · per-user</div>
+    <div class="rangerow"><label>Min</label><input type="number" min="0" max="100" step="1" data-range="scoreMin" value="${state.score.min??''}" placeholder="—">
+      <span class="dash">–</span><label>Max</label><input type="number" min="0" max="100" step="1" data-range="scoreMax" value="${state.score.max??''}" placeholder="—"></div>
+    <div class="fopt ${state.inclUnplayed?'on':''}" data-toggle="inclUnplayed" style="margin-top:2px"><span class="box"><span class="material-symbols-outlined">check</span></span>Include not-attempted</div>
+    <div class="foot"><span style="color:var(--faint);font-size:11px">SD-12: wireframe filters the loaded set</span><a data-clear="score">Clear</a></div></div>`;
+}
+function sortPop(){
+  const opts = Object.entries(SORTS).filter(([v])=> v!=='best' || signedIn());
+  return `<div class="fpop r ${state.openPop==='sortPop'?'open':''}" id="sortPop">
+    <div class="opsel">sort by</div>
+    ${opts.map(([v,l])=>`<div class="fopt ${state.sort===v?'on':''}" data-sort="${v}"><span class="radio"></span>${l}</div>`).join('')}</div>`;
+}
+
+/* ---------- screen: CATALOG ---------- */
+function renderCatalog(){
+  syncCatalogHash();
+  if(el('#q').value!==state.q) el('#q').value=state.q;
+  const isLessons = state.tab==='lessons';
+  const all = sortItems(PLAYABLES.filter(matches));
+  const pages = Math.max(1, Math.ceil(all.length/PAGE_SIZE));
+  if(state.page>pages) state.page=pages; if(state.page<1) state.page=1;
+  const list = all.slice((state.page-1)*PAGE_SIZE, state.page*PAGE_SIZE);
+
+  const dyn = isLessons
+    ? `<div class="fdrop"><button class="fbtn ${state.kind.length?'on':''}" data-pop="kindPop">${multiFace('Kind',state.kind,k=>BROWSE_KINDS[k]?.label||k)} <span class="material-symbols-outlined caret">expand_more</span></button>
+        ${multiPop('kindPop','kind',Object.keys(BROWSE_KINDS).map(k=>({val:k,label:BROWSE_KINDS[k].label,icon:BROWSE_KINDS[k].icon})))}</div>`
+    : `<div class="fdrop"><button class="fbtn ${state.genre.length?'on':''}" data-pop="genrePop">${multiFace('Genre',state.genre)} <span class="material-symbols-outlined caret">expand_more</span></button>
+        ${multiPop('genrePop','genre',GENRES.map(g=>({val:g,label:cap(g)})))}</div>`;
+
+  app.innerHTML = `
+    ${adminCatalogBar()}
+    <div class="frow">
+      <div class="seg">
+        <button class="${!isLessons?'sel':''}" data-tab="songs"><span class="material-symbols-outlined">music_note</span> Songs</button>
+        <button class="${isLessons?'sel':''}" data-tab="lessons"><span class="material-symbols-outlined">school</span> Lessons</button>
+      </div>
+      <span class="vsep"></span>
+      ${dyn}
+      ${(!isLessons && state.artist)?`<button class="fbtn on" data-clear-artist title="Clear artist filter"><span class="k">Artist:</span> ${esc(state.artist)} <span class="material-symbols-outlined" style="font-size:15px">close</span></button>`:''}
+      <div class="fdrop"><button class="fbtn ${(state.level.min!=null||state.level.max!=null)?'on':''}" data-pop="lvlPop">${rangeFace('Level',state.level,gradeLabel)} <span class="material-symbols-outlined caret">expand_more</span></button>${levelPop()}</div>
+      <div class="fdrop"><button class="fbtn ${state.instrument?'on':''}" data-pop="instPop">${state.instrument?`<span class="k">Instrument:</span> ${cap(state.instrument)}`:'<span class="k">Instrument:</span> Any'} <span class="material-symbols-outlined caret">expand_more</span></button>
+        ${singlePop('instPop',INSTRUMENTS.map(i=>({val:i,label:cap(i),icon:i==='drums'?'graphic_eq':i==='guitar'?'queue_music':'piano'})))}</div>
+      <button class="fbtn ${state.advanced?'on':''}" data-more><span class="material-symbols-outlined">tune</span> More <span class="material-symbols-outlined caret">expand_more</span></button>
+      <span style="flex:1"></span>
+      <div class="fdrop sortwrap"><button class="fbtn" data-pop="sortPop"><span class="material-symbols-outlined">swap_vert</span> ${SORTS[state.sort]} <span class="material-symbols-outlined caret">expand_more</span></button>${sortPop()}</div>
+    </div>
+    <div class="advanced ${state.advanced?'open':''}">
+      ${!isLessons?`<div class="fdrop"><button class="fbtn ${state.artist?'on':''}" data-pop="artistPop">${state.artist?`<span class="k">Artist:</span> ${esc(state.artist)}`:'<span class="k">Artist:</span> Any'} <span class="material-symbols-outlined caret">expand_more</span></button>
+        <div class="fpop ${state.openPop==='artistPop'?'open':''}" id="artistPop" style="max-height:260px;overflow:auto"><div class="opsel">is</div>${ARTISTS.map(a=>`<div class="fopt ${state.artist===a?'on':''}" data-artist-pick="${esc(a)}"><span class="radio"></span>${esc(a)}</div>`).join('')}<div class="foot"><span></span><a data-clear-artist>Clear</a></div></div></div>`:''}
+      <div class="fdrop"><button class="fbtn ${state.timeSig.length?'on':''}" data-pop="timePop">${multiFace('Time',state.timeSig,x=>x)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('timePop','timeSig',TIMES.map(t=>({val:t,label:t})))}</div>
+      <div class="fdrop"><button class="fbtn ${state.bpm.min!=null||state.bpm.max!=null?'on':''}" data-pop="bpmPop">${rangeFace('Tempo',state.bpm)} <span class="material-symbols-outlined caret">expand_more</span></button>${bpmPop()}</div>
+      <div class="fdrop"><button class="fbtn ${state.skill.length?'on':''}" data-pop="skillPop">${multiFace('Skill',state.skill)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('skillPop','skill',SKILLS.map(s=>({val:s,label:cap(s)})))}</div>
+      ${signedIn()?`<div class="fdrop"><button class="fbtn ${state.score.min!=null||state.score.max!=null?'on':''}" data-pop="scorePop">${rangeFace('Best',state.score,x=>x+'%')} <span class="material-symbols-outlined caret">expand_more</span></button>${scorePop()}</div>`:''}
+      ${isPitched()
+        ? `<div class="fdrop"><button class="fbtn ${state.musicalKey.length?'on':''}" data-pop="keyPop">${multiFace('Key',state.musicalKey,x=>x)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('keyPop','musicalKey',KEYS.map(k=>({val:k,label:k})))}</div>`
+        : `<span class="advsec" title="Key applies to pitched instruments (guitar/keys)"><span class="albl">Key</span><span style="color:var(--faint);font-size:12px">— pick a pitched instrument</span></span>`}
+    </div>
+    ${'' /* continue banner removed with demo data */}
+    ${ list.length ? `
+      <div class="tablehead"><span>Name</span><span>Level</span><span>BPM</span><span>Best</span><span></span></div>
+      ${list.map(rowHTML).join('')}
+      ${pager(all.length, pages)}
+      ` : `<div class="empty"><span class="material-symbols-outlined">search_off</span>No ${state.tab} match these filters.<br><button class="btn secondary" id="clearAll" style="margin-top:12px">Clear all filters</button></div>` }
+  `;
+}
+/* ---- all-fields inspector (Fields toggle): map an item to the playable model + render every column ---- */
+function nfv(v){
+  if(v===null||v===undefined||v==='') return '<span class="nfv nul">∅ null</span>';
+  if(Array.isArray(v)) return v.length?`<span class="nfv">{${v.map(esc).join(', ')}}</span>`:'<span class="nfv nul">{} empty</span>';
+  if(typeof v==='object') return `<span class="nfv">${esc(JSON.stringify(v))}</span>`;
+  if(v===false) return '<span class="nfv nul">false</span>';
+  return `<span class="nfv">${esc(String(v))}</span>`;
+}
+function toPlayable(it){
+  const ts = it.time_sig ? String(it.time_sig).split('/') : [null,null];
+  return {
+    id:it.id, kind:it.kind, title:it.title, description: descOf(it),
+    parent_id: it.parent_id||it.sourceSong||null,
+    notation_id: it.notation_format?('src-'+it.id):(it.notation_alphaTex?('tex-'+it.id):null),
+    start_bar: it.start_bar??null, end_bar: it.end_bar??null, sort_order: it.sort_order??null,
+    listable: it.listable===false ? false : (it.visibility==='private'?false:true),
+    level: it.level??null, artist: it.artist??null, bpm: it.bpm??null,
+    time_signature_numerator: ts[0]?Number(ts[0]):null, time_signature_denominator: ts[1]?Number(ts[1]):null,
+    genre: it.genre??null, musical_key: it.musical_key??null,
+    instruments: it.instruments||null, skill: it.skill||null, tags: it.tags||null,
+    pattern_kind: it.pattern_kind??null, family: it.family??null,
+    origin: it.origin==='user-upload'?'user-upload':'curated',
+    status: it.status||'published', license: it.license??null,
+    has_audio: !!it.has_audio, has_video: !!it.has_video,
+    data: it.data||null, created_by: it.owner||null,
+  };
+}
+const NF_ORDER = ['id','kind','title','description','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
+/* assemble the playable + its joins (notation, tracks, media) into one object for the inspector */
+function inspectorObject(it){
+  const n = toPlayable(it);
+  const obj = { playable: n };
+  if(n.notation_id){
+    obj.notation = {
+      id: n.notation_id,
+      format: it.notation_format || (it.notation_alphaTex ? 'alphatex' : null),
+      s3_key: it.notation_format ? ('catalog/'+it.id+'/source.'+it.notation_format) : null,
+      notation_alphaTex: it.notation_alphaTex || null,
+    };
+  }
+  obj.tracks = (it.tracks || tracksOf(it)).map(t=>({
+    instrument: t.instrument, role: t.role||null, name: t.name||null,
+    level: t.level??null, notation_id: t.notation_id||null,
+    notation_track_index: t.notation_track_index??null,
+    data: t.tuning ? { tuning: t.tuning } : {},
+  }));
+  obj.media = (it.media||[]).map(m=>({
+    scope: m.scope==='track' ? 'track' : 'song', track_id: m.track||null,
+    kind: m.kind, provider: m.provider,
+    url: m.url||null, s3_key: m.s3_key||null, label: m.label||null,
+  }));
+  return obj;
+}
+/* pretty, lightly-highlighted JSON (keys + null), HTML-safe */
+function jsonHL(obj){
+  let s = esc(JSON.stringify(obj, null, 2));
+  s = s.replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;)(:)/g, '<span class="jk">$1</span>$2');
+  s = s.replace(/\bnull\b/g, '<span class="jnull">null</span>');
+  return s;
+}
+function playableGrid(it){
+  return `<div class="nfsub">playable + joins · formatted JSON <span style="color:var(--faint)">(tracks · media · notation · data.sections[].tracks[])</span></div><pre class="nfjson">${jsonHL(inspectorObject(it))}</pre>`;
+}
+function allFieldsPanel(it){ return `<div class="nfields">${playableGrid(it)}</div>`; }              // inline, under list rows
+function detailFieldsPanel(it){ return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> fields · drag the corner to resize</div><div class="fdbody">${playableGrid(it)}</div></aside>`; }  // floating, on detail pages
+// Raw AlphaTab extraction, shown verbatim when the mapped UI can't display all of it (aux/FX/print tracks, tuning, every section). Leo: "the wireframe should have RAW data if you are confused how to display on the UI."
+function rawSourceCard(it){
+  const raw = (typeof GP_RAW!=='undefined') && GP_RAW[it.id]; if(!raw) return '';
+  return `<details style="margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px 14px">
+    <summary style="cursor:pointer;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px"><span class="material-symbols-outlined" style="font-size:16px;color:var(--accent)">data_object</span> Raw source data — AlphaTab extraction (every track + section, verbatim)</summary>
+    <div style="font-size:11.5px;color:var(--faint);margin:8px 0 2px">Objective data straight from the <code>.gp</code> file. Shown raw because the mapped fields above can't display all of it (aux / FX / print-only tracks, tuning, every section marker). Per-track <b>difficulty levels are NOT here</b> — those are human estimates, flagged in the schema-delta.</div>
+    <pre class="nfjson">${jsonHL(raw)}</pre></details>`;
+}
+function rowHTML(it){
+  const isLesson = it.kind==='lesson', isPat = it.kind==='pattern';
+  const lkPrimary = isLesson ? (patternKindsOf(it)[0]||null) : null;
+  const cover = isLesson ? (PATTERN_KINDS[lkPrimary]?.icon||'school')
+              : isPat ? (PATTERN_KINDS[it.pattern_kind]?.icon||'extension')
+              : 'music_note';
+  const badge = isLesson ? `<span class="badge2 ${lkPrimary||''}">${lkPrimary?PATTERN_KINDS[lkPrimary].label:'Lesson'}</span>`
+              : isPat ? `<span class="badge2 ${it.pattern_kind}">${PATTERN_KINDS[it.pattern_kind]?.label||'Pattern'}</span>` : '';
+  const isNew = it.new ? `<span class="pill-new">New</span>` : '';
+  const priv = it.visibility==='private' ? `<span class="tag private" style="font-size:10px;padding:1px 6px">Private</span>` : '';
+  const diffHl = (it.data&&it.data.difficulty) ? ` <span class="dot"></span> by ${esc(it.data.difficulty.by)}` : '';
+  const sub = isLesson
+    ? `${stepsFor(it.id).length} steps <span class="dot"></span> ${(it.skill||[]).slice(0,2).join(' · ')}`
+    : isPat
+    ? `${PATTERN_KINDS[it.pattern_kind]?.label||it.pattern_kind}${it.family?' <span class="dot"></span> '+esc(it.family):''}${it.musical_key?' <span class="dot"></span> '+it.musical_key:(it.genre?' <span class="dot"></span> '+cap(it.genre):'')}${diffHl}`
+    : `${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}${it.musical_key?' <span class="dot"></span> '+it.musical_key:''}`;
+  const bpm = isLesson ? lessonLadder(it) : isPat ? '—' : (it.bpm||'—');
+  const lvlTxt = rowLevelText(it);                                   // L1 range across tracks, or the lens instrument's track level
+  const lvl = `<span class="lvlpill ${lvlTxt==='Debut'?'debut':''}">${lvlTxt}</span>`;
+  const nav = ` data-nav="#/${it.kind}/${it.id}"`;
+  return `<div class="row">
+    <div class="name">
+      <div class="cover ${it.kind!=='song'?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
+      <div class="nm"${nav}>
+        <div class="nmtitle"><b>${esc(it.title)}</b>${badge}${isNew}${priv}</div>
+        <div class="nmsub">${sub}</div>
+      </div>
+      ${itemFlags(it)}
+    </div>
+    ${lvl}
+    <span class="bpm mono">${bpm}</span>
+    ${donut(it.best)}
+    <button class="play" title="Quick play" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span></button>
+    ${allFieldsPanel(it)}
+  </div>`;
+}
+function pager(total, pages){
+  if(pages<=1) return `<div class="loadmore">${total} item${total===1?'':'s'}</div>`;
+  const start=(state.page-1)*PAGE_SIZE+1, end=Math.min(total,state.page*PAGE_SIZE);
+  let btns='';
+  for(let p=1;p<=pages;p++) btns+=`<button data-page="${p}" aria-current="${p===state.page}">${p}</button>`;
+  return `<div class="pager">
+    <button data-page="${Math.max(1,state.page-1)}" ${state.page===1?'disabled':''}><span class="material-symbols-outlined">chevron_left</span></button>
+    ${btns}
+    <button data-page="${Math.min(pages,state.page+1)}" ${state.page===pages?'disabled':''}><span class="material-symbols-outlined">chevron_right</span></button>
+    <span class="info">${start}–${end} of ${total}</span>
+  </div>`;
+}
+function adminCatalogBar(){
+  if(!isAdmin()) return '';
+  return `<div class="adminbar">
+    <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin · curate catalog</span>
+    <button class="adminbtn" data-nav="#/admin/new?type=song"><span class="material-symbols-outlined">add</span> New song</button>
+    <button class="adminbtn" data-nav="#/admin/new?type=lesson"><span class="material-symbols-outlined">add</span> New lesson</button>
+    <button class="adminbtn" data-nav="#/admin/new?type=upload"><span class="material-symbols-outlined">upload</span> Upload file</button>
+  </div>`;
+}
+
+/* ---------- relationship + meta blocks (READ deepening) ---------- */
+// Related card — playable_link relationships. 'uses' is directional (song→fill→rudiment);
+// 'variation' (hi-hat articulations) and 'similar' (n-n affinity, any playables) are symmetric (↔). SD-30.
+function relatedCard(it){
+  const sym=r=>r==='variation'||r==='similar';
+  const resolve=pid=>childPlayable(pid)||PLAYABLES.find(x=>x.id===pid);
+  const lk=linksOf(it.id);
+  const all=[...lk.uses.map(l=>({p:resolve(l.to),rel:l.relation,dir:sym(l.relation)?'↔':'uses →'})), ...lk.usedByLink.map(l=>({p:resolve(l.from),rel:l.relation,dir:sym(l.relation)?'↔':'← used by'}))].filter(x=>x.p);
+  if(!all.length) return '';
+  return `<div class="card"><h3><span class="material-symbols-outlined">share</span> Related <span style="font-weight:400;color:var(--faint)">· playable_link</span></h3>
+    ${all.map(x=>`<div class="patrow" data-nav="#/${x.p.kind}/${x.p.id}"><span class="src tex" style="white-space:nowrap">${x.dir}</span><div style="flex:1"><b>${esc(x.p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(x.p)} · ${esc(x.rel)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
+}
+function patternsCard(it){
+  if(!it.patterns||!it.patterns.length) return '';
+  return `<div class="card"><h3><span class="material-symbols-outlined">extension</span> Patterns ${it.kind==='song'?'in this song':'this lesson teaches'} <span style="font-weight:400;color:var(--faint)">· reusable grooves / fills / rudiments</span></h3>
+    ${it.patterns.map(pid=>{ const pl=childPlayable(pid), d=PATTERNS[pid]; if(!pl&&!d) return ''; const pk=(pl&&pl.pattern_kind)||(d&&d.kind); const k=PATTERN_KINDS[pk]||{label:pk||'Pattern',icon:'extension'}; const title=(pl&&pl.title)||(d&&d.name)||pid; const fam=(pl&&pl.family)||(d&&d.family); const lvl=(pl?pl.level:(d&&d.level));
+      return `<div class="patrow" data-nav="#/pattern/${pid}"><span class="material-symbols-outlined" style="color:var(--accent)">${k.icon}</span>
+        <div style="flex:1"><b>${esc(title)}</b><small style="color:var(--faint);display:block">${[k.label,fam,'level '+(lvl??'—')].filter(Boolean).join(' · ')}</small></div>
+        ${pl?donut(pl.best):''}<span class="pk ${pk}">${k.label}</span><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`; }).join('')}
+    <small style="color:var(--faint);display:block;margin-top:4px">Linked via the m:n <code>patterns[]</code>. Each pattern is its own playable, scored on its own.</small>
+  </div>`;
+}
+function mediaLinks(it){
+  const m=[...(it.video||[]).map(v=>({i:'smart_display',l:v.label||'Video'})), ...(it.audio||[]).map(a=>({i:'volume_up',l:a.label||'Audio'}))];
+  if(!m.length) return '';
+  return `<div class="media">${m.map(x=>`<span class="medialink"><span class="material-symbols-outlined">${x.i}</span>${esc(x.l)}</span>`).join('')}</div>`;
+}
+/* D-1/D-2/D-3 — the instrument+track LENS: every detail page is scoped to ONE track (Leo's model). */
+function trackLens(it){
+  const ts = tracksOf(it); const sel = selectedTrack(it);
+  if(!sel) return '';
+  const opts = ts.map(t=>`<option value="${esc(t.id)}" ${t.id===sel.id?'selected':''}>${esc(t.name||cap(t.instrument))}${t.role?' · '+esc(t.role):''} — ${lvlText(t.level)}</option>`).join('');
+  return `<div class="tracklens">
+    <span class="material-symbols-outlined" style="color:var(--accent)">${instIcon(sel.instrument)}</span>
+    <label for="trackSel">Playing</label>
+    <select id="trackSel" data-track-sel>${opts}</select>
+    ${sel.tuning?`<span class="lenstune"><span class="material-symbols-outlined" style="font-size:15px">tune</span>${esc(sel.tuning)}</span>`:''}
+    <span class="lenshint">${ts.length>1?`${ts.length} tracks — one song, pick what you play`:'1 track'}</span>
+  </div>`;
+}
+/* D-3 — find the selected track's per-section cell (level + techniques) by the section's start bar */
+function sectionCell(it, startBar, trackId){
+  const secs=(it.data&&it.data.sections)||[];
+  const sec=secs.find(s=>s.startBar===startBar);
+  return sec ? ((sec.tracks||[]).find(c=>c.track===trackId)||null) : null;
+}
+/* D-3 — the Techniques column (sits between title and bars), scoped to the selected track */
+function diffTechs(cell){
+  const t = (cell && cell.techniques) ? cell.techniques : [];
+  if(!t.length) return `<span class="techs"><span class="technone">—</span></span>`;
+  return `<span class="techs">${t.map(x=>`<span class="tag">${esc(x)}</span>`).join('')}</span>`;
+}
+/* D-3 — the Level column, scoped to the selected track ("—" = the track is silent here) */
+function diffLevel(cell){
+  if(!cell) return `<span class="lvlpill" style="opacity:.4" title="this track is silent in this section">—</span>`;
+  return `<span class="lvlpill ${cell.level===0?'debut':''}">${lvlText(cell.level)}</span>`;
+}
+/* D-2 — one media row with its 3-source provider badge */
+function mediaRow(m){
+  const kindIcon = m.kind==='video'?'smart_display':'volume_up';
+  const prov = PROVIDER[m.provider]||{label:m.provider,cls:''};
+  const loc = m.provider==='youtube'?esc(m.url):m.provider==='s3'?esc(m.s3_key):'lives inside the .gp file';
+  return `<div class="patrow" style="cursor:default">
+    <span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon}</span>
+    <div style="flex:1;min-width:0"><b>${esc(m.label)}</b><small style="color:var(--faint);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${loc}${m.note?' · '+esc(m.note):''}</small></div>
+    <span class="src ${prov.cls}" title="provider=${esc(m.provider)}">${prov.label}</span></div>`;
+}
+/* D-2 — media for the selected track + the whole song; 3 sources */
+function mediaCard(it, track){
+  const tm = track ? trackMedia(it, track.id) : [];
+  const sm = songMedia(it);
+  if(!tm.length && !sm.length) return '';
+  return `<div class="card"><h3><span class="material-symbols-outlined">library_music</span> Audio &amp; video <span style="font-weight:400;color:var(--faint)">· song-level + per-track · 3 sources (D-2)</span></h3>
+    ${tm.length?`<div class="mediscope">This track · ${esc(track.name||cap(track.instrument))}</div>${tm.map(mediaRow).join('')}`:''}
+    ${sm.length?`<div class="mediscope">Whole song</div>${sm.map(mediaRow).join('')}`:''}
+    <small style="color:var(--faint);display:block;margin-top:6px">DB: <code>media</code> keyed by <code>playable_id</code> + optional <code>track_id</code> — many per scope. <code>has_audio/has_video</code> are derived facets.</small>
+  </div>`;
+}
+function metaFoot(it){
+  const bits=[];
+  if(it.origin==='user-upload'){ bits.push(it.visibility==='private'?'<span class="tag private">Private</span>':'<span class="tag">Upload</span>'); if(it.owner) bits.push('owner: '+esc(it.owner)); }
+  else bits.push('Curated');
+  if(it.license) bits.push(esc(it.license));
+  bits.push('origin: <code style="font-size:11px">'+esc(it.origin||'?')+'</code>');
+  return `<div class="metafoot"><span class="material-symbols-outlined">info</span>${bits.join(' · ')}</div>`;
+}
+
+/* ---------- screen: SONG detail ---------- */
+function renderSong(id){
+  const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
+  const sections = it.data?.sections||[];
+  const parts = songParts(it.id);
+  const sel = selectedTrack(it);   // the page is scoped to one track (instrument lens)
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'],['','Song · '+esc(it.title)]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
+    ${adminDetailBar(it)}
+    <div class="hero">
+      <div class="meta">
+        <h1>${esc(it.title)}</h1>
+        <div class="sub">${it.artist?`<a data-artist="${esc(it.artist)}" style="color:var(--accent);cursor:pointer" title="Browse this artist">${esc(it.artist)}</a>`:'Unknown artist'} <span class="tag song">Song</span> ${it.visibility==='private'?'<span class="tag private">Private</span>':''}</div>
+        ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
+        <div class="badges">
+          <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
+          <span class="badge"><span class="material-symbols-outlined">schedule</span>${it.time_sig}</span>
+          <span class="badge" title="difficulty range across tracks (L1 headline)"><span class="material-symbols-outlined">bar_chart</span>Level ${rangeText(levelRange(tracksOf(it)))}</span>
+          <span class="badge" title="derived facet: DISTINCT track.instrument"><span class="material-symbols-outlined">music_note</span>${derivedInstruments(it).join(' · ')}</span>
+          ${it.musical_key?`<span class="badge"><span class="material-symbols-outlined">piano</span>Key ${it.musical_key}</span>`:''}
+          ${(it.chords&&it.chords.length)?`<span class="badge" title="real chord symbols from the .gp"><span class="material-symbols-outlined">queue_music</span>${it.chords.join(' · ')}</span>`:''}
+        </div>
+        ${mediaLinks(it)}
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          ${signedIn() && it.best!=null
+            ? `<button class="btn primary" data-nav="#/play/${it.id}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
+               <button class="btn secondary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
+            : `<button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>`}
+          ${parts.length?`<button class="btn secondary" data-nav="#/part/${parts[0].id}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
+        </div>
+      </div>
+      ${historyCard(it)}
+    </div>
+    ${trackLens(it)}
+    <div class="card">
+      <h3><span class="material-symbols-outlined">segment</span> Song structure <span style="font-weight:400;color:var(--faint)">· levels &amp; techniques for <b style="color:var(--accent);font-weight:600">${esc(sel?(sel.name||cap(sel.instrument)):'—')}</b> (D-3)${parts.length?' · each part is its own playable':''}</span></h3>
+      ${(()=>{ const occ=songOccurrences(it.id); return occ.length
+        ? `<div class="stephead"><span style="flex:1">Part · section</span><span style="min-width:96px">Techniques</span><span>Bars</span><span style="width:48px">Level</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`
+          + occ.map(o=>{ const p=o.part; const cell=sectionCell(it, o.start, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
+          <span class="material-symbols-outlined" style="color:var(--accent)">play_circle</span>
+          <div class="si" data-nav="#/part/${p.id}"><b>${esc(p.title)}${o.repTotal>1?` <span style="color:var(--faint);font-weight:400">(${o.rep} of ${o.repTotal})</span>`:''}</b><small style="color:var(--faint);display:block">${descOf(p)?esc(descOf(p)):'kind=part · parent '+esc(it.title)}</small></div>
+          ${diffTechs(cell)}
+          <span class="bars">bars ${o.start}–${o.end}</span>
+          ${diffLevel(cell)}
+          ${donut(p.best)}
+          <button class="play" title="Play this part" data-nav="#/play/${p.id}"><span class="material-symbols-outlined">play_arrow</span></button>
+        </div>${o.rep<=1?allFieldsPanel(p):''}</div>`; }).join('')
+        : sections.length
+        ? sections.map((s,i)=>{ const cell=sectionCell(it, s.startBar, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
+          <span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span>
+          <div class="si" data-nav="#/song/${it.id}/section/${i+1}"><b>${esc(s.label)}</b><small style="color:var(--faint);display:block">open the score · bars ${s.startBar}–${s.endBar}</small></div>
+          ${diffTechs(cell)}
+          <span class="bars">bars ${s.startBar}–${s.endBar}</span>
+          ${cell ? diffLevel(cell) : (sel ? `<span class="lvlpill ${sel.level===0?'debut':''}" title="${cap(sel.instrument)} track level — no per-section breakdown in the file yet">${lvlText(sel.level)}</span>` : diffLevel(null))}
+          <button class="play" title="Play from this section" data-nav="#/play/${it.id}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span></button>
+        </div></div>`; }).join('')
+        : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`; })()}
+      <small style="color:var(--faint);display:block;margin-top:8px">Level + techniques = this track's per-section difficulty (D-3 <code>data.sections[].tracks[]</code>). L1 song range <b>${rangeText(levelRange(tracksOf(it)))}</b> · L2 this track <b>${lvlText(sel?sel.level:null)}</b> · “—” = silent here.</small>
+    </div>
+    ${mediaCard(it, sel)}
+    ${patternsCard(it)}
+    ${relatedCard(it)}
+    ${rawSourceCard(it)}
+    ${metaFoot(it)}
+    ${detailFieldsPanel(it)}
+  `;
+}
+
+/* ---------- screen: PART detail (a slice of a song — its OWN playable, scored on its own id) ---------- */
+function renderPart(id){
+  const it = PLAYABLES.find(x=>x.id===id); if(!it || it.kind!=='part') return notFound();
+  const song = it.parent_id ? PLAYABLES.find(x=>x.id===it.parent_id) : null;
+  const sibs = song ? songParts(song.id) : [];
+  const idx  = sibs.findIndex(p=>p.id===it.id);
+  const next = idx>=0 && idx<sibs.length-1 ? sibs[idx+1] : null;
+  const prev = idx>0 ? sibs[idx-1] : null;
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'], song?['#/song/'+song.id,'Song · '+esc(song.title)]:['','Song'], ['','Part · '+esc(it.title)]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
+    ${adminDetailBar(it)}
+    <div class="hero">
+      <div class="meta">
+        <h1>${esc(it.title)}</h1>
+        <div class="sub"><span class="tag song">Part</span> ${song?`of <a data-nav="#/song/${song.id}" style="color:var(--accent);cursor:pointer">${esc(song.title)}</a>`:''}${song&&song.artist?` <span class="dot"></span> <a data-artist="${esc(song.artist)}" style="color:var(--accent);cursor:pointer" title="Browse this artist">${esc(song.artist)}</a>`:''}</div>
+        ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
+        <div class="badges">
+          <span class="badge"><span class="material-symbols-outlined">segment</span>bars ${barsLabel(it)}${it.ranges&&it.ranges.length>1?` · repeated ×${it.ranges.length}`:''}</span>
+          <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
+          <span class="badge"><span class="material-symbols-outlined">schedule</span>${it.time_sig}</span>
+          <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.instruments||[]).join('·')}</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play part</button>
+          ${prev?`<button class="btn secondary" data-nav="#/part/${prev.id}"><span class="material-symbols-outlined">arrow_back</span> Previous part</button>`:''}
+          ${next?`<button class="btn secondary" data-nav="#/part/${next.id}">Next part <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+        </div>
+      </div>
+      ${historyCard(it)}
+    </div>
+    <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation slice</h3>
+      ${voicesLine(it)}
+      <div class="gate"><span class="material-symbols-outlined">info</span>Plays bars <b>${barsLabel(it)}</b> of the parent score — <code>notation_id</code> is shared with the song; <code>start_bar</code>/<code>end_bar</code> live on the part.</div>
+    </div>
+    ${usedInCard([song, ...usedIn(it.id)], 'this part is a slice of its parent song'+(usedIn(it.id).length?' · also referenced as a reusable step':''))}
+    ${metaFoot(it)}
+    ${detailFieldsPanel(it)}
+  `;
+}
+
+/* ---------- screen: STEP detail (a lesson step → its reusable pattern; prev/next within the lesson) ---------- */
+function stepFieldsPanel(parent, s){
+  const f = {parent_id:parent.id, child_id:s.child_id, sort_order:s.sort_order, start_bpm:s.start_bpm??null, goal_bpm:s.goal_bpm??null};
+  const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
+  return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> step · junction</div><div class="fdbody"><div class="nfsub">the locked step row — points at a reusable child pattern</div><div class="nfgrid">${grid}</div></div></aside>`;
+}
+function renderStep(lessonId, n){
+  const it = PLAYABLES.find(x=>x.id===lessonId); if(!it) return notFound();
+  const steps = stepsFor(lessonId);
+  const idx = steps.findIndex(s=>s.sort_order===n);
+  const s = steps[idx]; if(!s) return notFound();
+  const child = childPlayable(s.child_id) || {title:s.child_id, pattern_kind:null};
+  const k = PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const prev = idx>0 ? steps[idx-1] : null;
+  const next = idx<steps.length-1 ? steps[idx+1] : null;
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'],['#/lesson/'+it.id,'Lesson · '+esc(it.title)],['','Step '+n]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back to lesson</button>
+    <div class="hero">
+      <div class="meta">
+        <div class="sub" style="margin-bottom:4px">Step ${n} of ${steps.length} · ${esc(it.title)}</div>
+        <h1>${esc(child.title)}</h1>
+        <div class="sub"><span class="tag lesson">${k.label}</span> <a data-nav="#/pattern/${s.child_id}" style="color:var(--accent);cursor:pointer">open pattern →</a> ${reuseCount(s.child_id)>1?`<span class="badge" style="padding:3px 9px">reused ×${reuseCount(s.child_id)}</span>`:''}</div>
+        ${descOf(child)?`<p class="lead">${esc(descOf(child))}</p>`:''}
+        <div class="badges">
+          <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${s.start_bpm??'?'} → ${s.goal_bpm??'?'}</span> BPM ladder</span>
+          <span class="badge"><span class="material-symbols-outlined">tag</span>step ${s.sort_order} of ${steps.length}</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn primary" data-nav="#/play/${it.id}/step/${n}"><span class="material-symbols-outlined">play_arrow</span> Play step</button>
+          ${prev?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${prev.sort_order}"><span class="material-symbols-outlined">arrow_back</span> Previous</button>`:''}
+          ${next?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${next.sort_order}">Next <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+        </div>
+      </div>
+      ${historyCard(child)}
+    </div>
+    <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation</h3>
+      <div class="gate"><span class="material-symbols-outlined">info</span>This step drills the reusable pattern <b>${esc(child.title)}</b> (<code>child_id=${esc(s.child_id)}</code>). The notation lives on the pattern; the step adds order + the ${s.start_bpm}→${s.goal_bpm} BPM ladder.</div>
+    </div>
+    ${usedInCard(usedIn(s.child_id).filter(p=>p.id!==it.id), 'the pattern “'+esc(child.title)+'” is also used here (reuse across lessons / songs)')}
+    ${stepFieldsPanel(it,s)}
+  `;
+}
+
+/* ---------- screen: SONG SECTION "score" page (the #/song/<id>/section/<n> equivalent of a lesson step) ---------- */
+function renderSongSection(songId, n){
+  const it = PLAYABLES.find(x=>x.id===songId); if(!it || it.kind!=='song') return notFound();
+  const secs = (it.data&&it.data.sections)||[];
+  const idx = n-1; const s = secs[idx]; if(!s) return notFound();
+  const prevN = idx>0 ? n-1 : null, nextN = idx<secs.length-1 ? n+1 : null;
+  const sel = defaultTrackId(it) ? tracksOf(it).find(t=>t.id===defaultTrackId(it)) : null;
+  const cell = sectionCell(it, s.startBar, sel?sel.id:null);
+  const lvl = cell ? cell.level : (sel ? sel.level : null);
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'],['#/song/'+it.id,'Song · '+esc(it.title)],['','Section · '+esc(s.label)]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back to song</button>
+    <div class="hero">
+      <div class="meta">
+        <div class="sub" style="margin-bottom:4px">Section ${n} of ${secs.length} · ${esc(it.title)}${sel?` · ${esc(sel.name||cap(sel.instrument))}`:''}</div>
+        <h1>${esc(s.label)}</h1>
+        <div class="badges">
+          <span class="badge"><span class="material-symbols-outlined">straighten</span>bars ${s.startBar}–${s.endBar}</span>
+          ${it.bpm?`<span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>`:''}
+          ${lvl!=null?`<span class="badge"><span class="material-symbols-outlined">bar_chart</span>${lvlText(lvl)}</span>`:''}
+        </div>
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn primary" data-nav="#/play/${it.id}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span> Play from here</button>
+          ${prevN?`<button class="btn secondary" data-nav="#/song/${it.id}/section/${prevN}"><span class="material-symbols-outlined">arrow_back</span> Previous section</button>`:''}
+          ${nextN?`<button class="btn secondary" data-nav="#/song/${it.id}/section/${nextN}">Next section <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+        </div>
+      </div>
+    </div>
+    <div class="card"><h3><span class="material-symbols-outlined">music_note</span> Notation</h3>
+      <div class="gate"><span class="material-symbols-outlined">info</span>Score for <b>${esc(s.label)}</b> — bars <b>${s.startBar}–${s.endBar}</b> of <b>${esc(it.title)}</b>. The notation lives on the song's <code>.gp</code>; this section is that bar range (a derived view, not a separate playable). Press <b>Play from here</b> to start at bar ${s.startBar}.</div>
+    </div>
+  `;
+}
+
+/* ---------- screen: LESSON detail ---------- */
+function renderLesson(id){
+  const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
+  const steps = stepsFor(id);
+  const lk = patternKindsOf(it); const kind = lk.length ? lk.map(k=>PATTERN_KINDS[k]?.label||k).join(' · ') : 'Lesson';
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'],['','Lesson · '+esc(it.title)]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
+    ${adminDetailBar(it)}
+    <div class="hero">
+      <div class="meta">
+        <h1>${esc(it.title)}</h1>
+        <div class="sub"><span class="tag lesson">${kind}</span> ${it.level===0?'Debut':'Level '+(it.level??'—')} ${(it.skill||[]).map(s=>`<span class="badge" style="padding:3px 9px">${s}</span>`).join('')}</div>
+        ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          ${signedIn() && it.best!=null
+            ? `<button class="btn primary" data-nav="#/play/${it.id}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
+               <button class="btn secondary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
+            : `<button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>`}
+        </div>
+      </div>
+      ${historyCard(it)}
+    </div>
+    <div class="card">
+      <h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· ${steps.length} · each step → a reusable pattern + BPM ladder</span></h3>
+      ${steps.length?`<div class="stephead"><span style="flex:1">Step · pattern</span><span>BPM</span><span style="width:54px;text-align:center">Kind</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`:''}
+      ${steps.map(s=>stepRow(it,s)).join('')}
+      ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+      <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>Each pattern above is scored on its <b>own</b> id. This lesson's score${signedIn()&&it.best!=null?` (<b>${it.best}%</b>)`:''} is your <b>whole-play</b> attempt — the “final exam” — <b>not</b> an average of the steps. Skip the steps, play it whole, score 100%.</div></div>
+    </div>
+    ${metaFoot(it)}
+    ${detailFieldsPanel(it)}
+  `;
+}
+/* ---------- screen: PATTERN detail (first-class playable — score + history) ---------- */
+function renderPattern(id){
+  let it = PLAYABLES.find(x=>x.id===id);
+  if(!it){ const p=PATTERNS[id]; if(p) it={id, kind:'pattern', title:p.name, pattern_kind:p.kind, family:p.family, level:p.level, instruments:['drums'], status:'published', origin:'curated'}; }
+  if(!it) return notFound();
+  const k = PATTERN_KINDS[it.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const diff = it.data&&it.data.difficulty;
+  app.innerHTML = `
+    ${crumbs([['#/catalog','Catalog'],['','Pattern · '+esc(it.title)]])}
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
+    ${adminDetailBar(it)}
+    <div class="hero">
+      <div class="meta">
+        <h1>${esc(it.title)}</h1>
+        <div class="sub"><span class="tag lesson">${k.label}</span> ${it.level===0?'Debut':'Level '+(it.level??'—')} ${it.family?`<span class="badge" style="padding:3px 9px">${esc(it.family)}</span>`:''}</div>
+        ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
+        <div class="badges">
+          <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.instruments||[]).join('·')}</span>
+          ${it.musical_key?`<span class="badge"><span class="material-symbols-outlined">piano</span>Key ${it.musical_key}</span>`:''}
+          ${it.genre?`<span class="badge"><span class="material-symbols-outlined">genres</span>${cap(it.genre)}</span>`:''}
+        </div>
+        ${mediaLinks(it)}
+        <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
+          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play ${kindLabel(it)}</button>
+        </div>
+      </div>
+      ${historyCard(it)}
+    </div>
+    <div class="card" style="border-color:#b5781e;background:rgba(181,120,30,.08)">
+      <h3 style="color:#c98a2e"><span class="material-symbols-outlined">warning</span> Router TODO · SD-31 / NH-221</h3>
+      <div style="font-size:13px;line-height:1.55">Labels now say <b>${k.label}</b>, but the <b>route</b> still uses the umbrella word: <code>#/pattern/${it.id}</code>. It should use the kind — <code>#/${it.pattern_kind||'kind'}/${it.id}</code> (or nested, e.g. <code>#/lesson/${it.pattern_kind||'kind'}/${it.id}</code>). Not changed yet — tracked as <b>NH-221</b>.</div>
+    </div>
+    ${diff?`<div class="card"><h3><span class="material-symbols-outlined">trending_up</span> Difficulty <span style="font-weight:400;color:var(--faint)">· by ${esc(diff.by)}</span></h3>
+      ${diff.tiers.map(t=>`<div class="part"><div style="flex:1"><b>${t.upTo!==undefined?(t.upTo==null?'fastest':'up to '+t.upTo+(diff.by==='bpm'?' BPM':'')):esc(t.when)}</b></div>${signedIn()&&t.score!==undefined?donut(t.score):''}<span class="lvlpill">L${t.level}</span></div>`).join('')}
+      <small style="color:var(--faint);display:block;margin-top:6px">Stored in <code>data.difficulty {by, tiers}</code> — a lesson step's level = this curve at the step's goal BPM.</small></div>`:''}
+    ${stepsFor(it.id).length?`<div class="card"><h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· composite pattern — built from ${stepsFor(it.id).length} reusable patterns</span></h3>
+      ${stepsFor(it.id).map(s=>stepRow(it,s)).join('')}
+      <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>This groove is scored on its <b>own</b> id (whole-play)${signedIn()&&it.best!=null?` — <b>${it.best}%</b>`:''}; each sub-pattern keeps its own score. No averaging.</div></div></div>`:''}
+    ${(()=>{ const u=usedIn(it.id); return u.length?`<div class="card"><h3><span class="material-symbols-outlined">hub</span> Used in <span style="font-weight:400;color:var(--faint)">· this pattern appears in ${u.length} playable(s) — reuse (steps + song/lesson links)</span></h3>
+      ${u.map(p=>`<div class="patrow" data-nav="#/${p.kind}/${p.id}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`:''; })()}
+    ${relatedCard(it)}
+    ${metaFoot(it)}
+    ${detailFieldsPanel(it)}
+  `;
+}
+/* inline per-step field panel (Inspector toggle): shows the locked `step` junction row */
+function stepFieldsInline(parent, s){
+  const child = childPlayable(s.child_id);
+  const f = {
+    parent_id: parent.id,
+    child_id: s.child_id,
+    sort_order: s.sort_order,
+    start_bpm: s.start_bpm ?? null,
+    goal_bpm: s.goal_bpm ?? null,
+  };
+  const grid = Object.keys(f).map(k=>`<span class="nfk">${k}</span>${nfv(f[k])}`).join('');
+  return `<div class="nfields"><div class="nfsub">step · the locked junction (parent_id, child_id, sort_order, start/goal bpm)</div><div class="nfgrid">${grid}</div>
+    <div class="nfsub" style="color:var(--accent)">↳ child = reusable <code>${esc(s.child_id)}</code>${child?` · “${esc(child.title)}”`:''} — reused in ${reuseCount(s.child_id)} playable(s). The notation lives on the child pattern, not the step.</div></div>`;
+}
+function stepRow(parent, s){
+  const child = childPlayable(s.child_id) || {title:s.child_id, pattern_kind:null};
+  const k = PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const reuse = reuseCount(s.child_id);
+  const composite = stepsFor(s.child_id).length>0;
+  const ladder = (s.start_bpm||s.goal_bpm) ? `<span class="ladder"><span class="material-symbols-outlined" style="font-size:14px">speed</span>${s.start_bpm??'?'}→${s.goal_bpm??'?'}</span>` : '';
+  const meta = [k.label, composite?'composite':null, reuse>1?`reused ×${reuse}`:null].filter(Boolean).join(' · ');
+  return `<div class="stepwrap"><div class="step">
+    <span class="no">${s.sort_order}</span>
+    <div class="si" data-nav="${parent.kind==='lesson'?`#/lesson/${parent.id}/step/${s.sort_order}`:`#/pattern/${s.child_id}`}"><b>${esc(child.title)}</b><small>${meta}</small></div>
+    ${ladder} <span class="src tex">${k.label}</span> ${signedIn()?donut(child.best):''}
+    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/admin/lesson/${parent.id}/step/${s.sort_order}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
+    <button class="play" title="Play this step" data-nav="#/play/${parent.id}/step/${s.sort_order}"><span class="material-symbols-outlined">play_arrow</span></button>
+  </div>${stepFieldsInline(parent, s)}</div>`;
+}
+
+/* ---------- screen: PLAYER stub ---------- */
+function renderPlayer(){
+  const {seg, qp} = parseHash();
+  const id = seg[1]; const stepNo = seg[2]==='step'?+seg[3]:null;
+  const it = PLAYABLES.find(x=>x.id===id);
+  let ctx = it? (it.kind==='song'?`“${it.title}” — full song @ ${it.bpm} BPM`
+              : it.kind==='part'?`“${it.title}” — part · bars ${barsLabel(it)} @ ${it.bpm} BPM`
+              : it.kind==='pattern'?`${kindLabel(it)} “${it.title}”`
+              :`Lesson “${it.title}”`) : 'item';
+  if(stepNo){ const s=(STEP[id]||[]).find(x=>x.sort_order===stepNo); const c=s?childPlayable(s.child_id):null; if(s) ctx=`“${it.title}” — step ${stepNo}: ${c?c.title:s.child_id} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
+  if(qp.get('resume')) ctx += ' · resuming where you left off';
+  app.innerHTML = `
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
+    <div class="playerstub">
+      <span class="material-symbols-outlined">play_circle</span>
+      <h2>🎵 Player here</h2>
+      <div class="ctx">Now playing: <b>${esc(ctx)}</b><br><small>The play screen (notation + HUD + scoring) is a separate draft — stubbed for this flow sim.</small></div>
+      <button class="btn secondary" data-back style="margin-top:10px">← Back</button>
+    </div>
+  `;
+}
+
+/* ---------- screen: ADMIN CRUD stub (v2) ---------- */
+function renderAdminStub(seg, qp){
+  if(!isAdmin()){
+    app.innerHTML = `<div class="stubpanel"><span class="material-symbols-outlined">lock</span>
+      <h2 style="margin:8px 0">Admin only</h2><p>Switch role to <b>Admin</b> (top-right) to curate the catalog.</p>
+      <button class="btn primary" id="signinHere" style="margin-top:10px">Sign in as admin</button></div>`;
+    return;
+  }
+  let what='CRUD';
+  if(seg.includes('step')) what = `${qp.get('delete')?'Delete':'Edit'} step`;
+  else if(seg[1]==='new') what = `New ${qp.get('type')||'item'}`;
+  else if(seg[1]==='edit') what = `${qp.get('delete')?'Archive':'Edit'} item`;
+  app.innerHTML = `
+    <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
+    <div class="stubpanel">
+      <span class="material-symbols-outlined">draw</span>
+      <h2 style="margin:8px 0">${what}</h2>
+      <p>CRUD forms (create / edit / delete songs, lessons &amp; steps + uploads) land in <b>v2</b>.<br>
+      This route exists so the admin flow is walkable now: <code>${esc(location.hash)}</code></p>
+    </div>`;
+}
+
+/* ---------- shared ---------- */
+const PLAY_AGO = ['Today','Yesterday','3 days ago','Last week','2 weeks ago','3 weeks ago','Last month','6 weeks ago','2 months ago','3 months ago'];
+function recentPlays(it){ const tr=(it.trend||[]); return tr.slice().reverse().slice(0,5).map((score,i)=>({score, ago: PLAY_AGO[i]||((i+1)+' plays ago')})); }   // $PL1 latest plays (derived from the trend for the wireframe)
+function historyCard(it){
+  if(!signedIn()) return `<div class="card" style="margin-top:0;min-width:240px">
+      <div class="gate"><span class="material-symbols-outlined">login</span><div>Sign in to track your best score, sessions &amp; trend.<br>
+      <button class="btn primary" id="signinHere" style="margin-top:10px"><span class="material-symbols-outlined">person</span> Sign in</button></div></div></div>`;
+  const tr = (it.trend||[]); const max=Math.max(100,...tr);
+  if(it.best==null && !tr.length) return `<div class="card" style="margin-top:0;min-width:240px"><h3><span class="material-symbols-outlined">history</span> Your history</h3>
+      <div class="gate" style="border-style:dashed"><span class="material-symbols-outlined">flag</span>Not attempted yet — play it to start your trend.</div></div>`;
+  const reset = it.best==null && tr.length>0;   // SD-21: best cleared, attempt history kept
+  const done  = it.best!=null && it.best>=90;   // SD-21: 'completed' (placeholder: passed ≥ 90%)
+  return `<div class="card" style="margin-top:0;min-width:240px">
+    <h3><span class="material-symbols-outlined">history</span> Your history ${done?'<span class="pill-new" style="background:color-mix(in srgb,var(--s-high) 18%,transparent);color:var(--s-high)">✓ Completed</span>':''}${reset?'<span class="pill-new" style="background:var(--panel2);color:var(--faint)">best reset</span>':''}</h3>
+    <div class="history">
+      <div class="big">${donut(it.best)}
+        <div class="stat"><span class="n">${it.sessions||0}</span><span class="l">sessions</span></div>
+        ${it.top_bpm?`<div class="stat"><span class="n mono">${it.top_bpm}</span><span class="l">top BPM</span></div>`:''}
+      </div>
+      <div class="trend">${tr.map(v=>`<span style="height:${Math.round(v/max*100)}%"></span>`).join('')||'<small style="color:var(--faint)">no runs yet</small>'}</div>
+    </div>
+    ${tr.length?`<div style="margin-top:12px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-bottom:2px">Recent plays</div>${recentPlays(it).map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:12.5px;border-top:1px solid var(--line)"><span style="color:var(--muted)">${p.ago}</span><span class="mono" style="color:var(--s-${band(p.score)});font-weight:700">${p.score}%</span></div>`).join('')}</div>`:''}
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px">
+      <small style="color:var(--faint)">Per-user (DynamoDB) — joined client-side.</small>
+      ${it.best!=null?`<a data-reset="${it.id}" style="color:var(--accent);cursor:pointer;font-size:12px;white-space:nowrap" title="Clear your best — keep attempt history">Reset best</a>`:''}
+    </div>
+  </div>`;
+}
+function adminDetailBar(it){
+  if(!isAdmin()) return '';
+  return `<div class="adminbar">
+    <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin</span>
+    <button class="adminbtn" data-nav="#/admin/edit/${it.id}"><span class="material-symbols-outlined">edit</span> Edit ${it.kind}</button>
+    ${it.kind==='lesson'?`<button class="adminbtn" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+    <button class="adminbtn danger" data-nav="#/admin/edit/${it.id}?delete=1"><span class="material-symbols-outlined">delete</span> ${it.status==='published'?'Archive':'Delete'}</button>
+  </div>`;
+}
+function crumbs(parts){
+  return `<div class="crumbs">${parts.map((p,i)=>{
+    const sep = i>0?'<span class="material-symbols-outlined">chevron_right</span>':'';
+    return sep + (p[0]?`<a data-nav="${p[0]}">${p[1]}</a>`:`<span style="color:var(--ink)">${p[1]}</span>`);
+  }).join('')}</div>`;
+}
+function notFound(){ app.innerHTML = `<div class="empty"><span class="material-symbols-outlined">search_off</span>Item not found.<br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`; }
+
+function paintRoleChrome(){
+  const av = el('#acctAvatar'), rl = el('#acctRole');
+  document.querySelectorAll('[data-role-set]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.roleSet===state.role));
+  document.querySelectorAll('[data-theme-set]').forEach(b=>b.setAttribute('aria-pressed', b.dataset.themeSet===state.theme));
+  el('#uploadBtn').style.display = signedIn()? 'inline-flex':'none';
+  if(state.role==='anon'){ rl.textContent='Sign in'; av.className='avatar anon'; av.innerHTML='<span class="material-symbols-outlined">person</span>'; av.style.background=''; }
+  else if(state.role==='user'){ rl.textContent='User'; av.className='avatar'; av.textContent='U'; av.style.background=''; }
+  else { rl.textContent='Admin'; av.className='avatar'; av.textContent='A'; av.style.background='var(--s-dev)'; }
+}
+
+/* ---------- events ---------- */
+function setRole(r){ state.role=r; localStorage.setItem('nh_role',r); closeModal(); render(); }
+function setTheme(t){ state.theme=t; localStorage.setItem('nh_theme',t); render(); }
+function openModal(){ el('#modal').classList.add('open'); }
+function closeModal(){ el('#modal').classList.remove('open'); }
+function clearFilter(g){
+  if(g==='level'){ state.level={min:null,max:null}; state.inclUngraded=false; }
+  else if(g==='bpm'){ state.bpm={min:null,max:null}; }
+  else if(g==='score'){ state.score={min:null,max:null}; state.inclUnplayed=false; }
+  else if(g==='instrument'){ state.instrument=null; }
+  else state[g]=[];
+  state.page=1;
+}
+
+document.addEventListener('click', e=>{
+  const navEl = e.target.closest('[data-nav]');
+  if(navEl){ navigate(navEl.dataset.nav); return; }
+  const artistEl = e.target.closest('[data-artist]');
+  if(artistEl){ navigate('#/catalog?tab=songs&artist='+encodeURIComponent(artistEl.dataset.artist)); return; }
+  if(e.target.closest('[data-clear-artist]')){ state.artist=null; state.page=1; renderCatalog(); return; }
+  const ap = e.target.closest('[data-artist-pick]');
+  if(ap){ const a=ap.dataset.artistPick; state.artist = state.artist===a?null:a; state.openPop=null; state.page=1; renderCatalog(); return; }
+  const rs = e.target.closest('[data-reset]');
+  if(rs){ const p=PLAYABLES.find(x=>x.id===rs.dataset.reset); if(p){ p.best=null; }/* SD-21: clear best, keep trend */ render(); return; }
+  if(e.target.closest('[data-back]')){ history.length>1?history.back():navigate('#/catalog'); return; }
+  const popBtn = e.target.closest('[data-pop]');
+  if(popBtn){ const id=popBtn.dataset.pop; state.openPop = state.openPop===id?null:id; renderCatalog(); return; }
+  const mg = e.target.closest('[data-mg]');
+  if(mg){ const g=mg.dataset.mg, v=mg.dataset.val; const a=state[g]; const i=a.indexOf(v); i>=0?a.splice(i,1):a.push(v); state.page=1; renderCatalog(); return; }
+  const si = e.target.closest('[data-si]');
+  if(si){ const v=si.dataset.val; state.instrument = state.instrument===v?null:v; if(!isPitched()) state.musicalKey=[]; state.openPop=null; state.page=1; renderCatalog(); return; }
+  const tg = e.target.closest('[data-toggle]');
+  if(tg){ state[tg.dataset.toggle]=!state[tg.dataset.toggle]; state.page=1; renderCatalog(); return; }
+  const so = e.target.closest('[data-sort]');
+  if(so){ state.sort=so.dataset.sort; state.openPop=null; renderCatalog(); return; }
+  const cl = e.target.closest('[data-clear]');
+  if(cl){ clearFilter(cl.dataset.clear); renderCatalog(); return; }
+  if(!e.target.closest('.fpop') && !e.target.closest('[data-pop]') && state.openPop){ state.openPop=null; renderCatalog(); }
+  if(e.target.closest('[data-tab]')){ state.tab=e.target.closest('[data-tab]').dataset.tab; state.page=1; state.openPop=null; renderCatalog(); return; }
+  if(e.target.closest('[data-more]')){ state.advanced=!state.advanced; renderCatalog(); return; }
+  if(e.target.closest('[data-fields]')){ state.showAll=!state.showAll; document.body.classList.toggle('showall', state.showAll); document.querySelectorAll('[data-fields]').forEach(b=>b.setAttribute('aria-pressed', String(state.showAll))); return; }
+  if(e.target.closest('[data-page]')){ state.page=+e.target.closest('[data-page]').dataset.page; renderCatalog(); window.scrollTo({top:0,behavior:'smooth'}); return; }
+  if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); clearFilter('score'); state.instrument=null; state.artist=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
+  if(e.target.closest('[data-role-set]')){ setRole(e.target.closest('[data-role-set]').dataset.roleSet); return; }
+  if(e.target.closest('[data-theme-set]')){ setTheme(e.target.closest('[data-theme-set]').dataset.themeSet); return; }
+  if(e.target.closest('#acctBtn') || e.target.closest('#signinHere')){ openModal(); return; }
+  if(e.target.closest('#modalX') || e.target===el('#modal')){ closeModal(); return; }
+  if(e.target.closest('#uploadBtn')){ navigate('#/admin/new?type=upload'); return; }
+});
+document.addEventListener('change', e=>{
+  if(e.target.matches('[data-track-sel]')){ state.track = e.target.value; render(); return; }
+  const r = e.target.dataset.range; if(!r) return;
+  let val = e.target.value===''?null:+e.target.value;
+  if(val!=null && (r==='scoreMin'||r==='scoreMax')) val=Math.max(0,Math.min(100,val));
+  if(r==='levelMin') state.level.min=val;
+  else if(r==='levelMax') state.level.max=val;
+  else if(r==='bpmMin') state.bpm.min=val;
+  else if(r==='bpmMax') state.bpm.max=val;
+  else if(r==='scoreMin') state.score.min=val;
+  else if(r==='scoreMax') state.score.max=val;
+  state.page=1; renderCatalog();
+});
+el('#q').addEventListener('input', e=>{ state.q=e.target.value; state.page=1; const onCat=(parseHash().seg[0]||'catalog')==='catalog'; if(onCat) renderCatalog(); else navigate('#/catalog'); });
+window.addEventListener('hashchange', ()=>{ render(); window.scrollTo(0,0); });
+window.addEventListener('keydown', e=>{ if(e.key==='Escape'){ closeModal(); if(state.openPop){ state.openPop=null; renderCatalog(); } } });
+
+/* ---------- boot ---------- */
+el('#brandMark').innerHTML = MARK_SVG;
+el('#midiBtn').innerHTML = MIDI_SVG;
+render();
+</script>
+</body>
+</html>
