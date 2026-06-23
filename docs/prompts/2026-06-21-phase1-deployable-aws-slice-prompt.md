@@ -82,7 +82,7 @@ Resolved the two open decisions per Leo's free-tier-first + endgame steer (`/lfg
   - `/*` → **S3** (built `client/` SPA static assets, OAC, long edge-cache) — the About page
     is a real SPA route, served from the edge so S3/Lambda are not hit on reads.
   - `/api/*` → **Nest lambdalith** Function URL (AWS_IAM + OAC, short/no cache) — slice (c).
-  - The SPA About route calls `/api/catalogue` (first real feature, placeholder data) to prove the Lambda leg end-to-end live. (Updated post-review: the throwaway `/api/about` was replaced with a real endpoint per leocaseiro.)
+  - The SPA About route calls `/api/catalog` (first real feature, placeholder data) to prove the Lambda leg end-to-end live. (Updated post-review: the throwaway `/api/about` was replaced with a real endpoint per leocaseiro.)
   - **Why over single-origin lambdalith:** serving static assets from Lambda invokes the
     function on every cache-miss (more invocations + GB-seconds) — the opposite of the
     free-tier goal. S3+edge-cache is strictly cheaper and is Leo's own ADR (ARCH-EDGE-1).

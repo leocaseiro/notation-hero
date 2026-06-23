@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 
-export interface CataloguePlayable {
+export interface CatalogPlayable {
   id: string;
   title: string;
   kind: 'song' | 'pattern' | 'lesson';
@@ -8,20 +8,20 @@ export interface CataloguePlayable {
   difficulty: string;
 }
 
-export interface CatalogueResponse {
-  items: CataloguePlayable[];
+export interface CatalogResponse {
+  items: CatalogPlayable[];
   count: number;
 }
 
-@Controller('catalogue')
-export class CatalogueController {
+@Controller('catalog')
+export class CatalogController {
   @Get()
-  list(): CatalogueResponse {
+  list(): CatalogResponse {
     // PLACEHOLDER data — proves the live API leg today. The real listing comes from the
-    // core/catalogue domain + a Neon-Postgres adapter against the locked notation/playable
+    // core/catalog domain + a Neon-Postgres adapter against the locked notation/playable
     // model (Phase-2 CMS CRUD, spec'd separately), and the response shape is formalised by
     // the shared/ oRPC contract. Drum rudiments are public-domain, safe placeholders.
-    const items: CataloguePlayable[] = [
+    const items: CatalogPlayable[] = [
       {
         id: 'single-stroke-roll',
         title: 'Single Stroke Roll',

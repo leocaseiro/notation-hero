@@ -64,8 +64,8 @@ PORT=3001 pnpm --filter @notation-hero/server run start:dev
 pnpm --filter @notation-hero/client run dev
 ```
 
-Open <http://localhost:3000> — the About page fetches `/api/catalogue` live through
-the proxy. Hit the API directly with `curl http://localhost:3001/api/catalogue`.
+Open <http://localhost:3000> — the About page fetches `/api/catalog` live through
+the proxy. Hit the API directly with `curl http://localhost:3001/api/catalog`.
 
 ## Deploy (AWS)
 
@@ -106,7 +106,7 @@ Verify against the **CloudFront URL** (not the raw Lambda URL):
 
 ```bash
 curl "$(pulumi -C infra stack output cloudfrontUrl)"                # SPA index → 200 HTML
-curl "$(pulumi -C infra stack output cloudfrontUrl)/api/catalogue"  # live JSON
+curl "$(pulumi -C infra stack output cloudfrontUrl)/api/catalog"  # live JSON
 # the raw Function URL is AWS_IAM-locked, so a direct unsigned call should be 403:
 curl -s -o /dev/null -w '%{http_code}\n' "$(pulumi -C infra stack output functionUrl)"
 ```

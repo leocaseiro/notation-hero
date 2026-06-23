@@ -90,9 +90,9 @@ describe('lambda handler (serverless-express)', () => {
     expect(second.statusCode).toBe(200);
   });
 
-  it('serves GET /api/catalogue (200) with the catalogue shape through the handler', async () => {
+  it('serves GET /api/catalog (200) with the catalog shape through the handler', async () => {
     const { handler } = await import('./http.handler.js');
-    const res = await handler(event('GET', '/api/catalogue'), ctx);
+    const res = await handler(event('GET', '/api/catalog'), ctx);
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body as string) as {
       count: number;
@@ -101,7 +101,7 @@ describe('lambda handler (serverless-express)', () => {
     expect(Array.isArray(body.items)).toBe(true);
     expect(body.items.length).toBeGreaterThan(0);
     expect(typeof body.count).toBe('number');
-    // Each item carries the catalogue contract the About page renders.
+    // Each item carries the catalog contract the About page renders.
     for (const item of body.items) {
       expect(typeof item.id).toBe('string');
       expect(typeof item.title).toBe('string');

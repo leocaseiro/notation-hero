@@ -23,7 +23,7 @@ function mockFetch(value: unknown, ok = true, status = 200): void {
   )
 }
 
-const sampleCatalogue = {
+const sampleCatalog = {
   count: 2,
   items: [
     {
@@ -47,15 +47,15 @@ afterEach(() => {
 })
 
 test('renders the About heading and static copy', () => {
-  mockFetch(sampleCatalogue)
+  mockFetch(sampleCatalog)
   renderAbout()
   expect(
     screen.getByRole('heading', { name: /About Notation Hero/i }),
   ).toBeInTheDocument()
 })
 
-test('renders the live catalogue from /api/catalogue on success', async () => {
-  mockFetch(sampleCatalogue)
+test('renders the live catalog from /api/catalog on success', async () => {
+  mockFetch(sampleCatalog)
   renderAbout()
   await waitFor(() =>
     expect(screen.getByText('Single Stroke Roll')).toBeInTheDocument(),
@@ -65,14 +65,14 @@ test('renders the live catalogue from /api/catalogue on success', async () => {
   expect(screen.getByText('Demo Groove')).toBeInTheDocument()
 })
 
-test('shows a loading state while /api/catalogue is in flight', () => {
+test('shows a loading state while /api/catalog is in flight', () => {
   // A never-resolving fetch keeps the query in its pending state.
   vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise<never>(() => {})))
   renderAbout()
-  expect(screen.getByText(/Loading the catalogue/i)).toBeInTheDocument()
+  expect(screen.getByText(/Loading the catalog/i)).toBeInTheDocument()
 })
 
-test('shows a graceful fallback when /api/catalogue fails', async () => {
+test('shows a graceful fallback when /api/catalog fails', async () => {
   mockFetch(undefined, false, 500)
   renderAbout()
   await waitFor(() =>
@@ -80,11 +80,11 @@ test('shows a graceful fallback when /api/catalogue fails', async () => {
   )
 })
 
-test('passes an AbortSignal to the catalogue fetch (the 8s timeout is wired)', async () => {
+test('passes an AbortSignal to the catalog fetch (the 8s timeout is wired)', async () => {
   const fetchMock = vi.fn().mockResolvedValue({
     ok: true,
     status: 200,
-    json: () => Promise.resolve(sampleCatalogue),
+    json: () => Promise.resolve(sampleCatalog),
   })
   vi.stubGlobal('fetch', fetchMock)
   renderAbout()
@@ -94,12 +94,12 @@ test('passes an AbortSignal to the catalogue fetch (the 8s timeout is wired)', a
   // Removing `signal: controller.signal` from About.tsx would disable the timeout silently —
   // this assertion fails if the AbortSignal is ever dropped from the fetch call.
   expect(fetchMock).toHaveBeenCalledWith(
-    '/api/catalogue',
+    '/api/catalog',
     expect.objectContaining({ signal: expect.any(AbortSignal) }),
   )
 })
 
-test('shows the fallback when the catalogue fetch is aborted (timeout fired)', async () => {
+test('shows the fallback when the catalog fetch is aborted (timeout fired)', async () => {
   vi.stubGlobal(
     'fetch',
     vi

@@ -27,8 +27,8 @@ This is the zero-refactor base the Phase-2 CMS extends.
 - **Function URL auth = AWS_IAM + CloudFront OAC** (ADR ARCH-LAMBDA-1).
 
 > **Update (post-review, leocaseiro):** the throwaway `GET /api/about` proof endpoint (U2) was
-> replaced by a **real** `GET /api/catalogue` — the first real feature, returning placeholder
-> data now and Neon-backed in Phase 2. The SPA About page renders that live catalogue preview.
+> replaced by a **real** `GET /api/catalog` — the first real feature, returning placeholder
+> data now and Neon-backed in Phase 2. The SPA About page renders that live catalog preview.
 > The U2 sections below still describe the original `/api/about`; only the endpoint name/shape
 > changed (a real listing instead of a stub `about` payload).
 

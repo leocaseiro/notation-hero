@@ -1,31 +1,31 @@
 import { useQuery } from '@tanstack/react-query'
 
-// Mirrors the server's CatalogueResponse (server/src/modules/catalogue/catalogue.controller.ts).
+// Mirrors the server's CatalogResponse (server/src/modules/catalog/catalog.controller.ts).
 // Kept in sync by hand for Phase 1; both collapse into the shared/ oRPC contract in Phase 2.
-interface CataloguePlayable {
+interface CatalogPlayable {
   id: string
   title: string
   kind: string
   difficulty: string
 }
 
-interface CatalogueResponse {
-  items: CataloguePlayable[]
+interface CatalogResponse {
+  items: CatalogPlayable[]
   count: number
 }
 
-async function fetchCatalogue(): Promise<CatalogueResponse> {
+async function fetchCatalog(): Promise<CatalogResponse> {
   // Abort well inside the 10s Lambda timeout so a hung origin surfaces the error state quickly
   // instead of spinning until CloudFront's much longer origin read-timeout.
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 8000)
   try {
     // Same-origin behind CloudFront: `/api/*` is routed to the Lambda Function URL.
-    const res = await fetch('/api/catalogue', { signal: controller.signal })
+    const res = await fetch('/api/catalog', { signal: controller.signal })
     if (!res.ok) {
-      throw new Error(`/api/catalogue responded ${res.status}`)
+      throw new Error(`/api/catalog responded ${res.status}`)
     }
-    return (await res.json()) as CatalogueResponse
+    return (await res.json()) as CatalogResponse
   } finally {
     clearTimeout(timer)
   }
@@ -33,9 +33,9 @@ async function fetchCatalogue(): Promise<CatalogueResponse> {
 
 export function About() {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['catalogue'],
-    queryFn: fetchCatalogue,
-    // The catalogue changes rarely; a stale window avoids a fresh CloudFront->Lambda fetch on
+    queryKey: ['catalog'],
+    queryFn: fetchCatalog,
+    // The catalog changes rarely; a stale window avoids a fresh CloudFront->Lambda fetch on
     // every remount (navigate away + back), keeping the $0 free-tier invocation budget low.
     staleTime: 60_000,
   })
@@ -45,15 +45,15 @@ export function About() {
       <h1 className="text-4xl font-bold text-brand-700">About Notation Hero</h1>
       <p className="mt-4 max-w-prose text-lg">
         A drum-notation learning app, built end-to-end on AWS. This page is
-        served from CloudFront; the catalogue preview below is fetched live from
+        served from CloudFront; the catalog preview below is fetched live from
         the NestJS API running on a Lambda Function URL.
       </p>
 
       <section className="mt-6 max-w-prose rounded-lg border border-gray-200 p-4">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-          Catalogue preview — live from the API
+          Catalog preview — live from the API
         </h2>
-        {isLoading && <p className="mt-2">Loading the catalogue…</p>}
+        {isLoading && <p className="mt-2">Loading the catalog…</p>}
         {isError && (
           <p className="mt-2 text-red-600">
             Could not reach the API right now.

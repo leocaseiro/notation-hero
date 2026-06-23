@@ -1,15 +1,15 @@
 import { Test } from '@nestjs/testing';
-import { CatalogueController } from './catalogue.controller';
+import { CatalogController } from './catalog.controller';
 
-describe('CatalogueController', () => {
-  async function makeController(): Promise<CatalogueController> {
+describe('CatalogController', () => {
+  async function makeController(): Promise<CatalogController> {
     const moduleRef = await Test.createTestingModule({
-      controllers: [CatalogueController],
+      controllers: [CatalogController],
     }).compile();
-    return moduleRef.get(CatalogueController);
+    return moduleRef.get(CatalogController);
   }
 
-  it('returns a catalogue listing whose count matches the items', async () => {
+  it('returns a catalog listing whose count matches the items', async () => {
     const controller = await makeController();
     const res = controller.list();
     expect(res.items.length).toBeGreaterThan(0);
