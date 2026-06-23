@@ -79,3 +79,37 @@ test('shows a graceful fallback when /api/catalogue fails', async () => {
     expect(screen.getByText(/Could not reach the API/i)).toBeInTheDocument(),
   )
 })
+
+test('passes an AbortSignal to the catalogue fetch (the 8s timeout is wired)', async () => {
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve(sampleCatalogue),
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  renderAbout()
+  await waitFor(() =>
+    expect(screen.getByText('Single Stroke Roll')).toBeInTheDocument(),
+  )
+  // Removing `signal: controller.signal` from About.tsx would disable the timeout silently —
+  // this assertion fails if the AbortSignal is ever dropped from the fetch call.
+  expect(fetchMock).toHaveBeenCalledWith(
+    '/api/catalogue',
+    expect.objectContaining({ signal: expect.any(AbortSignal) }),
+  )
+})
+
+test('shows the fallback when the catalogue fetch is aborted (timeout fired)', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi
+      .fn()
+      .mockRejectedValue(
+        new DOMException('The operation was aborted.', 'AbortError'),
+      ),
+  )
+  renderAbout()
+  await waitFor(() =>
+    expect(screen.getByText(/Could not reach the API/i)).toBeInTheDocument(),
+  )
+})

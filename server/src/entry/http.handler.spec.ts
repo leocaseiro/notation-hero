@@ -72,4 +72,40 @@ describe('lambda handler (serverless-express)', () => {
     expect(res.statusCode).toBe(503);
     expect(JSON.parse(res.body as string)).toEqual({ message: 'Service unavailable' });
   });
+
+  it('logs the cause and retries after a failed cold start (a failed boot is not cached)', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const createSpy = vi.spyOn(NestFactory, 'create').mockRejectedValueOnce(new Error('boom'));
+    const { handler } = await import('./http.handler.js');
+
+    const first = await handler(event('GET', '/api/health'), ctx);
+    expect(first.statusCode).toBe(503);
+    expect(createSpy).toHaveBeenCalledTimes(1);
+    // The cause is surfaced (Lambda forwards stderr to CloudWatch), not swallowed.
+    expect(errSpy).toHaveBeenCalled();
+
+    // `??=` only caches a successful boot, so the next call retries against the real factory.
+    createSpy.mockRestore();
+    const second = await handler(event('GET', '/api/health'), ctx);
+    expect(second.statusCode).toBe(200);
+  });
+
+  it('serves GET /api/catalogue (200) with the catalogue shape through the handler', async () => {
+    const { handler } = await import('./http.handler.js');
+    const res = await handler(event('GET', '/api/catalogue'), ctx);
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body as string) as {
+      count: number;
+      items: Array<{ id: string; title: string; kind: string }>;
+    };
+    expect(Array.isArray(body.items)).toBe(true);
+    expect(body.items.length).toBeGreaterThan(0);
+    expect(typeof body.count).toBe('number');
+    // Each item carries the catalogue contract the About page renders.
+    for (const item of body.items) {
+      expect(typeof item.id).toBe('string');
+      expect(typeof item.title).toBe('string');
+      expect(typeof item.kind).toBe('string');
+    }
+  });
 });
