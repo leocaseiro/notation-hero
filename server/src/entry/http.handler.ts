@@ -25,9 +25,20 @@ let cachedHandler: ProxyHandler | undefined;
 
 async function bootstrap(): Promise<ProxyHandler> {
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
-  // Routes answer under /api/* so CloudFront's `/api/*` behaviour forwards the full path.
-  app.setGlobalPrefix('api');
-  await app.init();
+  try {
+    // Routes answer under /api/* so CloudFront's `/api/*` behaviour forwards the full path.
+    app.setGlobalPrefix('api');
+    await app.init();
+  } catch (e) {
+    // Close the half-initialised app so a failed boot does not leak it on the warm container
+    // (the handler's `??=` retries, so each failed attempt would otherwise accumulate one).
+    try {
+      await app.close();
+    } catch {
+      // ignore close failures — we are already propagating the original boot error
+    }
+    throw e;
+  }
   const expressApp = app.getHttpAdapter().getInstance() as Express;
   // serverless-express returns an aws-lambda Handler (event, context, callback?). In promise
   // mode we invoke it with (event, context); cast through unknown to the 2-arg shape we use.
@@ -39,7 +50,9 @@ export const handler: ProxyHandler = async (event, context) => {
   try {
     // `??=` only assigns on success, so a failed boot is never cached — the next call retries.
     proxy = cachedHandler ??= await bootstrap();
-  } catch {
+  } catch (e) {
+    // Surface the cause — Lambda forwards stderr to CloudWatch; without this the 503 is opaque.
+    console.error('[http.handler] bootstrap failed:', e);
     return {
       statusCode: 503,
       headers: { 'content-type': 'application/json' },
