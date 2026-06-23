@@ -24,7 +24,7 @@ Forget every prior coding-standards/tooling decision. Rethink from scratch — b
 Recommend the $0 shape, per item:
 
 - Compute: **Lambda** + **Function URL + OAC** (no API Gateway — free-tier).
-- Data: **Neon Postgres** (catalogue) + **DynamoDB** (per-user) + **DynamoDB Streams** (sync feed).
+- Data: **Neon Postgres** (catalog) + **DynamoDB** (per-user) + **DynamoDB Streams** (sync feed).
 - Edge/hosting: **S3 + CloudFront** (static SPA) + **ACM** (free TLS).
 - Auth [MUST]: **Cognito + Google federation**.
 - Messaging: **SQS / SNS** (consider EventBridge).
@@ -108,4 +108,4 @@ Per area in §2–§7 + each §9 spike: recommendation + one-line rationale + co
 
 ## 11. Out of scope for THIS prompt (separate feature spec)
 
-Notation model / catalogue CMS / tonal schema / GrooveScribe import (a simple JS we already have) / player UX / game scoring / gameplay rendering (canvas/PixiJS). IN scope: AlphaTab _capability_ + design tokens + the **MIDI port seam** (§5). Noted-but-not-built features: e-drum **MIDI input** + multi-zone MIDI mapping + the **iOS "install Web MIDI Browser" nudge** + a future **waterfall-view player** (architecture seam + shim-safe Web MIDI adapter ARE in scope — see the WebMIDI spike); audio engine (**AlphaTab synth is validated on the shim**; any other audio lib — e.g. Tone.js for a waterfall view — must be shim-tested first).
+Notation model / catalog CMS / tonal schema / GrooveScribe import (a simple JS we already have) / player UX / game scoring / gameplay rendering (canvas/PixiJS). IN scope: AlphaTab _capability_ + design tokens + the **MIDI port seam** (§5). Noted-but-not-built features: e-drum **MIDI input** + multi-zone MIDI mapping + the **iOS "install Web MIDI Browser" nudge** + a future **waterfall-view player** (architecture seam + shim-safe Web MIDI adapter ARE in scope — see the WebMIDI spike); audio engine (**AlphaTab synth is validated on the shim**; any other audio lib — e.g. Tone.js for a waterfall view — must be shim-tested first).

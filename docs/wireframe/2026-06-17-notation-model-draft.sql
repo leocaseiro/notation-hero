@@ -38,7 +38,7 @@ CREATE TABLE notation (
   id                text PRIMARY KEY,
   format            text NOT NULL,             -- 'gp' | 'midi' | 'alphatex' | 'xml'
   s3_key            text,                      -- set for file-backed formats
-  notation_alphatex text,                      -- set for inline alphaTex (canonical name: notation_alphaTex)
+  notation_alphatex text,                      -- set for inline alphaTex (canonical name: notation_alphatex)
   checksum          text,                      -- sha256 (dedup / integrity), optional
   bytes             int,                       -- file size, optional
   created_at        timestamptz NOT NULL DEFAULT now(),

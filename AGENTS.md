@@ -29,9 +29,9 @@ filenames under `server/src/` (`ARCH-NAME-1`).
 Naming is `@notation-hero/*` (hyphen — matches root `name: "notation-hero"`).
 The DACI's `@notationhero/*` (no hyphen, M-7) is a typo; do not adopt it.
 `core/`/`adapters/` are still empty skeletons; the first real domains land with their
-specs (the **catalog** is first: `core/catalogue` + a Neon-Postgres adapter), each
+specs (the **catalog** is first: `core/catalog` + a Neon-Postgres adapter), each
 brainstormed/spec'd before code. DynamoDB is per-user data only; the song/lesson
-catalogue lives in Neon Postgres + JSONB (future `server/src/adapters/neon-postgres`).
+catalog lives in Neon Postgres + JSONB (future `server/src/adapters/neon-postgres`).
 
 ## Targets & how to run them
 
@@ -75,14 +75,14 @@ Tests and stories live **next to the source they cover**, in the same folder —
 (one folder per unit).
 
 ```
-core/catalogue/
-  CatalogueItem.ts
-  CatalogueItem.test.ts     # ✅ co-located, next to source
+core/catalog/
+  CatalogItem.ts
+  CatalogItem.test.ts     # ✅ co-located, next to source
   Exercise.ts
   Exercise.test.ts
 ```
 
-❌ `core/catalogue/__tests__/CatalogueItem.test.ts` — forbidden layout.
+❌ `core/catalog/__tests__/CatalogItem.test.ts` — forbidden layout.
 
 Locked DACI convention (2026-06-09, §"Conventions — domain-driven, co-located"
 in `docs/decisions/2026-06-09-tooling-stack-daci.md`). CI **fails** any `__tests__/`,

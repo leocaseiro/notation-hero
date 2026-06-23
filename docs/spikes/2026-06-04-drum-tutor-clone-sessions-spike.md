@@ -117,10 +117,10 @@ All rejected 2026-06-02/03 with verified reasons:
 
 ### E · Persistence, sync & observability
 
-- **E1 — "Storage ≠ a server."** Per-user private data (scores, streaks, history) can live local-first (IndexedDB via Dexie, or native SQLite in Capacitor) at $0, offline, no auth. A backend is a *product trigger.* *Date:* 2026-06-02. *Now:* ⛔ **superseded as the headline.** The **song/lesson catalogue (CMS) is the first real feature** and lives in **Neon Postgres + JSONB** (catalogue-store DACI 2026-06-09), *not* a per-user/local-first store. The local-first idea survives only for per-user data on **DynamoDB**.
+- **E1 — "Storage ≠ a server."** Per-user private data (scores, streaks, history) can live local-first (IndexedDB via Dexie, or native SQLite in Capacitor) at $0, offline, no auth. A backend is a *product trigger.* *Date:* 2026-06-02. *Now:* ⛔ **superseded as the headline.** The **song/lesson catalog (CMS) is the first real feature** and lives in **Neon Postgres + JSONB** (catalog-store DACI 2026-06-09), *not* a per-user/local-first store. The local-first idea survives only for per-user data on **DynamoDB**.
 - **E2 — Cross-device sync (iPad ↔ Mac) wanted *soon*** → designed for from day one. *Date:* 2026-06-03. *Now:* ✅ intent holds; mechanism changed (see E3).
 - **E3 — Sync/offline layer spectrum:** hand-rolled (Dexie + `updated_at`) → **Legend-State** → **RxDB** → **PowerSync** (skip — runs a server). Leaning Legend-State or RxDB. *Date:* 2026-06-03. *Now:* 🔁 **evolved → Dexie chosen, RxDB rejected** (backend architecture ADR 2026-06-17).
-- **E4 — Backend spine candidates Firebase vs Supabase** (leaning Supabase: SQL + open-source). Firestore notably does offline cache **and** cross-device sync in one SDK. *Date:* 2026-06-03. *Now:* ⛔ **both rejected.** Backend = **AWS** (catalogue-store DACI 2026-06-09); the AWS-learning goal (F) made Supabase a "nice-to-learn-later."
+- **E4 — Backend spine candidates Firebase vs Supabase** (leaning Supabase: SQL + open-source). Firestore notably does offline cache **and** cross-device sync in one SDK. *Date:* 2026-06-03. *Now:* ⛔ **both rejected.** Backend = **AWS** (catalog-store DACI 2026-06-09); the AWS-learning goal (F) made Supabase a "nice-to-learn-later."
 - **E5 — Observability (MVP) = client-side, not server SRE:** Sentry (errors) + PostHog (usage) or Firebase Analytics/Crashlytics. *Date:* 2026-06-03. *Now:* 🔁 split: **AWS CloudWatch + X-Ray** for backend SRE, **Sentry** for client JS errors (`docs/aws-learning-map.md`).
 
 ### F · AWS backend + interview-prep learning track
@@ -136,13 +136,13 @@ This is the reframe that changed the project's *purpose* (2026-06-03 ~01:04).
   - **No free tier — avoid for learning:** MSK (~$460–607/mo), Kinesis, NAT Gateway (~$32/mo), API Gateway (12-mo only), CloudWatch RUM, DocumentDB (~$69/mo).
   - *Now:* ✅ still the numbers in `docs/aws-learning-map.md`.
 - **F4 — IaC = Pulumi (TypeScript), decided** (+ Terraform *literacy* for interviews — concepts transfer 1:1). *Now:* ✅ confirmed — first real `pulumi up` (hello-world Lambda Function URL) landed NH-150 (2026-06-14).
-- **F5 — DynamoDB single-table + GSI + TTL + Streams**, with the **offline-first ↔ DynamoDB bridge**: the client lib (RxDB/Legend-State) calls two Lambda handlers — `pull(checkpoint)` → query a GSI on `(USER#sub, updatedAt > checkpoint)`; `push(changeRows)` → conditional writes (LWW); deletions flow as **soft-delete tombstones** that TTL-purge (~30 days). *Now:* 🔁 DynamoDB = **per-user data only** (catalogue is Neon Postgres). The bridge concept holds for per-user sync; client lib is now Dexie.
+- **F5 — DynamoDB single-table + GSI + TTL + Streams**, with the **offline-first ↔ DynamoDB bridge**: the client lib (RxDB/Legend-State) calls two Lambda handlers — `pull(checkpoint)` → query a GSI on `(USER#sub, updatedAt > checkpoint)`; `push(changeRows)` → conditional writes (LWW); deletions flow as **soft-delete tombstones** that TTL-purge (~30 days). *Now:* 🔁 DynamoDB = **per-user data only** (catalog is Neon Postgres). The bridge concept holds for per-user sync; client lib is now Dexie.
 - **F6 — Local dev: real AWS primary, LocalStack optional.** Use real AWS for learning/interview fluency; LocalStack only for fast local/CI integration tests. *Now:* ✅ holds.
-- **F7 — LEARN / SKIP map.** Build hands-on: Lambda · DynamoDB · Cognito · SQS+SNS · S3+CloudFront(OAC) · CloudWatch+X-Ray · Pulumi · the sync pull/push backend. Concept-only: Kafka (local Docker) · Kinesis/MSK/EventBridge decision matrix · VPC/NAT · burn-rate theory · Terraform HCL. Skip: FE framework/state (expert) · CI/CD basics · Docker basics · K8s · API Gateway · EC2. *Now:* ✅ holds. **One change:** the "DocumentDB / Atlas document-modeling" detour is **dropped** (Mongo/DocumentDB dropped 2026-06-09; catalogue = Neon Postgres + JSONB, talking-point only).
+- **F7 — LEARN / SKIP map.** Build hands-on: Lambda · DynamoDB · Cognito · SQS+SNS · S3+CloudFront(OAC) · CloudWatch+X-Ray · Pulumi · the sync pull/push backend. Concept-only: Kafka (local Docker) · Kinesis/MSK/EventBridge decision matrix · VPC/NAT · burn-rate theory · Terraform HCL. Skip: FE framework/state (expert) · CI/CD basics · Docker basics · K8s · API Gateway · EC2. *Now:* ✅ holds. **One change:** the "DocumentDB / Atlas document-modeling" detour is **dropped** (Mongo/DocumentDB dropped 2026-06-09; catalog = Neon Postgres + JSONB, talking-point only).
 
 ### G · Queues & messaging (the user's stated interview priority)
 
-- **G1 — The hierarchy (interview gold):** **Queue (SQS)** = drop → one worker consumes → deleted ("do this work later"); **Pub/Sub (SNS)** = publish once → many subscribers each get a copy ("tell everyone"); **Log/Stream (Kafka/Kinesis/DynamoDB Streams)** = durable ordered replayable log, many readers ("a replayable history"); **Bus (EventBridge)** = route by rules. **Killer distinction:** *SQS deletes on consume (no replay); Kafka retains + replays with many independent consumers.* *Now:* ✅ a learning target (not yet built — foundation/catalogue come first).
+- **G1 — The hierarchy (interview gold):** **Queue (SQS)** = drop → one worker consumes → deleted ("do this work later"); **Pub/Sub (SNS)** = publish once → many subscribers each get a copy ("tell everyone"); **Log/Stream (Kafka/Kinesis/DynamoDB Streams)** = durable ordered replayable log, many readers ("a replayable history"); **Bus (EventBridge)** = route by rules. **Killer distinction:** *SQS deletes on consume (no replay); Kafka retains + replays with many independent consumers.* *Now:* ✅ a learning target (not yet built — foundation/catalog come first).
 - **G2 — DynamoDB Streams → Lambda vs SQS:** Streams = Change Data Capture (the DB *write is the event*; 24 h ordered log; fires per change) → use for reacting to sync writes; SQS = explicit enqueue, consumed-and-deleted → use for analytics / deferring slow work. They're **complementary** here. *Now:* ✅ holds.
 - **G3 — SNS → SQS fan-out** teaches SQS + SNS + fan-out + DLQ + idempotency + visibility-timeout in one pattern (free: SQS 1M/mo, SNS 1M + 1,000 emails/mo). *Now:* ✅ holds.
 - **G4 — Learn Kafka *off* AWS:** MSK + Kinesis have **no free tier** — don't learn streaming on AWS. Use **local Docker (Redpanda or Apache Kafka)** for the real API (partitions, consumer groups, offsets, replay), or free managed (Aiven / Confluent Cloud). Avoid CloudKarafka (discontinued) + Upstash Kafka (sunset). *Now:* ✅ holds.
@@ -203,10 +203,10 @@ ledger of just these — foregrounding the one still-live item (OQ-5) — lives 
 
 | # | Open question (as of Jun 2–4) | `Now:` |
 |---|---|---|
-| OQ-1 | **Backend spine: Firebase vs Supabase?** | ⛔ **Closed** — neither; **AWS** (catalogue-store DACI 2026-06-09). |
+| OQ-1 | **Backend spine: Firebase vs Supabase?** | ⛔ **Closed** — neither; **AWS** (catalog-store DACI 2026-06-09). |
 | OQ-2 | **Sync layer: Legend-State vs RxDB?** | ⛔ **Closed** — neither; **Dexie** (RxDB rejected; backend ADR 2026-06-17). |
 | OQ-3 | **Electron desktop: now, or browser-only until later?** | 🔁 **Deferred** — browser/PWA now; Electron not pursued; FE = Vite SPA. |
-| OQ-4 | **First build step:** (A) deep review+plan · (B) iOS Capacitor+CoreMIDI · (C) extract clean Vite app from the fork? | 🔁 **Resolved differently** — became *foundation + CI/CD first*, then the **catalogue (CMS) as the first real feature**; the app is not scaffolded ahead of the catalogue spec. |
+| OQ-4 | **First build step:** (A) deep review+plan · (B) iOS Capacitor+CoreMIDI · (C) extract clean Vite app from the fork? | 🔁 **Resolved differently** — became *foundation + CI/CD first*, then the **catalog (CMS) as the first real feature**; the app is not scaffolded ahead of the catalog spec. |
 | OQ-5 | **XState for the one game-mode FSM** (idle→count-in→playing→paused→results): adopt for rigor, or skip for speed? | ❓ **Unresolved** — no later decision found. Still genuinely open. |
 | OQ-6 | **AWS local creds + region** (the blocker for `pulumi up`). | ✅ **Resolved** — AWS account setup done (IAM Identity Center daily-driver); `pulumi up` landed NH-150. |
 | OQ-7 | **Confirm proposed defaults** (public+proprietary / monorepo / IAM keys / bun). | 🔁 **Mostly resolved** — public ✓, OIDC ✓; **bun→pnpm**, monorepo shape changed (Nx then dropped). |
@@ -224,7 +224,7 @@ ledger of just these — foregrounding the one still-live item (OQ-5) — lives 
 |---|---|
 | Every decision + status + enforcement | `docs/decisions/decision-registry.md` |
 | Tooling stack (pnpm, Nx→dropped, ESLint, types, CI) | `docs/decisions/2026-06-09-tooling-stack-daci.md` + the 2026-06-17 architecture ADR |
-| Catalogue store (Neon Postgres + JSONB; DynamoDB per-user) | `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md` |
+| Catalog store (Neon Postgres + JSONB; DynamoDB per-user) | `docs/decisions/2026-06-09-catalog-store-postgres-neon.md` |
 | AWS service → feature-vehicle map + free-tier numbers | `docs/aws-learning-map.md` |
 | CI/CD pipeline | `docs/cicd-pipeline.md` |
 | Client stack (implementation picks) | `docs/design-stack.md` |

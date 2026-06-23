@@ -20,11 +20,11 @@ exploration I've locked the shape below; I want to brainstorm the **OPEN QUESTIO
 
 ## FORWARD-COMPATIBILITY (cheap seams to bake into v1)
 
-- The catalogue starts **admin-curated** but MUST allow **user-generated content (UGC)**
+- The catalog starts **admin-curated** but MUST allow **user-generated content (UGC)**
   later. This does NOT change the stack (Postgres is great for UGC) — but bake in these
   near-free seams now so UGC is additive, not a rewrite:
   - **Ownership/provenance from day one** — `created_by` (Cognito `sub`) + `source` +
-    `status` on the catalogue item (schema already has `source`/`status`; confirm
+    `status` on the catalog item (schema already has `source`/`status`; confirm
     `created_by` exists). v1 admin items vs later UGC differ only by column values.
   - **Authorization as a domain policy port** — `can(user, item, action)` — NOT
     hardcoded "admin-only". v1 implements the admin rule; UGC just extends the policy.
@@ -41,7 +41,7 @@ exploration I've locked the shape below; I want to brainstorm the **OPEN QUESTIO
 - **Backend:** NestJS 11 · Node 24 (`nodejs24.x` — GA on Lambda since Nov 2025, incl.
   `ap-southeast-2`) · **SWC** bundler (Nest's blessed compiler; avoids the
   esbuild-decorator hack) · Lambda + Function URL · arm64.
-- **Data:** **Neon Postgres + Drizzle** → catalogue/content (admin-curated v1 →
+- **Data:** **Neon Postgres + Drizzle** → catalog/content (admin-curated v1 →
   UGC-ready). **DynamoDB** single-table → per-user (scores · sync · settings).
 - **Auth:** **Cognito** (in Pulumi) + `aws-jwt-verify`; classic admin UI CRUD;
   end-user-ready. (Cognito login = OAuth2/PKCE — the _user_ OIDC.) Secrets: **SSM
@@ -74,7 +74,7 @@ adapters/ + infra/`.
    per-entry bundling).
 8. **Authz + ownership model:** how far to design the `can(user, item, action)` policy
    and the `created_by` / `status` / visibility model in v1 so UGC is additive, not a
-   rewrite? (Check `docs/specs/2026-06-10-catalogue-schema.md` for `source` / `status` /
+   rewrite? (Check `docs/specs/2026-06-10-catalog-schema.md` for `source` / `status` /
    `created_by`.)
 
 ## CONSTRAINT
@@ -88,13 +88,13 @@ in the same change if we change it. (we are very likely to change it, and we 'll
 
 - Repo: `/Users/leocaseiro/Sites/notation-hero` — esp. `AGENTS.md`,
   `docs/feature-freeze.md`, `docs/aws-learning-map.md`, `docs/decisions/`
-  (decision-registry, the Neon catalogue-store decision, the file-structure ADR),
-  `docs/specs/2026-06-10-catalogue-schema.md`, `apps/handler-hello`, `infra/`.
+  (decision-registry, the Neon catalog-store decision, the file-structure ADR),
+  `docs/specs/2026-06-10-catalog-schema.md`, `apps/handler-hello`, `infra/`.
 - The two framework spikes (the "door" comparison that led to NestJS) — **worktree paths
   as of 2026-06-17; may already be merged into the main repo's `docs/` by the time you
   read this**:
-  - NestJS plan: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/charming-varahamihira-afff7f/docs/plans/2026-06-16-001-feat-catalogue-crud-nestjs-plan.md`
-  - Fastify plan: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/competent-torvalds-c13c5c/docs/plans/2026-06-16-001-feat-catalogue-crud-fastify-plan.md`
+  - NestJS plan: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/charming-varahamihira-afff7f/docs/plans/2026-06-16-001-feat-catalog-crud-nestjs-plan.md`
+  - Fastify plan: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/competent-torvalds-c13c5c/docs/plans/2026-06-16-001-feat-catalog-crud-fastify-plan.md`
   - Cognito spike: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/charming-varahamihira-afff7f/docs/spikes/2026-06-16-cognito-auth-spike.md`
 
 ## HOW TO RUN

@@ -80,7 +80,7 @@ All on `~/Sites/alphaTabWebsite` branch `rhythm-game`, dir `src/components/Alpha
 
 ## 8. AWS learning ladder (from `docs/aws-learning-map.md`)
 
-Service order (the learning spine): **Lambda → DynamoDB → Pulumi → S3/CloudFront → sync → SQS/SNS messaging → Athena → CloudWatch/X-Ray → Kafka → Cognito**. Note: map is partly stale on catalogue (CMS = Neon now), but the AWS order stands. Catalog (sprint 4) front-loads Lambda/S3/CloudFront/Pulumi because the catalogue *requires* them (DS-8: notation blobs in S3, keys in Postgres). Legacy AWS account → Always-Free ≈ $0.
+Service order (the learning spine): **Lambda → DynamoDB → Pulumi → S3/CloudFront → sync → SQS/SNS messaging → Athena → CloudWatch/X-Ray → Kafka → Cognito**. Note: map is partly stale on catalog (CMS = Neon now), but the AWS order stands. Catalog (sprint 4) front-loads Lambda/S3/CloudFront/Pulumi because the catalog *requires* them (DS-8: notation blobs in S3, keys in Postgres). Legacy AWS account → Always-Free ≈ $0.
 
 ## 9. Native / platform strategy
 

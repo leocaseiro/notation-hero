@@ -50,10 +50,10 @@ Full context + current-status cross-refs for each: §4 + §5 of the main spike.
 
 | # | Question (as of Jun 2–4) | Resolution |
 |---|---|---|
-| OQ-1 | Backend spine: Firebase vs Supabase? | Neither — **AWS** (catalogue-store DACI 2026-06-09). |
+| OQ-1 | Backend spine: Firebase vs Supabase? | Neither — **AWS** (catalog-store DACI 2026-06-09). |
 | OQ-2 | Sync layer: Legend-State vs RxDB? | Neither — **Dexie** (RxDB rejected; backend ADR 2026-06-17). |
 | OQ-3 | Electron desktop: now or later? | **Deferred** — browser/PWA now; front-end = Vite SPA. |
-| OQ-4 | First build step (deep review / iOS Capacitor / extract clean Vite app)? | Reframed — **foundation + CI/CD first**, then the catalogue (CMS) as the first real feature. |
+| OQ-4 | First build step (deep review / iOS Capacitor / extract clean Vite app)? | Reframed — **foundation + CI/CD first**, then the catalog (CMS) as the first real feature. |
 | OQ-6 | RxDB vs Legend-State targeting AWS? | Closed — **Dexie** (duplicate of OQ-2). |
 | OQ-7 | AWS local creds + region (the `pulumi up` blocker)? | **Resolved** — AWS account set up; first `pulumi up` landed (NH-150). |
 | OQ-8 | Confirm defaults (public+proprietary / monorepo / IAM keys / bun)? | Public ✓, OIDC ✓; **bun → pnpm**; monorepo shape **Nx → dropped** (2026-06-17). |
