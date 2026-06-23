@@ -20,9 +20,12 @@ jobs:
     # Same-repo PRs only — GitHub withholds OIDC tokens from fork PRs; this is defence-in-depth.
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Don't cancel a superseded preview mid-run: a killed `pulumi preview` can strand the stack
+    # lock on the shared S3 backend and wedge the next preview/up. Queue (serialise) instead.
     concurrency:
       group: deploy-preview-${{ github.ref }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-js
@@ -50,6 +53,9 @@ jobs:
     name: Pulumi up
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    # First CloudFront create can take ~15-20 min; this timeout is a hung-job backstop that frees
+    # the concurrency group + the Pulumi backend lock instead of blocking deploys indefinitely.
+    timeout-minutes: 60
     # Never cancel an in-flight `up` — a half-applied deploy can corrupt stack state.
     concurrency:
       group: deploy-up-dev
