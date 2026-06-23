@@ -115,8 +115,11 @@ test("distribution has two origins and a distinct /api/* behavior", async () => 
   assert.ok(lambdaOrigin.originAccessControlId);
   const customCfg = lambdaOrigin.customOriginConfig as {
     originProtocolPolicy: string;
+    originReadTimeout: number;
   };
   assert.equal(customCfg.originProtocolPolicy, "https-only");
+  // review #5: CF origin read-timeout pinned just above the 10s Lambda timeout (not the 30s default).
+  assert.equal(customCfg.originReadTimeout, 12);
 
   // Free-tier guard: pay-as-you-go cheapest edge set (NOT a flat-rate plan).
   assert.equal(dist.priceClass, "PriceClass_100");

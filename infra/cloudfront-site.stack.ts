@@ -137,6 +137,11 @@ export class CloudFrontSite extends pulumi.ComponentResource {
               httpsPort: 443,
               originProtocolPolicy: "https-only",
               originSslProtocols: ["TLSv1.2"],
+              // Fail fast: CloudFront's default origin read-timeout is 30s, but the Lambda times
+              // out at 10s — keep CF just above it so a hung /api/* call isn't held ~20s past the
+              // Lambda giving up (review #5).
+              originReadTimeout: 12,
+              originKeepaliveTimeout: 5,
             },
           },
         ],

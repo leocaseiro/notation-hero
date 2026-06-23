@@ -144,6 +144,12 @@
       "Effect": "Allow",
       "Action": "logs:DescribeLogGroups",
       "Resource": "arn:aws:logs:ap-southeast-2:*:log-group:*"
+    },
+    {
+      "Sid": "ReadCiRoleBoundary",
+      "Effect": "Allow",
+      "Action": "iam:GetPolicy",
+      "Resource": "arn:aws:iam::*:policy/notation-hero-ci-role-boundary"
     }
   ]
 }

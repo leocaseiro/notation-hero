@@ -20,9 +20,23 @@ import { LambdaWithUrl } from "./lambda-with-url.stack.ts";
 // The Lambda exec role must carry the CI permissions boundary: the deploy policy REQUIRES it on
 // every CreateRole (privesc guard — review #1). REQUIRED one-time/admin step BEFORE `pulumi up`:
 // run docs/runbooks/aws-ci-oidc-bootstrap.sh, which creates this boundary policy in the account.
-const ciRoleBoundaryArn = pulumi.interpolate`arn:aws:iam::${
-  aws.getCallerIdentityOutput().accountId
-}:policy/notation-hero-ci-role-boundary`;
+const ciRoleBoundaryArn = aws
+  .getCallerIdentityOutput()
+  .accountId.apply((accountId) => {
+    const arn = `arn:aws:iam::${accountId}:policy/notation-hero-ci-role-boundary`;
+    // Preflight (review #6): if the boundary policy is missing, fail fast with the remedy instead
+    // of an opaque CreateRole AccessDenied on first deploy. `api` consumes this Output below
+    // (permissionsBoundaryArn), so the check runs on every preview/up — local and CI alike.
+    return aws.iam.getPolicy({ arn }).then(
+      () => arn,
+      () => {
+        throw new Error(
+          `CI permissions boundary not found at ${arn}. ` +
+            `Run docs/runbooks/aws-ci-oidc-bootstrap.sh (admin) before deploying (NH-206).`,
+        );
+      },
+    );
+  });
 
 const api = new LambdaWithUrl("api", {
   functionName: "notation-hero-api",
