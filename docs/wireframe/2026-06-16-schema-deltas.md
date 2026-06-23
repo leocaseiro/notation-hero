@@ -44,7 +44,30 @@ The round-by-round log below is **historical**. After the locked Playable model 
 | SD-23                     | 🔵 open (Group C) | GP file = song or pattern — upload must classify.                                                                                                                                                                                                                                                                                       |
 | Lesson↔Step↔Pattern model | ✅ resolved        | locked Playable model (umbrella + `step` junction + parts first-class + `lesson_type` dropped) settled the tangle; GP-file role (SD-23) remains for Group C.                                                                                                                                                                            |
 
-**Still open:** SD-10, SD-11, SD-12, SD-17, SD-20, SD-21 (mostly per-user/DynamoDB or minor UI) · **Group C:** SD-22, SD-23 · **partial:** SD-15 (advanced by Group D) · **new (deferred):** SD-25 technique facet, SD-26 instrument family. **Group D (Round-6 track/media/difficulty) — ✅ resolved 2026-06-20** (see the Group D reconciliation section below + spec). Everything else is resolved.
+**Pending status (2026-06-23) — READ THIS for current state.** Every open delta is now either **resolved** or **filed as a Jira ticket** (all labelled `schema-delta` in NH). The table below is the authoritative current view; the historical round-by-round log further down is kept for provenance only. **Group D** (track/media/difficulty) — ✅ resolved 2026-06-20.
+
+### 🎫 Pending deltas → Jira (2026-06-23)
+
+| SD | Jira | Disposition |
+| --- | --- | --- |
+| SD-10 | [NH-210](https://leocaseiro.atlassian.net/browse/NH-210) | catalog column ordering (TanStack Table) |
+| SD-11 | [NH-211](https://leocaseiro.atlassian.net/browse/NH-211) | flag filters + playback-source toggle (synth/video/audio) |
+| SD-12 | [NH-212](https://leocaseiro.atlassian.net/browse/NH-212) | per-user score filter+sort (DynamoDB, M1) |
+| SD-15 | [NH-213](https://leocaseiro.atlassian.net/browse/NH-213) | brainstorm — deep voicing decomposition · `schema` |
+| SD-17 | — | ✅ resolved — universal `description` field (every playable) covers it |
+| SD-20 | [NH-214](https://leocaseiro.atlassian.net/browse/NH-214) | brainstorm — per-part/step score model |
+| SD-21 | [NH-215](https://leocaseiro.atlassian.net/browse/NH-215) | brainstorm — completed flag + reset |
+| SD-22 | [NH-216](https://leocaseiro.atlassian.net/browse/NH-216) | brainstorm — load-and-go upload (Group C) |
+| SD-23 | — | ✅ resolved — manual song/lesson choice on upload (edit-mode only) |
+| SD-24 | [NH-137](https://leocaseiro.atlassian.net/browse/NH-137) | ✅ defined — song slice = positions-only part (NH-137) |
+| SD-25 | [NH-217](https://leocaseiro.atlassian.net/browse/NH-217) | technique facet · `schema` |
+| SD-26 | [NH-218](https://leocaseiro.atlassian.net/browse/NH-218) | instrument family facet · `schema` |
+| SD-27 | — | ✅ resolved — per-track tonal/drum profiles (PR #52) |
+| SD-28 | [NH-219](https://leocaseiro.atlassian.net/browse/NH-219) | lead vs rhythm selector · `schema` |
+| SD-29 | — | ✅ resolved — component voices `listable:false` |
+| SD-30 | — | ✅ resolved — playable_link relation vocabulary (uses/variation/similar) |
+
+> **Future note (per Leo, 2026-06-23):** a per-**relationship** description may be wanted later (a note on *why* two playables are `similar`, or a teaching note on a `uses` link). Cheapest path when needed: a `note` text field on `playable_link` — no new table. Not added yet (YAGNI).
 
 ### 🆕 New deltas (2026-06-19 pm)
 
