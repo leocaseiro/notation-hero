@@ -15,7 +15,7 @@ so they're not lost, not actioned yet.
 - **F5 — structured song learning** = a Lesson whose Steps are the Song's Parts. → **filed: [NH-222](https://leocaseiro.atlassian.net/browse/NH-222) (SD-32)** — works like a normal lesson but *related to the song* (`uses` song X); the wireframe example is gated on Song Parts existing (none yet).
 
 ## Deferred DB changes
-- **Rename `notation_tex` → `notation_alphaTex`** (the inline alphaTex field — `notation_tex` in the wireframe, `alphatex` in the draft SQL `notation` table). → **being applied on the rename branch `chore/nh-220-catalogue-to-catalog`** (2026-06-23; it's a find-replace, no real DB yet).
+- **Inline-alphaTex field naming — resolved (2026-06-23).** The field is **`notation_alphaTex`** (camelCase) in the wireframe **JS**, and the DB **column is `notation_alphatex`** (snake_case, lowercase). **Why lowercase:** Postgres folds unquoted identifiers to lowercase, so a `notation_alphaTex` column is *really* `notation_alphatex` anyway — and double-quoting it later would create a mismatched case-sensitive identifier (`column "notation_alphaTex" does not exist`). The ORM (Drizzle) maps snake_case ↔ camelCase. (The draft SQL was briefly normalised to camelCase, then reverted on `chore/nh-220`.) The format **value** `'alphatex'` (gp/midi/alphatex/xml) is unchanged.
 
 ## Wireframe / layout open questions
 - **OQ1 — Artist in the catalog Song list.** Display the (optional) `artist` on screen when listing Songs in the catalog list, **and** allow **filtering by artist**. *(✅ resolved 2026-06-19: `artist` → `author text[]` + `author_type`, GIN-filterable — see `2026-06-19-tonal-drum-schema-draft.sql`.)*
