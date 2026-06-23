@@ -41,11 +41,11 @@ Static host (GitHub Pages **or** S3+CloudFront free tier) serves the JS/WASM; co
 
 Installed `music21==10.5.0` (BSD-3) in a venv; converted three MIDIs; all output is **well-formed MusicXML 4.0** (`xmllint` clean):
 
-| Input | Output | Result |
-|---|---|---|
-| `twinkle.mid` (simple) | 96 measures, 353 notes, 2/4 | ✓ clean |
-| `coldplay-yellow.mid` (real multitrack) | 7 named parts (vocals/guitars/bass/**drumkit**), chords, key/time/tempo | ✓ strong for pitched |
-| `16th-rock-beat.mid` (128 B) | empty | degenerate input (no usable notes) |
+| Input                                   | Output                                                                  | Result                             |
+| --------------------------------------- | ----------------------------------------------------------------------- | ---------------------------------- |
+| `twinkle.mid` (simple)                  | 96 measures, 353 notes, 2/4                                             | ✓ clean                            |
+| `coldplay-yellow.mid` (real multitrack) | 7 named parts (vocals/guitars/bass/**drumkit**), chords, key/time/tempo | ✓ strong for pitched               |
+| `16th-rock-beat.mid` (128 B)            | empty                                                                   | degenerate input (no usable notes) |
 
 **Quality note:** music21 has built-in quantization (`stream.quantize()`), the genuinely hard part of MIDI→notation. It does best on MIDI exported from notation software; human-performance MIDI yields messier rhythms (quantize first).
 
@@ -55,11 +55,11 @@ music21 **identifies** drums correctly via its `PercussionMapper` (GM map, pitch
 
 Stress test on real kits exposed two layers of loss:
 
-| Gap | Evidence | Cause |
-|---|---|---|
-| Layout collapse | all hits → B4 | music21 has **no GM→staff-position table** |
+| Gap                           | Evidence                                     | Cause                                                                                       |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Layout collapse               | all hits → B4                                | music21 has **no GM→staff-position table**                                                  |
 | Ride cymbal **identity** lost | 90 Coldplay ride hits → generic "Percussion" | music21 has **no Ride class** → [#1659](https://github.com/cuthbertLab/music21/issues/1659) |
-| Open/closed hat indistinct | 42/44/46 share a name | name-based mapping is lossy |
+| Open/closed hat indistinct    | 42/44/46 share a name                        | name-based mapping is lossy                                                                 |
 
 **Fix (validated):** key the drum-map off the **raw MIDI pitch number**, not music21's instrument name. Pitch is unambiguous and complete; reading it directly bypasses both the layout gap and the #1659 identity loss. Proven on a synthetic 10-sound kit → **9 distinct staff lines, ✗ noteheads on cymbals/hats, ride recovered, percussion clef present.**
 
@@ -91,11 +91,11 @@ PITCH_MAP = {
 
 AlphaTab **1.8.3** ships `alphaTab.exporter.Gp7Exporter` (`.export(score, settings) → Uint8Array`). Headless round-trip **passed**: imported our drum MusicXML (1 percussion track, 11 beats) → exported `.gp` (3,099 bytes) → re-imported identical. So GP output is **free** via AlphaTab — no MIDI→GP converter needed.
 
-> Open item: confirm per-drum **voicing fidelity** (each drum's line/notehead) survives MusicXML→GP, by opening an exported `.gp` in Guitar Pro.
+> **Resolved (2026-06-23) — MIDI note was being dropped.** The _display_ (clef/line/notehead) survives, but each drum's **MIDI note** did not: music21's MusicXML export writes **no `<midi-unpitched>`** (one generic "Percussion"), so AlphaTab→GP yields note `0`. The leak is the **music21→MusicXML** step, not AlphaTab. **Fix:** give each distinct MIDI pitch its own `UnpitchedPercussion` instrument with `percMapPitch` = the raw note (incl. ride 51, which music21 loses to #1659), so music21 emits per-drum `<midi-unpitched>`. **Verified end-to-end:** input notes `[36,38,42,46,43,45,47,48,51,49]` == GP output. (Pending visual confirmation in Guitar Pro.)
 
 ### 5. MIDI → Guitar Pro converters (for reference)
 
-No drop-in, pipeline-ready MIDI→GP tool exists. **PyGuitarPro** (Python, LGPL-3, maintained) can *write* GP5 but has no MIDI parser/quantizer (≈500–1000 LOC to bridge). **TuxGuitar** does MIDI→GP but is GUI-only. Conclusion: **don't build MIDI→GP** — go via MusicXML and let AlphaTab export GP if a `.gp` is ever needed.
+No drop-in, pipeline-ready MIDI→GP tool exists. **PyGuitarPro** (Python, LGPL-3, maintained) can _write_ GP5 but has no MIDI parser/quantizer (≈500–1000 LOC to bridge). **TuxGuitar** does MIDI→GP but is GUI-only. Conclusion: **don't build MIDI→GP** — go via MusicXML and let AlphaTab export GP if a `.gp` is ever needed.
 
 ---
 
