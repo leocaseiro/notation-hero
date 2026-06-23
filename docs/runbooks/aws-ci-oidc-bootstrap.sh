@@ -31,6 +31,27 @@ else
   echo "Reusing OIDC provider: $PROVIDER_ARN"
 fi
 
+# 1b) Permissions boundary — the CEILING for every role the deploy role is allowed to create.
+# The deploy policy REQUIRES this boundary on each CreateRole, so a created role can never exceed
+# Lambda logging — this is what neutralises the CreateRole + AttachRolePolicy + PassRole
+# privilege-escalation path. Managed-policy docs are immutable, so an update = a new default
+# version (IAM keeps at most 5 versions; prune the oldest if create-policy-version ever errors).
+ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text --profile "$PROFILE")"
+BOUNDARY_NAME="notation-hero-ci-role-boundary"
+BOUNDARY_ARN="arn:aws:iam::${ACCOUNT_ID}:policy/${BOUNDARY_NAME}"
+if aws iam get-policy --policy-arn "$BOUNDARY_ARN" --profile "$PROFILE" >/dev/null 2>&1; then
+  aws iam create-policy-version --policy-arn "$BOUNDARY_ARN" \
+    --policy-document "file://${SCRIPT_DIR}/aws-iam-ci-role-boundary.json" \
+    --set-as-default --profile "$PROFILE" >/dev/null
+  echo "Updated permissions boundary: $BOUNDARY_ARN"
+else
+  aws iam create-policy --policy-name "$BOUNDARY_NAME" \
+    --policy-document "file://${SCRIPT_DIR}/aws-iam-ci-role-boundary.json" \
+    --description "Ceiling for notation-hero CI-created Lambda exec roles (least-privilege boundary)" \
+    --profile "$PROFILE" >/dev/null
+  echo "Created permissions boundary: $BOUNDARY_ARN"
+fi
+
 # 2) Trust policy — only this repo's master ref + same-repo PRs may assume the role.
 TRUST_FILE="$(mktemp)"
 trap 'rm -f "$TRUST_FILE"' EXIT

@@ -17,6 +17,13 @@ import { LambdaWithUrl } from "./lambda-with-url.stack.ts";
  *   pnpm --filter @notation-hero/server run build:lambda   (-> server/dist-lambda)
  *   pnpm --filter @notation-hero/client run build          (-> client/dist)
  */
+// The Lambda exec role must carry the CI permissions boundary: the deploy policy REQUIRES it on
+// every CreateRole (privesc guard — review #1). REQUIRED one-time/admin step BEFORE `pulumi up`:
+// run docs/runbooks/aws-ci-oidc-bootstrap.sh, which creates this boundary policy in the account.
+const ciRoleBoundaryArn = pulumi.interpolate`arn:aws:iam::${
+  aws.getCallerIdentityOutput().accountId
+}:policy/notation-hero-ci-role-boundary`;
+
 const api = new LambdaWithUrl("api", {
   functionName: "notation-hero-api",
   code: new pulumi.asset.FileArchive("../server/dist-lambda"),
@@ -24,6 +31,8 @@ const api = new LambdaWithUrl("api", {
   // Lockdown (ADR ARCH-LAMBDA-1): only a SigV4 caller (CloudFront OAC) may invoke. No CORS —
   // the browser reaches /api/* same-origin through CloudFront.
   authorizationType: "AWS_IAM",
+  // Defence-in-depth (review #1): cap the exec role to its logging-only ceiling.
+  permissionsBoundaryArn: ciRoleBoundaryArn,
 });
 
 const site = new CloudFrontSite("site", {

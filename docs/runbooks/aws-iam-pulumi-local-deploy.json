@@ -46,27 +46,53 @@
       ]
     },
     {
-      "Sid": "ManageLambdaExecRoles",
+      "Sid": "CreateExecRoleWithBoundary",
       "Effect": "Allow",
-      "Resource": "arn:aws:iam::*:role/*-role-*",
+      "Resource": "arn:aws:iam::*:role/api-role-*",
+      "Action": ["iam:CreateRole", "iam:PutRolePermissionsBoundary"],
+      "Condition": {
+        "ArnLike": {
+          "iam:PermissionsBoundary": "arn:aws:iam::*:policy/notation-hero-ci-role-boundary"
+        }
+      }
+    },
+    {
+      "Sid": "ManageExecRoleLifecycle",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::*:role/api-role-*",
       "Action": [
-        "iam:CreateRole",
         "iam:DeleteRole",
         "iam:GetRole",
         "iam:TagRole",
         "iam:UntagRole",
         "iam:ListRoleTags",
-        "iam:AttachRolePolicy",
-        "iam:DetachRolePolicy",
         "iam:ListAttachedRolePolicies",
-        "iam:PutRolePolicy",
-        "iam:DeleteRolePolicy",
         "iam:GetRolePolicy",
         "iam:ListRolePolicies",
-        "iam:PassRole",
-        "iam:UpdateAssumeRolePolicy",
         "iam:ListInstanceProfilesForRole"
       ]
+    },
+    {
+      "Sid": "AttachOnlyLambdaBasicExec",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::*:role/api-role-*",
+      "Action": ["iam:AttachRolePolicy", "iam:DetachRolePolicy"],
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyARN": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        }
+      }
+    },
+    {
+      "Sid": "PassExecRoleToLambdaOnly",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::*:role/api-role-*",
+      "Action": "iam:PassRole",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "lambda.amazonaws.com"
+        }
+      }
     },
     {
       "Sid": "LambdaInvokeGrantForCloudFront",

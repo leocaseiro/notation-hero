@@ -46,6 +46,7 @@ const makeComponent = (
     authorizationType: string;
     timeoutSeconds: number;
     memorySize: number;
+    permissionsBoundaryArn: string;
   }> = {},
 ): LambdaWithUrl =>
   new LambdaWithUrl(name, {
@@ -120,4 +121,18 @@ test("locks the Function URL to AWS_IAM and applies timeout/memory overrides", a
   const fn = inputsOf(":Function");
   assert.equal(fn.timeout, 5);
   assert.equal(fn.memorySize, 256);
+});
+
+test("applies the permissions boundary to the Lambda execution role when provided", async () => {
+  created.length = 0;
+  const boundary =
+    "arn:aws:iam::123456789012:policy/notation-hero-ci-role-boundary";
+  const component = makeComponent("nh-bounded", {
+    permissionsBoundaryArn: boundary,
+  });
+  await resolveOutput(component.url);
+
+  // Defence-in-depth (review #1): the exec role must carry the boundary so an over-broad CI
+  // grant can never escalate a created role beyond its logging ceiling.
+  assert.equal(inputsOf(":Role").permissionsBoundary, boundary);
 });

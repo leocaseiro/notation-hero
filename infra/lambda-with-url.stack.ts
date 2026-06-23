@@ -36,6 +36,12 @@ export interface LambdaWithUrlArgs {
   timeoutSeconds?: pulumi.Input<number>;
   /** Lambda memory in MB; defaults to 512. */
   memorySize?: pulumi.Input<number>;
+  /**
+   * IAM permissions-boundary ARN for the Lambda execution role. The CI deploy policy REQUIRES a
+   * boundary on every role it creates (privesc guard), so the composition passes it; the boundary
+   * caps the role to its logging ceiling even if a broader policy is ever attached to it.
+   */
+  permissionsBoundaryArn?: pulumi.Input<string>;
 }
 
 export class LambdaWithUrl extends pulumi.ComponentResource {
@@ -63,7 +69,10 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
 
     const role = new aws.iam.Role(
       `${name}-role`,
-      { assumeRolePolicy: assumeRole.json },
+      {
+        assumeRolePolicy: assumeRole.json,
+        permissionsBoundary: args.permissionsBoundaryArn,
+      },
       { parent: this },
     );
 
