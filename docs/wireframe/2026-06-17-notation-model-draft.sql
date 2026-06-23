@@ -23,7 +23,7 @@
 --   * listable = shown in browse/search? (parts & private drafts = false).
 --
 -- Renames vs draft v2:  notation(umbrella) -> playable ;  source -> notation ;
---   lesson_step -> step (self-ref) ;  alphatex -> notation_alphatex.
+--   lesson_step -> step (self-ref) ;  alphatex -> notation_alphaTex.
 -- DBeaver: run the whole script on a Postgres connection, open the "ER Diagram"
 -- tab (reads the FKs). Re-runnable (DROP clears prior runs).
 -- ============================================================================
@@ -38,7 +38,7 @@ CREATE TABLE notation (
   id                text PRIMARY KEY,
   format            text NOT NULL,             -- 'gp' | 'midi' | 'alphatex' | 'xml'
   s3_key            text,                      -- set for file-backed formats
-  notation_alphatex text,                      -- set for inline alphaTex (canonical name: notation_alphaTex)
+  notation_alphaTex text,                      -- set for inline alphaTex (canonical name: notation_alphaTex)
   checksum          text,                      -- sha256 (dedup / integrity), optional
   bytes             int,                       -- file size, optional
   created_at        timestamptz NOT NULL DEFAULT now(),
@@ -46,7 +46,7 @@ CREATE TABLE notation (
   created_by        text,                      -- draft: FK to app_user later (NH users task)
   updated_by        text,
   CONSTRAINT notation_format CHECK (format IN ('gp','midi','alphatex','xml')),
-  CONSTRAINT notation_one_of CHECK ((s3_key IS NOT NULL)::int + (notation_alphatex IS NOT NULL)::int = 1)
+  CONSTRAINT notation_one_of CHECK ((s3_key IS NOT NULL)::int + (notation_alphaTex IS NOT NULL)::int = 1)
 );
 
 -- ─────────────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ CREATE INDEX playable_link_to   ON playable_link (to_id);
 -- ============================================================================
 
 -- NOTATIONS (scores) ----------------------------------------------------------
-INSERT INTO notation (id, format, s3_key, notation_alphatex, bytes) VALUES
+INSERT INTO notation (id, format, s3_key, notation_alphaTex, bytes) VALUES
   ('n-sna-gp',     'gp',       'catalog/sna/source.gp', NULL, 51200),
   ('n-hihat-8',    'alphatex', NULL, ':8 x x x x x x x x', NULL),
   ('n-rock8-kick', 'alphatex', NULL, ':8 (x.36) x (x.36) x (x.36) x (x.36) x', NULL),
