@@ -2,13 +2,13 @@
 
 > [!WARNING]
 > ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
-> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> (pnpm + Nx replaced Bun; the song/lesson catalog moved to **Neon Postgres + JSONB**,
 > DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
 > struck lines below.**
 >
 > **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
-> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
-> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalog-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalog-schema.md`, `AGENTS.md`.
 >
 > _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
 
@@ -24,7 +24,7 @@
 
 Updated to match the locked [feature-freeze.md](feature-freeze.md):
 - **Sync = M1.** No per-device sync — user data is localStorage in Alpha/Beta; DynamoDB *cross-device* sync arrives at **M1** with Cognito User Pools. The `pull`/`push` engine (RxDB/Legend-State) is therefore an **M1** piece.
-~~- **DynamoDB's Alpha vehicle = the Admin CMS (`K`) + analytics** (shared/global data, no identity) — build DynamoDB skills there first, not on per-user sync.~~ <!-- SUPERSEDED: the Admin CMS IS the song/lesson catalogue, now locked to Neon Postgres + JSONB (catalogue-store-postgres-neon DACI 2026-06-09); DynamoDB is a per-user-data vehicle ONLY (sync, H-3) -->
+~~- **DynamoDB's Alpha vehicle = the Admin CMS (`K`) + analytics** (shared/global data, no identity) — build DynamoDB skills there first, not on per-user sync.~~ <!-- SUPERSEDED: the Admin CMS IS the song/lesson catalog, now locked to Neon Postgres + JSONB (catalog-store-postgres-neon DACI 2026-06-09); DynamoDB is a per-user-data vehicle ONLY (sync, H-3) -->
 - **Kafka (`H-12`)** = the local **replay** exercise (rebuild the `H-6` ingestion; consumer groups + offsets + replay vs SQS delete-on-consume).
 
 ## Punchline

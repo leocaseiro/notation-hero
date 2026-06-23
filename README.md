@@ -16,7 +16,7 @@ architecture is a deliberate "swappable backend" system-design portfolio piece.
 - **Language:** TypeScript — strict + composite + project references + `isolatedDeclarations`
 - **Tests:** Node's built-in runner (`node --test`, type-stripping) today; Vitest is a deferred lane
 - **Architecture:** Hexagonal — `core/` (pure domain) → `adapters/` → `apps/` → `infra/`
-- **Data:** Neon Postgres + JSONB for the song/lesson catalogue; DynamoDB for per-user data
+- **Data:** Neon Postgres + JSONB for the song/lesson catalog; DynamoDB for per-user data
 - **Cloud:** AWS via Pulumi (TypeScript); S3 + CloudFront for web delivery; Lambda for the API
 - **CI/CD:** GitHub Actions, path-filtered `nx affected`, GitHub OIDC for deploys (zero long-lived secrets)
 
@@ -31,7 +31,7 @@ architecture is a deliberate "swappable backend" system-design portfolio piece.
 
 **Built so far:** `apps/handler-hello` (the hello-world Lambda) and `infra/` (its
 Pulumi stack — the `LambdaWithUrl` component + composition). `core/` and `adapters/`
-land with the first domain feature (the catalogue).
+land with the first domain feature (the catalog).
 
 Tests and stories live **co-located** next to their source — never in `__tests__/`
 or `stories/` trees (CI enforces this via `tooling/check-layout.sh`).

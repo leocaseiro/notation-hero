@@ -2,13 +2,13 @@
 
 > [!WARNING]
 > ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
-> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> (pnpm + Nx replaced Bun; the song/lesson catalog moved to **Neon Postgres + JSONB**,
 > DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
 > struck lines below.**
 >
 > **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
-> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
-> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalog-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalog-schema.md`, `AGENTS.md`.
 >
 > _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
 
@@ -56,7 +56,7 @@ shape U1 froze:
 | Layer | Dir / package | ~~Rule (enforced by `depcheck` + ESLint)~~ <!-- SUPERSEDED: enforced by Nx tags / module-boundary lint, not depcheck (tooling-stack-daci 2026-06-09) --> |
 |---|---|---|
 | **Domain** | `core/` → `@notation-hero/core` (subdirs `lesson/`, `shared/kernel/`) | Pure TS. **No** AWS / React / HTTP / adapters / apps imports. |
-| **Adapters** | `adapters/<name>` → `@notation-hero/adapters-<name>` | ~~Implement core's ports against the world (Pulumi/AWS, DynamoDB, S3, React-Admin). May import `core`, not `apps`.~~ <!-- SUPERSEDED: catalogue/CMS adapter is Neon Postgres+JSONB, NOT DynamoDB; DynamoDB is per-user only (catalogue-store-postgres-neon 2026-06-09) --> |
+| **Adapters** | `adapters/<name>` → `@notation-hero/adapters-<name>` | ~~Implement core's ports against the world (Pulumi/AWS, DynamoDB, S3, React-Admin). May import `core`, not `apps`.~~ <!-- SUPERSEDED: catalog/CMS adapter is Neon Postgres+JSONB, NOT DynamoDB; DynamoDB is per-user only (catalog-store-postgres-neon 2026-06-09) --> |
 | **Apps** | `apps/<name>` → `@notation-hero/<name>` | Composition roots; one deploy target each. May import `core` + `adapters`. |
 | **Infra** | `infra/` → `@notation-hero/infra` | Pulumi composition root; composes `apps/*/infra.ts` + cross-cutting resources. |
 
@@ -143,7 +143,7 @@ WAVE 3 — INTEGRATION (serial, human-gated)
 | `.github/workflows/*` | **Track 2** (CI already covers core/adapters/apps/infra; new packages need no `ci.yml` edit) |
 | `core/**` | **K-plan U2** (domain) — pure; ~~`depcheck` forbids AWS/React/adapter/app imports~~ <!-- SUPERSEDED: Nx tags / module-boundary lint enforce this, not depcheck --> |
 | `adapters/aws/**` + `infra/**` | **K-plan U3/U9** — Pulumi components + composition (Track 2 provides the AWS-creds bootstrap they deploy with) |
-| ~~`adapters/{dynamodb,s3,react-admin}/**` | **K-plan U4** |~~ <!-- SUPERSEDED: catalogue/CMS store is Neon Postgres+JSONB; DynamoDB is per-user only, no DynamoDB catalogue adapter (catalogue-store-postgres-neon 2026-06-09) -->
+| ~~`adapters/{dynamodb,s3,react-admin}/**` | **K-plan U4** |~~ <!-- SUPERSEDED: catalog/CMS store is Neon Postgres+JSONB; DynamoDB is per-user only, no DynamoDB catalog adapter (catalog-store-postgres-neon 2026-06-09) -->
 | `apps/lambda-cms-*/**` | **K-plan U5–U7** |
 | `apps/admin-spa/**` | **K-plan U8** |
 | `apps/player-pwa/src/**` | **Track 1 (player)** — separate plan; U1/U9 only stub it |

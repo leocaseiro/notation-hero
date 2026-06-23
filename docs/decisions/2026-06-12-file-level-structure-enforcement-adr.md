@@ -37,13 +37,13 @@ This empirically **confirms** the standing `H7` / `L2-depcruise` "keep both" dec
 
 **Decision:** kebab-case filenames **everywhere** + a **role suffix on every domain/application file**, including entities. Co-located tests stack: `name.role.test.ts`.
 
-Examples: `catalogue-item.entity.ts`, `logger.port.ts`, `neon-catalogue.repository.ts`, `publish-lesson.command.ts`, with tests `catalogue-item.entity.test.ts`.
+Examples: `catalog-item.entity.ts`, `logger.port.ts`, `neon-catalog.repository.ts`, `publish-lesson.command.ts`, with tests `catalog-item.entity.test.ts`.
 
 **This supersedes PR #25's Option A** (PascalCase/camelCase split + folder-per-entity, no role suffix). **`folder-per-entity` is dropped** — the role suffix carries the role, which removes the bespoke `check-layout.sh` folder rule.
 
 **Rationale (empirical + research):**
 - Most idiomatic for a **hexagonal Nx** repo — the canonical 12k★ `domain-driven-hexagon` suffixes everything in kebab.
-- **One** `check-file` rule (`KEBAB_CASE`, `ignoreMiddleExtensions: true` — already set in PR #25) covers source **and** stacked tests; verified `catalogue-item.entity.test.ts` passes (the flag strips both `.entity` and `.test`).
+- **One** `check-file` rule (`KEBAB_CASE`, `ignoreMiddleExtensions: true` — already set in PR #25) covers source **and** stacked tests; verified `catalog-item.entity.test.ts` passes (the flag strips both `.entity` and `.test`).
 - Resolves two warnings in the research doc: **Nx generators emit kebab** (Option B = zero fight with the entity generator) and **`apps/` frameworks expect kebab** (one rule works in every layer). PR #25's Pascal/camel rule fights both.
 - Sidesteps the **macOS case-insensitive-filesystem collision** (`Brand.entity.ts` vs `brand.entity.ts` clashed twice during the spike) and the **PascalCase-suffix-vs-folder-per-entity collision** (`Brand.entity.ts` demanded a `Brand.entity/` folder).
 - **Suffix-everything (vs entities-suffix-free)** chosen for maximum determinism + agent-proofing: every file declares its role, so `check-file` can enforce per-role and agents can't create ambiguous files.

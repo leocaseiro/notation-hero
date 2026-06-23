@@ -2,13 +2,13 @@
 
 > [!WARNING]
 > ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
-> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> (pnpm + Nx replaced Bun; the song/lesson catalog moved to **Neon Postgres + JSONB**,
 > DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
 > struck lines below.**
 >
 > **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
-> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
-> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalog-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalog-schema.md`, `AGENTS.md`.
 >
 > _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
 
@@ -20,7 +20,7 @@
 
 ## TL;DR
 
-~~Build it as **one TypeScript web app** with **[AlphaTab](https://alphatab.net/)** as the music engine, shipped as a **PWA** (desktop browsers + Android, free) plus a **Capacitor** wrapper for **iOS** (TestFlight). Persist **local-first**, add **cloud sync soon** via a BaaS (**leaning Supabase**) with a lightweight offline-sync layer (**Legend-State or RxDB**, not PowerSync). Observability = client-side **errors + usage** (Sentry / PostHog, or Firebase's built-ins). Build everything **locally on the Mac**; no CI/CD needed at this scale.~~ <!-- SUPERSEDED: backend is AWS Lambda + DynamoDB (per-user) + Neon Postgres/JSONB (catalogue) — Supabase rejected; foundation is a pnpm+Nx monorepo WITH CI (catalogue-store + tooling DACI 2026-06-09) -->
+~~Build it as **one TypeScript web app** with **[AlphaTab](https://alphatab.net/)** as the music engine, shipped as a **PWA** (desktop browsers + Android, free) plus a **Capacitor** wrapper for **iOS** (TestFlight). Persist **local-first**, add **cloud sync soon** via a BaaS (**leaning Supabase**) with a lightweight offline-sync layer (**Legend-State or RxDB**, not PowerSync). Observability = client-side **errors + usage** (Sentry / PostHog, or Firebase's built-ins). Build everything **locally on the Mac**; no CI/CD needed at this scale.~~ <!-- SUPERSEDED: backend is AWS Lambda + DynamoDB (per-user) + Neon Postgres/JSONB (catalog) — Supabase rejected; foundation is a pnpm+Nx monorepo WITH CI (catalog-store + tooling DACI 2026-06-09) -->
 
 ### Recommended stack
 
@@ -32,7 +32,7 @@
 | Friendly "falling notes" view | **PixiJS (WebGL)** | game-quality 2D without a game engine |
 | MIDI input | **Web MIDI** + native fallback | abstraction with two backends (see gotchas) |
 | ~~UI framework / bundler~~ | ~~**React + Vite**~~ | ~~**not** Next.js (see rejections)~~ <!-- SUPERSEDED: locked foundation is a pnpm+Nx hexagonal monorepo (core/adapters/apps/infra), not a plain Vite app — tooling DACI 2026-06-09 --> |
-| ~~Persistence~~ | ~~**local-first** (IndexedDB/SQLite) → **BaaS sync**~~ | ~~data is per-user~~ <!-- SUPERSEDED: data is SPLIT — DynamoDB (per-user) + Neon Postgres/JSONB (song/lesson catalogue); no BaaS — catalogue-store DACI 2026-06-09 --> |
+| ~~Persistence~~ | ~~**local-first** (IndexedDB/SQLite) → **BaaS sync**~~ | ~~data is per-user~~ <!-- SUPERSEDED: data is SPLIT — DynamoDB (per-user) + Neon Postgres/JSONB (song/lesson catalog); no BaaS — catalog-store DACI 2026-06-09 --> |
 | Mobile packaging | **Capacitor** | iOS (+ CoreMIDI plugin), Android later |
 | Desktop packaging | browser/PWA now; **Electron** optional later | Mac build local; Windows build needs a PC/CI |
 | Browser | **PWA** | already a web app |
@@ -54,7 +54,7 @@
 | State | Item |
 |---|---|
 | ~~✅ **Decided**~~ | ~~Web stack + AlphaTab · React + **Vite** (not Next.js) · PWA + Capacitor (+ optional Electron) · build locally on Mac · local-first persistence · observability = client-side errors + usage~~ <!-- SUPERSEDED: these predate the 2026-06-09 DACI and are NOT the frozen foundation — only pnpm+Nx hexagonal is locked; persistence is DynamoDB+Neon, build includes CI --> |
-| ~~🟡 **Leaning**~~ | ~~**Supabase** as the backend spine · **light** offline-sync layer (Legend-State or RxDB) · iOS via Capacitor + TestFlight ($99/yr) when ready~~ <!-- SUPERSEDED: Supabase rejected; backend spine is AWS (Lambda/API + DynamoDB per-user + Neon Postgres catalogue) — catalogue-store DACI 2026-06-09 --> |
+| ~~🟡 **Leaning**~~ | ~~**Supabase** as the backend spine · **light** offline-sync layer (Legend-State or RxDB) · iOS via Capacitor + TestFlight ($99/yr) when ready~~ <!-- SUPERSEDED: Supabase rejected; backend spine is AWS (Lambda/API + DynamoDB per-user + Neon Postgres catalog) — catalog-store DACI 2026-06-09 --> |
 | ⬜ **Open** | Final spine: Firebase vs Supabase · Sync layer: Legend-State vs RxDB · Electron desktop: yes/now or later · first concrete build step |
 | 💤 **Deferred (nice-to-have/later)** | File upload · Song search (Songsterr/UG) · Native low-latency Windows audio · Android native wrapper |
 
@@ -80,7 +80,7 @@
 | **Game engine (Godot)** | ❌ | Same "no notation" problem, **plus a known bug: Godot drops *simultaneous* MIDI events** — disqualifying for drums (kick+snare+hat at once). |
 | **ABCUnity + MIDI→ABC** | ❌ | Clever patch, two weak links: MIDI→ABC converters are melody-oriented/lossy (bad at drums); ABCUnity is a subset renderer with **no documented drum support or note-coordinate API** (your feedback overlays need that). Still leaves Guitar Pro, synth, cursor unbuilt. |
 | **Next.js** | ❌ | Capacitor needs a **static export** (`output: 'export'`), which **disables SSR / API routes / server components** — Next's whole value. Plus client-nav 404s, "pages-router only." A rhythm game has nothing to server-render. **Use Vite.** (Next *would* suit a separate marketing site.) |
-| ~~**AWS (as the backend)**~~ | ~~❌ for now~~ | ~~Free tier **changed July 2025**: new accounts get **~$200 credits, free plan expires in 6 months** (no more 12-month tier), then you pay. Ops-heavy + surprise-bill risk. Overkill for friends' score data. A BaaS does the same with no ops.~~ <!-- INVERTED: AWS IS the chosen backend (AWS-skills-as-learning is the locked top priority) — do NOT avoid AWS — catalogue-store DACI 2026-06-09 --> |
+| ~~**AWS (as the backend)**~~ | ~~❌ for now~~ | ~~Free tier **changed July 2025**: new accounts get **~$200 credits, free plan expires in 6 months** (no more 12-month tier), then you pay. Ops-heavy + surprise-bill risk. Overkill for friends' score data. A BaaS does the same with no ops.~~ <!-- INVERTED: AWS IS the chosen backend (AWS-skills-as-learning is the locked top priority) — do NOT avoid AWS — catalog-store DACI 2026-06-09 --> |
 | **Flutter / React Native** | ❌ | No AlphaTab-equivalent notation ecosystem; desktop/canvas-notation are second-class. |
 
 ---
@@ -123,9 +123,9 @@ shared SPA ─┼─ Android    → same PWA (installable, Web MIDI works)      
 
 ## 5. Persistence, sync & observability
 
-~~**Storage ≠ a server.** Scores/streaks/history are per-user → **local-first** (IndexedDB via Dexie, or native SQLite in Capacitor) covers the MVP at $0, offline, no auth. A backend is a *product trigger* — and we hit it: **cross-device sync (iPad ↔ Mac) is wanted soon.**~~ <!-- SUPERSEDED: ignores the song/lesson catalogue (CMS) — the FIRST real feature — which lives in Neon Postgres/JSONB, not a per-user/local-first store — catalogue-store DACI 2026-06-09 -->
+~~**Storage ≠ a server.** Scores/streaks/history are per-user → **local-first** (IndexedDB via Dexie, or native SQLite in Capacitor) covers the MVP at $0, offline, no auth. A backend is a *product trigger* — and we hit it: **cross-device sync (iPad ↔ Mac) is wanted soon.**~~ <!-- SUPERSEDED: ignores the song/lesson catalog (CMS) — the FIRST real feature — which lives in Neon Postgres/JSONB, not a per-user/local-first store — catalog-store DACI 2026-06-09 -->
 
-<!-- SUPERSEDED (whole §5 spine + offline-sync section): backend is AWS (Lambda/API + DynamoDB per-user + Neon Postgres/JSONB catalogue); Firebase AND Supabase rejected; no BaaS sync layer — catalogue-store DACI 2026-06-09 -->
+<!-- SUPERSEDED (whole §5 spine + offline-sync section): backend is AWS (Lambda/API + DynamoDB per-user + Neon Postgres/JSONB catalog); Firebase AND Supabase rejected; no BaaS sync layer — catalog-store DACI 2026-06-09 -->
 ~~### The spine: Firebase vs Supabase~~
 
 ~~| | **Firebase** | **Supabase** 🟡 leaning |~~
@@ -193,8 +193,8 @@ We run no server of our own, so this means **error tracking + usage analytics + 
 
 ## 8. Open decisions (need input)
 
-1. ~~**Spine:** Firebase (managed, sync+observability bundled) vs **Supabase** (SQL/OSS, leaning).~~ <!-- CLOSED: backend is AWS (Lambda + DynamoDB per-user + Neon Postgres catalogue); Firebase/Supabase rejected — catalogue-store DACI 2026-06-09 -->
-2. ~~**Sync layer:** **Legend-State** (lighter) vs **RxDB** (fuller).~~ <!-- CLOSED: no BaaS sync layer in the locked backend — catalogue-store DACI 2026-06-09 -->
+1. ~~**Spine:** Firebase (managed, sync+observability bundled) vs **Supabase** (SQL/OSS, leaning).~~ <!-- CLOSED: backend is AWS (Lambda + DynamoDB per-user + Neon Postgres catalog); Firebase/Supabase rejected — catalog-store DACI 2026-06-09 -->
+2. ~~**Sync layer:** **Legend-State** (lighter) vs **RxDB** (fuller).~~ <!-- CLOSED: no BaaS sync layer in the locked backend — catalog-store DACI 2026-06-09 -->
 3. **Electron desktop:** now, or browser-only until later?
 4. **First build step:** (A) deep review + plan · (B) iOS Capacitor + CoreMIDI · (C) extract clean Vite app from the fork.
 
@@ -206,7 +206,7 @@ We run no server of our own, so this means **error tracking + usage analytics + 
 2. **Design & build the UI** — shell + notation/feedback views. *(priority ①)*
 3. **Lock the perf-critical core** — Web Audio timing loop + PixiJS highway + MIDI scoring; profile on a cheap Android. *(priority ②)*
 4. **Ship as a PWA** — instantly covers desktop browsers + Android; first shareable milestone. *(priorities ③–④)*
-5. ~~**Wire persistence + sync + observability** — local-first + Supabase + chosen sync layer + Sentry/PostHog.~~ <!-- SUPERSEDED: persistence target is AWS (DynamoDB per-user) + Neon Postgres (catalogue), not Supabase — catalogue-store DACI 2026-06-09 -->
+5. ~~**Wire persistence + sync + observability** — local-first + Supabase + chosen sync layer + Sentry/PostHog.~~ <!-- SUPERSEDED: persistence target is AWS (DynamoDB per-user) + Neon Postgres (catalog), not Supabase — catalog-store DACI 2026-06-09 -->
 6. **iOS: Capacitor + CoreMIDI plugin → TestFlight** — when ready for the $99 + a little Swift.
 7. **Later, only if product:** Android native · Electron · Windows audio · uploads · song search.
 

@@ -48,13 +48,13 @@ module.exports = {
     "@eslint-community/eslint-comments/require-description": ["error", { ignore: [] }],
 
     // Filenames (NAME-suffix; ADR 2026-06-12 D2 — kebab-case everywhere + role suffix).
-    // KEBAB_CASE bans PascalCase (Brand.entity.ts), camelCase (catalogueItem.entity.ts), and
-    // snake_case (catalogue_item.ts), allowing only kebab (catalogue-item.entity.ts). Kebab is
+    // KEBAB_CASE bans PascalCase (Brand.entity.ts), camelCase (catalogItem.entity.ts), and
+    // snake_case (catalog_item.ts), allowing only kebab (catalog-item.entity.ts). Kebab is
     // the idiomatic hexagonal-Nx choice (NestJS + the 12k★ domain-driven-hexagon repo suffix in
     // kebab), it dodges the macOS case-insensitive-FS collision (Brand vs brand), and Nx
     // generators emit kebab — so the entity generator won't fight this rule.
     // ignoreMiddleExtensions:true is LOAD-BEARING: it strips ALL middle extensions, so a stacked
-    // `catalogue-item.entity.test.ts` is checked as `catalogue-item` (both `.entity` AND `.test`
+    // `catalog-item.entity.test.ts` is checked as `catalog-item` (both `.entity` AND `.test`
     // dropped) → one rule covers source AND co-located tests. Side effect: check-file cannot see
     // the role suffix, so suffix-PRESENCE is owned by tooling/check-layout.sh (ADR F-1).
     "check-file/filename-naming-convention": [

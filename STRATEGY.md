@@ -19,7 +19,7 @@ Win by being the integration the incumbents won't build, standing on a proven op
 engine: AlphaTab already turns any owned chart (MusicXML / Guitar Pro) into real
 drum notation with synced playback, so NotationHero adds real-time scoring,
 practice/game/memory modes, and cross-platform delivery (PWA + Capacitor).
-Catalogue is table stakes — bring-your-own-song + standard notation + Android is
+Catalog is table stakes — bring-your-own-song + standard notation + Android is
 the wedge, and the durable edge is being first in an empty niche, built by someone
 who is the target user. This is also a personal AWS / backend-engineering learning
 piece, so building it to scale the well-architected way is a first-class goal in
@@ -40,7 +40,7 @@ on-ramp that fades into real notation.
 - **Return-to-practice rate** — do sessions lead to another within ~7 days? The
   core "does it stick" signal. (PostHog)
 - **Own-song load rate** — custom charts loaded/played per active user; proves the
-  bring-your-own wedge is real, not just catalogue use. (DynamoDB / PostHog)
+  bring-your-own wedge is real, not just catalog use. (DynamoDB / PostHog)
 - **Per-song score improvement** — does a user's best accuracy / star rating on a
   song trend up across sessions? The product working = you get better.
   (DynamoDB score history)
@@ -59,7 +59,7 @@ notation + your song) no other tool assembles.
 ### B · Song pipeline
 
 Getting any song in — MusicXML / Guitar Pro ingest, the `.mid` → MusicXML
-conversion workaround, MIDI-note → notation mapping, and the catalogue + own-song
+conversion workaround, MIDI-note → notation mapping, and the catalog + own-song
 upload path.
 
 _Why it serves the approach:_ it powers the bring-your-own-song wedge and the
@@ -75,18 +75,18 @@ whatever device their kit is plugged into.
 
 ### D · AWS backend & cloud-scale learning
 
-The scalable, well-architected backend — DynamoDB per-user data, Neon catalogue
+The scalable, well-architected backend — DynamoDB per-user data, Neon catalog
 store, Cognito accounts, cross-device sync — built deliberately to deepen and
 showcase AWS / backend skills.
 
-_Why it serves the approach:_ it underpins the catalogue/sync edge and is itself a
+_Why it serves the approach:_ it underpins the catalog/sync edge and is itself a
 first-class learning + portfolio goal.
 
 ## Not working on
 
 - Native `.mid` import — use the convert-to-MusicXML workaround (MuseScore /
   TuxGuitar) for v1.
-- A licensed / major-label song catalogue — own-songs + a community/user catalogue
+- A licensed / major-label song catalog — own-songs + a community/user catalog
   instead.
 - Electron / desktop-native builds — the browser/PWA covers desktop for now.
 - Optimizing for revenue or competitive defensibility — deliberately deprioritized

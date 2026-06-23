@@ -12,7 +12,7 @@
 #   1. No __tests__/, __mocks__/, or stories/ directories — group by domain, not file-type.
 #
 #   2. Role suffix required: every *.ts/*.tsx/*.mts/*.cts under core/ adapters/ apps/ infra/ ends
-#      in an approved role suffix (e.g. catalogue-item.entity.ts, logger.port.ts, neon.adapter.ts).
+#      in an approved role suffix (e.g. catalog-item.entity.ts, logger.port.ts, neon.adapter.ts).
 #      The suffix carries the role — this REPLACES the old PascalCase folder-per-entity rule.
 #      ESLint check-file owns the casing (kebab); this rule owns the suffix VOCABULARY. The set
 #      below is the global union (ADR D2); per-layer correctness is additionally guarded by Nx

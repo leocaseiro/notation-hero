@@ -20,11 +20,11 @@ below mark what is **NOT enforced yet**. Treat unmarked directions as enforced.
 | `apps/*` | `type:app` | `type:core`, `type:adapter` | infra source *(an `apps → @pulumi/*` ban is a pending later Step-1 item, NOT enforced yet)* |
 | `infra` | `type:infra` | nothing in-repo — pure IaC; wires `apps` via build output (`FileArchive(apps/*/dist)` + Nx `implicitDependencies`), never a TS import (ADR 2026-06-12 **D3**) | core / adapters / apps **source** *(enforced — depcruise **H9**)*; `infra` must never be imported BY app/adapter/core source. `apps` is the runtime composition root, **not** `infra`. |
 
-**`infra/` (`@notation-hero/infra`, `type:infra`) + `apps/handler-hello` (`type:app`) exist today** — the NH-150 hello-world Lambda Function URL, the first AWS deliverable (see the decision-registry Change-log 2026-06-14). `core/` and `adapters/` are still empty; the first `core`/`adapter` packages materialize with their real domains (the **catalog** is first: `core/catalogue` + a Neon-Postgres adapter), each brainstormed/spec'd before code. The `@nx/js` + `@nx/eslint` generators are installed and ready to scaffold them with the right `--tags`.
+**`infra/` (`@notation-hero/infra`, `type:infra`) + `apps/handler-hello` (`type:app`) exist today** — the NH-150 hello-world Lambda Function URL, the first AWS deliverable (see the decision-registry Change-log 2026-06-14). `core/` and `adapters/` are still empty; the first `core`/`adapter` packages materialize with their real domains (the **catalog** is first: `core/catalog` + a Neon-Postgres adapter), each brainstormed/spec'd before code. The `@nx/js` + `@nx/eslint` generators are installed and ready to scaffold them with the right `--tags`.
 
 Naming is `@notation-hero/*` (hyphen — matches root `name: "notation-hero"`).
 The DACI's `@notationhero/*` (no hyphen, M-7) is a typo; do not adopt it.
-DynamoDB is per-user data only; the song/lesson catalogue lives in Neon
+DynamoDB is per-user data only; the song/lesson catalog lives in Neon
 Postgres + JSONB (future `adapters/neon-postgres`, out of Wave 1).
 
 ## Targets & how to run them
@@ -82,14 +82,14 @@ Tests and stories live **next to the source they cover**, in the same folder —
 (one folder per unit).
 
 ```
-core/catalogue/
-  CatalogueItem.ts
-  CatalogueItem.test.ts     # ✅ co-located, next to source
+core/catalog/
+  CatalogItem.ts
+  CatalogItem.test.ts     # ✅ co-located, next to source
   Exercise.ts
   Exercise.test.ts
 ```
 
-❌ `core/catalogue/__tests__/CatalogueItem.test.ts` — forbidden layout.
+❌ `core/catalog/__tests__/CatalogItem.test.ts` — forbidden layout.
 
 Locked DACI convention (2026-06-09, §"Conventions — domain-driven, co-located"
 in `docs/decisions/2026-06-09-tooling-stack-daci.md`). CI **fails** any `__tests__/`,
