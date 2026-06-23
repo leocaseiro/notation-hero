@@ -16,7 +16,7 @@ Working directory: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wiref
 Read docs/wireframe/2026-06-20-HANDOFF-wireframe-schema-update.md (full context), then
 docs/wireframe/2026-06-20-group-d-spec.md and docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql.
 
-Task: update the interactive catalogue wireframe (docs/wireframe/index.html) so it reflects the
+Task: update the interactive catalog wireframe (docs/wireframe/index.html) so it reflects the
 NEW Group D schema we just locked — tracks, per-track + song-level media (3 sources), and
 3-layer per-instrument difficulty — for EVERYTHING we discussed. The schema is DONE and
 validated; this is a UI/wireframe pass, NOT a schema change. Use the draft SQL's SNA sample
@@ -36,7 +36,7 @@ Validate visually with the preview tools and show screenshots before claiming do
 - **Don't re-open these decisions.** This handoff is the *wireframe* reflecting them.
 
 ## 2 · Next step — the wireframe update (the work)
-Update `docs/wireframe/index.html` (the catalogue wireframe, already on the locked Playable model) so it surfaces Group D. Use the SNA sample (`docs/wireframe/2026-06-20-...draft.sql`) as the worked example.
+Update `docs/wireframe/index.html` (the catalog wireframe, already on the locked Playable model) so it surfaces Group D. Use the SNA sample (`docs/wireframe/2026-06-20-...draft.sql`) as the worked example.
 
 1. **Tracks (D-1).** On a song's detail, show its **tracks** — including two of the same instrument (SNA: Lead Guitar + Rhythm Guitar + Bass + Drums), each with `role`, `name`, and (D-3) its `level`. Show that the `instruments[]` filter facet is the **DISTINCT** of track instruments (two guitars → one "guitar" chip).
 2. **Media (D-2).** Show **song-level** media AND **per-track** media, with the **3 sources** (a YouTube link, an S3 file, a gp-embedded badge). Demonstrate multiple per track (drums: "Drums only" stem + "Drum-cam"), and the song mixes (Full / Drumless). Reflect `has_audio`/`has_video` as derived row flags.

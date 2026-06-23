@@ -11,7 +11,7 @@
 --
 -- ── D-1 · track relation — DECISIONS RATIFIED 2026-06-20 ───────────────────
 --   D-1a  Adopt a `track` relation AND keep playable.instruments text[] as a DERIVED facet
---         (DISTINCT track.instrument, GIN-indexed) for the fast catalogue filter. A SPLIT, not
+--         (DISTINCT track.instrument, GIN-indexed) for the fast catalog filter. A SPLIT, not
 --         a rename. (Database Architect: normalize the detail; denormalize only the hot path.)
 --   D-1b  instrument = the real instrument someone learns: drums|guitar|bass|keys|vocals|ukulele|...
 --         A FLAT, OPEN vocabulary (no CHECK). role = same-instrument variant: solo|rhythm|lead|pad|harmony.
@@ -111,7 +111,7 @@ WHERE p.id = sub.playable_id;
 --          (SELECT array_agg(DISTINCT t.instrument ORDER BY t.instrument) FROM track t WHERE t.playable_id=p.id) AS from_tracks
 --   FROM playable p WHERE p.id IN ('sna','let-it-be');
 --
--- 3) Catalogue filter still works on the derived facet (GIN @>): songs with a bass track
+-- 3) Catalog filter still works on the derived facet (GIN @>): songs with a bass track
 --   SELECT title FROM playable WHERE instruments @> ARRAY['bass'];      -- Seven Nation Army
 --
 -- 4) notation_id OVERRIDE: vocals has its own file; piano/guitar share (notation_id NULL)
@@ -179,11 +179,11 @@ CREATE INDEX media_kind     ON media (playable_id, kind);
 INSERT INTO media (id, playable_id, track_id, kind, provider, url, s3_key, label, sort_order, data) VALUES
  -- song-level (track_id NULL):
  ('media-sna-yt',        'sna', NULL, 'video', 'youtube',     'https://youtu.be/0J2QdDbelmY', NULL,                         'Official video', 1, '{}'),
- ('media-sna-full',      'sna', NULL, 'audio', 's3',          NULL,  'catalogue/sna/audio/full-mix.m4a',  'Full mix',     2, '{"syncPoints":[{"bar":1,"ms":0}],"msOffsetBaseline":0}'),  -- NH-137 shared audioRef
- ('media-sna-drumless',  'sna', NULL, 'audio', 's3',          NULL,  'catalogue/sna/audio/drumless.m4a',  'Drumless',     3, '{"mixType":"minus","excludes":"drums"}'),
+ ('media-sna-full',      'sna', NULL, 'audio', 's3',          NULL,  'catalog/sna/audio/full-mix.m4a',  'Full mix',     2, '{"syncPoints":[{"bar":1,"ms":0}],"msOffsetBaseline":0}'),  -- NH-137 shared audioRef
+ ('media-sna-drumless',  'sna', NULL, 'audio', 's3',          NULL,  'catalog/sna/audio/drumless.m4a',  'Drumless',     3, '{"mixType":"minus","excludes":"drums"}'),
  ('media-sna-embedded',  'sna', NULL, 'audio', 'gp-embedded', NULL,  NULL,                                'Embedded backing', 4, '{"note":"lives in n-sna-gp; ingest may extract to S3"}'),
  -- per-track (track_id set) — the drums track has TWO media (stem + cam):
- ('media-sna-drumsonly', 'sna', 'track-sna-drums',       'audio', 's3',     NULL, 'catalogue/sna/audio/drums-only.m4a', 'Drums only', 1, '{"mixType":"isolated"}'),
+ ('media-sna-drumsonly', 'sna', 'track-sna-drums',       'audio', 's3',     NULL, 'catalog/sna/audio/drums-only.m4a', 'Drums only', 1, '{"mixType":"isolated"}'),
  ('media-sna-drumcam',   'sna', 'track-sna-drums',       'video', 'youtube','https://youtu.be/drumcam', NULL,            'Drum-cam',   2, '{}'),
  ('media-sna-leadcam',   'sna', 'track-sna-guitar-lead', 'video', 'youtube','https://youtu.be/leadcam', NULL,            'Lead-cam',   1, '{}');
 
@@ -223,14 +223,14 @@ WHERE EXISTS (SELECT 1 FROM media m WHERE m.playable_id = p.id);
 -- D-3 · per-instrument difficulty — DECISION RATIFIED 2026-06-20 (3 layers)
 -- ----------------------------------------------------------------------------
 --   Difficulty is per-track (a track IS one instrument) AND per-section. THREE layers:
---     L1  playable.level (smallint)  — BROWSE HEADLINE (catalogue sort); derivable from track levels.
+--     L1  playable.level (smallint)  — BROWSE HEADLINE (catalog sort); derivable from track levels.
 --     L2  track.level   (smallint)   — PER-INSTRUMENT (column added to track above). "easy on guitar".
 --     L3  data.sections[i].tracks[]  — PER-SECTION x PER-TRACK grid {track, level, techniques[]} (jsonb detail).
 --   Curve (other axes) stays in data.difficulty{by,tiers}:  by:'fingering' -> by:'technique', by:'bpm' -> by:'tempo'.
 --   INVARIANT (app-layer, NOT a DB CHECK — Postgres can't cheaply enforce ">=1 child row"):
 --     EVERY playable owns >= 1 track (song/part/lesson/pattern). So instruments[] is always derived
 --     and difficulty always has a track home.
---   Techniques get a HOME now (L3 cell.techniques[]); the SEARCHABLE cross-catalogue technique facet
+--   Techniques get a HOME now (L3 cell.techniques[]); the SEARCHABLE cross-catalog technique facet
 --     (reconciled with drum_profile.techniques[], Rockschool-grounded) is the FOLLOW-UP.
 -- ============================================================================
 
@@ -289,7 +289,7 @@ WHERE id = 'cmaj-scale';
 -- 1) L2 per-instrument levels on a song (hardest first)
 --   SELECT instrument, role, level FROM track WHERE playable_id='sna' ORDER BY level DESC;
 --
--- 2) L2 "easy on guitar" across the catalogue (uses track_instrument_level index)
+-- 2) L2 "easy on guitar" across the catalog (uses track_instrument_level index)
 --   SELECT p.title, t.level FROM track t JOIN playable p ON p.id=t.playable_id WHERE t.instrument='guitar' AND t.level<=3 ORDER BY t.level;
 --
 -- 3) LEAF per-instrument difficulty via track.level: F chord = guitar L3, piano L1

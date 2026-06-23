@@ -15,7 +15,7 @@ home: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-
 Working directory: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model
 Read docs/wireframe/2026-06-19-HANDOFF-group-d-tracks-media-difficulty.md (full context).
 
-Brainstorm Group D for the catalogue schema: (1) a `track` relation (a song can have
+Brainstorm Group D for the catalog schema: (1) a `track` relation (a song can have
 multiple tracks of the SAME instrument — guitar solo + guitar bass — which the flat
 `instruments text[]` facet cannot represent), (2) a per-track + song-level `media` model
 (audio/video), and (3) per-instrument difficulty (a barre chord is hard on guitar, easy on
@@ -37,7 +37,7 @@ The tonal/drum schema work is **done, validated on Postgres, and in PR #52**. Gr
 
 ### D-1 · `track` relation (the headline — "multiple tracks")
 **Problem:** a song can have **multiple tracks of the same instrument** — e.g. guitar `solo` + guitar `bass`/`rhythm`, or two vocal harmonies. The flat `playable.instruments text[]` facet can't represent that, and per-track media (D-2) / per-instrument difficulty (D-3) / voicing all need a track identity.
-**Recommended shape (from Round-6, not yet ratified):** a `track` relation **+ keep `instruments[]` as a derived facet** (DISTINCT instrument across tracks) for the fast catalogue filter. So it's a **split**, not a rename.
+**Recommended shape (from Round-6, not yet ratified):** a `track` relation **+ keep `instruments[]` as a derived facet** (DISTINCT instrument across tracks) for the fast catalog filter. So it's a **split**, not a rename.
 ```sql
 -- sketch (decide in the brainstorm)
 CREATE TABLE track (
@@ -98,6 +98,6 @@ Poke-around queries are at the bottom of the `.sql`.
 ## 6 · Related open threads (NOT Group D — don't pull them in)
 - **Group C** — upload/ingest UX (SD-22 load-and-go, SD-23 GP-file = song or pattern); pairs with the `upload_status` seam.
 - **SD-24 / NH-137** — song slice (its own thread); only the `audioRef`/media reconciliation overlaps D-2.
-- **Per-user (DynamoDB), not catalogue:** SD-12 score filter/sort, SD-20 per-step score, SD-21 completed flag.
+- **Per-user (DynamoDB), not catalog:** SD-12 score filter/sort, SD-20 per-step score, SD-21 completed flag.
 - **Minor/deferred:** SD-10 sort direction, SD-11 flag filters, SD-17 step description, SD-15 deep voicing (note/voice_map).
 - **`origin` naming** — ADR/Jira amended (commit f5f7171 on `docs/architecture-decisions`, NH-194 comment); a PR to land it on master is still pending.

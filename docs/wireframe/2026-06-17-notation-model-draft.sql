@@ -159,7 +159,7 @@ CREATE INDEX playable_link_to   ON playable_link (to_id);
 
 -- NOTATIONS (scores) ----------------------------------------------------------
 INSERT INTO notation (id, format, s3_key, notation_alphatex, bytes) VALUES
-  ('n-sna-gp',     'gp',       'catalogue/sna/source.gp', NULL, 51200),
+  ('n-sna-gp',     'gp',       'catalog/sna/source.gp', NULL, 51200),
   ('n-hihat-8',    'alphatex', NULL, ':8 x x x x x x x x', NULL),
   ('n-rock8-kick', 'alphatex', NULL, ':8 (x.36) x (x.36) x (x.36) x (x.36) x', NULL),
   ('n-single4',    'alphatex', NULL, 'R R R R  L L L L', NULL),

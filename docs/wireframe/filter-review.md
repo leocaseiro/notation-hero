@@ -1,7 +1,7 @@
 # Catalog search — filter-by-filter review
 
 Every search UI element checked **one by one** against the read-side query contract
-(`core/catalogue/CatalogueFilter.ts` + schema spec §9) and the canonical mockup
+(`core/catalog/CatalogFilter.ts` + schema spec §9) and the canonical mockup
 (`docs/mockups/catalog.html`). Decisions made with Leo on 2026-06-16.
 
 **Key principle (Leo):** *data cardinality ≠ filter cardinality.* An item **has** one

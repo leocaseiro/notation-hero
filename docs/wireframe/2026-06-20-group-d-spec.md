@@ -93,7 +93,7 @@ A song has N tracks; **multiple may share an instrument**, disambiguated by `rol
 - `level smallint` (D-3 L2; CHECK 0–10) · `data jsonb` (D-1d long-tail: tuning, capo).
 - **Score link (D-1c):** `notation_track_index int` (which track inside the shared file) + nullable `notation_id` (per-track override, `ON DELETE SET NULL`).
 - FKs `DEFERRABLE INITIALLY IMMEDIATE`; indexes on `playable_id`, `notation_id`, `instrument`, `(instrument, level)`, `UNIQUE(playable_id, sort_order)`.
-- **Derived facet:** `playable.instruments := array_agg(DISTINCT track.instrument)` recomputed on every track write (app-layer; no trigger). Keeps the O(1) catalogue filter.
+- **Derived facet:** `playable.instruments := array_agg(DISTINCT track.instrument)` recomputed on every track write (app-layer; no trigger). Keeps the O(1) catalog filter.
 
 **Why a table, not jsonb:** tracks are a one-to-many collection with joins (media, difficulty, voicing) and lifecycle — the normalize-first call. `instruments[]` is the single justified denormalization (the hot filter).
 
@@ -119,13 +119,13 @@ Difficulty is **per-track** (a track is one instrument) **and per-section** — 
 
 | Layer | What it answers | Home | Type |
 |---|---|---|---|
-| **L1** | "easiest first" (catalogue sort) | `playable.level` | `smallint` (derivable from track levels) |
+| **L1** | "easiest first" (catalog sort) | `playable.level` | `smallint` (derivable from track levels) |
 | **L2** | "easy **on guitar**"; sort a song's tracks by hardness | `track.level` | `smallint` (nullable, 0–10) |
 | **L3** | verse-easy / chorus-hard, per part, + techniques used | `data.sections[i].tracks[] = [{track, level, techniques[]}]` | `jsonb` (detail) |
 
 - **Curve** (other axes) stays in `data.difficulty{by,tiers}`. **Renames:** `by:'fingering'`→`by:'technique'`, `by:'bpm'`→`by:'tempo'`.
 - **Leaf patterns** that vary by instrument are modelled as **one track per instrument** (F chord = guitar `track.level=3` + piano `track.level=1`) — the unified model, no separate jsonb curve needed for the instrument axis.
-- **Techniques** get a home **now** in the L3 cell (`techniques[]`). The **searchable** cross-catalogue technique facet is a follow-up (§7).
+- **Techniques** get a home **now** in the L3 cell (`techniques[]`). The **searchable** cross-catalog technique facet is a follow-up (§7).
 
 ---
 

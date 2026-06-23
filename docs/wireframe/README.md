@@ -22,7 +22,7 @@ Then open in a browser:
 
 | Page | URL |
 | --- | --- |
-| **Main app** (the catalogue flow — start here) | http://localhost:8131/index.html |
+| **Main app** (the catalog flow — start here) | http://localhost:8131/index.html |
 | **Model map** (the Playable-model / schema diagram) | http://localhost:8131/model-map.html |
 | **Notation explorer** (notation + field explorer) | http://localhost:8131/notation-explorer.html |
 
@@ -51,7 +51,7 @@ The 5 seed songs are grounded in their real Guitar Pro files via AlphaTab.
 node gp-extract.mjs "/path/to/song.gp"      # prints objective JSON: tempo, bars, time sig, tracks, sections
 ```
 
-Raw extractions are committed under `data/gp-extract-*.json`. The catalogue SQL seed
+Raw extractions are committed under `data/gp-extract-*.json`. The catalog SQL seed
 `2026-06-21-per-track-profiles-and-seed-draft.sql` loads on a throwaway Postgres DB:
 
 ```bash
@@ -110,7 +110,7 @@ approval → amend the locked spec with a changelog). Nothing in the locked sche
 - **v1.2** — **functional filters** (the schema's query contract, live): genre/kind/time **multi-select**
   (OR), instrument **single**, level/tempo **ranges** (level `0 = Debut`), tags/skill **ALL-of**, **Key**
   shown only for pitched instruments, functional **Sort**. See `filter-review.md` (per-filter review vs the
-  `CatalogueFilter` contract) and SD-7/8/9 in the schema-deltas ledger.
+  `CatalogFilter` contract) and SD-7/8/9 in the schema-deltas ledger.
 - **v1.3** — **inside-page relationships + score filter**: **Patterns** card on song & lesson detail
   (item↔pattern links; fills shown as a `pattern.kind`, SD-1); **media** links (audio/video); source / license /
   owner **metafoot** + **Private** tag on user-uploads (SD-3); **client-side score filter** + **Best-score

@@ -149,7 +149,7 @@ toward **(4)/(5)**.
 The **reconciliation pass** against the approved ADR
 (`/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md`)
 still has to happen (was the next batch when we paused):
-- **`created_by`** (R1, the Cognito `sub`) on the catalogue item — ownership seam.
+- **`created_by`** (R1, the Cognito `sub`) on the catalog item — ownership seam.
 - **Client-minted ULID `text` PKs** (R13) — current draft SQL uses human slugs (`sna`, `hihat-8`); the
   real schema needs ULIDs for offline-first idempotent upserts.
 - **`source` vs `origin` naming** — ADR R2 says `source`; the draft renamed it `origin`. Pick the canonical name.

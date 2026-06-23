@@ -2,7 +2,7 @@
 -- NotationHero — Tonal + Drum extensible schema — DRAFT v4 (2026-06-19)
 -- ----------------------------------------------------------------------------
 -- Adds the two per-domain side-tables to the locked Playable model so drums
--- carry zero tonal NULLs and the catalogue is searchable by chords / progressions
+-- carry zero tonal NULLs and the catalog is searchable by chords / progressions
 -- / scales (pitched) and beats / fills / rudiments / techniques (drums).
 --
 -- Spec: docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md
@@ -234,15 +234,15 @@ CREATE INDEX idx_drum_kit_pieces ON drum_profile USING gin (kit_pieces);
 
 -- NOTATIONS (scores) ----------------------------------------------------------
 INSERT INTO notation (id, format, s3_key, notation_alphatex, bytes) VALUES
-  ('n-sna-gp',     'gp',       'catalogue/sna/source.gp', NULL, 51200),
-  ('n-rosanna',    'gp',       'catalogue/rosanna/source.gp', NULL, 60000),
-  ('n-sandman',    'gp',       'catalogue/sandman/source.gp', NULL, 48000),
-  ('n-billie',     'gp',       'catalogue/billie/source.gp', NULL, 40000),
-  ('n-let-it-be',  'gp',       'catalogue/letitbe/source.gp', NULL, 30000),
-  ('n-im-yours',   'gp',       'catalogue/imyours/source.gp', NULL, 30000),
-  ('n-zombie',     'gp',       'catalogue/zombie/source.gp', NULL, 30000),
-  ('n-creep',      'gp',       'catalogue/creep/source.gp', NULL, 30000),
-  ('n-bohemian',   'gp',       'catalogue/bohemian/source.gp', NULL, 90000),
+  ('n-sna-gp',     'gp',       'catalog/sna/source.gp', NULL, 51200),
+  ('n-rosanna',    'gp',       'catalog/rosanna/source.gp', NULL, 60000),
+  ('n-sandman',    'gp',       'catalog/sandman/source.gp', NULL, 48000),
+  ('n-billie',     'gp',       'catalog/billie/source.gp', NULL, 40000),
+  ('n-let-it-be',  'gp',       'catalog/letitbe/source.gp', NULL, 30000),
+  ('n-im-yours',   'gp',       'catalog/imyours/source.gp', NULL, 30000),
+  ('n-zombie',     'gp',       'catalog/zombie/source.gp', NULL, 30000),
+  ('n-creep',      'gp',       'catalog/creep/source.gp', NULL, 30000),
+  ('n-bohemian',   'gp',       'catalog/bohemian/source.gp', NULL, 90000),
   ('n-hihat-8',    'alphatex', NULL, ':8 x x x x x x x x', NULL),
   ('n-rock8-kick', 'alphatex', NULL, ':8 (x.36) x (x.36) x', NULL),
   ('n-paradiddle', 'alphatex', NULL, 'R L R R  L R L L', NULL),
@@ -370,7 +370,7 @@ INSERT INTO playable_link (from_id, to_id, relation) VALUES
 
 -- ── MULTI-ARTIST example (a song can credit several artists) ─────────────────
 INSERT INTO notation (id, format, s3_key, bytes) VALUES
- ('n-under-pressure', 'gp', 'catalogue/underpressure/source.gp', 45000);
+ ('n-under-pressure', 'gp', 'catalog/underpressure/source.gp', 45000);
 INSERT INTO playable (id, kind, title, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, origin, status, license) VALUES
  ('under-pressure', 'song', 'Under Pressure', 'n-under-pressure', 4, '{Queen,"David Bowie"}', 'artist', 114, 4, 4, '{rock}', '{keys,guitar,bass}', 'curated', 'published', 'royalty-free');
 INSERT INTO tonal_profile (playable_id, musical_key, keys, chords) VALUES

@@ -1,7 +1,7 @@
 # Catalog schema — UI-surfaced deltas (running ledger)
 
 Findings from the catalog **wireframe** (`docs/wireframe/index.html`) that touch the **locked** schema
-(`docs/specs/2026-06-10-catalogue-schema.md`).
+(`docs/specs/2026-06-10-catalog-schema.md`).
 
 **Model:** wireframe surfaces a gap → logged here as a numbered delta → **you approve each one** → only then
 is the locked spec amended (with a changelog line). Unapproved gaps stay open or live in `data jsonb`.
@@ -66,6 +66,7 @@ The round-by-round log below is **historical**. After the locked Playable model 
 | SD-28 | [NH-219](https://leocaseiro.atlassian.net/browse/NH-219) | lead vs rhythm selector · `schema` |
 | SD-29 | — | ✅ resolved — component voices `listable:false` |
 | SD-30 | — | ✅ resolved — playable_link relation vocabulary (uses/variation/similar) |
+| 🔤 Rename | [NH-220](https://leocaseiro.atlassian.net/browse/NH-220) | "catalog" (USA) spelling — wireframe swept 2026-06-23; repo-wide doc files + `CatalogueFilter` type remain |
 
 > **Future note (per Leo, 2026-06-23):** a per-**relationship** description may be wanted later (a note on *why* two playables are `similar`, or a teaching note on a `uses` link). Cheapest path when needed: a `note` text field on `playable_link` — no new table. Not added yet (YAGNI).
 
@@ -89,7 +90,7 @@ Group D (track · media · per-instrument difficulty) is **designed, validated o
 - **🆕 SD-26 (deferred) — instrument family grouping.** guitar→electric/acoustic; families (strings/wind/brass). Flat open vocab + GIN facet stays for now.
 - **Ingest note (not a numbered SD):** `gp-embedded` audio (7.9 MB in the `.gp`) — ingest policy to extract to S3 (`provider='s3'`) vs keep embedded; schema supports both.
 
-**Confirmed still-open (unchanged — correctly OUT of Group D scope):** SD-10/SD-11 (v1.3 UI), SD-12/SD-20/SD-21 (per-user → DynamoDB), SD-17 (step description, tiny), **Group C** SD-22/SD-23 (upload UX). **No catalogue-schema delta is missing** — Group D closed the Round-6 structural items; the remainder are per-user, UI-only, or upload-flow.
+**Confirmed still-open (unchanged — correctly OUT of Group D scope):** SD-10/SD-11 (v1.3 UI), SD-12/SD-20/SD-21 (per-user → DynamoDB), SD-17 (step description, tiny), **Group C** SD-22/SD-23 (upload UX). **No catalog-schema delta is missing** — Group D closed the Round-6 structural items; the remainder are per-user, UI-only, or upload-flow.
 
 ---
 
@@ -97,7 +98,7 @@ Group D (track · media · per-instrument difficulty) is **designed, validated o
 
 - **What the UI needs:** the Lessons tab shows sub-kinds **Beats · Rudiments · Fills** (locked UI). To list a
 "Fill" as a browsable lesson, an item needs `lesson_type='fill'`.
-- **Schema today:** `catalogue_item.lesson_type` open vocab = `'song-breakdown' | 'beat' | 'rudiment'`.
+- **Schema today:** `catalog_item.lesson_type` open vocab = `'song-breakdown' | 'beat' | 'rudiment'`.
 `'fill'` exists only as `pattern.kind='fill'` (a reusable vocabulary entry, not a browsable lesson).
 - **Why it matters:** without `lesson_type='fill'`, the Fills sub-tab has nothing to list (or must query
 `pattern`, which is a different entity with no steps/BPM-ladder).
@@ -117,18 +118,18 @@ that song.
 - **Why it matters:** to render the button, the app must reverse-query `exercise WHERE source_item_id = :song`
 and group by `lesson_id` (works, but it's an implicit relationship the K-3 list projection doesn't carry).
 - **Proposed change:** none to DDL — document the reverse lookup as the supported pattern, and (optionally)
-expose a `breakdownLessonIds[]` convenience field on `GET /catalogue/{id}` computed at read time.
+expose a `breakdownLessonIds[]` convenience field on `GET /catalog/{id}` computed at read time.
 - **Cheapest alternative:** keep it purely query-driven (current assumption). ⚪ leaning no-change.
 
 ## ✅ SD-3 — Where does a **user-upload's owner** live (for the "my uploads" view)?  *(resolved 2026-06-19 — created_by + visibility; see Current status)*
 
 - **What the UI needs:** a signed-in **User** sees their own uploaded drafts (e.g. *"My practice loop"*) that
 aren't in the shared published catalog; **Admin** sees all.
-- **Schema today:** `catalogue_item.source='user-upload'` + `status` exist, but there is **no `owner` / `uploader_id**`
+- **Schema today:** `catalog_item.source='user-upload'` + `status` exist, but there is **no `owner` / `uploader_id**`
 columnPhase 1 — a thin deployable AWS slice. Deferred-slots note says user files are *"keyed by uploader, never auto-published"* — but doesn't say
 where the uploader key lives.
 - **Why it matters:** filtering "items owned by *this* user" needs an owner reference somewhere queryable.
-- **Proposed change (options to decide):** (a) add `owner_id text` to `catalogue_item` (NULL for curated);
+- **Proposed change (options to decide):** (a) add `owner_id text` to `catalog_item` (NULL for curated);
 (b) keep user-upload pointers **per-user in DynamoDB** and never list them from the catalog query; (c) a
 separate `user_upload` table.
 - **Cheapest alternative:** (b) — matches "per-user data → DynamoDB"; the catalog stays curated-only. Likely
@@ -171,14 +172,14 @@ scale; `NULL` stays "ungraded" and **distinct** from Debut.
 - **Decision (you, 2026-06-16):** the **item columns stay single-valued** (a song has one genre, a lesson one
 `lesson_type`, one `time_sig`) — *schema unchanged*. Only the **filter contract** gains list inputs so the
 user can OR-match several.
-- **Filter-contract change:** `genre`, `timeSig`, `lessonType` go `string → string[]` in `CatalogueFilter`;
+- **Filter-contract change:** `genre`, `timeSig`, `lessonType` go `string → string[]` in `CatalogFilter`;
 the SQL adapter maps them to `col = ANY($1)` (OR). `instruments` stays single-select for now (`@> ARRAY[$1]`).
-Tags/Skill keep **ALL-of** (`@>`). No `catalogue_item` column changes.
+Tags/Skill keep **ALL-of** (`@>`). No `catalog_item` column changes.
 
 ## 🟢 SD-9 — Add `musicalKey` filter, instrument-conditional (drums vs pitched)
 
 - **Decision (you, 2026-06-16):** add `**musicalKey**` to the filter contract — the `musical_key` column
-already exists; it was just missing from `CatalogueFilter`. Expose it **only when the instrument filter is a**
+already exists; it was just missing from `CatalogFilter`. Expose it **only when the instrument filter is a**
 **pitched one** (guitar / keys); **drums are unpitched** (no key/scale) so Key is hidden for drums / "Any".
 - **Filter-contract change:** add `musicalKey?: string[]` → `musical_key = ANY($1)` (OR). Conditional UI only;
 no column change. A future `scale`/`mode` filter can join it for piano content (§13 "controlled list with
@@ -197,23 +198,23 @@ ASC/DESC switch.
 `has_audio = true`. "Has parts/steps" = derived (SD-5) → `EXISTS(...)` / `jsonb_array_length(...) > 0`.
 - **Filter-contract change:** add `hasAudio?` / `hasVideo?` / `hasParts?` booleans. No new column. **Build in v1.3.**
 
-## 🔵 SD-12 — Filter **and sort by score** — `$12` ⚠️ crosses the catalogue / per-user boundary
+## 🔵 SD-12 — Filter **and sort by score** — `$12` ⚠️ crosses the catalog / per-user boundary
 
 - **What the UI needs:** "show all below 90%", sort by best-score.
-- **The catch:** best-score is **per-user (DynamoDB)** — **not in the catalogue** (SD-4) and not in the K-3 query.
-A pure catalogue query *cannot* filter/sort by it.
+- **The catch:** best-score is **per-user (DynamoDB)** — **not in the catalog** (SD-4) and not in the K-3 query.
+A pure catalog query *cannot* filter/sort by it.
 - **Options:** (a) **client-side** post-filter/sort of the fetched page (simple, but breaks server-side
 pagination + global sort — only sorts the current page); (b) a **per-user "my library" index** in DynamoDB
-(proper: query scores → ids, then hydrate from catalogue) — more work, belongs with the scores/player build;
+(proper: query scores → ids, then hydrate from catalog) — more work, belongs with the scores/player build;
 (c) **defer** until per-user data is wired. **Recommend (c)/defer** — revisit with the DynamoDB scores work.
-- **No catalogue column change either way.**
+- **No catalog column change either way.**
 
 ---
 
 ## Filter / UI notes (not schema changes)
 
 - **N-13 (`$13`) — show Key for drums / no-instrument too?** You're reconsidering SD-9's strict hide-for-drums.
-Likely: show Key when **no instrument is selected** (mixed catalogue) and for pitched; hide only when
+Likely: show Key when **no instrument is selected** (mixed catalog) and for pitched; hide only when
 instrument = drums. *Explore later* — flagged on SD-9.
 - **N-14 (`$14`) — group levels into named bands** via `<optgroup>` in the Level picker. **Display only**
 (level stays a 0–10 integer). **✅ RESOLVED (Leo, 2026-06-21) — band ranges fixed:**
@@ -238,13 +239,13 @@ with auth / CRUD; wireframe shows a "Private" tag on a user's own uploads.
 - **SD-12 → BUILDING (client-side):** score filter + sort-by-score wireframed client-side (per-user caveat
 shown in-UI); the real impl needs the DynamoDB join (per SD-4).
 - **N-16 — indexes (your PS):** per-sort indexes + (if keyset is ever revisited) e.g.
-`CREATE INDEX ci_keyset ON catalogue_item (updated_at DESC, id DESC)` — go in the spec when deltas are
+`CREATE INDEX ci_keyset ON catalog_item (updated_at DESC, id DESC)` — go in the spec when deltas are
 applied. We chose numbered `OFFSET` pagination (SD-6), so keyset is optional.
 
 ## Round-3 — inside-page deltas (2026-06-16, from READ-page review)
 
 - **SD-13 — Artist as filter + clickable.** `artist` is a column and already FTS-weighted (B), but there's **no**
-**artist facet** in `CatalogueFilter`. Add `artist?: string` (or `string[]`); clicking an artist on a row/detail
+**artist facet** in `CatalogFilter`. Add `artist?: string` (or `string[]`); clicking an artist on a row/detail
 sets the filter. *No item-schema change* (column exists).
 - **SD-14 — Patterns are STANDALONE + need a browse/detail.** `pattern` is a first-class table; `item_pattern`
 links are optional (0..n) → a pattern can exist with no parent. Add a **Pattern detail** (route + clickable
@@ -271,12 +272,12 @@ validation note, not a structural change.
 They **coexist** (not either/or). *Action:* restore the **Fills** Lessons sub-kind + fill-lessons (the v1.2
 removal over-corrected). `lesson_type ∈ {beat, rudiment, fill, song-breakdown}`; `pattern.kind ∈ {beat, fill, rudiment, …}`.
 - **SD-19 — Lesson description ("what you'll learn").** Lesson-level blurb (distinct from per-step SD-17). Add
-`description` to `catalogue_item` (or `data.description`); shown on lesson detail.
+`description` to `catalog_item` (or `data.description`); shown on lesson detail.
 - **SD-20 — ⭐ Per-PART / per-STEP score (per-user).** Best-score is per *item* today; show the donut on **each**
 **song part** + **each lesson step**. Implies per-user scoring at **section/step granularity** (DynamoDB, e.g.
-`user#item#step`), joined client-side — not catalogue. Also **Play → "Continue"** when partially done.
+`user#item#step`), joined client-side — not catalog. Also **Play → "Continue"** when partially done.
 - **SD-21 — Per-user 'completed' flag + reset-score-keep-history.** Mark items/steps completed; let a user
-**clear the current best but keep attempt history**. Per-user (DynamoDB) — extra joins, not catalogue.
+**clear the current best but keep attempt history**. Per-user (DynamoDB) — extra joins, not catalog.
 - **SD-15 note (voicing legend):** kit-piece icons (hi-hat·kick·snare·toms·crash·ride) marking active voices per
 part/step — built as **our own** glyphs (teal/Material), **not** a copy of any competitor's; competitor names
 stay out of repo docs (project rule).
@@ -463,7 +464,7 @@ profiles now make "the lead guitar's chords" addressable) and **OQ2**.
 
 **Context (Leo, 2026-06-23):** the composed **voice leaves** of the composite beat
 (`pat_voice_hh` / `pat_voice_sn` / `pat_voice_kick` — the hi-hat/snare/kick that build `pat_rock_composite`
-via `step`) were appearing as standalone rows in the catalogue browse. They are building blocks, not
+via `step`) were appearing as standalone rows in the catalog browse. They are building blocks, not
 destinations.
 
 **Resolved:** set **`listable:false`** on the three voices. No new column — reuses the existing `listable`
@@ -500,7 +501,7 @@ shared `relatedCard()` on both the song and pattern pages. Song→beat/fill stil
 
 ### TS-4 — seed data log (2026-06-21)
 
-First real catalogue seed: `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` (validated on
+First real catalog seed: `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` (validated on
 `nh_tonal_scratch`). **19 playables / 37 tracks / 17 tonal / 19 drum / 7 media.**
 
 - **Drum patterns (real, from `groovescribe-import.json`):** 8 leveled rudiments — **2 per group**,
@@ -511,7 +512,7 @@ Rock) + 1 fill (16th Snare L4) + 1 **composite beat** built from hi-hat/snare/ki
 patterns use `notation_id` NULL (no fabricated alphaTex — backfill via the groovescribe skill later).
 - **Songs:** Bohemian Rhapsody, Yellow, Zoio de Lula, I'm Yours (single I–V–vi–IV progression), Angra –
 Nothing To Say (Expert drums L9). Per-instrument `track.level` (headline = MAX per selected instrument)
-  - per-track `tonal_profile`/`drum_profile`. Only Angra has a real `.gp`; others are catalogue rows with
+  - per-track `tonal_profile`/`drum_profile`. Only Angra has a real `.gp`; others are catalog rows with
   placeholder s3 keys.
 - **Expert (9–10):** **two** examples — Angra (Nothing To Say, drums + lead L9) + Zoio de Lula (**drums L9**;
 guitar only L3–4 — the per-instrument point: hard on drums, easy on guitar). Zoio's drums set Expert per
@@ -578,6 +579,6 @@ list (names + percussion flag), section markers + bar ranges.
 **Available but NOT imported (decided seed is the 5 above):** the folder
 `/Users/leocaseiro/Music/AlphaTab-RhythmGame/` also has real `.gp` for Toto – Africa,
 Hotel California, Black Sabbath – Paranoid, Bob Marley – Is This Love, Green Day, Michael
-Jackson – Man In The Mirror, Mamonas, etc. → catalogue-expansion follow-up.
+Jackson – Man In The Mirror, Mamonas, etc. → catalog-expansion follow-up.
 
 **Raw JSON for UI/DB verification (R4):** `docs/wireframe/data/gp-extract-{bohemian,yellow,zoio,imyours,angra}.json`.

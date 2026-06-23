@@ -8,7 +8,7 @@ supersedes_open_question: docs/wireframe/2026-06-18-HANDOFF-tonal-schema-open-qu
 relates:
   - docs/wireframe/2026-06-17-notation-model-draft.sql (locked Playable model + draft DDL)
   - docs/wireframe/2026-06-16-schema-deltas.md (SD ledger)
-  - docs/wireframe/filter-review.md (14-filter catalogue contract)
+  - docs/wireframe/filter-review.md (14-filter catalog contract)
   - architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md (ADR, NH-194)
   - architecture-spec/docs/specs/2026-06-17-data-layer-requirements.md (R1–R16)
   - keen-neumann-0405de/docs/spikes/2026-06-19-gp-tonal/FINDINGS.md (NH-196 GP→tonal spike)
@@ -23,7 +23,7 @@ progressions) **and drum-domain** attributes (beats, fills, rudiments, technique
 so that:
 
 1. **drums carry zero tonal NULLs** (and pitched content carries zero drum NULLs);
-2. the catalogue is **searchable** by all of the above, fast, composably;
+2. the catalog is **searchable** by all of the above, fast, composably;
 3. **new fields are cheap** to add later, with no painful `ALTER` on the hot table.
 
 ---
@@ -38,7 +38,7 @@ so that:
 | **D4** | Section granularity | **Both** "includes" and "exact set"; progressions are **section-scoped** (verse/chorus/bridge) in the jsonb timeline, aggregated into flat facet arrays for search. |
 | **D5** | Drums | **`drum_profile` planned now** (drums-first focus). Symmetric to `tonal_profile`. A future `guitar_profile` is "just add another side-table." Only **domain-specific** (otherwise-NULL) fields live in a profile; **universal** facets stay on `playable`. |
 | **D6** | Multi-key / multi-tempo / multi-meter songs | **Headline scalar + set facet + jsonb timeline.** Headline = dominant value (filter/display); set facet (`keys[]`, …) = "touches X"; `data.sections[]` = full per-section detail. |
-| **D7** | Database | **SQL — Neon Postgres** for the catalogue/search (relational + arrays + GIN + cheap joins). DynamoDB stays per-user only. Not NoSQL for faceted search. |
+| **D7** | Database | **SQL — Neon Postgres** for the catalog/search (relational + arrays + GIN + cheap joins). DynamoDB stays per-user only. Not NoSQL for faceted search. |
 
 Guard rails honoured: the **Thin** model (Neon = metadata + file keys; AlphaTab owns score internals,
 R10) and the **Playable umbrella** (`playable · notation · step · playable_link`) are **unchanged** —
@@ -401,7 +401,7 @@ faceted search.**
    backfill `tonal_profile` from existing pitched rows.
 2. **S1 — ingest derivation:** AlphaTab + tonaljs pipeline writes the facets + `data.sections[]` at
    upload (build on the NH-196 spike).
-3. **S2 — read contract:** extend `CatalogueFilter` with `chords`, `progression_{concrete,roman,family}`,
+3. **S2 — read contract:** extend `CatalogFilter` with `chords`, `progression_{concrete,roman,family}`,
    `scales`, `keys`, and drum `beats/fills/rudiments/techniques/kit_pieces` (+ ONLY/OR/AND op per
    facet); SQL adapter maps to `<@`/`&&`/`@>`.
 4. **S3 — UI:** wire the new filters (conditional pitched/drum), the transposed-chord display, and

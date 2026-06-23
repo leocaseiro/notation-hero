@@ -344,7 +344,7 @@ INSERT INTO drum_profile (track_id, beats, fills, rudiments, techniques, kit_pie
 -- playable.level = headline = MAX(track.level) overall (default-sort number).
 -- The per-instrument headline ("max on guitar") is derived at query time as
 -- MAX(track.level) WHERE instrument = <selected> — see the poke queries.
--- Only Angra – Nothing To Say has a real .gp on disk; the others are catalogue
+-- Only Angra – Nothing To Say has a real .gp on disk; the others are catalog
 -- rows with placeholder s3 keys (the seed exercises metadata + tags, not blobs).
 -- Expert (9-10): TWO examples — Angra (Nothing To Say, drums + lead L9) and
 -- Zoio de Lula (DRUMS L9; guitar only L3-4). The rudiment source tops out at L8,
