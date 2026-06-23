@@ -82,7 +82,7 @@ INSERT INTO track (id, playable_id, instrument, role, name, sort_order, notation
 
 -- LET IT BE — demonstrates the notation_id OVERRIDE: the vocals track has its OWN
 -- one-track score file (notation_id set, notation_track_index NULL); piano + guitar share.
-INSERT INTO notation (id, format, notation_alphaTex) VALUES
+INSERT INTO notation (id, format, notation_alphatex) VALUES
  ('n-letitbe-vocals', 'alphatex', 'C4 D4 E4 F4');
 INSERT INTO track (id, playable_id, instrument, role, name, sort_order, notation_id, notation_track_index, data) VALUES
  ('track-letitbe-piano',  'let-it-be', 'keys',   NULL, 'Piano',  1, NULL,                0,    '{}'),

@@ -52,7 +52,7 @@ CREATE TABLE notation (
   id                text PRIMARY KEY,
   format            text NOT NULL,
   s3_key            text,                          -- object key in the AWS S3 bucket
-  notation_alphaTex text,
+  notation_alphatex text,
   checksum          text,
   bytes             int,
   upload_status     text NOT NULL DEFAULT 'ready',  -- R15: 'ready' (blob/text present) | 'pending_blob' (synced, S3 file backfills) | 'client' (lives on the user's device, no server copy)
@@ -66,7 +66,7 @@ CREATE TABLE notation (
   -- waived while staged ('pending_blob' → S3 file backfills) or device-local ('client' → no server copy).
   CONSTRAINT notation_one_of CHECK (
     upload_status <> 'ready'
-    OR (s3_key IS NOT NULL)::int + (notation_alphaTex IS NOT NULL)::int = 1
+    OR (s3_key IS NOT NULL)::int + (notation_alphatex IS NOT NULL)::int = 1
   )
 );
 
@@ -233,7 +233,7 @@ CREATE INDEX idx_drum_kit_pieces ON drum_profile USING gin (kit_pieces);
 -- ============================================================================
 
 -- NOTATIONS (scores) ----------------------------------------------------------
-INSERT INTO notation (id, format, s3_key, notation_alphaTex, bytes) VALUES
+INSERT INTO notation (id, format, s3_key, notation_alphatex, bytes) VALUES
   ('n-sna-gp',     'gp',       'catalog/sna/source.gp', NULL, 51200),
   ('n-rosanna',    'gp',       'catalog/rosanna/source.gp', NULL, 60000),
   ('n-sandman',    'gp',       'catalog/sandman/source.gp', NULL, 48000),
@@ -342,7 +342,7 @@ INSERT INTO playable_link (from_id, to_id, relation) VALUES
 -- A lesson's ordered exercises AND a composite pattern's own building blocks both
 -- live in ONE table: `step` (parent_id -> child_id + order + bpm ladder). No separate
 -- "beat_step" type — a composite beat is just a pattern that HAS steps.
-INSERT INTO notation (id, format, notation_alphaTex) VALUES
+INSERT INTO notation (id, format, notation_alphatex) VALUES
  ('n-groove-g', 'alphatex', ':8 (x.42 x.36) x (x.42 x.38) x');
 
 INSERT INTO playable (id, kind, title, notation_id, level, instruments, pattern_kind, family, genre, origin, status, listable) VALUES

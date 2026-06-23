@@ -28,7 +28,7 @@ CREATE TABLE notation (
   id                text PRIMARY KEY,
   format            text NOT NULL,
   s3_key            text,
-  notation_alphaTex text,
+  notation_alphatex text,
   checksum          text,
   bytes             int,
   upload_status     text NOT NULL DEFAULT 'ready',
@@ -40,7 +40,7 @@ CREATE TABLE notation (
   CONSTRAINT notation_status CHECK (upload_status IN ('ready','pending_blob','client')),
   CONSTRAINT notation_one_of CHECK (
     upload_status <> 'ready'
-    OR (s3_key IS NOT NULL)::int + (notation_alphaTex IS NOT NULL)::int = 1
+    OR (s3_key IS NOT NULL)::int + (notation_alphatex IS NOT NULL)::int = 1
   )
 );
 
