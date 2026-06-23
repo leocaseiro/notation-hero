@@ -10,6 +10,15 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-23 — NH-19 CodeQL deep SAST (out-of-band)
+
+**Status changes (effective on merge):**
+
+- `E-codeql` → **✅ done · 🤖**. New `.github/workflows/codeql.yml` runs CodeQL (`github/codeql-action/init`+`analyze@v3`, `javascript-typescript`, `build-mode: none`) **out-of-band** — `push: [master]` + a weekly `schedule` (+ `workflow_dispatch`), **never on `pull_request`** — so it stays off the PR critical path and is **not** part of the required `ci-green` gate. It layers on top of the always-on Semgrep `sast` job (`E-semgrep`); findings surface as code-scanning alerts in the Security tab.
+- `E-codeql-guard-impl` → **✅ done · 🤖**. A `visibility-check` job runs `gh api repos/${{ github.repository }} --jq .visibility`, exports it as a job output, and the `analyze` job is gated `if: needs.visibility-check.outputs.visibility == 'public'` — so CodeQL and its SARIF upload auto-disable on a private transition (no GitHub Advanced Security bill), covering `schedule` events specifically (DACI L9 §215).
+
+**Notes:** `workflow_dispatch` was added beyond the registry's "weekly schedule + push-to-main" text — with no `pull_request` trigger it's the only way to validate a run before the weekly cron. `AGENTS.md` is unchanged: it documents the local pre-commit hooks (gitleaks/semgrep), and CodeQL is CI-only/out-of-band, so it does not belong in that list.
+
 ### 2026-06-21 — Foundation Phase 0 implemented + enforcement live (NH-199 / NH-195, PR #56)
 
 The W2-deferred code/config from the 2026-06-18 entry is now executed in **PR #56** (clean-slate redo; **supersedes #50/#51/#59/#60**, which are closed). #56 delivers the **NH-195** Foundation Phase-0 scope under the **NH-199** clean-slate banner. Enforcement flips:
@@ -357,9 +366,9 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 | E-gitleaks          | gitleaks always-on for secret scanning: Lefthook pre-commit + CI; free and works on private repos (carries the gap when GHAS native scanning auto-off).      | ✅ done          | 🤖  | DACI:196 |     |
 | E-gh-secret-scan    | Enable GitHub native secret scanning + push protection while public; AWS partner auto-revokes leaked keys; auto-off on private (needs GHAS).                 | ✅ done          | 🤖  | DACI:196 |     |
 | E-semgrep           | Semgrep always-on SAST: fast, runs in Lefthook + PR, free on private repos.                                                                                  | ✅ done          | 🤖  | DACI:197 |     |
-| E-codeql            | CodeQL deep SAST out-of-band: weekly schedule + push-to-main; public-only via repository.visibility workflow guard, auto-disables on private (no GHAS bill). | ⏳ pending       | —   | DACI:197 |     |
+| E-codeql            | CodeQL deep SAST out-of-band: weekly schedule + push-to-main; public-only via repository.visibility workflow guard, auto-disables on private (no GHAS bill). | ✅ done          | 🤖  | DACI:197 |     |
 | E-sec-principle     | Security principle: for SAST and secrets each, run portable free OSS always-on + best free GitHub-native while public; GHAS never required.                  | 🔒 locked-active | —   | DACI:199 |     |
-| E-codeql-guard-impl | CodeQL visibility guard impl: job-level gh api .visibility output gating both CodeQL job and SARIF-upload step with if public (covers schedule events).      | ⏳ pending       | —   | DACI:205 |     |
+| E-codeql-guard-impl | CodeQL visibility guard impl: job-level gh api .visibility output gating both CodeQL job and SARIF-upload step with if public (covers schedule events).      | ✅ done          | 🤖  | DACI:205 |     |
 
 ## F · Integrations & observability (L10–L13)
 
