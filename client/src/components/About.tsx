@@ -35,6 +35,9 @@ export function About() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['catalogue'],
     queryFn: fetchCatalogue,
+    // The catalogue changes rarely; a stale window avoids a fresh CloudFront->Lambda fetch on
+    // every remount (navigate away + back), keeping the $0 free-tier invocation budget low.
+    staleTime: 60_000,
   })
 
   return (

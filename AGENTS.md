@@ -62,8 +62,11 @@ no pnpm install; leave an inline comment saying so.
 - Server AND client tests run under **Vitest** (DACI L5 / NH-194), not Jest — despite
   `nest new` emitting Jest by default.
 - `@notation-hero/infra` Pulumi ops — `pulumi:preview`/`pulumi:up`/`pulumi:destroy`
-  (run from `infra/`, or `pnpm --filter @notation-hero/infra run pulumi:preview`) — need
-  AWS creds + a Pulumi token, so they run **locally only**, never in CI.
+  (run from `infra/`, or `pnpm --filter @notation-hero/infra run pulumi:preview`) — use a
+  self-managed **S3 state backend** + a `PULUMI_CONFIG_PASSPHRASE` (no Pulumi Cloud token).
+  They run **in CI** (`.github/workflows/deploy.yml`: PR → `preview`, push to `master` →
+  `up`, via GitHub→AWS OIDC) **and** locally (AWS creds + the passphrase). See the
+  2026-06-23 CI/CD entry in `docs/decisions/decision-registry.md`.
 - Phase-1+ tooling (flat-config lint lane specifics, coverage-ratchet, size-limit,
   type-coverage, tsconfig project-reference sync) — to be filled in as those lanes land.
 
