@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<!--
+  Notation Hero — CATALOG low-fi clickable FLOW · v3.
+  Changes vs v2 (Leo's G-1..G-20): search in topbar · new ring+arrow logo · accent-ring grade bullet ·
+  +Add near table · no row# · BEST encodes status (100%=mastered) · play_circle accent · "BPM" header ·
+  history on lesson detail too · new-best near the date · filters collapsed to a button (placement TBD by
+  design-consult) · Load-more stub. Built on PR #23 locked tokens. Positions still rough — flow first.
+-->
+<html data-theme="light" lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notation Hero — Catalog Flow v3 (low-fi)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
+<style>
+  /* ===== PR #23 locked tokens ===== */
+  :root, [data-theme="dark"] {
+    --bg:#0C1117; --panel:#121821; --panel2:#18202B; --elevate:#1C2530;
+    --ink:#E8EDF3; --muted:#9AA6B4; --faint:#818B9A; --line:#222C39;
+    --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
+    --time:#2F6DF6; --danger:#FF6B6B; --learn-text:#7FA9FF; --hover:rgba(255,255,255,.06); --glow:color-mix(in srgb, var(--accent) 42%, transparent);
+    --grade-green:#1FBF8F;
+  }
+  [data-theme="light"] {
+    --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
+    --ink:#0F151C; --muted:#5A6472; --faint:#6B7480; --line:#E2E8F0;
+    --accent:#0F766E; --accenthi:#0D9488; --onaccent:#FFFFFF;
+    --time:#2F6DF6; --danger:#DC2626; --learn-text:#1D4ED8; --hover:rgba(15,21,28,.05); --glow:color-mix(in srgb, var(--accent) 30%, transparent);
+    --grade-green:#009E73;
+  }
+  :root { --dur-micro:90ms; --dur-fast:150ms; --dur:220ms; --ease:cubic-bezier(.2,.6,.2,1); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Hanken Grotesk',system-ui,sans-serif;
+    transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease); -webkit-font-smoothing:antialiased; }
+  .num { font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums; }
+  .material-symbols-outlined { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal; line-height:1;
+    letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; direction:ltr;
+    -webkit-font-feature-settings:'liga'; -webkit-font-smoothing:antialiased; }
+
+  /* reused components */
+  .btn { font-family:'Hanken Grotesk'; font-weight:600; font-size:14px; line-height:1; padding:10px 15px; border-radius:10px;
+    border:.5px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
+    transition:background-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), transform var(--dur-micro) var(--ease); }
+  .btn .material-symbols-outlined { font-size:18px; }
+  .btn:focus-visible { outline:none; box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+  .btn:active { transform:scale(.96); }
+  .btn-primary { background:var(--accent); color:var(--onaccent); }
+  .btn-primary:hover { background:var(--accenthi); box-shadow:0 3px 12px var(--glow); }
+  .btn-secondary { background:var(--panel2); color:var(--ink); border-color:var(--line); }
+  .btn-secondary:hover { background:var(--elevate); }
+  .btn-ghost { background:transparent; color:var(--muted); }
+  .btn-ghost:hover { background:var(--hover); color:var(--ink); }
+  .toggle-btn { width:40px; height:40px; border-radius:10px; border:.5px solid var(--line); background:transparent; color:var(--muted);
+    display:grid; place-items:center; cursor:pointer; transition:background-color var(--dur-fast) var(--ease); }
+  .toggle-btn:hover { background:var(--hover); color:var(--ink); }
+  .seg { display:inline-flex; background:var(--panel2); border:.5px solid var(--line); border-radius:12px; padding:3px; gap:2px; }
+  .seg button { font-family:'Hanken Grotesk'; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:6px;
+    padding:9px 15px; border:none; background:transparent; color:var(--muted); border-radius:9px; cursor:pointer;
+    transition:background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+  .seg button .material-symbols-outlined { font-size:18px; }
+  .seg button:hover:not(.sel) { color:var(--ink); }
+  .seg button.sel { background:var(--accent); color:var(--onaccent); }
+  .chip { font-family:'Hanken Grotesk'; font-weight:500; font-size:13px; padding:8px 13px; border-radius:999px; border:.5px solid var(--line);
+    background:transparent; color:var(--muted); cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+    transition:background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
+  .chip:hover:not(.on) { background:var(--hover); color:var(--ink); }
+  .chip.on { background:var(--accent); color:var(--onaccent); border-color:transparent; }
+  .chip .material-symbols-outlined { font-size:16px; }
+  .inp { font-family:'Hanken Grotesk'; font-size:14px; color:var(--ink); background:var(--bg); border:.5px solid var(--line);
+    border-radius:10px; padding:11px 12px; outline:none; transition:border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+  .inp::placeholder { color:var(--faint); }
+  .inp:focus { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
+  .pill { font-family:'Hanken Grotesk'; font-weight:600; font-size:10px; letter-spacing:.04em; text-transform:uppercase;
+    padding:3px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:4px; }
+  .pill-new { background:color-mix(in srgb,var(--accent) 13%,transparent); color:var(--accent); }
+  .pill-best { background:var(--accent); color:var(--onaccent); }
+  input[type=range]{accent-color:var(--accent);cursor:pointer;}
+
+  /* ===== app shell ===== */
+  .app { max-width:880px; margin:0 auto; padding:0 24px 130px; }
+  .topbar { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:12px; padding:14px 0 12px;
+    background:linear-gradient(var(--bg) 82%, transparent); }
+  .logo { font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:17px; letter-spacing:-.01em;
+    display:inline-flex; align-items:center; gap:15px; white-space:nowrap; flex:none; }
+  /* G-2 brand mark: thick accent ring + right arrow + music note */
+  /* $1: brand mark is a real SVG (ring + arrow + note) — no more CSS triangle */
+  .mark { width:40px; height:36px; display:grid; place-items:center; color:var(--accent); flex:none; }
+  .mark svg { width:100%; height:100%; display:block; overflow:visible; }
+  /* G-4 search lives in the topbar */
+  .topsearch { position:relative; flex:1; }
+  .topsearch .material-symbols-outlined { position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--faint); font-size:20px; }
+  .topsearch .inp { width:100%; padding-left:42px; }
+  .midi { width:40px; height:40px; border-radius:10px; display:grid; place-items:center; color:var(--muted); position:relative; border:.5px solid var(--line); }
+  .midi .material-symbols-outlined { font-size:20px; }
+  .midi.disconnected::after { content:''; position:absolute; left:50%; top:50%; width:22px; height:2px; border-radius:2px;
+    background:var(--muted); transform:translate(-50%,-50%) rotate(-45deg); opacity:.7; }
+
+  .screen { display:none; animation:fade var(--dur) var(--ease); }
+  .screen.active { display:block; }
+  @keyframes fade { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+  h1 { font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:25px; margin:0 0 2px; letter-spacing:-.01em; }
+  h2 { font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:15px; margin:24px 0 11px; }
+  .muted{color:var(--muted)} .faint{color:var(--faint)}
+  .backlink { display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--muted); background:transparent; border:none; cursor:pointer; padding:8px 0; margin:4px 0; }
+  .backlink:hover { color:var(--accent); } .backlink .material-symbols-outlined{font-size:18px;}
+
+  /* G-1 grade bullet: accent ring, transparent, 1–2 digits */
+  .grade { width:28px; height:28px; border-radius:50%; display:grid; place-items:center; font-family:'Geist Mono'; font-weight:700;
+    font-size:13px; flex:none; border:2px solid var(--accent); color:var(--accent); background:transparent; }
+  .grade.sm { width:24px; height:24px; font-size:11px; border-width:2.5px; }
+  .grade.ungraded { border-style:dashed; border-color:var(--line); color:var(--faint); }
+
+  /* ===== controls (tabs + filters/sort/add) ===== */
+  .controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:6px 0 12px; }
+  .controls .spacer { flex:1; }
+  .sortwrap { display:inline-flex; align-items:center; gap:6px; color:var(--muted); font-size:13px; cursor:pointer; padding:0 4px; }
+  .sortwrap .material-symbols-outlined { font-size:18px; }
+  /* ===== single filter row + advanced panel (variant A — ported from catalog.html) ===== */
+  .minirange{width:96px;height:5px;border-radius:3px;background:var(--panel2);position:relative;} .minirange .sel{position:absolute;left:20%;right:42%;height:5px;border-radius:3px;background:var(--accent);} .minirange .h{position:absolute;top:-5px;width:14px;height:14px;border-radius:50%;background:var(--accent);transform:translateX(-50%);} .minirange .h.a{left:20%}.minirange .h.b{left:58%}
+  /* Jira-style filter dropdowns */
+  .fdrop{position:relative;}
+  .fbtn{font-family:'Hanken Grotesk';font-weight:600;font-size:13px;display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border:.5px solid var(--line);background:var(--panel2);color:var(--ink);border-radius:9px;cursor:pointer;}
+  .fbtn:hover{background:var(--elevate);border-color:color-mix(in srgb,var(--accent) 35%,var(--line));}
+  .fbtn .material-symbols-outlined{font-size:17px;color:var(--muted);} .fbtn .caret{font-size:18px;}
+  /* Jira compound filter chips */
+  .fpop{position:absolute;top:calc(100% + 6px);left:0;z-index:45;width:238px;background:var(--bg);border:.5px solid var(--line);border-radius:12px;box-shadow:0 16px 44px rgba(0,0,0,.22);padding:8px;display:none;}
+  .fpop.open{display:block;}
+  .opsel{display:flex;align-items:center;justify-content:space-between;border:.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12.5px;color:var(--muted);margin-bottom:8px;} .opsel .material-symbols-outlined{font-size:16px;}
+  .fopt{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:8px;font-size:13.5px;color:var(--ink);cursor:pointer;} .fopt:hover{background:var(--hover);}
+  .fopt .box{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--line);display:grid;place-items:center;flex:none;color:var(--onaccent);} .fopt .box .material-symbols-outlined{font-size:14px;opacity:0;}
+  .fopt.on .box{background:var(--accent);border-color:var(--accent);} .fopt.on .box .material-symbols-outlined{opacity:1;}
+  .fopt .ic{color:var(--muted);font-size:18px;}
+  .fpop .foot{border-top:.5px solid var(--line);margin-top:6px;padding-top:4px;} .fpop .foot a{color:var(--accent);font-size:12.5px;font-weight:600;cursor:pointer;padding:7px 9px;display:inline-block;}
+  /* single filter row + advanced row */
+  .frow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 12px;}
+  .vsep{width:1px;height:24px;background:var(--line);}
+  .fbtn.on{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:var(--accent);color:var(--accent);} .fbtn.on .material-symbols-outlined{color:var(--accent);}
+  .advrow{display:none;flex-direction:column;gap:10px;margin:0 0 14px;padding:14px 16px;background:var(--panel);border:.5px solid var(--line);border-radius:12px;}
+  .advrow.open{display:flex;}
+  .advhd{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:700;color:var(--faint);}
+  .advsec{display:flex;align-items:flex-start;gap:14px;}
+  .advsec .advlbl{width:70px;flex:none;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700;padding-top:8px;}
+  .advsec .advctl{display:flex;align-items:center;gap:7px;flex-wrap:wrap;flex:1;min-width:0;}
+  .advsec .advctl.tempo{gap:12px;min-height:31px;}
+  /* token pickers (Tags / Pattern / Key) — search + enter → chip, × to remove */
+  .advctl.tokens{gap:6px;}
+  .chip.tok{padding-right:8px;cursor:default;}
+  .chip.tok .x{font-size:15px;margin-left:3px;opacity:.8;cursor:pointer;border-radius:50%;line-height:1;}
+  .chip.tok .x:hover{opacity:1;background:color-mix(in srgb,var(--onaccent) 25%,transparent);}
+  .tokin{position:relative;display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px dashed color-mix(in srgb,var(--accent) 32%,var(--line));border-radius:999px;}
+  .tokin > .material-symbols-outlined{font-size:15px;color:var(--faint);}
+  .tokin input{border:none;background:transparent;outline:none;font-family:'Hanken Grotesk';font-weight:500;font-size:13px;color:var(--ink);width:90px;padding:0;}
+  .tokin input::placeholder{color:var(--faint);}
+  .tokpop{position:absolute;top:calc(100% + 7px);left:0;min-width:172px;background:var(--bg);border:.5px solid var(--line);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);padding:5px;display:none;z-index:50;max-height:210px;overflow:auto;}
+  .tokpop.open{display:block;}
+  .tokpop .s{padding:8px 9px;border-radius:7px;font-size:13px;color:var(--ink);cursor:pointer;}
+  .tokpop .s:hover,.tokpop .s.hi{background:var(--hover);}
+
+  /* ===== continue ===== */
+  .continue { display:flex; align-items:center; gap:15px; border-radius:16px; padding:14px 18px; margin:0 0 16px; cursor:pointer;
+    background:linear-gradient(100deg, color-mix(in srgb,var(--accent) 14%,var(--panel)), var(--panel));
+    border:.5px solid color-mix(in srgb,var(--accent) 30%,var(--line)); }
+  .continue .cv { width:48px; height:48px; border-radius:12px; background:var(--accent); color:var(--onaccent); display:grid; place-items:center; flex:none; }
+  .continue .cv .material-symbols-outlined { font-size:26px; }
+  .continue .clbl { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--accent); font-weight:700; }
+  .continue h3 { margin:2px 0 3px; font-family:'Bricolage Grotesque'; font-size:16px; font-weight:600; }
+  .continue .csub { color:var(--muted); font-size:12.5px; }
+
+  /* ===== table (no row #) ===== */
+  .thead, .trow { display:grid; grid-template-columns:1fr 58px 86px 96px 46px; align-items:center; gap:12px; }
+  .thead { padding:4px 14px 9px; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--faint); font-weight:700; }
+  .thead .r{text-align:right} .thead .c{text-align:center}
+  .tbody { display:flex; flex-direction:column; gap:7px; }
+  .trow { background:var(--panel); border:.5px solid var(--line); border-radius:13px; padding:11px 14px; cursor:pointer; color:var(--ink);
+    text-align:left; transition:transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+  .trow:hover { transform:translateY(-1px); border-color:color-mix(in srgb,var(--accent) 45%,var(--line)); box-shadow:0 5px 18px color-mix(in srgb,var(--accent) 12%,transparent); }
+  .nameC { display:flex; align-items:center; gap:12px; min-width:0; }
+  .cover { width:42px; height:42px; border-radius:10px; flex:none; display:grid; place-items:center; background:color-mix(in srgb,var(--accent) 15%,transparent); color:var(--accent); }
+  .cover .material-symbols-outlined { font-size:22px; }
+  .cover.lesson { background:color-mix(in srgb,var(--learn-text) 15%,transparent); color:var(--learn-text); }
+  .nm{min-width:0;}
+  .nmtitle { font-weight:600; font-size:14.5px; color:var(--ink); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .nmsub { color:var(--muted); font-size:12px; margin-top:2px; display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .badge { font-size:9.5px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:2px 7px; border-radius:5px; background:var(--panel2); color:var(--muted); }
+  .badge.beat{color:var(--accent);background:color-mix(in srgb,var(--accent) 14%,transparent);}
+  .badge.rud{color:var(--learn-text);background:color-mix(in srgb,var(--learn-text) 15%,transparent);}
+  .badge.fill{color:#D2664A;background:color-mix(in srgb,#E0795F 16%,transparent);}
+  /* G-8 row icons more visible */
+  .flags { display:inline-flex; gap:7px; color:var(--muted); }
+  .flags .material-symbols-outlined { font-size:17px; }
+  .flags .parts { color:var(--accent); }
+  /* G-8: media/parts icons get their own right-aligned cluster, off the instruments line */
+  .nameC .nm { flex:1; }
+  .nameC > .flags { margin-left:auto; padding-left:12px; flex:none; }
+  .levelC { display:flex; justify-content:center; }
+  .bpmC { text-align:right; font-family:'Geist Mono'; font-size:13px; color:var(--ink); }
+  /* G-7 BEST encodes status: — / X% / 100% special */
+  .bestC { text-align:right; font-size:12.5px; }
+  .bestC .pct { color:var(--grade-green); font-weight:700; font-family:'Geist Mono'; }
+  .bestC .full { background:var(--accent); color:var(--onaccent); font-family:'Geist Mono'; font-weight:700; padding:3px 8px; border-radius:999px; display:inline-flex; align-items:center; gap:4px; }
+  .bestC .full .material-symbols-outlined { font-size:13px; }
+  .bestC .none { color:var(--faint); }
+  /* G-9 play = accent play_circle on panel */
+  .playC { display:flex; justify-content:flex-end; }
+  .play { width:36px; height:36px; border-radius:50%; background:var(--panel); color:var(--accent); border:none; display:grid; place-items:center;
+    cursor:pointer; transition:transform var(--dur-micro) var(--ease), background-color var(--dur-fast) var(--ease); }
+  .play:hover { background:var(--hover); } .play:active { transform:scale(.93); }
+  .play .material-symbols-outlined { font-size:24px; }
+
+  .loadmore { text-align:center; margin-top:16px; }
+  .loadmore .cnt { color:var(--faint); font-size:12px; margin-bottom:9px; }
+
+  /* ===== detail ===== */
+  .dhead { display:flex; gap:18px; align-items:center; margin:4px 0; }
+  .dhead .cover { width:80px; height:80px; border-radius:18px; }
+  .dhead .cover .material-symbols-outlined { font-size:38px; }
+  .metaline { color:var(--muted); font-size:14px; margin-top:7px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .dot{width:3px;height:3px;border-radius:50%;background:var(--faint);display:inline-block;}
+  .actions { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:20px 0 4px; }
+  .panel { background:var(--panel); border:.5px solid var(--line); border-radius:14px; padding:16px 18px; }
+  .tags { display:flex; gap:7px; flex-wrap:wrap; margin-top:13px; }
+  .tagmini { font-size:12px; color:var(--muted); background:var(--panel2); border:.5px solid var(--line); padding:4px 10px; border-radius:999px; }
+  /* history */
+  .histtop { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
+  .stat { flex:1; min-width:118px; background:var(--panel); border:.5px solid var(--line); border-radius:12px; padding:13px 15px; }
+  .stat .k { font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); font-weight:700; }
+  .stat .v { font-family:'Geist Mono'; font-weight:700; font-size:22px; margin-top:5px; }
+  .stat .v.good { color:var(--grade-green); }
+  /* G-12 new-best sits with the date (left); result stays aligned (right) */
+  .hrow { display:flex; align-items:center; justify-content:space-between; padding:10px 2px; border-bottom:.5px solid var(--line); font-size:13px; }
+  .hrow:last-child{border-bottom:none}
+  .hrow .when { display:flex; align-items:center; gap:9px; color:var(--muted); }
+  .hrow .res { font-family:'Geist Mono'; color:var(--ink); }
+  .spark { display:flex; align-items:flex-end; gap:3px; height:30px; }
+  .spark i { width:7px; background:color-mix(in srgb,var(--accent) 45%,transparent); border-radius:2px 2px 0 0; }
+  .spark i.best { background:var(--accent); }
+  .emptyhist { color:var(--faint); font-size:13px; background:var(--panel); border:.5px dashed var(--line); border-radius:12px; padding:16px; text-align:center; }
+
+  /* steps */
+  .bestoverall { display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--muted); background:var(--panel2); border:.5px solid var(--line); border-radius:999px; padding:6px 13px; }
+  .bestoverall b { color:var(--grade-green); font-family:'Geist Mono'; }
+  .steplist { display:flex; flex-direction:column; gap:8px; }
+  .step { display:flex; align-items:center; gap:15px; background:var(--panel); border:.5px solid var(--line); border-radius:12px; padding:13px 15px; transition:border-color var(--dur-fast) var(--ease); }
+  .step:hover { border-color:color-mix(in srgb,var(--accent) 40%,var(--line)); }
+  .stepno { width:38px; height:38px; border-radius:11px; background:var(--panel2); color:var(--ink); display:grid; place-items:center; font-family:'Geist Mono'; font-size:17px; font-weight:700; flex:none; }
+  .stepbody{flex:1;min-width:0;} .steptitle{font-weight:600;font-size:15px;} .stepsub{color:var(--faint);font-size:12.5px;margin-top:2px;}
+  .ladder { display:inline-flex; align-items:center; gap:7px; flex:none; }
+  .ladder .num{font-size:13px;color:var(--muted);} .ladder .arr{color:var(--faint);}
+  .ladder .bar { width:50px; height:5px; border-radius:3px; background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 25%,transparent)); }
+  .playmini { width:38px; height:38px; border-radius:50%; flex:none; background:var(--panel); color:var(--accent); display:grid; place-items:center; cursor:pointer; border:none; }
+  .playmini .material-symbols-outlined{font-size:30px;}
+
+  /* stubs */
+  .stub { text-align:center; padding:44px 20px; border:1px dashed var(--line); border-radius:18px; background:var(--panel); margin-top:12px; }
+  .stub .big { width:70px; height:70px; border-radius:20px; margin:0 auto 14px; display:grid; place-items:center; background:color-mix(in srgb,var(--accent) 15%,transparent); color:var(--accent); }
+  .stub .big .material-symbols-outlined{font-size:36px;}
+  .stub h1{font-size:21px;} .stub p{color:var(--muted);font-size:14px;max-width:430px;margin:8px auto 0;}
+  .donut{width:112px;height:112px;border-radius:50%;margin:0 auto;display:grid;place-items:center;background:conic-gradient(var(--accent) 0 92%,var(--panel2) 92% 100%);}
+  .donut .hole{width:82px;height:82px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-family:'Geist Mono';font-weight:700;font-size:23px;}
+  .faketl{max-width:360px;margin:20px auto 0;height:6px;border-radius:999px;background:var(--panel2);position:relative;}
+  .faketl .fill{position:absolute;left:0;top:0;height:6px;width:42%;border-radius:999px;background:var(--accent);}
+  .faketl .hd{position:absolute;top:-6px;left:42%;width:18px;height:18px;border-radius:50%;background:var(--accent);transform:translateX(-50%);}
+
+  /* add / cms */
+  .adminbar { display:inline-flex; align-items:center; gap:7px; font-size:12px; color:var(--learn-text); background:color-mix(in srgb,var(--learn-text) 14%,transparent); border-radius:999px; padding:5px 12px; margin-bottom:14px; }
+  .form{display:flex;flex-direction:column;gap:16px;} .field{display:flex;flex-direction:column;gap:7px;}
+  .field label{font-size:12px;font-weight:600;color:var(--muted);} .field .inp{width:100%;}
+  .drop{border:1.5px dashed color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:14px;padding:24px;text-align:center;color:var(--muted);background:color-mix(in srgb,var(--accent) 5%,transparent);}
+  .drop .material-symbols-outlined{font-size:30px;color:var(--accent);}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .addstep{border:.5px dashed var(--line);border-radius:11px;padding:11px 14px;color:var(--muted);font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .addstep:hover{border-color:color-mix(in srgb,var(--accent) 45%,var(--line));color:var(--ink);}
+  .stepmini{display:flex;align-items:center;gap:10px;background:var(--panel);border:.5px solid var(--line);border-radius:11px;padding:9px 13px;font-size:13.5px;}
+  .stepmini .no{width:24px;height:24px;border-radius:7px;background:var(--panel2);color:var(--ink);display:grid;place-items:center;font-family:'Geist Mono';font-weight:700;font-size:12px;flex:none;}
+  .stepmini .sp{flex:1;} .stepmini .ic{color:var(--faint);cursor:pointer;font-size:18px;} .stepmini .ic:hover{color:var(--accent);}
+  textarea.tex{min-height:120px;font-family:'Geist Mono';font-size:13px;line-height:1.5;resize:vertical;width:100%;}
+  .admintag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;background:color-mix(in srgb,var(--learn-text) 18%,transparent);color:var(--learn-text);padding:2px 5px;border-radius:5px;margin-left:5px;}
+
+  .hintbar { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:50; display:flex; align-items:center; gap:10px;
+    background:var(--elevate); border:.5px solid var(--line); border-radius:999px; padding:9px 9px 9px 16px; box-shadow:0 8px 30px rgba(0,0,0,.22);
+    font-size:12.5px; color:var(--muted); max-width:92vw; }
+  .hintbar b{color:var(--accent);font-weight:600;}
+  .hintbar .x{cursor:pointer;color:var(--faint);display:grid;place-items:center;width:26px;height:26px;border-radius:50%;}
+  .hintbar .x:hover{background:var(--hover);color:var(--ink);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== TOP BAR: logo · search · MIDI · theme · settings ===== -->
+  <div class="topbar">
+    <span class="logo"><span class="mark"><svg viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/><svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor"><path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z"/></svg></svg></span> NotationHero</span>
+    <div class="topsearch"><span class="material-symbols-outlined">search</span><input class="inp" placeholder="Search songs &amp; lessons — title or artist…"></div>
+    <button class="midi disconnected" title="MIDI — disconnected"><span class="material-symbols-outlined">piano</span></button>
+    <button class="toggle-btn" onclick="theme()" title="Theme"><span class="material-symbols-outlined" id="themeicon">dark_mode</span></button>
+    <button class="toggle-btn" title="Settings"><span class="material-symbols-outlined">settings</span></button>
+  </div>
+
+  <!-- ===== CATALOG ===== -->
+  <section class="screen active" id="catalog">
+
+    <!-- SINGLE filter row (variant A — ported from catalog.html) -->
+    <div class="frow">
+      <div class="seg" id="typeseg"><button class="sel" onclick="primaryTab('songs',this)"><span class="material-symbols-outlined">music_note</span> Songs</button><button onclick="primaryTab('lessons',this)"><span class="material-symbols-outlined">school</span> Lessons</button></div>
+      <span class="vsep"></span>
+      <div class="fdrop"><button class="fbtn" id="dynChip" onclick="toggleMenu('dynPop',event)">Genre <span class="material-symbols-outlined caret">expand_more</span></button><div class="fpop" id="dynPop"></div></div>
+      <div class="fdrop"><button class="fbtn" onclick="toggleMenu('lvlPop',event)">Level: ≤ 4 <span class="material-symbols-outlined caret">expand_more</span></button>
+        <div class="fpop" id="lvlPop"><div class="opsel">Level is at most (≤) <span class="material-symbols-outlined">unfold_more</span></div><div style="display:flex;gap:6px;flex-wrap:wrap;padding:3px 4px 4px"><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">1</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">2</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">3</span><span class="grade" style="width:26px;height:26px;font-size:11px;background:color-mix(in srgb,var(--accent) 13%,transparent)">4</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">5</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">6</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">8</span><span class="grade" style="width:26px;height:26px;font-size:11px;opacity:.4">10</span></div><div class="foot"><a onclick="event.stopPropagation()">Clear</a></div></div>
+      </div>
+      <div class="fdrop"><button class="fbtn" onclick="toggleMenu('instPop',event)">Instrument <span class="material-symbols-outlined caret">expand_more</span></button>
+        <div class="fpop" id="instPop"><div class="opsel">Instrument is any of <span class="material-symbols-outlined">unfold_more</span></div><div class="fopt on" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">graphic_eq</span> Drums</div><div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">queue_music</span> Guitar</div><div class="fopt" onclick="event.stopPropagation();this.classList.toggle('on')"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">piano</span> Keys</div><div class="foot"><a onclick="event.stopPropagation()">Clear</a></div></div>
+      </div>
+      <button class="fbtn" id="moreBtn" onclick="toggleMore()"><span class="material-symbols-outlined">tune</span> More <span class="material-symbols-outlined caret">expand_more</span></button>
+      <span style="flex:1"></span>
+      <span class="sortwrap"><span class="material-symbols-outlined">swap_vert</span> Relevance</span>
+      <button class="btn btn-secondary" onclick="go('add')" title="Upload a song or lesson"><span class="material-symbols-outlined">upload</span> Upload</button>
+    </div>
+    <!-- advanced panel — shown when More is toggled; ALL options inline (range or chips), NO dropdowns -->
+    <div class="advrow" id="advRow">
+      <div class="advhd">Advanced</div>
+
+      <!-- Tempo — inline range (dual-handle BPM slider), no dropdown -->
+      <div class="advsec">
+        <div class="advlbl">Tempo</div>
+        <div class="advctl tempo">
+          <span class="minirange" style="display:block;width:158px"><span class="sel"></span><span class="h a"></span><span class="h b"></span></span>
+          <span class="num faint" style="font-size:11.5px">80–120 BPM</span>
+        </div>
+      </div>
+
+      <!-- Time — inline chips -->
+      <div class="advsec">
+        <div class="advlbl">Time</div>
+        <div class="advctl">
+          <button class="chip on" onclick="this.classList.toggle('on')">4/4</button><button class="chip" onclick="this.classList.toggle('on')">3/4</button><button class="chip" onclick="this.classList.toggle('on')">6/8</button><button class="chip" onclick="this.classList.toggle('on')">7/8</button><button class="chip" onclick="this.classList.toggle('on')">5/4</button>
+        </div>
+      </div>
+
+      <!-- Tags — token picker (many options): search → enter → chip, × to remove -->
+      <div class="advsec">
+        <div class="advlbl">Tags</div>
+        <div class="advctl tokens" data-filter="tags">
+          <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add tag…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
+          <button class="chip on tok" data-val="ghost-notes">ghost-notes <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="syncopation">syncopation <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
+        </div>
+      </div>
+
+      <!-- Skill — inline chips with icons -->
+      <div class="advsec">
+        <div class="advlbl">Skill</div>
+        <div class="advctl">
+          <button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">timer</span> Timing</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">call_split</span> Independence</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">tune</span> Control</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">sync</span> Coordination</button><button class="chip" onclick="this.classList.toggle('on')"><span class="material-symbols-outlined">speed</span> Speed</button>
+        </div>
+      </div>
+
+      <!-- Pattern — token picker (many options) -->
+      <div class="advsec">
+        <div class="advlbl">Pattern</div>
+        <div class="advctl tokens" data-filter="pattern">
+          <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add pattern…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
+          <button class="chip on tok" data-val="16th-note">16th-note <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
+        </div>
+      </div>
+
+      <!-- Key — token picker (flats + sharps = many options) -->
+      <div class="advsec">
+        <div class="advlbl">Key</div>
+        <div class="advctl tokens" data-filter="key">
+          <span class="tokin"><span class="material-symbols-outlined">search</span><input placeholder="Add key…" onkeydown="tokKey(this,event)" oninput="tokSuggest(this)" onfocus="tokSuggest(this)"><div class="tokpop"></div></span>
+          <button class="chip on tok" data-val="C">C <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="F#">F♯ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button><button class="chip on tok" data-val="Bb">B♭ <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- continue -->
+    <div class="continue" onclick="go('player')">
+      <div class="cv"><span class="material-symbols-outlined">play_circle</span></div>
+      <div style="flex:1"><div class="clbl">Continue</div><h3>Stadium Beat <span class="faint" style="font-weight:400;font-size:13px">· Rock</span></h3><div class="csub">last 82% · 116 <span class="num">BPM</span> · Chorus 1</div></div>
+      <button class="btn btn-primary"><span class="material-symbols-outlined">play_arrow</span> Resume</button>
+    </div>
+
+    <!-- SONGS -->
+    <div id="list-songs">
+      <div class="thead"><span>Name</span><span class="c">Level</span><span class="r">BPM</span><span class="r">Best</span><span></span></div>
+      <div class="tbody">
+        <!-- dense row: all icons + score -->
+        <div class="trow" onclick="go('song')">
+          <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm"><div class="nmtitle">Stadium Beat</div>
+              <div class="nmsub">Rock <span class="dot"></span> 4/4 <span class="dot"></span> key A <span class="dot"></span> drums·guitar</div></div>
+            <span class="flags"><span class="material-symbols-outlined">volume_up</span><span class="material-symbols-outlined">smart_display</span><span class="material-symbols-outlined parts">splitscreen</span></span></div>
+          <span class="levelC"><span class="grade">3</span></span>
+          <span class="bpmC">116</span>
+          <span class="bestC"><span class="pct">92%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_circle</span></button></span>
+        </div>
+        <!-- 100% = mastered (BEST encodes it) -->
+        <div class="trow" onclick="go('song')">
+          <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm"><div class="nmtitle">Light Pop</div><div class="nmsub">Pop <span class="dot"></span> 4/4 <span class="dot"></span> drums</div></div></div>
+          <span class="levelC"><span class="grade">2</span></span>
+          <span class="bpmC">120</span>
+          <span class="bestC"><span class="full"><span class="material-symbols-outlined">emoji_events</span>100%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_circle</span></button></span>
+        </div>
+        <div class="trow" onclick="go('song')">
+          <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm"><div class="nmtitle">Funk Groove</div><div class="nmsub">Funk <span class="dot"></span> 4/4 <span class="dot"></span> drums</div></div><span class="flags"><span class="material-symbols-outlined">volume_up</span></span></div>
+          <span class="levelC"><span class="grade">5</span></span>
+          <span class="bpmC">104</span>
+          <span class="bestC"><span class="pct">88%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_circle</span></button></span>
+        </div>
+        <div class="trow" onclick="go('song')">
+          <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm"><div class="nmtitle">Odd-Meter Étude</div><div class="nmsub">Jazz <span class="dot"></span> 7/8 <span class="dot"></span> drums</div></div></div>
+          <span class="levelC"><span class="grade">10</span></span>
+          <span class="bpmC">132</span>
+          <span class="bestC"><span class="none">—</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_circle</span></button></span>
+        </div>
+        <div class="trow" onclick="go('song')">
+          <div class="nameC"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+            <div class="nm"><div class="nmtitle">Soul Fusion <span class="pill pill-new">New</span></div><div class="nmsub">Soul <span class="dot"></span> 6/8 <span class="dot"></span> drums·keys</div></div></div>
+          <span class="levelC"><span class="grade ungraded">—</span></span>
+          <span class="bpmC">100</span>
+          <span class="bestC"><span class="none">—</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_circle</span></button></span>
+        </div>
+      </div>
+      <div class="loadmore"><div class="cnt">showing 5 of 24</div><button class="btn btn-secondary">Load more <span class="material-symbols-outlined">expand_more</span></button></div>
+    </div>
+
+    <!-- LESSONS -->
+    <div id="list-lessons" style="display:none">
+      <div class="thead"><span>Name</span><span class="c">Level</span><span class="r">BPM</span><span class="r">Best</span><span></span></div>
+      <div class="tbody">
+        <div class="trow" data-kind="beat" onclick="go('lesson')">
+          <div class="nameC"><div class="cover lesson"><span class="material-symbols-outlined">graphic_eq</span></div>
+            <div class="nm"><div class="nmtitle">8th-Note Rock — Layered Groove <span class="badge beat">Beat</span></div><div class="nmsub">4 steps <span class="dot"></span> timing·independence <span class="dot"></span> uses Rock&nbsp;8th</div></div></div>
+          <span class="levelC"><span class="grade">2</span></span><span class="bpmC">60→120</span><span class="bestC"><span class="pct">76%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_circle</span></button></span>
+        </div>
+        <div class="trow" data-kind="rud" onclick="go('lesson')">
+          <div class="nameC"><div class="cover lesson"><span class="material-symbols-outlined">drag_indicator</span></div>
+            <div class="nm"><div class="nmtitle">Single Paradiddle <span class="badge rud">Rudiment</span></div><div class="nmsub">6 steps <span class="dot"></span> hands·control</div></div></div>
+          <span class="levelC"><span class="grade">2</span></span><span class="bpmC">50→140</span><span class="bestC"><span class="pct">64%</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_circle</span></button></span>
+        </div>
+        <div class="trow" data-kind="fill" onclick="go('lesson')">
+          <div class="nameC"><div class="cover lesson" style="background:color-mix(in srgb,#E0795F 16%,transparent);color:#D2664A"><span class="material-symbols-outlined">bolt</span></div>
+            <div class="nm"><div class="nmtitle">Tom Fills — 4-Bar Transitions <span class="badge fill">Fill</span> <span class="pill pill-new">New</span></div><div class="nmsub">5 steps <span class="dot"></span> coordination <span class="dot"></span> pairs with Rock beats</div></div></div>
+          <span class="levelC"><span class="grade">3</span></span><span class="bpmC">70→120</span><span class="bestC"><span class="none">—</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_circle</span></button></span>
+        </div>
+        <div class="trow" data-kind="beat" onclick="go('lesson')">
+          <div class="nameC"><div class="cover lesson"><span class="material-symbols-outlined">graphic_eq</span></div>
+            <div class="nm"><div class="nmtitle">Funk Sixteenths <span class="badge beat">Beat</span></div><div class="nmsub">5 steps <span class="dot"></span> ghost-notes</div></div></div>
+          <span class="levelC"><span class="grade">4</span></span><span class="bpmC">70→110</span><span class="bestC"><span class="none">—</span></span>
+          <span class="playC"><button class="play" onclick="event.stopPropagation();go('player')"><span class="material-symbols-outlined">play_circle</span></button></span>
+        </div>
+      </div>
+      <div class="loadmore"><div class="cnt">showing 4 of 31</div><button class="btn btn-secondary">Load more <span class="material-symbols-outlined">expand_more</span></button></div>
+    </div>
+  </section>
+
+  <!-- ===== SONG DETAIL (history; new-best near date) ===== -->
+  <section class="screen" id="song">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <div class="dhead"><div class="cover"><span class="material-symbols-outlined">music_note</span></div>
+      <div><h1>Stadium Beat</h1><div class="metaline"><span class="grade sm">3</span> Rock <span class="dot"></span> 116 <span class="num">BPM</span> <span class="dot"></span> 4/4 <span class="dot"></span> key A <span class="dot"></span> drums·guitar</div></div></div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span> Play full</button>
+      <button class="btn btn-secondary" onclick="go('breakdown')"><span class="material-symbols-outlined">splitscreen</span> Practice in parts</button>
+      <button class="btn btn-ghost"><span class="material-symbols-outlined">volume_up</span> Audio</button>
+    </div>
+    <h2>Your history</h2>
+    <div class="histtop">
+      <div class="stat"><div class="k">Best</div><div class="v good">92%</div></div>
+      <div class="stat"><div class="k">Top tempo</div><div class="v">116<span style="font-size:13px;color:var(--faint)"> bpm</span></div></div>
+      <div class="stat"><div class="k">Sessions</div><div class="v">14</div></div>
+      <div class="stat"><div class="k">Trend</div><div class="spark" style="margin-top:8px"><i style="height:40%"></i><i style="height:55%"></i><i style="height:50%"></i><i style="height:70%"></i><i style="height:78%"></i><i class="best" style="height:92%"></i></div></div>
+    </div>
+    <div class="panel" style="margin-top:8px">
+      <div class="hrow"><span class="when">2 days ago <span class="pill pill-best">new best</span></span><span class="res">92% · 116 BPM</span></div>
+      <div class="hrow"><span class="when">5 days ago</span><span class="res">85% · 110 BPM</span></div>
+      <div class="hrow"><span class="when">1 week ago</span><span class="res">78% · 104 BPM</span></div>
+    </div>
+    <div class="panel" style="margin-top:14px"><div class="muted" style="font-size:13.5px;line-height:1.5">A driving stadium-rock groove — four-on-the-floor kick, big backbeat, crash accents on the chorus.</div>
+      <div class="tags"><span class="tagmini">rock</span><span class="tagmini">backbeat</span><span class="tagmini">steady-time</span></div></div>
+  </section>
+
+  <!-- ===== BREAKDOWN ===== -->
+  <section class="screen" id="breakdown">
+    <button class="backlink" onclick="go('song')"><span class="material-symbols-outlined">arrow_back</span> Stadium Beat</button>
+    <h1>Practice in parts</h1>
+    <div class="metaline" style="margin-top:6px">6 sections · slices of the song, each with its own tempo ladder <span class="bestoverall" style="margin-left:6px"><span class="material-symbols-outlined" style="font-size:16px">emoji_events</span> Best overall <b>89%</b></span></div>
+    <div class="actions" style="margin:18px 0"><button class="btn btn-primary" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span> Play all in sequence</button></div>
+    <div class="steplist">
+      <div class="step"><div class="stepno">1</div><div class="stepbody"><div class="steptitle">Intro</div><div class="stepsub">bars 1–8 · best 94%</div></div><div class="ladder"><span class="num">80</span><span class="arr">→</span><div class="bar"></div><span class="num">112</span></div><button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_circle</span></button></div>
+      <div class="step"><div class="stepno">2</div><div class="stepbody"><div class="steptitle">Verse 1</div><div class="stepsub">bars 9–24 · best 88%</div></div><div class="ladder"><span class="num">88</span><span class="arr">→</span><div class="bar"></div><span class="num">116</span></div><button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_circle</span></button></div>
+      <div class="step"><div class="stepno">3</div><div class="stepbody"><div class="steptitle">Chorus 1</div><div class="stepsub">bars 33–48 · best 85%</div></div><div class="ladder"><span class="num">96</span><span class="arr">→</span><div class="bar"></div><span class="num">120</span></div><button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_circle</span></button></div>
+      <div class="step"><div class="stepno">4</div><div class="stepbody"><div class="steptitle">Bridge</div><div class="stepsub">bars 49–64 · not yet</div></div><div class="ladder"><span class="num">90</span><span class="arr">→</span><div class="bar"></div><span class="num">116</span></div><button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_circle</span></button></div>
+    </div>
+  </section>
+
+  <!-- ===== LESSON DETAIL (now with history too — G-11) ===== -->
+  <section class="screen" id="lesson">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <div class="dhead"><div class="cover lesson"><span class="material-symbols-outlined">graphic_eq</span></div>
+      <div><h1>8th-Note Rock — Layered Groove</h1><div class="metaline"><span class="badge beat">Beat</span> <span class="grade sm">2</span> timing·independence <span class="dot"></span> uses <b style="color:var(--accent)">Rock 8th</b></div></div></div>
+    <div class="actions">
+      <button class="btn btn-primary" onclick="go('player')"><span class="material-symbols-outlined">play_arrow</span> Start from Step 1</button>
+      <span class="bestoverall"><span class="material-symbols-outlined" style="font-size:16px">emoji_events</span> Best overall <b>76%</b></span>
+    </div>
+
+    <h2>Your history</h2>
+    <div class="histtop">
+      <div class="stat"><div class="k">Best</div><div class="v good">76%</div></div>
+      <div class="stat"><div class="k">Top tempo</div><div class="v">110<span style="font-size:13px;color:var(--faint)"> bpm</span></div></div>
+      <div class="stat"><div class="k">Sessions</div><div class="v">6</div></div>
+      <div class="stat"><div class="k">Trend</div><div class="spark" style="margin-top:8px"><i style="height:35%"></i><i style="height:48%"></i><i style="height:55%"></i><i style="height:60%"></i><i class="best" style="height:76%"></i></div></div>
+    </div>
+    <div class="panel" style="margin-top:8px">
+      <div class="hrow"><span class="when">yesterday <span class="pill pill-best">new best</span></span><span class="res">Step 3 · 76% · 104 BPM</span></div>
+      <div class="hrow"><span class="when">3 days ago</span><span class="res">Step 2 · 82% · 100 BPM</span></div>
+      <div class="hrow"><span class="when">4 days ago</span><span class="res">Step 1 · 90% · 90 BPM</span></div>
+    </div>
+
+    <h2>4 steps · build the groove in layers</h2>
+    <div class="steplist">
+      <div class="step"><div class="stepno">1</div><div class="stepbody"><div class="steptitle">Hi-hat only</div><div class="stepsub">steady 8ths · best 90%</div></div><div class="ladder"><span class="num">60</span><span class="arr">→</span><div class="bar"></div><span class="num">90</span></div><button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_circle</span></button></div>
+      <div class="step"><div class="stepno">2</div><div class="stepbody"><div class="steptitle">+ Kick</div><div class="stepsub">four-on-the-floor · best 82%</div></div><div class="ladder"><span class="num">70</span><span class="arr">→</span><div class="bar"></div><span class="num">100</span></div><button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_circle</span></button></div>
+      <div class="step"><div class="stepno">3</div><div class="stepbody"><div class="steptitle">+ Snare</div><div class="stepsub">backbeat 2 &amp; 4 · best 71%</div></div><div class="ladder"><span class="num">80</span><span class="arr">→</span><div class="bar"></div><span class="num">110</span></div><button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_circle</span></button></div>
+      <div class="step"><div class="stepno">4</div><div class="stepbody"><div class="steptitle">Full groove</div><div class="stepsub">all together · not yet</div></div><div class="ladder"><span class="num">90</span><span class="arr">→</span><div class="bar"></div><span class="num">120</span></div><button class="playmini" onclick="go('player')"><span class="material-symbols-outlined">play_circle</span></button></div>
+    </div>
+  </section>
+
+  <!-- ===== ADD / CMS ===== -->
+  <section class="screen" id="add">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <span class="adminbar"><span class="material-symbols-outlined" style="font-size:15px">shield_person</span> Admin · CMS — same UI, admin-only actions</span>
+    <h1>Add to catalog</h1>
+    <div class="form" style="margin-top:18px">
+      <div class="field"><label>Type</label><div class="seg"><button class="sel"><span class="material-symbols-outlined">music_note</span> Song</button><button><span class="material-symbols-outlined">school</span> Lesson</button></div></div>
+      <div class="field"><label>Notation file (.gp / .gpx / .xml)</label>
+        <div class="drop"><span class="material-symbols-outlined">upload_file</span><div style="margin-top:6px">Drop a Guitar Pro / MusicXML file, or click to browse</div><div class="faint" style="font-size:11.5px;margin-top:4px">validated + quarantined on upload · title/bpm/instruments auto-seeded</div></div></div>
+      <div class="field"><label>Title</label><input class="inp" placeholder="Seeded from the file — editable"></div>
+      <div class="two"><div class="field"><label>Grade (level)</label><input class="inp" placeholder="e.g. 3"></div><div class="field"><label>Tempo (BPM)</label><input class="inp" placeholder="e.g. 116"></div></div>
+      <div class="two"><div class="field"><label>Time signature</label><input class="inp" placeholder="4/4"></div><div class="field"><label>Genre</label><input class="inp" placeholder="rock"></div></div>
+      <div class="field"><label>Instruments / tags</label><div style="display:flex;gap:7px;flex-wrap:wrap"><span class="chip on">drums</span><span class="chip">guitar</span><span class="chip">+ tag</span></div></div>
+      <div class="field"><label>Lesson steps <span class="faint">(lessons only — each: notation + start→goal BPM)</span></label>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:9px">
+          <div class="stepmini"><span class="no">1</span> Hi-hat only <span class="faint">· alphaTex · 60→90</span><span class="sp"></span><span class="material-symbols-outlined ic" onclick="go('addstep')">edit</span><span class="material-symbols-outlined ic">delete</span></div>
+          <div class="stepmini"><span class="no">2</span> + Kick <span class="faint">· alphaTex · 70→100</span><span class="sp"></span><span class="material-symbols-outlined ic" onclick="go('addstep')">edit</span><span class="material-symbols-outlined ic">delete</span></div>
+        </div>
+        <div class="addstep" onclick="go('addstep')"><span class="material-symbols-outlined">add</span> Add a step</div></div>
+      <div class="actions"><button class="btn btn-primary"><span class="material-symbols-outlined">save</span> Save draft</button><button class="btn btn-ghost" onclick="go('catalog')">Cancel</button></div>
+    </div>
+  </section>
+
+  <!-- ===== ADD STEP — lesson step editor (H-1 flow · H-2 alphaTex admin source) ===== -->
+  <section class="screen" id="addstep">
+    <button class="backlink" onclick="go('add')"><span class="material-symbols-outlined">arrow_back</span> Lesson form</button>
+    <span class="adminbar"><span class="material-symbols-outlined" style="font-size:15px">shield_person</span> Admin · CMS</span>
+    <h1>Add a step</h1>
+    <div class="form" style="margin-top:18px">
+      <div class="field"><label>Step title</label><input class="inp" placeholder="e.g. Hi-hat only · + Kick · Chorus 1"></div>
+      <div class="field"><label>Notation source</label>
+        <div class="seg" id="srcseg">
+          <button onclick="stepSrc('upload',this)"><span class="material-symbols-outlined">upload_file</span> Upload <span class="faint" style="margin-left:4px">default</span></button>
+          <button class="sel" onclick="stepSrc('tex',this)"><span class="material-symbols-outlined">code</span> alphaTex <span class="admintag">admin</span></button>
+          <button onclick="stepSrc('song',this)"><span class="material-symbols-outlined">content_cut</span> From a song <span class="admintag" style="background:color-mix(in srgb,var(--danger) 15%,transparent);color:var(--danger)">TBD</span></button>
+        </div>
+        <div class="faint" style="font-size:11.5px;margin-top:7px">Users only ever upload. alphaTex (inline authoring) + song-slicing are admin-only.</div>
+      </div>
+      <div class="field srcbox" id="src-upload" style="display:none"><div class="drop"><span class="material-symbols-outlined">upload_file</span><div style="margin-top:6px">Drop a .gp / .xml step file</div></div></div>
+      <div class="field srcbox" id="src-tex"><label>alphaTex <span class="faint">(authored inline — the common case for beats &amp; rudiments)</span></label>
+        <textarea class="inp tex" placeholder=":8 42 42 42 42 | 42 42 42 42      &lt;- hi-hat 8ths (alphaTex)"></textarea></div>
+      <div class="field srcbox" id="src-song" style="display:none"><label>Source song + bar range <span class="faint">(slice a published song)</span></label>
+        <input class="inp" placeholder="Search a published song…" style="width:100%;margin-bottom:10px">
+        <div class="two"><input class="inp" placeholder="start bar — e.g. 17"><input class="inp" placeholder="end bar — e.g. 24"></div>
+        <div class="faint" style="font-size:11.5px;margin-top:10px;display:flex;align-items:flex-start;gap:6px"><span class="material-symbols-outlined" style="font-size:15px;color:var(--danger)">warning</span> Partial Guitar Pro loading (bar-range slice) is <b style="color:var(--danger)">&nbsp;TBD / unspiked</b>&nbsp; — Jira ticket to follow. Steps default to alphaTex or upload.</div></div>
+      <div class="two"><div class="field"><label>Start BPM</label><input class="inp" placeholder="60"></div><div class="field"><label>Goal BPM <span class="faint">(the ladder)</span></label><input class="inp" placeholder="90"></div></div>
+      <div class="actions"><button class="btn btn-primary" onclick="go('add')"><span class="material-symbols-outlined">save</span> Save step</button><button class="btn btn-ghost" onclick="go('add')">Cancel</button></div>
+    </div>
+  </section>
+
+  <!-- ===== STUBS ===== -->
+  <section class="screen" id="player">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <div class="stub"><div class="big"><span class="material-symbols-outlined">play_circle</span></div><h1>Player</h1><p>Already designed — <b>stub</b>. Real reskin = <span class="num">player-flatrow-teal</span> (PR&nbsp;#23).</p>
+      <div class="faketl"><div class="fill"></div><div class="hd"></div></div>
+      <div class="actions" style="justify-content:center;margin-top:24px"><button class="btn btn-secondary" onclick="go('results')"><span class="material-symbols-outlined">stop_circle</span> End run → Results</button></div></div>
+  </section>
+  <section class="screen" id="results">
+    <button class="backlink" onclick="go('catalog')"><span class="material-symbols-outlined">arrow_back</span> Library</button>
+    <div class="stub"><div class="donut"><div class="hole">92%</div></div><h1 style="margin-top:16px">Results</h1><p>Already designed — <b>stub</b>. Real = <span class="num">results.html</span> (PR&nbsp;#23). Score is the per-user garnish (DynamoDB) → feeds history.</p>
+      <div style="margin-top:12px"><span class="pill pill-best"><span class="material-symbols-outlined" style="font-size:14px">emoji_events</span> New best · was 85%</span></div>
+      <div class="actions" style="justify-content:center;margin-top:24px"><button class="btn btn-secondary" onclick="go('player')"><span class="material-symbols-outlined">replay</span> Retry</button><button class="btn btn-primary" onclick="go('catalog')">Next <span class="material-symbols-outlined">arrow_forward</span></button></div></div>
+  </section>
+
+</div>
+
+<div class="hintbar" id="hint">
+  <span><b>v3</b> — tap a <b>row</b> → detail · row <b>▶</b> → quick-play · single <b>filter row</b> + <b>More</b> → advanced · <b>+ Add</b> → CMS · 🌙 theme.</span>
+  <span class="x" onclick="document.getElementById('hint').remove()"><span class="material-symbols-outlined" style="font-size:18px">close</span></span>
+</div>
+
+<script>
+  function go(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); document.getElementById(id).classList.add('active'); window.scrollTo(0,0); }
+  function theme(){ const h=document.documentElement; const dark=h.getAttribute('data-theme')==='dark'; h.setAttribute('data-theme',dark?'light':'dark'); document.getElementById('themeicon').textContent=dark?'dark_mode':'light_mode'; }
+  function primaryTab(which,btn){ document.querySelectorAll('#typeseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+    document.getElementById('list-songs').style.display=which==='songs'?'':'none';
+    document.getElementById('list-lessons').style.display=which==='lessons'?'':'none';
+    kSel={};
+    if(which==='lessons'){ document.getElementById('dynPop').innerHTML=KIND_MENU; document.getElementById('dynChip').innerHTML='Kind <span class="material-symbols-outlined caret">expand_more</span>'; document.querySelectorAll('#list-lessons .trow').forEach(function(r){r.style.display='';}); }
+    else { document.getElementById('dynPop').innerHTML=GENRE_MENU; document.getElementById('dynChip').innerHTML='Genre <span class="material-symbols-outlined caret">expand_more</span>'; } }
+  function stepSrc(which,btn){ document.querySelectorAll('#srcseg button').forEach(b=>b.classList.remove('sel')); btn.classList.add('sel');
+    ['upload','tex','song'].forEach(s=>{ document.getElementById('src-'+s).style.display=(s===which)?'':'none'; }); }
+
+  // ---- single filter row: dropdowns, dynamic Genre/Kind chip, More toggle (ported from catalog.html) ----
+  function toggleMenu(id,ev){ ev.stopPropagation(); var m=document.getElementById(id); var open=m.classList.contains('open'); document.querySelectorAll('.fpop').forEach(x=>x.classList.remove('open')); if(!open) m.classList.add('open'); }
+  document.addEventListener('click',function(){ document.querySelectorAll('.fpop').forEach(x=>x.classList.remove('open')); });
+  var kSel = {};
+  var KIND_MENU = '<div class="opsel">Kind is any of <span class="material-symbols-outlined">unfold_more</span></div>'
+    +'<div class="fopt" onclick="kPick(this,\'beat\',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">graphic_eq</span> Beats</div>'
+    +'<div class="fopt" onclick="kPick(this,\'rud\',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">drag_indicator</span> Rudiments</div>'
+    +'<div class="fopt" onclick="kPick(this,\'fill\',event)"><span class="box"><span class="material-symbols-outlined">check</span></span><span class="material-symbols-outlined ic">bolt</span> Fills</div>'
+    +'<div class="foot"><a onclick="kClear(event)">Clear selection</a></div>';
+  var GENRE_MENU = '<div class="opsel">Genre is any of <span class="material-symbols-outlined">unfold_more</span></div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Rock</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Pop</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Funk</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Jazz</div>'
+    +'<div class="fopt" onclick="gPick(this,event)"><span class="box"><span class="material-symbols-outlined">check</span></span> Soul</div>'
+    +'<div class="foot"><a onclick="event.stopPropagation()">Clear</a></div>';
+  document.getElementById('dynPop').innerHTML = GENRE_MENU;
+  function kPick(el,kind,ev){ ev.stopPropagation(); if(kSel[kind]){delete kSel[kind];el.classList.remove('on');}else{kSel[kind]=true;el.classList.add('on');}
+    var arr=Object.keys(kSel); var map={beat:'Beats',rud:'Rudiments',fill:'Fills'};
+    document.getElementById('dynChip').innerHTML=(arr.length?'Kind: '+map[arr[0]]+(arr.length>1?' +'+(arr.length-1):''):'Kind')+' <span class="material-symbols-outlined caret">expand_more</span>';
+    document.querySelectorAll('#list-lessons .trow').forEach(function(r){r.style.display=(arr.length===0||kSel[r.dataset.kind])?'':'none';}); }
+  function kClear(ev){ ev.stopPropagation(); kSel={}; document.querySelectorAll('#dynPop .fopt').forEach(function(o){o.classList.remove('on');}); document.getElementById('dynChip').innerHTML='Kind <span class="material-symbols-outlined caret">expand_more</span>'; document.querySelectorAll('#list-lessons .trow').forEach(function(r){r.style.display='';}); }
+  function gPick(el,ev){ ev.stopPropagation(); el.classList.toggle('on'); var sel=[].slice.call(document.querySelectorAll('#dynPop .fopt.on')).map(function(o){return o.textContent.trim();}); document.getElementById('dynChip').innerHTML=(sel.length?'Genre: '+sel[0]+(sel.length>1?' +'+(sel.length-1):''):'Genre')+' <span class="material-symbols-outlined caret">expand_more</span>'; }
+  function toggleMore(){ var a=document.getElementById('advRow'); var open=a.classList.toggle('open'); document.getElementById('moreBtn').classList.toggle('on',open); }
+
+  // ---- advanced token pickers (Tags / Pattern / Key): search → enter → chip, × to remove ----
+  var TOK_OPTS = {
+    tags: ['ghost-notes','syncopation','shuffle','double-kick','linear','flam','drag','blast-beat','half-time','open-hi-hat'],
+    pattern: ['8th-note','16th-note','triplets','paradiddle','single-stroke','double-stroke','flam-tap','six-stroke-roll'],
+    key: ['C','C♯','D♭','D','D♯','E♭','E','F','F♯','G♭','G','G♯','A♭','A','A♯','B♭','B','Am','Bm','C♯m','Dm','Em','F♯m','Gm']
+  };
+  function tokNorm(s){ return (s||'').toLowerCase().replace(/♯/g,'#').replace(/♭/g,'b').trim(); }
+  function tokRm(x,ev){ ev.stopPropagation(); x.closest('.chip').remove(); }
+  function tokSel(ctl){ return [].slice.call(ctl.querySelectorAll('.chip.tok')).map(function(c){return tokNorm(c.dataset.val);}); }
+  function tokAdd(ctl,val){ val=(val||'').trim(); if(!val) return; if(tokSel(ctl).indexOf(tokNorm(val))>-1) return;
+    var chip=document.createElement('button'); chip.className='chip on tok'; chip.dataset.val=val;
+    chip.innerHTML=val+' <span class="material-symbols-outlined x" onclick="tokRm(this,event)">close</span>';
+    ctl.appendChild(chip); /* input is pinned left; new chips flow to the right */ }
+  function tokSuggest(input){ var tokin=input.closest('.tokin'), ctl=input.closest('.advctl'), pop=tokin.querySelector('.tokpop');
+    var f=ctl.dataset.filter, q=tokNorm(input.value), sel=tokSel(ctl);
+    var opts=(TOK_OPTS[f]||[]).filter(function(o){ return sel.indexOf(tokNorm(o))<0 && tokNorm(o).indexOf(q)>-1; }).slice(0,8);
+    if(!opts.length){ pop.classList.remove('open'); pop.innerHTML=''; return; }
+    pop.innerHTML=opts.map(function(o,i){ return '<div class="s'+(i===0?' hi':'')+'" onmousedown="tokPick(this,event)">'+o+'</div>'; }).join('');
+    pop.classList.add('open'); }
+  function tokPick(s,ev){ ev.preventDefault(); var ctl=s.closest('.advctl'), input=ctl.querySelector('.tokin input'); tokAdd(ctl,s.textContent); input.value=''; tokSuggest(input); input.focus(); }
+  function tokKey(input,ev){ var pop=input.closest('.tokin').querySelector('.tokpop');
+    if(ev.key==='Enter'){ ev.preventDefault(); var ctl=input.closest('.advctl'); var hi=pop.querySelector('.s.hi')||pop.querySelector('.s'); tokAdd(ctl, hi?hi.textContent:input.value); input.value=''; tokSuggest(input); }
+    else if(ev.key==='Escape'){ pop.classList.remove('open'); input.blur(); } }
+  document.addEventListener('click',function(e){ if(!e.target.closest('.tokin')){ document.querySelectorAll('.tokpop').forEach(function(p){p.classList.remove('open');}); } });
+</script>
+</body>
+</html>

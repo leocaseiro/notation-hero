@@ -1,11 +1,13 @@
 {
+  "//": "Shared TypeScript defaults. Each workspace package has its own tsconfig (from its starter) and may extend this; it is also the root solution reference for dependency-cruiser path resolution.",
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "jsx": "react-jsx",
+    "lib": ["ES2022"],
     "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
@@ -14,12 +16,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "noEmit": true,
-    "baseUrl": ".",
-    "paths": {
-      "@core/*": ["core/*"],
-      "@adapters/*": ["adapters/*"],
-      "@apps/*": ["apps/*"]
-    }
+    "noEmit": true
   }
 }

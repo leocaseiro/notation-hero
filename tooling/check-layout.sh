@@ -11,7 +11,7 @@
 #
 #   1. No __tests__/, __mocks__/, or stories/ directories — group by domain, not file-type.
 #
-#   2. Role suffix required: every *.ts/*.tsx/*.mts/*.cts under core/ adapters/ apps/ infra/ ends
+#   2. Role suffix required: every *.ts/*.tsx/*.mts/*.cts under server/src/ ends
 #      in an approved role suffix (e.g. catalog-item.entity.ts, logger.port.ts, neon.adapter.ts).
 #      The suffix carries the role — this REPLACES the old PascalCase folder-per-entity rule.
 #      ESLint check-file owns the casing (kebab); this rule owns the suffix VOCABULARY. The set
@@ -28,8 +28,8 @@
 # Linux CI). BATS coverage is NH-40.
 set -euo pipefail
 
-# Run from the repo root so `git ls-files` yields repo-relative paths (the core/|adapters/|apps/|
-# infra/ case-matching below assumes top-level paths). Fail CLOSED if we're not inside a git work
+# Run from the repo root so `git ls-files` yields repo-relative paths (the server/src/ case-match
+# below assumes repo-relative paths). Fail CLOSED if we're not inside a git work
 # tree — a silent exit 0 here would make this gate fail open (PR #25 review #13).
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 [ -n "$ROOT" ] || { printf '::error::check-layout.sh must run inside the git work tree\n' >&2; exit 1; }
@@ -46,7 +46,7 @@ err() { printf '::error::%s\n' "$1" >&2; fail=1; }
 
 # Approved role suffixes (ADR 2026-06-12 D2 taxonomy). Extended-regex alternation for grep -E.
 # Refine the per-layer split in AGENTS.md; this global union enforces "every file declares a role".
-approved_suffix='entity|value-object|aggregate|event|specification|port|service|error|adapter|repository|mapper|client|handler|use-case|command|query|controller|dto|stack|infra|util'
+approved_suffix='entity|value-object|aggregate|event|specification|port|service|error|adapter|repository|mapper|client|handler|use-case|command|query|controller|dto|stack|infra|util|module|guard|pipe|interceptor|filter|middleware|strategy|resolver|schema|policy'
 
 # base name with all extensions stripped: Foo.ts->Foo, Foo.test.ts->Foo, X.stories.tsx->X
 strip_ext() {
@@ -92,22 +92,22 @@ while IFS= read -r -d '' f; do
   base="$(strip_ext "$f")"
   file="$(basename "$f")"
 
-  # Rule 2 — role suffix required for domain/application source (core/adapters/apps/infra only)
+  # Rule 2 — role suffix required for domain/application source (server/src/ only)
   case "$f" in
-    core/* | adapters/* | apps/* | infra/*)
+    server/src/*)
       case "$file" in
         # exempt: package/Nx entry + co-located test/spec/stories/fake markers (config/d.ts already
         # excluded by the scan). Patterns end in `.*` so .ts/.tsx/.mts/.cts variants all match — and
         # so legit *.stories.*/*.fake.* files aren't rejected for "missing a role suffix" (PR #25
         # review #2; strip_ext() already treats .stories/.fake as middle extensions).
-        index.ts | index.tsx | index.mts | index.cts | *.test.* | *.spec.* | *.stories.* | *.fake.*) : ;;
+        index.ts | index.tsx | index.mts | index.cts | main.ts | main.tsx | *.test.* | *.spec.* | *.stories.* | *.fake.*) : ;;
         *)
           # strip the TS extension (.ts/.tsx/.mts/.cts), then the token after the last dot is the
           # role suffix (none -> whole name)
           name="${file%.ts}"; name="${name%.tsx}"; name="${name%.mts}"; name="${name%.cts}"
           role="${name##*.}"
           if ! printf '%s' "$role" | grep -qE "^(${approved_suffix})$"; then
-            err "Missing role suffix: '$f' — files under core/adapters/apps/infra must end in an approved role suffix (e.g. .entity.ts, .port.ts, .adapter.ts; full set = the approved_suffix list at the top of this script, mirrored in docs/decisions/decision-registry.md NAME-suffix). Exempt: index.{ts,tsx,mts,cts}, *.config.*, *.d.*, *.test.*/*.spec.*, *.stories.*/*.fake.*."
+            err "Missing role suffix: '$f' — files under server/src/ must end in an approved role suffix (e.g. .entity.ts, .port.ts, .adapter.ts, .controller.ts, .module.ts; full set = the approved_suffix list at the top of this script, mirrored in docs/decisions/decision-registry.md NAME-suffix). Exempt: index.{ts,tsx,mts,cts}, main.{ts,tsx}, *.config.*, *.d.*, *.test.*/*.spec.*, *.stories.*/*.fake.*."
           fi
           ;;
       esac

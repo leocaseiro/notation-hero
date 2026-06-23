@@ -1,6 +1,6 @@
 # ADR — File-level structure contract & enforcement-tier strategy
 
-- **Status:** ✅ Accepted (ratified by leocaseiro, 2026-06-12). **Implementation is planned separately and NOT yet executed — no enforcement config has been changed by this ADR.**
+- **Status:** ♻️ **Partially superseded (2026-06-18, NH-194)** by [`2026-06-17-architecture-decisions.md`](2026-06-17-architecture-decisions.md): **`NAME-suffix` (suffix-everything) → relaxed to NestJS-native filenames** (ARCH-NAME-1; `core/` keeps the strict pure-domain subset `entity|value-object|aggregate|event|specification|port|policy`), and the **depcruise rules move from package/tag-level to folder-level** under `server/src/` (ARCH-GUARD-1). **Kept:** `D1` (depcruise earns its place) and test co-location. Original: ✅ Accepted (ratified by leocaseiro, 2026-06-12), never implemented.
 - **Date:** 2026-06-12
 - **Driver / Approver:** leocaseiro
 - **Evidence:**

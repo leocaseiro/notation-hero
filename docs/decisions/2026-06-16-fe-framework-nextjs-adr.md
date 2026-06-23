@@ -1,6 +1,6 @@
 # ADR — Front-end framework: Next.js (one source → SSR web + static Capacitor)
 
-- **Status:** ✅ Accepted (ratified by leocaseiro, 2026-06-16). Implementation tracked in **NH-185**; not yet executed.
+- **Status:** ⛔ **Superseded 2026-06-17** by [`2026-06-17-architecture-decisions.md`](2026-06-17-architecture-decisions.md) (`ARCH-FE-1`: Vite + TanStack SPA). leocaseiro chose 2026-06-17 to supersede this Next.js decision ("superseding whatever we decided yesterday"); the OpenNext SSR target is **not** being built. (Original: ✅ Accepted 2026-06-16, never implemented.)
 - **Date:** 2026-06-16
 - **Driver / Approver:** leocaseiro
 - **Ticket:** [NH-185](https://leocaseiro.atlassian.net/browse/NH-185) (Story under Epic [NH-177](https://leocaseiro.atlassian.net/browse/NH-177) "Catalog/CMS & Infra")
