@@ -4,16 +4,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "echo \"@notation-hero/infra: real ESLint target lands with the flat-config lane (NH-42)\"",
+    "lint": "echo \"@notation-hero/infra: dedicated ESLint lands with real IaC source\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit",
     "test": "node --test \"*.test.ts\"",
-    "pulumi:preview": "nx build @notation-hero/handler-hello && pulumi preview",
-    "pulumi:up": "nx build @notation-hero/handler-hello && pulumi up",
+    "pulumi:preview": "pulumi preview",
+    "pulumi:up": "pulumi up",
     "pulumi:destroy": "pulumi destroy"
   },
   "dependencies": {
-    "@pulumi/aws": "^7.32.0",
-    "@pulumi/pulumi": "^3.246.0"
+    "@pulumi/aws": "^7.34.0",
+    "@pulumi/pulumi": "^3.247.0"
   }
 }

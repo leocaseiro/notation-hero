@@ -4,19 +4,14 @@ on:
   push:
     branches: [master]
   pull_request:
-    # `edited` ensures pr-title re-validates when the title (or body/label) is
-    # changed. Without it, a user could open with a conventional title (pass),
-    # then edit to non-conventional after merge approval → squash bypass.
-    # Path-filtered jobs (quality/build/sast/deps-cve) still skip on metadata-
-    # only edits via the `changes` paths-filter, so cost is ~30-60s per edit.
+    # `edited` re-validates pr-title when the title/body/label changes (squash uses
+    # the PR title as the master subject). Path-filtered jobs still skip on
+    # metadata-only edits via the `changes` filter, so cost stays low.
     types: [opened, edited, synchronize, reopened]
-  # merge_group fires when GitHub's merge queue creates a synthetic merge commit
-  # between queued PRs and runs CI on the combined state. Two independently-green
-  # PRs that interact badly (different agents touching the same hot file) get
-  # caught HERE before they hit master. Free tier on public repos supports this.
-  # pr-title is gated to pull_request only (PR title already validated at PR time
-  # — no new title in the merge queue), so it skips here; ci-green treats skipped
-  # as OK. Closes registry L7-merge-queue.
+  # merge_group fires when GitHub's merge queue builds the combined state of queued
+  # PRs and runs CI on it — catches two independently-green PRs that interact badly.
+  # Free on public repos. pr-title/pr-checklist are pull_request-only (skip here;
+  # ci-green treats skipped as OK).
   merge_group:
 
 # Cancel superseded runs on the same ref (saves minutes, avoids stale results).
@@ -28,73 +23,46 @@ permissions:
   contents: read
 
 jobs:
-  # Path filter so docs-only PRs skip the build jobs entirely (and the single
-  # required "CI Green" check still passes — no skipped-required-check deadlock).
-  # `code` = anything that can affect lint/typecheck/depcheck/test.
-  # `apps`  = apps + their deps (core/adapters) — what a build needs.
+  # Path filter so docs-only PRs skip the build/quality jobs (the single required
+  # "CI Green" check still passes — no skipped-required-check deadlock).
+  # ADD new root config files here or quality/build silently skip on changes to them.
   changes:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
-      apps: ${{ steps.filter.outputs.apps }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
         id: filter
         with:
-          # ADD new root config files (eslint.config.*, lefthook.yml, dangerfile.ts, etc.)
-          # here or quality/build will silently skip on changes to them. The ci-green
-          # gate treats "skipped" as OK, so an unlisted file → no CI → false-green.
-          # See DACI L7 (Sequencing Step 3 — CI cost/safety) + F-4/F-10 from PR #1 review.
           filters: |
             code:
-              - 'core/**'
-              - 'adapters/**'
-              - 'apps/**'
+              - 'client/**'
+              - 'server/**'
+              - 'shared/**'
               - 'infra/**'
               - 'tooling/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'tsconfig*.json'
-              - '.eslintrc.cjs'
               - '.dependency-cruiser.cjs'
               - 'knip.json'
               - '.syncpackrc.json'
               - '.semgrepignore'
               - 'lefthook.yml'
               - 'commitlint.config.*'
-              - 'nx.json'
-              - '.github/workflows/ci.yml'
-            apps:
-              - 'apps/**'
-              - 'core/**'
-              - 'adapters/**'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
-              - 'tsconfig*.json'
-              - 'nx.json'
               - '.github/workflows/ci.yml'
 
-  # Lint + typecheck + Hexagonal layer-boundary check (dependency-cruiser) + test.
+  # Lint + typecheck + hexagon layer-boundary check (dependency-cruiser) +
+  # version consistency (syncpack) + tests, across every workspace via `pnpm -r`.
   quality:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          # nx-set-shas needs history to find the last successful run's SHA on master.
-          fetch-depth: 0
-      # Sets NX_BASE / NX_HEAD env vars so `nx affected` knows the right base for
-      # pull_request, push:master, AND merge_group events. Without this, affected
-      # is silently the full graph on PRs (wasteful) or empty on merge_group
-      # (misses work). Required by L7-set-shas. Pinned to v4.
-      - uses: nrwl/nx-set-shas@v4
-        with:
-          main-branch-name: master
-      - name: Layout guard (co-located tests — no __tests__/ or stories/)
+      - name: Layout guard (role suffixes; no __tests__/ or stories/ dirs)
         run: bash tooling/check-layout.sh
       - name: Coverage-ignore guard (no istanbul/c8/v8 ignore)
         run: bash tooling/check-no-coverage-ignore.sh
@@ -103,34 +71,29 @@ jobs:
         run: pnpm run lint
       - name: Typecheck
         run: pnpm run typecheck
-      - name: Dependency boundaries (Hexagonal layers)
+      - name: Dependency boundaries (hexagon)
         run: pnpm run depcheck
-      - name: Dependency versions (Syncpack)
+      - name: Core-purity canary (proves the hexagon fence rejects core -> framework)
+        run: pnpm run check:core-purity
+      - name: Dependency versions (syncpack)
         run: pnpm run syncpack
       - name: Test
         run: pnpm run test
       - name: Tooling unit tests (node --test)
         run: pnpm run test:tooling
 
-  # Per-deploy-target build. Runs every workspace's build via pnpm -r;
-  # split into a per-app matrix if/when build time warrants.
+  # Per-package build via `pnpm -r run build`.
   build:
     needs: changes
-    if: ${{ needs.changes.outputs.apps == 'true' }}
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: nrwl/nx-set-shas@v4
-        with:
-          main-branch-name: master
       - uses: ./.github/actions/setup-js
       - run: pnpm run build
 
-  # Secret scanning — gitleaks over the diff/history. Runs on EVERY change (NOT
-  # path-filtered) — a secret can land in any file. Free on personal/public repos;
-  # an org repo would need GITLEAKS_LICENSE. (decision-registry E-gitleaks)
+  # Secret scanning — gitleaks over the full history. Runs on EVERY change (a
+  # secret can land in any file). Free on public/personal repos.
   secret-scan:
     runs-on: ubuntu-latest
     steps:
@@ -139,14 +102,11 @@ jobs:
           fetch-depth: 0
       - uses: gitleaks/gitleaks-action@v3
         env:
-          # gitleaks-action v2 requires the token to scan PR commits (read-only is enough).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: "false"
           GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
 
-  # SAST — Semgrep over source. Path-filtered on `code` (no source change → skipped,
-  # which the gate treats as OK). Free community rulesets via `--config auto`, no token.
-  # (decision-registry E-semgrep)
+  # SAST — Semgrep over source. Path-filtered on `code`. Free community rulesets.
   sast:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -155,16 +115,13 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - name: Install Semgrep
         run: pip install semgrep
       - name: Semgrep SAST
         run: semgrep scan --config auto --error
 
-  # Dependency CVE gate — osv-scanner recursive scan over the repo tree (picks up
-  # pnpm-lock.yaml). Path-filtered on `code`; fails the build on any known CVE (free
-  # SCA). Pinned to an exact tag — the action warns it can change in a minor patch.
-  # (decision-registry E-osv-scanner)
+  # Dependency CVE gate — osv-scanner over the lockfile. Path-filtered on `code`.
   deps-cve:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -177,13 +134,8 @@ jobs:
             --recursive
             ./
 
-  # PR-title commitlint — validates the PR title against commitlint.config.cjs.
-  # Why: GitHub squash-merge uses the PR title as master subject when a PR has
-  # 2+ commits (repo's squash_merge_commit_title = COMMIT_OR_PR_TITLE). The
-  # Lefthook commit-msg hook only validates LOCAL commits — without this gate
-  # a multi-commit PR with a non-conventional title produces a non-conventional
-  # master commit, breaking `nx release` SemVer detection. Same commitlint
-  # config is the single source of truth. PR-event only. (decision-registry L6-4)
+  # PR-title commitlint — GitHub squash uses the PR title as the master subject
+  # for multi-commit PRs; the local commit-msg hook only covers local commits.
   pr-title:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -196,16 +148,12 @@ jobs:
         run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint
 
   # Agent PR merge checklist (NH-16) — Jira-key presence + no-blank-boxes over the
-  # PR-template `required:`/`warn:` items. PR-event only, bot-exempt, NOT path-filtered
-  # (must run on every PR). Pure Node, no deps. (decision-registry L6 / spec
-  # docs/specs/2026-06-15-pr-merge-checklist.md)
+  # PR-template items. PR-event only, bot-exempt, not path-filtered. Pure Node.
   pr-checklist:
     if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      # Dep-free Node script: use setup-node directly (not the setup-js composite) to skip
-      # the pnpm install — documented exception in AGENTS.md "Targets & how to run them".
       - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
@@ -218,16 +166,29 @@ jobs:
         run: node tooling/pr-checklist.mjs
 
   # Single REQUIRED status check for branch protection. Always runs, so a
-  # path-filtered skip never deadlocks the merge. Fails only on a real
-  # failure/cancellation (skipped is OK).
+  # path-filtered skip never deadlocks the merge (skipped is OK).
   ci-green:
     name: CI Green
     if: always()
-    needs: [quality, build, secret-scan, sast, deps-cve, pr-title, pr-checklist]
+    needs:
+      [
+        changes,
+        quality,
+        build,
+        secret-scan,
+        sast,
+        deps-cve,
+        pr-title,
+        pr-checklist,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
         run: |
+          # The gatekeeper `changes` job is checked explicitly: if it FAILS, the
+          # path-gated jobs (quality/build/sast/deps-cve) are SKIPPED, and skipped
+          # must not read as green. Treat a non-success `changes` result as fatal.
+          ch="${{ needs.changes.result }}"
           q="${{ needs.quality.result }}"
           b="${{ needs.build.result }}"
           s="${{ needs.secret-scan.result }}"
@@ -235,9 +196,14 @@ jobs:
           d="${{ needs.deps-cve.result }}"
           p="${{ needs.pr-title.result }}"
           c="${{ needs.pr-checklist.result }}"
-          echo "quality=$q  build=$b  secret-scan=$s  sast=$a  deps-cve=$d  pr-title=$p  pr-checklist=$c"
-          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" || "$s" == "failure" || "$s" == "cancelled" || "$a" == "failure" || "$a" == "cancelled" || "$d" == "failure" || "$d" == "cancelled" || "$p" == "failure" || "$p" == "cancelled" || "$c" == "failure" || "$c" == "cancelled" ]]; then
-            echo "::error::A required CI job did not pass"
-            exit 1
+          echo "changes=$ch quality=$q build=$b secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
+          if [[ "$ch" != "success" ]]; then
+            echo "::error::Gatekeeper job 'changes' did not succeed (result=$ch); path-gated jobs may have silently skipped"; exit 1
           fi
+          for job in quality:$q build:$b secret-scan:$s sast:$a deps-cve:$d pr-title:$p pr-checklist:$c; do
+            name="${job%%:*}"; r="${job#*:}"
+            if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
+              echo "::error::Required CI job '$name' did not pass (result=$r)"; exit 1
+            fi
+          done
           echo "All required jobs passed (skipped is OK)."

@@ -21,7 +21,7 @@ export interface LambdaWithUrlArgs {
   code: pulumi.Input<pulumi.asset.Archive>;
   /** Lambda handler string, e.g. "index.handler". */
   handler: pulumi.Input<string>;
-  /** Defaults to "nodejs22.x" (AWS Lambda's newest Node runtime). */
+  /** Defaults to "nodejs24.x" (AWS Lambda's newest Node runtime). */
   runtime?: pulumi.Input<string>;
   /** CloudWatch log retention; defaults to 14 days. */
   logRetentionDays?: pulumi.Input<number>;
@@ -32,23 +32,36 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
   public readonly url: pulumi.Output<string>;
   public readonly logGroupName: pulumi.Output<string>;
 
-  constructor(name: string, args: LambdaWithUrlArgs, opts?: pulumi.ComponentResourceOptions) {
+  constructor(
+    name: string,
+    args: LambdaWithUrlArgs,
+    opts?: pulumi.ComponentResourceOptions,
+  ) {
     super("nh:aws:LambdaWithUrl", name, args, opts);
 
     const assumeRole = aws.iam.getPolicyDocumentOutput({
       statements: [
         {
           actions: ["sts:AssumeRole"],
-          principals: [{ type: "Service", identifiers: ["lambda.amazonaws.com"] }],
+          principals: [
+            { type: "Service", identifiers: ["lambda.amazonaws.com"] },
+          ],
         },
       ],
     });
 
-    const role = new aws.iam.Role(`${name}-role`, { assumeRolePolicy: assumeRole.json }, { parent: this });
+    const role = new aws.iam.Role(
+      `${name}-role`,
+      { assumeRolePolicy: assumeRole.json },
+      { parent: this },
+    );
 
     new aws.iam.RolePolicyAttachment(
       `${name}-basic-exec`,
-      { role: role.name, policyArn: aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole },
+      {
+        role: role.name,
+        policyArn: aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole,
+      },
       { parent: this },
     );
 
@@ -69,7 +82,7 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
         name: args.functionName,
         role: role.arn,
         handler: args.handler,
-        runtime: args.runtime ?? "nodejs22.x",
+        runtime: args.runtime ?? "nodejs24.x",
         architectures: ["arm64"],
         code: args.code,
         // loggingConfig.logGroup (not bare dependsOn) is what redirects logging

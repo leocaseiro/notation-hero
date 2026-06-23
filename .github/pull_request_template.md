@@ -1,6 +1,8 @@
-<!-- Keep the Jira key (NH-<n>, or legacy KAN-<n>) in the PR TITLE too, e.g.
-     "[NH-16] Add the PR checklist gate". The key in the title/branch/commits is
-     what populates the Jira Development panel. -->
+<!-- Keep the Jira key (NH-<n>, or legacy KAN-<n>) in the PR TITLE too. The title must be
+     a valid Conventional Commit — commitlint runs in the `pr-title` gate — so put the key
+     in PARENTHESES at the end, e.g. "feat: add the PR checklist gate (NH-16)". Do NOT use a
+     "[NH-16] …" prefix: commitlint rejects it (type-empty / subject-empty). The key in the
+     title/branch/commits is what populates the Jira Development panel. -->
 
 ## What & why
 
@@ -21,17 +23,24 @@
 
 ## Checklist
 
-<!-- The `pr-checklist` CI gate fails on any BLANK box: every `required:`/`warn:` item
-     must be ticked [x] OR have "N/A" written on its line. `required:` = do it;
-     `warn:` = address, or consciously skip by writing "N/A — reason" on the line.
-     A real NH-/KAN- key must also appear in the title, body, or branch.
-     EDITORS: never put the literal "N/A" inside an item's label — it is the reserved
-     skip marker the gate looks for. -->
+<!-- The `pr-checklist` CI gate fails unless EVERY box below is ticked [x]. There is no
+     "N/A": each item is a past-tense statement of what you DID, and the conditional ones
+     ("If this PR changed X, I did Y") stay true even when the condition doesn't apply — so
+     every box is always tickable. Tick only what is TRUE: a tick whose condition applied
+     but whose action you skipped is a false claim (review + the NH-16 v2 gate check this).
+     Cite specifics (file path / link) where it helps the reviewer. A real NH-#### (or
+     legacy KAN-####) key must also appear in the PR title, body, or branch. Do NOT delete
+     or reword items — the gate reads them from this template and fails if any is missing. -->
 
-- [ ] required: Links a Jira ticket — full URL to NH-#### (or KAN-####) in the body
-- [ ] warn: Key in the PR title too, e.g. `[NH-16] …` (squash-merge uses the title)
-- [ ] warn: Decision log updated (docs/decisions change-log)
-- [ ] warn: Checked overlapping open PRs / worktrees; risks noted in the PR + Jira
-- [ ] required: Storybook story / VR added or updated if this PR changes UI
-- [ ] warn: If large (>~400 LOC) → explained why (baby commits within, not a hard cap)
-- [ ] CI Green
+- [ ] I linked a Jira ticket (NH-####) and kept its status updated through review and merge.
+- [ ] If this PR changed UI, I wrote or updated the Storybook stories for it.
+- [ ] If this PR changed UI, I added or updated the VR (visual-regression) tests for it.
+- [ ] If this PR changed testable code, I wrote or updated tests for it.
+- [ ] If this PR changed a decision or what's enforced, I updated the decision log (docs/decisions).
+- [ ] If this PR needed doc updates, I updated README.md / the relevant docs with the change and the "why".
+- [ ] I checked for overlapping open PRs / worktrees and noted any risks in the PR and Jira.
+- [ ] I kept this PR small (baby commits), or explained below why it is large.
+- [ ] I self-reviewed my own diff before requesting review.
+- [ ] If this PR has breaking changes or data migrations, I called them out in the description.
+- [ ] I did not commit secrets, keys, or credentials.
+- [ ] I did not use --no-verify or skip any CI gate.
