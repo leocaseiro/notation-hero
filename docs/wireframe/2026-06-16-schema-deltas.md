@@ -448,8 +448,30 @@ seam (song parts already use it; `matches()` excludes `listable===false` from br
 reachable **inside** their composite (the Steps card) and by deep-link, but never clutter the list.
 Generalises to: any pure building-block playable is `listable:false`.
 
-**Open:** `pat_rock_composite` (the teaching composite) duplicates the standalone `pat_basic_rock` groove —
-decide whether the composite itself should also be `listable:false` (teaching-only) or the two should merge.
+**Resolved (2026-06-23):** merged — `pat_rock_composite` renamed to the canonical `pat_basic_rock` (keeps
+its 3 voice-steps via `step`); the standalone duplicate removed. One Basic Rock Beat, voice breakdown intact.
+
+---
+
+### SD-30 — playable_link relation vocabulary: uses / variation / similar (2026-06-23)
+
+**Context (Leo, 2026-06-23):** the wireframe needed real song↔pattern relationships, plus an **n-n** way to
+relate *any* playables regardless of hierarchy (similar songs, similar patterns that aren't otherwise linked).
+
+**Resolved:** `playable_link` (the existing `{from, to, relation}` row) carries a small relation vocabulary —
+no new table:
+
+- **`uses`** — hierarchical, directional. Song → beat, song → fill, **fill → rudiment** (the
+  `song → fill → rudiment` chain — Zoio tom fill → Single Stroke Roll), song → lesson.
+- **`variation`** — symmetric. Same groove, different articulation (Yellow's closed- vs open-hi-hat beats).
+  The pair are also the two steps of one lesson (`lesson_yellow_groove`).
+- **`similar`** — symmetric **n-n affinity**, non-hierarchical: "these are alike" with no parent/child meaning
+  (Yellow ↔ I'm Yours songs; Yellow groove ↔ Basic Rock Beat). Can later be auto-populated from the
+  skeleton/fuzzy match in **NH-208**.
+
+UI: `uses` renders directional (`uses →` / `← used by`); `variation`/`similar` render symmetric (`↔`), via a
+shared `relatedCard()` on both the song and pattern pages. Song→beat/fill still uses the `patterns[]` m:n (the
+"Patterns" card); `playable_link` carries the cross/affinity links.
 
 ---
 
