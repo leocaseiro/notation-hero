@@ -43,7 +43,7 @@ const makeComponent = (
   args: Partial<{
     runtime: string;
     logRetentionDays: number;
-    authorizationType: string;
+    authorizationType: "NONE" | "AWS_IAM";
     timeoutSeconds: number;
     memorySize: number;
     permissionsBoundaryArn: string;

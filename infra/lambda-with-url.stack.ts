@@ -29,7 +29,7 @@ export interface LambdaWithUrlArgs {
    * Function URL auth: "NONE" (public, curl-able) or "AWS_IAM" (only a SigV4 caller —
    * e.g. CloudFront via OAC — can invoke). Defaults to "NONE".
    */
-  authorizationType?: pulumi.Input<string>;
+  authorizationType?: pulumi.Input<"NONE" | "AWS_IAM">;
   /** Function URL CORS. Omit when fronted same-origin by CloudFront. */
   cors?: pulumi.Input<aws.types.input.lambda.FunctionUrlCors>;
   /** Lambda timeout in seconds; defaults to 10 (low, to bound free-tier compute). */
