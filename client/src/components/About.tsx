@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 interface CatalogPlayable {
   id: string
   title: string
-  kind: string
+  kind: 'song' | 'pattern' | 'lesson'
   difficulty: string
 }
 
@@ -14,14 +14,21 @@ interface CatalogResponse {
   count: number
 }
 
-async function fetchCatalog(): Promise<CatalogResponse> {
+async function fetchCatalog({
+  signal: querySignal,
+}: { signal?: AbortSignal } = {}): Promise<CatalogResponse> {
   // Abort well inside the 10s Lambda timeout so a hung origin surfaces the error state quickly
   // instead of spinning until CloudFront's much longer origin read-timeout.
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 8000)
+  // Compose TanStack Query's own signal (fired on unmount / a superseded query) with the 8s
+  // timeout, so navigating away aborts the in-flight fetch instead of leaving it running to 8s.
+  const signal = querySignal
+    ? AbortSignal.any([controller.signal, querySignal])
+    : controller.signal
   try {
     // Same-origin behind CloudFront: `/api/*` is routed to the Lambda Function URL.
-    const res = await fetch('/api/catalog', { signal: controller.signal })
+    const res = await fetch('/api/catalog', { signal })
     if (!res.ok) {
       throw new Error(`/api/catalog responded ${res.status}`)
     }
