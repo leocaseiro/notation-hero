@@ -39,3 +39,27 @@ export const Link: Story = { args: { variant: 'link' } }
 export const Small: Story = { args: { size: 'sm' } }
 export const Large: Story = { args: { size: 'lg' } }
 export const Disabled: Story = { args: { disabled: true } }
+
+// Icon-only button — Material Symbols glyph. aria-label gives the accessible
+// name; the glyph span is decorative (aria-hidden).
+export const Icon: Story = {
+  render: () => (
+    <Button size="icon" aria-label="Play">
+      <span className="material-symbols-outlined" aria-hidden="true">
+        play_arrow
+      </span>
+    </Button>
+  ),
+}
+
+// Text + leading icon.
+export const WithIcon: Story = {
+  render: () => (
+    <Button>
+      <span className="material-symbols-outlined" aria-hidden="true">
+        play_arrow
+      </span>
+      Play
+    </Button>
+  ),
+}

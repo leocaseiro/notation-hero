@@ -142,3 +142,23 @@ body {
     @apply font-sans;
   }
 }
+
+/* Material Symbols — the @font-face is loaded via index.html and
+   .storybook/preview-head.html (Google Fonts). This class turns a ligature
+   span into an icon: <span class="material-symbols-outlined">play_arrow</span>.
+   Sized at 1.25rem to sit well inside buttons. */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.25rem;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}

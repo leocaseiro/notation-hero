@@ -13,6 +13,8 @@ const stories = [
   'small',
   'large',
   'disabled',
+  'icon',
+  'with-icon',
 ]
 
 for (const story of stories) {
@@ -20,6 +22,11 @@ for (const story of stories) {
     await page.goto(`/iframe.html?id=ui-button--${story}&viewMode=story`)
     const button = page.locator('[data-slot="button"]').first()
     await button.waitFor()
+    // Wait for web fonts (incl. Material Symbols) so icon glyphs are rendered
+    // before the snapshot — avoids capturing the ligature fallback text.
+    await page.evaluate(async () => {
+      await document.fonts.ready
+    })
     await expect(button).toHaveScreenshot(`button-${story}.png`)
   })
 }
