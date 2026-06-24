@@ -1,6 +1,6 @@
 # NotationHero — Auto-inject + Resync PR Merge Checklist (NH-237) — Design
 
-> **Status:** 🟡 DESIGN (2026-06-24) — awaiting review
+> **Status:** 🟢 IMPLEMENTED (2026-06-24, NH-237)
 > **Ticket:** [NH-237](https://leocaseiro.atlassian.net/browse/NH-237) — "Auto-inject + resync PR merge checklist on every PR" (Task under Epic NH-176 Foundation & CI/CD)
 > **Relates to:** [NH-16](https://leocaseiro.atlassian.net/browse/NH-16) — PR merge checklist v1/v1.1 ([spec](2026-06-15-pr-merge-checklist.md))
 > **Decision source:** DACI **L6** (PR automation) — extends NH-16
@@ -104,7 +104,7 @@ The existing `tooling/pr-checklist.mjs` gate is **refactored to import the share
   - Body missing one item (drift) → only that item appended; existing ticked boxes unchanged.
   - Body with the author's own unrelated `- [ ]` lines → not mistaken for canonical items; canonical still appended.
   - The sync output passes the **gate's** "present" check (shared lib → parity).
-- **Gate regression:** the existing `tooling/pr-checklist.test.mjs` (12 cases) stays green after the lib refactor.
+- **Gate regression:** the existing `tooling/pr-checklist.test.mjs` cases stay green after the lib refactor (incl. #64's infra-preview tests).
 - **Workflow (manual once):** open a CLI PR with no checklist → the `opened` run injects it → gate goes red → tick → green. Press `workflow_dispatch` → #57/#34 get the checklist. Edit the template + merge → open PRs get the new item.
 - **No-loop:** confirm the sync's body edit does not re-trigger the sync workflow.
 

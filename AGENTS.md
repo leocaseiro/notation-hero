@@ -154,6 +154,14 @@ The `pr-checklist` CI job (`tooling/pr-checklist.mjs`, required via _CI Green_) 
   prose line (e.g. `Closes [NH-16](…)`). Keys inside HTML comments, code fences, or
   checklist-label examples don't count. Un-skippable — the one check with real teeth.
 
+**You no longer paste the checklist by hand.** The `pr-checklist-sync` workflow
+(`.github/workflows/pr-checklist-sync.yml`) appends any **missing** items to the PR body when a
+PR is opened, and resyncs every open PR when you run its `workflow_dispatch` button or when
+`.github/pull_request_template.md` changes on `master`. It only **adds** missing items — it
+never edits your text or ticks boxes — so you still tick each box yourself before merge. Fork
+PRs are the exception (read-only token): add the checklist manually there. Spec:
+`docs/specs/2026-06-24-pr-checklist-auto-inject.md` (NH-237).
+
 Bots (dependabot etc.) are exempt. This is v1.2 — items are past-tense claims, not "I am
 aware" acknowledgements, so a ticked box is a checkable statement. Smart/DangerJS rules
 (green-fake catch, first-use triggers, real Jira validation, diff-aware UI/test detection)
