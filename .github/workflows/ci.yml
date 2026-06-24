@@ -139,8 +139,10 @@ jobs:
 
   # PR-title commitlint — GitHub squash uses the PR title as the master subject
   # for multi-commit PRs; the local commit-msg hook only covers local commits.
+  # Bot-exempt (like pr-checklist): dependabot titles ("Bump …") aren't conventional and
+  # we can't change them — the cost is their squash subject isn't commitlint-checked.
   pr-title:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
