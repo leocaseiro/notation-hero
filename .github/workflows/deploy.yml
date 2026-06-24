@@ -69,11 +69,12 @@ jobs:
           cloud-url: s3://${{ vars.PULUMI_STATE_BUCKET }}
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
-      # A hard-killed/cancelled `up` strands the S3-backend lock (no DynamoDB auto-release), so the
-      # NEXT deploy fails until it is cleared. Surface the recovery command instead of leaving an
-      # operator to discover the wedge (NH-206 review: stranded-lock recovery).
-      - name: Surface stranded-lock recovery if up did not finish
-        if: ${{ always() && (steps.pulumi-up.outcome == 'failure' || steps.pulumi-up.outcome == 'cancelled') }}
+      # Only a HARD-killed `up` (job timeout / cancellation) strands the S3-backend lock (no
+      # DynamoDB auto-release) — a normal `failure` exits cleanly and releases it. So fire ONLY on
+      # `cancelled`, surfacing the recovery command instead of leaving an operator to find the wedge
+      # later (NH-206 review: stranded-lock recovery).
+      - name: Surface stranded-lock recovery if up was cancelled (hard-killed)
+        if: ${{ always() && steps.pulumi-up.outcome == 'cancelled' }}
         run: |
           {
             echo "### Pulumi up did not complete — the S3 state lock may be stranded"
