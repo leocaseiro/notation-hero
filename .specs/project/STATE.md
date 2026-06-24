@@ -17,6 +17,11 @@
   Supersedes the kebab/lowercase assumption below. _(User pick, Q-structure.)_
 - **D8** — VR filename marker is **`.vr.ts`** (e.g. `Button.vr.ts`), not `.vr.spec.ts`/`.spec.ts` —
   avoids the Vitest collision and the layout-guard same-name-sibling rule. _(User pick, Q-vr-name.)_
+- **D9** — Client **formatting matches the server + is ESLint-enforced**: Prettier `semi: true`
+  - `printWidth: 100`; `eslint-plugin-prettier` makes `pnpm lint` (a CI gate) fail on format
+    drift (mirrors `server/eslint.config.mjs`). _(User pick, Q-semi/Q-align 2026-06-25.)_ The
+    TanStack ESLint base (client) and the hand-rolled typed base (server) stay separate by design —
+    only the Prettier formatting is aligned.
 
 ## Constraints carried in (from repo guards + memory)
 
