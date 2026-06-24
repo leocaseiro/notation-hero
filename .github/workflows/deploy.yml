@@ -32,13 +32,13 @@ jobs:
       group: deploy-up-dev
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
       - uses: ./.github/actions/setup-js
       - name: Build Lambda + SPA (pulumi reads server/dist-lambda + client/dist)
         run: |
           pnpm --filter @notation-hero/server run build:lambda
           pnpm --filter @notation-hero/client run build
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
@@ -46,7 +46,7 @@ jobs:
           # enforces aud = sts.amazonaws.com). NH-206 review #3, H2.
           audience: sts.amazonaws.com
           mask-aws-account-id: true
-      - uses: pulumi/actions@v6
+      - uses: pulumi/actions@8582a9e8cc630786854029b4e09281acd6794b58 # v6
         with:
           command: up
           stack-name: dev
