@@ -10,6 +10,13 @@
 - **D4** — Start with **Button only**; expand after the pipeline is green. _(Q-add.)_
 - **D5** — shadcn CLI is **v4**; `apply` is the existing-project path; Storybook is
   **v10**; `--pointer` is a real flag (kept). Verify each command with `--help` before running.
+- **D6** — Icons are **Material Symbols Outlined** (Google Fonts CDN + `.material-symbols-outlined`
+  class), NOT the preset's Remix Icon. _(User pick, Q-icons: "I wanted material icons" — the UI
+  uses Material icons widely.)_ Removed `@remixicon/react`.
+- **D7** — **Folder-per-component, PascalCase**: `components/ui/Button/Button.{tsx,test.tsx,stories.tsx,vr.ts}`.
+  Supersedes the kebab/lowercase assumption below. _(User pick, Q-structure.)_
+- **D8** — VR filename marker is **`.vr.ts`** (e.g. `Button.vr.ts`), not `.vr.spec.ts`/`.spec.ts` —
+  avoids the Vitest collision and the layout-guard same-name-sibling rule. _(User pick, Q-vr-name.)_
 
 ## Constraints carried in (from repo guards + memory)
 
@@ -25,8 +32,8 @@
     NOT use `.spec`/`.test`**. Use `button.vr.ts`; Playwright `testMatch: **/*.vr.{ts,tsx}`;
     Vitest excludes `**/*.vr.*`.
   - Role-suffix rule is **server-only**; client components are exempt.
-- **Filenames:** kebab/lowercase per repo + shadcn output (`button.tsx`, not `Button.tsx`)
-  — verify the client ESLint casing rule during Execute.
+- **Filenames:** ~~kebab/lowercase~~ → **PascalCase folder-per-component** per **D7**
+  (`Button/Button.tsx`). Client ESLint has no casing rule that blocks this; verified during Execute.
 - **Commit gates:** commitlint (conventional); pre-commit (layout + gitleaks + semgrep +
   prettier); pre-push (lint + typecheck + test, all packages). Never `--no-verify`.
 
