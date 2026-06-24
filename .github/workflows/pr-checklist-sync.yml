@@ -1,0 +1,63 @@
+name: PR checklist sync
+
+# Appends any MISSING canonical checklist items (from .github/pull_request_template.md) to a
+# PR body — additive only, never edits/removes existing lines, boxes left unticked. The strict
+# `pr-checklist` gate in ci.yml still requires every box ticked. Does NOT trigger on `edited`,
+# so its own body edit can't re-trigger it (no loop). Spec:
+# docs/specs/2026-06-24-pr-checklist-auto-inject.md (NH-237).
+on:
+  pull_request:
+    types: [opened]
+  workflow_dispatch: {}
+  push:
+    branches: [master]
+    paths: [".github/pull_request_template.md"]
+
+# Least privilege: write only PR bodies. ci.yml stays contents: read.
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: pr-checklist-sync-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # Same-repo, non-bot PRs only (fork tokens are read-only — can't edit the body).
+    # Fan-out events (workflow_dispatch / template push) always run.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.pull_request.user.type != 'Bot' &&
+      github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Append missing checklist items
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            prs="$PR_NUMBER"
+          else
+            # Fan-out: every open, non-bot PR.
+            prs=$(gh pr list --state open --limit 200 \
+              --json number,author \
+              --jq '.[] | select(.author.is_bot == false) | .number')
+          fi
+          for pr in $prs; do
+            gh pr view "$pr" --json body --jq '.body' > /tmp/body.md
+            count=$(node tooling/pr-checklist-sync.mjs /tmp/body.md /tmp/newbody.md)
+            if [ "$count" -gt 0 ]; then
+              echo "PR #$pr: appended $count missing checklist item(s)."
+              gh pr edit "$pr" --body-file /tmp/newbody.md
+            else
+              echo "PR #$pr: checklist already complete — no change."
+            fi
+          done
