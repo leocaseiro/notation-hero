@@ -113,6 +113,15 @@ test("distribution has two origins and a distinct /api/* behavior", async () => 
   // The lambda origin is HTTPS-only and OAC-signed.
   const lambdaOrigin = origins.find((o) => o.originId === "lambda-api")!;
   assert.ok(lambdaOrigin.originAccessControlId);
+
+  // The s3 origin must ALSO carry an OAC id (symmetry with the lambda origin) — dropping it
+  // breaks the private-bucket fetch, so pin it so the wiring can't silently regress.
+  const s3Origin = origins.find((o) => o.originId === "s3-spa")!;
+  assert.ok(
+    s3Origin.originAccessControlId,
+    "s3-spa origin must carry an OAC id",
+  );
+
   const customCfg = lambdaOrigin.customOriginConfig as {
     originProtocolPolicy: string;
     originReadTimeout: number;

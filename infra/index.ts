@@ -31,9 +31,19 @@ const ciRoleBoundaryArn = aws
       () => arn,
       (err: unknown) => {
         // Can't read the policy (e.g. the role isn't yet granted iam:GetPolicy) -> don't block;
-        // only a definitive "does not exist" should stop the deploy.
+        // only a definitive "does not exist" should stop the deploy. An AccessDenied can't tell
+        // "boundary absent" from "boundary present but unreadable", so WARN loudly rather than
+        // skip silently — if it really is missing it resurfaces as the CreateRole failure this
+        // preflight pre-empts, but now with a breadcrumb (review #6 / adversarial).
         const msg = err instanceof Error ? err.message : String(err);
-        if (/not authorized|accessdenied/i.test(msg)) return arn;
+        if (/not authorized|accessdenied/i.test(msg)) {
+          pulumi.log.warn(
+            `Could not verify the CI permissions boundary at ${arn} (iam:GetPolicy denied) — ` +
+              "proceeding as if it exists. If a later CreateRole fails, run " +
+              "docs/runbooks/aws-ci-oidc-bootstrap.sh (admin) to create it.",
+          );
+          return arn;
+        }
         throw new Error(
           `CI permissions boundary not found at ${arn}. ` +
             `Run docs/runbooks/aws-ci-oidc-bootstrap.sh (admin) before deploying (NH-206).`,
