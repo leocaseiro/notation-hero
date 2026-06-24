@@ -30,6 +30,11 @@ await build({
   target: 'node24',
   format: 'cjs',
   keepNames: true,
+  // Trim cold-start parse time. minifyWhitespace + minifySyntax are DI-safe; do NOT add
+  // minifyIdentifiers — NestJS resolves providers by class name (keepNames preserves them,
+  // and the DI smoke below would catch a metadata regression).
+  minifyWhitespace: true,
+  minifySyntax: true,
   // NestJS lazily `require()`s these optional packages inside try/catch; they are not
   // installed, so keep them external — the runtime require fails gracefully as Nest expects.
   external: [
