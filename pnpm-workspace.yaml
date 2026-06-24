@@ -16,6 +16,10 @@ allowBuilds:
   protobufjs: true # @pulumi/pulumi gRPC runtime (infra/)
   unrs-resolver: false # import-x native resolver not needed yet
 
+minimumReleaseAgeExclude:
+  - playwright-core@1.61.1
+  - playwright@1.61.1
+
 # Security overrides — patched transitive deps flagged by osv-scanner (NH-191).
 # pnpm 11 reads overrides here, NOT package.json's pnpm.overrides.
 overrides:
