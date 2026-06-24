@@ -1,6 +1,6 @@
-import type { Preview } from '@storybook/tanstack-react'
+import type { Preview } from '@storybook/tanstack-react';
 // Load the design tokens (teal theme + Public Sans) so stories render themed.
-import '../src/styles.css'
+import '../src/styles.css';
 
 const preview: Preview = {
   parameters: {
@@ -15,6 +15,6 @@ const preview: Preview = {
       test: 'todo',
     },
   },
-}
+};
 
-export default preview
+export default preview;

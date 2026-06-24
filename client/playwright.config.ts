@@ -1,4 +1,4 @@
-import { defineConfig, devices } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test';
 
 // Visual-regression tests run against Storybook stories (the *.vr.ts files).
 // Split of ownership: Vitest runs *.test.* (unit, jsdom); Playwright runs
@@ -21,4 +21,4 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
-})
+});
