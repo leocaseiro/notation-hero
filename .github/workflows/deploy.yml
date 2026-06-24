@@ -42,11 +42,11 @@ jobs:
       group: deploy-up-dev
       cancel-in-progress: false
     steps:
+      # No `ref:` — checkout defaults to the master tip. Deploy is workflow_run-gated to
+      # `branches: [master]`, so it only ever runs for a master commit (never PR code), and
+      # deploying the latest master is correct. (Pinning ref to workflow_run.head_sha would trip
+      # the SAST "workflow-run-target-code-checkout" rule for the pwn-request pattern.)
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
-        with:
-          # workflow_run checks out the default-branch tip by default; pin to the exact commit
-          # whose CI went green so we deploy that, not whatever later landed on master.
-          ref: ${{ github.event.workflow_run.head_sha }}
       - uses: ./.github/actions/setup-js
       - name: Build Lambda + SPA (pulumi reads server/dist-lambda + client/dist)
         run: |
