@@ -89,6 +89,9 @@ importers:
       "@babel/core":
         specifier: ^8.0.1
         version: 8.0.1
+      "@playwright/test":
+        specifier: ^1.61.1
+        version: 1.61.1
       "@rolldown/plugin-babel":
         specifier: ^0.2.3
         version: 0.2.3(@babel/core@8.0.1)(@babel/runtime@7.29.7)(rolldown@1.0.3)(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0))
@@ -146,9 +149,6 @@ importers:
       jsdom:
         specifier: ^29.1.1
         version: 29.1.1
-      playwright:
-        specifier: ^1.61.1
-        version: 1.61.1
       prettier:
         specifier: ^3.8.1
         version: 3.8.4
@@ -2833,6 +2833,14 @@ packages:
         integrity: sha512-SEeaJLb3qBNF/OaXnaR1NmmBbFYk1zC0ZH/52fATcRPLFg/p791YrcyFFy44Bo9sLaGuSuLp5Q6axbb/O+v/RA==,
       }
     engines: { node: ^14.18.0 || >=16.0.0 }
+
+  "@playwright/test@1.61.1":
+    resolution:
+      {
+        integrity: sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
 
   "@polka/url@1.0.0-next.29":
     resolution:
@@ -13058,6 +13066,10 @@ snapshots:
   "@package-json/types@0.0.12": {}
 
   "@pkgr/core@0.3.6": {}
+
+  "@playwright/test@1.61.1":
+    dependencies:
+      playwright: 1.61.1
 
   "@polka/url@1.0.0-next.29":
     optional: true

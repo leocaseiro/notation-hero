@@ -19,6 +19,7 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - playwright-core@1.61.1
   - playwright@1.61.1
+  - "@playwright/test@1.61.1"
 
 # Security overrides — patched transitive deps flagged by osv-scanner (NH-191).
 # pnpm 11 reads overrides here, NOT package.json's pnpm.overrides.
