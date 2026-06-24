@@ -26,7 +26,13 @@
 // Exit 0 = pass, 1 = fail (human-readable report).
 // Spec: docs/specs/2026-06-15-pr-merge-checklist.md · DACI L6.
 
-import { readFileSync } from "node:fs";
+import {
+  TASK_RE,
+  stripNoise,
+  norm,
+  canonicalItems,
+  parseTasks,
+} from "./pr-checklist-lib.mjs";
 
 const title = process.env.PR_TITLE ?? "";
 const rawBody = (process.env.PR_BODY ?? "").replace(/\r\n?/g, "\n"); // CRLF and lone CR
@@ -34,21 +40,12 @@ const branch = process.env.PR_BRANCH ?? "";
 const authorType = process.env.PR_AUTHOR_TYPE ?? "";
 
 const JIRA_RE = /\b(?:NH|KAN)-\d+\b/;
-const TASK_RE = /^\s*[-*]\s*\[([ xX])\]\s*(.+?)\s*$/;
 
 // Bot bypass (defensive — the workflow also gates on user.type).
 if (authorType === "Bot") {
   console.log("✅ pr-checklist: author is a bot — checklist gate skipped.");
   process.exit(0);
 }
-
-// Strip HTML comments and fenced code blocks so keys/checkboxes hidden in comments or
-// quoted samples are ignored — no false-pass on a commented key, no false-fail on a sample.
-const stripNoise = (s) =>
-  s
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/~~~[\s\S]*?~~~/g, "");
 
 const body = stripNoise(rawBody);
 // For the key search, also drop checklist lines so a template EXAMPLE key inside an item
@@ -58,23 +55,6 @@ const bodyForKey = body
   .split("\n")
   .filter((l) => !TASK_RE.test(l))
   .join("\n");
-
-// Normalize for matching: collapse whitespace, lowercase.
-const norm = (s) => s.replace(/\s+/g, " ").trim().toLowerCase();
-
-// Canonical acknowledgement labels, read from the committed PR template (every task line).
-function canonicalItems() {
-  const tpl = readFileSync(
-    new URL("../.github/pull_request_template.md", import.meta.url),
-    "utf8",
-  );
-  const items = [];
-  for (const line of tpl.split("\n")) {
-    const m = TASK_RE.exec(line);
-    if (m) items.push(m[2]);
-  }
-  return items;
-}
 
 let canonical;
 try {
@@ -99,11 +79,7 @@ if (![title, bodyForKey, branch].some((s) => JIRA_RE.test(s))) {
 }
 
 // Index the body's checkbox lines (noise already stripped).
-const bodyTasks = [];
-for (const line of body.split("\n")) {
-  const m = TASK_RE.exec(line);
-  if (m) bodyTasks.push({ checked: m[1].toLowerCase() === "x", text: m[2] });
-}
+const bodyTasks = parseTasks(body);
 
 // 2. Every canonical item must be present AND ticked [x]. No N/A.
 for (const label of canonical) {
