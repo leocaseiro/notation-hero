@@ -1,2 +1,8 @@
 # Generated route tree — collapse in GitHub diffs (TanStack Router regenerates it on build).
 client/src/routeTree.gen.ts linguist-generated=true
+
+# The decision-registry change-log is prepend-style (every PR adds an entry at the top), so two
+# overlapping PRs routinely conflict there. merge=union keeps BOTH sides on a conflicting merge
+# (no markers) instead of failing — concurrent entries auto-combine; re-sort newest-first by hand
+# if the order matters. Scoped to this one file only. See the registry "Merge note" + NH-16.
+docs/decisions/decision-registry.md merge=union
