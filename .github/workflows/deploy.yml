@@ -1,57 +1,27 @@
 name: Deploy
 
 # CD for the ARCH-EDGE-1 AWS slice (NH-206). Auth = GitHub -> AWS OIDC (no stored keys);
-# Pulumi state = self-managed S3 backend (pinned in infra/Pulumi.yaml). PR -> `pulumi preview`
-# (plan commented on the PR); push to master -> `pulumi up`.
+# Pulumi state = self-managed S3 backend (pinned in infra/Pulumi.yaml). Push to master ->
+# `pulumi up` only. `pulumi preview` is LOCAL-ONLY (NH-206 review #3): a PR-triggered preview
+# ran arbitrary infra/*.ts under the full deploy role, so PRs now carry NO AWS credentials.
+# Run `pulumi preview` locally before merging infra changes — see
+# docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md.
 on:
-  pull_request:
   push:
     branches: [master]
 
-# id-token: assume the AWS role via OIDC. pull-requests: let preview comment the plan.
+# id-token: assume the AWS role via OIDC. No `pull-requests` perm — no PR job touches AWS now.
 permissions:
   id-token: write
   contents: read
-  pull-requests: write
 
 jobs:
-  preview:
-    name: Pulumi preview
-    # Same-repo PRs only — GitHub withholds OIDC tokens from fork PRs; this is defence-in-depth.
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    # Don't cancel a superseded preview mid-run: a killed `pulumi preview` can strand the stack
-    # lock on the shared S3 backend and wedge the next preview/up. Queue (serialise) instead.
-    concurrency:
-      group: deploy-preview-${{ github.ref }}
-      cancel-in-progress: false
-    steps:
-      - uses: actions/checkout@v6
-      - uses: ./.github/actions/setup-js
-      - name: Build Lambda + SPA (pulumi reads server/dist-lambda + client/dist)
-        run: |
-          pnpm --filter @notation-hero/server run build:lambda
-          pnpm --filter @notation-hero/client run build
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ vars.AWS_REGION }}
-          mask-aws-account-id: true
-      - uses: pulumi/actions@v6
-        with:
-          command: preview
-          stack-name: dev
-          work-dir: infra
-          cloud-url: s3://${{ vars.PULUMI_STATE_BUCKET }}
-          comment-on-pr: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-        env:
-          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
-
   up:
     name: Pulumi up
-    if: github.event_name == 'push'
+    # The master-restricted `production` environment is the SECOND gate alongside the OIDC trust:
+    # the deploy role trusts ONLY `...:environment:production`, a subject GitHub mints solely for a
+    # job that references this environment — and the environment is limited to the master branch.
+    environment: production
     runs-on: ubuntu-latest
     # First CloudFront create can take ~15-20 min; this timeout is a hung-job backstop. NOTE: a
     # hard-killed `pulumi up` does NOT release the S3-backend lock — it strands it (the next run
@@ -72,6 +42,9 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+          # Pin the OIDC token audience to AWS STS (defence-in-depth; the role trust also
+          # enforces aud = sts.amazonaws.com). NH-206 review #3, H2.
+          audience: sts.amazonaws.com
           mask-aws-account-id: true
       - uses: pulumi/actions@v6
         with:

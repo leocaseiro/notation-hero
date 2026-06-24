@@ -52,7 +52,12 @@ else
   echo "Created permissions boundary: $BOUNDARY_ARN"
 fi
 
-# 2) Trust policy — only this repo's master ref + same-repo PRs may assume the role.
+# 2) Trust policy — ONLY this repo's master-restricted `production` GitHub Environment may
+#    assume the role (NH-206 review #3). The removed `pull_request` subject let a PR's
+#    `pulumi preview` run arbitrary infra/*.ts under this deploy role; preview is now LOCAL-only
+#    and PRs carry no AWS creds. GitHub mints the `environment:production` subject ONLY for a job
+#    that references that environment, and the environment is restricted to the master branch —
+#    two independent gates. Re-run this script (admin SSO) to apply the new trust.
 TRUST_FILE="$(mktemp)"
 trap 'rm -f "$TRUST_FILE"' EXIT
 cat > "$TRUST_FILE" <<EOF
@@ -66,10 +71,7 @@ cat > "$TRUST_FILE" <<EOF
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": [
-            "repo:${REPO}:ref:refs/heads/master",
-            "repo:${REPO}:pull_request"
-          ]
+          "token.actions.githubusercontent.com:sub": "repo:${REPO}:environment:production"
         }
       }
     }
