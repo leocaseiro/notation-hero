@@ -10,6 +10,8 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+> **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
+
 ### 2026-06-24 — CI deploy role: add missing Lambda read perm; lock-recovery on cancel-only (NH-206 follow-up)
 
 **Follow-up after #64 merged.** The first CI-driven `pulumi up` on master failed with `AccessDeniedException: lambda:GetFunctionCodeSigningConfig` — the aws provider reads a ZIP function's code-signing config on every `aws_lambda_function` update, but the least-privilege deploy role lacked it. Added `lambda:GetFunctionCodeSigningConfig` to `aws-iam-ci-deploy.json` **and** `aws-iam-pulumi-local-deploy.json`. Audited the full provider read-set (provider source + issue #27986): that was the **only** gap — `s3:*` / CloudFront / IAM / logs are already complete; deliberately did **not** add `lambda:GetRuntimeManagementConfig` (not called by `aws_lambda_function`, would over-grant). Also tightened `deploy.yml`'s stranded-lock recovery to fire on `cancelled` (hard-kill) only — a clean `failure` releases the lock, so firing on it was a false alarm. ⬅ **leocaseiro re-applies the updated `aws-iam-ci-deploy.json` to the live `notation-hero-ci-deploy` role (admin SSO)** — also clears the stale `iam:GetPolicy` boundary-read the failed run warned about.
