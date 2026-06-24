@@ -64,8 +64,9 @@ PORT=3001 pnpm --filter @notation-hero/server run start:dev
 pnpm --filter @notation-hero/client run dev
 ```
 
-Open <http://localhost:3000> — the About page fetches `/api/catalog` live through
-the proxy. Hit the API directly with `curl http://localhost:3001/api/catalog`.
+Open the URL Vite prints (defaults to <http://localhost:3000>; Vite picks the next free port if
+3000 is taken) — the About page fetches `/api/catalog` live through the proxy. Hit the API
+directly with `curl http://localhost:3001/api/catalog`.
 
 ## Deploy (AWS)
 
