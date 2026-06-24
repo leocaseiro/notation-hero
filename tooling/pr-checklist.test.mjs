@@ -179,6 +179,19 @@ test('infra gate: infra-changed + empty "## Pulumi preview" section fails', () =
   assert.match(r.stderr, /empty/);
 });
 
+test('infra gate: infra-changed + comment-only "## Pulumi preview" section fails (stripNoise)', () => {
+  // The PR template ships the section with an HTML-comment placeholder; stripNoise removes it
+  // before the content check, so an un-filled section reads as empty and must FAIL (not pass).
+  const r = run({
+    PR_TITLE: "[NH-16] x",
+    PR_BODY: `${allTicked()}\n\n## Pulumi preview\n\n<!-- record: safe | destructive/exposure + task -->\n`,
+    PR_BRANCH: "nh-16-x",
+    PR_INFRA_CHANGED: "true",
+  });
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /empty/);
+});
+
 test("infra gate: infra-changed + filled section passes", () => {
   const r = run({
     PR_TITLE: "[NH-16] x",
