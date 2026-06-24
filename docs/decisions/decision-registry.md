@@ -10,6 +10,17 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-24 — CI/CD: OIDC deploy hardening — drop preview-on-PR (NH-206 review #3)
+
+**PR #64.** **Revises** the 2026-06-23 CI/CD entry below: the `pull_request` → `pulumi preview` job and the `pull_request` OIDC trust subject are **removed**. A PR-triggered preview ran arbitrary `infra/*.ts` under the full deploy role (S3 state + SPA `s3:*`, CloudFront `Resource:"*"`, Lambda `UpdateFunctionCode`, + the injected `PULUMI_CONFIG_PASSPHRASE`) — medium-low risk solo, **HIGH** once a collaborator can open a same-repo PR. Approved by leocaseiro 2026-06-24 (brainstorm + 3-agent research; spec `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`).
+
+- **Preview is LOCAL-only now.** `deploy.yml` drops the `pull_request` trigger + the `preview` job → **push-to-`master` only**, so **no AWS credentials touch any PR** (and no infra detail leaks into public Actions logs/comments — the repo is public). `pull-requests: write` dropped; the passphrase exposure dissolves with the preview job.
+- **Trust narrowed to a master-only `production` GitHub Environment.** `aws-ci-oidc-bootstrap.sh` trust `sub` → `repo:leocaseiro/notation-hero:environment:production` only (was master ref + `pull_request`); the `up` job sets `environment: production`; the environment is restricted to `master` (created via `gh api`, no reviewers) — two independent gates. ⬅ **leocaseiro re-runs the bootstrap script (admin SSO)** to apply it.
+- **Agent local-preview safety-net (partial NH-16 v2 diff-aware gate).** New `AGENTS.md` rule: an agent that changes `infra/` runs `pulumi preview` locally and records a classification under `## Pulumi preview` in the PR body, filing a required task (PR checklist **+** Jira mandatory `customfield_10041`) for any destructive/exposure change. `tooling/pr-checklist.mjs` is now **diff-aware** — a PR touching `infra/**` (via the `changes` paths-filter `infra` output) fails on an empty preview section. 4 new `node --test` cases.
+- **Hardening:** OIDC `audience: sts.amazonaws.com` pinned (H2); **every GitHub Action SHA-pinned** to a commit, Dependabot-maintained (H3); S3 state-bucket runbook `docs/runbooks/aws-s3-state-hardening.sh` — versioning + block-public + deny-all-except-CI + optional Object Lock (H4). H1 (short STS session) skipped — the ~15–20 min first CloudFront create exceeds a 15-min session.
+- **Follow-up (separate NH ticket):** tighten the `ci-deploy` role's `s3:*` / CloudFront `Resource:"*"` to least-privilege actions (no longer PR-reachable; finicky → its own end-to-end-tested PR).
+- **`L7-oidc`** stays `✅ done` (OIDC remains deploy-only); the 2026-06-23 entry's "(master ref + same-repo PRs)" trust + "PR → preview" workflow lines are **superseded** by this entry (status table reconciles on the next regen).
+
 ### 2026-06-24 — Schema-delta brainstorm: 4 deltas consolidated on the draft (PR #68)
 
 The schema-impacting wireframe deltas were triaged (18 `schema-delta` tickets → **4** that change the catalogue DDL) and decided in one pass, applied to the **fresh draft schema** (`docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` — no DB/Drizzle yet, so edits not a migration), re-validated on `nh_tonal_scratch`. Full decisions: `docs/wireframe/2026-06-24-schema-delta-decisions.md`; grounding spike: `docs/spikes/2026-06-24-instrument-identity-and-role-from-source-formats.md`.
@@ -58,6 +69,27 @@ The catalog **wireframe** (`docs/wireframe/`) — a single-file low-fi clickable
 - `E-codeql-guard-impl` → **✅ done · 🤖**. A `visibility-check` job runs `gh api repos/${{ github.repository }} --jq .visibility`, exports it as a job output, and the `analyze` job is gated `if: needs.visibility-check.outputs.visibility == 'public'` — so CodeQL and its SARIF upload auto-disable on a private transition (no GitHub Advanced Security bill), covering `schedule` events specifically (DACI L9 §215).
 
 **Notes:** `workflow_dispatch` was added beyond the registry's "weekly schedule + push-to-main" text — with no `pull_request` trigger it's the only way to validate a run before the weekly cron. `AGENTS.md` is unchanged: it documents the local pre-commit hooks (gitleaks/semgrep), and CodeQL is CI-only/out-of-band, so it does not belong in that list.
+
+### 2026-06-23 — CI/CD: GitHub-OIDC Pulumi deploy + self-managed S3 backend (NH-206)
+
+**PR #64.** **Revises** the 2026-06-21 entry below: _"`pulumi up` … AWS creds + Pulumi passphrase are local-only, never CI"_ — `pulumi up` now **also runs in CI** (local deploys remain). Approved by leocaseiro 2026-06-23.
+
+- **State backend:** the `dev` stack moved off `file://~` to a private, versioned **S3 bucket** (`s3://notation-hero-pulumi-state-apse2`, pinned in `infra/Pulumi.yaml`). No Pulumi Cloud, **no DynamoDB** — Pulumi locks via the bucket.
+- **CI auth:** **GitHub → AWS OIDC** (`aws-actions/configure-aws-credentials@v4`) assumes a least-privileged `notation-hero-ci-deploy` role; trust scoped to `repo:leocaseiro/notation-hero` (master ref + same-repo PRs) — zero long-lived keys. Bootstrap runbook: `docs/runbooks/aws-ci-oidc-bootstrap.sh` (+ `aws-iam-ci-deploy.json`).
+- **Secrets:** the passphrase secrets provider is fed to CI via the `PULUMI_CONFIG_PASSPHRASE` Actions secret (the committed `encryptionsalt` is unchanged). **No KMS** (no Pulumi-managed secrets yet).
+- **Workflow:** `.github/workflows/deploy.yml` — PR → `pulumi preview` (plan commented on the PR); push to `master` → `pulumi up`. Mirrors `ci.yml` (setup-js, Node 24). Account id kept out of committed files (wildcard ARNs; role ARN in a GH variable, masked in logs).
+- **`L7-oidc`** flips `💤 deferred-trigger → ✅ done` (OIDC now live in `deploy.yml`; reconciles into the status table on the next `docs(registry)` regen pass).
+
+### 2026-06-21 — Phase 1 deployable AWS slice: About page end-to-end (NH-206)
+
+**PR #64** (branch `worktree-nh-206-phase1-aws-slice`) implements ADR §11 **Phase 1** on top of #56 — the recruiter-clickable **About page** served end-to-end through AWS. Realizes two previously-📄 ADR decisions in code:
+
+- `ARCH-EDGE-1` (one CloudFront, two origins) → **implemented** (`infra/cloudfront-site.stack.ts`). `/*` → a **private** S3 bucket (Block-Public-Access + BucketOwnerEnforced) reachable only via **OAC**, edge-cached; `/api/*` → the NestJS Lambda **Function URL** via OAC with the managed `AllViewerExceptHostHeader` policy and caching disabled. SPA deep links: 403/404 → `/index.html`.
+- `ARCH-LAMBDA-1` (Function URL lockdown) → **implemented**. Function URL flipped **`NONE` → `AWS_IAM`**; CloudFront granted **both** `lambda:InvokeFunctionUrl` and `lambda:InvokeFunction`, pinned by `AWS:SourceArn` to the one distribution; wildcard CORS dropped. The raw `*.lambda-url` is no longer publicly invocable.
+
+**Slice shape (leocaseiro, 2026-06-21): option (c)** — the **real** NestJS app runs on Lambda via `@codegenie/serverless-express` (a lambdalith), not a throwaway. `server/build:lambda` = SWC compile (emits decorator metadata — esbuild alone strips it and breaks Nest DI) → esbuild bundle to one CJS file. The About page is a real `client/` SPA route calling `GET /api/catalog` (the first real feature — placeholder data now, Neon-backed in Phase 2) to prove the Lambda leg live; the throwaway `/api/about` was rejected (leocaseiro: build toward the real API, not a stub endpoint).
+
+**Free-tier posture:** plain pay-as-you-go CloudFront (the 1 TB / 10M perpetual tier) — deliberately **not** the Nov-2025 flat-rate "Free" plan (100 GB / 1M); `PriceClass_100`; arm64 Lambda, 10s timeout / 512 MB. Verified by 8 infra unit tests (Pulumi mocks) + `pulumi preview` (26-resource graph). **Deploy (`pulumi up`) + live-URL capture is the local capstone** (AWS creds + Pulumi passphrase are local-only — _revised 2026-06-23: `pulumi up` now also runs in CI via GitHub OIDC + an S3 state backend; see the top Change-log entry_). Deferred to their own tickets (foundation accommodates, zero refactor): Dexie caching, Cognito, Sentry, SRE, the CMS CRUD.
 
 ### 2026-06-21 — Foundation Phase 0 implemented + enforcement live (NH-199 / NH-195, PR #56)
 
@@ -383,7 +415,7 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 | L7-master-trigger       | Fix the `master`/`main` trigger so all on.push.branches / merge_group / OIDC trust-policy refs use refs/heads/master.                                                | ✅ done             | 🤖  | DACI:136 |     |
 | L7-merge-queue          | Use a merge-queue (`merge_group`) so two independently-green parallel-agent PRs can't combine into a broken master.                                                  | ✅ wired            | 🤖  | DACI:136 |     |
 | L7-merge-queue-fallback | If GitHub plan tier lacks merge_group, downgrade to branch-protection + linear history + required reviews until plan upgrade.                                        | 💤 deferred-trigger | —   | DACI:181 |     |
-| L7-oidc                 | OIDC stays reserved for deploy.yml (deploy-only short-lived AWS credential auth, not used in non-deploy CI).                                                         | 💤 deferred-trigger | —   | DACI:136 |     |
+| L7-oidc                 | OIDC stays reserved for deploy.yml (deploy-only short-lived AWS credential auth, not used in non-deploy CI).                                                         | ✅ done             | 🤖  | DACI:136 |     |
 | L7-reject-matrix        | Reject per-layer CI matrix (N-times install cost on a skeleton) and full hermetic/no-internet CI — defer until real code exists.                                     | 💤 deferred-trigger | —   | DACI:136 |     |
 | L7-set-shas             | Wire nrwl/nx-set-shas@v4 (or explicit NX_BASE/NX_HEAD) so nx affected gets correct base SHAs on pull_request, push:master, and merge_group.                          | ✅ done             | 🤖  | DACI:179 |     |
 | L7-nxcloud-cap          | Nx Cloud free tier has a monthly compute-credit cap; on exhaustion fall back to local-cache-only — never treat Nx Cloud as a hard dependency. Monitor first 30 days. | ⏳ pending          | —   | DACI:180 |     |

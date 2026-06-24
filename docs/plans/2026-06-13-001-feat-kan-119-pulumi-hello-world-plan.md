@@ -15,23 +15,26 @@ This is **NH-150** (Track-2 / NH-119) — the AWS proof-of-life for Alpha and th
 
 ## Problem Frame
 
-The workspace is greenfield below the layer dirs: `core/ adapters/ apps/` are empty `.gitkeep`; `infra/` is a stub (placeholder `echo` scripts, `type:infra` tag). No `@pulumi/*` deps exist. AWS creds are live and verified (IAM user `notation-hero-pulumi-local`, account `617255150217`, region `ap-southeast-2`; NH-149 Done). Pulumi CLI v3.243 is logged into Pulumi Cloud as `leocaseiro`. So everything the deploy needs exists **except the code**.
+The workspace is greenfield below the layer dirs: `core/ adapters/ apps/` are empty `.gitkeep`; `infra/` is a stub (placeholder `echo` scripts, `type:infra` tag). No `@pulumi/*` deps exist. AWS creds are live and verified (IAM user `notation-hero-pulumi-local`, account `<redacted>`, region `ap-southeast-2`; NH-149 Done). Pulumi CLI v3.243 is logged into Pulumi Cloud as `leocaseiro`. So everything the deploy needs exists **except the code**.
 
 ---
 
 ## Requirements
 
 ### Deliverable
+
 - R1. `pulumi up` provisions a Node Lambda + a public Function URL in `ap-southeast-2`; an HTTP GET to the URL returns a `200` JSON hello payload.
 - R2. The Lambda logs to an **explicit** `aws.cloudwatch.LogGroup` (`/aws/lambda/<fn-name>`) with **finite** retention (14 days) — never the auto-created never-expire group.
 - R3. State lives on Pulumi Cloud (free tier); the deploy costs **$0** (always-free Lambda + Function URL + CloudWatch at hello-world scale).
 
 ### Architecture (hexagonal; honors locked H1–H4)
+
 - R4. The runtime handler lives in `apps/handler-hello` (`type:app`) and imports **no** `@pulumi/*` (depcruise H8).
 - R5. The `LambdaWithUrl` Pulumi ComponentResource + the stack composition live in `infra/` (`type:infra`, imports `@pulumi/*` — H3). See KTD1.
 - R6. `infra/` references the handler's **build output** via `pulumi.asset.FileArchive("../apps/handler-hello/dist")` and an Nx build dependency — never an import of handler source (H4, H9, no-apps-to-infra).
 
 ### Green-CI parity
+
 - R7. New code passes the **live** gates: depcruise (H8/H9/H10/H11, no-circular, no-orphans), `tooling/check-layout.sh` (kebab + approved role suffix, co-located tests, no `__tests__/`), syncpack, knip, commitlint, semgrep, gitleaks, osv-scanner.
 - R8. `.pulumi/` plus Pulumi state/secret artifacts are git-ignored **and** nx-ignored (decision M8); `Pulumi.yaml` + `Pulumi.<stack>.yaml` are committed.
 
@@ -121,10 +124,11 @@ pnpm-workspace.yaml            # catalog entries for the new deps
 **Approach:** `export const handler = async (): Promise<...> => ({ statusCode: 200, headers: { "content-type": "application/json" }, body: JSON.stringify({ message: "hello from notation-hero" }) })`. Types from `aws-lambda` (devDep, stripped at build — never a runtime `@pulumi` path). `@nx/esbuild:esbuild` target with `platform:node`, `format:["cjs"]`, `bundle:true`, `esbuildOptions:{ target:"node22", sourcemap:true }`, `outputs:["{projectRoot}/dist"]`. Confirm the emitted file is `dist/index.js` so the Lambda handler string is `index.handler`.
 **Patterns to follow:** existing `project.json`/`package.json` shape in `infra/`; the `type:app` tag.
 **Test scenarios:**
+
 - Happy path — `handler()` resolves to `statusCode === 200`.
 - Body shape — parsed `body` has `message` containing "hello"; `content-type` is `application/json`.
 - Covers R1 (the response contract the deployed URL must return).
-**Verification:** `nx build handler-hello` emits `dist/index.js`; `nx test handler-hello` green; depcruise shows no `apps → @pulumi`; check-layout passes.
+  **Verification:** `nx build handler-hello` emits `dist/index.js`; `nx test handler-hello` green; depcruise shows no `apps → @pulumi`; check-layout passes.
 
 ### U3. `infra/` Pulumi program — `LambdaWithUrl` component + composition
 
@@ -135,11 +139,12 @@ pnpm-workspace.yaml            # catalog entries for the new deps
 **Approach (boundary, load-bearing):** Add `infra/index.ts` (and, only if untested, the handler entry) to the `no-orphans` `pathNot` exemptions in `.dependency-cruiser.cjs` — the config comment explicitly sanctions "add entry-point exemptions when app/infra composition roots arrive." Keep that edit minimal and explained (it's a CODEOWNERS-protected enforcement file).
 **Patterns to follow:** the research synthesis component sketch; Pulumi's official "Build a Component" guide; `pulumi/examples` nx-monorepo `nx.json`.
 **Test scenarios (pulumi mocks via `pulumi.runtime.setMocks`):**
+
 - Creates a `Function` with `runtime === "nodejs22.x"` and `architectures` containing `arm64`.
 - Creates a `LogGroup` whose `name` is `/aws/lambda/<functionName>` with `retentionInDays === 14`. Covers R2.
 - Creates a `FunctionUrl` with `authorizationType === "NONE"`. Covers R1/C2.
 - Exposes a non-empty `url` output.
-**Verification:** `nx typecheck infra` + `nx test infra` green; `nx build infra` (tsc) green; `pnpm depcheck` green (infra imports `@pulumi` + own source only — no `apps/core/adapters` source); check-layout passes (`.stack` suffix, co-located test).
+  **Verification:** `nx typecheck infra` + `nx test infra` green; `nx build infra` (tsc) green; `pnpm depcheck` green (infra imports `@pulumi` + own source only — no `apps/core/adapters` source); check-layout passes (`.stack` suffix, co-located test).
 
 ### U4. Green-CI parity pass
 
@@ -163,7 +168,7 @@ pnpm-workspace.yaml            # catalog entries for the new deps
 
 ## Risks & Dependencies
 
-- **depcruise `infra → component` resolution (highest risk).** KTD1 keeps the component *inside* `infra/`, so the import is intra-layer (`infra → infra`) — no H9 exposure. If a future change moves it to `adapters/`, H9 will fire on the symlink-resolved real path; don't. Verify with `pnpm depcheck` in U3.
+- **depcruise `infra → component` resolution (highest risk).** KTD1 keeps the component _inside_ `infra/`, so the import is intra-layer (`infra → infra`) — no H9 exposure. If a future change moves it to `adapters/`, H9 will fire on the symlink-resolved real path; don't. Verify with `pnpm depcheck` in U3.
 - **no-orphans on composition roots.** `infra/index.ts` is nothing's dependency → an orphan unless exempted. The `.dependency-cruiser.cjs` edit (U3) is required and sanctioned by the config's own comment; surface it explicitly in the PR.
 - **`@nx/esbuild` esm default (KTD3).** Forgetting the `cjs` override yields an ESM bundle that mis-loads on Lambda. Pinned in U2.
 - **LogGroup auto-create (KTD4).** Only the explicit group + `loggingConfig.logGroup` + pinned name prevents the unmanaged never-expire group.
@@ -172,7 +177,7 @@ pnpm-workspace.yaml            # catalog entries for the new deps
 
 ## Alternatives Considered
 
-- **Component in `adapters/aws` (the ticket's literal text).** Rejected per KTD1: `infra → adapters` source is a live depcruise error, IaC belongs in `infra/` (H3), no `.component` suffix exists, and it would invent `adapters/aws` before its real runtime feature. A built-package import *might* dodge H9, but it adds `build:dts` + package-exports complexity for no benefit at this scale.
+- **Component in `adapters/aws` (the ticket's literal text).** Rejected per KTD1: `infra → adapters` source is a live depcruise error, IaC belongs in `infra/` (H3), no `.component` suffix exists, and it would invent `adapters/aws` before its real runtime feature. A built-package import _might_ dodge H9, but it adds `build:dts` + package-exports complexity for no benefit at this scale.
 - **Single inline-code Lambda in `infra/` (no separate handler app).** Rejected: violates H1/H2 (handler must live in `apps/`, not `infra/`) and forfeits the build-output wiring that is the whole portfolio point of D1=A.
 
 ## Open Questions

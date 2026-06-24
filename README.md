@@ -1,78 +1,124 @@
 # Notation Hero
 
 A Progressive Web App rhythm game for practising music notation, backed by an
-AWS-deployed admin/CMS. Built as a hexagonal **pnpm + Nx** monorepo — the
-architecture is a deliberate "swappable backend" system-design portfolio piece.
+AWS-deployed admin/CMS. Built as a hexagonal **pnpm-workspaces** monorepo — a
+deliberate "swappable backend" system-design portfolio piece.
 
-> **Status:** early foundation. The tooling + CI bedrock is in place, and the
-> **first AWS deliverable** — a hello-world Lambda Function URL (`apps/handler-hello`
-> + `infra/`) — is implemented and deployable. Remaining domain packages materialise
-> with their specs. The authoritative record of every decision and its status is the
+> **Status:** early foundation. The first **deployable AWS slice** (NH-206) is in
+> place — a NestJS API on Lambda + a Vite React SPA, both served from a single
+> CloudFront distribution. Remaining domain packages materialise with their specs.
+> The authoritative record of every decision is the
 > [decision registry](docs/decisions/decision-registry.md).
 
 ## Stack
 
-- **Monorepo:** pnpm workspaces + [Nx](https://nx.dev) (`affected`, computation cache, module-boundary tags)
-- **Language:** TypeScript — strict + composite + project references + `isolatedDeclarations`
-- **Tests:** Node's built-in runner (`node --test`, type-stripping) today; Vitest is a deferred lane
-- **Architecture:** Hexagonal — `core/` (pure domain) → `adapters/` → `apps/` → `infra/`
-- **Data:** Neon Postgres + JSONB for the song/lesson catalog; DynamoDB for per-user data
-- **Cloud:** AWS via Pulumi (TypeScript); S3 + CloudFront for web delivery; Lambda for the API
-- **CI/CD:** GitHub Actions, path-filtered `nx affected`, GitHub OIDC for deploys (zero long-lived secrets)
+- **Monorepo:** pnpm workspaces (`pnpm -r`) — no Nx/Turborepo
+- **Client:** Vite + React, TanStack Router/Query, Tailwind (the PWA)
+- **Server:** NestJS on AWS Lambda (serverless-express "lambdalith") — SWC compile → esbuild bundle
+- **Language:** TypeScript (strict)
+- **Tests:** Vitest (client + server); `node --test` (infra)
+- **Cloud:** AWS via Pulumi (TypeScript) — **one CloudFront distribution, two origins**:
+  `/*` → private S3 (SPA static, via Origin Access Control); `/api/*` → Lambda Function URL
+  (locked to `AWS_IAM`, reachable only by CloudFront via Origin Access Control)
+- **CI / CD:** GitHub Actions — `ci.yml` (lint / typecheck / test / build); `deploy.yml`
+  runs `pulumi up` on `master` **after CI passes**, via **GitHub → AWS OIDC** (no stored keys).
+  `pulumi preview` is local-only. Local deploys still work — see **Deploy (AWS)** below.
 
 ## Layout
 
-| Path | Package | Role |
-|---|---|---|
-| `core/*` | `@notation-hero/core` | Pure domain — no AWS / React / HTTP imports |
-| `adapters/*` | `@notation-hero/adapters-*` | Implement core's ports against the world |
-| `apps/*` | `@notation-hero/*` | Composition roots; one deploy target each |
-| `infra/` | `@notation-hero/infra` | Pulumi composition root |
-
-**Built so far:** `apps/handler-hello` (the hello-world Lambda) and `infra/` (its
-Pulumi stack — the `LambdaWithUrl` component + composition). `core/` and `adapters/`
-land with the first domain feature (the catalog).
+| Path      | Package                 | Role                                    |
+| --------- | ----------------------- | --------------------------------------- |
+| `client/` | `@notation-hero/client` | Vite React SPA (the PWA)                |
+| `server/` | `@notation-hero/server` | NestJS API (runs locally and on Lambda) |
+| `shared/` | `@notation-hero/shared` | Cross-cutting types / contracts         |
+| `infra/`  | `@notation-hero/infra`  | Pulumi composition root                 |
 
 Tests and stories live **co-located** next to their source — never in `__tests__/`
 or `stories/` trees (CI enforces this via `tooling/check-layout.sh`).
 
-## Develop
+## Develop (quality gates)
 
 ```bash
-pnpm install            # install workspace deps
-pnpm lint               # nx run-many --target=lint
-pnpm typecheck          # nx run-many --target=typecheck
-pnpm test               # nx run-many --target=test   (node --test)
-pnpm build              # nx run-many --target=build
-pnpm depcheck           # dependency-cruiser boundary + cycle scan
-```
-
-Run only the subset affected by your change against `master`:
-
-```bash
-pnpm nx affected -t lint typecheck test build --base=origin/master --head=HEAD
+pnpm install       # install workspace deps
+pnpm lint          # pnpm -r run lint
+pnpm typecheck     # pnpm -r run typecheck
+pnpm test          # pnpm -r run test   (Vitest / node --test)
+pnpm build         # pnpm -r run build
 ```
 
 The default branch is **`master`**. Never commit or push with `--no-verify` —
-Lefthook runs the layout guard and `nx affected` locally before CI does.
+Lefthook runs the layout guard and checks locally before CI does.
+
+## Run locally
+
+The client and server are separate dev servers. Run the **server on port 3001** and
+the **client on port 3000**; Vite proxies `/api/*` to the server (see
+`client/vite.config.ts`), so the app is same-origin locally — exactly as it is behind
+CloudFront in production.
+
+```bash
+# terminal 1 — API (NestJS, port 3001)
+PORT=3001 pnpm --filter @notation-hero/server run start:dev
+
+# terminal 2 — SPA (Vite, port 3000; proxies /api → :3001)
+pnpm --filter @notation-hero/client run dev
+```
+
+Open the URL Vite prints (defaults to <http://localhost:3000>; Vite picks the next free port if
+3000 is taken) — the About page fetches `/api/catalog` live through the proxy. Hit the API
+directly with `curl http://localhost:3001/api/catalog`.
 
 ## Deploy (AWS)
 
-Infrastructure is **Pulumi (TypeScript)**; stack state lives on Pulumi Cloud (free
-tier). Deploys run **locally** for now — CI-driven `deploy.yml` + GitHub OIDC land
-later (NH-151/115). Requires AWS credentials (`aws configure`) and `pulumi login`.
+Infrastructure is **Pulumi (TypeScript)** with a self-managed **S3 state backend**
+(`s3://notation-hero-pulumi-state-apse2`, pinned in `infra/Pulumi.yaml`). There are two
+ways to deploy — **CI/CD** (default) and **local**.
 
-The first stack is a hello-world Lambda behind a public **Function URL**, logging to
-a managed CloudWatch log group — all within AWS always-free tiers (~$0).
+### CI/CD — GitHub Actions + AWS OIDC
+
+`.github/workflows/deploy.yml` deploys with **no stored AWS keys**, assuming the
+`notation-hero-ci-deploy` role via **GitHub → AWS OIDC**:
+
+- **Push to `master` →** `pulumi up`, but only after the **CI** workflow succeeds on `master`
+  (a red commit never deploys).
+- **`pulumi preview` is local-only** — run it before merging infra changes (the PR-triggered
+  preview was removed in NH-206 review #3; see
+  `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`).
+
+One-time admin bootstrap of the OIDC provider + role: `docs/runbooks/aws-ci-oidc-bootstrap.sh`
+(permissions in `docs/runbooks/aws-iam-ci-deploy.json`). CI config = the `PULUMI_CONFIG_PASSPHRASE`
+secret + the `AWS_DEPLOY_ROLE_ARN` / `AWS_REGION` / `PULUMI_STATE_BUCKET` variables.
+
+### Local
+
+Local deploys run as the dedicated `notation-hero-pulumi-local` IAM user — **never as an
+admin identity**. That user needs S3 (site + state buckets) + CloudFront +
+`lambda:AddPermission` rights (`docs/runbooks/aws-iam-pulumi-local-deploy.json`); granting
+them is a one-time IAM task, separate from the deploy itself.
+
+Build both artifacts, preview, then deploy:
 
 ```bash
-# select the stack if it exists, else create it with Pulumi Cloud secrets (no passphrase)
-pulumi -C infra stack select dev 2>/dev/null || pulumi -C infra stack init dev --secrets-provider=default
-pnpm --filter @notation-hero/infra pulumi:preview   # safe dry-run: review the plan, no changes
-pnpm --filter @notation-hero/infra pulumi:up        # builds the handler, then `pulumi up`
-curl "$(pulumi -C infra stack output url)"   # -> {"message":"hello from notation-hero"}
-aws logs tail "$(pulumi -C infra stack output logGroupName)" --since 5m --region ap-southeast-2
-pulumi -C infra destroy                      # tear down (stays $0 either way)
+export PULUMI_CONFIG_PASSPHRASE=…                        # stops the repeated passphrase prompts
+pnpm --filter @notation-hero/server run build:lambda     # → server/dist-lambda
+pnpm --filter @notation-hero/client run build            # → client/dist
+pnpm --filter @notation-hero/infra run pulumi:preview    # dry-run the plan (no changes)
+pnpm --filter @notation-hero/infra run pulumi:up         # create / update AWS (~15 min for CloudFront)
+```
+
+Verify against the **CloudFront URL** (not the raw Lambda URL):
+
+```bash
+curl "$(pulumi -C infra stack output cloudfrontUrl)"                # SPA index → 200 HTML
+curl "$(pulumi -C infra stack output cloudfrontUrl)/api/catalog"  # live JSON
+# the raw Function URL is AWS_IAM-locked, so a direct unsigned call should be 403:
+curl -s -o /dev/null -w '%{http_code}\n' "$(pulumi -C infra stack output functionUrl)"
+```
+
+Tear down at any time (the slice stays within AWS always-free tiers either way):
+
+```bash
+pnpm --filter @notation-hero/infra run pulumi:destroy
 ```
 
 ## Documentation

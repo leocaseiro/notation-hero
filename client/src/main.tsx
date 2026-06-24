@@ -15,8 +15,11 @@ declare module '@tanstack/react-router' {
   }
 }
 
-// Placeholder QueryClient — no real queries wired yet (skeleton only).
-const queryClient = new QueryClient()
+// One retry covers a cold Lambda start; more would just stack the fetch's 8s timeout on a
+// genuinely-down API. (Tests override this with retry:false for fast failure assertions.)
+const queryClient = new QueryClient({
+  defaultOptions: { queries: { retry: 1 } },
+})
 
 const rootElement = document.getElementById('app')
 

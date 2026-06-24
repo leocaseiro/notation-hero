@@ -1,0 +1,86 @@
+name: Deploy
+
+# CD for the ARCH-EDGE-1 AWS slice (NH-206). Auth = GitHub -> AWS OIDC (no stored keys);
+# Pulumi state = self-managed S3 backend (pinned in infra/Pulumi.yaml). Runs `pulumi up` only,
+# and ONLY after the CI workflow succeeds on master (gate deploy on green CI — a
+# compilable-but-test-failing commit must never reach `up`). `pulumi preview` is LOCAL-ONLY
+# (NH-206 review #3): a PR-triggered preview ran arbitrary infra/*.ts under the full deploy role,
+# so PRs now carry NO AWS credentials. Run `pulumi preview` locally before merging infra changes
+# — see docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md.
+on:
+  # Trigger after the "CI" workflow completes on master; the `up` job runs only if that CI run
+  # succeeded (gated below). A direct `push: master` trigger would race CI and could deploy a red
+  # commit.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+
+# id-token: assume the AWS role via OIDC. No `pull-requests` perm — no PR job touches AWS now.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  up:
+    name: Pulumi up
+    # Deploy only a commit whose CI run went green (workflow_run carries the triggering CI
+    # conclusion); combined with the master-branch trigger filter, a red or non-master commit
+    # never reaches `up`.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # The master-restricted `production` environment is the SECOND gate alongside the OIDC trust:
+    # the deploy role trusts ONLY `...:environment:production`, a subject GitHub mints solely for a
+    # job that references this environment — and the environment is limited to the master branch.
+    environment: production
+    runs-on: ubuntu-latest
+    # First CloudFront create can take ~15-20 min; this timeout is a hung-job backstop. NOTE: a
+    # hard-killed `pulumi up` does NOT release the S3-backend lock — it strands it (the next run
+    # needs `pulumi cancel`). The timeout frees the concurrency group, not the lock.
+    timeout-minutes: 60
+    # Never cancel an in-flight `up` — a half-applied deploy can corrupt stack state.
+    concurrency:
+      group: deploy-up-dev
+      cancel-in-progress: false
+    steps:
+      # No `ref:` — checkout defaults to the master tip. Deploy is workflow_run-gated to
+      # `branches: [master]`, so it only ever runs for a master commit (never PR code), and
+      # deploying the latest master is correct. (Pinning ref to workflow_run.head_sha would trip
+      # the SAST "workflow-run-target-code-checkout" rule for the pwn-request pattern.)
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: ./.github/actions/setup-js
+      - name: Build Lambda + SPA (pulumi reads server/dist-lambda + client/dist)
+        run: |
+          pnpm --filter @notation-hero/server run build:lambda
+          pnpm --filter @notation-hero/client run build
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          # Pin the OIDC token audience to AWS STS (defence-in-depth; the role trust also
+          # enforces aud = sts.amazonaws.com). NH-206 review #3, H2.
+          audience: sts.amazonaws.com
+          mask-aws-account-id: true
+      - id: pulumi-up
+        uses: pulumi/actions@8582a9e8cc630786854029b4e09281acd6794b58 # v6
+        with:
+          command: up
+          stack-name: dev
+          work-dir: infra
+          cloud-url: s3://${{ vars.PULUMI_STATE_BUCKET }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+      # A hard-killed/cancelled `up` strands the S3-backend lock (no DynamoDB auto-release), so the
+      # NEXT deploy fails until it is cleared. Surface the recovery command instead of leaving an
+      # operator to discover the wedge (NH-206 review: stranded-lock recovery).
+      - name: Surface stranded-lock recovery if up did not finish
+        if: ${{ always() && (steps.pulumi-up.outcome == 'failure' || steps.pulumi-up.outcome == 'cancelled') }}
+        run: |
+          {
+            echo "### Pulumi up did not complete — the S3 state lock may be stranded"
+            echo
+            echo "The next deploy will fail with a 'stack is currently locked' error until the lock"
+            echo "is cleared. Clear it (admin, with the S3 backend + passphrase configured):"
+            echo
+            echo "    pulumi login s3://\$PULUMI_STATE_BUCKET"
+            echo "    cd infra && pulumi cancel --stack dev"
+          } >> "$GITHUB_STEP_SUMMARY"

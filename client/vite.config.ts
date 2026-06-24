@@ -9,6 +9,14 @@ import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  // Local dev: the SPA prefers :3000 (the dev script's --port; Vite picks the next free port if
+  // taken, so use the URL it prints) and proxies /api/* to the NestJS server on :3001 — so the
+  // app is same-origin locally exactly as it is behind CloudFront in production.
+  server: {
+    proxy: {
+      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+    },
+  },
   plugins: [
     tailwindcss(),
     tanstackRouter({ target: 'react', autoCodeSplitting: true }),

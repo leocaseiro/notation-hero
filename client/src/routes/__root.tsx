@@ -1,4 +1,4 @@
-import { Outlet, createRootRoute } from '@tanstack/react-router'
+import { Link, Outlet, createRootRoute } from '@tanstack/react-router'
 
 import '../styles.css'
 
@@ -7,5 +7,17 @@ export const Route = createRootRoute({
 })
 
 function RootComponent() {
-  return <Outlet />
+  return (
+    <>
+      <nav className="flex gap-4 border-b border-gray-200 p-4">
+        <Link to="/" className="font-medium text-brand-700">
+          Home
+        </Link>
+        <Link to="/about" className="font-medium text-brand-700">
+          About
+        </Link>
+      </nav>
+      <Outlet />
+    </>
+  )
 }

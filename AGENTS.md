@@ -62,8 +62,14 @@ no pnpm install; leave an inline comment saying so.
 - Server AND client tests run under **Vitest** (DACI L5 / NH-194), not Jest — despite
   `nest new` emitting Jest by default.
 - `@notation-hero/infra` Pulumi ops — `pulumi:preview`/`pulumi:up`/`pulumi:destroy`
-  (run from `infra/`, or `pnpm --filter @notation-hero/infra run pulumi:preview`) — need
-  AWS creds + a Pulumi token, so they run **locally only**, never in CI.
+  (run from `infra/`, or `pnpm --filter @notation-hero/infra run pulumi:preview`) — use a
+  self-managed **S3 state backend** + a `PULUMI_CONFIG_PASSPHRASE` (no Pulumi Cloud token).
+  `up` runs **in CI** on push to `master` only (`.github/workflows/deploy.yml`, via GitHub→AWS
+  OIDC + a master-restricted `production` environment). **`preview` is LOCAL-only** (NH-206
+  review #3): a PR-triggered preview ran arbitrary `infra/*.ts` under the deploy role, so PRs
+  carry no AWS creds — run `pulumi preview` locally before merging infra changes. See the
+  2026-06-23 and 2026-06-24 CI/CD entries in `docs/decisions/decision-registry.md` and
+  `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`.
 - Phase-1+ tooling (flat-config lint lane specifics, coverage-ratchet, size-limit,
   type-coverage, tsconfig project-reference sync) — to be filled in as those lanes land.
 
@@ -152,6 +158,27 @@ Bots (dependabot etc.) are exempt. This is v1.2 — items are past-tense claims,
 aware" acknowledgements, so a ticked box is a checkable statement. Smart/DangerJS rules
 (green-fake catch, first-use triggers, real Jira validation, diff-aware UI/test detection)
 remain the deferred NH-16 v2 backlog. Spec: `docs/specs/2026-06-15-pr-merge-checklist.md`.
+
+### Infra changes — local-preview safety-net (NH-206)
+
+`pulumi preview` no longer runs on PRs (it ran arbitrary `infra/*.ts` under the deploy role —
+NH-206 review #3). An agent that changes anything under `infra/` MUST recover that safety net:
+
+1. Run `pulumi preview` locally (from `infra/`, with an AWS SSO session). With no SSO session,
+   write _"preview not run — review locally before merge"_ under `## Pulumi preview` in the PR
+   body and still do step 3 for anything you cannot rule out.
+2. Record a one-line **classification** under the `## Pulumi preview` heading in the PR body —
+   `safe`, or `destructive`/`exposure` + a short note. **Classification only — never paste
+   resource IDs, ARNs, or URLs (the PR is public).**
+3. If preview shows a **destructive** change (`replace`/`delete` of an existing resource) or an
+   **exposure** change (public access enabled, Function-URL/API auth weakened, or a new
+   wildcard/admin IAM grant), file a **required merge-blocker task in BOTH**: the PR-checklist
+   item, and a Jira Smart Checklist mandatory task (`customfield_10041`, `-!`) on the NH issue —
+   each describing the change so leocaseiro cannot blind-merge it.
+
+The `pr-checklist` gate is **diff-aware**: a PR that touches `infra/**` fails unless the
+`## Pulumi preview` section is filled (`tooling/pr-checklist.mjs`, `PR_INFRA_CHANGED` from the
+`changes` paths-filter). Spec: `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`.
 
 ## Decision governance
 

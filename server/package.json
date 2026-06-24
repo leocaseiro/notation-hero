@@ -7,6 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "build:lambda": "node build-lambda.mjs",
     "format": "prettier --write \"src/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
@@ -19,6 +20,7 @@
     "test:cov": "vitest run --coverage"
   },
   "dependencies": {
+    "@codegenie/serverless-express": "^5.0.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/core": "^11.0.1",
     "@nestjs/platform-express": "^11.0.1",
@@ -33,9 +35,11 @@
     "@nestjs/testing": "^11.0.1",
     "@swc/cli": "^0.7.0",
     "@swc/core": "1.15.41",
+    "@types/aws-lambda": "^8.10.162",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@vitest/coverage-v8": "^4.1.9",
+    "esbuild": "^0.28.1",
     "eslint": "^9.20.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",

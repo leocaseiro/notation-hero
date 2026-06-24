@@ -1,0 +1,155 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "SpaBucket",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": ["arn:aws:s3:::site-spa-*", "arn:aws:s3:::site-spa-*/*"]
+    },
+    {
+      "Sid": "PulumiStateBucket",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": [
+        "arn:aws:s3:::notation-hero-pulumi-state-*",
+        "arn:aws:s3:::notation-hero-pulumi-state-*/*"
+      ]
+    },
+    {
+      "Sid": "CloudFrontEdge",
+      "Effect": "Allow",
+      "Resource": "*",
+      "Action": [
+        "cloudfront:CreateOriginAccessControl",
+        "cloudfront:GetOriginAccessControl",
+        "cloudfront:UpdateOriginAccessControl",
+        "cloudfront:DeleteOriginAccessControl",
+        "cloudfront:ListOriginAccessControls",
+        "cloudfront:CreateFunction",
+        "cloudfront:DescribeFunction",
+        "cloudfront:GetFunction",
+        "cloudfront:UpdateFunction",
+        "cloudfront:PublishFunction",
+        "cloudfront:DeleteFunction",
+        "cloudfront:ListFunctions",
+        "cloudfront:CreateDistribution",
+        "cloudfront:GetDistribution",
+        "cloudfront:GetDistributionConfig",
+        "cloudfront:UpdateDistribution",
+        "cloudfront:DeleteDistribution",
+        "cloudfront:ListDistributions",
+        "cloudfront:TagResource",
+        "cloudfront:UntagResource",
+        "cloudfront:ListTagsForResource",
+        "cloudfront:CreateInvalidation"
+      ]
+    },
+    {
+      "Sid": "LambdaFunction",
+      "Effect": "Allow",
+      "Resource": "arn:aws:lambda:ap-southeast-2:*:function:notation-hero-api",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:ListVersionsByFunction",
+        "lambda:PublishVersion",
+        "lambda:TagResource",
+        "lambda:UntagResource",
+        "lambda:ListTags",
+        "lambda:AddPermission",
+        "lambda:RemovePermission",
+        "lambda:GetPolicy",
+        "lambda:CreateFunctionUrlConfig",
+        "lambda:GetFunctionUrlConfig",
+        "lambda:UpdateFunctionUrlConfig",
+        "lambda:DeleteFunctionUrlConfig"
+      ]
+    },
+    {
+      "Sid": "CreateExecRoleWithBoundary",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::*:role/api-role-*",
+      "Action": ["iam:CreateRole", "iam:PutRolePermissionsBoundary"],
+      "Condition": {
+        "ArnLike": {
+          "iam:PermissionsBoundary": "arn:aws:iam::*:policy/notation-hero-ci-role-boundary"
+        }
+      }
+    },
+    {
+      "Sid": "ManageExecRoleLifecycle",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::*:role/api-role-*",
+      "Action": [
+        "iam:DeleteRole",
+        "iam:GetRole",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:ListRoleTags",
+        "iam:ListAttachedRolePolicies",
+        "iam:GetRolePolicy",
+        "iam:ListRolePolicies",
+        "iam:ListInstanceProfilesForRole"
+      ]
+    },
+    {
+      "Sid": "AttachOnlyLambdaBasicExec",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::*:role/api-role-*",
+      "Action": ["iam:AttachRolePolicy", "iam:DetachRolePolicy"],
+      "Condition": {
+        "ArnEquals": {
+          "iam:PolicyARN": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        }
+      }
+    },
+    {
+      "Sid": "PassExecRoleToLambdaOnly",
+      "Effect": "Allow",
+      "Resource": "arn:aws:iam::*:role/api-role-*",
+      "Action": "iam:PassRole",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "lambda.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "LambdaLogGroupManage",
+      "Effect": "Allow",
+      "Resource": [
+        "arn:aws:logs:ap-southeast-2:*:log-group:/aws/lambda/notation-hero-api",
+        "arn:aws:logs:ap-southeast-2:*:log-group:/aws/lambda/notation-hero-api:*"
+      ],
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:PutRetentionPolicy",
+        "logs:DeleteRetentionPolicy",
+        "logs:TagResource",
+        "logs:UntagResource",
+        "logs:ListTagsForResource",
+        "logs:TagLogGroup",
+        "logs:UntagLogGroup",
+        "logs:ListTagsLogGroup"
+      ]
+    },
+    {
+      "Sid": "LogGroupDescribe",
+      "Effect": "Allow",
+      "Action": "logs:DescribeLogGroups",
+      "Resource": "arn:aws:logs:ap-southeast-2:*:log-group:*"
+    },
+    {
+      "Sid": "ReadCiRoleBoundary",
+      "Effect": "Allow",
+      "Action": "iam:GetPolicy",
+      "Resource": "arn:aws:iam::*:policy/notation-hero-ci-role-boundary"
+    }
+  ]
+}
