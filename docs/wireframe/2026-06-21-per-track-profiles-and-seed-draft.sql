@@ -18,6 +18,16 @@
 -- is an APP-LAYER invariant (same call the schema already makes for "every
 -- playable owns >=1 track" and the derived instruments[]/has_audio facets).
 -- ============================================================================
+--
+-- 2026-06-24 SCHEMA-DELTA CONSOLIDATION (SD-28/26/25/15 brainstorm — see
+-- docs/wireframe/2026-06-24-schema-delta-decisions.md):
+--   * track.role text  →  track.roles text[]      (SD-28: a track plays N parts)
+--   * track.techniques text[]   ADDED             (SD-25: per-track, ALL instruments)
+--   * drum_profile.techniques   REMOVED           (moved to track.techniques)
+--   * track.source_instrument_id / _kind  ADDED   (SD-26: GM-program provenance)
+--   * instrument is DERIVED from the AlphaTab GM program (never UGC); family = code-only map (no column)
+--   * SD-15: voicing stays Thin (no note/voice_map tables)
+-- ============================================================================
 
 DROP TABLE IF EXISTS tonal_profile, drum_profile, media, track, step, playable_link, playable, notation CASCADE;
 
@@ -109,7 +119,10 @@ CREATE TABLE track (
   id                   text PRIMARY KEY,
   playable_id          text NOT NULL REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
   instrument           text NOT NULL,                 -- flat open vocab (drums, guitar, bass, keys, vocals…)
-  role                 text,                          -- same-instrument variant (solo|rhythm|lead|pad|harmony)
+  roles                text[] NOT NULL DEFAULT '{}',  -- SD-28: part(s) this track plays (lead|rhythm|solo|pad|harmony); curated/UGC, auto-derivable
+  techniques           text[] NOT NULL DEFAULT '{}',  -- SD-25: per-track techniques (tapping/slap/double-bass…), any instrument; auto-extracted + curated
+  source_instrument_id   text,                        -- SD-26 provenance: raw GM program (0-127) / MusicXML sound-id / MuseScore id
+  source_instrument_kind text,                        -- SD-26 provenance: gm-program | musicxml-sound | musescore-id | name-parse
   name                 text,
   sort_order           int  NOT NULL,
   level                smallint,                      -- L2 per-instrument difficulty (0–10, nullable)
@@ -120,7 +133,8 @@ CREATE TABLE track (
   updated_at           timestamptz NOT NULL DEFAULT now(),
   created_by           text,
   updated_by           text,
-  CONSTRAINT track_level CHECK (level IS NULL OR level BETWEEN 0 AND 10)
+  CONSTRAINT track_level CHECK (level IS NULL OR level BETWEEN 0 AND 10),
+  CONSTRAINT track_source_kind CHECK (source_instrument_kind IS NULL OR source_instrument_kind IN ('gm-program','musicxml-sound','musescore-id','name-parse'))
 );
 
 -- ─────────────────────────────────────────────────────────────────
@@ -210,7 +224,6 @@ CREATE TABLE drum_profile (
   beats         text[] NOT NULL DEFAULT '{}',
   fills         text[] NOT NULL DEFAULT '{}',
   rudiments     text[] NOT NULL DEFAULT '{}',
-  techniques    text[] NOT NULL DEFAULT '{}',
   kit_pieces    text[] NOT NULL DEFAULT '{}',
   data          jsonb  NOT NULL DEFAULT '{}',
   created_at    timestamptz NOT NULL DEFAULT now(),
@@ -236,6 +249,8 @@ CREATE INDEX track_playable        ON track (playable_id);
 CREATE INDEX track_notation        ON track (notation_id);
 CREATE INDEX track_instrument      ON track (instrument);
 CREATE INDEX track_instrument_level ON track (instrument, level);   -- "easy on <instrument>"
+CREATE INDEX track_roles            ON track USING gin (roles);      -- SD-28: filter by part (rhythm/lead/solo)
+CREATE INDEX track_techniques       ON track USING gin (techniques); -- SD-25: filter by technique (tapping/slap/double-bass)
 
 CREATE INDEX media_playable ON media (playable_id);
 CREATE INDEX media_track    ON media (track_id);
@@ -253,7 +268,6 @@ CREATE INDEX idx_tonal_scales               ON tonal_profile USING gin (scales);
 CREATE INDEX idx_drum_beats      ON drum_profile USING gin (beats);
 CREATE INDEX idx_drum_fills      ON drum_profile USING gin (fills);
 CREATE INDEX idx_drum_rudiments  ON drum_profile USING gin (rudiments);
-CREATE INDEX idx_drum_techniques ON drum_profile USING gin (techniques);
 CREATE INDEX idx_drum_kit_pieces ON drum_profile USING gin (kit_pieces);
 
 -- ============================================================================
@@ -322,21 +336,26 @@ INSERT INTO track (id, playable_id, instrument, sort_order, level, created_by) V
  ('trk_rock_composite','pat_rock_composite','drums',1,1,'seed');
 
 -- ── drum_profile per drums track (SD-27: keyed by track_id) ──────────────────
-INSERT INTO drum_profile (track_id, beats, fills, rudiments, techniques, kit_pieces) VALUES
- ('trk_ssr_debut','{}','{}','{single-stroke-roll}','{}','{snare}'),
- ('trk_dsr_debut','{}','{}','{double-stroke-roll}','{}','{snare}'),
- ('trk_ssr_l2','{}','{}','{single-stroke-roll}','{}','{snare}'),
- ('trk_ss4_l3','{}','{}','{single-stroke-four}','{accent}','{snare}'),
- ('trk_5sr_l4','{}','{}','{five-stroke-roll}','{}','{snare}'),
- ('trk_7sr_l6','{}','{}','{seven-stroke-roll}','{}','{snare}'),
- ('trk_swiss_l7','{}','{}','{swiss-army-triplet}','{flam}','{snare}'),
- ('trk_ssr_l8','{}','{}','{single-stroke-roll}','{}','{snare}'),
- ('trk_basic_rock','{rock,basic-rock}','{}','{}','{}','{hi-hat,snare,kick}'),
- ('trk_snare_fill_l4','{}','{snare-fill}','{single-stroke-roll}','{16th}','{snare}'),
- ('trk_voice_hh','{}','{}','{}','{}','{hi-hat}'),
- ('trk_voice_sn','{}','{}','{}','{}','{snare}'),
- ('trk_voice_kick','{}','{}','{}','{}','{kick}'),
- ('trk_rock_composite','{rock,basic-rock}','{}','{}','{}','{hi-hat,snare,kick}');
+INSERT INTO drum_profile (track_id, beats, fills, rudiments, kit_pieces) VALUES
+ ('trk_ssr_debut','{}','{}','{single-stroke-roll}','{snare}'),
+ ('trk_dsr_debut','{}','{}','{double-stroke-roll}','{snare}'),
+ ('trk_ssr_l2','{}','{}','{single-stroke-roll}','{snare}'),
+ ('trk_ss4_l3','{}','{}','{single-stroke-four}','{snare}'),
+ ('trk_5sr_l4','{}','{}','{five-stroke-roll}','{snare}'),
+ ('trk_7sr_l6','{}','{}','{seven-stroke-roll}','{snare}'),
+ ('trk_swiss_l7','{}','{}','{swiss-army-triplet}','{snare}'),
+ ('trk_ssr_l8','{}','{}','{single-stroke-roll}','{snare}'),
+ ('trk_basic_rock','{rock,basic-rock}','{}','{}','{hi-hat,snare,kick}'),
+ ('trk_snare_fill_l4','{}','{snare-fill}','{single-stroke-roll}','{snare}'),
+ ('trk_voice_hh','{}','{}','{}','{hi-hat}'),
+ ('trk_voice_sn','{}','{}','{}','{snare}'),
+ ('trk_voice_kick','{}','{}','{}','{kick}'),
+ ('trk_rock_composite','{rock,basic-rock}','{}','{}','{hi-hat,snare,kick}');
+
+-- rudiment-flavour techniques moved to track.techniques (SD-25; were drum_profile.techniques)
+UPDATE track SET techniques = '{accent}' WHERE id = 'trk_ss4_l3';
+UPDATE track SET techniques = '{flam}'   WHERE id = 'trk_swiss_l7';
+UPDATE track SET techniques = '{16th}'   WHERE id = 'trk_snare_fill_l4';
 
 -- ============================================================================
 -- SONGS  — multi-track, per-instrument levels + per-track tonal/drum profiles
@@ -367,40 +386,40 @@ INSERT INTO playable (id, kind, title, description, notation_id, level, author, 
  ('song_angra','song','Nothing To Say','Angra — neoclassical power metal; Expert-level double-bass drumming.','not_angra',9,'{Angra}','artist',138,4,4,'{metal,power-metal}','{drums,guitar,bass,keys,vocals}','{neoclassical}','{Metal}','curated','public','published',true,true,'seed','{"bars":221}');
 
 -- ── tracks: per-instrument, per-role, with per-instrument LEVELS ─────────────
-INSERT INTO track (id, playable_id, instrument, role, name, sort_order, level, notation_track_index, created_by) VALUES
+INSERT INTO track (id, playable_id, instrument, roles, name, sort_order, level, notation_track_index, techniques, created_by) VALUES
  -- Bohemian Rhapsody (real .gp: 13 tracks incl. 5 guitars + 2 print-dupe pianos; primaries mapped). guitar lead(7) vs rhythm(4) → max-on-guitar = 7
- ('trk_boh_keys','song_bohemian','keys',NULL,'Piano',1,6,1,'seed'),
- ('trk_boh_glead','song_bohemian','guitar','lead','Gtr 1',2,7,0,'seed'),
- ('trk_boh_grhythm','song_bohemian','guitar','rhythm','Gtr 2',3,4,3,'seed'),
- ('trk_boh_bass','song_bohemian','bass',NULL,'Bass',4,5,7,'seed'),
- ('trk_boh_drums','song_bohemian','drums',NULL,'Percussions',5,5,10,'seed'),
- ('trk_boh_vox','song_bohemian','vocals',NULL,'Voice',6,8,8,'seed'),
+ ('trk_boh_keys','song_bohemian','keys','{}','Piano',1,6,1,'{}','seed'),
+ ('trk_boh_glead','song_bohemian','guitar','{lead}','Gtr 1',2,7,0,'{}','seed'),
+ ('trk_boh_grhythm','song_bohemian','guitar','{rhythm}','Gtr 2',3,4,3,'{}','seed'),
+ ('trk_boh_bass','song_bohemian','bass','{}','Bass',4,5,7,'{}','seed'),
+ ('trk_boh_drums','song_bohemian','drums','{}','Percussions',5,5,10,'{}','seed'),
+ ('trk_boh_vox','song_bohemian','vocals','{}','Voice',6,8,8,'{}','seed'),
  -- Yellow (real .gp: 8 tracks)
- ('trk_yel_glead','song_yellow','guitar','lead','Lead Guitar',1,3,2,'seed'),
- ('trk_yel_grhythm','song_yellow','guitar','rhythm','Rhythm Guitar',2,2,1,'seed'),
- ('trk_yel_bass','song_yellow','bass',NULL,'Bass',3,2,4,'seed'),
- ('trk_yel_drums','song_yellow','drums',NULL,'Drums',4,2,7,'seed'),
- ('trk_yel_keys','song_yellow','keys',NULL,'Strings / Piano',5,3,5,'seed'),
- ('trk_yel_vox','song_yellow','vocals',NULL,'Lead Vocals',6,3,0,'seed'),
+ ('trk_yel_glead','song_yellow','guitar','{lead}','Lead Guitar',1,3,2,'{}','seed'),
+ ('trk_yel_grhythm','song_yellow','guitar','{rhythm}','Rhythm Guitar',2,2,1,'{}','seed'),
+ ('trk_yel_bass','song_yellow','bass','{}','Bass',3,2,4,'{}','seed'),
+ ('trk_yel_drums','song_yellow','drums','{}','Drums',4,2,7,'{}','seed'),
+ ('trk_yel_keys','song_yellow','keys','{}','Strings / Piano',5,3,5,'{}','seed'),
+ ('trk_yel_vox','song_yellow','vocals','{}','Lead Vocals',6,3,0,'{}','seed'),
  -- Zoio de Lula (real .gp: marker-less; 3 guitars + bass + drums; NO vocals track)
- ('trk_zoio_glead','song_zoio','guitar','solo','Guitarra Solo',1,4,1,'seed'),
- ('trk_zoio_grhythm','song_zoio','guitar','rhythm','Guitarra Base',2,3,0,'seed'),
- ('trk_zoio_gtr3','song_zoio','guitar',NULL,'Guitarra 3',3,3,2,'seed'),
- ('trk_zoio_bass','song_zoio','bass',NULL,'Baixo',4,4,3,'seed'),
- ('trk_zoio_drums','song_zoio','drums',NULL,'Bateria',5,9,4,'seed'),
+ ('trk_zoio_glead','song_zoio','guitar','{solo}','Guitarra Solo',1,4,1,'{}','seed'),
+ ('trk_zoio_grhythm','song_zoio','guitar','{rhythm}','Guitarra Base',2,3,0,'{}','seed'),
+ ('trk_zoio_gtr3','song_zoio','guitar','{}','Guitarra 3',3,3,2,'{}','seed'),
+ ('trk_zoio_bass','song_zoio','bass','{}','Baixo',4,4,3,'{}','seed'),
+ ('trk_zoio_drums','song_zoio','drums','{}','Bateria',5,9,4,'{}','seed'),
  -- I'm Yours (real .gp: classical + electric guitar, NOT ukulele; + vocals)
- ('trk_imy_grhythm','song_imyours','guitar','rhythm','Classical Guitar',1,2,0,'seed'),
- ('trk_imy_uke','song_imyours','guitar','lead','Electric Guitar',2,2,1,'seed'),
- ('trk_imy_bass','song_imyours','bass',NULL,'Bass',3,2,2,'seed'),
- ('trk_imy_drums','song_imyours','drums',NULL,'Drums',4,1,3,'seed'),
- ('trk_imy_vox','song_imyours','vocals',NULL,'Lead Vocal Harmonies',5,2,4,'seed'),
+ ('trk_imy_grhythm','song_imyours','guitar','{rhythm}','Classical Guitar',1,2,0,'{}','seed'),
+ ('trk_imy_uke','song_imyours','guitar','{lead}','Electric Guitar',2,2,1,'{}','seed'),
+ ('trk_imy_bass','song_imyours','bass','{}','Bass',3,2,2,'{}','seed'),
+ ('trk_imy_drums','song_imyours','drums','{}','Drums',4,1,3,'{cross-stick}','seed'),
+ ('trk_imy_vox','song_imyours','vocals','{}','Lead Vocal Harmonies',5,2,4,'{}','seed'),
  -- Angra – Nothing To Say (real .gp: 15 sections, E→G modulation; player-named tracks)
- ('trk_angra_drums','song_angra','drums',NULL,'Ricardo (Drums)',1,9,4,'seed'),
- ('trk_angra_glead','song_angra','guitar','lead','Kiko (Lead Guitar)',2,9,1,'seed'),
- ('trk_angra_grhythm','song_angra','guitar','rhythm','Rafael (Rhythm Guitar)',3,7,2,'seed'),
- ('trk_angra_bass','song_angra','bass',NULL,'Luis (Bass)',4,8,3,'seed'),
- ('trk_angra_keys','song_angra','keys',NULL,'Keyboards',5,6,5,'seed'),
- ('trk_angra_vox','song_angra','vocals',NULL,'Andre (Vocals)',6,8,0,'seed');
+ ('trk_angra_drums','song_angra','drums','{}','Ricardo (Drums)',1,9,4,'{double-bass,blast-beat}','seed'),
+ ('trk_angra_glead','song_angra','guitar','{lead}','Kiko (Lead Guitar)',2,9,1,'{}','seed'),
+ ('trk_angra_grhythm','song_angra','guitar','{rhythm}','Rafael (Rhythm Guitar)',3,7,2,'{}','seed'),
+ ('trk_angra_bass','song_angra','bass','{}','Luis (Bass)',4,8,3,'{}','seed'),
+ ('trk_angra_keys','song_angra','keys','{}','Keyboards',5,6,5,'{}','seed'),
+ ('trk_angra_vox','song_angra','vocals','{}','Andre (Vocals)',6,8,0,'{}','seed');
 
 -- ── tonal_profile per PITCHED track (SD-27: the bass carries its OWN notes) ──
 INSERT INTO tonal_profile (track_id, musical_key, keys, scales, chords, progression_concrete, progression_roman, progression_family) VALUES
@@ -428,12 +447,12 @@ INSERT INTO tonal_profile (track_id, musical_key, keys, scales, chords, progress
  ('trk_angra_keys','E minor','{E minor,G major}','{}','{}','{}','{}','{}');
 
 -- ── drum_profile per DRUMS track (the drum side of the same per-track model) ──
-INSERT INTO drum_profile (track_id, beats, fills, rudiments, techniques, kit_pieces) VALUES
- ('trk_boh_drums','{rock}','{tom-fill}','{}','{}','{hi-hat,snare,kick,crash,tom}'),
- ('trk_yel_drums','{rock,pop}','{}','{}','{}','{hi-hat,snare,kick}'),
- ('trk_zoio_drums','{rock,punk}','{snare-fill}','{}','{}','{hi-hat,snare,kick,crash}'),
- ('trk_imy_drums','{pop,reggae}','{}','{}','{cross-stick}','{hi-hat,snare,kick}'),
- ('trk_angra_drums','{metal,double-bass}','{around-the-kit}','{}','{double-bass,blast-beat}','{hi-hat,snare,kick,ride,crash,tom}');
+INSERT INTO drum_profile (track_id, beats, fills, rudiments, kit_pieces) VALUES
+ ('trk_boh_drums','{rock}','{tom-fill}','{}','{hi-hat,snare,kick,crash,tom}'),
+ ('trk_yel_drums','{rock,pop}','{}','{}','{hi-hat,snare,kick}'),
+ ('trk_zoio_drums','{rock,punk}','{snare-fill}','{}','{hi-hat,snare,kick,crash}'),
+ ('trk_imy_drums','{pop,reggae}','{}','{}','{hi-hat,snare,kick}'),
+ ('trk_angra_drums','{metal,double-bass}','{around-the-kit}','{}','{hi-hat,snare,kick,ride,crash,tom}');
 
 -- ── media: one official video per song; audio stems where we flagged has_audio
 INSERT INTO media (id, playable_id, kind, provider, url, s3_key, label, sort_order, created_by) VALUES
@@ -456,12 +475,15 @@ INSERT INTO media (id, playable_id, kind, provider, url, s3_key, label, sort_ord
 -- 3) Songs using a I–V–vi–IV progression (per-track tonal_profile) → I'm Yours
 --    SELECT DISTINCT p.title FROM tonal_profile tp JOIN track t ON t.id=tp.track_id
 --      JOIN playable p ON p.id=t.playable_id WHERE tp.progression_family @> ARRAY['I-V-vi-IV'];
--- 4) Songs with double-bass drumming (per-track drum_profile) → Angra
---    SELECT DISTINCT p.title FROM drum_profile d JOIN track t ON t.id=d.track_id
---      JOIN playable p ON p.id=t.playable_id WHERE d.techniques @> ARRAY['double-bass'];
+-- 4) Songs with double-bass drumming (techniques now on track, SD-25) → Angra
+--    SELECT DISTINCT p.title FROM track t JOIN playable p ON p.id=t.playable_id
+--      WHERE t.techniques @> ARRAY['double-bass'];
 -- 5) "The BASS plays these notes" — per-track precision SD-27 unlocks
 --    SELECT p.title, tp.chords FROM tonal_profile tp JOIN track t ON t.id=tp.track_id
 --      JOIN playable p ON p.id=t.playable_id WHERE t.instrument='bass' AND p.id='song_bohemian';
 -- 6) Expert-tier playables (level 9-10) → Angra
 --    SELECT title, level FROM playable WHERE level BETWEEN 9 AND 10;
+-- 7) Rhythm-guitar songs (SD-28 roles[] overlap) → Bohemian, Yellow, Zoio, I'm Yours, Angra
+--    SELECT DISTINCT p.title FROM track t JOIN playable p ON p.id=t.playable_id
+--      WHERE t.instrument='guitar' AND t.roles && ARRAY['rhythm'];
 -- ============================================================================

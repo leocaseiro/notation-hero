@@ -21,6 +21,24 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 - **Follow-up (separate NH ticket):** tighten the `ci-deploy` role's `s3:*` / CloudFront `Resource:"*"` to least-privilege actions (no longer PR-reachable; finicky → its own end-to-end-tested PR).
 - **`L7-oidc`** stays `✅ done` (OIDC remains deploy-only); the 2026-06-23 entry's "(master ref + same-repo PRs)" trust + "PR → preview" workflow lines are **superseded** by this entry (status table reconciles on the next regen).
 
+### 2026-06-24 — Schema-delta brainstorm: 4 deltas consolidated on the draft (PR #68)
+
+The schema-impacting wireframe deltas were triaged (18 `schema-delta` tickets → **4** that change the catalogue DDL) and decided in one pass, applied to the **fresh draft schema** (`docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` — no DB/Drizzle yet, so edits not a migration), re-validated on `nh_tonal_scratch`. Full decisions: `docs/wireframe/2026-06-24-schema-delta-decisions.md`; grounding spike: `docs/spikes/2026-06-24-instrument-identity-and-role-from-source-formats.md`.
+
+**Decisions (✅ decided · 📄 prose-only — DRAFT DDL, no machine enforcement yet):**
+
+- **SD-28 (NH-219)** — `track.role text` → **`track.roles text[]`** (a track plays N parts; overlap filter `roles && [...]`, GIN). Tri-state instrument/role tree; flat solo/lead siblings; a **display-group config** in shared monorepo code maps roles→labels ("Rhythm (chords)" / "Tabs", UltimateGuitar convention); role stays curated/UGC (no source format carries it), auto-derivable later.
+- **SD-26 (NH-218)** — instrument **derived from the AlphaTab General-MIDI program (0–127)**, never UGC (admins pick a controlled vocab, never free-type); `track.instrument` stays `text`. **Instrument family = a code-only map** (`family→[instruments]`) over the existing `instruments[]` GIN — **no column** (don't overload the _musical_ `playable.family[]`). GM is 0-based in AlphaTab (vs the spec's 1-based).
+- **SD-25 (NH-217)** — **`track.techniques text[]`** (GIN) for ALL instruments; `drum_profile.techniques` **moved onto `track`** and dropped. Auto-extract from AlphaTab note/beat effects (tap/slap/harmonics/bends/palmMute) + curate the abstract ones.
+- **SD-15 (NH-213)** — **stay Thin**: no `note`/`voice_map` tables; voicing = `kit_pieces[]` + jsonb section grid + runtime AlphaTab (~35 ms). Flips only if note-level catalogue search is ever needed.
+- **🆕 provenance** — `track.source_instrument_id` + `source_instrument_kind` (`gm-program`｜`musicxml-sound`｜`musescore-id`｜`name-parse`): the instrument derivation is reproducible + auditable (find low-confidence `name-parse` rows; names fail 3/5 real songs).
+
+**Dispositions (no DDL):** SD-22 (NH-216) confirm-and-defer — the `notation` upload seam (`upload_status` + relaxed CHECK + `checksum`) already covers load-and-go; only dep = client-minted ULID (NH-183), findings on NH-216. SD-33 (NH-223) DB already done (`author[]` via SD-13) → wireframe phase. NH-230 origin field rides in PR #68. The remaining 12 `schema-delta` tickets route to DynamoDB-@M1 / UI / policy buckets.
+
+**New tickets:** **NH-232** (`gp-extract.mjs` to read the GM program + percussion + note/beat technique effects) · **NH-233** (spike: confirm GM program suffices; PR AlphaTab + `patch-package` only on a real, non-reconstructable gap).
+
+**Status:** all **✅ decided · 📄 prose-only** (draft DDL; flips to 🤖 when the real `core/catalog` + Neon adapter land, Phase 2 / NH-207). Approved by leocaseiro in the 2026-06-24 brainstorm. **Next:** wireframe alignment (`roles[]`/`techniques`/instrument-from-GM + `author[]`), then the first Drizzle migration.
+
 ### 2026-06-23 — Catalog wireframe + extensible tonal/drum schema realised (NH-194, PR #52)
 
 The catalog **wireframe** (`docs/wireframe/`) — a single-file low-fi clickable SPA — pressure-tested the locked **Playable** model + the **extensible tonal/drum schema** before app build. Ships **no production/runtime code**: design docs + draft scratch DDL + seed data only. Working tracker: `docs/wireframe/2026-06-16-schema-deltas.md` (SD-1..37). Pending deltas filed as Jira **NH-208, NH-210..230** (all labelled `schema-delta`).
