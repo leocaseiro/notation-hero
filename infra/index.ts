@@ -29,7 +29,11 @@ const ciRoleBoundaryArn = aws
     // (permissionsBoundaryArn), so the check runs on every preview/up — local and CI alike.
     return aws.iam.getPolicy({ arn }).then(
       () => arn,
-      () => {
+      (err: unknown) => {
+        // Can't read the policy (e.g. the role isn't yet granted iam:GetPolicy) -> don't block;
+        // only a definitive "does not exist" should stop the deploy.
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/not authorized|accessdenied/i.test(msg)) return arn;
         throw new Error(
           `CI permissions boundary not found at ${arn}. ` +
             `Run docs/runbooks/aws-ci-oidc-bootstrap.sh (admin) before deploying (NH-206).`,
