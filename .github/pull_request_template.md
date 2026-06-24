@@ -37,6 +37,7 @@
 - [ ] If this PR changed UI, I added or updated the VR (visual-regression) tests for it.
 - [ ] If this PR changed testable code, I wrote or updated tests for it.
 - [ ] If this PR changed a decision or what's enforced, I updated the decision log (docs/decisions).
+- [ ] If this PR changed infra/, I ran pulumi preview locally, recorded the classification under "## Pulumi preview" below, and filed a required task for any destructive (replace/delete) or exposure (public-access / auth-weakening / wildcard IAM) change.
 - [ ] If this PR needed doc updates, I updated README.md / the relevant docs with the change and the "why".
 - [ ] I checked for overlapping open PRs / worktrees and noted any risks in the PR and Jira.
 - [ ] I kept this PR small (baby commits), or explained below why it is large.
@@ -44,3 +45,13 @@
 - [ ] If this PR has breaking changes or data migrations, I called them out in the description.
 - [ ] I did not commit secrets, keys, or credentials.
 - [ ] I did not use --no-verify or skip any CI gate.
+
+## Pulumi preview
+
+<!-- If this PR changed infra/, paste the LOCAL `pulumi preview` CLASSIFICATION here — one of:
+       safe        — only creates / benign updates; no destructive or exposure change
+       destructive — a replace/delete of an existing resource (filed a required task: <link>)
+       exposure    — public access / auth weakening / wildcard-or-admin IAM (filed a task: <link>)
+     Classification ONLY — never paste resource IDs, ARNs, or URLs (this PR is public). The
+     pr-checklist gate fails on an infra/ PR if this section is empty. If infra/ was untouched,
+     write "n/a". -->

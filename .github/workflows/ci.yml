@@ -30,6 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
+      infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@v6
       - uses: dorny/paths-filter@v4
@@ -53,6 +54,8 @@ jobs:
               - 'lefthook.yml'
               - 'commitlint.config.*'
               - '.github/workflows/ci.yml'
+            infra:
+              - 'infra/**'
 
   # Lint + typecheck + hexagon layer-boundary check (dependency-cruiser) +
   # version consistency (syncpack) + tests, across every workspace via `pnpm -r`.
@@ -147,9 +150,12 @@ jobs:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint
 
-  # Agent PR merge checklist (NH-16) — Jira-key presence + no-blank-boxes over the
-  # PR-template items. PR-event only, bot-exempt, not path-filtered. Pure Node.
+  # Agent PR merge checklist (NH-16) — Jira-key presence + no-blank-boxes over the PR-template
+  # items, plus the diff-aware infra-preview gate (NH-206 review #3): `needs: changes` brings the
+  # `infra` paths-filter signal, so an infra/ PR must record its local pulumi-preview
+  # classification. Always runs (PR-event only, bot-exempt). Pure Node.
   pr-checklist:
+    needs: changes
     if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     steps:
@@ -163,6 +169,7 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
           PR_BRANCH: ${{ github.head_ref }}
           PR_AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+          PR_INFRA_CHANGED: ${{ needs.changes.outputs.infra }}
         run: node tooling/pr-checklist.mjs
 
   # Single REQUIRED status check for branch protection. Always runs, so a
