@@ -344,8 +344,8 @@ Runs **after** the PR is green (needs local AWS creds + Pulumi token; never CI):
 1. `pnpm install` in the worktree (lefthook installed); build `server` bundle + `client` dist.
 2. `pnpm --filter @notation-hero/infra run pulumi:preview` — confirm the plan.
 3. `pnpm --filter @notation-hero/infra run pulumi:up` — deploy (CloudFront ~5–15 min).
-4. `curl` the CloudFront URL root (SPA `index.html` 200) and `/api/about` (JSON 200); open
-   the About page; confirm the page renders the live `/api/about` data.
+4. `curl` the CloudFront URL root (SPA `index.html` 200) and `/api/catalog` (JSON 200); open
+   the About page; confirm the page renders the live `/api/catalog` data.
 5. Confirm the raw `*.lambda-url` returns 403 directly (lockdown proof).
 6. Capture the live URL into U6 docs + the Jira ticket; `pulumi:destroy` is the rollback.
 

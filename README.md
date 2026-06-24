@@ -21,8 +21,8 @@ deliberate "swappable backend" system-design portfolio piece.
   `/*` → private S3 (SPA static, via Origin Access Control); `/api/*` → Lambda Function URL
   (locked to `AWS_IAM`, reachable only by CloudFront via Origin Access Control)
 - **CI / CD:** GitHub Actions — `ci.yml` (lint / typecheck / test / build); `deploy.yml`
-  runs `pulumi preview` on PRs and `pulumi up` on `master` via **GitHub → AWS OIDC** (no
-  stored keys). Local deploys still work — see **Deploy (AWS)** below.
+  runs `pulumi up` on `master` **after CI passes**, via **GitHub → AWS OIDC** (no stored keys).
+  `pulumi preview` is local-only. Local deploys still work — see **Deploy (AWS)** below.
 
 ## Layout
 
@@ -79,8 +79,11 @@ ways to deploy — **CI/CD** (default) and **local**.
 `.github/workflows/deploy.yml` deploys with **no stored AWS keys**, assuming the
 `notation-hero-ci-deploy` role via **GitHub → AWS OIDC**:
 
-- **Pull request →** `pulumi preview` (the plan is commented on the PR).
-- **Push to `master` →** `pulumi up`.
+- **Push to `master` →** `pulumi up`, but only after the **CI** workflow succeeds on `master`
+  (a red commit never deploys).
+- **`pulumi preview` is local-only** — run it before merging infra changes (the PR-triggered
+  preview was removed in NH-206 review #3; see
+  `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`).
 
 One-time admin bootstrap of the OIDC provider + role: `docs/runbooks/aws-ci-oidc-bootstrap.sh`
 (permissions in `docs/runbooks/aws-iam-ci-deploy.json`). CI config = the `PULUMI_CONFIG_PASSPHRASE`
