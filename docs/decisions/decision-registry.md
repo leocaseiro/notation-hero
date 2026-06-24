@@ -10,6 +10,17 @@ Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · �
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
+### 2026-06-24 — CI/CD: OIDC deploy hardening — drop preview-on-PR (NH-206 review #3)
+
+**PR #64.** **Revises** the 2026-06-23 CI/CD entry below: the `pull_request` → `pulumi preview` job and the `pull_request` OIDC trust subject are **removed**. A PR-triggered preview ran arbitrary `infra/*.ts` under the full deploy role (S3 state + SPA `s3:*`, CloudFront `Resource:"*"`, Lambda `UpdateFunctionCode`, + the injected `PULUMI_CONFIG_PASSPHRASE`) — medium-low risk solo, **HIGH** once a collaborator can open a same-repo PR. Approved by leocaseiro 2026-06-24 (brainstorm + 3-agent research; spec `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`).
+
+- **Preview is LOCAL-only now.** `deploy.yml` drops the `pull_request` trigger + the `preview` job → **push-to-`master` only**, so **no AWS credentials touch any PR** (and no infra detail leaks into public Actions logs/comments — the repo is public). `pull-requests: write` dropped; the passphrase exposure dissolves with the preview job.
+- **Trust narrowed to a master-only `production` GitHub Environment.** `aws-ci-oidc-bootstrap.sh` trust `sub` → `repo:leocaseiro/notation-hero:environment:production` only (was master ref + `pull_request`); the `up` job sets `environment: production`; the environment is restricted to `master` (created via `gh api`, no reviewers) — two independent gates. ⬅ **leocaseiro re-runs the bootstrap script (admin SSO)** to apply it.
+- **Agent local-preview safety-net (partial NH-16 v2 diff-aware gate).** New `AGENTS.md` rule: an agent that changes `infra/` runs `pulumi preview` locally and records a classification under `## Pulumi preview` in the PR body, filing a required task (PR checklist **+** Jira mandatory `customfield_10041`) for any destructive/exposure change. `tooling/pr-checklist.mjs` is now **diff-aware** — a PR touching `infra/**` (via the `changes` paths-filter `infra` output) fails on an empty preview section. 4 new `node --test` cases.
+- **Hardening:** OIDC `audience: sts.amazonaws.com` pinned (H2); **every GitHub Action SHA-pinned** to a commit, Dependabot-maintained (H3); S3 state-bucket runbook `docs/runbooks/aws-s3-state-hardening.sh` — versioning + block-public + deny-all-except-CI + optional Object Lock (H4). H1 (short STS session) skipped — the ~15–20 min first CloudFront create exceeds a 15-min session.
+- **Follow-up (separate NH ticket):** tighten the `ci-deploy` role's `s3:*` / CloudFront `Resource:"*"` to least-privilege actions (no longer PR-reachable; finicky → its own end-to-end-tested PR).
+- **`L7-oidc`** stays `✅ done` (OIDC remains deploy-only); the 2026-06-23 entry's "(master ref + same-repo PRs)" trust + "PR → preview" workflow lines are **superseded** by this entry (status table reconciles on the next regen).
+
 ### 2026-06-23 — Catalog wireframe + extensible tonal/drum schema realised (NH-194, PR #52)
 
 The catalog **wireframe** (`docs/wireframe/`) — a single-file low-fi clickable SPA — pressure-tested the locked **Playable** model + the **extensible tonal/drum schema** before app build. Ships **no production/runtime code**: design docs + draft scratch DDL + seed data only. Working tracker: `docs/wireframe/2026-06-16-schema-deltas.md` (SD-1..37). Pending deltas filed as Jira **NH-208, NH-210..230** (all labelled `schema-delta`).
