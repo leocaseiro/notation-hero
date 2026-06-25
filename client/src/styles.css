@@ -141,6 +141,20 @@ body {
   html {
     @apply font-sans;
   }
+
+  /* Tailwind v4 (and the browser UA stylesheet) default interactive controls to
+     cursor: default. Restore the pointer cursor app-wide for genuinely clickable
+     elements. Links are pointer natively; text inputs keep their text cursor;
+     disabled controls are excluded. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  label,
+  select:not(:disabled),
+  summary,
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 /* Material Symbols — the @font-face is loaded via index.html and
