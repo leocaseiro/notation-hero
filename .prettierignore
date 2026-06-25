@@ -1,0 +1,4 @@
+# Hand-maintained low-fi wireframe sims (single large HTML files, not app source).
+# Prettier would reflow the whole file on every edit — hundreds of noise lines per change.
+# Prettier stays scoped to real source (tooling/, server/ have their own .prettierrc).
+docs/wireframe/*.html
