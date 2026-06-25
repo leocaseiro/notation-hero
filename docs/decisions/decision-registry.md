@@ -12,6 +12,22 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-25 — SD-15 voicing by track + bar: detailed design within Thin (NH-213, PR #76)
+
+Refines the 2026-06-24 "SD-15 → stay Thin" resolution below into the actual voicing **design** (brainstorm, leocaseiro). A "partial voicing" is one shape everywhere — `{track, voices[], barRange?}` — all jsonb/runtime, **no DDL**:
+
+- **V-1** Display/consume only → the jsonb section grid `data.sections[].tracks[].voices[]`; **no `section_voice` search table** (song/track search already covered by `drum_profile.kit_pieces[]`; flips only if per-section catalogue search ever becomes real).
+- **V-2** Voice vocab = a per-instrument code map: drums `kit_pieces` (hi-hat/snare/kick/crash/ride/tom) + piano `left-hand`/`right-hand` (hands-separate); guitar/bass none (role covers their partial). Enforced in app/ingest, not a DB CHECK (mirrors SD-26/SD-28).
+- **V-3** `voices[]` joins the Group D per-(section,track) grid cell `{track, voices[], level?, techniques[]?}`; section-level union derived in code, never stored.
+- **V-4** Lessons: **Hybrid, incremental** — reusable/named partials = `pattern` playables via the existing `step` junction (zero schema change); per-song-section / hands-separate drills = inline `step.data.voicing`, added when the first such lesson lands (also lands SD-17 step description). `step.data jsonb` is the only deferred DDL.
+- **V-5** Capo is **not** a voice (`voices[]` = which sub-streams sound); per-section settings (capo/tuning) go to `techniques[]` / a `settings{}` bag — deferred, not built.
+
+Applied to the draft seed (Bohemian voices, validated on `nh_tonal_scratch` + poke #8) + the catalog wireframe (Yellow drums + piano-hands per-section render, verified in-browser). Spec: `docs/wireframe/2026-06-25-voicing-by-track-bar-spec.md`. The player runtime voice-filter for "hear just hats+kick" (AlphaTab's mixer is per-track) is flagged as a **player-layer** concern, not catalogue schema.
+
+**Also (enforcement):** new root `.prettierignore` excludes the hand-maintained `docs/wireframe/*.html` sims — a one-line edit otherwise reflows the whole 137 KB file. Prettier stays scoped to real source (`tooling/`, `server/` each have their own `.prettierrc`).
+
+**Status:** ✅ decided · 📄 prose-only (draft DDL — no machine enforcement until the real `core/catalog` + Neon land). Approved by leocaseiro in the 2026-06-25 brainstorm.
+
 ### 2026-06-24 — CI deploy role: add missing Lambda read perm; lock-recovery on cancel-only (NH-206 follow-up)
 
 **Follow-up after #64 merged.** The first CI-driven `pulumi up` on master failed with `AccessDeniedException: lambda:GetFunctionCodeSigningConfig` — the aws provider reads a ZIP function's code-signing config on every `aws_lambda_function` update, but the least-privilege deploy role lacked it. Added `lambda:GetFunctionCodeSigningConfig` to `aws-iam-ci-deploy.json` **and** `aws-iam-pulumi-local-deploy.json`. Audited the full provider read-set (provider source + issue #27986): that was the **only** gap — `s3:*` / CloudFront / IAM / logs are already complete; deliberately did **not** add `lambda:GetRuntimeManagementConfig` (not called by `aws_lambda_function`, would over-grant). Also tightened `deploy.yml`'s stranded-lock recovery to fire on `cancelled` (hard-kill) only — a clean `failure` releases the lock, so firing on it was a false alarm. ⬅ **leocaseiro re-applies the updated `aws-iam-ci-deploy.json` to the live `notation-hero-ci-deploy` role (admin SSO)** — also clears the stale `iam:GetPolicy` boundary-read the failed run warned about.
