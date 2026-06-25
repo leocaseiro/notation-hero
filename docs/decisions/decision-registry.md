@@ -12,6 +12,10 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-26 — Governance: never delete remote branches (NH-241)
+
+AGENTS.md "Commit & review workflow" now forbids deleting a **remote** branch — no `git push origin --delete`, no `gh pr merge --delete-branch`, no GitHub UI/API deletion — even after a PR merges; the user keeps merged branches on GitHub for history. **Local cleanup stays fine:** remove the merged worktree + delete the local branch; only `origin/<branch>` must survive. User instruction (2026-06-26); also captured in agent memory.
+
 ### 2026-06-25 — SD-15 voicing by track + bar: detailed design within Thin (NH-213, PR #76)
 
 Refines the 2026-06-24 "SD-15 → stay Thin" resolution below into the actual voicing **design** (brainstorm, leocaseiro). A "partial voicing" is one shape everywhere — `{track, voices[], barRange?}` — all jsonb/runtime, **no DDL**:
