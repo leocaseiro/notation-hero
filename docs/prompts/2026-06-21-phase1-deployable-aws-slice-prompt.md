@@ -53,7 +53,7 @@ NOTE: serverless-express is a deferred integration — wiring it is part of this
 - Baby commits at green checkpoints; never `--no-verify`.
 - AWS: IAM Identity Center daily-driver; zero-spend budget; free-tier posture (no Route53
   paid zone / no NAT without flagging). Pulumi token + AWS creds are local-only (never CI).
-- Follow Leo's AskUserQuestion conventions from ~/.claude/adhd-collaboration-rules.md (pickers for decisions at the end).
+- Follow the AskUserQuestion conventions in AGENTS.md (pickers for decisions at the end).
 - Re-confirm 2026-time-sensitive infra facts (CloudFront free-tier limits, Function URL +
   CloudFront OAC support) before building.
 

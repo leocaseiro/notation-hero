@@ -100,7 +100,7 @@ in the same change if we change it. (we are very likely to change it, and we 'll
 ## HOW TO RUN
 
 Run the brainstorming skill, go **section by section**, and end with an **architecture
-decision doc** + a **decision-registry entry**. My collaboration prefs (ADHD-aware,
+decision doc** + a **decision-registry entry**. My collaboration prefs (low cognitive load,
 `AskUserQuestion` pickers, chunked reviews) are in `CLAUDE.md`.
 
 ## CRITICAL NOTES

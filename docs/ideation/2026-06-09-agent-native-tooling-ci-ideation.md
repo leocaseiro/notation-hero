@@ -25,7 +25,7 @@ mode: repo-grounded
 
 ## Grounding Context (Codebase Context)
 
-**Project reality.** `notation-hero` is a drum-tutor rhythm game (web PWA + Capacitor), but the _real_ product is the developer's **AWS / staff-engineer learning** via a system-design portfolio. Solo + heavily AI-agent-driven. ADHD-aware (visible progress, baby commits, mechanical guardrails over vibes, low token waste). Public repo now, **private later** (CI cost will start to matter). Legacy AWS account = always-free tiers.
+**Project reality.** `notation-hero` is a drum-tutor rhythm game (web PWA + Capacitor), but the _real_ product is the developer's **AWS / staff-engineer learning** via a system-design portfolio. Solo + heavily AI-agent-driven. low-cognitive-load-aware (visible progress, baby commits, mechanical guardrails over vibes, low token waste). Public repo now, **private later** (CI cost will start to matter). Legacy AWS account = always-free tiers.
 
 **Current state (all re-evaluable).** ~~Bun 1.3.11 workspaces;~~ <!-- SUPERSEDED: pnpm+Nx locked 2026-06-09; Bun fully dropped (tooling-stack-daci F-6) --> hexagonal layout `core/ adapters/ apps/ infra/` — but layers are empty `.gitkeep` and only `infra` has a real (echo-stub) `package.json`. tsconfig `strict` + `paths` aliasing; ESLint legacy (flat-disabled) + dependency-cruiser (4 forbidden rules) + tsc. Single **"CI Green"** required check, `concurrency` cancel-in-progress, ~~cache-on-`bun.lock`,~~ <!-- SUPERSEDED: lockfile is pnpm-lock.yaml, not bun.lock --> OIDC reserved for a future `deploy.yml`, iOS builds local-only.
 
@@ -59,7 +59,7 @@ mode: repo-grounded
 
 **Description:** One `lefthook.yml` whose hooks call the identical ~~`bun run` scripts~~ <!-- SUPERSEDED: pnpm + Nx scripts, not `bun run`; wire `pnpm`/`nx run` --> CI calls (lint, typecheck, depcheck, test), scoped to staged files, in parallel — so agents hit the gate before a commit reaches CI.
 **Warrant:** `external:` Lefthook (single YAML, Go, parallel, no shell/lint-staged) > husky for agent-native; repo has no git hooks today.
-**Rationale:** Collapses the push→red-CI→rewrite loop to a zero-network local gate — the single biggest token + CI-minute saver for agent-driven dev. ADHD bonus: only green commits form, keeping baby-commit/`git revert` history clean.
+**Rationale:** Collapses the push→red-CI→rewrite loop to a zero-network local gate — the single biggest token + CI-minute saver for agent-driven dev. Bonus: only green commits form, keeping baby-commit/`git revert` history clean.
 **Downsides:** Agents must run `lefthook install` once; pre-commit scope must stay fast or it nags.
 **Confidence:** 88% **Complexity:** Low **Status:** Unexplored
 

@@ -959,7 +959,7 @@ Create a tracked `AGENTS.md` at the worktree root. Fold in the content of the un
 
   ## Working with leocaseiro
 
-  leocaseiro is ADHD-diagnosed; reduce cognitive load and let him drive decisions.
+  The user prefers low cognitive load and to drive decisions.
   **These conventions apply ONLY to user-facing / orchestrator agents** — agents that
   talk to leocaseiro directly and may call `AskUserQuestion`. **Non-interactive
   sub-agents** (research, code-review personas, parallel doc-review agents) run to
