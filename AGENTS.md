@@ -202,6 +202,16 @@ its status. Keep it alive:
   (⏳→✅, 📄→🤖, clear the 🟥 gap). The register update travels with the PR so it lands
   atomically on merge.
 
+## Public repo — no personal data in committed files
+
+`leocaseiro/notation-hero` is a **public** repository. Do NOT write personal or
+medical detail about the maintainer or contributors into any committed file — no
+diagnoses, health status, or similar. Describe working preferences **neutrally**
+instead (e.g. "the user prefers low cognitive load and to drive decisions"), never
+with a diagnosis label. The GitHub username is unavoidably public — it is required
+by `.github/CODEOWNERS`, the pull-request template, and the repo URL — so the handle
+itself is fine; this rule is about personal data, not the name.
+
 ## Working with the user
 
 These conventions exist to **avoid wasted round-trips**. Follow them and the user
