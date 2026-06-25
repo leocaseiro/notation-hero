@@ -1,11 +1,11 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vite';
 
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite';
 
-import viteReact, { reactCompilerPreset } from '@vitejs/plugin-react'
-import babel from '@rolldown/plugin-babel'
-import tailwindcss from '@tailwindcss/vite'
+import viteReact, { reactCompilerPreset } from '@vitejs/plugin-react';
+import babel from '@rolldown/plugin-babel';
+import tailwindcss from '@tailwindcss/vite';
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
@@ -32,6 +32,6 @@ const config = defineConfig({
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: ['**/node_modules/**', '**/dist/**'],
   },
-})
+});
 
-export default config
+export default config;

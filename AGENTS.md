@@ -99,6 +99,43 @@ in the `quality` job); coverage globs and the `build:dts` excludes
 ⚠️ The legacy `docs/plans/2026-06-07-001-feat-cms-k-build-plan.md` predates this
 rule and still shows `__tests__/` paths — those are SUPERSEDED; co-locate instead.
 
+## VR & a11y testing (`client/` — Storybook + Playwright)
+
+The client design system has three test layers (full guide: `client/README.md`):
+
+- **Unit** — Vitest + Testing Library (`*.test.tsx`); runs in the `quality` CI job.
+- **a11y** — axe-core over every Storybook story in light + dark, resting + hover
+  (`*.a11y.ts`); the `a11y` CI job, **blocks merge**. OS-independent.
+- **VR** — Playwright `toHaveScreenshot` over the stories (`*.vr.ts`); the `vr` CI job,
+  **blocks merge**. Pixel-exact, so baselines are **per-OS**.
+
+### VR baselines are per-OS — regenerate the Linux set with Docker
+
+Snapshots embed the platform (`button-default-chromium-darwin.png` vs `…-linux.png`).
+Local Macs compare against `-darwin`; **CI compares against `-linux`** (run in the official
+Playwright container). After any intended visual change, regenerate **both** and commit them:
+
+```bash
+# macOS (local) — darwin baselines:
+pnpm --filter @notation-hero/client test:vr:update
+
+# Linux (CI) baselines — via the Playwright image matching @playwright/test (v1.61.1).
+# The anonymous -v volumes shadow node_modules so the local (darwin) install is untouched;
+# --ignore-scripts skips the lefthook `prepare` (its git call can't resolve a worktree's
+# .git inside the container).
+docker run --rm \
+  -v "$PWD":/work \
+  -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules \
+  -v /work/shared/node_modules -v /work/infra/node_modules -v /work/.pnpm-store \
+  -w /work mcr.microsoft.com/playwright:v1.61.1-noble \
+  bash -c "corepack enable && pnpm install --frozen-lockfile --ignore-scripts && \
+    pnpm --filter @notation-hero/client exec playwright test --project=chromium --update-snapshots"
+```
+
+The `vr` CI job pins `container: mcr.microsoft.com/playwright:v1.61.1-noble`, so its
+rendering matches the Docker-generated `-linux` baselines exactly. Bump that image tag in
+lockstep with `@playwright/test`, and regenerate baselines on the bump.
+
 ## Setup in a fresh worktree / clone
 
 **Node version** — run `nvm use` (or `fnm use` / `asdf install nodejs`) in

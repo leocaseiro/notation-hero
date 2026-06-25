@@ -3,6 +3,8 @@
 
 # Dependencies
 node_modules/
+# pnpm store left in the repo root by the Dockerized VR-baseline run (see AGENTS.md)
+.pnpm-store/
 
 # Build output
 dist/

@@ -24,6 +24,27 @@ Dependabot PRs were stuck red: the `pr-title` job (commitlint on the PR title) h
 
 Closed the "agents paste the checklist by hand" gap. The merge checklist lives in `.github/pull_request_template.md`, but GitHub auto-fills it only in the web "Open a PR" form — PRs opened by agents/CLI via `gh pr create --body` skip it, so the author had to paste all items to pass the `pr-checklist` gate. New `pr-checklist-sync` workflow + `tooling/pr-checklist-sync.mjs` **append only the missing canonical items** to a PR body (additive — never edits existing lines or ticks boxes) on `pull_request: opened`, and **fan out to every open PR** via a `workflow_dispatch` button or a `push` to `master` that changes the template. Shared `tooling/pr-checklist-lib.mjs` gives the sync and the gate one matching function so they can't disagree; `tooling/pr-checklist.mjs` refactored to import it (behavior identical — gate tests incl. #64's infra-preview check stay green, +4 lib +4 sync cases). **Enforcement unchanged** — boxes arrive unticked; the strict gate still requires every box `[x]`. Rejected: `mheap/require-checklist-action` (re-adds the `~~N/A~~` escape removed in v1.1) and comment-delivery (would force a gate rewrite); DangerJS stays the NH-16 v2 backlog. Uses `pull_request` (not `pull_request_target`) — fork PRs aren't auto-injected (read-only token; acceptable for a solo repo). Spec: `docs/specs/2026-06-24-pr-checklist-auto-inject.md`. `AGENTS.md` "PR checklist (CI-gated)" updated.
 
+### 2026-06-25 — Design system foundation: shadcn + preset, Storybook, Playwright VR (NH-189)
+
+First **`tlc-spec-driven`** feature (introduces `.specs/`). Builds the client component foundation on the existing Vite SPA. Full decisions: `.specs/features/design-system-foundation/` (spec/design/tasks) + `.specs/project/STATE.md` (D1–D10). Tracked by **NH-189** ("Build temporary design system"); fulfils the **NH-29** Storybook-scaffold trigger (first `.tsx` component); adjacent to **NH-16** PR-policy.
+
+**Decisions (✅ decided · client-scoped):**
+
+- **shadcn/ui v4 + preset `b5claE9qM`** applied via `shadcn apply --only theme,font` (NOT `--template next` — Next.js stays dropped, `ARCH-FE-1`). Teal theme + Public Sans land in `src/styles.css`; `@remixicon/react` removed.
+- **Icons = Material Symbols Outlined**, **self-hosted** via `@fontsource-variable/material-symbols-outlined` (`@import` in `src/styles.css`; was Google Fonts CDN — changed 2026-06-25 for ARCH-SEC-2 CSP `font-src 'self'` + iOS Capacitor offline), NOT the preset's Remix Icon. Icon-only + text+icon Button variants wired.
+- **Folder-per-component, PascalCase** — `components/ui/Button/Button.{tsx,test.tsx,stories.tsx,vr.ts}`; **`@/` import alias** (shadcn default — "generators-first"; reverses the initial `#/` choice on 2026-06-25, folder-per-component kept; single quotes + semicolons stay the deliberate exceptions).
+- **Storybook v10** (`@storybook/tanstack-react`, docs + a11y addons) + **Playwright visual-regression** (`*.vr.ts`, `toHaveScreenshot`, webServer = Storybook). VR marker is `.vr.ts` (not `.spec`/`.test`) to dodge the Vitest collision + the layout-guard same-name-sibling rule.
+
+**Enforcement (🤖) — what this PR changes:**
+
+- **NEW: client Prettier formatting is now ESLint-enforced.** `eslint-plugin-prettier/recommended` added to `client/eslint.config.js` so `pnpm lint` (a `ci-green` gate) fails on format drift, mirroring `server/eslint.config.mjs`. Client Prettier aligned to the server: `semi: true` + `printWidth: 100`. The TanStack (client) and hand-rolled typed (server) ESLint bases stay separate by design.
+- **NEW: accessibility is a required CI gate.** axe-core (WCAG 2 A+AA) runs over every Storybook story in light + dark via Playwright (`*.a11y.ts`, `test:a11y`); the new `a11y` CI job is wired into the `ci-green` aggregate. Storybook gained a real `.dark` theme toggle (decorator) so a11y reflects the actual rendered colors. Two preset contrast fixes followed: light `--destructive` darkened (soft destructive 3.97 → 5.15:1) and dark-mode links use the mockup teal `#0D9488` (new `brand-600` token, 2.61 → 5.27:1).
+- The folder-per-component layout + no-`stories/`-dir + co-located-test-sibling rules are already carried by `tooling/check-layout.sh` (`CONV-1`/`CONV-2`); no guard change needed.
+
+**Deferred (own follow-ups):** VR baselines are local (darwin) only — CI/Docker-Linux baselines + wiring VR into CI are deferred (design.md §D); component set beyond Button is post-foundation.
+
+**Overlap note:** this PR also edits this registry change-log; open **PR #74** (NH-16) is making this section `merge=union` for exactly this reason — low conflict risk.
+
 ### 2026-06-24 — CI/CD: OIDC deploy hardening — drop preview-on-PR (NH-206 review #3)
 
 **PR #64.** **Revises** the 2026-06-23 CI/CD entry below: the `pull_request` → `pulumi preview` job and the `pull_request` OIDC trust subject are **removed**. A PR-triggered preview ran arbitrary `infra/*.ts` under the full deploy role (S3 state + SPA `s3:*`, CloudFront `Resource:"*"`, Lambda `UpdateFunctionCode`, + the injected `PULUMI_CONFIG_PASSPHRASE`) — medium-low risk solo, **HIGH** once a collaborator can open a same-repo PR. Approved by leocaseiro 2026-06-24 (brainstorm + 3-agent research; spec `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`).

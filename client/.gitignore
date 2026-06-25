@@ -11,3 +11,10 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+*storybook.log
+storybook-static
+
+# Playwright (VR) run output — baselines under *-snapshots/ ARE committed
+test-results
+playwright-report

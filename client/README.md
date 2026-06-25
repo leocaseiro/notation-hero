@@ -1,201 +1,166 @@
-Welcome to your new TanStack Start app!
+# @notation-hero/client
 
-# Getting Started
+The Notation Hero web client — a **Vite + React 19 SPA** using **TanStack Router** (file-based routing) and **TanStack Query**, styled with **Tailwind CSS v4** (CSS-first `@theme`). This package also hosts the **design system**: shadcn/ui components, Storybook docs, and Playwright visual-regression (VR) tests.
 
-To run this application:
+> Run every command from the **repo root** with a pnpm workspace filter (`--filter @notation-hero/client`). Requires Node >= 24 and pnpm 11.
 
-```bash
-npm install
-npm run dev
-```
-
-# Building For Production
-
-To build this application for production:
+## Getting started
 
 ```bash
-npm run build
+pnpm install
+pnpm --filter @notation-hero/client dev      # http://localhost:3000
 ```
 
-## Testing
+## Scripts
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+| Command (from repo root)                              | What it does                                  |
+| ----------------------------------------------------- | --------------------------------------------- |
+| `pnpm --filter @notation-hero/client dev`             | Vite dev server (port 3000)                   |
+| `pnpm --filter @notation-hero/client build`           | Production build                              |
+| `pnpm --filter @notation-hero/client typecheck`       | `tsc --noEmit`                                |
+| `pnpm --filter @notation-hero/client test`            | Unit tests (Vitest, run once)                 |
+| `pnpm --filter @notation-hero/client test:watch`      | Unit tests (watch)                            |
+| `pnpm --filter @notation-hero/client lint`            | ESLint — also fails on formatting drift       |
+| `pnpm --filter @notation-hero/client format`          | Auto-fix: Prettier `--write` + `eslint --fix` |
+| `pnpm --filter @notation-hero/client storybook`       | Storybook dev (port 6006)                     |
+| `pnpm --filter @notation-hero/client build-storybook` | Static Storybook build                        |
+| `pnpm --filter @notation-hero/client test:vr`         | Visual-regression tests (Playwright)          |
+| `pnpm --filter @notation-hero/client test:vr:update`  | Re-generate VR baselines                      |
+| `pnpm --filter @notation-hero/client test:a11y`       | Accessibility tests (axe, both themes)        |
+
+---
+
+## Design system / component development
+
+### Component structure (folder-per-component)
+
+Each component is a **PascalCase folder** under `src/components/ui/`, with its test, story, and VR spec **co-located**:
+
+```
+src/components/ui/Button/
+  Button.tsx                 # the component
+  Button.test.tsx            # Vitest + Testing Library unit tests
+  Button.stories.tsx         # Storybook stories (docs + the source of truth for VR)
+  Button.vr.ts               # Playwright visual-regression spec
+  Button.vr.ts-snapshots/    # committed baseline PNGs (per-OS)
+```
+
+Import via the `@/` alias (maps to `src/`), e.g. `import { Button } from '@/components/ui/Button/Button'`.
+
+> The repo layout guard (`tooling/check-layout.sh`) enforces co-location: no `__tests__/`, `__mocks__/`, or `stories/` directories, and every `*.test.*` / `*.spec.*` must sit next to a same-name source file. That is why the VR spec is named `*.vr.ts` (not `*.spec.ts`) — it sidesteps both that rule and the Vitest matcher.
+
+### Adding a shadcn component
+
+The theme is the shadcn preset **`b5claE9qM`** (teal + Public Sans), already applied to `src/styles.css`. To add a component:
 
 ```bash
-npm run test
+pnpm dlx shadcn@latest add <component> -c client
 ```
 
-## Styling
+Then move the generated file into its folder-per-component home (`src/components/ui/<Name>/<Name>.tsx`) and add `<Name>.stories.tsx`, `<Name>.test.tsx`, and `<Name>.vr.ts`. shadcn's generated `@/` imports already match our alias — no import rewrite needed, only the folder move (generators-first).
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+### Icons — Material Symbols
 
-### Removing Tailwind CSS
+Icons use **Material Symbols Outlined**, **self-hosted** via `@fontsource-variable/material-symbols-outlined` (`@import`ed in `src/styles.css`, bundled by Vite — CSP-clean + offline/Capacitor-safe, no CDN). Render a glyph with the `.material-symbols-outlined` class — the text content is the ligature name:
 
-If you prefer not to use Tailwind CSS:
+```tsx
+// Icon + text
+<Button>
+  <span className="material-symbols-outlined" aria-hidden="true">play_arrow</span>
+  Play
+</Button>
 
-1. Remove the demo pages in `src/routes/demo/`
-2. Replace the Tailwind import in `src/styles.css` with your own styles
-3. Remove `tailwindcss()` from the plugins array in `vite.config.ts`
-4. Uninstall the packages: `npm install @tailwindcss/vite tailwindcss -D`
+// Icon-only — give it an accessible name with aria-label; mark the glyph aria-hidden
+<Button size="icon" aria-label="Play">
+  <span className="material-symbols-outlined" aria-hidden="true">play_arrow</span>
+</Button>
+```
 
-## Linting & Formatting
+Browse glyph names at https://fonts.google.com/icons.
 
-This project uses [eslint](https://eslint.org/) and [prettier](https://prettier.io/) for linting and formatting. Eslint is configured using [tanstack/eslint-config](https://tanstack.com/config/latest/docs/eslint). The following scripts are available:
+### Storybook
 
 ```bash
-npm run lint
-npm run format
-npm run check
+pnpm --filter @notation-hero/client storybook        # http://localhost:6006
 ```
 
-## Routing
+Stories are co-located (`Button.stories.tsx`) and use the `@storybook/tanstack-react` framework. Addons: **docs** (autodocs) and **a11y** (accessibility checks). Tailwind + the theme are wired via `.storybook/preview.tsx` (which imports `src/styles.css`) and `viteFinal` in `.storybook/main.ts`.
 
-This project uses [TanStack Router](https://tanstack.com/router) with file-based routing. Routes are managed as files in `src/routes`.
+### Unit tests (Vitest)
 
-### Adding A Route
+```bash
+pnpm --filter @notation-hero/client test
+```
 
-To add a new route to your application just add a new file in the `./src/routes` directory.
+Vitest runs in jsdom with Testing Library. Tests are `*.test.tsx` beside the component. VR specs (`*.vr.ts`) are excluded from Vitest — they belong to Playwright.
 
-TanStack will automatically generate the content of the route file for you.
+### Visual-regression (VR) tests (Playwright)
 
-Now that you have two routes you can use a `Link` component to navigate between them.
+VR tests render each Storybook story in isolation and compare a screenshot against a committed baseline.
 
-### Adding Links
+```bash
+pnpm --filter @notation-hero/client test:vr          # compare against committed baselines
+pnpm --filter @notation-hero/client test:vr:update   # re-generate baselines after an intended visual change
+```
 
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
+- Playwright auto-starts Storybook as its `webServer` (see `playwright.config.ts`) — you do **not** need Storybook running separately.
+- Specs match `**/*.vr.{ts,tsx}`. Each test opens `…/iframe.html?id=<story-id>` and calls `toHaveScreenshot`.
+- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed**. They are **OS-specific** (currently `…-chromium-darwin.png`, generated on macOS). Running `test:vr` on Linux will mismatch — CI/Docker-Linux baselines are a deferred follow-up.
+
+**Debugging a failing VR test:**
+
+```bash
+# Open the HTML report — Expected / Actual / Diff, side by side
+pnpm --filter @notation-hero/client exec playwright show-report
+
+# Interactive UI mode — step through tests, inspect the DOM
+pnpm --filter @notation-hero/client exec playwright test --ui
+
+# Headed — watch the real browser render
+pnpm --filter @notation-hero/client exec playwright test --headed
+```
+
+- On failure Playwright writes `*-actual.png`, `*-expected.png`, and `*-diff.png` under `test-results/`. Open the `-diff` to see exactly which pixels changed.
+- **Change was intentional?** Re-run `test:vr:update` and commit the new baselines.
+- **Looks like a flake?** The usual cause is web fonts not being ready. Specs already `await document.fonts.ready` before snapshotting (so Material Symbols render as glyphs, not the ligature fallback text) — if you introduce a new font/icon, load it the same way.
+- `test-results/`, `playwright-report/`, and `storybook-static/` are git-ignored.
+
+### Accessibility (a11y) tests
+
+Every Storybook story is checked with **axe-core** (WCAG 2 A + AA) in **both light and dark themes** — a required CI gate.
+
+```bash
+pnpm --filter @notation-hero/client test:a11y
+```
+
+- Driven by `@axe-core/playwright` over the stories (`*.a11y.ts`, the `a11y` Playwright project). Like VR, it auto-starts Storybook.
+- Each story is loaded twice — `?globals=theme:light` and `:dark` — so contrast is checked against the real rendered colors (the preview decorator applies the `.dark` class; the Storybook "dark background" addon is intentionally disabled because it only paints the canvas without switching the theme).
+- On a violation the test prints the rule, the element, and the **measured contrast ratio + the two colors** — the same detail as the Storybook a11y panel, readable straight from the CI job log.
+- While building a component, the **a11y addon panel** in `pnpm storybook` shows the same checks live.
+
+### Formatting & linting
+
+Prettier (`prettier.config.js`): **semicolons**, single quotes, trailing commas, **`printWidth: 100`** — matching `server/`. **ESLint enforces formatting** via `eslint-plugin-prettier`, so `pnpm lint` (a CI gate) fails on a missing semicolon or an over-long line, not just `prettier --check`.
+
+```bash
+pnpm --filter @notation-hero/client lint     # check (CI gate) — fails on format drift
+pnpm --filter @notation-hero/client format   # auto-fix formatting + lint
+```
+
+The ESLint base is `@tanstack/eslint-config` plus React-hooks/Compiler and Storybook rules. (`server/` uses a separate hand-rolled typed config — only the Prettier formatting is shared between the two packages.)
+
+---
+
+## Styling (Tailwind CSS v4)
+
+Tailwind v4 is configured CSS-first in `src/styles.css` (no `tailwind.config.js`). The teal theme tokens + Public Sans font come from the shadcn preset; dark mode is the `.dark` class variant.
+
+## Routing (TanStack Router)
+
+File-based routing under `src/routes/`. Add a route by adding a file there; the route tree is generated into `src/routeTree.gen.ts` (`pnpm --filter @notation-hero/client generate-routes`) and is **not** hand-edited (it is prettier-ignored). The root layout lives in `src/routes/__root.tsx`.
 
 ```tsx
-import { Link } from '@tanstack/react-router'
+import { Link } from '@tanstack/react-router';
+
+<Link to="/about">About</Link>;
 ```
-
-Then anywhere in your JSX you can use it like so:
-
-```tsx
-<Link to="/about">About</Link>
-```
-
-This will create a link that will navigate to the `/about` route.
-
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
-
-### Using A Layout
-
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you render `{children}` in the `shellComponent`.
-
-Here is an example layout that includes a header:
-
-```tsx
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
-
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: 'utf-8' },
-      { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-      { title: 'My App' },
-    ],
-  }),
-  shellComponent: ({ children }) => (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <header>
-          <nav>
-            <Link to="/">Home</Link>
-            <Link to="/about">About</Link>
-          </nav>
-        </header>
-        {children}
-        <Scripts />
-      </body>
-    </html>
-  ),
-})
-```
-
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
-
-## Server Functions
-
-TanStack Start provides server functions that allow you to write server-side code that seamlessly integrates with your client components.
-
-```tsx
-import { createServerFn } from '@tanstack/react-start'
-
-const getServerTime = createServerFn({
-  method: 'GET',
-}).handler(async () => {
-  return new Date().toISOString()
-})
-
-// Use in a component
-function MyComponent() {
-  const [time, setTime] = useState('')
-
-  useEffect(() => {
-    getServerTime().then(setTime)
-  }, [])
-
-  return <div>Server time: {time}</div>
-}
-```
-
-## API Routes
-
-You can create API routes by using the `server` property in your route definitions:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-import { json } from '@tanstack/react-start'
-
-export const Route = createFileRoute('/api/hello')({
-  server: {
-    handlers: {
-      GET: () => json({ message: 'Hello, World!' }),
-    },
-  },
-})
-```
-
-## Data Fetching
-
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
-
-For example:
-
-```tsx
-import { createFileRoute } from '@tanstack/react-router'
-
-export const Route = createFileRoute('/people')({
-  loader: async () => {
-    const response = await fetch('https://swapi.dev/api/people')
-    return response.json()
-  },
-  component: PeopleComponent,
-})
-
-function PeopleComponent() {
-  const data = Route.useLoaderData()
-  return (
-    <ul>
-      {data.results.map((person) => (
-        <li key={person.name}>{person.name}</li>
-      ))}
-    </ul>
-  )
-}
-```
-
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
-
-For TanStack Start specific documentation, visit [TanStack Start](https://tanstack.com/start).
