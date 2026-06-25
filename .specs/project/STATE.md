@@ -10,9 +10,12 @@
 - **D4** — Start with **Button only**; expand after the pipeline is green. _(Q-add.)_
 - **D5** — shadcn CLI is **v4**; `apply` is the existing-project path; Storybook is
   **v10**; `--pointer` is a real flag (kept). Verify each command with `--help` before running.
-- **D6** — Icons are **Material Symbols Outlined** (Google Fonts CDN + `.material-symbols-outlined`
-  class), NOT the preset's Remix Icon. _(User pick, Q-icons: "I wanted material icons" — the UI
-  uses Material icons widely.)_ Removed `@remixicon/react`.
+- **D6** — Icons are **Material Symbols Outlined**, **self-hosted** via
+  `@fontsource-variable/material-symbols-outlined` (`@import` in `src/styles.css`) + the
+  `.material-symbols-outlined` class, NOT the preset's Remix Icon. _(User pick, Q-icons; the UI
+  uses Material icons widely.)_ Removed `@remixicon/react`. _Self-host (was Google Fonts CDN)
+  decided 2026-06-25 — ARCH-SEC-2 CSP `font-src 'self'` + iOS Capacitor (`capacitor://localhost`
+  can't depend on a remote CDN). Cost: ~744 KB woff2 (wght axis), cached._
 - **D7** — **Folder-per-component, PascalCase**: `components/ui/Button/Button.{tsx,test.tsx,stories.tsx,vr.ts}`.
   Supersedes the kebab/lowercase assumption below. _(User pick, Q-structure.)_
 - **D8** — VR filename marker is **`.vr.ts`** (e.g. `Button.vr.ts`), not `.vr.spec.ts`/`.spec.ts` —

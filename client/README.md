@@ -61,7 +61,7 @@ Then move the generated file into its folder-per-component home (`src/components
 
 ### Icons — Material Symbols
 
-Icons use **Material Symbols Outlined**, loaded from Google Fonts in `index.html` (app) and `.storybook/preview-head.html` (Storybook). Render a glyph with the `.material-symbols-outlined` class — the text content is the ligature name:
+Icons use **Material Symbols Outlined**, **self-hosted** via `@fontsource-variable/material-symbols-outlined` (`@import`ed in `src/styles.css`, bundled by Vite — CSP-clean + offline/Capacitor-safe, no CDN). Render a glyph with the `.material-symbols-outlined` class — the text content is the ligature name:
 
 ```tsx
 // Icon + text

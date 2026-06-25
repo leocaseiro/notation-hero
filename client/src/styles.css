@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/public-sans';
+@import '@fontsource-variable/material-symbols-outlined';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -165,12 +166,12 @@ body {
   }
 }
 
-/* Material Symbols — the @font-face is loaded via index.html and
-   .storybook/preview-head.html (Google Fonts). This class turns a ligature
-   span into an icon: <span class="material-symbols-outlined">play_arrow</span>.
+/* Material Symbols — self-hosted via @fontsource-variable/material-symbols-outlined
+   (@import above; bundled by Vite, CSP-clean + offline/Capacitor-safe). This class turns
+   a ligature span into an icon: <span class="material-symbols-outlined">play_arrow</span>.
    Sized at 1.25rem to sit well inside buttons. */
 .material-symbols-outlined {
-  font-family: 'Material Symbols Outlined';
+  font-family: 'Material Symbols Outlined Variable';
   font-weight: normal;
   font-style: normal;
   font-size: 1.25rem;

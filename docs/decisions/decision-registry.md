@@ -31,7 +31,7 @@ First **`tlc-spec-driven`** feature (introduces `.specs/`). Builds the client co
 **Decisions (✅ decided · client-scoped):**
 
 - **shadcn/ui v4 + preset `b5claE9qM`** applied via `shadcn apply --only theme,font` (NOT `--template next` — Next.js stays dropped, `ARCH-FE-1`). Teal theme + Public Sans land in `src/styles.css`; `@remixicon/react` removed.
-- **Icons = Material Symbols Outlined** (Google Fonts CDN + `.material-symbols-outlined`), NOT the preset's Remix Icon — the UI uses Material icons widely. Icon-only + text+icon Button variants wired.
+- **Icons = Material Symbols Outlined**, **self-hosted** via `@fontsource-variable/material-symbols-outlined` (`@import` in `src/styles.css`; was Google Fonts CDN — changed 2026-06-25 for ARCH-SEC-2 CSP `font-src 'self'` + iOS Capacitor offline), NOT the preset's Remix Icon. Icon-only + text+icon Button variants wired.
 - **Folder-per-component, PascalCase** — `components/ui/Button/Button.{tsx,test.tsx,stories.tsx,vr.ts}`; **`@/` import alias** (shadcn default — "generators-first"; reverses the initial `#/` choice on 2026-06-25, folder-per-component kept; single quotes + semicolons stay the deliberate exceptions).
 - **Storybook v10** (`@storybook/tanstack-react`, docs + a11y addons) + **Playwright visual-regression** (`*.vr.ts`, `toHaveScreenshot`, webServer = Storybook). VR marker is `.vr.ts` (not `.spec`/`.test`) to dodge the Vitest collision + the layout-guard same-name-sibling rule.
 
