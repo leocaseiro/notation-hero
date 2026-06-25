@@ -379,7 +379,7 @@ INSERT INTO notation (id, format, s3_key, upload_status, created_by) VALUES
  ('not_angra','gp','s3://nh-notation/seed/angra-nothing-to-say.gp','ready','seed');
 
 INSERT INTO playable (id, kind, title, description, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, tags, family, origin, visibility, status, has_audio, has_video, created_by, data) VALUES
- ('song_bohemian','song','Bohemian Rhapsody','Queen''s multi-section epic — ballad, opera and hard-rock parts.','not_bohemian',8,'{Queen}','artist',72,4,4,'{rock,progressive}','{keys,guitar,bass,drums,vocals}','{classic-rock}','{Rock}','curated','public','published',true,true,'seed','{"bars":139,"sections":[{"label":"gtrs enter","startBar":42,"endBar":54},{"label":"tempo 144","startBar":55,"endBar":95},{"label":"tempo 207","startBar":96,"endBar":139}]}'),
+ ('song_bohemian','song','Bohemian Rhapsody','Queen''s multi-section epic — ballad, opera and hard-rock parts.','not_bohemian',8,'{Queen}','artist',72,4,4,'{rock,progressive}','{keys,guitar,bass,drums,vocals}','{classic-rock}','{Rock}','curated','public','published',true,true,'seed','{"bars":139,"sections":[{"label":"gtrs enter","startBar":42,"endBar":54,"tracks":[{"track":"trk_boh_drums","voices":["hi-hat","kick"],"level":5},{"track":"trk_boh_keys","voices":["left-hand","right-hand"],"level":6}]},{"label":"tempo 144","startBar":55,"endBar":95,"tracks":[{"track":"trk_boh_drums","voices":["hi-hat","snare","kick","crash"],"level":5},{"track":"trk_boh_keys","voices":["left-hand","right-hand"],"level":6}]},{"label":"tempo 207","startBar":96,"endBar":139,"tracks":[{"track":"trk_boh_drums","voices":["hi-hat","snare","kick","crash","ride"],"level":5},{"track":"trk_boh_keys","voices":["right-hand"],"level":6}]}]}'),
  ('song_yellow','song','Yellow','Coldplay — a steady, ringing guitar anthem.','not_yellow',3,'{Coldplay}','artist',87,4,4,'{rock,alternative}','{guitar,bass,drums,keys,vocals}','{}','{Rock}','curated','public','published',false,true,'seed','{"bars":97}'),
  ('song_zoio','song','Zoio de Lula','Charlie Brown Jr. — Brazilian rock (artist unconfirmed; flagged).','not_zoio',9,'{Charlie Brown Jr.}','artist',76,4,4,'{rock,brazilian}','{guitar,bass,drums}','{}','{Rock}','curated','public','published',false,true,'seed','{"bars":79,"markerless":true}'),
  ('song_imyours','song','I''m Yours','Jason Mraz — one I–V–vi–IV progression carries the whole song.','not_imyours',2,'{Jason Mraz}','artist',73,4,4,'{pop,reggae}','{guitar,bass,drums,vocals}','{}','{Pop}','curated','public','published',false,true,'seed','{"singleSection":true,"bars":76}'),
@@ -486,4 +486,11 @@ INSERT INTO media (id, playable_id, kind, provider, url, s3_key, label, sort_ord
 -- 7) Rhythm-guitar songs (SD-28 roles[] overlap) → Bohemian, Yellow, Zoio, I'm Yours, Angra
 --    SELECT DISTINCT p.title FROM track t JOIN playable p ON p.id=t.playable_id
 --      WHERE t.instrument='guitar' AND t.roles && ARRAY['rhythm'];
+-- 8) SD-15 voicing by track + bar (display/consume; jsonb grid, no table) — drum voices per
+--    section of Bohemian → "tempo 207" = hi-hat,snare,kick,crash,ride
+--    SELECT s->>'label' AS section, t->'voices' AS drum_voices
+--      FROM playable p,
+--           jsonb_array_elements(p.data->'sections') s,
+--           jsonb_array_elements(s->'tracks') t
+--      WHERE p.id='song_bohemian' AND t->>'track'='trk_boh_drums';
 -- ============================================================================
