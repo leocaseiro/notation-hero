@@ -122,7 +122,12 @@ jobs:
     container: mcr.microsoft.com/playwright:v1.61.1-noble
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      - uses: ./.github/actions/setup-js
+      # NOT the setup-js composite: inside the Playwright container, use the image's Node
+      # + corepack (pnpm@11.5.2 from packageManager) and --ignore-scripts. pnpm/action-setup
+      # conflicts with the image's pnpm layout, and the lefthook `prepare` can't run here
+      # (no git hooks needed in CI). Browsers are baked into the image — no `playwright install`.
+      - name: Install deps
+        run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
       - name: Visual regression (vs committed Linux baselines)
         run: pnpm --filter @notation-hero/client run test:vr
 
