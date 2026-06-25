@@ -27,6 +27,7 @@
 ~~Every path is relative to the worktree root `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438`.~~ <!-- SUPERSEDED: stale worktree path — blissful-khorana-9fa438 no longer the active checkout; plan shipped as PR #7 (commit 3060171) on master. Do not cd into this ROOT. -->
 
 **Modified — root config**
+
 - `pnpm-workspace.yaml` — set the `allowBuilds:` map (`nx: true`, `'@swc/core': true`). pnpm 11.5.2 uses `allowBuilds`, NOT `onlyBuiltDependencies` (which it silently ignores); both build-script deps must be approved or a fresh `pnpm install` errors with `ERR_PNPM_IGNORED_BUILDS` (`@swc/core` arrives transitively with `@nx/js` in Task 3).
 - `nx.json` — add `namedInputs` + `targetDefaults` covering `lint`/`typecheck`/`test`/`build`/`depcheck`; keep `defaultBase: master`.
 - `package.json` — swap `lint`/`typecheck`/`test`/`build` to `nx run-many --target=X`; keep `depcheck` as root depcruise; add `@nx/js`/`@nx/eslint` devDeps.
@@ -35,21 +36,26 @@
 - `docs/decisions/2026-06-09-tooling-stack-daci.md` — ADD Step-1 materialization + F-8 closure `[x]` lines; fix M-7 `@notationhero/*`→`@notation-hero/*` typo.
 
 **Created — `core/scoring` (`@notation-hero/scoring`, type:core)**
+
 - `core/scoring/package.json`, `core/scoring/project.json` (carries `tags`), `core/scoring/tsconfig.json`, `core/scoring/src/index.ts`, `core/scoring/src/accuracy.ts`, `core/scoring/src/accuracy.test.ts`.
   > The generator emits a transient `tsconfig.lib.json` + `src/lib/` sample that Task 4 deletes (single `tsconfig.json` per package), so they are NOT in this created-files inventory.
 
 **Created — `adapters/aws-dynamodb` (`@notation-hero/aws-dynamodb`, type:adapter)**
+
 - `adapters/aws-dynamodb/{package.json,project.json,tsconfig.json}`, `adapters/aws-dynamodb/src/{index.ts,userProgressPort.ts,inMemoryUserProgress.ts,inMemoryUserProgress.test.ts}`.
   > Same as core: the generator's transient `tsconfig.lib.json` + `src/lib/` sample are deleted in Task 5.
 
 **Created — `apps/player-pwa` (`@notation-hero/player-pwa`, type:app)**
+
 - `apps/player-pwa/{package.json,project.json,tsconfig.json}`, `apps/player-pwa/src/{main.ts,practiceSession.ts,practiceSession.test.ts}`.
 
 **Created — `infra` tag + root agent doc**
+
 - `infra/project.json` — adds `tags: ["type:infra"]` to the existing `@notation-hero/infra` package (no source change).
 - `AGENTS.md` — tag map + commands + "Working with leocaseiro" section (folds in untracked `~/Sites/notation-hero/AGENTS.md`).
 
 **Removed**
+
 - `core/.gitkeep`, `adapters/.gitkeep`, `apps/.gitkeep` — replaced by real package dirs.
 
 **MUST NOT touch:** `.eslintrc.cjs`, `.dependency-cruiser.cjs`, `tsconfig.json` (root), `tsconfig.base.json`.
@@ -63,11 +69,11 @@
 > **Global preflight (run once, do not commit anything yet).** Confirm branch + base, and that the remote is reachable.
 >
 > - [ ] Run: `git -C /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438 rev-parse --abbrev-ref HEAD`
->   **Expected output:** `chore/nx-init`
+>       **Expected output:** `chore/nx-init`
 > - [ ] **Guard: confirm `origin/master` is reachable from this worktree** (so the later `nx affected` gate fails loudly here, not mid-verification with a confusing "invalid base"). Run: `git -C /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438 ls-remote --exit-code origin master`
->   **Expected:** prints a sha for `refs/heads/master`, exit 0. (Verified reachable at plan-authoring time: `d244c48…`.) If this errors, STOP — the remote is unreachable and `nx affected --base=origin/master` cannot work.
+>       **Expected:** prints a sha for `refs/heads/master`, exit 0. (Verified reachable at plan-authoring time: `d244c48…`.) If this errors, STOP — the remote is unreachable and `nx affected --base=origin/master` cannot work.
 > - [ ] Run: `git -C /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438 fetch origin master`
->   **Expected:** fetch succeeds; `origin/master` resolves (used by `nx affected` later). No file changes.
+>       **Expected:** fetch succeeds; `origin/master` resolves (used by `nx affected` later). No file changes.
 > - [ ] **CWD discipline.** The agent's shell resets between Bash calls. Every command below is written with an explicit `cd "$ROOT" && …` prefix where `ROOT=/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438`. Set `ROOT` at the top of each Bash call (it does NOT persist across calls) OR paste the absolute path literally. Do NOT rely on an implicit CWD.
 
 ---
@@ -79,9 +85,9 @@ From a **clean** worktree (no `nx.json`, no `nx` devDep, no `allowBuilds:` block
 **Files:** Create `nx.json`; modify `pnpm-workspace.yaml`, `package.json` (nx devDep), `.gitignore`, `pnpm-lock.yaml` (all written by `nx init`).
 
 - [ ] **Snapshot pre-init state** (for clean revert reference; confirms we are starting clean). Run: `cd "$ROOT" && git status --short`
-  **Expected:** clean (no `nx.json`, no `nx` devDep, no `allowBuilds:` in `pnpm-workspace.yaml`). If `nx.json` or an `allowBuilds:` block already exists, STOP — the worktree is not in the expected clean state.
+      **Expected:** clean (no `nx.json`, no `nx` devDep, no `allowBuilds:` in `pnpm-workspace.yaml`). If `nx.json` or an `allowBuilds:` block already exists, STOP — the worktree is not in the expected clean state.
 - [ ] **(Optional) Confirm the real flag surface before running** (the `--plugins=skip` flag from earlier drafts is NOT a documented `nx init` flag in Nx 22.x and may be ignored or prompt — dropped). Run: `cd "$ROOT" && pnpm dlx nx@22.7.5 init --help 2>&1 | head -40`
-  **Expected:** prints the supported flags (`--interactive`, `--nxCloud`, `--useDotNxInstallation`, …). Do not pass any flag not listed here.
+      **Expected:** prints the supported flags (`--interactive`, `--nxCloud`, `--useDotNxInstallation`, …). Do not pass any flag not listed here.
 - [ ] **(a) Run nx init with deterministic, documented flags only.** Run:
   ```bash
   cd "$ROOT" && NX_ADD_PLUGINS=false NX_VERSION=22.7.5 \
@@ -89,7 +95,7 @@ From a **clean** worktree (no `nx.json`, no `nx` devDep, no `allowBuilds:` block
   ```
   **Expected:** exits 0; prints an Nx init summary. From clean this CREATES `nx.json`, adds the `nx@22.7.5` devDep to root `package.json`, writes the malformed `allowBuilds: nx: set this to true or false` block into `pnpm-workspace.yaml`, updates `.gitignore` (`.nx/` cache entries), and updates the lockfile. `NX_ADD_PLUGINS=false` is the supported way to skip auto-installing inference plugins; we hand-author `nx.json` wholesale in Task 2 regardless, so any init `targetDefaults` drift is overwritten there.
 - [ ] **(b) Inspect for unwanted generated files.** Run: `cd "$ROOT" && git status --short`
-  **Expected:** new `nx.json`, modified `pnpm-workspace.yaml` / `package.json` / `.gitignore` / `pnpm-lock.yaml`, and possibly new AI-agent files (e.g. a generated `CLAUDE.md`, `.cursor/`, `.github/copilot-instructions.md`). **Discard any AI-agent files nx created** (they are out of scope; the real `AGENTS.md` is Task 9). For each unexpected new file `X`: `git checkout -- X` (if tracked) or `rm -rf X` (if untracked). Do NOT delete `AGENTS.md` if one already exists from the user's untracked fragment — leave that for Task 9.
+      **Expected:** new `nx.json`, modified `pnpm-workspace.yaml` / `package.json` / `.gitignore` / `pnpm-lock.yaml`, and possibly new AI-agent files (e.g. a generated `CLAUDE.md`, `.cursor/`, `.github/copilot-instructions.md`). **Discard any AI-agent files nx created** (they are out of scope; the real `AGENTS.md` is Task 9). For each unexpected new file `X`: `git checkout -- X` (if tracked) or `rm -rf X` (if untracked). Do NOT delete `AGENTS.md` if one already exists from the user's untracked fragment — leave that for Task 9.
 - [ ] **(c) Replace the malformed `allowBuilds:` block in `pnpm-workspace.yaml`.** First guard against a stale shadow key, then apply the replacement.
   - **Guard: confirm no stale `onlyBuiltDependencies` lingers in `package.json`** (older pnpm read it there; a stale key would shadow the workspace one). Run: `cd "$ROOT" && node -e "const p=require('./package.json');console.log('onlyBuiltDependencies' in p?'FAIL-root':'ok', p.pnpm?('pnpm-block-present'):'no-pnpm-block')"`
     **Expected:** `ok no-pnpm-block` (this is a guard, not a change). If it reports `FAIL-root` or a `pnpm` block, remove that conflicting key so `pnpm-workspace.yaml` is the single source of truth.
@@ -100,22 +106,23 @@ From a **clean** worktree (no `nx.json`, no `nx` devDep, no `allowBuilds:` block
     #
     # `core/`, `adapters/`, `apps/` hold real Nx packages as of Wave 1 (DACI Step 1).
     packages:
-      - 'core/*'
-      - 'adapters/*'
-      - 'apps/*'
-      - 'infra'
+      - "core/*"
+      - "adapters/*"
+      - "apps/*"
+      - "infra"
     allowBuilds:
       # pnpm 11.5.2 uses allowBuilds (NOT onlyBuiltDependencies, which it ignores).
       # @swc/core arrives transitively with @nx/js in Task 3; pre-approving it here
       # is harmless and keeps the build-script allowlist complete for a fresh install.
-      '@swc/core': true
+      "@swc/core": true
       nx: true
     ```
 - [ ] **(d) Verify install now succeeds.** Run: `cd "$ROOT" && pnpm install`
-  **Expected:** completes with no `ERR_PNPM_IGNORED_BUILDS`. (Lockfile may update further — that is fine, it is committed in this same task.)
+      **Expected:** completes with no `ERR_PNPM_IGNORED_BUILDS`. (Lockfile may update further — that is fine, it is committed in this same task.)
 - [ ] **(e) Verify nx resolves.** Run: `cd "$ROOT" && pnpm exec nx --version`
-  **Expected:** `Nx Version: ... Local: v22.7.5` (Local line present).
+      **Expected:** `Nx Version: ... Local: v22.7.5` (Local line present).
 - [ ] **(f) Commit everything together** (so the broken `allowBuilds` state is never committed alone). Run:
+
   ```bash
   cd "$ROOT" && git add pnpm-workspace.yaml package.json pnpm-lock.yaml nx.json .gitignore
   git commit -m "$(cat <<'EOF'
@@ -152,40 +159,40 @@ Task 1 created `nx.json` via `nx init` (with whatever default `targetDefaults` i
       "production": [
         "default",
         "!{projectRoot}/**/*.{test,spec,stories,fake}.{ts,tsx}",
-        "!{projectRoot}/tsconfig.spec.json"
+        "!{projectRoot}/tsconfig.spec.json",
       ],
       "sharedGlobals": [
         "{workspaceRoot}/tsconfig.base.json",
         "{workspaceRoot}/.eslintrc.cjs",
-        "{workspaceRoot}/.dependency-cruiser.cjs"
-      ]
+        "{workspaceRoot}/.dependency-cruiser.cjs",
+      ],
     },
     "targetDefaults": {
       "build": {
         "dependsOn": ["^build"],
         "inputs": ["production", "^production"],
         "outputs": ["{projectRoot}/dist"],
-        "cache": true
+        "cache": true,
       },
       "typecheck": {
         "dependsOn": ["^build"],
         "inputs": ["default", "^production"],
-        "cache": true
+        "cache": true,
       },
       "lint": {
         "inputs": ["default", "{workspaceRoot}/.eslintrc.cjs"],
-        "cache": true
+        "cache": true,
       },
       "test": {
         "dependsOn": ["^build"],
         "inputs": ["default", "^production"],
-        "cache": true
+        "cache": true,
       },
       "depcheck": {
         "inputs": ["default", "{workspaceRoot}/.dependency-cruiser.cjs"],
-        "cache": true
-      }
-    }
+        "cache": true,
+      },
+    },
   }
   ```
   > `defaultBase: master` MUST survive. `dependsOn: ["^build"]` builds dependency packages first so cross-package types resolve.
@@ -196,10 +203,11 @@ Task 1 created `nx.json` via `nx init` (with whatever default `targetDefaults` i
   >
   > `depcheck` is listed so the pipeline graph knows it exists, but it actually runs as the root script (Task 8) — its `targetDefaults` entry is cosmetic/harmless.
 - [ ] **Verify the five targets are covered.** Run: `cd "$ROOT" && pnpm exec node -e "const j=require('./nx.json');console.log(Object.keys(j.targetDefaults).sort().join(','))"`
-  **Expected:** `build,depcheck,lint,test,typecheck`
+      **Expected:** `build,depcheck,lint,test,typecheck`
 - [ ] **Verify defaultBase preserved.** Run: `cd "$ROOT" && pnpm exec node -e "console.log(require('./nx.json').defaultBase)"`
-  **Expected:** `master`
+      **Expected:** `master`
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add nx.json
   git commit -m "$(cat <<'EOF'
@@ -229,10 +237,11 @@ The four packages are scaffolded with `@nx/js` (libraries). We install `@nx/esli
   ```
   **Expected:** both land in root `package.json` `devDependencies` at exactly `22.7.5`; lockfile updates. The `-w` flag is required to add to the workspace root.
 - [ ] **Verify versions match nx.** Run: `cd "$ROOT" && pnpm exec node -e "const d=require('./package.json').devDependencies;console.log(d.nx, d['@nx/js'], d['@nx/eslint'])"`
-  **Expected:** `22.7.5 22.7.5 22.7.5`
+      **Expected:** `22.7.5 22.7.5 22.7.5`
 - [ ] **Confirm the real `@nx/js:library` flag surface before the first generate** (the plugin is only installed now, so the flag set could not be schema-checked at plan-authoring time). Run: `cd "$ROOT" && pnpm exec nx g @nx/js:library --help 2>&1 | head -60`
-  **Expected:** prints the 22.7.5 schema. **Confirm these flags exist before using them in Task 4:** `--directory`, `--name`, `--importPath`, `--bundler`, `--unitTestRunner`, `--linter`, `--tags`, `--useProjectJson`. If any is renamed/deprecated in 22.7.5 (e.g. `--name` inferred from `--directory`, or `--useProjectJson` defaulted), adjust the Task 4/5/6 generate commands accordingly — the post-generate `project.json.tags` check is the real gate that catches a dropped `--useProjectJson`.
+      **Expected:** prints the 22.7.5 schema. **Confirm these flags exist before using them in Task 4:** `--directory`, `--name`, `--importPath`, `--bundler`, `--unitTestRunner`, `--linter`, `--tags`, `--useProjectJson`. If any is renamed/deprecated in 22.7.5 (e.g. `--name` inferred from `--directory`, or `--useProjectJson` defaulted), adjust the Task 4/5/6 generate commands accordingly — the post-generate `project.json.tags` check is the real gate that catches a dropped `--useProjectJson`.
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add package.json pnpm-lock.yaml
   git commit -m "$(cat <<'EOF'
@@ -268,7 +277,7 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
   ```
   **Expected:** creates `core/scoring/{package.json,project.json,tsconfig.json,tsconfig.lib.json,src/index.ts,src/lib/*}` and prints `>  NX  Generating @nx/js:library`. `--linter=none` means NO `eslint.config.*` flat file is written (the package lints via the legacy root `.eslintrc.cjs`). May update root `package.json`/lockfile — fine.
 - [ ] **Verify the tag landed in project.json.** Run: `cd "$ROOT" && pnpm exec node -e "console.log(JSON.stringify(require('./core/scoring/project.json').tags))"`
-  **Expected:** `["type:core"]` (if it prints `undefined`, `--useProjectJson` was dropped/renamed — re-run the generator with the correct flag from the Task 3 `--help` probe).
+      **Expected:** `["type:core"]` (if it prints `undefined`, `--useProjectJson` was dropped/renamed — re-run the generator with the correct flag from the Task 3 `--help` probe).
 - [ ] **Overwrite `core/scoring/package.json`** to the minimal shape (replace any generated scripts). Note the `lint` script carries `ESLINT_USE_FLAT_CONFIG=false` **inline** (the legacy-eslintrc toggle lives here, not in `nx.json`):
   ```json
   {
@@ -299,9 +308,9 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
       "outDir": "dist",
       "rootDir": "src",
       "noEmit": false,
-      "tsBuildInfoFile": "dist/.tsbuildinfo"
+      "tsBuildInfoFile": "dist/.tsbuildinfo",
     },
-    "include": ["src/**/*.ts"]
+    "include": ["src/**/*.ts"],
   }
   ```
   > `composite: true` is required for both project references and `isolatedDeclarations`; `noEmit: false` overrides the base's `noEmit: true`. `isolatedDeclarations` means **every export needs an explicit return type** (the code below complies).
@@ -309,6 +318,7 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
   > **`allowImportingTsExtensions: true` + `rewriteRelativeImportExtensions: true` are mandatory.** Every relative import below uses an explicit `.ts` extension (e.g. `from "./accuracy.ts"`) so that the `node --test` runtime can resolve the file (Node strips the type but needs the real path). Without `allowImportingTsExtensions`, `tsc -b` fails with `error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled` and exits 1 — breaking `typecheck`/`build` even though `node --test` would pass (an internal inconsistency). With BOTH flags set, `tsc -b` exits 0 AND rewrites `.ts`→`.js` in the emitted `dist/` output, so the `.ts` imports work at both compile and runtime. (reviewer note: earlier drafts set `noEmit: false` without these two flags; verified against tsc 5.9.3 that the build fails TS5097 — both flags are required, not optional.)
 - [ ] **Delete the generator's transient `tsconfig.lib.json` + `src/lib/` sample** (we use a single `tsconfig.json`): `cd "$ROOT" && rm -f core/scoring/tsconfig.lib.json && rm -rf core/scoring/src/lib`.
 - [ ] **Write `core/scoring/src/accuracy.ts`:**
+
   ```ts
   /**
    * Pure drum-practice scoring domain. No I/O, no AWS, no framework imports.
@@ -336,7 +346,10 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
    * Classify one hit by the signed timing error (actual - target, ms).
    * Negative = early, positive = late. Outside `hittableMs` => "miss".
    */
-  export function classifyHit(errorMs: number, windows: TimingWindows = DEFAULT_WINDOWS): HitVerdict {
+  export function classifyHit(
+    errorMs: number,
+    windows: TimingWindows = DEFAULT_WINDOWS,
+  ): HitVerdict {
     const magnitude: number = Math.abs(errorMs);
     if (magnitude > windows.hittableMs) {
       return "miss";
@@ -364,7 +377,10 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
    * A note counts as a "hit" when its verdict is not "miss".
    * An empty passage scores 0% over 0 notes (no division-by-zero).
    */
-  export function scorePassage(errorsMs: readonly number[], windows: TimingWindows = DEFAULT_WINDOWS): AccuracyScore {
+  export function scorePassage(
+    errorsMs: readonly number[],
+    windows: TimingWindows = DEFAULT_WINDOWS,
+  ): AccuracyScore {
     const total: number = errorsMs.length;
     let hits: number = 0;
     for (const errorMs of errorsMs) {
@@ -373,10 +389,12 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
       }
     }
     const misses: number = total - hits;
-    const accuracyPct: number = total === 0 ? 0 : Math.round((hits / total) * 1000) / 10;
+    const accuracyPct: number =
+      total === 0 ? 0 : Math.round((hits / total) * 1000) / 10;
     return { total, hits, misses, accuracyPct };
   }
   ```
+
 - [ ] **Write `core/scoring/src/index.ts`:**
   ```ts
   export {
@@ -389,6 +407,7 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
   } from "./accuracy.ts";
   ```
 - [ ] **Write the test** at `core/scoring/src/accuracy.test.ts`:
+
   ```ts
   import test from "node:test";
   import assert from "node:assert/strict";
@@ -429,12 +448,14 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     assert.equal(result.accuracyPct, 0);
   });
   ```
+
 - [ ] **Run the package test.** Run: `cd "$ROOT" && pnpm exec nx test @notation-hero/scoring`
-  **Expected PASS:** node test runner reports `# pass 5  # fail 0`, exit 0. (The impl was written before the test in the same task, so this passes immediately — node:test gives a real exit-code gate, not vacuous green. Depends on Node 24 default type-stripping; do NOT set `NODE_OPTIONS=--no-experimental-strip-types`.)
+      **Expected PASS:** node test runner reports `# pass 5  # fail 0`, exit 0. (The impl was written before the test in the same task, so this passes immediately — node:test gives a real exit-code gate, not vacuous green. Depends on Node 24 default type-stripping; do NOT set `NODE_OPTIONS=--no-experimental-strip-types`.)
 - [ ] **Run typecheck + lint + build for the one package.** Run: `cd "$ROOT" && pnpm exec nx run-many --target=typecheck --target=lint --target=build --projects=@notation-hero/scoring`
-  **Expected PASS:** `tsc -b` emits `dist/` with no errors (the `.ts` imports rewrite to `.js` via `rewriteRelativeImportExtensions`); eslint exits 0 (the `core/**` `no-restricted-imports` override passes — no React/AWS/Pulumi imports); build succeeds. A "eslintrc is deprecated" warning may print — it is **non-fatal** (exit 0), not a failure.
+      **Expected PASS:** `tsc -b` emits `dist/` with no errors (the `.ts` imports rewrite to `.js` via `rewriteRelativeImportExtensions`); eslint exits 0 (the `core/**` `no-restricted-imports` override passes — no React/AWS/Pulumi imports); build succeeds. A "eslintrc is deprecated" warning may print — it is **non-fatal** (exit 0), not a failure.
 - [ ] **Remove the placeholder.** Run: `cd "$ROOT" && rm -f core/.gitkeep`
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add core/ package.json pnpm-lock.yaml
   git commit -m "$(cat <<'EOF'
@@ -474,7 +495,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
   ```
   **Expected:** creates the `adapters/aws-dynamodb/*` tree; prints the generator summary. (Same flag caveats as Task 4 — confirmed against the Task 3 `--help` probe.)
 - [ ] **Verify the tag.** Run: `cd "$ROOT" && pnpm exec node -e "console.log(JSON.stringify(require('./adapters/aws-dynamodb/project.json').tags))"`
-  **Expected:** `["type:adapter"]`
+      **Expected:** `["type:adapter"]`
 - [ ] **Overwrite `adapters/aws-dynamodb/package.json`** (lint script carries the inline `ESLINT_USE_FLAT_CONFIG=false`):
   ```json
   {
@@ -494,6 +515,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
   ```
 - [ ] **Overwrite `adapters/aws-dynamodb/tsconfig.json`** with the SAME content as `core/scoring/tsconfig.json` from Task 4 (both packages are two levels deep, so `../../tsconfig.base.json` is identical; both `allowImportingTsExtensions` + `rewriteRelativeImportExtensions` MUST be present). Then `cd "$ROOT" && rm -f adapters/aws-dynamodb/tsconfig.lib.json && rm -rf adapters/aws-dynamodb/src/lib`.
 - [ ] **Write `adapters/aws-dynamodb/src/userProgressPort.ts`:**
+
   ```ts
   /**
    * Per-user progress persistence PORT. DynamoDB is the canonical per-user
@@ -519,7 +541,9 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
     put(progress: UserProgress): Promise<void>;
   }
   ```
+
 - [ ] **Write `adapters/aws-dynamodb/src/inMemoryUserProgress.ts`:**
+
   ```ts
   import type { UserProgress, UserProgressPort } from "./userProgressPort.ts";
 
@@ -536,7 +560,10 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
   export class InMemoryUserProgress implements UserProgressPort {
     private readonly store: Map<string, UserProgress> = new Map();
 
-    async get(userId: string, lessonId: string): Promise<UserProgress | undefined> {
+    async get(
+      userId: string,
+      lessonId: string,
+    ): Promise<UserProgress | undefined> {
       return this.store.get(keyOf(userId, lessonId));
     }
 
@@ -545,12 +572,14 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
     }
   }
   ```
+
 - [ ] **Write `adapters/aws-dynamodb/src/index.ts`:**
   ```ts
   export { InMemoryUserProgress } from "./inMemoryUserProgress.ts";
   export type { UserProgress, UserProgressPort } from "./userProgressPort.ts";
   ```
 - [ ] **Write the test** at `adapters/aws-dynamodb/src/inMemoryUserProgress.test.ts`:
+
   ```ts
   import test from "node:test";
   import assert from "node:assert/strict";
@@ -583,12 +612,14 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
     assert.equal(got?.bestAccuracyPct, 95);
   });
   ```
+
 - [ ] **Run the package test.** Run: `cd "$ROOT" && pnpm exec nx test @notation-hero/aws-dynamodb`
-  **Expected PASS:** `# pass 3  # fail 0`, exit 0.
+      **Expected PASS:** `# pass 3  # fail 0`, exit 0.
 - [ ] **Run typecheck + lint + build.** Run: `cd "$ROOT" && pnpm exec nx run-many --target=typecheck --target=lint --target=build --projects=@notation-hero/aws-dynamodb`
-  **Expected PASS:** all exit 0 (no `@aws-sdk`/`@pulumi` import; no apps/infra import; `.ts` imports rewrite to `.js` via the tsconfig flags).
+      **Expected PASS:** all exit 0 (no `@aws-sdk`/`@pulumi` import; no apps/infra import; `.ts` imports rewrite to `.js` via the tsconfig flags).
 - [ ] **Remove the placeholder.** Run: `cd "$ROOT" && rm -f adapters/.gitkeep`
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add adapters/ package.json pnpm-lock.yaml
   git commit -m "$(cat <<'EOF'
@@ -626,7 +657,7 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
   ```
   **Expected:** creates the `apps/player-pwa/*` tree.
 - [ ] **Verify the tag.** Run: `cd "$ROOT" && pnpm exec node -e "console.log(JSON.stringify(require('./apps/player-pwa/project.json').tags))"`
-  **Expected:** `["type:app"]`
+      **Expected:** `["type:app"]`
 - [ ] **Set `projectType` to application** in `apps/player-pwa/project.json` (the `@nx/js:library` generator writes `"projectType": "library"`; an app should read `application`). Edit that one field to `"projectType": "application"`. Leave `tags` and the rest untouched.
 - [ ] **Overwrite `apps/player-pwa/package.json`** (note the workspace dep on core + the inline lint toggle):
   ```json
@@ -660,16 +691,17 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
       "outDir": "dist",
       "rootDir": "src",
       "noEmit": false,
-      "tsBuildInfoFile": "dist/.tsbuildinfo"
+      "tsBuildInfoFile": "dist/.tsbuildinfo",
     },
     "include": ["src/**/*.ts"],
-    "references": [{ "path": "../../core/scoring" }]
+    "references": [{ "path": "../../core/scoring" }],
   }
   ```
   > This single static `references` entry is acceptable for Wave 1; per DACI F-4 references become Nx-managed via `nx sync` in a later lane (do not hand-edit then). Then `cd "$ROOT" && rm -f apps/player-pwa/tsconfig.lib.json && rm -rf apps/player-pwa/src/lib`.
 - [ ] **Re-install to record the workspace edge in the lockfile.** Run: `cd "$ROOT" && pnpm install`
-  **Expected:** lockfile gains the `@notation-hero/player-pwa` → `@notation-hero/scoring` `workspace:*` edge; the symlink resolves under pnpm strict node_modules.
+      **Expected:** lockfile gains the `@notation-hero/player-pwa` → `@notation-hero/scoring` `workspace:*` edge; the symlink resolves under pnpm strict node_modules.
 - [ ] **Write `apps/player-pwa/src/practiceSession.ts`:**
+
   ```ts
   import { scorePassage, type AccuracyScore } from "@notation-hero/scoring";
 
@@ -699,7 +731,9 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
     };
   }
   ```
+
 - [ ] **Write `apps/player-pwa/src/main.ts`:**
+
   ```ts
   import { summarizeTake, type PracticeTake } from "./practiceSession.ts";
 
@@ -716,7 +750,9 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
     return lines.join("\n");
   }
   ```
+
 - [ ] **Write the test** at `apps/player-pwa/src/practiceSession.test.ts`:
+
   ```ts
   import test from "node:test";
   import assert from "node:assert/strict";
@@ -724,13 +760,19 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
   import { bootstrap } from "./main.ts";
 
   test("summarizeTake marks an accurate take as passed", () => {
-    const summary = summarizeTake({ lessonId: "fill-01", timingErrorsMs: [0, 10, -15, 25] });
+    const summary = summarizeTake({
+      lessonId: "fill-01",
+      timingErrorsMs: [0, 10, -15, 25],
+    });
     assert.equal(summary.score.accuracyPct, 100);
     assert.equal(summary.passed, true);
   });
 
   test("summarizeTake fails a take below threshold", () => {
-    const summary = summarizeTake({ lessonId: "fill-02", timingErrorsMs: [300, 300, 0, 0] });
+    const summary = summarizeTake({
+      lessonId: "fill-02",
+      timingErrorsMs: [300, 300, 0, 0],
+    });
     assert.ok(summary.score.accuracyPct < PASS_THRESHOLD_PCT);
     assert.equal(summary.passed, false);
   });
@@ -740,6 +782,7 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
     assert.match(out, /^fill-01: 100% \[PASS\]$/);
   });
   ```
+
 - [ ] **Build core first, then verify cross-package `.ts` resolution standalone, then test the app.** Run:
   ```bash
   cd "$ROOT" && pnpm exec nx build @notation-hero/scoring \
@@ -748,10 +791,11 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
   ```
   **Expected PASS:** core builds; the standalone `node --test` of `practiceSession.test.ts` confirms the cross-package chain resolves (`@notation-hero/scoring` `workspace:*` symlink → `main: ./src/index.ts` → `./accuracy.ts`) and prints a `# pass` line; then the full app test runs `# pass 3  # fail 0`, exit 0. This chain depends on Node 24 default type-stripping — `NODE_OPTIONS` must NOT contain `--no-experimental-strip-types`. (reviewer note: earlier drafts asserted the symlink chain resolves without a probe; the standalone `node --test` sub-step makes the cross-package `.ts` resolution auditable rather than assumed.)
 - [ ] **Run typecheck + lint + build for the app.** Run: `cd "$ROOT" && pnpm exec nx run-many --target=typecheck --target=lint --target=build --projects=@notation-hero/player-pwa`
-  **Expected PASS:** all exit 0; `tsc -b` follows the `references` to build core, then the app (the `.ts` imports rewrite to `.js` on emit). No `@pulumi` import present (convention — see next bullet).
+      **Expected PASS:** all exit 0; `tsc -b` follows the `references` to build core, then the app (the `.ts` imports rewrite to `.js` on emit). No `@pulumi` import present (convention — see next bullet).
   > **`apps → @pulumi` is NOT enforced in Wave 1.** The live `.eslintrc.cjs` `no-restricted-imports` override is scoped to `core/**` ONLY; the handler↛`@pulumi` depcruise file-level rule is a SEPARATE DACI Step-1 checklist item, out of this PR's scope. So "no `@pulumi` import" here is true by convention (the author wrote none), not by an enforced gate. The `apps`→`@pulumi` lint/depcruise ban is a later DACI Step-1 checklist item, not wired in this PR. (reviewer note: earlier drafts presented "No @pulumi import present" as a checked guarantee; corrected to a convention claim since nothing enforces it for `apps/**` yet.)
 - [ ] **Remove the placeholder.** Run: `cd "$ROOT" && rm -f apps/.gitkeep`
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add apps/ package.json pnpm-lock.yaml
   git commit -m "$(cat <<'EOF'
@@ -786,9 +830,9 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
   }
   ```
 - [ ] **Verify the tag + no double-registration.** Run: `cd "$ROOT" && pnpm exec nx show project @notation-hero/infra --json | pnpm exec node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const p=JSON.parse(s);console.log('tags',JSON.stringify(p.tags),'targets',Object.keys(p.targets).sort().join(','))})"`
-  **Expected:** `tags ["type:infra"] targets build,lint,test,typecheck` (Nx infers the four targets from the existing package.json scripts; `project.json` adds only the tag, no conflicting target redefinition).
+      **Expected:** `tags ["type:infra"] targets build,lint,test,typecheck` (Nx infers the four targets from the existing package.json scripts; `project.json` adds only the tag, no conflicting target redefinition).
 - [ ] **Confirm all four projects are visible to Nx.** Run: `cd "$ROOT" && pnpm exec nx show projects`
-  **Expected (order may vary):**
+      **Expected (order may vary):**
   ```
   @notation-hero/scoring
   @notation-hero/aws-dynamodb
@@ -796,6 +840,7 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
   @notation-hero/infra
   ```
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add infra/project.json
   git commit -m "$(cat <<'EOF'
@@ -830,12 +875,13 @@ Now that all four packages register real targets, swap the four root scripts fro
   ```
   > Drops the legacy `ESLINT_USE_FLAT_CONFIG=false eslint . --ext …` direct lint AND the three `pnpm -r --if-present run X`. `lint` needs no `--if-present` — every package registers a real lint target (eslint per package; infra echo). `depcheck` is unchanged per constraint. The `ESLINT_USE_FLAT_CONFIG=false` toggle now lives in each package's own lint script (Tasks 4/5/6), so the root `nx run-many --target=lint` correctly drives the legacy engine per package.
 - [ ] **Verify no `pnpm -r` remains for the four.** Run: `cd "$ROOT" && pnpm exec node -e "const s=require('./package.json').scripts;console.log(JSON.stringify(s,null,2))"`
-  **Expected:** the four show `nx run-many --target=X`; `depcheck` shows the depcruise call; no `pnpm -r` substring anywhere.
+      **Expected:** the four show `nx run-many --target=X`; `depcheck` shows the depcruise call; no `pnpm -r` substring anywhere.
 - [ ] **Run the four root scripts in sequence.** Run: `cd "$ROOT" && pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test`
-  **Expected PASS:** each `nx run-many` runs the target across all four projects (3 real + infra echo for lint/typecheck/build; 3 real test tasks — infra has a `test` echo too). All exit 0. Nx prints `Successfully ran target X for N projects`. (`test` runs **non-vacuously** on the 3 packages with real `node --test` specs; infra's echo also counts but the real assertions exist.)
+      **Expected PASS:** each `nx run-many` runs the target across all four projects (3 real + infra echo for lint/typecheck/build; 3 real test tasks — infra has a `test` echo too). All exit 0. Nx prints `Successfully ran target X for N projects`. (`test` runs **non-vacuously** on the 3 packages with real `node --test` specs; infra's echo also counts but the real assertions exist.)
 - [ ] **Depcheck dry-run BEFORE committing the script swap** (so a depcruise failure against the NEW package graph surfaces here, not at final Verification after every task has landed). Run: `cd "$ROOT" && pnpm run depcheck`
-  **Expected PASS:** dependency-cruiser scans `core adapters apps infra`, exits 0. The 5 forbidden rules pass (core imports no adapters/apps; adapters import no apps; no cycles). **Expected non-fatal `no-orphans` WARNINGS** are likely: the rule's `pathNot` only excludes `\.test\.(ts|tsx)$` and `__tests__/`, so each package's `src/index.ts` barrel (and any impl file nothing else imports) is flagged as an orphan at severity `warn` — warnings do NOT change the exit code, so exit 0 holds. depcruise uses `tsPreCompilationDeps: true` with `tsConfig.fileName: tsconfig.json` resolved at repo root; the root `tsconfig.json` is `files: []` (intact — Task 1's `nx init` does not mutate the root `tsconfig.json`; it only creates `nx.json` + writes `allowBuilds`/`.gitignore`/lockfile), and each per-folder `tsconfig.json` resolves its own package, so the cross-package `apps/player-pwa → @notation-hero/scoring` import resolves via the pnpm symlink. If depcruise instead ERRORS (non-zero) on tsconfig resolution for the new packages, STOP and fix here before the commit — do not defer to final Verification.
+      **Expected PASS:** dependency-cruiser scans `core adapters apps infra`, exits 0. The 5 forbidden rules pass (core imports no adapters/apps; adapters import no apps; no cycles). **Expected non-fatal `no-orphans` WARNINGS** are likely: the rule's `pathNot` only excludes `\.test\.(ts|tsx)$` and `__tests__/`, so each package's `src/index.ts` barrel (and any impl file nothing else imports) is flagged as an orphan at severity `warn` — warnings do NOT change the exit code, so exit 0 holds. depcruise uses `tsPreCompilationDeps: true` with `tsConfig.fileName: tsconfig.json` resolved at repo root; the root `tsconfig.json` is `files: []` (intact — Task 1's `nx init` does not mutate the root `tsconfig.json`; it only creates `nx.json` + writes `allowBuilds`/`.gitignore`/lockfile), and each per-folder `tsconfig.json` resolves its own package, so the cross-package `apps/player-pwa → @notation-hero/scoring` import resolves via the pnpm symlink. If depcruise instead ERRORS (non-zero) on tsconfig resolution for the new packages, STOP and fix here before the commit — do not defer to final Verification.
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add package.json
   git commit -m "$(cat <<'EOF'
@@ -860,12 +906,14 @@ Create a tracked `AGENTS.md` at the worktree root. Fold in the content of the un
 **Files:** Create `AGENTS.md` (worktree root).
 
 - [ ] **Read the untracked fragment to fold in.** Run: `cd "$ROOT" && cat /Users/leocaseiro/Sites/notation-hero/AGENTS.md`
-  **Expected:** prints the AskUserQuestion batching fragment (anti-pattern/correct-pattern block + a "provide What's wrong / Proposed fix / Why it works as context per question" addendum). If the file does not exist, proceed — the canonical convention text below already contains the full content; nothing is lost.
+      **Expected:** prints the AskUserQuestion batching fragment (anti-pattern/correct-pattern block + a "provide What's wrong / Proposed fix / Why it works as context per question" addendum). If the file does not exist, proceed — the canonical convention text below already contains the full content; nothing is lost.
 - [ ] **Write `AGENTS.md`** at the worktree root with exactly (the tag-map import-direction columns mirror the ENFORCED `.dependency-cruiser.cjs` directions — `apps → core, adapters`; `infra → adapters, apps (composition root)`):
+
   ````markdown
   # AGENTS.md — Notation Hero
 
   <!-- hand-seeded; superseded when the L8 generated-from-config + drift-check lane lands -->
+
   > Wave 1 hand-authored stub. The L8 lane replaces this with a generated-from-config
   > AGENTS.md + a CI drift-check (DACI L8). Until then this file is the agent contract.
 
@@ -875,12 +923,12 @@ Create a tracked `AGENTS.md` at the worktree root. Fold in the content of the un
   live ground truth). A stricter Nx `enforce-module-boundaries` contract is a target
   state for Step ≥2; where this table is stricter than depcruise today, it is noted.
 
-  | Folder | Package | Tag | May import (enforced by depcruiser) | Never imports |
-  |---|---|---|---|---|
-  | `core/*` | `@notation-hero/scoring` | `type:core` | nothing in-repo (pure domain) | `@aws-sdk/*`, `@pulumi/*`, adapters, apps |
-  | `adapters/*` | `@notation-hero/aws-dynamodb` | `type:adapter` | `type:core` | apps, infra source |
-  | `apps/*` | `@notation-hero/player-pwa` | `type:app` | `type:core`, `type:adapter` | infra source *(an `apps → @pulumi/*` ban is a pending later Step-1 item, NOT enforced yet)* |
-  | `infra` | `@notation-hero/infra` | `type:infra` | `type:adapter`, `type:app` (composition root) | — *(infra is the composition root: it imports adapters + apps; it must not be imported BY app/adapter/core source)* |
+  | Folder       | Package                       | Tag            | May import (enforced by depcruiser)           | Never imports                                                                                                       |
+  | ------------ | ----------------------------- | -------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+  | `core/*`     | `@notation-hero/scoring`      | `type:core`    | nothing in-repo (pure domain)                 | `@aws-sdk/*`, `@pulumi/*`, adapters, apps                                                                           |
+  | `adapters/*` | `@notation-hero/aws-dynamodb` | `type:adapter` | `type:core`                                   | apps, infra source                                                                                                  |
+  | `apps/*`     | `@notation-hero/player-pwa`   | `type:app`     | `type:core`, `type:adapter`                   | infra source _(an `apps → @pulumi/_` ban is a pending later Step-1 item, NOT enforced yet)\*                        |
+  | `infra`      | `@notation-hero/infra`        | `type:infra`   | `type:adapter`, `type:app` (composition root) | — _(infra is the composition root: it imports adapters + apps; it must not be imported BY app/adapter/core source)_ |
 
   Naming is `@notation-hero/*` (hyphen — matches root `name: "notation-hero"`).
   The DACI's `@notationhero/*` (no hyphen, M-7) is a typo; do not adopt it.
@@ -911,7 +959,7 @@ Create a tracked `AGENTS.md` at the worktree root. Fold in the content of the un
 
   ## Working with leocaseiro
 
-  leocaseiro is ADHD-diagnosed; reduce cognitive load and let him drive decisions.
+  The user prefers low cognitive load and to drive decisions.
   **These conventions apply ONLY to user-facing / orchestrator agents** — agents that
   talk to leocaseiro directly and may call `AskUserQuestion`. **Non-interactive
   sub-agents** (research, code-review personas, parallel doc-review agents) run to
@@ -958,10 +1006,13 @@ Create a tracked `AGENTS.md` at the worktree root. Fold in the content of the un
     - **Proposed fix** (examples / code snippets if applicable)
     - **Why it works**
   ````
+
   > If `cat` in the prior step surfaced ANY text not covered by the block above, append it verbatim under the "AskUserQuestion conventions" subsection before committing — the fold-in must be lossless. (Verified at plan-authoring time: the untracked fragment's content — the anti-pattern/correct-pattern block + the "What's wrong / Proposed fix / Why it works" addendum — is fully captured above; nothing extra to append.)
+
 - [ ] **Verify the three required elements exist.** Run: `cd "$ROOT" && pnpm exec node -e "const t=require('fs').readFileSync('AGENTS.md','utf8');console.log('tagmap',t.includes('type:core')&&t.includes('type:infra'),'scope',t.includes('do NOT call'),'fold',t.includes('SEPARATE sub-questions'))"`
-  **Expected:** `tagmap true scope true fold true`
+      **Expected:** `tagmap true scope true fold true`
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add AGENTS.md
   git commit -m "$(cat <<'EOF'
@@ -987,9 +1038,9 @@ F-8 is NOT a tracked PR/issue thread in `docs/` (exhaustively searched across PR
 **Files:** Modify `docs/decisions/2026-06-09-tooling-stack-daci.md`.
 
 - [ ] **Audit the SCOPE-5 conditional against the actual PR #4 thread** (not just docs). Run: `cd "$ROOT" && gh pr view 4 --comments 2>&1 | grep -in -e "F-8" -e "if-present" -e "run-many" || echo "NO-F8-THREAD"; echo "---"; gh api repos/leocaseiro/notation-hero/pulls/4/comments 2>/dev/null | grep -i -e "F-8" -e "if-present" || echo "NO-REVIEW-COMMENT"`
-  **Expected:** most likely `NO-F8-THREAD` / `NO-REVIEW-COMMENT` (PR #4 is merged; F-8 has no live thread — recorded as the negative result that justifies "no PR reply owed"). **If a comment DOES surface**, post a short "F-8 complete — `pnpm -r --if-present` retired for the four targets in favor of `nx run-many` on `chore/nx-init`" reply on that thread via `gh pr comment 4 --body "…"`, and note it in the PR body.
+      **Expected:** most likely `NO-F8-THREAD` / `NO-REVIEW-COMMENT` (PR #4 is merged; F-8 has no live thread — recorded as the negative result that justifies "no PR reply owed"). **If a comment DOES surface**, post a short "F-8 complete — `pnpm -r --if-present` retired for the four targets in favor of `nx run-many` on `chore/nx-init`" reply on that thread via `gh pr comment 4 --body "…"`, and note it in the PR body.
 - [ ] **Locate the Open-verification anchor + Step-1 items + M-7 line.** Run: `cd "$ROOT" && grep -n -e "Open verification" -e "Step 1" -e "notationhero" docs/decisions/2026-06-09-tooling-stack-daci.md`
-  **Expected:** prints the Sequencing reference at **line 279**, the Phasing note at **line 291**, the `## Open verification` heading + the `[Step 1]` checklist lines at **298–302** (line 298 is the pnpm-migration `[x]` anchor; 299–302 are the four still-open `[ ]` Step-1 items: type-coverage floors, per-Lambda scaffold, depcruise file-level rules, `build:dts`), and the M-7 `notationhero` occurrences at **line 370**. This is MORE matches than just the checklist — the anchor for the Edit is the pnpm-migration `[x]` line **298**.
+      **Expected:** prints the Sequencing reference at **line 279**, the Phasing note at **line 291**, the `## Open verification` heading + the `[Step 1]` checklist lines at **298–302** (line 298 is the pnpm-migration `[x]` anchor; 299–302 are the four still-open `[ ]` Step-1 items: type-coverage floors, per-Lambda scaffold, depcruise file-level rules, `build:dts`), and the M-7 `notationhero` occurrences at **line 370**. This is MORE matches than just the checklist — the anchor for the Edit is the pnpm-migration `[x]` line **298**.
 - [ ] **ADD two new `[x]` lines immediately after the pnpm-migration `[x]` line (line 298).** Do NOT attempt to flip any existing `[ ]` item — none of the four existing `[Step 1]` `[ ]` items (type-coverage floors at 299, per-Lambda scaffold at 300, depcruise file-level rules at 301, `build:dts` at 302) are completed by this PR, and they must stay `[ ]`. Insert exactly these two lines after line 298:
   ```markdown
   - [x] **`[Step 1]` Materialize real Nx packages with `type:` tags** — `nx init` + `targetDefaults`; `@notation-hero/scoring` (type:core), `@notation-hero/aws-dynamodb` (type:adapter), `@notation-hero/player-pwa` (type:app), `@notation-hero/infra` (type:infra). Shipped on `chore/nx-init`.
@@ -999,10 +1050,11 @@ F-8 is NOT a tracked PR/issue thread in `docs/` (exhaustively searched across PR
 - [ ] **Fix the M-7 typo (line 370) — both occurrences, with exact backtick-wrapped context.** Use the Edit tool twice:
   1. Change the backtick-wrapped mid-line scope glob: old_string ``per-`@notationhero/*`-package`` → new_string ``per-`@notation-hero/*`-package``.
   2. Change the backtick-wrapped main-app-package value: old_string ``Main app package = `notationhero`.`` → new_string ``Main app package = `@notation-hero/player-pwa`.``
-  > (reviewer note: earlier drafts gave old_strings WITHOUT the surrounding backticks — `Main app package = notationhero` and bare `@notationhero/*` — which the Edit tool would fail to match. The live text at line 370 wraps both values in backticks: `` `notationhero` `` and ``per-`@notationhero/*`-package``. The two Edits above carry the verbatim backtick context so they match.) Flag in the PR body: "M-7 scope-name typo corrected for consistency with the live `@notation-hero/*` convention."
+     > (reviewer note: earlier drafts gave old_strings WITHOUT the surrounding backticks — `Main app package = notationhero` and bare `@notationhero/*` — which the Edit tool would fail to match. The live text at line 370 wraps both values in backticks: `` `notationhero` `` and ``per-`@notationhero/*`-package``. The two Edits above carry the verbatim backtick context so they match.) Flag in the PR body: "M-7 scope-name typo corrected for consistency with the live `@notation-hero/*` convention."
 - [ ] **Verify the edits.** Run: `cd "$ROOT" && echo "notationhero count:" && grep -c notationhero docs/decisions/2026-06-09-tooling-stack-daci.md; grep -n -e "F-8 — replace" -e "Materialize real Nx packages with" docs/decisions/2026-06-09-tooling-stack-daci.md`
-  **Expected:** `notationhero count: 0` (the corrected hyphenated `@notation-hero` does NOT contain the substring `notationhero`, so a clean fix leaves zero matches — only the one line 370 had matches today, both fixed above); both new checklist lines print.
+      **Expected:** `notationhero count: 0` (the corrected hyphenated `@notation-hero` does NOT contain the substring `notationhero`, so a clean fix leaves zero matches — only the one line 370 had matches today, both fixed above); both new checklist lines print.
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add docs/decisions/2026-06-09-tooling-stack-daci.md
   git commit -m "$(cat <<'EOF'
@@ -1028,12 +1080,13 @@ A decision was made (Approver: leocaseiro) to bump CI to **Node 24**, amending t
 **Files:** Modify `.github/workflows/ci.yml` — `node-version: 22`→`24` in BOTH the `quality` and `build` jobs (two occurrences).
 
 - [ ] **Show the before state.** Run: `cd "$ROOT" && grep -n "node-version" .github/workflows/ci.yml`
-  **Expected:** two lines, each `node-version: 22` (one in the `quality` job, one in the `build` job).
+      **Expected:** two lines, each `node-version: 22` (one in the `quality` job, one in the `build` job).
 - [ ] **Edit the `quality` job's `node-version`.** Change `node-version: 22` → `node-version: 24` in the `quality` job (use the Edit tool on the first occurrence's surrounding context).
 - [ ] **Edit the `build` job's `node-version`.** Change `node-version: 22` → `node-version: 24` in the `build` job (the second occurrence).
 - [ ] **Verify both occurrences flipped.** Run: `cd "$ROOT" && echo "24:" && grep -c "node-version: 24" .github/workflows/ci.yml; echo "22:" && grep -c "node-version: 22" .github/workflows/ci.yml`
-  **Expected:** `24:` `2` and `22:` `0` (both jobs on 24; none left on 22).
+      **Expected:** `24:` `2` and `22:` `0` (both jobs on 24; none left on 22).
 - [ ] **Commit.** Run:
+
   ```bash
   cd "$ROOT" && git add .github/workflows/ci.yml
   git commit -m "$(cat <<'EOF'
@@ -1057,29 +1110,30 @@ A decision was made (Approver: leocaseiro) to bump CI to **Node 24**, amending t
 ~~Run all six gates from the worktree root, in order. Each must be GREEN before the PR is opened. Set `ROOT=/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/blissful-khorana-9fa438` and prefix each command with `cd "$ROOT" &&` (the agent shell resets between calls — set `ROOT` at the top of each Bash call).~~ <!-- SUPERSEDED: stale worktree path — this ROOT points at blissful-khorana-9fa438, which is not the active checkout; the work already merged to master via PR #7 (commit 3060171). Do not re-run these gates against this path. -->
 
 - [ ] **1. Frozen install.** Run: `cd "$ROOT" && pnpm install --frozen-lockfile`
-  **Expected:** completes, no `ERR_PNPM_*`, no "lockfile not up to date" (Tasks 4/6 committed the regenerated lockfile). Exit 0.
+      **Expected:** completes, no `ERR_PNPM_*`, no "lockfile not up to date" (Tasks 4/6 committed the regenerated lockfile). Exit 0.
 - [ ] **2. Lint.** Run: `cd "$ROOT" && pnpm run lint`
-  **Expected:** `nx run-many --target=lint` runs lint on all 4 projects → `Successfully ran target lint for 4 projects`, exit 0. Each package's lint script carries `ESLINT_USE_FLAT_CONFIG=false` so ESLint 9 uses the legacy `.eslintrc.cjs`. (An "eslintrc is deprecated" warning is non-fatal.)
+      **Expected:** `nx run-many --target=lint` runs lint on all 4 projects → `Successfully ran target lint for 4 projects`, exit 0. Each package's lint script carries `ESLINT_USE_FLAT_CONFIG=false` so ESLint 9 uses the legacy `.eslintrc.cjs`. (An "eslintrc is deprecated" warning is non-fatal.)
 - [ ] **3. Typecheck.** Run: `cd "$ROOT" && pnpm run typecheck`
-  **Expected:** `tsc -b` per project, all exit 0 (the `.ts`-extension imports compile because every package tsconfig sets `allowImportingTsExtensions` + `rewriteRelativeImportExtensions`); `Successfully ran target typecheck for 4 projects` (infra echo counts).
+      **Expected:** `tsc -b` per project, all exit 0 (the `.ts`-extension imports compile because every package tsconfig sets `allowImportingTsExtensions` + `rewriteRelativeImportExtensions`); `Successfully ran target typecheck for 4 projects` (infra echo counts).
 - [ ] **4. Build.** Run: `cd "$ROOT" && pnpm run build`
-  **Expected:** `tsc -b` emits `dist/` for the 3 code packages with `.ts`→`.js` rewritten relative imports (infra echo); `Successfully ran target build for 4 projects`, exit 0.
+      **Expected:** `tsc -b` emits `dist/` for the 3 code packages with `.ts`→`.js` rewritten relative imports (infra echo); `Successfully ran target build for 4 projects`, exit 0.
 - [ ] **5. Test.** Run: `cd "$ROOT" && pnpm run test`
-  **Expected:** `node --test` runs 5+3+3 real assertions across the 3 code packages (infra echo); `Successfully ran target test for 4 projects`, exit 0. Not vacuous — real pass/fail exit codes. (Relies on Node 24 default type-stripping; `NODE_OPTIONS` must not disable it.)
+      **Expected:** `node --test` runs 5+3+3 real assertions across the 3 code packages (infra echo); `Successfully ran target test for 4 projects`, exit 0. Not vacuous — real pass/fail exit codes. (Relies on Node 24 default type-stripping; `NODE_OPTIONS` must not disable it.)
 - [ ] **6. Depcheck.** Run: `cd "$ROOT" && pnpm run depcheck`
-  **Expected:** dependency-cruiser scans `core adapters apps infra`, the 5 forbidden rules pass, exit 0 (a `no-orphans` warning is non-fatal — already dry-run green in Task 8).
+      **Expected:** dependency-cruiser scans `core adapters apps infra`, the 5 forbidden rules pass, exit 0 (a `no-orphans` warning is non-fatal — already dry-run green in Task 8).
 
 **Acceptance-criteria smoke checks (also run):**
+
 - [ ] **nx.json covers five targets.** Run: `cd "$ROOT" && pnpm exec node -e "console.log(Object.keys(require('./nx.json').targetDefaults).sort().join(','))"` → expect `build,depcheck,lint,test,typecheck`.
 - [ ] **`nx affected` resolves against origin/master.** Run: `cd "$ROOT" && git fetch origin master && pnpm exec nx affected -t build --base=origin/master --head=HEAD`
-  **Expected:** exits 0; lists affected projects (all 4, since this branch adds them) — NOT an "invalid base" error.
+      **Expected:** exits 0; lists affected projects (all 4, since this branch adds them) — NOT an "invalid base" error.
   > **AC literal-reading note:** the acceptance criterion is written `nx affected --base=origin/master` (no `-t`), but **Nx 22 requires a target** — bare `nx affected` without `-t` errors BY DESIGN, not a regression. The canonical, satisfiable check is `nx affected -t <target> --base=origin/master --head=HEAD` (used identically here and in `AGENTS.md`). A reviewer reading the AC verbatim should treat the missing `-t` as shorthand, not run it literally.
 - [ ] **Four tagged projects exist.** Run: `cd "$ROOT" && for p in scoring aws-dynamodb player-pwa infra; do pnpm exec node -e "console.log('$p', JSON.stringify(require('./'+({scoring:'core/scoring','aws-dynamodb':'adapters/aws-dynamodb','player-pwa':'apps/player-pwa',infra:'infra'})['$p'])+'/project.json').tags))"; done`
-  **Expected:** `scoring ["type:core"]` / `aws-dynamodb ["type:adapter"]` / `player-pwa ["type:app"]` / `infra ["type:infra"]`.
+      **Expected:** `scoring ["type:core"]` / `aws-dynamodb ["type:adapter"]` / `player-pwa ["type:app"]` / `infra ["type:infra"]`.
 - [ ] **CI change limited to the Node 22→24 bump.** Run: `cd "$ROOT" && git diff --stat origin/master -- .github/ && echo "node24 count:" && git diff origin/master -- .github/ | grep -c 'node-version: 24'`
-  **Expected:** shows ONLY `.github/workflows/ci.yml` changed, and `node24 count:` is `2` (both the `quality` and `build` jobs); no other `.github` edits (AC-11 amended — the sole CI change is the Approver-approved Node 22→24 bump, Task 11; CI otherwise reuses the existing `quality`+`build` jobs, which invoke the swapped root `pnpm run` scripts).
+      **Expected:** shows ONLY `.github/workflows/ci.yml` changed, and `node24 count:` is `2` (both the `quality` and `build` jobs); no other `.github` edits (AC-11 amended — the sole CI change is the Approver-approved Node 22→24 bump, Task 11; CI otherwise reuses the existing `quality`+`build` jobs, which invoke the swapped root `pnpm run` scripts).
 - [ ] **No `pnpm -r` left for the four.** Run: `cd "$ROOT" && pnpm exec node -e "const s=JSON.stringify(require('./package.json').scripts);console.log(s.includes('pnpm -r')?'FAIL':'OK')"`
-  **Expected:** `OK`.
+      **Expected:** `OK`.
 
 ## What comes next
 

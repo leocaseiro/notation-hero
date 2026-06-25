@@ -132,7 +132,7 @@ but local feedback time is gone. Never use `git commit/push --no-verify`.
 
 ## Commit & review workflow
 
-**Always `git commit` a coherent, green checkpoint BEFORE asking leocaseiro to
+**Always `git commit` a coherent, green checkpoint BEFORE asking the user to
 review or approve.** Review happens on the committed diff / PR — never on
 uncommitted working-tree changes. Make baby commits at every green step so
 progress is visible and any step is one `git revert` away. Never pass
@@ -182,7 +182,7 @@ NH-206 review #3). An agent that changes anything under `infra/` MUST recover th
    **exposure** change (public access enabled, Function-URL/API auth weakened, or a new
    wildcard/admin IAM grant), file a **required merge-blocker task in BOTH**: the PR-checklist
    item, and a Jira Smart Checklist mandatory task (`customfield_10041`, `-!`) on the NH issue —
-   each describing the change so leocaseiro cannot blind-merge it.
+   each describing the change so the user cannot blind-merge it.
 
 The `pr-checklist` gate is **diff-aware**: a PR that touches `infra/**` fails unless the
 `## Pulumi preview` section is filled (`tooling/pr-checklist.mjs`, `PR_INFRA_CHANGED` from the
@@ -193,27 +193,65 @@ The `pr-checklist` gate is **diff-aware**: a PR that touches `infra/**` fails un
 `docs/decisions/decision-registry.md` is the single source of truth for every decision +
 its status. Keep it alive:
 
-- **Manual approvals → the register.** Whenever leocaseiro personally approves, ratifies,
+- **Manual approvals → the register.** Whenever the user personally approves, ratifies,
   or revises a decision (in conversation, an `AskUserQuestion`, or a review), record it in
-  the registry's **Change log** (date, outcome, his reasoning). A decision isn't "ratified"
+  the registry's **Change log** (date, outcome, their reasoning). A decision isn't "ratified"
   until it's in the register.
 - **PR merge → update statuses.** Every PR that changes what's enforced updates the register
   in the SAME PR: add a Change-log entry and flip affected decisions' status/enforcement
   (⏳→✅, 📄→🤖, clear the 🟥 gap). The register update travels with the PR so it lands
   atomically on merge.
 
-## Working with leocaseiro
+## Public repo — no personal data in committed files
 
-leocaseiro is ADHD-diagnosed; reduce cognitive load and let him drive decisions.
+`leocaseiro/notation-hero` is a **public** repository. Do NOT write personal or
+medical detail about the maintainer or contributors into any committed file — no
+diagnoses, health status, or similar. Describe working preferences **neutrally**
+instead (e.g. "the user prefers low cognitive load and to drive decisions"), never
+with a diagnosis label. The GitHub username is unavoidably public — it is required
+by `.github/CODEOWNERS`, the pull-request template, and the repo URL — so the handle
+itself is fine; this rule is about personal data, not the name.
+
+## Working with the user
+
+These conventions exist to **avoid wasted round-trips**. Follow them and the user
+rarely has to re-ask, re-explain, or stop to clarify — which saves tokens and time
+for the user and for any contributor working through an agent here. The user works
+best with **low cognitive load** and prefers to **drive decisions themselves** (they
+are non-neurotypical — keep menus small, context inline, and never decide on their
+behalf).
+
 **These conventions apply ONLY to user-facing / orchestrator agents** — agents that
-talk to leocaseiro directly and may call `AskUserQuestion`. **Non-interactive
+talk to the user directly and may call `AskUserQuestion`. **Non-interactive
 sub-agents** (research, code-review personas, parallel doc-review agents) run to
 completion and **return findings as text — they do NOT call `AskUserQuestion`.**
-The conventions then apply to the orchestrator that walks leocaseiro through those
+The conventions then apply to the orchestrator that walks the user through those
 findings, not the sub-agent.
 
-### AskUserQuestion conventions (orchestrator agents only)
+### 1. User context
 
+The user:
+
+- Gets distracted and forgets references (file paths, prior decisions, names mid-thread).
+- Gets overwhelmed when there is a lot to read, process, or decide at once.
+- Prefers to drive answers themselves — do not decide for them; keep menus small enough to scan.
+- Has an **infinite-loop distraction pattern**: gets lost in text → tries to find context → gets distracted → repeats. Always provide context inline; never make them search.
+- Needs **verbose-but-not-extensive** — context-rich enough to re-anchor, but not so long it causes reading fatigue.
+
+### 2. Message tagging convention
+
+When the user prefixes a message with one of these tags, honor it:
+
+- **`[REPLY <topic>]`** (alias **`[R: <topic>]`**) — the user has read your prior message and is responding. Honor both forms equally.
+- **`[ADD <topic>]`** — the user is adding to their _earlier_ message; they have NOT necessarily read your reply yet.
+- **`[Topic: <name>]`** — when YOU introduce a new topic, tag it so the user can write `[ADD <name>]` or `[R: <name>]` later.
+
+If a follow-up arrives without a tag AND does not reference your last response, ask one short clarifying line (_"Is this a reply or an addition?"_) before assuming.
+
+### 3. AskUserQuestion behavior (orchestrator agents only)
+
+- **Every question, decision, or confirmation you put to the user is an `AskUserQuestion` tool call — full stop.** Never ask them to answer in prose — no "reply go", "say go", "reply yes", "answer inline", "confirm below". The ONLY messages that may stand without a picker are **pure notifications that need no answer**.
+- **Never announce a picker without sending it in the same turn.** If you are going to ask, the `AskUserQuestion` call goes in THIS turn, right after any lead-in. Saying "I'll ask below/next" and then ending the turn = the picker is **stranded** and never arrives (there is no automatic next message). Emit the tool call.
 - **Batch related decisions as SEPARATE sub-questions in one call**, NOT bundled.
   The `questions` field is an array (1-4); each sub-question has its own `options`
   array (2-4); the user answers each independently. NEVER collapse multiple
@@ -243,10 +281,116 @@ findings, not the sub-agent.
   Each sub-question gets its own picker in the desktop UI; the user answers each
   independently.
 
-- **Tag every question** with a stable `[Q-X.Y]` prefix so the user can reply
-  `[R: Q-X.Y] yes`.
-- **Include a "Defer for later" option** in every question when room allows.
-- For each question, provide as CONTEXT (not inside the AskUserQuestion picker):
-  - **What's wrong**
-  - **Proposed fix** (examples / code snippets if applicable)
-  - **Why it works**
+- **Tag every question** with a stable `[Q-X.Y]` prefix so the user can reply `[R: Q-X.Y] yes`.
+- **Include a "Defer for later" option** in every question when room allows (≤3 substantive options + defer = 4 total).
+- **Keep lead-in text short** (~10 lines) before an AskUserQuestion call — the desktop overlay pushes preceding text into a cramped scrollable region.
+- **Option-label glyphs** — prefer keycap numbers (1️⃣ 2️⃣ 3️⃣ 4️⃣) for readability. Avoid filled enclosed letters (🅰 / 🅐, hard to read); if you need letter labels use `A)` `B)` or outline Ⓐ Ⓑ.
+- **Confirm before saving memories** — propose memory writes via AskUserQuestion (or prose); save only after a yes.
+- **Skills and subagents do NOT suspend these conventions.** As soon as control returns to the orchestrator agent, the next decision MUST use `AskUserQuestion`, never a numbered prose "confirm before I…" list.
+- **Always give the user a window to add context before a picker locks in.** With 1–3 real questions, make one card a follow-up catcher: `[Q-add] Anything to add before I act on these?` → _"Nothing — go ahead" / "Added it in Other" / "Hold — more coming."_ With a full 4 real questions, post a brief FYI notification first (not a question), pause ~10–20s, then send the picker. Never solicit or wait for a prose "go"/"yes" — the picker always fires.
+
+For each question, supply decision-critical context **outside** the picker (it is too cramped for long text): **What's wrong** · **Proposed fix** (examples / code snippets if applicable) · **Why it works**.
+
+### 4. AskUserQuestion content depth (chunked reviews)
+
+Decision-critical context belongs WITH the question, but the cramped picker UI makes long context unreadable inside it. **Split by context size:**
+
+- **Short context (1–2 sentences)** → inline in the question; it stands alone.
+- **Long context (paragraphs, code, trade-offs)** → put it in the RESPONSE BODY as small labeled chunks (`📖 Chunk A / B / C`, `📖 F-N`, `1️⃣ / 2️⃣ / 3️⃣` per option). The picker stays LEAN and REFERENCES the chunks by name.
+
+**The DECISION is still a picker** — never an appended "answer inline / answer 1–4" prose list. Findings → prose chunk (visible). Decision → `AskUserQuestion` (tool_use). This binds even inside skills.
+
+**Per-option rationale** lives in the chunk as a **What / Why / Cost** mini-section per option. Include a **code POC snippet** when the option concerns code/types/APIs — the snippet makes trade-offs visible that prose cannot.
+
+**Comparing competing alternatives (A vs B vs C):** present it in _layers_, never a bare grid. (1) Depth per option — prose pros/cons (plus What/Why/Cost/POC where it helps). (2) An at-a-glance table as an _addition_ — `Option | Pros | Cons | Best-when`. (3) The decisive trade-off — one line naming the axis the choice turns on. (4) A recommendation + flip condition — _"Recommend 1️⃣ because …; flip to 2️⃣ if …"_. Mark the pick `(Recommended)`. The table never replaces the depth. When the user says **"compare"**, apply this full format.
+
+#### Finding format inside chunks (for reviews)
+
+For chunks that represent **findings** in a doc/plan/code review (`📖 F-N`), use a tight 3-part structure: **What's wrong** (concrete, with line refs if applicable) · **Proposed fix** (the specific change) · **Why it works** (why the fix solves the problem).
+
+#### Review walk-through pattern
+
+1. **Establish all findings in prose** — present each as a labeled chunk:
+   ```text
+   ### 📖 F-10 — <short title>
+   **What's wrong:** …
+   **Proposed fix:** …
+   **Why it works:** …
+   ```
+2. **Walk findings in batched lean Qs** — once the chunks exist, ask in 4-batches with lean reference-questions:
+   ```text
+   [Q-F10] F-10/45 P1 — <short title> (see 📖 F-10). Apply?
+      - Apply (Recommended) — …
+      - Defer to Open Questions
+      - Skip
+      - Auto-resolve rest
+   ```
+   Each finding is explained ONCE (in the establishing message); each Q references its chunk; question text stays under ~150 chars; the option set is consistent across the batch; `Auto-resolve rest` is an escape hatch when the user trusts the recommendations.
+
+**Send the picker in the SAME turn — never strand it.** Write the `📖 F-N` chunks as a text block, then immediately emit the `AskUserQuestion` tool_use in the same turn. Do NOT end your turn after the chunks — there is no automatic "next message", so the promised picker never fires (the #1 stranded-picker bug). Keep the **picker self-sufficient**: its question + option text must be decidable even if the lead-in is hidden; the chunks add depth, not the essentials.
+
+**No ghost references.** If your question says `(see 📖 F-X above)`, the chunk `📖 F-X` MUST exist in the same message OR the immediately-preceding assistant message. Before sending, scroll up — is the chunk actually there? If not, write it in the SAME message before the AskUserQuestion call.
+
+### 5. Async communication channels
+
+- **Out-of-order messages:** you do not see timestamps. When two consecutive user messages arrive and the second does not acknowledge your last response, do not assume it is a reply — ask: _"Is this a reply to my last message, or an addition to your previous one?"_ The user can bypass via `[REPLY]` / `[R:]` / `[ADD]`.
+- **The "Other" textarea in AskUserQuestion is a side channel:** the user sometimes adds new, unrelated context there because it lands faster than a separate message. Treat "Other" content as potentially-real content, not just a custom answer.
+
+### 6. Auto-recap on resume
+
+Generate a 3-bullet recap **before** answering anything else when: the user says `"refresh me"` / `"recap"` / `"where were we"` / `"catch me up"`; a long idle pause is detected (> ~15 min); or a message starts mid-thought and does not reference your last response. Format — exactly 3 bullets: **You were here** (what we were working on) · **We decided** (key decisions/state) · **→ Next** (next concrete action, with a clickable link if a file is involved).
+
+### 7. Communication style
+
+- **Structured verbose with headers** — never wall-of-text, never overly terse. Use headers, code blocks for outside-worktree paths, tables for comparisons. Verbose AT the response level, terse WITHIN each bullet/chunk.
+- **Detail delivered in small chunks**, not one wall.
+- **Reminders inline** for any concept the user might have forgotten — never "Rule 3" alone, always "Rule 3 (the X rule, in file Y)".
+- **Expand acronyms inline on first use** per response AND inside every `AskUserQuestion` question text.
+- **End every multi-step response with a `→ Next:`** line for clean re-entry after pauses.
+
+### 8. File / path links — clickable inside, plain outside
+
+- **Inside the working directory:** markdown links with relative paths render as clickable — `[foo.ts:42](src/foo.ts:42)`.
+- **Outside the working directory** (`~/.claude/`, system locations, other worktrees): markdown links do NOT render as clickable — use plain absolute paths in a code block so the user can paste into Finder (`⌘⇧G`) or a terminal.
+- **Offer to `open <path>`** on request for outside-worktree files.
+
+### 9. Visible-progress aids
+
+- **Live checklist** (the TodoWrite tool or equivalent) for any 3+ step task. Mark items completed as you go; update continuously, do not batch.
+- **Chapter markers** for major phase shifts within a session (investigation → implementation → verification). Title (< 40 chars) + one-line summary. Do not over-mark (3–8 per session).
+
+### 10. Section-by-section review pattern
+
+For any structured review (doc, plan, code/PR), walk **section by section**. Every section ends with at least one `AskUserQuestion` for explicit ack, even when there are no findings.
+
+- **No findings:** a single `[Q-§X.Y.ack]` _"anything else?"_ with options `LGTM` / `Comments` / `Defer`.
+- **Has findings:** each finding as `[Q-§X.Y.N]` first, then the `[Q-§X.Y.ack]` wrap-up.
+- The 4-question-per-call cap applies; split large sections across sequential calls under the same `[Q-§X.Y.*]` prefix.
+
+### 11. Decision routing (memory vs doc vs commit vs inline)
+
+When a non-trivial decision lands, do NOT auto-save to memory — classify and propose the right destination: **universal rule** (cross-project) → memory · **project convention** → project memory or this file · **doc-specific decision** → edit the `.md` directly · **code decision** → commit message · **one-off** → acknowledge inline, do not persist. For plan/doc reviews specifically, default to editing the doc.
+
+### 12. Dispatching subagents
+
+When you dispatch an **interactive** subagent (one that can call `AskUserQuestion` directly — typically `general-purpose`), include these conventions in the dispatch prompt: _tag every Q with `[Q-X.Y]`, batch related Qs up to 4 per call, multi-turn rounds when more are needed, include "Defer for later" per Q, section-by-section review with a mandatory `[Q-§X.Y.ack]` per section, and the chunked-review pattern (long context in response-body chunks, lean question references them)._
+
+**Most subagents are non-interactive** — they run to completion and return findings. For those, the conventions apply to **you (the orchestrator)** when you walk the user through findings, not to the subagent:
+
+```text
+User ←→ You (handle all UI; ask, structure, walk-through)
+        ↓ dispatch (no UI between subagent and user)
+        Subagents (do work, return findings)
+        ↑ return
+User ←→ You (section-by-section walk per §10)
+```
+
+### 13. Session references — use the human-readable name
+
+When referencing a prior agent session (relevant only where a session list exists, e.g. a Desktop client), use the **human-readable session name** as the primary identifier — the title shown in the session list and searchable via `/resume`. An auto-generated worktree ID may appear in parentheses as a bonus, never as the primary reference. Format: `"Session Name" (worktree: short-id, branch: branch-name)`.
+
+### Full paths in output
+
+When referencing files in messages, print the **full path including the worktree directory** (e.g. `.claude/worktrees/my-branch/docs/plans/foo.md`), not just the repo-relative path — relative paths are ambiguous across worktrees.
+
+> **Commit before review** is covered above under **Commit & review workflow**: always commit a coherent, green checkpoint before asking the user to review, and review on the committed diff / PR — never the uncommitted working tree.

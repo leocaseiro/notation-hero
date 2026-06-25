@@ -12,7 +12,7 @@
 >
 > _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
 
-> Created 2026-06-10. **Paste the fenced block below into a fresh Claude session** to run the K-plan revision. Your global ADHD collaboration rules auto-load, so they're not repeated here. All paths are in worktree `optimistic-lalande-2ad538` (this branch) — or under `docs/` once merged to `master`.
+> Created 2026-06-10. **Paste the fenced block below into a fresh Claude session** to run the K-plan revision. Your global collaboration rules auto-load, so they're not repeated here. All paths are in worktree `optimistic-lalande-2ad538` (this branch) — or under `docs/` once merged to `master`.
 
 ```text
 NotationHero — revise the Area-K CMS build plan so its data layer matches the LOCKED Neon Postgres catalog schema. The plan (units U1–U9) was written 2026-06-07 against a DynamoDB catalog + a draft single-`Lesson` schema; Track 3 has since locked the catalog as Neon PostgreSQL + JSONB with a richer model. Keep all the AWS plumbing; swap the catalog store DynamoDB → Postgres.
