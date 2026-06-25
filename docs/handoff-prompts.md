@@ -14,7 +14,7 @@
 
 > Created 2026-06-05, after the feature freeze locked. Copy each fenced block into a **fresh Claude session** to run that track. Your global ADHD collaboration rules auto-load, so they're not repeated here.
 >
-> ~~**Dependency:** Tracks **1 (UI)**, **2 (Pipeline)**, and **4 (CMS approach)** are independent decisions → fully parallel now. Track **3 (Schema)** finalizes [song-schema.md](song-schema.md). The *later* CMS **build** waits on both Track 3 (schema) **and** Track 4 (approach); the APP **data** layer waits on Track 3. So: run all four in parallel; just don't start APP/CMS *data/build* code until those land.~~ <!-- SUPERSEDED: Track 3 (schema) is LOCKED (docs/specs/2026-06-10-catalog-schema.md) and Track 4 (CMS approach) is decided (commit 0fe7bd1); the "neither started, run in parallel" plan graph is stale -->
+> ~~**Dependency:** Tracks **1 (UI)**, **2 (Pipeline)**, and **4 (CMS approach)** are independent decisions → fully parallel now. Track **3 (Schema)** finalizes [song-schema.md](song-schema.md). The _later_ CMS **build** waits on both Track 3 (schema) **and** Track 4 (approach); the APP **data** layer waits on Track 3. So: run all four in parallel; just don't start APP/CMS _data/build_ code until those land.~~ <!-- SUPERSEDED: Track 3 (schema) is LOCKED (docs/specs/2026-06-10-catalog-schema.md) and Track 4 (CMS approach) is decided (commit 0fe7bd1); the "neither started, run in parallel" plan graph is stale -->
 >
 > ~~Canonical docs (read-only inputs) all live in `~/Sites/notation-hero/.claude/worktrees/pensive-boyd-6d17e3/docs/` and `scope.md`.~~ <!-- SUPERSEDED: points into the stale pensive-boyd-6d17e3 worktree (pre-lock context); use docs/decisions/ and docs/specs/ -->
 
