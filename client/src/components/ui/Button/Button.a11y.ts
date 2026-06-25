@@ -2,24 +2,13 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
+import { BUTTON_STORY_IDS } from './Button.story-ids';
+
 // axe-core pass per Button story, in BOTH themes and in BOTH the resting and hover
-// states (hover changes bg/text colors, which must also meet AA). Stories are the
-// single source of truth (same list as Button.vr.ts). Theme is driven via Storybook's
-// `globals` query param → our preview decorator's `.dark` class, so axe sees the real
-// rendered colors.
-const stories = [
-  'default',
-  'secondary',
-  'outline',
-  'ghost',
-  'destructive',
-  'link',
-  'small',
-  'large',
-  'disabled',
-  'icon',
-  'with-icon',
-];
+// states (hover changes bg/text colors, which must also meet AA). Story IDs come from
+// the shared Button.story-ids list (lockstep with VR + Button.stories.tsx). Theme is
+// driven via Storybook's `globals` query param → our preview decorator's `.dark` class,
+// so axe sees the real rendered colors.
 const themes = ['light', 'dark'] as const;
 
 async function expectNoA11yViolations(page: Page, label: string) {
@@ -41,7 +30,7 @@ async function expectNoA11yViolations(page: Page, label: string) {
 }
 
 for (const theme of themes) {
-  for (const story of stories) {
+  for (const story of BUTTON_STORY_IDS) {
     test(`Button / ${story} / ${theme}`, async ({ page }) => {
       await page.goto(`/iframe.html?id=ui-button--${story}&viewMode=story&globals=theme:${theme}`);
       const button = page.locator('[data-slot="button"]').first();

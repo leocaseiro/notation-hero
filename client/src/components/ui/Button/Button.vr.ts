@@ -1,23 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-// One visual snapshot per Button story, each loaded in isolation through
-// Storybook's iframe. Stories are the single source of truth for both the
-// docs (Storybook) and the visual baselines (here).
-const stories = [
-  'default',
-  'secondary',
-  'outline',
-  'ghost',
-  'destructive',
-  'link',
-  'small',
-  'large',
-  'disabled',
-  'icon',
-  'with-icon',
-];
+import { BUTTON_STORY_IDS } from './Button.story-ids';
 
-for (const story of stories) {
+// One visual snapshot per Button story, each loaded in isolation through
+// Storybook's iframe. Story IDs come from the shared Button.story-ids list, so VR
+// and a11y stay in lockstep with Button.stories.tsx.
+for (const story of BUTTON_STORY_IDS) {
   test(`Button / ${story}`, async ({ page }) => {
     await page.goto(`/iframe.html?id=ui-button--${story}&viewMode=story`);
     const button = page.locator('[data-slot="button"]').first();
