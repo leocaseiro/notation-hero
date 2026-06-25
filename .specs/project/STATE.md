@@ -22,6 +22,12 @@
     drift (mirrors `server/eslint.config.mjs`). _(User pick, Q-semi/Q-align 2026-06-25.)_ The
     TanStack ESLint base (client) and the hand-rolled typed base (server) stay separate by design —
     only the Prettier formatting is aligned.
+- **D10** — **Accessibility is a required CI gate**: axe-core (WCAG 2 A+AA) runs over every
+  Storybook story in light + dark via Playwright (`*.a11y.ts`, `test:a11y`); the `a11y` CI job is
+  in the `ci-green` aggregate. Storybook gets a real `.dark` theme toggle so a11y reflects the
+  actual rendered colors. Two preset contrast fixes followed (2026-06-25): light `--destructive`
+  darkened (soft destructive → 5.15:1) and dark-mode links use the mockup teal `#0D9488`
+  (brand-600 → 5.27:1). _(User: "enable a11y tests"; minimal change + mockup colors.)_
 
 ## Constraints carried in (from repo guards + memory)
 

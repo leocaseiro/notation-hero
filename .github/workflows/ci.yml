@@ -95,6 +95,22 @@ jobs:
       - uses: ./.github/actions/setup-js
       - run: pnpm run build
 
+  # Accessibility — axe-core (WCAG 2 A+AA) over the Storybook stories via Playwright,
+  # in light + dark. Deterministic (no pixel baselines, unlike VR), so it's a real
+  # required gate. Path-filtered on `code`. Violations print in the job log with the
+  # rule + measured contrast ratio + the two colors.
+  a11y:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-js
+      - name: Install Playwright Chromium
+        run: pnpm --filter @notation-hero/client exec playwright install --with-deps chromium
+      - name: Accessibility tests (axe + Storybook)
+        run: pnpm --filter @notation-hero/client run test:a11y
+
   # Secret scanning — gitleaks over the full history. Runs on EVERY change (a
   # secret can land in any file). Free on public/personal repos.
   secret-scan:
@@ -186,6 +202,7 @@ jobs:
         changes,
         quality,
         build,
+        a11y,
         secret-scan,
         sast,
         deps-cve,
@@ -202,16 +219,17 @@ jobs:
           ch="${{ needs.changes.result }}"
           q="${{ needs.quality.result }}"
           b="${{ needs.build.result }}"
+          acc="${{ needs.a11y.result }}"
           s="${{ needs.secret-scan.result }}"
           a="${{ needs.sast.result }}"
           d="${{ needs.deps-cve.result }}"
           p="${{ needs.pr-title.result }}"
           c="${{ needs.pr-checklist.result }}"
-          echo "changes=$ch quality=$q build=$b secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
+          echo "changes=$ch quality=$q build=$b a11y=$acc secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
           if [[ "$ch" != "success" ]]; then
             echo "::error::Gatekeeper job 'changes' did not succeed (result=$ch); path-gated jobs may have silently skipped"; exit 1
           fi
-          for job in quality:$q build:$b secret-scan:$s sast:$a deps-cve:$d pr-title:$p pr-checklist:$c; do
+          for job in quality:$q build:$b a11y:$acc secret-scan:$s sast:$a deps-cve:$d pr-title:$p pr-checklist:$c; do
             name="${job%%:*}"; r="${job#*:}"
             if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
               echo "::error::Required CI job '$name' did not pass (result=$r)"; exit 1
