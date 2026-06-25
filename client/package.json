@@ -15,8 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
-    "test:vr": "playwright test",
-    "test:vr:update": "playwright test --update-snapshots",
+    "test:vr": "playwright test --project=chromium",
+    "test:vr:update": "playwright test --project=chromium --update-snapshots",
+    "test:a11y": "playwright test --project=a11y",
     "lint": "eslint",
     "format": "prettier --write . && eslint --fix",
     "check": "prettier --check .",
@@ -38,6 +39,7 @@
     "tailwindcss": "^4.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@babel/core": "^8.0.1",
     "@playwright/test": "^1.61.1",
     "@rolldown/plugin-babel": "^0.2.3",
