@@ -44,9 +44,10 @@
 - **Layout guard (`tooling/check-layout.sh`, pre-commit + CI):**
   - No `stories/` / `__tests__/` / `__mocks__/` directories → delete Storybook's
     default `src/stories/` example.
-  - Any `*.test.*` / `*.spec.*` must have a same-name source sibling → **VR test must
-    NOT use `.spec`/`.test`**. Use `button.vr.ts`; Playwright `testMatch: **/*.vr.{ts,tsx}`;
-    Vitest excludes `**/*.vr.*`.
+  - Any `*.test.*` / `*.spec.*` must have a same-name source sibling → **VR/a11y tests must
+    NOT use `.spec`/`.test`**. Use `*.vr.ts` / `*.a11y.ts`; Playwright `testMatch: **/*.{vr,a11y}.{ts,tsx}`;
+    Vitest's `include` glob (`src/**/*.{test,spec}.{ts,tsx}`) simply never matches them — no
+    explicit exclude needed.
   - Role-suffix rule is **server-only**; client components are exempt.
 - **Filenames:** ~~kebab/lowercase~~ → **PascalCase folder-per-component** per **D7**
   (`Button/Button.tsx`). Client ESLint has no casing rule that blocks this; verified during Execute.

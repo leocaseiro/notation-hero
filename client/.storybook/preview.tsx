@@ -1,4 +1,5 @@
 import type { Decorator, Preview } from '@storybook/tanstack-react';
+import { A11Y_TAGS } from '../src/a11y-tags';
 // Load the design tokens (teal theme + Public Sans) so stories render themed.
 import '../src/styles.css';
 
@@ -43,7 +44,7 @@ const preview: Preview = {
       options: {
         runOnly: {
           type: 'tag',
-          values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'],
+          values: [...A11Y_TAGS],
         },
       },
     },

@@ -4,8 +4,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Notation Hero brand tokens (teal). CSS-first @theme — Tailwind v4.
-   Brand is teal; purple is NOT a brand color. */
+/* Notation Hero brand tokens (teal scale = Tailwind teal-400/600/700). CSS-first
+   @theme — Tailwind v4. Brand is teal; purple is NOT a brand color. Roles:
+     brand-400 (#2dd4bf) — vivid teal, light accents / large surfaces.
+     brand-600 (#0d9488) — dark-mode link/accent TEXT (passes AA on dark bg; only
+                           ~2.6:1 on white, so dark-mode only — do not use on light).
+     brand-700 (#0f766e) — deep teal, accessible as text on white. */
 @theme {
   --color-brand-400: #2dd4bf;
   --color-brand-600: #0d9488;
