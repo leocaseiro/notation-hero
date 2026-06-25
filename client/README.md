@@ -45,7 +45,7 @@ src/components/ui/Button/
   Button.vr.ts-snapshots/    # committed baseline PNGs (per-OS)
 ```
 
-Import via the `#/` alias (maps to `src/`), e.g. `import { Button } from '#/components/ui/Button/Button'`.
+Import via the `@/` alias (maps to `src/`), e.g. `import { Button } from '@/components/ui/Button/Button'`.
 
 > The repo layout guard (`tooling/check-layout.sh`) enforces co-location: no `__tests__/`, `__mocks__/`, or `stories/` directories, and every `*.test.*` / `*.spec.*` must sit next to a same-name source file. That is why the VR spec is named `*.vr.ts` (not `*.spec.ts`) — it sidesteps both that rule and the Vitest matcher.
 
@@ -57,7 +57,7 @@ The theme is the shadcn preset **`b5claE9qM`** (teal + Public Sans), already app
 pnpm dlx shadcn@latest add <component> -c client
 ```
 
-Then move the generated file into its folder-per-component home (`src/components/ui/<Name>/<Name>.tsx`), switch its import to the `#/` alias, and add `<Name>.stories.tsx`, `<Name>.test.tsx`, and `<Name>.vr.ts`.
+Then move the generated file into its folder-per-component home (`src/components/ui/<Name>/<Name>.tsx`) and add `<Name>.stories.tsx`, `<Name>.test.tsx`, and `<Name>.vr.ts`. shadcn's generated `@/` imports already match our alias — no import rewrite needed, only the folder move (generators-first).
 
 ### Icons — Material Symbols
 

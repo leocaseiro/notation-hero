@@ -33,8 +33,10 @@
 
 - **Brand = teal** (`#2DD4BF` / `#0F766E`); **purple avoided as the brand**.
   Decode the preset before apply; flag any palette conflict (show, don't tell).
-- **Repo alias is `#/`** (package.json `imports` subpath), not `@/`. Prefer
-  configuring shadcn to `#/`; only add a tsconfig `paths` mirror if the CLI requires it.
+- **Client alias is `@/`** (shadcn default; tsconfig `paths` → `src/`). _**Reverses GA-1's
+  `#/` choice (2026-06-25) — "generators-first":** shadcn `add` output works with no import
+  rewrite. The `#/` package.json `imports` subpath was removed (it was client-only + unused).
+  Single quotes + semicolons remain the deliberate exceptions to generators-first._
 - **CSS file is `src/styles.css`** (not `index.css`). Point shadcn `tailwind.css` at it.
 - **Layout guard (`tooling/check-layout.sh`, pre-commit + CI):**
   - No `stories/` / `__tests__/` / `__mocks__/` directories → delete Storybook's
