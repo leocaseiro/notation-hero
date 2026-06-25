@@ -26,6 +26,7 @@ pnpm --filter @notation-hero/client dev      # http://localhost:3000
 | `pnpm --filter @notation-hero/client build-storybook` | Static Storybook build                        |
 | `pnpm --filter @notation-hero/client test:vr`         | Visual-regression tests (Playwright)          |
 | `pnpm --filter @notation-hero/client test:vr:update`  | Re-generate VR baselines                      |
+| `pnpm --filter @notation-hero/client test:a11y`       | Accessibility tests (axe, both themes)        |
 
 ---
 
@@ -123,6 +124,19 @@ pnpm --filter @notation-hero/client exec playwright test --headed
 - **Change was intentional?** Re-run `test:vr:update` and commit the new baselines.
 - **Looks like a flake?** The usual cause is web fonts not being ready. Specs already `await document.fonts.ready` before snapshotting (so Material Symbols render as glyphs, not the ligature fallback text) — if you introduce a new font/icon, load it the same way.
 - `test-results/`, `playwright-report/`, and `storybook-static/` are git-ignored.
+
+### Accessibility (a11y) tests
+
+Every Storybook story is checked with **axe-core** (WCAG 2 A + AA) in **both light and dark themes** — a required CI gate.
+
+```bash
+pnpm --filter @notation-hero/client test:a11y
+```
+
+- Driven by `@axe-core/playwright` over the stories (`*.a11y.ts`, the `a11y` Playwright project). Like VR, it auto-starts Storybook.
+- Each story is loaded twice — `?globals=theme:light` and `:dark` — so contrast is checked against the real rendered colors (the preview decorator applies the `.dark` class; the Storybook "dark background" addon is intentionally disabled because it only paints the canvas without switching the theme).
+- On a violation the test prints the rule, the element, and the **measured contrast ratio + the two colors** — the same detail as the Storybook a11y panel, readable straight from the CI job log.
+- While building a component, the **a11y addon panel** in `pnpm storybook` shows the same checks live.
 
 ### Formatting & linting
 
