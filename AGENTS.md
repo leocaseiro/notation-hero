@@ -126,7 +126,7 @@ pnpm --filter @notation-hero/client test:vr:update
 docker run --rm \
   -v "$PWD":/work \
   -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules \
-  -v /work/shared/node_modules -v /work/infra/node_modules \
+  -v /work/shared/node_modules -v /work/infra/node_modules -v /work/.pnpm-store \
   -w /work mcr.microsoft.com/playwright:v1.61.1-noble \
   bash -c "corepack enable && pnpm install --frozen-lockfile --ignore-scripts && \
     pnpm --filter @notation-hero/client exec playwright test --project=chromium --update-snapshots"

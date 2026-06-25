@@ -14,7 +14,7 @@ const meta = {
     },
     size: {
       control: 'select',
-      options: ['default', 'xs', 'sm', 'lg', 'icon'],
+      options: ['default', 'xs', 'sm', 'lg', 'icon', 'icon-xs', 'icon-sm', 'icon-lg'],
     },
   },
 } satisfies Meta<typeof Button>;
@@ -53,6 +53,39 @@ export const WithIcon: Story = {
         play_arrow
       </span>
       Play
+    </Button>
+  ),
+};
+
+// Extra sizes — xs + the smaller/larger icon-only sizes — for full size coverage.
+export const Xs: Story = { args: { size: 'xs' } };
+
+export const IconXs: Story = {
+  render: () => (
+    <Button size="icon-xs" aria-label="Play">
+      <span className="material-symbols-outlined" aria-hidden="true">
+        play_arrow
+      </span>
+    </Button>
+  ),
+};
+
+export const IconSm: Story = {
+  render: () => (
+    <Button size="icon-sm" aria-label="Play">
+      <span className="material-symbols-outlined" aria-hidden="true">
+        play_arrow
+      </span>
+    </Button>
+  ),
+};
+
+export const IconLg: Story = {
+  render: () => (
+    <Button size="icon-lg" aria-label="Play">
+      <span className="material-symbols-outlined" aria-hidden="true">
+        play_arrow
+      </span>
     </Button>
   ),
 };

@@ -14,4 +14,8 @@ export const BUTTON_STORY_IDS = [
   'disabled',
   'icon',
   'with-icon',
+  'xs',
+  'icon-xs',
+  'icon-sm',
+  'icon-lg',
 ] as const;
