@@ -102,6 +102,8 @@ Research convergence (2026-06-24): OWASP CICD-SEC-4 "Poisoned Pipeline Execution
 
 **Tighten `ci-deploy` to least-privilege S3/CloudFront actions** (defense-in-depth for the master `up` path). Deferred because it is finicky and easy to get wrong — a missing action only surfaces when a real deploy fails — so it wants its own end-to-end-tested PR.
 
+**Resolved by NH-235 (2026-06-26).** Both `s3:*` statements are now enumerated — SPA = strict writes + the complete v1-bucket read-set, split bucket/object; state = the four Pulumi-backend actions. CloudFront keeps `Resource:"*"` deliberately (actions already enumerated; create-time-unknown ARNs + non-scopable `Create*`/`List*`). Applied to both `aws-iam-ci-deploy.json` and `aws-iam-pulumi-local-deploy.json`; validation = one real `pulumi up` (admin SSO re-apply) before merge. Full detail: the 2026-06-26 change-log entry in `docs/decisions/decision-registry.md`.
+
 ---
 
 ## Decisions log (2026-06-24 brainstorm with leocaseiro)

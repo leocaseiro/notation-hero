@@ -12,6 +12,18 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-26 — CI deploy role: tighten S3 `s3:*` to enumerated least-privilege (NH-235)
+
+**Implements the D8 follow-up** from the 2026-06-24 "OIDC deploy hardening — review #3" entry below ("leave + follow-up ticket"). The two `s3:*` statements — `SpaBucket` (`site-spa-*`) and `PulumiStateBucket` (`notation-hero-pulumi-state-*`) — are replaced with enumerated actions, split bucket-level vs object-level:
+
+- **SPA bucket** → `SpaBucketManage` + `SpaBucketObjects`: only the writes the stack actually performs (`Create`/`DeleteBucket`, `PutBucketPublicAccessBlock`, `PutBucketOwnershipControls`, `Put`/`DeleteBucketPolicy`, object `Put`/`Get`/`Delete` + tagging) plus the **complete** `aws.s3.Bucket` (v1) refresh read-set (`GetBucketAcl`/`Website`/`Versioning`/`Encryption`/… — generous on harmless reads, strict on writes). Dropped vs `s3:*`: `PutBucketAcl`, `PutBucketVersioning`, `PutEncryptionConfiguration`, `PutReplicationConfiguration`, `PutBucketLogging`/`Website`/`Notification` — none used by the stack, so a poisoned `infra/` dep in the master `up` job can no longer weaken encryption, add an exfil replication rule, or grant a cross-account ACL.
+- **State bucket** → `PulumiStateBucket` + `PulumiStateObjects`: the Pulumi S3-backend actions only (`ListBucket` + `GetBucketLocation`; object `Get`/`Put`/`Delete`).
+- **CloudFront `Resource:"*"` deliberately kept** — actions are already enumerated; OAC/Function/Distribution ARNs don't exist at plan time and `Create*`/`List*` can't be resource-scoped, so scoping a from-scratch create is high-effort for ~no gain.
+
+Applied to **both** `aws-iam-ci-deploy.json` and the identical `aws-iam-pulumi-local-deploy.json` (no drift). ⬅ **leocaseiro re-applies the updated `aws-iam-ci-deploy.json` to the live `notation-hero-ci-deploy` role (admin SSO — re-run `aws-ci-oidc-bootstrap.sh`) and runs ONE real `pulumi up` to validate before merge** — a missed S3 `Get*` surfaces as `AccessDenied` naming the action; add it and re-validate. Rollback = `git revert` + re-apply the prior JSON.
+
+**Status:** ✅ decided · 🤖 enforced at deploy time (a missing action fails `pulumi up`) — pending leocaseiro's real-deploy validation + live re-apply. NH-235.
+
 ### 2026-06-25 — SD-15 voicing by track + bar: detailed design within Thin (NH-213, PR #76)
 
 Refines the 2026-06-24 "SD-15 → stay Thin" resolution below into the actual voicing **design** (brainstorm, leocaseiro). A "partial voicing" is one shape everywhere — `{track, voices[], barRange?}` — all jsonb/runtime, **no DDL**:
