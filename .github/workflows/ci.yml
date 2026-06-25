@@ -111,6 +111,21 @@ jobs:
       - name: Accessibility tests (axe + Storybook)
         run: pnpm --filter @notation-hero/client run test:a11y
 
+  # Visual regression — Playwright toHaveScreenshot over the Storybook stories. Runs IN
+  # the official Playwright container so rendering matches the committed *-linux.png
+  # baselines exactly (those are generated locally via the same image — see AGENTS.md
+  # "VR baselines"). Path-filtered on `code`; blocks merge alongside a11y.
+  vr:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-js
+      - name: Visual regression (vs committed Linux baselines)
+        run: pnpm --filter @notation-hero/client run test:vr
+
   # Secret scanning — gitleaks over the full history. Runs on EVERY change (a
   # secret can land in any file). Free on public/personal repos.
   secret-scan:
@@ -203,6 +218,7 @@ jobs:
         quality,
         build,
         a11y,
+        vr,
         secret-scan,
         sast,
         deps-cve,
@@ -220,16 +236,17 @@ jobs:
           q="${{ needs.quality.result }}"
           b="${{ needs.build.result }}"
           acc="${{ needs.a11y.result }}"
+          vrr="${{ needs.vr.result }}"
           s="${{ needs.secret-scan.result }}"
           a="${{ needs.sast.result }}"
           d="${{ needs.deps-cve.result }}"
           p="${{ needs.pr-title.result }}"
           c="${{ needs.pr-checklist.result }}"
-          echo "changes=$ch quality=$q build=$b a11y=$acc secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
+          echo "changes=$ch quality=$q build=$b a11y=$acc vr=$vrr secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
           if [[ "$ch" != "success" ]]; then
             echo "::error::Gatekeeper job 'changes' did not succeed (result=$ch); path-gated jobs may have silently skipped"; exit 1
           fi
-          for job in quality:$q build:$b a11y:$acc secret-scan:$s sast:$a deps-cve:$d pr-title:$p pr-checklist:$c; do
+          for job in quality:$q build:$b a11y:$acc vr:$vrr secret-scan:$s sast:$a deps-cve:$d pr-title:$p pr-checklist:$c; do
             name="${job%%:*}"; r="${job#*:}"
             if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
               echo "::error::Required CI job '$name' did not pass (result=$r)"; exit 1
