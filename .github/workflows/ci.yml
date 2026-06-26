@@ -131,6 +131,33 @@ jobs:
       - name: Visual regression (vs committed Linux baselines)
         run: pnpm --filter @notation-hero/client run test:vr
 
+  # End-to-end — Playwright against the built SPA (`vite preview`), with /api/catalog mocked by
+  # MSW. Models the `a11y` job (ubuntu + on-demand Chromium); unlike `vr` it is not pixel-exact,
+  # so no Playwright container. Uploads traces + the HTML report so a CI failure is replayable via
+  # `npx playwright show-trace`. Path-filtered on `code`; blocks merge via ci-green.
+  e2e:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-js
+      - name: Install Playwright Chromium
+        run: pnpm --filter @notation-hero/client exec playwright install --with-deps chromium
+      - name: e2e tests (Playwright vs built app)
+        run: pnpm --filter @notation-hero/client run test:e2e
+      - name: Upload traces + HTML report
+        # NOT `if: failure()` — that would drop the trace of a flaky-then-passed run (D5).
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-e2e-report
+          path: |
+            client/playwright-report/
+            client/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   # Secret scanning — gitleaks over the full history. Runs on EVERY change (a
   # secret can land in any file). Free on public/personal repos.
   secret-scan:
@@ -224,6 +251,7 @@ jobs:
         build,
         a11y,
         vr,
+        e2e,
         secret-scan,
         sast,
         deps-cve,
@@ -242,16 +270,17 @@ jobs:
           b="${{ needs.build.result }}"
           acc="${{ needs.a11y.result }}"
           vrr="${{ needs.vr.result }}"
+          e2e="${{ needs.e2e.result }}"
           s="${{ needs.secret-scan.result }}"
           a="${{ needs.sast.result }}"
           d="${{ needs.deps-cve.result }}"
           p="${{ needs.pr-title.result }}"
           c="${{ needs.pr-checklist.result }}"
-          echo "changes=$ch quality=$q build=$b a11y=$acc vr=$vrr secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
+          echo "changes=$ch quality=$q build=$b a11y=$acc vr=$vrr e2e=$e2e secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
           if [[ "$ch" != "success" ]]; then
             echo "::error::Gatekeeper job 'changes' did not succeed (result=$ch); path-gated jobs may have silently skipped"; exit 1
           fi
-          for job in quality:$q build:$b a11y:$acc vr:$vrr secret-scan:$s sast:$a deps-cve:$d pr-title:$p pr-checklist:$c; do
+          for job in quality:$q build:$b a11y:$acc vr:$vrr e2e:$e2e secret-scan:$s sast:$a deps-cve:$d pr-title:$p pr-checklist:$c; do
             name="${job%%:*}"; r="${job#*:}"
             if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
               echo "::error::Required CI job '$name' did not pass (result=$r)"; exit 1
