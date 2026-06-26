@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { test } from "vitest";
 import { fileURLToPath } from "node:url";
 
 // The composition root (index.ts) is what wires the REAL Function URL to AWS_IAM (ARCH-LAMBDA-1).

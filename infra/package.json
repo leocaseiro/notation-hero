@@ -7,7 +7,7 @@
     "lint": "echo \"@notation-hero/infra: dedicated ESLint lands with real IaC source\"",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test \"*.test.ts\"",
+    "test": "vitest run",
     "pulumi:preview": "pulumi preview",
     "pulumi:up": "pulumi up",
     "pulumi:destroy": "pulumi destroy"
@@ -15,5 +15,8 @@
   "dependencies": {
     "@pulumi/aws": "^7.34.0",
     "@pulumi/pulumi": "^3.247.0"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.9"
   }
 }
