@@ -2,6 +2,7 @@
   "version": "0.2",
   "language": "en,en-gb",
   "useGitignore": true,
+  "ignoreRegExpList": ["GHSA-[0-9a-z-]+"],
   "ignorePaths": [
     "pnpm-lock.yaml",
     "dist/**",
