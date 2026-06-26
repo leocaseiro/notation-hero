@@ -21,7 +21,7 @@ Evaluation of NH-38 ("migrate `node --test` → Vitest") found the repo-wide goa
 
 The original `L5-vitest` Open Qs (Nx per-project config, `adapters/postgres` Docker) are **moot** — Nx was dropped (ADR 2026-06-17) and the Postgres concern now lives in `server/` (already on Vitest).
 
-**Status:** L5-vitest **partly live** — `client/` + `server/` ✅ on Vitest; `infra/` ⏳ (NH-38, re-scoped); `tooling/` ✅ stays `node --test` (exception). The auto-derived `L5-vitest` row below (still reads "via @nx/vite … deferred") reconciles on the next `docs(registry)` regen; **this entry is authoritative.** NH-38.
+**Status:** L5-vitest **now live across all TypeScript packages** — `client/` + `server/` + `infra/` ✅ on Vitest (`infra/` migrated this session: `vitest run`, 10 tests green, commit `df544a1`); `tooling/` ✅ stays `node --test` (deliberate exception — the only package off Vitest, by design). The auto-derived `L5-vitest` row below (still reads "via @nx/vite … deferred") reconciles on the next `docs(registry)` regen; **this entry is authoritative.** NH-38.
 
 ### 2026-06-26 — CI deploy role: grant `iam:GetPolicyVersion` for the boundary preflight (NH-242)
 
