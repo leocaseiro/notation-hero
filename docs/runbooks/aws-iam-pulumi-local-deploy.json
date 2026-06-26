@@ -190,7 +190,7 @@
     {
       "Sid": "ReadCiRoleBoundary",
       "Effect": "Allow",
-      "Action": "iam:GetPolicy",
+      "Action": ["iam:GetPolicy", "iam:GetPolicyVersion", "iam:ListPolicyTags"],
       "Resource": "arn:aws:iam::*:policy/notation-hero-ci-role-boundary"
     }
   ]

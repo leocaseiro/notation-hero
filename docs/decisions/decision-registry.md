@@ -12,6 +12,12 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-26 — CI deploy role: grant `iam:GetPolicyVersion` for the boundary preflight (NH-242)
+
+Follow-up from NH-235 (PR #79). The deploy role's boundary-verification preflight (`infra/index.ts` → `aws.iam.getPolicy`) logs `warning: Could not verify the CI permissions boundary … (iam:GetPolicy denied)` on every `pulumi up`. The `ReadCiRoleBoundary` statement granted only `iam:GetPolicy`, but the data source also reads the policy **document** + tags → it needs `iam:GetPolicyVersion` and `iam:ListPolicyTags`. (The `(iam:GetPolicy denied)` text is a hardcoded label in the warn string, not the real denied action.) Added both, scoped to the single boundary ARN, in **both** `aws-iam-ci-deploy.json` and `aws-iam-pulumi-local-deploy.json`. Read-only + single-resource → no privilege increase. ⬅ **leocaseiro re-runs `aws-ci-oidc-bootstrap.sh` (admin SSO) + one `pulumi up`; the boundary warning should disappear.** Restores the NH-206 review #6 preflight intent (a genuinely-missing boundary fails fast instead of warning-through).
+
+**Status:** ✅ decided · 🤖 enforced at deploy time — pending leocaseiro's re-apply + deploy (warning clears). NH-242.
+
 ### 2026-06-26 — CI deploy role: tighten S3 `s3:*` to enumerated least-privilege (NH-235)
 
 **Implements the D8 follow-up** from the 2026-06-24 "OIDC deploy hardening — review #3" entry below ("leave + follow-up ticket"). The two `s3:*` statements — `SpaBucket` (`site-spa-*`) and `PulumiStateBucket` (`notation-hero-pulumi-state-*`) — are replaced with enumerated actions, split bucket-level vs object-level:
@@ -22,7 +28,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 Applied to **both** `aws-iam-ci-deploy.json` and the identical `aws-iam-pulumi-local-deploy.json` (no drift). ⬅ **leocaseiro re-applies the updated `aws-iam-ci-deploy.json` to the live `notation-hero-ci-deploy` role (admin SSO — re-run `aws-ci-oidc-bootstrap.sh`) and runs ONE real `pulumi up` to validate before merge** — a missed S3 `Get*` surfaces as `AccessDenied` naming the action; add it and re-validate. Rollback = `git revert` + re-apply the prior JSON.
 
-**Status:** ✅ decided · 🤖 enforced at deploy time (a missing action fails `pulumi up`) — pending leocaseiro's real-deploy validation + live re-apply. NH-235.
+**Status:** ✅ done · 🤖 enforced at deploy time — **validated 2026-06-26**: re-applied to the live role + Deploy rerun (run 28200803405, attempt 2) went green under the tightened policy (`Resources: 32 unchanged`, no `AccessDenied`). Read/refresh path confirmed; write actions exercise on the next content/config deploy. NH-235.
 
 ### 2026-06-26 — Governance: never delete remote branches (NH-241)
 
