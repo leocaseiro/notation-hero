@@ -19,7 +19,16 @@ for f in "$@"; do
   esac
   [ -f "$f" ] || continue
 
-  diff="$(shellcheck -f diff "$f" 2>/dev/null || true)"
+  # Capture shellcheck diagnostics (stderr) separately from the diff (stdout): a real
+  # processing failure (e.g. an unparseable file) prints to stderr and yields no diff —
+  # warn so the skipped autofix is visible instead of silent. CI's lint:shell still gates.
+  err_file="$(mktemp)"
+  diff="$(shellcheck -f diff "$f" 2>"$err_file")" || true
+  if [ -s "$err_file" ]; then
+    echo "shellcheck-fix: shellcheck could not fully process $f — autofix skipped (CI lint:shell still gates):" >&2
+    cat "$err_file" >&2
+  fi
+  rm -f "$err_file"
   [ -z "$diff" ] && continue
 
   # Assert every `+++ b/<path>` header in the patch equals the target file.

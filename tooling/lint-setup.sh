@@ -14,7 +14,7 @@ echo "  brew install shellcheck yamllint actionlint"
 echo
 echo "Linux (apt + pip):"
 echo "  sudo apt-get install -y shellcheck"
-echo "  pip install --user yamllint==1.37.1"
+echo "  pip install --user yamllint==1.38.0"
 echo "  # actionlint: download the pinned release binary, or \`go install\`"
 echo
 echo "editorconfig-checker is installed via pnpm (npm wrapper) — no extra step."

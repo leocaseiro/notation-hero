@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vitest/config';
 
 // infra/ stack tests run under Vitest's defaults: a node environment, and
 // per-file isolation (pool: forks) — each *.test.ts gets its own module graph,
