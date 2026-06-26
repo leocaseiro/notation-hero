@@ -27,6 +27,8 @@ pnpm --filter @notation-hero/client dev      # http://localhost:3000
 | `pnpm --filter @notation-hero/client test:vr`         | Visual-regression tests (Playwright)          |
 | `pnpm --filter @notation-hero/client test:vr:update`  | Re-generate VR baselines                      |
 | `pnpm --filter @notation-hero/client test:a11y`       | Accessibility tests (axe, both themes)        |
+| `pnpm --filter @notation-hero/client test:e2e`        | e2e tests (Playwright vs built app, MSW)      |
+| `pnpm --filter @notation-hero/client test:e2e:ui`     | e2e tests, interactive UI mode                |
 
 ---
 
@@ -137,6 +139,32 @@ pnpm --filter @notation-hero/client test:a11y
 - Each story is loaded twice — `?globals=theme:light` and `:dark` — so contrast is checked against the real rendered colors (the preview decorator applies the `.dark` class; the Storybook "dark background" addon is intentionally disabled because it only paints the canvas without switching the theme).
 - On a violation the test prints the rule, the element, and the **measured contrast ratio + the two colors** — the same detail as the Storybook a11y panel, readable straight from the CI job log.
 - While building a component, the **a11y addon panel** in `pnpm storybook` shows the same checks live.
+
+### End-to-end (e2e) tests
+
+Unlike VR/a11y (which run against Storybook), e2e runs against the **built app** served by
+`vite preview`, with a **separate config** (`playwright.e2e.config.ts`) and test dir (`e2e/`).
+
+```bash
+pnpm --filter @notation-hero/client test:e2e          # build -> preview (:4173) -> smoke test
+pnpm --filter @notation-hero/client test:e2e:ui       # interactive UI mode
+```
+
+- MSW intercepts `/api/*` at the browser network layer (Playwright `context.route`), so it is the
+  source of catalog data — handlers live in `e2e/mocks/handlers.ts`; there is no real backend in CI.
+  The fixture's `onUnhandledRequest` errors on an unmocked `/api/*` call so a mock miss fails at the
+  network layer (not as a vague "Could not reach the API").
+- The smoke test (`e2e/smoke.e2e.ts`) is the **reusable template**: load a page → navigate via an
+  in-app link → assert the MSW-mocked data renders → assert a clean console boot. Copy it for
+  future feature tests.
+
+**Debugging a failing e2e (traces):** `trace: 'on-first-retry'` records a replayable timeline. CI
+uploads it as the `playwright-e2e-report` artifact (kept even on flaky-then-passed runs). Download,
+unzip, then:
+
+```bash
+pnpm --filter @notation-hero/client exec playwright show-trace test-results/<test>/trace.zip
+```
 
 ### Formatting & linting
 

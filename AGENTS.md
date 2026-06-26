@@ -102,13 +102,17 @@ rule and still shows `__tests__/` paths — those are SUPERSEDED; co-locate inst
 
 ## VR & a11y testing (`client/` — Storybook + Playwright)
 
-The client design system has three test layers (full guide: `client/README.md`):
+The client has four test layers (full guide: `client/README.md`):
 
 - **Unit** — Vitest + Testing Library (`*.test.tsx`); runs in the `quality` CI job.
 - **a11y** — axe-core over every Storybook story in light + dark, resting + hover
   (`*.a11y.ts`); the `a11y` CI job, **blocks merge**. OS-independent.
 - **VR** — Playwright `toHaveScreenshot` over the stories (`*.vr.ts`); the `vr` CI job,
   **blocks merge**. Pixel-exact, so baselines are **per-OS**.
+- **e2e** — Playwright against the built SPA (`vite preview`, **not** Storybook), with `/api/*`
+  mocked by MSW (`*.e2e.ts`, separate `playwright.e2e.config.ts`); the `e2e` CI job, **blocks
+  merge**. On failure it uploads traces + the HTML report (D5: `if: !cancelled()`) so a CI failure
+  is replayable locally via `npx playwright show-trace`.
 
 ### VR baselines are per-OS — regenerate the Linux set with Docker
 
@@ -136,6 +140,29 @@ docker run --rm \
 The `vr` CI job pins `container: mcr.microsoft.com/playwright:v1.61.1-noble`, so its
 rendering matches the Docker-generated `-linux` baselines exactly. Bump that image tag in
 lockstep with `@playwright/test`, and regenerate baselines on the bump.
+
+### e2e tests (Playwright vs the built app)
+
+The e2e lane has its own config (`client/playwright.e2e.config.ts`) and runs against the
+production build served by `vite preview` — a different server from the Storybook one VR/a11y use.
+MSW intercepts `/api/*` at the browser network layer (Playwright `context.route`) and is the source
+of catalog data (`client/e2e/mocks/handlers.ts`); there is no real backend in CI. The fixture's
+`onUnhandledRequest` errors on any unmocked `/api/*` call, so a mock miss fails loudly at the
+network layer instead of silently falling back to the app's "Could not reach the API" state.
+
+```bash
+pnpm --filter @notation-hero/client test:e2e       # build -> preview -> run the smoke test
+pnpm --filter @notation-hero/client test:e2e:ui    # interactive UI mode
+```
+
+**Debugging a CI failure (traces):** the `e2e` job uploads a `playwright-e2e-report` artifact on
+every non-cancelled run (so flaky-then-passed traces are kept too). Download it from the run's
+**Artifacts** section, unzip, then open the trace timeline (DOM snapshots, network, console,
+action-by-action):
+
+```bash
+npx playwright show-trace path/to/test-results/<test>/trace.zip
+```
 
 ## Setup in a fresh worktree / clone
 
