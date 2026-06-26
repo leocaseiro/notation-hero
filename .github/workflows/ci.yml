@@ -31,6 +31,7 @@ jobs:
     outputs:
       code: ${{ steps.filter.outputs.code }}
       infra: ${{ steps.filter.outputs.infra }}
+      docs_or_config: ${{ steps.filter.outputs.docs_or_config }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
@@ -56,6 +57,25 @@ jobs:
               - '.github/workflows/ci.yml'
             infra:
               - 'infra/**'
+            docs_or_config:
+              - '**/*.md'
+              - '**/*.yml'
+              - '**/*.yaml'
+              - '**/*.css'
+              - '**/*.sh'
+              - '.editorconfig'
+              - '.github/**'
+              - '.markdownlint*'
+              - '.stylelintrc*'
+              - '.yamllint'
+              - 'cspell.json'
+              # Root lint/format configs only the `lint` job consumes — without these a
+              # PR touching just one would skip BOTH quality and lint (CI Green still green).
+              - 'eslint.config.*'
+              - 'prettier.config.*'
+              - '.editorconfig-checker.json'
+              - '.prettierignore'
+              - '.stylelintignore'
 
   # Lint + typecheck + hexagon layer-boundary check (dependency-cruiser) +
   # version consistency (syncpack) + tests, across every workspace via `pnpm -r`.
@@ -70,8 +90,6 @@ jobs:
       - name: Coverage-ignore guard (no istanbul/c8/v8 ignore)
         run: bash tooling/check-no-coverage-ignore.sh
       - uses: ./.github/actions/setup-js
-      - name: Lint
-        run: pnpm run lint
       - name: Typecheck
         run: pnpm run typecheck
       - name: Dependency boundaries (hexagon)
@@ -82,8 +100,53 @@ jobs:
         run: pnpm run syncpack
       - name: Test
         run: pnpm run test
-      - name: Tooling unit tests (node --test)
+      - name: Tooling unit tests (node --test + shell)
         run: pnpm run test:tooling
+
+  # Full lint/format suite — one named step per tool for per-tool failure attribution.
+  # Gated on `code || docs_or_config` (NOT widening `code`): a docs/config-only PR runs
+  # lint but still SKIPS the six heavy `code`-gated jobs (quality/build/a11y/vr/sast/deps-cve).
+  # TODO(NH-243): inline file:line annotations for eslint/markdownlint/shellcheck (problem
+  # matchers) — deferred (not a ci-green gate); actionlint already annotates natively.
+  lint:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' || needs.changes.outputs.docs_or_config == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-js
+      - name: Install pinned lint binaries
+        run: |
+          # ubuntu-latest ships shellcheck preinstalled; apt ensures presence.
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck
+          python3 -m pip install --user yamllint==1.38.0
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # actionlint: pinned binary + SHA256 (the marketplace action's release-fetch is flaky).
+          ACTIONLINT_VER=1.7.12
+          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VER}/actionlint_${ACTIONLINT_VER}_linux_amd64.tar.gz" -o /tmp/actionlint.tgz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tgz" | sha256sum -c -
+          sudo tar -xzf /tmp/actionlint.tgz -C /usr/local/bin actionlint
+      - name: Prettier (format check)
+        run: pnpm run format:check
+      - name: ESLint
+        run: pnpm -r --if-present run lint
+      - name: Stylelint
+        run: pnpm run lint:css
+      - name: Markdownlint
+        run: pnpm run lint:md
+      - name: yamllint
+        run: pnpm run lint:yaml
+      - name: cspell
+        run: pnpm run lint:spell
+      - name: shellcheck
+        run: pnpm run lint:shell
+      - name: actionlint
+        run: pnpm run lint:actions
+      - name: editorconfig-checker
+        run: pnpm run lint:editorconfig
+      - name: sort-package-json (check)
+        run: pnpm run lint:sort-pkg
 
   # Per-package build via `pnpm -r run build`.
   build:
@@ -217,7 +280,8 @@ jobs:
   ci-green:
     name: CI Green
     if: always()
-    needs: [changes, quality, build, a11y, vr, secret-scan, sast, deps-cve, pr-title, pr-checklist]
+    needs:
+      [changes, quality, lint, build, a11y, vr, secret-scan, sast, deps-cve, pr-title, pr-checklist]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
