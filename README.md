@@ -97,15 +97,19 @@ admin identity**. That user needs S3 (site + state buckets) + CloudFront +
 `lambda:AddPermission` rights (`docs/runbooks/aws-iam-pulumi-local-deploy.json`); granting
 them is a one-time IAM task, separate from the deploy itself.
 
-Build both artifacts, preview, then deploy:
+Preview, then deploy — **all from the repo root**. The `pulumi:*` shortcuts build both
+artifacts first (`server` → `dist-lambda`, `client` → `dist`; Pulumi needs both), then run
+Pulumi inside `infra/`:
 
 ```bash
-export PULUMI_CONFIG_PASSPHRASE=…                        # stops the repeated passphrase prompts
-pnpm --filter @notation-hero/server run build:lambda     # → server/dist-lambda
-pnpm --filter @notation-hero/client run build            # → client/dist
-pnpm --filter @notation-hero/infra run pulumi:preview    # dry-run the plan (no changes)
-pnpm --filter @notation-hero/infra run pulumi:up         # create / update AWS (~15 min for CloudFront)
+export PULUMI_CONFIG_PASSPHRASE=…   # stops the repeated passphrase prompts (optional)
+pnpm pulumi:preview                  # build artifacts → dry-run the plan (no changes)
+pnpm pulumi:up                       # build artifacts → create / update AWS (~15 min for CloudFront)
 ```
+
+`pnpm build:deploy` rebuilds the two artifacts alone. To run Pulumi **without** a rebuild
+(artifacts already fresh), use the `infra/`-scoped form:
+`pnpm --filter @notation-hero/infra run pulumi:preview`.
 
 Verify against the **CloudFront URL** (not the raw Lambda URL):
 
@@ -119,7 +123,7 @@ curl -s -o /dev/null -w '%{http_code}\n' "$(pulumi -C infra stack output functio
 Tear down at any time (the slice stays within AWS always-free tiers either way):
 
 ```bash
-pnpm --filter @notation-hero/infra run pulumi:destroy
+pnpm pulumi:destroy
 ```
 
 ## Documentation
