@@ -243,14 +243,19 @@ jobs:
           jq -r 'to_entries[] | "\(.key)=\(.value.result)"' <<<"$NEEDS"
           # Gatekeeper: `changes` must SUCCEED. If it fails or skips, the path-gated
           # jobs (quality/build/sast/deps-cve) silently skip — which must not read as
-          # green. Treat any non-success `changes` result as fatal.
-          if [[ "$(jq -r '.changes.result' <<<"$NEEDS")" != "success" ]]; then
-            echo "::error::Gatekeeper job 'changes' did not succeed; path-gated jobs may have silently skipped"; exit 1
+          # green. Quoted key so a future hyphenated gatekeeper name still resolves;
+          # evaluated on its own line so a jq error trips `set -e` instead of being
+          # swallowed inside `[[ … ]]`.
+          changes_result="$(jq -r '.["changes"].result' <<<"$NEEDS")"
+          if [[ "$changes_result" != "success" ]]; then
+            echo "::error::Gatekeeper job 'changes' did not succeed (result=$changes_result); path-gated jobs may have silently skipped"; exit 1
           fi
-          # Any other required job that FAILED or was CANCELLED fails the gate
-          # (skipped is OK — path filters legitimately skip jobs).
-          failed="$(jq -r 'to_entries[] | select(.value.result == "failure" or .value.result == "cancelled") | .key' <<<"$NEEDS")"
-          if [[ -n "$failed" ]]; then
-            echo "::error::Required CI job(s) did not pass: $(tr '\n' ' ' <<<"$failed")"; exit 1
+          # Allow-list (fail closed): every other required job must be `success` or
+          # `skipped` (path filters legitimately skip). ANY other result — failure,
+          # cancelled, or an unknown future value — fails the gate (ARCH-GUARD-1/CR-1:
+          # prefer an allow-list over a deny-list for fences).
+          bad="$(jq -r 'to_entries[] | select(.value.result != "success" and .value.result != "skipped") | "\(.key)=\(.value.result)"' <<<"$NEEDS")"
+          if [[ -n "$bad" ]]; then
+            echo "::error::Required CI job(s) did not pass: $(tr '\n' ' ' <<<"$bad")"; exit 1
           fi
           echo "All required jobs passed (skipped is OK)."
