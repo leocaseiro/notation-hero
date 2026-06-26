@@ -175,6 +175,12 @@ uncommitted working-tree changes. Make baby commits at every green step so
 progress is visible and any step is one `git revert` away. Never pass
 `git commit/push --no-verify`.
 
+**NEVER delete a remote branch.** After a PR merges, do **not** delete its remote
+branch — no `git push origin --delete`, no `gh pr merge --delete-branch`, no deletion
+via the GitHub UI/API. The user keeps merged branches on GitHub for history. **Local
+cleanup is fine and expected:** remove the merged worktree (`git worktree remove`) and
+delete the **local** branch (`git branch -d`/`-D`); only `origin/<branch>` must survive.
+
 ## PR checklist (CI-gated)
 
 Every PR carries a **checklist of past-tense claims** (`.github/pull_request_template.md`).

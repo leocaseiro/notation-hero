@@ -24,6 +24,10 @@ Applied to **both** `aws-iam-ci-deploy.json` and the identical `aws-iam-pulumi-l
 
 **Status:** ✅ decided · 🤖 enforced at deploy time (a missing action fails `pulumi up`) — pending leocaseiro's real-deploy validation + live re-apply. NH-235.
 
+### 2026-06-26 — Governance: never delete remote branches (NH-241)
+
+AGENTS.md "Commit & review workflow" now forbids deleting a **remote** branch — no `git push origin --delete`, no `gh pr merge --delete-branch`, no GitHub UI/API deletion — even after a PR merges; the user keeps merged branches on GitHub for history. **Local cleanup stays fine:** remove the merged worktree + delete the local branch; only `origin/<branch>` must survive. User instruction (2026-06-26); also captured in agent memory.
+
 ### 2026-06-25 — SD-15 voicing by track + bar: detailed design within Thin (NH-213, PR #76)
 
 Refines the 2026-06-24 "SD-15 → stay Thin" resolution below into the actual voicing **design** (brainstorm, leocaseiro). A "partial voicing" is one shape everywhere — `{track, voices[], barRange?}` — all jsonb/runtime, **no DDL**:
