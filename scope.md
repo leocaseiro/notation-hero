@@ -45,7 +45,7 @@ I want to create an app to learn and practice drums. As a main goal, it should f
       - repeat
   - Practice mode
     - auto speed based on score accuracy (e.g. user can select to every time the hit over 90% accuracy, the speed wound increase 5 bpm, until the user reaches the song's original speed).
-    - memory mode, user can select to practice and/or play the song by memory, without displaying the notation. Howeve, if the user makes a mistake, than we display the notation which should fade out after a few perfect hits.
+    - memory mode, user can select to practice and/or play the song by memory, without displaying the notation. However, if the user makes a mistake, than we display the notation which should fade out after a few perfect hits.
   - Midi input
     - user should be able to select a midi input device to play/listen to.
     - user should be able to map the midi note for each instrument to the notation. (e.g. hitting either 51, 53, 59 and 93 from the midi input should consider as a ride 51 hit from notation).

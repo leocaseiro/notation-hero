@@ -1,0 +1,12 @@
+{
+  "Exclude": ["docs/decisions/decision-registry\\.md"],
+  "Disable": {
+    "Charset": false,
+    "EndOfLine": false,
+    "Indentation": false,
+    "InsertFinalNewline": false,
+    "TrimTrailingWhitespace": false,
+    "IndentSize": true,
+    "MaxLineLength": false
+  }
+}
