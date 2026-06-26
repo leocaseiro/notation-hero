@@ -479,16 +479,19 @@ EOF
 
 ## Task 2 — Slice 2: Consolidate Prettier into one root config
 
-**Goal:** One `prettier.config.mjs` at the root; the three per-package configs deleted; formatting output unchanged.
+**Goal:** One `prettier.config.mjs` at the root; the three per-package configs deleted; the root `.prettierignore` extended to cover generated/scratch files; and the pre-existing repo-wide Prettier drift (91 files at slice-1 HEAD) formatted once so `prettier --check .` is green (required before slice 6 adds the CI `prettier --check` step).
 
 **Files:**
 
 - Create: `prettier.config.mjs`
+- Modify: `.prettierignore` (root — add generated/scratch entries)
 - Delete: `client/prettier.config.js`, `server/.prettierrc`, `tooling/.prettierrc`
+- Reformat (one-time `prettier --write .`): the pre-existing unformatted docs/config files
 
 **Interfaces:**
 
 - Consumes: nothing from Slice 1 at runtime (independent), but builds on the Slice-1 branch.
+- Note: slice 1 removed `eslint-plugin-prettier`, so Prettier is now the sole formatter; this slice makes the repo baseline clean for it.
 
 - [ ] **Step 1: Create the root Prettier config**
 
@@ -508,13 +511,24 @@ const config = {
 export default config;
 ```
 
-- [ ] **Step 2: Capture current formatting as a baseline**
+- [ ] **Step 2: Extend the root `.prettierignore` for generated/scratch files**
 
-```bash
-pnpm exec prettier --check . > /tmp/prettier-before.txt 2>&1 ; echo "exit=$?"
+`prettier --check .` run from the root does **not** read `client/.prettierignore`, so generated/scratch files (e.g. `routeTree.gen.ts`, the SDD scratch dir) get flagged. Append to the root `.prettierignore` so the repo-wide check is meaningful (keep the existing wireframe-HTML line):
+
+```text
+# Generated — must match the generator, never hand-format.
+**/routeTree.gen.ts
+
+# Lockfile + build output + reports (also gitignored; listed for local check parity).
+pnpm-lock.yaml
+dist/
+storybook-static/
+playwright-report/
+test-results/
+
+# Agent scratch (SDD briefs/reports/ledger; not committed source).
+.superpowers/
 ```
-
-Record the exit code (expected `0` on a clean tree).
 
 - [ ] **Step 3: Delete the three per-package configs**
 
@@ -522,15 +536,21 @@ Record the exit code (expected `0` on a clean tree).
 git rm client/prettier.config.js server/.prettierrc tooling/.prettierrc
 ```
 
-- [ ] **Step 4: Verify formatting is identical with the single root config**
+- [ ] **Step 4: Format the repo baseline (one-time) and verify clean**
+
+There is pre-existing Prettier drift (91 files at slice-1 HEAD) that nothing was enforcing. Now that Prettier is the sole formatter and slice 6 will add a CI `prettier --check`, format the whole repo once:
+
+```bash
+pnpm exec prettier --write .
+```
+
+Then verify clean:
 
 ```bash
 pnpm exec prettier --check .
 ```
 
-Expected: exits `0` — the root config has the same settings (`semi`, `singleQuote`, `trailingComma`, `printWidth: 100`) that all three deleted configs shared, so no file reformats.
-
-If any file now reports as unformatted, run `pnpm exec prettier --write .`, inspect the diff (it should be empty/trivial), and include it in the commit.
+Expected: exits `0`. The consolidated root config (`semi`, `singleQuote`, `trailingComma: all`, `printWidth: 100`) matches the three deleted per-package configs, so no file changes _style_ — only previously-unformatted files get normalized. This is a large but purely-mechanical diff (whitespace/quotes/wrapping). Before committing, confirm it is formatting-only: `git diff --stat` to see the spread, and spot-check 2-3 files (e.g. a `.ts` and a `.md`) to confirm no semantic change.
 
 - [ ] **Step 5: Verify ESLint still resolves (root config now exists)**
 
@@ -543,13 +563,19 @@ Expected: both `OK`. The base already ignores `prettier.config.*`, so the new ro
 
 - [ ] **Step 6: Commit**
 
+The diff spans the new config, the three deletions, the extended `.prettierignore`, and all reformatted files — stage everything:
+
 ```bash
-git add prettier.config.mjs client/prettier.config.js server/.prettierrc tooling/.prettierrc
+git add -A
+git status --short | head        # sanity: config + deletions + .prettierignore + formatted files
 git commit -m "$(cat <<'EOF'
-refactor(format): consolidate Prettier into one root prettier.config.mjs (NH-243)
+refactor(format): consolidate Prettier config + format repo baseline (NH-243)
 
 Replace client/prettier.config.js, server/.prettierrc, tooling/.prettierrc
-(identical settings) with a single root config @ printWidth 100.
+(identical settings) with a single root prettier.config.mjs @ printWidth 100.
+Extend root .prettierignore for generated/scratch files. Run a one-time
+prettier --write across the repo so the pre-existing 91-file drift is clean
+before slice 6 adds the CI prettier --check (formatting-only changes).
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 EOF
