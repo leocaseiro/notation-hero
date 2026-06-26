@@ -11,7 +11,7 @@ packages:
 # onlyBuiltDependencies list). Add entries as scaffolds introduce build scripts.
 allowBuilds:
   lefthook: true
-  "@swc/core": true
+  '@swc/core': true
   esbuild: true
   protobufjs: true # @pulumi/pulumi gRPC runtime (infra/)
   unrs-resolver: false # import-x native resolver not needed yet
@@ -19,7 +19,7 @@ allowBuilds:
 minimumReleaseAgeExclude:
   - playwright-core@1.61.1
   - playwright@1.61.1
-  - "@playwright/test@1.61.1"
+  - '@playwright/test@1.61.1'
 
 # Security overrides — patched transitive deps flagged by osv-scanner (NH-191).
 # pnpm 11 reads overrides here, NOT package.json's pnpm.overrides.

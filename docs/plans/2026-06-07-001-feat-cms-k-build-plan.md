@@ -1,5 +1,5 @@
 ---
-title: "feat: Area K — Admin/CMS build plan (custom AWS backend + React-Admin SPA)"
+title: 'feat: Area K — Admin/CMS build plan (custom AWS backend + React-Admin SPA)'
 type: feat
 status: active
 date: 2026-06-07
@@ -28,21 +28,21 @@ deepened: 2026-06-07
 
 ## Revision changelog (2026-06-10) — what moved DynamoDB → Postgres
 
-| # | Area | Was (2026-06-07) | Now (this revision) |
-|---|---|---|---|
-| RC-1 | U2 domain model | single `core/lesson/Lesson.ts` interface (draft `song-schema.md`) | `core/catalog/` — `CatalogItem` (`type='song'\|'lesson'`, shared facets as typed fields) + `Exercise` (ordered steps, start→goal BPM ladder) + `Pattern` (discriminated by `kind`) + `CatalogFilter` (type, nullable level 1–10, bpm-range, time_sig, genre, tags[], skill[], instruments[], lesson_type, pattern, fuzzy + accent-insensitive search); ports `CatalogRepository` + `PatternRepository` |
-| RC-2 | U4 adapter | `adapters/dynamodb/LessonRepositoryDynamoDB` (catalog) | **NEW `adapters/postgres/`** (`@notation-hero/adapters-postgres`): repository port via `@neondatabase/serverless` + raw **parameterized** SQL (no ORM — portability is the point). **Migrations live here**: spec §4 DDL **verbatim** (extensions, immutable wrappers, 4 tables + all CHECKs) + §9 indexes + GENERATED `search` tsvector. Tests run against **local Docker `postgres:16`** (`docker-compose.test.yml`), NOT LocalStack — Postgres isn't an AWS service |
-| RC-3 | DynamoDB scope | inline DynamoDB table in `infra/index.ts` (U9) + catalog repo (U4) | **dropped from K v1** — the catalog no longer needs it. DynamoDB returns for **per-user** data (scores/settings/mappings/sync) at **M1** — a separate plan, not this one |
-| RC-4 | U5–U7 Lambdas | K-3 read + K-2 CRUD query DynamoDB; loose list projection | query Postgres via the new repository; **§9 K-3 list projection exactly**; **publish gates** enforced (curated-only `ci_shared_curated` CHECK + write-once `source`; ≥1 exercise before a lesson publishes; license required for published curated items); **§10 ingest** honored (parse-once-at-upload seeds metadata; bounded-buffer zip inspection with decompression aborted at the ~20 MB ceiling; checksum/size capture) |
-| RC-5 | MIDI + alphaTex | `.mid` + `.alphatex` accepted as uploads; `pending_validation` status + async hard-validator deferral | **`.mid` uploads REJECTED** (AlphaTab can't render MIDI — curators convert to Guitar Pro **before** upload; automated convert = M1). alphaTex is **CMS-authored inline** on `exercise.notation_tex` (parse-validated client-side at authoring), never an uploaded file. `pending_validation` machinery **removed** — locked status vocab is `draft\|published\|archived` |
-| RC-6 | U9 infra | DynamoDB table provisioned by Pulumi | **Pulumi does NOT provision the database** (Neon = off-AWS SaaS). Neon connection string = **Pulumi secret** → injected into Lambda env (least-privilege). AWS-managed equivalent (**Aurora Serverless v2 / RDS + RDS Proxy**, with the connection-pooling rationale) documented as the interview talking point; store swappable behind the K-3 API |
-| RC-7 | Cover images | DEFERRED (R1 narrowed to source-file-only; curator pastes a URL) | **DITCHED from K v1** (owner decision, 2026-06-10 walkthrough): the locked `cover_image_key` column is *optional* — it ships in the DDL, stays `NULL`, and the library shows the icon fallback (spec §4). No upload pipeline, no cover signing, no image magic-bytes. Revisit with library polish (H-11) |
-| RC-8 | Problem frame | "don't move data off AWS (SaaS)" used to justify the custom backend | tension **explicitly reconciled** — see Problem Frame |
-| RC-9 | Toolchain | bun 1.3.11 workspaces | superseded by the **2026-06-09 tooling DACI** ([decisions/2026-06-09-tooling-stack-daci.md](../decisions/2026-06-09-tooling-stack-daci.md)): **pnpm 11.5.2 + Nx; bun fully dropped**. All commands are now pnpm. **U1 skeleton is already built/committed on pnpm** |
-| RC-10 | Per-Lambda IaC | `apps/<fn>/infra.ts` colocated with the handler | DACI serverless layout: Nx `enforce-module-boundaries` is **project-level only**, so handler + IaC must not share a project. Per-Lambda IaC moves to **`infra/cms/*.ts`** modules inside the `infra` project; infra references the handler's **build output** (`dist/`), never its source |
-| RC-11 | Events | `LessonEvent` (`lesson.{published,updated,deleted}`) | SNS topic **`lesson-events` kept** (plumbing unchanged); event schema becomes `CatalogEvent` — `catalog_item.{created,updated,published,archived}` + `catalog_item.file.validated` |
-| RC-12 | Optimistic concurrency | DynamoDB `version` attribute + `If-Match` | the locked schema has **no `version` column** → `updated_at` is the concurrency token (`If-Match: <updatedAt ISO>`; `UPDATE … WHERE id=$1 AND updated_at=$2`) |
-| RC-13 | File delivery | S3 **presigned GET** URLs minted by K-3 | spec §2 mandates **CloudFront signed URLs** (private, never public, ~5 min TTL — anti-hotlink/anti-bulk-download): the public distribution gains a `catalog/*` S3-origin behavior (OAC + **trusted key group**); K-3 signs with `@aws-sdk/cloudfront-signer`; the key pair is a Pulumi secret. uploads use presigned **POST** (size-conditioned policy; uploads aren't delivery) |
+| #     | Area                   | Was (2026-06-07)                                                                                      | Now (this revision)                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----- | ---------------------- | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RC-1  | U2 domain model        | single `core/lesson/Lesson.ts` interface (draft `song-schema.md`)                                     | `core/catalog/` — `CatalogItem` (`type='song'\|'lesson'`, shared facets as typed fields) + `Exercise` (ordered steps, start→goal BPM ladder) + `Pattern` (discriminated by `kind`) + `CatalogFilter` (type, nullable level 1–10, bpm-range, time_sig, genre, tags[], skill[], instruments[], lesson_type, pattern, fuzzy + accent-insensitive search); ports `CatalogRepository` + `PatternRepository`                                                                 |
+| RC-2  | U4 adapter             | `adapters/dynamodb/LessonRepositoryDynamoDB` (catalog)                                                | **NEW `adapters/postgres/`** (`@notation-hero/adapters-postgres`): repository port via `@neondatabase/serverless` + raw **parameterized** SQL (no ORM — portability is the point). **Migrations live here**: spec §4 DDL **verbatim** (extensions, immutable wrappers, 4 tables + all CHECKs) + §9 indexes + GENERATED `search` tsvector. Tests run against **local Docker `postgres:16`** (`docker-compose.test.yml`), NOT LocalStack — Postgres isn't an AWS service |
+| RC-3  | DynamoDB scope         | inline DynamoDB table in `infra/index.ts` (U9) + catalog repo (U4)                                    | **dropped from K v1** — the catalog no longer needs it. DynamoDB returns for **per-user** data (scores/settings/mappings/sync) at **M1** — a separate plan, not this one                                                                                                                                                                                                                                                                                               |
+| RC-4  | U5–U7 Lambdas          | K-3 read + K-2 CRUD query DynamoDB; loose list projection                                             | query Postgres via the new repository; **§9 K-3 list projection exactly**; **publish gates** enforced (curated-only `ci_shared_curated` CHECK + write-once `source`; ≥1 exercise before a lesson publishes; license required for published curated items); **§10 ingest** honored (parse-once-at-upload seeds metadata; bounded-buffer zip inspection with decompression aborted at the ~20 MB ceiling; checksum/size capture)                                         |
+| RC-5  | MIDI + alphaTex        | `.mid` + `.alphatex` accepted as uploads; `pending_validation` status + async hard-validator deferral | **`.mid` uploads REJECTED** (AlphaTab can't render MIDI — curators convert to Guitar Pro **before** upload; automated convert = M1). alphaTex is **CMS-authored inline** on `exercise.notation_tex` (parse-validated client-side at authoring), never an uploaded file. `pending_validation` machinery **removed** — locked status vocab is `draft\|published\|archived`                                                                                               |
+| RC-6  | U9 infra               | DynamoDB table provisioned by Pulumi                                                                  | **Pulumi does NOT provision the database** (Neon = off-AWS SaaS). Neon connection string = **Pulumi secret** → injected into Lambda env (least-privilege). AWS-managed equivalent (**Aurora Serverless v2 / RDS + RDS Proxy**, with the connection-pooling rationale) documented as the interview talking point; store swappable behind the K-3 API                                                                                                                    |
+| RC-7  | Cover images           | DEFERRED (R1 narrowed to source-file-only; curator pastes a URL)                                      | **DITCHED from K v1** (owner decision, 2026-06-10 walkthrough): the locked `cover_image_key` column is _optional_ — it ships in the DDL, stays `NULL`, and the library shows the icon fallback (spec §4). No upload pipeline, no cover signing, no image magic-bytes. Revisit with library polish (H-11)                                                                                                                                                               |
+| RC-8  | Problem frame          | "don't move data off AWS (SaaS)" used to justify the custom backend                                   | tension **explicitly reconciled** — see Problem Frame                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| RC-9  | Toolchain              | bun 1.3.11 workspaces                                                                                 | superseded by the **2026-06-09 tooling DACI** ([decisions/2026-06-09-tooling-stack-daci.md](../decisions/2026-06-09-tooling-stack-daci.md)): **pnpm 11.5.2 + Nx; bun fully dropped**. All commands are now pnpm. **U1 skeleton is already built/committed on pnpm**                                                                                                                                                                                                    |
+| RC-10 | Per-Lambda IaC         | `apps/<fn>/infra.ts` colocated with the handler                                                       | DACI serverless layout: Nx `enforce-module-boundaries` is **project-level only**, so handler + IaC must not share a project. Per-Lambda IaC moves to **`infra/cms/*.ts`** modules inside the `infra` project; infra references the handler's **build output** (`dist/`), never its source                                                                                                                                                                              |
+| RC-11 | Events                 | `LessonEvent` (`lesson.{published,updated,deleted}`)                                                  | SNS topic **`lesson-events` kept** (plumbing unchanged); event schema becomes `CatalogEvent` — `catalog_item.{created,updated,published,archived}` + `catalog_item.file.validated`                                                                                                                                                                                                                                                                                     |
+| RC-12 | Optimistic concurrency | DynamoDB `version` attribute + `If-Match`                                                             | the locked schema has **no `version` column** → `updated_at` is the concurrency token (`If-Match: <updatedAt ISO>`; `UPDATE … WHERE id=$1 AND updated_at=$2`)                                                                                                                                                                                                                                                                                                          |
+| RC-13 | File delivery          | S3 **presigned GET** URLs minted by K-3                                                               | spec §2 mandates **CloudFront signed URLs** (private, never public, ~5 min TTL — anti-hotlink/anti-bulk-download): the public distribution gains a `catalog/*` S3-origin behavior (OAC + **trusted key group**); K-3 signs with `@aws-sdk/cloudfront-signer`; the key pair is a Pulumi secret. uploads use presigned **POST** (size-conditioned policy; uploads aren't delivery)                                                                                       |
 
 ## Summary
 
@@ -52,11 +52,11 @@ Implement the locked Track 4 approach (custom serverless AWS backend, mounting R
 
 ## Problem Frame
 
-Area `K` was placed in Alpha specifically as the **#3-ranked AWS-portfolio piece** (per `feature-freeze.md` AWS-portfolio candidates table). The build must intentionally exercise S3, Lambda Function URL, CloudFront (incl. signed-URL delivery), CloudFront Functions (edge auth), Pulumi IaC, and IAM least-privilege — because *those* are the interview-tellable assets. (DynamoDB left K's scope with the catalog decision — it returns as the per-user centerpiece at M1; the catalog adds the relational/Postgres breadth instead.) The admin UX itself is single-user-internal and gets a default React-Admin Material-UI shell (no `/design-shotgun` pass).
+Area `K` was placed in Alpha specifically as the **#3-ranked AWS-portfolio piece** (per `feature-freeze.md` AWS-portfolio candidates table). The build must intentionally exercise S3, Lambda Function URL, CloudFront (incl. signed-URL delivery), CloudFront Functions (edge auth), Pulumi IaC, and IAM least-privilege — because _those_ are the interview-tellable assets. (DynamoDB left K's scope with the catalog decision — it returns as the per-user centerpiece at M1; the catalog adds the relational/Postgres breadth instead.) The admin UX itself is single-user-internal and gets a default React-Admin Material-UI shell (no `/design-shotgun` pass).
 
 The core tension was resolved in `docs/cms-approach.md` (locked 2026-06-05): every headless-CMS alternative either breaks the AWS-Always-Free constraint (self-hosted needs an always-on container) or deletes the custom Lambda/S3/CloudFront/IaC plumbing wholesale — the plumbing being the portfolio value `K` exists to create. (The original framing also cited "moves data off AWS" as a rejection reason; that data-locality leg was retired in the 2026-06-10 reconciliation below.) The plan below executes that decision.
 
-**Problem-frame reconciliation (2026-06-10).** The paragraph above justified the custom backend partly on "don't move data off AWS (SaaS)" — and Track 3 then moved the *catalog* to Neon, an off-AWS SaaS. These don't contradict, per the [2026-06-09 decision](../decisions/2026-06-09-catalog-store-postgres-neon.md): the AWS-portfolio value `K` exists to create lives in the **Lambda + S3 + CloudFront + edge-auth + Pulumi/IaC plumbing** — exactly the pieces a headless CMS would have deleted wholesale — plus the **swappable-behind-K-3** framing and the **Aurora Serverless v2 / RDS + RDS Proxy** talking point (the AWS-managed equivalent, including the connection-pooling rationale). The custom backend still earns its keep; only the catalog's *data store* moved — to a portable, $0, standard-Postgres store that swaps back to AWS behind one API. The DynamoDB leg is **prospective until M1** (per-user data: scores/settings/mappings/sync) — in the realistic interview window the deployed system contains zero DynamoDB, and the [2026-06-09 decision doc](../decisions/2026-06-09-catalog-store-postgres-neon.md) is the interview artifact for the polyglot-persistence story until then. (`feature-freeze.md` still lists `H-3` at *Alpha* — reconciling that milestone is flagged in Open Questions.)
+**Problem-frame reconciliation (2026-06-10).** The paragraph above justified the custom backend partly on "don't move data off AWS (SaaS)" — and Track 3 then moved the _catalog_ to Neon, an off-AWS SaaS. These don't contradict, per the [2026-06-09 decision](../decisions/2026-06-09-catalog-store-postgres-neon.md): the AWS-portfolio value `K` exists to create lives in the **Lambda + S3 + CloudFront + edge-auth + Pulumi/IaC plumbing** — exactly the pieces a headless CMS would have deleted wholesale — plus the **swappable-behind-K-3** framing and the **Aurora Serverless v2 / RDS + RDS Proxy** talking point (the AWS-managed equivalent, including the connection-pooling rationale). The custom backend still earns its keep; only the catalog's _data store_ moved — to a portable, $0, standard-Postgres store that swaps back to AWS behind one API. The DynamoDB leg is **prospective until M1** (per-user data: scores/settings/mappings/sync) — in the realistic interview window the deployed system contains zero DynamoDB, and the [2026-06-09 decision doc](../decisions/2026-06-09-catalog-store-postgres-neon.md) is the interview artifact for the polyglot-persistence story until then. (`feature-freeze.md` still lists `H-3` at _Alpha_ — reconciling that milestone is flagged in Open Questions.)
 
 A second tension shaped the structure: building an admin CMS in a project that also has a player PWA, scoring engine, sync engine, and analytics pipeline coming (6+ adapter swaps over the milestone ladder) means the architectural pattern picked now compounds. **Hexagonal/Clean Architecture (Layout 4)** was locked after walking through 5 layout options — see Key Technical Decisions for full rationale.
 
@@ -118,7 +118,7 @@ Plan-local — work that will be done separately:
 
 The repo is **greenfield**. Two adjacent artifacts to align with:
 
-- **`vigorous-goldwasser-73ccca/`** sibling worktree has an executed Wave 1 (React 19 + Vite 6 + Vitest + bun workspaces + path-filtered CI) — *this gets superseded by this plan's U1*. Reference for proven config patterns (Vite version, ESLint setup, CI workflow shape) but not for code copy.
+- **`vigorous-goldwasser-73ccca/`** sibling worktree has an executed Wave 1 (React 19 + Vite 6 + Vitest + bun workspaces + path-filtered CI) — _this gets superseded by this plan's U1_. Reference for proven config patterns (Vite version, ESLint setup, CI workflow shape) but not for code copy.
 - **`alphaTabWebsite` fork** (`~/Sites/alphaTabWebsite`, MPL-2.0): NOT consumed by `K` directly. Phase 0 rhythm-game patterns are for the player PWA, not the CMS. Mentioned only because `core/catalog/FileRules.ts` magic-byte detection mirrors what `H-10` will eventually need for user uploads.
 
 ### Institutional Learnings
@@ -136,7 +136,7 @@ The repo is **greenfield**. Two adjacent artifacts to align with:
 - **Catalog-store decision** — [docs/decisions/2026-06-09-catalog-store-postgres-neon.md](../decisions/2026-06-09-catalog-store-postgres-neon.md) — Neon free-tier facts (verified 2026-06-09), Aurora/RDS-Proxy equivalence, DynamoDB per-user split.
 - **`@neondatabase/serverless`** — [github.com/neondatabase/serverless](https://github.com/neondatabase/serverless) — MIT; HTTP/WebSocket Postgres driver for serverless runtimes; parameterized `sql.query(text, params)` interface; sidesteps the Lambda↔Postgres connection-pool problem.
 - **`pg` (node-postgres)** — [node-postgres.com](https://node-postgres.com/) — MIT; used by tests (TCP to Docker Postgres) and by the migration runner (TCP to Neon — Neon speaks standard Postgres protocol too).
-- **Postgres 16 Docker image** — [hub.docker.com/_/postgres](https://hub.docker.com/_/postgres) — `postgres:16` pinned in `adapters/postgres/docker-compose.test.yml`; ships `pg_trgm` + `unaccent` in `contrib` (no extra install).
+- **Postgres 16 Docker image** — [hub.docker.com/\_/postgres](https://hub.docker.com/_/postgres) — `postgres:16` pinned in `adapters/postgres/docker-compose.test.yml`; ships `pg_trgm` + `unaccent` in `contrib` (no extra install).
 - **React-Admin DataProvider docs** — [marmelab.com/react-admin/DataProviderWriting.html](https://marmelab.com/react-admin/DataProviderWriting.html) — interface signatures verified for v5.14.
 - **React-Admin FileInput** — [marmelab.com/react-admin/FileInput.html](https://marmelab.com/react-admin/FileInput.html) — used for the lesson file upload field.
 - **CloudFront Functions runtime** — [docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-functions.html](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-functions.html) — `cloudfront-js-2.0` runtime, 10KB limit, no I/O.
@@ -159,16 +159,17 @@ The repo is **greenfield**. Two adjacent artifacts to align with:
 
 Product-lens flagged the swap-count premise as unaudited. This table audits each named swap, the specific port interface that gets a second implementation, and the milestone at which that second implementation lands. If the audited count drops below 3 at Beta entry, revisit Layout 4 vs Layout 3/5.
 
-| # | Swap | Port (in `core/`) | First impl | Second impl | Milestone |
-|---|------|-------------------|------------|-------------|-----------|
-| 1 | Notation renderer (`A-7` in feature-freeze.md) | `core/notation/ports/NotationRenderer` | `adapters/alphatab/AlphaTabRenderer` (Alpha) | `adapters/pixijs/PixiJSFriendlyRenderer` (Friendly milestone) | Friendly |
-| 2 | MIDI input | `core/scoring/ports/MidiInput` | `adapters/webmidi/WebMidiInput` (Alpha PWA) | `adapters/swift-coremidi/CoreMidiInput` via Capacitor bridge (M1) | M1 |
-| 3 | Persistence — user data (`F-3`, `D-2` per freeze) | `core/userdata/ports/UserDataStore` | `adapters/localstorage/UserDataLocalStorage` (Alpha/Beta) | `adapters/dynamodb/UserDataDynamoDB` (M1 cross-device sync `H-3`/`H-5`) | M1 |
-| 4 | Auth | `core/auth/ports/Identity` | `adapters/cf-basic-auth/Identity` (K admin only — Alpha) | `adapters/cognito/Identity` for end users (`H-9`, M1) | M1 |
-| 5 | Analytics event sink | `core/observability/ports/EventSink` | `adapters/sns/SnsEventSink` (this plan's SNS topic — Alpha) | `adapters/sqs-pipeline/PipelineEventSink` for `H-6` analytics (Beta) | Beta |
-| 6 | Audio output (latency-sensitive) | `core/playback/ports/AudioOutput` | `adapters/alphasynth/AlphaSynthOutput` (Alpha) | `adapters/native-audio/CoreAudioOutput` for tight-latency (M1+) | M1 |
+| #   | Swap                                              | Port (in `core/`)                      | First impl                                                  | Second impl                                                             | Milestone |
+| --- | ------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------- | --------- |
+| 1   | Notation renderer (`A-7` in feature-freeze.md)    | `core/notation/ports/NotationRenderer` | `adapters/alphatab/AlphaTabRenderer` (Alpha)                | `adapters/pixijs/PixiJSFriendlyRenderer` (Friendly milestone)           | Friendly  |
+| 2   | MIDI input                                        | `core/scoring/ports/MidiInput`         | `adapters/webmidi/WebMidiInput` (Alpha PWA)                 | `adapters/swift-coremidi/CoreMidiInput` via Capacitor bridge (M1)       | M1        |
+| 3   | Persistence — user data (`F-3`, `D-2` per freeze) | `core/userdata/ports/UserDataStore`    | `adapters/localstorage/UserDataLocalStorage` (Alpha/Beta)   | `adapters/dynamodb/UserDataDynamoDB` (M1 cross-device sync `H-3`/`H-5`) | M1        |
+| 4   | Auth                                              | `core/auth/ports/Identity`             | `adapters/cf-basic-auth/Identity` (K admin only — Alpha)    | `adapters/cognito/Identity` for end users (`H-9`, M1)                   | M1        |
+| 5   | Analytics event sink                              | `core/observability/ports/EventSink`   | `adapters/sns/SnsEventSink` (this plan's SNS topic — Alpha) | `adapters/sqs-pipeline/PipelineEventSink` for `H-6` analytics (Beta)    | Beta      |
+| 6   | Audio output (latency-sensitive)                  | `core/playback/ports/AudioOutput`      | `adapters/alphasynth/AlphaSynthOutput` (Alpha)              | `adapters/native-audio/CoreAudioOutput` for tight-latency (M1+)         | M1        |
 
 **Audit verdict at plan time:** 6 swaps with named ports across the Alpha → M1 trajectory. Layout 4 amortizes. Tracks 2 + 3 + this plan together lock the first impl for swaps 3-5; player track locks swap 1; future native bridges lock swaps 2 + 6. If the player and native-bridge work materially descopes (e.g., friendly view never ships), the count drops to 4 and Layout 4 still amortizes. Below 3, reopen.
+
 - **`@pulumi/aws` v7** (`v7.28.0` Apr 2026) — v6.83.1 is the last v6. Plan starts greenfield, no migration cost.
 - **Node.js 22 Lambda runtime** (`nodejs22.x`) with ESM handlers (`index.mjs`). esbuild bundling (`--platform=node --target=node22 --format=esm --minify --external:@aws-sdk/*`). `@aws-sdk/client-*` modular imports only.
 - **CloudFront KeyValueStore (KVS) for Basic-Auth credential storage** (NOT baked credential). Rotation = update KVS key (single API call, takes ~10-30s to propagate across edges) vs full function redeploy. CF Function reads via `cf.kvs(<id>).get(<key>)` (async, only allowed I/O in `cloudfront-js-2.0`). **Storage shape:** KVS holds the raw `base64(user:pass)` value, NOT a hash (CF Functions can't bcrypt/argon2 at the edge). Security-lens flagged the original "stored hashed" framing as misleading. Plaintext-in-KVS risk is mitigated by (a) IAM-scoped deploy role: only Pulumi can write KVS keys; CF Function reads via the function association, NOT via IAM; (b) Pulumi state encryption required (see "Pulumi backend" decision below). **Verification:** `aws.cloudfront.KeyvaluestoreKey` Pulumi resource path needs confirmation at U3 build time — feasibility-lens flagged a possible drift between `@pulumi/aws` v7 surface and the AWS API. Fallback: a `command.local.Command` invoking `aws cloudfront-keyvaluestore put-key` for KVS key writes.
@@ -221,16 +222,16 @@ Product-lens flagged the swap-count premise as unaudited. This table audits each
 - **`@pulumi/aws` major version:** v7. v6 is on the deprecation track.
 - **Magic-byte library:** `file-type` (MIT, streaming-capable) is the **stream-peeking plumbing only** — it has no Guitar Pro signatures (a GP7/8 file detects as generic `zip`; BCFZ/gp3-5 detect as nothing). `core/catalog/FileRules.ts` is the format authority for ALL source formats (PK/BCFZ/`FICHIER GUITAR PRO`/`<?xml`/`MThd`). (Corrected in the 2026-06-10 round-2 review — the original rationale overstated file-type's role.)
 - **Quarantine = same-bucket prefix** (not separate bucket). IAM scoping per-prefix gives the same security; separate-bucket multiplies resources for no gain. Quarantine prefix carries 24h lifecycle TTL (was referenced in System-Wide Impact but missing from S3 bucket config — added per doc-review convergence finding).
-- ~~**DynamoDB billing mode:** `PAY_PER_REQUEST`. Catalog stays in free tier; no provisioned-capacity guessing.~~ *(superseded by RC-3 — no DynamoDB in K v1)*
+- ~~**DynamoDB billing mode:** `PAY_PER_REQUEST`. Catalog stays in free tier; no provisioned-capacity guessing.~~ _(superseded by RC-3 — no DynamoDB in K v1)_
 - **DI strategy:** manual constructor wiring. No DI container.
 - **Track 2 plan posture:** Prereq + escape hatch in U1 (user-confirmed during doc-review). Track 2 revision is the canonical path; U1 includes a fallback bootstrap if Track 2 hasn't landed.
-- ~~**Cover image scope (R1):** narrowed to source-file upload only. `coverImageUrl` is a nullable string the curator pastes manually. Cover-image upload pipeline deferred (doc-review decision).~~ *(superseded twice: RC-7 first reinstated covers via the upload pipeline, then the 2026-06-10 walkthrough **ditched covers from K v1** — column stays NULL, icon fallback)*
+- ~~**Cover image scope (R1):** narrowed to source-file upload only. `coverImageUrl` is a nullable string the curator pastes manually. Cover-image upload pipeline deferred (doc-review decision).~~ _(superseded twice: RC-7 first reinstated covers via the upload pipeline, then the 2026-06-10 walkthrough **ditched covers from K v1** — column stays NULL, icon fallback)_
 - **Success metrics rewrite (per F-DR2a):** original metrics measured CI green; replaced with portfolio-outcome metrics (solution docs + whiteboard rehearsal + decision captures) per product-lens convergence + user confirmation.
 - **SNS `lesson-events` topic in scope (per F-DR2b):** topic + admin Lambda event emit added to K's scope; H-6 subscribes later. User-confirmed during doc-review.
-- ~~**DynamoDB-Toolbox:** dropped (over-spec for 1 entity); raw `@aws-sdk/lib-dynamodb` (doc-review convergence).~~ *(superseded by RC-2 — catalog adapter is Postgres raw SQL)*
+- ~~**DynamoDB-Toolbox:** dropped (over-spec for 1 entity); raw `@aws-sdk/lib-dynamodb` (doc-review convergence).~~ _(superseded by RC-2 — catalog adapter is Postgres raw SQL)_
 - **ComponentResource scope-down:** only `LambdaWithUrl` + `CloudFrontStaticSite` as components; `DynamoSingleTable`/`EdgeBasicAuth`/`S3FileBucket` inlined in `infra/index.ts` (doc-review).
 - **`adapters/http-client/` package dropped:** `CatalogApiClient` collapses into `adapters/react-admin/` (doc-review).
-- ~~**GSI2 (`updatedAt`) NOT built in K v1:** comment-only placeholder; add when `H-3` lands (doc-review).~~ *(moot — §9 `ci_updated` index ships in the verbatim migration)*
+- ~~**GSI2 (`updatedAt`) NOT built in K v1:** comment-only placeholder; add when `H-3` lands (doc-review).~~ _(moot — §9 `ci_updated` index ships in the verbatim migration)_
 - **Admin gate rate-limiting:** explicit non-goal in v1 + CloudWatch alarm trigger (not WAF; not silently omitted). Doc-review judgment call.
 - **CORS allow-origins:** explicit list mandatory; `*` prohibited (doc-review).
 - **CSP on admin SPA:** specified explicitly (doc-review).
@@ -244,7 +245,7 @@ Product-lens flagged the swap-count premise as unaudited. This table audits each
 - **Optimistic concurrency:** `updated_at` as the `If-Match` token (schema has no `version` column) — RC-12.
 - **Status vocab:** `draft|published|archived` only; `pending_validation` machinery removed — alphaTex is CMS-authored inline and parse-validated client-side at authoring (RC-5).
 - **MIDI:** rejected at upload with reason `midi-not-renderable-convert-first`; conversion is a curator pre-step (spec §2/§10 D1).
-- ~~**Cover images:** v1 reuses the quarantine/presigned-POST pipeline (JPEG/PNG/WebP, 2 MB) → `cover_image_key` (RC-7).~~ *(overridden at the 2026-06-10 walkthrough: covers DITCHED from K v1 — see RC-7)*
+- ~~**Cover images:** v1 reuses the quarantine/presigned-POST pipeline (JPEG/PNG/WebP, 2 MB) → `cover_image_key` (RC-7).~~ _(overridden at the 2026-06-10 walkthrough: covers DITCHED from K v1 — see RC-7)_
 - **Parse-once-at-upload:** the validator Lambda parses the uploaded file with alphaTab (MPL-2.0, runs in Node) to seed `bpm`/`time_sig`/`instruments[]`/`data.bars`/`data.sections[]` (spec §10.1) — async, event-triggered, so cold-start weight is acceptable.
 - **Exercise table name:** kept `exercise` (spec §13.1 default). **Id strategy:** `text` PKs — slugs for curated items/patterns, uuid for exercises (spec §13.2).
 - **Toolchain:** pnpm 11.5.2 + Nx per the tooling DACI; bun references in the original plan are superseded (RC-9). Per-Lambda IaC in `infra/cms/*.ts` (RC-10).
@@ -276,15 +277,15 @@ Seven reviewers (coherence, feasibility, security, scope, product, design, adver
 
 ### Deferred to Implementation
 
-- ~~**Exact bun-workspace glob syntax**~~ *(resolved — `pnpm-workspace.yaml` with `core/*`, `adapters/*`, `apps/*`, `infra` is committed and green)*
+- ~~**Exact bun-workspace glob syntax**~~ _(resolved — `pnpm-workspace.yaml` with `core/_`, `adapters/_`, `apps/_`, `infra` is committed and green)\*
 - **CloudFront Function code size after writing** — 10KB compiled limit. Measure during U3 build via `aws cloudfront describe-function --stage DEVELOPMENT` — assert <8KB to leave 2KB headroom. Fallback if size blows: drop the KVS lookup and use a baked credential (compromises rotation story but stays inside the limit).
 - **`constantTimeEquals` verification** on `cloudfront-js-2.0` runtime — XOR-accumulator may be optimized into early-exit by the JIT, defeating timing-resistance. Microbench at U3 build time. Fallback options: (a) reduce credential entropy to fit constant-time, (b) HMAC pattern (KVS stores HMAC key, function compares HMACs not creds).
-- ~~**Exact list-projection field set** for `GET /lessons`~~ *(resolved — the spec §9 K-3 list projection is the locked contract; see R2)*. The `/v1/` path-versioning + CI contract test survive the revision: `/v1/catalog` is the locked wire shape; a future reshape ships as `/v2/`.
+- ~~**Exact list-projection field set** for `GET /lessons`~~ _(resolved — the spec §9 K-3 list projection is the locked contract; see R2)_. The `/v1/` path-versioning + CI contract test survive the revision: `/v1/catalog` is the locked wire shape; a future reshape ships as `/v2/`.
 - **Signed-URL TTL** for `GET /v1/catalog/{id}` file URL — spec §12 says ~5 min; tune after measuring real player-load latency.
 - **CloudWatch alarm strategy for K** — `H-7` SLOs are Beta-tier; K emits basic logs + 2 alarms only: (1) error-rate >10/sec on admin distribution (brute-force trigger), (2) ACM cert DaysToExpiry <30 per cert.
 - **Exact CORS allow-origins values** — depends on final admin/player domain names. Plan locks the constraint (explicit list, `*` prohibited, `Vary: Origin`); fills in domains at deploy time via Pulumi config.
 - **Whether bucket lifecycle TTL for orphaned upload+rejected is sufficient** — quarantine 24h, rejected 7d. Tune if curator UX shows real orphaned-upload patterns.
-- ~~**alphaTex async hard-validation plan**~~ *(dissolved by RC-5 — alphaTex is CMS-authored inline + client-side parse-validated; server-side re-check is an M1 hardening item, no async pipeline needed)*
+- ~~**alphaTex async hard-validation plan**~~ _(dissolved by RC-5 — alphaTex is CMS-authored inline + client-side parse-validated; server-side re-check is an M1 hardening item, no async pipeline needed)_
 - **Pulumi resource path for `aws.cloudfront.KeyvaluestoreKey`** — verify at U3 build that the Pulumi `@pulumi/aws` v7 surface exposes this resource directly. If not, use a `command.local.Command` invoking the CLI for KVS key writes (feasibility-flagged conflict between research and v7 surface).
 
 ---
@@ -418,7 +419,7 @@ The tree above is a **scope declaration**, not a constraint — the implementer 
 
 ## High-Level Technical Design
 
-> *This illustrates the intended request shape and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce.*
+> _This illustrates the intended request shape and is directional guidance for review, not implementation specification. The implementing agent should treat it as context, not code to reproduce._
 
 ```mermaid
 flowchart TB
@@ -491,6 +492,7 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 **Dependencies:** None (Track 2's Wave 1 in `vigorous-goldwasser-73ccca/` is discarded; this unit produces the new canonical Wave 1).
 
 **Files:**
+
 - Create: ~~`package.json` (bun workspaces, no app deps yet)~~ <!-- SUPERSEDED: Bun fully dropped; pnpm 11.5.2 + Nx workspaces per tooling DACI 2026-06-09 (U1 already DONE on pnpm) -->
 - Create: `tsconfig.base.json` (path aliases `@core/*`, `@adapters/*`, `@apps/*`; strict mode; `module: "esnext"`; `moduleResolution: "bundler"`)
 - Create: `.gitignore` (node_modules, dist, .pulumi, .env*, *.log)
@@ -502,6 +504,7 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 - Test: ~~`package.json` `scripts.test` runs `bun test` across workspaces; this unit's test is `bun install` + `bun run lint` + `bun run depcheck` running green on the empty skeleton.~~ <!-- SUPERSEDED: Bun dropped; live runner is `node --test` (Node 24), commands are pnpm, per tooling DACI 2026-06-09 -->
 
 **Approach:**
+
 - bun workspaces glob: `"workspaces": ["core/*", "adapters/*", "apps/*", "infra"]`. Confirm bun honors nested globs (it does as of 1.3+); fall back to enumerating if quirks emerge.
 - `tsconfig.base.json` path aliases (`paths`) mirrored in each child `tsconfig.json` via `extends`.
 - `dependency-cruiser` rule shape:
@@ -519,10 +522,12 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 **Track 2 escape hatch.** If Track 2's plan revision hasn't landed when U1 starts (verify via `git log master -- apps/web infra packages` in the main repo): the existing Wave-1 scaffold in `vigorous-goldwasser-73ccca/` (`apps/web`, `infra/` stub, `ci.yml`, `bun.lock`, `tsconfig.base.json`, root `package.json`) is throwaway. Delete those paths in a single "breaking: replace Wave 1 scaffold with Layout 4" PR with explicit migration notes in the body. This plan's U1 then becomes the canonical Wave 1. If Track 2 HAS landed Layout 4 revisions, U1 just extends the existing skeleton (`core/`, `adapters/`, additional `apps/*` workspaces, and the rule additions to `.dependency-cruiser.cjs` and `ci.yml`). Either way, the U1 deliverable is the same — Layout 4 skeleton with green CI.
 
 **Patterns to follow:**
+
 - Workflow shape mirrors the existing `vigorous-goldwasser-73ccca/.github/workflows/ci.yml` (bun setup, concurrency-cancel, path-filtered jobs, single required check). Adapt path filters to Layout 4 shape.
 - `dependency-cruiser` config based on the canonical example from [github.com/sverweij/dependency-cruiser/blob/main/doc/rules-reference.md](https://github.com/sverweij/dependency-cruiser/blob/main/doc/rules-reference.md).
 
 **Test scenarios:**
+
 - Happy path: `bun install` completes with no errors; `bun run lint` exits 0; `bun run depcheck` exits 0; `tsc --noEmit -p tsconfig.base.json` exits 0; CI green on a PR that touches a single file in `core/`.
 - Edge case (CI path-filter sanity): PR touching only `docs/**` produces a green `CI Green` aggregation check (all child jobs skipped) and does NOT block merge — confirms the "skipped-required-check deadlock" footgun from `cicd-pipeline.md` is avoided.
 - Edge case: PR touching `core/` AND `adapters/dynamodb/` triggers both child jobs; `CI Green` waits for both.
@@ -534,13 +539,14 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 
 ### U2. Core domain (pure, no I/O) — REVISED 2026-06-10
 
-**Goal:** Implement `core/catalog/` — entities (`CatalogItem`, `Exercise`, `Pattern`), the filter query language, pure file rules (magic-byte → format), pure publish-gate checks, the event schema, and the port interfaces every adapter and Lambda depends on. Pure TypeScript, zero AWS/Neon/React/HTTP imports. The shapes mirror the **locked spec** (`docs/specs/2026-06-10-catalog-schema.md`) field-for-field; Zod refinements mirror the §4 DB CHECK constraints so invalid records fail at the boundary *and* in the database.
+**Goal:** Implement `core/catalog/` — entities (`CatalogItem`, `Exercise`, `Pattern`), the filter query language, pure file rules (magic-byte → format), pure publish-gate checks, the event schema, and the port interfaces every adapter and Lambda depends on. Pure TypeScript, zero AWS/Neon/React/HTTP imports. The shapes mirror the **locked spec** (`docs/specs/2026-06-10-catalog-schema.md`) field-for-field; Zod refinements mirror the §4 DB CHECK constraints so invalid records fail at the boundary _and_ in the database.
 
 **Requirements:** R6 (locked-spec fidelity) · R7 (Hexagonal layering).
 
 **Dependencies:** U1 (✅ done).
 
 **Files:**
+
 - Create: `core/catalog/CatalogItem.ts` · `core/catalog/Exercise.ts` · `core/catalog/Pattern.ts` (entity types + Zod schemas)
 - Create: `core/catalog/ids.ts` (branded `CatalogItemId` / `ExerciseId` / `PatternId`; ids are `text` — slugs for curated items/patterns, uuid for exercises)
 - Create: `core/catalog/NotationFormat.ts` (`'gp'|'gpx'|'gp5'|'gp4'|'gp3'|'xml'` — **no `'mid'`**, spec §2; plus `CoverFormat = 'jpg'|'png'|'webp'`)
@@ -558,42 +564,47 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 
 ```ts
 // core/catalog/CatalogItem.ts
-export type ItemType   = 'song' | 'lesson';
-export type ItemStatus = 'draft' | 'published' | 'archived';          // ci_status — NO pending_validation (RC-5)
-export type ItemSource = 'curated' | 'user-upload';                   // ci_source; write-once (spec §5)
-export type License    = 'royalty-free' | 'cc' | 'owned' | 'public-domain';
-export interface MediaLink { provider: string; url?: string; key?: string; label?: string }
+export type ItemType = 'song' | 'lesson';
+export type ItemStatus = 'draft' | 'published' | 'archived'; // ci_status — NO pending_validation (RC-5)
+export type ItemSource = 'curated' | 'user-upload'; // ci_source; write-once (spec §5)
+export type License = 'royalty-free' | 'cc' | 'owned' | 'public-domain';
+export interface MediaLink {
+  provider: string;
+  url?: string;
+  key?: string;
+  label?: string;
+}
 
 export interface CatalogItem {
   id: CatalogItemId;
   type: ItemType;
   title: string;
-  level: number | null;              // 1–10; null = ungraded (ci_level)
+  level: number | null; // 1–10; null = ungraded (ci_level)
   artist: string | null;
-  bpm: number | null;                // required for songs (ci_song_bpm)
+  bpm: number | null; // required for songs (ci_song_bpm)
   timeSig: string | null;
-  genre: string | null;              // stored LOWERCASE (ingest normalizes)
+  genre: string | null; // stored LOWERCASE (ingest normalizes)
   musicalKey: string | null;
   instruments: string[];
   skill: string[];
   tags: string[];
-  lessonType: string | null;         // lessons only (ci_lesson_type_only); open vocab 'song-breakdown'|'beat'|'rudiment'
+  lessonType: string | null; // lessons only (ci_lesson_type_only); open vocab 'song-breakdown'|'beat'|'rudiment'
   sortOrder: number | null;
   source: ItemSource;
-  license: License | null;           // required before publishing curated items (ci_pub_license)
-  coverImageKey: string | null;       // column ships (locked DDL) but stays NULL in v1 — covers ditched; icon fallback
-  notationKey: string | null;        // songs only (ci_song_file); lessons carry notation on steps
-  notationFormat: NotationFormat | null;  // ci_song_fmt — no 'mid', no 'alphatex'
-  notationChecksum: string | null;   // sha256
+  license: License | null; // required before publishing curated items (ci_pub_license)
+  coverImageKey: string | null; // column ships (locked DDL) but stays NULL in v1 — covers ditched; icon fallback
+  notationKey: string | null; // songs only (ci_song_file); lessons carry notation on steps
+  notationFormat: NotationFormat | null; // ci_song_fmt — no 'mid', no 'alphatex'
+  notationChecksum: string | null; // sha256
   notationBytes: number | null;
   hasAudio: boolean;
   hasVideo: boolean;
   audio: MediaLink[] | null;
   video: MediaLink[] | null;
   status: ItemStatus;
-  data: Record<string, unknown> | null;  // §12 known keys: bars, sections[], album, year, defaultMappingPresetId, meta
-  createdAt: string;                 // ISO timestamptz
-  updatedAt: string;                 // ISO — doubles as the If-Match concurrency token (RC-12)
+  data: Record<string, unknown> | null; // §12 known keys: bars, sections[], album, year, defaultMappingPresetId, meta
+  createdAt: string; // ISO timestamptz
+  updatedAt: string; // ISO — doubles as the If-Match concurrency token (RC-12)
 }
 ```
 
@@ -602,16 +613,16 @@ export interface CatalogItem {
 export interface Exercise {
   id: ExerciseId;
   lessonId: CatalogItemId;
-  stepNo: number;                    // UNIQUE (lesson_id, step_no)
-  title: string;                     // "Hi-hat only", "+ Kick"
-  sectionLabel: string | null;       // song-breakdown display label ("Chorus 1")
+  stepNo: number; // UNIQUE (lesson_id, step_no)
+  title: string; // "Hi-hat only", "+ Kick"
+  sectionLabel: string | null; // song-breakdown display label ("Chorus 1")
   startBpm: number | null;
-  goalBpm: number | null;            // the start→goal practice ladder (ex_bpm_ladder)
+  goalBpm: number | null; // the start→goal practice ladder (ex_bpm_ladder)
   // EXACTLY ONE of the three (ex_one_source):
-  notationTex: string | null;        // authored alphaTex inline — the common case
-  notationKey: string | null;        // rare: standalone GP/MusicXML S3 file
-  sourceItemId: CatalogItemId | null;  // song-breakdown slice (ON DELETE RESTRICT)
-  startBar: number | null;           // ex_slice_bars: startBar > 0 AND endBar >= startBar
+  notationTex: string | null; // authored alphaTex inline — the common case
+  notationKey: string | null; // rare: standalone GP/MusicXML S3 file
+  sourceItemId: CatalogItemId | null; // song-breakdown slice (ON DELETE RESTRICT)
+  startBar: number | null; // ex_slice_bars: startBar > 0 AND endBar >= startBar
   endBar: number | null;
   data: Record<string, unknown> | null;
 }
@@ -620,15 +631,15 @@ export interface Exercise {
 ```ts
 // core/catalog/Pattern.ts — beats / fills / rudiments (spec §4 ③)
 export interface Pattern {
-  id: PatternId;                     // slug: 'rock-8th', 'single-paradiddle'
-  kind: string;                      // open vocab: 'beat'|'fill'|'rudiment' (later ostinato/scale/chord)
+  id: PatternId; // slug: 'rock-8th', 'single-paradiddle'
+  kind: string; // open vocab: 'beat'|'fill'|'rudiment' (later ostinato/scale/chord)
   name: string;
-  family: string | null;             // kind-relative grouping (NOT genre): Rock/Funk · Roll/Diddle/Flam/Drag
-  subdivision: string | null;        // '8th'|'16th'|'triplet'|'quarter'
-  level: number | null;              // 1–10 (pat_level)
+  family: string | null; // kind-relative grouping (NOT genre): Rock/Funk · Roll/Diddle/Flam/Drag
+  subdivision: string | null; // '8th'|'16th'|'triplet'|'quarter'
+  level: number | null; // 1–10 (pat_level)
   aliases: string[];
   description: string | null;
-  notationTex: string | null;        // canonical pattern as alphaTex
+  notationTex: string | null; // canonical pattern as alphaTex
   data: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
@@ -639,50 +650,74 @@ export interface Pattern {
 // core/catalog/CatalogFilter.ts — the §9 facet language (RC-1)
 export interface CatalogFilter {
   type?: ItemType;
-  status?: ItemStatus;               // the public API hard-codes 'published'
-  level?: { min?: number; max?: number };  // a BOUNDED level filter EXCLUDES ungraded NULLs by design (spec §9)
+  status?: ItemStatus; // the public API hard-codes 'published'
+  level?: { min?: number; max?: number }; // a BOUNDED level filter EXCLUDES ungraded NULLs by design (spec §9)
   bpm?: { min?: number; max?: number };
   timeSig?: string;
-  genre?: string;                    // compared lowercase
-  tags?: string[];                   // ALL-of (`@>` containment)
+  genre?: string; // compared lowercase
+  tags?: string[]; // ALL-of (`@>` containment)
   skill?: string[];
   instruments?: string[];
   lessonType?: string;
-  patternId?: string;                // JOIN item_pattern
-  search?: string;                   // fuzzy (pg_trgm) + accent-insensitive (unaccent) + full-text (tsvector)
-  sort?: 'relevance' | 'level' | 'bpm' | 'newest' | 'title' | 'curated';  // 'curated' = sort_order
-  pagination: { limit: number; offset: number };  // limit clamped to ≤100
+  patternId?: string; // JOIN item_pattern
+  search?: string; // fuzzy (pg_trgm) + accent-insensitive (unaccent) + full-text (tsvector)
+  sort?: 'relevance' | 'level' | 'bpm' | 'newest' | 'title' | 'curated'; // 'curated' = sort_order
+  pagination: { limit: number; offset: number }; // limit clamped to ≤100
 }
 ```
 
 ```ts
 // core/catalog/ports/CatalogRepository.ts
-export interface CatalogListRow {   // the §9 K-3 list projection, EXACTLY (cover key still raw here;
-  id: CatalogItemId; type: ItemType; title: string; artist: string | null;        // K-3 resolves cover_image_url)
-  genre: string | null; level: number | null; bpm: number | null; timeSig: string | null;
-  instruments: string[]; hasAudio: boolean; hasVideo: boolean;
-  sortOrder: number | null; coverImageKey: string | null; status: ItemStatus; updatedAt: string;
+export interface CatalogListRow {
+  // the §9 K-3 list projection, EXACTLY (cover key still raw here;
+  id: CatalogItemId;
+  type: ItemType;
+  title: string;
+  artist: string | null; // K-3 resolves cover_image_url)
+  genre: string | null;
+  level: number | null;
+  bpm: number | null;
+  timeSig: string | null;
+  instruments: string[];
+  hasAudio: boolean;
+  hasVideo: boolean;
+  sortOrder: number | null;
+  coverImageKey: string | null;
+  status: ItemStatus;
+  updatedAt: string;
 }
 
 export interface CatalogRepository {
   saveItem(item: CatalogItem): Promise<Result<void, ItemAlreadyExists | RepositoryError>>;
-  updateItem(item: CatalogItem, ifUnmodifiedSince: string): Promise<Result<CatalogItem, ItemNotFound | StaleUpdate | RepositoryError>>;
+  updateItem(
+    item: CatalogItem,
+    ifUnmodifiedSince: string,
+  ): Promise<Result<CatalogItem, ItemNotFound | StaleUpdate | RepositoryError>>;
   findById(id: CatalogItemId): Promise<Result<CatalogItem, ItemNotFound | RepositoryError>>;
-  list(filter: CatalogFilter): Promise<Result<{ items: CatalogListRow[]; total: number }, RepositoryError>>;
-  archive(id: CatalogItemId): Promise<Result<void, ItemNotFound | RepositoryError>>;   // status='archived' tombstone — NEVER hard-delete (spec §12)
+  list(
+    filter: CatalogFilter,
+  ): Promise<Result<{ items: CatalogListRow[]; total: number }, RepositoryError>>;
+  archive(id: CatalogItemId): Promise<Result<void, ItemNotFound | RepositoryError>>; // status='archived' tombstone — NEVER hard-delete (spec §12)
   // exercises (a lesson's steps)
   listExercises(lessonId: CatalogItemId): Promise<Result<Exercise[], RepositoryError>>;
-  replaceExercises(lessonId: CatalogItemId, steps: Exercise[]): Promise<Result<void, ItemNotFound | RepositoryError>>;  // atomic batch (reorder/upsert)
-  countExercises(lessonId: CatalogItemId): Promise<Result<number, RepositoryError>>;   // publish gate §5
+  replaceExercises(
+    lessonId: CatalogItemId,
+    steps: Exercise[],
+  ): Promise<Result<void, ItemNotFound | RepositoryError>>; // atomic batch (reorder/upsert)
+  countExercises(lessonId: CatalogItemId): Promise<Result<number, RepositoryError>>; // publish gate §5
   countSlicingLessons(songId: CatalogItemId): Promise<Result<number, RepositoryError>>; // archive-confirm warning ("N lessons slice this song")
   // pattern links (m:n)
   linkPattern(itemId: CatalogItemId, patternId: PatternId): Promise<Result<void, RepositoryError>>;
-  unlinkPattern(itemId: CatalogItemId, patternId: PatternId): Promise<Result<void, RepositoryError>>;
+  unlinkPattern(
+    itemId: CatalogItemId,
+    patternId: PatternId,
+  ): Promise<Result<void, RepositoryError>>;
   listPatternsForItem(itemId: CatalogItemId): Promise<Result<Pattern[], RepositoryError>>;
 }
 ```
 
 **Approach:**
+
 - Zod schema beside each type: `CatalogItemSchema` → `type CatalogItem = z.infer<…>`. **Refinements mirror the §4 CHECKs** so a record that would violate the DB fails first at the boundary with a named error: `ci_song_bpm` (song ⇒ bpm), `ci_song_file` (song ⇒ notationKey), `ci_song_fmt` (format ∈ the no-mid vocab), `ci_lesson_type_only` (song ⇒ lessonType null), `ci_level` (1–10 or null), `ex_one_source` (exactly one of tex|key|slice), `ex_slice_bars`, `ex_bpm_ladder` (goal ≥ start), `ci_pub_license` + `ci_shared_curated` (encoded in `publishGates.ts`, see below).
 - `publishGates.ts` is pure: `canPublish(item, gateFacts): Result<void, PublishGateFailed>` with `gateFacts = { exerciseCount, unpublishedSliceSourceCount }` — checks (a) lesson ⇒ `exerciseCount ≥ 1`, (b) curated ⇒ `license != null`, (c) `source === 'curated'` (the v1 shared catalog is curated-only), (d) lesson ⇒ `unpublishedSliceSourceCount = 0` (gate `song-breakdown-source-not-published` — a lesson must not publish while any slice step points at a non-published source song; spec §6 D2 intent at write time, review finding). U6 supplies the facts; the DB CHECKs back up (b)/(c).
 - **Controlled-vocab normalization lives in the Zod schemas** (review finding): `genre` and the array facets (`tags`, `skill`, `instruments`) get `.transform(lowercase)` so BOTH the curator write path (U6 create/update) and the ingest path store lowercase — spec §10.3's rule applied at the single shared boundary. Without it, a curator typing 'Rock' creates rows the `genre='rock'` filter silently never returns.
@@ -693,7 +728,7 @@ export interface CatalogRepository {
 
 **TDD task list:**
 
-- [ ] **2.1** ~~Add `vitest` to the **root** devDependencies (the committed U1 skeleton doesn't have it — every later `pnpm vitest run` command depends on this) → write `core/shared/kernel/__tests__/Result.test.ts` (ok/err narrowing) → run `pnpm vitest run core/shared --root .` → FAIL → implement `Result.ts` + `Brand.ts` → PASS → commit `feat(core): Result + Brand kernel`~~ <!-- SUPERSEDED: Vitest is the deferred L5 lane (live runner `node --test`, Node 24) AND tests are co-located (no __tests__/) per tooling DACI 2026-06-09 -->
+- [ ] **2.1** ~~Add `vitest` to the **root** devDependencies (the committed U1 skeleton doesn't have it — every later `pnpm vitest run` command depends on this) → write `core/shared/kernel/__tests__/Result.test.ts` (ok/err narrowing) → run `pnpm vitest run core/shared --root .` → FAIL → implement `Result.ts` + `Brand.ts` → PASS → commit `feat(core): Result + Brand kernel`~~ <!-- SUPERSEDED: Vitest is the deferred L5 lane (live runner `node --test`, Node 24) AND tests are co-located (no **tests**/) per tooling DACI 2026-06-09 -->
 - [ ] **2.2** Write `CatalogItem.test.ts` table-driven Zod cases — valid song / valid lesson / song-missing-bpm (`ci_song_bpm`) / song-missing-file (`ci_song_file`) / `notationFormat:'mid'` rejected / song-with-lessonType rejected (`ci_lesson_type_only`) / `level: 0|11` rejected, `level: null` OK / `data` blob passthrough / mixed-case `genre:'Rock'` + `tags:['Ghost-Notes']` persist lowercase (transform) → FAIL → implement `ids.ts`, `NotationFormat.ts`, `CatalogItem.ts` → PASS → commit
 - [ ] **2.3** Write `Exercise.test.ts` — exactly-one-source matrix (tex only ✓ · key only ✓ · slice+bars ✓ · none ✗ · two ✗), `ex_slice_bars` (startBar 0 ✗, endBar < startBar ✗), `ex_bpm_ladder` (goal < start ✗, equal ✓, nulls ✓) → FAIL → implement → PASS → commit
 - [ ] **2.4** Write `Pattern.test.ts` (level bounds; open `kind` vocab accepts `'scale'`) → implement → PASS → commit
@@ -702,8 +737,9 @@ export interface CatalogRepository {
 - [ ] **2.7** Define the four ports + `CatalogEvent.ts` + `errors.ts` (types only — compile check) → `pnpm typecheck` green → `pnpm depcheck` green (zero `core→adapters|apps` imports) → commit `feat(core): catalog ports + events`
 
 **Test scenarios:** (encoded in the TDD list above; the load-bearing ones)
+
 - Zod refinements reject exactly what the §4 CHECKs reject — one named test per CHECK constraint.
-- `FileRules` classifies every supported format from first-bytes fixtures; MIDI is a *distinct* error from garbage (the admin UI tells the curator to convert, not "invalid file").
+- `FileRules` classifies every supported format from first-bytes fixtures; MIDI is a _distinct_ error from garbage (the admin UI tells the curator to convert, not "invalid file").
 - `publishGates` is exhaustive over the §5 matrix.
 - No integration scenarios — pure domain, no I/O crossings.
 
@@ -722,6 +758,7 @@ export interface CatalogRepository {
 **Dependencies:** U1.
 
 **Files:**
+
 - Create: `adapters/aws/LambdaWithUrl.ts` (ComponentResource: `aws.lambda.Function` with esbuild-bundled handler + `aws.iam.Role` (basic exec — `AWSLambdaBasicExecutionRole` for CloudWatch Logs) + `aws.iam.RolePolicy` (caller-injected statements) + `aws.cloudwatch.LogGroup` (configurable retention; default 7d dev / 30d prod) + **OPTIONAL** `aws.lambda.FunctionUrl` controlled by `createFunctionUrl?: boolean` arg (default `true`; set `false` for event-triggered Lambdas like U7's validator). When `createFunctionUrl=true`, supports `authType: "NONE" | "AWS_IAM"`).
 - Create: `adapters/aws/CloudFrontStaticSite.ts` (ComponentResource: `aws.s3.Bucket` (private) + `aws.s3.BucketPolicy` (OAC-only access) + `aws.s3.BucketPublicAccessBlock` + `aws.cloudfront.OriginAccessControl` + `aws.cloudfront.ResponseHeadersPolicy` (caller-supplied CORS + CSP config) + `aws.cloudfront.Distribution` with default cache behavior. **Supports** `additionalOrigins?: { pathPattern: string; originUrl: pulumi.Input<string>; cachePolicy?: string; viewerRequestFunctionArn?: string }[]` so the admin distribution in U8 can add the `/api/*` behavior pointing at the admin Lambda FURL. **ACM cert** passed as args from the caller (caller instantiates via `us-east-1` Pulumi provider — components themselves don't touch the cert).
 - Create: `adapters/aws/types.ts` (shared TS types: `LambdaWithUrlArgs`, `CloudFrontStaticSiteArgs`)
@@ -731,6 +768,7 @@ export interface CatalogRepository {
 - Test: ~~`adapters/aws/__tests__/components.smoke.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> — `pulumi preview` smoke test using `@pulumi/pulumi/automation` API against both components in a throwaway in-memory stack.
 
 **Approach:**
+
 - Naming convention: `notation-hero:aws:LambdaWithUrl`, `notation-hero:aws:CloudFrontStaticSite` (per Pulumi guidance — pick once, never rename).
 - Every child resource takes `{ parent: this }`.
 - `registerOutputs({...})` called synchronously at end of constructor with the public outputs (`fnUrl?`, `fnArn`, `distributionDomain`, `distributionArn`, etc.).
@@ -743,14 +781,19 @@ export interface CatalogRepository {
   import cf from 'cloudfront';
   async function handler(event) {
     const kvs = cf.kvs('<kvs-id>');
-    const expected = await kvs.get('admin-cred');  // base64(user:pass)
+    const expected = await kvs.get('admin-cred'); // base64(user:pass)
     const got = event.request.headers.authorization?.value;
     if (!got || !constantTimeEquals(got, 'Basic ' + expected)) {
-      return { statusCode: 401, statusDescription: 'Unauthorized',
-               headers: { 'www-authenticate': { value: 'Basic realm="admin"' },
-                          'cache-control': { value: 'no-store' },
-                          'pragma': { value: 'no-cache' },
-                          'vary': { value: 'Authorization' } } };
+      return {
+        statusCode: 401,
+        statusDescription: 'Unauthorized',
+        headers: {
+          'www-authenticate': { value: 'Basic realm="admin"' },
+          'cache-control': { value: 'no-store' },
+          pragma: { value: 'no-cache' },
+          vary: { value: 'Authorization' },
+        },
+      };
     }
     return event.request;
   }
@@ -758,14 +801,16 @@ export interface CatalogRepository {
   `constantTimeEquals` is ~10 lines of XOR-accumulator. **U9 includes a microbench step** to verify the JIT doesn't optimize the XOR loop into early-exit (adversarial-flagged risk). **Compiled function size measured at U9** via `aws cloudfront describe-function --stage DEVELOPMENT` — assert <8KB to leave headroom (originally deferred to U6 build; moved earlier per feasibility).
 
 **Patterns to follow:**
+
 - Component template: [pulumi.com/docs/iac/guides/building-extending/components/build-a-component/](https://www.pulumi.com/docs/iac/guides/building-extending/components/build-a-component/).
 - Lambda + esbuild bundling: `pulumi.asset.FileAsset("./dist/index.mjs")` after a `pnpm run build` step.
 - KVS reference: [pulumi.com/registry/packages/aws/api-docs/cloudfront/keyvaluestore/](https://www.pulumi.com/registry/packages/aws/api-docs/cloudfront/keyvaluestore/).
 
 **Test scenarios:**
+
 - Happy path: instantiate each component in a Pulumi unit-test fixture (`@pulumi/pulumi/testing`); assert the expected child resources exist (e.g., `LambdaWithUrl` creates 4 children: Function, Role, RolePolicy, FunctionUrl).
 - Happy path: `LambdaWithUrl` with `authType: "AWS_IAM"` emits a Function URL with that auth type; with `"NONE"` emits with NONE.
-- Integration scenario: `pulumi preview` on a throwaway stack using the component runs to completion (no resource graph errors) — confirms shape is deployable. *(The original `DynamoSingleTable`/`EdgeBasicAuth` component scenarios are gone — those were inlined per doc-review, and DynamoDB left K's scope entirely per RC-3.)*
+- Integration scenario: `pulumi preview` on a throwaway stack using the component runs to completion (no resource graph errors) — confirms shape is deployable. _(The original `DynamoSingleTable`/`EdgeBasicAuth` component scenarios are gone — those were inlined per doc-review, and DynamoDB left K's scope entirely per RC-3.)_
 - Test expectation: no `pulumi up` in tests (no AWS account hits); only `preview` + Pulumi's mock testing API.
 
 **Verification:** ~~`pnpm vitest run adapters/aws --root .`~~ <!-- SUPERSEDED: live runner is `node --test` (Node 24); Vitest deferred L5 per tooling DACI 2026-06-09 --> runs green. `dependency-cruiser` confirms `adapters/aws/` only imports from `@pulumi/*` and TS types from `core/` (no runtime core imports). Component naming convention applied uniformly.
@@ -781,6 +826,7 @@ export interface CatalogRepository {
 **Dependencies:** U2 (port interfaces).
 
 **Files:**
+
 - Create: `adapters/postgres/migrations/0001_catalog_init.sql` — the spec **§4 DDL + §9 indexes, copied verbatim** (extensions `pg_trgm` + `unaccent`; `immutable_unaccent` + `immutable_array_to_string` wrappers; `catalog_item` / `exercise` / `pattern` / `item_pattern` with ALL CHECK constraints; GIN/btree/trgm indexes; the GENERATED `search` tsvector column + `ci_fts`). Source of truth is the spec — any edit here is a spec change and is out of this plan's authority.
 - Create: `adapters/postgres/migrations/0002_source_write_once.sql` — spec-§5-sanctioned trigger:
   ```sql
@@ -797,20 +843,24 @@ export interface CatalogRepository {
     FOR EACH ROW EXECUTE FUNCTION catalog_item_source_write_once();
   ```
 - Create: `adapters/postgres/migrate.ts` — the ~40-LOC runner:
+
   ```ts
   import { Client } from 'pg';
   import { readdir, readFile } from 'node:fs/promises';
   import { join } from 'node:path';
 
-  export async function migrate(databaseUrl: string, dir = join(import.meta.dirname, 'migrations')) {
+  export async function migrate(
+    databaseUrl: string,
+    dir = join(import.meta.dirname, 'migrations'),
+  ) {
     const client = new Client({ connectionString: databaseUrl });
     await client.connect();
     try {
       await client.query(
-        'CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())'
+        'CREATE TABLE IF NOT EXISTS schema_migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())',
       );
       const applied = new Set(
-        (await client.query('SELECT name FROM schema_migrations')).rows.map((r) => r.name)
+        (await client.query('SELECT name FROM schema_migrations')).rows.map((r) => r.name),
       );
       for (const file of (await readdir(dir)).filter((f) => f.endsWith('.sql')).sort()) {
         if (applied.has(file)) continue;
@@ -831,13 +881,18 @@ export interface CatalogRepository {
     }
   }
   ```
+
   CLI entry: `adapters/postgres/cli-migrate.ts` (~5 lines: read `process.env.DATABASE_URL`, call `migrate()`), wired as `"migrate": "tsx cli-migrate.ts"` with `tsx` as a devDependency — so `pnpm --filter @notation-hero/adapters-postgres migrate` actually runs (review finding: the script/executor were unstated). Docker URL for tests; the Neon **TCP** `postgres://` URL at deploy time — Neon speaks standard protocol; the HTTP driver is a Lambda-runtime concern only. Tests pass the migrations dir explicitly (don't rely on `import.meta.dirname` under the vitest runner).
+
 - Create: `adapters/postgres/SqlExecutor.ts`:
   ```ts
-  export interface SqlQuery { text: string; params?: unknown[] }
+  export interface SqlQuery {
+    text: string;
+    params?: unknown[];
+  }
   export interface SqlExecutor {
     query<Row = Record<string, unknown>>(text: string, params?: unknown[]): Promise<Row[]>;
-    batch(queries: SqlQuery[]): Promise<void>;   // atomic — all or nothing
+    batch(queries: SqlQuery[]): Promise<void>; // atomic — all or nothing
   }
   ```
 - Create: `adapters/postgres/neonExecutor.ts` (runtime — `@neondatabase/serverless`: `query` via `neon(url).query(text, params)`; `batch` via the driver's non-interactive `transaction(queries)`; both HTTP, no pool to manage)
@@ -855,9 +910,9 @@ export interface CatalogRepository {
         POSTGRES_USER: notation
         POSTGRES_PASSWORD: notation
         POSTGRES_DB: catalog_test
-      ports: ["55432:5432"]
+      ports: ['55432:5432']
       healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U notation -d catalog_test"]
+        test: ['CMD-SHELL', 'pg_isready -U notation -d catalog_test']
         interval: 2s
         timeout: 2s
         retries: 15
@@ -871,6 +926,7 @@ export interface CatalogRepository {
 - Create: `adapters/sns/SnsEventSink.ts` (implements `EventSink` for `CatalogEvent`; `@aws-sdk/client-sns` `PublishCommand` with typed `MessageAttributes`) · `adapters/sns/package.json` · ~~`adapters/sns/__tests__/`~~ <!-- SUPERSEDED: co-located tests (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (LocalStack SNS)
 
 **Approach (Postgres adapter):**
+
 - **The migrations ARE the contract.** `0001` is copied from spec §4+§9 byte-for-byte (minus the markdown fences). The migration test suite **probes the CHECKs**: each constraint gets one INSERT/UPDATE that must fail with that constraint name — this proves the applied DDL matches the spec, not an approximation of it.
 - `list(filter)` goes through `buildListQuery(filter)`, which appends `WHERE` clauses per facet with `$n` placeholders:
   - equality facets → `type = $n`, `status = $n`, `time_sig = $n`, `genre = $n` (genre param lowercased), `lesson_type = $n`
@@ -888,13 +944,14 @@ export interface CatalogRepository {
 - Tests run against **Docker `postgres:16`** (`pnpm --filter @notation-hero/adapters-postgres test:integration` boots compose, runs `migrate()`, executes the suite, tears down). An **env-gated smoke test** (`NEON_SMOKE=1 DATABASE_URL=postgres://…neon…`) re-runs a 5-query subset through `neonExecutor` against a throwaway Neon branch to catch driver drift; CI skips it by default.
 
 **Approach (S3/SNS deltas from the original):**
+
 - `mintUploadUrl(ext, itemId?)` mints a **presigned POST** via `createPresignedPost` (a plain presigned PUT cannot express a size condition — review finding): policy `content-length-range [0, 20_000_000]` + octet-stream/xml content types. Policy fields carry `x-amz-meta-upload-id` (always) + `x-amz-meta-item-id` (source-replacement uploads). All target `uploads/quarantine/<uuid>.<ext>`. The browser submits multipart/form-data POST (U8); bucket CORS already allows POST. (No cover kind — covers are out of v1.)
 - `promote(quarantineKey, finalKey)` does the server-side `CopyObject` → `catalog/<id>/source.<ext>` + `DeleteObject` on quarantine — extracted into the port so U7's use-case stays pure.
 - `SnsEventSink` publishes `CatalogEvent` (RC-11); `MessageAttributes.eventType` carries the dotted name for H-6 subscription filters.
 
 **TDD task list:**
 
-- [ ] **4.1** Copy spec §4 DDL + §9 indexes → `migrations/0001_catalog_init.sql`; write `migrations.test.ts` asserting `migrate()` applies cleanly on a fresh Docker Postgres and is idempotent on re-run → ~~`docker compose -f adapters/postgres/docker-compose.test.yml up -d --wait && pnpm vitest run adapters/postgres/__tests__/migrations.test.ts --root .`~~ <!-- SUPERSEDED: runner is `node --test` (Node 24), not Vitest; test is co-located (no __tests__/) per tooling DACI 2026-06-09 --> → FAIL (no runner) → implement `migrate.ts` + `pgExecutor.ts` → PASS → commit `feat(adapters-postgres): migrations runner + verbatim catalog DDL`
+- [ ] **4.1** Copy spec §4 DDL + §9 indexes → `migrations/0001_catalog_init.sql`; write `migrations.test.ts` asserting `migrate()` applies cleanly on a fresh Docker Postgres and is idempotent on re-run → ~~`docker compose -f adapters/postgres/docker-compose.test.yml up -d --wait && pnpm vitest run adapters/postgres/__tests__/migrations.test.ts --root .`~~ <!-- SUPERSEDED: runner is `node --test` (Node 24), not Vitest; test is co-located (no **tests**/) per tooling DACI 2026-06-09 --> → FAIL (no runner) → implement `migrate.ts` + `pgExecutor.ts` → PASS → commit `feat(adapters-postgres): migrations runner + verbatim catalog DDL`
 - [ ] **4.2** Extend `migrations.test.ts` with **one failing INSERT/UPDATE per CHECK** (`ci_type`, `ci_status`, `ci_level`, `ci_song_bpm`, `ci_song_file`, `ci_song_fmt`, `ci_lesson_type_only`, `ci_shared_curated`, `ci_source`, `ci_pub_license`, `ex_one_source`, `ex_slice_bars`, `ex_bpm_ladder`, `pat_level`) asserting the named constraint in the error → PASS (DDL already enforces) → commit `test(adapters-postgres): CHECK-constraint fidelity probes`
 - [ ] **4.3** Write `0002_source_write_once.sql` + test (UPDATE flipping `user-upload`→`curated` raises) → run → PASS → commit
 - [ ] **4.4** Write `buildListQuery.test.ts` — pure unit table: each facet alone, combined facets, search-only, every sort, pagination clamp, **unrecognized sort value (`'; DROP TABLE catalog_item; --'`) throws instead of interpolating**; assert generated `text` + `params` (no DB needed) → FAIL → implement `sql/buildListQuery.ts` (incl. `SORT_MAP` allowlist) → PASS → commit
@@ -906,6 +963,7 @@ export interface CatalogRepository {
 - [ ] **4.10** Update `adapters/sns/SnsEventSink` to `CatalogEvent` + LocalStack test → PASS → commit `feat(adapters): S3 catalog file store + SNS catalog events`
 
 **Test scenarios:** (beyond the TDD list)
+
 - Error path: Postgres down (compose stopped) → repository returns `err(RepositoryError)`, never throws raw driver errors across the port.
 - Edge: `list` on empty DB → `ok({ items: [], total: 0 })`; offset past end → empty page with correct `total`.
 - Edge: `replaceExercises` with an exercise violating `ex_one_source` → whole batch rolls back (count unchanged).
@@ -924,11 +982,13 @@ export interface CatalogRepository {
 **Dependencies:** U2 (core ports), U3 (`LambdaWithUrl` + `CloudFrontStaticSite` components), U4 (Postgres + S3 adapters).
 
 **Files:**
+
 - Create: `apps/lambda-cms-crud-public/handler.ts` (ESM Lambda handler; `buildApp()` constructs `CatalogRepositoryPostgres(neonExecutor(DATABASE_URL))` + `CatalogFileStoreS3` at INIT)
 - Create: `apps/lambda-cms-crud-public/routes.ts` (`GET /v1/catalog` → listCatalog; `GET /v1/catalog/:id` → getCatalogItem; ~20-LOC matcher, no framework)
 - Create: `apps/lambda-cms-crud-public/use-cases/listCatalog.ts` (query-string → `CatalogFilter` (status hard-coded `'published'`) → `repo.list`; `cover_image_url` serializes as `null` in v1 — the §9 projection key stays so the wire contract is future-proof)
 - Create: `apps/lambda-cms-crud-public/use-cases/getCatalogItem.ts` (findById — 404 unless `status='published'` — + `listExercises` + `listPatternsForItem` + CloudFront-signed source URL via `mintDeliveryUrl`, RC-13)
 - Create: `apps/lambda-cms-crud-public/use-cases/resolveStepNotation.ts` (**the shared slice resolver** — spec §6 D2; exported for reuse by any future consumer so the status check can't be bypassed):
+
   ```ts
   export type ResolvedNotation =
     | { kind: 'tex'; tex: string }
@@ -940,7 +1000,8 @@ export interface CatalogRepository {
     deps: { repo: CatalogRepository; files: CatalogFileStore },
   ): Promise<Result<ResolvedNotation, SourceNotAvailable | RepositoryError>> {
     if (step.notationTex) return ok({ kind: 'tex', tex: step.notationTex });
-    if (step.notationKey) return ok({ kind: 'file', url: await mustSign(deps.files, step.notationKey) });
+    if (step.notationKey)
+      return ok({ kind: 'file', url: await mustSign(deps.files, step.notationKey) });
     // slice: the source song must itself be published — archived/draft songs may NOT
     // keep serving through a song-breakdown back door (spec §6 D2)
     const source = await deps.repo.findById(step.sourceItemId!);
@@ -950,19 +1011,23 @@ export interface CatalogRepository {
     return ok({
       kind: 'slice',
       url: await mustSign(deps.files, source.value.notationKey),
-      startBar: step.startBar!, endBar: step.endBar!, sourceTitle: source.value.title,
+      startBar: step.startBar!,
+      endBar: step.endBar!,
+      sourceTitle: source.value.title,
     });
   }
   ```
+
 - Create: `apps/lambda-cms-crud-public/build.ts` (esbuild: `handler.ts --bundle --platform=node --target=node22 --format=esm --minify --external:@aws-sdk/* --outfile=dist/index.mjs`)
 - Create: `apps/lambda-cms-crud-public/package.json` (deps: `@notation-hero/core`, `@notation-hero/adapters-postgres`, `@notation-hero/adapters-s3`; devDeps: `esbuild`, `@types/aws-lambda`, ~~`vitest`~~ <!-- SUPERSEDED: Vitest deferred L5; live runner `node --test` per tooling DACI 2026-06-09 -->)
 - Create: ~~`apps/lambda-cms-crud-public/__tests__/handler.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (unit — in-memory `CatalogRepository`/`CatalogFileStore` fakes)
 - Create: ~~`apps/lambda-cms-crud-public/__tests__/contract/catalog-v1.schema.json` + `contract.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (JSON-Schema contract test on both wire shapes — guards deployed player clients)
 - Create: ~~`apps/lambda-cms-crud-public/__tests__/integration.test.ts`~~ <!-- SUPERSEDED: co-located test (no __tests__/) per tooling DACI 2026-06-09 §F-2 --> (against deployed dev stack — gated `INTEGRATION_TESTS=1`)
-- Create: `infra/cms/public-read-api.ts` (Pulumi module — RC-10, lives in the `infra` project: `LambdaWithUrl` (`AuthType: AWS_IAM`, env `DATABASE_URL` + `BUCKET_NAME` + `SIGNED_URL_TTL_SECONDS` + `CDN_DOMAIN` + `CF_KEY_PAIR_ID` + `CF_PRIVATE_KEY_PARAM` (SSM SecureString *name* — the key itself is fetched at INIT, never an env value; round-2 review) + `ssm:GetParameter`/`kms:Decrypt` scoped to that parameter + `aws.lambda.Permission` for `cloudfront.amazonaws.com` with `sourceArn` + OAC + public distribution with **two behaviors**: default → Lambda FURL origin; `catalog/*` → files-bucket S3 origin (OAC) gated by the **trusted key group** (RC-13) + Response Headers Policy; references `../../apps/lambda-cms-crud-public/dist` as `FileArchive`)
+- Create: `infra/cms/public-read-api.ts` (Pulumi module — RC-10, lives in the `infra` project: `LambdaWithUrl` (`AuthType: AWS_IAM`, env `DATABASE_URL` + `BUCKET_NAME` + `SIGNED_URL_TTL_SECONDS` + `CDN_DOMAIN` + `CF_KEY_PAIR_ID` + `CF_PRIVATE_KEY_PARAM` (SSM SecureString _name_ — the key itself is fetched at INIT, never an env value; round-2 review) + `ssm:GetParameter`/`kms:Decrypt` scoped to that parameter + `aws.lambda.Permission` for `cloudfront.amazonaws.com` with `sourceArn` + OAC + public distribution with **two behaviors**: default → Lambda FURL origin; `catalog/*` → files-bucket S3 origin (OAC) gated by the **trusted key group** (RC-13) + Response Headers Policy; references `../../apps/lambda-cms-crud-public/dist` as `FileArchive`)
 - Create: `apps/lambda-cms-crud-public/tsconfig.json`
 
 **Approach:**
+
 - Build before K-2 (admin CRUD) — read-only; validates the catalog API shape + the Lambda→Neon path independently before write paths depend on it.
 - **`buildApp()` runs at Lambda INIT** (outside the handler). Env: `DATABASE_URL` (Neon — injected as a secret, RC-6), `BUCKET_NAME`, `SIGNED_URL_TTL_SECONDS` (default 300 per spec §12). The Neon HTTP driver is stateless — no pool, no cleanup; warm invocations reuse the executor closure.
 - **Path prefix `/v1/`** retained — `/v1/catalog` is the locked wire contract; a future reshape ships as `/v2/` without breaking deployed players.
@@ -982,6 +1047,7 @@ export interface CatalogRepository {
 - [ ] **5.5** Author `infra/cms/public-read-api.ts` + `build.ts`; `pnpm --filter @notation-hero/lambda-cms-crud-public build` produces `dist/index.mjs`; `pulumi preview` on the module shows Lambda + Role + Policy + FunctionUrl + Permission + OAC + Distribution → commit `feat(infra): public read API module (Neon env injection)`
 
 **Test scenarios:** (beyond the TDD list)
+
 - Edge: empty catalog → `{ items: [], total: 0 }`.
 - Edge: `q=sao` returns "São Paulo Samba" through the real adapter (covered in U4's integration suite; here via fake contract).
 - Error path: repository `RepositoryError` → 503 + `Retry-After` (Neon scale-to-zero cold resume manifests as latency, not errors — see Risks).
@@ -1001,21 +1067,22 @@ export interface CatalogRepository {
 
 **Routes (all under the gated `/api/*` behavior):**
 
-| Route | Use-case | Notes |
-|---|---|---|
-| `POST /api/catalog` | `createItem` | **lessons only** — songs are created by the upload pipeline (see the upload-first bullet below); Zod-validated; `source` set server-side to `'curated'`; a `type:'song'` body → 422 `song-created-by-upload` |
-| `PUT /api/catalog/{id}` | `updateItem` | requires `If-Match: <updatedAt token>` (RC-12) → 412 on stale; `source`/`status`/`created_at`/`notation_*`/`cover_image_key` are not updatable (stripped + warned — validator-/workflow-owned) |
-| `DELETE /api/catalog/{id}` | `archiveItem` | tombstone (`status='archived'`) — the CMS **never hard-deletes** (spec §12) |
-| `POST /api/catalog/{id}/publish` | `publishItem` | §5 gates (+ the slice-source gate) then an **atomic conditional flip** — see Approach |
-| `PUT /api/catalog/{id}/exercises` | `replaceExercises` | atomic batch (ordered steps; reorder = same call); bumps the item's `updated_at` inside the batch; `[]` allowed on draft lessons, 422 `published-lesson-needs-exercise` on published ones |
-| `POST /api/uploads` | `mintUploadUrl` | body `{ ext }` → presigned POST for a **new song's** source file (no item id — the validator creates the draft row; resolves the create-vs-`ci_song_file` deadlock, see below) |
-| `GET /api/uploads/{uploadId}` | `getUploadStatus` | reads the validator-written status object: `pending` / `{ ok, itemId }` / `{ rejected, reason }` — the SPA polls this (U8) |
-| `POST /api/catalog/{id}/file` | `mintUploadUrl` | body `{ ext }` → presigned POST, item-scoped: source **replacement** for an existing song |
-| `GET /api/catalog` · `GET /api/catalog/{id}` | `adminList` / `adminGet` | same query language as K-3 but **without** the published-only clamp (drafts/archived visible); admin detail adds `slicingLessonCount` for the archive-confirm warning |
+| Route                                        | Use-case                 | Notes                                                                                                                                                                                                        |
+| -------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /api/catalog`                          | `createItem`             | **lessons only** — songs are created by the upload pipeline (see the upload-first bullet below); Zod-validated; `source` set server-side to `'curated'`; a `type:'song'` body → 422 `song-created-by-upload` |
+| `PUT /api/catalog/{id}`                      | `updateItem`             | requires `If-Match: <updatedAt token>` (RC-12) → 412 on stale; `source`/`status`/`created_at`/`notation_*`/`cover_image_key` are not updatable (stripped + warned — validator-/workflow-owned)               |
+| `DELETE /api/catalog/{id}`                   | `archiveItem`            | tombstone (`status='archived'`) — the CMS **never hard-deletes** (spec §12)                                                                                                                                  |
+| `POST /api/catalog/{id}/publish`             | `publishItem`            | §5 gates (+ the slice-source gate) then an **atomic conditional flip** — see Approach                                                                                                                        |
+| `PUT /api/catalog/{id}/exercises`            | `replaceExercises`       | atomic batch (ordered steps; reorder = same call); bumps the item's `updated_at` inside the batch; `[]` allowed on draft lessons, 422 `published-lesson-needs-exercise` on published ones                    |
+| `POST /api/uploads`                          | `mintUploadUrl`          | body `{ ext }` → presigned POST for a **new song's** source file (no item id — the validator creates the draft row; resolves the create-vs-`ci_song_file` deadlock, see below)                               |
+| `GET /api/uploads/{uploadId}`                | `getUploadStatus`        | reads the validator-written status object: `pending` / `{ ok, itemId }` / `{ rejected, reason }` — the SPA polls this (U8)                                                                                   |
+| `POST /api/catalog/{id}/file`                | `mintUploadUrl`          | body `{ ext }` → presigned POST, item-scoped: source **replacement** for an existing song                                                                                                                    |
+| `GET /api/catalog` · `GET /api/catalog/{id}` | `adminList` / `adminGet` | same query language as K-3 but **without** the published-only clamp (drafts/archived visible); admin detail adds `slicingLessonCount` for the archive-confirm warning                                        |
 
 > **Patterns CRUD + pattern-link routes: DEFERRED to H-11 (round-2 review, spec §11).** The spec defers the pattern-authoring/linking UI to when Beta content is seeded ("the CMS pattern-linking UI can arrive with that content"); building it in K v1 authors UI for content that cannot exist yet. The `pattern`/`item_pattern` tables still ship in the verbatim migration (R6) and `PatternRepositoryPostgres` still backs the K-3 read path (`listPatternsForItem` returns `[]` harmlessly).
 
 **Files:**
+
 - Create: `apps/lambda-cms-crud-admin/handler.ts` (`buildApp()` wires `CatalogRepositoryPostgres` + `CatalogFileStoreS3` + `SnsEventSink` at INIT — no PatternRepository here while patterns authoring is deferred)
 - Create: `apps/lambda-cms-crud-admin/routes.ts` (matcher for the table above)
 - Create: `apps/lambda-cms-crud-admin/use-cases/{createItem,updateItem,archiveItem,publishItem,replaceExercises,mintUploadUrl,getUploadStatus}.ts`
@@ -1024,6 +1091,7 @@ export interface CatalogRepository {
 - Create: `infra/cms/admin-api.ts` (Pulumi module — RC-10: `LambdaWithUrl` (`AuthType: AWS_IAM`, env `DATABASE_URL` + `BUCKET_NAME` + `EVENTS_TOPIC_ARN`) + Lambda Permission with `sourceArn` + OAC; the admin distribution itself lives in `infra/cms/admin-site.ts` (U8) and consumes this module's exported FURL)
 
 **Approach:**
+
 - **Upload-first song creation (round-2 review — resolves a hard deadlock):** the locked `ci_song_file`/`ci_song_bpm` CHECKs forbid a song row without `notation_key` + `bpm`, but those values only exist after the validator runs — so create-then-upload cannot work for songs, and upload-before-create was previously treated as an error. Resolution: **songs are created BY the ingest pipeline.** `POST /api/uploads` mints a non-item-scoped presigned POST; the validator (U7) validates + parses and **INSERTs the draft song row** (uuid id; title seeded from filename; `bpm`/`time_sig`/`instruments`/`data.bars`/`data.sections` from the parse — a GP file always carries tempo, and an unparseable file is rejected anyway, so the `ci_song_bpm` CHECK is satisfiable at INSERT). The curator then edits the draft. This also makes spec §10.1's seeding real for songs instead of dead code. Lessons (no file at the item level) are created directly via `createItem`.
 - `createItem` (lessons): Zod boundary (U2 schemas) → `repo.saveItem` → publish `catalog_item.created` via `SnsEventSink` **before** returning 201 (publish failure → 500; row stays — audit log captures it for retry, matching the original event-emit semantics).
 - `updateItem`: `If-Match` header required (400 if absent) → `repo.updateItem(item, ifMatch)` → 412 on `StaleUpdate`. The request body **cannot** set `source` (stripped + warned), `status` (use publish/archive routes), `created_at`, or `notation_*` fields (validator-owned — see U7 race note). Emits `catalog_item.updated`.
@@ -1046,6 +1114,7 @@ export interface CatalogRepository {
 - [ ] **6.7** Author `infra/cms/admin-api.ts` + `build.ts`; `pulumi preview` clean → commit `feat(infra): admin CRUD API module`
 
 **Test scenarios:** (beyond the TDD list)
+
 - Integration: direct FURL hit → 403; through CloudFront without/with-wrong/with-right `Authorization: Basic` → 401/401/200; KVS rotation honored (unchanged from original).
 - Integration: full author loop — create lesson → add 2 exercises → publish → public API serves it; archive → the public API stops serving it within the CDN cache window (≤60 s — see the cache/TTL contract).
 - Error path: Postgres CHECK violation surfacing as 500-with-constraint-name in logs (proves the belt-and-braces layering).
@@ -1063,6 +1132,7 @@ export interface CatalogRepository {
 **Dependencies:** U2 (core ports + `FileRules`), U3 (`LambdaWithUrl`), U4 (`MagicByteValidator` + `CatalogFileStoreS3` + `CatalogRepositoryPostgres`).
 
 **Files:**
+
 - Create: `apps/lambda-cms-validate-upload/handler.ts` (S3 event entry; per-record orchestration; idempotency via checksum — see Approach)
 - Create: `apps/lambda-cms-validate-upload/use-cases/validateAndPromote.ts` (the pipeline below)
 - Create: `apps/lambda-cms-validate-upload/use-cases/seedFromFile.ts` (alphaTab parse → `{ bpm, timeSig, instruments, bars, sections }`)
@@ -1072,6 +1142,7 @@ export interface CatalogRepository {
 - Create: `infra/cms/upload-validator.ts` (Pulumi module — RC-10: `LambdaWithUrl({ createFunctionUrl: false })`, env `DATABASE_URL` + `BUCKET_NAME` + `EVENTS_TOPIC_ARN`; S3 notification registered via U9's shared-bucket aggregator with **strict `filterPrefix: "uploads/quarantine/"`**; Lambda Permission for `s3.amazonaws.com` with bucket `sourceArn`)
 
 **The pipeline (`validateAndPromote`), per S3 record:**
+
 1. **Defensive event shape:** `!event.Records?.length` → return 200 (AWS retry artifact). `Body: undefined` → reject `empty-body`.
 2. **Metadata:** read `x-amz-meta-upload-id` (always present) + optional `x-amz-meta-item-id`/`x-amz-meta-kind`. No upload-id → `rejected/no-metadata/<key>`. Validate ids' shape before using them in any key path (path-traversal guard). **Two modes:** item-scoped (item-id present: source replacement) vs **new-song** (no item-id — the upload-first flow from U6).
 3. **Row pre-check (item-scoped only):** `SELECT` the catalog row; missing → `rejected/orphaned/<key>` reason `item-record-missing`. New-song mode skips this — the row doesn't exist yet by design.
@@ -1081,7 +1152,7 @@ export interface CatalogRepository {
 7. **Promote + record:** server-side copy `uploads/quarantine/<uuid>.<ext>` → `catalog/<id>/source.<detectedExt>` (detected format wins over declared ext; mismatch logged); delete quarantine object; then write the row:
    - **New-song mode:** `INSERT` the draft `catalog_item` (uuid id, `type='song'`, `status='draft'`, `source='curated'`, filename-seeded title, parsed `bpm`/`time_sig`/`instruments`/`data`, `notation_*`, `has_audio`, `data.sourceUploadId=<uploadId>`). Emits `catalog_item.created`.
    - **Item-scoped mode (source replacement):** **partial UPDATE** touching ONLY validator-owned columns — `notation_key, notation_format, notation_checksum (sha256), notation_bytes, has_audio` — plus `updated_at = now()`. **Seeded facets fill NULL-only INSIDE the statement** (`SET bpm = COALESCE(bpm, $n)`, jsonb concat for `data` keys) — never decided from the step-3 SELECT snapshot, so a curator edit landing during the multi-second validate/parse window survives (round-2 review). **No `If-Match`**: the column scoping keeps validator and curator edits non-clobbering. Accepted limitation (recorded in Risks): a curator who deliberately blanks a parsed facet gets it re-seeded on the next re-upload of that file.
-   7b. **Status object:** write `status/<uploadId>.json` (`{ ok, itemId }` or `{ rejected, reason }`) on BOTH success and failure — the U6 `getUploadStatus` route + U8 polling depend on it; item-scoped rejections also set `data.lastUploadError = { reason, key, at }` so the item's Edit view can show what happened.
+     7b. **Status object:** write `status/<uploadId>.json` (`{ ok, itemId }` or `{ rejected, reason }`) on BOTH success and failure — the U6 `getUploadStatus` route + U8 polling depend on it; item-scoped rejections also set `data.lastUploadError = { reason, key, at }` so the item's Edit view can show what happened.
 8. **Idempotency:** dedup key = sha256 of the full object, computed during the step-4/5/6 `GetObject` read (the promote is a server-side `CopyObject` — no bytes stream through the Lambda there; round-2 review fixed the contradiction). If the target row's `notation_checksum` already equals it, return early — replays cause no churn. (ETag still unreliable under multipart.)
 9. **Event:** emit `catalog_item.file.validated` (+ `catalog_item.created` in new-song mode). Rejections are CloudWatch-logged with reason + key and land in the status object (step 7b).
 10. **Failure path:** copy to `uploads/rejected/<original-key>` with `x-amz-meta-reason`; delete quarantine; 7-day lifecycle TTL (24h on quarantine) — unchanged from the original plan.
@@ -1099,6 +1170,7 @@ export interface CatalogRepository {
 - [ ] **7.7** Author `infra/cms/upload-validator.ts` (strict prefix filter; no-FURL `LambdaWithUrl`); `pulumi preview` clean → commit `feat(infra): upload validator module`
 
 **Test scenarios:** (beyond the TDD list)
+
 - Edge: copy-self-trigger — promotion writes to `catalog/` which the strict `uploads/quarantine/` filter ignores; integration test verifies no re-trigger (unchanged, critical).
 - Error path: Postgres unavailable during UPDATE → object stays in quarantine; Lambda event-source retry handles; persistent failure logs for the 24h TTL to sweep.
 - Integration: admin SPA upload of a real synced `.gp` (~4.6 MB) → 1–3 s later the public detail API returns `has_audio: true` + seeded bars/sections; signed URL fetches the original file.
@@ -1116,6 +1188,7 @@ export interface CatalogRepository {
 **Dependencies:** U2 (core types), U3 (`CloudFrontStaticSite`), U6 (admin CRUD API — DataProvider needs the endpoint).
 
 **Files:**
+
 - Create: `apps/admin-spa/src/main.tsx` (wires `CatalogApiClient` + `catalogDataProvider` + renders `<App />`)
 - Create: `apps/admin-spa/src/App.tsx` (React-Admin `<Admin>` + `<Resource name="catalog">`; exercises edited inside the lesson Edit view, not a top-level resource; no patterns resource in K v1)
 - Create: `adapters/react-admin/CatalogApiClient.ts` (fetch wrapper; base URL from `import.meta.env.VITE_API_URL`; maps HTTP errors — 412 → `StaleUpdateError`, 422 → `PublishGateError(gate)`)
@@ -1131,6 +1204,7 @@ export interface CatalogRepository {
 - Create: `apps/admin-spa/vite.config.ts` · `index.html` · `package.json` · `tsconfig.json` · ~~`__tests__/{App,CatalogFileInput,AlphaTexInput}.test.tsx`~~ <!-- SUPERSEDED: co-located tests (no __tests__/) per tooling DACI 2026-06-09 §F-2 -->
 
 **Approach (deltas from the original — everything not listed is unchanged):**
+
 - React-Admin v5.14.7 + React 19 + pinned MUI/Emotion transitive versions; no `authProvider`; Vite bundle to S3; CSP including `connect-src` S3 — all as originally specified.
 - `update` flows carry `updatedAt` as the `If-Match` token (RC-12); 412 → React-Admin conflict UI ("This item was updated elsewhere — refresh").
 - The lesson Edit view composes two panels: facets form · exercises editor (`replaceExercises` on save — atomic). (The pattern-links panel is deferred with the patterns UI — H-11.)
@@ -1146,6 +1220,7 @@ export interface CatalogRepository {
 - [ ] **8.5** Author `infra/cms/admin-site.ts` (relocated distribution config); `pnpm --filter @notation-hero/admin-spa build` produces the bundle; `pulumi preview` clean → commit
 
 **Test scenarios:** (beyond the TDD list; manual/integration unchanged from the original — create/edit/archive/upload end-to-end, Basic-Auth gate, CORS preflight)
+
 - Integration (manual): author a **beat lesson** end-to-end — create lesson → 3 alphaTex steps with BPM ladder → Publish (fails until a step exists — gate toast) → appears in public API. And the **upload-first song path**: New song → upload `.gp` → poll lands on the draft Edit view with seeded bpm/sections → set license → Publish.
 - Integration (manual): replace a song's source file via the item-scoped input; the detail response serves the new checksum within one refresh.
 
@@ -1162,6 +1237,7 @@ export interface CatalogRepository {
 **Dependencies:** U3 (components), U5/U6/U7/U8 (the `infra/cms/*.ts` modules exist).
 
 **Files:**
+
 - Create: `infra/index.ts` (entry — cross-cutting resources + module composition)
 - Create: `infra/Pulumi.yaml` · `infra/Pulumi.dev.yaml` (config incl. `basicAuthCredential` + **`neonDatabaseUrl`** as `secure:`) · `infra/Pulumi.prod.yaml` (scaffold, not deployed)
 - Create: `infra/package.json` (deps: `@pulumi/pulumi@^3`, `@pulumi/aws@^7`, `@notation-hero/adapters-aws`) · `infra/tsconfig.json`
@@ -1171,11 +1247,13 @@ export interface CatalogRepository {
 **Approach:**
 
 **Pre-deploy guards** (CI `deploy.yml` AND `infra/README.md` — extended):
+
 1. `pulumi backend` MUST NOT report `file://` (unchanged — state holds the Neon URL + Basic-Auth secrets).
 2. `aws sts get-caller-identity` returns valid identity.
 3. **Migrations are current:** `DATABASE_URL=$(pulumi config get neonDatabaseUrl --show-secrets) pnpm --filter @notation-hero/adapters-postgres migrate` — idempotent; run BEFORE `pulumi up` so new Lambda code never meets an old schema.
 
 **`infra/index.ts` structure:**
+
 ```ts
 // 1. Config
 const config = new pulumi.Config()
@@ -1238,6 +1316,7 @@ export const publicApiUrl = publicApi.distributionDomain
 - [ ] **9.5** Idempotency + rotation drills: second `pulumi up` shows zero diff; KVS credential rotation <30 s; `neonDatabaseUrl` rotation = config set + `pulumi up` (Lambda env update only); **CF signing-key rotation drill** (old+new keys coexist in the KeyGroup during cutover — no outage) → record results in README → commit
 
 **Test scenarios:**
+
 - Happy path: full bring-up on a fresh AWS account + fresh Neon project — resources in dependency order; curator signs in within the first-deploy window (15–25 min, certs dominating — unchanged).
 - Edge: `pulumi config set --secret neonDatabaseUrl <new> && pulumi up` updates only the three Lambdas' env (no distribution churn).
 - Error path: missing `neonDatabaseUrl` config → `config.requireSecret` fails preview with a clear message.
@@ -1260,31 +1339,31 @@ export const publicApiUrl = publicApi.distributionDomain
 
 ## Risks & Dependencies
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|------------|
-| Migrations drift from the locked spec §4 (hand-copy error, "helpful" edits) | Low | High | `0001` is **verbatim**; the U4.2 **CHECK-fidelity probe suite** asserts every named constraint exists and fires; any migration edit is flagged as a spec change in review |
-| Driver drift: `pg` (tests) vs `@neondatabase/serverless` (runtime) behave differently (type parsing, transactions) | Low | Med | the `SqlExecutor` seam keeps SQL identical; env-gated **Neon smoke test** (U4.8) runs the suite subset through the real driver against a throwaway Neon branch |
-| Neon free-tier limits (0.5 GB / 100 compute-hrs/project; scale-to-zero @5 min) bite | Low | Med | catalog is tiny (~MBs for thousands of rows); player reads are CloudFront-cached; **cold-resume latency** (~0.5–1 s on first query after idle) is acceptable for K and invisible behind cache — monitor in month 1; Aurora/RDS swap documented behind K-3 |
-| Neon connection string leaks (Pulumi state, Lambda env console visibility) | Low | High | Pulumi backend guard (no `file://`, unchanged); `requireSecret`; **least-privilege `app_cms` role** (no DDL/DELETE); rotation drill in U9.5; SSM SecureString documented as the alternative injection path |
-| Invalid alphaTex stored via direct API call (bypassing the SPA's client-side parse) breaks a step in the player | Low | Med | single-curator surface (the SPA *is* the authoring path); player degrades per-step (`kind:'unavailable'` pattern); server-side re-parse is a named M1 hardening item (RC-5) |
-| alphaTab-in-Node parse (U7 seeding) inflates validator bundle/cold start | Med | Low | async event path — no user-facing latency; reserved concurrency 5; measure bundle at U7 build; fallback = drop seeding to filename-only and keep validation (seeding is additive) |
-| AWS account not configured locally → can't `pulumi up` | Low | High | account exists (IAM Identity Center + zero-spend budget, 2026-06); `infra/README.md` covers profile setup; U9 fails fast |
-| Pulumi state file leaks secrets if backend is misconfigured | Low | High | **Pre-deploy guard: `pulumi backend` MUST NOT report `file://`** (unchanged); Pulumi Cloud or S3+KMS; secrets via `config.requireSecret` |
-| CloudFront Function 10KB code limit exceeded with KVS lookup + constant-time compare | Low | Med | **Measured at U9** via `describe-function`; assert <8KB; fallback HMAC pattern (unchanged) |
-| `constantTimeEquals` JIT-optimized into early-exit on cloudfront-js-2.0 | Low | Med | **Microbench step in U9** (unchanged); fallback HMAC pattern |
-| OAC for Lambda FURL: CORS gotchas + `x-amz-content-sha256` on POST/PUT | Low | Med | `sourceArn`-pinned Permission + `AllViewerExceptHostHeader` policy (unchanged); uploads bypass CF via presigned POST |
-| `aws.cloudfront.KeyvaluestoreKey` Pulumi resource may not exist in v7 | Med | Low | **Verify at U3 build**; fallback `command.local.Command` (unchanged) |
-| Magic-byte detection misclassifies an edge-case Guitar Pro file | Low | Med | `file-type` actively maintained; fixtures for all GP versions (U2.5/U7.1); misclassified files land in `rejected/` with reason for forensics (unchanged) |
-| Two CloudFront distributions = doubled ACM renewals + DNS-validation persistence | Low | Low | $0 cost; CNAME persistence documented; `DaysToExpiry < 30` alarms (unchanged) |
-| Lambda cold start noticeable on admin first action | Med | Low | acceptable internal; ARM64/LLRT post-v1 (unchanged); Neon HTTP driver adds no pool warm-up |
-| `dependency-cruiser` config drift | Low | Med | CI `depcheck` gate; visible in review (unchanged); Nx boundary tags add a second axis when materialized |
-| KVS credential rotation eventual-consistency lag (10–30 s) | Low | Low | emergency-rotation procedure in runbook (unchanged) |
-| Admin gate brute-force amplifies cost | Low | Med | CloudWatch `4xxErrorRate > 10/sec` alarm → reactive WAF (unchanged — explicit deferred-with-trigger) |
-| Mid-stack rollback strands uploads in quarantine | Low | Med | runbook "Rollback hygiene": drain prefixes; `forceDestroy:false`; 24h TTL sweep (unchanged) |
-| Validator UPDATE races admin metadata edit | Low | Low | **column-scoped partial UPDATE** with NULL-only fills expressed **inside the statement** (`COALESCE`) — a curator edit landing mid-validation survives; admin API strips `notation_*`/`cover_image_key` from PUT bodies. **Accepted limitation:** a curator who deliberately blanks a parsed facet gets it re-seeded on the next re-upload of that file |
-| S3 event arrives before the catalog row exists (upload-before-create) | Med | Low | validator row pre-check → `rejected/orphaned/` reason `item-record-missing` (unchanged logic, Postgres SELECT) |
-| `dorny/paths-filter` failure skips CI silently | Low | Med | `changes` job required independently + loud sanity assert (unchanged) |
-| Admin SPA stored-XSS via rendered content | Low | Med | CSP on admin distribution; React DOM-escaping; upload Content-Type allowlist now *narrower* (no `text/plain` — alphaTex is not an upload format anymore, RC-5) |
+| Risk                                                                                                               | Likelihood | Impact | Mitigation                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------ | ---------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Migrations drift from the locked spec §4 (hand-copy error, "helpful" edits)                                        | Low        | High   | `0001` is **verbatim**; the U4.2 **CHECK-fidelity probe suite** asserts every named constraint exists and fires; any migration edit is flagged as a spec change in review                                                                                                                                                                               |
+| Driver drift: `pg` (tests) vs `@neondatabase/serverless` (runtime) behave differently (type parsing, transactions) | Low        | Med    | the `SqlExecutor` seam keeps SQL identical; env-gated **Neon smoke test** (U4.8) runs the suite subset through the real driver against a throwaway Neon branch                                                                                                                                                                                          |
+| Neon free-tier limits (0.5 GB / 100 compute-hrs/project; scale-to-zero @5 min) bite                                | Low        | Med    | catalog is tiny (~MBs for thousands of rows); player reads are CloudFront-cached; **cold-resume latency** (~0.5–1 s on first query after idle) is acceptable for K and invisible behind cache — monitor in month 1; Aurora/RDS swap documented behind K-3                                                                                               |
+| Neon connection string leaks (Pulumi state, Lambda env console visibility)                                         | Low        | High   | Pulumi backend guard (no `file://`, unchanged); `requireSecret`; **least-privilege `app_cms` role** (no DDL/DELETE); rotation drill in U9.5; SSM SecureString documented as the alternative injection path                                                                                                                                              |
+| Invalid alphaTex stored via direct API call (bypassing the SPA's client-side parse) breaks a step in the player    | Low        | Med    | single-curator surface (the SPA _is_ the authoring path); player degrades per-step (`kind:'unavailable'` pattern); server-side re-parse is a named M1 hardening item (RC-5)                                                                                                                                                                             |
+| alphaTab-in-Node parse (U7 seeding) inflates validator bundle/cold start                                           | Med        | Low    | async event path — no user-facing latency; reserved concurrency 5; measure bundle at U7 build; fallback = drop seeding to filename-only and keep validation (seeding is additive)                                                                                                                                                                       |
+| AWS account not configured locally → can't `pulumi up`                                                             | Low        | High   | account exists (IAM Identity Center + zero-spend budget, 2026-06); `infra/README.md` covers profile setup; U9 fails fast                                                                                                                                                                                                                                |
+| Pulumi state file leaks secrets if backend is misconfigured                                                        | Low        | High   | **Pre-deploy guard: `pulumi backend` MUST NOT report `file://`** (unchanged); Pulumi Cloud or S3+KMS; secrets via `config.requireSecret`                                                                                                                                                                                                                |
+| CloudFront Function 10KB code limit exceeded with KVS lookup + constant-time compare                               | Low        | Med    | **Measured at U9** via `describe-function`; assert <8KB; fallback HMAC pattern (unchanged)                                                                                                                                                                                                                                                              |
+| `constantTimeEquals` JIT-optimized into early-exit on cloudfront-js-2.0                                            | Low        | Med    | **Microbench step in U9** (unchanged); fallback HMAC pattern                                                                                                                                                                                                                                                                                            |
+| OAC for Lambda FURL: CORS gotchas + `x-amz-content-sha256` on POST/PUT                                             | Low        | Med    | `sourceArn`-pinned Permission + `AllViewerExceptHostHeader` policy (unchanged); uploads bypass CF via presigned POST                                                                                                                                                                                                                                    |
+| `aws.cloudfront.KeyvaluestoreKey` Pulumi resource may not exist in v7                                              | Med        | Low    | **Verify at U3 build**; fallback `command.local.Command` (unchanged)                                                                                                                                                                                                                                                                                    |
+| Magic-byte detection misclassifies an edge-case Guitar Pro file                                                    | Low        | Med    | `file-type` actively maintained; fixtures for all GP versions (U2.5/U7.1); misclassified files land in `rejected/` with reason for forensics (unchanged)                                                                                                                                                                                                |
+| Two CloudFront distributions = doubled ACM renewals + DNS-validation persistence                                   | Low        | Low    | $0 cost; CNAME persistence documented; `DaysToExpiry < 30` alarms (unchanged)                                                                                                                                                                                                                                                                           |
+| Lambda cold start noticeable on admin first action                                                                 | Med        | Low    | acceptable internal; ARM64/LLRT post-v1 (unchanged); Neon HTTP driver adds no pool warm-up                                                                                                                                                                                                                                                              |
+| `dependency-cruiser` config drift                                                                                  | Low        | Med    | CI `depcheck` gate; visible in review (unchanged); Nx boundary tags add a second axis when materialized                                                                                                                                                                                                                                                 |
+| KVS credential rotation eventual-consistency lag (10–30 s)                                                         | Low        | Low    | emergency-rotation procedure in runbook (unchanged)                                                                                                                                                                                                                                                                                                     |
+| Admin gate brute-force amplifies cost                                                                              | Low        | Med    | CloudWatch `4xxErrorRate > 10/sec` alarm → reactive WAF (unchanged — explicit deferred-with-trigger)                                                                                                                                                                                                                                                    |
+| Mid-stack rollback strands uploads in quarantine                                                                   | Low        | Med    | runbook "Rollback hygiene": drain prefixes; `forceDestroy:false`; 24h TTL sweep (unchanged)                                                                                                                                                                                                                                                             |
+| Validator UPDATE races admin metadata edit                                                                         | Low        | Low    | **column-scoped partial UPDATE** with NULL-only fills expressed **inside the statement** (`COALESCE`) — a curator edit landing mid-validation survives; admin API strips `notation_*`/`cover_image_key` from PUT bodies. **Accepted limitation:** a curator who deliberately blanks a parsed facet gets it re-seeded on the next re-upload of that file |
+| S3 event arrives before the catalog row exists (upload-before-create)                                              | Med        | Low    | validator row pre-check → `rejected/orphaned/` reason `item-record-missing` (unchanged logic, Postgres SELECT)                                                                                                                                                                                                                                          |
+| `dorny/paths-filter` failure skips CI silently                                                                     | Low        | Med    | `changes` job required independently + loud sanity assert (unchanged)                                                                                                                                                                                                                                                                                   |
+| Admin SPA stored-XSS via rendered content                                                                          | Low        | Med    | CSP on admin distribution; React DOM-escaping; upload Content-Type allowlist now _narrower_ (no `text/plain` — alphaTex is not an upload format anymore, RC-5)                                                                                                                                                                                          |
 
 **Prerequisites (external):**
 
@@ -1357,6 +1436,7 @@ Data-store alternatives (2026-06-10 revision): **resolved upstream, not re-litig
 ## Success Metrics
 
 **Ship-mechanics (must hold):**
+
 - **`pulumi up --stack dev` completes successfully** with all ~30–45 AWS resources provisioned (no database resources — Neon is external). **First-deploy timing: 15–25 minutes** (CloudFront ~15 min cold create; ACM validation 5–30 min — two-pass `--target` for certs first). **Subsequent no-change `pulumi up`: <30 seconds.** **Migrations precede deploy:** `pnpm --filter @notation-hero/adapters-postgres migrate` is idempotent and green against Neon.
 - **Admin curator can create a song with `.gp` file upload** end-to-end in under 60 seconds (sign in → form → upload → save → in list, validator + seeding < 3 s), **and author a beat lesson** (3 alphaTex steps with a BPM ladder + pattern link + publish) without leaving the SPA.
 - **Public `GET /v1/catalog` returns the curated catalog** in <500 ms (warm) / <2 s (cold) from CloudFront; `?q=sao` matches "São" titles (accent-insensitive search verified in prod, not just tests).
@@ -1366,9 +1446,11 @@ Data-store alternatives (2026-06-10 revision): **resolved upstream, not re-litig
 - **Total monthly cost: $0 AWS** (Cost Explorer) **+ $0 Neon** (free-tier dashboard) at end of first month.
 
 **Schedule tripwire (round-2 review — the calendar is the constraint that decays):**
+
 - **A live public catalog URL exists within 3 weeks of U2 start, and the whole plan lands within 6 weeks** (locked at the 2026-06-10 walkthrough). When a phase overruns its share, the named descope levers fire in order: drop parse-once seeding to filename-only (U7 fallback) → defer source-replacement uploads (new-song only) → defer the exercises editor polish. Hitting every quality metric three months late fails the actual goal.
 
 **Portfolio-outcome metrics (the actual job-hunt purpose K serves — per F-DR2a):**
+
 - **≥5 captured solution docs in `docs/solutions/`** tied to the named patterns:
   - `docs/solutions/kvs-basic-auth-rotation.md` — CF Function + KVS edge-auth with rotation procedure
   - `docs/solutions/lambda-furl-oac-pattern.md` — Lambda FURL behind CloudFront with OAC (`sourceArn` pinning, `AllViewerExceptHostHeader`)
@@ -1388,17 +1470,21 @@ Capture these via `/ce-compound` after each unit lands (this build remains the s
 The 9 units sequence into 4 phases. Phase boundaries are PR-merge points. **U1 is already done** — Phase A is half-complete at revision time.
 
 ### Phase A — Foundation (U1 ✅, U2)
+
 U1 (pnpm Layout-4 skeleton + CI + dependency-cruiser) is committed. U2 builds the catalog core domain. Phase exit gate: CI green, `core/catalog` tests pass with the Zod↔CHECK mirror suite.
 
 ### Phase B — Infra primitives + adapters (U3, U4)
+
 Pulumi ComponentResources + the Postgres/S3/SNS adapters. Phase exit gate: **Docker-Postgres integration suite green including the CHECK-fidelity probes**; LocalStack suites green; `pulumi preview` clean per component. Still no deployed infra, no Neon dependency (everything local).
 
 ### Phase C — Lambdas (U5, U6, U7)
+
 Three Lambda composition roots, built public-read → admin-CRUD → validator (same rationale as the original). Phase exit gates: all unit tests green; **the `/v1` contract test matches the locked spec §9 projection** (the old "wait for Track 3" gate is satisfied by construction — the schema is locked); `infra/cms/*` modules preview cleanly.
 
 **Phase C0 — thin-slice first deploy (recommended; round-2 review, job-hunt clock).** Immediately after U5: a minimal `infra/index.ts` composing only the files bucket + the public-read module + the Neon secret + migrations, on the default CloudFront domain (defer KVS/admin distro/ACM aliases). Exit artifact: **a live public `GET /v1/catalog` URL** — the first interview-visible deployed system (FURL+OAC, Lambda→Neon, signed URLs, Pulumi) lands here instead of after all 9 units, and U9 becomes incremental composition rather than big-bang bring-up. If the calendar bites mid-Phase C, there is already something deployed to show.
 
 ### Phase D — Admin SPA + Pulumi composition + deploy (U8, U9)
+
 React-Admin frontend + the infra root + first deploy. New pre-deploy steps: Neon project + `app_cms` role created; `neonDatabaseUrl` secret set; **migrations run against Neon**; then the two-pass `pulumi up`. Phase exit gate: integration tests green against the dev stack; curator validates the full author loop (song + beat lesson) manually.
 
 ---

@@ -1,4 +1,18 @@
-# Hand-maintained low-fi wireframe sims (single large HTML files, not app source).
+# Hand-maintained low-fi wireframe sims and design mockups (single large HTML files, not app source).
 # Prettier would reflow the whole file on every edit — hundreds of noise lines per change.
-# Prettier stays scoped to real source (tooling/, server/ have their own .prettierrc).
+# Prettier stays scoped to real source (root prettier.config.mjs governs all packages now).
 docs/wireframe/*.html
+docs/mockups/*.html
+
+# Generated — must match the generator, never hand-format.
+**/routeTree.gen.ts
+
+# Lockfile + build output + reports (also gitignored; listed for local check parity).
+pnpm-lock.yaml
+dist/
+storybook-static/
+playwright-report/
+test-results/
+
+# Agent scratch (SDD briefs/reports/ledger; not committed source).
+.superpowers/

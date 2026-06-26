@@ -1,5 +1,5 @@
 ---
-title: "feat: NH-206 Phase 1 — deployable AWS slice (About page end-to-end)"
+title: 'feat: NH-206 Phase 1 — deployable AWS slice (About page end-to-end)'
 date: 2026-06-21
 type: feat
 status: ready

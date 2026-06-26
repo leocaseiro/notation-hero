@@ -30,31 +30,39 @@ One Next.js codebase, two `next build` modes (SSR for web, static for Capacitor)
 ## Findings
 
 ### F-1 — Capacitor ⇒ static build (hard constraint)
-Capacitor loads a static `dist/` in a WebView; **no server runtime**. SSR can't run *inside the native app* → the native build must be static. SSR is a **web-only** enhancement.
+
+Capacitor loads a static `dist/` in a WebView; **no server runtime**. SSR can't run _inside the native app_ → the native build must be static. SSR is a **web-only** enhancement.
 
 ### F-2 — One source, two build targets (chosen shape)
+
 `output` is a **build-time** switch, not a runtime toggle (`isSsrEnabled = !isCapacitor()` was the right intent, wrong layer):
+
 - `next.config.mjs`: `output: process.env.BUILD_TARGET === 'capacitor' ? 'export' : undefined`.
 - `build:web` → SSR; `build:ios`/`:android` → export → `out/` → `npx cap copy`.
 - **One router, one state model, one component tree.** Shared via `core`/`adapters` (build-time) and the backend (data). **No micro-frontend; no cross-app state bridge.**
 - _Optional later:_ split a lean SEO-only marketing app if the game bundle ever hurts catalog page-load (route-level code-splitting likely makes this unnecessary). Additive — the hexagon keeps catalog logic in `core`/`adapters`.
 
 ### F-3 — Free-tier SSR on AWS, keeping Pulumi
+
 **OpenNext → Lambda + CloudFront**: compiles Next SSR to a Lambda + static assets; **you wire it in Pulumi**. Always-free Lambda (1M req) + CloudFront (1 TB) ⇒ ~$0. **Amplify** has a free SSR allowance but provisions its own infra (**not in Pulumi**) and hides the IAM/CloudFront/Lambda depth → rejected.
 
 ### F-4 — 2026 free tiers (verified)
+
 Perpetual Always-Free (every account): CloudFront 1 TB egress + 10M req; Lambda 1M req + 400K GB-s; DynamoDB 25 GB; SNS/SQS 1M; Cognito 10k MAU. S3 5 GB (12-mo → pennies). New accounts also get a $200 / 6-month credit pool. EC2 has no perpetual free tier (avoid). ⇒ static + SSR both ≈ **$0/mo** at this scale.
 
 ### F-5 — Hexagon fit
+
 FE = one `app` in `apps/`. `core` / `adapters` / `infra` untouched (machine-enforced; `FOLD-hex` locked). The SSR Lambda+CloudFront is added in `infra/` (Pulumi) and never touches `core`/`adapters`.
 
 ### F-6 — Routing
+
 One source = **one router**, **no subdomain needed**. Web served at one domain via CloudFront; the native app has no URL (loads the bundle locally). Capacitor static build needs `basePath`/`trailingSlash` care for the `capacitor://localhost` scheme (or `HashRouter`-style paths).
 
 ### F-7 — Static-export vs SSR
+
 - **Static-export:** keeps App Router, routing, components, client interactivity, build-time SSG/RSC. Loses runtime SSR, ISR, server actions, route handlers, middleware.
 - **SSR (web build):** per-request render + hydration → SEO + portfolio piece.
-- **Constraint:** any page shipping in the **iOS (static) build must render client-side**; `isCapacitor()` selects the *data path* (client fetch vs server render), SSR is the web bonus.
+- **Constraint:** any page shipping in the **iOS (static) build must render client-side**; `isCapacitor()` selects the _data path_ (client fetch vs server render), SSR is the web bonus.
 
 ## Implementation notes (for the build phase)
 

@@ -120,11 +120,11 @@ Per area (§2–§7): **Rec → one-line Why → concrete Cmd/config → `$0` no
 - **esbuild:** `esbuild server/src/entry/http.ts --bundle --format=cjs --platform=node --target=node24 --minify --keep-names --external:@aws-sdk/* --outfile=server/dist/http/index.js` — ⚠️ do **NOT** `--external` `@orpc/*` (ESM-only → must be bundled into the CJS artifact); `reflect-metadata` must be the first import.
 - **Handler (cached singleton):**
   ```ts
-  import "reflect-metadata"; // FIRST import
-  import { NestFactory } from "@nestjs/core";
-  import serverlessExpress from "@codegenie/serverless-express";
-  import type { Handler } from "aws-lambda";
-  import { AppModule } from "../app.module";
+  import 'reflect-metadata'; // FIRST import
+  import { NestFactory } from '@nestjs/core';
+  import serverlessExpress from '@codegenie/serverless-express';
+  import type { Handler } from 'aws-lambda';
+  import { AppModule } from '../app.module';
   let cached: Handler;
   export const handler: Handler = async (e, c, cb) => {
     cached ??= serverlessExpress({
@@ -164,11 +164,11 @@ Per area (§2–§7): **Rec → one-line Why → concrete Cmd/config → `$0` no
 - **Rec:** **React 19.2.7** + **React Compiler 1.0 (GA, no RC)** via `babel-plugin-react-compiler@1.0.0`, wired through **`@rolldown/plugin-babel`** + `reactCompilerPreset()` — **NOT** the old `react({ babel })` option (`@vitejs/plugin-react@6` dropped its internal Babel for oxc/Rust). `build.sourcemap: true` (Sentry).
 - **Config:**
   ```ts
-  import react, { reactCompilerPreset } from "@vitejs/plugin-react";
-  import babel from "@rolldown/plugin-babel";
+  import react, { reactCompilerPreset } from '@vitejs/plugin-react';
+  import babel from '@rolldown/plugin-babel';
   export default defineConfig({
     plugins: [
-      tanstackRouter({ target: "react", autoCodeSplitting: true }),
+      tanstackRouter({ target: 'react', autoCodeSplitting: true }),
       react(),
       babel({ presets: [reactCompilerPreset()] }),
     ],
@@ -257,11 +257,11 @@ Per area (§2–§7): **Rec → one-line Why → concrete Cmd/config → `$0` no
 - **Server tests → Vitest 4.1.9** _(Leo, 2026-06-20)_. NestJS SWC + Vitest recipe: `nest g`'s Jest-style specs run **unchanged** under `globals: true`. One `server/.swcrc` serves build + test (`module.type` is top-level → Vitest overrides it inline to `es6` via `swc.vite({ module: { type: 'es6' } })`; the shared `jsc` block is read by both). ⚠️ **Do NOT copy the official recipe verbatim** — it omits the decorator-metadata transform → DI breaks (issue #14653); keep the transform in the shared `.swcrc` + a `reflect-metadata` `setupFiles`. Pin `@swc/core@1.15.41` and add a one-test DI smoke check (vitest4 + unplugin-swc pairing not officially documented).
   ```ts
   // server/vitest.config.ts
-  import swc from "unplugin-swc";
-  import tsconfigPaths from "vite-tsconfig-paths";
+  import swc from 'unplugin-swc';
+  import tsconfigPaths from 'vite-tsconfig-paths';
   export default defineConfig({
-    test: { globals: true, setupFiles: ["reflect-metadata"] },
-    plugins: [tsconfigPaths(), swc.vite({ module: { type: "es6" } })],
+    test: { globals: true, setupFiles: ['reflect-metadata'] },
+    plugins: [tsconfigPaths(), swc.vite({ module: { type: 'es6' } })],
   });
   ```
 - **Client tests → Vitest 4.1.9** + `jsdom@29.1.1` + (nice-to-have) `@testing-library/react@16.3.2`.

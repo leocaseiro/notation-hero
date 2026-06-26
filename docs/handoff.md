@@ -40,16 +40,16 @@
 
 ## Key paths (read these on re-entry)
 
-| What | Path |
-|---|---|
-| Requirements (original scope) | `scope.md` (this repo) |
-| **Tech stack design doc (APPROVED)** | `docs/design-stack.md` (this repo) |
-| Design doc source-of-truth copy | `~/.gstack/projects/pensive-boyd-6d17e3/leocaseiro-claude-pensive-boyd-6d17e3-design-20260603-163704.md` |
-| AWS backend brainstorm (committed on branch `claude/serene-grothendieck-fb5e67`) | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-aws-brainstorm.md` |
-| Client-stack brainstorm (committed, same branch; has UI design + alternatives-rejected) | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-brainstorm.md` |
-| Phase-0 working rhythm game (MPL-2.0 fork) | `~/Sites/alphaTabWebsite` (branch `rhythm-game`), live: https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game |
-| MIDI mapping feature plan | `~/Sites/alphaTabWebsite/MIDI_MAPPING_PLAN_SUMMARY.md` |
-| Reference only (GPL-3, do NOT copy code) | `~/Sites/sightread` (sightread.dev) |
+| What                                                                                    | Path                                                                                                                  |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Requirements (original scope)                                                           | `scope.md` (this repo)                                                                                                |
+| **Tech stack design doc (APPROVED)**                                                    | `docs/design-stack.md` (this repo)                                                                                    |
+| Design doc source-of-truth copy                                                         | `~/.gstack/projects/pensive-boyd-6d17e3/leocaseiro-claude-pensive-boyd-6d17e3-design-20260603-163704.md`              |
+| AWS backend brainstorm (committed on branch `claude/serene-grothendieck-fb5e67`)        | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-aws-brainstorm.md`                          |
+| Client-stack brainstorm (committed, same branch; has UI design + alternatives-rejected) | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-brainstorm.md`                              |
+| Phase-0 working rhythm game (MPL-2.0 fork)                                              | `~/Sites/alphaTabWebsite` (branch `rhythm-game`), live: https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game |
+| MIDI mapping feature plan                                                               | `~/Sites/alphaTabWebsite/MIDI_MAPPING_PLAN_SUMMARY.md`                                                                |
+| Reference only (GPL-3, do NOT copy code)                                                | `~/Sites/sightread` (sightread.dev)                                                                                   |
 
 ## Decisions locked
 
@@ -93,6 +93,7 @@
 
 ~~Do NOT rename while a Claude session's CWD is inside the folder (breaks the~~ <!-- SUPERSEDED: rename already complete; procedure below is a no-op -->
 ~~session + worktree links). Exit this session first, then in a plain terminal:~~ <!-- SUPERSEDED: rename already complete; procedure below is a no-op -->
+
 ```bash
 cd ~/Sites
 mv notation-hero notation-hero
@@ -103,6 +104,7 @@ git worktree repair \
   .claude/worktrees/serene-grothendieck-fb5e67
 git worktree list   # every path should now start with ~/Sites/notation-hero
 ```
+
 ~~Then start a fresh Claude session from `~/Sites/notation-hero`.~~ <!-- SUPERSEDED: rename already done; no-op procedure -->
 ~~Optional: update `.specstory/.project.json` `project_name` to `notation-hero`.~~ <!-- SUPERSEDED: rename already done; no-op procedure -->
 
@@ -149,15 +151,16 @@ Three planning docs were written across two days; **later decisions override
 earlier ones**. When `ce-doc-review` flags these as contradictions, here's the
 resolution (newest wins) — do not re-litigate:
 
-| Topic | `stack-brainstorm.md` (earliest) | Resolution (current truth) |
-|---|---|---|
-| Backend | ❌ AWS "for now"; leaning **Supabase** | ✅ **AWS** — overridden by `stack-aws-brainstorm.md` (learning AWS became first-class + legacy pre-2025-07-15 account = Always-Free tiers) |
-| CI/CD | "**No CI/CD needed**, build locally" | ✅ **CI/CD is the priority** (this session). Reversed. |
-| Web hosting | Cloudflare / Netlify / GH Pages | ✅ **AWS S3 + CloudFront** (this session) |
-| ~~Client stack~~ | ~~web + AlphaTab + Vite + React + PixiJS + Capacitor + Web MIDI + local-first + Legend-State/RxDB~~ | ~~✅ **Unchanged** — all three docs agree~~ | <!-- SUPERSEDED: locked structure is Nx hexagonal monorepo (core/adapters/apps/infra), not a plain Vite app; client stack never run through 2026-06-09 DACI -->
+| Topic            | `stack-brainstorm.md` (earliest)                                                                    | Resolution (current truth)                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend          | ❌ AWS "for now"; leaning **Supabase**                                                              | ✅ **AWS** — overridden by `stack-aws-brainstorm.md` (learning AWS became first-class + legacy pre-2025-07-15 account = Always-Free tiers) |
+| CI/CD            | "**No CI/CD needed**, build locally"                                                                | ✅ **CI/CD is the priority** (this session). Reversed.                                                                                     |
+| Web hosting      | Cloudflare / Netlify / GH Pages                                                                     | ✅ **AWS S3 + CloudFront** (this session)                                                                                                  |
+| ~~Client stack~~ | ~~web + AlphaTab + Vite + React + PixiJS + Capacitor + Web MIDI + local-first + Legend-State/RxDB~~ | ~~✅ **Unchanged** — all three docs agree~~                                                                                                | <!-- SUPERSEDED: locked structure is Nx hexagonal monorepo (core/adapters/apps/infra), not a plain Vite app; client stack never run through 2026-06-09 DACI --> |
 
 `stack-brainstorm.md` also holds two things to PRESERVE into `design-stack.md`
 post-review:
+
 - The fullest **friendly-notation UI design** (Melodics-style horizontal
   highway, lanes mirror the kit, gem shape encodes articulation, translucent
   hit-window band, tendency meter, combo glow, accessibility = color+shape+text).
@@ -168,6 +171,7 @@ post-review:
 ## ce-doc-review runbook (next session)
 
 Goal: harden the plan before building. In a fresh session:
+
 1. Review set (all committed/safe):
    - `docs/design-stack.md` (this branch) — approved tech plan
    - `scope.md` (this branch) — requirements

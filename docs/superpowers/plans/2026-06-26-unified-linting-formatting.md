@@ -119,12 +119,12 @@ Create `eslint.config.base.mjs`:
 // packages (must not throw "Cannot redefine plugin").
 //
 // @ts-check
-import eslintComments from "@eslint-community/eslint-plugin-eslint-comments";
-import eslintConfigPrettier from "eslint-config-prettier/flat";
-import promise from "eslint-plugin-promise";
-import regexp from "eslint-plugin-regexp";
-import sonarjs from "eslint-plugin-sonarjs";
-import eslintPluginUnicorn from "eslint-plugin-unicorn";
+import eslintComments from '@eslint-community/eslint-plugin-eslint-comments';
+import eslintConfigPrettier from 'eslint-config-prettier/flat';
+import promise from 'eslint-plugin-promise';
+import regexp from 'eslint-plugin-regexp';
+import sonarjs from 'eslint-plugin-sonarjs';
+import eslintPluginUnicorn from 'eslint-plugin-unicorn';
 
 /** Flat-config array shared by every package. Spread as `...base` AFTER the
  *  package's generator + plugin configs and BEFORE package-specific overrides. */
@@ -132,13 +132,13 @@ export const base = [
   // Plugins NOT provided by any consumer generator — safe to register here.
   eslintPluginUnicorn.configs.recommended,
   sonarjs.configs.recommended,
-  promise.configs["flat/recommended"],
-  regexp.configs["flat/recommended"],
+  promise.configs['flat/recommended'],
+  regexp.configs['flat/recommended'],
   {
-    plugins: { "eslint-comments": eslintComments },
+    plugins: { 'eslint-comments': eslintComments },
     rules: {
       // Applies to every eslint-disable line (incl. unicorn/*) — forces a reason.
-      "eslint-comments/require-description": "error",
+      'eslint-comments/require-description': 'error',
     },
   },
 
@@ -147,27 +147,27 @@ export const base = [
   // import-x on server) owns those plugin registrations.
   {
     rules: {
-      "unicorn/filename-case": "off", // set per-package (spec §3.4)
-      "unicorn/prevent-abbreviations": "off",
-      "unicorn/no-null": "off",
-      "unicorn/relative-url-style": ["error", "always"],
-      "arrow-body-style": ["error", "as-needed"],
-      "import/no-default-export": "error",
-      "import/no-cycle": "off", // dependency-cruiser owns cycles
-      "import/order": [
-        "error",
+      'unicorn/filename-case': 'off', // set per-package (spec §3.4)
+      'unicorn/prevent-abbreviations': 'off',
+      'unicorn/no-null': 'off',
+      'unicorn/relative-url-style': ['error', 'always'],
+      'arrow-body-style': ['error', 'as-needed'],
+      'import/no-default-export': 'error',
+      'import/no-cycle': 'off', // dependency-cruiser owns cycles
+      'import/order': [
+        'error',
         {
           groups: [
-            "builtin",
-            "external",
-            "internal",
-            "parent",
-            "sibling",
-            "index",
-            "object",
-            "type",
+            'builtin',
+            'external',
+            'internal',
+            'parent',
+            'sibling',
+            'index',
+            'object',
+            'type',
           ],
-          alphabetize: { order: "asc", caseInsensitive: true },
+          alphabetize: { order: 'asc', caseInsensitive: true },
         },
       ],
     },
@@ -175,29 +175,29 @@ export const base = [
 
   // TypeScript rules — require the TS parser (set up by the consumer's generator).
   {
-    files: ["**/*.{ts,tsx}"],
+    files: ['**/*.{ts,tsx}'],
     rules: {
-      "@typescript-eslint/array-type": "off",
-      "@typescript-eslint/require-await": "off",
-      "@typescript-eslint/no-explicit-any": "error", // D5 (server no longer overrides off)
-      "@typescript-eslint/no-unsafe-assignment": "error",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      '@typescript-eslint/array-type': 'off',
+      '@typescript-eslint/require-await': 'off',
+      '@typescript-eslint/no-explicit-any': 'error', // D5 (server no longer overrides off)
+      '@typescript-eslint/no-unsafe-assignment': 'error',
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
     },
   },
   {
-    files: ["src/**/*.ts", "!src/**/*.tsx"],
+    files: ['src/**/*.ts', '!src/**/*.tsx'],
     rules: {
-      "@typescript-eslint/explicit-module-boundary-types": "warn",
+      '@typescript-eslint/explicit-module-boundary-types': 'warn',
     },
   },
 
   // Shared no-default-export carve-out: ambient declarations are type-only.
   {
-    files: ["**/*.d.ts"],
-    rules: { "import/no-default-export": "off" },
+    files: ['**/*.d.ts'],
+    rules: { 'import/no-default-export': 'off' },
   },
 
   // eslint-config-prettier MUST come last among rule-bearing configs — turns off
@@ -208,13 +208,13 @@ export const base = [
   // Shared ignores (spec §3.5). Package configs add their own on top.
   {
     ignores: [
-      "eslint.config.*",
-      "prettier.config.*",
-      "**/routeTree.gen.ts",
-      "dist/**",
-      "storybook-static/**",
-      "playwright-report/**",
-      ".claude/worktrees/**",
+      'eslint.config.*',
+      'prettier.config.*',
+      '**/routeTree.gen.ts',
+      'dist/**',
+      'storybook-static/**',
+      'playwright-report/**',
+      '.claude/worktrees/**',
     ],
   },
 ];
@@ -233,91 +233,82 @@ Replace `client/eslint.config.js` entirely:
 ```js
 // For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
 //  @ts-check
-import { tanstackConfig } from "@tanstack/eslint-config";
-import jsxA11y from "eslint-plugin-jsx-a11y";
-import reactPlugin from "eslint-plugin-react";
-import reactHooks from "eslint-plugin-react-hooks";
-import storybook from "eslint-plugin-storybook";
+import { tanstackConfig } from '@tanstack/eslint-config';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
+import reactPlugin from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+import storybook from 'eslint-plugin-storybook';
 
-import { base } from "../eslint.config.base.mjs";
+import { base } from '../eslint.config.base.mjs';
 
 export default [
   ...tanstackConfig,
   reactPlugin.configs.flat.recommended,
-  reactPlugin.configs.flat["jsx-runtime"],
+  reactPlugin.configs.flat['jsx-runtime'],
   // eslint-plugin-react-hooks v7 flat config (the bare recommended-latest is legacy shape).
-  reactHooks.configs.flat["recommended-latest"],
+  reactHooks.configs.flat['recommended-latest'],
   jsxA11y.flatConfigs.recommended,
 
   ...base,
 
   // Client-specific rules (non-layout; safe after eslint-config-prettier in base).
   {
-    settings: { react: { version: "detect" } },
+    settings: { react: { version: 'detect' } },
     rules: {
-      "react/function-component-definition": [
-        "error",
+      'react/function-component-definition': [
+        'error',
         {
-          namedComponents: "arrow-function",
-          unnamedComponents: "arrow-function",
+          namedComponents: 'arrow-function',
+          unnamedComponents: 'arrow-function',
         },
       ],
-      "react/jsx-max-depth": ["warn", { max: 5 }],
-      "react/no-unstable-nested-components": "error",
-      "react/no-array-index-key": "warn",
-      "react/jsx-props-no-spreading": "off", // shadcn/Radix spread {...props}
-      "react/no-unknown-property": "error",
-      "no-restricted-syntax": [
-        "error",
+      'react/jsx-max-depth': ['warn', { max: 5 }],
+      'react/no-unstable-nested-components': 'error',
+      'react/no-array-index-key': 'warn',
+      'react/jsx-props-no-spreading': 'off', // shadcn/Radix spread {...props}
+      'react/no-unknown-property': 'error',
+      'no-restricted-syntax': [
+        'error',
         {
           selector:
             'JSXAttribute[name.name="style"] > JSXExpressionContainer > ObjectExpression > Property[key.name=/^(color|background|backgroundColor|borderColor|outlineColor|fill|stroke)$/i] > Literal[value=/^(#|rgb|rgba|hsl|oklch)/i]',
           message:
-            "Use a CSS variable (var(--...)) instead of a hardcoded colour in inline styles.",
+            'Use a CSS variable (var(--...)) instead of a hardcoded colour in inline styles.',
         },
       ],
     },
   },
   // filename-case: PascalCase for components only (spec §3.4). Routes/main/generated excluded.
   {
-    files: ["src/components/**/*.{ts,tsx}"],
-    rules: { "unicorn/filename-case": ["error", { case: "pascalCase" }] },
+    files: ['src/components/**/*.{ts,tsx}'],
+    rules: { 'unicorn/filename-case': ['error', { case: 'pascalCase' }] },
   },
   // no-default-export carve-outs for config + story/demo files (spec §3.5).
   {
-    files: [
-      "vite.config.ts",
-      "vitest.config.ts",
-      "playwright.config.ts",
-      "knip.config.ts",
-    ],
-    rules: { "import/no-default-export": "off" },
+    files: ['vite.config.ts', 'vitest.config.ts', 'playwright.config.ts', 'knip.config.ts'],
+    rules: { 'import/no-default-export': 'off' },
   },
   {
-    files: [
-      "**/*.stories.tsx",
-      ".storybook/**/*.{ts,tsx}",
-      "src/**/*.demo.tsx",
-    ],
-    rules: { "import/no-default-export": "off" },
+    files: ['**/*.stories.tsx', '.storybook/**/*.{ts,tsx}', 'src/**/*.demo.tsx'],
+    rules: { 'import/no-default-export': 'off' },
   },
 
-  ...storybook.configs["flat/recommended"],
+  ...storybook.configs['flat/recommended'],
 
   // Client ignores (on top of base's shared ignores).
   {
     ignores: [
-      "eslint.config.js",
-      "prettier.config.js",
-      "vite.config.ts",
-      "vitest.setup.ts",
-      "src/routeTree.gen.ts",
-      "dist/**",
-      "storybook-static/**",
-      "test-results/**",
-      "playwright-report/**",
-      ".storybook/**",
-      "playwright.config.ts",
+      'eslint.config.js',
+      'prettier.config.js',
+      'vite.config.ts',
+      'vitest.setup.ts',
+      'src/routeTree.gen.ts',
+      'dist/**',
+      'storybook-static/**',
+      'test-results/**',
+      'playwright-report/**',
+      '.storybook/**',
+      'playwright.config.ts',
     ],
   },
 ];
@@ -329,30 +320,30 @@ Replace `server/eslint.config.mjs` entirely:
 
 ```js
 // @ts-check
-import eslint from "@eslint/js";
-import importX from "eslint-plugin-import-x";
-import n from "eslint-plugin-n";
-import globals from "globals";
-import tseslint from "typescript-eslint";
+import eslint from '@eslint/js';
+import importX from 'eslint-plugin-import-x';
+import n from 'eslint-plugin-n';
+import globals from 'globals';
+import tseslint from 'typescript-eslint';
 
-import { base } from "../eslint.config.base.mjs";
+import { base } from '../eslint.config.base.mjs';
 
 export default tseslint.config(
-  { ignores: ["eslint.config.mjs"] },
+  { ignores: ['eslint.config.mjs'] },
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked, // upgrade from recommendedTypeChecked (D4)
 
   // Register import-x (key `import`) so base's import/* rules resolve on the server
   // (the client gets this via tanstack; the server has no generator).
   { plugins: { import: importX } },
-  n.configs["flat/recommended"],
+  n.configs['flat/recommended'],
 
   ...base,
 
   {
     languageOptions: {
       globals: { ...globals.node, ...globals.vitest },
-      sourceType: "commonjs",
+      sourceType: 'commonjs',
       parserOptions: {
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
@@ -361,34 +352,28 @@ export default tseslint.config(
   },
   {
     rules: {
-      "@typescript-eslint/no-floating-promises": "error",
+      '@typescript-eslint/no-floating-promises': 'error',
       // eslint-plugin-n module-resolution rules off — TS + import-x own resolution (D4).
-      "n/no-missing-import": "off",
-      "n/no-extraneous-import": "off",
-      "n/no-unpublished-import": "off",
-      "n/no-unsupported-features/es-syntax": "off",
+      'n/no-missing-import': 'off',
+      'n/no-extraneous-import': 'off',
+      'n/no-unpublished-import': 'off',
+      'n/no-unsupported-features/es-syntax': 'off',
       // unicorn/filename-case stays off on server (D6 — check-layout.sh owns naming);
       // base already sets it off, so no per-package rule needed here.
     },
   },
   // no-default-export carve-out for server config files (spec §3.5).
   {
-    files: ["eslint.config.mjs", "vitest.config.ts", "build-lambda.mjs"],
-    rules: { "import/no-default-export": "off" },
+    files: ['eslint.config.mjs', 'vitest.config.ts', 'build-lambda.mjs'],
+    rules: { 'import/no-default-export': 'off' },
   },
   {
-    files: ["src/core/**/*.ts"],
+    files: ['src/core/**/*.ts'],
     rules: {
-      "no-restricted-imports": [
-        "error",
+      'no-restricted-imports': [
+        'error',
         {
-          patterns: [
-            "@nestjs/*",
-            "@aws-sdk/*",
-            "@pulumi/*",
-            "../adapters/*",
-            "../modules/*",
-          ],
+          patterns: ['@nestjs/*', '@aws-sdk/*', '@pulumi/*', '../adapters/*', '../modules/*'],
         },
       ],
     },
@@ -504,7 +489,7 @@ Create `prettier.config.mjs`:
 const config = {
   semi: true,
   singleQuote: true,
-  trailingComma: "all",
+  trailingComma: 'all',
   printWidth: 100,
 };
 
@@ -652,14 +637,14 @@ rules:
   property-no-unknown: true
   color-no-invalid-hex: true
   declaration-block-no-duplicate-properties: true
-  color-named: "never"
+  color-named: 'never'
   declaration-property-value-disallowed-list:
-    - "/^(color|background|background-color|border-color|outline-color|fill|stroke)$/":
-        - "/^#/"
-        - "/^rgb/"
-        - "/^rgba/"
-        - "/^hsl/"
-        - "/^oklch/"
+    - '/^(color|background|background-color|border-color|outline-color|fill|stroke)$/':
+        - '/^#/'
+        - '/^rgb/'
+        - '/^rgba/'
+        - '/^hsl/'
+        - '/^oklch/'
 ```
 
 Create `.stylelintignore`:
@@ -1029,32 +1014,32 @@ pre-commit:
       run: bash tooling/semgrep-precommit.sh
       skip: [merge, rebase]
     prettier:
-      glob: "*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css,html}"
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css,html}'
       run: pnpm exec prettier --write --ignore-unknown {staged_files}
       stage_fixed: true
       skip: [merge, rebase]
     eslint:
-      glob: "*.{ts,tsx,js,jsx,mjs,cjs}"
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs}'
       run: pnpm exec eslint --fix {staged_files}
       stage_fixed: true
       skip: [merge, rebase]
     stylelint:
-      glob: "*.css"
+      glob: '*.css'
       run: pnpm exec stylelint --fix {staged_files}
       stage_fixed: true
       skip: [merge, rebase]
     markdownlint:
-      glob: "*.md"
+      glob: '*.md'
       run: pnpm exec markdownlint-cli2 --fix {staged_files}
       stage_fixed: true
       skip: [merge, rebase]
     sort-package-json:
-      glob: "*package.json"
+      glob: '*package.json'
       run: pnpm exec sort-package-json {staged_files}
       stage_fixed: true
       skip: [merge, rebase]
     shellcheck-fix:
-      glob: "*.sh"
+      glob: '*.sh'
       run: bash tooling/shellcheck-fix.sh {staged_files}
       stage_fixed: true
       skip: [merge, rebase]
@@ -1172,17 +1157,17 @@ In `.github/workflows/ci.yml`, in the `changes` job's `dorny/paths-filter` `filt
 
 ```yaml
 docs_or_config:
-  - "**/*.md"
-  - "**/*.yml"
-  - "**/*.yaml"
-  - "**/*.css"
-  - "**/*.sh"
-  - ".editorconfig"
-  - ".github/**"
-  - ".markdownlint*"
-  - ".stylelintrc*"
-  - ".yamllint"
-  - "cspell.json"
+  - '**/*.md'
+  - '**/*.yml'
+  - '**/*.yaml'
+  - '**/*.css'
+  - '**/*.sh'
+  - '.editorconfig'
+  - '.github/**'
+  - '.markdownlint*'
+  - '.stylelintrc*'
+  - '.yamllint'
+  - 'cspell.json'
 ```
 
 > Guard (spec §7 gotcha): the `code` filter gates the six heavy jobs (`quality`, `build`, `a11y`, `vr`, `sast`, `deps-cve`). Widening it would run the whole pipeline on a README-only PR. The new `docs_or_config` output gates **only** the new `lint` job.
@@ -1248,19 +1233,7 @@ In the `ci-green` job, add `lint` to the `needs:` array, and add it to the resul
 
 ```yaml
 needs:
-  [
-    changes,
-    quality,
-    lint,
-    build,
-    a11y,
-    vr,
-    secret-scan,
-    sast,
-    deps-cve,
-    pr-title,
-    pr-checklist,
-  ]
+  [changes, quality, lint, build, a11y, vr, secret-scan, sast, deps-cve, pr-title, pr-checklist]
 ```
 
 And in the verify step, capture + check the new result (mirror the existing pattern):

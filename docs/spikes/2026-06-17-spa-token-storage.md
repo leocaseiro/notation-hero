@@ -20,8 +20,8 @@ Content-Security-Policy?
    store explicitly:
    - `userStore`: a `WebStorageStateStore` backed by a plain in-memory object, not `window.sessionStorage`.
    - `stateStore`: the same, for the temporary login/redirect state.
-   A small object that implements the `Storage` interface (`getItem` / `setItem` /
-   `removeItem` over a JS `Map` or object) is sufficient.
+     A small object that implements the `Storage` interface (`getItem` / `setItem` /
+     `removeItem` over a JS `Map` or object) is sufficient.
 
 2. **A page refresh clears the in-memory tokens.** This is expected. Recovery does not
    read stored tokens; it uses one of:

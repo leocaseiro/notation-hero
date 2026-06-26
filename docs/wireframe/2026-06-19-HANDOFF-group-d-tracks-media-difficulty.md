@@ -11,6 +11,7 @@ home: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-
 # Handoff — Group D: tracks · media · per-instrument difficulty
 
 ## 0 · How to start (paste into a fresh Claude Code session)
+
 ```
 Working directory: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model
 Read docs/wireframe/2026-06-19-HANDOFF-group-d-tracks-media-difficulty.md (full context).
@@ -27,7 +28,9 @@ Run with superpowers:brainstorming + MemStack Database Architect.
 ```
 
 ## 1 · What is LOCKED — do NOT redo (commits on this branch / PR #52)
+
 The tonal/drum schema work is **done, validated on Postgres, and in PR #52**. Group D builds on it; don't re-open it.
+
 - **Spec:** `docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md`
 - **Runnable draft SQL:** `docs/wireframe/2026-06-19-tonal-drum-schema-draft.sql` (loads clean under `psql ON_ERROR_STOP`)
 - **Locked decisions:** Hybrid (C) — `tonal_profile` + `drum_profile` per-domain side-tables (zero cross-domain NULLs); D1–D7; CP-1 (progression = composite pattern + link + denormalised facets); base-model reconciliation A+B+R15 (DEFERRABLE FKs, `created_by`, `visibility`, `upload_status` incl. device-local `client`, `origin` naming); polish (`genre`/`family`→`text[]`, `author text[]`+`author_type`, audit columns everywhere, universal `description text` ≤255); tonaljs value model (store canonical strings, derive `{tonic,type,bass}` on read).
@@ -36,8 +39,10 @@ The tonal/drum schema work is **done, validated on Postgres, and in PR #52**. Gr
 ## 2 · Group D scope (3 items — all currently DEFERRED)
 
 ### D-1 · `track` relation (the headline — "multiple tracks")
+
 **Problem:** a song can have **multiple tracks of the same instrument** — e.g. guitar `solo` + guitar `bass`/`rhythm`, or two vocal harmonies. The flat `playable.instruments text[]` facet can't represent that, and per-track media (D-2) / per-instrument difficulty (D-3) / voicing all need a track identity.
 **Recommended shape (from Round-6, not yet ratified):** a `track` relation **+ keep `instruments[]` as a derived facet** (DISTINCT instrument across tracks) for the fast catalog filter. So it's a **split**, not a rename.
+
 ```sql
 -- sketch (decide in the brainstorm)
 CREATE TABLE track (
@@ -52,11 +57,14 @@ CREATE TABLE track (
 );
 -- keep playable.instruments text[] as the DERIVED facet (DISTINCT track.instrument), GIN-indexed.
 ```
+
 **Open:** is `bass` a guitar `role` or its own `instrument` (vocab)? Per-instrument difficulty per-track or a by-instrument curve (ties to D-3)? Does a `track` carry its own `notation_id` (per-track score) or share the playable's?
 
-### D-2 · `media` model (per-track + song-level audio/video)  — relates to SD-24
+### D-2 · `media` model (per-track + song-level audio/video) — relates to SD-24
+
 **Today:** song-level only — `playable.has_audio`/`has_video` booleans + `data.media` jsonb (Thin model). **F7 wants** each **track** to carry its own n audio + n video (drum-cam, bass stem, lead-guitar cam…).
 **Decision to make:** keep `data.media` jsonb vs promote to a `media` table keyed by `playable_id` + optional `track_id` (NULL = song-level). A table makes per-track media + the source song's shared `audioRef` (the SD-24 slice resolves it via `parent_id`, not a per-slice copy) first-class; jsonb stays lightest.
+
 ```sql
 -- sketch (decide in the brainstorm)
 CREATE TABLE media (
@@ -66,18 +74,22 @@ CREATE TABLE media (
   provider text, url text, s3_key text, label text, sort_order int
 );
 ```
+
 **Tie-in:** the **NH-137 song-slice** (SD-24) is **positions-only** — its shared `audioRef` (one S3 key / `youtubeId` for the FULL-song audio) lives on the **source song**, and the sliced alphaTex + rebased sync are **derived at runtime, not stored** (memory `notation-hero-song-slice-storage`). So D-2 should give the **source** a clean home for that shared audio ref + its sync points (media row vs `notation.data`); the slice resolves it via `parent_id`. No per-slice media.
 
 ### D-3 · per-instrument difficulty
+
 **Problem:** one scalar `playable.level` is insufficient — the **same** chord/notation is hard on guitar (CMaj7 / F-barre, L4–6) and easy on piano (L1). The wireframe proved a `data.difficulty(by:'instrument', tiers:[{when:'piano',level},{when:'guitar',level}])` curve on the F chord.
 **Options:** (a) keep the `data.difficulty` curve (jsonb, by:'instrument'); (b) `level_by_instrument jsonb`; (c) per-`track` level column (if D-1 lands). Keep the headline `level smallint` for the fast sort/filter; the per-instrument detail is the long tail.
 
 ## 3 · Method + guard rails
+
 - **superpowers:brainstorming** (one decision at a time → design → approval → spec) **+ MemStack Database Architect** (note: it is Supabase-flavoured — Notation Hero is **Neon behind Lambda**, **ULID `text` PKs (R13)**, **no RLS / no Data-API GRANTs**; take its structural guidance, drop the Supabase specifics).
 - **Validate every DDL change on the live scratch DB** (see §5) before claiming it works — that caught a real bug this session.
 - Follow Leo's collaboration rules (AskUserQuestion per decision, chunked findings, full paths, commit before review).
 
 ## 4 · Key files (full paths)
+
 - Spec: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md`
 - Draft SQL: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-19-tonal-drum-schema-draft.sql`
 - SD ledger (Current-status table + Round-6 + SD-24): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md`
@@ -88,14 +100,18 @@ CREATE TABLE media (
 - PR: https://github.com/leocaseiro/notation-hero/pull/52
 
 ## 5 · The live scratch DB
+
 A local Postgres 14 is running; the draft schema is loaded into a **throwaway** DB:
+
 ```
 host localhost · port 5432 · db nh_tonal_scratch · user leocaseiro
 reload after edits:  psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f docs/wireframe/2026-06-19-tonal-drum-schema-draft.sql
 ```
+
 Poke-around queries are at the bottom of the `.sql`.
 
 ## 6 · Related open threads (NOT Group D — don't pull them in)
+
 - **Group C** — upload/ingest UX (SD-22 load-and-go, SD-23 GP-file = song or pattern); pairs with the `upload_status` seam.
 - **SD-24 / NH-137** — song slice (its own thread); only the `audioRef`/media reconciliation overlaps D-2.
 - **Per-user (DynamoDB), not catalog:** SD-12 score filter/sort, SD-20 per-step score, SD-21 completed flag.

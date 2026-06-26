@@ -1,5 +1,5 @@
-import * as aws from "@pulumi/aws";
-import * as pulumi from "@pulumi/pulumi";
+import * as aws from '@pulumi/aws';
+import * as pulumi from '@pulumi/pulumi';
 
 /**
  * Reusable Pulumi component (NH-150): a Node Lambda fronted by a public
@@ -29,7 +29,7 @@ export interface LambdaWithUrlArgs {
    * Function URL auth: "NONE" (public, curl-able) or "AWS_IAM" (only a SigV4 caller —
    * e.g. CloudFront via OAC — can invoke). Defaults to "NONE".
    */
-  authorizationType?: pulumi.Input<"NONE" | "AWS_IAM">;
+  authorizationType?: pulumi.Input<'NONE' | 'AWS_IAM'>;
   /** Function URL CORS. Omit when fronted same-origin by CloudFront. */
   cors?: pulumi.Input<aws.types.input.lambda.FunctionUrlCors>;
   /** Lambda timeout in seconds; defaults to 10 (low, to bound free-tier compute). */
@@ -49,20 +49,14 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
   public readonly url: pulumi.Output<string>;
   public readonly logGroupName: pulumi.Output<string>;
 
-  constructor(
-    name: string,
-    args: LambdaWithUrlArgs,
-    opts?: pulumi.ComponentResourceOptions,
-  ) {
-    super("nh:aws:LambdaWithUrl", name, args, opts);
+  constructor(name: string, args: LambdaWithUrlArgs, opts?: pulumi.ComponentResourceOptions) {
+    super('nh:aws:LambdaWithUrl', name, args, opts);
 
     const assumeRole = aws.iam.getPolicyDocumentOutput({
       statements: [
         {
-          actions: ["sts:AssumeRole"],
-          principals: [
-            { type: "Service", identifiers: ["lambda.amazonaws.com"] },
-          ],
+          actions: ['sts:AssumeRole'],
+          principals: [{ type: 'Service', identifiers: ['lambda.amazonaws.com'] }],
         },
       ],
     });
@@ -102,14 +96,14 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
         name: args.functionName,
         role: role.arn,
         handler: args.handler,
-        runtime: args.runtime ?? "nodejs24.x",
-        architectures: ["arm64"],
+        runtime: args.runtime ?? 'nodejs24.x',
+        architectures: ['arm64'],
         timeout: args.timeoutSeconds ?? 10,
         memorySize: args.memorySize ?? 512,
         code: args.code,
         // loggingConfig.logGroup (not bare dependsOn) is what redirects logging
         // to the managed group; dependsOn makes the ordering explicit.
-        loggingConfig: { logFormat: "JSON", logGroup: logGroup.name },
+        loggingConfig: { logFormat: 'JSON', logGroup: logGroup.name },
       },
       { parent: this, dependsOn: [logGroup] },
     );
@@ -121,7 +115,7 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
         // Default "NONE" is public/curl-able; pass "AWS_IAM" to lock the URL so only a
         // SigV4 signer (CloudFront via OAC) can invoke it. CORS is omitted by default —
         // when CloudFront fronts the URL the browser request is same-origin.
-        authorizationType: args.authorizationType ?? "NONE",
+        authorizationType: args.authorizationType ?? 'NONE',
         cors: args.cors,
       },
       { parent: this },

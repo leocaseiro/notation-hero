@@ -1,5 +1,5 @@
 ---
-title: "feat: ADR §1 Foundation Phase 0 — drop Nx → pnpm workspaces + scaffold server/ & client/"
+title: 'feat: ADR §1 Foundation Phase 0 — drop Nx → pnpm workspaces + scaffold server/ & client/'
 date: 2026-06-18
 status: ready
 type: feat

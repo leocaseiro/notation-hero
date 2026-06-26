@@ -19,8 +19,8 @@
 > · **Updated:** 2026-06-07
 > **Authoritative for structure & build sequence:**
 > `../charming-curran-f72274/docs/plans/2026-06-07-001-feat-cms-k-build-plan.md`
-> (Output Structure + units U1–U9). This doc owns the *pipeline*; the plan owns
-> the *layout and the CMS build*. `scope.md` = requirements.
+> (Output Structure + units U1–U9). This doc owns the _pipeline_; the plan owns
+> the _layout and the CMS build_. `scope.md` = requirements.
 
 ---
 
@@ -50,15 +50,15 @@
 ## Layout 4 (Hexagonal) — what U1 established
 
 Chosen as a Staff-FE **system-design portfolio piece** (the "swappable backend"
-story). See the canonical plan's *Output Structure* for the full tree; the
+story). See the canonical plan's _Output Structure_ for the full tree; the
 shape U1 froze:
 
-| Layer | Dir / package | ~~Rule (enforced by `depcheck` + ESLint)~~ <!-- SUPERSEDED: enforced by Nx tags / module-boundary lint, not depcheck (tooling-stack-daci 2026-06-09) --> |
-|---|---|---|
-| **Domain** | `core/` → `@notation-hero/core` (subdirs `lesson/`, `shared/kernel/`) | Pure TS. **No** AWS / React / HTTP / adapters / apps imports. |
-| **Adapters** | `adapters/<name>` → `@notation-hero/adapters-<name>` | ~~Implement core's ports against the world (Pulumi/AWS, DynamoDB, S3, React-Admin). May import `core`, not `apps`.~~ <!-- SUPERSEDED: catalog/CMS adapter is Neon Postgres+JSONB, NOT DynamoDB; DynamoDB is per-user only (catalog-store-postgres-neon 2026-06-09) --> |
-| **Apps** | `apps/<name>` → `@notation-hero/<name>` | Composition roots; one deploy target each. May import `core` + `adapters`. |
-| **Infra** | `infra/` → `@notation-hero/infra` | Pulumi composition root; composes `apps/*/infra.ts` + cross-cutting resources. |
+| Layer        | Dir / package                                                         | ~~Rule (enforced by `depcheck` + ESLint)~~ <!-- SUPERSEDED: enforced by Nx tags / module-boundary lint, not depcheck (tooling-stack-daci 2026-06-09) -->                                                                                                               |
+| ------------ | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Domain**   | `core/` → `@notation-hero/core` (subdirs `lesson/`, `shared/kernel/`) | Pure TS. **No** AWS / React / HTTP / adapters / apps imports.                                                                                                                                                                                                          |
+| **Adapters** | `adapters/<name>` → `@notation-hero/adapters-<name>`                  | ~~Implement core's ports against the world (Pulumi/AWS, DynamoDB, S3, React-Admin). May import `core`, not `apps`.~~ <!-- SUPERSEDED: catalog/CMS adapter is Neon Postgres+JSONB, NOT DynamoDB; DynamoDB is per-user only (catalog-store-postgres-neon 2026-06-09) --> |
+| **Apps**     | `apps/<name>` → `@notation-hero/<name>`                               | Composition roots; one deploy target each. May import `core` + `adapters`.                                                                                                                                                                                             |
+| **Infra**    | `infra/` → `@notation-hero/infra`                                     | Pulumi composition root; composes `apps/*/infra.ts` + cross-cutting resources.                                                                                                                                                                                         |
 
 **Imports vs package names:** code imports via **path aliases** (`@core/lesson/…`,
 resolved by `tsconfig.base.json` `paths`); the workspace **package name** is
@@ -81,18 +81,18 @@ names are npm identity.
 
 ## Constraints (locked)
 
-| Constraint | Value |
-|---|---|
-| Package manager / runtime | ~~**bun 1.3.11**~~ <!-- SUPERSEDED: pnpm+Nx locked 2026-06-09; Bun fully dropped --> |
-| Default branch | **`master`** |
-| Repo visibility | **Public** + proprietary `LICENSE` |
-| Architecture | **Layout 4 (Hexagonal)**; `@notation-hero/*` names; ~~`dependency-cruiser`-enforced~~ <!-- SUPERSEDED: enforced by Nx tags / module-boundary lint, not dependency-cruiser (tooling-stack-daci 2026-06-09) --> |
-| Actions runners | **`ubuntu-latest` only**; iOS builds LOCAL, never GitHub-hosted macOS |
-| AWS account | **Legacy (pre-2025-07-15)** → Always-Free tiers |
-| IaC | **Pulumi TypeScript** (`@pulumi/aws` v7) — components in `adapters/aws`, composed in `infra/` |
-| Web hosting | **S3 (private) + CloudFront + OAC** |
-| Local AWS creds | IAM user + access keys (`aws configure`) |
-| CI AWS creds | **GitHub OIDC** — zero long-lived secrets in Actions |
+| Constraint                | Value                                                                                                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Package manager / runtime | ~~**bun 1.3.11**~~ <!-- SUPERSEDED: pnpm+Nx locked 2026-06-09; Bun fully dropped -->                                                                                                                          |
+| Default branch            | **`master`**                                                                                                                                                                                                  |
+| Repo visibility           | **Public** + proprietary `LICENSE`                                                                                                                                                                            |
+| Architecture              | **Layout 4 (Hexagonal)**; `@notation-hero/*` names; ~~`dependency-cruiser`-enforced~~ <!-- SUPERSEDED: enforced by Nx tags / module-boundary lint, not dependency-cruiser (tooling-stack-daci 2026-06-09) --> |
+| Actions runners           | **`ubuntu-latest` only**; iOS builds LOCAL, never GitHub-hosted macOS                                                                                                                                         |
+| AWS account               | **Legacy (pre-2025-07-15)** → Always-Free tiers                                                                                                                                                               |
+| IaC                       | **Pulumi TypeScript** (`@pulumi/aws` v7) — components in `adapters/aws`, composed in `infra/`                                                                                                                 |
+| Web hosting               | **S3 (private) + CloudFront + OAC**                                                                                                                                                                           |
+| Local AWS creds           | IAM user + access keys (`aws configure`)                                                                                                                                                                      |
+| CI AWS creds              | **GitHub OIDC** — zero long-lived secrets in Actions                                                                                                                                                          |
 
 **Actions-minutes facts:** public repos = unlimited free Linux minutes.
 macOS = 10× multiplier → iOS builds on GitHub-hosted macOS would torch any
@@ -136,19 +136,20 @@ WAVE 3 — INTEGRATION (serial, human-gated)
 
 ## File-ownership map (the "agents don't collide" contract)
 
-| Path | Owner |
-|---|---|
-| ~~root `package.json` / `bun.lock` / `tsconfig*.json` / `.gitignore` / `LICENSE`~~ <!-- SUPERSEDED: locked lockfile is pnpm-lock.yaml, not bun.lock (tooling-stack-daci 2026-06-09) --> | **Track 2 — workspace shape FROZEN** |
-| ~~`.eslintrc.cjs` / `.dependency-cruiser.cjs`~~ <!-- SUPERSEDED: dependency-cruiser replaced by Nx tags / module-boundary lint 2026-06-09 --> | **Track 2** (layer-enforcement config) |
-| `.github/workflows/*` | **Track 2** (CI already covers core/adapters/apps/infra; new packages need no `ci.yml` edit) |
-| `core/**` | **K-plan U2** (domain) — pure; ~~`depcheck` forbids AWS/React/adapter/app imports~~ <!-- SUPERSEDED: Nx tags / module-boundary lint enforce this, not depcheck --> |
-| `adapters/aws/**` + `infra/**` | **K-plan U3/U9** — Pulumi components + composition (Track 2 provides the AWS-creds bootstrap they deploy with) |
-| ~~`adapters/{dynamodb,s3,react-admin}/**` | **K-plan U4** |~~ <!-- SUPERSEDED: catalog/CMS store is Neon Postgres+JSONB; DynamoDB is per-user only, no DynamoDB catalog adapter (catalog-store-postgres-neon 2026-06-09) -->
-| `apps/lambda-cms-*/**` | **K-plan U5–U7** |
-| `apps/admin-spa/**` | **K-plan U8** |
-| `apps/player-pwa/src/**` | **Track 1 (player)** — separate plan; U1/U9 only stub it |
+| Path                                                                                                                                                                                    | Owner                                                                                                                                                              |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~root `package.json` / `bun.lock` / `tsconfig*.json` / `.gitignore` / `LICENSE`~~ <!-- SUPERSEDED: locked lockfile is pnpm-lock.yaml, not bun.lock (tooling-stack-daci 2026-06-09) --> | **Track 2 — workspace shape FROZEN**                                                                                                                               |
+| ~~`.eslintrc.cjs` / `.dependency-cruiser.cjs`~~ <!-- SUPERSEDED: dependency-cruiser replaced by Nx tags / module-boundary lint 2026-06-09 -->                                           | **Track 2** (layer-enforcement config)                                                                                                                             |
+| `.github/workflows/*`                                                                                                                                                                   | **Track 2** (CI already covers core/adapters/apps/infra; new packages need no `ci.yml` edit)                                                                       |
+| `core/**`                                                                                                                                                                               | **K-plan U2** (domain) — pure; ~~`depcheck` forbids AWS/React/adapter/app imports~~ <!-- SUPERSEDED: Nx tags / module-boundary lint enforce this, not depcheck --> |
+| `adapters/aws/**` + `infra/**`                                                                                                                                                          | **K-plan U3/U9** — Pulumi components + composition (Track 2 provides the AWS-creds bootstrap they deploy with)                                                     |
+| ~~`adapters/{dynamodb,s3,react-admin}/**`                                                                                                                                               | **K-plan U4**                                                                                                                                                      | ~~ <!-- SUPERSEDED: catalog/CMS store is Neon Postgres+JSONB; DynamoDB is per-user only, no DynamoDB catalog adapter (catalog-store-postgres-neon 2026-06-09) --> |
+| `apps/lambda-cms-*/**`                                                                                                                                                                  | **K-plan U5–U7**                                                                                                                                                   |
+| `apps/admin-spa/**`                                                                                                                                                                     | **K-plan U8**                                                                                                                                                      |
+| `apps/player-pwa/src/**`                                                                                                                                                                | **Track 1 (player)** — separate plan; U1/U9 only stub it                                                                                                           |
 
 **How agents stay safe:**
+
 1. **Mechanical** — branch protection: nothing red merges to `master`.
 2. ~~**Layer integrity** — `depcheck` (dependency-cruiser) fails any PR that~~ <!-- SUPERSEDED: layer integrity enforced by Nx tags / module-boundary lint, not depcheck (tooling-stack-daci 2026-06-09) -->
    ~~crosses a Hexagonal boundary; ESLint blocks AWS/React in `core/`.~~ <!-- SUPERSEDED: dependency-cruiser/.eslintrc depcheck mechanism dropped for Nx tags -->
@@ -176,14 +177,16 @@ WAVE 3 — INTEGRATION (serial, human-gated)
   (skipped is OK). Set **this one job** as the required status check.
 
 ### ⚠️ Footgun #1 — skipped-required-check deadlock
+
 If a per-layer/per-job check is itself required, a PR that skips it (path
 filter) leaves a never-reported check → PR can't merge. **Fix:** require only
 the always-running **"CI Green"** aggregation job.
 
 ### ⚠️ Footgun #2 — solo-approval trap
+
 Do **NOT** require "1 approval" on a solo repo — GitHub forbids approving your
 own PR, so you'd permanently block yourself. **The CI Green check is the gate;**
-the review *skills* (`ce-code-review`, gstack `/review`) are the human reviewer.
+the review _skills_ (`ce-code-review`, gstack `/review`) are the human reviewer.
 
 ---
 
@@ -239,14 +242,14 @@ are **M1**, not now.
 
 ## Tooling status (verified 2026-06-07)
 
-| Tool | State |
-|---|---|
-| ~~bun | 1.3.11 ✅ |~~ <!-- SUPERSEDED: bun is NOT the sanctioned runtime; pnpm+Nx locked 2026-06-09 (Bun fully dropped) -->
-| pulumi | 3.243.0 ✅ (logged in as `leocaseiro`) |
-| aws CLI | 2.34.53 ✅ · **creds ❌ none · region ❌ none** (Wave-3 blocker) |
-| node | 24.14.1 ✅ |
-| gh | authed as `leocaseiro` (SSH); token lacks `workflow` scope — fine for SSH push |
-| GitHub repo | `leocaseiro/notation-hero` does **not exist yet** |
+| Tool        | State                                                                          |
+| ----------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| ~~bun       | 1.3.11 ✅                                                                      | ~~ <!-- SUPERSEDED: bun is NOT the sanctioned runtime; pnpm+Nx locked 2026-06-09 (Bun fully dropped) --> |
+| pulumi      | 3.243.0 ✅ (logged in as `leocaseiro`)                                         |
+| aws CLI     | 2.34.53 ✅ · **creds ❌ none · region ❌ none** (Wave-3 blocker)               |
+| node        | 24.14.1 ✅                                                                     |
+| gh          | authed as `leocaseiro` (SSH); token lacks `workflow` scope — fine for SSH push |
+| GitHub repo | `leocaseiro/notation-hero` does **not exist yet**                              |
 
 ---
 

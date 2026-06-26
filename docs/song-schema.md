@@ -10,37 +10,38 @@
 
 ```ts
 // Logical shape (shared by both types). Physical store = Neon Postgres + JSONB — see "Postgres storage" below.
-interface CatalogItem {      // Lesson | Song — distinct types, shared base columns
-  lessonId: string;            // uuid (catalog item id)
-  type: "lesson" | "song";     // distinct schemas; type-specific structure (Song `parts`) lives in `meta` / `data jsonb`
+interface CatalogItem {
+  // Lesson | Song — distinct types, shared base columns
+  lessonId: string; // uuid (catalog item id)
+  type: 'lesson' | 'song'; // distinct schemas; type-specific structure (Song `parts`) lives in `meta` / `data jsonb`
   title: string;
   artist?: string;
   difficulty: 1 | 2 | 3 | 4 | 5;
-  tags: string[];              // genre, technique, kit-piece focus…
-  category?: string;           // library grouping (e.g. "Rock", "Warm-ups")
-  order?: number;              // sort within category
+  tags: string[]; // genre, technique, kit-piece focus…
+  category?: string; // library grouping (e.g. "Rock", "Warm-ups")
+  order?: number; // sort within category
 
-  bpm: number;                 // default/display tempo (from file or override)
-  timeSignature: string;       // "4/4"
+  bpm: number; // default/display tempo (from file or override)
+  timeSignature: string; // "4/4"
   durationBars?: number;
 
-  instrument: "drums";         // primary; extensible to keyboard etc.
-  drumTrackIndex?: number;     // which track in a multi-track .gp is the drums
+  instrument: 'drums'; // primary; extensible to keyboard etc.
+  drumTrackIndex?: number; // which track in a multi-track .gp is the drums
   defaultMappingPresetId?: string; // links to a D-2 MIDI-mapping preset
 
   file: {
-    key: string;               // S3 object key (see layout)
-    format: "gp" | "gpx" | "gp5" | "mid" | "alphatex";
+    key: string; // S3 object key (see layout)
+    format: 'gp' | 'gpx' | 'gp5' | 'mid' | 'alphatex';
     sizeBytes: number;
-    checksum: string;          // sha256 (matches H-10 validation)
+    checksum: string; // sha256 (matches H-10 validation)
   };
 
   coverImageKey?: string;
   description?: string;
-  source: "curated" | "user-upload";  // curated = CMS; user-upload = M1 (H-10)
-  license?: string;            // for curated (royalty-free / CC / owned)
-  status: "published" | "draft";
-  version: number;             // bump on content/schema change
+  source: 'curated' | 'user-upload'; // curated = CMS; user-upload = M1 (H-10)
+  license?: string; // for curated (royalty-free / CC / owned)
+  status: 'published' | 'draft';
+  version: number; // bump on content/schema change
   meta?: Record<string, unknown>; // EXTENSIBILITY — late UI findings land here
   createdAt: number;
   updatedAt: number;
@@ -67,6 +68,7 @@ create index on catalog (updated_at desc);                -- recency / future ch
 ```
 
 **Multi-attribute + partial-search examples:**
+
 ```sql
 select * from catalog
 where artist = 'Rush' and 'prog' = any(tags) and difficulty between 3 and 4;  -- combined filters
@@ -106,7 +108,7 @@ Note: the **list projection is a subset** of fields (cheap reads, only what the 
 
 - **Store the raw file; parse on the client via AlphaTab** at load (`.gp`/`.mid`/alphaTex → notation + tick map). Do NOT pre-store a tick map — it's derived and renderer-specific (`A-7`/`G`).
 - `defaultMappingPresetId` references the existing `D-2` mapping presets (Yamaha DTX / Roland TD-50 / etc.) so a lesson can suggest a kit mapping.
-- **Shared data, no identity** (per the locked sync model): the catalog is global/curated → stored in **Neon Postgres** (per-user data is separate, in **DynamoDB** — a clean two-store seam). User-uploaded songs at M1 add per-user catalog rows (keyed by uploader); per-user *sync* data stays in DynamoDB.
+- **Shared data, no identity** (per the locked sync model): the catalog is global/curated → stored in **Neon Postgres** (per-user data is separate, in **DynamoDB** — a clean two-store seam). User-uploaded songs at M1 add per-user catalog rows (keyed by uploader); per-user _sync_ data stays in DynamoDB.
 - `data jsonb` (= `meta` in the logical record) absorbs `/design-shotgun` discoveries (cover variants, difficulty curve, per-section tags, Song `parts`) without a schema migration.
 - `version` + soft-delete (`status`/tombstone) keep it forward-compatible.
 
@@ -114,6 +116,6 @@ Note: the **list projection is a subset** of fields (cheap reads, only what the 
 
 1. **Sections / A-B regions:** store recommended practice regions per lesson, or leave to the player? (Lean: optional `meta.sections` later; not v1.)
 2. **Multi-instrument lessons:** keep `instrument:"drums"` only for now, or model multiple tracks/instruments up front? (Lean: drums-only + `drumTrackIndex`; extensible.)
-3. **Lesson vs Song:** ✅ **RESOLVED (2026-06-09)** — *distinct* entities (different schemas): one `catalog` table with a `type` discriminator + shared base columns; type-specific structure (Song `parts`) lives in `data jsonb` / related tables. Songs gain `parts`/sections **later**.
+3. **Lesson vs Song:** ✅ **RESOLVED (2026-06-09)** — _distinct_ entities (different schemas): one `catalog` table with a `type` discriminator + shared base columns; type-specific structure (Song `parts`) lives in `data jsonb` / related tables. Songs gain `parts`/sections **later**.
 4. **alphaTex authoring:** author preloaded exercises (`H-11`, Beta) directly in alphaTex stored as `format:"alphatex"`? (Lean: yes — `J-3`.)
 5. **Difficulty:** single 1-5, or per-aspect (speed/coordination/reading)? (Lean: single now; `meta` for more.)

@@ -142,8 +142,8 @@ jobs:
       - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: "false"
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_COMMENTS: 'false'
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
 
   # SAST — Semgrep over source. Path-filtered on `code`. Free community rulesets.
   sast:
@@ -154,7 +154,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.12"
+          python-version: '3.12'
       - name: Install Semgrep
         run: pip install semgrep
       - name: Semgrep SAST
@@ -217,19 +217,7 @@ jobs:
   ci-green:
     name: CI Green
     if: always()
-    needs:
-      [
-        changes,
-        quality,
-        build,
-        a11y,
-        vr,
-        secret-scan,
-        sast,
-        deps-cve,
-        pr-title,
-        pr-checklist,
-      ]
+    needs: [changes, quality, build, a11y, vr, secret-scan, sast, deps-cve, pr-title, pr-checklist]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed

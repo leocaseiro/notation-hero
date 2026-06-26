@@ -106,15 +106,15 @@ From a **clean** worktree (no `nx.json`, no `nx` devDep, no `allowBuilds:` block
     #
     # `core/`, `adapters/`, `apps/` hold real Nx packages as of Wave 1 (DACI Step 1).
     packages:
-      - "core/*"
-      - "adapters/*"
-      - "apps/*"
-      - "infra"
+      - 'core/*'
+      - 'adapters/*'
+      - 'apps/*'
+      - 'infra'
     allowBuilds:
       # pnpm 11.5.2 uses allowBuilds (NOT onlyBuiltDependencies, which it ignores).
       # @swc/core arrives transitively with @nx/js in Task 3; pre-approving it here
       # is harmless and keeps the build-script allowlist complete for a fresh install.
-      "@swc/core": true
+      '@swc/core': true
       nx: true
     ```
 - [ ] **(d) Verify install now succeeds.** Run: `cd "$ROOT" && pnpm install`
@@ -326,7 +326,7 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
    */
 
   /** Verdict for a single struck note relative to its target beat. */
-  export type HitVerdict = "perfect" | "good" | "late" | "early" | "miss";
+  export type HitVerdict = 'perfect' | 'good' | 'late' | 'early' | 'miss';
 
   /** Tolerance windows (milliseconds) classifying a hit by timing error. */
   export interface TimingWindows {
@@ -352,15 +352,15 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
   ): HitVerdict {
     const magnitude: number = Math.abs(errorMs);
     if (magnitude > windows.hittableMs) {
-      return "miss";
+      return 'miss';
     }
     if (magnitude <= windows.perfectMs) {
-      return "perfect";
+      return 'perfect';
     }
     if (magnitude <= windows.goodMs) {
-      return "good";
+      return 'good';
     }
-    return errorMs < 0 ? "early" : "late";
+    return errorMs < 0 ? 'early' : 'late';
   }
 
   /** Aggregate accuracy result for a practiced passage. */
@@ -384,13 +384,12 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     const total: number = errorsMs.length;
     let hits: number = 0;
     for (const errorMs of errorsMs) {
-      if (classifyHit(errorMs, windows) !== "miss") {
+      if (classifyHit(errorMs, windows) !== 'miss') {
         hits += 1;
       }
     }
     const misses: number = total - hits;
-    const accuracyPct: number =
-      total === 0 ? 0 : Math.round((hits / total) * 1000) / 10;
+    const accuracyPct: number = total === 0 ? 0 : Math.round((hits / total) * 1000) / 10;
     return { total, hits, misses, accuracyPct };
   }
   ```
@@ -404,37 +403,37 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     type HitVerdict,
     type TimingWindows,
     type AccuracyScore,
-  } from "./accuracy.ts";
+  } from './accuracy.ts';
   ```
 - [ ] **Write the test** at `core/scoring/src/accuracy.test.ts`:
 
   ```ts
-  import test from "node:test";
-  import assert from "node:assert/strict";
-  import { classifyHit, scorePassage, DEFAULT_WINDOWS } from "./accuracy.ts";
+  import test from 'node:test';
+  import assert from 'node:assert/strict';
+  import { classifyHit, scorePassage, DEFAULT_WINDOWS } from './accuracy.ts';
 
-  test("classifyHit: a dead-on hit is perfect", () => {
-    assert.equal(classifyHit(0), "perfect");
-    assert.equal(classifyHit(DEFAULT_WINDOWS.perfectMs), "perfect");
+  test('classifyHit: a dead-on hit is perfect', () => {
+    assert.equal(classifyHit(0), 'perfect');
+    assert.equal(classifyHit(DEFAULT_WINDOWS.perfectMs), 'perfect');
   });
 
-  test("classifyHit: distinguishes early from late beyond the good band", () => {
+  test('classifyHit: distinguishes early from late beyond the good band', () => {
     // early/late is the OUTER band: magnitude strictly between goodMs(50) and
     // hittableMs(120). ±40 falls inside the good band, so use ±80.
-    assert.equal(classifyHit(-80), "early");
-    assert.equal(classifyHit(80), "late");
+    assert.equal(classifyHit(-80), 'early');
+    assert.equal(classifyHit(80), 'late');
     // boundary lock: ±goodMs(50) is still "good"; ±51 crosses into early/late.
-    assert.equal(classifyHit(50), "good");
-    assert.equal(classifyHit(-50), "good");
-    assert.equal(classifyHit(-51), "early");
-    assert.equal(classifyHit(51), "late");
+    assert.equal(classifyHit(50), 'good');
+    assert.equal(classifyHit(-50), 'good');
+    assert.equal(classifyHit(-51), 'early');
+    assert.equal(classifyHit(51), 'late');
   });
 
-  test("classifyHit: beyond the hittable window is a miss", () => {
-    assert.equal(classifyHit(DEFAULT_WINDOWS.hittableMs + 1), "miss");
+  test('classifyHit: beyond the hittable window is a miss', () => {
+    assert.equal(classifyHit(DEFAULT_WINDOWS.hittableMs + 1), 'miss');
   });
 
-  test("scorePassage: mixes hits and misses into a rounded percentage", () => {
+  test('scorePassage: mixes hits and misses into a rounded percentage', () => {
     const result = scorePassage([0, 30, 200, -10]); // perfect, good, miss, perfect
     assert.equal(result.total, 4);
     assert.equal(result.hits, 3);
@@ -442,7 +441,7 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     assert.equal(result.accuracyPct, 75);
   });
 
-  test("scorePassage: empty passage is 0% over 0 notes, no NaN", () => {
+  test('scorePassage: empty passage is 0% over 0 notes, no NaN', () => {
     const result = scorePassage([]);
     assert.equal(result.total, 0);
     assert.equal(result.accuracyPct, 0);
@@ -545,7 +544,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
 - [ ] **Write `adapters/aws-dynamodb/src/inMemoryUserProgress.ts`:**
 
   ```ts
-  import type { UserProgress, UserProgressPort } from "./userProgressPort.ts";
+  import type { UserProgress, UserProgressPort } from './userProgressPort.ts';
 
   /** Composite key matching a DynamoDB PK#SK layout, without the AWS SDK. */
   function keyOf(userId: string, lessonId: string): string {
@@ -560,10 +559,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
   export class InMemoryUserProgress implements UserProgressPort {
     private readonly store: Map<string, UserProgress> = new Map();
 
-    async get(
-      userId: string,
-      lessonId: string,
-    ): Promise<UserProgress | undefined> {
+    async get(userId: string, lessonId: string): Promise<UserProgress | undefined> {
       return this.store.get(keyOf(userId, lessonId));
     }
 
@@ -575,40 +571,40 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
 
 - [ ] **Write `adapters/aws-dynamodb/src/index.ts`:**
   ```ts
-  export { InMemoryUserProgress } from "./inMemoryUserProgress.ts";
-  export type { UserProgress, UserProgressPort } from "./userProgressPort.ts";
+  export { InMemoryUserProgress } from './inMemoryUserProgress.ts';
+  export type { UserProgress, UserProgressPort } from './userProgressPort.ts';
   ```
 - [ ] **Write the test** at `adapters/aws-dynamodb/src/inMemoryUserProgress.test.ts`:
 
   ```ts
-  import test from "node:test";
-  import assert from "node:assert/strict";
-  import { InMemoryUserProgress } from "./inMemoryUserProgress.ts";
-  import type { UserProgress } from "./userProgressPort.ts";
+  import test from 'node:test';
+  import assert from 'node:assert/strict';
+  import { InMemoryUserProgress } from './inMemoryUserProgress.ts';
+  import type { UserProgress } from './userProgressPort.ts';
 
   const sample: UserProgress = {
-    userId: "u1",
-    lessonId: "paradiddle-01",
+    userId: 'u1',
+    lessonId: 'paradiddle-01',
     bestAccuracyPct: 82.5,
-    updatedAt: "2026-06-10T00:00:00.000Z",
+    updatedAt: '2026-06-10T00:00:00.000Z',
   };
 
-  test("put then get round-trips the record", async () => {
+  test('put then get round-trips the record', async () => {
     const repo = new InMemoryUserProgress();
     await repo.put(sample);
-    assert.deepEqual(await repo.get("u1", "paradiddle-01"), sample);
+    assert.deepEqual(await repo.get('u1', 'paradiddle-01'), sample);
   });
 
-  test("get returns undefined for an unknown key", async () => {
+  test('get returns undefined for an unknown key', async () => {
     const repo = new InMemoryUserProgress();
-    assert.equal(await repo.get("nobody", "nothing"), undefined);
+    assert.equal(await repo.get('nobody', 'nothing'), undefined);
   });
 
-  test("put is last-write-wins on the same key", async () => {
+  test('put is last-write-wins on the same key', async () => {
     const repo = new InMemoryUserProgress();
     await repo.put(sample);
     await repo.put({ ...sample, bestAccuracyPct: 95 });
-    const got = await repo.get("u1", "paradiddle-01");
+    const got = await repo.get('u1', 'paradiddle-01');
     assert.equal(got?.bestAccuracyPct, 95);
   });
   ```
@@ -703,7 +699,7 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
 - [ ] **Write `apps/player-pwa/src/practiceSession.ts`:**
 
   ```ts
-  import { scorePassage, type AccuracyScore } from "@notation-hero/scoring";
+  import { scorePassage, type AccuracyScore } from '@notation-hero/scoring';
 
   /** A finished practice take as captured by the (future) player UI. */
   export interface PracticeTake {
@@ -735,7 +731,7 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
 - [ ] **Write `apps/player-pwa/src/main.ts`:**
 
   ```ts
-  import { summarizeTake, type PracticeTake } from "./practiceSession.ts";
+  import { summarizeTake, type PracticeTake } from './practiceSession.ts';
 
   /**
    * Wave 1 entry point. Not a real PWA - just a buildable/typecheckable seam.
@@ -744,41 +740,41 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
   export function bootstrap(takes: readonly PracticeTake[]): string {
     const lines: string[] = takes.map((take) => {
       const summary = summarizeTake(take);
-      const verdict: string = summary.passed ? "PASS" : "RETRY";
+      const verdict: string = summary.passed ? 'PASS' : 'RETRY';
       return `${summary.lessonId}: ${summary.score.accuracyPct}% [${verdict}]`;
     });
-    return lines.join("\n");
+    return lines.join('\n');
   }
   ```
 
 - [ ] **Write the test** at `apps/player-pwa/src/practiceSession.test.ts`:
 
   ```ts
-  import test from "node:test";
-  import assert from "node:assert/strict";
-  import { summarizeTake, PASS_THRESHOLD_PCT } from "./practiceSession.ts";
-  import { bootstrap } from "./main.ts";
+  import test from 'node:test';
+  import assert from 'node:assert/strict';
+  import { summarizeTake, PASS_THRESHOLD_PCT } from './practiceSession.ts';
+  import { bootstrap } from './main.ts';
 
-  test("summarizeTake marks an accurate take as passed", () => {
+  test('summarizeTake marks an accurate take as passed', () => {
     const summary = summarizeTake({
-      lessonId: "fill-01",
+      lessonId: 'fill-01',
       timingErrorsMs: [0, 10, -15, 25],
     });
     assert.equal(summary.score.accuracyPct, 100);
     assert.equal(summary.passed, true);
   });
 
-  test("summarizeTake fails a take below threshold", () => {
+  test('summarizeTake fails a take below threshold', () => {
     const summary = summarizeTake({
-      lessonId: "fill-02",
+      lessonId: 'fill-02',
       timingErrorsMs: [300, 300, 0, 0],
     });
     assert.ok(summary.score.accuracyPct < PASS_THRESHOLD_PCT);
     assert.equal(summary.passed, false);
   });
 
-  test("bootstrap renders one summary line per take", () => {
-    const out = bootstrap([{ lessonId: "fill-01", timingErrorsMs: [0] }]);
+  test('bootstrap renders one summary line per take', () => {
+    const out = bootstrap([{ lessonId: 'fill-01', timingErrorsMs: [0] }]);
     assert.match(out, /^fill-01: 100% \[PASS\]$/);
   });
   ```

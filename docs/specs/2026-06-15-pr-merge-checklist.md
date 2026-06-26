@@ -14,11 +14,12 @@
 
 **Goal:** a lightweight, **agent-readable checklist on every PR** + a **CI gate** that makes the required steps unskippable, while staying simple (no smart DangerJS rules yet). Must support **both `NH-` and `KAN-`** Jira keys during the migration.
 
-**Non-goal (v1):** verifying the *work* behind a checkbox (e.g., that the ticket was actually updated). v1 is honesty-based + presence checks; deep verification is the **v2 "smart" backlog**.
+**Non-goal (v1):** verifying the _work_ behind a checkbox (e.g., that the ticket was actually updated). v1 is honesty-based + presence checks; deep verification is the **v2 "smart" backlog**.
 
 ## 2. Scope
 
 **In (v1):**
+
 - PR-body checklist (native GitHub task list) via the PR template.
 - Custom CI gate (`tooling/pr-checklist.mjs` + a `pr-checklist` job): **every acknowledgement ticked** (no `N/A`) + anti-deletion + Jira-key presence grep; bot-exempt; wired into **CI Green**.
 - Local `lefthook` pre-push worktree reminder.
@@ -31,9 +32,11 @@
 
 ```md
 ## Checklist
+
 <!-- Every box must be ticked [x]. No N/A — these are standing acknowledgements, so tick them all.
      Do NOT delete/reword items (the gate reads them from this template). A real NH-/KAN- key must
      also appear in the title, body, or branch. -->
+
 - [ ] I am aware I must link a Jira ticket (NH-####) and keep its status updated through implementation, review, and merge.
 - [ ] I am aware I must write/maintain Storybook stories if this PR includes any UI changes.
 - [ ] I am aware I must add/update VR (visual-regression) tests if this PR includes any UI changes.
@@ -50,15 +53,15 @@
 
 ## 4. The model — all-required acknowledgements (v1.1) + one hard check
 
-**Why v1.1:** v1 used per-PR action items (`required:`/`warn:`) with an `N/A` escape. PR #40 exposed the weakness — an agent left required boxes unticked-but-`N/A`'d and the gate passed (legitimately, for a docs PR, but the `N/A` escape is self-asserted and abusable). The fix: **reframe every item as a standing acknowledgement** ("I am aware I must … *if* …") that is *always* true to tick — so **`N/A` is removed entirely** and **every box must be `[x]`**. No checked, no merge. (User's model: "an agreement of terms & conditions.")
+**Why v1.1:** v1 used per-PR action items (`required:`/`warn:`) with an `N/A` escape. PR #40 exposed the weakness — an agent left required boxes unticked-but-`N/A`'d and the gate passed (legitimately, for a docs PR, but the `N/A` escape is self-asserted and abusable). The fix: **reframe every item as a standing acknowledgement** ("I am aware I must … _if_ …") that is _always_ true to tick — so **`N/A` is removed entirely** and **every box must be `[x]`**. No checked, no merge. (User's model: "an agreement of terms & conditions.")
 
-| Rule | Behaviour |
-|---|---|
-| Every canonical item present | missing/reworded item → **fail** (anti-deletion) |
-| Every box ticked `[x]` | any blank `[ ]` → **fail** — there is **no `N/A`** |
+| Rule                                                | Behaviour                                                       |
+| --------------------------------------------------- | --------------------------------------------------------------- |
+| Every canonical item present                        | missing/reworded item → **fail** (anti-deletion)                |
+| Every box ticked `[x]`                              | any blank `[ ]` → **fail** — there is **no `N/A`**              |
 | Real Jira key (`NH`/`KAN`) in title ∪ body ∪ branch | absent → **fail** — the one check with real teeth, un-skippable |
 
-**The teeth:** the **Jira-key grep** is the only check that verifies something concrete (a real key exists) — it guarantees every PR is tracked (the core S.1 pain). The acknowledgements are **honesty-based** (ticking ≠ proof the work was done); their value is forcing the agent to read + affirm each standing rule, with no silent skip. Promoting an acknowledgement to a *verified* gate (e.g. "a Storybook story **exists** when `*.tsx` changed", diff-aware) is **v2 smart detection**.
+**The teeth:** the **Jira-key grep** is the only check that verifies something concrete (a real key exists) — it guarantees every PR is tracked (the core S.1 pain). The acknowledgements are **honesty-based** (ticking ≠ proof the work was done); their value is forcing the agent to read + affirm each standing rule, with no silent skip. Promoting an acknowledgement to a _verified_ gate (e.g. "a Storybook story **exists** when `*.tsx` changed", diff-aware) is **v2 smart detection**.
 
 **Robustness (carried from the 2026-06-15 hardening):** the gate reads canonical items from the PR template (deleting one fails) and strips comments / fences / checklist-lines from the key search (the template's example key doesn't count). Plus branch protection now **includes administrators**, so a red gate can't be clicked past.
 
@@ -67,6 +70,7 @@
 **Inputs** (from the `github` context via env vars): PR title, body, `head_ref` (branch), `user.type` (bot?).
 
 **Logic** (hardened after ce-code-review, 2026-06-15):
+
 1. **Bot bypass:** `user.type === 'Bot'` → pass.
 2. **Strip noise:** remove HTML comments + ` ``` ` / `~~~` code fences from the body, so keys/checkboxes hidden in comments or quoted samples don't count (fixes a false-fail on quoted checklists + a commented-key false-pass).
 3. **Jira key:** require `/(NH|KAN)-\d+/` in **title ∪ branch ∪ body-minus-checklist-lines**. Excluding checklist lines stops the template's own example key (`[NH-16] …`) from satisfying the check. Absent → **fail**.
@@ -75,6 +79,7 @@
 6. Exit non-zero with the list of missing/unticked items; else pass.
 
 **CI wiring:**
+
 - New `pr-checklist` job, `if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'`.
 - **Not path-filtered** (must run on every PR).
 - Triggers: reuses the existing `pull_request: [opened, edited, synchronize, reopened]` — `edited` re-runs the gate when a box is ticked. ✓ already in `ci.yml`.
@@ -86,21 +91,21 @@ Add a non-blocking `worktree-reminder` to `lefthook.yml` `pre-push`: echo `git w
 
 ## 7. Files touched
 
-| File | Change |
-|---|---|
-| `.github/pull_request_template.md` | acknowledgement checklist (v1.1, all-required, no N/A) |
-| `tooling/pr-checklist.mjs` | **new** — the gate parser (template-anchored) |
-| `tooling/pr-checklist.test.mjs` | node --test suite (12 cases; v1.1 all-ticked + anti-deletion + N/A-removed) |
-| `package.json` | `test:tooling` script (runs the suite; CI quality job calls it) |
-| `.github/workflows/ci.yml` | new `pr-checklist` job; add to `ci-green` `needs` |
-| `lefthook.yml` | pre-push `worktree-reminder` |
-| `.github/CODEOWNERS` | cover `tooling/pr-checklist.mjs` |
-| `docs/decisions/2026-06-09-tooling-stack-daci.md` | baby-steps = commits clarification |
-| `docs/decisions/decision-registry.md` | Change-log entry + status flip |
-| `CONTRIBUTING.md` | NH support + board URL |
-| `AGENTS.md` | "PR checklist" subsection (prefixes, N/A, bot-exempt) |
-| `docs/specs/2026-06-15-pr-merge-checklist.md` | this spec |
-| Jira NH-16 | Smart Checklist (v1 + v2 backlog) |
+| File                                              | Change                                                                      |
+| ------------------------------------------------- | --------------------------------------------------------------------------- |
+| `.github/pull_request_template.md`                | acknowledgement checklist (v1.1, all-required, no N/A)                      |
+| `tooling/pr-checklist.mjs`                        | **new** — the gate parser (template-anchored)                               |
+| `tooling/pr-checklist.test.mjs`                   | node --test suite (12 cases; v1.1 all-ticked + anti-deletion + N/A-removed) |
+| `package.json`                                    | `test:tooling` script (runs the suite; CI quality job calls it)             |
+| `.github/workflows/ci.yml`                        | new `pr-checklist` job; add to `ci-green` `needs`                           |
+| `lefthook.yml`                                    | pre-push `worktree-reminder`                                                |
+| `.github/CODEOWNERS`                              | cover `tooling/pr-checklist.mjs`                                            |
+| `docs/decisions/2026-06-09-tooling-stack-daci.md` | baby-steps = commits clarification                                          |
+| `docs/decisions/decision-registry.md`             | Change-log entry + status flip                                              |
+| `CONTRIBUTING.md`                                 | NH support + board URL                                                      |
+| `AGENTS.md`                                       | "PR checklist" subsection (prefixes, N/A, bot-exempt)                       |
+| `docs/specs/2026-06-15-pr-merge-checklist.md`     | this spec                                                                   |
+| Jira NH-16                                        | Smart Checklist (v1 + v2 backlog)                                           |
 
 ## 8. Governance (required in-PR by AGENTS.md)
 
@@ -112,7 +117,7 @@ Add a Smart Checklist to NH-16: v1 items (this work) + a "v2 smart (DangerJS)" s
 
 ## 10. Open points / caveats
 
-- **Storybook/VR acknowledgements work even though the harness isn't built yet** (deferred per DACI L13). Because they're acknowledgements ("I am aware I must … *if* UI changes"), they're always tickable — no harness dependency and no `N/A` needed. A *verified* gate (a Storybook story / VR test must **exist** when `*.tsx` changed, diff-aware) is v2.
+- **Storybook/VR acknowledgements work even though the harness isn't built yet** (deferred per DACI L13). Because they're acknowledgements ("I am aware I must … _if_ UI changes"), they're always tickable — no harness dependency and no `N/A` needed. A _verified_ gate (a Storybook story / VR test must **exist** when `*.tsx` changed, diff-aware) is v2.
 - **Robustness:** the delete-the-checklist bypass, the quoted-sample false-fail, and the template-example-key false-pass are **closed** (template-anchoring + noise-stripping), locked by `tooling/pr-checklist.test.mjs`. The `N/A` mechanism — and its self-asserted-skip abuse vector (PR #40) — was **removed entirely** in v1.1.
 - **Honesty-based v1:** ticking a box is not proof the work was done — except the Jira-key presence check. Deep verification (real Jira-API lookup, "is the ticket done?", smart per-item detection) = v2.
 - **CODEOWNERS self-approval:** enforcement-file changes hit the solo-dev self-approval block; use the documented direct-master-push exception when one must merge (per DACI F-3 caveat).

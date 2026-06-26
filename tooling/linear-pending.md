@@ -14,6 +14,7 @@ Companion runbook: [`docs/runbooks/linear-mcp.md`](../docs/runbooks/linear-mcp.m
 ## When to enqueue
 
 Append a bullet when ALL of:
+
 1. The agent intended to write to Linear (`create_issue`, `update_issue`, `add_comment`, etc.).
 2. The Linear MCP call failed AND a single retry also failed.
 3. Losing the bookkeeping would matter (e.g., mirroring a DACI Deferred item, logging a follow-up issue from a real workflow). Skip transient noise.
@@ -24,13 +25,13 @@ If the MCP call succeeds on the first try (or after a retry), never touch this f
 
 This file commits to git. Anything written here is permanent in the public repo's history. Before appending a bullet, sanitize the content:
 
-| **Never** put in a bullet | **Why** | **Instead** |
-|---|---|---|
-| Raw API responses, error bodies, stack traces | Often embed env vars, request URLs with tokens, internal hostnames | Summarize: `"NetworkError on call to <redacted>, see logs in agent session"` |
-| Authorization headers, `Bearer <token>` | Direct token leak | Don't reference; restart and re-auth |
-| AWS access keys (`AKIA…` / `ASIA…`), secret keys | AWS credentials trigger amazon-side auto-revoke and a security incident | Don't reference; rotate in IAM |
-| Database connection strings, DSNs | Credentials inline | Just say "DB connection issue" |
-| Internal customer / PII | GDPR + privacy concerns | Replace with IDs only |
+| **Never** put in a bullet                        | **Why**                                                                 | **Instead**                                                                  |
+| ------------------------------------------------ | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Raw API responses, error bodies, stack traces    | Often embed env vars, request URLs with tokens, internal hostnames      | Summarize: `"NetworkError on call to <redacted>, see logs in agent session"` |
+| Authorization headers, `Bearer <token>`          | Direct token leak                                                       | Don't reference; restart and re-auth                                         |
+| AWS access keys (`AKIA…` / `ASIA…`), secret keys | AWS credentials trigger amazon-side auto-revoke and a security incident | Don't reference; rotate in IAM                                               |
+| Database connection strings, DSNs                | Credentials inline                                                      | Just say "DB connection issue"                                               |
+| Internal customer / PII                          | GDPR + privacy concerns                                                 | Replace with IDs only                                                        |
 
 Future hardening: gitleaks pre-commit hook scoped to `tooling/linear-pending.md` will land with DACI L9 (already on the Sequencing path). Until then, this is a discipline rule for the agent author.
 
@@ -40,13 +41,13 @@ Future hardening: gitleaks pre-commit hook scoped to `tooling/linear-pending.md`
 - [ ] **<action>** — <fields the call needs>
 ```
 
-| Action | Required fields |
-|---|---|
+| Action         | Required fields                                                                                       |
+| -------------- | ----------------------------------------------------------------------------------------------------- | ---- | ----------- | --------- | ---- | ---------- |
 | `create_issue` | `Team: <name>` + `Project: <name>` + `Title: <text>`; optional `Labels: [...]`, `Description: <text>` |
-| `update_issue` | `Issue: <LEO-XX>` + at least one field to change |
-| `add_comment` | `Issue: <LEO-XX>` + `Body: <text>` |
-| `set_status` | `Issue: <LEO-XX>` + `State: <Backlog | Todo | In Progress | In Review | Done | Canceled>` |
-| `add_label` | `Issue: <LEO-XX>` + `Labels: [...]` |
+| `update_issue` | `Issue: <LEO-XX>` + at least one field to change                                                      |
+| `add_comment`  | `Issue: <LEO-XX>` + `Body: <text>`                                                                    |
+| `set_status`   | `Issue: <LEO-XX>` + `State: <Backlog                                                                  | Todo | In Progress | In Review | Done | Canceled>` |
+| `add_label`    | `Issue: <LEO-XX>` + `Labels: [...]`                                                                   |
 
 After enqueueing, commit in a small chore commit: `chore(linear): enqueue <action> (mcp unreachable)`. Then continue work — don't block on Linear being down.
 

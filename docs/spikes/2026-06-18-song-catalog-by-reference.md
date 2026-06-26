@@ -110,13 +110,13 @@ And in the open-decisions framing it was never on the MVP critical path — the 
 
 This prior art is **NOT** the catalog work happening now. They are two different things:
 
-|                     | This prior art (catalog-by-reference)                       | Current Notation Hero catalog                              |
-| ------------------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
-| **What it indexes** | third-party external sources (Songsterr/UG) by `{source, id}` | first-party / owned content (the Playable model)             |
+|                     | This prior art (catalog-by-reference)                         | Current Notation Hero catalog                              |
+| ------------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
+| **What it indexes** | third-party external sources (Songsterr/UG) by `{source, id}` | first-party / owned content (the Playable model)           |
 | **Storage**         | a reference; resolve via proxy at play time                   | Neon Postgres (catalog) + DynamoDB (per-user)              |
 | **Search purpose**  | _import_ a song from an external tab site                     | _find a piece to play_ within owned catalog (find-a-piece) |
-| **Legal posture**   | ToS / scraping gray area                                      | first-party, no third-party ToS exposure                     |
-| **Status**          | deferred nice-to-have, never built                            | active, first real feature                                   |
+| **Legal posture**   | ToS / scraping gray area                                      | first-party, no third-party ToS exposure                   |
+| **Status**          | deferred nice-to-have, never built                            | active, first real feature                                 |
 
 If external-source import is ever revived, it should be modeled as an **import/reference layer that feeds INTO** the current catalog (an external `{source,id}` becomes one possible backing of a Playable), not as a replacement for it.
 

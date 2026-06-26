@@ -18,7 +18,7 @@ pre-commit:
       run: bash tooling/semgrep-precommit.sh
       skip: [merge, rebase]
     format:
-      glob: "*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css,html}"
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css,html}'
       run: pnpm exec prettier --write --ignore-unknown {staged_files}
       stage_fixed: true
       skip: [merge, rebase]

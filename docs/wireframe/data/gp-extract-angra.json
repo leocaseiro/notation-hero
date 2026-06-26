@@ -14,14 +14,7 @@
       "idx": 0,
       "name": "Andre",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []
@@ -30,14 +23,7 @@
       "idx": 1,
       "name": "Kiko",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []
@@ -46,14 +32,7 @@
       "idx": 2,
       "name": "Rafael",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []
@@ -62,12 +41,7 @@
       "idx": 3,
       "name": "Luis",
       "isPercussion": false,
-      "tuning": [
-        43,
-        38,
-        33,
-        28
-      ],
+      "tuning": [43, 38, 33, 28],
       "stringCount": 4,
       "chords": [],
       "progression": []
@@ -85,14 +59,7 @@
       "idx": 5,
       "name": "Keyboard I",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []
@@ -101,14 +68,7 @@
       "idx": 6,
       "name": "Keyboard II",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []
@@ -117,14 +77,7 @@
       "idx": 7,
       "name": "Keyboard III",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []
@@ -133,14 +86,7 @@
       "idx": 8,
       "name": "",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []

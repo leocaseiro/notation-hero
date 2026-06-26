@@ -4,27 +4,27 @@ Every search UI element checked **one by one** against the read-side query contr
 (`core/catalog/CatalogFilter.ts` + schema spec §9) and the canonical mockup
 (`docs/mockups/catalog.html`). Decisions made with Leo on 2026-06-16.
 
-**Key principle (Leo):** *data cardinality ≠ filter cardinality.* An item **has** one
+**Key principle (Leo):** _data cardinality ≠ filter cardinality._ An item **has** one
 genre / type / kind (columns stay single-valued — schema unchanged). The **filter** may
-multi-*select* to OR-match (`col = ANY($1)`). So "rudiments OR beats" preserves the
+multi-_select_ to OR-match (`col = ANY($1)`). So "rudiments OR beats" preserves the
 single-value relationship.
 
-| # | UI piece | Contract | Mockup | Decision (v1.2) | Query | Schema delta |
-|---|----------|----------|--------|-----------------|-------|:---:|
-| 1 | Search | fuzzy pg_trgm + FTS | text | functional (title/artist) | `unaccent/ILIKE` + `tsvector` | — |
-| 2 | Songs / Lessons | `type` single | segmented | **single** | `type = $1` | — |
-| 3 | Genre | `genre` single `=` | dropdown | **multi-select filter** (OR) | `genre = ANY($1)` | SD-8 |
-| 4 | Kind (`lesson_type`) | `lessonType` single | dropdown | **multi-select filter** (OR) | `lesson_type = ANY($1)` | SD-8 |
-| 5 | Level | `{min,max}`, excl. ungraded | "≤ N" | **range** (min/max) + incl-ungraded toggle; **0 = Debut** | `level BETWEEN` (NULL excluded unless toggle) | SD-7 |
-| 6 | Instrument | `instruments[]` `@>` | "is any of" | **single-select** (multi later) | `instruments @> ARRAY[$1]` | — |
-| 7 | Tempo | `bpm {min,max}` | dual slider | **range** (min/max) | `bpm BETWEEN` | — |
-| 8 | Time-sig | `timeSig` single | multi chips | **multi-select filter** (OR) | `time_sig = ANY($1)` | SD-8 |
-| 9 | Tags | `tags[]` `@>` (ALL) | token multi | **ALL-of** (keep) | `tags @> $1` | — |
-| 10 | Skill | `skill[]` `@>` (ALL) | multi chips | **ALL-of** (keep) | `skill @> $1` | — |
-| 11 | Pattern | `patternId` single (JOIN) | token multi | **single** (v1) | `JOIN item_pattern` | — |
-| 12 | Key | **absent from contract** | token multi | **add `musicalKey`**, multi (OR), **shown only for pitched instruments** | `musical_key = ANY($1)` | SD-9 |
-| 13 | Sort | relevance·level·bpm·newest·title·curated | "Relevance" only | **functional dropdown** (6 options) | `ORDER BY` | — |
-| 14 | *(admin)* Status | `status` (admin-only) | — | admin status filter (later slice) | `status = $1` | — |
+| #   | UI piece             | Contract                                 | Mockup           | Decision (v1.2)                                                          | Query                                         | Schema delta |
+| --- | -------------------- | ---------------------------------------- | ---------------- | ------------------------------------------------------------------------ | --------------------------------------------- | :----------: |
+| 1   | Search               | fuzzy pg_trgm + FTS                      | text             | functional (title/artist)                                                | `unaccent/ILIKE` + `tsvector`                 |      —       |
+| 2   | Songs / Lessons      | `type` single                            | segmented        | **single**                                                               | `type = $1`                                   |      —       |
+| 3   | Genre                | `genre` single `=`                       | dropdown         | **multi-select filter** (OR)                                             | `genre = ANY($1)`                             |     SD-8     |
+| 4   | Kind (`lesson_type`) | `lessonType` single                      | dropdown         | **multi-select filter** (OR)                                             | `lesson_type = ANY($1)`                       |     SD-8     |
+| 5   | Level                | `{min,max}`, excl. ungraded              | "≤ N"            | **range** (min/max) + incl-ungraded toggle; **0 = Debut**                | `level BETWEEN` (NULL excluded unless toggle) |     SD-7     |
+| 6   | Instrument           | `instruments[]` `@>`                     | "is any of"      | **single-select** (multi later)                                          | `instruments @> ARRAY[$1]`                    |      —       |
+| 7   | Tempo                | `bpm {min,max}`                          | dual slider      | **range** (min/max)                                                      | `bpm BETWEEN`                                 |      —       |
+| 8   | Time-sig             | `timeSig` single                         | multi chips      | **multi-select filter** (OR)                                             | `time_sig = ANY($1)`                          |     SD-8     |
+| 9   | Tags                 | `tags[]` `@>` (ALL)                      | token multi      | **ALL-of** (keep)                                                        | `tags @> $1`                                  |      —       |
+| 10  | Skill                | `skill[]` `@>` (ALL)                     | multi chips      | **ALL-of** (keep)                                                        | `skill @> $1`                                 |      —       |
+| 11  | Pattern              | `patternId` single (JOIN)                | token multi      | **single** (v1)                                                          | `JOIN item_pattern`                           |      —       |
+| 12  | Key                  | **absent from contract**                 | token multi      | **add `musicalKey`**, multi (OR), **shown only for pitched instruments** | `musical_key = ANY($1)`                       |     SD-9     |
+| 13  | Sort                 | relevance·level·bpm·newest·title·curated | "Relevance" only | **functional dropdown** (6 options)                                      | `ORDER BY`                                    |      —       |
+| 14  | _(admin)_ Status     | `status` (admin-only)                    | —                | admin status filter (later slice)                                        | `status = $1`                                 |      —       |
 
 ## Resolved decisions
 

@@ -1,101 +1,432 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NotationHero — Results</title>
-<style>
-  :root{
-    --bg:#eceff4;--ink:#0f151c;--muted:#67707e;--faint:#9aa3b1;--line:#e6eaf1;--panel:#fafbfd;--fill:#eef1f6;
-    --accent:#10b6a6;--gold:#f0a500;
-    --perfect:#009E73;--good:#E69F00;--ok:#CC79A7;--miss:#9AA0A6;--target:#39b6e6;
-    --shadow:0 1px 2px rgba(16,21,28,.05),0 18px 46px rgba(16,21,28,.13);
-  }
-  *{box-sizing:border-box}
-  body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1120px;margin:0 auto;padding:0 24px 56px}
-  header.top{background:#141a23;color:#eef2f7;padding:22px 24px;border-bottom:3px solid var(--accent)}
-  header.top h1{margin:0;font-size:19px;font-weight:650}
-  header.top p{margin:5px 0 0;color:#9fb0c2;font-size:13px;max-width:840px}
-  .pill{display:inline-block;background:rgba(16,182,166,.16);color:#5ff0e0;border:1px solid rgba(16,182,166,.4);font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;margin-bottom:9px}
-  svg{display:block}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NotationHero — Results</title>
+    <style>
+      :root {
+        --bg: #eceff4;
+        --ink: #0f151c;
+        --muted: #67707e;
+        --faint: #9aa3b1;
+        --line: #e6eaf1;
+        --panel: #fafbfd;
+        --fill: #eef1f6;
+        --accent: #10b6a6;
+        --gold: #f0a500;
+        --perfect: #009e73;
+        --good: #e69f00;
+        --ok: #cc79a7;
+        --miss: #9aa0a6;
+        --target: #39b6e6;
+        --shadow: 0 1px 2px rgba(16, 21, 28, 0.05), 0 18px 46px rgba(16, 21, 28, 0.13);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          14px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Inter,
+          Roboto,
+          sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 0 24px 56px;
+      }
+      header.top {
+        background: #141a23;
+        color: #eef2f7;
+        padding: 22px 24px;
+        border-bottom: 3px solid var(--accent);
+      }
+      header.top h1 {
+        margin: 0;
+        font-size: 19px;
+        font-weight: 650;
+      }
+      header.top p {
+        margin: 5px 0 0;
+        color: #9fb0c2;
+        font-size: 13px;
+        max-width: 840px;
+      }
+      .pill {
+        display: inline-block;
+        background: rgba(16, 182, 166, 0.16);
+        color: #5ff0e0;
+        border: 1px solid rgba(16, 182, 166, 0.4);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 9px;
+        border-radius: 999px;
+        margin-bottom: 9px;
+      }
+      svg {
+        display: block;
+      }
 
-  .device{position:relative;height:600px;border-radius:22px;box-shadow:var(--shadow);overflow:hidden;background:#fff;border:1px solid #dde3ea;display:flex;flex-direction:column}
-  .rbar{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);background:var(--panel)}
-  .rbar .back{color:var(--muted);font-size:14px;display:flex;align-items:center;gap:6px;font-weight:600}
-  .rbar .ti{font-weight:650;font-size:15px}.rbar .ti s{color:var(--faint);text-decoration:none;font-weight:500;margin-left:5px;font-size:13px}
-  .rbar .meta{margin-left:auto;font-size:12px;color:var(--muted)}
-  .rbar .ico{width:36px;height:36px;border-radius:9px;background:var(--fill);display:grid;place-items:center;color:var(--muted)}.rbar .ico svg{width:18px;height:18px}
+      .device {
+        position: relative;
+        height: 600px;
+        border-radius: 22px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        background: #fff;
+        border: 1px solid #dde3ea;
+        display: flex;
+        flex-direction: column;
+      }
+      .rbar {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 18px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .rbar .back {
+        color: var(--muted);
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+      }
+      .rbar .ti {
+        font-weight: 650;
+        font-size: 15px;
+      }
+      .rbar .ti s {
+        color: var(--faint);
+        text-decoration: none;
+        font-weight: 500;
+        margin-left: 5px;
+        font-size: 13px;
+      }
+      .rbar .meta {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .rbar .ico {
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+        background: var(--fill);
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+      }
+      .rbar .ico svg {
+        width: 18px;
+        height: 18px;
+      }
 
-  .body{flex:1;display:flex;gap:24px;padding:24px 26px}
-  /* left hero */
-  .hero{width:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;border-right:1px solid var(--line);padding-right:24px}
-  .ring{--p:82;width:184px;height:184px;border-radius:50%;display:grid;place-items:center;
-    background:conic-gradient(var(--accent) calc(var(--p)*1%), var(--fill) 0)}
-  .ring .in{width:148px;height:148px;border-radius:50%;background:#fff;display:grid;place-items:center}
-  .ring .in b{font-size:46px;font-weight:750;letter-spacing:-.03em;line-height:1}
-  .ring .in span{font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.08em;margin-top:2px}
-  .stars{color:var(--gold);font-size:26px;letter-spacing:3px;margin-top:16px}.stars .e{color:#dfe4ec}
-  .verdict{font-size:20px;font-weight:750;margin-top:12px;letter-spacing:-.01em}
-  .newbest{margin-top:8px;display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:#0b7d4a;background:rgba(0,158,115,.12);border-radius:999px;padding:5px 12px}
+      .body {
+        flex: 1;
+        display: flex;
+        gap: 24px;
+        padding: 24px 26px;
+      }
+      /* left hero */
+      .hero {
+        width: 300px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        border-right: 1px solid var(--line);
+        padding-right: 24px;
+      }
+      .ring {
+        --p: 82;
+        width: 184px;
+        height: 184px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: conic-gradient(var(--accent) calc(var(--p) * 1%), var(--fill) 0);
+      }
+      .ring .in {
+        width: 148px;
+        height: 148px;
+        border-radius: 50%;
+        background: #fff;
+        display: grid;
+        place-items: center;
+      }
+      .ring .in b {
+        font-size: 46px;
+        font-weight: 750;
+        letter-spacing: -0.03em;
+        line-height: 1;
+      }
+      .ring .in span {
+        font-size: 11px;
+        color: var(--faint);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        margin-top: 2px;
+      }
+      .stars {
+        color: var(--gold);
+        font-size: 26px;
+        letter-spacing: 3px;
+        margin-top: 16px;
+      }
+      .stars .e {
+        color: #dfe4ec;
+      }
+      .verdict {
+        font-size: 20px;
+        font-weight: 750;
+        margin-top: 12px;
+        letter-spacing: -0.01em;
+      }
+      .newbest {
+        margin-top: 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #0b7d4a;
+        background: rgba(0, 158, 115, 0.12);
+        border-radius: 999px;
+        padding: 5px 12px;
+      }
 
-  /* right breakdown */
-  .right{flex:1;display:flex;flex-direction:column;gap:18px}
-  .sect{font-size:11px;color:var(--faint);font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px}
-  .tier{display:flex;align-items:center;gap:11px;margin:9px 0}
-  .tier .dot{width:11px;height:11px;border-radius:3px;flex:0 0 auto}
-  .tier .nm{width:64px;font-size:13.5px;font-weight:600}
-  .tier .bar{height:9px;border-radius:5px;flex:1;background:var(--fill)}.tier .bar i{display:block;height:100%;border-radius:5px}
-  .tier .n{width:34px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
-  .tier .pc{width:42px;text-align:right;font-size:12px;color:var(--faint);font-variant-numeric:tabular-nums}
-  .split{display:flex;gap:20px}
-  .tvp{width:188px;border-left:1px solid var(--line);padding-left:20px;display:flex;flex-direction:column}
-  .tvp .bars{display:flex;gap:22px;align-items:flex-end;height:118px;justify-content:center;flex:1}
-  .tvp .col{display:flex;flex-direction:column;align-items:center;gap:7px;font-size:11px;color:var(--muted);font-weight:600}
-  .tvp .bv{width:34px;border-radius:7px 7px 0 0}
-  .tvp .cap{font-size:11px;color:var(--faint);text-align:center;margin-top:6px}
-  .chips{display:flex;gap:10px;margin-top:auto}
-  .chip{flex:1;background:var(--fill);border-radius:12px;padding:11px 12px;text-align:center}
-  .chip b{display:block;font-size:19px;font-weight:750;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
-  .chip span{font-size:10px;color:var(--faint);font-weight:700;letter-spacing:.05em}
-  .chip b.g{color:var(--perfect)}
+      /* right breakdown */
+      .right {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .sect {
+        font-size: 11px;
+        color: var(--faint);
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+      }
+      .tier {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        margin: 9px 0;
+      }
+      .tier .dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
+        flex: 0 0 auto;
+      }
+      .tier .nm {
+        width: 64px;
+        font-size: 13.5px;
+        font-weight: 600;
+      }
+      .tier .bar {
+        height: 9px;
+        border-radius: 5px;
+        flex: 1;
+        background: var(--fill);
+      }
+      .tier .bar i {
+        display: block;
+        height: 100%;
+        border-radius: 5px;
+      }
+      .tier .n {
+        width: 34px;
+        text-align: right;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+      }
+      .tier .pc {
+        width: 42px;
+        text-align: right;
+        font-size: 12px;
+        color: var(--faint);
+        font-variant-numeric: tabular-nums;
+      }
+      .split {
+        display: flex;
+        gap: 20px;
+      }
+      .tvp {
+        width: 188px;
+        border-left: 1px solid var(--line);
+        padding-left: 20px;
+        display: flex;
+        flex-direction: column;
+      }
+      .tvp .bars {
+        display: flex;
+        gap: 22px;
+        align-items: flex-end;
+        height: 118px;
+        justify-content: center;
+        flex: 1;
+      }
+      .tvp .col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 600;
+      }
+      .tvp .bv {
+        width: 34px;
+        border-radius: 7px 7px 0 0;
+      }
+      .tvp .cap {
+        font-size: 11px;
+        color: var(--faint);
+        text-align: center;
+        margin-top: 6px;
+      }
+      .chips {
+        display: flex;
+        gap: 10px;
+        margin-top: auto;
+      }
+      .chip {
+        flex: 1;
+        background: var(--fill);
+        border-radius: 12px;
+        padding: 11px 12px;
+        text-align: center;
+      }
+      .chip b {
+        display: block;
+        font-size: 19px;
+        font-weight: 750;
+        letter-spacing: -0.01em;
+        font-variant-numeric: tabular-nums;
+      }
+      .chip span {
+        font-size: 10px;
+        color: var(--faint);
+        font-weight: 700;
+        letter-spacing: 0.05em;
+      }
+      .chip b.g {
+        color: var(--perfect);
+      }
 
-  .foot{display:flex;align-items:center;gap:12px;padding:15px 22px;border-top:1px solid var(--line);background:var(--panel)}
-  .btn{height:48px;border-radius:13px;display:flex;align-items:center;justify-content:center;gap:9px;font-weight:700;font-size:14.5px;padding:0 20px}
-  .btn svg{width:19px;height:19px}
-  .btn.ghost{background:var(--fill);color:var(--ink)}
-  .btn.pri{background:var(--accent);color:#04201d;box-shadow:0 6px 18px rgba(16,182,166,.4);margin-left:auto}
-  .cap{font-size:11.5px;color:var(--muted);margin:10px 2px 0}
-  .footn{margin-top:22px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:12px}
-</style>
-</head>
-<body>
-<header class="top"><div class="wrap" style="max-width:1120px">
-  <span class="pill">SCREEN · Results (D-4b) — direction B (modern) + per-tier bars + Target-vs-You</span>
-  <h1>NotationHero — Results</h1>
-  <p>End-of-play, dedicated screen. Big completion %, 5-star, a verdict, and a "new best" badge; a per-tier breakdown (Perfect/Good/OK/Miss) with bars in isolation + the Target-vs-You comparison bars; streak/combo/accuracy stats; Retry / Next.</p>
-</div></header>
+      .foot {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px 22px;
+        border-top: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .btn {
+        height: 48px;
+        border-radius: 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        font-weight: 700;
+        font-size: 14.5px;
+        padding: 0 20px;
+      }
+      .btn svg {
+        width: 19px;
+        height: 19px;
+      }
+      .btn.ghost {
+        background: var(--fill);
+        color: var(--ink);
+      }
+      .btn.pri {
+        background: var(--accent);
+        color: #04201d;
+        box-shadow: 0 6px 18px rgba(16, 182, 166, 0.4);
+        margin-left: auto;
+      }
+      .cap {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin: 10px 2px 0;
+      }
+      .footn {
+        margin-top: 22px;
+        color: var(--muted);
+        font-size: 12px;
+        border-top: 1px solid var(--line);
+        padding-top: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap" style="max-width: 1120px">
+        <span class="pill"
+          >SCREEN · Results (D-4b) — direction B (modern) + per-tier bars + Target-vs-You</span
+        >
+        <h1>NotationHero — Results</h1>
+        <p>
+          End-of-play, dedicated screen. Big completion %, 5-star, a verdict, and a "new best"
+          badge; a per-tier breakdown (Perfect/Good/OK/Miss) with bars in isolation + the
+          Target-vs-You comparison bars; streak/combo/accuracy stats; Retry / Next.
+        </p>
+      </div>
+    </header>
 
-<div class="wrap">
-  <div class="device" id="results"></div>
-  <p class="cap">Tiers use the locked palette. Target-vs-You shows cyan target vs teal you. Score % → 5 stars (82% → 4). Retry replays; Next advances in the library.</p>
-  <div class="footn">NotationHero · Results · scope: 0-100% + 5-star + streak · scoring: per-tier + Target-vs-Player · saved per play (C-5) for history/analytics.</div>
-</div>
+    <div class="wrap">
+      <div class="device" id="results"></div>
+      <p class="cap">
+        Tiers use the locked palette. Target-vs-You shows cyan target vs teal you. Score % → 5 stars
+        (82% → 4). Retry replays; Next advances in the library.
+      </p>
+      <div class="footn">
+        NotationHero · Results · scope: 0-100% + 5-star + streak · scoring: per-tier +
+        Target-vs-Player · saved per play (C-5) for history/analytics.
+      </div>
+    </div>
 
-<script>
-const I={
- back:'<path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
- share:'<path d="M12 15V4M8.5 7.5L12 4l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v5a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
- retry:'<path d="M19 12a7 7 0 1 1-2-4.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18 3v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
- lib:'<path d="M4 5h7v14H4zM13 5h3v14h-3zM18 6l3 .6-2 13-3-.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
- next:'<path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
- trophy:'<path d="M7 4h10v3a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M9 14h6l-1 3h-4z M8 20h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'
-};
-const ic=(n)=>`<svg viewBox="0 0 24 24">${I[n]}</svg>`;
-function stars(n){let s='';for(let i=1;i<=5;i++)s+=`<span class="${i<=n?'f':'e'}">★</span>`;return s;}
-function tier(name,col,n){return `<div class="tier"><span class="dot" style="background:${col}"></span><span class="nm">${name}</span><span class="bar"><i style="width:100%;background:${col}"></i></span><span class="n">${n}</span></div>`;}
+    <script>
+      const I = {
+        back: '<path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+        share:
+          '<path d="M12 15V4M8.5 7.5L12 4l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 13v5a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 18v-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+        retry:
+          '<path d="M19 12a7 7 0 1 1-2-4.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M18 3v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+        lib: '<path d="M4 5h7v14H4zM13 5h3v14h-3zM18 6l3 .6-2 13-3-.6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>',
+        next: '<path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+        trophy:
+          '<path d="M7 4h10v3a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M9 14h6l-1 3h-4z M8 20h8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>',
+      };
+      const ic = (n) => `<svg viewBox="0 0 24 24">${I[n]}</svg>`;
+      function stars(n) {
+        let s = '';
+        for (let i = 1; i <= 5; i++) s += `<span class="${i <= n ? 'f' : 'e'}">★</span>`;
+        return s;
+      }
+      function tier(name, col, n) {
+        return `<div class="tier"><span class="dot" style="background:${col}"></span><span class="nm">${name}</span><span class="bar"><i style="width:100%;background:${col}"></i></span><span class="n">${n}</span></div>`;
+      }
 
-document.getElementById('results').innerHTML=`
+      document.getElementById('results').innerHTML = `
  <div class="rbar">
    <span class="back">${ic('back')} Library</span>
    <span class="ti">Light Pop<s>(Easy)</s></span>
@@ -113,11 +444,11 @@ document.getElementById('results').innerHTML=`
      <div class="split">
        <div style="flex:1">
          <div class="sect">Breakdown</div>
-         ${tier('Perfect','var(--perfect)',84)}
-         ${tier('Early','#E69F00',12)}
-         ${tier('Late','#CC79A7',9)}
-         ${tier('Missed','var(--miss)',6)}
-         ${tier('Error','#D55E00',3)}
+         ${tier('Perfect', 'var(--perfect)', 84)}
+         ${tier('Early', '#E69F00', 12)}
+         ${tier('Late', '#CC79A7', 9)}
+         ${tier('Missed', 'var(--miss)', 6)}
+         ${tier('Error', '#D55E00', 3)}
        </div>
        <div class="tvp">
          <div class="sect">Target vs You</div>
@@ -141,6 +472,6 @@ document.getElementById('results').innerHTML=`
    <div class="btn ghost">${ic('lib')} Library</div>
    <div class="btn pri">Next song ${ic('next')}</div>
  </div>`;
-</script>
-</body>
+    </script>
+  </body>
 </html>
