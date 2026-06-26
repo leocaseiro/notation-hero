@@ -24,7 +24,7 @@ cd "$ROOT" || exit 1
 
 # Unique per-process filename so concurrent runs never delete each other's canary mid-cruise.
 CANARY="server/src/core/__core_purity_canary_$$__.policy.ts"
-# shellcheck disable=SC2329 # cleanup IS invoked via trap EXIT; shellcheck cannot detect trap invocations
+# shellcheck disable=SC2317,SC2329 # cleanup IS invoked via trap EXIT; shellcheck can't detect trap invocations (SC2329 = shellcheck >=0.10 local; SC2317 = older apt shellcheck in CI)
 cleanup() { rm -f "$CANARY"; }
 trap cleanup EXIT
 
