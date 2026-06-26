@@ -12,6 +12,10 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-26 — `ci-green` gate: collapse 3 job lists → one `toJSON(needs)` pass; deny-list → allow-list (NH-22)
+
+Refactored the `ci-green` aggregation job (the single required status check) in `.github/workflows/ci.yml` to derive its job set from one `jq` pass over `${{ toJSON(needs) }}` instead of three hand-synced lists (the `needs:` array + a per-job `result` var + a `for`-loop). The `needs:` array is now the only list — adding a gate is a one-line edit. Behaviour preserved: the `changes` gatekeeper must `success`; any other job `failure`/`cancelled` fails; `skipped` is OK. The failure check is now an **allow-list** (fail unless `success` or `skipped`) rather than a deny-list, so an unknown future `needs.*.result` value fails **closed** — per ARCH-GUARD-1/CR-1 (prefer allow-lists for fences). Verified by local fixtures + a deliberate live red-run on the branch. Implementation-only; enforcement unchanged. **PR #84.** NH-22.
+
 ### 2026-06-26 — L5-vitest re-scoped: `infra/` → Vitest; `tooling/` stays `node --test` (NH-38)
 
 Evaluation of NH-38 ("migrate `node --test` → Vitest") found the repo-wide goal **mostly already done**: `client/` + `server/` ship on **Vitest `^4.1.9`** (arrived with their scaffolds). Only `infra/` (TypeScript, `node --test "*.test.ts"`) and `tooling/` (plain `.mjs`, `node --test tooling/*.test.mjs`) still run `node --test`. leocaseiro approved **re-scoping NH-38 to `infra/` only**:
