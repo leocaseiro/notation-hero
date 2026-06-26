@@ -1,5 +1,9 @@
 # lefthook — pnpm workspaces (no Nx).
 # pre-commit: auto-fix + re-stage STAGED files (fast, glob-scoped).
+#   FOOTGUN (stage_fixed): the fixers below re-stage the WHOLE fixed file. If you
+#   partially staged a file (`git add -p`, leaving some hunks unstaged), an auto-fix
+#   that touches it sweeps those unstaged hunks into the commit too. Stage whole files,
+#   or review `git diff --staged` after committing a partially-staged file.
 # pre-push: full check vs origin/master; fails the push if unclean.
 # Skipped on merge/rebase so conflict-resolution / history-rewrite commits don't fight hooks.
 # Binary tools (shellcheck) are guarded inside their scripts — missing binary = skip locally.
@@ -94,6 +98,9 @@ pre-push:
       skip: [merge, rebase]
     lint-actions:
       run: if command -v actionlint >/dev/null 2>&1; then pnpm run lint:actions; else echo "actionlint missing — skipped (CI gates)"; fi
+      skip: [merge, rebase]
+    lint-sort-pkg:
+      run: pnpm run lint:sort-pkg
       skip: [merge, rebase]
     typecheck:
       run: pnpm -r --if-present run typecheck

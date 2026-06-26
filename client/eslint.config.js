@@ -62,18 +62,14 @@ export default [
 
   ...storybook.configs['flat/recommended'],
 
-  // Client ignores (on top of base's shared ignores).
+  // Client-only ignores. Shared ones (eslint.config.*, prettier.config.*,
+  // **/routeTree.gen.ts, dist/**, storybook-static/**, playwright-report/**) live in
+  // the base and apply here via `...base` — don't duplicate them.
   {
     ignores: [
-      'eslint.config.js',
-      'prettier.config.js',
       'vite.config.ts',
       'vitest.setup.ts',
-      'src/routeTree.gen.ts',
-      'dist/**',
-      'storybook-static/**',
       'test-results/**',
-      'playwright-report/**',
       '.storybook/**',
       'playwright.config.ts',
     ],

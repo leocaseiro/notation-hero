@@ -64,8 +64,9 @@ export default tseslint.config(
     ...tseslint.configs.disableTypeChecked,
   },
   // no-default-export carve-out for server config files (spec §3.5).
+  // (eslint.config.mjs itself is globally ignored above, so it needs no carve-out here.)
   {
-    files: ['eslint.config.mjs', 'vitest.config.ts', 'build-lambda.mjs'],
+    files: ['vitest.config.ts', 'build-lambda.mjs'],
     rules: { 'import/no-default-export': 'off' },
   },
   {

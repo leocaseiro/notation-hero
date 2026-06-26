@@ -124,7 +124,7 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           # actionlint: pinned binary + SHA256 (the marketplace action's release-fetch is flaky).
           ACTIONLINT_VER=1.7.12
-          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VER}/actionlint_${ACTIONLINT_VER}_linux_amd64.tar.gz" -o /tmp/actionlint.tgz
+          curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VER}/actionlint_${ACTIONLINT_VER}_linux_amd64.tar.gz" -o /tmp/actionlint.tgz
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tgz" | sha256sum -c -
           sudo tar -xzf /tmp/actionlint.tgz -C /usr/local/bin actionlint
       - name: Prettier (format check)
