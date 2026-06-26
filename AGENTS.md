@@ -64,14 +64,13 @@ no pnpm install; leave an inline comment saying so.
 - `@notation-hero/infra` Pulumi ops — **from repo root**: `pnpm pulumi:preview` / `pnpm pulumi:up`
   each run `build:deploy` first (`server`→`dist-lambda` + `client`→`dist`, both required by Pulumi)
   then run Pulumi in `infra/`; `pnpm pulumi:destroy` needs no build. Raw no-prebuild form:
-  `pnpm --filter @notation-hero/infra run pulumi:preview`. Use a self-managed **S3 state backend**
-  - a `PULUMI_CONFIG_PASSPHRASE` (no Pulumi Cloud token).
-    `up` runs **in CI** on push to `master` only (`.github/workflows/deploy.yml`, via GitHub→AWS
-    OIDC + a master-restricted `production` environment). **`preview` is LOCAL-only** (NH-206
-    review #3): a PR-triggered preview ran arbitrary `infra/*.ts` under the deploy role, so PRs
-    carry no AWS creds — run `pulumi preview` locally before merging infra changes. See the
-    2026-06-23 and 2026-06-24 CI/CD entries in `docs/decisions/decision-registry.md` and
-    `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`.
+  `pnpm --filter @notation-hero/infra run pulumi:preview`. Uses a self-managed **S3 state backend**
+  with a `PULUMI_CONFIG_PASSPHRASE` (no Pulumi Cloud token). `up` runs **in CI** on push to
+  `master` only (`.github/workflows/deploy.yml`, via GitHub→AWS OIDC + a master-restricted
+  `production` environment). **`preview` is LOCAL-only** (NH-206 review #3): a PR-triggered preview
+  ran arbitrary `infra/*.ts` under the deploy role, so PRs carry no AWS creds — run `pulumi preview`
+  locally before merging infra changes. See the 2026-06-23 and 2026-06-24 CI/CD entries in
+  `docs/decisions/decision-registry.md` and `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`.
 - Phase-1+ tooling (flat-config lint lane specifics, coverage-ratchet, size-limit,
   type-coverage, tsconfig project-reference sync) — to be filled in as those lanes land.
 
