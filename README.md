@@ -42,7 +42,8 @@ or `stories/` trees (CI enforces this via `tooling/check-layout.sh`).
 pnpm install       # install workspace deps
 pnpm lint          # pnpm -r run lint
 pnpm typecheck     # pnpm -r run typecheck
-pnpm test          # pnpm -r run test   (Vitest — all packages)
+pnpm test          # pnpm -r run test   (Vitest, all workspace packages)
+pnpm test:tooling  # node --test  (tooling/ CI scripts — outside the workspace)
 pnpm build         # pnpm -r run build
 ```
 
