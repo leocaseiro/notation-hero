@@ -6,7 +6,7 @@
 - **Consolidates / folds in:** NH-42 (ESLint flat config), NH-43 (Prettier + eslint-config-prettier), NH-168 (jsx-a11y)
 - **Related (kept separate):** NH-32 (license + header rule — a licensing decision, only linked), NH-39 (type-coverage ratchet — distinct tool)
 - **Already done (context only):** NH-91 (no-escape-hatches ESLint), NH-93 (commitlint), NH-152 (gitleaks), NH-153 (semgrep), NH-125 (structure enforcement)
-- **Decision-registry impact:** updates `L3-eslint`, `L3-prettier`, `M4-prettier` (Biome evaluated and rejected with reasons — see §Rejected alternatives)
+- **Decision-registry impact:** updates `L3-eslint`, `L3-prettier`, `M4-prettier` (Biome evaluated and rejected with reasons — see Rejected alternatives below)
 - **Reference:** `~/Sites/base-skill` (vetted ESLint/lint setup this spec mirrors)
 
 ## 1. Context & goals
@@ -39,18 +39,20 @@ syntax-checks JSON); MegaLinter (rejected — see below); type-coverage ratchet 
 | D2  | Formatter                | **Keep Prettier @ printWidth 100**, separated from ESLint        | Prettier already formats js/ts/json/css/md/yaml; dropping `eslint-plugin-prettier` removes the anti-pattern           |
 | D3  | ESLint shape             | **Shared base + per-package extends**                            | One source of truth for shared rules; framework generators keep their own                                             |
 | D4  | ESLint rule scope        | **Maximal** — base-skill spine **plus** extra strict plugins now | User wants "as many rules as we can"                                                                                  |
-| D5  | Server `no-explicit-any` | **Flip `off` → `error`**                                         | Align with client/base-skill; one-time cleanup of existing `any`                                                      |
+| D5  | Server `no-explicit-any` | **Flip `off` → `error`**                                         | Align with client/base-skill; drift-prevention (0 `any` today)                                                        |
 | D6  | `unicorn/filename-case`  | **Client `pascalCase` (components) ; server off**                | Client has no filename enforcement today and is already PascalCase; server is covered by `check-layout.sh`            |
 | D7  | CI fix behaviour         | **Check-and-block** (no auto-push)                               | Private-proof, no third-party, simplest; hooks already fix locally for a solo dev                                     |
 | D8  | Ticket structure         | **One Jira Story + Smart Checklist**                             | User's explicit "combine into a single one"                                                                           |
 
 ### Rejected alternatives
 
-- **Biome (formatter/linter):** evaluated in the 2026-06-18 spike (recorded on NH-42). Rejected
-  for now because (a) it does **not** format Markdown or YAML — we'd still need those tools, so
-  it removes little; (b) it carries a NestJS dependency-injection hazard (`useImportType`); (c)
-  adopting it means migrating the working Prettier setup. Prettier kept. Flip condition unchanged
-  from the spike (revisit if Biome ships md/yaml + the DI opt-in lands).
+- **Biome (formatter/linter):** evaluated in the 2026-06-18 spike (recorded on NH-42), which
+  actually recommended Biome _as the formatter_ (~35× faster than Prettier on js/ts/json/css —
+  the bulk). Rejected here for the cost, not the capability: (a) migrating the already-working
+  Prettier setup; (b) a two-tool formatter surface for a solo maintainer; (c) Biome's _linter_
+  carries a NestJS dependency-injection hazard (`useImportType`). Prettier already covers
+  md/yaml/json/css, so the switch buys raw speed at a migration + maintenance cost we decline now.
+  Flip condition: revisit if the DI opt-in lands and Biome's type-aware rules reach GA.
 - **MegaLinter:** rejected — heavy Docker image (slow CI), overlaps the existing curated security
   lane, opaque for a portfolio repo, awkward in pre-commit.
 - **autofix.ci (CI auto-fix-and-push):** rejected — free only for **public** repos, and the
@@ -65,6 +67,12 @@ Three config files: a shared base plus one per package that extends it.
 - `client/eslint.config.js` — `import base` + React/TanStack/shadcn specifics
 - `server/eslint.config.mjs` — `import base` + NestJS/type-checked specifics
 - (`shared/`, `infra/` extend `base` when they grow real source)
+
+**Composition rule (flat config):** the shared base must **not re-register** plugins a package's
+generator already provides — `client` gets `@typescript-eslint` + `import-x` via `...tanstackConfig`,
+so `base` exports rules **without** re-declaring those plugin keys (ESLint v9 can throw
+`Cannot redefine plugin` on a duplicate registration). Verify with `eslint --print-config` on both
+packages before slice 1 lands.
 
 ### 3.1 Shared base (`eslint.config.base.mjs`) — both packages
 
@@ -144,15 +152,8 @@ Mirrors base-skill's framework-agnostic rules, plus the maximal extras (D4).
 ### 3.6 Invocation consistency
 
 Both packages: `lint` = `eslint . --max-warnings 0` (check only, warnings block). Remove the
-server's inline `--fix`. Fixing moves to the root `fix` script (§6). This resolves the current
+server's inline `--fix`. Fixing moves to the root `fix` script (see New / updated scripts). This resolves the current
 split where server lints-with-fix and client does not.
-
-### 3.7 Catalog temp-file carve-out
-
-`server/src/modules/catalog/**` are temporary scaffolding (to be removed soon). Add a scoped
-override that **relaxes only the new strict rules** (`strict-type-checked`, `no-explicit-any`)
-for that path, with a `// TODO: remove when catalog temp files are deleted` marker. Basic lint
-stays on.
 
 ## 4. §2 — Formatter (Prettier)
 
@@ -166,16 +167,16 @@ stays on.
 
 ## 5. §3 — Linters (curated)
 
-| Tool                                      | Targets                | Config                                | Notes                                                                       |
-| ----------------------------------------- | ---------------------- | ------------------------------------- | --------------------------------------------------------------------------- |
-| `markdownlint-cli2`                       | `**/*.md`              | `.markdownlint*`                      | skip `.mdx` (JSX misparse, per base-skill)                                  |
-| `stylelint` + `stylelint-config-standard` | `**/*.css`             | `.stylelintrc.yaml` (from base-skill) | Tailwind at-rule allowlist + hardcoded-colour ban; low volume (Tailwind v4) |
-| `yamllint`                                | `**/*.{yml,yaml}`      | `.yamllint` (relaxed)                 | Python binary; check-only                                                   |
-| `cspell`                                  | code + docs            | `cspell.json` + seeded dictionary     | check-only; tune dictionary to cut noise                                    |
-| `shellcheck`                              | `**/*.sh`              | —                                     | autofix `shellcheck -f diff <files> \| git apply`, then check residuals     |
-| `actionlint`                              | `.github/workflows/**` | —                                     | embeds shellcheck for `run:` steps                                          |
-| `editorconfig-checker`                    | all                    | existing `.editorconfig`              | check-only; Prettier already fixes most items                               |
-| `sort-package-json`                       | `**/package.json`      | —                                     | auto-fixable; consistent key order across 4 packages                        |
+| Tool                                      | Targets                | Config                                | Notes                                                                             |
+| ----------------------------------------- | ---------------------- | ------------------------------------- | --------------------------------------------------------------------------------- |
+| `markdownlint-cli2`                       | `**/*.md`              | `.markdownlint*`                      | skip `.mdx` (JSX misparse, per base-skill)                                        |
+| `stylelint` + `stylelint-config-standard` | `**/*.css`             | `.stylelintrc.yaml` (from base-skill) | Tailwind at-rule allowlist + hardcoded-colour ban; low volume (Tailwind v4)       |
+| `yamllint`                                | `**/*.{yml,yaml}`      | `.yamllint` (relaxed)                 | Python binary; check-only                                                         |
+| `cspell`                                  | code + docs            | `cspell.json` + seeded dictionary     | check-only; tune dictionary to cut noise                                          |
+| `shellcheck`                              | `**/*.sh`              | —                                     | autofix `shellcheck -f diff` → scope-checked `git apply --reject`, then residuals |
+| `actionlint`                              | `.github/workflows/**` | —                                     | embeds shellcheck for `run:` steps                                                |
+| `editorconfig-checker`                    | all                    | existing `.editorconfig`              | check-only; Prettier already fixes most items                                     |
+| `sort-package-json`                       | `**/package.json`      | —                                     | auto-fixable; consistent key order across 4 packages                              |
 
 - **jsonlint:** skipped — Prettier formats and syntax-checks JSON. JSON-Schema validation can be a
   later follow-up.
@@ -195,7 +196,7 @@ matching files are staged/changed).
 - `stylelint --fix` (staged css)
 - `markdownlint-cli2 --fix` (staged md)
 - `sort-package-json` (if `package.json` staged)
-- `shellcheck -f diff <staged.sh> | git apply` (guarded: skip if shellcheck missing or no diff)
+- `shellcheck -f diff <staged.sh>` → assert the patch touches only the target `.sh`, then `git apply --reject` (guarded: skip if shellcheck missing or no diff; `--reject` fails loudly on a malformed or out-of-scope patch)
 - _unchanged:_ layout-guard, gitleaks, semgrep
 
 **pre-push** (changed files vs `origin/master` → full check; fail push if unclean):
@@ -213,12 +214,19 @@ matching files are staged/changed).
   required `ci-green` check **blocks the PR** (req #3).
 - Each linter is its **own named step** (clear failure attribution) and emits **GitHub annotations**
   where supported (ESLint, markdownlint, shellcheck, actionlint) so failures surface inline on the
-  PR diff.
-- **Binaries installed in CI:** `shellcheck` (apt), `yamllint` (pip), `actionlint` (release binary
-  or marketplace action), `editorconfig-checker` (release binary or npm wrapper).
-- **Widen the CI path filter:** the current filter is code-only, so docs-only / workflow-only PRs
-  skip CI. Add `**/*.md`, `**/*.{yml,yaml}`, `**/*.css`, `**/*.sh`, `.editorconfig`, `.github/**`
-  so the new linters actually trigger on the files they cover.
+  PR diff. (Reconcile with §9's `check:all`: CI runs the linters as discrete named steps for
+  attribution; `check:all` is the single local command that runs the same set.)
+- **Binaries installed in CI — pinned + verified** (match the existing osv/gitleaks SHA-pin
+  posture): `shellcheck` (apt, pinned), `yamllint` (`pip install yamllint==<ver>`, ideally
+  `--require-hashes`), `actionlint` (marketplace action pinned by full commit SHA), and
+  `editorconfig-checker` (npm wrapper pinned via the lockfile, OR release binary by tagged URL +
+  SHA256 checksum). Resolve every "or" to one pinned form before merge.
+- **Separate lint job + a second filter output (do NOT widen the existing `code` filter):** the
+  `code` filter gates six heavy jobs (build, VR-in-container, a11y, sast, deps-cve), so widening it
+  would run the whole pipeline on a README-only PR. Instead add a **second** `changes` output
+  `docs_or_config` (covering `**/*.md`, `**/*.{yml,yaml}`, `**/*.css`, `**/*.sh`, `.editorconfig`,
+  `.github/**`) and a **dedicated `lint` job** gated on `code || docs_or_config`, added to the
+  `ci-green` needs list. The existing `code` filter and its heavy jobs stay untouched.
 
 ## 8. Execution matrix
 
@@ -282,11 +290,12 @@ Per package: `lint` = `eslint . --max-warnings 0` (consistent; no inline `--fix`
 ## 12. §6 — Jira consolidation
 
 One **Story** "Unified linting & formatting" in project **NH**, with a **Smart Checklist**
-(mandatory items mapped to §3–§7). Suggested checklist slices (each a green PR):
+(mandatory items mapped to §1–§5). Suggested checklist slices (each a green PR):
 
-1. ESLint shared base + per-package extends + maximal rules + server `any` flip + filename-case
-   (client) + catalog carve-out
-2. Prettier separation (`eslint-config-prettier`, single root config)
+1. ESLint shared base (no plugin re-registration — see §3 composition rule) + per-package extends
+   - maximal rules + server `any` flip + filename-case (client) + install `eslint-config-prettier`
+     (the base chain needs it) + remove `eslint-plugin-prettier`
+2. Prettier: consolidate the 3 configs into a single root `prettier.config.mjs`
 3. Doc/config linters: markdownlint, stylelint, yamllint, (skip jsonlint)
 4. Script/spell/workflow linters: shellcheck (+autofix), cspell, actionlint, editorconfig-checker,
    sort-package-json
@@ -306,14 +315,17 @@ One **Story** "Unified linting & formatting" in project **NH**, with a **Smart C
   pre-push and CI.
 - A skipped hook (`--no-verify`) is caught by CI and blocks the PR via `ci-green`.
 - Client + server ESLint share the base config; `eslint . --max-warnings 0` is the invocation on both.
-- `shellcheck -f diff | git apply` is proven on a real `.sh` file in CI (where shellcheck is present).
+- `eslint --print-config` resolves on **both** packages with no `Cannot redefine plugin` error (the shared base does not double-register tanstack's plugins).
+- `shellcheck -f diff | git apply` is proven on a real `.sh` file in CI; the applied patch is asserted to touch only the target `.sh`, with `git apply --reject` so a malformed patch fails loudly.
 - Docs-only / workflow-only PRs trigger the relevant linters (widened path filter).
 
 ## 14. Migration / first-run notes
 
-- Enabling `strict-type-checked` + `no-explicit-any: error` + sonarjs on the server will surface
-  existing findings on first run. Each ESLint slice includes a **fix-or-scope** step; the catalog
-  temp module is carved out (§3.7).
+- Enabling `strict-type-checked` + `no-explicit-any: error` + sonarjs on the server may surface
+  findings on first run. Each ESLint slice includes a **fix-or-scope** step. (The 3 catalog temp
+  files were checked and are already clean — no carve-out needed; `any` stays banned everywhere. If
+  a future throwaway file ever trips the strict rules, add a temporary `files`-scoped
+  `recommendedTypeChecked` override and delete it when the file goes.)
 - `eslint-plugin-n` resolver rules are disabled to avoid false positives with TS path resolution.
 - Land in the checklist slices above (small PRs), not one mega-PR.
 
