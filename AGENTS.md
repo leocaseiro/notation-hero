@@ -59,7 +59,7 @@ gate) may use `actions/setup-node@v6` with `node-version-file: .nvmrc` directly 
 no pnpm install; leave an inline comment saying so.
 
 - Default branch is `master` (NOT main). Never pass `git commit/push --no-verify`.
-- Server AND client tests run under **Vitest** (DACI L5 / NH-194), not Jest — despite
+- Server, client, and infra tests run under **Vitest** (DACI L5 / NH-194), not Jest — despite
   `nest new` emitting Jest by default.
 - `@notation-hero/infra` Pulumi ops — `pulumi:preview`/`pulumi:up`/`pulumi:destroy`
   (run from `infra/`, or `pnpm --filter @notation-hero/infra run pulumi:preview`) — use a
