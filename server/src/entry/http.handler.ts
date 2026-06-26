@@ -4,14 +4,13 @@ import 'reflect-metadata';
 
 import serverlessExpress from '@codegenie/serverless-express';
 import { NestFactory } from '@nestjs/core';
+import { AppModule } from '../app.module';
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
   Context,
 } from 'aws-lambda';
 import type { Express } from 'express';
-
-import { AppModule } from '../app.module';
 
 // A Lambda Function URL always emits the API Gateway v2.0 payload and expects the structured
 // (object) result — never the bare-string variant — so the return is narrowed accordingly.
@@ -29,7 +28,7 @@ async function bootstrap(): Promise<ProxyHandler> {
     // Routes answer under /api/* so CloudFront's `/api/*` behaviour forwards the full path.
     app.setGlobalPrefix('api');
     await app.init();
-  } catch (e) {
+  } catch (error) {
     // Close the half-initialised app so a failed boot does not leak it on the warm container
     // (the handler's `??=` retries, so each failed attempt would otherwise accumulate one).
     try {
@@ -37,7 +36,7 @@ async function bootstrap(): Promise<ProxyHandler> {
     } catch {
       // ignore close failures — we are already propagating the original boot error
     }
-    throw e;
+    throw error;
   }
   const expressApp = app.getHttpAdapter().getInstance() as Express;
   // serverless-express returns an aws-lambda Handler (event, context, callback?). In promise
@@ -50,9 +49,9 @@ export const handler: ProxyHandler = async (event, context) => {
   try {
     // `??=` only assigns on success, so a failed boot is never cached — the next call retries.
     proxy = cachedHandler ??= await bootstrap();
-  } catch (e) {
+  } catch (error) {
     // Surface the cause — Lambda forwards stderr to CloudWatch; without this the 503 is opaque.
-    console.error('[http.handler] bootstrap failed:', e);
+    console.error('[http.handler] bootstrap failed:', error);
     return {
       statusCode: 503,
       headers: { 'content-type': 'application/json' },
