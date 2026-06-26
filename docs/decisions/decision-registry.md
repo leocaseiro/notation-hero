@@ -12,6 +12,17 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-26 — L5-vitest re-scoped: `infra/` → Vitest; `tooling/` stays `node --test` (NH-38)
+
+Evaluation of NH-38 ("migrate `node --test` → Vitest") found the repo-wide goal **mostly already done**: `client/` + `server/` ship on **Vitest `^4.1.9`** (arrived with their scaffolds). Only `infra/` (TypeScript, `node --test "*.test.ts"`) and `tooling/` (plain `.mjs`, `node --test tooling/*.test.mjs`) still run `node --test`. leocaseiro approved **re-scoping NH-38 to `infra/` only**:
+
+- **`infra/` → Vitest** — its Pulumi-mock stack tests would match `client`/`server`'s config. The remaining real value of L5-vitest.
+- **`tooling/` stays on `node --test`** — _deliberate, documented exception_, not debt. The 3 `tooling/*.test.mjs` gate tests (`pr-checklist*`) are plain JS using no TypeScript / DOM / mocking / snapshots; `tooling/` has **no `package.json`** and is outside the pnpm workspace graph **by design** (dependency-free, its own `.prettierrc`, run as a standalone CI step). Vitest adds churn, not value. Revisit only if `L2-probes` (the planned Vitest probe suite under `tooling/probes/`) ever lands.
+
+The original `L5-vitest` Open Qs (Nx per-project config, `adapters/postgres` Docker) are **moot** — Nx was dropped (ADR 2026-06-17) and the Postgres concern now lives in `server/` (already on Vitest).
+
+**Status:** L5-vitest **partly live** — `client/` + `server/` ✅ on Vitest; `infra/` ⏳ (NH-38, re-scoped); `tooling/` ✅ stays `node --test` (exception). The auto-derived `L5-vitest` row below (still reads "via @nx/vite … deferred") reconciles on the next `docs(registry)` regen; **this entry is authoritative.** NH-38.
+
 ### 2026-06-26 — CI deploy role: grant `iam:GetPolicyVersion` for the boundary preflight (NH-242)
 
 Follow-up from NH-235 (PR #79). The deploy role's boundary-verification preflight (`infra/index.ts` → `aws.iam.getPolicy`) logs `warning: Could not verify the CI permissions boundary … (iam:GetPolicy denied)` on every `pulumi up`. The `ReadCiRoleBoundary` statement granted only `iam:GetPolicy`, but the data source also reads the policy **document** + tags → it needs `iam:GetPolicyVersion` and `iam:ListPolicyTags`. (The `(iam:GetPolicy denied)` text is a hardcoded label in the warn string, not the real denied action.) Added both, scoped to the single boundary ARN, in **both** `aws-iam-ci-deploy.json` and `aws-iam-pulumi-local-deploy.json`. Read-only + single-resource → no privilege increase. ⬅ **leocaseiro re-runs `aws-ci-oidc-bootstrap.sh` (admin SSO) + one `pulumi up`; the boundary warning should disappear.** Restores the NH-206 review #6 preflight intent (a genuinely-missing boundary fails fast instead of warning-through).
