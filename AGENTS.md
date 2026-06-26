@@ -50,7 +50,7 @@ Root-level checks — each is a named script AND a CI gate, so run any locally:
 - `pnpm run check:layout` — role-suffix + no-`__tests__/` layout guard.
 - `pnpm run check:coverage-ignore` — bans istanbul/c8/v8 coverage-ignore directives.
 - `pnpm run syncpack` — cross-package dependency-version consistency.
-- `pnpm run test:tooling` — `node --test` over `tooling/*.test.mjs`.
+- `pnpm run test:tooling` — `node --test` over `tooling/*.test.mjs` plus `tooling/*.test.sh` shell tests.
 
 **When authoring a new CI workflow job**, use `- uses: ./.github/actions/setup-js`
 (pnpm + Node-from-`.nvmrc` + frozen install) AFTER `actions/checkout@v6`; do not inline
@@ -73,6 +73,26 @@ no pnpm install; leave an inline comment saying so.
   `docs/decisions/decision-registry.md` and `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`.
 - Phase-1+ tooling (flat-config lint lane specifics, coverage-ratchet, size-limit,
   type-coverage, tsconfig project-reference sync) — to be filled in as those lanes land.
+
+### Linting & formatting (NH-243)
+
+One system across packages — see
+`docs/superpowers/specs/2026-06-26-unified-linting-formatting-design.md`.
+
+- **ESLint**: shared base `eslint.config.base.mjs` + per-package extends
+  (`client/eslint.config.js`, `server/eslint.config.mjs`). Invocation on both:
+  `eslint . --max-warnings 0`. The base must **not** re-register plugins a
+  generator provides (tanstack: `@typescript-eslint`/`import`/`@stylistic`/`node`);
+  verify with `eslint --print-config`.
+- **Prettier**: one root `prettier.config.mjs` (`printWidth: 100`), separate from
+  ESLint (no `eslint-plugin-prettier`).
+- **Extra linters**: markdownlint, stylelint, yamllint, cspell, shellcheck,
+  actionlint, editorconfig-checker, sort-package-json.
+- **Run locally**: `pnpm run fix` (auto-fix), `pnpm run check:all` (everything the CI `lint` + `quality` jobs run — not `build`/`a11y`/`vr`/security scans).
+- **Binary tools**: `pnpm run lint:setup` documents the `brew`/`pip` installs
+  (shellcheck, yamllint, actionlint). Local hooks skip a missing binary; CI is the hard gate.
+- **Hooks**: lefthook auto-fixes staged files on commit, runs the full check on push.
+- **CI**: dedicated `lint` job (check-and-block), gated on `code || docs_or_config`.
 
 ## Test & story layout — co-located, NEVER `__tests__/`
 

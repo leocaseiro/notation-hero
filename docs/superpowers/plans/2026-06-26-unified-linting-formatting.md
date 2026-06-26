@@ -35,27 +35,27 @@ These apply to **every** task. Values copied verbatim from the spec.
 
 New / changed files across all slices (exact paths, repo-root-relative):
 
-| File                                                                     | Slice   | Responsibility                                                                                    |
-| ------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------- |
-| `eslint.config.base.mjs`                                                 | 1       | Shared ESLint rules; registers only non-generator plugins; exports `base` array.                  |
-| `client/eslint.config.js`                                                | 1       | tanstack + React/a11y/storybook + `...base` + client overrides. **Rewrite.**                      |
-| `server/eslint.config.mjs`                                               | 1       | `tseslint.config` strict-type-checked + import-x + n + `...base` + server overrides. **Rewrite.** |
-| `package.json` (root)                                                    | 1,3,4,6 | Root devDeps for base plugins + extra linters; `fix` / `check:all` / `lint:*` scripts.            |
-| `client/package.json`                                                    | 1       | Add jsx-a11y/react; remove eslint-plugin-prettier; `lint` script.                                 |
-| `server/package.json`                                                    | 1       | Add import-x/n; remove eslint-plugin-prettier + redundant eslint-config-prettier; `lint` script.  |
-| `prettier.config.mjs` (root)                                             | 2       | Single canonical Prettier config.                                                                 |
-| `client/prettier.config.js`, `server/.prettierrc`, `tooling/.prettierrc` | 2       | **Deleted** (consolidated).                                                                       |
-| `.markdownlint.yaml`, `.markdownlintignore`                              | 3       | Markdown lint config + ignores.                                                                   |
-| `.stylelintrc.yaml`, `.stylelintignore`                                  | 3       | CSS lint config + ignores.                                                                        |
-| `.yamllint`                                                              | 3       | YAML lint config (relaxed).                                                                       |
-| `cspell.json`                                                            | 4       | Spell-check config + project dictionary.                                                          |
-| `tooling/shellcheck-fix.sh`                                              | 4       | Scope-checked shellcheck autofix helper.                                                          |
-| `tooling/shellcheck-fix.test.sh`                                         | 4       | Test for the helper.                                                                              |
-| `lefthook.yml`                                                           | 5       | Pre-commit fixers + pre-push checks (glob-scoped).                                                |
-| `tooling/lint-setup.sh`                                                  | 5       | Documents/install the non-JS binaries.                                                            |
-| `.github/workflows/ci.yml`                                               | 6       | `docs_or_config` filter output + dedicated `lint` job + `ci-green` wiring.                        |
-| `docs/decisions/decision-registry.md`                                    | 7       | Update `L3-eslint`, `L3-prettier`, `M4-prettier`, `L12-a11y` statuses.                            |
-| `AGENTS.md`                                                              | 7       | Document the unified lint workflow + commands.                                                    |
+| File                                                                     | Slice   | Responsibility                                                                                                      |
+| ------------------------------------------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------- |
+| `eslint.config.base.mjs`                                                 | 1       | Shared ESLint rules; registers only non-generator plugins; exports `base` array.                                    |
+| `client/eslint.config.js`                                                | 1       | tanstack + React/a11y/storybook + `...base` + client overrides. **Rewrite.**                                        |
+| `server/eslint.config.mjs`                                               | 1       | `tseslint.config` strict-type-checked + import-x + n + `...base` + server overrides. **Rewrite.**                   |
+| `package.json` (root)                                                    | 1,3,4,6 | Root devDeps for base plugins + extra linters; `fix` / `check:all` / `lint:*` scripts.                              |
+| `client/package.json`                                                    | 1       | Add jsx-a11y/react; remove eslint-plugin-prettier; `lint` script.                                                   |
+| `server/package.json`                                                    | 1       | Add import-x/n; remove eslint-plugin-prettier + redundant eslint-config-prettier; `lint` script.                    |
+| `prettier.config.mjs` (root)                                             | 2       | Single canonical Prettier config.                                                                                   |
+| `client/prettier.config.js`, `server/.prettierrc`, `tooling/.prettierrc` | 2       | **Deleted** (consolidated).                                                                                         |
+| `.markdownlint.yaml`, `.markdownlint-cli2.yaml` (`ignores:` array)       | 3       | Markdown lint config + ignores (cli2 v0.22 does not read `.markdownlintignore`; `.markdownlintignore` was deleted). |
+| `.stylelintrc.yaml`, `.stylelintignore`                                  | 3       | CSS lint config + ignores.                                                                                          |
+| `.yamllint`                                                              | 3       | YAML lint config (relaxed).                                                                                         |
+| `cspell.json`                                                            | 4       | Spell-check config + project dictionary.                                                                            |
+| `tooling/shellcheck-fix.sh`                                              | 4       | Scope-checked shellcheck autofix helper.                                                                            |
+| `tooling/shellcheck-fix.test.sh`                                         | 4       | Test for the helper.                                                                                                |
+| `lefthook.yml`                                                           | 5       | Pre-commit fixers + pre-push checks (glob-scoped).                                                                  |
+| `tooling/lint-setup.sh`                                                  | 5       | Documents/install the non-JS binaries.                                                                              |
+| `.github/workflows/ci.yml`                                               | 6       | `docs_or_config` filter output + dedicated `lint` job + `ci-green` wiring.                                          |
+| `docs/decisions/decision-registry.md`                                    | 7       | Update `L3-eslint`, `L3-prettier`, `M4-prettier`, `L12-a11y` statuses.                                              |
+| `AGENTS.md`                                                              | 7       | Document the unified lint workflow + commands.                                                                      |
 
 ---
 
@@ -603,16 +603,29 @@ MD041: false
 MD051: false
 ```
 
-Create `.markdownlintignore`:
+**Note (as-shipped):** markdownlint-cli2 v0.22 does NOT read `.markdownlintignore`; the
+real ignores live in `.markdownlint-cli2.yaml` under the `ignores:` array, and
+`.markdownlintignore` was deleted. Use `.markdownlint-cli2.yaml` instead:
 
-```text
-node_modules/
-dist/
-storybook-static/
-playwright-report/
-test-results/
-.claude/worktrees/
-pnpm-lock.yaml
+```yaml
+# .markdownlint-cli2.yaml
+config:
+  default: true
+  MD013: false
+  MD024: false
+  MD033: false
+  MD036: false
+  MD040: false
+  MD041: false
+  MD051: false
+ignores:
+  - node_modules/
+  - dist/
+  - storybook-static/
+  - playwright-report/
+  - test-results/
+  - .claude/worktrees/
+  - pnpm-lock.yaml
 ```
 
 - [ ] **Step 3: Add stylelint config**
