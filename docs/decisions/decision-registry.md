@@ -23,6 +23,9 @@ Stood up the first **e2e test lane** and wired it into the required `ci-green` g
 **Escape hatch (D3):** if the lane flakes and blocks unrelated PRs, revert the four `ci-green` edits — the job keeps running but stops gating.
 
 **Overlap note:** open **PR #85** (NH-243 lint) also edits `.github/workflows/ci.yml` + `client/package.json`; these changes are additive (new `e2e` job, `ci-green` needs entry, `test:e2e` scripts, `msw` dep), so conflicts are mechanical. This change-log is `merge=union`, so the registry entry itself won't conflict.
+### 2026-06-26 — `ci-green` gate: collapse 3 job lists → one `toJSON(needs)` pass; deny-list → allow-list (NH-22)
+
+Refactored the `ci-green` aggregation job (the single required status check) in `.github/workflows/ci.yml` to derive its job set from one `jq` pass over `${{ toJSON(needs) }}` instead of three hand-synced lists (the `needs:` array + a per-job `result` var + a `for`-loop). The `needs:` array is now the only list — adding a gate is a one-line edit. Behaviour preserved: the `changes` gatekeeper must `success`; any other job `failure`/`cancelled` fails; `skipped` is OK. The failure check is now an **allow-list** (fail unless `success` or `skipped`) rather than a deny-list, so an unknown future `needs.*.result` value fails **closed** — per ARCH-GUARD-1/CR-1 (prefer allow-lists for fences). Verified by local fixtures + a deliberate live red-run on the branch. Implementation-only; enforcement unchanged. **PR #84.** NH-22.
 
 ### 2026-06-26 — L5-vitest re-scoped: `infra/` → Vitest; `tooling/` stays `node --test` (NH-38)
 

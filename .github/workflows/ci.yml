@@ -261,29 +261,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
+        env:
+          # `toJSON(needs)` reflects the `needs:` array above automatically, so the
+          # `needs:` list is the SINGLE source of truth — adding a gate is a one-line
+          # `needs:` edit and this step never changes (NH-22). Injected via env (not
+          # inline in run) to avoid any script-injection surface.
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          # The gatekeeper `changes` job is checked explicitly: if it FAILS, the
-          # path-gated jobs (quality/build/sast/deps-cve) are SKIPPED, and skipped
-          # must not read as green. Treat a non-success `changes` result as fatal.
-          ch="${{ needs.changes.result }}"
-          q="${{ needs.quality.result }}"
-          b="${{ needs.build.result }}"
-          acc="${{ needs.a11y.result }}"
-          vrr="${{ needs.vr.result }}"
-          e2e="${{ needs.e2e.result }}"
-          s="${{ needs.secret-scan.result }}"
-          a="${{ needs.sast.result }}"
-          d="${{ needs.deps-cve.result }}"
-          p="${{ needs.pr-title.result }}"
-          c="${{ needs.pr-checklist.result }}"
-          echo "changes=$ch quality=$q build=$b a11y=$acc vr=$vrr e2e=$e2e secret-scan=$s sast=$a deps-cve=$d pr-title=$p pr-checklist=$c"
-          if [[ "$ch" != "success" ]]; then
-            echo "::error::Gatekeeper job 'changes' did not succeed (result=$ch); path-gated jobs may have silently skipped"; exit 1
+          jq -r 'to_entries[] | "\(.key)=\(.value.result)"' <<<"$NEEDS"
+          # Gatekeeper: `changes` must SUCCEED. If it fails or skips, the path-gated
+          # jobs (quality/build/sast/deps-cve) silently skip — which must not read as
+          # green. Quoted key so a future hyphenated gatekeeper name still resolves;
+          # evaluated on its own line so a jq error trips `set -e` instead of being
+          # swallowed inside `[[ … ]]`.
+          changes_result="$(jq -r '.["changes"].result' <<<"$NEEDS")"
+          if [[ "$changes_result" != "success" ]]; then
+            echo "::error::Gatekeeper job 'changes' did not succeed (result=$changes_result); path-gated jobs may have silently skipped"; exit 1
           fi
-          for job in quality:$q build:$b a11y:$acc vr:$vrr e2e:$e2e secret-scan:$s sast:$a deps-cve:$d pr-title:$p pr-checklist:$c; do
-            name="${job%%:*}"; r="${job#*:}"
-            if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
-              echo "::error::Required CI job '$name' did not pass (result=$r)"; exit 1
-            fi
-          done
+          # Allow-list (fail closed): every other required job must be `success` or
+          # `skipped` (path filters legitimately skip). ANY other result — failure,
+          # cancelled, or an unknown future value — fails the gate (ARCH-GUARD-1/CR-1:
+          # prefer an allow-list over a deny-list for fences).
+          bad="$(jq -r 'to_entries[] | select(.value.result != "success" and .value.result != "skipped") | "\(.key)=\(.value.result)"' <<<"$NEEDS")"
+          if [[ -n "$bad" ]]; then
+            echo "::error::Required CI job(s) did not pass: $(tr '\n' ' ' <<<"$bad")"; exit 1
+          fi
           echo "All required jobs passed (skipped is OK)."
