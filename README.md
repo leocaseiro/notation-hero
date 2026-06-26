@@ -16,7 +16,7 @@ deliberate "swappable backend" system-design portfolio piece.
 - **Client:** Vite + React, TanStack Router/Query, Tailwind (the PWA)
 - **Server:** NestJS on AWS Lambda (serverless-express "lambdalith") — SWC compile → esbuild bundle
 - **Language:** TypeScript (strict)
-- **Tests:** Vitest (client + server); `node --test` (infra)
+- **Tests:** Vitest (client + server + infra); `node --test` for the `tooling/` CI scripts
 - **Cloud:** AWS via Pulumi (TypeScript) — **one CloudFront distribution, two origins**:
   `/*` → private S3 (SPA static, via Origin Access Control); `/api/*` → Lambda Function URL
   (locked to `AWS_IAM`, reachable only by CloudFront via Origin Access Control)
@@ -42,7 +42,7 @@ or `stories/` trees (CI enforces this via `tooling/check-layout.sh`).
 pnpm install       # install workspace deps
 pnpm lint          # pnpm -r run lint
 pnpm typecheck     # pnpm -r run typecheck
-pnpm test          # pnpm -r run test   (Vitest / node --test)
+pnpm test          # pnpm -r run test   (Vitest — all packages)
 pnpm build         # pnpm -r run build
 ```
 
