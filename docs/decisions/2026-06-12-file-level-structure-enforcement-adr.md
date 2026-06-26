@@ -52,14 +52,15 @@ Examples: `catalog-item.entity.ts`, `logger.port.ts`, `neon-catalog.repository.t
 - Makes the legacy Pascal-vs-camel DangerJS naming task **redundant** — drop it.
 
 **Suffix taxonomy (starting set — refine in the AGENTS.md naming section):**
-| Layer | Suffixes |
-|---|---|
-| `core/` | `.entity.ts`, `.value-object.ts`, `.aggregate.ts`, `.event.ts` (domain event), `.specification.ts` (policy/rule), `.port.ts`, `.service.ts` (domain service), `.error.ts` |
-| `adapters/` | `.adapter.ts`, `.repository.ts`, `.mapper.ts`, `.client.ts` |
-| `apps/` | `.handler.ts`, `.use-case.ts`, `.command.ts`, `.query.ts`, `.controller.ts`, `.dto.ts` |
-| `infra/` | `.stack.ts` / `.infra.ts` (Pulumi IaC) |
-| tests | `*.test.ts` — stacked, e.g. `*.entity.test.ts` |
-| **unsuffixed (allowed)** | `index.ts` (package/project entry only), `*.config.ts`, `*.d.ts` |
+
+| Layer                    | Suffixes                                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core/`                  | `.entity.ts`, `.value-object.ts`, `.aggregate.ts`, `.event.ts` (domain event), `.specification.ts` (policy/rule), `.port.ts`, `.service.ts` (domain service), `.error.ts` |
+| `adapters/`              | `.adapter.ts`, `.repository.ts`, `.mapper.ts`, `.client.ts`                                                                                                               |
+| `apps/`                  | `.handler.ts`, `.use-case.ts`, `.command.ts`, `.query.ts`, `.controller.ts`, `.dto.ts`                                                                                    |
+| `infra/`                 | `.stack.ts` / `.infra.ts` (Pulumi IaC)                                                                                                                                    |
+| tests                    | `*.test.ts` — stacked, e.g. `*.entity.test.ts`                                                                                                                            |
+| **unsuffixed (allowed)** | `index.ts` (package/project entry only), `*.config.ts`, `*.d.ts`                                                                                                          |
 
 - Outliers corrected vs the original brief: `*.value.ts` → `*.value-object.ts`; `*.policy.ts` → `*.specification.ts` (or accept as a house term); `*.client.ts` kept (adapter detail).
 - **Ban junk-drawer suffixes** `*.manager.ts` / `*.helper.ts` via `check-file/filename-blocklist`; allow a **narrow** `*.util.ts` only for genuinely generic pure functions.

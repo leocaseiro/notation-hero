@@ -25,7 +25,10 @@
     "knip": "knip",
     "syncpack": "syncpack lint",
     "check:layout": "bash tooling/check-layout.sh",
-    "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh"
+    "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh",
+    "lint:md": "markdownlint-cli2 \"**/*.md\"",
+    "lint:css": "stylelint \"**/*.css\"",
+    "lint:yaml": "yamllint -c .yamllint ."
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
@@ -40,7 +43,10 @@
     "eslint-plugin-unicorn": "^63.0.0",
     "knip": "^6.17.1",
     "lefthook": "^2.1.9",
+    "markdownlint-cli2": "^0.22.1",
     "prettier": "^3.8.1",
+    "stylelint": "^17.13.0",
+    "stylelint-config-standard": "^40.0.0",
     "syncpack": "^15.3.2",
     "typescript": "^5.7.3"
   }

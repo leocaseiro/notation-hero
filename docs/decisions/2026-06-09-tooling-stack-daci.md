@@ -235,6 +235,7 @@ Build-phase (NOT pre-setup — lands with the AWS work per the learning order): 
 
 - **Domain/feature-organized folders, one folder per unit.** Group by domain, not by file-type (no top-level `__tests__/` or `stories/` trees).
 - **Tests and stories co-located with source:**
+
   ```
   Player/
     Player.tsx
@@ -242,6 +243,7 @@ Build-phase (NOT pre-setup — lands with the AWS work per the learning order): 
     Player.stories.tsx   # Storybook (default plural glob — agent-idiomatic)
     index.ts             # optional barrel
   ```
+
 - **Config implications (set these so the gates don't false-positive):**
   - Vitest test glob `**/*.test.{ts,tsx}`; **exclude `*.test.*` and `*.stories.*` from coverage targets** (don't measure coverage _of_ tests/stories).
   - **dependency-cruiser `no-orphans` (now `error`) and Knip must treat `*.test.*` / `*.stories.*` as entry points / exclusions** — otherwise co-located tests/stories read as orphans. This is the exact false-positive that got `no-orphans` dropped before; configure it correctly this time.
@@ -263,17 +265,22 @@ Build-phase (NOT pre-setup — lands with the AWS work per the learning order): 
 | IaC (deploy-time) | `infra/<fn>` (or one `infra`) | `type:infra` | `@pulumi/*`             | domain source |
 
 - Infra references the handler's **build output**, never its source — so `@pulumi` never enters the Lambda bundle:
+
   ```ts
   code: new pulumi.asset.FileArchive(path.resolve(__dirname, '../../apps/<fn>/dist'));
   ```
+
 - **Handler build-output convention:** each `apps/<fn>` Nx project sets `targets.build.options.outputPath = "dist"` (project-relative). `apps/<fn>/` and `infra/<fn>/` must be siblings under the same parent so the `../../apps/<fn>/dist` resolution works. AGENTS.md documents this convention so generators emit the right `outputPath`.
 - Wire the Nx graph (the dist-path link is invisible to Nx's static analysis):
+
   ```jsonc
   // infra/<fn>/project.json
   "implicitDependencies": ["<fn>"],
   "targets": { "deploy": { "dependsOn": [{ "projects": ["<fn>"], "target": "build" }] } }
   ```
+
 - **dependency-cruiser** covers the file/package-level bans Nx can't see (this is why the DACI keeps both):
+
   ```js
   { from: { path: "^apps/[^/]+/src" }, to: { path: "@pulumi/" },          severity: "error" } // handler ↛ pulumi
   { from: { path: "^infra/" },         to: { path: "^(apps|libs)/" },     severity: "error" } // infra ↛ source

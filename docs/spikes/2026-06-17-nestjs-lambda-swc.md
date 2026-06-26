@@ -6,6 +6,7 @@
 
 - **Adapter:** **`@codegenie/serverless-express`** (the maintained fork; **v5.0.0, Apr 2026, Node 24 support**). NOT `@vendia/serverless-express` (abandoned) or `aws-serverless-express` (dead).
 - **Cached singleton** outside the handler (bootstrap Nest once per cold start):
+
   ```ts
   let server: Handler;
   export const handler = async (e, c, cb) => {
@@ -13,6 +14,7 @@
     return server(e, c, cb);
   };
   ```
+
 - **Function URL = API Gateway v2 payload** → adapter auto-detects; pin `eventSourceName:'AWS_API_GATEWAY_V2'` only if an edge case appears. No API Gateway (12-mo-only). arm64, 512–1024 MB. Skip SnapStart/Provisioned Concurrency for a free-tier portfolio.
 
 ## Worker Lambdas (same codebase)

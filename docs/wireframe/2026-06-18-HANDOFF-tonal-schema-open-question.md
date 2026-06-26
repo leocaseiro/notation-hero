@@ -134,7 +134,7 @@ toward **(4)/(5)**.
 
 ### Tools to bring in
 
-- **tonaljs** — https://github.com/tonaljs/tonal — music-theory library (notes, intervals, **scales,
+- **tonaljs** — <https://github.com/tonaljs/tonal> — music-theory library (notes, intervals, **scales,
   chords, keys, modes, roman-numeral progressions**). Use for: (a) the **controlled vocabulary** (valid
   keys/scales/modes/chord qualities/roman progressions); (b) **derivation/validation** — e.g. roman ⇄
   concrete chords per key (I–V–vi–IV ⇄ C–G–Am–F in C). This is what makes "store abstract + derive
@@ -212,4 +212,4 @@ https://github.com/tonaljs/tonal · hooktheory advanced-search by chordString.
 - **Approved ADR (NH-194):** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md`
 - **Data-layer requirements R1–R16:** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/specs/2026-06-17-data-layer-requirements.md`
 - **Chord-progression worked example (throwaway):** `/tmp/nh-progression/index.html` (served on `:8781`)
-- **tonaljs:** https://github.com/tonaljs/tonal · **hooktheory** TheoryTab advanced-search
+- **tonaljs:** <https://github.com/tonaljs/tonal> · **hooktheory** TheoryTab advanced-search

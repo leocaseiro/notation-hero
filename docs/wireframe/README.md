@@ -20,11 +20,11 @@ cd docs/wireframe && python3 -m http.server 8131
 
 Then open in a browser:
 
-| Page                                                | URL                                          |
-| --------------------------------------------------- | -------------------------------------------- |
-| **Main app** (the catalog flow — start here)        | http://localhost:8131/index.html             |
-| **Model map** (the Playable-model / schema diagram) | http://localhost:8131/model-map.html         |
-| **Notation explorer** (notation + field explorer)   | http://localhost:8131/notation-explorer.html |
+| Page                                                | URL                                            |
+| --------------------------------------------------- | ---------------------------------------------- |
+| **Main app** (the catalog flow — start here)        | <http://localhost:8131/index.html>             |
+| **Model map** (the Playable-model / schema diagram) | <http://localhost:8131/model-map.html>         |
+| **Notation explorer** (notation + field explorer)   | <http://localhost:8131/notation-explorer.html> |
 
 The main app is a single-page app — reach every screen by clicking, or by deep-linking the hash:
 

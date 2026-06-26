@@ -59,9 +59,9 @@ When MCP is reachable again (e.g., start of next agent session, after a token ro
 2. For each `- [ ]` bullet:
    - Parse the action + fields from the bullet text (LLMs are good at this; a future drain script can use a small parser).
    - Call the corresponding Linear MCP tool. Linear MCP `create_issue` / `update_issue` / `set_status` / `add_label` all route through the `save_issue` tool; `add_comment` uses `save_comment`.
-   - **On success** (and `action == create_issue`): note the returned Linear issue id inline as ` — DONE <LEO-XXX> <YYYY-MM-DD>` and flip `- [ ]` to `- [x]`. Keep the line as an audit trail for one week, then remove. Recording the new id makes accidental replays a no-op (idempotency by reading the file).
-   - **On success** (other actions): flip to `- [x]` with ` — DONE <YYYY-MM-DD>`.
-   - **On failure**: leave the bullet; append ` — RETRY <N>` (or increment if already present) so future drains see the count. After 3 retries, surface to the user.
+   - **On success** (and `action == create_issue`): note the returned Linear issue id inline as `— DONE <LEO-XXX> <YYYY-MM-DD>` and flip `- [ ]` to `- [x]`. Keep the line as an audit trail for one week, then remove. Recording the new id makes accidental replays a no-op (idempotency by reading the file).
+   - **On success** (other actions): flip to `- [x]` with `— DONE <YYYY-MM-DD>`.
+   - **On failure**: leave the bullet; append `— RETRY <N>` (or increment if already present) so future drains see the count. After 3 retries, surface to the user.
 3. Commit: `chore(linear): drain <N> pending items`.
 
 ## Why markdown, not a JSON queue (DACI L10a v2)

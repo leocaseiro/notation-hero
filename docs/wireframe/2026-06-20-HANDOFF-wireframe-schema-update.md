@@ -62,7 +62,7 @@ Update `docs/wireframe/index.html` (the catalog wireframe, already on the locked
 - Group D DDL (SNA sample data): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql`
 - SD ledger (Group D reconciliation): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md`
 - Tonal/drum spec + draft: `.../docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md` · `.../2026-06-19-tonal-drum-schema-draft.sql`
-- PR: https://github.com/leocaseiro/notation-hero/pull/52
+- PR: <https://github.com/leocaseiro/notation-hero/pull/52>
 
 ## 5 · Scratch DB (to read the worked example)
 

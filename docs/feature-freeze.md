@@ -3,7 +3,7 @@
 > **Status:** 🔒 **LOCKED 2026-06-05** — per-feature milestones frozen (one row open: `H-10` upload policy = TBD). Folded into design-stack.md.
 > **Created:** 2026-06-05 · **Owner:** leocaseiro
 > **Companions:** [docs/design-stack.md](design-stack.md) · [scope.md](../scope.md) · [docs/aws-learning-map.md](aws-learning-map.md)
-> **Fork (Phase 0):** `~/Sites/alphaTabWebsite` (branch `rhythm-game`) — live: https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game
+> **Fork (Phase 0):** `~/Sites/alphaTabWebsite` (branch `rhythm-game`) — live: <https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game>
 
 Single canonical per-feature go/no-go. Each row has a **Milestone** (your decision), fork-reuse status, effort, AWS candidacy, and a **Status**. Reference any feature by **ID** (e.g. `A-1`, `D-2-a`). Children (`X-n-a`) decompose a parent feature.
 

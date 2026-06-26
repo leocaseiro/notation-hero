@@ -154,12 +154,15 @@ of the CI gates. They must be **installed once per worktree**:
 1. `pnpm install` — runs the `prepare` script which calls `lefthook install`.
 2. If `pnpm install` fails on the `prepare` step with `core.hooksPath is set
 locally`, the worktree has a stale per-worktree hooks path. Recover with:
+
    ```sh
    git config --unset-all --local core.hooksPath
    pnpm install --ignore-scripts
    pnpm exec lefthook install
    ```
+
    (Adding deps in the same recovery state: `pnpm add -D -w <pkg> --ignore-scripts`.)
+
 3. Verify hooks fire: `git config --get core.hooksPath` should be unset (empty
    output); `.git/hooks/pre-commit` should exist. If hooks silently no-op
    after a worktree move, re-run `pnpm exec lefthook install`.
@@ -355,13 +358,16 @@ For chunks that represent **findings** in a doc/plan/code review (`📖 F-N`), u
 #### Review walk-through pattern
 
 1. **Establish all findings in prose** — present each as a labeled chunk:
+
    ```text
    ### 📖 F-10 — <short title>
    **What's wrong:** …
    **Proposed fix:** …
    **Why it works:** …
    ```
+
 2. **Walk findings in batched lean Qs** — once the chunks exist, ask in 4-batches with lean reference-questions:
+
    ```text
    [Q-F10] F-10/45 P1 — <short title> (see 📖 F-10). Apply?
       - Apply (Recommended) — …
@@ -369,6 +375,7 @@ For chunks that represent **findings** in a doc/plan/code review (`📖 F-N`), u
       - Skip
       - Auto-resolve rest
    ```
+
    Each finding is explained ONCE (in the establishing message); each Q references its chunk; question text stays under ~150 chars; the option set is consistent across the batch; `Auto-resolve rest` is an escape hatch when the user trusts the recommendations.
 
 **Send the picker in the SAME turn — never strand it.** Write the `📖 F-N` chunks as a text block, then immediately emit the `AskUserQuestion` tool_use in the same turn. Do NOT end your turn after the chunks — there is no automatic "next message", so the promised picker never fires (the #1 stranded-picker bug). Keep the **picker self-sufficient**: its question + option text must be decidable even if the lead-in is hidden; the chunks add depth, not the essentials.

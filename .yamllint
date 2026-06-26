@@ -1,0 +1,12 @@
+extends: relaxed
+rules:
+  line-length: disable
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1
+  trailing-spaces: enable
+ignore: |
+  node_modules/
+  dist/
+  pnpm-lock.yaml
+  .claude/worktrees/

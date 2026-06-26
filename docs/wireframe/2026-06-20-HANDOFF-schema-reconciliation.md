@@ -69,14 +69,15 @@ tonal/drum profiles) logged in `2026-06-16-schema-deltas.md`.
 The wireframe's Group D layer is current, but its **base** fields predate the 2026-06-19 tonal/drum schema.
 
 **A. `playable` fields the wireframe has stale/wrong:**
-| Latest schema | Wireframe now | Action |
-|---|---|---|
-| `author text[]` + `author_type` (artist\|teacher\|user) | `artist` (string) | rename → author[] + author*type |
-| `genre text[]` | `genre` (string) | → array |
-| `family text[]` | `family` (string) | → array |
-| `musical_key` REMOVED (→ tonal_profile) | `musical_key` on playable | move into tonal_profile |
-| `visibility` public\|private\|shared | only "private" used; not in inspector | surface it |
-| `description ≤255`, `time_signature*\*` | present (derived) | ok |
+
+| Latest schema                                           | Wireframe now                         | Action                           |
+| ------------------------------------------------------- | ------------------------------------- | -------------------------------- |
+| `author text[]` + `author_type` (artist\|teacher\|user) | `artist` (string)                     | rename → author[] + author\*type |
+| `genre text[]`                                          | `genre` (string)                      | → array                          |
+| `family text[]`                                         | `family` (string)                     | → array                          |
+| `musical_key` REMOVED (→ tonal_profile)                 | `musical_key` on playable             | move into tonal_profile          |
+| `visibility` public\|private\|shared                    | only "private" used; not in inspector | surface it                       |
+| `description ≤255`, `time_signature*\*`                 | present (derived)                     | ok                               |
 
 **B. `tonal_profile` (pitched, 1:0..1) — MISSING from the wireframe entirely.**
 `musical_key, keys[], scales[], chords[], progression_concrete[], progression_roman[], progression_family[]`.

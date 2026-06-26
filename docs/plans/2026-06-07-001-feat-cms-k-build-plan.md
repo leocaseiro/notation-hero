@@ -495,7 +495,7 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 
 - Create: ~~`package.json` (bun workspaces, no app deps yet)~~ <!-- SUPERSEDED: Bun fully dropped; pnpm 11.5.2 + Nx workspaces per tooling DACI 2026-06-09 (U1 already DONE on pnpm) -->
 - Create: `tsconfig.base.json` (path aliases `@core/*`, `@adapters/*`, `@apps/*`; strict mode; `module: "esnext"`; `moduleResolution: "bundler"`)
-- Create: `.gitignore` (node_modules, dist, .pulumi, .env*, *.log)
+- Create: `.gitignore` (node_modules, dist, .pulumi, .env*,*.log)
 - Create: `LICENSE` (proprietary, all rights reserved)
 - Create: `.dependency-cruiser.cjs` (CommonJS `module.exports = {...}` syntax — root package is `type: module`, the `.cjs` extension is the explicit-CommonJS escape). Rules: (a) `core` cannot import from `adapters` or `apps`; (b) `adapters` cannot import from `apps`; (c) `apps/*/handler.ts|use-cases/*|routes/*` cannot import from `apps/*/infra.ts` or `@pulumi/*` (prevents Pulumi in Lambda runtime bundle); (d) `apps/*/infra.ts` cannot import from `handler.ts`/`use-cases/`/`routes/`; (e) no cyclic imports. **No `no-orphans` rule** — Hexagonal port interfaces are intentionally not imported by their implementing adapters and would false-positive.
 - Create: `.eslintrc.cjs` (TS + per-layer overrides — `no-restricted-imports` blocking `aws-sdk`/`react` in `core/`)
@@ -508,12 +508,15 @@ The Hexagonal layer split per request: the Lambda handler is the **primary adapt
 - bun workspaces glob: `"workspaces": ["core/*", "adapters/*", "apps/*", "infra"]`. Confirm bun honors nested globs (it does as of 1.3+); fall back to enumerating if quirks emerge.
 - `tsconfig.base.json` path aliases (`paths`) mirrored in each child `tsconfig.json` via `extends`.
 - `dependency-cruiser` rule shape:
+
   ```js
   { name: 'no-adapter-into-core', from: { path: '^core/' }, to: { path: '^adapters/' }, severity: 'error' },
   { name: 'no-infra-in-runtime', from: { path: '^apps/.*/(handler|use-cases|routes)\\.ts$' }, to: { path: '^apps/.*/infra\\.ts$|^@pulumi/' }, severity: 'error' },
   { name: 'no-runtime-in-infra', from: { path: '^apps/.*/infra\\.ts$' }, to: { path: '^apps/.*/(handler|use-cases|routes)\\.ts$' }, severity: 'error' }
   ```
+
   Plus a cycle-detection rule (`no-circular`).
+
 - CI `paths-filter` config: filter outputs are referenced by per-job `if: needs.changes.outputs.X == 'true'`. The aggregation job is `if: always()` + checks `needs.X.result != 'failure'` for each child job (skipped == OK).
 - `LICENSE` text is the standard "All rights reserved" shape; no need for a custom legal template at v1.
 
@@ -777,6 +780,7 @@ export interface CatalogRepository {
 - **Lambda code packaging — explicit orchestration:** root script `pnpm run build:lambdas` invokes `pnpm --filter './apps/lambda-*' build` BEFORE any `pulumi up`. Each `apps/lambda-*/build.ts` runs esbuild (`esbuild handler.ts --bundle --platform=node --target=node22 --format=esm --minify --external:@aws-sdk/* --outfile=dist/index.mjs`). The `LambdaWithUrl` component uses `pulumi.asset.FileAsset(path.join(handlerDir, 'dist/index.mjs'))` — eagerly resolved at synthesis time, errors loudly if `dist/index.mjs` is missing. CI `deploy.yml` runs `pnpm run build:lambdas` before `pulumi up`. (Addresses feasibility-flagged implicit ordering.)
 - **`@aws-sdk/client-*` modular imports only;** runtime-provided SDK in `nodejs22.x` (no need to bundle). Pin SDK versions explicitly when using SDK features tied to a specific version.
 - **CFF Basic-Auth + KVS** is NOT a component here — inlined in `infra/index.ts` (U9) since it's single-consumer. The function code (template literal in `infra/index.ts`) reads:
+
   ```js
   import cf from 'cloudfront';
   async function handler(event) {
@@ -798,6 +802,7 @@ export interface CatalogRepository {
     return event.request;
   }
   ```
+
   `constantTimeEquals` is ~10 lines of XOR-accumulator. **U9 includes a microbench step** to verify the JIT doesn't optimize the XOR loop into early-exit (adversarial-flagged risk). **Compiled function size measured at U9** via `aws cloudfront describe-function --stage DEVELOPMENT` — assert <8KB to leave headroom (originally deferred to U6 build; moved earlier per feasibility).
 
 **Patterns to follow:**
@@ -829,6 +834,7 @@ export interface CatalogRepository {
 
 - Create: `adapters/postgres/migrations/0001_catalog_init.sql` — the spec **§4 DDL + §9 indexes, copied verbatim** (extensions `pg_trgm` + `unaccent`; `immutable_unaccent` + `immutable_array_to_string` wrappers; `catalog_item` / `exercise` / `pattern` / `item_pattern` with ALL CHECK constraints; GIN/btree/trgm indexes; the GENERATED `search` tsvector column + `ci_fts`). Source of truth is the spec — any edit here is a spec change and is out of this plan's authority.
 - Create: `adapters/postgres/migrations/0002_source_write_once.sql` — spec-§5-sanctioned trigger:
+
   ```sql
   CREATE FUNCTION catalog_item_source_write_once() RETURNS trigger
     LANGUAGE plpgsql AS $$
@@ -842,6 +848,7 @@ export interface CatalogRepository {
     BEFORE UPDATE ON catalog_item
     FOR EACH ROW EXECUTE FUNCTION catalog_item_source_write_once();
   ```
+
 - Create: `adapters/postgres/migrate.ts` — the ~40-LOC runner:
 
   ```ts
@@ -885,6 +892,7 @@ export interface CatalogRepository {
   CLI entry: `adapters/postgres/cli-migrate.ts` (~5 lines: read `process.env.DATABASE_URL`, call `migrate()`), wired as `"migrate": "tsx cli-migrate.ts"` with `tsx` as a devDependency — so `pnpm --filter @notation-hero/adapters-postgres migrate` actually runs (review finding: the script/executor were unstated). Docker URL for tests; the Neon **TCP** `postgres://` URL at deploy time — Neon speaks standard protocol; the HTTP driver is a Lambda-runtime concern only. Tests pass the migrations dir explicitly (don't rely on `import.meta.dirname` under the vitest runner).
 
 - Create: `adapters/postgres/SqlExecutor.ts`:
+
   ```ts
   export interface SqlQuery {
     text: string;
@@ -895,6 +903,7 @@ export interface CatalogRepository {
     batch(queries: SqlQuery[]): Promise<void>; // atomic — all or nothing
   }
   ```
+
 - Create: `adapters/postgres/neonExecutor.ts` (runtime — `@neondatabase/serverless`: `query` via `neon(url).query(text, params)`; `batch` via the driver's non-interactive `transaction(queries)`; both HTTP, no pool to manage)
 - Create: `adapters/postgres/pgExecutor.ts` (tests + migrations — `pg.Pool`: `query` via `pool.query(...).rows`; `batch` via `BEGIN`…`COMMIT` on one client)
 - Create: `adapters/postgres/CatalogRepositoryPostgres.ts` (implements `CatalogRepository`; constructor `{ sql: SqlExecutor }`)
@@ -902,6 +911,7 @@ export interface CatalogRepository {
 - Create: `adapters/postgres/sql/buildListQuery.ts` (pure `CatalogFilter → { text, params }` builder — unit-testable without a database)
 - Create: `adapters/postgres/rowMappers.ts` (snake_case row ↔ camelCase entity; `updated_at`/`created_at` selected as `::text` and carried as **opaque strings** — never JS-Date round-tripped; see the RC-12 token-precision contract)
 - Create: `adapters/postgres/docker-compose.test.yml`:
+
   ```yaml
   services:
     postgres:
@@ -917,6 +927,7 @@ export interface CatalogRepository {
         timeout: 2s
         retries: 15
   ```
+
 - Create: ~~`adapters/postgres/__tests__/{migrations,CatalogRepositoryPostgres,PatternRepositoryPostgres,buildListQuery}.test.ts`~~ <!-- SUPERSEDED: tests are co-located next to source (no __tests__/) per tooling DACI 2026-06-09 §F-2 -->
 - Create: `adapters/postgres/cli-migrate.ts` (CLI wrapper for `migrate()`)
 - Create: `adapters/postgres/package.json` (name `@notation-hero/adapters-postgres`; deps: `@neondatabase/serverless`; devDeps: `pg`, `@types/pg`, ~~`vitest`~~ <!-- SUPERSEDED: Vitest deferred L5; live runner `node --test` per tooling DACI 2026-06-09 -->, `tsx`; scripts: `migrate`; peer: `@notation-hero/core`) · `adapters/postgres/tsconfig.json`

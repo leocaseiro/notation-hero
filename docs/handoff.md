@@ -40,16 +40,16 @@
 
 ## Key paths (read these on re-entry)
 
-| What                                                                                    | Path                                                                                                                  |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Requirements (original scope)                                                           | `scope.md` (this repo)                                                                                                |
-| **Tech stack design doc (APPROVED)**                                                    | `docs/design-stack.md` (this repo)                                                                                    |
-| Design doc source-of-truth copy                                                         | `~/.gstack/projects/pensive-boyd-6d17e3/leocaseiro-claude-pensive-boyd-6d17e3-design-20260603-163704.md`              |
-| AWS backend brainstorm (committed on branch `claude/serene-grothendieck-fb5e67`)        | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-aws-brainstorm.md`                          |
-| Client-stack brainstorm (committed, same branch; has UI design + alternatives-rejected) | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-brainstorm.md`                              |
-| Phase-0 working rhythm game (MPL-2.0 fork)                                              | `~/Sites/alphaTabWebsite` (branch `rhythm-game`), live: https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game |
-| MIDI mapping feature plan                                                               | `~/Sites/alphaTabWebsite/MIDI_MAPPING_PLAN_SUMMARY.md`                                                                |
-| Reference only (GPL-3, do NOT copy code)                                                | `~/Sites/sightread` (sightread.dev)                                                                                   |
+| What                                                                                    | Path                                                                                                                    |
+| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Requirements (original scope)                                                           | `scope.md` (this repo)                                                                                                  |
+| **Tech stack design doc (APPROVED)**                                                    | `docs/design-stack.md` (this repo)                                                                                      |
+| Design doc source-of-truth copy                                                         | `~/.gstack/projects/pensive-boyd-6d17e3/leocaseiro-claude-pensive-boyd-6d17e3-design-20260603-163704.md`                |
+| AWS backend brainstorm (committed on branch `claude/serene-grothendieck-fb5e67`)        | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-aws-brainstorm.md`                            |
+| Client-stack brainstorm (committed, same branch; has UI design + alternatives-rejected) | `~/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-brainstorm.md`                                |
+| Phase-0 working rhythm game (MPL-2.0 fork)                                              | `~/Sites/alphaTabWebsite` (branch `rhythm-game`), live: <https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game> |
+| MIDI mapping feature plan                                                               | `~/Sites/alphaTabWebsite/MIDI_MAPPING_PLAN_SUMMARY.md`                                                                  |
+| Reference only (GPL-3, do NOT copy code)                                                | `~/Sites/sightread` (sightread.dev)                                                                                     |
 
 ## Decisions locked
 

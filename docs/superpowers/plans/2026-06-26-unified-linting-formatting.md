@@ -22,9 +22,11 @@ These apply to **every** task. Values copied verbatim from the spec.
 - **Binary tools pinned in CI** (match the osv/gitleaks SHA-pin posture): `shellcheck` (apt, pinned), `yamllint` (`pip install yamllint==<ver>`), `actionlint` (marketplace action pinned by full commit SHA), `editorconfig-checker` (npm wrapper via lockfile). Resolve every "or" to one pinned form before merge.
 - **Local binary tools degrade gracefully:** local hooks skip a binary tool if its binary is missing (CI is the hard gate). A `lint:setup` script documents the installs.
 - **Never** `git commit/push --no-verify`. Commit a green checkpoint before requesting review. Every commit message is conventional and ends with the trailer:
+
   ```
   Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
   ```
+
 - **Node 24** (`.nvmrc`), **pnpm@11.5.2**. Root is a pnpm workspace (`client`, `server`, `shared`, `infra`); root-level dev tools install with `pnpm add -Dw <pkg>`.
 
 ---
@@ -1242,7 +1244,7 @@ And in the verify step, capture + check the new result (mirror the existing patt
         l="${{ needs.lint.result }}"
 ```
 
-add `lint:$l` to the `for job in ... ` list and `lint=$l` to the `echo` summary line.
+add `lint:$l` to the `for job in ...` list and `lint=$l` to the `echo` summary line.
 
 - [ ] **Step 6: Validate the workflow YAML locally**
 

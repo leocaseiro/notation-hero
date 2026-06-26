@@ -199,11 +199,11 @@ Direct from the drum-tutor-clone sessions (office-hours + plan reviews):
 
 Reference links cited in those sessions:
 
-- alphaTab API docs — https://alphatab.net/docs/reference/api
-- alphaTab GitHub — https://github.com/CoderLine/alphaTab ; alphaSynth — https://github.com/CoderLine/alphaSynth
-- External Audio Cursor API issue — https://github.com/CoderLine/alphaTab/issues/1961
-- Tone.js Transport docs — https://tonejs.github.io/ ; Performance wiki — https://github.com/Tonejs/Tone.js/wiki/Performance ; multi-device sync #1221 — https://github.com/Tonejs/Tone.js/issues/1221
-- Apple CoreMIDI — https://developer.apple.com/documentation/coremidi/
-- Round-trip audio latency meter — https://onyx3.com/LatencyMeter/
-- Audio latency iOS vs OSX (Loopy Pro) — https://forum.loopypro.com/discussion/38870/audio-latency-ios-vs-osx
+- alphaTab API docs — <https://alphatab.net/docs/reference/api>
+- alphaTab GitHub — <https://github.com/CoderLine/alphaTab> ; alphaSynth — <https://github.com/CoderLine/alphaSynth>
+- External Audio Cursor API issue — <https://github.com/CoderLine/alphaTab/issues/1961>
+- Tone.js Transport docs — <https://tonejs.github.io/> ; Performance wiki — <https://github.com/Tonejs/Tone.js/wiki/Performance> ; multi-device sync #1221 — <https://github.com/Tonejs/Tone.js/issues/1221>
+- Apple CoreMIDI — <https://developer.apple.com/documentation/coremidi/>
+- Round-trip audio latency meter — <https://onyx3.com/LatencyMeter/>
+- Audio latency iOS vs OSX (Loopy Pro) — <https://forum.loopypro.com/discussion/38870/audio-latency-ios-vs-osx>
 - Reference fork (prior art, MPL-2.0): `~/Sites/alphaTabWebsite` `rhythm-game` branch — AlphaTab init with `includeNoteBounds`, Web MIDI listener, scoring against `AlphaSynth.positionChanged`, ring overlay via `boundsLookup`.

@@ -97,7 +97,7 @@ CREATE TABLE media (
 - GP→tonal spike (NH-196): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/keen-neumann-0405de/docs/spikes/2026-06-19-gp-tonal/FINDINGS.md`
 - Song-slice spike (NH-137, SD-24): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/agent-a6595b9997a45d9bc/docs/spikes/2026-06-19-nh137-song-slice/FINDINGS.md`
 - ADR + data-layer requirements: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md` · `.../docs/specs/2026-06-17-data-layer-requirements.md`
-- PR: https://github.com/leocaseiro/notation-hero/pull/52
+- PR: <https://github.com/leocaseiro/notation-hero/pull/52>
 
 ## 5 · The live scratch DB
 

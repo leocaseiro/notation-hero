@@ -63,9 +63,9 @@ Mirror rows carry local-only `_sync: 'synced'|'pending'|'rejected'` + `_syncedAt
 - **Flow 6 — Server rejection** (magic-byte/quota/quarantine/validation): NOT a conflict — write `lastError` + mark `_sync:'rejected'`; **distinguish transient (retry w/ backoff) vs terminal (stop)**; "fix" = a _new_ ULID row (insert-only). Atomic batch → whole-graph reject is clean. ✅ (needs structured reason enum)
 - **Flow 7 — Scores (append-only → DynamoDB) + Settings (LWW):** both fit the same outbox; scores ordered after their notation's batch; settings is the only pull-time merge (compare `updated_at`). ✅
 
-## 5. Does any flow force a framework? — No.
+## 5. Does any flow force a framework? — No
 
-#3 (server batch endpoint), #4 (schema relax), #6 (transient/terminal classification) are all yours to build regardless; a framework imposes a protocol and assumes conflicts you don't have.
+# 3 (server batch endpoint), #4 (schema relax), #6 (transient/terminal classification) are all yours to build regardless; a framework imposes a protocol and assumes conflicts you don't have
 
 ## 6. Schema implications (feed into the redesign)
 
