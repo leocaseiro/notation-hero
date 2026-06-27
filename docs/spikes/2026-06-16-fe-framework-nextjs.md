@@ -1,5 +1,7 @@
 # FE Framework Spike — Next.js (one source, two build targets)
 
+> ⛔ **SUPERSEDED — Next.js was DROPPED.** FE = **Vite SPA** (ARCH-FE-1, 2026-06-17/18). This spike recommended Next.js; kept for history only. See `../decisions/2026-06-17-architecture-decisions.md`.
+
 > **Status:** ✅ **CONFIRMED 2026-06-16 by leocaseiro** · **Created:** 2026-06-16 · **Owner:** leocaseiro · **Ticket:** [NH-185](https://leocaseiro.atlassian.net/browse/NH-185) · **ADR:** [`../decisions/2026-06-16-fe-framework-nextjs-adr.md`](../decisions/2026-06-16-fe-framework-nextjs-adr.md)
 > **Driver:** résumé / job-hunt — target roles award points for **Next.js**; **SSR + React-hydration** wanted as a portfolio showcase.
 > **Companions:** [`docs/design-stack.md`](../design-stack.md) · [`docs/feature-freeze.md`](../feature-freeze.md) (H-4 host, I-3 Capacitor) · [`docs/aws-learning-map.md`](../aws-learning-map.md) · [`docs/decisions/decision-registry.md`](../decisions/decision-registry.md)

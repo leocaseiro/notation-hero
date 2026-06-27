@@ -1,5 +1,7 @@
 # Drum Tutor — AWS Stack Brainstorm (interview-prep track)
 
+> ⛔ **Also superseded (2026-06-17 ADR):** **Nx was DROPPED** → pnpm workspaces + folders-in-one-app (single NestJS app; FE = Vite SPA). The **admin-gate auth is Cognito + Google federation + RBAC + `can()` in v1** — NOT CloudFront Basic-Auth, NOT "Cognito at M1". Source of truth: `docs/decisions/2026-06-17-architecture-decisions.md` + `docs/decisions/decision-registry.md`.
+
 > [!WARNING]
 > ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
 > (pnpm + Nx replaced Bun; the song/lesson catalog moved to **Neon Postgres + JSONB**,

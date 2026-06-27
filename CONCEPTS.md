@@ -6,6 +6,8 @@
 >
 > **Status:** 📝 draft (KAN-164). Grounded in the v1 catalog schema. A few items are flagged
 > **⚠ to reconcile** or **TBD** — those are settled by the lesson/steps spike (**KAN-165**), not here.
+>
+> Note: KAN-\* refs below are legacy — tracker is now Jira **NH**; KAN is drained/redirected.
 
 ---
 

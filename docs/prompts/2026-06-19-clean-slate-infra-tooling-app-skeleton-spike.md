@@ -1,5 +1,7 @@
 # Notation Hero — clean-slate infra + tooling + app-skeleton spike
 
+> ⛔ **Foundation is LOCKED, not "maybe".** **Nx was DROPPED** and the foundation was locked by the ADR 2026-06-17 — do NOT re-litigate it. Use this prompt only for its still-open questions. See `../decisions/2026-06-17-architecture-decisions.md`.
+
 ## How to behave (read first)
 
 - BE DECISIVE. Per decision: ONE recommendation + a one-line rationale + the concrete command/config. No option-surveys, no invented edge cases.
