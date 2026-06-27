@@ -1,5 +1,5 @@
 ---
-title: "feat: NH-150 — first pulumi up (hello-world Lambda Function URL + CloudWatch)"
+title: 'feat: NH-150 — first pulumi up (hello-world Lambda Function URL + CloudWatch)'
 type: feat
 date: 2026-06-13
 origin: docs/cicd-pipeline.md

@@ -123,24 +123,24 @@ flowchart TD
 ## Brainstorm front-doors, in plain English
 
 Three skills can open a feature, and the jargon hides what they actually do.
-Think of them as three different friends you tell *"I want to build X"*:
+Think of them as three different friends you tell _"I want to build X"_:
 
 - 🧑‍💼 **`/ce-brainstorm` — the sharp product-manager friend.** Challenges whether
-  you're building the *right thing* (who is it for? what's the evidence? what's the
+  you're building the _right thing_ (who is it for? what's the evidence? what's the
   smallest useful version?), then writes a clean requirements list. Stays out of the
-  technical how. "Product rigor" = it stress-tests the *product*, not the code.
+  technical how. "Product rigor" = it stress-tests the _product_, not the code.
 - 👷 **`superpowers:brainstorming` — the careful senior-engineer friend.** Won't let
   any code be written until you've approved a **technical design** (architecture, data
-  flow, error handling, testing). The "no code before sign-off" guardrail *is* the point.
+  flow, error handling, testing). The "no code before sign-off" guardrail _is_ the point.
 - 🚀 **gstack `/office-hours` — the blunt startup-advisor friend.** Challenges the
-  *premise* — should this even exist? Is anyone desperate for it? The most "are you
+  _premise_ — should this even exist? Is anyone desperate for it? The most "are you
   sure?" of the three (YC = Y Combinator, the accelerator known for blunt founder questions).
 
-| Front door | The question it really asks |
-|---|---|
-| `/ce-brainstorm` | "Is this the right product, and what exactly are the requirements?" |
-| `superpowers:brainstorming` | "What's the technical design — and approve it before any code." |
-| gstack `/office-hours` | "Should this even exist? Prove the premise." |
+| Front door                  | The question it really asks                                         |
+| --------------------------- | ------------------------------------------------------------------- |
+| `/ce-brainstorm`            | "Is this the right product, and what exactly are the requirements?" |
+| `superpowers:brainstorming` | "What's the technical design — and approve it before any code."     |
+| gstack `/office-hours`      | "Should this even exist? Prove the premise."                        |
 
 When unsure, sequence them: **office-hours** (worth building at all?) → **ce-brainstorm**
 (nail the WHAT) → reach for **superpowers:brainstorming** instead when you specifically
@@ -150,7 +150,9 @@ want a committed design doc with the no-code gate.
     WEBQA["web app running?<br/>/qa fix-mode · /qa-only report · /design-review gs · ce-design-iterator agent"]:::gs
     RETRO["week over?<br/>/retro · /health gs"]:::gs
     SECOND["want a second opinion?<br/>/codex gs — cross-model review"]:::gs
-  end
+
+end
+
 ```
 
 ## Quick routing table (text backup of the diagram)
@@ -274,3 +276,4 @@ format with its own hook/structure conventions. Nothing to do with code; lives i
 (`state`/`echo`/`diary`/`project`/`grimoire`), context-window tooling
 (`compress`/`token-optimization`/`shard`), `mentor` (live teaching), and `humanize`
 (de-AI-ify prose).
+```

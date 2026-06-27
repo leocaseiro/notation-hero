@@ -7,30 +7,14 @@
   "bars": 97,
   "timeSig": "4/4",
   "key": "C major",
-  "chords": [
-    "B",
-    "Badd9",
-    "F#6",
-    "E7M",
-    "Badd11",
-    "G#m",
-    "Eadd9",
-    "F#m7add11"
-  ],
+  "chords": ["B", "Badd9", "F#6", "E7M", "Badd11", "G#m", "Eadd9", "F#m7add11"],
   "trackCount": 8,
   "tracks": [
     {
       "idx": 0,
       "name": "Lead Vocals | Chris Martin",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []
@@ -39,25 +23,9 @@
       "idx": 1,
       "name": "Rhythm Guitar | Takamine EN15 | Chris Martin",
       "isPercussion": false,
-      "tuning": [
-        63,
-        59,
-        55,
-        47,
-        45,
-        40
-      ],
+      "tuning": [63, 59, 55, 47, 45, 40],
       "stringCount": 6,
-      "chords": [
-        "B",
-        "Badd9",
-        "F#6",
-        "E7M",
-        "Badd11",
-        "G#m",
-        "Eadd9",
-        "F#m7add11"
-      ],
+      "chords": ["B", "Badd9", "F#6", "E7M", "Badd11", "G#m", "Eadd9", "F#m7add11"],
       "progression": [
         "B",
         "Badd9",
@@ -97,34 +65,16 @@
       "idx": 2,
       "name": "Lead Guitar | Fender Telecaster | Jonny Buckland",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
-      "chords": [
-        "B"
-      ],
-      "progression": [
-        "B"
-      ]
+      "chords": ["B"],
+      "progression": ["B"]
     },
     {
       "idx": 3,
       "name": "Overdrive | Tube Screamer | Jonny Buckland",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []
@@ -133,12 +83,7 @@
       "idx": 4,
       "name": "Bass | Fender Precision | Guy Berryman",
       "isPercussion": false,
-      "tuning": [
-        43,
-        38,
-        33,
-        28
-      ],
+      "tuning": [43, 38, 33, 28],
       "stringCount": 4,
       "chords": [],
       "progression": []
@@ -147,14 +92,7 @@
       "idx": 5,
       "name": "Orchestral Strings | Keyboard 1",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []
@@ -163,14 +101,7 @@
       "idx": 6,
       "name": "Piano Overdub | Keyboard 2",
       "isPercussion": false,
-      "tuning": [
-        64,
-        59,
-        55,
-        50,
-        45,
-        40
-      ],
+      "tuning": [64, 59, 55, 50, 45, 40],
       "stringCount": 6,
       "chords": [],
       "progression": []

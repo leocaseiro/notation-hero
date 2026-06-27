@@ -50,7 +50,7 @@ Root-level checks — each is a named script AND a CI gate, so run any locally:
 - `pnpm run check:layout` — role-suffix + no-`__tests__/` layout guard.
 - `pnpm run check:coverage-ignore` — bans istanbul/c8/v8 coverage-ignore directives.
 - `pnpm run syncpack` — cross-package dependency-version consistency.
-- `pnpm run test:tooling` — `node --test` over `tooling/*.test.mjs`.
+- `pnpm run test:tooling` — `node --test` over `tooling/*.test.mjs` plus `tooling/*.test.sh` shell tests.
 
 **When authoring a new CI workflow job**, use `- uses: ./.github/actions/setup-js`
 (pnpm + Node-from-`.nvmrc` + frozen install) AFTER `actions/checkout@v6`; do not inline
@@ -73,6 +73,26 @@ no pnpm install; leave an inline comment saying so.
   `docs/decisions/decision-registry.md` and `docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md`.
 - Phase-1+ tooling (flat-config lint lane specifics, coverage-ratchet, size-limit,
   type-coverage, tsconfig project-reference sync) — to be filled in as those lanes land.
+
+### Linting & formatting (NH-243)
+
+One system across packages — see
+`docs/superpowers/specs/2026-06-26-unified-linting-formatting-design.md`.
+
+- **ESLint**: shared base `eslint.config.base.mjs` + per-package extends
+  (`client/eslint.config.js`, `server/eslint.config.mjs`). Invocation on both:
+  `eslint . --max-warnings 0`. The base must **not** re-register plugins a
+  generator provides (tanstack: `@typescript-eslint`/`import`/`@stylistic`/`node`);
+  verify with `eslint --print-config`.
+- **Prettier**: one root `prettier.config.mjs` (`printWidth: 100`), separate from
+  ESLint (no `eslint-plugin-prettier`).
+- **Extra linters**: markdownlint, stylelint, yamllint, cspell, shellcheck,
+  actionlint, editorconfig-checker, sort-package-json.
+- **Run locally**: `pnpm run fix` (auto-fix), `pnpm run check:all` (everything the CI `lint` + `quality` jobs run — not `build`/`a11y`/`vr`/security scans).
+- **Binary tools**: `pnpm run lint:setup` documents the `brew`/`pip` installs
+  (shellcheck, yamllint, actionlint). Local hooks skip a missing binary; CI is the hard gate.
+- **Hooks**: lefthook auto-fixes staged files on commit, runs the full check on push.
+- **CI**: dedicated `lint` job (check-and-block), gated on `code || docs_or_config`.
 
 ## Test & story layout — co-located, NEVER `__tests__/`
 
@@ -181,12 +201,15 @@ of the CI gates. They must be **installed once per worktree**:
 1. `pnpm install` — runs the `prepare` script which calls `lefthook install`.
 2. If `pnpm install` fails on the `prepare` step with `core.hooksPath is set
 locally`, the worktree has a stale per-worktree hooks path. Recover with:
+
    ```sh
    git config --unset-all --local core.hooksPath
    pnpm install --ignore-scripts
    pnpm exec lefthook install
    ```
+
    (Adding deps in the same recovery state: `pnpm add -D -w <pkg> --ignore-scripts`.)
+
 3. Verify hooks fire: `git config --get core.hooksPath` should be unset (empty
    output); `.git/hooks/pre-commit` should exist. If hooks silently no-op
    after a worktree move, re-run `pnpm exec lefthook install`.
@@ -382,13 +405,16 @@ For chunks that represent **findings** in a doc/plan/code review (`📖 F-N`), u
 #### Review walk-through pattern
 
 1. **Establish all findings in prose** — present each as a labeled chunk:
+
    ```text
    ### 📖 F-10 — <short title>
    **What's wrong:** …
    **Proposed fix:** …
    **Why it works:** …
    ```
+
 2. **Walk findings in batched lean Qs** — once the chunks exist, ask in 4-batches with lean reference-questions:
+
    ```text
    [Q-F10] F-10/45 P1 — <short title> (see 📖 F-10). Apply?
       - Apply (Recommended) — …
@@ -396,6 +422,7 @@ For chunks that represent **findings** in a doc/plan/code review (`📖 F-N`), u
       - Skip
       - Auto-resolve rest
    ```
+
    Each finding is explained ONCE (in the establishing message); each Q references its chunk; question text stays under ~150 chars; the option set is consistent across the batch; `Auto-resolve rest` is an escape hatch when the user trusts the recommendations.
 
 **Send the picker in the SAME turn — never strand it.** Write the `📖 F-N` chunks as a text block, then immediately emit the `AskUserQuestion` tool_use in the same turn. Do NOT end your turn after the chunks — there is no automatic "next message", so the promised picker never fires (the #1 stranded-picker bug). Keep the **picker self-sufficient**: its question + option text must be decidable even if the lead-in is hidden; the chunks add depth, not the essentials.

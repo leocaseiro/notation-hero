@@ -70,72 +70,72 @@ body,
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.148 0.004 228.8);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.148 0.004 228.8);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.148 0.004 228.8);
-  --primary: oklch(0.511 0.096 186.391);
-  --primary-foreground: oklch(0.984 0.014 180.72);
-  --secondary: oklch(0.967 0.001 286.375);
-  --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.963 0.002 197.1);
-  --muted-foreground: oklch(0.56 0.021 213.5);
-  --accent: oklch(0.963 0.002 197.1);
-  --accent-foreground: oklch(0.218 0.008 223.9);
-  --destructive: oklch(0.505 0.21 27.5);
-  --border: oklch(0.925 0.005 214.3);
-  --input: oklch(0.925 0.005 214.3);
-  --ring: oklch(0.723 0.014 214.4);
-  --chart-1: oklch(0.855 0.138 181.071);
-  --chart-2: oklch(0.704 0.14 182.503);
-  --chart-3: oklch(0.6 0.118 184.704);
-  --chart-4: oklch(0.511 0.096 186.391);
-  --chart-5: oklch(0.437 0.078 188.216);
+  --background: oklch(100% 0 0deg);
+  --foreground: oklch(14.8% 0.004 228.8deg);
+  --card: oklch(100% 0 0deg);
+  --card-foreground: oklch(14.8% 0.004 228.8deg);
+  --popover: oklch(100% 0 0deg);
+  --popover-foreground: oklch(14.8% 0.004 228.8deg);
+  --primary: oklch(51.1% 0.096 186.391deg);
+  --primary-foreground: oklch(98.4% 0.014 180.72deg);
+  --secondary: oklch(96.7% 0.001 286.375deg);
+  --secondary-foreground: oklch(21% 0.006 285.885deg);
+  --muted: oklch(96.3% 0.002 197.1deg);
+  --muted-foreground: oklch(56% 0.021 213.5deg);
+  --accent: oklch(96.3% 0.002 197.1deg);
+  --accent-foreground: oklch(21.8% 0.008 223.9deg);
+  --destructive: oklch(50.5% 0.21 27.5deg);
+  --border: oklch(92.5% 0.005 214.3deg);
+  --input: oklch(92.5% 0.005 214.3deg);
+  --ring: oklch(72.3% 0.014 214.4deg);
+  --chart-1: oklch(85.5% 0.138 181.071deg);
+  --chart-2: oklch(70.4% 0.14 182.503deg);
+  --chart-3: oklch(60% 0.118 184.704deg);
+  --chart-4: oklch(51.1% 0.096 186.391deg);
+  --chart-5: oklch(43.7% 0.078 188.216deg);
   --radius: 0.625rem;
-  --sidebar: oklch(0.987 0.002 197.1);
-  --sidebar-foreground: oklch(0.148 0.004 228.8);
-  --sidebar-primary: oklch(0.6 0.118 184.704);
-  --sidebar-primary-foreground: oklch(0.984 0.014 180.72);
-  --sidebar-accent: oklch(0.963 0.002 197.1);
-  --sidebar-accent-foreground: oklch(0.218 0.008 223.9);
-  --sidebar-border: oklch(0.925 0.005 214.3);
-  --sidebar-ring: oklch(0.723 0.014 214.4);
+  --sidebar: oklch(98.7% 0.002 197.1deg);
+  --sidebar-foreground: oklch(14.8% 0.004 228.8deg);
+  --sidebar-primary: oklch(60% 0.118 184.704deg);
+  --sidebar-primary-foreground: oklch(98.4% 0.014 180.72deg);
+  --sidebar-accent: oklch(96.3% 0.002 197.1deg);
+  --sidebar-accent-foreground: oklch(21.8% 0.008 223.9deg);
+  --sidebar-border: oklch(92.5% 0.005 214.3deg);
+  --sidebar-ring: oklch(72.3% 0.014 214.4deg);
 }
 
 .dark {
-  --background: oklch(0.148 0.004 228.8);
-  --foreground: oklch(0.987 0.002 197.1);
-  --card: oklch(0.218 0.008 223.9);
-  --card-foreground: oklch(0.987 0.002 197.1);
-  --popover: oklch(0.218 0.008 223.9);
-  --popover-foreground: oklch(0.987 0.002 197.1);
-  --primary: oklch(0.437 0.078 188.216);
-  --primary-foreground: oklch(0.984 0.014 180.72);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.275 0.011 216.9);
-  --muted-foreground: oklch(0.723 0.014 214.4);
-  --accent: oklch(0.275 0.011 216.9);
-  --accent-foreground: oklch(0.987 0.002 197.1);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.56 0.021 213.5);
-  --chart-1: oklch(0.855 0.138 181.071);
-  --chart-2: oklch(0.704 0.14 182.503);
-  --chart-3: oklch(0.6 0.118 184.704);
-  --chart-4: oklch(0.511 0.096 186.391);
-  --chart-5: oklch(0.437 0.078 188.216);
-  --sidebar: oklch(0.218 0.008 223.9);
-  --sidebar-foreground: oklch(0.987 0.002 197.1);
-  --sidebar-primary: oklch(0.704 0.14 182.503);
-  --sidebar-primary-foreground: oklch(0.277 0.046 192.524);
-  --sidebar-accent: oklch(0.275 0.011 216.9);
-  --sidebar-accent-foreground: oklch(0.987 0.002 197.1);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.56 0.021 213.5);
+  --background: oklch(14.8% 0.004 228.8deg);
+  --foreground: oklch(98.7% 0.002 197.1deg);
+  --card: oklch(21.8% 0.008 223.9deg);
+  --card-foreground: oklch(98.7% 0.002 197.1deg);
+  --popover: oklch(21.8% 0.008 223.9deg);
+  --popover-foreground: oklch(98.7% 0.002 197.1deg);
+  --primary: oklch(43.7% 0.078 188.216deg);
+  --primary-foreground: oklch(98.4% 0.014 180.72deg);
+  --secondary: oklch(27.4% 0.006 286.033deg);
+  --secondary-foreground: oklch(98.5% 0 0deg);
+  --muted: oklch(27.5% 0.011 216.9deg);
+  --muted-foreground: oklch(72.3% 0.014 214.4deg);
+  --accent: oklch(27.5% 0.011 216.9deg);
+  --accent-foreground: oklch(98.7% 0.002 197.1deg);
+  --destructive: oklch(70.4% 0.191 22.216deg);
+  --border: oklch(100% 0 0deg / 10%);
+  --input: oklch(100% 0 0deg / 15%);
+  --ring: oklch(56% 0.021 213.5deg);
+  --chart-1: oklch(85.5% 0.138 181.071deg);
+  --chart-2: oklch(70.4% 0.14 182.503deg);
+  --chart-3: oklch(60% 0.118 184.704deg);
+  --chart-4: oklch(51.1% 0.096 186.391deg);
+  --chart-5: oklch(43.7% 0.078 188.216deg);
+  --sidebar: oklch(21.8% 0.008 223.9deg);
+  --sidebar-foreground: oklch(98.7% 0.002 197.1deg);
+  --sidebar-primary: oklch(70.4% 0.14 182.503deg);
+  --sidebar-primary-foreground: oklch(27.7% 0.046 192.524deg);
+  --sidebar-accent: oklch(27.5% 0.011 216.9deg);
+  --sidebar-accent-foreground: oklch(98.7% 0.002 197.1deg);
+  --sidebar-border: oklch(100% 0 0deg / 10%);
+  --sidebar-ring: oklch(56% 0.021 213.5deg);
 }
 
 @layer base {
@@ -148,6 +148,7 @@ body,
      instead of falling back to browser-black. */
   body {
     @apply bg-background text-foreground;
+
     margin: 0;
   }
 
@@ -171,6 +172,7 @@ body,
    a ligature span into an icon: <span class="material-symbols-outlined">play_arrow</span>.
    Sized at 1.25rem to sit well inside buttons. */
 .material-symbols-outlined {
+  /* stylelint-disable-next-line font-family-no-missing-generic-family-keyword -- icon font; no text fallback applies */
   font-family: 'Material Symbols Outlined Variable';
   font-weight: normal;
   font-style: normal;
@@ -180,8 +182,8 @@ body,
   text-transform: none;
   display: inline-block;
   white-space: nowrap;
-  word-wrap: normal;
+  overflow-wrap: normal;
   direction: ltr;
-  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }

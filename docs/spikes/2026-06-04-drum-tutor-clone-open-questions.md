@@ -12,26 +12,27 @@
 
 ### OQ-5 — Adopt XState for the game-mode FSM, or skip it?
 
-**The question** *(raised 2026-06-03, AWS brainstorm + office-hours):* model the single game-mode
+**The question** _(raised 2026-06-03, AWS brainstorm + office-hours):_ model the single game-mode
 lifecycle — `idle → count-in → playing → paused → results` — as an explicit **finite-state machine
 (FSM) with [XState](https://stately.ai/docs/xstate)**, for rigor plus a system-design interview
 talking point — or **skip it** and keep the lifecycle as ad-hoc component state for speed.
 
 **Why it's still open:** no later decision (DACI / ADR / `decision-registry.md`) ever resolved it.
-`stack-aws-brainstorm.md` left XState marked *"optional\*"* with the note: *"skip for plumbing;
-optionally model the one game-mode lifecycle as an explicit FSM for the rigor + interview story."*
+`stack-aws-brainstorm.md` left XState marked _"optional\*"_ with the note: _"skip for plumbing;
+optionally model the one game-mode lifecycle as an explicit FSM for the rigor + interview story."_
 It was never revisited.
 
 **Decision framing (for whoever picks this up):**
 
-| | Adopt XState | Skip (ad-hoc state) |
-|---|---|---|
-| **Rigor** | explicit, testable states + guarded transitions; invalid states unreachable | implicit; easy to slip into invalid states (e.g. scoring while paused) |
-| **Interview value** | a concrete "I modeled the game loop as an FSM" story — a system-design signal, which the AWS-learning priority (spike §F1) explicitly values | none |
-| **Cost** | one dependency + a little learning for a single machine | zero |
-| **Fit** | the lifecycle genuinely *is* a small FSM | fine for a ~5-state flow |
+|                     | Adopt XState                                                                                                                                 | Skip (ad-hoc state)                                                    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| **Rigor**           | explicit, testable states + guarded transitions; invalid states unreachable                                                                  | implicit; easy to slip into invalid states (e.g. scoring while paused) |
+| **Interview value** | a concrete "I modeled the game loop as an FSM" story — a system-design signal, which the AWS-learning priority (spike §F1) explicitly values | none                                                                   |
+| **Cost**            | one dependency + a little learning for a single machine                                                                                      | zero                                                                   |
+| **Fit**             | the lifecycle genuinely _is_ a small FSM                                                                                                     | fine for a ~5-state flow                                               |
 
 **Grounding before deciding:**
+
 - The working prototype already implements this lifecycle informally — `~/Sites/alphaTabWebsite`
   (`rhythm-game` branch: `useRhythmGameScore`, `practice-mode-settings`). Read the real states
   there first (per [[alphatab-fork-reference]]).
@@ -48,17 +49,17 @@ not block anything today.
 
 Full context + current-status cross-refs for each: §4 + §5 of the main spike.
 
-| # | Question (as of Jun 2–4) | Resolution |
-|---|---|---|
-| OQ-1 | Backend spine: Firebase vs Supabase? | Neither — **AWS** (catalog-store DACI 2026-06-09). |
-| OQ-2 | Sync layer: Legend-State vs RxDB? | Neither — **Dexie** (RxDB rejected; backend ADR 2026-06-17). |
-| OQ-3 | Electron desktop: now or later? | **Deferred** — browser/PWA now; front-end = Vite SPA. |
-| OQ-4 | First build step (deep review / iOS Capacitor / extract clean Vite app)? | Reframed — **foundation + CI/CD first**, then the catalog (CMS) as the first real feature. |
-| OQ-6 | RxDB vs Legend-State targeting AWS? | Closed — **Dexie** (duplicate of OQ-2). |
-| OQ-7 | AWS local creds + region (the `pulumi up` blocker)? | **Resolved** — AWS account set up; first `pulumi up` landed (NH-150). |
-| OQ-8 | Confirm defaults (public+proprietary / monorepo / IAM keys / bun)? | Public ✓, OIDC ✓; **bun → pnpm**; monorepo shape **Nx → dropped** (2026-06-17). |
-| OQ-9 | Domain (`notation-hero.*` / `notationhero.*`)? | Brand domain **notationhero.com** (Namecheap, **not yet configured**); package namespace `@notation-hero/*`. |
-| OQ-10 | Friendly-view visuals (tendency meter, combo glow, …)? | Evolved into the **design system** (PR #23, `docs/mockups/`). |
+| #     | Question (as of Jun 2–4)                                                 | Resolution                                                                                                   |
+| ----- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| OQ-1  | Backend spine: Firebase vs Supabase?                                     | Neither — **AWS** (catalog-store DACI 2026-06-09).                                                           |
+| OQ-2  | Sync layer: Legend-State vs RxDB?                                        | Neither — **Dexie** (RxDB rejected; backend ADR 2026-06-17).                                                 |
+| OQ-3  | Electron desktop: now or later?                                          | **Deferred** — browser/PWA now; front-end = Vite SPA.                                                        |
+| OQ-4  | First build step (deep review / iOS Capacitor / extract clean Vite app)? | Reframed — **foundation + CI/CD first**, then the catalog (CMS) as the first real feature.                   |
+| OQ-6  | RxDB vs Legend-State targeting AWS?                                      | Closed — **Dexie** (duplicate of OQ-2).                                                                      |
+| OQ-7  | AWS local creds + region (the `pulumi up` blocker)?                      | **Resolved** — AWS account set up; first `pulumi up` landed (NH-150).                                        |
+| OQ-8  | Confirm defaults (public+proprietary / monorepo / IAM keys / bun)?       | Public ✓, OIDC ✓; **bun → pnpm**; monorepo shape **Nx → dropped** (2026-06-17).                              |
+| OQ-9  | Domain (`notation-hero.*` / `notationhero.*`)?                           | Brand domain **notationhero.com** (Namecheap, **not yet configured**); package namespace `@notation-hero/*`. |
+| OQ-10 | Friendly-view visuals (tendency meter, combo glow, …)?                   | Evolved into the **design system** (PR #23, `docs/mockups/`).                                                |
 
 ---
 

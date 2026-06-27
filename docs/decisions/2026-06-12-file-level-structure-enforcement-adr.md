@@ -26,10 +26,11 @@ A spike built throwaway fixtures for every violation class and ran them against 
 **Decision:** Keep dependency-cruiser. It is **not** redundant.
 
 **Rationale (empirical):**
+
 - Neither tool is a superset. depcruise uniquely provides **today**: cycle detection, orphan detection, and **graph visualization** (Mermaid/Dot — no linter can do this).
 - The candidate ESLint stack (`import-x/no-cycle`, `import-x/no-unused-modules`) **did not fire** under the repo's legacy `.eslintrc.cjs` despite a working resolver (verified via `no-unresolved`). import-x 4 is flat-config-first; its graph rules are unreliable until the flat-config migration (`L3-eslint`/NH-42).
 - depcruise's **path/external bans (H8–H11 + layer) ARE reproducible** in ESLint at equal precision (`import-x/no-restricted-paths` matched relative + alias + workspace-package), so the overlap is **deliberate belt-and-suspenders**, not waste — and depcruise additionally guards files **not yet in an Nx project** (the entire pre-source repo).
-- Its role is **tier-c fast feedback + visualization, sitting *under* the compile wall (D7)** — not the wall itself.
+- Its role is **tier-c fast feedback + visualization, sitting _under_ the compile wall (D7)** — not the wall itself.
 
 This empirically **confirms** the standing `H7` / `L2-depcruise` "keep both" decision rather than inheriting it on faith.
 
@@ -42,6 +43,7 @@ Examples: `catalog-item.entity.ts`, `logger.port.ts`, `neon-catalog.repository.t
 **This supersedes PR #25's Option A** (PascalCase/camelCase split + folder-per-entity, no role suffix). **`folder-per-entity` is dropped** — the role suffix carries the role, which removes the bespoke `check-layout.sh` folder rule.
 
 **Rationale (empirical + research):**
+
 - Most idiomatic for a **hexagonal Nx** repo — the canonical 12k★ `domain-driven-hexagon` suffixes everything in kebab.
 - **One** `check-file` rule (`KEBAB_CASE`, `ignoreMiddleExtensions: true` — already set in PR #25) covers source **and** stacked tests; verified `catalog-item.entity.test.ts` passes (the flag strips both `.entity` and `.test`).
 - Resolves two warnings in the research doc: **Nx generators emit kebab** (Option B = zero fight with the entity generator) and **`apps/` frameworks expect kebab** (one rule works in every layer). PR #25's Pascal/camel rule fights both.
@@ -50,14 +52,15 @@ Examples: `catalog-item.entity.ts`, `logger.port.ts`, `neon-catalog.repository.t
 - Makes the legacy Pascal-vs-camel DangerJS naming task **redundant** — drop it.
 
 **Suffix taxonomy (starting set — refine in the AGENTS.md naming section):**
-| Layer | Suffixes |
-|---|---|
-| `core/` | `.entity.ts`, `.value-object.ts`, `.aggregate.ts`, `.event.ts` (domain event), `.specification.ts` (policy/rule), `.port.ts`, `.service.ts` (domain service), `.error.ts` |
-| `adapters/` | `.adapter.ts`, `.repository.ts`, `.mapper.ts`, `.client.ts` |
-| `apps/` | `.handler.ts`, `.use-case.ts`, `.command.ts`, `.query.ts`, `.controller.ts`, `.dto.ts` |
-| `infra/` | `.stack.ts` / `.infra.ts` (Pulumi IaC) |
-| tests | `*.test.ts` — stacked, e.g. `*.entity.test.ts` |
-| **unsuffixed (allowed)** | `index.ts` (package/project entry only), `*.config.ts`, `*.d.ts` |
+
+| Layer                    | Suffixes                                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `core/`                  | `.entity.ts`, `.value-object.ts`, `.aggregate.ts`, `.event.ts` (domain event), `.specification.ts` (policy/rule), `.port.ts`, `.service.ts` (domain service), `.error.ts` |
+| `adapters/`              | `.adapter.ts`, `.repository.ts`, `.mapper.ts`, `.client.ts`                                                                                                               |
+| `apps/`                  | `.handler.ts`, `.use-case.ts`, `.command.ts`, `.query.ts`, `.controller.ts`, `.dto.ts`                                                                                    |
+| `infra/`                 | `.stack.ts` / `.infra.ts` (Pulumi IaC)                                                                                                                                    |
+| tests                    | `*.test.ts` — stacked, e.g. `*.entity.test.ts`                                                                                                                            |
+| **unsuffixed (allowed)** | `index.ts` (package/project entry only), `*.config.ts`, `*.d.ts`                                                                                                          |
 
 - Outliers corrected vs the original brief: `*.value.ts` → `*.value-object.ts`; `*.policy.ts` → `*.specification.ts` (or accept as a house term); `*.client.ts` kept (adapter detail).
 - **Ban junk-drawer suffixes** `*.manager.ts` / `*.helper.ts` via `check-file/filename-blocklist`; allow a **narrow** `*.util.ts` only for genuinely generic pure functions.
@@ -67,14 +70,15 @@ Examples: `catalog-item.entity.ts`, `logger.port.ts`, `neon-catalog.repository.t
 **Decision:** enforce H8/H10/H11 as written; **widen H9** from `infra ↛ (apps|libs)` to **`infra ↛ (apps|core|adapters)` source**.
 
 **Rationale:**
+
 - H8/H10/H11 are built, probe-verified, **0 false positives** on the empty repo (spike §4.1).
-- H9's `^(apps|libs)/` is **vestigial** — this repo has no `libs/`, so as written H9 only blocks `infra→apps`. Widening it **enforces the repo's own registry `H3`** (*"IaC lives in infra/; imports @pulumi/*; **never domain source**"*) + `H4` (*"references the handler BUILD OUTPUT … never its source"*).
-- This is **not** a contradiction of clean-architecture's "composition root imports inward": in the serverless-Pulumi split the **runtime composition root is `apps/`** (the handler, which *may* import `@core` per `H2`), while **`infra/` is pure IaC** that wires via build output. Go (`internal/`), Rust (crates), and .NET (Infrastructure references built Core) all treat the deploy layer this way.
+- H9's `^(apps|libs)/` is **vestigial** — this repo has no `libs/`, so as written H9 only blocks `infra→apps`. Widening it **enforces the repo's own registry `H3`** (_"IaC lives in infra/; imports @pulumi/_; **never domain source**"_) + `H4` (_"references the handler BUILD OUTPUT … never its source"\*).
+- This is **not** a contradiction of clean-architecture's "composition root imports inward": in the serverless-Pulumi split the **runtime composition root is `apps/`** (the handler, which _may_ import `@core` per `H2`), while **`infra/` is pure IaC** that wires via build output. Go (`internal/`), Rust (crates), and .NET (Infrastructure references built Core) all treat the deploy layer this way.
 - Escape valve: genuinely-shared deploy constants live in a non-domain config, not `core/`.
 
 ### D4 — Adopt `eslint-plugin-boundaries` now
 
-**Decision:** adopt `eslint-plugin-boundaries` (v6 `boundaries/dependencies`) immediately, for **sibling-folder internal isolation** *and* **editor-time layer-direction feedback**.
+**Decision:** adopt `eslint-plugin-boundaries` (v6 `boundaries/dependencies`) immediately, for **sibling-folder internal isolation** _and_ **editor-time layer-direction feedback**.
 
 **Rationale:** it is the **only** tool that does sibling/internal isolation (`core/lessonA` reaching into `core/lessonB` internals — missed by depcruise, Nx, and PR #25). It also emits live in-editor errors for layer-direction imports, which is why it makes D6 unnecessary. (This was chosen over deferring — leocaseiro elected to enforce from commit one.)
 
@@ -100,19 +104,19 @@ Examples: `catalog-item.entity.ts`, `logger.port.ts`, `neon-catalog.repository.t
 
 ## Resulting enforcement-ownership model (tiered)
 
-| Rule / concern | Tier (a) compile | Tier (b) test | Tier (c) lint — editor | Tier (c) lint — CI |
-|---|---|---|---|---|
-| Layer direction (`core↛adapters`, …) | TS project references (D7) | *(opt) ts-arch* | `@nx/enforce-module-boundaries` + `eslint-plugin-boundaries` (D4) | dependency-cruiser |
-| File-level source bans (H9/H11) | TS project references (D7) | — | — | **dependency-cruiser** |
-| External-package bans (H8/H10, core↛@pulumi D5) | — | — | ESLint `no-restricted-imports` | **dependency-cruiser** |
-| Cycles | — | — | — | **dependency-cruiser** (import-x `no-cycle` unreliable until NH-42) |
-| Orphans | — | — | — | **dependency-cruiser** |
-| Sibling / internal isolation | — | — | **`eslint-plugin-boundaries`** (D4) | dependency-cruiser (path rules) |
-| Public entry point | TS project references / package `exports` (D7) | — | `@nx/enforce-module-boundaries` (project) | — |
-| Filename + role suffix (D2) | — | — | `check-file` (`filename-naming-convention` + `filename-blocklist`) | — |
-| Type naming / default-export / import-order | — | — | `@typescript-eslint/naming-convention`, `import-x` | — |
-| **Visualization** | — | — | — | **dependency-cruiser** (`--output-type mermaid`) — unique |
-| Commentary only | — | — | — | DangerJS (never a source of truth) |
+| Rule / concern                                  | Tier (a) compile                               | Tier (b) test   | Tier (c) lint — editor                                             | Tier (c) lint — CI                                                  |
+| ----------------------------------------------- | ---------------------------------------------- | --------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------- |
+| Layer direction (`core↛adapters`, …)            | TS project references (D7)                     | _(opt) ts-arch_ | `@nx/enforce-module-boundaries` + `eslint-plugin-boundaries` (D4)  | dependency-cruiser                                                  |
+| File-level source bans (H9/H11)                 | TS project references (D7)                     | —               | —                                                                  | **dependency-cruiser**                                              |
+| External-package bans (H8/H10, core↛@pulumi D5) | —                                              | —               | ESLint `no-restricted-imports`                                     | **dependency-cruiser**                                              |
+| Cycles                                          | —                                              | —               | —                                                                  | **dependency-cruiser** (import-x `no-cycle` unreliable until NH-42) |
+| Orphans                                         | —                                              | —               | —                                                                  | **dependency-cruiser**                                              |
+| Sibling / internal isolation                    | —                                              | —               | **`eslint-plugin-boundaries`** (D4)                                | dependency-cruiser (path rules)                                     |
+| Public entry point                              | TS project references / package `exports` (D7) | —               | `@nx/enforce-module-boundaries` (project)                          | —                                                                   |
+| Filename + role suffix (D2)                     | —                                              | —               | `check-file` (`filename-naming-convention` + `filename-blocklist`) | —                                                                   |
+| Type naming / default-export / import-order     | —                                              | —               | `@typescript-eslint/naming-convention`, `import-x`                 | —                                                                   |
+| **Visualization**                               | —                                              | —               | —                                                                  | **dependency-cruiser** (`--output-type mermaid`) — unique           |
+| Commentary only                                 | —                                              | —               | —                                                                  | DangerJS (never a source of truth)                                  |
 
 ---
 
@@ -128,7 +132,7 @@ Examples: `catalog-item.entity.ts`, `logger.port.ts`, `neon-catalog.repository.t
   7. Drop the planned Pascal-vs-camel DangerJS naming task.
 - **Unblocks** the Nx entity generator (was the "one true hard-block" waiting on the suffix decision) and the AGENTS.md naming section.
 - **Elevates** `L2-projref` (TS project references) from a deferred nicety to the next strictness lever.
-- `@typescript-eslint/naming-convention` (typeLike→PascalCase) is **unaffected** — type *identifiers* stay PascalCase regardless of kebab *filenames*.
+- `@typescript-eslint/naming-convention` (typeLike→PascalCase) is **unaffected** — type _identifiers_ stay PascalCase regardless of kebab _filenames_.
 
 ---
 
@@ -138,7 +142,7 @@ Examples: `catalog-item.entity.ts`, `logger.port.ts`, `neon-catalog.repository.t
 2. **Wire `eslint-plugin-boundaries`** (D4) with the layer element-types + sibling rules.
 3. **Author the AGENTS.md naming section** + the suffix taxonomy; configure the **Nx entity generator** to emit kebab + suffix.
 4. **TS project references** (D7 / `L2-projref` / `F-4 nx sync`) as its own lane — the compile wall.
-5. *(Optional later)* `package.json` `exports` maps + a `ts-arch` layer test (tier-b).
+5. _(Optional later)_ `package.json` `exports` maps + a `ts-arch` layer test (tier-b).
 6. Each step updates the **decision-registry** statuses + Change log in the same PR (per AGENTS.md governance).
 
 ---
@@ -155,4 +159,4 @@ Examples: `catalog-item.entity.ts`, `logger.port.ts`, `neon-catalog.repository.t
 - **New `STRICT-tiers`** — enforcement-tier ladder adopted; climb lint→compile via TS project references (D7).
 - **Change-log entry (2026-06-12):** record ratification of D1–D7 by leocaseiro with the rationale above.
 
-> "Why we run both" (registry one-liner): *We run Nx tags + eslint-plugin-boundaries for fast project/file-level layering with editor feedback, and dependency-cruiser as the file-level CI backstop plus the only architecture visualization — deliberately not redundant, because Nx is blind below the project line and dormant until a folder is a tagged project, while depcruise enforces direction on raw paths from commit one and catches cycles/orphans our ESLint stack can't yet detect under legacy config. TS project references add the compile-time wall above all of them.*
+> "Why we run both" (registry one-liner): _We run Nx tags + eslint-plugin-boundaries for fast project/file-level layering with editor feedback, and dependency-cruiser as the file-level CI backstop plus the only architecture visualization — deliberately not redundant, because Nx is blind below the project line and dormant until a folder is a tagged project, while depcruise enforces direction on raw paths from commit one and catches cycles/orphans our ESLint stack can't yet detect under legacy config. TS project references add the compile-time wall above all of them._

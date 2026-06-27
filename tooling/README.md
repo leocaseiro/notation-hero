@@ -4,22 +4,22 @@ Lives outside the workspace package graph — repo-wide enforcement scaffolding,
 
 ## Files
 
-| File | Purpose | Source-of-truth decision |
-|---|---|---|
-| [`branch-protection.sh`](./branch-protection.sh) | Apply classic Branch Protection to `master` (CI Green required, linear history, no force push, no deletions). DRY-RUN by default; `--apply` to commit. Idempotent. | DACI L7 (classic-API portion) |
-| [`branch-ruleset.json`](./branch-ruleset.json) | Declarative GitHub Repository Ruleset for `master-merge-queue`. Targets `~DEFAULT_BRANCH`. Encodes squash merge, ALLGREEN strategy, 5-concurrent build, 1–5 group size, 60-min check timeout. | DACI L7-merge-queue (NH-172) |
-| [`branch-ruleset.sh`](./branch-ruleset.sh) | Apply the Ruleset above to the repo. DRY-RUN by default; `--apply` to commit. Idempotent (POST if new, PUT if a ruleset with the same name already exists). | DACI L7-merge-queue (NH-172) |
-| [`linear-pending.md`](./linear-pending.md) | ~~Markdown TODO file. Lightweight fallback for Linear MCP outages — agents append a bullet when MCP is unreachable; next session drains.~~ <!-- now Jira; see docs/decisions/2026-06-11-tracker-linear-to-jira.md --> | DACI L10a (v2 — replaces the JSON queue) |
+| File                                             | Purpose                                                                                                                                                                                                               | Source-of-truth decision                 |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| [`branch-protection.sh`](./branch-protection.sh) | Apply classic Branch Protection to `master` (CI Green required, linear history, no force push, no deletions). DRY-RUN by default; `--apply` to commit. Idempotent.                                                    | DACI L7 (classic-API portion)            |
+| [`branch-ruleset.json`](./branch-ruleset.json)   | Declarative GitHub Repository Ruleset for `master-merge-queue`. Targets `~DEFAULT_BRANCH`. Encodes squash merge, ALLGREEN strategy, 5-concurrent build, 1–5 group size, 60-min check timeout.                         | DACI L7-merge-queue (NH-172)             |
+| [`branch-ruleset.sh`](./branch-ruleset.sh)       | Apply the Ruleset above to the repo. DRY-RUN by default; `--apply` to commit. Idempotent (POST if new, PUT if a ruleset with the same name already exists).                                                           | DACI L7-merge-queue (NH-172)             |
+| [`linear-pending.md`](./linear-pending.md)       | ~~Markdown TODO file. Lightweight fallback for Linear MCP outages — agents append a bullet when MCP is unreachable; next session drains.~~ <!-- now Jira; see docs/decisions/2026-06-11-tracker-linear-to-jira.md --> | DACI L10a (v2 — replaces the JSON queue) |
 
 Files coming in later Sequencing steps (placeholders documented for foresight, NOT created in this PR):
 
-| File | Purpose | DACI step |
-|---|---|---|
-| `first-use-flags.json` | Persisted flags for DangerJS first-use triggers (Storybook, Playwright, LocalStack, first-PR). Concurrency-safe across parallel PRs. | L6 hardening (Step 3) |
-| `floors.json` | Per-Nx-project floors for coverage / mutation / type-coverage (read-only in PR; bumped only by the `update-floors` workflow). | F-3 (Step 4) |
-| `isolated-declarations-log.json` | 3-bucket classification log for `isolatedDeclarations` CI failures during the F-1 measurement window. | F-1 addendum (Step 4) |
-| `probes/` | Self-testing probe suite — one Vitest spec per dep-cruise/boundary rule. | L2 implementation detail (Step 9) |
-| `dangerfile.ts` + rule modules | DangerJS configuration entry + per-rule modules. | L6 (Step 3) |
+| File                             | Purpose                                                                                                                              | DACI step                         |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
+| `first-use-flags.json`           | Persisted flags for DangerJS first-use triggers (Storybook, Playwright, LocalStack, first-PR). Concurrency-safe across parallel PRs. | L6 hardening (Step 3)             |
+| `floors.json`                    | Per-Nx-project floors for coverage / mutation / type-coverage (read-only in PR; bumped only by the `update-floors` workflow).        | F-3 (Step 4)                      |
+| `isolated-declarations-log.json` | 3-bucket classification log for `isolatedDeclarations` CI failures during the F-1 measurement window.                                | F-1 addendum (Step 4)             |
+| `probes/`                        | Self-testing probe suite — one Vitest spec per dep-cruise/boundary rule.                                                             | L2 implementation detail (Step 9) |
+| `dangerfile.ts` + rule modules   | DangerJS configuration entry + per-rule modules.                                                                                     | L6 (Step 3)                       |
 
 ## Branch protection + merge queue — two layers, one repo
 
@@ -106,6 +106,7 @@ single-purpose scripts are easier to reason about than a multi-mode wrapper.
 The DACI calls out a Linear MCP outage as a real failure mode worth handling. The v2 approach is a markdown TODO file at [`linear-pending.md`](./linear-pending.md), drained on the next successful agent session.
 
 When to enqueue:
+
 - The agent intended to write to Linear AND a single retry failed AND losing the bookkeeping would matter.
 - If the MCP works on the first try, never touch the file.
 

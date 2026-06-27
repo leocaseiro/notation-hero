@@ -8,14 +8,14 @@
 
 ## North star
 
-The catalog's job is **"find a piece to play"** — search / discovery of songs & lessons by type — **not** a progress dashboard. Score & progress are a **garnish** (per-user, from DynamoDB), shown on the **detail** screen, never on the list spine. *(This corrects the earlier "macro-progress home" framing in the design-system handoff.)*
+The catalog's job is **"find a piece to play"** — search / discovery of songs & lessons by type — **not** a progress dashboard. Score & progress are a **garnish** (per-user, from DynamoDB), shown on the **detail** screen, never on the list spine. _(This corrects the earlier "macro-progress home" framing in the design-system handoff.)_
 
 ## Locked flow
 
 - **Unified search**, browsable by intent: top-level **Songs | Lessons**; Lessons → **Beats · Rudiments · Fills**.
 - **Stitch-style table** list: `Name · Level · BPM · Best · ▶` (no row number).
 - **Tap a row → detail first** (Fork B). The row **▶** is a quick-play shortcut.
-- **Song-breakdowns** are reached *through* the song ("Practice in parts"), not a separate shelf.
+- **Song-breakdowns** are reached _through_ the song ("Practice in parts"), not a separate shelf.
 - **Detail-first**: song/lesson detail carries the actions + **Your history** (best, top tempo, sessions, recent attempts, trend). Patterns will get the same later.
 - **CMS = the same UI**, with admin-gated actions (Upload / Add / Edit). Lesson steps are authored on the same surface.
 
@@ -30,7 +30,7 @@ The catalog's job is **"find a piece to play"** — search / discovery of songs 
 
 ## Open / TBD / deferred
 
-- **🔴 Song-slice ("From a song" step — bar range from→to) is TBD / unspiked.** Partial Guitar Pro loading is unproven (AlphaTab likely supports a *playback range* on a fully-loaded file — needs a spike). **→ raise a Jira ticket.** Until then, steps use alphaTex (admin) or upload.
+- **🔴 Song-slice ("From a song" step — bar range from→to) is TBD / unspiked.** Partial Guitar Pro loading is unproven (AlphaTab likely supports a _playback range_ on a fully-loaded file — needs a spike). **→ raise a Jira ticket.** Until then, steps use alphaTex (admin) or upload.
 - **Step editor → accordion or modal** (not a separate back-and-forth screen) — Leo's preference; for the **design consultant** to shape.
 - **Filter placement** — squished inline; collapsed to a button for now; final placement → design consultant.
 - **Patterns** get their own detail + history — near-next (not built).

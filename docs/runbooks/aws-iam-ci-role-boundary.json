@@ -4,11 +4,7 @@
     {
       "Sid": "LambdaExecLoggingCeiling",
       "Effect": "Allow",
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:PutLogEvents"
-      ],
+      "Action": ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"],
       "Resource": "arn:aws:logs:ap-southeast-2:*:log-group:/aws/lambda/notation-hero-api*"
     }
   ]

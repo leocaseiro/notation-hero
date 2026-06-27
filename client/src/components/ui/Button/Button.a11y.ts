@@ -1,9 +1,9 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
 
 import { A11Y_TAGS } from '../../../a11y-tags';
 import { BUTTON_STORY_IDS } from './Button.story-ids';
+import type { Page } from '@playwright/test';
 
 // axe-core pass per Button story, in BOTH themes and in BOTH the resting and hover
 // states (hover changes bg/text colors, which must also meet AA). Story IDs come from
@@ -26,7 +26,7 @@ async function expectNoA11yViolations(page: Page, label: string) {
     .map(
       (v) =>
         `[${v.id}] ${v.help}\n` +
-        v.nodes.map((n) => `    ${n.failureSummary?.replace(/\s+/g, ' ').trim()}`).join('\n'),
+        v.nodes.map((n) => `    ${n.failureSummary?.replaceAll(/\s+/g, ' ').trim()}`).join('\n'),
     )
     .join('\n');
 
