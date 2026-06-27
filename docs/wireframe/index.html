@@ -374,6 +374,12 @@ const PLAYABLES = [
   {id:'pat_imyours_groove', kind:'pattern', title:"I'm Yours — groove", pattern_kind:'beat', family:'Reggae', level:1, instruments:['drums'], genre:'pop', status:'published', origin:'curated', license:'royalty-free', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=I%27m%20Yours%20%E2%80%94%20groove&Author=(Kind%3A%20Beat)&Comments=Level%3A%201&Tempo=73&Measures=1&H=|x-x-x-xxxxx-x-x-|&S=|----------------|&K=|----------------|&Stickings=|cccccccccccccccc|', source:'gp-extract-imyours.json'}, best:null, sessions:0, trend:[]},
   {id:'pat_zoio_fill', kind:'pattern', title:'Zoio de Lula — tom fill', pattern_kind:'fill', family:'Fill', level:6, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'royalty-free', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Zoio%20de%20Lula%20%E2%80%94%20tom%20fill&Author=(Kind%3A%20Fill)&Comments=Level%3A%206&Tempo=76&Measures=1&H=|----------------|&S=|----------------|&K=|----------------|&T1=|--------ooo-----|&T2=|----------------|&T4=|------------ooo-|&Stickings=|cccccccccccccccc|', source:'gp-extract-zoio.json (bar 2)'}, best:null, sessions:0, trend:[]},
   {id:'lesson_yellow_groove', kind:'lesson', title:'Yellow groove — hi-hat variations', level:2, instruments:['drums'], genre:'rock', skill:['timing','coordination'], status:'published', origin:'curated', license:'royalty-free', data:{description:'Coldplay "Yellow" main groove in two hi-hat articulations — closed vs open on beat 1.'}, best:null, sessions:0, trend:[]},
+  // NH-222 / SD-32 (F5) — structured song learning: Yellow's parts (positions-only slices, NH-137) + a Lesson that USES the song, part by part.
+  {id:'part_yellow_intro',   slug:'yellow-intro',   kind:'part', parent_id:'yellow', title:'Yellow — Intro',    sort_order:1, start_bar:1,  end_bar:4,  bpm:87, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], level:1, status:'published', origin:'curated', license:'royalty-free', listable:false, description:'Intro — bars 1–4. Keys + ringing guitar set up the song.', best:null, sessions:0, trend:[]},
+  {id:'part_yellow_verse1',  slug:'yellow-verse-1',  kind:'part', parent_id:'yellow', title:'Yellow — Verse 1',  sort_order:2, start_bar:13, end_bar:32, bpm:87, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','bass','keys','vocals'], level:2, status:'published', origin:'curated', license:'royalty-free', listable:false, description:'Verse 1 — bars 13–32. Full band enters; steady backbeat.', best:null, sessions:0, trend:[]},
+  {id:'part_yellow_chorus1', slug:'yellow-chorus-1', kind:'part', parent_id:'yellow', title:'Yellow — Chorus 1', sort_order:3, start_bar:33, end_bar:40, bpm:87, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','bass','keys','vocals'], level:2, status:'published', origin:'curated', license:'royalty-free', listable:false, description:'Chorus 1 — bars 33–40. Crashes + ride open up the dynamics.', best:null, sessions:0, trend:[]},
+  {id:'part_yellow_outro',   slug:'yellow-outro',   kind:'part', parent_id:'yellow', title:'Yellow — Outro',    sort_order:4, start_bar:91, end_bar:97, bpm:87, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], level:2, status:'published', origin:'curated', license:'royalty-free', listable:false, description:'Outro — bars 91–97. Winds the song down.', best:null, sessions:0, trend:[]},
+  {id:'lesson_learn_yellow', slug:'learn-yellow', kind:'lesson', title:'Learn Yellow — part by part', level:2, instruments:['drums','guitar','keys'], genre:'rock', skill:['timing','arrangement'], status:'published', origin:'curated', license:'royalty-free', description:'Play Coldplay "Yellow" section by section — Intro → Verse → Chorus → Outro — each at its own BPM ladder, then put it together as the full song. A normal lesson whose steps are the song\'s parts (it USES the song).', best:null, sessions:0, trend:[]},
 ];
 
 /* ---------- sample data — the `step` JUNCTION (parent playable -> child pattern) ----------
@@ -391,6 +397,13 @@ const STEP = {
   'lesson_yellow_groove':[
     {child_id:'pat_yellow_groove_closed', sort_order:1, start_bpm:70, goal_bpm:87},
     {child_id:'pat_yellow_groove_open',   sort_order:2, start_bpm:70, goal_bpm:87},
+  ],
+  // NH-222 / SD-32 — the structured song lesson's steps ARE the song's parts (parent=lesson, child=part)
+  'lesson_learn_yellow':[
+    {child_id:'part_yellow_intro',   sort_order:1, start_bpm:70, goal_bpm:87},
+    {child_id:'part_yellow_verse1',  sort_order:2, start_bpm:70, goal_bpm:87},
+    {child_id:'part_yellow_chorus1', sort_order:3, start_bpm:75, goal_bpm:87},
+    {child_id:'part_yellow_outro',   sort_order:4, start_bpm:75, goal_bpm:87},
   ],
 };
 
@@ -479,6 +492,7 @@ const LINKS = [
   {from:'pat_yellow_groove_closed', to:'pat_basic_rock', relation:'similar'},              // SD-30 n-n affinity: same backbeat skeleton, different song (symmetric)
   {from:'yellow', to:'im-yours', relation:'similar'},                                      // similar songs (pop feel) — non-hierarchical
   {from:'yellow', to:'lesson_yellow_groove', relation:'uses'},                             // song → its variation lesson
+  {from:'lesson_learn_yellow', to:'yellow', relation:'uses'},                              // SD-32/F5: structured song-learning lesson → the song it teaches (lesson uses song)
 ];
 
 /* ---------- RAW AlphaTab extraction per song (docs/wireframe/data/gp-extract-*.json) ----------
@@ -499,10 +513,15 @@ const kindIcon  = p => p.kind==='pattern' ? (PATTERN_KINDS[p.pattern_kind]?.icon
 /* ---------- routes (NH-221 / SD-31) — a pattern's route uses its KIND, not the umbrella word "pattern" ---------- */
 const PAT_KINDS = Object.keys(PATTERN_KINDS);                 // beat · fill · rudiment · scale · chord
 const isPatKind = k => PAT_KINDS.includes(k);
-function playablePath(it){ return it.kind==='pattern' ? `/${it.pattern_kind||'pattern'}/${it.id}` : `/${it.kind}/${it.id}`; }   // e.g. /fill/pat_zoio_fill , /song/yellow
+/* slug — friendly, stable URL token (the real schema keeps an opaque ULID id + a separate `slug`). */
+function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/['’]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+(function fillSlugs(){ const seen=new Set(); PLAYABLES.forEach(p=>{ let base=p.slug||slugify(p.title)||p.id, s=base, i=2; while(seen.has(s)) s=base+'-'+(i++); seen.add(s); p.slug=s; }); })();   // every playable gets a stored slug (auto from title; admin-editable in the real schema). Songs derive to their ids (Yellow→yellow), so those URLs stay stable.
+const sl = it => (it && (it.slug || it.id)) || '';           // the URL token for a playable
+const bySlug = s => PLAYABLES.find(x=>x.slug===s) || PLAYABLES.find(x=>x.id===s) || null;   // resolve a URL token → playable (slug first, id fallback)
+function playablePath(it){ return it.kind==='pattern' ? `/${it.pattern_kind||'pattern'}/${sl(it)}` : `/${it.kind}/${sl(it)}`; }   // e.g. /fill/zoio-de-lula-tom-fill , /song/yellow
 const playableRoute = it => '#'+playablePath(it);
-/* a pattern viewed in the CONTEXT of a parent song/lesson — both ids in the path (POC A): #/song/:id/<kind>/:cid */
-function patternInContext(parent, childId, childKind){ const pk = childKind || childPlayable(childId)?.pattern_kind || 'pattern'; return `#${playablePath(parent)}/${pk}/${childId}`; }
+/* a pattern/part viewed in the CONTEXT of a parent song/lesson — both slugs in the path (POC A): #/song/:slug/<kind>/:cslug */
+function patternInContext(parent, childId, childKind){ const c = childPlayable(childId); const pk = childKind || c?.pattern_kind || 'pattern'; return `#${playablePath(parent)}/${pk}/${sl(c)||childId}`; }
 function usedInCard(items, note){
   const seen=new Set(); const u=(items||[]).filter(p=>p&&!seen.has(p.id)&&(seen.add(p.id),true));
   if(!u.length) return '';
@@ -587,12 +606,12 @@ function render(){
   if(last==='edit' || last==='new') return renderCrudStub(seg, qp);          // edit lives at each item (#/song/:id/edit), create at #/new?type=
   if(seg[0]==='song'){
     if(seg[2]==='section')  return renderSongSection(seg[1], +seg[3]);
-    if(isPatKind(seg[2]))   return renderPattern(seg[3], {parent:PLAYABLES.find(x=>x.id===seg[1])||null, kind:seg[2]});   // #/song/:id/<kind>/:cid (context)
+    if(isPatKind(seg[2]))   return renderPattern(seg[3], {parent:bySlug(seg[1]), kind:seg[2]});   // #/song/:id/<kind>/:cid (context)
     return renderSong(seg[1]);
   }
   if(seg[0]==='lesson'){
     if(seg[2]==='step')     return renderStep(seg[1], +seg[3]);
-    if(isPatKind(seg[2]))   return renderPattern(seg[3], {parent:PLAYABLES.find(x=>x.id===seg[1])||null, kind:seg[2]});   // #/lesson/:id/<kind>/:cid (context)
+    if(isPatKind(seg[2]))   return renderPattern(seg[3], {parent:bySlug(seg[1]), kind:seg[2]});   // #/lesson/:id/<kind>/:cid (context)
     return renderLesson(seg[1]);
   }
   if(seg[0]==='part')    return renderPart(seg[1]);
@@ -756,7 +775,7 @@ function nfv(v){
 function toPlayable(it){
   const ts = it.time_sig ? String(it.time_sig).split('/') : [null,null];
   return {
-    id:it.id, kind:it.kind, title:it.title, description: descOf(it),
+    id:it.id, slug:it.slug||null, kind:it.kind, title:it.title, description: descOf(it),
     parent_id: it.parent_id||it.sourceSong||null,
     notation_id: it.notation_format?('src-'+it.id):(it.notation_alphaTex?('tex-'+it.id):null),
     start_bar: it.start_bar??null, end_bar: it.end_bar??null, sort_order: it.sort_order??null,
@@ -772,7 +791,7 @@ function toPlayable(it){
     data: it.data||null, created_by: it.owner||null,
   };
 }
-const NF_ORDER = ['id','kind','title','description','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','author','author_type','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
+const NF_ORDER = ['id','slug','kind','title','description','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','author','author_type','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
 /* assemble the playable + its joins (notation, tracks, media) into one object for the inspector */
 function inspectorObject(it){
   const n = toPlayable(it);
@@ -850,7 +869,7 @@ function rowHTML(it){
     ${lvl}
     <span class="bpm mono">${bpm}</span>
     ${donut(it.best)}
-    <button class="play" title="Quick play" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span></button>
+    <button class="play" title="Quick play" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span></button>
     ${allFieldsPanel(it)}
   </div>`;
 }
@@ -965,7 +984,7 @@ function metaFoot(it){
 
 /* ---------- screen: SONG detail ---------- */
 function renderSong(id){
-  const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
+  const it = bySlug(id); if(!it) return notFound();
   const sections = it.data?.sections||[];
   const parts = songParts(it.id);
   const sel = selectedTrack(it);   // the page is scoped to one track (instrument lens)
@@ -989,10 +1008,10 @@ function renderSong(id){
         ${mediaLinks(it)}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           ${signedIn() && it.best!=null
-            ? `<button class="btn primary" data-nav="#/play/${it.id}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
-               <button class="btn secondary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
-            : `<button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>`}
-          ${parts.length?`<button class="btn secondary" data-nav="#/part/${parts[0].id}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
+            ? `<button class="btn primary" data-nav="#/play/${sl(it)}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
+               <button class="btn secondary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
+            : `<button class="btn primary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>`}
+          ${parts.length?`<button class="btn secondary" data-nav="#/part/${sl(parts[0])}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
         </div>
       </div>
       ${historyCard(it)}
@@ -1004,21 +1023,21 @@ function renderSong(id){
         ? `<div class="stephead"><span style="flex:1">Part · section</span><span style="min-width:96px">Techniques</span><span>Bars</span><span style="width:48px">Level</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`
           + occ.map(o=>{ const p=o.part; const cell=sectionCell(it, o.start, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
           <span class="material-symbols-outlined" style="color:var(--accent)">play_circle</span>
-          <div class="si" data-nav="#/part/${p.id}"><b>${esc(p.title)}${o.repTotal>1?` <span style="color:var(--faint);font-weight:400">(${o.rep} of ${o.repTotal})</span>`:''}</b><small style="color:var(--faint);display:block">${descOf(p)?esc(descOf(p)):'kind=part · parent '+esc(it.title)}</small>${voiceChips(cell)}</div>
+          <div class="si" data-nav="#/part/${sl(p)}"><b>${esc(p.title)}${o.repTotal>1?` <span style="color:var(--faint);font-weight:400">(${o.rep} of ${o.repTotal})</span>`:''}</b><small style="color:var(--faint);display:block">${descOf(p)?esc(descOf(p)):'kind=part · parent '+esc(it.title)}</small>${voiceChips(cell)}</div>
           ${diffTechs(cell)}
           <span class="bars">bars ${o.start}–${o.end}</span>
           ${diffLevel(cell)}
           ${donut(p.best)}
-          <button class="play" title="Play this part" data-nav="#/play/${p.id}"><span class="material-symbols-outlined">play_arrow</span></button>
+          <button class="play" title="Play this part" data-nav="#/play/${sl(p)}"><span class="material-symbols-outlined">play_arrow</span></button>
         </div>${o.rep<=1?allFieldsPanel(p):''}</div>`; }).join('')
         : sections.length
         ? sections.map((s,i)=>{ const cell=sectionCell(it, s.startBar, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
           <span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span>
-          <div class="si" data-nav="#/song/${it.id}/section/${i+1}"><b>${esc(s.label)}</b><small style="color:var(--faint);display:block">open the score · bars ${s.startBar}–${s.endBar}</small>${voiceChips(cell)}</div>
+          <div class="si" data-nav="#/song/${sl(it)}/section/${i+1}"><b>${esc(s.label)}</b><small style="color:var(--faint);display:block">open the score · bars ${s.startBar}–${s.endBar}</small>${voiceChips(cell)}</div>
           ${diffTechs(cell)}
           <span class="bars">bars ${s.startBar}–${s.endBar}</span>
           ${cell ? diffLevel(cell) : (sel ? `<span class="lvlpill ${sel.level===0?'debut':''}" title="${cap(sel.instrument)} track level — no per-section breakdown in the file yet">${lvlText(sel.level)}</span>` : diffLevel(null))}
-          <button class="play" title="Play from this section" data-nav="#/play/${it.id}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span></button>
+          <button class="play" title="Play from this section" data-nav="#/play/${sl(it)}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span></button>
         </div></div>`; }).join('')
         : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`; })()}
       <small style="color:var(--faint);display:block;margin-top:8px">Level + techniques + <b>voices</b> = this track's per-section breakdown (D-3 + SD-15 <code>data.sections[].tracks[]</code>). L1 song range <b>${rangeText(levelRange(tracksOf(it)))}</b> · L2 this track <b>${lvlText(sel?sel.level:null)}</b> · “—” = silent here · voices = which sub-streams sound (kit pieces / piano hands).</small>
@@ -1034,7 +1053,7 @@ function renderSong(id){
 
 /* ---------- screen: PART detail (a slice of a song — its OWN playable, scored on its own id) ---------- */
 function renderPart(id){
-  const it = PLAYABLES.find(x=>x.id===id); if(!it || it.kind!=='part') return notFound();
+  const it = bySlug(id); if(!it || it.kind!=='part') return notFound();
   const song = it.parent_id ? PLAYABLES.find(x=>x.id===it.parent_id) : null;
   const sibs = song ? songParts(song.id) : [];
   const idx  = sibs.findIndex(p=>p.id===it.id);
@@ -1047,7 +1066,7 @@ function renderPart(id){
     <div class="hero">
       <div class="meta">
         <h1>${esc(it.title)}</h1>
-        <div class="sub"><span class="tag song">Part</span> ${song?`of <a data-nav="#/song/${song.id}" style="color:var(--accent);cursor:pointer">${esc(song.title)}</a>`:''}${song&&song.author&&song.author.length?` <span class="dot"></span> ${song.author.map(a=>`<a data-artist="${esc(a)}" style="color:var(--accent);cursor:pointer" title="Browse this author">${esc(a)}</a>`).join(' · ')}`:''}</div>
+        <div class="sub"><span class="tag song">Part</span> ${song?`of <a data-nav="#/song/${sl(song)}" style="color:var(--accent);cursor:pointer">${esc(song.title)}</a>`:''}${song&&song.author&&song.author.length?` <span class="dot"></span> ${song.author.map(a=>`<a data-artist="${esc(a)}" style="color:var(--accent);cursor:pointer" title="Browse this author">${esc(a)}</a>`).join(' · ')}`:''}</div>
         ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">segment</span>bars ${barsLabel(it)}${it.ranges&&it.ranges.length>1?` · repeated ×${it.ranges.length}`:''}</span>
@@ -1056,9 +1075,9 @@ function renderPart(id){
           <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.instruments||[]).join('·')}</span>
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play part</button>
-          ${prev?`<button class="btn secondary" data-nav="#/part/${prev.id}"><span class="material-symbols-outlined">arrow_back</span> Previous part</button>`:''}
-          ${next?`<button class="btn secondary" data-nav="#/part/${next.id}">Next part <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+          <button class="btn primary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span> Play part</button>
+          ${prev?`<button class="btn secondary" data-nav="#/part/${sl(prev)}"><span class="material-symbols-outlined">arrow_back</span> Previous part</button>`:''}
+          ${next?`<button class="btn secondary" data-nav="#/part/${sl(next)}">Next part <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
         </div>
       </div>
       ${historyCard(it)}
@@ -1080,12 +1099,12 @@ function stepFieldsPanel(parent, s){
   return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> step · junction</div><div class="fdbody"><div class="nfsub">the locked step row — points at a reusable child pattern</div><div class="nfgrid">${grid}</div></div></aside>`;
 }
 function renderStep(lessonId, n){
-  const it = PLAYABLES.find(x=>x.id===lessonId); if(!it) return notFound();
-  const steps = stepsFor(lessonId);
+  const it = bySlug(lessonId); if(!it) return notFound();
+  const steps = stepsFor(it.id);
   const idx = steps.findIndex(s=>s.sort_order===n);
   const s = steps[idx]; if(!s) return notFound();
   const child = childPlayable(s.child_id) || {title:s.child_id, pattern_kind:null};
-  const k = PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const k = child.kind==='part'?{label:'Part',icon:'segment'}:(PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'});
   const prev = idx>0 ? steps[idx-1] : null;
   const next = idx<steps.length-1 ? steps[idx+1] : null;
   app.innerHTML = `
@@ -1095,16 +1114,16 @@ function renderStep(lessonId, n){
       <div class="meta">
         <div class="sub" style="margin-bottom:4px">Step ${n} of ${steps.length} · ${esc(it.title)}</div>
         <h1>${esc(child.title)}</h1>
-        <div class="sub"><span class="tag lesson">${k.label}</span> <a data-nav="${patternInContext(it, s.child_id, child.pattern_kind)}" style="color:var(--accent);cursor:pointer">open pattern →</a> ${reuseCount(s.child_id)>1?`<span class="badge" style="padding:3px 9px">reused ×${reuseCount(s.child_id)}</span>`:''}</div>
+        <div class="sub"><span class="tag lesson">${k.label}</span> <a data-nav="${child.kind==='part'?playableRoute(child):patternInContext(it, s.child_id, child.pattern_kind)}" style="color:var(--accent);cursor:pointer">open ${child.kind==='part'?'part':'pattern'} →</a> ${reuseCount(s.child_id)>1?`<span class="badge" style="padding:3px 9px">reused ×${reuseCount(s.child_id)}</span>`:''}</div>
         ${descOf(child)?`<p class="lead">${esc(descOf(child))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${s.start_bpm??'?'} → ${s.goal_bpm??'?'}</span> BPM ladder</span>
           <span class="badge"><span class="material-symbols-outlined">tag</span>step ${s.sort_order} of ${steps.length}</span>
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}/step/${n}"><span class="material-symbols-outlined">play_arrow</span> Play step</button>
-          ${prev?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${prev.sort_order}"><span class="material-symbols-outlined">arrow_back</span> Previous</button>`:''}
-          ${next?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${next.sort_order}">Next <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+          <button class="btn primary" data-nav="#/play/${sl(it)}/step/${n}"><span class="material-symbols-outlined">play_arrow</span> Play step</button>
+          ${prev?`<button class="btn secondary" data-nav="#/lesson/${sl(it)}/step/${prev.sort_order}"><span class="material-symbols-outlined">arrow_back</span> Previous</button>`:''}
+          ${next?`<button class="btn secondary" data-nav="#/lesson/${sl(it)}/step/${next.sort_order}">Next <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
         </div>
       </div>
       ${historyCard(child)}
@@ -1119,7 +1138,7 @@ function renderStep(lessonId, n){
 
 /* ---------- screen: SONG SECTION "score" page (the #/song/<id>/section/<n> equivalent of a lesson step) ---------- */
 function renderSongSection(songId, n){
-  const it = PLAYABLES.find(x=>x.id===songId); if(!it || it.kind!=='song') return notFound();
+  const it = bySlug(songId); if(!it || it.kind!=='song') return notFound();
   const secs = (it.data&&it.data.sections)||[];
   const idx = n-1; const s = secs[idx]; if(!s) return notFound();
   const prevN = idx>0 ? n-1 : null, nextN = idx<secs.length-1 ? n+1 : null;
@@ -1139,9 +1158,9 @@ function renderSongSection(songId, n){
           ${lvl!=null?`<span class="badge"><span class="material-symbols-outlined">bar_chart</span>${lvlText(lvl)}</span>`:''}
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span> Play from here</button>
-          ${prevN?`<button class="btn secondary" data-nav="#/song/${it.id}/section/${prevN}"><span class="material-symbols-outlined">arrow_back</span> Previous section</button>`:''}
-          ${nextN?`<button class="btn secondary" data-nav="#/song/${it.id}/section/${nextN}">Next section <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+          <button class="btn primary" data-nav="#/play/${sl(it)}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span> Play from here</button>
+          ${prevN?`<button class="btn secondary" data-nav="#/song/${sl(it)}/section/${prevN}"><span class="material-symbols-outlined">arrow_back</span> Previous section</button>`:''}
+          ${nextN?`<button class="btn secondary" data-nav="#/song/${sl(it)}/section/${nextN}">Next section <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
         </div>
       </div>
     </div>
@@ -1153,8 +1172,8 @@ function renderSongSection(songId, n){
 
 /* ---------- screen: LESSON detail ---------- */
 function renderLesson(id){
-  const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
-  const steps = stepsFor(id);
+  const it = bySlug(id); if(!it) return notFound();
+  const steps = stepsFor(it.id);
   const lk = patternKindsOf(it); const kind = lk.length ? lk.map(k=>PATTERN_KINDS[k]?.label||k).join(' · ') : 'Lesson';
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Lesson · '+esc(it.title)]])}
@@ -1167,9 +1186,9 @@ function renderLesson(id){
         ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           ${signedIn() && it.best!=null
-            ? `<button class="btn primary" data-nav="#/play/${it.id}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
-               <button class="btn secondary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
-            : `<button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>`}
+            ? `<button class="btn primary" data-nav="#/play/${sl(it)}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
+               <button class="btn secondary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
+            : `<button class="btn primary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>`}
         </div>
       </div>
       ${historyCard(it)}
@@ -1178,7 +1197,7 @@ function renderLesson(id){
       <h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· ${steps.length} · each step → a reusable pattern + BPM ladder</span></h3>
       ${steps.length?`<div class="stephead"><span style="flex:1">Step · pattern</span><span>BPM</span><span style="width:54px;text-align:center">Kind</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`:''}
       ${steps.map(s=>stepRow(it,s)).join('')}
-      ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+      ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/lesson/${sl(it)}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
       <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>Each pattern above is scored on its <b>own</b> id. This lesson's score${signedIn()&&it.best!=null?` (<b>${it.best}%</b>)`:''} is your <b>whole-play</b> attempt — the “final exam” — <b>not</b> an average of the steps. Skip the steps, play it whole, score 100%.</div></div>
     </div>
     ${metaFoot(it)}
@@ -1187,12 +1206,12 @@ function renderLesson(id){
 }
 /* ---------- screen: PATTERN detail (first-class playable — score + history) ---------- */
 function renderPatternLegacy(id){   // NH-221: old #/pattern/:id → swap the address bar to the kind route, then render
-  const p = PLAYABLES.find(x=>x.id===id);
-  if(p && p.pattern_kind){ history.replaceState(null,'','#/'+p.pattern_kind+'/'+id); el('#routeEcho').textContent = location.hash; }
+  const p = bySlug(id);
+  if(p && p.pattern_kind){ history.replaceState(null,'','#/'+p.pattern_kind+'/'+sl(p)); el('#routeEcho').textContent = location.hash; }
   return renderPattern(id, null);
 }
 function renderPattern(id, ctx){
-  let it = PLAYABLES.find(x=>x.id===id);
+  let it = bySlug(id);
   if(!it){ const p=PATTERNS[id]; if(p) it={id, kind:'pattern', title:p.name, pattern_kind:p.kind, family:p.family, level:p.level, instruments:['drums'], status:'published', origin:'curated'}; }
   if(!it) return notFound();
   const k = PATTERN_KINDS[it.pattern_kind]||{label:'Pattern',icon:'extension'};
@@ -1214,7 +1233,7 @@ function renderPattern(id, ctx){
         </div>
         ${mediaLinks(it)}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play ${kindLabel(it)}</button>
+          <button class="btn primary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span> Play ${kindLabel(it)}</button>
         </div>
       </div>
       ${historyCard(it)}
@@ -1249,17 +1268,17 @@ function stepFieldsInline(parent, s){
 }
 function stepRow(parent, s){
   const child = childPlayable(s.child_id) || {title:s.child_id, pattern_kind:null};
-  const k = PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const k = child.kind==='part'?{label:'Part',icon:'segment'}:(PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'});
   const reuse = reuseCount(s.child_id);
   const composite = stepsFor(s.child_id).length>0;
   const ladder = (s.start_bpm||s.goal_bpm) ? `<span class="ladder"><span class="material-symbols-outlined" style="font-size:14px">speed</span>${s.start_bpm??'?'}→${s.goal_bpm??'?'}</span>` : '';
   const meta = [k.label, composite?'composite':null, reuse>1?`reused ×${reuse}`:null].filter(Boolean).join(' · ');
   return `<div class="stepwrap"><div class="step">
     <span class="no">${s.sort_order}</span>
-    <div class="si" data-nav="${parent.kind==='lesson'?`#/lesson/${parent.id}/step/${s.sort_order}`:`#/${childPlayable(s.child_id)?.pattern_kind||'pattern'}/${s.child_id}`}"><b>${esc(child.title)}</b><small>${meta}</small></div>
+    <div class="si" data-nav="${parent.kind==='lesson'?`#/lesson/${sl(parent)}/step/${s.sort_order}`:`#/${childPlayable(s.child_id)?.pattern_kind||'pattern'}/${sl(childPlayable(s.child_id))||s.child_id}`}"><b>${esc(child.title)}</b><small>${meta}</small></div>
     ${ladder} <span class="src tex">${k.label}</span> ${signedIn()?donut(child.best):''}
-    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/lesson/${parent.id}/step/${s.sort_order}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
-    <button class="play" title="Play this step" data-nav="#/play/${parent.id}/step/${s.sort_order}"><span class="material-symbols-outlined">play_arrow</span></button>
+    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/lesson/${sl(parent)}/step/${s.sort_order}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
+    <button class="play" title="Play this step" data-nav="#/play/${sl(parent)}/step/${s.sort_order}"><span class="material-symbols-outlined">play_arrow</span></button>
   </div>${stepFieldsInline(parent, s)}</div>`;
 }
 
@@ -1267,12 +1286,12 @@ function stepRow(parent, s){
 function renderPlayer(){
   const {seg, qp} = parseHash();
   const id = seg[1]; const stepNo = seg[2]==='step'?+seg[3]:null;
-  const it = PLAYABLES.find(x=>x.id===id);
+  const it = bySlug(id);
   let ctx = it? (it.kind==='song'?`“${it.title}” — full song @ ${it.bpm} BPM`
               : it.kind==='part'?`“${it.title}” — part · bars ${barsLabel(it)} @ ${it.bpm} BPM`
               : it.kind==='pattern'?`${kindLabel(it)} “${it.title}”`
               :`Lesson “${it.title}”`) : 'item';
-  if(stepNo){ const s=(STEP[id]||[]).find(x=>x.sort_order===stepNo); const c=s?childPlayable(s.child_id):null; if(s) ctx=`“${it.title}” — step ${stepNo}: ${c?c.title:s.child_id} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
+  if(stepNo){ const s=(STEP[it?.id]||[]).find(x=>x.sort_order===stepNo); const c=s?childPlayable(s.child_id):null; if(s) ctx=`“${it.title}” — step ${stepNo}: ${c?c.title:s.child_id} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
   if(qp.get('resume')) ctx += ' · resuming where you left off';
   app.innerHTML = `
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
@@ -1344,7 +1363,7 @@ function adminDetailBar(it){
   return `<div class="adminbar">
     <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin</span>
     <button class="adminbtn" data-nav="${playableRoute(it)}/edit"><span class="material-symbols-outlined">edit</span> Edit ${it.kind}</button>
-    ${it.kind==='lesson'?`<button class="adminbtn" data-nav="#/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+    ${it.kind==='lesson'?`<button class="adminbtn" data-nav="#/lesson/${sl(it)}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
     <button class="adminbtn danger" data-nav="${playableRoute(it)}/edit?delete=1"><span class="material-symbols-outlined">delete</span> ${it.status==='published'?'Archive':'Delete'}</button>
   </div>`;
 }
