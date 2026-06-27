@@ -9,6 +9,8 @@
 >
 > Note: KAN-\* refs below are legacy — tracker is now Jira **NH**; KAN is drained/redirected.
 
+> ⛔ **Schema MODEL superseded (2026-06-17 Playable model).** This doc describes the **older** `catalog_item` (`type` = song｜lesson) / `lesson_type` / `exercise` / `pattern` + `item_pattern` shape. The current model is the **Playable umbrella**: one `playable` (`kind` = song/part/lesson/pattern), a self-ref `step` junction (replaces `exercise`), `notation` (the score), per-**track** `tonal_profile`/`drum_profile`, plus `track` / `media` / `playable_link`; **`lesson_type` is dropped** (a lesson's kind is derived from its steps). The plain-language term meanings below still mostly hold; the **table/column names are stale**. Current schema: [`docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md`](docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md) + [`docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`](docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql); registry 2026-06-23.
+
 ---
 
 ## The catalog
@@ -93,13 +95,13 @@ An item's difficulty — numeric **1–10** (`level`; NULL = ungraded, shown as 
 
 ---
 
-## ⚠ To reconcile (flagged for review / KAN-165 — not decided here)
+## ⚠ To reconcile (flagged for review / KAN-165 — not decided here) <!-- legacy KAN → Jira NH -->
 
 1. **Is a _Fill_ a lesson type or a pattern kind?** The **schema (v1, authoritative)** says `fill` is a **pattern kind**, and there is **no `fill` lesson_type** — a fill rides inside a beat lesson's step content or links via `item_pattern`. But the **catalog mockups + earlier handoff** show "Lessons → Beats · Rudiments · **Fills**" (a Fill lesson badge) and noted "Fills = `lesson_type='fill'`". These conflict — pick one.
 2. **Stars dropped.** The schema (§5) maps `level` 1–10 → a 5★ library display; the **catalog UI deliberately dropped stars** (gestalt risk) for a numeric **neutral level pill** + the score donut. The numeric pill is the live decision; the schema's star mapping is superseded for display.
 3. **`exercise` vs `step` naming** — the DB table is `exercise`; the UI/users say **Step**. Schema open-question #1 (keep `exercise` or rename `step`).
 
-## TBD (filled by the lesson/steps spike — KAN-165)
+## TBD (filled by the lesson/steps spike — KAN-165) <!-- legacy KAN → Jira NH -->
 
 - The **lesson-authoring form** (UI) doesn't exist yet — only a song/step form in `catalog-flow.html`. The spike produces its low-fi wireframe.
 - Confirm the day-to-day authoring flow: how a curator builds a Lesson from Steps + links Patterns.
