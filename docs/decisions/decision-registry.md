@@ -12,6 +12,14 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-27 — `playable.slug` friendly URL token + wireframe author-on-UI / column sort (NH-221, NH-223, PR #88)
+
+New decision (leocaseiro, mid-review on PR #88): every playable gets a stored **`slug`** — a friendly URL token separate from the opaque ULID id — addressed by routes (`#/song/yellow`, `#/fill/zoio-de-lula-tom-fill`) with the id as a fallback; `UNIQUE` index + title→slug backfill → `NOT NULL` modelled in the draft seed (validated: 19 playables → 19 distinct slugs). Full record: `docs/decisions/2026-06-27-playable-slug-url-token.md`.
+
+The same **PR #88** wireframe pass also **realises** existing deltas in the low-fi sim (no new decisions): SD-13/SD-33 `author[]`+`author_type` now **surfaced on the catalog rows** (songs = artist, lessons = **teacher**) with an **Author/Artist facet incl. an "Unknown" option** and author-search in lessons; SD-31 kind+context routes; NH-222 structured song lesson; SD-11 flag filters + playback-source toggle; **SD-10 clickable column-header sort** (the sort dropdown moved into "More"). README version log → v1.4/v1.5.
+
+**Status:** ✅ slug decided · 📄 prose-only until the real migration lands. PR #88 open. NH-221/NH-223/NH-210/NH-211/NH-222.
+
 ### 2026-06-26 — e2e is a required CI gate: Playwright lane + traces (NH-197)
 
 Stood up the first **e2e test lane** and wired it into the required `ci-green` gate (joins `a11y`/`vr` as a blocking Playwright gate; full design + findings: `docs/specs/2026-06-26-nh-197-e2e-traces.md`, plan: `docs/plans/2026-06-26-001-feat-nh-197-e2e-traces-plan.md`).
