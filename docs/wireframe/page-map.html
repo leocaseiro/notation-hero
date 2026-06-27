@@ -102,7 +102,7 @@ flowchart TD
   Step["Lesson step<br/><span style='font-size:11px'>#/lesson/:id/step/:n</span>"]:::step
 
   Player["Player · stub<br/><span style='font-size:11px'>#/play/:id</span>"]:::player
-  Admin["Admin CRUD · stub<br/><span style='font-size:11px'>#/admin/…</span>"]:::admin
+  Admin["Edit / Create · stub<br/><span style='font-size:11px'>#/&lt;item&gt;/edit · #/new?type=</span>"]:::admin
 
   %% enter from catalog
   Catalog --> Song
@@ -150,9 +150,9 @@ flowchart TD
   </div>
 
   <div class="note">
-    <b>NH-221 · SD-31 — pattern routes use the kind, not the umbrella word.</b><br>
-    A pattern's route should reflect its <code>pattern_kind</code>: <span class="leaf">#/pattern/pat_zoio_fill</span> → <span class="leaf">#/fill/pat_zoio_fill</span>.
-    The umbrella route <span class="leaf">#/pattern/:id</span> stays working as a backward-compatible alias. UI labels already say Beat / Fill / Rudiment; this is the router half.
+    <b>NH-221 · SD-31 — pattern routes use the kind (done).</b><br>
+    A pattern's route reflects its <code>pattern_kind</code>: <span class="leaf">#/pattern/pat_zoio_fill</span> → <span class="leaf">#/fill/pat_zoio_fill</span>.
+    In a song/lesson it carries <b>both ids</b>: <span class="leaf">#/song/yellow/beat/pat_yellow_groove_closed</span>. The umbrella route <span class="leaf">#/pattern/:id</span> still resolves (redirects to the kind route).
   </div>
 
   <h2>Route reference</h2>
@@ -165,9 +165,10 @@ flowchart TD
       <tr><td><b>Part detail</b></td><td><span class="mono">#/part/:id</span></td><td>child of Song (practice in parts)</td></tr>
       <tr><td><b>Lesson detail</b></td><td><span class="mono">#/lesson/:id</span></td><td>Catalog row · search</td></tr>
       <tr><td><b>Lesson step</b></td><td><span class="mono">#/lesson/:id/step/:n</span></td><td>child of Lesson (steps list)</td></tr>
-      <tr><td><b>Pattern detail</b></td><td><span class="mono">#/:kind/:id</span> <span style="color:var(--faint)">(beat·fill·rudiment·scale·chord; legacy <code>#/pattern/:id</code>)</span></td><td>patterns[] · step · "used in"</td></tr>
+      <tr><td><b>Pattern detail</b></td><td><span class="mono">#/:kind/:id</span> <span style="color:var(--faint)">(beat·fill·rudiment·scale·chord; legacy <code>#/pattern/:id</code> redirects)</span></td><td>standalone · "used in"</td></tr>
+      <tr><td><b>Pattern in context</b></td><td><span class="mono">#/song/:id/:kind/:cid</span> · <span class="mono">#/lesson/:id/:kind/:cid</span></td><td>patterns[] card · step → pattern</td></tr>
       <tr><td><b>Player</b> (stub)</td><td><span class="mono">#/play/:id</span> · <span class="mono">#/play/:id/step/:n</span></td><td>every ▶ button</td></tr>
-      <tr><td><b>Admin CRUD</b> (stub)</td><td><span class="mono">#/admin/…</span></td><td>admin bars (admin role)</td></tr>
+      <tr><td><b>Edit / Create</b> (stub)</td><td><span class="mono">#/&lt;item&gt;/edit</span> · <span class="mono">#/lesson/:id/step/:n/edit</span> · <span class="mono">#/new?type=</span></td><td>edit at each item (no <code>/admin</code>)</td></tr>
     </tbody>
   </table>
 

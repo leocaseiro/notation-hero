@@ -29,13 +29,15 @@ Then open in a browser:
 The main app is a single-page app — reach every screen by clicking, or by deep-linking the hash:
 
 ```
-#/catalog                              ← default (search + Songs/Lessons tabs)
-#/song/bohemian-rhapsody               ← song detail
-#/song/bohemian-rhapsody/section/2     ← section "score" page
-#/part/sna-intro                       ← song part
-#/lesson/funk-16ths                    ← lesson  ·  #/lesson/funk-16ths/step/1 ← lesson step
-#/pattern/p-rock-8th                   ← pattern
-#/play/bohemian-rhapsody               ← player stub
+#/catalog                                      ← default (search + Songs/Lessons tabs)
+#/song/bohemian-rhapsody                       ← song detail
+#/song/bohemian-rhapsody/section/2             ← section "score" page
+#/part/sna-intro                               ← song part
+#/lesson/lesson_yellow_groove                  ← lesson  ·  #/lesson/.../step/1 ← lesson step
+#/fill/pat_zoio_fill                           ← pattern — route uses the KIND (NH-221), not "pattern"
+#/song/yellow/beat/pat_yellow_groove_closed    ← same pattern in a song's context (both ids)
+#/pattern/pat_zoio_fill                        ← legacy alias → redirects to #/fill/…
+#/play/bohemian-rhapsody                       ← player stub
 ```
 
 Top bar: flip **Role** (Anonymous / User / Admin) and **Inspector: Show all fields** to see the role-gated
@@ -86,14 +88,17 @@ Order follows the agreed priority: **① search → ② detail → ③ steps →
 
 Hash router — refresh stays on the current screen; browser back/forward work.
 
-| Route                                                                                        | Screen                            |
-| -------------------------------------------------------------------------------------------- | --------------------------------- |
-| `#/catalog?tab=songs\|lessons&kind=…&q=…`                                                    | Catalog list (filters in the URL) |
-| `#/song/:id`                                                                                 | Song detail                       |
-| `#/lesson/:id`                                                                               | Lesson detail (steps)             |
-| `#/lesson/:id/step/:n`                                                                       | Single step                       |
-| `#/play/:id` · `#/play/:id/step/:n`                                                          | Player stub                       |
-| `#/admin/new?type=song\|lesson\|upload` · `#/admin/edit/:id` · `#/admin/lesson/:id/step/new` | CRUD (stub in v1)                 |
+| Route                                                                         | Screen                                     |
+| ----------------------------------------------------------------------------- | ------------------------------------------ |
+| `#/catalog?tab=songs\|lessons&kind=…&q=…`                                     | Catalog list (filters in the URL)          |
+| `#/song/:id` · `#/song/:id/section/:n`                                        | Song detail · section "score"              |
+| `#/part/:id`                                                                  | Song part                                  |
+| `#/lesson/:id` · `#/lesson/:id/step/:n`                                       | Lesson detail · single step                |
+| `#/:kind/:id` (beat·fill·rudiment·scale·chord)                                | Pattern — standalone (NH-221/SD-31)        |
+| `#/song/:id/:kind/:cid` · `#/lesson/:id/:kind/:cid`                           | Pattern in a song/lesson context           |
+| `#/pattern/:id`                                                               | Legacy → redirects to the kind route       |
+| `#/play/:id` · `#/play/:id/step/:n`                                           | Player stub                                |
+| `#/new?type=song\|lesson\|upload` · `#/<item>/edit` · `#/lesson/:id/step/new` | CRUD (stub) — edit at each item, no /admin |
 
 ## Schema findings
 

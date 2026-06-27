@@ -496,11 +496,18 @@ function linksOf(id){ return { uses: LINKS.filter(l=>l.from===id), usedByLink: L
 // user-facing kind: patterns show their pattern_kind (Beat/Fill/Rudiment), never the umbrella word "pattern".
 const kindLabel = p => p.kind==='pattern' ? (PATTERN_KINDS[p.pattern_kind]?.label||'Pattern') : cap(p.kind);
 const kindIcon  = p => p.kind==='pattern' ? (PATTERN_KINDS[p.pattern_kind]?.icon||'extension') : p.kind==='song'?'music_note':p.kind==='part'?'segment':'school';
+/* ---------- routes (NH-221 / SD-31) — a pattern's route uses its KIND, not the umbrella word "pattern" ---------- */
+const PAT_KINDS = Object.keys(PATTERN_KINDS);                 // beat · fill · rudiment · scale · chord
+const isPatKind = k => PAT_KINDS.includes(k);
+function playablePath(it){ return it.kind==='pattern' ? `/${it.pattern_kind||'pattern'}/${it.id}` : `/${it.kind}/${it.id}`; }   // e.g. /fill/pat_zoio_fill , /song/yellow
+const playableRoute = it => '#'+playablePath(it);
+/* a pattern viewed in the CONTEXT of a parent song/lesson — both ids in the path (POC A): #/song/:id/<kind>/:cid */
+function patternInContext(parent, childId, childKind){ const pk = childKind || childPlayable(childId)?.pattern_kind || 'pattern'; return `#${playablePath(parent)}/${pk}/${childId}`; }
 function usedInCard(items, note){
   const seen=new Set(); const u=(items||[]).filter(p=>p&&!seen.has(p.id)&&(seen.add(p.id),true));
   if(!u.length) return '';
   return `<div class="card"><h3><span class="material-symbols-outlined">hub</span> Used in${note?` <span style="font-weight:400;color:var(--faint)">· ${note}</span>`:''}</h3>
-    ${u.map(p=>`<div class="patrow" data-nav="#/${p.kind}/${p.id}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
+    ${u.map(p=>`<div class="patrow" data-nav="${playableRoute(p)}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
 }
 function patternKindsOf(it){ if(it.kind==='pattern') return it.pattern_kind?[it.pattern_kind]:[]; return [...new Set(stepsFor(it.id).map(s=>childPlayable(s.child_id)).filter(Boolean).map(c=>c.pattern_kind).filter(Boolean))]; }   // a lesson's "kind" = the pattern_kinds of its step children (lesson_type is derived, not stored)
 function hasParts(it){ return it.kind==='song' ? (songParts(it.id).length>0 || !!(it.data&&it.data.sections&&it.data.sections.length)) : stepsFor(it.id).length>0; }
@@ -576,12 +583,22 @@ function render(){
     state.page = +(qp.get('page')||1);
     return renderCatalog();
   }
-  if(seg[0]==='song')   return seg[2]==='section' ? renderSongSection(seg[1], +seg[3]) : renderSong(seg[1]);
-  if(seg[0]==='part')   return renderPart(seg[1]);
-  if(seg[0]==='pattern') return renderPattern(seg[1]);
-  if(seg[0]==='lesson') return seg[2]==='step' ? renderStep(seg[1], +seg[3]) : renderLesson(seg[1]);
-  if(seg[0]==='play')   return renderPlayer();
-  if(seg[0]==='admin')  return renderAdminStub(seg, qp);
+  const last = seg[seg.length-1];
+  if(last==='edit' || last==='new') return renderCrudStub(seg, qp);          // edit lives at each item (#/song/:id/edit), create at #/new?type=
+  if(seg[0]==='song'){
+    if(seg[2]==='section')  return renderSongSection(seg[1], +seg[3]);
+    if(isPatKind(seg[2]))   return renderPattern(seg[3], {parent:PLAYABLES.find(x=>x.id===seg[1])||null, kind:seg[2]});   // #/song/:id/<kind>/:cid (context)
+    return renderSong(seg[1]);
+  }
+  if(seg[0]==='lesson'){
+    if(seg[2]==='step')     return renderStep(seg[1], +seg[3]);
+    if(isPatKind(seg[2]))   return renderPattern(seg[3], {parent:PLAYABLES.find(x=>x.id===seg[1])||null, kind:seg[2]});   // #/lesson/:id/<kind>/:cid (context)
+    return renderLesson(seg[1]);
+  }
+  if(seg[0]==='part')    return renderPart(seg[1]);
+  if(isPatKind(seg[0]))  return renderPattern(seg[1], null);                  // standalone #/<kind>/:id (NH-221)
+  if(seg[0]==='pattern') return renderPatternLegacy(seg[1]);                  // legacy #/pattern/:id → redirects to the kind route
+  if(seg[0]==='play')    return renderPlayer();
   app.innerHTML = `<div class="empty"><span class="material-symbols-outlined">help</span>Unknown route <code>${esc(location.hash)}</code><br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`;
 }
 
@@ -820,7 +837,7 @@ function rowHTML(it){
   const bpm = isLesson ? lessonLadder(it) : isPat ? '—' : (it.bpm||'—');
   const lvlTxt = rowLevelText(it);                                   // L1 range across tracks, or the lens instrument's track level
   const lvl = `<span class="lvlpill ${lvlTxt==='Debut'?'debut':''}">${lvlTxt}</span>`;
-  const nav = ` data-nav="#/${it.kind}/${it.id}"`;
+  const nav = ` data-nav="${playableRoute(it)}"`;
   return `<div class="row">
     <div class="name">
       <div class="cover ${it.kind!=='song'?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
@@ -853,9 +870,9 @@ function adminCatalogBar(){
   if(!isAdmin()) return '';
   return `<div class="adminbar">
     <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin · curate catalog</span>
-    <button class="adminbtn" data-nav="#/admin/new?type=song"><span class="material-symbols-outlined">add</span> New song</button>
-    <button class="adminbtn" data-nav="#/admin/new?type=lesson"><span class="material-symbols-outlined">add</span> New lesson</button>
-    <button class="adminbtn" data-nav="#/admin/new?type=upload"><span class="material-symbols-outlined">upload</span> Upload file</button>
+    <button class="adminbtn" data-nav="#/new?type=song"><span class="material-symbols-outlined">add</span> New song</button>
+    <button class="adminbtn" data-nav="#/new?type=lesson"><span class="material-symbols-outlined">add</span> New lesson</button>
+    <button class="adminbtn" data-nav="#/new?type=upload"><span class="material-symbols-outlined">upload</span> Upload file</button>
   </div>`;
 }
 
@@ -869,13 +886,13 @@ function relatedCard(it){
   const all=[...lk.uses.map(l=>({p:resolve(l.to),rel:l.relation,dir:sym(l.relation)?'↔':'uses →'})), ...lk.usedByLink.map(l=>({p:resolve(l.from),rel:l.relation,dir:sym(l.relation)?'↔':'← used by'}))].filter(x=>x.p);
   if(!all.length) return '';
   return `<div class="card"><h3><span class="material-symbols-outlined">share</span> Related <span style="font-weight:400;color:var(--faint)">· playable_link</span></h3>
-    ${all.map(x=>`<div class="patrow" data-nav="#/${x.p.kind}/${x.p.id}"><span class="src tex" style="white-space:nowrap">${x.dir}</span><div style="flex:1"><b>${esc(x.p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(x.p)} · ${esc(x.rel)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
+    ${all.map(x=>`<div class="patrow" data-nav="${playableRoute(x.p)}"><span class="src tex" style="white-space:nowrap">${x.dir}</span><div style="flex:1"><b>${esc(x.p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(x.p)} · ${esc(x.rel)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
 }
 function patternsCard(it){
   if(!it.patterns||!it.patterns.length) return '';
   return `<div class="card"><h3><span class="material-symbols-outlined">extension</span> Patterns ${it.kind==='song'?'in this song':'this lesson teaches'} <span style="font-weight:400;color:var(--faint)">· reusable grooves / fills / rudiments</span></h3>
     ${it.patterns.map(pid=>{ const pl=childPlayable(pid), d=PATTERNS[pid]; if(!pl&&!d) return ''; const pk=(pl&&pl.pattern_kind)||(d&&d.kind); const k=PATTERN_KINDS[pk]||{label:pk||'Pattern',icon:'extension'}; const title=(pl&&pl.title)||(d&&d.name)||pid; const fam=(pl&&pl.family)||(d&&d.family); const lvl=(pl?pl.level:(d&&d.level));
-      return `<div class="patrow" data-nav="#/pattern/${pid}"><span class="material-symbols-outlined" style="color:var(--accent)">${k.icon}</span>
+      return `<div class="patrow" data-nav="${patternInContext(it, pid, pk)}"><span class="material-symbols-outlined" style="color:var(--accent)">${k.icon}</span>
         <div style="flex:1"><b>${esc(title)}</b><small style="color:var(--faint);display:block">${[k.label,fam,'level '+(lvl??'—')].filter(Boolean).join(' · ')}</small></div>
         ${pl?donut(pl.best):''}<span class="pk ${pk}">${k.label}</span><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`; }).join('')}
     <small style="color:var(--faint);display:block;margin-top:4px">Linked via the m:n <code>patterns[]</code>. Each pattern is its own playable, scored on its own.</small>
@@ -1078,7 +1095,7 @@ function renderStep(lessonId, n){
       <div class="meta">
         <div class="sub" style="margin-bottom:4px">Step ${n} of ${steps.length} · ${esc(it.title)}</div>
         <h1>${esc(child.title)}</h1>
-        <div class="sub"><span class="tag lesson">${k.label}</span> <a data-nav="#/pattern/${s.child_id}" style="color:var(--accent);cursor:pointer">open pattern →</a> ${reuseCount(s.child_id)>1?`<span class="badge" style="padding:3px 9px">reused ×${reuseCount(s.child_id)}</span>`:''}</div>
+        <div class="sub"><span class="tag lesson">${k.label}</span> <a data-nav="${patternInContext(it, s.child_id, child.pattern_kind)}" style="color:var(--accent);cursor:pointer">open pattern →</a> ${reuseCount(s.child_id)>1?`<span class="badge" style="padding:3px 9px">reused ×${reuseCount(s.child_id)}</span>`:''}</div>
         ${descOf(child)?`<p class="lead">${esc(descOf(child))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${s.start_bpm??'?'} → ${s.goal_bpm??'?'}</span> BPM ladder</span>
@@ -1161,7 +1178,7 @@ function renderLesson(id){
       <h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· ${steps.length} · each step → a reusable pattern + BPM ladder</span></h3>
       ${steps.length?`<div class="stephead"><span style="flex:1">Step · pattern</span><span>BPM</span><span style="width:54px;text-align:center">Kind</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`:''}
       ${steps.map(s=>stepRow(it,s)).join('')}
-      ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+      ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
       <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>Each pattern above is scored on its <b>own</b> id. This lesson's score${signedIn()&&it.best!=null?` (<b>${it.best}%</b>)`:''} is your <b>whole-play</b> attempt — the “final exam” — <b>not</b> an average of the steps. Skip the steps, play it whole, score 100%.</div></div>
     </div>
     ${metaFoot(it)}
@@ -1169,14 +1186,20 @@ function renderLesson(id){
   `;
 }
 /* ---------- screen: PATTERN detail (first-class playable — score + history) ---------- */
-function renderPattern(id){
+function renderPatternLegacy(id){   // NH-221: old #/pattern/:id → swap the address bar to the kind route, then render
+  const p = PLAYABLES.find(x=>x.id===id);
+  if(p && p.pattern_kind){ history.replaceState(null,'','#/'+p.pattern_kind+'/'+id); el('#routeEcho').textContent = location.hash; }
+  return renderPattern(id, null);
+}
+function renderPattern(id, ctx){
   let it = PLAYABLES.find(x=>x.id===id);
   if(!it){ const p=PATTERNS[id]; if(p) it={id, kind:'pattern', title:p.name, pattern_kind:p.kind, family:p.family, level:p.level, instruments:['drums'], status:'published', origin:'curated'}; }
   if(!it) return notFound();
   const k = PATTERN_KINDS[it.pattern_kind]||{label:'Pattern',icon:'extension'};
   const diff = it.data&&it.data.difficulty;
+  const parent = ctx&&ctx.parent;   // NH-221 POC A: pattern viewed in the context of a parent song/lesson (#/song/:id/<kind>/:cid)
   app.innerHTML = `
-    ${crumbs([['#/catalog','Catalog'],['','Pattern · '+esc(it.title)]])}
+    ${crumbs(parent?[['#/catalog','Catalog'],[playableRoute(parent),cap(parent.kind)+' · '+esc(parent.title)],['',k.label+' · '+esc(it.title)]]:[['#/catalog','Catalog'],['',k.label+' · '+esc(it.title)]])}
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     ${adminDetailBar(it)}
     <div class="hero">
@@ -1196,10 +1219,7 @@ function renderPattern(id){
       </div>
       ${historyCard(it)}
     </div>
-    <div class="card" style="border-color:#b5781e;background:rgba(181,120,30,.08)">
-      <h3 style="color:#c98a2e"><span class="material-symbols-outlined">warning</span> Router TODO · SD-31 / NH-221</h3>
-      <div style="font-size:13px;line-height:1.55">Labels now say <b>${k.label}</b>, but the <b>route</b> still uses the umbrella word: <code>#/pattern/${it.id}</code>. It should use the kind — <code>#/${it.pattern_kind||'kind'}/${it.id}</code> (or nested, e.g. <code>#/lesson/${it.pattern_kind||'kind'}/${it.id}</code>). Not changed yet — tracked as <b>NH-221</b>.</div>
-    </div>
+    ${parent?`<div class="tracklens"><span class="material-symbols-outlined" style="color:var(--accent)">subdirectory_arrow_right</span><div>In the context of <a data-nav="${playableRoute(parent)}" style="color:var(--accent);cursor:pointer">${esc(parent.title)}</a> <span style="color:var(--faint)">· this ${k.label.toLowerCase()} as used in that ${esc(parent.kind)} — both ids in the route (<code>${esc(location.hash)}</code>).</span></div></div>`:''}
     ${diff?`<div class="card"><h3><span class="material-symbols-outlined">trending_up</span> Difficulty <span style="font-weight:400;color:var(--faint)">· by ${esc(diff.by)}</span></h3>
       ${diff.tiers.map(t=>`<div class="part"><div style="flex:1"><b>${t.upTo!==undefined?(t.upTo==null?'fastest':'up to '+t.upTo+(diff.by==='bpm'?' BPM':'')):esc(t.when)}</b></div>${signedIn()&&t.score!==undefined?donut(t.score):''}<span class="lvlpill">L${t.level}</span></div>`).join('')}
       <small style="color:var(--faint);display:block;margin-top:6px">Stored in <code>data.difficulty {by, tiers}</code> — a lesson step's level = this curve at the step's goal BPM.</small></div>`:''}
@@ -1207,7 +1227,7 @@ function renderPattern(id){
       ${stepsFor(it.id).map(s=>stepRow(it,s)).join('')}
       <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>This groove is scored on its <b>own</b> id (whole-play)${signedIn()&&it.best!=null?` — <b>${it.best}%</b>`:''}; each sub-pattern keeps its own score. No averaging.</div></div></div>`:''}
     ${(()=>{ const u=usedIn(it.id); return u.length?`<div class="card"><h3><span class="material-symbols-outlined">hub</span> Used in <span style="font-weight:400;color:var(--faint)">· this pattern appears in ${u.length} playable(s) — reuse (steps + song/lesson links)</span></h3>
-      ${u.map(p=>`<div class="patrow" data-nav="#/${p.kind}/${p.id}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`:''; })()}
+      ${u.map(p=>`<div class="patrow" data-nav="${playableRoute(p)}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`:''; })()}
     ${relatedCard(it)}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
@@ -1236,9 +1256,9 @@ function stepRow(parent, s){
   const meta = [k.label, composite?'composite':null, reuse>1?`reused ×${reuse}`:null].filter(Boolean).join(' · ');
   return `<div class="stepwrap"><div class="step">
     <span class="no">${s.sort_order}</span>
-    <div class="si" data-nav="${parent.kind==='lesson'?`#/lesson/${parent.id}/step/${s.sort_order}`:`#/pattern/${s.child_id}`}"><b>${esc(child.title)}</b><small>${meta}</small></div>
+    <div class="si" data-nav="${parent.kind==='lesson'?`#/lesson/${parent.id}/step/${s.sort_order}`:`#/${childPlayable(s.child_id)?.pattern_kind||'pattern'}/${s.child_id}`}"><b>${esc(child.title)}</b><small>${meta}</small></div>
     ${ladder} <span class="src tex">${k.label}</span> ${signedIn()?donut(child.best):''}
-    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/admin/lesson/${parent.id}/step/${s.sort_order}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
+    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/lesson/${parent.id}/step/${s.sort_order}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
     <button class="play" title="Play this step" data-nav="#/play/${parent.id}/step/${s.sort_order}"><span class="material-symbols-outlined">play_arrow</span></button>
   </div>${stepFieldsInline(parent, s)}</div>`;
 }
@@ -1265,25 +1285,29 @@ function renderPlayer(){
   `;
 }
 
-/* ---------- screen: ADMIN CRUD stub (v2) ---------- */
-function renderAdminStub(seg, qp){
+/* ---------- screen: CRUD stub (v2) — edit lives at each item (#/<item>/edit), create at #/new?type= ---------- */
+function renderCrudStub(seg, qp){
   if(!isAdmin()){
     app.innerHTML = `<div class="stubpanel"><span class="material-symbols-outlined">lock</span>
       <h2 style="margin:8px 0">Admin only</h2><p>Switch role to <b>Admin</b> (top-right) to curate the catalog.</p>
       <button class="btn primary" id="signinHere" style="margin-top:10px">Sign in as admin</button></div>`;
     return;
   }
+  const last = seg[seg.length-1];
   let what='CRUD';
-  if(seg.includes('step')) what = `${qp.get('delete')?'Delete':'Edit'} step`;
-  else if(seg[1]==='new') what = `New ${qp.get('type')||'item'}`;
-  else if(seg[1]==='edit') what = `${qp.get('delete')?'Archive':'Edit'} item`;
+  if(last==='new'){
+    what = seg.includes('step') ? 'Add step' : `New ${qp.get('type')||'item'}`;
+  } else {   // edit / archive — at the item's own route
+    if(seg.includes('step')) what = `${qp.get('delete')?'Delete':'Edit'} step`;
+    else { const it=PLAYABLES.find(x=>x.id===seg[seg.length-2]); const noun=it?it.kind:'item'; what = qp.get('delete') ? `${it&&it.status==='published'?'Archive':'Delete'} ${noun}` : `Edit ${noun}`; }
+  }
   app.innerHTML = `
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     <div class="stubpanel">
       <span class="material-symbols-outlined">draw</span>
       <h2 style="margin:8px 0">${what}</h2>
       <p>CRUD forms (create / edit / delete songs, lessons &amp; steps + uploads) land in <b>v2</b>.<br>
-      This route exists so the admin flow is walkable now: <code>${esc(location.hash)}</code></p>
+      This route exists so the flow is walkable now: <code>${esc(location.hash)}</code></p>
     </div>`;
 }
 
@@ -1319,9 +1343,9 @@ function adminDetailBar(it){
   if(!isAdmin()) return '';
   return `<div class="adminbar">
     <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin</span>
-    <button class="adminbtn" data-nav="#/admin/edit/${it.id}"><span class="material-symbols-outlined">edit</span> Edit ${it.kind}</button>
-    ${it.kind==='lesson'?`<button class="adminbtn" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
-    <button class="adminbtn danger" data-nav="#/admin/edit/${it.id}?delete=1"><span class="material-symbols-outlined">delete</span> ${it.status==='published'?'Archive':'Delete'}</button>
+    <button class="adminbtn" data-nav="${playableRoute(it)}/edit"><span class="material-symbols-outlined">edit</span> Edit ${it.kind}</button>
+    ${it.kind==='lesson'?`<button class="adminbtn" data-nav="#/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+    <button class="adminbtn danger" data-nav="${playableRoute(it)}/edit?delete=1"><span class="material-symbols-outlined">delete</span> ${it.status==='published'?'Archive':'Delete'}</button>
   </div>`;
 }
 function crumbs(parts){
@@ -1389,7 +1413,7 @@ document.addEventListener('click', e=>{
   if(e.target.closest('[data-theme-set]')){ setTheme(e.target.closest('[data-theme-set]').dataset.themeSet); return; }
   if(e.target.closest('#acctBtn') || e.target.closest('#signinHere')){ openModal(); return; }
   if(e.target.closest('#modalX') || e.target===el('#modal')){ closeModal(); return; }
-  if(e.target.closest('#uploadBtn')){ navigate('#/admin/new?type=upload'); return; }
+  if(e.target.closest('#uploadBtn')){ navigate('#/new?type=upload'); return; }
 });
 document.addEventListener('change', e=>{
   if(e.target.matches('[data-track-sel]')){ state.track = e.target.value; render(); return; }
