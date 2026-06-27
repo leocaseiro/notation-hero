@@ -231,6 +231,13 @@ body.showall .fielddock{display:block}
 .playerstub .material-symbols-outlined{font-size:60px;color:var(--accent)}
 .playerstub h2{font-size:24px}
 .playerstub .ctx{color:var(--muted);max-width:440px}
+.psource{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.psource .pslbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700}
+.psource button{display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:var(--pill);padding:5px 13px;font-size:13px}
+.psource button[aria-pressed="true"]{background:var(--accent);color:var(--onaccent);border-color:transparent;font-weight:600}
+.psource button:disabled{opacity:.4;cursor:not-allowed}
+.psource button .material-symbols-outlined{font-size:16px}
+.psource .pshint{flex-basis:100%;text-align:center;color:var(--faint);font-size:11px}
 
 .adminbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--s-dev) 40%,var(--line));border-radius:var(--radius);background:color-mix(in srgb,var(--s-dev) 8%,var(--panel))}
 .adminbar .lbl{display:inline-flex;gap:6px;align-items:center;color:var(--s-dev);font-weight:600;font-size:12.5px;margin-right:auto}
@@ -429,6 +436,8 @@ const state = {
   page: 1,
   openPop: null,
   genre: [], kind: [], timeSig: [], instrument: null, artist: null, track: null, showAll: false,
+  flags: [],                 // SD-11 / NH-211 — flag filters (audio / video / parts)
+  playSource: 'synth',       // SD-11 / NH-211 — playback-source toggle (synth | video | audio), synth default
   level: { min:null, max:null }, inclUngraded: false,
   bpm: { min:null, max:null },
   score: { min:null, max:null }, inclUnplayed: false,   // SD-12 (per-user, client-side)
@@ -646,6 +655,7 @@ function matches(it){
     else { if(state.score.min!=null && it.best<state.score.min) return false; if(state.score.max!=null && it.best>state.score.max) return false; }
   }
   if(state.skill.length && !state.skill.every(s=>(it.skill||[]).includes(s))) return false;
+  if(state.flags.length){ for(const fl of state.flags){ if(fl==='audio'&&!it.has_audio) return false; if(fl==='video'&&!it.has_video) return false; if(fl==='parts'&&!hasParts(it)) return false; } }   // SD-11 / NH-211 flag filters (ALL-of)
   if(isPitched() && state.musicalKey.length && !state.musicalKey.includes(it.musical_key)) return false;
   if(state.q){ const t=(it.title+' '+((it.author||[]).join(' '))).toLowerCase(); if(!t.includes(state.q.toLowerCase())) return false; }
   if(!isAdmin() && it.status!=='published' && !(it.ownedByUser && signedIn())) return false;
@@ -749,6 +759,7 @@ function renderCatalog(){
       ${!isLessons?`<div class="fdrop"><button class="fbtn ${state.artist?'on':''}" data-pop="artistPop">${state.artist?`<span class="k">Artist:</span> ${esc(state.artist)}`:'<span class="k">Artist:</span> Any'} <span class="material-symbols-outlined caret">expand_more</span></button>
         <div class="fpop ${state.openPop==='artistPop'?'open':''}" id="artistPop" style="max-height:260px;overflow:auto"><div class="opsel">is</div>${ARTISTS.map(a=>`<div class="fopt ${state.artist===a?'on':''}" data-artist-pick="${esc(a)}"><span class="radio"></span>${esc(a)}</div>`).join('')}<div class="foot"><span></span><a data-clear-artist>Clear</a></div></div></div>`:''}
       <div class="fdrop"><button class="fbtn ${state.timeSig.length?'on':''}" data-pop="timePop">${multiFace('Time',state.timeSig,x=>x)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('timePop','timeSig',TIMES.map(t=>({val:t,label:t})))}</div>
+      <div class="fdrop"><button class="fbtn ${state.flags.length?'on':''}" data-pop="flagsPop">${multiFace('Has',state.flags,k=>({audio:'Audio',video:'Video',parts:'Parts'}[k]||k))} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('flagsPop','flags',[{val:'audio',label:'Audio',icon:'volume_up'},{val:'video',label:'Video',icon:'smart_display'},{val:'parts',label:'Parts',icon:'splitscreen'}])}</div>
       <div class="fdrop"><button class="fbtn ${state.bpm.min!=null||state.bpm.max!=null?'on':''}" data-pop="bpmPop">${rangeFace('Tempo',state.bpm)} <span class="material-symbols-outlined caret">expand_more</span></button>${bpmPop()}</div>
       <div class="fdrop"><button class="fbtn ${state.skill.length?'on':''}" data-pop="skillPop">${multiFace('Skill',state.skill)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('skillPop','skill',SKILLS.map(s=>({val:s,label:cap(s)})))}</div>
       ${signedIn()?`<div class="fdrop"><button class="fbtn ${state.score.min!=null||state.score.max!=null?'on':''}" data-pop="scorePop">${rangeFace('Best',state.score,x=>x+'%')} <span class="material-symbols-outlined caret">expand_more</span></button>${scorePop()}</div>`:''}
@@ -1293,12 +1304,17 @@ function renderPlayer(){
               :`Lesson “${it.title}”`) : 'item';
   if(stepNo){ const s=(STEP[it?.id]||[]).find(x=>x.sort_order===stepNo); const c=s?childPlayable(s.child_id):null; if(s) ctx=`“${it.title}” — step ${stepNo}: ${c?c.title:s.child_id} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
   if(qp.get('resume')) ctx += ' · resuming where you left off';
+  // SD-11 / NH-211 — playback-source toggle: synth always available, video/audio only when the item has them; synth is the default
+  const sources = [{k:'synth',label:'Synth',icon:'piano',avail:true},{k:'video',label:'Video',icon:'smart_display',avail:!!(it&&it.has_video)},{k:'audio',label:'Audio',icon:'volume_up',avail:!!(it&&it.has_audio)}];
+  if(!sources.some(s=>s.k===state.playSource && s.avail)) state.playSource='synth';
+  const sourceToggle = `<div class="psource"><span class="pslbl">Playback source</span>${sources.map(s=>`<button data-psource="${s.k}" ${s.avail?'':'disabled'} aria-pressed="${state.playSource===s.k}" title="${s.avail?'play via '+s.label.toLowerCase():'not available for this item'}"><span class="material-symbols-outlined">${s.icon}</span>${s.label}</button>`).join('')}<span class="pshint">synth is the default · video/audio enabled only when the item has them</span></div>`;
   app.innerHTML = `
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     <div class="playerstub">
       <span class="material-symbols-outlined">play_circle</span>
       <h2>🎵 Player here</h2>
-      <div class="ctx">Now playing: <b>${esc(ctx)}</b><br><small>The play screen (notation + HUD + scoring) is a separate draft — stubbed for this flow sim.</small></div>
+      <div class="ctx">Now playing: <b>${esc(ctx)}</b> <span style="color:var(--faint)">· via ${esc(state.playSource)}</span><br><small>The play screen (notation + HUD + scoring) is a separate draft — stubbed for this flow sim.</small></div>
+      ${sourceToggle}
       <button class="btn secondary" data-back style="margin-top:10px">← Back</button>
     </div>
   `;
@@ -1409,6 +1425,8 @@ document.addEventListener('click', e=>{
   if(ap){ const a=ap.dataset.artistPick; state.artist = state.artist===a?null:a; state.openPop=null; state.page=1; renderCatalog(); return; }
   const rs = e.target.closest('[data-reset]');
   if(rs){ const p=PLAYABLES.find(x=>x.id===rs.dataset.reset); if(p){ p.best=null; }/* SD-21: clear best, keep trend */ render(); return; }
+  const ps = e.target.closest('[data-psource]');
+  if(ps && !ps.disabled){ state.playSource = ps.dataset.psource; render(); return; }   // SD-11 / NH-211 playback-source toggle
   if(e.target.closest('[data-back]')){ history.length>1?history.back():navigate('#/catalog'); return; }
   const popBtn = e.target.closest('[data-pop]');
   if(popBtn){ const id=popBtn.dataset.pop; state.openPop = state.openPop===id?null:id; renderCatalog(); return; }
@@ -1427,7 +1445,7 @@ document.addEventListener('click', e=>{
   if(e.target.closest('[data-more]')){ state.advanced=!state.advanced; renderCatalog(); return; }
   if(e.target.closest('[data-fields]')){ state.showAll=!state.showAll; document.body.classList.toggle('showall', state.showAll); document.querySelectorAll('[data-fields]').forEach(b=>b.setAttribute('aria-pressed', String(state.showAll))); return; }
   if(e.target.closest('[data-page]')){ state.page=+e.target.closest('[data-page]').dataset.page; renderCatalog(); window.scrollTo({top:0,behavior:'smooth'}); return; }
-  if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); clearFilter('score'); state.instrument=null; state.artist=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
+  if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey','flags'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); clearFilter('score'); state.instrument=null; state.artist=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
   if(e.target.closest('[data-role-set]')){ setRole(e.target.closest('[data-role-set]').dataset.roleSet); return; }
   if(e.target.closest('[data-theme-set]')){ setTheme(e.target.closest('[data-theme-set]').dataset.themeSet); return; }
   if(e.target.closest('#acctBtn') || e.target.closest('#signinHere')){ openModal(); return; }

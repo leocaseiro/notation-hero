@@ -66,14 +66,15 @@ psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f 2026-06-21-per-track-profiles-and
 Order follows the agreed priority: **① search → ② detail → ③ steps → ④ CRUD** (CRUD forms land in v2).
 
 - **Catalog** — search, `Songs | Lessons` tabs, Lessons sub-kinds (Beats · Rudiments · Fills · Song parts),
-  single-row filter + "More" advanced row, Stitch-style table (`Name · Level · BPM · Best · ▶`), continue
-  banner, load-more.
+  single-row filter + "More" advanced row (incl. **flag filters** — has audio / video / parts, SD-11/NH-211),
+  Stitch-style table (`Name · Level · BPM · Best · ▶`), continue banner, load-more.
 - **Song detail** _(whole-piece feel)_ — hero + badges, **Your history** (per-user, role-gated), **Play full
   song**, and **Song structure / Practice in parts** (section slices → the song-breakdown lesson).
 - **Lesson detail** _(steps feel — deliberately different from a song)_ — the **ordered steps** list, each with
   its start→goal **BPM ladder** and notation **source tag** (alphaTex / song-slice / upload).
 - **Step** screen — the per-step before-play view (ladder + notation source).
-- **Player** — a **"Player here"** stub (the play screen is a separate draft).
+- **Player** — a **"Player here"** stub (the play screen is a separate draft) + a **playback-source toggle**
+  (synth | video | audio; synth default, video/audio enabled only when the item has them — SD-11/NH-211).
 - **Roles / ACL** — a sign-in modal **and** a header role control morph the whole app:
 
   | Role                 | Sees                                       | Can do                                         |
