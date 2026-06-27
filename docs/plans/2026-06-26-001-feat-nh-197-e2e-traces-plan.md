@@ -117,7 +117,7 @@ Expected (verified against the published v0.6.7 declarations): `defineNetworkFix
 Create `client/e2e/mocks/handlers.ts`:
 
 ```ts
-import { http, HttpResponse } from "msw";
+import { http, HttpResponse } from 'msw';
 
 // Mirrors the server's CatalogResponse (server/src/modules/catalog/catalog.controller.ts),
 // hand-synced for Phase 1. Phase 2: type this against the shared oRPC contract via
@@ -125,7 +125,7 @@ import { http, HttpResponse } from "msw";
 interface CatalogPlayable {
   id: string;
   title: string;
-  kind: "song" | "pattern" | "lesson";
+  kind: 'song' | 'pattern' | 'lesson';
   difficulty: string;
 }
 
@@ -138,19 +138,17 @@ const catalog: CatalogResponse = {
   count: 1,
   items: [
     {
-      id: "single-stroke-roll",
-      title: "Single Stroke Roll",
-      kind: "pattern",
-      difficulty: "Debut",
+      id: 'single-stroke-roll',
+      title: 'Single Stroke Roll',
+      kind: 'pattern',
+      difficulty: 'Debut',
     },
   ],
 };
 
 // Wildcard origin (`*/api/catalog`) so matching does not depend on referer-based relative-URL
 // resolution — robust regardless of how the request URL is formed.
-export const handlers = [
-  http.get("*/api/catalog", () => HttpResponse.json(catalog)),
-];
+export const handlers = [http.get('*/api/catalog', () => HttpResponse.json(catalog))];
 ```
 
 - [ ] **Step 5: Create the e2e Playwright config**
@@ -158,13 +156,13 @@ export const handlers = [
 Create `client/playwright.e2e.config.ts`:
 
 ```ts
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices } from '@playwright/test';
 
 // Separate from playwright.config.ts (which boots Storybook for VR/a11y). This lane runs the
 // built app via `vite preview`, so trace/HTML reporting is scoped to e2e only.
 export default defineConfig({
-  testDir: "./e2e",
-  testMatch: "**/*.e2e.{ts,tsx}",
+  testDir: './e2e',
+  testMatch: '**/*.e2e.{ts,tsx}',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -172,19 +170,19 @@ export default defineConfig({
   // produces a replayable trace; the CI upload step uses `if: !cancelled()` so the trace is kept
   // even when the retry passes (a flaky run we still want to debug).
   use: {
-    baseURL: "http://localhost:4173",
-    trace: "on-first-retry",
-    ...devices["Desktop Chrome"],
+    baseURL: 'http://localhost:4173',
+    trace: 'on-first-retry',
+    ...devices['Desktop Chrome'],
   },
-  reporter: [["html"], ["list"]],
+  reporter: [['html'], ['list']],
   // `vite preview` serves ONLY the static production build — it does NOT honor `server.proxy`
   // (that is dev-only). So `/api/*` has no backend here; MSW is the sole source of catalog data.
   // `--strictPort` fails loudly on a port collision instead of serving a stale app. Timeout
   // covers a cold `vite build` + preview boot on a CI runner. Playwright runs this command with
   // cwd = the config's directory (client/), so `pnpm build`/`pnpm preview` hit the client package.
   webServer: {
-    command: "pnpm build && pnpm preview --port 4173 --strictPort",
-    url: "http://localhost:4173",
+    command: 'pnpm build && pnpm preview --port 4173 --strictPort',
+    url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
   },
@@ -196,9 +194,9 @@ export default defineConfig({
 Create `client/e2e/smoke.e2e.ts`:
 
 ```ts
-import { test as testBase, expect } from "@playwright/test";
-import { defineNetworkFixture, type NetworkFixture } from "@msw/playwright";
-import { handlers } from "./mocks/handlers";
+import { test as testBase, expect } from '@playwright/test';
+import { defineNetworkFixture, type NetworkFixture } from '@msw/playwright';
+import { handlers } from './mocks/handlers';
 
 interface Fixtures {
   network: NetworkFixture;
@@ -213,7 +211,7 @@ const test = testBase.extend<Fixtures>({
       const network = defineNetworkFixture({
         context,
         handlers,
-        onUnhandledRequest: "error",
+        onUnhandledRequest: 'error',
       });
       await network.enable();
       await use(network);
@@ -223,32 +221,28 @@ const test = testBase.extend<Fixtures>({
   ],
 });
 
-test("home → about via in-app link renders the mocked catalog, clean boot", async ({
-  page,
-}) => {
+test('home → about via in-app link renders the mocked catalog, clean boot', async ({ page }) => {
   // Register console/page-error capture BEFORE navigation so boot-time failures are caught.
   const consoleErrors: string[] = [];
-  page.on("console", (msg) => {
-    if (msg.type() === "error") consoleErrors.push(msg.text());
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text());
   });
-  page.on("pageerror", (err) => consoleErrors.push(err.message));
+  page.on('pageerror', (err) => consoleErrors.push(err.message));
 
   // 1. Load home and assert it renders.
-  await page.goto("/");
-  await expect(
-    page.getByRole("heading", { name: "Notation Hero", exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText("Skeleton ready.")).toBeVisible();
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Notation Hero', exact: true })).toBeVisible();
+  await expect(page.getByText('Skeleton ready.')).toBeVisible();
 
   // 2. Navigate to /about by clicking the in-app <Link> (exercises client-side routing —
   //    the e2e-only value jsdom unit tests cannot see).
-  await page.getByRole("link", { name: "About", exact: true }).click();
+  await page.getByRole('link', { name: 'About', exact: true }).click();
 
   // 3. About heading + the MSW-mocked catalog item render (page -> mocked API -> rendered data).
   await expect(
-    page.getByRole("heading", { name: "About Notation Hero", exact: true }),
+    page.getByRole('heading', { name: 'About Notation Hero', exact: true }),
   ).toBeVisible();
-  await expect(page.getByText("Single Stroke Roll")).toBeVisible();
+  await expect(page.getByText('Single Stroke Roll')).toBeVisible();
 
   // 4. The production build booted clean — no console errors during the journey.
   expect(consoleErrors).toEqual([]);
@@ -415,7 +409,7 @@ Update the `for job in …` line to include `e2e:$e2e` after `vr:$vrr`:
 Run (macOS ships Ruby with YAML; this parses the file and asserts `e2e` appears in all four spots):
 
 ```bash
-ruby -ryaml -e 'YAML.load_file(".github/workflows/ci.yml"); puts "YAML OK"'
+ruby -r yaml -e 'YAML.load_file(".github/workflows/ci.yml"); puts "YAML OK"'
 grep -n 'e2e' .github/workflows/ci.yml
 ```
 

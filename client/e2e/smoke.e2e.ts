@@ -1,7 +1,7 @@
-import { test as testBase, expect } from '@playwright/test';
 import { defineNetworkFixture } from '@msw/playwright';
-import type { NetworkFixture } from '@msw/playwright';
+import { expect, test as testBase } from '@playwright/test';
 import { handlers } from './mocks/handlers';
+import type { NetworkFixture } from '@msw/playwright';
 
 interface Fixtures {
   network: NetworkFixture;

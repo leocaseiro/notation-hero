@@ -308,7 +308,20 @@ jobs:
     name: CI Green
     if: always()
     needs:
-      [changes, quality, lint, build, a11y, vr, e2e, secret-scan, sast, deps-cve, pr-title, pr-checklist]
+      [
+        changes,
+        quality,
+        lint,
+        build,
+        a11y,
+        vr,
+        e2e,
+        secret-scan,
+        sast,
+        deps-cve,
+        pr-title,
+        pr-checklist,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed

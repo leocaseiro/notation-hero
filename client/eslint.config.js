@@ -52,7 +52,13 @@ export default [
   },
   // no-default-export carve-outs for config + story/demo files (spec §3.5).
   {
-    files: ['vite.config.ts', 'vitest.config.ts', 'playwright.config.ts', 'knip.config.ts'],
+    files: [
+      'vite.config.ts',
+      'vitest.config.ts',
+      'playwright.config.ts',
+      'playwright.e2e.config.ts',
+      'knip.config.ts',
+    ],
     rules: { 'import/no-default-export': 'off' },
   },
   {
@@ -72,6 +78,7 @@ export default [
       'test-results/**',
       '.storybook/**',
       'playwright.config.ts',
+      'playwright.e2e.config.ts',
     ],
   },
 ];

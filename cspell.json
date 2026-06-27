@@ -115,6 +115,8 @@
     "pipefail",
     "esac",
     "orpc",
+    "referer",
+    "Specmatic",
     "Dexie",
     "dexie",
     "tonejs",

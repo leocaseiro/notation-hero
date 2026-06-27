@@ -1,4 +1,4 @@
-import { http, HttpResponse } from 'msw';
+import { HttpResponse, http } from 'msw';
 
 // Mirrors the server's CatalogResponse (server/src/modules/catalog/catalog.controller.ts),
 // hand-synced for Phase 1. Phase 2: type this against the shared oRPC contract via
