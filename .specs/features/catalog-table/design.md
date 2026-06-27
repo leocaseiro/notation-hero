@@ -68,25 +68,27 @@ const columns: ColumnDef<CatalogRow>[] = [
 `ui/` = reusable across the app (player, song detail, history). `catalog/` = only
 meaningful inside the catalog list.
 
-| Component      | Folder                 | Source     | Notes                                                                             |
-| -------------- | ---------------------- | ---------- | --------------------------------------------------------------------------------- |
-| `Table`        | `ui/Table`             | shadcn add | Table / TableHeader / TableBody / TableRow / TableHead / TableCell primitives     |
-| `Badge`        | `ui/Badge`             | shadcn add | base for the badges                                                               |
-| `DataTable`    | `ui/DataTable`         | new        | generic TanStack engine + sortable headers (NH-210) + `appearance`                |
-| `ScoreDonut`   | `ui/ScoreDonut`        | new        | best-score donut, System G bands                                                  |
-| `LevelPill`    | `ui/LevelPill`         | new        | level number pill (+ Debut, + none)                                               |
-| `Cover`        | `ui/Cover`             | new        | rounded icon tile (song vs lesson tint)                                           |
-| `Flags`        | `ui/Flags`             | new        | audio / video / parts indicator icons                                             |
-| `KindBadge`    | `ui/KindBadge`         | new        | preset over Badge: Beat / Rudiment / Fill                                         |
-| `NewPill`      | `ui/NewPill`           | new        | preset over Badge: "New" (thin — may fold into a Badge usage)                     |
-| `PlayButton`   | —                      | —          | just `Button size="icon" variant="ghost"` with a `play_circle` glyph; no new file |
-| `Bpm`          | `catalog/CatalogTable` | new        | tiny mono formatter (number or `60→120` range); colocated, not its own folder     |
-| `CatalogTable` | `catalog/CatalogTable` | new        | column config + data hand-off to `DataTable`                                      |
-| `NameCell`     | `catalog/NameCell`     | new        | the **2-line** name block (composes Cover + badges + flags)                       |
+| Component      | Folder                 | Source     | Notes                                                                               |
+| -------------- | ---------------------- | ---------- | ----------------------------------------------------------------------------------- |
+| `Table`        | `ui/Table`             | shadcn add | Table / TableHeader / TableBody / TableRow / TableHead / TableCell primitives       |
+| `Badge`        | `ui/Badge`             | shadcn add | base for the badges (KindBadge + NewPill build on it)                               |
+| `DataTable`    | `ui/DataTable`         | new        | generic TanStack engine + sortable headers (NH-210) + `appearance`                  |
+| `ScoreDonut`   | `ui/ScoreDonut`        | new        | best-score donut, System G bands                                                    |
+| `LevelPill`    | `ui/LevelPill`         | new        | level number pill (+ Debut, + none)                                                 |
+| `Cover`        | `ui/Cover`             | new        | rounded icon tile (song vs lesson tint)                                             |
+| `Flags`        | `ui/Flags`             | new        | audio / video / parts indicator icons                                               |
+| `KindBadge`    | `ui/KindBadge`         | new        | `Badge variant="outline"` (transparent bg, colored border/text): Beat/Rudiment/Fill |
+| `NewPill`      | `ui/NewPill`           | new        | preset over `Badge`: "New"                                                          |
+| `Bpm`          | `ui/Bpm`               | new        | BPM formatter (number or `60→120` range) + aria-label; reusable, own tested folder  |
+| `PlayButton`   | —                      | —          | just `Button size="icon" variant="ghost"` with a `play_circle` glyph; no new file   |
+| `CatalogTable` | `catalog/CatalogTable` | new        | column config + data hand-off to `DataTable`                                        |
+| `NameCell`     | `catalog/NameCell`     | new        | the **2-line** name block (composes Cover + badges + flags)                         |
 
 Each component folder follows the `Button` precedent:
 `Name.tsx`, `Name.stories.tsx`, `Name.story-ids.ts`, `Name.test.tsx`,
 `Name.a11y.ts`, `Name.vr.ts` (+ generated `Name.vr.ts-snapshots/`).
+**Flat structure, no nesting** (matches `ui/Button/`); every testable unit gets its own
+folder — no untested colocated helpers.
 
 ## ui/DataTable — generic API + the NH-210 sort
 
@@ -112,7 +114,8 @@ Sort behaviour (NH-210):
 
 - Headers where `column.getCanSort()` render a header button; click → sort by that
   column. Clicking the **active** header toggles **asc ⇄ desc only** (a 2-state
-  toggle, not TanStack's default 3-state cycle — set `enableSortingRemoval: false`).
+  toggle, not TanStack's default 3-state cycle — set `enableSortingRemoval: false` and
+  `enableMultiSort: false`, single-column only).
 - The active column shows a Material Symbol arrow (`arrow_upward` / `arrow_downward`)
   with accent text; inactive columns show none.
 - `<th aria-sort="ascending | descending | none">` reflects state for screen readers.
@@ -129,13 +132,35 @@ Column visibility (from OQ3):
   columns live).
 - Narrow widths keep **Name + Level + Best + Play** and hide **BPM** first (Level is
   retained, per Leo). The automatic breakpoint-driven hide can land later; the
-  visibility capability + story ship now.
+  visibility capability + a fixed-width narrow story (**480px, BPM hidden, title
+  ellipsis**) ship now.
+
+## Interaction & visual states
+
+- **Card-row hover (F3 — B1 markup risk):** when `appearance="cards"` and `onRowClick`
+  is set, a row lifts (`translateY(-1px)`), gains a teal-tinted border, and a soft glow
+  shadow — per the locked `catalog.html` `.trow:hover`. A real `<tr>` does not take
+  `transform` / `border-radius` / inter-row `gap` cleanly, so the card look needs
+  `border-collapse: separate; border-spacing: 0 <gap>` with the lift + shadow on an
+  inner cell wrapper. **De-risk first:** the card-row VR snapshot is build step #1 —
+  confirm the real `<table>` reproduces the locked visual before the rest of the engine
+  is built; `appearance="rows"` (plain grid rows) is the documented fallback.
+- **Empty state:** `DataTable` default renders a single column-spanning "No results"
+  cell at normal row height; `CatalogTable` passes "No pieces found — adjust your
+  filters".
+- **Loading state (`isLoading`):** N skeleton rows (default 5) matching the real layout
+  — `NameCell` = a 40px rounded tile + two stacked bars (title ~60%, subtitle ~40%);
+  Level / BPM / Best each a short centred bar.
+- **Sort-header affordance:** an inactive sortable header shows its sort arrow at
+  reduced opacity on hover **and** keyboard focus (a `focus-visible` ring is required —
+  axe enforces it), previewing the asc-first direction before the user commits.
 
 ## Cell components (states)
 
 - **ScoreDonut** `{ score: number | null; size?: number }` — conic-gradient ring; the
-  exact number is always centred (mono, tabular). **System G bands:** `null` → empty
-  grey ring + dash; `1–49` reddish-purple; `50–69` orange; `70–88` blue; `89–99`
+  exact number is always centred (mono, tabular). **System G bands:** `null` or `0` →
+  empty grey ring + dash (not attempted, per the locked `donut.empty`); `1–49`
+  reddish-purple; `50–69` orange; `70–88` blue; `89–99`
   green; `100` → gold disc + trophy glyph. Colour is reinforcement only (the number is
   authoritative → colourblind-safe by construction).
 - **LevelPill** `{ level: number | null }` — `0` → "Debut" (accent); `1–10` → number
@@ -144,10 +169,31 @@ Column visibility (from OQ3):
   tint for songs, blue tint for lessons.
 - **Flags** `{ audio?: boolean; video?: boolean; parts?: boolean }` — small icon row;
   `parts` is accent-coloured (has playable sub-sections).
-- **KindBadge** `{ kind: 'beat' | 'rudiment' | 'fill' }` — Badge: Beat (teal),
-  Rudiment (blue), Fill (orange).
+- **KindBadge** `{ kind: 'beat' | 'rudiment' | 'fill' }` — shadcn `Badge variant="outline"`
+  (transparent background, colored border + text): Beat (teal), Rudiment (blue), Fill
+  (orange-red `#D2664A`, distinct from the score-band orange). Colors validated to WCAG
+  AA contrast in both themes (darken the shade if axe flags it).
 - **NameCell** `{ row: CatalogRow }` — the **2 lines**: line 1 = Cover + title +
   `KindBadge?` + `NewPill?`; line 2 = subtitle + `Flags?`.
+
+## Accessibility (a11y)
+
+a11y (axe WCAG A+AA, both themes, resting + hover) blocks CI, so every cell carries an
+accessible name — colour/shape is never the only signal:
+
+- **ScoreDonut** — `role="img"`; `aria-label` = `"Best score: 74, Climbing"` (number +
+  band) / `"Best score: Mastered"` (100) / `"Not attempted"` (`null` or `0`); the inner
+  number span is `aria-hidden`.
+- **LevelPill** — `aria-label` = `"Level: 3"` / `"Debut"` (level 0) / `"Ungraded"`
+  (`null`); never a bare dash character.
+- **Flags** — wrapper `role="img"` with a composed label (e.g. `"Has audio, video and
+parts"`); each glyph `aria-hidden`; renders nothing when no flags are set.
+- **Bpm** — `aria-label` = `"BPM: 116"` / `"BPM: 60 to 120"`; the `→` glyph is
+  `aria-hidden`.
+- **PlayButton** — `aria-label="Play {title}"` (title from row context) + a **44×44px
+  hit area** (WCAG 2.5.5) even though the visible circle stays 34px.
+- **Cover** — decorative: `aria-hidden` (song vs lesson is carried by KindBadge / the
+  title, not the icon tint).
 
 ## Example data shape (non-binding)
 
@@ -219,3 +265,26 @@ consumer's call via column visibility, not the table's concern).
    Storybook toggle story; narrow widths keep **Level** and hide **BPM** first; the
    automatic responsive hide + any in-app "Columns" toggle UI can land later.
 4. **NewPill** → its own tiny component (gets a story + VR), wrapping `Badge`.
+
+## Doc-review resolutions (ce-doc-review, 2026-06-27)
+
+Five-persona review (coherence, feasibility, design-lens, scope-guardian, adversarial);
+feasibility came back clean. All six actionable findings applied:
+
+- **F1** — `ScoreDonut` `0` renders as the empty grey donut (same as `null` = not
+  attempted), per the locked `catalog.html`.
+- **F2** — added the cell **Accessibility** contract (section above).
+- **F3** — card-row hover spec + `<table>`-vs-card-row de-risk (card-row VR snapshot is
+  build step #1; `appearance="rows"` fallback).
+- **F4** — specified empty / loading / sort-header-focus states.
+- **F5** — `KindBadge` uses `Badge variant="outline"`; Fill = `#D2664A`, AA-validated.
+- **F6** — `Bpm` is its own reusable `ui/Bpm/` component; flat folder structure
+  confirmed; narrow visibility story fixed at 480px.
+
+**FYI (acknowledged, not actioned):** scope-guardian / adversarial flagged that the
+controlled column-visibility props, both `appearance` modes, and `NewPill` as its own
+folder are built ahead of a second consumer — accepted as deliberate (Leo's call).
+
+**Deferred questions:** lock the 88/89 blue→green band edge before tests encode it; is
+the mastered trophy-glow in scope for `ScoreDonut`?; should the Best column show a
+"sign in" placeholder for signed-out users?
