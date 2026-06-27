@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Notation Hero — wireframe page map (routes &amp; flow)</title>
+<title>Notation Hero — wireframe page map (routes &amp; relationships)</title>
 <style>
   :root{
     --bg:#0b1210; --panel:#111a17; --panel2:#0e1714; --line:#21302a;
@@ -14,7 +14,7 @@
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:28px 22px 80px}
-  .wrap{max-width:1040px;margin:0 auto}
+  .wrap{max-width:1080px;margin:0 auto}
   h1{font-size:22px;margin:0 0 2px;display:flex;align-items:center;gap:10px}
   h1 .mk{width:30px;height:28px;color:var(--accent)}
   h2{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin:30px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
@@ -23,8 +23,9 @@
   a{color:var(--accent)}
   code,.mono{font-family:"Geist Mono",ui-monospace,monospace}
 
-  /* legend */
-  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0}
+  /* legends */
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;align-items:center}
+  .legend .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-right:2px}
   .pill{display:inline-block;font-family:"Geist Mono",ui-monospace,monospace;font-size:11px;border-radius:7px;padding:2px 9px;border:1px solid var(--line);color:var(--ink)}
   .pill.catalog{color:var(--catalog);border-color:color-mix(in srgb,var(--catalog) 45%,transparent)}
   .pill.song{color:var(--song);border-color:color-mix(in srgb,var(--song) 45%,transparent)}
@@ -35,30 +36,21 @@
   .pill.step{color:var(--step);border-color:color-mix(in srgb,var(--step) 45%,transparent)}
   .pill.player{color:var(--player);border-color:color-mix(in srgb,var(--player) 45%,transparent)}
   .pill.admin{color:var(--admin);border-color:color-mix(in srgb,var(--admin) 45%,transparent)}
-  .pill.misc{color:var(--misc);border-color:color-mix(in srgb,var(--misc) 45%,transparent)}
+  .edgekey{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0 0;font-size:13px;color:var(--muted)}
+  .edgekey span{display:inline-flex;align-items:center;gap:8px}
+  .edgekey i{font-style:normal;font-family:"Geist Mono",monospace;color:var(--ink)}
 
-  /* flow diagram */
-  .diagram{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin:10px 0}
-  .lane{margin:0 0 6px}
-  .lane h4{margin:14px 0 8px;font-size:11.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
-  .lane:first-child h4{margin-top:0}
-  .nodes{display:flex;flex-wrap:wrap;gap:12px}
-  .node{flex:1 1 220px;min-width:210px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 13px;border-left:4px solid var(--line)}
-  .node.catalog{border-left-color:var(--catalog)}
-  .node.song{border-left-color:var(--song)}
-  .node.lesson{border-left-color:var(--lesson)}
-  .node.pattern{border-left-color:var(--pattern)}
-  .node.part{border-left-color:var(--part)}
-  .node.section{border-left-color:var(--section)}
-  .node.step{border-left-color:var(--step)}
-  .node.player{border-left-color:var(--player)}
-  .node.admin{border-left-color:var(--admin)}
-  .node.misc{border-left-color:var(--misc)}
-  .node .nm{font-weight:700;font-size:14.5px;margin:0 0 4px}
-  .node .rt{font-family:"Geist Mono",ui-monospace,monospace;font-size:11.5px;color:var(--muted);word-break:break-word;display:block;margin:0 0 6px}
-  .node .to{font-size:12px;color:var(--faint);line-height:1.5}
-  .node .to b{color:var(--muted);font-weight:600}
-  .arrowrow{display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:18px;margin:2px 0}
+  .graphwrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px 6px;margin:12px 0;overflow:auto}
+  .mermaid{min-width:680px}
+  .mermaid .edgeLabel{font-size:12px}
+  .fallback{display:none;color:var(--part);font-size:13px;padding:14px}
+  .graphwrap.failed .mermaid{display:none}
+  .graphwrap.failed .fallback{display:block}
+
+  /* callouts */
+  .note{background:rgba(242,178,90,.08);border:1px solid color-mix(in srgb,var(--part) 45%,transparent);border-radius:var(--radius);padding:14px 16px;margin:18px 0}
+  .note b{color:var(--part)}
+  .note .leaf{font-family:"Geist Mono",ui-monospace,monospace;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:1px 7px;color:var(--ink)}
 
   /* route table */
   table{width:100%;border-collapse:collapse;margin:6px 0;font-size:13px}
@@ -66,138 +58,98 @@
   th{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
   td b{color:var(--ink)}
   td .mono{font-size:12px;color:var(--muted)}
-
-  /* callouts */
-  .note{background:linear-gradient(180deg,rgba(45,212,191,.10),rgba(45,212,191,.03));border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:var(--radius);padding:14px 16px;margin:18px 0}
-  .note b{color:var(--accent)}
-  .note.warn{background:rgba(242,178,90,.08);border-color:color-mix(in srgb,var(--part) 45%,transparent)}
-  .note.warn b{color:var(--part)}
-  .note .leaf{font-family:"Geist Mono",ui-monospace,monospace;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:1px 7px;color:var(--ink)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>
     <svg class="mk" viewBox="0 0 44 40" fill="none" aria-hidden="true"><circle cx="19" cy="20" r="12.6" stroke="currentColor" stroke-width="3.6"/><path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor"/></svg>
-    Wireframe page map <span class="draft">routes &amp; flow</span>
+    Wireframe page map <span class="draft">routes &amp; relationships</span>
   </h1>
-  <p class="sub">Every screen in the catalog wireframe (<code>index.html</code>), its hash route, and how you reach it. Companion to <a href="model-map.html">model-map.html</a> (the data model) — this is the <b>navigation</b> model.</p>
+  <p class="sub">Every screen in the catalog wireframe (<code>index.html</code>), drawn as a graph: which page <b>drills into</b> which (parent → child), and which pages <b>relate</b> to each other (<code>playable_link</code> + reuse). Companion to <a href="model-map.html">model-map.html</a> (the data model) — this is the <b>navigation</b> model.</p>
 
   <div class="legend">
+    <span class="lbl">Screens</span>
     <span class="pill catalog">Catalog</span>
     <span class="pill song">Song</span>
-    <span class="pill lesson">Lesson</span>
-    <span class="pill pattern">Pattern (beat/fill/rudiment)</span>
-    <span class="pill part">Part</span>
     <span class="pill section">Section</span>
+    <span class="pill part">Part</span>
+    <span class="pill lesson">Lesson</span>
     <span class="pill step">Step</span>
+    <span class="pill pattern">Pattern</span>
     <span class="pill player">Player</span>
     <span class="pill admin">Admin</span>
-    <span class="pill misc">Global chrome</span>
+  </div>
+  <div class="edgekey">
+    <span class="lbl">Arrows</span>
+    <span><i>══▶</i> parent → child (drill-down)</span>
+    <span><i>┈┈▶</i> relationship (uses · related · used-in · patterns[])</span>
+    <span><i>──▶</i> navigate (browse · ▶ play · admin)</span>
   </div>
 
-  <h2>Flow — top-down</h2>
-  <div class="diagram">
+  <h2>Screen graph</h2>
+  <div class="graphwrap" id="graphwrap">
+    <div class="mermaid" id="graph">
+flowchart TD
+  Catalog["🔎 Catalog<br/><span style='font-size:11px'>#/catalog</span>"]:::catalog
 
-    <div class="lane">
-      <h4>Global chrome — on every screen (not a route)</h4>
-      <div class="nodes">
-        <div class="node misc">
-          <p class="nm">Top bar + WIREFRAME banner</p>
-          <span class="rt">— persistent —</span>
-          <p class="to">Logo &amp; search jump to <b>Catalog</b>. Banner toggles <b>Role</b> (Anonymous / User / Admin), <b>Theme</b>, and the <b>field inspector</b>. The whole app re-renders to the role.</p>
-        </div>
-        <div class="node misc">
-          <p class="nm">Sign-in modal</p>
-          <span class="rt">— overlay —</span>
-          <p class="to">Wireframe stand-in for auth. Picks the role; persisted in <code>localStorage</code>. Opened from the account button or any "Sign in" prompt.</p>
-        </div>
-      </div>
+  Song["Song detail<br/><span style='font-size:11px'>#/song/:id</span>"]:::song
+  Lesson["Lesson detail<br/><span style='font-size:11px'>#/lesson/:id</span>"]:::lesson
+  Pattern["Pattern detail<br/><span style='font-size:11px'>#/:kind/:id</span>"]:::pattern
+
+  Section["Song section<br/><span style='font-size:11px'>#/song/:id/section/:n</span>"]:::section
+  Part["Part detail<br/><span style='font-size:11px'>#/part/:id</span>"]:::part
+  Step["Lesson step<br/><span style='font-size:11px'>#/lesson/:id/step/:n</span>"]:::step
+
+  Player["Player · stub<br/><span style='font-size:11px'>#/play/:id</span>"]:::player
+  Admin["Admin CRUD · stub<br/><span style='font-size:11px'>#/admin/…</span>"]:::admin
+
+  %% enter from catalog
+  Catalog --> Song
+  Catalog --> Lesson
+  Catalog --> Pattern
+  Catalog -->|"▶ quick play"| Player
+
+  %% parent -> child (drill-down)
+  Song ==>|"section"| Section
+  Song ==>|"part"| Part
+  Lesson ==>|"step"| Step
+
+  %% relationships (playable_link + reuse)
+  Song -.->|"related · uses"| Lesson
+  Song -.->|"patterns[]"| Pattern
+  Step -.->|"opens"| Pattern
+  Part -.->|"parent"| Song
+  Pattern -.->|"used in"| Song
+  Pattern -.->|"used in"| Lesson
+
+  %% navigate to player
+  Song --> Player
+  Lesson --> Player
+  Pattern --> Player
+  Part --> Player
+  Step --> Player
+  Section --> Player
+
+  %% admin (admin role only)
+  Song -->|"edit"| Admin
+  Lesson -->|"edit"| Admin
+  Pattern -->|"edit"| Admin
+
+  classDef catalog fill:#0e1714,stroke:#2DD4BF,stroke-width:2px,color:#e7f0eb;
+  classDef song fill:#111a17,stroke:#2DD4BF,stroke-width:1.5px,color:#e7f0eb;
+  classDef lesson fill:#111a17,stroke:#7cc0ff,stroke-width:1.5px,color:#e7f0eb;
+  classDef pattern fill:#111a17,stroke:#7ee0a6,stroke-width:1.5px,color:#e7f0eb;
+  classDef part fill:#111a17,stroke:#f2b25a,stroke-width:1.5px,color:#e7f0eb;
+  classDef section fill:#111a17,stroke:#9ad0ff,stroke-width:1.5px,color:#e7f0eb;
+  classDef step fill:#111a17,stroke:#5ad6c4,stroke-width:1.5px,color:#e7f0eb;
+  classDef player fill:#0e1714,stroke:#c4b5fd,stroke-width:1.5px,color:#e7f0eb;
+  classDef admin fill:#0e1714,stroke:#f29ea0,stroke-width:1.5px,color:#e7f0eb;
     </div>
-
-    <div class="lane">
-      <h4>Entry</h4>
-      <div class="nodes">
-        <div class="node catalog">
-          <p class="nm">Catalog</p>
-          <span class="rt">#/catalog?tab=songs|lessons&amp;kind=&amp;genre=&amp;artist=&amp;q=&amp;sort=&amp;page=</span>
-          <p class="to">Default screen. <b>Songs</b> / <b>Lessons</b> tabs, single-row filters (filters live in the URL), table rows, pagination. <b>→</b> Song · Lesson · Pattern · Player (row ▶).</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="arrowrow">↓</div>
-
-    <div class="lane">
-      <h4>Detail pages — opened from a Catalog row or search</h4>
-      <div class="nodes">
-        <div class="node song">
-          <p class="nm">Song detail</p>
-          <span class="rt">#/song/:id</span>
-          <p class="to"><b>→</b> Section (song structure) · Part (practice in parts) · Player · Pattern (patterns card) · related Lesson/Song (playable_link).</p>
-        </div>
-        <div class="node lesson">
-          <p class="nm">Lesson detail</p>
-          <span class="rt">#/lesson/:id</span>
-          <p class="to">Ordered <b>steps</b>, each with a BPM ladder. <b>→</b> Step · Player · Pattern (a step opens its pattern).</p>
-        </div>
-        <div class="node pattern">
-          <p class="nm">Pattern detail</p>
-          <span class="rt">#/<b>:kind</b>/:id <span style="color:var(--faint)">(beat·fill·rudiment·scale·chord)</span></span>
-          <p class="to">A first-class playable (its own score). <b>→</b> Player · "Used in" (Song/Lesson/Step) · Related. <span style="color:var(--part)">NH-221: was <code>#/pattern/:id</code>.</span></p>
-        </div>
-      </div>
-    </div>
-
-    <div class="arrowrow">↓</div>
-
-    <div class="lane">
-      <h4>Sub-pages — opened from a detail page (each has prev/next)</h4>
-      <div class="nodes">
-        <div class="node section">
-          <p class="nm">Song section ("score")</p>
-          <span class="rt">#/song/:id/section/:n</span>
-          <p class="to">A bar-range view of the song (derived, not a separate playable). <b>→</b> Player (from bar) · prev/next section.</p>
-        </div>
-        <div class="node part">
-          <p class="nm">Part detail</p>
-          <span class="rt">#/part/:id</span>
-          <p class="to">A song slice that <b>is</b> its own playable (scored on its own id). <b>→</b> Player · Song · prev/next part.</p>
-        </div>
-        <div class="node step">
-          <p class="nm">Lesson step</p>
-          <span class="rt">#/lesson/:id/step/:n</span>
-          <p class="to">Before-play view for one step → its reusable pattern + ladder. <b>→</b> Player (step) · Pattern · prev/next step.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="arrowrow">↓</div>
-
-    <div class="lane">
-      <h4>Terminal screens</h4>
-      <div class="nodes">
-        <div class="node player">
-          <p class="nm">Player <span style="color:var(--faint);font-weight:400">(stub)</span></p>
-          <span class="rt">#/play/:id · #/play/:id/step/:n · ?from=:bar · ?resume=1</span>
-          <p class="to">"🎵 Player here" placeholder. The real play screen (notation + HUD + scoring) is a separate, not-yet-built draft. Reached from every ▶.</p>
-        </div>
-        <div class="node admin">
-          <p class="nm">Admin CRUD <span style="color:var(--faint);font-weight:400">(stub)</span></p>
-          <span class="rt">#/admin/new?type= · #/admin/edit/:id · #/admin/lesson/:id/step/new · …/step/:n/edit</span>
-          <p class="to">Admin-only. Create / edit / delete forms land in v2; routes exist so the admin flow is walkable now.</p>
-        </div>
-        <div class="node misc">
-          <p class="nm">Unknown route</p>
-          <span class="rt">#/&lt;anything-else&gt;</span>
-          <p class="to">Not-found screen with a "Back to catalog" button.</p>
-        </div>
-      </div>
-    </div>
-
+    <div class="fallback">⚠ The diagram needs Mermaid (loaded from a CDN). If it didn't render, you're likely offline — the route table below has the same information.</div>
   </div>
 
-  <div class="note warn">
+  <div class="note">
     <b>NH-221 · SD-31 — pattern routes use the kind, not the umbrella word.</b><br>
     A pattern's route should reflect its <code>pattern_kind</code>: <span class="leaf">#/pattern/pat_zoio_fill</span> → <span class="leaf">#/fill/pat_zoio_fill</span>.
     The umbrella route <span class="leaf">#/pattern/:id</span> stays working as a backward-compatible alias. UI labels already say Beat / Fill / Rudiment; this is the router half.
@@ -209,17 +161,38 @@
     <tbody>
       <tr><td><b>Catalog</b></td><td><span class="mono">#/catalog</span></td><td>Default · logo · search</td></tr>
       <tr><td><b>Song detail</b></td><td><span class="mono">#/song/:id</span></td><td>Catalog row · search · related</td></tr>
-      <tr><td><b>Song section</b></td><td><span class="mono">#/song/:id/section/:n</span></td><td>Song structure list</td></tr>
-      <tr><td><b>Part detail</b></td><td><span class="mono">#/part/:id</span></td><td>Song → Practice in parts</td></tr>
+      <tr><td><b>Song section</b></td><td><span class="mono">#/song/:id/section/:n</span></td><td>child of Song (song structure)</td></tr>
+      <tr><td><b>Part detail</b></td><td><span class="mono">#/part/:id</span></td><td>child of Song (practice in parts)</td></tr>
       <tr><td><b>Lesson detail</b></td><td><span class="mono">#/lesson/:id</span></td><td>Catalog row · search</td></tr>
-      <tr><td><b>Lesson step</b></td><td><span class="mono">#/lesson/:id/step/:n</span></td><td>Lesson steps list</td></tr>
-      <tr><td><b>Pattern detail</b></td><td><span class="mono">#/:kind/:id</span> <span style="color:var(--faint)">(beat·fill·rudiment·scale·chord; legacy <code>#/pattern/:id</code>)</span></td><td>Patterns card · step · "Used in"</td></tr>
-      <tr><td><b>Player</b> (stub)</td><td><span class="mono">#/play/:id</span> · <span class="mono">#/play/:id/step/:n</span></td><td>Every ▶ button</td></tr>
-      <tr><td><b>Admin CRUD</b> (stub)</td><td><span class="mono">#/admin/…</span></td><td>Admin bars (admin role)</td></tr>
+      <tr><td><b>Lesson step</b></td><td><span class="mono">#/lesson/:id/step/:n</span></td><td>child of Lesson (steps list)</td></tr>
+      <tr><td><b>Pattern detail</b></td><td><span class="mono">#/:kind/:id</span> <span style="color:var(--faint)">(beat·fill·rudiment·scale·chord; legacy <code>#/pattern/:id</code>)</span></td><td>patterns[] · step · "used in"</td></tr>
+      <tr><td><b>Player</b> (stub)</td><td><span class="mono">#/play/:id</span> · <span class="mono">#/play/:id/step/:n</span></td><td>every ▶ button</td></tr>
+      <tr><td><b>Admin CRUD</b> (stub)</td><td><span class="mono">#/admin/…</span></td><td>admin bars (admin role)</td></tr>
     </tbody>
   </table>
 
-  <p class="sub" style="margin-top:18px">Hash router — refresh stays on the current screen; browser back/forward work. Catalog filters round-trip through the URL query.</p>
+  <p class="sub" style="margin-top:18px">Hash router — refresh stays on the current screen; browser back/forward work. Catalog filters round-trip through the URL query (<code>?tab=&amp;kind=&amp;genre=&amp;artist=&amp;q=&amp;sort=&amp;page=</code>).</p>
 </div>
+
+<script type="module">
+  try {
+    const mermaid = (await import('https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs')).default;
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'base',
+      themeVariables: {
+        background: '#0b1210',
+        primaryColor: '#111a17', primaryTextColor: '#e7f0eb', primaryBorderColor: '#21302a',
+        lineColor: '#7e958a', tertiaryColor: '#0e1714',
+        fontFamily: 'ui-sans-serif, system-ui, sans-serif', fontSize: '14px',
+      },
+      flowchart: { curve: 'basis', nodeSpacing: 42, rankSpacing: 52, padding: 8 },
+    });
+    await mermaid.run({ querySelector: '.mermaid' });
+  } catch (e) {
+    document.getElementById('graphwrap').classList.add('failed');
+    console.error('Mermaid render failed:', e);
+  }
+</script>
 </body>
 </html>
