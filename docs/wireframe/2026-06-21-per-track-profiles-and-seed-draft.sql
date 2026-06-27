@@ -59,6 +59,7 @@ CREATE TABLE notation (
 -- ─────────────────────────────────────────────────────────────────
 CREATE TABLE playable (
   id             text PRIMARY KEY,
+  slug           text,                                -- friendly URL token (Leo) — separate from the opaque id; backfilled from title, then NOT NULL + UNIQUE (see below)
   kind           text NOT NULL,
   title          text NOT NULL,
   description    text,
@@ -242,6 +243,7 @@ CREATE INDEX playable_instruments ON playable USING gin (instruments);
 CREATE INDEX playable_genre       ON playable USING gin (genre);
 CREATE INDEX playable_family      ON playable USING gin (family);
 CREATE INDEX playable_author      ON playable USING gin (author);
+CREATE UNIQUE INDEX playable_slug ON playable (slug);                 -- friendly URL token, globally unique
 CREATE INDEX step_by_child        ON step (child_id);
 CREATE INDEX playable_link_to     ON playable_link (to_id);
 
@@ -384,6 +386,11 @@ INSERT INTO playable (id, kind, title, description, notation_id, level, author, 
  ('song_zoio','song','Zoio de Lula','Charlie Brown Jr. — Brazilian rock (artist unconfirmed; flagged).','not_zoio',9,'{Charlie Brown Jr.}','artist',76,4,4,'{rock,brazilian}','{guitar,bass,drums}','{}','{Rock}','curated','public','published',false,true,'seed','{"bars":79,"markerless":true}'),
  ('song_imyours','song','I''m Yours','Jason Mraz — one I–V–vi–IV progression carries the whole song.','not_imyours',2,'{Jason Mraz}','artist',73,4,4,'{pop,reggae}','{guitar,bass,drums,vocals}','{}','{Pop}','curated','public','published',false,true,'seed','{"singleSection":true,"bars":76}'),
  ('song_angra','song','Nothing To Say','Angra — neoclassical power metal; Expert-level double-bass drumming.','not_angra',9,'{Angra}','artist',138,4,4,'{metal,power-metal}','{drums,guitar,bass,keys,vocals}','{neoclassical}','{Metal}','curated','public','published',true,true,'seed','{"bars":221}');
+
+-- ── slug (Leo): friendly URL token, separate from the opaque id. Backfill from title, then require it.
+--    (real app mints the slug on insert from the title + admin-editable; this models that.)
+UPDATE playable SET slug = trim(both '-' from regexp_replace(regexp_replace(lower(title), '''', '', 'g'), '[^a-z0-9]+', '-', 'g'));
+ALTER TABLE playable ALTER COLUMN slug SET NOT NULL;
 
 -- ── tracks: per-instrument, per-role, with per-instrument LEVELS ─────────────
 INSERT INTO track (id, playable_id, instrument, roles, name, sort_order, level, notation_track_index, techniques, created_by) VALUES

@@ -29,13 +29,14 @@ Then open in a browser:
 The main app is a single-page app — reach every screen by clicking, or by deep-linking the hash:
 
 ```
-#/catalog                              ← default (search + Songs/Lessons tabs)
-#/song/bohemian-rhapsody               ← song detail
-#/song/bohemian-rhapsody/section/2     ← section "score" page
-#/part/sna-intro                       ← song part
-#/lesson/funk-16ths                    ← lesson  ·  #/lesson/funk-16ths/step/1 ← lesson step
-#/pattern/p-rock-8th                   ← pattern
-#/play/bohemian-rhapsody               ← player stub
+#/catalog                                      ← default (search + Songs/Lessons tabs)
+#/song/yellow                                  ← song detail (URLs use the slug, not the opaque id)
+#/song/yellow/section/2                        ← section "score" page
+#/part/yellow-intro                            ← song part (NH-222)
+#/lesson/learn-yellow                          ← lesson  ·  #/lesson/learn-yellow/step/1 ← step (steps = song parts)
+#/fill/zoio-de-lula-tom-fill                   ← pattern — route uses the KIND (NH-221) + the slug
+#/song/yellow/beat/yellow-groove-closed-hat    ← same pattern in a song's context (both slugs)
+#/play/yellow                                  ← player stub
 ```
 
 Top bar: flip **Role** (Anonymous / User / Admin) and **Inspector: Show all fields** to see the role-gated
@@ -64,14 +65,15 @@ psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f 2026-06-21-per-track-profiles-and
 Order follows the agreed priority: **① search → ② detail → ③ steps → ④ CRUD** (CRUD forms land in v2).
 
 - **Catalog** — search, `Songs | Lessons` tabs, Lessons sub-kinds (Beats · Rudiments · Fills · Song parts),
-  single-row filter + "More" advanced row, Stitch-style table (`Name · Level · BPM · Best · ▶`), continue
-  banner, load-more.
+  single-row filter + "More" advanced row (incl. **flag filters** — has audio / video / parts, SD-11/NH-211),
+  Stitch-style table (`Name · Level · BPM · Best · ▶`), continue banner, load-more.
 - **Song detail** _(whole-piece feel)_ — hero + badges, **Your history** (per-user, role-gated), **Play full
   song**, and **Song structure / Practice in parts** (section slices → the song-breakdown lesson).
 - **Lesson detail** _(steps feel — deliberately different from a song)_ — the **ordered steps** list, each with
   its start→goal **BPM ladder** and notation **source tag** (alphaTex / song-slice / upload).
 - **Step** screen — the per-step before-play view (ladder + notation source).
-- **Player** — a **"Player here"** stub (the play screen is a separate draft).
+- **Player** — a **"Player here"** stub (the play screen is a separate draft) + a **playback-source toggle**
+  (synth | video | audio; synth default, video/audio enabled only when the item has them — SD-11/NH-211).
 - **Roles / ACL** — a sign-in modal **and** a header role control morph the whole app:
 
   | Role                 | Sees                                       | Can do                                         |
@@ -84,16 +86,21 @@ Order follows the agreed priority: **① search → ② detail → ③ steps →
 
 ## Routing (deep-link · reload · back/forward)
 
-Hash router — refresh stays on the current screen; browser back/forward work.
+Hash router — refresh stays on the current screen; browser back/forward work. Routes use the
+**slug** (a friendly token derived from the title; `playable.slug` in the schema) — the opaque id
+still resolves as a fallback. Patterns carry the kind too (NH-221); in a song/lesson they carry both
+slugs (`#/song/:slug/:kind/:cslug`).
 
-| Route                                                                                        | Screen                            |
-| -------------------------------------------------------------------------------------------- | --------------------------------- |
-| `#/catalog?tab=songs\|lessons&kind=…&q=…`                                                    | Catalog list (filters in the URL) |
-| `#/song/:id`                                                                                 | Song detail                       |
-| `#/lesson/:id`                                                                               | Lesson detail (steps)             |
-| `#/lesson/:id/step/:n`                                                                       | Single step                       |
-| `#/play/:id` · `#/play/:id/step/:n`                                                          | Player stub                       |
-| `#/admin/new?type=song\|lesson\|upload` · `#/admin/edit/:id` · `#/admin/lesson/:id/step/new` | CRUD (stub in v1)                 |
+| Route                                                                           | Screen                                     |
+| ------------------------------------------------------------------------------- | ------------------------------------------ |
+| `#/catalog?tab=songs\|lessons&kind=…&q=…`                                       | Catalog list (filters in the URL)          |
+| `#/song/:slug` · `#/song/:slug/section/:n`                                      | Song detail · section "score"              |
+| `#/part/:slug`                                                                  | Song part                                  |
+| `#/lesson/:slug` · `#/lesson/:slug/step/:n`                                     | Lesson detail · single step                |
+| `#/:kind/:slug` (beat·fill·rudiment·scale·chord)                                | Pattern — standalone (NH-221/SD-31)        |
+| `#/song/:slug/:kind/:cslug` · `#/lesson/:slug/:kind/:cslug`                     | Pattern in a song/lesson context           |
+| `#/play/:slug` · `#/play/:slug/step/:n`                                         | Player stub                                |
+| `#/new?type=song\|lesson\|upload` · `#/<item>/edit` · `#/lesson/:slug/step/new` | CRUD (stub) — edit at each item, no /admin |
 
 ## Schema findings
 
@@ -116,3 +123,12 @@ approval → amend the locked spec with a changelog). Nothing in the locked sche
   owner **metafoot** + **Private** tag on user-uploads (SD-3); **client-side score filter** + **Best-score
   sort** (SD-12, signed-in only — per-user caveat shown in-UI). Sample now includes pitched items (guitar/keys)
   - a Debut (level 0) item.
+- **v1.4** — **schema-alignment pass**: `artist` → **`author[]` + `author_type`** (SD-13/SD-33); pattern routes
+  use the **kind** (`#/fill/:slug`, NH-221) + a friendly **`slug`** token; a structured **song-learning lesson**
+  (Yellow — parts as positions-only slices, NH-222/NH-137); **flag filters** (audio / video / parts) + a
+  **playback-source toggle** (synth | video | audio, SD-11/NH-211); plus a **page map** (`page-map.html`).
+- **v1.5** — **author on the UI + sort by column**: the catalog list shows the **author** per row (songs =
+  artist, lessons = **teacher**); an **Author** facet on the Lessons tab mirrors **Artist** on Songs, both with
+  an **Unknown** (no-author) option; author is searchable in lessons (NH-223). **Sort** moves into the **"More"**
+  row and the table-header columns (Name/Level/BPM/Best) are **clickable to sort** (asc/desc, synced with the
+  dropdown) (NH-210/SD-10).
