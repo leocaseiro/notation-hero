@@ -205,6 +205,8 @@
     "Drizzle",
     "awsx",
     "neondatabase",
+    "neondb",
+    "sslmode",
     "gstack",
     "memstack",
     "healthcheck",
