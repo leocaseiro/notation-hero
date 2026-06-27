@@ -16,3 +16,6 @@ test-results/
 
 # Agent scratch (SDD briefs/reports/ledger; not committed source).
 .superpowers/
+
+# Local vector-index artifact (skills/memstack index; ignored in the global gitignore, which Prettier doesn't read).
+vectors/
