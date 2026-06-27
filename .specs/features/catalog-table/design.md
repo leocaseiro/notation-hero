@@ -94,10 +94,13 @@ Each component folder follows the `Button` precedent:
 interface DataTableProps<TData> {
   data: TData[];
   columns: ColumnDef<TData>[];
-  appearance?: 'cards' | 'rows'; // default 'cards'
+  appearance?: 'cards' | 'rows'; // default 'cards' (both built)
   sorting?: SortingState; // controlled (optional)
   onSortingChange?: OnChangeFn<SortingState>;
   defaultSorting?: SortingState; // uncontrolled initial sort
+  columnVisibility?: VisibilityState; // controlled show/hide (optional)
+  onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+  defaultColumnVisibility?: VisibilityState; // uncontrolled initial visibility
   onRowClick?: (row: TData) => void;
   getRowId?: (row: TData) => string;
   isLoading?: boolean;
@@ -116,6 +119,17 @@ Sort behaviour (NH-210):
 - First-click direction per column comes from `sortDescFirst` (Best = desc-first;
   Name / Level / BPM = asc-first) — matches the wireframe defaults.
 - Column alignment comes from `columnDef.meta.align` applied to the `<TableCell>`.
+
+Column visibility (from OQ3):
+
+- The table supports show/hide per column via TanStack `VisibilityState` (controlled
+  or uncontrolled) so columns toggle easily — this also backs a future power-user
+  "Columns" menu.
+- A Storybook story demonstrates the toggle (controls / buttons that hide + show
+  columns live).
+- Narrow widths keep **Name + Level + Best + Play** and hide **BPM** first (Level is
+  retained, per Leo). The automatic breakpoint-driven hide can land later; the
+  visibility capability + story ship now.
 
 ## Cell components (states)
 
@@ -158,7 +172,8 @@ interface CatalogRow {
 ## Storybook plan
 
 - `DataTable.stories.tsx` — generic demo (synthetic columns): default, `SortableHeaders`
-  (interactive), `Empty`, `Loading`, `appearance` cards vs rows.
+  (interactive), `ColumnVisibilityToggle` (show/hide columns live), `Empty`, `Loading`,
+  `Appearance` (cards vs rows).
 - `CatalogTable.stories.tsx` — `Songs`, `Lessons`, `Empty`, `Mastered`, `Mixed`; the
   sort is exercised by the column headers.
 - Each cell component — every prop as a Control + named stories for its states
@@ -196,11 +211,11 @@ Filter row (tabs, Jira-style filter dropdowns, token pickers, tempo range), the
 song-slice / parts expansion, and the per-user Best-column sign-in gating (that is the
 consumer's call via column visibility, not the table's concern).
 
-## Open questions for review
+## Resolved decisions (review gate, 2026-06-27)
 
-1. **KindBadge / NewPill placement** — `ui/` (reusable, proposed) vs `catalog/`?
-2. **`appearance` prop** — ship the `'rows'` (plain) variant now, or `'cards'` only
-   until a second consumer needs plain rows (YAGNI)?
-3. **Mobile collapse** — hide Level + BPM columns at narrow widths via column
-   visibility (proposed), matching the wireframe's name + play collapse?
-4. **NewPill** — its own component (for a story), or just `<Badge>New</Badge>` inline?
+1. **KindBadge / NewPill placement** → `ui/` (reusable beyond the catalog).
+2. **`appearance`** → build **both** `'cards'` and `'rows'` now.
+3. **Column visibility** → a first-class DataTable feature (`VisibilityState`) with a
+   Storybook toggle story; narrow widths keep **Level** and hide **BPM** first; the
+   automatic responsive hide + any in-app "Columns" toggle UI can land later.
+4. **NewPill** → its own tiny component (gets a story + VR), wrapping `Badge`.
