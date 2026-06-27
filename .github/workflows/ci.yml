@@ -194,6 +194,33 @@ jobs:
       - name: Visual regression (vs committed Linux baselines)
         run: pnpm --filter @notation-hero/client run test:vr
 
+  # End-to-end — Playwright against the built SPA (`vite preview`), with /api/catalog mocked by
+  # MSW. Models the `a11y` job (ubuntu + on-demand Chromium); unlike `vr` it is not pixel-exact,
+  # so no Playwright container. Uploads traces + the HTML report so a CI failure is replayable via
+  # `npx playwright show-trace`. Path-filtered on `code`; blocks merge via ci-green.
+  e2e:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-js
+      - name: Install Playwright Chromium
+        run: pnpm --filter @notation-hero/client exec playwright install --with-deps chromium
+      - name: e2e tests (Playwright vs built app)
+        run: pnpm --filter @notation-hero/client run test:e2e
+      - name: Upload traces + HTML report
+        # NOT `if: failure()` — that would drop the trace of a flaky-then-passed run (D5).
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-e2e-report
+          path: |
+            client/playwright-report/
+            client/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
   # Secret scanning — gitleaks over the full history. Runs on EVERY change (a
   # secret can land in any file). Free on public/personal repos.
   secret-scan:
@@ -281,7 +308,20 @@ jobs:
     name: CI Green
     if: always()
     needs:
-      [changes, quality, lint, build, a11y, vr, secret-scan, sast, deps-cve, pr-title, pr-checklist]
+      [
+        changes,
+        quality,
+        lint,
+        build,
+        a11y,
+        vr,
+        e2e,
+        secret-scan,
+        sast,
+        deps-cve,
+        pr-title,
+        pr-checklist,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed

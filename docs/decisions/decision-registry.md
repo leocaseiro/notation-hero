@@ -12,6 +12,18 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-26 — e2e is a required CI gate: Playwright lane + traces (NH-197)
+
+Stood up the first **e2e test lane** and wired it into the required `ci-green` gate (joins `a11y`/`vr` as a blocking Playwright gate; full design + findings: `docs/specs/2026-06-26-nh-197-e2e-traces.md`, plan: `docs/plans/2026-06-26-001-feat-nh-197-e2e-traces-plan.md`).
+
+- **NEW: e2e is a required CI gate.** A new `e2e` job runs Playwright against the **built SPA** (`vite preview`, separate `client/playwright.e2e.config.ts`) — distinct from the Storybook-based `a11y`/`vr` lanes — wired into the `ci-green` aggregate via four edits (needs + var + echo + loop). On failure it uploads `client/playwright-report/` + `client/test-results/` as the `playwright-e2e-report` artifact with `if: ${{ !cancelled() }}` (D5 — keeps flaky-then-passed traces), 7-day retention; `actions/upload-artifact` SHA-pinned (`ea165f8…`, v4.6.2); `trace: 'on-first-retry'`.
+- **MSW is the foundation mock layer.** `msw@2.14.6` + `@msw/playwright@0.6.7` intercept `/api/*` at the browser network layer (`context.route`); the smoke test (`client/e2e/smoke.e2e.ts`) is the reusable template future feature tests copy. `pnpm-workspace.yaml` `allowBuilds: msw: false` (MSW's service-worker postinstall is unneeded; otherwise `--frozen-lockfile` fails `ERR_PNPM_IGNORED_BUILDS`).
+- **Two spec corrections** (in the spec's "Implementation findings"): `onUnhandledRequest` is the function form scoped to `/api/*` (the bare string `'error'` errors on the `GET /` document load); `vite preview` **does** honor `server.proxy` (an unmocked `/api/*` → 502) — the lane is correct because MSW intercepts before the proxy.
+
+**Escape hatch (D3):** if the lane flakes and blocks unrelated PRs, revert the four `ci-green` edits — the job keeps running but stops gating.
+
+**Overlap note:** open **PR #85** (NH-243 lint) also edits `.github/workflows/ci.yml` + `client/package.json`; these changes are additive (new `e2e` job, `ci-green` needs entry, `test:e2e` scripts, `msw` dep), so conflicts are mechanical. This change-log is `merge=union`, so the registry entry itself won't conflict.
+
 ### 2026-06-26 — Unified linting & formatting consolidation (NH-243, PR #85)
 
 Shipped the single linting/formatting system (consolidates NH-42 ESLint flat config, NH-43 Prettier, NH-168 jsx-a11y — all now `Cancelled` as superseded). Lands: shared `eslint.config.base.mjs` + per-package extends (`client/`, `server/`); one root `prettier.config.mjs` (printWidth 100) separated from ESLint (`eslint-config-prettier/flat`, no `eslint-plugin-prettier`); extra linters markdownlint/stylelint/yamllint/cspell/shellcheck/actionlint/editorconfig-checker/sort-package-json; lefthook auto-fix on commit + full check on push; a dedicated CI `lint` job (check-and-block) gated on `code || docs_or_config`. Affected rows already flipped: `L3-eslint`, `L3-prettier`, `M4-prettier`, `L12-a11y`. Post-review hardening on the PR: CI path-filter now covers the 5 root lint configs (eslint/prettier/editorconfig-checker/prettierignore/stylelintignore); `check:all` mirrors the lint+quality jobs; shell tests wired into `test:tooling`; plus quality nits (lint:shell whitespace-safe, actionlint curl retry, sort-pkg in pre-push, deduped ignores). **PR #85.** NH-243.

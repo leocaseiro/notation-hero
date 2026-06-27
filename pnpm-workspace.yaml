@@ -15,6 +15,7 @@ allowBuilds:
   esbuild: true
   protobufjs: true # @pulumi/pulumi gRPC runtime (infra/)
   unrs-resolver: false # import-x native resolver not needed yet
+  msw: false # @msw/playwright intercepts via Playwright's context.route — MSW's service-worker postinstall is not needed
 
 minimumReleaseAgeExclude:
   - playwright-core@1.61.1
