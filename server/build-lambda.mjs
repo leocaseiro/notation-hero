@@ -13,10 +13,11 @@ import { execSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { build } from 'esbuild';
 
-const require = createRequire(import.meta.url);
+const nodeRequire = createRequire(import.meta.url);
 
 console.log('[build:lambda] 1/2 nest build (SWC compile, emits decorator metadata)...');
 // pnpm puts node_modules/.bin on PATH when running this script, so `nest` resolves.
+// eslint-disable-next-line sonarjs/no-os-command-from-path -- local build script; `nest` resolves from pnpm's node_modules/.bin on PATH
 execSync('nest build', { stdio: 'inherit' });
 
 console.log(
@@ -50,7 +51,7 @@ await build({
 // DI smoke: invoke the bundled handler against /api/health. If esbuild ever strips the
 // decorator metadata (e.g. a regression to esbuild-of-TS), NestJS DI breaks and this throws —
 // failing the build instead of only surfacing at runtime in Lambda.
-const { handler } = require('./dist-lambda/index.js');
+const { handler } = nodeRequire('./dist-lambda/index.js');
 const smokeEvent = {
   version: '2.0',
   rawPath: '/api/health',

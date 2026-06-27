@@ -13,7 +13,7 @@
 1. **Calm by default, everything one tap away.** The classic-tutor mistake was welding every panel on, permanently, with no off switch. Here the play screen defaults to notation + a slim player; detail (score breakdown, mixer, settings) opens on demand and is remembered per song.
 2. **A player, not a control panel.** Controls read like a media player: flat line-icons, one accented play, an always-visible timeline. No chunky bordered buttons.
 3. **Tablet-first, landscape.** iPad + Android tablets. 44px minimum touch targets. Mouse/desktop inherit the same layout.
-4. **One renderer interface (A‑7).** Standard notation (AlphaTab) and the later Friendly highway (PixiJS) are two renderers behind a single feedback-event contract. Build the interface *with* the Friendly view, not before.
+4. **One renderer interface (A‑7).** Standard notation (AlphaTab) and the later Friendly highway (PixiJS) are two renderers behind a single feedback-event contract. Build the interface _with_ the Friendly view, not before.
 5. **Feedback is redundant-coded.** Color is never the only signal — every feedback state also carries shape + position (+ direction). Accessible by construction.
 6. **PWA-first.** Standard notation is the Alpha primary; the Friendly view lands at its own milestone. Architecture stays Friendly-ready.
 
@@ -21,27 +21,27 @@
 
 ## 2. Resolved 🎨 decisions
 
-| # | Decision | Resolution |
-|---|---|---|
-| **D‑1** | Feedback colors (green vs blue reconcile · A‑2) | **Perfect = green.** Adopt scope intent over the legacy blue. Final hue = Okabe‑Ito green `#009E73` (see D‑2). |
-| **D‑2** | Accessibility palette + glyph (A‑6) | **Single Okabe‑Ito palette** (no second palette / no light-vs-default toggle). On-note encoding = **Approach A: ring + directional chevron** (left = early, right = late). Redundant coding everywhere (color + shape + position + chevron). Custom color-picker = **optional / deferred**. |
-| **D‑3** | Dark mode (F‑4) | **Keep + theme properly.** Standard notation defaults to light/paper with a dark option; the Friendly view is dark by nature. Theme switch (light / dark / system) lives in **Settings → Display**. |
-| **D‑4** | Score display (C‑2) | **Split:** in-play = calm (Score/Combo in the top ticker; full breakdown in a toggleable **Score sidebar**). End-of-play **Results = direction B (modern card) + per-state bars**. The breakdown uses the **5 feedback states** — **Perfect / Early / Late / Missed / Error** — not abstract Good/OK tiers, so the score speaks the same language as the live rings. Bars are **equal-width** (the count carries the value). |
-| **D‑5** | A/B-loop timeline UI (B‑9) | **Always-on scrubber** in the player: single row `current-time │ track │ end-time`, with **draggable A/B handles + markers** (A can fall mid-measure → no measure labels on the handles). Tap-set A/B, drag to adjust. |
+| #       | Decision                                        | Resolution                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D‑1** | Feedback colors (green vs blue reconcile · A‑2) | **Perfect = green.** Adopt scope intent over the legacy blue. Final hue = Okabe‑Ito green `#009E73` (see D‑2).                                                                                                                                                                                                                                                                                                               |
+| **D‑2** | Accessibility palette + glyph (A‑6)             | **Single Okabe‑Ito palette** (no second palette / no light-vs-default toggle). On-note encoding = **Approach A: ring + directional chevron** (left = early, right = late). Redundant coding everywhere (color + shape + position + chevron). Custom color-picker = **optional / deferred**.                                                                                                                                  |
+| **D‑3** | Dark mode (F‑4)                                 | **Keep + theme properly.** Standard notation defaults to light/paper with a dark option; the Friendly view is dark by nature. Theme switch (light / dark / system) lives in **Settings → Display**.                                                                                                                                                                                                                          |
+| **D‑4** | Score display (C‑2)                             | **Split:** in-play = calm (Score/Combo in the top ticker; full breakdown in a toggleable **Score sidebar**). End-of-play **Results = direction B (modern card) + per-state bars**. The breakdown uses the **5 feedback states** — **Perfect / Early / Late / Missed / Error** — not abstract Good/OK tiers, so the score speaks the same language as the live rings. Bars are **equal-width** (the count carries the value). |
+| **D‑5** | A/B-loop timeline UI (B‑9)                      | **Always-on scrubber** in the player: single row `current-time │ track │ end-time`, with **draggable A/B handles + markers** (A can fall mid-measure → no measure labels on the handles). Tap-set A/B, drag to adjust.                                                                                                                                                                                                       |
 
 ### Feedback visual language (the heart of D‑1/D‑2)
 
-The same 5 states, rendered per the locked palette + Approach A. Extra/wrong is always a **cross at the wrongly-hit position** (different shape *and* place). Miss = the notehead dims, no mark.
+The same 5 states, rendered per the locked palette + Approach A. Extra/wrong is always a **cross at the wrongly-hit position** (different shape _and_ place). Miss = the notehead dims, no mark.
 
-| State | Color (Okabe‑Ito) | On the staff (Standard) | Friendly view (later) |
-|---|---|---|---|
-| **Perfect** | 🟢 `#009E73` | full ring on the correct notehead | green gem burst + combo tick |
-| **Early** (rushed) | 🟠 `#E69F00` | ring + chevron on the **left** edge | orange flash, gem high in the hit-window |
-| **Late** (dragging) | 🟣 `#CC79A7` | ring + chevron on the **right** edge | violet flash, gem low in the window |
-| **Missed** | — | notehead dims (no mark) | gem greys + slides past |
-| **Error** (extra / wrong) | 🔴 `#D55E00` | red **✗** at the wrongly-hit staff position | red flash in the wrong lane (suppressed for pedal hi-hat) |
+| State                     | Color (Okabe‑Ito) | On the staff (Standard)                     | Friendly view (later)                                     |
+| ------------------------- | ----------------- | ------------------------------------------- | --------------------------------------------------------- |
+| **Perfect**               | 🟢 `#009E73`      | full ring on the correct notehead           | green gem burst + combo tick                              |
+| **Early** (rushed)        | 🟠 `#E69F00`      | ring + chevron on the **left** edge         | orange flash, gem high in the hit-window                  |
+| **Late** (dragging)       | 🟣 `#CC79A7`      | ring + chevron on the **right** edge        | violet flash, gem low in the window                       |
+| **Missed**                | —                 | notehead dims (no mark)                     | gem greys + slides past                                   |
+| **Error** (extra / wrong) | 🔴 `#D55E00`      | red **✗** at the wrongly-hit staff position | red flash in the wrong lane (suppressed for pedal hi-hat) |
 
-**Why it's accessible:** `#CC79A7` is itself an Okabe‑Ito color, so the set stays distinguishable across deuteranopia / protanopia / tritanopia. And color is redundant: perfect/early/late are *rings on the correct note* (early vs late split by which side the chevron sits), extra is a *cross elsewhere*, miss is *absence*. Readable in greyscale. See `docs/mockups/index.html` for the lab.
+**Why it's accessible:** `#CC79A7` is itself an Okabe‑Ito color, so the set stays distinguishable across deuteranopia / protanopia / tritanopia. And color is redundant: perfect/early/late are _rings on the correct note_ (early vs late split by which side the chevron sits), extra is a _cross elsewhere_, miss is _absence_. Readable in greyscale. See `docs/mockups/index.html` for the lab.
 
 > Optional future: a feedback **color picker** for per-user remap. Deferred — the single Okabe‑Ito set covers the need.
 
@@ -51,18 +51,18 @@ The same 5 states, rendered per the locked palette + Approach A. Extra/wrong is 
 
 ### Color
 
-| Token | Light | Dark | Use |
-|---|---|---|---|
-| `--accent` | `#10B6A6` | `#10B6A6` | brand teal — play, active toggles, scrubber fill, focus |
-| `--accent2` | `#2F6DF6` | `#2F6DF6` | playhead line |
-| `--ink` | `#0F151C` | `#E8EDF3` | primary text / noteheads |
-| `--muted` | `#67707E` | `#9AA6B4` | secondary text, idle icons |
-| `--faint` | `#9AA3B1` | `#6C7889` | labels, hints |
-| `--line` | `#E5EAF1` | `#222C39` | borders, dividers |
-| `--panel` | `#FBFCFE` | `#121821` | bars, sidebars, modals |
-| `--bg` / paper | `#FFFFFF` | `#0C1117` | notation paper / app bg |
-| **Feedback** | colors are **theme-independent** (Okabe‑Ito) | | perfect `#009E73` · early `#E69F00` · late `#CC79A7` · extra `#D55E00` · miss `#9AA0A6` |
-| `--solo` | `#F0A500` | — | solo-armed (amber) |
+| Token          | Light                                        | Dark      | Use                                                                                     |
+| -------------- | -------------------------------------------- | --------- | --------------------------------------------------------------------------------------- |
+| `--accent`     | `#10B6A6`                                    | `#10B6A6` | brand teal — play, active toggles, scrubber fill, focus                                 |
+| `--accent2`    | `#2F6DF6`                                    | `#2F6DF6` | playhead line                                                                           |
+| `--ink`        | `#0F151C`                                    | `#E8EDF3` | primary text / noteheads                                                                |
+| `--muted`      | `#67707E`                                    | `#9AA6B4` | secondary text, idle icons                                                              |
+| `--faint`      | `#9AA3B1`                                    | `#6C7889` | labels, hints                                                                           |
+| `--line`       | `#E5EAF1`                                    | `#222C39` | borders, dividers                                                                       |
+| `--panel`      | `#FBFCFE`                                    | `#121821` | bars, sidebars, modals                                                                  |
+| `--bg` / paper | `#FFFFFF`                                    | `#0C1117` | notation paper / app bg                                                                 |
+| **Feedback**   | colors are **theme-independent** (Okabe‑Ito) |           | perfect `#009E73` · early `#E69F00` · late `#CC79A7` · extra `#D55E00` · miss `#9AA0A6` |
+| `--solo`       | `#F0A500`                                    | —         | solo-armed (amber)                                                                      |
 
 ### Type · spacing · shape
 
@@ -77,17 +77,17 @@ The same 5 states, rendered per the locked palette + Approach A. Extra/wrong is 
 
 ## 4. Component inventory
 
-| Component | Spec |
-|---|---|
-| **Transport** | Flat line-icons. Play/pause is the only accented control (teal, **no circle**). Trimmed to **go-to-start + play/pause** (no prev/next). |
-| **Timeline scrubber** | Always on. One row: `current │ track │ end`. Teal fill, white playhead knob, faint position markers, two draggable **A/B handles** + shaded loop region. = D‑5. |
-| **BPM control** | `– 120 +` stepper; `%` shown **only while adjusting**. Small **auto ⟳** glyph *inside* the block (teal = auto-speed on, grey/hidden = off). = E‑3 indicator. |
-| **Bottom toggles** | Icon + tiny label, teal when on: `METRO · COUNT‑IN · LOOP`. Left: **folder** (open file). Right: **Tracks · Settings**. |
-| **Top bar** | back · song · centered **SCORE / COMBO** (borderless; tap → Score sidebar) · view toggle (♪ Standard / ▦ Friendly) · MIDI. Icon-only. |
-| **Score sidebar** (left, toggle) | `%` + 5★, per-state **Perfect/Early/Late/Missed/Error** bars (equal-width), current/longest streak + accuracy, reserved **drum-kit** slot (J‑6). |
+| Component                          | Spec                                                                                                                                                                                                                   |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Transport**                      | Flat line-icons. Play/pause is the only accented control (teal, **no circle**). Trimmed to **go-to-start + play/pause** (no prev/next).                                                                                |
+| **Timeline scrubber**              | Always on. One row: `current │ track │ end`. Teal fill, white playhead knob, faint position markers, two draggable **A/B handles** + shaded loop region. = D‑5.                                                        |
+| **BPM control**                    | `– 120 +` stepper; `%` shown **only while adjusting**. Small **auto ⟳** glyph _inside_ the block (teal = auto-speed on, grey/hidden = off). = E‑3 indicator.                                                           |
+| **Bottom toggles**                 | Icon + tiny label, teal when on: `METRO · COUNT‑IN · LOOP`. Left: **folder** (open file). Right: **Tracks · Settings**.                                                                                                |
+| **Top bar**                        | back · song · centered **SCORE / COMBO** (borderless; tap → Score sidebar) · view toggle (♪ Standard / ▦ Friendly) · MIDI. Icon-only.                                                                                  |
+| **Score sidebar** (left, toggle)   | `%` + 5★, per-state **Perfect/Early/Late/Missed/Error** bars (equal-width), current/longest streak + accuracy, reserved **drum-kit** slot (J‑6).                                                                       |
 | **Tracks sidebar** (right, toggle) | Quick **Drums only / Minus drums** (solo-mine / mute-mine). Per track: **eye** (show/hide) · **headphones** (solo) · **speaker** (mute) · volume · **notation switch** (Standard / Tab / Slash / #). Master at bottom. |
-| **Settings modal** | Sectioned: **Input & MIDI · Timing · Practice · Display · About**. Left nav + scannable groups. |
-| **Switches / segmented / sliders** | iOS-style switch; segmented control (teal active); slider = teal fill + white knob (44px hit area). |
+| **Settings modal**                 | Sectioned: **Input & MIDI · Timing · Practice · Display · About**. Left nav + scannable groups.                                                                                                                        |
+| **Switches / segmented / sliders** | iOS-style switch; segmented control (teal active); slider = teal fill + white knob (44px hit area).                                                                                                                    |
 
 ---
 
@@ -102,7 +102,7 @@ Library ──tap song──▶ Play screen ──finish (game)──▶ Results
                             └─ view toggle: Standard ⇄ Friendly  (one renderer interface, A‑7)
 ```
 
-- **Sidebars vs modals:** Tracks (**right**, by its bottom-bar button) and Score (**left**) are **persistent sidebars** — usable *alongside* gameplay; either closes to widen the staff. Settings + MIDI are **modals** (you're configuring, not playing).
+- **Sidebars vs modals:** Tracks (**right**, by its bottom-bar button) and Score (**left**) are **persistent sidebars** — usable _alongside_ gameplay; either closes to widen the staff. Settings + MIDI are **modals** (you're configuring, not playing).
 - **Memory mode** is armed in **pre-play setup**, never toggled mid-play.
 - **Focus** (distraction-free) = a mode that hides chrome; not a permanent panel.
 
@@ -111,42 +111,48 @@ Library ──tap song──▶ Play screen ──finish (game)──▶ Results
 ## 6. Key screens
 
 ### 6.1 Play screen — `docs/mockups/player.html` (light + dark), `player-full.html` (both sidebars)
+
 Top ticker · center notation (feedback per §2) · always-on scrubber + minimalist controls · Tracks-right / Score-left sidebars on demand. Light/paper default; dark themed. **Locked.**
 
 ### 6.2 Tracks (right sidebar) — `docs/mockups/player-full.html`
+
 Mixer + solo/mute-mine + per-track notation style. Each track: eye (show/hide) · solo · mute · volume · **multi-select notation chips** (Standard / Tab / Slash / # — independently combinable, e.g. Standard **+** Tab on one track). Quick Drums-only / Minus-drums on top; Master at the bottom. Soft-filled controls (no bordered segmented controls — deliberately un-"Bootstrap"). **Locked.**
 
 > The notation chips are **multi-toggle**, not a single-select dropdown — a track can render in more than one staff style at once.
 
 ### 6.3 Settings (modal) — `docs/mockups/tracks-settings.html`
+
 Input&MIDI (device, I-play, mapping preset + edit, latency slider, multi-device warn) · Timing (Perfect/Good ms, count-in) · Practice (Practice/Game, Memory arm, auto-speed target+step) · Display (theme light/dark/system, notation scale, feedback palette) · About. **Locked.**
 
-### 6.4 Library / song-select — *to design (next)*
+### 6.4 Library / song-select — _to design (next)_
+
 Lesson/song list with level (★), tempo, last score; open-file; search; entry to Play.
 
 ### 6.5 Results — `docs/mockups/results.html`
+
 Direction **B (modern)**: big completion-% ring + 5★ + a verdict + "new best" badge; **per-state bars** (Perfect/Early/Late/Missed/Error, equal-width) + **Target‑vs‑You** comparison bars; streak / longest / max-combo / accuracy chips; Retry · Library · Next. Dedicated screen, so density is free. **Locked.**
 
-### 6.6 Friendly view — *to design (design-gated milestone)*
+### 6.6 Friendly view — _to design (design-gated milestone)_
+
 Horizontal highway (primary) + vertical falling-notes (alt). Gem feedback carries the same 5-state language + a11y. Dark by nature.
 
 ---
 
 ## 7. Feature → UI mapping (feature-freeze IDs)
 
-| Where | Feature IDs |
-|---|---|
-| Notation + feedback | A‑1 render · A‑2/A‑2‑a ring+chevron · A‑3 miss · A‑4 extra ✗ · A‑6 a11y · A‑7 renderer interface · A‑8 pedal-hat forgiveness |
-| Transport / scrubber | B‑2 transport · B‑3 loop · B‑5 count-in · B‑6 metronome · B‑7 tempo (BPM/%) · **B‑9 A/B timeline (D‑5)** · B‑1 open file (folder) |
-| Tracks sidebar | B‑10 volume mixer · B‑10‑a solo/mute-mine · B‑11 instrument · B‑8 notation display switch |
-| Score sidebar / Results | C‑2 score% · C‑3 5★ · C‑4 streak · per-tier breakdown |
-| Settings modal | D‑1 MIDI device · D‑2 mapping · F‑1 latency · F‑2 timing windows · F‑4 theme · E‑3 auto-speed · E‑4 memory (arm) |
+| Where                   | Feature IDs                                                                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Notation + feedback     | A‑1 render · A‑2/A‑2‑a ring+chevron · A‑3 miss · A‑4 extra ✗ · A‑6 a11y · A‑7 renderer interface · A‑8 pedal-hat forgiveness      |
+| Transport / scrubber    | B‑2 transport · B‑3 loop · B‑5 count-in · B‑6 metronome · B‑7 tempo (BPM/%) · **B‑9 A/B timeline (D‑5)** · B‑1 open file (folder) |
+| Tracks sidebar          | B‑10 volume mixer · B‑10‑a solo/mute-mine · B‑11 instrument · B‑8 notation display switch                                         |
+| Score sidebar / Results | C‑2 score% · C‑3 5★ · C‑4 streak · per-tier breakdown                                                                             |
+| Settings modal          | D‑1 MIDI device · D‑2 mapping · F‑1 latency · F‑2 timing windows · F‑4 theme · E‑3 auto-speed · E‑4 memory (arm)                  |
 
 ---
 
 ## 8. Open items / next
 
-- **Build:** Friendly-view stub (design-gated later milestone). *(Library ✅ · Results ✅ · Tracks ✅)*
+- **Build:** Friendly-view stub (design-gated later milestone). _(Library ✅ · Results ✅ · Tracks ✅)_
 - **Mixer solo / play-along model** (open) — keep the named **Drums-only / Minus-drums** shortcuts, or switch to per-track **"Only"** (exclusive solo) + **Mute** + a single **"Play along"** (mute your own part)? Deferred to the design-tool exploration.
 - **Settings tabs** — only Input&MIDI is drawn; render Timing / Practice / Display content.
 - **Dark theme** for Tracks/Settings panels (inherit app theme).
@@ -157,4 +163,5 @@ Horizontal highway (primary) + vertical falling-notes (alt). Gem feedback carrie
 ---
 
 ## 9. Changelog
+
 - **2026-06-05** — Play screen, Tracks, Settings designed & locked through 6 iterations. All five 🎨 decisions resolved. Feedback lab + player (light/dark) + full-view + panels mockups in `docs/mockups/`.

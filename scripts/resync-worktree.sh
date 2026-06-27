@@ -39,6 +39,7 @@ fi
 dirty=$(git status --porcelain)
 if [ -n "$dirty" ]; then
   echo "ERROR: working tree has uncommitted changes. Stash or commit first:" >&2
+  # shellcheck disable=SC2001 # multi-line prefix: ${var//search/replace} cannot prepend to each line
   echo "$dirty" | sed 's/^/  /' >&2
   echo "" >&2
   echo "Then re-run this script." >&2

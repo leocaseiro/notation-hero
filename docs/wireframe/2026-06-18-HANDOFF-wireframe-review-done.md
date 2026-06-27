@@ -5,6 +5,7 @@ rounds** with Leo. All shipped on branch `docs/wireframe-pattern-lesson-model` (
 the locked model + the **Round-5/6 deltas** to the **real spec**.
 
 ## Where to work
+
 - Worktree: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model`
 - Branch: `docs/wireframe-pattern-lesson-model` (on origin).
 - Serve: preview `wireframe` (port 8780) in repo `.claude/launch.json`, or
@@ -12,6 +13,7 @@ the locked model + the **Round-5/6 deltas** to the **real spec**.
 - Local DB: `psql -d nh_notation -f docs/wireframe/2026-06-17-notation-model-draft.sql`.
 
 ## What shipped (this branch)
+
 - **C1–C5** — migrated `index.html` to the locked model: `playable`/`kind`, `notation`(score), `step` junction
   (reuse / same-child-repeats / composite), per-playable scores (whole-play, no averaging), dropped `lesson_type`
   (kind derived from step patterns).
@@ -26,13 +28,16 @@ the locked model + the **Round-5/6 deltas** to the **real spec**.
   (song + per-track); DB notes (schema-deltas **Round-6** + SQL Round-6 DDL sketches); **tracks brainstorm**.
 
 ## Key files
-- Wireframe: `docs/wireframe/index.html`  ·  Model map (source of truth): `docs/wireframe/model-map.html`
+
+- Wireframe: `docs/wireframe/index.html` · Model map (source of truth): `docs/wireframe/model-map.html`
 - Validated draft SQL + **Round-6 open-Q DDL sketches**: `docs/wireframe/2026-06-17-notation-model-draft.sql`
 - Delta ledger (**Round-5 + Round-6**, the open questions): `docs/wireframe/2026-06-16-schema-deltas.md`
 - Prior handoff (model lock + migration done): `docs/wireframe/2026-06-17-HANDOFF-notation-model.md`
 
 ## ▶ Next — apply the locked model + deltas to the REAL spec
+
 Open questions to resolve in the spec pass (all written up in schema-deltas Round-5/6 + the SQL sketches):
+
 1. **Tracks** — promote `instruments text[]` → a `track` relation `(playable_id, instrument, role, …)` so multiple
    same-instrument tracks work (guitar `solo` + `bass`); keep `instruments[]` as a derived filter facet. **Recommend
    the `track` table.** Open: `bass` = guitar role or own instrument?
@@ -46,4 +51,4 @@ Open questions to resolve in the spec pass (all written up in schema-deltas Roun
 8. Reconcile **users/audit** (`created_by`/owner) + drop the vestigial `PATTERNS` dict — vs the `architecture-spec`
    worktree's `2026-06-17-data-layer-requirements.md`.
 
-*(Wireframe is review-complete; this is the bridge into the real schema/spec work.)*
+_(Wireframe is review-complete; this is the bridge into the real schema/spec work.)_

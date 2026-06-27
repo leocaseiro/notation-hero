@@ -30,15 +30,15 @@ so that:
 
 ## 0 · Decisions (locked this brainstorm)
 
-| # | Decision | Choice |
-|---|----------|--------|
-| **D1** | Relationship shape | **Hybrid (C)** — per-domain side-tables (`tonal_profile`, `drum_profile`) hanging off `playable` 1:0..1, **hot facets as typed columns + a `data jsonb` overflow on each side-table.** |
-| **D2** | `musical_key` placement | **Move off `playable` → `tonal_profile`.** The wireframe's "Key hidden for drums" rule becomes "drums have no `tonal_profile` row." No nullable key on drum rows. |
-| **D3** | Progression match modes | **All three:** A = exact (same key, `progression_concrete`), B = any-key/roman/transposition (`progression_roman`), C = same-loop/rotation "Axis family" (`progression_family`). |
-| **D4** | Section granularity | **Both** "includes" and "exact set"; progressions are **section-scoped** (verse/chorus/bridge) in the jsonb timeline, aggregated into flat facet arrays for search. |
-| **D5** | Drums | **`drum_profile` planned now** (drums-first focus). Symmetric to `tonal_profile`. A future `guitar_profile` is "just add another side-table." Only **domain-specific** (otherwise-NULL) fields live in a profile; **universal** facets stay on `playable`. |
-| **D6** | Multi-key / multi-tempo / multi-meter songs | **Headline scalar + set facet + jsonb timeline.** Headline = dominant value (filter/display); set facet (`keys[]`, …) = "touches X"; `data.sections[]` = full per-section detail. |
-| **D7** | Database | **SQL — Neon Postgres** for the catalog/search (relational + arrays + GIN + cheap joins). DynamoDB stays per-user only. Not NoSQL for faceted search. |
+| #      | Decision                                    | Choice                                                                                                                                                                                                                                                     |
+| ------ | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **D1** | Relationship shape                          | **Hybrid (C)** — per-domain side-tables (`tonal_profile`, `drum_profile`) hanging off `playable` 1:0..1, **hot facets as typed columns + a `data jsonb` overflow on each side-table.**                                                                     |
+| **D2** | `musical_key` placement                     | **Move off `playable` → `tonal_profile`.** The wireframe's "Key hidden for drums" rule becomes "drums have no `tonal_profile` row." No nullable key on drum rows.                                                                                          |
+| **D3** | Progression match modes                     | **All three:** A = exact (same key, `progression_concrete`), B = any-key/roman/transposition (`progression_roman`), C = same-loop/rotation "Axis family" (`progression_family`).                                                                           |
+| **D4** | Section granularity                         | **Both** "includes" and "exact set"; progressions are **section-scoped** (verse/chorus/bridge) in the jsonb timeline, aggregated into flat facet arrays for search.                                                                                        |
+| **D5** | Drums                                       | **`drum_profile` planned now** (drums-first focus). Symmetric to `tonal_profile`. A future `guitar_profile` is "just add another side-table." Only **domain-specific** (otherwise-NULL) fields live in a profile; **universal** facets stay on `playable`. |
+| **D6** | Multi-key / multi-tempo / multi-meter songs | **Headline scalar + set facet + jsonb timeline.** Headline = dominant value (filter/display); set facet (`keys[]`, …) = "touches X"; `data.sections[]` = full per-section detail.                                                                          |
+| **D7** | Database                                    | **SQL — Neon Postgres** for the catalog/search (relational + arrays + GIN + cheap joins). DynamoDB stays per-user only. Not NoSQL for faceted search.                                                                                                      |
 
 Guard rails honoured: the **Thin** model (Neon = metadata + file keys; AlphaTab owns score internals,
 R10) and the **Playable umbrella** (`playable · notation · step · playable_link`) are **unchanged** —
@@ -55,7 +55,7 @@ cost, and confirmation that all 14 wireframe filters still work.
 
 **Base-model reconciliation — Groups A+B+R15 now APPLIED in the draft SQL** (R1 `created_by`, R2 `origin`
 naming, R16 `DEFERRABLE` FKs, SD-3 `visibility`, R15 `upload_status`). **Still out of scope:** ULID
-*values* (R13 — column already `text`), `POST /sync/batch` (R14, M1), Group C upload UX (SD-22/SD-23),
+_values_ (R13 — column already `text`), `POST /sync/batch` (R14, M1), Group C upload UX (SD-22/SD-23),
 and the `track`/`media`/per-instrument-difficulty Round-6 items (Group D). The PATTERNS dict is already
 absent from the SQL.
 
@@ -151,7 +151,7 @@ stored three ways, each for a job:
 - **Headline** — `tonal_profile.musical_key`, `playable.bpm`, `playable.time_signature_*` = the
   dominant/opening value. Powers the simple filter + the badge in the UI.
 - **Set facet** — `tonal_profile.keys[]` (every key touched), optionally a `time_signatures[]` facet, and
-  bpm-range handling — so a modulating song is findable by *every* key/meter it visits.
+  bpm-range handling — so a modulating song is findable by _every_ key/meter it visits.
 - **Timeline** — `playable.data.sections[]`, each section:
   `{ label, barStart, barEnd, bpm?, timeSignature?, key?, scale?, progression? }`. Universal section structure
   (drums use `label/barStart/barEnd/voices` too); the **tonal keys are simply absent** on drum
@@ -165,21 +165,21 @@ refine, F15 windowed/multi-key, F16 meter changes).
 We store **canonical strings**, validated against tonaljs at ingest (no vocabulary table needed for
 v1; an optional reference table can come later for DB-level integrity):
 
-| Facet | Stored form | tonaljs source |
-|-------|-------------|----------------|
-| key | `'C major'`, `'G mixolydian'` | `Key`, `Mode` |
-| scale | `'minor pentatonic'`, `'blues'`, `'dorian'` | `Scale.names()` |
-| chord | tonaljs symbol `'Cmaj7'`, `'Am'`, `'Cmaj7/B'` | `Chord.get(sym)` → `{tonic, type, bass}` |
-| progression (concrete) | `'C-G-Am-F'` | derived from chords + key |
-| progression (roman) | `'I-V-vi-IV'` | `Progression.toRomanNumerals(key, chords)` |
-| progression (family) | rotation-normalised roman — rotate to start at `I`; fallback: lexicographically-smallest rotation when no `I` is present | computed from roman |
+| Facet                  | Stored form                                                                                                              | tonaljs source                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| key                    | `'C major'`, `'G mixolydian'`                                                                                            | `Key`, `Mode`                              |
+| scale                  | `'minor pentatonic'`, `'blues'`, `'dorian'`                                                                              | `Scale.names()`                            |
+| chord                  | tonaljs symbol `'Cmaj7'`, `'Am'`, `'Cmaj7/B'`                                                                            | `Chord.get(sym)` → `{tonic, type, bass}`   |
+| progression (concrete) | `'C-G-Am-F'`                                                                                                             | derived from chords + key                  |
+| progression (roman)    | `'I-V-vi-IV'`                                                                                                            | `Progression.toRomanNumerals(key, chords)` |
+| progression (family)   | rotation-normalised roman — rotate to start at `I`; fallback: lexicographically-smallest rotation when no `I` is present | computed from roman                        |
 
 `Progression.fromRomanNumerals(key, roman)` lets us **derive concrete chords per key** from an
 abstract progression — so "store abstract + render per key" is viable without a hand-built theory
 engine (resolves the old CP-1 "abstract vs concrete" open question).
 
 **Structured values are derived, not stored decomposed (tonaljs round-trip).** Every facet string is
-a tonaljs *canonical form* that parses losslessly back to its components — `Key.majorKey('C')` ⇄
+a tonaljs _canonical form_ that parses losslessly back to its components — `Key.majorKey('C')` ⇄
 `'C major'` (`{tonic:'C', type:'major'}`); `Chord.get('Cmaj7/B')` ⇄ `'Cmaj7/B'` (`{tonic:'C',
 type:'maj7', bass:'B'}`). So we store the **flat string** (GIN-searchable) and **derive `{tonic, type,
 bass}` on read** — no fidelity lost, no decomposed columns to maintain. If component-level filtering
@@ -208,11 +208,11 @@ case (tonaljs, cheap).
 Drum-only searchable facets, all `text[]`, all GIN-indexed. Each supports the three set operators
 (same primitives as the chord searches):
 
-| Search intent | Operator | Example |
-|---------------|----------|---------|
-| **ONLY** these (subset — "I can play with just these") | `<@` | `rudiments <@ ARRAY['single-paradiddle','single-stroke']` |
-| **OR** any of these | `&&` | `techniques && ARRAY['shuffle','ghost-notes']` |
-| **AND** all of these | `@>` | `fills @> ARRAY['tom-fill','linear']` |
+| Search intent                                          | Operator | Example                                                   |
+| ------------------------------------------------------ | -------- | --------------------------------------------------------- |
+| **ONLY** these (subset — "I can play with just these") | `<@`     | `rudiments <@ ARRAY['single-paradiddle','single-stroke']` |
+| **OR** any of these                                    | `&&`     | `techniques && ARRAY['shuffle','ghost-notes']`            |
+| **AND** all of these                                   | `@>`     | `fills @> ARRAY['tom-fill','linear']`                     |
 
 `beats / fills / rudiments` are **denormalized** from the canonical pattern entities (a beat/fill/
 rudiment is a Pattern playable; songs/lessons reference them via `step` / `playable_link`) — the
@@ -268,7 +268,7 @@ WHERE d.techniques && ARRAY['shuffle'];
 
 `progression_family` collapses **transposition + rotation**: I-V-vi-IV, V-vi-IV-I, vi-IV-I-V, IV-I-V-vi in
 **any key** all normalise to one token (`I-V-vi-IV`). So "Zombie" (vi-IV-I-V in G) is in the same
-family as "Let It Be" (I-V-vi-IV in C). To *play* a medley the user picks a key (transpose) and a
+family as "Let It Be" (I-V-vi-IV in C). To _play_ a medley the user picks a key (transpose) and a
 start chord (rotate); the match just says "same 4-chord loop." The UI should show the
 **transposed-to-target-key** chords so the relationship is visible (built into the companion page).
 
@@ -292,30 +292,30 @@ Three layers, complementary:
 
 ## 7 · Schema-evolution cost (adding a tonal/drum field later)
 
-| New field kind | Action | Touches drums / hot table? | Cost / risk |
-|----------------|--------|----------------------------|-------------|
-| Long-tail / experimental | write into `*_profile.data` jsonb | no | **$0** — no DDL, no migration, no lock |
-| Promote to a real filter | `ALTER TABLE *_profile ADD COLUMN` (instant, metadata-only on PG13+) + backfill from jsonb + `CREATE INDEX CONCURRENTLY` | no | **low** — backfill runs on the **small** pitched/drum-only table; the big `playable` and the drum path are never rewritten |
-| (rejected) wide nullable column on `playable` | `ALTER` the big hot table incl. every drum row | **yes** | NULL sprawl + lock risk |
+| New field kind                                | Action                                                                                                                   | Touches drums / hot table? | Cost / risk                                                                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Long-tail / experimental                      | write into `*_profile.data` jsonb                                                                                        | no                         | **$0** — no DDL, no migration, no lock                                                                                     |
+| Promote to a real filter                      | `ALTER TABLE *_profile ADD COLUMN` (instant, metadata-only on PG13+) + backfill from jsonb + `CREATE INDEX CONCURRENTLY` | no                         | **low** — backfill runs on the **small** pitched/drum-only table; the big `playable` and the drum path are never rewritten |
+| (rejected) wide nullable column on `playable` | `ALTER` the big hot table incl. every drum row                                                                           | **yes**                    | NULL sprawl + lock risk                                                                                                    |
 
 A field can **graduate**: born free in jsonb, promoted to a column only when it earns a filter.
 This is the same pattern the locked Thin model already uses (`level` + `data.difficulty`,
 `has_audio` + `data.media`).
 
 **Joins are cheap:** a 1:0..1 join on `playable_id` (PK=FK, both indexed) is the cheapest join
-Postgres does, and tonal searches *start* from the small `*_profile` (GIN filter) then join to
+Postgres does, and tonal searches _start_ from the small `*_profile` (GIN filter) then join to
 `playable` for display — never scanning the big table to filter.
 
 ---
 
 ## 8 · Wireframe filter coverage (filter-review.md — all 14)
 
-| Filter | Home in this design | Change |
-|--------|---------------------|--------|
-| 1 Search, 2 Type, 3 Genre, 4 Kind, 5 Level, 6 Instrument, 7 Tempo, 8 Time-sig, 9 Tags, 10 Skill, 11 Pattern, 13 Sort, 14 Status | `playable` (universal) — unchanged | **none** |
-| **12 Key** | **`tonal_profile.musical_key` / `keys[]`** | moves off `playable`; "hidden for drums" = "no `tonal_profile` row" |
-| *new* S1 chords, S2 progression ×3, S3 scales | `tonal_profile` | added |
-| *new* drum beats/fills/rudiments/techniques/kit_pieces | `drum_profile` | added |
+| Filter                                                                                                                          | Home in this design                        | Change                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------- |
+| 1 Search, 2 Type, 3 Genre, 4 Kind, 5 Level, 6 Instrument, 7 Tempo, 8 Time-sig, 9 Tags, 10 Skill, 11 Pattern, 13 Sort, 14 Status | `playable` (universal) — unchanged         | **none**                                                            |
+| **12 Key**                                                                                                                      | **`tonal_profile.musical_key` / `keys[]`** | moves off `playable`; "hidden for drums" = "no `tonal_profile` row" |
+| _new_ S1 chords, S2 progression ×3, S3 scales                                                                                   | `tonal_profile`                            | added                                                               |
+| _new_ drum beats/fills/rudiments/techniques/kit_pieces                                                                          | `drum_profile`                             | added                                                               |
 
 **13 of 14 unchanged; only Key relocates (and gets cleaner).** ✅
 
@@ -380,9 +380,9 @@ faceted search.**
 
 ## 11 · Out of scope / open questions / spikes
 
-- **Base-model reconciliation (handoff §4) — Groups A+B+R15 APPLIED** in the draft SQL (R1 created_by,
+- **Base-model reconciliation (handoff §4) — Groups A+B+R15 APPLIED** in the draft SQL (R1 created*by,
   R2 `origin` naming, R16 DEFERRABLE FKs, SD-3 visibility, R15 upload_status; PATTERNS dict already
-  absent in the SQL). **Still deferred:** ULID *values* (R13 — column already `text`),
+  absent in the SQL). **Still deferred:** ULID \_values* (R13 — column already `text`),
   `POST /sync/batch` (R14, M1), Group C upload UX (SD-22/SD-23).
 - **Round-6 items:** `track` relation, `media` table, per-instrument difficulty curve — separate;
   this spec does not conflict (per-instrument difficulty stays a `data.difficulty(by:'instrument')`
@@ -410,4 +410,4 @@ faceted search.**
 
 ---
 
-*End of spec. Companion interactive: `/tmp/nh-tonal/index.html`.*
+_End of spec. Companion interactive: `/tmp/nh-tonal/index.html`._

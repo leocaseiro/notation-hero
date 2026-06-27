@@ -1,0 +1,13 @@
+# markdownlint-cli2 top-level config — controls file discovery & ignores.
+# Rules live in .markdownlint.yaml (also read by markdownlint-cli2).
+# Note: .markdownlintignore is NOT supported by markdownlint-cli2 (only by the
+# older markdownlint-cli v1); ignores must be declared here.
+ignores:
+  - '**/node_modules/**'
+  - '**/dist/**'
+  - '**/storybook-static/**'
+  - '**/playwright-report/**'
+  - '**/test-results/**'
+  - '.claude/worktrees/**'
+  - '.superpowers/**'
+  - pnpm-lock.yaml

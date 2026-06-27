@@ -2,7 +2,7 @@
 
 **For:** the next session running `/design-consultation`.
 **Date:** 2026-06-13 · **Branch:** `claude/epic-easley-b661e6`
-**Scope it tightly.** This is a *refinement* pass on two specific things — **NOT** a redesign of the locked system.
+**Scope it tightly.** This is a _refinement_ pass on two specific things — **NOT** a redesign of the locked system.
 
 ---
 
@@ -19,7 +19,7 @@
 
 ## Product context (1 paragraph)
 
-NotationHero teaches drums via a rhythm-game loop. The **catalog** is the "find a piece to play" surface — search/discovery of songs & lessons by type, **not** a progress dashboard. Score/mastery is a *garnish* shown per row, never the spine. The category wedge is a well-known practice app; we deliberately differentiate from its look (that's why we dropped stars — see below).
+NotationHero teaches drums via a rhythm-game loop. The **catalog** is the "find a piece to play" surface — search/discovery of songs & lessons by type, **not** a progress dashboard. Score/mastery is a _garnish_ shown per row, never the spine. The category wedge is a well-known practice app; we deliberately differentiate from its look (that's why we dropped stars — see below).
 
 ## ✅ Decided this session (build on these)
 
@@ -47,6 +47,7 @@ NotationHero teaches drums via a rhythm-game loop. The **catalog** is the "find 
 # from the epic-easley worktree root
 python3 -m http.server 8780
 ```
+
 - `docs/mockups/catalog.html` — the canonical single-layout catalog (theme toggle in topbar).
 - `docs/mockups/catalog-score-options.html` — the score-cell compare board (8 treatments) + the level-pill picker; **donut is the chosen one**, neutral level pill is chosen.
 - `docs/mockups/catalog-variants.html` — A/B/C history (reference only).

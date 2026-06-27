@@ -4,13 +4,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "lint": "echo \"@notation-hero/infra: dedicated ESLint lands with real IaC source\"",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
+    "lint": "echo \"@notation-hero/infra: dedicated ESLint lands with real IaC source\"",
+    "pulumi:destroy": "pulumi destroy",
     "pulumi:preview": "pulumi preview",
     "pulumi:up": "pulumi up",
-    "pulumi:destroy": "pulumi destroy"
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@pulumi/aws": "^7.34.0",

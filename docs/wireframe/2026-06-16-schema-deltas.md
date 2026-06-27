@@ -328,7 +328,7 @@ lesson/pattern UI on a fuzzy model = wasted work. v1.3 (songs + catalog/search/f
 
 ---
 
-### 🧠 Tomorrow: brainstorm Lesson↔Step↔Pattern + the GP-file role, THEN build v1.4 on the settled model.
+### 🧠 Tomorrow: brainstorm Lesson↔Step↔Pattern + the GP-file role, THEN build v1.4 on the settled model
 
 ### ✅ Resolved: SD-4 · SD-5 · SD-6 · SD-7 (Debut=0) · SD-8 (multi-filter) · SD-9 (key conditional)
 
@@ -346,13 +346,14 @@ The catalog wireframe (`index.html`) was migrated to the **locked Playable model
 of UX deltas were built (E1–E6) on branch `docs/wireframe-pattern-lesson-model`. The locked DDL was **NOT**
 changed — DB-side items that surfaced are written down here for the separate spec-apply pass.
 
-### SD-15 — voicing model (per Leo, 2026-06-18). UI **placeholder shipped** (a `voices[]` chip line on parts). DB model:
+### SD-15 — voicing model (per Leo, 2026-06-18). UI **placeholder shipped** (a `voices[]` chip line on parts). DB model
 
 - A **playable has N tracks**; a **track has N notes (MIDI)**. A **voice** is _derived_ from the MIDI note
   numbers via a **note→voice map** (General-MIDI style) — voices are **not** stored per note.
 - Example drum map (a voice can cover several notes): `snare: 37,38,39,40` · `hi-hat foot: 44` · `bass drum: 35,36`.
 - "Active voices for a part/step" = the distinct voices present across that slice's track notes — **computed**.
 - DDL sketch (for the spec pass):
+
   ```sql
   -- track     (id, notation_id -> notation, instrument, name, channel)
   -- note      (id, track_id -> track, midi int, start_tick, dur_tick, velocity)
@@ -363,19 +364,19 @@ changed — DB-side items that surfaced are written down here for the separate s
   --                  WHERE <part/step bar range>;
   ```
 
-### SD-16 — repeated parts. UI **shipped** (a part renders >1 bar range). DB options to choose at spec time:
+### SD-16 — repeated parts. UI **shipped** (a part renders >1 bar range). DB options to choose at spec time
 
 - **(a) multiple `part` rows** sharing a label, each its own row + range — simplest; each range independently scorable.
 - **(b) one part with `ranges jsonb = [[s,e],…]**` — one row, one score, many ranges.
 - The wireframe used (b) as a `ranges[]` display field on the part. Decide (a) vs (b) when applying.
 
-### Play-next on the **score / play screen** (Leo, 2026-06-18) — write-down:
+### Play-next on the **score / play screen** (Leo, 2026-06-18) — write-down
 
 - The play/score screen (separate draft; stubbed here) should offer **"play next"** — chain to the next
   part / step / lesson without returning to the catalog. Step/part **prev-next** live on the _detail_ views;
   the player itself stays minimal and is exited via the topbar **back** button.
 
-### Wart — PATTERNS-dict vs pattern-playable id duality (noticed during E5):
+### Wart — PATTERNS-dict vs pattern-playable id duality (noticed during E5)
 
 - Lessons/songs reference vocabulary patterns via `patterns:['rock-8th']` (a PATTERNS lookup) while the `step`
   junction references **pattern playables** (`p-rock-8th`, …) — two id namespaces. `usedIn()` unions both so
@@ -459,7 +460,7 @@ the _techniques / kit_pieces_ to the drums track — yet the profiles sit on the
 - **For per-instrument precision** ("the BASS plays these notes", "the guitar uses these chords") the
   per-song profile is lossy.
 
-~~\*\*Open~~ ✅ RESOLVED (Leo, 2026-06-21) — move them per-track.** `tonal_profile` + `drum_profile` re-key
+~~\*\*Open~~ ✅ RESOLVED (Leo, 2026-06-21) — move them per-track.**`tonal_profile` + `drum_profile` re-key
 from `playable_id` PK → `**track_id`PK**`REFERENCES track(id)`. A track is one instrument, so the
 chords/progressions hang off each pitched track (the bass carries its own notes) and the beats/fills/
 kit_pieces off the drums track. **Shape unchanged — only the key flips.** The instrument-conditional

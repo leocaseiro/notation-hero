@@ -29,7 +29,7 @@ The career goal sets the optimization target. Staff interviews probe **solution 
 
 - **Learning is now a first-class goal** → AWS is what gets asked about; the app is the vehicle.
 - **Legacy account** → genuine **Always-Free** (Lambda, DynamoDB, SQS, SNS, Cognito, CloudWatch, X-Ray, CloudFront 1 TB).
-- **Not lock-in** → the client sync layer (RxDB/Legend-State) is an abstraction over a replication protocol, so the backend (AWS *or* Supabase) is **swappable**.
+- **Not lock-in** → the client sync layer (RxDB/Legend-State) is an abstraction over a replication protocol, so the backend (AWS _or_ Supabase) is **swappable**.
 
 ---
 
@@ -54,7 +54,7 @@ The career goal sets the optimization target. Staff interviews probe **solution 
 ## The three use cases
 
 - **A — Sync:** Lambda + DynamoDB (`USER#<sub>` key, LWW on `updatedAt`, delta pull). One user across their own devices → low conflict → LWW is fine.
-- **B — SRE/SLOs** *(richest learning surface):* CloudWatch SLIs (Lambda `Errors`/`Duration` p95/99/`Throttles`, SQS age-of-oldest-message, DynamoDB `ThrottledRequests`) → SLOs (avail 99%, p95 < 300 ms, queue age < 60 s) → **error budget** → **burn-rate alerts** via composite alarms. + X-Ray traces, DLQ.
+- **B — SRE/SLOs** _(richest learning surface):_ CloudWatch SLIs (Lambda `Errors`/`Duration` p95/99/`Throttles`, SQS age-of-oldest-message, DynamoDB `ThrottledRequests`) → SLOs (avail 99%, p95 < 300 ms, queue age < 60 s) → **error budget** → **burn-rate alerts** via composite alarms. + X-Ray traces, DLQ.
 - **C — Usage analytics:** `action → SQS → consumer λ (batch) → S3 (Parquet, dt-partitioned) → Athena (SQL)`. DynamoDB is wrong here (no aggregation).
 
 ---
@@ -63,18 +63,18 @@ The career goal sets the optimization target. Staff interviews probe **solution 
 
 ### The hierarchy — the interview gold
 
-| Shape | Service | Behaviour | One-liner |
-|---|---|---|---|
-| **Queue** | **SQS** | drop → **one** worker consumes → **deleted** | "do this work later" |
-| **Pub/Sub** | **SNS** | publish once → **many** subscribers each get a copy (push) | "tell everyone this happened" |
-| **Log / Stream** | **Kafka / Kinesis / DynamoDB Streams** | durable ordered log, **many** readers, **replayable**, retained | "a replayable history of events" |
-| **Bus / Router** | **EventBridge** | route events by rules/schema to targets | "send the right event to the right place" |
+| Shape            | Service                                | Behaviour                                                       | One-liner                                 |
+| ---------------- | -------------------------------------- | --------------------------------------------------------------- | ----------------------------------------- |
+| **Queue**        | **SQS**                                | drop → **one** worker consumes → **deleted**                    | "do this work later"                      |
+| **Pub/Sub**      | **SNS**                                | publish once → **many** subscribers each get a copy (push)      | "tell everyone this happened"             |
+| **Log / Stream** | **Kafka / Kinesis / DynamoDB Streams** | durable ordered log, **many** readers, **replayable**, retained | "a replayable history of events"          |
+| **Bus / Router** | **EventBridge**                        | route events by rules/schema to targets                         | "send the right event to the right place" |
 
-**Killer distinction:** *SQS deletes on consume (no replay); Kafka retains and replays with many independent consumers.* Articulating this = senior signal.
+**Killer distinction:** _SQS deletes on consume (no replay); Kafka retains and replays with many independent consumers._ Articulating this = senior signal.
 
 ### DynamoDB Streams → Lambda vs SQS
 
-- **Streams → Lambda = Change Data Capture.** The DB *write is the event*; a 24 h ordered log; Lambda auto-fires per change, captures *every* write. It's a **stream/log**, not a queue. Use for **reacting to sync writes** (projections, notify devices).
+- **Streams → Lambda = Change Data Capture.** The DB _write is the event_; a 24 h ordered log; Lambda auto-fires per change, captures _every_ write. It's a **stream/log**, not a queue. Use for **reacting to sync writes** (projections, notify devices).
 - **SQS = explicit enqueue** in code; general-purpose; consumed-and-deleted. Use for **non-DB-write events** (analytics) or deferring slow work.
 - → In this app they're **complementary**: SQS for analytics ingestion, Streams for sync side-effects.
 
@@ -86,7 +86,7 @@ The **SNS → SQS fan-out**: one event → SNS topic → (a) SQS analytics queue
 
 - 🚫 **Amazon MSK has no free tier** (~$460–607/mo provisioned; ~$547/mo serverless). **Kinesis** has no free tier either. Don't learn streaming on AWS.
 - ✅ **Local Docker** (you know Docker): **Redpanda** (lightest, Kafka-compatible) or **Apache Kafka** via docker-compose. Real API: partitions, consumer groups, offsets, **replay**.
-- ✅ Managed taste, free: **Aiven free Kafka** ($0/mo) or **Confluent Cloud free tier**. *(Avoid CloudKarafka — discontinued; Upstash Kafka — sunset.)*
+- ✅ Managed taste, free: **Aiven free Kafka** ($0/mo) or **Confluent Cloud free tier**. _(Avoid CloudKarafka — discontinued; Upstash Kafka — sunset.)_
 - 🎯 **Decision matrix to rehearse:** SQS (simple decouple) · SNS (fan-out) · Kinesis/Kafka/MSK (throughput, replay, many consumers, event-sourcing) · EventBridge (routing). Picking + justifying = the Staff system-design test.
 
 ---
@@ -95,15 +95,15 @@ The **SNS → SQS fan-out**: one event → SNS topic → (a) SQS analytics queue
 
 **You keep the FE library.** Client uses **RxDB or Legend-State** (does all the hard offline/sync work — saves FE time). You build the **server side**: two small Lambda handlers the lib calls.
 
-| Lib expects | Lambda + DynamoDB |
-|---|---|
+| Lib expects                                        | Lambda + DynamoDB                                                               |
+| -------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `pull(checkpoint)` → docs changed since checkpoint | **query a GSI** on `(USER#sub, updatedAt > checkpoint)` → docs + new checkpoint |
-| `push(changeRows)` → conflicts | **conditional writes** (LWW); return server-newer docs |
-| deletions | **tombstones** flow through `pull` like any change |
+| `push(changeRows)` → conflicts                     | **conditional writes** (LWW); return server-newer docs                          |
+| deletions                                          | **tombstones** flow through `pull` like any change                              |
 
-- **GSI (Global Secondary Index)** = an auto-maintained second copy of the table sorted by a *different* key (here `updatedAt`), so "what changed since X?" is fast. (The back-of-book index.)
+- **GSI (Global Secondary Index)** = an auto-maintained second copy of the table sorted by a _different_ key (here `updatedAt`), so "what changed since X?" is fast. (The back-of-book index.)
 - **Soft-delete tombstone** = you can't hard-delete (other devices would never learn it's gone); mark `deleted:true`, let peers pull it, then **TTL** auto-purges it (~30 days).
-- **Interview story:** *"I implemented RxDB's pull/push replication against DynamoDB — GSI change-feed + conditional-write conflict detection + tombstones."*
+- **Interview story:** _"I implemented RxDB's pull/push replication against DynamoDB — GSI change-feed + conditional-write conflict detection + tombstones."_
 
 ---
 
@@ -118,42 +118,42 @@ The **SNS → SQS fan-out**: one event → SNS topic → (a) SQS analytics queue
 
 ## Observability split
 
-| Layer | Tool | Cost |
-|---|---|---|
-| **Backend** SRE (Lambda/SQS/Dynamo metrics, SLOs, traces) | **CloudWatch + X-Ray** | Always-Free |
-| **Client** JS errors (stack traces, source maps) | **Sentry** (not CloudWatch RUM — not free) | Free |
-| **Usage** analytics | your SQS→S3→Athena pipeline | ~$0 |
+| Layer                                                     | Tool                                       | Cost        |
+| --------------------------------------------------------- | ------------------------------------------ | ----------- |
+| **Backend** SRE (Lambda/SQS/Dynamo metrics, SLOs, traces) | **CloudWatch + X-Ray**                     | Always-Free |
+| **Client** JS errors (stack traces, source maps)          | **Sentry** (not CloudWatch RUM — not free) | Free        |
+| **Usage** analytics                                       | your SQS→S3→Athena pipeline                | ~$0         |
 
 ---
 
 ## IaC — Pulumi (decided) + Terraform literacy
 
 - **Pulumi (TypeScript)** = fastest for you, real TS, you'll finish. **Decided.**
-- **Terraform** is still more requested in enterprise JDs — but the *concepts* (state, plan/apply, providers, drift, modules) transfer 1:1. → Spend an afternoon on HCL **literacy** so you can speak it; interviews ask concepts, rarely "write HCL live." Match a specific JD if needed.
+- **Terraform** is still more requested in enterprise JDs — but the _concepts_ (state, plan/apply, providers, drift, modules) transfer 1:1. → Spend an afternoon on HCL **literacy** so you can speak it; interviews ask concepts, rarely "write HCL live." Match a specific JD if needed.
 - CI/CD: GitHub Actions → `pulumi up` (you already know CI/CD — just wire the AWS deploy).
 
 ---
 
 ## Local dev — real AWS primary, LocalStack optional
 
-**LocalStack** = a fake AWS in Docker (emulates Lambda/DynamoDB/SQS/SNS/S3). Fast loop, $0, offline, safe; great for CI integration tests. Community (free) covers core services; can subtly diverge from real AWS (esp. IAM). → **For learning + interview fluency, use *real* AWS as primary** (see the real console/IAM/CloudWatch); LocalStack only for fast local/CI tests.
+**LocalStack** = a fake AWS in Docker (emulates Lambda/DynamoDB/SQS/SNS/S3). Fast loop, $0, offline, safe; great for CI integration tests. Community (free) covers core services; can subtly diverge from real AWS (esp. IAM). → **For learning + interview fluency, use _real_ AWS as primary** (see the real console/IAM/CloudWatch); LocalStack only for fast local/CI tests.
 
 ---
 
 ## What to LEARN vs SKIP
 
-| 🟢 Build it here (hands-on core) | 🟡 Concept only (speak it; maybe a local demo) | ⚪ Skip (have it / wrong fit) |
-|---|---|---|
-| **Lambda** (Function URLs, cold starts, event-source mappings) | **Kafka** (local Docker) + queue-vs-log model | FE framework + state (expert) |
-| **DynamoDB** (single-table, GSI, TTL, Streams) | **Kinesis / MSK / EventBridge** decision matrix | **CI/CD** basics (apply to AWS deploy) |
-| **Cognito** (PKCE, OIDC federation, JWT, Hosted UI) | **VPC / NAT / Gateway endpoints** (why serverless skips them) | **Docker** basics (reuse for Kafka/LocalStack) |
-| **SQS + SNS** (fan-out, DLQ, idempotency, visibility timeout) | ~~**DocumentDB / Atlas** doc modeling (optional detour)~~ <!-- SUPERSEDED: MongoDB/DocumentDB DROPPED 2026-06-09; catalog = Neon Postgres + JSONB, talking-point only --> | **Kubernetes** (serverless ≠ K8s → separate project) |
-| **S3 + CloudFront** (OAC — the setup you've never done) | **burn-rate / error-budget** theory | **API Gateway** (use Function URL), **EC2** |
-| **CloudWatch + X-Ray** (SLI/SLO, alarms, dashboards, traces) | **Sentry** wiring for client errors | **QuickSight** (cost), **XState** (optional*) |
-| **Pulumi** (provision all of it as code) | **Terraform** HCL literacy | |
-| **The sync `pull`/`push` backend** | | |
+| 🟢 Build it here (hands-on core)                               | 🟡 Concept only (speak it; maybe a local demo)                                                                                                                            | ⚪ Skip (have it / wrong fit)                        |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| **Lambda** (Function URLs, cold starts, event-source mappings) | **Kafka** (local Docker) + queue-vs-log model                                                                                                                             | FE framework + state (expert)                        |
+| **DynamoDB** (single-table, GSI, TTL, Streams)                 | **Kinesis / MSK / EventBridge** decision matrix                                                                                                                           | **CI/CD** basics (apply to AWS deploy)               |
+| **Cognito** (PKCE, OIDC federation, JWT, Hosted UI)            | **VPC / NAT / Gateway endpoints** (why serverless skips them)                                                                                                             | **Docker** basics (reuse for Kafka/LocalStack)       |
+| **SQS + SNS** (fan-out, DLQ, idempotency, visibility timeout)  | ~~**DocumentDB / Atlas** doc modeling (optional detour)~~ <!-- SUPERSEDED: MongoDB/DocumentDB DROPPED 2026-06-09; catalog = Neon Postgres + JSONB, talking-point only --> | **Kubernetes** (serverless ≠ K8s → separate project) |
+| **S3 + CloudFront** (OAC — the setup you've never done)        | **burn-rate / error-budget** theory                                                                                                                                       | **API Gateway** (use Function URL), **EC2**          |
+| **CloudWatch + X-Ray** (SLI/SLO, alarms, dashboards, traces)   | **Sentry** wiring for client errors                                                                                                                                       | **QuickSight** (cost), **XState** (optional\*)       |
+| **Pulumi** (provision all of it as code)                       | **Terraform** HCL literacy                                                                                                                                                |                                                      |
+| **The sync `pull`/`push` backend**                             |                                                                                                                                                                           |                                                      |
 
-\* *XState: skip for plumbing; optionally model the one game-mode lifecycle (idle→count-in→playing→paused→results) as an explicit FSM for the rigor + interview story. K8s: doesn't fit this serverless app — do a separate containerize-the-Express-app project if you want hands-on.*
+\* _XState: skip for plumbing; optionally model the one game-mode lifecycle (idle→count-in→playing→paused→results) as an explicit FSM for the rigor + interview story. K8s: doesn't fit this serverless app — do a separate containerize-the-Express-app project if you want hands-on._
 
 Everything fits in **this one project** except **Kafka** (local Docker, alongside) and **K8s** (separate).
 
@@ -161,18 +161,18 @@ Everything fits in **this one project** except **Kafka** (local Docker, alongsid
 
 ## Corrected free-tier ceilings (legacy account)
 
-| Service | Free allowance | Type |
-|---|---|---|
-| Lambda (+ Function URL) | 1M req + 400K GB-sec / mo | Always Free |
-| DynamoDB (+ Streams) | 25 GB + 25 WCU + 25 RCU (provisioned) | **Always Free** |
-| SQS | 1M req / mo | Always Free |
-| SNS | 1M req + 1,000 emails / mo | Always Free (perpetual) |
-| Cognito | 10,000 MAU (Lite/Essentials) | Always Free *(pre-2024-11-22 pools: 50K)* |
-| CloudWatch / X-Ray | 10 alarms, 5 GB logs / ~100K traces | Always Free |
-| **CloudFront** | **1 TB egress + 10M req + 2M Functions / mo** | **Always Free, perpetual** |
-| **S3** | 5 GB / 20K GET / 2K PUT | **12-month → expired; ~pennies/mo** |
-| ACM (TLS, us-east-1 for CF) · Athena | certs free · pay-per-scan | Free / ~$0 |
-| **No free tier — avoid for learning** | **MSK** (~$460–607/mo), **Kinesis**, NAT Gateway (~$32/mo), EC2, API Gateway (12-mo), CloudWatch RUM, DocumentDB (~$69/mo) | 💸 |
+| Service                               | Free allowance                                                                                                             | Type                                      |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| Lambda (+ Function URL)               | 1M req + 400K GB-sec / mo                                                                                                  | Always Free                               |
+| DynamoDB (+ Streams)                  | 25 GB + 25 WCU + 25 RCU (provisioned)                                                                                      | **Always Free**                           |
+| SQS                                   | 1M req / mo                                                                                                                | Always Free                               |
+| SNS                                   | 1M req + 1,000 emails / mo                                                                                                 | Always Free (perpetual)                   |
+| Cognito                               | 10,000 MAU (Lite/Essentials)                                                                                               | Always Free _(pre-2024-11-22 pools: 50K)_ |
+| CloudWatch / X-Ray                    | 10 alarms, 5 GB logs / ~100K traces                                                                                        | Always Free                               |
+| **CloudFront**                        | **1 TB egress + 10M req + 2M Functions / mo**                                                                              | **Always Free, perpetual**                |
+| **S3**                                | 5 GB / 20K GET / 2K PUT                                                                                                    | **12-month → expired; ~pennies/mo**       |
+| ACM (TLS, us-east-1 for CF) · Athena  | certs free · pay-per-scan                                                                                                  | Free / ~$0                                |
+| **No free tier — avoid for learning** | **MSK** (~$460–607/mo), **Kinesis**, NAT Gateway (~$32/mo), EC2, API Gateway (12-mo), CloudWatch RUM, DocumentDB (~$69/mo) | 💸                                        |
 
 ---
 
@@ -181,13 +181,13 @@ Everything fits in **this one project** except **Kafka** (local Docker, alongsid
 1. **Lambda + Function URL** — hello-world over HTTPS; cold starts, logs.
 2. **DynamoDB** — single-table; add the `updatedAt` **GSI** + TTL/tombstone.
 3. **Cognito** — user pool (Essentials), Hosted UI + Google, **PKCE**; verify JWT in-handler.
-4. **Wire sync** — `pull`/`push` endpoints (the RxDB/Legend-State protocol). *(Use case A)*
-5. **Pulumi** — port steps 1–4 to IaC; redeploy from code. *(the interview multiplier)*
+4. **Wire sync** — `pull`/`push` endpoints (the RxDB/Legend-State protocol). _(Use case A)_
+5. **Pulumi** — port steps 1–4 to IaC; redeploy from code. _(the interview multiplier)_
 6. **S3 + CloudFront + OAC** — host the FE; fix Function-URL CORS.
-7. **SQS + SNS fan-out + DLQ** — emit on write; drain; idempotency. *(messaging core)*
-8. **S3 + Athena** — batch events to partitioned Parquet; SQL. *(Use case C)*
-9. **CloudWatch + X-Ray** — 2–3 SLOs, dashboard, alarms, a trace, then **burn-rate**. *(Use case B)*
-10. **Kafka (local Docker)** — produce/consume, consumer groups, offsets, replay; feel queue-vs-log. *(interview priority, off-AWS)*
+7. **SQS + SNS fan-out + DLQ** — emit on write; drain; idempotency. _(messaging core)_
+8. **S3 + Athena** — batch events to partitioned Parquet; SQL. _(Use case C)_
+9. **CloudWatch + X-Ray** — 2–3 SLOs, dashboard, alarms, a trace, then **burn-rate**. _(Use case B)_
+10. **Kafka (local Docker)** — produce/consume, consumer groups, offsets, replay; feel queue-vs-log. _(interview priority, off-AWS)_
 11. **(Optional)** ~~Atlas document modeling~~ <!-- SUPERSEDED: MongoDB/Atlas DROPPED 2026-06-09; do not provision Atlas. Catalog = Neon Postgres + JSONB --> · the one XState game-mode FSM.
 
 ---

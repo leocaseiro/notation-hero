@@ -160,11 +160,12 @@ server/src/
 **Supersedes:** the **2026-06-16 Next.js FE ADR** (`2026-06-16-fe-framework-nextjs-adr.md`, NH-185) — leocaseiro chose 2026-06-17 to supersede yesterday's Next.js decision; the OpenNext SSR target + the one-source/two-target build are dropped (pure Vite SPA; Capacitor wraps the static build). **Decision recorded 2026-06-18 (PROD-1):** Next.js is no longer an option. A Next.js front-end is not a portfolio piece leocaseiro needs (he already has that experience), and Next.js as front-end-only is not useful; making its SSR fit the AWS perpetual-free-tier is a battle not worth fighting. The visible SPA UI plus the AWS depth is the portfolio signal — dropping SSR needs no replacement.
 
 ### ARCH-OFFLINE-1 — Plain Dexie + insert-only outbox, syncs via the API
-**Decision:** offline store = **plain Dexie** (`dexie` + `dexie-react-hooks` + `ulid`) with a **hand-rolled insert-outbox + blob queue** — **no sync framework** (RxDB / Replicache / Dexie Cloud). Offline-first; the outbox pushes to the NestJS API (`POST /api/sync/batch`), which persists per-user data to **DynamoDB** and serves the catalog from **Neon**. Dexie talks only to *our API*, never to Neon/Dynamo directly.
+
+**Decision:** offline store = **plain Dexie** (`dexie` + `dexie-react-hooks` + `ulid`) with a **hand-rolled insert-outbox + blob queue** — **no sync framework** (RxDB / Replicache / Dexie Cloud). Offline-first; the outbox pushes to the NestJS API (`POST /api/sync/batch`), which persists per-user data to **DynamoDB** and serves the catalog from **Neon**. Dexie talks only to _our API_, never to Neon/Dynamo directly.
 **Load-bearing constraint (makes it free AND conflict-free):** **offline writes are INSERT-ONLY; updates & deletes are online-first; the client mints its own ULID PKs; settings are the one exception → last-write-wins by `updated_at`.** A row created offline is immutable until it syncs, the server is authoritative, and re-sends are idempotent upserts by client ULID — so **merge conflicts are avoided by the insert-only rule, not made impossible** — settings are the one accepted exception (last-write-wins, which discards the older concurrent write), and offline edits of shared rows are deferred precisely because they would bring real conflicts back (this is why the old "push conflict resolution" question is **N/A for v1's write model**).
-**Why plain Dexie (not RxDB):** the only thing a sync framework buys here — conflict resolution — is *designed away* by the constraint above, and RxDB's fast storages (OPFS/SQLite) are paid (€99/mo) while its free Dexie/IndexedDB tier is what we'd hand-roll anyway. Plain Dexie is free, has a real local query engine, and doesn't fight the fixed NestJS/oRPC/Neon/S3 stack. **Rejected:** RxDB (premium-storage paywall + a sync engine we don't need), Legend-State (sync still `@beta` after ~2 yrs).
+**Why plain Dexie (not RxDB):** the only thing a sync framework buys here — conflict resolution — is _designed away_ by the constraint above, and RxDB's fast storages (OPFS/SQLite) are paid (€99/mo) while its free Dexie/IndexedDB tier is what we'd hand-roll anyway. Plain Dexie is free, has a real local query engine, and doesn't fight the fixed NestJS/oRPC/Neon/S3 stack. **Rejected:** RxDB (premium-storage paywall + a sync engine we don't need), Legend-State (sync still `@beta` after ~2 yrs).
 **Sync topology:** curated catalog (Neon) → pull-to-cache, read-only mirror, disposable (re-pull if evicted); user-created notation/source (Neon, `origin='user-upload'`, `listable=false`) → insert-outbox, push when online; per-user scores (DynamoDB) → append-only outbox; settings → LWW; binary files (S3) → Capacitor Filesystem (offline, eviction-safe) → presigned S3 PUT → patch `source.s3_key`.
-**iOS durability:** Capacitor's WKWebView ≠ Safari, so 7-day ITP eviction doesn't apply; the real risk is **storage-pressure LRU**, and `navigator.storage.persist()` is unreliable on iOS. So **local = cache**: curated content is disposable (re-pull); the durable risk is *user-created-but-unsynced* rows → **sync eagerly** + keep blobs in **Capacitor Filesystem** (native, eviction-safe). Optional v1.x hardening: mirror the outbox to Capacitor Preferences/Filesystem — ship without it, add only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (no separate per-user durability doc).
+**iOS durability:** Capacitor's WKWebView ≠ Safari, so 7-day ITP eviction doesn't apply; the real risk is **storage-pressure LRU**, and `navigator.storage.persist()` is unreliable on iOS. So **local = cache**: curated content is disposable (re-pull); the durable risk is _user-created-but-unsynced_ rows → **sync eagerly** + keep blobs in **Capacitor Filesystem** (native, eviction-safe). Optional v1.x hardening: mirror the outbox to Capacitor Preferences/Filesystem — ship without it, add only if field data shows eviction-before-sync. **This ADR owns offline-write durability** (no separate per-user durability doc).
 **4 gating schema/server changes (REQUIRED for the free Dexie path; formalized as companion R13-R16, fed to the parallel schema redesign):** (1) keep **client-minted `text` ULID PKs** (no server `uuid DEFAULT`/`bigint`); (2) a transactional **`POST /sync/batch`** (idempotent by `batchId`; **behind the Cognito guard + `can()` self-scope — each upsert limited to rows whose `created_by` = the caller's `sub`, no cross-user writes; per-user rate-limits → M1**) so an offline-created graph commits all-or-nothing; (3) **`source.upload_status`** (`pending_blob`｜`ready`) + relaxed `source_one_of` CHECK so a file-backed upload syncs first and the blob backfills; (4) **`DEFERRABLE INITIALLY IMMEDIATE`** on cross-row FKs so one batch txn commits a whole graph regardless of intra-batch order/cycles.
 **Flip conditions (when a framework WOULD be warranted):** drop insert-only → allow true offline edits of shared rows (real conflicts → TanStack DB / Zero / Replicache); real-time multi-device collaboration becomes a goal; the hand-rolled outbox sprawls past a few hundred lines / sprouts edge-case bugs; or Dexie stalls (no release in ~12+ months).
 **Evidence:** offline-first spike (`docs/spikes/2026-06-17-offline-first-sync.md`). **v1 wiring scope:** Dexie is **installed-but-stubbed at v1** — behind a client repository seam backed by direct online API calls; the insert-outbox, `POST /sync/batch`, mirror tables + blob queue are wired at **M1** (v1 = one admin, one device, online CMS). Schema stays offline-ready via companion R13-R16.
@@ -195,6 +196,7 @@ server/src/
 **Why:** the forward-compat goal wants authorization as a domain policy so UGC is _additive_ (extend the policy: `owner can edit own draft`) instead of unpicking hardcoded guards. Fits the hexagon (domain policy in core).
 
 ### ARCH-OWN-1 — Add `created_by` (ownership-by-identity seam)
+
 **Decision:** add a **`created_by`** field (the Cognito `sub`) to the catalog item. v1 admin items set it to the admin's sub; later UGC items set the uploader's sub → v1-vs-UGC differ only by **column values**, not schema. Stated abstractly in the companion data-layer-requirements doc (the parallel schema redesign satisfies it under whatever name).
 **Why:** the schema audit found `created_by` **does not exist** today (only `source` provenance-by-category + `status`). This is the cheap UGC ownership seam the north-star asks for.
 **Backfill (v1 migration):** existing curated rows get `created_by = <admin sub>` in the **same** migration that adds the column (an `UPDATE` before any NOT-NULL-dependent or owner-based policy ships); NULL is reserved for legacy-unowned rows, which the `can()` policy treats as admin-only-editable.
@@ -263,29 +265,29 @@ worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
 
 ## 8. Decision summary
 
-| ID | Decision | Supersedes / Reaffirms |
-|---|---|---|
-| ARCH-MONO-1 | Drop Nx → plain pnpm workspaces | supersedes `L1`, `L2-tags`, `L7-set-shas` |
-| ARCH-PM-1 | Keep pnpm (bun stays dropped) | reaffirms `PM-1`, `F6-bun` |
-| ARCH-LAYOUT-1 | `client/ server/ shared/ infra/` | supersedes Nx `apps/core/adapters/infra` |
-| ARCH-HEX-1 | Hexagon = folders in one Nest app | supersedes `FOLD-hex` |
-| ARCH-GUARD-1 | Keep depcruise (folder-level); drop Nx tag rule | supersedes `H8`-`H14` paths, `STRUCT-sibling` |
-| ARCH-NAME-1 | NestJS-native filenames (relax suffix ADR) | supersedes `NAME-suffix` |
-| ARCH-BUILD-1 | pnpm runner + SWC compiler everywhere; bundler by target | new |
-| ARCH-LAMBDA-1 | One API Lambda now; workers via createApplicationContext | implements north-star |
-| ARCH-FMT-1 | Server CJS / client ESM | new |
-| ARCH-EDGE-1 | One CloudFront, two origins (S3 + Lambda) | new |
-| ARCH-CONTRACT-1 | oRPC contract; ditch kanel-zod | new |
-| ARCH-ORM-1 | Drizzle | reaffirms `DS-1` |
-| ARCH-FE-1 | Vite + TanStack Router + Query | **supersedes 2026-06-16 Next.js ADR (NH-185)** |
-| ARCH-OFFLINE-1 | Plain Dexie + insert-only outbox, sync via API | new |
-| ARCH-MOBILE-1 | Plain Capacitor (no Ionic) | new |
-| ARCH-AUTH-1 | Cognito (Pulumi) + Google federation v1 | reaffirms Cognito-not-Amplify |
-| ARCH-ROLE-1 | Roles via Cognito groups; one pool | new |
-| ARCH-AUTHZ-1 | `can(user,item,action)` policy port | new |
-| ARCH-OWN-1 | Add `created_by` ownership seam | extends catalog schema |
-| ARCH-SEC-1 | JWT security model | new |
-| ARCH-SEC-2 | CSP baseline (CloudFront RHP + native `<meta>`) | new |
+| ID              | Decision                                                 | Supersedes / Reaffirms                         |
+| --------------- | -------------------------------------------------------- | ---------------------------------------------- |
+| ARCH-MONO-1     | Drop Nx → plain pnpm workspaces                          | supersedes `L1`, `L2-tags`, `L7-set-shas`      |
+| ARCH-PM-1       | Keep pnpm (bun stays dropped)                            | reaffirms `PM-1`, `F6-bun`                     |
+| ARCH-LAYOUT-1   | `client/ server/ shared/ infra/`                         | supersedes Nx `apps/core/adapters/infra`       |
+| ARCH-HEX-1      | Hexagon = folders in one Nest app                        | supersedes `FOLD-hex`                          |
+| ARCH-GUARD-1    | Keep depcruise (folder-level); drop Nx tag rule          | supersedes `H8`-`H14` paths, `STRUCT-sibling`  |
+| ARCH-NAME-1     | NestJS-native filenames (relax suffix ADR)               | supersedes `NAME-suffix`                       |
+| ARCH-BUILD-1    | pnpm runner + SWC compiler everywhere; bundler by target | new                                            |
+| ARCH-LAMBDA-1   | One API Lambda now; workers via createApplicationContext | implements north-star                          |
+| ARCH-FMT-1      | Server CJS / client ESM                                  | new                                            |
+| ARCH-EDGE-1     | One CloudFront, two origins (S3 + Lambda)                | new                                            |
+| ARCH-CONTRACT-1 | oRPC contract; ditch kanel-zod                           | new                                            |
+| ARCH-ORM-1      | Drizzle                                                  | reaffirms `DS-1`                               |
+| ARCH-FE-1       | Vite + TanStack Router + Query                           | **supersedes 2026-06-16 Next.js ADR (NH-185)** |
+| ARCH-OFFLINE-1  | Plain Dexie + insert-only outbox, sync via API           | new                                            |
+| ARCH-MOBILE-1   | Plain Capacitor (no Ionic)                               | new                                            |
+| ARCH-AUTH-1     | Cognito (Pulumi) + Google federation v1                  | reaffirms Cognito-not-Amplify                  |
+| ARCH-ROLE-1     | Roles via Cognito groups; one pool                       | new                                            |
+| ARCH-AUTHZ-1    | `can(user,item,action)` policy port                      | new                                            |
+| ARCH-OWN-1      | Add `created_by` ownership seam                          | extends catalog schema                         |
+| ARCH-SEC-1      | JWT security model                                       | new                                            |
+| ARCH-SEC-2      | CSP baseline (CloudFront RHP + native `<meta>`)          | new                                            |
 
 ---
 
@@ -331,7 +333,7 @@ Until then: ✅ decided · ⏳ no repo code/config changed.
 
 A couple of items are intentionally scoped out of v1 — recorded here so they're tracked, not overlooked:
 
-- **DynamoDB single-table key design → deferred to M1.** v1 (the admin catalog CMS) stores no per-user data — scores/settings/sync are M1 features — so no DynamoDB table is provisioned in v1. This is **not a v1 refactor risk:** the per-user store slots in as an *additive* adapter behind a new repository port (ARCH-HEX-1); nothing is provisioned yet (so "a partition key can't change in place" doesn't bite); and the one cross-store seam — stable, client-mintable catalog IDs (R13) — is already locked, so a future `SCORE#<songId>` reference is safe. **Guardrail:** lock the key schema *before* provisioning at M1 — starter sketch: PK=`USER#<sub>`; append-only `SCORE#<songId>#<ulid>`; `SONGSTAT#` rollup via DynamoDB Streams; `GSI1` for pull-since. Tracked in NH-120.
+- **DynamoDB single-table key design → deferred to M1.** v1 (the admin catalog CMS) stores no per-user data — scores/settings/sync are M1 features — so no DynamoDB table is provisioned in v1. This is **not a v1 refactor risk:** the per-user store slots in as an _additive_ adapter behind a new repository port (ARCH-HEX-1); nothing is provisioned yet (so "a partition key can't change in place" doesn't bite); and the one cross-store seam — stable, client-mintable catalog IDs (R13) — is already locked, so a future `SCORE#<songId>` reference is safe. **Guardrail:** lock the key schema _before_ provisioning at M1 — starter sketch: PK=`USER#<sub>`; append-only `SCORE#<songId>#<ulid>`; `SONGSTAT#` rollup via DynamoDB Streams; `GSI1` for pull-since. Tracked in NH-120.
 - **CSP × AlphaTab WASM — resolved 2026-06-18.** AlphaTab ships **no** WebAssembly build (verified in the local source `~/Sites/alphaTab`: no `.wasm` files, no `WebAssembly`/`wasm` references), so `script-src` needs **no** `wasm-unsafe-eval` (ARCH-SEC-2, flag a). Re-confirm only if AlphaTab is later upgraded to a WASM build.
 
 The offline-sync design — conflict handling (none, by the insert-only constraint), un-synced-write durability, and v1 wiring — is **decided in `ARCH-OFFLINE-1`**, not open. The locked decisions + these deferrals feed the implementation-planning stage and the parallel schema/data-layer redesign.

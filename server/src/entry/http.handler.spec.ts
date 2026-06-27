@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
-import type { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 
 /** Minimal API Gateway v2.0 event — the payload shape a Lambda Function URL emits. */
 function event(method: string, path: string): APIGatewayProxyEventV2 {

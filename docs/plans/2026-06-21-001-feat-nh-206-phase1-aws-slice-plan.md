@@ -1,5 +1,5 @@
 ---
-title: "feat: NH-206 Phase 1 — deployable AWS slice (About page end-to-end)"
+title: 'feat: NH-206 Phase 1 — deployable AWS slice (About page end-to-end)'
 date: 2026-06-21
 type: feat
 status: ready
@@ -290,7 +290,7 @@ with the Function URL locked to CloudFront.
   origin-request policy `AllViewerExceptHostHeader` (id `b689b0a8-53d0-40ab-baf2-68738e2966ac`).
   Upload `client/dist` (KTD-5). Add **two** `aws.lambda.Permission`s (`lambda:InvokeFunctionUrl`
 
-* `lambda:InvokeFunction`) for `cloudfront.amazonaws.com` pinned to the distribution ARN. OAC
+- `lambda:InvokeFunction`) for `cloudfront.amazonaws.com` pinned to the distribution ARN. OAC
   strings: origin types `s3`/`lambda`, `signingBehavior: always`, `signingProtocol: sigv4`. S3
   origin uses the **REST** endpoint; Lambda origin HTTPS-only. **No CloudFront pricing plan**
   (stay pay-as-you-go — KTD-7). Pulumi ordering: OAC + FunctionUrl → distribution →

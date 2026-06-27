@@ -9,7 +9,7 @@
 
 ## TL;DR
 
-In the drum-tutor-clone phase, Leo proposed a **"song search by reference"** feature: instead of hosting song files, a catalog entry would store a **`{source + id}`** pair (e.g. `source = "songsterr"`, `id = 12345`) that **points at an external tab source** (Songsterr, Ultimate Guitar, …). His words: _"we could use the same approach from tablatures which searchs songs via songsterr api, ultimate guitar and so on, and perhaps save an id for each song."_
+In the drum-tutor-clone phase, Leo proposed a **"song search by reference"** feature: instead of hosting song files, a catalog entry would store a **`{source + id}`** pair (e.g. `source = "songsterr"`, `id = 12345`) that **points at an external tab source** (Songsterr, Ultimate Guitar, …). His words: _"we could use the same approach from tablatures which searches songs via songsterr api, ultimate guitar and so on, and perhaps save an id for each song."_
 
 The plan-side reasoning landed on four durable points:
 
@@ -60,7 +60,7 @@ So in the drum-tutor-clone architecture, this feature was the **first thing that
 
 Leo pointed at an existing open-source project that already does exactly this:
 
-> _"the same approach from tablatures which searchs songs via songsterr api, ultimate guitar and so on …"_
+> _"the same approach from tablatures which searches songs via songsterr api, ultimate guitar and so on …"_
 
 Repos (cloned locally at the time):
 
@@ -110,13 +110,13 @@ And in the open-decisions framing it was never on the MVP critical path — the 
 
 This prior art is **NOT** the catalog work happening now. They are two different things:
 
-|                     | This prior art (catalog-by-reference)                       | Current Notation Hero catalog                              |
-| ------------------- | ------------------------------------------------------------- | ------------------------------------------------------------ |
-| **What it indexes** | third-party external sources (Songsterr/UG) by `{source, id}` | first-party / owned content (the Playable model)             |
+|                     | This prior art (catalog-by-reference)                         | Current Notation Hero catalog                              |
+| ------------------- | ------------------------------------------------------------- | ---------------------------------------------------------- |
+| **What it indexes** | third-party external sources (Songsterr/UG) by `{source, id}` | first-party / owned content (the Playable model)           |
 | **Storage**         | a reference; resolve via proxy at play time                   | Neon Postgres (catalog) + DynamoDB (per-user)              |
 | **Search purpose**  | _import_ a song from an external tab site                     | _find a piece to play_ within owned catalog (find-a-piece) |
-| **Legal posture**   | ToS / scraping gray area                                      | first-party, no third-party ToS exposure                     |
-| **Status**          | deferred nice-to-have, never built                            | active, first real feature                                   |
+| **Legal posture**   | ToS / scraping gray area                                      | first-party, no third-party ToS exposure                   |
+| **Status**          | deferred nice-to-have, never built                            | active, first real feature                                 |
 
 If external-source import is ever revived, it should be modeled as an **import/reference layer that feeds INTO** the current catalog (an external `{source,id}` becomes one possible backing of a Playable), not as a replacement for it.
 
@@ -140,7 +140,7 @@ All from `~/.claude/projects/*drum-tutor-clone*/**/*.jsonl` (file `c9615811-444a
 
 **Leo's original request (user message):**
 
-> _"Same for searching songs, we could use the same approach from tablatures which searchs songs via songsterr api, ultimate guitar and so on, and perhaps save an id for each song._
+> _"Same for searching songs, we could use the same approach from tablatures which searches songs via songsterr api, ultimate guitar and so on, and perhaps save an id for each song._
 > `https://github.com/tablatures/tablatures-api/blob/main/api/services/sources/songsterr_source.py`
 > `https://github.com/tablatures/tablatures-api/blob/main/api/services/sources/ultimate_guitar_source.py`
 > _Just in case you need to figure out how the FE uses, I have just cloned them here: /Users/leocaseiro/Sites/tablatures and /Users/leocaseiro/Sites/tablatures-api"_

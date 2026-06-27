@@ -17,59 +17,55 @@
 module.exports = {
   forbidden: [
     {
-      name: "core-purity",
+      name: 'core-purity',
       comment:
-        "server/src/core is the framework-free domain. It may import ONLY Node builtins, other " +
-        "core modules, and the explicit allow-list (zod). Anything else — @nestjs, adapters, " +
-        "@aws-sdk, @pulumi, react, drizzle, any other package — is an error. FAIL-CLOSED: the " +
-        "`to` is an allow-list (pathNot keeps own-core + zod; dependencyTypesNot keeps Node " +
-        "builtins), so any unlisted import matches and errors by default. " +
-        "tooling/check-core-purity-canary.sh proves it fires.",
-      severity: "error",
-      from: { path: "^server/src/core/" },
+        'server/src/core is the framework-free domain. It may import ONLY Node builtins, other ' +
+        'core modules, and the explicit allow-list (zod). Anything else — @nestjs, adapters, ' +
+        '@aws-sdk, @pulumi, react, drizzle, any other package — is an error. FAIL-CLOSED: the ' +
+        '`to` is an allow-list (pathNot keeps own-core + zod; dependencyTypesNot keeps Node ' +
+        'builtins), so any unlisted import matches and errors by default. ' +
+        'tooling/check-core-purity-canary.sh proves it fires.',
+      severity: 'error',
+      from: { path: '^server/src/core/' },
       to: {
-        pathNot: ["^server/src/core/", "node_modules/zod/"],
-        dependencyTypesNot: ["core"],
+        pathNot: ['^server/src/core/', 'node_modules/zod/'],
+        dependencyTypesNot: ['core'],
       },
     },
     {
-      name: "no-adapters-to-modules",
+      name: 'no-adapters-to-modules',
       comment:
-        "adapters implement ports against core; they may import core + adapters, but never " +
+        'adapters implement ports against core; they may import core + adapters, but never ' +
         "modules (the Nest wiring) — that would invert the hexagon's dependency direction.",
-      severity: "error",
-      from: { path: "^server/src/adapters/" },
-      to: { path: "^server/src/modules/" },
+      severity: 'error',
+      from: { path: '^server/src/adapters/' },
+      to: { path: '^server/src/modules/' },
     },
     {
-      name: "no-circular",
-      comment: "Cyclic dependencies are forbidden.",
-      severity: "error",
+      name: 'no-circular',
+      comment: 'Cyclic dependencies are forbidden.',
+      severity: 'error',
       from: {},
       to: { circular: true },
     },
     {
-      name: "no-orphans",
-      comment: "Non-test modules should be reachable from an entry point.",
-      severity: "error",
+      name: 'no-orphans',
+      comment: 'Non-test modules should be reachable from an entry point.',
+      severity: 'error',
       from: {
         orphan: true,
-        pathNot: [
-          "\\.(test|spec)\\.(ts|tsx)$",
-          "\\.stories\\.(ts|tsx)$",
-          "^server/src/main\\.ts$",
-        ],
+        pathNot: ['\\.(test|spec)\\.(ts|tsx)$', '\\.stories\\.(ts|tsx)$', '^server/src/main\\.ts$'],
       },
       to: {},
     },
   ],
   options: {
     tsPreCompilationDeps: true,
-    doNotFollow: { path: "node_modules" },
-    exclude: { path: "(^|/)dist/" },
+    doNotFollow: { path: 'node_modules' },
+    exclude: { path: '(^|/)dist/' },
     enhancedResolveOptions: {
-      exportsFields: ["exports"],
-      conditionNames: ["import", "require", "node", "default"],
+      exportsFields: ['exports'],
+      conditionNames: ['import', 'require', 'node', 'default'],
     },
   },
 };

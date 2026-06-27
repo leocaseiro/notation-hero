@@ -1,0 +1,14 @@
+default: true
+# -- Rules mirrored from base-skill --
+MD013: false # line-length: Prettier owns prose wrapping
+MD024: false # no-duplicate-heading: used legitimately in ADRs / decision docs
+MD033: false # no-inline-html: HTML is used in docs (badges, details, etc.)
+MD036: false # no-emphasis-as-heading: emphasis-only paragraphs are intentional
+MD040: false # fenced-code-language: many legacy snippets lack lang specifiers
+MD041: false # first-line-heading: many docs start with frontmatter / prose
+MD051: false # link-fragments: false positives on heading anchors
+# -- Additional rules disabled for this repo (beyond base-skill) --
+MD025: false # single-title: HANDOFF/changelog-style docs use multiple H1 headings intentionally
+MD028: false # no-blanks-blockquote: blank lines inside blockquotes used deliberately for readability in many docs (22 violations, not auto-fixable)
+MD046: false # code-block-style: false positive inside mermaid diagrams with `end` keyword
+MD060: false # table-column-style: new in markdownlint v0.40, not in base-skill baseline; 51 violations across legacy docs (separator style, not auto-fixable)

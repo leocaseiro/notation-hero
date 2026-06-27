@@ -89,34 +89,39 @@ From a **clean** worktree (no `nx.json`, no `nx` devDep, no `allowBuilds:` block
 - [ ] **(Optional) Confirm the real flag surface before running** (the `--plugins=skip` flag from earlier drafts is NOT a documented `nx init` flag in Nx 22.x and may be ignored or prompt — dropped). Run: `cd "$ROOT" && pnpm dlx nx@22.7.5 init --help 2>&1 | head -40`
       **Expected:** prints the supported flags (`--interactive`, `--nxCloud`, `--useDotNxInstallation`, …). Do not pass any flag not listed here.
 - [ ] **(a) Run nx init with deterministic, documented flags only.** Run:
+
   ```bash
   cd "$ROOT" && NX_ADD_PLUGINS=false NX_VERSION=22.7.5 \
   pnpm exec nx init --interactive=false --nxCloud=false
   ```
+
   **Expected:** exits 0; prints an Nx init summary. From clean this CREATES `nx.json`, adds the `nx@22.7.5` devDep to root `package.json`, writes the malformed `allowBuilds: nx: set this to true or false` block into `pnpm-workspace.yaml`, updates `.gitignore` (`.nx/` cache entries), and updates the lockfile. `NX_ADD_PLUGINS=false` is the supported way to skip auto-installing inference plugins; we hand-author `nx.json` wholesale in Task 2 regardless, so any init `targetDefaults` drift is overwritten there.
+
 - [ ] **(b) Inspect for unwanted generated files.** Run: `cd "$ROOT" && git status --short`
       **Expected:** new `nx.json`, modified `pnpm-workspace.yaml` / `package.json` / `.gitignore` / `pnpm-lock.yaml`, and possibly new AI-agent files (e.g. a generated `CLAUDE.md`, `.cursor/`, `.github/copilot-instructions.md`). **Discard any AI-agent files nx created** (they are out of scope; the real `AGENTS.md` is Task 9). For each unexpected new file `X`: `git checkout -- X` (if tracked) or `rm -rf X` (if untracked). Do NOT delete `AGENTS.md` if one already exists from the user's untracked fragment — leave that for Task 9.
 - [ ] **(c) Replace the malformed `allowBuilds:` block in `pnpm-workspace.yaml`.** First guard against a stale shadow key, then apply the replacement.
   - **Guard: confirm no stale `onlyBuiltDependencies` lingers in `package.json`** (older pnpm read it there; a stale key would shadow the workspace one). Run: `cd "$ROOT" && node -e "const p=require('./package.json');console.log('onlyBuiltDependencies' in p?'FAIL-root':'ok', p.pnpm?('pnpm-block-present'):'no-pnpm-block')"`
     **Expected:** `ok no-pnpm-block` (this is a guard, not a change). If it reports `FAIL-root` or a `pnpm` block, remove that conflicting key so `pnpm-workspace.yaml` is the single source of truth.
   - **Apply edit.** `nx init` writes `allowBuilds:` with placeholder `set this to true or false` values. pnpm 11.5.2 reads this `allowBuilds` map (it IGNORES `onlyBuiltDependencies` — verified: a fresh install re-injects the placeholder + errors even when `onlyBuiltDependencies` lists the dep), so set the build-script deps to `true`. The file should read exactly:
+
     ```yaml
     # pnpm workspace globs — mirrors the npm-style `workspaces` field that used
     # to live in the root package.json. Source of truth for pnpm.
     #
     # `core/`, `adapters/`, `apps/` hold real Nx packages as of Wave 1 (DACI Step 1).
     packages:
-      - "core/*"
-      - "adapters/*"
-      - "apps/*"
-      - "infra"
+      - 'core/*'
+      - 'adapters/*'
+      - 'apps/*'
+      - 'infra'
     allowBuilds:
       # pnpm 11.5.2 uses allowBuilds (NOT onlyBuiltDependencies, which it ignores).
       # @swc/core arrives transitively with @nx/js in Task 3; pre-approving it here
       # is harmless and keeps the build-script allowlist complete for a fresh install.
-      "@swc/core": true
+      '@swc/core': true
       nx: true
     ```
+
 - [ ] **(d) Verify install now succeeds.** Run: `cd "$ROOT" && pnpm install`
       **Expected:** completes with no `ERR_PNPM_IGNORED_BUILDS`. (Lockfile may update further — that is fine, it is committed in this same task.)
 - [ ] **(e) Verify nx resolves.** Run: `cd "$ROOT" && pnpm exec nx --version`
@@ -150,6 +155,7 @@ Task 1 created `nx.json` via `nx init` (with whatever default `targetDefaults` i
 **Files:** Modify `nx.json`.
 
 - [ ] **Hand-author the authoritative `nx.json`.** Overwrite `nx.json` to exactly:
+
   ```jsonc
   {
     "$schema": "./node_modules/nx/schemas/nx-schema.json",
@@ -195,6 +201,7 @@ Task 1 created `nx.json` via `nx init` (with whatever default `targetDefaults` i
     },
   }
   ```
+
   > `defaultBase: master` MUST survive. `dependsOn: ["^build"]` builds dependency packages first so cross-package types resolve.
   >
   > **`typecheck` declares NO separate `outputs`** — `tsc -b`'s incremental buildinfo lands at `dist/.tsbuildinfo` (each package's `tsBuildInfoFile`, Tasks 4/6), which is already inside the `build` target's declared `{projectRoot}/dist` output. A separate `typecheck.outputs: ["{projectRoot}/*.tsbuildinfo"]` entry would point at a path that never exists (the buildinfo is in `dist/`, not the project root), silently caching an empty output set and losing incremental state. Since `typecheck` and `build` share the same `tsc -b` invocation and `build` already owns `{projectRoot}/dist`, `typecheck` needs no `outputs` of its own.
@@ -202,6 +209,7 @@ Task 1 created `nx.json` via `nx init` (with whatever default `targetDefaults` i
   > **`lint` does NOT set `options.env` in `targetDefaults`** — Nx's `nx:run-script` executor (which runs the inferred `package.json` `lint` script) does NOT honor a `targetDefaults.lint.options.env` block, so the legacy-eslintrc toggle MUST live in the package's own `lint` script instead (`ESLINT_USE_FLAT_CONFIG=false eslint …`, set per-package in Tasks 4/5/6). Putting it here would be silently ignored and ESLint 9 would fail looking for a flat config. (reviewer note: earlier drafts placed `ESLINT_USE_FLAT_CONFIG=false` in `targetDefaults.lint.options.env`; the Nx-feasibility + lint-env critics confirmed run-script ignores it, so the env moves into each package's lint script.)
   >
   > `depcheck` is listed so the pipeline graph knows it exists, but it actually runs as the root script (Task 8) — its `targetDefaults` entry is cosmetic/harmless.
+
 - [ ] **Verify the five targets are covered.** Run: `cd "$ROOT" && pnpm exec node -e "const j=require('./nx.json');console.log(Object.keys(j.targetDefaults).sort().join(','))"`
       **Expected:** `build,depcheck,lint,test,typecheck`
 - [ ] **Verify defaultBase preserved.** Run: `cd "$ROOT" && pnpm exec node -e "console.log(require('./nx.json').defaultBase)"`
@@ -232,10 +240,13 @@ The four packages are scaffolded with `@nx/js` (libraries). We install `@nx/esli
 **Files:** Modify `package.json` (devDeps), `pnpm-lock.yaml`.
 
 - [ ] **Add plugins to the workspace root.** Run:
+
   ```bash
   cd "$ROOT" && pnpm add -D -w @nx/js@22.7.5 @nx/eslint@22.7.5
   ```
+
   **Expected:** both land in root `package.json` `devDependencies` at exactly `22.7.5`; lockfile updates. The `-w` flag is required to add to the workspace root.
+
 - [ ] **Verify versions match nx.** Run: `cd "$ROOT" && pnpm exec node -e "const d=require('./package.json').devDependencies;console.log(d.nx, d['@nx/js'], d['@nx/eslint'])"`
       **Expected:** `22.7.5 22.7.5 22.7.5`
 - [ ] **Confirm the real `@nx/js:library` flag surface before the first generate** (the plugin is only installed now, so the flag set could not be schema-checked at plan-authoring time). Run: `cd "$ROOT" && pnpm exec nx g @nx/js:library --help 2>&1 | head -60`
@@ -263,6 +274,7 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
 **Files:** Create the `core/scoring/*` tree; remove `core/.gitkeep`.
 
 - [ ] **Generate the library.** Run:
+
   ```bash
   cd "$ROOT" && pnpm exec nx g @nx/js:library \
     --directory=core/scoring \
@@ -275,10 +287,13 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     --useProjectJson=true \
     --no-interactive
   ```
+
   **Expected:** creates `core/scoring/{package.json,project.json,tsconfig.json,tsconfig.lib.json,src/index.ts,src/lib/*}` and prints `>  NX  Generating @nx/js:library`. `--linter=none` means NO `eslint.config.*` flat file is written (the package lints via the legacy root `.eslintrc.cjs`). May update root `package.json`/lockfile — fine.
+
 - [ ] **Verify the tag landed in project.json.** Run: `cd "$ROOT" && pnpm exec node -e "console.log(JSON.stringify(require('./core/scoring/project.json').tags))"`
       **Expected:** `["type:core"]` (if it prints `undefined`, `--useProjectJson` was dropped/renamed — re-run the generator with the correct flag from the Task 3 `--help` probe).
 - [ ] **Overwrite `core/scoring/package.json`** to the minimal shape (replace any generated scripts). Note the `lint` script carries `ESLINT_USE_FLAT_CONFIG=false` **inline** (the legacy-eslintrc toggle lives here, not in `nx.json`):
+
   ```json
   {
     "name": "@notation-hero/scoring",
@@ -295,7 +310,9 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     }
   }
   ```
+
 - [ ] **Overwrite `core/scoring/tsconfig.json`** to:
+
   ```jsonc
   {
     "extends": "../../tsconfig.base.json",
@@ -313,9 +330,11 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     "include": ["src/**/*.ts"],
   }
   ```
+
   > `composite: true` is required for both project references and `isolatedDeclarations`; `noEmit: false` overrides the base's `noEmit: true`. `isolatedDeclarations` means **every export needs an explicit return type** (the code below complies).
   >
   > **`allowImportingTsExtensions: true` + `rewriteRelativeImportExtensions: true` are mandatory.** Every relative import below uses an explicit `.ts` extension (e.g. `from "./accuracy.ts"`) so that the `node --test` runtime can resolve the file (Node strips the type but needs the real path). Without `allowImportingTsExtensions`, `tsc -b` fails with `error TS5097: An import path can only end with a '.ts' extension when 'allowImportingTsExtensions' is enabled` and exits 1 — breaking `typecheck`/`build` even though `node --test` would pass (an internal inconsistency). With BOTH flags set, `tsc -b` exits 0 AND rewrites `.ts`→`.js` in the emitted `dist/` output, so the `.ts` imports work at both compile and runtime. (reviewer note: earlier drafts set `noEmit: false` without these two flags; verified against tsc 5.9.3 that the build fails TS5097 — both flags are required, not optional.)
+
 - [ ] **Delete the generator's transient `tsconfig.lib.json` + `src/lib/` sample** (we use a single `tsconfig.json`): `cd "$ROOT" && rm -f core/scoring/tsconfig.lib.json && rm -rf core/scoring/src/lib`.
 - [ ] **Write `core/scoring/src/accuracy.ts`:**
 
@@ -326,7 +345,7 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
    */
 
   /** Verdict for a single struck note relative to its target beat. */
-  export type HitVerdict = "perfect" | "good" | "late" | "early" | "miss";
+  export type HitVerdict = 'perfect' | 'good' | 'late' | 'early' | 'miss';
 
   /** Tolerance windows (milliseconds) classifying a hit by timing error. */
   export interface TimingWindows {
@@ -352,15 +371,15 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
   ): HitVerdict {
     const magnitude: number = Math.abs(errorMs);
     if (magnitude > windows.hittableMs) {
-      return "miss";
+      return 'miss';
     }
     if (magnitude <= windows.perfectMs) {
-      return "perfect";
+      return 'perfect';
     }
     if (magnitude <= windows.goodMs) {
-      return "good";
+      return 'good';
     }
-    return errorMs < 0 ? "early" : "late";
+    return errorMs < 0 ? 'early' : 'late';
   }
 
   /** Aggregate accuracy result for a practiced passage. */
@@ -384,18 +403,18 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     const total: number = errorsMs.length;
     let hits: number = 0;
     for (const errorMs of errorsMs) {
-      if (classifyHit(errorMs, windows) !== "miss") {
+      if (classifyHit(errorMs, windows) !== 'miss') {
         hits += 1;
       }
     }
     const misses: number = total - hits;
-    const accuracyPct: number =
-      total === 0 ? 0 : Math.round((hits / total) * 1000) / 10;
+    const accuracyPct: number = total === 0 ? 0 : Math.round((hits / total) * 1000) / 10;
     return { total, hits, misses, accuracyPct };
   }
   ```
 
 - [ ] **Write `core/scoring/src/index.ts`:**
+
   ```ts
   export {
     classifyHit,
@@ -404,37 +423,38 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     type HitVerdict,
     type TimingWindows,
     type AccuracyScore,
-  } from "./accuracy.ts";
+  } from './accuracy.ts';
   ```
+
 - [ ] **Write the test** at `core/scoring/src/accuracy.test.ts`:
 
   ```ts
-  import test from "node:test";
-  import assert from "node:assert/strict";
-  import { classifyHit, scorePassage, DEFAULT_WINDOWS } from "./accuracy.ts";
+  import test from 'node:test';
+  import assert from 'node:assert/strict';
+  import { classifyHit, scorePassage, DEFAULT_WINDOWS } from './accuracy.ts';
 
-  test("classifyHit: a dead-on hit is perfect", () => {
-    assert.equal(classifyHit(0), "perfect");
-    assert.equal(classifyHit(DEFAULT_WINDOWS.perfectMs), "perfect");
+  test('classifyHit: a dead-on hit is perfect', () => {
+    assert.equal(classifyHit(0), 'perfect');
+    assert.equal(classifyHit(DEFAULT_WINDOWS.perfectMs), 'perfect');
   });
 
-  test("classifyHit: distinguishes early from late beyond the good band", () => {
+  test('classifyHit: distinguishes early from late beyond the good band', () => {
     // early/late is the OUTER band: magnitude strictly between goodMs(50) and
     // hittableMs(120). ±40 falls inside the good band, so use ±80.
-    assert.equal(classifyHit(-80), "early");
-    assert.equal(classifyHit(80), "late");
+    assert.equal(classifyHit(-80), 'early');
+    assert.equal(classifyHit(80), 'late');
     // boundary lock: ±goodMs(50) is still "good"; ±51 crosses into early/late.
-    assert.equal(classifyHit(50), "good");
-    assert.equal(classifyHit(-50), "good");
-    assert.equal(classifyHit(-51), "early");
-    assert.equal(classifyHit(51), "late");
+    assert.equal(classifyHit(50), 'good');
+    assert.equal(classifyHit(-50), 'good');
+    assert.equal(classifyHit(-51), 'early');
+    assert.equal(classifyHit(51), 'late');
   });
 
-  test("classifyHit: beyond the hittable window is a miss", () => {
-    assert.equal(classifyHit(DEFAULT_WINDOWS.hittableMs + 1), "miss");
+  test('classifyHit: beyond the hittable window is a miss', () => {
+    assert.equal(classifyHit(DEFAULT_WINDOWS.hittableMs + 1), 'miss');
   });
 
-  test("scorePassage: mixes hits and misses into a rounded percentage", () => {
+  test('scorePassage: mixes hits and misses into a rounded percentage', () => {
     const result = scorePassage([0, 30, 200, -10]); // perfect, good, miss, perfect
     assert.equal(result.total, 4);
     assert.equal(result.hits, 3);
@@ -442,7 +462,7 @@ Generator scaffolds the project with `--linter=none` (no flat config written; th
     assert.equal(result.accuracyPct, 75);
   });
 
-  test("scorePassage: empty passage is 0% over 0 notes, no NaN", () => {
+  test('scorePassage: empty passage is 0% over 0 notes, no NaN', () => {
     const result = scorePassage([]);
     assert.equal(result.total, 0);
     assert.equal(result.accuracyPct, 0);
@@ -481,6 +501,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
 **Files:** Create the `adapters/aws-dynamodb/*` tree; remove `adapters/.gitkeep`.
 
 - [ ] **Generate the library.** Run:
+
   ```bash
   cd "$ROOT" && pnpm exec nx g @nx/js:library \
     --directory=adapters/aws-dynamodb \
@@ -493,10 +514,13 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
     --useProjectJson=true \
     --no-interactive
   ```
+
   **Expected:** creates the `adapters/aws-dynamodb/*` tree; prints the generator summary. (Same flag caveats as Task 4 — confirmed against the Task 3 `--help` probe.)
+
 - [ ] **Verify the tag.** Run: `cd "$ROOT" && pnpm exec node -e "console.log(JSON.stringify(require('./adapters/aws-dynamodb/project.json').tags))"`
       **Expected:** `["type:adapter"]`
 - [ ] **Overwrite `adapters/aws-dynamodb/package.json`** (lint script carries the inline `ESLINT_USE_FLAT_CONFIG=false`):
+
   ```json
   {
     "name": "@notation-hero/aws-dynamodb",
@@ -513,6 +537,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
     }
   }
   ```
+
 - [ ] **Overwrite `adapters/aws-dynamodb/tsconfig.json`** with the SAME content as `core/scoring/tsconfig.json` from Task 4 (both packages are two levels deep, so `../../tsconfig.base.json` is identical; both `allowImportingTsExtensions` + `rewriteRelativeImportExtensions` MUST be present). Then `cd "$ROOT" && rm -f adapters/aws-dynamodb/tsconfig.lib.json && rm -rf adapters/aws-dynamodb/src/lib`.
 - [ ] **Write `adapters/aws-dynamodb/src/userProgressPort.ts`:**
 
@@ -545,7 +570,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
 - [ ] **Write `adapters/aws-dynamodb/src/inMemoryUserProgress.ts`:**
 
   ```ts
-  import type { UserProgress, UserProgressPort } from "./userProgressPort.ts";
+  import type { UserProgress, UserProgressPort } from './userProgressPort.ts';
 
   /** Composite key matching a DynamoDB PK#SK layout, without the AWS SDK. */
   function keyOf(userId: string, lessonId: string): string {
@@ -560,10 +585,7 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
   export class InMemoryUserProgress implements UserProgressPort {
     private readonly store: Map<string, UserProgress> = new Map();
 
-    async get(
-      userId: string,
-      lessonId: string,
-    ): Promise<UserProgress | undefined> {
+    async get(userId: string, lessonId: string): Promise<UserProgress | undefined> {
       return this.store.get(keyOf(userId, lessonId));
     }
 
@@ -574,41 +596,43 @@ Hexagonal template adapter: a per-user persistence port + an in-memory stub impl
   ```
 
 - [ ] **Write `adapters/aws-dynamodb/src/index.ts`:**
+
   ```ts
-  export { InMemoryUserProgress } from "./inMemoryUserProgress.ts";
-  export type { UserProgress, UserProgressPort } from "./userProgressPort.ts";
+  export { InMemoryUserProgress } from './inMemoryUserProgress.ts';
+  export type { UserProgress, UserProgressPort } from './userProgressPort.ts';
   ```
+
 - [ ] **Write the test** at `adapters/aws-dynamodb/src/inMemoryUserProgress.test.ts`:
 
   ```ts
-  import test from "node:test";
-  import assert from "node:assert/strict";
-  import { InMemoryUserProgress } from "./inMemoryUserProgress.ts";
-  import type { UserProgress } from "./userProgressPort.ts";
+  import test from 'node:test';
+  import assert from 'node:assert/strict';
+  import { InMemoryUserProgress } from './inMemoryUserProgress.ts';
+  import type { UserProgress } from './userProgressPort.ts';
 
   const sample: UserProgress = {
-    userId: "u1",
-    lessonId: "paradiddle-01",
+    userId: 'u1',
+    lessonId: 'paradiddle-01',
     bestAccuracyPct: 82.5,
-    updatedAt: "2026-06-10T00:00:00.000Z",
+    updatedAt: '2026-06-10T00:00:00.000Z',
   };
 
-  test("put then get round-trips the record", async () => {
+  test('put then get round-trips the record', async () => {
     const repo = new InMemoryUserProgress();
     await repo.put(sample);
-    assert.deepEqual(await repo.get("u1", "paradiddle-01"), sample);
+    assert.deepEqual(await repo.get('u1', 'paradiddle-01'), sample);
   });
 
-  test("get returns undefined for an unknown key", async () => {
+  test('get returns undefined for an unknown key', async () => {
     const repo = new InMemoryUserProgress();
-    assert.equal(await repo.get("nobody", "nothing"), undefined);
+    assert.equal(await repo.get('nobody', 'nothing'), undefined);
   });
 
-  test("put is last-write-wins on the same key", async () => {
+  test('put is last-write-wins on the same key', async () => {
     const repo = new InMemoryUserProgress();
     await repo.put(sample);
     await repo.put({ ...sample, bestAccuracyPct: 95 });
-    const got = await repo.get("u1", "paradiddle-01");
+    const got = await repo.get('u1', 'paradiddle-01');
     assert.equal(got?.bestAccuracyPct, 95);
   });
   ```
@@ -643,6 +667,7 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
 **Files:** Create the `apps/player-pwa/*` tree; remove `apps/.gitkeep`.
 
 - [ ] **Generate the library** (using `@nx/js:library` tagged `type:app`; a real `@nx/web`/`@nx/react` app would blow the LOC cap and is deferred). Run:
+
   ```bash
   cd "$ROOT" && pnpm exec nx g @nx/js:library \
     --directory=apps/player-pwa \
@@ -655,11 +680,14 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
     --useProjectJson=true \
     --no-interactive
   ```
+
   **Expected:** creates the `apps/player-pwa/*` tree.
+
 - [ ] **Verify the tag.** Run: `cd "$ROOT" && pnpm exec node -e "console.log(JSON.stringify(require('./apps/player-pwa/project.json').tags))"`
       **Expected:** `["type:app"]`
 - [ ] **Set `projectType` to application** in `apps/player-pwa/project.json` (the `@nx/js:library` generator writes `"projectType": "library"`; an app should read `application`). Edit that one field to `"projectType": "application"`. Leave `tags` and the rest untouched.
 - [ ] **Overwrite `apps/player-pwa/package.json`** (note the workspace dep on core + the inline lint toggle):
+
   ```json
   {
     "name": "@notation-hero/player-pwa",
@@ -678,7 +706,9 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
     }
   }
   ```
+
 - [ ] **Overwrite `apps/player-pwa/tsconfig.json`** (adds a project reference to core so `tsc -b` resolves the workspace import; same `.ts`-extension flags as the other packages):
+
   ```jsonc
   {
     "extends": "../../tsconfig.base.json",
@@ -697,13 +727,15 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
     "references": [{ "path": "../../core/scoring" }],
   }
   ```
+
   > This single static `references` entry is acceptable for Wave 1; per DACI F-4 references become Nx-managed via `nx sync` in a later lane (do not hand-edit then). Then `cd "$ROOT" && rm -f apps/player-pwa/tsconfig.lib.json && rm -rf apps/player-pwa/src/lib`.
+
 - [ ] **Re-install to record the workspace edge in the lockfile.** Run: `cd "$ROOT" && pnpm install`
       **Expected:** lockfile gains the `@notation-hero/player-pwa` → `@notation-hero/scoring` `workspace:*` edge; the symlink resolves under pnpm strict node_modules.
 - [ ] **Write `apps/player-pwa/src/practiceSession.ts`:**
 
   ```ts
-  import { scorePassage, type AccuracyScore } from "@notation-hero/scoring";
+  import { scorePassage, type AccuracyScore } from '@notation-hero/scoring';
 
   /** A finished practice take as captured by the (future) player UI. */
   export interface PracticeTake {
@@ -735,7 +767,7 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
 - [ ] **Write `apps/player-pwa/src/main.ts`:**
 
   ```ts
-  import { summarizeTake, type PracticeTake } from "./practiceSession.ts";
+  import { summarizeTake, type PracticeTake } from './practiceSession.ts';
 
   /**
    * Wave 1 entry point. Not a real PWA - just a buildable/typecheckable seam.
@@ -744,52 +776,55 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
   export function bootstrap(takes: readonly PracticeTake[]): string {
     const lines: string[] = takes.map((take) => {
       const summary = summarizeTake(take);
-      const verdict: string = summary.passed ? "PASS" : "RETRY";
+      const verdict: string = summary.passed ? 'PASS' : 'RETRY';
       return `${summary.lessonId}: ${summary.score.accuracyPct}% [${verdict}]`;
     });
-    return lines.join("\n");
+    return lines.join('\n');
   }
   ```
 
 - [ ] **Write the test** at `apps/player-pwa/src/practiceSession.test.ts`:
 
   ```ts
-  import test from "node:test";
-  import assert from "node:assert/strict";
-  import { summarizeTake, PASS_THRESHOLD_PCT } from "./practiceSession.ts";
-  import { bootstrap } from "./main.ts";
+  import test from 'node:test';
+  import assert from 'node:assert/strict';
+  import { summarizeTake, PASS_THRESHOLD_PCT } from './practiceSession.ts';
+  import { bootstrap } from './main.ts';
 
-  test("summarizeTake marks an accurate take as passed", () => {
+  test('summarizeTake marks an accurate take as passed', () => {
     const summary = summarizeTake({
-      lessonId: "fill-01",
+      lessonId: 'fill-01',
       timingErrorsMs: [0, 10, -15, 25],
     });
     assert.equal(summary.score.accuracyPct, 100);
     assert.equal(summary.passed, true);
   });
 
-  test("summarizeTake fails a take below threshold", () => {
+  test('summarizeTake fails a take below threshold', () => {
     const summary = summarizeTake({
-      lessonId: "fill-02",
+      lessonId: 'fill-02',
       timingErrorsMs: [300, 300, 0, 0],
     });
     assert.ok(summary.score.accuracyPct < PASS_THRESHOLD_PCT);
     assert.equal(summary.passed, false);
   });
 
-  test("bootstrap renders one summary line per take", () => {
-    const out = bootstrap([{ lessonId: "fill-01", timingErrorsMs: [0] }]);
+  test('bootstrap renders one summary line per take', () => {
+    const out = bootstrap([{ lessonId: 'fill-01', timingErrorsMs: [0] }]);
     assert.match(out, /^fill-01: 100% \[PASS\]$/);
   });
   ```
 
 - [ ] **Build core first, then verify cross-package `.ts` resolution standalone, then test the app.** Run:
+
   ```bash
   cd "$ROOT" && pnpm exec nx build @notation-hero/scoring \
     && node --test apps/player-pwa/src/practiceSession.test.ts \
     && pnpm exec nx test @notation-hero/player-pwa
   ```
+
   **Expected PASS:** core builds; the standalone `node --test` of `practiceSession.test.ts` confirms the cross-package chain resolves (`@notation-hero/scoring` `workspace:*` symlink → `main: ./src/index.ts` → `./accuracy.ts`) and prints a `# pass` line; then the full app test runs `# pass 3  # fail 0`, exit 0. This chain depends on Node 24 default type-stripping — `NODE_OPTIONS` must NOT contain `--no-experimental-strip-types`. (reviewer note: earlier drafts asserted the symlink chain resolves without a probe; the standalone `node --test` sub-step makes the cross-package `.ts` resolution auditable rather than assumed.)
+
 - [ ] **Run typecheck + lint + build for the app.** Run: `cd "$ROOT" && pnpm exec nx run-many --target=typecheck --target=lint --target=build --projects=@notation-hero/player-pwa`
       **Expected PASS:** all exit 0; `tsc -b` follows the `references` to build core, then the app (the `.ts` imports rewrite to `.js` on emit). No `@pulumi` import present (convention — see next bullet).
   > **`apps → @pulumi` is NOT enforced in Wave 1.** The live `.eslintrc.cjs` `no-restricted-imports` override is scoped to `core/**` ONLY; the handler↛`@pulumi` depcruise file-level rule is a SEPARATE DACI Step-1 checklist item, out of this PR's scope. So "no `@pulumi` import" here is true by convention (the author wrote none), not by an enforced gate. The `apps`→`@pulumi` lint/depcruise ban is a later DACI Step-1 checklist item, not wired in this PR. (reviewer note: earlier drafts presented "No @pulumi import present" as a checked guarantee; corrected to a convention claim since nothing enforces it for `apps/**` yet.)
@@ -820,6 +855,7 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
 **Files:** Create `infra/project.json`.
 
 - [ ] **Write `infra/project.json`** (note `../node_modules` — infra is one level deep, not two):
+
   ```json
   {
     "name": "@notation-hero/infra",
@@ -829,16 +865,19 @@ Minimal app entry (NOT a real PWA — Vite/PWA is a later lane). It demonstrates
     "tags": ["type:infra"]
   }
   ```
+
 - [ ] **Verify the tag + no double-registration.** Run: `cd "$ROOT" && pnpm exec nx show project @notation-hero/infra --json | pnpm exec node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const p=JSON.parse(s);console.log('tags',JSON.stringify(p.tags),'targets',Object.keys(p.targets).sort().join(','))})"`
       **Expected:** `tags ["type:infra"] targets build,lint,test,typecheck` (Nx infers the four targets from the existing package.json scripts; `project.json` adds only the tag, no conflicting target redefinition).
 - [ ] **Confirm all four projects are visible to Nx.** Run: `cd "$ROOT" && pnpm exec nx show projects`
       **Expected (order may vary):**
+
   ```
   @notation-hero/scoring
   @notation-hero/aws-dynamodb
   @notation-hero/player-pwa
   @notation-hero/infra
   ```
+
 - [ ] **Commit.** Run:
 
   ```bash
@@ -864,6 +903,7 @@ Now that all four packages register real targets, swap the four root scripts fro
 **Files:** Modify root `package.json` `scripts`.
 
 - [ ] **Edit `package.json` `scripts`** to exactly:
+
   ```json
   "scripts": {
     "lint": "nx run-many --target=lint",
@@ -873,7 +913,9 @@ Now that all four packages register real targets, swap the four root scripts fro
     "depcheck": "depcruise core adapters apps infra --config .dependency-cruiser.cjs"
   }
   ```
+
   > Drops the legacy `ESLINT_USE_FLAT_CONFIG=false eslint . --ext …` direct lint AND the three `pnpm -r --if-present run X`. `lint` needs no `--if-present` — every package registers a real lint target (eslint per package; infra echo). `depcheck` is unchanged per constraint. The `ESLINT_USE_FLAT_CONFIG=false` toggle now lives in each package's own lint script (Tasks 4/5/6), so the root `nx run-many --target=lint` correctly drives the legacy engine per package.
+
 - [ ] **Verify no `pnpm -r` remains for the four.** Run: `cd "$ROOT" && pnpm exec node -e "const s=require('./package.json').scripts;console.log(JSON.stringify(s,null,2))"`
       **Expected:** the four show `nx run-many --target=X`; `depcheck` shows the depcruise call; no `pnpm -r` substring anywhere.
 - [ ] **Run the four root scripts in sequence.** Run: `cd "$ROOT" && pnpm run lint && pnpm run typecheck && pnpm run build && pnpm run test`
@@ -1042,11 +1084,14 @@ F-8 is NOT a tracked PR/issue thread in `docs/` (exhaustively searched across PR
 - [ ] **Locate the Open-verification anchor + Step-1 items + M-7 line.** Run: `cd "$ROOT" && grep -n -e "Open verification" -e "Step 1" -e "notationhero" docs/decisions/2026-06-09-tooling-stack-daci.md`
       **Expected:** prints the Sequencing reference at **line 279**, the Phasing note at **line 291**, the `## Open verification` heading + the `[Step 1]` checklist lines at **298–302** (line 298 is the pnpm-migration `[x]` anchor; 299–302 are the four still-open `[ ]` Step-1 items: type-coverage floors, per-Lambda scaffold, depcruise file-level rules, `build:dts`), and the M-7 `notationhero` occurrences at **line 370**. This is MORE matches than just the checklist — the anchor for the Edit is the pnpm-migration `[x]` line **298**.
 - [ ] **ADD two new `[x]` lines immediately after the pnpm-migration `[x]` line (line 298).** Do NOT attempt to flip any existing `[ ]` item — none of the four existing `[Step 1]` `[ ]` items (type-coverage floors at 299, per-Lambda scaffold at 300, depcruise file-level rules at 301, `build:dts` at 302) are completed by this PR, and they must stay `[ ]`. Insert exactly these two lines after line 298:
+
   ```markdown
   - [x] **`[Step 1]` Materialize real Nx packages with `type:` tags** — `nx init` + `targetDefaults`; `@notation-hero/scoring` (type:core), `@notation-hero/aws-dynamodb` (type:adapter), `@notation-hero/player-pwa` (type:app), `@notation-hero/infra` (type:infra). Shipped on `chore/nx-init`.
   - [x] **`[Step 1]` F-8 — replace `pnpm -r --if-present run X` + direct-eslint `lint` with `nx run-many --target=X`** (nx-driven equivalents; retires the PR #4 interim bridge, the Task 8 commit (fill in the actual SHA after committing)). `depcheck` stays the root depcruise call. Shipped on `chore/nx-init`.
   ```
+
   > (reviewer note: earlier drafts said "flip existing `[ ]` Step-1 items to `[x]`"; verified there is NO existing `[ ]` line for "materialize tagged Nx packages" / "nx init" / "run-many" — the four existing `[Step 1]` `[ ]` items are unrelated later-lane work. The step ADDS two lines only; nothing is flipped.)
+
 - [ ] **Fix the M-7 typo (line 370) — both occurrences, with exact backtick-wrapped context.** Use the Edit tool twice:
   1. Change the backtick-wrapped mid-line scope glob: old_string ``per-`@notationhero/*`-package`` → new_string ``per-`@notation-hero/*`-package``.
   2. Change the backtick-wrapped main-app-package value: old_string ``Main app package = `notationhero`.`` → new_string ``Main app package = `@notation-hero/player-pwa`.``

@@ -11,7 +11,7 @@ on:
   workflow_dispatch: {}
   push:
     branches: [master]
-    paths: [".github/pull_request_template.md"]
+    paths: ['.github/pull_request_template.md']
 
 # Least privilege: write only PR bodies. ci.yml stays contents: read.
 permissions:

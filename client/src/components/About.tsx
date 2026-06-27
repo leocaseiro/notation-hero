@@ -38,7 +38,7 @@ async function fetchCatalog({
   }
 }
 
-export function About() {
+export const About = () => {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['catalog'],
     queryFn: fetchCatalog,
@@ -80,4 +80,4 @@ export function About() {
       </section>
     </div>
   );
-}
+};

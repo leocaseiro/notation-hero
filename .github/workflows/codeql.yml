@@ -15,7 +15,7 @@ on:
   schedule:
     # Weekly — Mondays ~06:23 UTC (off the top of the hour per GitHub guidance).
     # Catches newly-disclosed CVEs in code that hasn't changed since the last push.
-    - cron: "23 6 * * 1"
+    - cron: '23 6 * * 1'
   workflow_dispatch:
 
 # Cancel a superseded run on the same ref (a fresh push supersedes an in-flight scan).
@@ -63,4 +63,4 @@ jobs:
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4.36.2
         with:
-          category: "/language:javascript-typescript"
+          category: '/language:javascript-typescript'

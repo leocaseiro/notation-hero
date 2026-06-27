@@ -18,14 +18,14 @@ NH dumped ~50 stories directly under a "Milestone: Alpha" epic — no visible bu
 
 ## 3. Jira model
 
-| Construct | Role |
-|---|---|
-| **Release** (fixVersion) | ship-readiness bar per milestone |
-| **Component** | product/code area (cross-cutting tag) |
-| **Epic** | workstream (parent of stories) |
-| **Story/Task → Sub-task** | the work; carries Epic + Component + Release + Sprint |
-| **Sprint** | build-order phase ("what's now" + sequence) |
-| **Goal** | each sprint's epic links a goal (goal travels with the sprint); cross-cutting parent goal **"AWS interview-ready"** + **"Ship NH v1"** |
+| Construct                 | Role                                                                                                                                   |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **Release** (fixVersion)  | ship-readiness bar per milestone                                                                                                       |
+| **Component**             | product/code area (cross-cutting tag)                                                                                                  |
+| **Epic**                  | workstream (parent of stories)                                                                                                         |
+| **Story/Task → Sub-task** | the work; carries Epic + Component + Release + Sprint                                                                                  |
+| **Sprint**                | build-order phase ("what's now" + sequence)                                                                                            |
+| **Goal**                  | each sprint's epic links a goal (goal travels with the sprint); cross-cutting parent goal **"AWS interview-ready"** + **"Ship NH v1"** |
 
 Goals are managed via the Goals GraphQL API (token-auth verified). Each sprint = a sub-goal; AWS sprints also contribute to the "AWS interview-ready" parent goal.
 
@@ -44,24 +44,24 @@ Goals are managed via the Goals GraphQL API (token-auth verified). Each sprint =
 
 Sprint = goal = build-order phase. Prefixed with order number (sprints carry the order; epics stay clean).
 
-| # | Sprint = Goal | Release | Src | Key NH | AWS learned |
-|---|---|---|---|---|---|
-| 1 | Foundation + CI/CD | Catalog Preview | ✅ | NH-119 + L-series | — |
-| 2 | Wireframes (catalog·player·score) | Catalog Preview | NEW→NH-14 | NH-133/134 +new | — |
-| 3 | Temp design system | Catalog Preview | NEW→NH-14 | DS (PR #23 base) | — |
-| 4 | **Catalog CRUD + infra** | Catalog Preview | BUILD | NH-126/79/123/122/118 + 107/110/121 | **Lambda·S3·CloudFront·Pulumi** |
-| 5 | Player — plays a song | Alpha/EAP | **PORT** | NH-90/88/86/102/84 +101/103/105 | — |
-| 6 | Sentry (FE) | Alpha/EAP | BUILD | NH-124 | (Sentry) |
-| 7 | Local play + score + PWA install | Alpha/EAP | PORT+NEW | NH-15/97/92/50 | — |
-| 7b | Thin SQS+SNS event slice | Alpha/EAP | BUILD | thin J-8 (NH-51 part) | **SQS·SNS (thin)** |
-| 8 | Auth (Cognito) | Beta | BUILD | NH-45 | **Cognito** |
-| 9 | Score history (DynamoDB) | Beta | BUILD | NH-120/58/77/74/99 | **DynamoDB** |
-| 10 | User upload (S3) | Beta | BUILD | NH-49 | S3 uploads |
-| 11 | Messaging + analytics (full) | Beta | BUILD | NH-54/51/31 | **SQS·SNS·DLQ·Athena·Kafka** |
-| 12 | Deep SRE / SLOs | Beta | BUILD | NH-52 | **CloudWatch·X-Ray·burn-rate** |
-| 13 | Offline sync — *after SLOs* | M1 | BUILD | NH-44 | DynamoDB Streams·sync |
-| 14 | Better UI (hi-fi) + a11y — *after SLOs* | M1 | BUILD | NH-14/108/82 | — |
-| 15 | Native (iOS·Android·desktop) — *last* | M1–M5 | BUILD | NH-46/47/48/78/128/129/130 | — |
+| #   | Sprint = Goal                           | Release         | Src       | Key NH                              | AWS learned                     |
+| --- | --------------------------------------- | --------------- | --------- | ----------------------------------- | ------------------------------- |
+| 1   | Foundation + CI/CD                      | Catalog Preview | ✅        | NH-119 + L-series                   | —                               |
+| 2   | Wireframes (catalog·player·score)       | Catalog Preview | NEW→NH-14 | NH-133/134 +new                     | —                               |
+| 3   | Temp design system                      | Catalog Preview | NEW→NH-14 | DS (PR #23 base)                    | —                               |
+| 4   | **Catalog CRUD + infra**                | Catalog Preview | BUILD     | NH-126/79/123/122/118 + 107/110/121 | **Lambda·S3·CloudFront·Pulumi** |
+| 5   | Player — plays a song                   | Alpha/EAP       | **PORT**  | NH-90/88/86/102/84 +101/103/105     | —                               |
+| 6   | Sentry (FE)                             | Alpha/EAP       | BUILD     | NH-124                              | (Sentry)                        |
+| 7   | Local play + score + PWA install        | Alpha/EAP       | PORT+NEW  | NH-15/97/92/50                      | —                               |
+| 7b  | Thin SQS+SNS event slice                | Alpha/EAP       | BUILD     | thin J-8 (NH-51 part)               | **SQS·SNS (thin)**              |
+| 8   | Auth (Cognito)                          | Beta            | BUILD     | NH-45                               | **Cognito**                     |
+| 9   | Score history (DynamoDB)                | Beta            | BUILD     | NH-120/58/77/74/99                  | **DynamoDB**                    |
+| 10  | User upload (S3)                        | Beta            | BUILD     | NH-49                               | S3 uploads                      |
+| 11  | Messaging + analytics (full)            | Beta            | BUILD     | NH-54/51/31                         | **SQS·SNS·DLQ·Athena·Kafka**    |
+| 12  | Deep SRE / SLOs                         | Beta            | BUILD     | NH-52                               | **CloudWatch·X-Ray·burn-rate**  |
+| 13  | Offline sync — _after SLOs_             | M1              | BUILD     | NH-44                               | DynamoDB Streams·sync           |
+| 14  | Better UI (hi-fi) + a11y — _after SLOs_ | M1              | BUILD     | NH-14/108/82                        | —                               |
+| 15  | Native (iOS·Android·desktop) — _last_   | M1–M5           | BUILD     | NH-46/47/48/78/128/129/130          | —                               |
 
 Ordering constraints honored: messaging (11) before sync (13) & better-UI (14); deep SRE (12) after messaging; sync/UI/native after SLO setup.
 
@@ -80,7 +80,7 @@ All on `~/Sites/alphaTabWebsite` branch `rhythm-game`, dir `src/components/Alpha
 
 ## 8. AWS learning ladder (from `docs/aws-learning-map.md`)
 
-Service order (the learning spine): **Lambda → DynamoDB → Pulumi → S3/CloudFront → sync → SQS/SNS messaging → Athena → CloudWatch/X-Ray → Kafka → Cognito**. Note: map is partly stale on catalog (CMS = Neon now), but the AWS order stands. Catalog (sprint 4) front-loads Lambda/S3/CloudFront/Pulumi because the catalog *requires* them (DS-8: notation blobs in S3, keys in Postgres). Legacy AWS account → Always-Free ≈ $0.
+Service order (the learning spine): **Lambda → DynamoDB → Pulumi → S3/CloudFront → sync → SQS/SNS messaging → Athena → CloudWatch/X-Ray → Kafka → Cognito**. Note: map is partly stale on catalog (CMS = Neon now), but the AWS order stands. Catalog (sprint 4) front-loads Lambda/S3/CloudFront/Pulumi because the catalog _requires_ them (DS-8: notation blobs in S3, keys in Postgres). Legacy AWS account → Always-Free ≈ $0.
 
 ## 9. Native / platform strategy
 

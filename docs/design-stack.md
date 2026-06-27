@@ -19,14 +19,14 @@ This file holds the **implementation-only** picks. Strategic positioning, compet
 
 ## Stack picks
 
-| Layer | Choice |
-|---|---|
-| Notation rendering | [AlphaTab](https://www.alphatab.net/) — TypeScript, MusicXML + Guitar Pro support; no MIDI yet (track upstream) |
-| Cross-platform shell | [Capacitor](https://capacitorjs.com/) — single JS/TS codebase ships as iOS app, Android app, and web PWA |
-| Web target | PWA (browser-installable, offline-capable) |
-| App-store distribution | iOS App Store + Google Play via Capacitor builds; PWA on the open web |
-| Backend | ~~AWS (Lambda + DynamoDB + Cognito + S3 + CloudFront) — see [`aws-learning-map.md`](./aws-learning-map.md)~~ <!-- SUPERSEDED: omits catalog store; catalog = Neon Postgres + JSONB, DynamoDB is per-user data ONLY (catalog-store-postgres-neon DACI 2026-06-09) --> |
-| Monorepo + tooling | pnpm + Nx; full stack in [`docs/decisions/2026-06-09-tooling-stack-daci.md`](./decisions/2026-06-09-tooling-stack-daci.md) |
+| Layer                  | Choice                                                                                                                                                                                                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Notation rendering     | [AlphaTab](https://www.alphatab.net/) — TypeScript, MusicXML + Guitar Pro support; no MIDI yet (track upstream)                                                                                                                                                      |
+| Cross-platform shell   | [Capacitor](https://capacitorjs.com/) — single JS/TS codebase ships as iOS app, Android app, and web PWA                                                                                                                                                             |
+| Web target             | PWA (browser-installable, offline-capable)                                                                                                                                                                                                                           |
+| App-store distribution | iOS App Store + Google Play via Capacitor builds; PWA on the open web                                                                                                                                                                                                |
+| Backend                | ~~AWS (Lambda + DynamoDB + Cognito + S3 + CloudFront) — see [`aws-learning-map.md`](./aws-learning-map.md)~~ <!-- SUPERSEDED: omits catalog store; catalog = Neon Postgres + JSONB, DynamoDB is per-user data ONLY (catalog-store-postgres-neon DACI 2026-06-09) --> |
+| Monorepo + tooling     | pnpm + Nx; full stack in [`docs/decisions/2026-06-09-tooling-stack-daci.md`](./decisions/2026-06-09-tooling-stack-daci.md)                                                                                                                                           |
 
 ## Cross-references
 

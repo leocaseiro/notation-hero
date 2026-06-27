@@ -135,18 +135,18 @@ Direct quotes captured from the JSONL transcripts:
 - _"File parse: AlphaTab for .gp/.gpx/.gp5, @tonejs/midi for .mid … raw .mid → standard notation is lossy."_
 - _"Tone.js is NOT slaved to AlphaSynth (that would be fanfic — no sample-accurate clock export). It's drift-corrected from `positionChanged` callbacks."_
 - License table: _"AlphaTab core (`@coderline/alphatab`) — MPL-2.0 — ✅ Compatible. File-level copyleft … new files calling AlphaTab APIs can be proprietary."_
-- Leo: _"I forked Alphatab's website, and I managed to get a lot with it, working okay. A few latency that can be improved, but that stack works fine. … https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game"_
+- Leo: _"I forked Alphatab's website, and I managed to get a lot with it, working okay. A few latency that can be improved, but that stack works fine. … <https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game>"_
 
 **External links cited in the sessions (re-verify currency):**
 
-- alphaTab API docs — https://alphatab.net/docs/reference/api
-- alphaTab v1.4 release notes — https://www.alphatab.net/docs/releases/release1_4/
-- alphaTab percussion docs — https://alphatab.net/docs/alphatex/percussion/
-- alphaTab data model / score reference — https://alphatab.net/docs/reference/score
-- alphaTab special tracks — https://alphatab.net/docs/showcase/special-tracks/
-- alphaTab GitHub — https://github.com/CoderLine/alphaTab
-- alphaSynth GitHub — https://github.com/CoderLine/alphaSynth
-- External Audio Cursor API issue — https://github.com/CoderLine/alphaTab/issues/1961
-- "alphatex show drum (notation or tabs)" discussion #474 — https://github.com/CoderLine/alphaTab/discussions/474
+- alphaTab API docs — <https://alphatab.net/docs/reference/api>
+- alphaTab v1.4 release notes — <https://www.alphatab.net/docs/releases/release1_4/>
+- alphaTab percussion docs — <https://alphatab.net/docs/alphatex/percussion/>
+- alphaTab data model / score reference — <https://alphatab.net/docs/reference/score>
+- alphaTab special tracks — <https://alphatab.net/docs/showcase/special-tracks/>
+- alphaTab GitHub — <https://github.com/CoderLine/alphaTab>
+- alphaSynth GitHub — <https://github.com/CoderLine/alphaSynth>
+- External Audio Cursor API issue — <https://github.com/CoderLine/alphaTab/issues/1961>
+- "alphatex show drum (notation or tabs)" discussion #474 — <https://github.com/CoderLine/alphaTab/discussions/474>
 
 **Session provenance:** drum-tutor-clone worktree sessions (office-hours brainstorm + `/plan-eng-review` style doc reviews), worktrees `serene-grothendieck-fb5e67` and `pensive-boyd-6d17e3`, JSONL under `~/.claude/projects/*drum-tutor-clone*/`.

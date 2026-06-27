@@ -20,10 +20,11 @@ set -uo pipefail
 
 ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || true
 [ -n "$ROOT" ] || { printf '::error::check-core-purity-canary.sh must run inside the git work tree\n' >&2; exit 1; }
-cd "$ROOT"
+cd "$ROOT" || exit 1
 
 # Unique per-process filename so concurrent runs never delete each other's canary mid-cruise.
 CANARY="server/src/core/__core_purity_canary_$$__.policy.ts"
+# shellcheck disable=SC2317,SC2329 # cleanup IS invoked via trap EXIT; shellcheck can't detect trap invocations (SC2329 = shellcheck >=0.10 local; SC2317 = older apt shellcheck in CI)
 cleanup() { rm -f "$CANARY"; }
 trap cleanup EXIT
 

@@ -85,6 +85,7 @@ test('passes an AbortSignal to the catalog fetch (the 8s timeout is wired)', asy
   // this assertion fails if the AbortSignal is ever dropped from the fetch call.
   expect(fetchMock).toHaveBeenCalledWith(
     '/api/catalog',
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest expect.any() is typed as any; the matcher is the correct idiom here
     expect.objectContaining({ signal: expect.any(AbortSignal) }),
   );
 });

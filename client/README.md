@@ -76,7 +76,7 @@ Icons use **Material Symbols Outlined**, **self-hosted** via `@fontsource-variab
 </Button>
 ```
 
-Browse glyph names at https://fonts.google.com/icons.
+Browse glyph names at <https://fonts.google.com/icons>.
 
 ### Storybook
 

@@ -61,38 +61,31 @@
 Create `tooling/pr-checklist-lib.test.mjs`:
 
 ```js
-import { test } from "node:test";
-import assert from "node:assert/strict";
-import {
-  missingItems,
-  canonicalItems,
-  parseTasks,
-} from "./pr-checklist-lib.mjs";
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { missingItems, canonicalItems, parseTasks } from './pr-checklist-lib.mjs';
 
-test("missingItems returns canonical items not present in the body", () => {
-  const canon = ["Alpha claim.", "Beta claim."];
-  assert.deepEqual(missingItems("- [x] Alpha claim.", canon), ["Beta claim."]);
+test('missingItems returns canonical items not present in the body', () => {
+  const canon = ['Alpha claim.', 'Beta claim.'];
+  assert.deepEqual(missingItems('- [x] Alpha claim.', canon), ['Beta claim.']);
 });
 
-test("missingItems matches by normalized prefix (trailing detail allowed)", () => {
-  const canon = ["Alpha claim."];
-  assert.deepEqual(
-    missingItems("- [ ] Alpha claim. (see src/foo.ts)", canon),
-    [],
-  );
+test('missingItems matches by normalized prefix (trailing detail allowed)', () => {
+  const canon = ['Alpha claim.'];
+  assert.deepEqual(missingItems('- [ ] Alpha claim. (see src/foo.ts)', canon), []);
 });
 
-test("parseTasks reads checked state and label text", () => {
-  assert.deepEqual(parseTasks("- [x] done\n- [ ] todo"), [
-    { checked: true, text: "done" },
-    { checked: false, text: "todo" },
+test('parseTasks reads checked state and label text', () => {
+  assert.deepEqual(parseTasks('- [x] done\n- [ ] todo'), [
+    { checked: true, text: 'done' },
+    { checked: false, text: 'todo' },
   ]);
 });
 
-test("canonicalItems reads every task line from the real PR template", () => {
+test('canonicalItems reads every task line from the real PR template', () => {
   const items = canonicalItems();
   assert.ok(items.length >= 10);
-  assert.ok(items.every((s) => typeof s === "string" && s.length > 0));
+  assert.ok(items.every((s) => typeof s === 'string' && s.length > 0));
 });
 ```
 
@@ -110,7 +103,7 @@ Create `tooling/pr-checklist-lib.mjs`:
 // (pr-checklist.mjs) and the auto-inject sync (pr-checklist-sync.mjs). One source of
 // truth for "what is a task line" and "is a canonical item present", so the gate and the
 // sync can never disagree. Spec: docs/specs/2026-06-24-pr-checklist-auto-inject.md (NH-237).
-import { readFileSync } from "node:fs";
+import { readFileSync } from 'node:fs';
 
 // A markdown task line: "- [ ] text" / "* [x] text". Group 1 = check char, group 2 = label.
 export const TASK_RE = /^\s*[-*]\s*\[([ xX])\]\s*(.+?)\s*$/;
@@ -119,24 +112,21 @@ export const TASK_RE = /^\s*[-*]\s*\[([ xX])\]\s*(.+?)\s*$/;
 // samples don't count.
 export const stripNoise = (s) =>
   s
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/~~~[\s\S]*?~~~/g, "");
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/~~~[\s\S]*?~~~/g, '');
 
 // Normalize for matching: collapse whitespace, lowercase.
-export const norm = (s) => s.replace(/\s+/g, " ").trim().toLowerCase();
+export const norm = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
 
 // Default template location, relative to this lib file (tooling/ -> ../.github/...).
-const DEFAULT_TEMPLATE = new URL(
-  "../.github/pull_request_template.md",
-  import.meta.url,
-);
+const DEFAULT_TEMPLATE = new URL('../.github/pull_request_template.md', import.meta.url);
 
 // Canonical checklist labels, read from the committed PR template (every task line).
 export function canonicalItems(templateUrl = DEFAULT_TEMPLATE) {
-  const tpl = readFileSync(templateUrl, "utf8");
+  const tpl = readFileSync(templateUrl, 'utf8');
   const items = [];
-  for (const line of tpl.split("\n")) {
+  for (const line of tpl.split('\n')) {
     const m = TASK_RE.exec(line);
     if (m) items.push(m[2]);
   }
@@ -146,9 +136,9 @@ export function canonicalItems(templateUrl = DEFAULT_TEMPLATE) {
 // Parse all checkbox task lines from a block of text.
 export function parseTasks(text) {
   const tasks = [];
-  for (const line of text.split("\n")) {
+  for (const line of text.split('\n')) {
     const m = TASK_RE.exec(line);
-    if (m) tasks.push({ checked: m[1].toLowerCase() === "x", text: m[2] });
+    if (m) tasks.push({ checked: m[1].toLowerCase() === 'x', text: m[2] });
   }
   return tasks;
 }
@@ -157,9 +147,7 @@ export function parseTasks(text) {
 // normalized text starts with the canonical label). `body` should already be noise-stripped.
 export function missingItems(body, canonical) {
   const tasks = parseTasks(body);
-  return canonical.filter(
-    (label) => !tasks.some((t) => norm(t.text).startsWith(norm(label))),
-  );
+  return canonical.filter((label) => !tasks.some((t) => norm(t.text).startsWith(norm(label))));
 }
 ````
 
@@ -175,19 +163,13 @@ Apply these exact edits (content-based):
 Edit A — replace the fs import with the lib import:
 
 ```js
-import { readFileSync } from "node:fs";
+import { readFileSync } from 'node:fs';
 ```
 
 →
 
 ```js
-import {
-  TASK_RE,
-  stripNoise,
-  norm,
-  canonicalItems,
-  parseTasks,
-} from "./pr-checklist-lib.mjs";
+import { TASK_RE, stripNoise, norm, canonicalItems, parseTasks } from './pr-checklist-lib.mjs';
 ```
 
 Edit B — delete the now-duplicated local `TASK_RE` line (keep `JIRA_RE`):
@@ -210,9 +192,9 @@ Edit C — delete the local `stripNoise` block:
 // quoted samples are ignored — no false-pass on a commented key, no false-fail on a sample.
 const stripNoise = (s) =>
   s
-    .replace(/<!--[\s\S]*?-->/g, "")
-    .replace(/```[\s\S]*?```/g, "")
-    .replace(/~~~[\s\S]*?~~~/g, "");
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/~~~[\s\S]*?~~~/g, '');
 
 const body = stripNoise(rawBody);
 ````
@@ -227,16 +209,13 @@ Edit D — delete the local `norm` block:
 
 ```js
 // Normalize for matching: collapse whitespace, lowercase.
-const norm = (s) => s.replace(/\s+/g, " ").trim().toLowerCase();
+const norm = (s) => s.replace(/\s+/g, ' ').trim().toLowerCase();
 
 // Canonical acknowledgement labels, read from the committed PR template (every task line).
 function canonicalItems() {
-  const tpl = readFileSync(
-    new URL("../.github/pull_request_template.md", import.meta.url),
-    "utf8",
-  );
+  const tpl = readFileSync(new URL('../.github/pull_request_template.md', import.meta.url), 'utf8');
   const items = [];
-  for (const line of tpl.split("\n")) {
+  for (const line of tpl.split('\n')) {
     const m = TASK_RE.exec(line);
     if (m) items.push(m[2]);
   }
@@ -257,9 +236,9 @@ Edit E — replace the inline body-task loop with `parseTasks`:
 ```js
 // Index the body's checkbox lines (noise already stripped).
 const bodyTasks = [];
-for (const line of body.split("\n")) {
+for (const line of body.split('\n')) {
   const m = TASK_RE.exec(line);
-  if (m) bodyTasks.push({ checked: m[1].toLowerCase() === "x", text: m[2] });
+  if (m) bodyTasks.push({ checked: m[1].toLowerCase() === 'x', text: m[2] });
 }
 ```
 
@@ -303,43 +282,39 @@ git commit -m "refactor(tooling): extract shared pr-checklist lib (NH-237)"
 Create `tooling/pr-checklist-sync.test.mjs`:
 
 ```js
-import { test } from "node:test";
-import assert from "node:assert/strict";
-import { ensureChecklist } from "./pr-checklist-sync.mjs";
-import { missingItems, stripNoise } from "./pr-checklist-lib.mjs";
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { ensureChecklist } from './pr-checklist-sync.mjs';
+import { missingItems, stripNoise } from './pr-checklist-lib.mjs';
 
-const CANON = ["Item one.", "If this PR changed UI, I did X.", "Item three."];
+const CANON = ['Item one.', 'If this PR changed UI, I did X.', 'Item three.'];
 
-test("appends all items, unticked, when body has no checklist; prose preserved", () => {
-  const { body, appended } = ensureChecklist(
-    "## What & why\nDid a thing.",
-    CANON,
-  );
+test('appends all items, unticked, when body has no checklist; prose preserved', () => {
+  const { body, appended } = ensureChecklist('## What & why\nDid a thing.', CANON);
   assert.equal(appended.length, 3);
   assert.match(body, /## What & why\nDid a thing\./); // prose untouched
   assert.match(body, /- \[ \] Item one\./);
   assert.equal(missingItems(stripNoise(body), CANON).length, 0); // parity with gate
 });
 
-test("no change when body already compliant (idempotent)", () => {
+test('no change when body already compliant (idempotent)', () => {
   const compliant =
-    "## Checklist\n- [x] Item one.\n- [x] If this PR changed UI, I did X.\n- [x] Item three.";
+    '## Checklist\n- [x] Item one.\n- [x] If this PR changed UI, I did X.\n- [x] Item three.';
   const { body, appended } = ensureChecklist(compliant, CANON);
   assert.equal(appended.length, 0);
   assert.equal(body, compliant);
 });
 
-test("drift: appends only the missing item and preserves existing ticks", () => {
-  const partial =
-    "## Checklist\n- [x] Item one.\n- [x] If this PR changed UI, I did X.";
+test('drift: appends only the missing item and preserves existing ticks', () => {
+  const partial = '## Checklist\n- [x] Item one.\n- [x] If this PR changed UI, I did X.';
   const { body, appended } = ensureChecklist(partial, CANON);
-  assert.deepEqual(appended, ["Item three."]);
+  assert.deepEqual(appended, ['Item three.']);
   assert.match(body, /- \[x\] Item one\./); // existing tick preserved
   assert.match(body, /- \[ \] Item three\./);
 });
 
 test("author's own unrelated checkboxes are not mistaken for canonical items", () => {
-  const { appended } = ensureChecklist("## Notes\n- [x] my own todo\n", CANON);
+  const { appended } = ensureChecklist('## Notes\n- [x] my own todo\n', CANON);
   assert.equal(appended.length, 3); // all canonical still appended
 });
 ```
@@ -355,12 +330,8 @@ Expected: FAIL — `Cannot find module './pr-checklist-sync.mjs'`.
 // tooling/pr-checklist-sync.mjs — appends MISSING canonical checklist items to a PR body.
 // Additive only: never edits/removes existing lines; appended boxes are unticked (the strict
 // pr-checklist gate still forces the tick). Spec: docs/specs/2026-06-24-pr-checklist-auto-inject.md.
-import { readFileSync, writeFileSync } from "node:fs";
-import {
-  canonicalItems,
-  stripNoise,
-  missingItems,
-} from "./pr-checklist-lib.mjs";
+import { readFileSync, writeFileSync } from 'node:fs';
+import { canonicalItems, stripNoise, missingItems } from './pr-checklist-lib.mjs';
 
 // Pure over its inputs. Returns the new body + the labels appended (empty ⇒ no change).
 export function ensureChecklist(body, canonical) {
@@ -368,10 +339,10 @@ export function ensureChecklist(body, canonical) {
   if (missing.length === 0) return { body, appended: [] };
   const lines = missing.map((label) => `- [ ] ${label}`);
   const hasHeading = /^##\s+Checklist\s*$/m.test(body);
-  const base = body.replace(/\s+$/, "");
+  const base = body.replace(/\s+$/, '');
   const block = hasHeading
-    ? `\n${lines.join("\n")}`
-    : `${base ? "\n\n" : ""}## Checklist\n\n${lines.join("\n")}`;
+    ? `\n${lines.join('\n')}`
+    : `${base ? '\n\n' : ''}## Checklist\n\n${lines.join('\n')}`;
   return { body: `${base}${block}\n`, appended: missing };
 }
 
@@ -380,13 +351,10 @@ export function ensureChecklist(body, canonical) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const [, , bodyFile, outFile] = process.argv;
   if (!bodyFile || !outFile) {
-    console.error("usage: pr-checklist-sync.mjs <body-file> <out-file>");
+    console.error('usage: pr-checklist-sync.mjs <body-file> <out-file>');
     process.exit(2);
   }
-  const { body, appended } = ensureChecklist(
-    readFileSync(bodyFile, "utf8"),
-    canonicalItems(),
-  );
+  const { body, appended } = ensureChecklist(readFileSync(bodyFile, 'utf8'), canonicalItems());
   writeFileSync(outFile, body);
   console.log(String(appended.length));
 }
@@ -445,7 +413,7 @@ on:
   workflow_dispatch: {}
   push:
     branches: [master]
-    paths: [".github/pull_request_template.md"]
+    paths: ['.github/pull_request_template.md']
 
 # Least privilege: write only PR bodies. ci.yml stays contents: read.
 permissions:

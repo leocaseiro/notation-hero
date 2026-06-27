@@ -8,22 +8,22 @@
 
 Polyglot persistence, **two stores**:
 
-| Data | Store | Why |
-|---|---|---|
-| Per-user (scores, settings, mappings, offline sync) | **DynamoDB** | known-key lookups at scale; Streams change-feed for sync; the AWS-portfolio centerpiece; NoSQL key-value reps |
-| Song/Lesson **catalog** (+ search) | **Neon — PostgreSQL + JSONB** | relational for queried/structured fields; `data jsonb` for variable/nested (Song `parts`, `meta`); `pg_trgm`/`tsvector` search; one store covers relational *and* document |
-| *(optional, later)* cache / rate-limit | Redis (AWS ElastiCache/MemoryDB) | speed layer; never a source of truth |
-| MongoDB / DocumentDB | **not used** | evaluated, dropped — kept as an interview talking-point + optional local-Docker learning exercise |
+| Data                                                | Store                            | Why                                                                                                                                                                        |
+| --------------------------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Per-user (scores, settings, mappings, offline sync) | **DynamoDB**                     | known-key lookups at scale; Streams change-feed for sync; the AWS-portfolio centerpiece; NoSQL key-value reps                                                              |
+| Song/Lesson **catalog** (+ search)                  | **Neon — PostgreSQL + JSONB**    | relational for queried/structured fields; `data jsonb` for variable/nested (Song `parts`, `meta`); `pg_trgm`/`tsvector` search; one store covers relational _and_ document |
+| _(optional, later)_ cache / rate-limit              | Redis (AWS ElastiCache/MemoryDB) | speed layer; never a source of truth                                                                                                                                       |
+| MongoDB / DocumentDB                                | **not used**                     | evaluated, dropped — kept as an interview talking-point + optional local-Docker learning exercise                                                                          |
 
 - **Lesson ≠ Song** — distinct entities (different schemas): one `catalog` table with a `type` discriminator + shared base columns; type-specific structure lives in `data jsonb` / related tables.
-- **Songs gain `parts`/sections later** — model as a relational `song_parts` table *or* embed under `data->'parts'` (embed-vs-reference decided when the feature lands).
+- **Songs gain `parts`/sections later** — model as a relational `song_parts` table _or_ embed under `data->'parts'` (embed-vs-reference decided when the feature lands).
 
 ## Why Postgres + JSONB (not Mongo, not DynamoDB) for the catalog
 
 - The catalog is **queryable** (multi-attribute filter: artist + tags + difficulty + timeSignature + …, plus partial/fuzzy search) and **relational-ish** (Lesson/Song entities, future joins to courses/artists). Relational fits; SQL + indexes are the natural tool.
-- **JSONB removes the need for a separate document DB** — schemaless/nested content (Song `parts`, `meta`, per-section tags, late `/design-shotgun` findings) lives in a `data jsonb` column with GIN indexing. The hybrid (typed columns + JSONB) is *more* capable here than pure Mongo: real constraints/joins/transactions **and** document flexibility in one store.
+- **JSONB removes the need for a separate document DB** — schemaless/nested content (Song `parts`, `meta`, per-section tags, late `/design-shotgun` findings) lives in a `data jsonb` column with GIN indexing. The hybrid (typed columns + JSONB) is _more_ capable here than pure Mongo: real constraints/joins/transactions **and** document flexibility in one store.
 - **DynamoDB is wrong for the catalog** — its rigid PK/SK/GSI model makes arbitrary multi-attribute + `tags[]` + partial-text search awkward; its strength is known-key lookups, which is exactly the per-user data it keeps.
-- **MongoDB/DocumentDB has no natural home** once the catalog is Postgres and per-user is DynamoDB — it gets squeezed between Postgres-JSONB (above) and DynamoDB (below). Kept as a talking-point (*"I consolidated into Postgres JSONB instead of bolting on a document DB"* — a senior judgment signal) and an optional local-Docker exercise (like the `H-12` Kafka exercise) if hands-on Mongo reps are wanted.
+- **MongoDB/DocumentDB has no natural home** once the catalog is Postgres and per-user is DynamoDB — it gets squeezed between Postgres-JSONB (above) and DynamoDB (below). Kept as a talking-point (_"I consolidated into Postgres JSONB instead of bolting on a document DB"_ — a senior judgment signal) and an optional local-Docker exercise (like the `H-12` Kafka exercise) if hands-on Mongo reps are wanted.
 
 ## Why Neon (provider)
 
@@ -36,9 +36,9 @@ Polyglot persistence, **two stores**:
 
 - **DynamoDB-only + client-side search** — simplest / all-AWS / $0, but no real catalog query store and no added skill; rejected because the user wants a real backend + DB breadth.
 - **DynamoDB + OpenSearch** — canonical AWS rich-search, but ~$25+/mo (no real free tier) and overkill at catalog scale.
-- **MongoDB Atlas** — free document DB; chosen briefly, then dropped once it was clear Postgres-JSONB covers the document need and *"why not Postgres?"* is hard to defend. Mongo + DynamoDB also reads as "two NoSQL stores — why?".
-- **Supabase** — free Postgres + batteries (auth/API/storage), but those overlap & compete with the AWS portfolio surface (Cognito/S3/Lambda), and its auto-API removes the Lambda work that *is* the demonstration.
-- **Prisma Postgres (on Unikraft Cloud)** — generous free tier (~50 DBs) and great Lambda fit, but couples to the Prisma ecosystem; Neon matches the multi-project benefit with standard Postgres. (Unikraft Cloud itself is a *compute* platform, not a managed Postgres.)
+- **MongoDB Atlas** — free document DB; chosen briefly, then dropped once it was clear Postgres-JSONB covers the document need and _"why not Postgres?"_ is hard to defend. Mongo + DynamoDB also reads as "two NoSQL stores — why?".
+- **Supabase** — free Postgres + batteries (auth/API/storage), but those overlap & compete with the AWS portfolio surface (Cognito/S3/Lambda), and its auto-API removes the Lambda work that _is_ the demonstration.
+- **Prisma Postgres (on Unikraft Cloud)** — generous free tier (~50 DBs) and great Lambda fit, but couples to the Prisma ecosystem; Neon matches the multi-project benefit with standard Postgres. (Unikraft Cloud itself is a _compute_ platform, not a managed Postgres.)
 - **AWS Aurora Serverless v2 / DSQL / RDS Postgres** — on-portfolio but not reliably $0 (RDS 12-mo free expired; Aurora v2 ~$43/mo min) and VPC/RDS-Proxy complexity. Kept as the "AWS-managed equivalent" talking-point.
 
 ## Consequences

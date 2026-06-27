@@ -46,6 +46,7 @@ Build the **catalog routes first** (SSR is most valuable there). Player routes m
 **Positive:** Next.js + App Router + a genuine SSR/hydration portfolio piece; ~$0; keeps Pulumi (single IaC), Capacitor, PWA, S3+CloudFront, and the hexagon.
 
 **Negative / costs:**
+
 - Pages shipping in the **static (iOS) build must render client-side**; `isCapacitor()` selects the data path, SSR is the web bonus. No server-actions in shared pages.
 - Capacitor routing config (`basePath`/`trailingSlash`) for the `capacitor://localhost` scheme.
 - **Next.js ↔ OpenNext** version pinning required (Next 16 in 2026 — verify adapter support before wiring).

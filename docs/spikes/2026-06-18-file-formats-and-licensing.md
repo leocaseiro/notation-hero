@@ -148,7 +148,7 @@ Session JSONL files under `~/.claude/projects/-Users-leocaseiro-Sites-drum-tutor
 
 Verbatim quotes captured:
 
-- **Lossiness (caveat):** *"MIDI files give you worse notation than Guitar Pro files. AlphaTab's notation-grade import formats are Guitar Pro and MusicXML. A raw `.mid` file is just note numbers on channel 10 — turning that into clean drum *notation* requires quantization + GM-percussion→staff mapping (heuristic, lossy)."*
+- **Lossiness (caveat):** _"MIDI files give you worse notation than Guitar Pro files. AlphaTab's notation-grade import formats are Guitar Pro and MusicXML. A raw `.mid` file is just note numbers on channel 10 — turning that into clean drum \_notation_ requires quantization + GM-percussion→staff mapping (heuristic, lossy)."\_
 - **Gotcha line (scope doc):** _"MIDI files vs Guitar Pro: raw `.mid` → standard notation is lossy (quantize/voice/map). Guitar Pro/MusicXML = notation-grade. For the falling-notes view, raw MIDI is easy (just timings + lanes). Parse MIDI with `@tonejs/midi`."_
 - **midi2abc research:** _"MIDI is just a series of events… so a converter tries to work out a 'best fit' to notation but sometimes the resulting notation can be quite weird with odd note lengths… midi2abc quantizes the note durations to a length of half the L: value."_
 - **AlphaTab formats:** _"AlphaTab has importers for Guitar Pro 3-5 (.gp3/.gp4/.gp5), GP6 (.gpx), GP7 (.gp), MusicXML (.xml), CapXML (.cap), and alphaTex…"_ — ⚠️ **the rest of this session quote ("alphaTex does not support any kind of drum notation") is factually wrong and superseded:** AlphaTex has supported drums since May 2024 ([alphaTab#1493](https://github.com/CoderLine/alphaTab/pull/1493)). Kept here only to show what the original out-of-date research claimed.

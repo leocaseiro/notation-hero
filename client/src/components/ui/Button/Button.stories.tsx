@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from '@storybook/tanstack-react';
 import { Button } from './Button';
+import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
 const meta = {
   title: 'UI/Button',

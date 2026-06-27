@@ -1,5 +1,5 @@
 ---
-title: "feat: ground wireframe + SQL seed in real Guitar Pro source data"
+title: 'feat: ground wireframe + SQL seed in real Guitar Pro source data'
 type: feat
 date: 2026-06-21
 branch: docs/wireframe-pattern-lesson-model
@@ -187,6 +187,7 @@ groovescribe sources, across the wireframe `index.html` and the SQL seed; the ex
 tool; the delta logging of open/flagged items.
 
 ### Deferred to Follow-Up Work
+
 - **Catalog expansion** to the other real `.gp` files in the folder (Toto Africa,
   Hotel California, Paranoid, Man In The Mirror, Bob Marley, Green Day, Mamonas, etc.) —
   available but not the decided seed; log as available, do not import now.

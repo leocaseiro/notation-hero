@@ -26,6 +26,7 @@ if [ -n "$violations" ]; then
   echo "Remove // istanbul ignore, /* c8 ignore */, /* v8 ignore */ etc. comments."
   echo "See AGENTS.md + decision-registry.md F3-noescape / L5-no-escape-hatches."
   echo "Offending lines:"
+  # shellcheck disable=SC2001 # multi-line prefix: ${var//search/replace} cannot prepend to each line
   echo "$violations" | sed 's/^/  - /'
   exit 1
 fi
