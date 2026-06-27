@@ -93,15 +93,15 @@
 flowchart TD
   Catalog["🔎 Catalog<br/><span style='font-size:11px'>#/catalog</span>"]:::catalog
 
-  Song["Song detail<br/><span style='font-size:11px'>#/song/:id</span>"]:::song
-  Lesson["Lesson detail<br/><span style='font-size:11px'>#/lesson/:id</span>"]:::lesson
-  Pattern["Pattern detail<br/><span style='font-size:11px'>#/:kind/:id</span>"]:::pattern
+  Song["Song detail<br/><span style='font-size:11px'>#/song/:slug</span>"]:::song
+  Lesson["Lesson detail<br/><span style='font-size:11px'>#/lesson/:slug</span>"]:::lesson
+  Pattern["Pattern detail<br/><span style='font-size:11px'>#/:kind/:slug</span>"]:::pattern
 
-  Section["Song section<br/><span style='font-size:11px'>#/song/:id/section/:n</span>"]:::section
-  Part["Part detail<br/><span style='font-size:11px'>#/part/:id</span>"]:::part
-  Step["Lesson step<br/><span style='font-size:11px'>#/lesson/:id/step/:n</span>"]:::step
+  Section["Song section<br/><span style='font-size:11px'>#/song/:slug/section/:n</span>"]:::section
+  Part["Part detail<br/><span style='font-size:11px'>#/part/:slug</span>"]:::part
+  Step["Lesson step<br/><span style='font-size:11px'>#/lesson/:slug/step/:n</span>"]:::step
 
-  Player["Player · stub<br/><span style='font-size:11px'>#/play/:id</span>"]:::player
+  Player["Player · stub<br/><span style='font-size:11px'>#/play/:slug</span>"]:::player
   Admin["Edit / Create · stub<br/><span style='font-size:11px'>#/&lt;item&gt;/edit · #/new?type=</span>"]:::admin
 
   %% enter from catalog
@@ -151,8 +151,9 @@ flowchart TD
 
   <div class="note">
     <b>NH-221 · SD-31 — pattern routes use the kind (done).</b><br>
-    A pattern's route reflects its <code>pattern_kind</code>: <span class="leaf">#/pattern/pat_zoio_fill</span> → <span class="leaf">#/fill/pat_zoio_fill</span>.
-    In a song/lesson it carries <b>both ids</b>: <span class="leaf">#/song/yellow/beat/pat_yellow_groove_closed</span>. The umbrella route <span class="leaf">#/pattern/:id</span> still resolves (redirects to the kind route).
+    A pattern's route reflects its <code>pattern_kind</code> + its <b>slug</b>: <span class="leaf">#/pattern/pat_zoio_fill</span> → <span class="leaf">#/fill/zoio-de-lula-tom-fill</span>.
+    In a song/lesson it carries <b>both slugs</b>: <span class="leaf">#/song/yellow/beat/yellow-groove-closed-hat</span>. The umbrella route <span class="leaf">#/pattern/:id</span> still resolves (redirects to the slug route).<br>
+    <b>Slug</b> — every navigable playable has a friendly <code>slug</code> (separate from the opaque id) used in URLs; the id still resolves as a fallback.
   </div>
 
   <h2>Route reference</h2>
@@ -160,15 +161,15 @@ flowchart TD
     <thead><tr><th>Page</th><th>Route</th><th>Reached from</th></tr></thead>
     <tbody>
       <tr><td><b>Catalog</b></td><td><span class="mono">#/catalog</span></td><td>Default · logo · search</td></tr>
-      <tr><td><b>Song detail</b></td><td><span class="mono">#/song/:id</span></td><td>Catalog row · search · related</td></tr>
-      <tr><td><b>Song section</b></td><td><span class="mono">#/song/:id/section/:n</span></td><td>child of Song (song structure)</td></tr>
-      <tr><td><b>Part detail</b></td><td><span class="mono">#/part/:id</span></td><td>child of Song (practice in parts)</td></tr>
-      <tr><td><b>Lesson detail</b></td><td><span class="mono">#/lesson/:id</span></td><td>Catalog row · search</td></tr>
-      <tr><td><b>Lesson step</b></td><td><span class="mono">#/lesson/:id/step/:n</span></td><td>child of Lesson (steps list)</td></tr>
-      <tr><td><b>Pattern detail</b></td><td><span class="mono">#/:kind/:id</span> <span style="color:var(--faint)">(beat·fill·rudiment·scale·chord; legacy <code>#/pattern/:id</code> redirects)</span></td><td>standalone · "used in"</td></tr>
-      <tr><td><b>Pattern in context</b></td><td><span class="mono">#/song/:id/:kind/:cid</span> · <span class="mono">#/lesson/:id/:kind/:cid</span></td><td>patterns[] card · step → pattern</td></tr>
-      <tr><td><b>Player</b> (stub)</td><td><span class="mono">#/play/:id</span> · <span class="mono">#/play/:id/step/:n</span></td><td>every ▶ button</td></tr>
-      <tr><td><b>Edit / Create</b> (stub)</td><td><span class="mono">#/&lt;item&gt;/edit</span> · <span class="mono">#/lesson/:id/step/:n/edit</span> · <span class="mono">#/new?type=</span></td><td>edit at each item (no <code>/admin</code>)</td></tr>
+      <tr><td><b>Song detail</b></td><td><span class="mono">#/song/:slug</span></td><td>Catalog row · search · related</td></tr>
+      <tr><td><b>Song section</b></td><td><span class="mono">#/song/:slug/section/:n</span></td><td>child of Song (song structure)</td></tr>
+      <tr><td><b>Part detail</b></td><td><span class="mono">#/part/:slug</span></td><td>child of Song (practice in parts)</td></tr>
+      <tr><td><b>Lesson detail</b></td><td><span class="mono">#/lesson/:slug</span></td><td>Catalog row · search</td></tr>
+      <tr><td><b>Lesson step</b></td><td><span class="mono">#/lesson/:slug/step/:n</span></td><td>child of Lesson (steps list)</td></tr>
+      <tr><td><b>Pattern detail</b></td><td><span class="mono">#/:kind/:slug</span> <span style="color:var(--faint)">(beat·fill·rudiment·scale·chord; legacy <code>#/pattern/:slug</code> redirects)</span></td><td>standalone · "used in"</td></tr>
+      <tr><td><b>Pattern in context</b></td><td><span class="mono">#/song/:slug/:kind/:cslug</span> · <span class="mono">#/lesson/:slug/:kind/:cslug</span></td><td>patterns[] card · step → pattern</td></tr>
+      <tr><td><b>Player</b> (stub)</td><td><span class="mono">#/play/:slug</span> · <span class="mono">#/play/:slug/step/:n</span></td><td>every ▶ button</td></tr>
+      <tr><td><b>Edit / Create</b> (stub)</td><td><span class="mono">#/&lt;item&gt;/edit</span> · <span class="mono">#/lesson/:slug/step/:n/edit</span> · <span class="mono">#/new?type=</span></td><td>edit at each item (no <code>/admin</code>)</td></tr>
     </tbody>
   </table>
 

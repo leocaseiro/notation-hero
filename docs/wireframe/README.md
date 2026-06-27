@@ -30,14 +30,14 @@ The main app is a single-page app — reach every screen by clicking, or by deep
 
 ```
 #/catalog                                      ← default (search + Songs/Lessons tabs)
-#/song/bohemian-rhapsody                       ← song detail
-#/song/bohemian-rhapsody/section/2             ← section "score" page
-#/part/sna-intro                               ← song part
-#/lesson/lesson_yellow_groove                  ← lesson  ·  #/lesson/.../step/1 ← lesson step
-#/fill/pat_zoio_fill                           ← pattern — route uses the KIND (NH-221), not "pattern"
-#/song/yellow/beat/pat_yellow_groove_closed    ← same pattern in a song's context (both ids)
-#/pattern/pat_zoio_fill                        ← legacy alias → redirects to #/fill/…
-#/play/bohemian-rhapsody                       ← player stub
+#/song/yellow                                  ← song detail (URLs use the slug, not the opaque id)
+#/song/yellow/section/2                        ← section "score" page
+#/part/yellow-intro                            ← song part (NH-222)
+#/lesson/learn-yellow                          ← lesson  ·  #/lesson/learn-yellow/step/1 ← step (steps = song parts)
+#/fill/zoio-de-lula-tom-fill                   ← pattern — route uses the KIND (NH-221) + the slug
+#/song/yellow/beat/yellow-groove-closed-hat    ← same pattern in a song's context (both slugs)
+#/pattern/pat_zoio_fill                        ← legacy alias → redirects to the slug route
+#/play/yellow                                  ← player stub
 ```
 
 Top bar: flip **Role** (Anonymous / User / Admin) and **Inspector: Show all fields** to see the role-gated
@@ -86,19 +86,22 @@ Order follows the agreed priority: **① search → ② detail → ③ steps →
 
 ## Routing (deep-link · reload · back/forward)
 
-Hash router — refresh stays on the current screen; browser back/forward work.
+Hash router — refresh stays on the current screen; browser back/forward work. Routes use the
+**slug** (a friendly token derived from the title; `playable.slug` in the schema) — the opaque id
+still resolves as a fallback. Patterns carry the kind too (NH-221); in a song/lesson they carry both
+slugs (`#/song/:slug/:kind/:cslug`).
 
-| Route                                                                         | Screen                                     |
-| ----------------------------------------------------------------------------- | ------------------------------------------ |
-| `#/catalog?tab=songs\|lessons&kind=…&q=…`                                     | Catalog list (filters in the URL)          |
-| `#/song/:id` · `#/song/:id/section/:n`                                        | Song detail · section "score"              |
-| `#/part/:id`                                                                  | Song part                                  |
-| `#/lesson/:id` · `#/lesson/:id/step/:n`                                       | Lesson detail · single step                |
-| `#/:kind/:id` (beat·fill·rudiment·scale·chord)                                | Pattern — standalone (NH-221/SD-31)        |
-| `#/song/:id/:kind/:cid` · `#/lesson/:id/:kind/:cid`                           | Pattern in a song/lesson context           |
-| `#/pattern/:id`                                                               | Legacy → redirects to the kind route       |
-| `#/play/:id` · `#/play/:id/step/:n`                                           | Player stub                                |
-| `#/new?type=song\|lesson\|upload` · `#/<item>/edit` · `#/lesson/:id/step/new` | CRUD (stub) — edit at each item, no /admin |
+| Route                                                                           | Screen                                     |
+| ------------------------------------------------------------------------------- | ------------------------------------------ |
+| `#/catalog?tab=songs\|lessons&kind=…&q=…`                                       | Catalog list (filters in the URL)          |
+| `#/song/:slug` · `#/song/:slug/section/:n`                                      | Song detail · section "score"              |
+| `#/part/:slug`                                                                  | Song part                                  |
+| `#/lesson/:slug` · `#/lesson/:slug/step/:n`                                     | Lesson detail · single step                |
+| `#/:kind/:slug` (beat·fill·rudiment·scale·chord)                                | Pattern — standalone (NH-221/SD-31)        |
+| `#/song/:slug/:kind/:cslug` · `#/lesson/:slug/:kind/:cslug`                     | Pattern in a song/lesson context           |
+| `#/pattern/:slug`                                                               | Legacy → redirects to the kind route       |
+| `#/play/:slug` · `#/play/:slug/step/:n`                                         | Player stub                                |
+| `#/new?type=song\|lesson\|upload` · `#/<item>/edit` · `#/lesson/:slug/step/new` | CRUD (stub) — edit at each item, no /admin |
 
 ## Schema findings
 
