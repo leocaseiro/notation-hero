@@ -624,8 +624,7 @@ function render(){
     return renderLesson(seg[1]);
   }
   if(seg[0]==='part')    return renderPart(seg[1]);
-  if(isPatKind(seg[0]))  return renderPattern(seg[1], null);                  // standalone #/<kind>/:id (NH-221)
-  if(seg[0]==='pattern') return renderPatternLegacy(seg[1]);                  // legacy #/pattern/:id → redirects to the kind route
+  if(isPatKind(seg[0]))  return renderPattern(seg[1], null);                  // standalone #/<kind>/:slug (NH-221)
   if(seg[0]==='play')    return renderPlayer();
   app.innerHTML = `<div class="empty"><span class="material-symbols-outlined">help</span>Unknown route <code>${esc(location.hash)}</code><br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`;
 }
@@ -1217,11 +1216,6 @@ function renderLesson(id){
   `;
 }
 /* ---------- screen: PATTERN detail (first-class playable — score + history) ---------- */
-function renderPatternLegacy(id){   // NH-221: old #/pattern/:id → swap the address bar to the kind route, then render
-  const p = bySlug(id);
-  if(p && p.pattern_kind){ history.replaceState(null,'','#/'+p.pattern_kind+'/'+sl(p)); el('#routeEcho').textContent = location.hash; }
-  return renderPattern(id, null);
-}
 function renderPattern(id, ctx){
   let it = bySlug(id);
   if(!it){ const p=PATTERNS[id]; if(p) it={id, kind:'pattern', title:p.name, pattern_kind:p.kind, family:p.family, level:p.level, instruments:['drums'], status:'published', origin:'curated'}; }

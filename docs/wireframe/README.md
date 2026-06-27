@@ -36,7 +36,6 @@ The main app is a single-page app — reach every screen by clicking, or by deep
 #/lesson/learn-yellow                          ← lesson  ·  #/lesson/learn-yellow/step/1 ← step (steps = song parts)
 #/fill/zoio-de-lula-tom-fill                   ← pattern — route uses the KIND (NH-221) + the slug
 #/song/yellow/beat/yellow-groove-closed-hat    ← same pattern in a song's context (both slugs)
-#/pattern/pat_zoio_fill                        ← legacy alias → redirects to the slug route
 #/play/yellow                                  ← player stub
 ```
 
@@ -100,7 +99,6 @@ slugs (`#/song/:slug/:kind/:cslug`).
 | `#/lesson/:slug` · `#/lesson/:slug/step/:n`                                     | Lesson detail · single step                |
 | `#/:kind/:slug` (beat·fill·rudiment·scale·chord)                                | Pattern — standalone (NH-221/SD-31)        |
 | `#/song/:slug/:kind/:cslug` · `#/lesson/:slug/:kind/:cslug`                     | Pattern in a song/lesson context           |
-| `#/pattern/:slug`                                                               | Legacy → redirects to the kind route       |
 | `#/play/:slug` · `#/play/:slug/step/:n`                                         | Player stub                                |
 | `#/new?type=song\|lesson\|upload` · `#/<item>/edit` · `#/lesson/:slug/step/new` | CRUD (stub) — edit at each item, no /admin |
 

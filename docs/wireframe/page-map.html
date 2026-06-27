@@ -151,8 +151,8 @@ flowchart TD
 
   <div class="note">
     <b>NH-221 · SD-31 — pattern routes use the kind (done).</b><br>
-    A pattern's route reflects its <code>pattern_kind</code> + its <b>slug</b>: <span class="leaf">#/pattern/pat_zoio_fill</span> → <span class="leaf">#/fill/zoio-de-lula-tom-fill</span>.
-    In a song/lesson it carries <b>both slugs</b>: <span class="leaf">#/song/yellow/beat/yellow-groove-closed-hat</span>. The umbrella route <span class="leaf">#/pattern/:id</span> still resolves (redirects to the slug route).<br>
+    A pattern's route reflects its <code>pattern_kind</code> + its <b>slug</b> (was the umbrella <code>#/pattern/:id</code>): <span class="leaf">#/fill/zoio-de-lula-tom-fill</span>.
+    In a song/lesson it carries <b>both slugs</b>: <span class="leaf">#/song/yellow/beat/yellow-groove-closed-hat</span>.<br>
     <b>Slug</b> — every navigable playable has a friendly <code>slug</code> (separate from the opaque id) used in URLs; the id still resolves as a fallback.
   </div>
 
@@ -166,7 +166,7 @@ flowchart TD
       <tr><td><b>Part detail</b></td><td><span class="mono">#/part/:slug</span></td><td>child of Song (practice in parts)</td></tr>
       <tr><td><b>Lesson detail</b></td><td><span class="mono">#/lesson/:slug</span></td><td>Catalog row · search</td></tr>
       <tr><td><b>Lesson step</b></td><td><span class="mono">#/lesson/:slug/step/:n</span></td><td>child of Lesson (steps list)</td></tr>
-      <tr><td><b>Pattern detail</b></td><td><span class="mono">#/:kind/:slug</span> <span style="color:var(--faint)">(beat·fill·rudiment·scale·chord; legacy <code>#/pattern/:slug</code> redirects)</span></td><td>standalone · "used in"</td></tr>
+      <tr><td><b>Pattern detail</b></td><td><span class="mono">#/:kind/:slug</span> <span style="color:var(--faint)">(beat·fill·rudiment·scale·chord)</span></td><td>standalone · "used in"</td></tr>
       <tr><td><b>Pattern in context</b></td><td><span class="mono">#/song/:slug/:kind/:cslug</span> · <span class="mono">#/lesson/:slug/:kind/:cslug</span></td><td>patterns[] card · step → pattern</td></tr>
       <tr><td><b>Player</b> (stub)</td><td><span class="mono">#/play/:slug</span> · <span class="mono">#/play/:slug/step/:n</span></td><td>every ▶ button</td></tr>
       <tr><td><b>Edit / Create</b> (stub)</td><td><span class="mono">#/&lt;item&gt;/edit</span> · <span class="mono">#/lesson/:slug/step/:n/edit</span> · <span class="mono">#/new?type=</span></td><td>edit at each item (no <code>/admin</code>)</td></tr>
