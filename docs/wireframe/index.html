@@ -1211,6 +1211,7 @@ function renderLesson(id){
       ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/lesson/${sl(it)}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
       <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>Each pattern above is scored on its <b>own</b> id. This lesson's score${signedIn()&&it.best!=null?` (<b>${it.best}%</b>)`:''} is your <b>whole-play</b> attempt — the “final exam” — <b>not</b> an average of the steps. Skip the steps, play it whole, score 100%.</div></div>
     </div>
+    ${relatedCard(it)}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
   `;
