@@ -1,5 +1,7 @@
 # 🤝 Handoff — Catalog: next session = **review + steps**
 
+> ⛔ **One item superseded:** the "Level grade bullet (accent ring)" is replaced by a **neutral rounded pill** — see `docs/design/2026-06-13-donut-spectrum-handoff.md` + `CONCEPTS.md`.
+
 > **⚠ Score-cell + level visuals SUPERSEDED (2026-06-13)** — the "grade bullet (accent ring)" and the `—` / `X%` / `🏆 100%` status cell described below are replaced by the **best-score donut** (System G spectrum + **gold-100 trophy**, glow pending) and the **neutral level pill**. See [`2026-06-13-donut-spectrum-handoff.md`](2026-06-13-donut-spectrum-handoff.md).
 
 This session designed the **catalog UI** (the "find a piece to play" surface). Flow is locked, the look/filter direction is chosen. The next session does **(1) another design review** and **(2) the lesson-steps work**.

@@ -1,5 +1,7 @@
 # Spike — Amplify Auth vs raw Cognito-in-Pulumi for the admin gate
 
+> ⛔ **Partially stale (FE/BE asides).** The Cognito / admin-gate analysis stands, but the asides are outdated: **FE = Vite SPA** (Next.js dropped) and **BE = NestJS** (locked). See `../decisions/2026-06-17-architecture-decisions.md`.
+
 > **Status:** evidence + recommendation. **Decisions marked `🟦 DECIDE` are leocaseiro's to make — nothing here changes infra or tickets until approved.**
 > **Date:** 2026-06-16 · **Worktree:** `nh-193-admin-auth-spike` (off `master` 90f9ea1) · **Jira:** [NH-193](https://leocaseiro.atlassian.net/browse/NH-193)
 > **Trigger:** 2026-06-16 conversation — a `ce-sessions` recall of _why we picked Cognito over Amplify_ → _"could I use AWS Amplify Auth temporarily for the admin only, since it's easy to set up?"_

@@ -14,5 +14,8 @@ storybook-static/
 playwright-report/
 test-results/
 
+# Local vector-index artifacts (LanceDB / skills index) — generated, gitignored, never hand-format.
+vectors/
+
 # Agent scratch (SDD briefs/reports/ledger; not committed source).
 .superpowers/

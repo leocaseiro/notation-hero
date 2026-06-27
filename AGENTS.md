@@ -5,6 +5,20 @@
 > Wave 1 hand-authored stub. The L8 lane replaces this with a generated-from-config
 > AGENTS.md + a CI drift-check (DACI L8). Until then this file is the agent contract.
 
+## Current direction — READ FIRST (snapshot, 2026-06-27)
+
+> 30-second version so you don't act on a superseded doc. **Source of truth:** [`docs/decisions/decision-registry.md`](docs/decisions/decision-registry.md) (newest-first change-log) + the ADR [`docs/decisions/2026-06-17-architecture-decisions.md`](docs/decisions/2026-06-17-architecture-decisions.md). **If any doc conflicts with this snapshot or the registry, the registry wins.**
+
+- **Foundation** — plain **pnpm workspaces** + folders-in-one-app (Nx DROPPED 2026-06-17). One **NestJS** app (hexagon inside); FE = **Vite SPA** (Next.js DROPPED 2026-06-18).
+- **Data** — **Neon Postgres** (catalog) + **DynamoDB** (per-user, M1). **Drizzle** ORM over the `@neondatabase/serverless` HTTP driver. Schema = the 8-table **Playable** model (notation · playable · track · step · playable_link · media · tonal_profile · drum_profile); profiles **per-track**. Schema design is DONE (draft DDL `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`); **not yet applied to a live DB**.
+- **Auth (admin gate, v1)** — **Cognito + Google federation + RBAC via `cognito:groups` (`admin` group) + a framework-free `can(user, item, action)` policy**. NOT CloudFront Basic-Auth, NOT a shared password, NOT deferred to M1. Only **end-user** sign-up + cross-device sync are M1.
+- **CMS** — the admin is the **same catalog UI with admin-gated actions**; NO separate React-Admin SPA.
+- **API contract** — **oRPC** (ts-rest rejected). **Lint/format** — ESLint + Prettier (Biome rejected).
+- **Infra** — **Pulumi** (TS); deploy = **push-to-master only** via GitHub OIDC (no AWS creds on PRs); least-privilege role. **Neon is NOT Pulumi-provisioned** (off-AWS); connection string = **Pulumi-secret → Lambda `DATABASE_URL` env var** (not SSM); migrations in an operator runbook.
+- **Tracker** — Jira project **NH** (NH-NN). Linear dead; KAN drained.
+
+> **Superseded (bannered) docs — do not treat as current:** the admin-auth in `feature-freeze.md` / `cms-approach.md` / `specs/2026-06-15-cms-admin.md` (Basic-Auth/password), `spikes/2026-06-16-fe-framework-nextjs.md` (Next.js), and any "pnpm + **Nx**" cliff-banner.
+
 ## Hexagon layout & boundaries (pnpm workspaces)
 
 The repo is **plain pnpm workspaces** — Nx was dropped (ADR `ARCH-MONO-1`). Four

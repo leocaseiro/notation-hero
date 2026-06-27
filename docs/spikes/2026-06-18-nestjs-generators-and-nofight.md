@@ -1,5 +1,7 @@
 # Spike: NestJS generators + "generators === our linting" (no-fight)
 
+> ⛔ **SUPERSEDED (lint) — Biome was REJECTED.** Lint/format = **ESLint + Prettier** (NH-243, 2026-06-26). **Ignore the `biome.json` config block below.** See `../decisions/decision-registry.md`.
+
 - **Date:** 2026-06-18
 - **Principle (Leo's):** _"Native NestJS generators === notation-hero linting."_ Whatever `nest g` emits should pass our formatter/linter **unchanged** — config conforms to the generators, never fights them with auto-fix.
 - **Method:** read `@nestjs/schematics` 11.1.0 + actually ran `nest g` + formatters in throwaway `/tmp` (repo untouched). No training assumptions.

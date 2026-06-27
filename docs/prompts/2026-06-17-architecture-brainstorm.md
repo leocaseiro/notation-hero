@@ -1,5 +1,7 @@
 # Architecture brainstorm — kickoff prompt (2026-06-17)
 
+> ⛔ **Brainstorm INPUT — decisions LOCKED.** Every open question framed below was decided the same day in `../decisions/2026-06-17-architecture-decisions.md` (pnpm kept, **Nx dropped**, bun stays dropped, oRPC, Drizzle, Cognito+Google). Read that for the answers.
+
 > Paste everything below the divider into a fresh Claude Code session to start the
 > architecture brainstorm. Distilled from the 2026-06-16/17 framework exploration
 > (Fastify vs NestJS → **NestJS single-backend + hexagon inside**).

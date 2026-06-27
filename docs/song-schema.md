@@ -95,7 +95,7 @@ lessons/<lessonId>/cover.<ext>      # optional cover image
 GET  /lessons?category=&difficulty=&tag=   → list projection: [{lessonId,title,artist,difficulty,tags,bpm,durationBars,category,order,coverImageUrl}]
 GET  /lessons/{lessonId}                    → full Lesson + short-lived signed URL for the file
 
-# Admin (behind K-2 CloudFront-Function Basic Auth):
+# Admin (behind ~~K-2 CloudFront-Function Basic Auth~~ (superseded: admin auth = Cognito v1 — see ADR 2026-06-17)):
 POST   /lessons              → create metadata (status:"draft")
 PUT    /lessons/{id}         → update
 DELETE /lessons/{id}         → soft-delete (status:"draft" / tombstone)
