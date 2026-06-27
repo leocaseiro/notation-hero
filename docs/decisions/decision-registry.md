@@ -12,6 +12,18 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-27 — Neon connection keys: GitHub-secret keys + CI-first migrate (NH-79)
+
+Brainstorm-approved design for the Pulumi+Neon **connection-key plumbing** — the foundation under the catalog read slice (NH-79 → NH-123). Full design: `docs/superpowers/specs/2026-06-27-neon-pulumi-connection-keys-design.md`. **Refines a locked decision** (RC-6 / 2026-06-10) — the mechanism only, not the intent.
+
+- **RC-6 mechanism refined — Pulumi config secret → GitHub Actions secrets.** The Neon connection string is no longer a `pulumi config set --secret` value; it lives as two GitHub Actions secrets (`NEON_DATABASE_URL`, `NEON_MIGRATION_URL`). RC-6's _intent_ is unchanged (an env var at rest, **not** SSM, $0). Reasons (leocaseiro, 2026-06-27): GitHub **auto-masks** secrets in a **public** repo (safer than `pulumi config get --show-secrets`, which prints plaintext), and it enables **100% CI/CD** with zero recurring local runs.
+- **Two Neon roles (least-privilege).** Owner role = DDL/migrations (`NEON_MIGRATION_URL`, TCP, CI-only); a new least-privilege `nh_app` role = DML/runtime (`NEON_DATABASE_URL`, HTTP `neon-http`, the only url injected into the Lambda env). A leaked Lambda env can read/write rows but cannot alter the schema.
+- **Migrate before deploy, in CI.** `deploy.yml` gains a `drizzle-kit migrate` step as the **first** step (needs only Node + the GitHub secret, no AWS), so it runs before `pulumi up`; idempotent; a failure aborts before any AWS mutation. Seed = a one-click `workflow_dispatch` workflow (not the auto deploy).
+- **DDL-first Drizzle runner.** The raw 8-table DDL stays the migration source of truth (`ARCH-ORM-1`); `drizzle-kit generate --custom` + `migrate`; `catalog.schema.ts` hand-written for query typing; files under `server/src/adapters/neon-postgres/`.
+- **Minimal compute guard.** `robots.txt` disallow `/api/*` + a dev Neon branch + a `Cache-Control` header on the thin read; the CloudFront edge-cache (the real bot/crowd protection) is deferred to **NH-247**. Free-tier verified $0/month current (KMS $0, Lambda/CloudFront perpetual free, Neon 0.5 GB / 100 compute-hours, sleeps after 5 min idle).
+
+**Status:** ✅ decided · ⏳ enforcement pending — flips to 🤖 when NH-79 lands (the migrate CI step, the `nh_app` grants, the `LambdaWithUrl` env injection, the runbook). Approved by leocaseiro in the 2026-06-27 brainstorm; implementation plan deferred (LGTM-pause).
+
 ### 2026-06-26 — e2e is a required CI gate: Playwright lane + traces (NH-197)
 
 Stood up the first **e2e test lane** and wired it into the required `ci-green` gate (joins `a11y`/`vr` as a blocking Playwright gate; full design + findings: `docs/specs/2026-06-26-nh-197-e2e-traces.md`, plan: `docs/plans/2026-06-26-001-feat-nh-197-e2e-traces-plan.md`).
