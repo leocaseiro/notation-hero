@@ -1,5 +1,7 @@
 # NotationHero — Admin / CMS Approach (area K) — Decision
 
+> ⛔ **SUPERSEDED — admin-auth + CMS-UI direction (2026-06-17).** Two things below are outdated: (1) the admin gate is **NOT** CloudFront-Function Basic-Auth / "No Cognito" — it is **Cognito + Google federation + RBAC (Cognito groups) + `can()` policy** in **v1**, Pulumi-provisioned; (2) there is **no separate React-Admin SPA** — the admin is the **same catalog UI with admin-gated actions** (the same-UI reuse was locked in [`specs/2026-06-15-cms-admin.md`](specs/2026-06-15-cms-admin.md), itself now auth-superseded). Source of truth: [`decisions/2026-06-17-architecture-decisions.md`](decisions/2026-06-17-architecture-decisions.md) — ARCH-AUTH-1 / ARCH-ROLE-1 / ARCH-AUTHZ-1 / ARCH-OWN-1. The AWS-coverage / S3+Lambda+CloudFront / license analysis still stands.
+
 > [!IMPORTANT]
 > 🗄️ **Datastore update (2026-06-09):** this record predates the catalog-store decision. The song/lesson **catalog moved DynamoDB → Neon Postgres + JSONB** (DynamoDB is now per-user data only; Mongo/DocumentDB dropped). Read every "DynamoDB as the catalog store" reference below as **superseded** — see `docs/decisions/2026-06-09-catalog-store-postgres-neon.md` + `docs/decisions/decision-registry.md`. Everything else (React-Admin choice, "why not a headless CMS", S3/Lambda/CloudFront/edge-auth architecture, AWS-coverage matrix, license analysis) still stands.
 
