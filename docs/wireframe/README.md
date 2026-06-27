@@ -123,3 +123,12 @@ approval → amend the locked spec with a changelog). Nothing in the locked sche
   owner **metafoot** + **Private** tag on user-uploads (SD-3); **client-side score filter** + **Best-score
   sort** (SD-12, signed-in only — per-user caveat shown in-UI). Sample now includes pitched items (guitar/keys)
   - a Debut (level 0) item.
+- **v1.4** — **schema-alignment pass**: `artist` → **`author[]` + `author_type`** (SD-13/SD-33); pattern routes
+  use the **kind** (`#/fill/:slug`, NH-221) + a friendly **`slug`** token; a structured **song-learning lesson**
+  (Yellow — parts as positions-only slices, NH-222/NH-137); **flag filters** (audio / video / parts) + a
+  **playback-source toggle** (synth | video | audio, SD-11/NH-211); plus a **page map** (`page-map.html`).
+- **v1.5** — **author on the UI + sort by column**: the catalog list shows the **author** per row (songs =
+  artist, lessons = **teacher**); an **Author** facet on the Lessons tab mirrors **Artist** on Songs, both with
+  an **Unknown** (no-author) option; author is searchable in lessons (NH-223). **Sort** moves into the **"More"**
+  row and the table-header columns (Name/Level/BPM/Best) are **clickable to sort** (asc/desc, synced with the
+  dropdown) (NH-210/SD-10).
