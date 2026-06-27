@@ -1,0 +1,206 @@
+# Catalog Table (NH-210) — Design
+
+**Ticket:** [NH-210](https://leocaseiro.atlassian.net/browse/NH-210) — _SD-10: catalog column-header sort (click to sort, asc/desc) — TanStack Table_
+**Status:** Design — brainstorm complete, awaiting review → implementation plan
+**Date:** 2026-06-27
+
+## Goal
+
+NH-210 asks for **click-to-sort column headers** (asc/desc, arrow on the active
+column) on the catalog list, built on TanStack Table. We deliver that sort as the
+headline interaction of a **reusable, data-agnostic table component** plus the
+catalog's cell components, all covered by Storybook — so "every table view" in the
+app reuses one engine rather than re-implementing sort each time.
+
+This is the real-app implementation of the sort demoed in the wireframe (PR #88).
+
+## Decisions (from brainstorm)
+
+- **Scope (Tier 2):** generic `DataTable` + catalog composition + the reusable cell
+  components + Storybook + tests. **Out of scope:** the filter row, "Continue" card,
+  topbar, and the `relevance / newest / curated` sort _dropdown_ — those are page
+  chrome with their own tickets.
+- **Markup (B1):** shadcn `<Table>` primitives styled as gap-separated rounded
+  **card-rows**. A real `<table>` + `aria-sort` gives accessibility for free, and the
+  card look matches the locked catalog mockup.
+- **Architecture:** headless TanStack engine. A generic `ui/DataTable<TData>` owns the
+  wiring and the NH-210 sortable headers; `catalog/CatalogTable` is a thin column
+  config. The table never knows the data shape — composition happens in each column's
+  `cell` renderer.
+- **Reuse / naming:** cell _contents_ are standalone reusable components with plain
+  names in `ui/` (`ScoreDonut`, `LevelPill`, `Cover`, `Flags`) — never `TableCell*`.
+  Only the catalog-specific `NameCell` lives in `catalog/`.
+- **Storybook:** the repo `Button` pattern — `@storybook/tanstack-react`, `autodocs`,
+  every prop wired as a Control + named example stories.
+- **Tests:** per-component `.test.tsx` (Vitest + Testing Library), a11y (axe, blocks
+  CI), VR (Playwright `toHaveScreenshot`, per-OS baselines) for **all** components.
+
+## Architecture
+
+TanStack Table is headless, so the engine is generic and the UI is pure composition:
+
+```tsx
+// ui/DataTable — generic, reusable, knows NOTHING about the catalog. NH-210 sort lives here.
+<DataTable<TData>
+  data={data}
+  columns={columns}
+  appearance="cards"            // "cards" (gap-separated rounded rows) | "rows" (plain)
+  onRowClick={open}
+/>
+
+// ui/DataTable wraps every cell generically — no per-cell table components are written:
+<TableCell className={alignFor(cell.column)}>
+  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+</TableCell>
+
+// catalog/CatalogTable — a thin column config that drops the reusable cells in:
+const columns: ColumnDef<CatalogRow>[] = [
+  { accessorKey: 'title', header: 'Name',  cell: ({ row }) => <NameCell row={row.original} /> },
+  { accessorKey: 'level', header: 'Level', meta: { align: 'center' }, cell: ({ getValue }) => <LevelPill level={getValue<number | null>()} /> },
+  { accessorKey: 'bpm',   header: 'BPM',   meta: { align: 'right' },  cell: ({ getValue }) => <Bpm value={getValue<number | string>()} /> },
+  { accessorKey: 'best',  header: 'Best',  meta: { align: 'right' }, sortDescFirst: true, cell: ({ getValue }) => <ScoreDonut score={getValue<number | null>()} /> },
+  { id: 'play', header: '', enableSorting: false, cell: ({ row }) => <PlayButton onClick={() => quickPlay(row.original)} /> },
+];
+```
+
+## Components and folders
+
+`ui/` = reusable across the app (player, song detail, history). `catalog/` = only
+meaningful inside the catalog list.
+
+| Component      | Folder                 | Source     | Notes                                                                             |
+| -------------- | ---------------------- | ---------- | --------------------------------------------------------------------------------- |
+| `Table`        | `ui/Table`             | shadcn add | Table / TableHeader / TableBody / TableRow / TableHead / TableCell primitives     |
+| `Badge`        | `ui/Badge`             | shadcn add | base for the badges                                                               |
+| `DataTable`    | `ui/DataTable`         | new        | generic TanStack engine + sortable headers (NH-210) + `appearance`                |
+| `ScoreDonut`   | `ui/ScoreDonut`        | new        | best-score donut, System G bands                                                  |
+| `LevelPill`    | `ui/LevelPill`         | new        | level number pill (+ Debut, + none)                                               |
+| `Cover`        | `ui/Cover`             | new        | rounded icon tile (song vs lesson tint)                                           |
+| `Flags`        | `ui/Flags`             | new        | audio / video / parts indicator icons                                             |
+| `KindBadge`    | `ui/KindBadge`         | new        | preset over Badge: Beat / Rudiment / Fill                                         |
+| `NewPill`      | `ui/NewPill`           | new        | preset over Badge: "New" (thin — may fold into a Badge usage)                     |
+| `PlayButton`   | —                      | —          | just `Button size="icon" variant="ghost"` with a `play_circle` glyph; no new file |
+| `Bpm`          | `catalog/CatalogTable` | new        | tiny mono formatter (number or `60→120` range); colocated, not its own folder     |
+| `CatalogTable` | `catalog/CatalogTable` | new        | column config + data hand-off to `DataTable`                                      |
+| `NameCell`     | `catalog/NameCell`     | new        | the **2-line** name block (composes Cover + badges + flags)                       |
+
+Each component folder follows the `Button` precedent:
+`Name.tsx`, `Name.stories.tsx`, `Name.story-ids.ts`, `Name.test.tsx`,
+`Name.a11y.ts`, `Name.vr.ts` (+ generated `Name.vr.ts-snapshots/`).
+
+## ui/DataTable — generic API + the NH-210 sort
+
+```ts
+interface DataTableProps<TData> {
+  data: TData[];
+  columns: ColumnDef<TData>[];
+  appearance?: 'cards' | 'rows'; // default 'cards'
+  sorting?: SortingState; // controlled (optional)
+  onSortingChange?: OnChangeFn<SortingState>;
+  defaultSorting?: SortingState; // uncontrolled initial sort
+  onRowClick?: (row: TData) => void;
+  getRowId?: (row: TData) => string;
+  isLoading?: boolean;
+  emptyState?: ReactNode;
+}
+```
+
+Sort behaviour (NH-210):
+
+- Headers where `column.getCanSort()` render a header button; click → sort by that
+  column. Clicking the **active** header toggles **asc ⇄ desc only** (a 2-state
+  toggle, not TanStack's default 3-state cycle — set `enableSortingRemoval: false`).
+- The active column shows a Material Symbol arrow (`arrow_upward` / `arrow_downward`)
+  with accent text; inactive columns show none.
+- `<th aria-sort="ascending | descending | none">` reflects state for screen readers.
+- First-click direction per column comes from `sortDescFirst` (Best = desc-first;
+  Name / Level / BPM = asc-first) — matches the wireframe defaults.
+- Column alignment comes from `columnDef.meta.align` applied to the `<TableCell>`.
+
+## Cell components (states)
+
+- **ScoreDonut** `{ score: number | null; size?: number }` — conic-gradient ring; the
+  exact number is always centred (mono, tabular). **System G bands:** `null` → empty
+  grey ring + dash; `1–49` reddish-purple; `50–69` orange; `70–88` blue; `89–99`
+  green; `100` → gold disc + trophy glyph. Colour is reinforcement only (the number is
+  authoritative → colourblind-safe by construction).
+- **LevelPill** `{ level: number | null }` — `0` → "Debut" (accent); `1–10` → number
+  (neutral); `null` → dashed dash.
+- **Cover** `{ icon?: string; variant?: 'song' | 'lesson' }` — rounded tile, accent
+  tint for songs, blue tint for lessons.
+- **Flags** `{ audio?: boolean; video?: boolean; parts?: boolean }` — small icon row;
+  `parts` is accent-coloured (has playable sub-sections).
+- **KindBadge** `{ kind: 'beat' | 'rudiment' | 'fill' }` — Badge: Beat (teal),
+  Rudiment (blue), Fill (orange).
+- **NameCell** `{ row: CatalogRow }` — the **2 lines**: line 1 = Cover + title +
+  `KindBadge?` + `NewPill?`; line 2 = subtitle + `Flags?`.
+
+## Example data shape (non-binding)
+
+The table is generic; this is only the shape the catalog columns + stories use:
+
+```ts
+interface CatalogRow {
+  id: string;
+  title: string;
+  subtitle: string; // pre-composed line 2, e.g. "Rock · 4/4 · drums·guitar" or "4 steps · timing"
+  kind: 'song' | 'beat' | 'rudiment' | 'fill';
+  icon?: string; // Material Symbol name for the cover
+  isLesson?: boolean;
+  level: number | null; // 0 = Debut, null = ungraded
+  bpm: number | string; // 116, or "60→120" for a lesson ramp
+  best: number | null; // 0–100, null = not attempted
+  isNew?: boolean;
+  flags?: { audio?: boolean; video?: boolean; parts?: boolean };
+}
+```
+
+## Storybook plan
+
+- `DataTable.stories.tsx` — generic demo (synthetic columns): default, `SortableHeaders`
+  (interactive), `Empty`, `Loading`, `appearance` cards vs rows.
+- `CatalogTable.stories.tsx` — `Songs`, `Lessons`, `Empty`, `Mastered`, `Mixed`; the
+  sort is exercised by the column headers.
+- Each cell component — every prop as a Control + named stories for its states
+  (e.g. `ScoreDonut`: NotAttempted / Low / Developing / Climbing / High / Mastered + a
+  size control).
+
+## Testing / a11y / VR
+
+- `.test.tsx` per component (Vitest + Testing Library): sort toggling + `aria-sort`,
+  band thresholds, Debut/none level, empty/loading.
+- a11y — axe over every story × light/dark × resting + hover (the repo convention);
+  blocks CI.
+- VR — one Playwright snapshot per story id, driven by `Name.story-ids.ts` so VR + a11y
+  stay in lockstep with the stories; per-OS baselines (Linux via the documented Docker
+  flow). **All** components in scope.
+
+## Tokens to add
+
+`styles.css` has no score-band colours yet. Add them as oklch role tokens (light +
+dark) + map via `@theme` so cells consume Tailwind classes, not raw hex:
+`--score-low` (reddish-purple), `--score-developing` (orange), `--score-climbing`
+(azure), `--score-high` (green), `--score-mastered` + `--score-mastered-foreground`
+(gold). Sourced from the locked Okabe-Ito values in
+`docs/mockups/catalog-donut-bands.html`.
+
+## Dependencies
+
+- Add `@tanstack/react-table` (not yet installed; `react-query` + `react-router` are).
+- `shadcn add table badge` → move each into its folder per the repo convention.
+
+## Out of scope (separate tickets)
+
+Filter row (tabs, Jira-style filter dropdowns, token pickers, tempo range), the
+"Continue" resume card, the topbar, the `relevance / newest / curated` sort dropdown,
+song-slice / parts expansion, and the per-user Best-column sign-in gating (that is the
+consumer's call via column visibility, not the table's concern).
+
+## Open questions for review
+
+1. **KindBadge / NewPill placement** — `ui/` (reusable, proposed) vs `catalog/`?
+2. **`appearance` prop** — ship the `'rows'` (plain) variant now, or `'cards'` only
+   until a second consumer needs plain rows (YAGNI)?
+3. **Mobile collapse** — hide Level + BPM columns at narrow widths via column
+   visibility (proposed), matching the wireframe's name + play collapse?
+4. **NewPill** — its own component (for a story), or just `<Badge>New</Badge>` inline?
