@@ -114,6 +114,10 @@ a{color:inherit}
 .tablehead{padding:6px 12px;color:var(--faint);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .stephead{display:flex;gap:14px;align-items:center;padding:0 14px 6px;color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 .tablehead span:nth-child(2){text-align:center}.tablehead span:nth-child(3){text-align:right}.tablehead span:nth-child(4){text-align:center}
+.tablehead .sortcol{cursor:pointer;user-select:none;transition:color var(--dur) var(--ease)}
+.tablehead .sortcol:hover{color:var(--ink)}
+.tablehead .sortcol.active{color:var(--accent)}
+.sortarrow{font-size:14px;vertical-align:-3px}
 .row{padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px;transition:border-color var(--dur) var(--ease)}
 .row:hover{border-color:var(--accent);background:var(--panel2)}
 .name{display:flex;align-items:center;gap:11px;min-width:0}
@@ -426,6 +430,7 @@ const INSTRUMENTS = ['drums','guitar','bass','keys'];
 const KEYS = ['C','G','D','A','E','F#m','Am','Em','Bb','Eb'];
 const SKILLS = ['timing','coordination','independence','control','speed','fills','chords'];
 const SORTS = {relevance:'Relevance', level:'Level', bpm:'BPM', best:'Best score', newest:'Newest', title:'A–Z', curated:'Curated'};
+const SORT_DEFAULT_DIR = {title:'asc', level:'asc', bpm:'asc', best:'desc', newest:'desc'};   // direction applied when a sort key is first chosen
 const PITCHED = ['guitar','keys'];
 const PAGE_SIZE = 6;
 
@@ -445,7 +450,7 @@ const state = {
   bpm: { min:null, max:null },
   score: { min:null, max:null }, inclUnplayed: false,   // SD-12 (per-user, client-side)
   skill: [], musicalKey: [],
-  sort: 'relevance',
+  sort: 'relevance', sortDir: 'asc',
 };
 const el = sel => document.querySelector(sel);
 const app = el('#app');
@@ -664,13 +669,22 @@ function matches(it){
   return true;
 }
 function sortItems(arr){
-  const c=[...arr], s=state.sort;
-  if(s==='level') c.sort((a,b)=>(a.level==null?99:a.level)-(b.level==null?99:b.level));
-  else if(s==='bpm') c.sort((a,b)=>(a.bpm==null?1e9:a.bpm)-(b.bpm==null?1e9:b.bpm));
-  else if(s==='best') c.sort((a,b)=>(b.best==null?-1:b.best)-(a.best==null?-1:a.best));
-  else if(s==='title') c.sort((a,b)=>a.title.localeCompare(b.title));
-  else if(s==='newest') c.sort((a,b)=>(b.new?1:0)-(a.new?1:0));
+  const c=[...arr], s=state.sort, dir=state.sortDir==='desc'?-1:1;
+  const cmp = {
+    level:(a,b)=>(a.level==null?99:a.level)-(b.level==null?99:b.level),
+    bpm:(a,b)=>(a.bpm==null?1e9:a.bpm)-(b.bpm==null?1e9:b.bpm),
+    best:(a,b)=>(a.best==null?-1:a.best)-(b.best==null?-1:b.best),
+    title:(a,b)=>a.title.localeCompare(b.title),
+    newest:(a,b)=>(a.new?1:0)-(b.new?1:0),
+  }[s];
+  if(cmp) c.sort((a,b)=>dir*cmp(a,b));
   return c;
+}
+/* clickable table-header sort: toggles direction on the active column (NH — column sort) */
+function sortHead(label, key){
+  const active = state.sort===key;
+  const arrow = active ? ` <span class="material-symbols-outlined sortarrow">${state.sortDir==='asc'?'arrow_upward':'arrow_downward'}</span>` : '';
+  return `<span class="sortcol${active?' active':''}" data-sortcol="${key}">${label}${arrow}</span>`;
 }
 
 function multiFace(label, arr, fmt){ if(!arr.length) return `<span class="k">${label}:</span> Any`; const f=fmt||cap; return `<span class="k">${label}:</span> ${f(arr[0])}${arr.length>1?' +'+(arr.length-1):''}`; }
@@ -719,7 +733,7 @@ function scorePop(){
 }
 function sortPop(){
   const opts = Object.entries(SORTS).filter(([v])=> v!=='best' || signedIn());
-  return `<div class="fpop r ${state.openPop==='sortPop'?'open':''}" id="sortPop">
+  return `<div class="fpop ${state.openPop==='sortPop'?'open':''}" id="sortPop">
     <div class="opsel">sort by</div>
     ${opts.map(([v,l])=>`<div class="fopt ${state.sort===v?'on':''}" data-sort="${v}"><span class="radio"></span>${l}</div>`).join('')}</div>`;
 }
@@ -757,10 +771,9 @@ function renderCatalog(){
       <div class="fdrop"><button class="fbtn ${state.instrument?'on':''}" data-pop="instPop">${state.instrument?`<span class="k">Instrument:</span> ${cap(state.instrument)}`:'<span class="k">Instrument:</span> Any'} <span class="material-symbols-outlined caret">expand_more</span></button>
         ${singlePop('instPop',INSTRUMENTS.map(i=>({val:i,label:cap(i),icon:i==='drums'?'graphic_eq':i==='guitar'?'queue_music':'piano'})))}</div>
       <button class="fbtn ${state.advanced?'on':''}" data-more><span class="material-symbols-outlined">tune</span> More <span class="material-symbols-outlined caret">expand_more</span></button>
-      <span style="flex:1"></span>
-      <div class="fdrop sortwrap"><button class="fbtn" data-pop="sortPop"><span class="material-symbols-outlined">swap_vert</span> ${SORTS[state.sort]} <span class="material-symbols-outlined caret">expand_more</span></button>${sortPop()}</div>
     </div>
     <div class="advanced ${state.advanced?'open':''}">
+      <div class="fdrop sortwrap"><button class="fbtn" data-pop="sortPop"><span class="material-symbols-outlined">swap_vert</span> <span class="k">Sort:</span> ${SORTS[state.sort]} <span class="material-symbols-outlined caret">expand_more</span></button>${sortPop()}</div>
       <div class="fdrop"><button class="fbtn ${state.artist?'on':''}" data-pop="artistPop">${state.artist?`<span class="k">${authLabel}:</span> ${authPicked}`:`<span class="k">${authLabel}:</span> Any`} <span class="material-symbols-outlined caret">expand_more</span></button>
         <div class="fpop ${state.openPop==='artistPop'?'open':''}" id="artistPop" style="max-height:260px;overflow:auto"><div class="opsel">is</div><div class="fopt ${state.artist===AUTHOR_NONE?'on':''}" data-artist-pick="${AUTHOR_NONE}"><span class="radio"></span><span style="color:var(--faint)">Unknown</span></div>${authOpts.map(a=>`<div class="fopt ${state.artist===a?'on':''}" data-artist-pick="${esc(a)}"><span class="radio"></span>${esc(a)}</div>`).join('')}<div class="foot"><span></span><a data-clear-artist>Clear</a></div></div></div>
       <div class="fdrop"><button class="fbtn ${state.timeSig.length?'on':''}" data-pop="timePop">${multiFace('Time',state.timeSig,x=>x)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('timePop','timeSig',TIMES.map(t=>({val:t,label:t})))}</div>
@@ -774,7 +787,7 @@ function renderCatalog(){
     </div>
     ${'' /* continue banner removed with demo data */}
     ${ list.length ? `
-      <div class="tablehead"><span>Name</span><span>Level</span><span>BPM</span><span>Best</span><span></span></div>
+      <div class="tablehead">${sortHead('Name','title')}${sortHead('Level','level')}${sortHead('BPM','bpm')}${sortHead('Best','best')}<span></span></div>
       ${list.map(rowHTML).join('')}
       ${pager(all.length, pages)}
       ` : `<div class="empty"><span class="material-symbols-outlined">search_off</span>No ${state.tab} match these filters.<br><button class="btn secondary" id="clearAll" style="margin-top:12px">Clear all filters</button></div>` }
@@ -1439,7 +1452,9 @@ document.addEventListener('click', e=>{
   const tg = e.target.closest('[data-toggle]');
   if(tg){ state[tg.dataset.toggle]=!state[tg.dataset.toggle]; state.page=1; renderCatalog(); return; }
   const so = e.target.closest('[data-sort]');
-  if(so){ state.sort=so.dataset.sort; state.openPop=null; renderCatalog(); return; }
+  if(so){ state.sort=so.dataset.sort; state.sortDir=SORT_DEFAULT_DIR[state.sort]||'asc'; state.openPop=null; renderCatalog(); return; }
+  const scol = e.target.closest('[data-sortcol]');
+  if(scol){ const k=scol.dataset.sortcol; if(state.sort===k){ state.sortDir=state.sortDir==='asc'?'desc':'asc'; } else { state.sort=k; state.sortDir=SORT_DEFAULT_DIR[k]||'asc'; } state.page=1; renderCatalog(); return; }
   const cl = e.target.closest('[data-clear]');
   if(cl){ clearFilter(cl.dataset.clear); renderCatalog(); return; }
   if(!e.target.closest('.fpop') && !e.target.closest('[data-pop]') && state.openPop){ state.openPop=null; renderCatalog(); }
