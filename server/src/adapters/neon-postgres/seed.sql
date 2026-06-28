@@ -43,21 +43,21 @@ INSERT INTO step (parent_id, child_id, sort_order, created_by) VALUES
 ON CONFLICT (parent_id, sort_order) DO NOTHING;
 
 -- ── one DRUMS track per drum pattern (the drum_profile's home; level mirrors) ─
-INSERT INTO track (id, playable_id, instrument, sort_order, level, created_by) VALUES
- ('trk_ssr_debut','pat_ssr_debut','drums',1,0,'seed'),
- ('trk_dsr_debut','pat_dsr_debut','drums',1,0,'seed'),
- ('trk_ssr_l2','pat_ssr_l2','drums',1,2,'seed'),
- ('trk_ss4_l3','pat_ss4_l3','drums',1,3,'seed'),
- ('trk_5sr_l4','pat_5sr_l4','drums',1,4,'seed'),
- ('trk_7sr_l6','pat_7sr_l6','drums',1,6,'seed'),
- ('trk_swiss_l7','pat_swiss_l7','drums',1,7,'seed'),
- ('trk_ssr_l8','pat_ssr_l8','drums',1,8,'seed'),
- ('trk_basic_rock','pat_basic_rock','drums',1,1,'seed'),
- ('trk_snare_fill_l4','pat_snare_fill_l4','drums',1,4,'seed'),
- ('trk_voice_hh','pat_voice_hh','drums',1,0,'seed'),
- ('trk_voice_sn','pat_voice_sn','drums',1,1,'seed'),
- ('trk_voice_kick','pat_voice_kick','drums',1,1,'seed'),
- ('trk_rock_composite','pat_rock_composite','drums',1,1,'seed')
+INSERT INTO track (id, playable_id, instrument, sort_order, level, techniques, created_by) VALUES
+ ('trk_ssr_debut','pat_ssr_debut','drums',1,0,'{}','seed'),
+ ('trk_dsr_debut','pat_dsr_debut','drums',1,0,'{}','seed'),
+ ('trk_ssr_l2','pat_ssr_l2','drums',1,2,'{}','seed'),
+ ('trk_ss4_l3','pat_ss4_l3','drums',1,3,'{accent}','seed'),
+ ('trk_5sr_l4','pat_5sr_l4','drums',1,4,'{}','seed'),
+ ('trk_7sr_l6','pat_7sr_l6','drums',1,6,'{}','seed'),
+ ('trk_swiss_l7','pat_swiss_l7','drums',1,7,'{flam}','seed'),
+ ('trk_ssr_l8','pat_ssr_l8','drums',1,8,'{}','seed'),
+ ('trk_basic_rock','pat_basic_rock','drums',1,1,'{}','seed'),
+ ('trk_snare_fill_l4','pat_snare_fill_l4','drums',1,4,'{16th}','seed'),
+ ('trk_voice_hh','pat_voice_hh','drums',1,0,'{}','seed'),
+ ('trk_voice_sn','pat_voice_sn','drums',1,1,'{}','seed'),
+ ('trk_voice_kick','pat_voice_kick','drums',1,1,'{}','seed'),
+ ('trk_rock_composite','pat_rock_composite','drums',1,1,'{}','seed')
 ON CONFLICT (id) DO NOTHING;
 
 -- ── drum_profile per drums track (SD-27: keyed by track_id) ──────────────────
@@ -77,11 +77,6 @@ INSERT INTO drum_profile (track_id, beats, fills, rudiments, kit_pieces) VALUES
  ('trk_voice_kick','{}','{}','{}','{kick}'),
  ('trk_rock_composite','{rock,basic-rock}','{}','{}','{hi-hat,snare,kick}')
 ON CONFLICT (track_id) DO NOTHING;
-
--- rudiment-flavour techniques moved to track.techniques (SD-25; were drum_profile.techniques)
-UPDATE track SET techniques = '{accent}' WHERE id = 'trk_ss4_l3';
-UPDATE track SET techniques = '{flam}'   WHERE id = 'trk_swiss_l7';
-UPDATE track SET techniques = '{16th}'   WHERE id = 'trk_snare_fill_l4';
 
 -- ── SONGS: notation rows first (FK dependency) ───────────────────────────────
 INSERT INTO notation (id, format, s3_key, upload_status, created_by) VALUES
