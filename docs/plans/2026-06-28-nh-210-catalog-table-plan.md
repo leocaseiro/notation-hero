@@ -190,7 +190,7 @@ docker run --rm \
 pnpm --filter @notation-hero/client test:vr
 ```
 
-> If Docker is unavailable in the execution environment, generate the `-darwin` baselines, commit them, and **log clearly** that `-linux` baselines are still required (CI's `vr` job will fail until they exist). Do not silently skip — the `-linux` set is a hard gate.
+> If Docker is unavailable in the execution environment, generate the `-darwin` baselines, commit them, and **log clearly** that `-linux` baselines are still required (CI's `vr` job will fail until they exist). Do not silently skip — the `-linux` set is a hard gate. **Before starting Task 1, confirm `docker run … mcr.microsoft.com/playwright:v1.61.1-noble` works** — otherwise you finish all 13 tasks and only then hit a red `vr` gate needing every component's `-linux` baselines regenerated at once.
 
 ### The full verify gate (run before every commit)
 
@@ -580,7 +580,7 @@ export function DataTable<TData>({
 }
 ```
 
-> **De-risk watch-outs** (resolve before declaring the card look done — these are _why_ this is step #1): (a) the shadcn `overflow-x-auto` container forces `overflow-y: auto`, which clips the `-translate-y-px` lift + glow — if the snapshot shows clipping, give the container `overflow-y-visible` (or vertical padding) for `appearance="cards"`; (b) `transform`/`box-shadow` on `<tr>`/`<td>` renders in Chromium (our VR + CI engine) but verify the lift reads correctly; (c) if the real `<table>` still can't match the locked mockup, switch the default to `appearance="rows"` and implement the CSS-grid fallback (the mockup's `.trow { display:grid; grid-template-columns: 1fr 56px 78px 92px 44px }`), recording the decision in the spec.
+> **De-risk watch-outs** (resolve before declaring the card look done — these are _why_ this is step #1): (a) the shadcn `overflow-x-auto` container lives in `Table.tsx`, **not** `DataTable` (which only styles the inner `<table>`), and `overflow-x: auto` forces `overflow-y: auto`, clipping the `-translate-y-px` lift + glow — if the snapshot shows clipping, fix it **in `Table.tsx`**: change that wrapper to `overflow-x-auto overflow-y-visible` (or give it vertical padding) for the cards look; (b) `transform`/`box-shadow` on `<tr>`/`<td>` renders in Chromium (our VR + CI engine) but verify the lift reads correctly; (c) if the real `<table>` still can't match the locked mockup, switch the default to `appearance="rows"` and implement the CSS-grid fallback (the mockup's `.trow { display:grid; grid-template-columns: 1fr 56px 78px 92px 44px }`), recording the decision in the spec.
 
 - [ ] **Step 8: Run the DataTable tests (expect PASS)**
 
@@ -646,6 +646,8 @@ export const Rows: Story = {
   args: { data: demo, columns, appearance: 'rows', onRowClick: () => {} },
 };
 ```
+
+> `Default` (cards) + `Rows` (rows) together fulfill the spec's "Appearance (cards vs rows)" Storybook entry — two focused stories instead of one combined; both are covered by VR + a11y.
 
 - [ ] **Step 10: Write the story-ids list**
 
@@ -1016,6 +1018,12 @@ test('renders 5 skeleton rows when loading and hides the data', () => {
   expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
 });
 
+test('announces loading to assistive tech (aria-busy + a status region)', () => {
+  render(<DataTable data={data} columns={columns} isLoading getRowId={(r) => r.id} />);
+  expect(screen.getByRole('status')).toHaveTextContent('Loading');
+  expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'true');
+});
+
 test('hides a column via uncontrolled defaultColumnVisibility', () => {
   render(
     <DataTable
@@ -1152,6 +1160,26 @@ Replace the `<TableBody>` contents with a loading / empty / data switch:
 ```
 
 > Keep the existing data-row `<TableRow>` attributes (the `tabIndex`/`onClick`/`onKeyDown`/`className` block from Task 1) exactly as they were — only the surrounding loading/empty branches are new.
+
+Finally, announce loading to assistive tech (axe stops at AA and won't catch a silent loading state): set `aria-busy={isLoading}` on the root `<Table>` and add a visually-hidden live region. Wrap DataTable's return in a fragment:
+
+```tsx
+return (
+  <>
+    <span role="status" aria-live="polite" className="sr-only">
+      {isLoading ? 'Loading…' : ''}
+    </span>
+    <Table
+      data-slot="data-table"
+      data-appearance={appearance}
+      aria-busy={isLoading}
+      className={cn(/* …unchanged from Task 1… */)}
+    >
+      {/* header + the loading / empty / data TableBody from above */}
+    </Table>
+  </>
+);
+```
 
 - [ ] **Step 3: Run the state tests (expect PASS)**
 
@@ -1456,6 +1484,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const NotAttempted: Story = { args: { score: null } };
+export const JustStarted: Story = { args: { score: 1 } }; // smallest arc — locks the ~1% ring vs empty
 export const Low: Story = { args: { score: 35 } };
 export const Developing: Story = { args: { score: 60 } };
 export const Climbing: Story = { args: { score: 78 } };
@@ -1468,6 +1497,7 @@ export const Mastered: Story = { args: { score: 100 } };
 ```ts
 export const SCORE_DONUT_STORY_IDS = [
   'not-attempted',
+  'just-started',
   'low',
   'developing',
   'climbing',
@@ -1478,7 +1508,7 @@ export const SCORE_DONUT_STORY_IDS = [
 
 - [ ] **Step 6: Write the a11y + VR specs**
 
-Create `ScoreDonut.a11y.ts` from the **a11y template** with: `<Name>`=`ScoreDonut`, `<ID_PREFIX>`=`ui-scoredonut`, `<STORY_IDS_CONST>`=`SCORE_DONUT_STORY_IDS`, `<story-ids-file>`=`./ScoreDonut.story-ids`, `<data-slot>`=`score-donut`. Add the glyph-font assertion **guarded** by `if (story === 'mastered')` (only that story renders the trophy).
+Create `ScoreDonut.a11y.ts` from the **a11y template** with: `<Name>`=`ScoreDonut`, `<ID_PREFIX>`=`ui-scoredonut`, `<STORY_IDS_CONST>`=`SCORE_DONUT_STORY_IDS`, `<story-ids-file>`=`./ScoreDonut.story-ids`, `<data-slot>`=`score-donut`. Add the glyph-font assertion **guarded** by `if (story === 'mastered')` (only that story renders the trophy). **Verify `trophy` is a real glyph in `@fontsource-variable/material-symbols-outlined@5.2.45` (else use `emoji_events`)** — the unit test only checks the source string, so the VR snapshot is the real guard against a missing glyph rendering as literal text.
 
 Create `ScoreDonut.vr.ts` from the **VR template** with the same values and `<snapshot-prefix>`=`score-donut`.
 
@@ -1558,7 +1588,7 @@ export function LevelPill({ level }: LevelPillProps) {
       role="img"
       aria-label={label}
       className={cn(
-        'inline-flex min-w-7 items-center justify-center rounded-full border px-2 py-0.5 text-xs font-semibold',
+        'inline-flex min-w-7 items-center justify-center rounded-full border px-2 py-0.5 font-mono text-xs font-semibold tabular-nums',
         isUngraded ? 'border-dashed border-border text-muted-foreground' : 'border-border bg-muted',
         isDebut && 'text-primary', // Debut = accent TEXT only (neutral pill)
       )}
@@ -1983,6 +2013,7 @@ git commit \
 
 **Files:**
 
+- Modify: `client/src/styles.css` (add the `--kind-fill` token)
 - Create: `client/src/components/ui/Badge/Badge.tsx`, `client/src/components/ui/Badge/Badge.test.tsx`
 - Create: `client/src/components/ui/KindBadge/KindBadge.{tsx,test.tsx,stories.tsx,story-ids.ts,a11y.ts,vr.ts}` (+ `.vr.ts-snapshots/`)
 
@@ -2074,7 +2105,9 @@ test('carries the kind-badge slot and outline styling', () => {
 
 Run → FAIL.
 
-- [ ] **Step 4: Implement KindBadge** — `KindBadge.tsx`:
+- [ ] **Step 4: Add the Fill token + implement KindBadge**
+
+Beat (brand) and Rudiment (sky) already have tokens; only Fill needs one. Add to `client/src/styles.css` — in `:root`: `--kind-fill: oklch(63.4% 0.143 35.6deg); /* #D2664A */`; in `.dark`: `--kind-fill: oklch(68.8% 0.133 35.8deg); /* #e07a5f */`; in `@theme inline`: `--color-kind-fill: var(--kind-fill);`. Then `KindBadge.tsx`:
 
 ```tsx
 import { cn } from '@/lib/utils';
@@ -2090,11 +2123,12 @@ const LABEL: Record<Kind, string> = { beat: 'Beat', rudiment: 'Rudiment', fill: 
 
 // Outline style (deliberate departure from the mockup's tinted fill). Colours must pass
 // axe AA in BOTH themes — darken if axe flags. Beat reuses the brand text tokens
-// (brand-700 = AA on white; brand-600 = dark-mode accent text).
+// (brand-700 = AA on white; brand-600 = dark-mode accent text); Fill uses the
+// --kind-fill token (added in Step 4) so no raw hex lives in the component.
 const COLOR: Record<Kind, string> = {
   beat: 'border-brand-700 text-brand-700 dark:border-brand-600 dark:text-brand-600',
   rudiment: 'border-sky-700 text-sky-700 dark:border-sky-400 dark:text-sky-400',
-  fill: 'border-[#D2664A] text-[#D2664A] dark:border-[#e07a5f] dark:text-[#e07a5f]',
+  fill: 'border-kind-fill text-kind-fill',
 };
 
 export function KindBadge({ kind }: KindBadgeProps) {
@@ -2106,7 +2140,7 @@ export function KindBadge({ kind }: KindBadgeProps) {
 }
 ```
 
-> The Fill `#D2664A` (and the dark `#e07a5f`) is the locked orange-red identity; if `test:a11y` flags AA in either theme, **darken that one shade** (keep the hue) until axe is green — do not change the other kinds.
+> The Fill identity lives in the `--kind-fill` token (`#D2664A` light / `#e07a5f` dark) — no raw hex in the component, per the plan's colour constraint. If `test:a11y` flags AA in either theme, **darken that one token value** (keep the hue) until axe is green — do not change the other kinds.
 
 Run the KindBadge test → PASS.
 
@@ -2308,7 +2342,7 @@ export function PlayButton({ title, onClick }: PlayButtonProps) {
       variant="ghost"
       aria-label={`Play ${title}`}
       // 44x44 hit area (WCAG 2.5.5) even though the visible play_circle glyph is ~34px.
-      className="size-11 text-primary"
+      className="size-11 rounded-full text-primary"
       onClick={(event) => {
         event.stopPropagation(); // a play tap must not also trigger the row's onRowClick
         onClick?.();
