@@ -5,7 +5,7 @@ import { playable } from './catalog.schema';
 describe('catalog.schema — playable (typed query surface for the thin read)', () => {
   it('exposes the columns the thin read selects and filters on', () => {
     const cols = getTableColumns(playable);
-    for (const name of ['id', 'kind', 'title', 'listable', 'level', 'status']) {
+    for (const name of ['id', 'kind', 'title', 'listable', 'level', 'status', 'origin']) {
       expect(cols, `missing column: ${name}`).toHaveProperty(name);
     }
   });

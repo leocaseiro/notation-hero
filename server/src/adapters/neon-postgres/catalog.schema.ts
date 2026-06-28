@@ -12,4 +12,7 @@ export const playable = pgTable('playable', {
   // Nullable 0–10 grade (N-14 bands); null = ungraded.
   level: smallint('level'),
   status: text('status').$type<'draft' | 'published' | 'archived'>().notNull().default('draft'),
+  // Provenance gate for the public read (ARCH-AUTHZ-1): only 'curated' rows are publicly served;
+  // user-uploads stay out of the anonymous catalog even when published+listable.
+  origin: text('origin').$type<'curated' | 'user-upload'>().notNull().default('curated'),
 });

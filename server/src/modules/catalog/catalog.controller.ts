@@ -1,6 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { Controller, Get, Header } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/neon-http';
 
 import { playable } from '../../adapters/neon-postgres/catalog.schema';
@@ -48,7 +48,8 @@ function getDb(): ReturnType<typeof drizzle> {
 export class CatalogController {
   // Validation target (NH-79): a typed Drizzle select against Neon — proves the Lambda -> Neon
   // path. The real read API (oRPC contract, filters, pagination) is NH-123. Cache-Control is
-  // forward-compat for the NH-247 edge cache; CORS is deferred to NH-250.
+  // forward-compat for the NH-247 edge cache; CORS is deferred to NH-250. A DB failure surfaces as
+  // a generic 503 (never a 200) via the global DbExceptionFilter — see entry/db-exception.filter.ts.
   @Get()
   @Header('Cache-Control', 'public, max-age=300')
   async list(): Promise<CatalogResponse> {
@@ -60,14 +61,25 @@ export class CatalogController {
         level: playable.level,
       })
       .from(playable)
-      // Internal rows (e.g. the masked single-voice leaves) never reach the public page.
-      .where(and(eq(playable.status, 'published'), eq(playable.listable, true)))
+      // Public read = curated + published + listable, enforced at the DB layer (ARCH-AUTHZ-1) — not
+      // by seed convention. `listable` hides internal rows (the masked single-voice leaves);
+      // `origin = 'curated'` keeps user-uploads out; the kind allow-list keeps the response union
+      // honest, so a 'part' row can never leak as an unknown kind.
+      .where(
+        and(
+          eq(playable.status, 'published'),
+          eq(playable.listable, true),
+          eq(playable.origin, 'curated'),
+          inArray(playable.kind, ['song', 'lesson', 'pattern']),
+        ),
+      )
       .limit(50);
 
     const items: CatalogPlayable[] = rows.map((row) => ({
       id: row.id,
       title: row.title,
-      // 'part' is never listable in the v1 seed; the response union stays song|pattern|lesson.
+      // kind is constrained to song|lesson|pattern by the WHERE allow-list above, so this cast is
+      // safe by construction (Drizzle still widens the column type to the full union).
       kind: row.kind as CatalogPlayable['kind'],
       difficulty: toDifficulty(row.level),
     }));

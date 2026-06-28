@@ -1,23 +1,36 @@
 import { Test } from '@nestjs/testing';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CatalogController, toDifficulty } from './catalog.controller';
 
 // The thin read builds a neon-http client at call time; mock both driver modules so no live DB is
-// needed. `vi.hoisted` makes fakeRows available to the (hoisted) vi.mock factory AND the assertions
-// below — referencing a plain top-level const inside vi.mock would throw (it is hoisted above it).
-const { fakeRows } = vi.hoisted(() => ({
+// needed. `vi.hoisted` makes fakeRows + the query spies available to the (hoisted) vi.mock factory
+// AND the assertions below — referencing a plain top-level const inside vi.mock would throw.
+const { fakeRows, dbSpies } = vi.hoisted(() => ({
   fakeRows: [
     { id: 'pat_ssr_debut', title: 'Single Stroke Roll (Debut)', kind: 'pattern', level: 0 },
     { id: 'song_demo', title: 'Demo Song', kind: 'song', level: 4 },
     { id: 'lesson_x', title: 'Ungraded Lesson', kind: 'lesson', level: null },
   ],
+  // Spies record the .where() predicate + the .limit() bound so a regression that drops the access
+  // filter or the cap is caught — the mock chain itself ignores the arguments.
+  dbSpies: { where: vi.fn(), limit: vi.fn() },
 }));
 
 vi.mock('@neondatabase/serverless', () => ({ neon: () => ({}) }));
 // The chain is extracted into named steps to stay within sonarjs/no-nested-functions (max 4 levels).
 vi.mock('drizzle-orm/neon-http', () => {
-  const limited = { limit: () => Promise.resolve(fakeRows) };
-  const filtered = { where: () => limited };
+  const limited = {
+    limit: (n: number) => {
+      dbSpies.limit(n);
+      return Promise.resolve(fakeRows);
+    },
+  };
+  const filtered = {
+    where: (condition: unknown) => {
+      dbSpies.where(condition);
+      return limited;
+    },
+  };
   const selected = { from: () => filtered };
   const queried = { select: () => selected };
   return { drizzle: () => queried };
@@ -42,7 +55,14 @@ describe('toDifficulty (N-14 bands: Debut 0 · Beginner 1-3 · Intermediate 4-6 
 
 describe('CatalogController (DB-backed thin read)', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     process.env.DATABASE_URL = 'postgres://test';
+  });
+
+  // Reset the module registry between tests so a future test needing a different mock (or a dynamic
+  // re-import to clear the memoized db) gets a fresh module graph — matches entry/http.handler.spec.ts.
+  afterEach(() => {
+    vi.resetModules();
   });
 
   async function makeController(): Promise<CatalogController> {
@@ -64,5 +84,15 @@ describe('CatalogController (DB-backed thin read)', () => {
     });
     expect(res.items[1]?.difficulty).toBe('Intermediate 4');
     expect(res.items[2]?.difficulty).toBe('Ungraded');
+  });
+
+  it('applies a WHERE access filter and caps the result at 50', async () => {
+    const controller = await makeController();
+    await controller.list();
+    // A predicate is passed to .where() (the curated + published + listable access boundary) and the
+    // result set is capped. Full predicate-content assertion is the NH-123 integration test on Neon.
+    expect(dbSpies.where).toHaveBeenCalledTimes(1);
+    expect(dbSpies.where.mock.calls[0]?.[0]).toBeDefined();
+    expect(dbSpies.limit).toHaveBeenCalledWith(50);
   });
 });
