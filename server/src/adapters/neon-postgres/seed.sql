@@ -79,12 +79,14 @@ INSERT INTO drum_profile (track_id, beats, fills, rudiments, kit_pieces) VALUES
 ON CONFLICT (track_id) DO NOTHING;
 
 -- ── SONGS: notation rows first (FK dependency) ───────────────────────────────
+-- s3_key holds the BARE object key (e.g. seed/yellow.gp) — the bucket is applied by the fetch
+-- layer, so the AWS SDK GetObject Key maps 1:1; never store a full s3:// URI here (review F-L).
 INSERT INTO notation (id, format, s3_key, upload_status, created_by) VALUES
- ('not_bohemian','gp','s3://nh-notation/seed/bohemian-rhapsody.gp','ready','seed'),
- ('not_yellow','gp','s3://nh-notation/seed/yellow.gp','ready','seed'),
- ('not_zoio','gp','s3://nh-notation/seed/zoio.gp','ready','seed'),
- ('not_imyours','gp','s3://nh-notation/seed/im-yours.gp','ready','seed'),
- ('not_angra','gp','s3://nh-notation/seed/angra-nothing-to-say.gp','ready','seed')
+ ('not_bohemian','gp','seed/bohemian-rhapsody.gp','ready','seed'),
+ ('not_yellow','gp','seed/yellow.gp','ready','seed'),
+ ('not_zoio','gp','seed/zoio.gp','ready','seed'),
+ ('not_imyours','gp','seed/im-yours.gp','ready','seed'),
+ ('not_angra','gp','seed/angra-nothing-to-say.gp','ready','seed')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO playable (id, kind, title, description, notation_id, level, author, author_type, bpm, time_signature_numerator, time_signature_denominator, genre, instruments, tags, family, origin, visibility, status, has_audio, has_video, created_by, data) VALUES
@@ -170,10 +172,10 @@ ON CONFLICT (track_id) DO NOTHING;
 -- ── media: one official video per song; audio stems where we flagged has_audio ─
 INSERT INTO media (id, playable_id, kind, provider, url, s3_key, label, sort_order, created_by) VALUES
  ('med_boh_vid','song_bohemian','video','youtube','https://www.youtube.com/watch?v=fJ9rUzIMcZQ',NULL,'Official video',0,'seed'),
- ('med_boh_aud','song_bohemian','audio','s3',NULL,'s3://nh-notation/seed/bohemian-rhapsody.mp3','Full mix',1,'seed'),
+ ('med_boh_aud','song_bohemian','audio','s3',NULL,'seed/bohemian-rhapsody.mp3','Full mix',1,'seed'),
  ('med_yel_vid','song_yellow','video','youtube','https://www.youtube.com/watch?v=yKNxeF4KMsY',NULL,'Official video',0,'seed'),
  ('med_zoio_vid','song_zoio','video','youtube','https://www.youtube.com/watch?v=placeholder-zoio',NULL,'Official video',0,'seed'),
  ('med_imy_vid','song_imyours','video','youtube','https://www.youtube.com/watch?v=EkHTsc9PU2A',NULL,'Official video',0,'seed'),
  ('med_angra_vid','song_angra','video','youtube','https://www.youtube.com/watch?v=placeholder-angra',NULL,'Official video',0,'seed'),
- ('med_angra_aud','song_angra','audio','s3',NULL,'s3://nh-notation/seed/angra-nothing-to-say.mp3','Full mix',1,'seed')
+ ('med_angra_aud','song_angra','audio','s3',NULL,'seed/angra-nothing-to-say.mp3','Full mix',1,'seed')
 ON CONFLICT (id) DO NOTHING;
