@@ -6,7 +6,16 @@ import {
 } from '@tanstack/react-table';
 import { useState } from 'react';
 import { alignClass } from './ColumnMeta';
-import type { Column, ColumnDef, Header, OnChangeFn, SortingState } from '@tanstack/react-table';
+import type {
+  Column,
+  ColumnDef,
+  Header,
+  OnChangeFn,
+  Row,
+  SortingState,
+  VisibilityState,
+} from '@tanstack/react-table';
+import type { ReactNode } from 'react';
 
 import {
   Table,
@@ -28,6 +37,11 @@ export interface DataTableProps<TData> {
   sorting?: SortingState;
   onSortingChange?: OnChangeFn<SortingState>;
   defaultSorting?: SortingState;
+  columnVisibility?: VisibilityState;
+  onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+  defaultColumnVisibility?: VisibilityState;
+  isLoading?: boolean;
+  emptyState?: ReactNode;
 }
 
 export const DataTable = <TData,>({
@@ -39,9 +53,19 @@ export const DataTable = <TData,>({
   sorting,
   onSortingChange,
   defaultSorting,
+  columnVisibility,
+  onColumnVisibilityChange,
+  defaultColumnVisibility,
+  isLoading,
+  emptyState,
 }: Readonly<DataTableProps<TData>>) => {
   const [internalSorting, setInternalSorting] = useState<SortingState>(defaultSorting ?? []);
   const sortingState = sorting ?? internalSorting;
+
+  const [internalVisibility, setInternalVisibility] = useState<VisibilityState>(
+    defaultColumnVisibility ?? {},
+  );
+  const visibilityState = columnVisibility ?? internalVisibility;
 
   // TanStack Table manages its own memoization; React Compiler can't memoize its
   // returned functions, so it skips this component — expected, not a bug.
@@ -51,10 +75,14 @@ export const DataTable = <TData,>({
     columns,
     // Omit (not pass `undefined`) under exactOptionalPropertyTypes.
     ...(getRowId ? { getRowId } : {}),
-    state: { sorting: sortingState },
+    state: { sorting: sortingState, columnVisibility: visibilityState },
     onSortingChange: (updater) => {
       setInternalSorting((prev) => (typeof updater === 'function' ? updater(prev) : updater));
       onSortingChange?.(updater);
+    },
+    onColumnVisibilityChange: (updater) => {
+      setInternalVisibility((prev) => (typeof updater === 'function' ? updater(prev) : updater));
+      onColumnVisibilityChange?.(updater);
     },
     // NH-210: 2-state asc <-> desc toggle (no "unsorted" in the cycle), single column only.
     enableSortingRemoval: false,
@@ -65,85 +93,211 @@ export const DataTable = <TData,>({
   });
 
   const clickable = Boolean(onRowClick);
+  const rows = table.getRowModel().rows;
+  const visibleColumns = table.getVisibleLeafColumns();
 
   return (
-    <Table
-      data-slot="data-table"
-      data-appearance={appearance}
-      className={cn(
-        'w-full text-sm',
-        // Card-rows need separated borders so rows can have a vertical gap (a real
-        // <table> can't gap <tr> directly). border-spacing-y matches the mockup's 7px.
-        appearance === 'cards' && 'border-separate border-spacing-y-[7px]',
-      )}
-    >
-      <TableHeader>
-        {table.getHeaderGroups().map((group) => (
-          <TableRow key={group.id}>
-            {group.headers.map((header) => (
-              <TableHead
-                key={header.id}
-                aria-sort={ariaSort(header.column)}
-                className={cn(
-                  'h-auto px-3.5 pb-2 text-[10.5px] font-bold tracking-[0.06em] text-muted-foreground uppercase',
-                  alignClass(header.column.columnDef.meta?.align),
-                )}
-              >
-                {header.isPlaceholder ? null : <HeaderLabel header={header} />}
-              </TableHead>
-            ))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody>
-        {table.getRowModel().rows.map((row) => (
-          <TableRow
-            key={row.id}
-            data-slot="data-table-row"
-            tabIndex={clickable ? 0 : undefined}
-            onClick={clickable ? () => onRowClick?.(row.original) : undefined}
-            onKeyDown={
-              clickable
-                ? (e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      onRowClick?.(row.original);
-                    }
-                  }
-                : undefined
-            }
-            className={cn(
-              'transition-all',
-              // Card chrome lives on the cells (a <tr> ignores border-radius), so the card
-              // look does NOT depend on per-row border-radius (spec F3).
-              appearance === 'cards' &&
-                '[&>td]:border-y [&>td]:border-border [&>td]:bg-card [&>td:first-child]:rounded-l-xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-xl [&>td:last-child]:border-r',
-              appearance === 'rows' && 'border-b border-border',
-              clickable &&
-                'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring hover:-translate-y-px',
-              // teal-tinted border + soft glow on hover (mockup .trow:hover)
-              clickable &&
-                appearance === 'cards' &&
-                'hover:[&>td]:border-[color-mix(in_oklch,var(--primary)_45%,var(--border))] hover:[&>td]:shadow-[0_5px_16px_color-mix(in_oklch,var(--primary)_12%,transparent)]',
-            )}
-          >
-            {row.getVisibleCells().map((cell) => (
-              <TableCell
-                key={cell.id}
-                className={cn(
-                  'px-3.5 py-3 align-middle',
-                  alignClass(cell.column.columnDef.meta?.align),
-                )}
-              >
-                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+    <>
+      <span role="status" aria-live="polite" className="sr-only">
+        {isLoading ? 'Loading…' : ''}
+      </span>
+      <Table
+        data-slot="data-table"
+        data-appearance={appearance}
+        aria-busy={isLoading}
+        className={cn(
+          'w-full text-sm',
+          // Card-rows need separated borders so rows can have a vertical gap (a real
+          // <table> can't gap <tr> directly). border-spacing-y matches the mockup's 7px.
+          appearance === 'cards' && 'border-separate border-spacing-y-[7px]',
+        )}
+      >
+        <TableHeader>
+          {table.getHeaderGroups().map((group) => (
+            <TableRow key={group.id}>
+              {group.headers.map((header) => (
+                <TableHead
+                  key={header.id}
+                  aria-sort={ariaSort(header.column)}
+                  className={cn(
+                    'h-auto px-3.5 pb-2 text-[10.5px] font-bold tracking-[0.06em] text-muted-foreground uppercase',
+                    alignClass(header.column.columnDef.meta?.align),
+                  )}
+                >
+                  {header.isPlaceholder ? null : <HeaderLabel header={header} />}
+                </TableHead>
+              ))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {renderBody({
+            isLoading,
+            appearance,
+            rows,
+            visibleColumns,
+            clickable,
+            onRowClick,
+            emptyState,
+          })}
+        </TableBody>
+      </Table>
+    </>
   );
 };
+
+// Body branches: loading -> skeleton rows; no rows -> empty cell; else data rows.
+// Extracted to a function (early returns) so the three-way choice isn't a nested
+// ternary in JSX (sonarjs/no-nested-conditional).
+interface BodyProps<TData> {
+  isLoading: boolean | undefined;
+  appearance: 'cards' | 'rows';
+  rows: Row<TData>[];
+  visibleColumns: Column<TData, unknown>[];
+  clickable: boolean;
+  onRowClick: ((row: TData) => void) | undefined;
+  emptyState: ReactNode;
+}
+
+function renderBody<TData>({
+  isLoading,
+  appearance,
+  rows,
+  visibleColumns,
+  clickable,
+  onRowClick,
+  emptyState,
+}: BodyProps<TData>): ReactNode {
+  if (isLoading) {
+    return <SkeletonRows appearance={appearance} columns={visibleColumns} />;
+  }
+  if (rows.length === 0) {
+    return (
+      <EmptyRow appearance={appearance} colSpan={visibleColumns.length} content={emptyState} />
+    );
+  }
+  return (
+    <DataRows
+      appearance={appearance}
+      rows={rows}
+      clickable={clickable}
+      {...(onRowClick ? { onRowClick } : {})}
+    />
+  );
+}
+
+const SkeletonRows = <TData,>({
+  appearance,
+  columns,
+}: Readonly<{ appearance: 'cards' | 'rows'; columns: Column<TData, unknown>[] }>) => (
+  <>
+    {Array.from({ length: 5 }).map((_, i) => (
+      <TableRow
+        // Static placeholder rows with no identity/reordering; index key is correct here.
+        // eslint-disable-next-line react/no-array-index-key -- fixed-length skeleton, no stable id
+        key={`skeleton-${i}`}
+        data-slot="data-table-skeleton-row"
+        className={cn(
+          appearance === 'cards' &&
+            '[&>td]:border-y [&>td]:border-border [&>td]:bg-card [&>td:first-child]:rounded-l-xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-xl [&>td:last-child]:border-r',
+        )}
+      >
+        {columns.map((col) => (
+          <TableCell
+            key={col.id}
+            className={cn('px-3.5 py-3', alignClass(col.columnDef.meta?.align))}
+          >
+            <div
+              className={cn(
+                'h-4 animate-pulse rounded bg-muted',
+                col.columnDef.meta?.align === 'right' && 'ml-auto w-12',
+                col.columnDef.meta?.align === 'center' && 'mx-auto w-8',
+                !col.columnDef.meta?.align && 'w-3/5',
+              )}
+            />
+          </TableCell>
+        ))}
+      </TableRow>
+    ))}
+  </>
+);
+
+const EmptyRow = ({
+  appearance,
+  colSpan,
+  content,
+}: Readonly<{ appearance: 'cards' | 'rows'; colSpan: number; content: ReactNode }>) => (
+  <TableRow
+    data-slot="data-table-empty"
+    className={cn(
+      appearance === 'cards' &&
+        '[&>td]:rounded-xl [&>td]:border [&>td]:border-border [&>td]:bg-card',
+    )}
+  >
+    <TableCell colSpan={colSpan} className="px-3.5 py-8 text-center text-muted-foreground">
+      {content ?? 'No results'}
+    </TableCell>
+  </TableRow>
+);
+
+const DataRows = <TData,>({
+  appearance,
+  rows,
+  clickable,
+  onRowClick,
+}: Readonly<{
+  appearance: 'cards' | 'rows';
+  rows: Row<TData>[];
+  clickable: boolean;
+  onRowClick?: (row: TData) => void;
+}>) => (
+  <>
+    {rows.map((row) => (
+      <TableRow
+        key={row.id}
+        data-slot="data-table-row"
+        tabIndex={clickable ? 0 : undefined}
+        onClick={clickable ? () => onRowClick?.(row.original) : undefined}
+        onKeyDown={
+          clickable
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onRowClick?.(row.original);
+                }
+              }
+            : undefined
+        }
+        className={cn(
+          'transition-all',
+          // Card chrome lives on the cells (a <tr> ignores border-radius), so the card
+          // look does NOT depend on per-row border-radius (spec F3).
+          appearance === 'cards' &&
+            '[&>td]:border-y [&>td]:border-border [&>td]:bg-card [&>td:first-child]:rounded-l-xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-xl [&>td:last-child]:border-r',
+          appearance === 'rows' && 'border-b border-border',
+          clickable &&
+            'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring hover:-translate-y-px',
+          // teal-tinted border + soft glow on hover (mockup .trow:hover)
+          clickable &&
+            appearance === 'cards' &&
+            'hover:[&>td]:border-[color-mix(in_oklch,var(--primary)_45%,var(--border))] hover:[&>td]:shadow-[0_5px_16px_color-mix(in_oklch,var(--primary)_12%,transparent)]',
+        )}
+      >
+        {row.getVisibleCells().map((cell) => (
+          <TableCell
+            key={cell.id}
+            className={cn(
+              'px-3.5 py-3 align-middle',
+              alignClass(cell.column.columnDef.meta?.align),
+            )}
+          >
+            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+          </TableCell>
+        ))}
+      </TableRow>
+    ))}
+  </>
+);
 
 function ariaSort<TData>(
   column: Column<TData, unknown>,
