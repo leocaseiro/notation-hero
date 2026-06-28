@@ -40,6 +40,7 @@ Every task's requirements implicitly include these (exact values from the spec +
 - `server/src/adapters/neon-postgres/migrations/0000_playable_init.sql` + `migrations/meta/_journal.json` — the initial migration (generated `--custom`, DDL pasted in).
 - `server/src/adapters/neon-postgres/seed.sql` — the TS-4 seed data (validated draft, adapted: `ON CONFLICT`, no `DROP`, masked voices `listable=false`).
 - `server/src/adapters/neon-postgres/seed.util.ts` — thin transactional seed runner (unimported `tsx` entry point; verified by the DB idempotency check, not a unit test).
+- `server/src/entry/db-exception.filter.ts` (+ `.spec.ts`) — public `/api/*` catch-all that maps DB errors to a generic `503` (F-6).
 - `server/.env.example` — documents the local `DATABASE_URL` (a Neon **dev-branch** url).
 - `.github/workflows/seed-catalog.yml` — one-click `workflow_dispatch` seed workflow (`environment: production`).
 - `infra/README.md` — the operator runbook (§10).
@@ -55,6 +56,7 @@ Every task's requirements implicitly include these (exact values from the spec +
 - `.github/workflows/deploy.yml` — migrate step (first) + pass `NEON_DATABASE_URL` to `up` + `workflow_dispatch` trigger.
 - `server/src/modules/catalog/catalog.controller.ts` — repoint `list()` at Neon (typed select, difficulty from `level`, `Cache-Control` header).
 - `server/src/modules/catalog/catalog.controller.spec.ts` — DB mock.
+- `server/src/entry/http.handler.ts` — register the `DbExceptionFilter` in bootstrap (F-6).
 - `server/src/entry/http.handler.spec.ts` — DB mock for the existing `/api/catalog` route test.
 - `.dependency-cruiser.cjs` — `no-orphans` exemption for `seed.util.ts`.
 - `client/public/robots.txt` — `Disallow: /api/`.
@@ -206,7 +208,7 @@ Expected: creates `server/src/adapters/neon-postgres/migrations/0000_playable_in
 
 - [ ] **Step 2: Paste the DDL into `0000_playable_init.sql`**
 
-Copy **lines 34–271** of `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` (the section-comment headers + every `CREATE TABLE` and `CREATE INDEX`) into `0000_playable_init.sql`. **Omit line 32** (`DROP TABLE IF EXISTS … CASCADE;`) so the migration is purely additive — a `DROP CASCADE` init would wipe data if it ever re-ran. Do **not** alter the DDL otherwise; the `DEFERRABLE` FKs and `CHECK` constraints are load-bearing.
+Copy **lines 37–271** of `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql` (the `CREATE TABLE notation (` block through the last index, including the between-table section comments) into `0000_playable_init.sql`. **Omit line 32** (`DROP TABLE IF EXISTS … CASCADE;`) so the migration is purely additive — a `DROP CASCADE` init would wipe data if it ever re-ran. Do **not** alter the DDL otherwise; the `DEFERRABLE` FKs and `CHECK` constraints are load-bearing.
 
 The file must start with the `CREATE TABLE notation (` block and end with the last index (`CREATE INDEX idx_drum_kit_pieces ON drum_profile …;`). It must contain **no** `DROP`, `INSERT`, or `CREATE EXTENSION`.
 
@@ -384,12 +386,21 @@ git commit -m "feat(infra): inject the Neon nh_app url as the Lambda DATABASE_UR
 - Consumes: the `db:migrate` script (Task 1) + `process.env.NEON_DATABASE_URL` injection (Task 3).
 - Consumes (operator-provided, Task 7): GitHub secrets `NEON_MIGRATION_URL` (owner) + `NEON_DATABASE_URL` (nh_app).
 
-- [ ] **Step 1: Add the `workflow_dispatch` trigger** (for rotation redeploys, §9). Under `on:`, alongside `workflow_run:`:
+- [ ] **Step 1: Add the `workflow_dispatch` trigger AND admit it in the `up`-job guard.** Under `on:`, alongside `workflow_run:`:
 
 ```yaml
 # Manual redeploy (no commit) — used for secret rotation (§9) and recovery.
 workflow_dispatch:
 ```
+
+Then widen the `up` job's existing guard so a manual dispatch is **not** skipped — today it gates only on the `workflow_run` conclusion, which is **absent** on a manual run (`null == 'success'` is false), so the whole job would silently skip (a green-but-empty rotation deploy):
+
+```yaml
+# was: if: ${{ github.event.workflow_run.conclusion == 'success' }}
+if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+```
+
+This keeps the green-CI gate on the automatic (`workflow_run`) path while letting a rotation dispatch actually run `up`.
 
 - [ ] **Step 2: Add the migrate step as the FIRST job step** (after `setup-js`, before the build). In `jobs.up.steps`, insert immediately after `- uses: ./.github/actions/setup-js`:
 
@@ -485,7 +496,7 @@ ON CONFLICT (id) DO NOTHING;
 
 ```ts
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 
 import postgres from 'postgres';
 
@@ -498,7 +509,9 @@ async function main(): Promise<void> {
   if (!url) {
     throw new Error('DATABASE_URL is not set — seed with the OWNER url (NEON_MIGRATION_URL).');
   }
-  const seedPath = fileURLToPath(new URL('./seed.sql', import.meta.url));
+  // __dirname (CommonJS — the server is not `"type":"module"`) resolves seed.sql next to this file.
+  // Do NOT use `import.meta.url` here: under `module: nodenext` + CJS output, tsc rejects it (TS1470).
+  const seedPath = join(__dirname, 'seed.sql');
   const seedSql = readFileSync(seedPath, 'utf8');
   const sql = postgres(url, { max: 1 });
   try {
@@ -541,12 +554,14 @@ pnpm --filter @notation-hero/server run db:seed   # first run: inserts rows
 docker exec nh-pg psql -U postgres -t -c "select count(*) from playable;"   # expect 19
 pnpm --filter @notation-hero/server run db:seed   # second run: ON CONFLICT no-op
 docker exec nh-pg psql -U postgres -t -c "select count(*) from playable;"   # STILL 19
-# And the masked leaves are hidden from the listable view:
-docker exec nh-pg psql -U postgres -t -c "select count(*) from playable where listable and status='published';"  # excludes the 3 voices
+# The listable+published view must be EXACTLY 16 (19 minus the 3 masked voice leaves):
+docker exec nh-pg psql -U postgres -t -c "select count(*) from playable where listable and status='published';"  # expect 16
+# …and EXACTLY those 3 ids must be the non-listable ones — catches an inverted hand-edit of Step 1(b):
+docker exec nh-pg psql -U postgres -t -c "select id from playable where not listable order by id;"  # expect: pat_voice_hh, pat_voice_kick, pat_voice_sn
 docker rm -f nh-pg && unset DATABASE_URL
 ```
 
-Expected: `playable` count is **19 after both runs** (§7 acceptance — second run changes zero rows); the listable+published count excludes the 3 `pat_voice_*` leaves.
+Expected: `playable` count is **19 after both runs** (§7 acceptance — second run changes zero rows); the listable+published count is **exactly 16**; and `select id … where not listable` returns **exactly** `pat_voice_hh, pat_voice_kick, pat_voice_sn` (NOT `pat_rock_composite`). A different number or id set means the Step 1(b) hand-edit was applied wrong.
 
 - [ ] **Step 6: Create `.github/workflows/seed-catalog.yml`** (one-click bootstrap, §7). Pin `actions/checkout` to the same SHA `deploy.yml` uses.
 
@@ -554,7 +569,9 @@ Expected: `playable` count is **19 after both runs** (§7 acceptance — second 
 name: Seed catalog
 
 # One-click catalog bootstrap (NH-79 §7). Run ONCE after the first deploy, then only to top up.
-# Idempotent (seed.sql is ON CONFLICT DO NOTHING). Uses the OWNER url; declares the master-only
+# Idempotent (seed.sql is ON CONFLICT DO NOTHING): re-runs only INSERT MISSING rows — they never
+# UPDATE an existing row. To CORRECT a row already in the DB, use the approval-gated full reset
+# (TRUNCATE + re-seed), not this workflow. Uses the OWNER url; declares the master-only
 # `production` environment (same gate as deploy.yml).
 on:
   workflow_dispatch:
@@ -597,7 +614,10 @@ git commit -m "feat(server): idempotent TS-4 seed (seed.sql + runner) + one-clic
 
 - Modify: `server/src/modules/catalog/catalog.controller.ts`
 - Test: `server/src/modules/catalog/catalog.controller.spec.ts`
+- Modify: `server/src/entry/http.handler.ts` (register the exception filter — F-6)
 - Test: `server/src/entry/http.handler.spec.ts`
+- Create: `server/src/entry/db-exception.filter.ts` (F-6)
+- Test: `server/src/entry/db-exception.filter.spec.ts` (F-6)
 
 **Interfaces:**
 
@@ -671,8 +691,8 @@ describe('CatalogController (DB-backed thin read)', () => {
       kind: 'pattern',
       difficulty: 'Debut',
     });
-    expect(res.items[1].difficulty).toBe('Intermediate 4');
-    expect(res.items[2].difficulty).toBe('Ungraded');
+    expect(res.items[1]?.difficulty).toBe('Intermediate 4');
+    expect(res.items[2]?.difficulty).toBe('Ungraded');
   });
 });
 ```
@@ -798,18 +818,117 @@ process.env.DATABASE_URL = 'postgres://test';
 
 (The existing assertions — `items` is a non-empty array of `{ id, title, kind }`, `count` is a number — still hold; `difficulty` is additive.)
 
-- [ ] **Step 6: Run the server + client test suites to verify nothing regressed**
+- [ ] **Step 6: Add the public-endpoint exception filter (F-6)**
+
+> NestJS's default filter already returns a generic `{ statusCode: 500, message: "Internal server error" }` for an unknown thrown error (it does not echo the raw message), so this is **defence-in-depth + an accurate `503`**, not closing an open leak today. It guarantees the no-leak posture for the public `/api/*` and also covers NH-123.
+
+Create `server/src/entry/db-exception.filter.ts`:
+
+```ts
+import {
+  ArgumentsHost,
+  Catch,
+  type ExceptionFilter,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
+import type { Response } from 'express';
+
+// Public /api/* catch-all: pass HttpExceptions (404, etc.) through unchanged, but map any other
+// thrown error (a Neon/Drizzle connection or query failure) to a generic 503 — never echo the error
+// message or stack to the response. The cause is logged server-side (CloudWatch).
+@Catch()
+export class DbExceptionFilter implements ExceptionFilter {
+  catch(exception: unknown, host: ArgumentsHost): void {
+    const res = host.switchToHttp().getResponse<Response>();
+    if (exception instanceof HttpException) {
+      res.status(exception.getStatus()).json(exception.getResponse());
+      return;
+    }
+    console.error('[api] unhandled error:', exception);
+    res.status(HttpStatus.SERVICE_UNAVAILABLE).json({ message: 'Service unavailable' });
+  }
+}
+```
+
+Register it in the bootstrap — in `server/src/entry/http.handler.ts`, import it and add `app.useGlobalFilters(new DbExceptionFilter());` immediately before `app.setGlobalPrefix('api')`:
+
+```ts
+import { DbExceptionFilter } from './db-exception.filter';
+// …inside bootstrap(), after NestFactory.create and before setGlobalPrefix:
+app.useGlobalFilters(new DbExceptionFilter());
+```
+
+Write `server/src/entry/db-exception.filter.spec.ts`:
+
+```ts
+import { HttpException, HttpStatus } from '@nestjs/common';
+import type { ArgumentsHost } from '@nestjs/common';
+import { describe, expect, it, vi } from 'vitest';
+import { DbExceptionFilter } from './db-exception.filter';
+
+function mockHost() {
+  const res = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
+  const host = { switchToHttp: () => ({ getResponse: () => res }) } as unknown as ArgumentsHost;
+  return { host, res };
+}
+
+describe('DbExceptionFilter', () => {
+  it('maps an unknown error (a DB failure) to a generic 503 — no message leak', () => {
+    const { host, res } = mockHost();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    new DbExceptionFilter().catch(new Error('connect ECONNREFUSED nh_app@ep-secret'), host);
+    expect(res.status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Service unavailable' });
+  });
+
+  it('passes an HttpException through unchanged (404 stays 404)', () => {
+    const { host, res } = mockHost();
+    new DbExceptionFilter().catch(new HttpException('Not Found', HttpStatus.NOT_FOUND), host);
+    expect(res.status).toHaveBeenCalledWith(HttpStatus.NOT_FOUND);
+  });
+});
+```
+
+Run: `pnpm --filter @notation-hero/server exec vitest run src/entry/db-exception.filter.spec.ts src/entry/http.handler.spec.ts`
+Expected: the filter spec passes; the handler's existing 404 + 200 tests still pass (HttpExceptions pass through unchanged, so the 404 route test is unaffected).
+
+- [ ] **Step 7: Integration check — run the REAL query against a Neon dev branch (F-3)**
+
+The unit specs mock `drizzle-orm/neon-http`, so they never execute the actual projection / `WHERE` / `LIMIT` against a real schema — a mistyped column or dropped filter would stay green and first `500` in production. Validate the real query once against a seeded **Neon dev branch**. (A local docker Postgres will NOT work here: `neon-http` speaks Neon's HTTP protocol, not raw Postgres TCP — the dev branch is the cheapest real target.)
+
+With the dev branch migrated + seeded (Tasks 2 + 5 against the dev-branch url), save and run a scratch check:
+
+```ts
+// scratch-check.ts (NOT committed) — run:
+// DATABASE_URL='<dev-branch url>' pnpm --filter @notation-hero/server exec tsx scratch-check.ts
+import { CatalogController } from './src/modules/catalog/catalog.controller';
+
+const res = await new CatalogController().list();
+if (res.count !== 16) throw new Error(`expected 16 listable+published rows, got ${res.count}`);
+for (const item of res.items) {
+  if (!item.id || !item.title || !item.kind || !item.difficulty) {
+    throw new Error(`bad envelope: ${JSON.stringify(item)}`);
+  }
+}
+console.log(`OK — real neon-http query returned ${res.count} items with the full envelope`);
+```
+
+Expected: prints `OK — real neon-http query returned 16 items …`. This is the end-to-end proof the mocks cannot give. (`new CatalogController()` works without Nest DI — the controller has no constructor deps; it reads the db lazily from `process.env.DATABASE_URL`.)
+
+- [ ] **Step 8: Run the server + client test suites to verify nothing regressed**
 
 Run: `pnpm --filter @notation-hero/server run test && pnpm --filter @notation-hero/client run test`
 Expected: PASS. The client's `About.test.tsx` is untouched — the response envelope is preserved (contract unchanged), so the live About page keeps rendering `count` + `difficulty`.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add server/src/modules/catalog/catalog.controller.ts \
   server/src/modules/catalog/catalog.controller.spec.ts \
-  server/src/entry/http.handler.spec.ts
-git commit -m "feat(server): repoint GET /api/catalog at Neon via typed Drizzle read (NH-79)"
+  server/src/entry/db-exception.filter.ts server/src/entry/db-exception.filter.spec.ts \
+  server/src/entry/http.handler.ts server/src/entry/http.handler.spec.ts
+git commit -m "feat(server): repoint GET /api/catalog at Neon + public 503 error filter (NH-79)"
 ```
 
 ---
@@ -894,7 +1013,24 @@ Two least-privilege roles, both as **GitHub Actions secrets** (auto-masked in th
    > `GRANT … ON ALL TABLES` / `ALTER DEFAULT PRIVILEGES` (it would expose `__drizzle_migrations`).
 
 6. **Seed once** — trigger the **Seed catalog** workflow (Actions tab -> Run workflow), or
-   `gh workflow run seed-catalog.yml`. Locally: `pnpm db:seed` against a dev branch.
+   `gh workflow run seed-catalog.yml`. Locally: `pnpm db:seed` against a dev branch. Re-running only
+   **INSERTs missing rows** (`ON CONFLICT DO NOTHING`) — it never **UPDATEs** an existing row; to
+   correct a row already in the DB, use the approval-gated full reset (TRUNCATE + re-seed), not this
+   workflow.
+
+### Authorization — `workflow_dispatch` + the `production` environment (prerequisite)
+
+Both `deploy.yml` (the rotation trigger) and `seed-catalog.yml` are `workflow_dispatch` with
+`environment: production`. The environment gates the AWS OIDC secret, but **who** may trigger a
+dispatch — and from **which branch** — is GitHub repo config, not the workflow file. Confirm before
+relying on it:
+
+- The **`production` environment's deployment-branch rule = `master` only** (Settings → Environments →
+  production → Deployment branches). The `branches: [master]` filter on `deploy.yml` only covers the
+  automatic `workflow_run` path — a `workflow_dispatch` can be launched from any branch, so the
+  environment rule is what keeps a prod deploy/seed on master.
+- `workflow_dispatch` is restricted to collaborators with **write** access; consider a **required
+  reviewer** on the `production` environment so a second person approves a prod seed/deploy.
 
 ### Local `pulumi preview` / `up`
 
