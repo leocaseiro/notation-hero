@@ -5,6 +5,7 @@ import 'reflect-metadata';
 import serverlessExpress from '@codegenie/serverless-express';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
+import { DbExceptionFilter } from './db-exception.filter';
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
@@ -25,6 +26,7 @@ let cachedHandler: ProxyHandler | undefined;
 async function bootstrap(): Promise<ProxyHandler> {
   const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
   try {
+    app.useGlobalFilters(new DbExceptionFilter());
     // Routes answer under /api/* so CloudFront's `/api/*` behaviour forwards the full path.
     app.setGlobalPrefix('api');
     await app.init();
