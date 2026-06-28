@@ -59,3 +59,89 @@ test('rows are not focusable when onRowClick is absent', () => {
   const row = container.querySelector('[data-slot="data-table-row"]')!;
   expect(row).not.toHaveAttribute('tabindex');
 });
+
+const unsorted: Row[] = [
+  { id: 'b', name: 'Beta', n: 2 },
+  { id: 'a', name: 'Alpha', n: 1 },
+];
+
+const sortableColumns: ColumnDef<Row>[] = [
+  { accessorKey: 'name', header: 'Name', cell: ({ getValue }) => getValue<string>() },
+  {
+    accessorKey: 'n',
+    header: 'N',
+    meta: { align: 'right' },
+    sortDescFirst: true,
+    cell: ({ getValue }) => getValue<number>(),
+  },
+];
+
+function firstColumnText(container: HTMLElement): string[] {
+  return [...container.querySelectorAll('[data-slot="data-table-row"] td:first-child')].map(
+    (c) => c.textContent,
+  );
+}
+
+test('clicking a sortable header toggles asc -> desc -> asc (2-state, never unsorted)', async () => {
+  const user = userEvent.setup();
+  render(<DataTable data={unsorted} columns={sortableColumns} getRowId={(r) => r.id} />);
+  const button = screen.getByRole('button', { name: /name/i });
+  const header = () => screen.getByRole('columnheader', { name: /name/i });
+  expect(header()).toHaveAttribute('aria-sort', 'none');
+  await user.click(button);
+  expect(header()).toHaveAttribute('aria-sort', 'ascending');
+  await user.click(button);
+  expect(header()).toHaveAttribute('aria-sort', 'descending');
+  await user.click(button);
+  expect(header()).toHaveAttribute('aria-sort', 'ascending'); // back to asc, NOT none
+});
+
+test('sorting reorders the rows', async () => {
+  const user = userEvent.setup();
+  const { container } = render(
+    <DataTable data={unsorted} columns={sortableColumns} getRowId={(r) => r.id} />,
+  );
+  await user.click(screen.getByRole('button', { name: /name/i }));
+  expect(firstColumnText(container)).toEqual(['Alpha', 'Beta']);
+});
+
+test('a sortDescFirst column sorts descending on the first click', async () => {
+  const user = userEvent.setup();
+  render(<DataTable data={unsorted} columns={sortableColumns} getRowId={(r) => r.id} />);
+  await user.click(screen.getByRole('button', { name: /^n$/i }));
+  expect(screen.getByRole('columnheader', { name: /^n$/i })).toHaveAttribute(
+    'aria-sort',
+    'descending',
+  );
+});
+
+test('a non-sortable column has no sort button and no aria-sort', () => {
+  render(
+    <DataTable
+      data={unsorted}
+      getRowId={(r) => r.id}
+      columns={[
+        {
+          accessorKey: 'name',
+          header: 'Name',
+          enableSorting: false,
+          cell: ({ getValue }) => getValue<string>(),
+        },
+      ]}
+    />,
+  );
+  expect(screen.queryByRole('button', { name: /name/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('columnheader', { name: /name/i })).not.toHaveAttribute('aria-sort');
+});
+
+test('uncontrolled defaultSorting sets the initial order', () => {
+  const { container } = render(
+    <DataTable
+      data={unsorted}
+      columns={sortableColumns}
+      getRowId={(r) => r.id}
+      defaultSorting={[{ id: 'name', desc: false }]}
+    />,
+  );
+  expect(firstColumnText(container)).toEqual(['Alpha', 'Beta']);
+});
