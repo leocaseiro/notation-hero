@@ -50,6 +50,7 @@ body,
   --color-score-mastered: var(--score-mastered);
   --color-score-mastered-foreground: var(--score-mastered-foreground);
   --color-level-debut: var(--level-debut);
+  --color-kind-fill: var(--kind-fill);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -102,6 +103,7 @@ body,
   --score-mastered: oklch(65.2% 0.132 81.6deg); /* #b8860b gold */
   --score-mastered-foreground: oklch(97.4% 0.034 90.5deg); /* #fff6dd cream */
   --level-debut: oklch(42% 0.1 186.391deg); /* brand teal as TEXT — AA on --muted */
+  --kind-fill: oklch(56% 0.143 35.6deg); /* #b94f34 — AA-darkened from #D2664A (4.97:1 on white) */
   --chart-1: oklch(85.5% 0.138 181.071deg);
   --chart-2: oklch(70.4% 0.14 182.503deg);
   --chart-3: oklch(60% 0.118 184.704deg);
@@ -144,6 +146,7 @@ body,
   --score-mastered: oklch(88% 0.155 90.1deg); /* #ffd24a */
   --score-mastered-foreground: oklch(24.8% 0.051 91.8deg); /* #2a2000 */
   --level-debut: oklch(78% 0.11 186.391deg); /* brand teal as TEXT — AA on --muted (dark) */
+  --kind-fill: oklch(68.8% 0.133 35.8deg); /* #e07a5f */
   --chart-1: oklch(85.5% 0.138 181.071deg);
   --chart-2: oklch(70.4% 0.14 182.503deg);
   --chart-3: oklch(60% 0.118 184.704deg);
