@@ -10,6 +10,7 @@
     "check:core-purity": "bash tooling/check-core-purity-canary.sh",
     "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh",
     "check:layout": "bash tooling/check-layout.sh",
+    "db:migrate": "pnpm --filter @notation-hero/server run db:migrate",
     "depcheck": "depcruise server/src --config .dependency-cruiser.cjs",
     "fix": "prettier --write --ignore-unknown . ; pnpm --filter @notation-hero/client exec eslint . --fix ; pnpm --filter @notation-hero/server exec eslint . --fix ; stylelint --fix \"**/*.css\" ; markdownlint-cli2 --fix \"**/*.md\" ; git ls-files -z 'package.json' '*/package.json' | xargs -0 sort-package-json",
     "format": "prettier --write --ignore-unknown .",
