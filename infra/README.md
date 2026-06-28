@@ -72,6 +72,10 @@ pnpm run pulumi:preview
 
 ### Rotation (all remote — §9)
 
+> Note: a `workflow_dispatch` redeploy runs the `Migrate Neon` step **first** (it always does), so
+> even an app-url-only rotation requires `NEON_MIGRATION_URL` (the owner secret) to still be valid
+> and the owner DB reachable — otherwise the redeploy fails at migrate before reaching `pulumi up`.
+
 - **Owner url:** reset the owner password in Neon -> `gh secret set NEON_MIGRATION_URL`. No runtime
   impact (CI migrate/seed only).
 - **App url (simple):** reset `nh_app` password -> `gh secret set NEON_DATABASE_URL` -> run the
