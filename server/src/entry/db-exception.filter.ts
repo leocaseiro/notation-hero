@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { redactConnectionString } from './redact.util';
 import type { Response } from 'express';
 
 // Public /api/* catch-all: pass HttpExceptions (404, etc.) through unchanged, but map any other
@@ -18,7 +19,7 @@ export class DbExceptionFilter implements ExceptionFilter {
       res.status(exception.getStatus()).json(exception.getResponse());
       return;
     }
-    console.error('[api] unhandled error:', exception);
+    console.error('[api] unhandled error:', redactConnectionString(exception));
     res.status(HttpStatus.SERVICE_UNAVAILABLE).json({ message: 'Service unavailable' });
   }
 }

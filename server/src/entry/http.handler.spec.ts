@@ -110,7 +110,7 @@ describe('lambda handler (serverless-express)', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body as string) as {
       count: number;
-      items: Array<{ id: string; title: string; kind: string }>;
+      items: Array<{ id: string; title: string; kind: string; difficulty: string }>;
     };
     expect(Array.isArray(body.items)).toBe(true);
     expect(body.items.length).toBeGreaterThan(0);
@@ -120,6 +120,7 @@ describe('lambda handler (serverless-express)', () => {
       expect(typeof item.id).toBe('string');
       expect(typeof item.title).toBe('string');
       expect(typeof item.kind).toBe('string');
+      expect(typeof item.difficulty).toBe('string');
     }
   });
 });

@@ -6,6 +6,7 @@ import serverlessExpress from '@codegenie/serverless-express';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 import { DbExceptionFilter } from './db-exception.filter';
+import { redactConnectionString } from './redact.util';
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
@@ -53,7 +54,7 @@ export const handler: ProxyHandler = async (event, context) => {
     proxy = cachedHandler ??= await bootstrap();
   } catch (error) {
     // Surface the cause — Lambda forwards stderr to CloudWatch; without this the 503 is opaque.
-    console.error('[http.handler] bootstrap failed:', error);
+    console.error('[http.handler] bootstrap failed:', redactConnectionString(error));
     return {
       statusCode: 503,
       headers: { 'content-type': 'application/json' },
