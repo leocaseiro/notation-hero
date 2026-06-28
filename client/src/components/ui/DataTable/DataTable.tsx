@@ -1,6 +1,12 @@
-import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table';
+import { useState } from 'react';
 import { alignClass } from './ColumnMeta';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { Column, ColumnDef, Header, OnChangeFn, SortingState } from '@tanstack/react-table';
 
 import {
   Table,
@@ -19,6 +25,9 @@ export interface DataTableProps<TData> {
   appearance?: 'cards' | 'rows';
   onRowClick?: (row: TData) => void;
   getRowId?: (row: TData) => string;
+  sorting?: SortingState;
+  onSortingChange?: OnChangeFn<SortingState>;
+  defaultSorting?: SortingState;
 }
 
 export const DataTable = <TData,>({
@@ -27,7 +36,13 @@ export const DataTable = <TData,>({
   appearance = 'cards',
   onRowClick,
   getRowId,
+  sorting,
+  onSortingChange,
+  defaultSorting,
 }: Readonly<DataTableProps<TData>>) => {
+  const [internalSorting, setInternalSorting] = useState<SortingState>(defaultSorting ?? []);
+  const sortingState = sorting ?? internalSorting;
+
   // TanStack Table manages its own memoization; React Compiler can't memoize its
   // returned functions, so it skips this component — expected, not a bug.
   // eslint-disable-next-line react-hooks/incompatible-library -- TanStack Table owns its memoization
@@ -36,7 +51,17 @@ export const DataTable = <TData,>({
     columns,
     // Omit (not pass `undefined`) under exactOptionalPropertyTypes.
     ...(getRowId ? { getRowId } : {}),
+    state: { sorting: sortingState },
+    onSortingChange: (updater) => {
+      setInternalSorting((prev) => (typeof updater === 'function' ? updater(prev) : updater));
+      onSortingChange?.(updater);
+    },
+    // NH-210: 2-state asc <-> desc toggle (no "unsorted" in the cycle), single column only.
+    enableSortingRemoval: false,
+    enableMultiSort: false,
+    sortDescFirst: false, // generic default is asc-first; columns opt into desc via sortDescFirst
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
   });
 
   const clickable = Boolean(onRowClick);
@@ -58,14 +83,13 @@ export const DataTable = <TData,>({
             {group.headers.map((header) => (
               <TableHead
                 key={header.id}
+                aria-sort={ariaSort(header.column)}
                 className={cn(
                   'h-auto px-3.5 pb-2 text-[10.5px] font-bold tracking-[0.06em] text-muted-foreground uppercase',
                   alignClass(header.column.columnDef.meta?.align),
                 )}
               >
-                {header.isPlaceholder
-                  ? null
-                  : flexRender(header.column.columnDef.header, header.getContext())}
+                {header.isPlaceholder ? null : <HeaderLabel header={header} />}
               </TableHead>
             ))}
           </TableRow>
@@ -118,5 +142,64 @@ export const DataTable = <TData,>({
         ))}
       </TableBody>
     </Table>
+  );
+};
+
+function ariaSort<TData>(
+  column: Column<TData, unknown>,
+): 'ascending' | 'descending' | 'none' | undefined {
+  if (!column.getCanSort()) return undefined;
+  const sorted = column.getIsSorted();
+  if (sorted === 'asc') return 'ascending';
+  if (sorted === 'desc') return 'descending';
+  return 'none';
+}
+
+// Sortable columns render a header button (click toggles asc<->desc) with the sort
+// glyph; non-sortable columns render the bare header label.
+const HeaderLabel = <TData,>({ header }: Readonly<{ header: Header<TData, unknown> }>) => {
+  if (!header.column.getCanSort()) {
+    return <>{flexRender(header.column.columnDef.header, header.getContext())}</>;
+  }
+  return (
+    <button
+      type="button"
+      onClick={header.column.getToggleSortingHandler()}
+      className={cn(
+        'group/sort inline-flex items-center gap-1 rounded outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        header.column.columnDef.meta?.align === 'right' && 'flex-row-reverse',
+      )}
+    >
+      {flexRender(header.column.columnDef.header, header.getContext())}
+      <SortGlyph column={header.column} />
+    </button>
+  );
+};
+
+// Active column: solid accent arrow. Sortable-but-inactive: a persistent neutral
+// `unfold_more` at rest that, on hover/focus, previews this column's first-click
+// direction (arrow_downward for desc-first columns, arrow_upward otherwise).
+const SortGlyph = <TData,>({ column }: Readonly<{ column: Column<TData, unknown> }>) => {
+  const sorted = column.getIsSorted();
+  if (sorted) {
+    return (
+      <span className="material-symbols-outlined text-primary" aria-hidden="true">
+        {sorted === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+      </span>
+    );
+  }
+  const previewArrow = column.getNextSortingOrder() === 'desc' ? 'arrow_downward' : 'arrow_upward';
+  // `.material-symbols-outlined` is unlayered and forces `display: inline-block`, which beats
+  // Tailwind's layered `hidden`/`inline`; so the show/hide toggle lives on plain wrapper spans
+  // (not the icon-font element) — those wrappers respond to `hidden`/`inline` normally.
+  return (
+    <span className="relative inline-flex text-muted-foreground" aria-hidden="true">
+      <span className="inline opacity-50 group-hover/sort:hidden group-focus-visible/sort:hidden">
+        <span className="material-symbols-outlined">unfold_more</span>
+      </span>
+      <span className="hidden opacity-70 group-hover/sort:inline group-focus-visible/sort:inline">
+        <span className="material-symbols-outlined">{previewArrow}</span>
+      </span>
+    </span>
   );
 };

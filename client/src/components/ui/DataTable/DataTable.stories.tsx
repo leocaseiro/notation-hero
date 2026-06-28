@@ -51,3 +51,27 @@ export const Default: Story = {
 export const Rows: Story = {
   args: { data: demo, columns, appearance: 'rows', onRowClick: () => {} },
 };
+
+export const SortableHeaders: Story = {
+  args: {
+    data: demo,
+    columns: [
+      { accessorKey: 'title', header: 'Name', cell: ({ getValue }) => getValue<string>() },
+      {
+        accessorKey: 'level',
+        header: 'Level',
+        meta: { align: 'center' },
+        cell: ({ getValue }) => getValue<number>(),
+      },
+      {
+        accessorKey: 'bpm',
+        header: 'BPM',
+        meta: { align: 'right' },
+        sortDescFirst: true,
+        cell: ({ getValue }) => getValue<number>(),
+      },
+    ],
+    appearance: 'cards',
+    defaultSorting: [{ id: 'title', desc: false }],
+  },
+};
