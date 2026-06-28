@@ -354,6 +354,7 @@
     "Keyvaluestore",
     "masterbar",
     "isready",
+    "cslug",
     "metafoot",
     "mheap",
     "newbody",

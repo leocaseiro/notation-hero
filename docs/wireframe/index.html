@@ -114,6 +114,10 @@ a{color:inherit}
 .tablehead{padding:6px 12px;color:var(--faint);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .stephead{display:flex;gap:14px;align-items:center;padding:0 14px 6px;color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
 .tablehead span:nth-child(2){text-align:center}.tablehead span:nth-child(3){text-align:right}.tablehead span:nth-child(4){text-align:center}
+.tablehead .sortcol{cursor:pointer;user-select:none;transition:color var(--dur) var(--ease)}
+.tablehead .sortcol:hover{color:var(--ink)}
+.tablehead .sortcol.active{color:var(--accent)}
+.sortarrow{font-size:14px;vertical-align:-3px}
 .row{padding:10px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:8px;transition:border-color var(--dur) var(--ease)}
 .row:hover{border-color:var(--accent);background:var(--panel2)}
 .name{display:flex;align-items:center;gap:11px;min-width:0}
@@ -124,6 +128,7 @@ a{color:inherit}
 .nmtitle{font-weight:600;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .nmtitle b{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nmsub{color:var(--muted);font-size:12px;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rowauthor{color:var(--ink);font-weight:500}
 .badge2{font-size:10px;text-transform:uppercase;letter-spacing:.04em;font-weight:700;padding:2px 7px;border-radius:var(--pill);border:1px solid var(--line);color:var(--muted)}
 .badge2.beat{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
 .badge2.rudiment{color:var(--learn);border-color:color-mix(in srgb,var(--learn) 40%,transparent)}
@@ -231,6 +236,13 @@ body.showall .fielddock{display:block}
 .playerstub .material-symbols-outlined{font-size:60px;color:var(--accent)}
 .playerstub h2{font-size:24px}
 .playerstub .ctx{color:var(--muted);max-width:440px}
+.psource{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+.psource .pslbl{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);font-weight:700}
+.psource button{display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:var(--pill);padding:5px 13px;font-size:13px}
+.psource button[aria-pressed="true"]{background:var(--accent);color:var(--onaccent);border-color:transparent;font-weight:600}
+.psource button:disabled{opacity:.4;cursor:not-allowed}
+.psource button .material-symbols-outlined{font-size:16px}
+.psource .pshint{flex-basis:100%;text-align:center;color:var(--faint);font-size:11px}
 
 .adminbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0;padding:10px 12px;border:1px solid color-mix(in srgb,var(--s-dev) 40%,var(--line));border-radius:var(--radius);background:color-mix(in srgb,var(--s-dev) 8%,var(--panel))}
 .adminbar .lbl{display:inline-flex;gap:6px;align-items:center;color:var(--s-dev);font-weight:600;font-size:12.5px;margin-right:auto}
@@ -285,7 +297,7 @@ body.showall .fielddock{display:block}
 <body>
 
 <div class="wf-banner">
-  <b>WIREFRAME</b><span>low-fi flow sim · v1.4 · notation model + field inspector · not final styling</span>
+  <b>WIREFRAME</b><span>low-fi flow sim · v1.5 · notation model + field inspector · not final styling</span>
   <span class="wf-tg">Theme:
     <button data-theme-set="dark" aria-pressed="true">Dark</button>
     <button data-theme-set="light" aria-pressed="false">Light</button>
@@ -350,11 +362,11 @@ const PATTERN_KINDS = {beat:{icon:'graphic_eq',label:'Beat'}, fill:{icon:'bolt',
 
 /* ---------- sample data (playable — the locked umbrella; kind = the role) ---------- */
 const PLAYABLES = [
-  {id:'bohemian-rhapsody', kind:'song', title:'Bohemian Rhapsody', artist:'Queen', level:8, bpm:72, time_sig:'4/4', genre:'rock', instruments:['keys','guitar','bass','drums','vocals'], musical_key:'Bb', tags:['progressive','classic-rock'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Full mix'}], video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-boh-keys',instrument:'keys',role:null,name:'Piano',level:6,notation_track_index:1},{id:'t-boh-lead',instrument:'guitar',role:'lead',name:'Gtr 1',level:7,notation_track_index:0},{id:'t-boh-rhythm',instrument:'guitar',role:'rhythm',name:'Gtr 2',level:4,notation_track_index:3},{id:'t-boh-bass',instrument:'bass',role:null,name:'Bass',level:5,notation_track_index:7},{id:'t-boh-drums',instrument:'drums',role:null,name:'Percussions',level:5,notation_track_index:10},{id:'t-boh-vox',instrument:'vocals',role:null,name:'Voice',level:8,notation_track_index:8}], data:{bars:139, sections:[{label:'gtrs enter',startBar:42,endBar:54},{label:'tempo 144',startBar:55,endBar:95},{label:'tempo 207',startBar:96,endBar:139}]}, best:null, sessions:0, trend:[]},
-  {id:'yellow', kind:'song', patterns:['pat_yellow_groove_closed','pat_yellow_groove_open'], title:'Yellow', artist:'Coldplay', level:3, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar','bass','drums','keys','vocals'], musical_key:'B', chords:['B','Badd9','F#6','E7M','Badd11','G#m','Eadd9','F#m7add11'], tags:['alternative'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-yel-lead',instrument:'guitar',role:'lead',name:'Lead Guitar',level:3,notation_track_index:2},{id:'t-yel-rhythm',instrument:'guitar',role:'rhythm',name:'Rhythm Guitar',level:2,notation_track_index:1},{id:'t-yel-bass',instrument:'bass',role:null,name:'Bass',level:2,notation_track_index:4},{id:'t-yel-drums',instrument:'drums',role:null,name:'Drums',level:2,notation_track_index:7},{id:'t-yel-keys',instrument:'keys',role:null,name:'Strings / Piano',level:3,notation_track_index:5},{id:'t-yel-vox',instrument:'vocals',role:null,name:'Lead Vocals',level:3,notation_track_index:0}], data:{bars:97, sections:[{label:'Intro',startBar:1,endBar:4,tracks:[{track:'t-yel-keys',voices:['right-hand'],level:3}]},{label:'Instrumental 1',startBar:5,endBar:12,tracks:[{track:'t-yel-drums',voices:['hi-hat','kick'],level:2},{track:'t-yel-keys',voices:['right-hand'],level:3}]},{label:'Verse 1',startBar:13,endBar:32,tracks:[{track:'t-yel-drums',voices:['hi-hat','snare','kick'],level:2},{track:'t-yel-keys',voices:['left-hand','right-hand'],level:3}]},{label:'Chorus 1',startBar:33,endBar:40,tracks:[{track:'t-yel-drums',voices:['hi-hat','snare','kick','crash','ride'],level:2},{track:'t-yel-keys',voices:['left-hand','right-hand'],level:3}]},{label:'Interlude 1',startBar:41,endBar:48},{label:'Verse 2',startBar:49,endBar:62},{label:'Chorus 2',startBar:63,endBar:70},{label:'Interlude 2',startBar:71,endBar:78},{label:'Outro',startBar:79,endBar:90},{label:'Outro',startBar:91,endBar:97}]}, best:null, sessions:0, trend:[]},
-  {id:'zoio-de-lula', kind:'song', patterns:['pat_zoio_fill'], title:'Zoio de Lula', artist:'Charlie Brown Jr.', level:9, bpm:76, time_sig:'4/4', genre:'rock', instruments:['guitar','bass','drums'], musical_key:null, tags:['brazilian'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-zoio-drums',instrument:'drums',role:null,name:'Bateria',level:9,notation_track_index:4},{id:'t-zoio-lead',instrument:'guitar',role:'solo',name:'Guitarra Solo',level:4,notation_track_index:1},{id:'t-zoio-rhythm',instrument:'guitar',role:'rhythm',name:'Guitarra Base',level:3,notation_track_index:0},{id:'t-zoio-gtr3',instrument:'guitar',role:null,name:'Guitarra 3',level:3,notation_track_index:2},{id:'t-zoio-bass',instrument:'bass',role:null,name:'Baixo',level:4,notation_track_index:3}], data:{bars:79, markerless:true}, best:null, sessions:0, trend:[]},
-  {id:'im-yours', kind:'song', patterns:['pat_imyours_groove'], title:"I'm Yours", artist:'Jason Mraz', level:2, bpm:73, time_sig:'4/4', genre:'pop', instruments:['guitar','bass','drums','vocals'], musical_key:'B', chords:['B','F#','G#m','E','Fdim','F#/A#'], tags:['reggae','I-V-vi-IV'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-imy-rhythm',instrument:'guitar',role:'rhythm',name:'Classical Guitar',level:2,notation_track_index:0},{id:'t-imy-lead',instrument:'guitar',role:'lead',name:'Electric Guitar',level:2,notation_track_index:1},{id:'t-imy-bass',instrument:'bass',role:null,name:'Bass',level:2,notation_track_index:2},{id:'t-imy-drums',instrument:'drums',role:null,name:'Drums',level:1,notation_track_index:3},{id:'t-imy-vox',instrument:'vocals',role:null,name:'Lead Vocal Harmonies',level:2,notation_track_index:4}], data:{bars:76, singleSection:true, sections:[{label:'Intro',startBar:2,endBar:5},{label:'Verse 1',startBar:6,endBar:13},{label:'Chorus 1',startBar:14,endBar:17},{label:'Interlude',startBar:18,endBar:21},{label:'Verse 2',startBar:22,endBar:30},{label:'Chorus 2',startBar:31,endBar:38},{label:'Bridge',startBar:39,endBar:46},{label:'Verse 3',startBar:47,endBar:54},{label:'Breakdown Chorus',startBar:55,endBar:58},{label:'Chorus 3',startBar:59,endBar:68},{label:'Outro',startBar:69,endBar:76}]}, best:null, sessions:0, trend:[]},
-  {id:'nothing-to-say', kind:'song', title:'Nothing To Say', artist:'Angra', level:9, bpm:138, time_sig:'4/4', genre:'metal', instruments:['drums','guitar','bass','keys','vocals'], musical_key:'Em', tags:['double-bass','neoclassical'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Full mix'}], video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-angra-drums',instrument:'drums',role:null,name:'Ricardo (Drums)',level:9,notation_track_index:4},{id:'t-angra-lead',instrument:'guitar',role:'lead',name:'Kiko (Lead Guitar)',level:9,notation_track_index:1},{id:'t-angra-rhythm',instrument:'guitar',role:'rhythm',name:'Rafael (Rhythm Guitar)',level:7,notation_track_index:2},{id:'t-angra-bass',instrument:'bass',role:null,name:'Luis (Bass)',level:8,notation_track_index:3},{id:'t-angra-keys',instrument:'keys',role:null,name:'Keyboards',level:6,notation_track_index:5},{id:'t-angra-vox',instrument:'vocals',role:null,name:'Andre (Vocals)',level:8,notation_track_index:0}], data:{bars:221, sections:[{label:'Intro',startBar:1,endBar:22},{label:'Main Riff',startBar:23,endBar:34},{label:'Verses I',startBar:35,endBar:55},{label:'Chorus I',startBar:56,endBar:63},{label:'Verses II',startBar:64,endBar:86},{label:'Chorus II',startBar:87,endBar:102},{label:'Bridge',startBar:103,endBar:118},{label:'Pre-Solo',startBar:119,endBar:126},{label:'Guitar Solo (Kiko)',startBar:127,endBar:134},{label:'Guitar Solo (Rafael)',startBar:135,endBar:141},{label:'Orchestra Interlude',startBar:142,endBar:153},{label:'Verses III',startBar:154,endBar:166},{label:'Chorus III - (E key)',startBar:167,endBar:182},{label:'Chorus III - (G Key)',startBar:183,endBar:198},{label:'Ending',startBar:199,endBar:221}]}, best:null, sessions:0, trend:[]},
+  {id:'bohemian-rhapsody', kind:'song', title:'Bohemian Rhapsody', author:['Queen'], author_type:'artist', level:8, bpm:72, time_sig:'4/4', genre:'rock', instruments:['keys','guitar','bass','drums','vocals'], musical_key:'Bb', tags:['progressive','classic-rock'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Full mix'}], video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-boh-keys',instrument:'keys',role:null,name:'Piano',level:6,notation_track_index:1},{id:'t-boh-lead',instrument:'guitar',role:'lead',name:'Gtr 1',level:7,notation_track_index:0},{id:'t-boh-rhythm',instrument:'guitar',role:'rhythm',name:'Gtr 2',level:4,notation_track_index:3},{id:'t-boh-bass',instrument:'bass',role:null,name:'Bass',level:5,notation_track_index:7},{id:'t-boh-drums',instrument:'drums',role:null,name:'Percussions',level:5,notation_track_index:10},{id:'t-boh-vox',instrument:'vocals',role:null,name:'Voice',level:8,notation_track_index:8}], data:{bars:139, sections:[{label:'gtrs enter',startBar:42,endBar:54},{label:'tempo 144',startBar:55,endBar:95},{label:'tempo 207',startBar:96,endBar:139}]}, best:null, sessions:0, trend:[]},
+  {id:'yellow', kind:'song', patterns:['pat_yellow_groove_closed','pat_yellow_groove_open'], title:'Yellow', author:['Coldplay'], author_type:'artist', level:3, bpm:87, time_sig:'4/4', genre:'rock', instruments:['guitar','bass','drums','keys','vocals'], musical_key:'B', chords:['B','Badd9','F#6','E7M','Badd11','G#m','Eadd9','F#m7add11'], tags:['alternative'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-yel-lead',instrument:'guitar',role:'lead',name:'Lead Guitar',level:3,notation_track_index:2},{id:'t-yel-rhythm',instrument:'guitar',role:'rhythm',name:'Rhythm Guitar',level:2,notation_track_index:1},{id:'t-yel-bass',instrument:'bass',role:null,name:'Bass',level:2,notation_track_index:4},{id:'t-yel-drums',instrument:'drums',role:null,name:'Drums',level:2,notation_track_index:7},{id:'t-yel-keys',instrument:'keys',role:null,name:'Strings / Piano',level:3,notation_track_index:5},{id:'t-yel-vox',instrument:'vocals',role:null,name:'Lead Vocals',level:3,notation_track_index:0}], data:{bars:97, sections:[{label:'Intro',startBar:1,endBar:4,tracks:[{track:'t-yel-keys',voices:['right-hand'],level:3}]},{label:'Instrumental 1',startBar:5,endBar:12,tracks:[{track:'t-yel-drums',voices:['hi-hat','kick'],level:2},{track:'t-yel-keys',voices:['right-hand'],level:3}]},{label:'Verse 1',startBar:13,endBar:32,tracks:[{track:'t-yel-drums',voices:['hi-hat','snare','kick'],level:2},{track:'t-yel-keys',voices:['left-hand','right-hand'],level:3}]},{label:'Chorus 1',startBar:33,endBar:40,tracks:[{track:'t-yel-drums',voices:['hi-hat','snare','kick','crash','ride'],level:2},{track:'t-yel-keys',voices:['left-hand','right-hand'],level:3}]},{label:'Interlude 1',startBar:41,endBar:48},{label:'Verse 2',startBar:49,endBar:62},{label:'Chorus 2',startBar:63,endBar:70},{label:'Interlude 2',startBar:71,endBar:78},{label:'Outro',startBar:79,endBar:90},{label:'Outro',startBar:91,endBar:97}]}, best:null, sessions:0, trend:[]},
+  {id:'zoio-de-lula', kind:'song', patterns:['pat_zoio_fill'], title:'Zoio de Lula', author:['Charlie Brown Jr.'], author_type:'artist', level:9, bpm:76, time_sig:'4/4', genre:'rock', instruments:['guitar','bass','drums'], musical_key:null, tags:['brazilian'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-zoio-drums',instrument:'drums',role:null,name:'Bateria',level:9,notation_track_index:4},{id:'t-zoio-lead',instrument:'guitar',role:'solo',name:'Guitarra Solo',level:4,notation_track_index:1},{id:'t-zoio-rhythm',instrument:'guitar',role:'rhythm',name:'Guitarra Base',level:3,notation_track_index:0},{id:'t-zoio-gtr3',instrument:'guitar',role:null,name:'Guitarra 3',level:3,notation_track_index:2},{id:'t-zoio-bass',instrument:'bass',role:null,name:'Baixo',level:4,notation_track_index:3}], data:{bars:79, markerless:true}, best:null, sessions:0, trend:[]},
+  {id:'im-yours', kind:'song', patterns:['pat_imyours_groove'], title:"I'm Yours", author:['Jason Mraz'], author_type:'artist', level:2, bpm:73, time_sig:'4/4', genre:'pop', instruments:['guitar','bass','drums','vocals'], musical_key:'B', chords:['B','F#','G#m','E','Fdim','F#/A#'], tags:['reggae','I-V-vi-IV'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_video:true, video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-imy-rhythm',instrument:'guitar',role:'rhythm',name:'Classical Guitar',level:2,notation_track_index:0},{id:'t-imy-lead',instrument:'guitar',role:'lead',name:'Electric Guitar',level:2,notation_track_index:1},{id:'t-imy-bass',instrument:'bass',role:null,name:'Bass',level:2,notation_track_index:2},{id:'t-imy-drums',instrument:'drums',role:null,name:'Drums',level:1,notation_track_index:3},{id:'t-imy-vox',instrument:'vocals',role:null,name:'Lead Vocal Harmonies',level:2,notation_track_index:4}], data:{bars:76, singleSection:true, sections:[{label:'Intro',startBar:2,endBar:5},{label:'Verse 1',startBar:6,endBar:13},{label:'Chorus 1',startBar:14,endBar:17},{label:'Interlude',startBar:18,endBar:21},{label:'Verse 2',startBar:22,endBar:30},{label:'Chorus 2',startBar:31,endBar:38},{label:'Bridge',startBar:39,endBar:46},{label:'Verse 3',startBar:47,endBar:54},{label:'Breakdown Chorus',startBar:55,endBar:58},{label:'Chorus 3',startBar:59,endBar:68},{label:'Outro',startBar:69,endBar:76}]}, best:null, sessions:0, trend:[]},
+  {id:'nothing-to-say', kind:'song', title:'Nothing To Say', author:['Angra'], author_type:'artist', level:9, bpm:138, time_sig:'4/4', genre:'metal', instruments:['drums','guitar','bass','keys','vocals'], musical_key:'Em', tags:['double-bass','neoclassical'], status:'published', origin:'curated', license:'royalty-free', notation_format:'gp', has_audio:true, has_video:true, audio:[{label:'Full mix'}], video:[{provider:'youtube',label:'Official video'}], tracks:[{id:'t-angra-drums',instrument:'drums',role:null,name:'Ricardo (Drums)',level:9,notation_track_index:4},{id:'t-angra-lead',instrument:'guitar',role:'lead',name:'Kiko (Lead Guitar)',level:9,notation_track_index:1},{id:'t-angra-rhythm',instrument:'guitar',role:'rhythm',name:'Rafael (Rhythm Guitar)',level:7,notation_track_index:2},{id:'t-angra-bass',instrument:'bass',role:null,name:'Luis (Bass)',level:8,notation_track_index:3},{id:'t-angra-keys',instrument:'keys',role:null,name:'Keyboards',level:6,notation_track_index:5},{id:'t-angra-vox',instrument:'vocals',role:null,name:'Andre (Vocals)',level:8,notation_track_index:0}], data:{bars:221, sections:[{label:'Intro',startBar:1,endBar:22},{label:'Main Riff',startBar:23,endBar:34},{label:'Verses I',startBar:35,endBar:55},{label:'Chorus I',startBar:56,endBar:63},{label:'Verses II',startBar:64,endBar:86},{label:'Chorus II',startBar:87,endBar:102},{label:'Bridge',startBar:103,endBar:118},{label:'Pre-Solo',startBar:119,endBar:126},{label:'Guitar Solo (Kiko)',startBar:127,endBar:134},{label:'Guitar Solo (Rafael)',startBar:135,endBar:141},{label:'Orchestra Interlude',startBar:142,endBar:153},{label:'Verses III',startBar:154,endBar:166},{label:'Chorus III - (E key)',startBar:167,endBar:182},{label:'Chorus III - (G Key)',startBar:183,endBar:198},{label:'Ending',startBar:199,endBar:221}]}, best:null, sessions:0, trend:[]},
   {id:'pat_ssr_debut', kind:'pattern', title:'Single Stroke Roll (Debut)', pattern_kind:'rudiment', family:'Roll', level:0, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Single%20Stroke%20Roll%20(Level%20Debut)&Tempo=70&Measures=1&H=|--------|&S=|oooooooo|&K=|--------|&Stickings=|RLRLRLRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
   {id:'pat_dsr_debut', kind:'pattern', title:'Double Stroke Roll (Debut)', pattern_kind:'rudiment', family:'Diddle', level:0, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=8&Title=Double%20Stroke%20Roll%20(Level%20Debut)&Tempo=70&Measures=1&H=|--------|&S=|oooooooo|&K=|--------|&Stickings=|RRLLRRLL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
   {id:'pat_ssr_l2', kind:'pattern', title:'Single Stroke Roll (L2)', pattern_kind:'rudiment', family:'Roll', level:2, instruments:['drums'], status:'published', origin:'curated', license:'owned', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Single%20Stroke%20Roll%20(Level%202)&Tempo=80&Measures=1&H=|----------------|&S=|oooooooooooooooo|&K=|----------------|&Stickings=|RLRLRLRLRLRLRLRL|', source:'groovescribe-import.json'}, best:null, sessions:0, trend:[]},
@@ -373,7 +385,13 @@ const PLAYABLES = [
   {id:'pat_yellow_groove_open', kind:'pattern', title:'Yellow — groove (open hat)', pattern_kind:'beat', family:'Rock', level:2, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'royalty-free', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Yellow%20%E2%80%94%20groove%20(open%20hat)&Author=(Kind%3A%20Beat)&Comments=Level%3A%202&Tempo=87&Measures=1&H=|o-o-o-o-o-o-o-o-|&S=|----o-------o---|&K=|o-------o-o-----|&Stickings=|cccccccccccccccc|', source:'gp-extract-yellow.json'}, best:null, sessions:0, trend:[]},
   {id:'pat_imyours_groove', kind:'pattern', title:"I'm Yours — groove", pattern_kind:'beat', family:'Reggae', level:1, instruments:['drums'], genre:'pop', status:'published', origin:'curated', license:'royalty-free', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=I%27m%20Yours%20%E2%80%94%20groove&Author=(Kind%3A%20Beat)&Comments=Level%3A%201&Tempo=73&Measures=1&H=|x-x-x-xxxxx-x-x-|&S=|----------------|&K=|----------------|&Stickings=|cccccccccccccccc|', source:'gp-extract-imyours.json'}, best:null, sessions:0, trend:[]},
   {id:'pat_zoio_fill', kind:'pattern', title:'Zoio de Lula — tom fill', pattern_kind:'fill', family:'Fill', level:6, instruments:['drums'], genre:'rock', status:'published', origin:'curated', license:'royalty-free', data:{grooveScribeUrl:'https://leocaseiro.github.io/GrooveScribe/?TimeSig=4/4&Div=16&Title=Zoio%20de%20Lula%20%E2%80%94%20tom%20fill&Author=(Kind%3A%20Fill)&Comments=Level%3A%206&Tempo=76&Measures=1&H=|----------------|&S=|----------------|&K=|----------------|&T1=|--------ooo-----|&T2=|----------------|&T4=|------------ooo-|&Stickings=|cccccccccccccccc|', source:'gp-extract-zoio.json (bar 2)'}, best:null, sessions:0, trend:[]},
-  {id:'lesson_yellow_groove', kind:'lesson', title:'Yellow groove — hi-hat variations', level:2, instruments:['drums'], genre:'rock', skill:['timing','coordination'], status:'published', origin:'curated', license:'royalty-free', data:{description:'Coldplay "Yellow" main groove in two hi-hat articulations — closed vs open on beat 1.'}, best:null, sessions:0, trend:[]},
+  {id:'lesson_yellow_groove', kind:'lesson', title:'Yellow groove — hi-hat variations', author:['Leo Caseiro'], author_type:'teacher', level:2, instruments:['drums'], genre:'rock', skill:['timing','coordination'], status:'published', origin:'curated', license:'royalty-free', data:{description:'Coldplay "Yellow" main groove in two hi-hat articulations — closed vs open on beat 1.'}, best:null, sessions:0, trend:[]},
+  // NH-222 / SD-32 (F5) — structured song learning: Yellow's parts (positions-only slices, NH-137) + a Lesson that USES the song, part by part.
+  {id:'part_yellow_intro',   slug:'yellow-intro',   kind:'part', parent_id:'yellow', title:'Yellow — Intro',    sort_order:1, start_bar:1,  end_bar:4,  bpm:87, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], level:1, status:'published', origin:'curated', license:'royalty-free', listable:false, description:'Intro — bars 1–4. Keys + ringing guitar set up the song.', best:null, sessions:0, trend:[]},
+  {id:'part_yellow_verse1',  slug:'yellow-verse-1',  kind:'part', parent_id:'yellow', title:'Yellow — Verse 1',  sort_order:2, start_bar:13, end_bar:32, bpm:87, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','bass','keys','vocals'], level:2, status:'published', origin:'curated', license:'royalty-free', listable:false, description:'Verse 1 — bars 13–32. Full band enters; steady backbeat.', best:null, sessions:0, trend:[]},
+  {id:'part_yellow_chorus1', slug:'yellow-chorus-1', kind:'part', parent_id:'yellow', title:'Yellow — Chorus 1', sort_order:3, start_bar:33, end_bar:40, bpm:87, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','bass','keys','vocals'], level:2, status:'published', origin:'curated', license:'royalty-free', listable:false, description:'Chorus 1 — bars 33–40. Crashes + ride open up the dynamics.', best:null, sessions:0, trend:[]},
+  {id:'part_yellow_outro',   slug:'yellow-outro',   kind:'part', parent_id:'yellow', title:'Yellow — Outro',    sort_order:4, start_bar:91, end_bar:97, bpm:87, time_sig:'4/4', genre:'rock', instruments:['drums','guitar','keys'], level:2, status:'published', origin:'curated', license:'royalty-free', listable:false, description:'Outro — bars 91–97. Winds the song down.', best:null, sessions:0, trend:[]},
+  {id:'lesson_learn_yellow', slug:'learn-yellow', kind:'lesson', title:'Learn Yellow — part by part', author:['Leo Caseiro'], author_type:'teacher', level:2, instruments:['drums','guitar','keys'], genre:'rock', skill:['timing','arrangement'], status:'published', origin:'curated', license:'royalty-free', description:'Play Coldplay "Yellow" section by section — Intro → Verse → Chorus → Outro — each at its own BPM ladder, then put it together as the full song. A normal lesson whose steps are the song\'s parts (it USES the song).', best:null, sessions:0, trend:[]},
 ];
 
 /* ---------- sample data — the `step` JUNCTION (parent playable -> child pattern) ----------
@@ -392,17 +410,27 @@ const STEP = {
     {child_id:'pat_yellow_groove_closed', sort_order:1, start_bpm:70, goal_bpm:87},
     {child_id:'pat_yellow_groove_open',   sort_order:2, start_bpm:70, goal_bpm:87},
   ],
+  // NH-222 / SD-32 — the structured song lesson's steps ARE the song's parts (parent=lesson, child=part)
+  'lesson_learn_yellow':[
+    {child_id:'part_yellow_intro',   sort_order:1, start_bpm:70, goal_bpm:87},
+    {child_id:'part_yellow_verse1',  sort_order:2, start_bpm:70, goal_bpm:87},
+    {child_id:'part_yellow_chorus1', sort_order:3, start_bpm:75, goal_bpm:87},
+    {child_id:'part_yellow_outro',   sort_order:4, start_bpm:75, goal_bpm:87},
+  ],
 };
 
 /* Lessons tab = every listable playable that isn't a song (lessons + patterns). Song parts are listable:false (reached from their song), so they never appear here. The Kind filter is by pattern_kind — a pattern's own kind; a lesson's = the pattern_kinds of its step children (lesson_type dropped; kind is derived). */
 const BROWSE_KINDS = {beat:{icon:'graphic_eq',label:'Beats'}, fill:{icon:'bolt',label:'Fills'}, rudiment:{icon:'drag_indicator',label:'Rudiments'}, scale:{icon:'piano',label:'Scales'}, chord:{icon:'piano',label:'Chords'}};
 const GENRES = ['rock','pop','jazz','metal','funk','soul'];
-const ARTISTS = [...new Set(PLAYABLES.filter(p=>p.kind==='song'&&p.artist).map(p=>p.artist))].sort();   // $C1 distinct song artists for a discoverable catalog filter
+const ARTISTS = [...new Set(PLAYABLES.filter(p=>p.kind==='song').flatMap(p=>p.author||[]))].sort();   // $C1 distinct song authors (SD-33: author text[]) for a discoverable catalog filter
+const LESSON_AUTHORS = [...new Set(PLAYABLES.filter(p=>p.kind!=='song').flatMap(p=>p.author||[]))].sort();   // distinct non-song authors (teachers) for the Lessons-tab Author facet
+const AUTHOR_NONE = '__none__';   // sentinel: "Unknown" — filter to items with no author
 const TIMES = ['4/4','3/4','5/4','6/8','7/8'];
 const INSTRUMENTS = ['drums','guitar','bass','keys'];
 const KEYS = ['C','G','D','A','E','F#m','Am','Em','Bb','Eb'];
 const SKILLS = ['timing','coordination','independence','control','speed','fills','chords'];
 const SORTS = {relevance:'Relevance', level:'Level', bpm:'BPM', best:'Best score', newest:'Newest', title:'A–Z', curated:'Curated'};
+const SORT_DEFAULT_DIR = {title:'asc', level:'asc', bpm:'asc', best:'desc', newest:'desc'};   // direction applied when a sort key is first chosen
 const PITCHED = ['guitar','keys'];
 const PAGE_SIZE = 6;
 
@@ -416,11 +444,13 @@ const state = {
   page: 1,
   openPop: null,
   genre: [], kind: [], timeSig: [], instrument: null, artist: null, track: null, showAll: false,
+  flags: [],                 // SD-11 / NH-211 — flag filters (audio / video / parts)
+  playSource: 'synth',       // SD-11 / NH-211 — playback-source toggle (synth | video | audio), synth default
   level: { min:null, max:null }, inclUngraded: false,
   bpm: { min:null, max:null },
   score: { min:null, max:null }, inclUnplayed: false,   // SD-12 (per-user, client-side)
   skill: [], musicalKey: [],
-  sort: 'relevance',
+  sort: 'relevance', sortDir: 'asc',
 };
 const el = sel => document.querySelector(sel);
 const app = el('#app');
@@ -479,6 +509,7 @@ const LINKS = [
   {from:'pat_yellow_groove_closed', to:'pat_basic_rock', relation:'similar'},              // SD-30 n-n affinity: same backbeat skeleton, different song (symmetric)
   {from:'yellow', to:'im-yours', relation:'similar'},                                      // similar songs (pop feel) — non-hierarchical
   {from:'yellow', to:'lesson_yellow_groove', relation:'uses'},                             // song → its variation lesson
+  {from:'lesson_learn_yellow', to:'yellow', relation:'uses'},                              // SD-32/F5: structured song-learning lesson → the song it teaches (lesson uses song)
 ];
 
 /* ---------- RAW AlphaTab extraction per song (docs/wireframe/data/gp-extract-*.json) ----------
@@ -496,11 +527,23 @@ function linksOf(id){ return { uses: LINKS.filter(l=>l.from===id), usedByLink: L
 // user-facing kind: patterns show their pattern_kind (Beat/Fill/Rudiment), never the umbrella word "pattern".
 const kindLabel = p => p.kind==='pattern' ? (PATTERN_KINDS[p.pattern_kind]?.label||'Pattern') : cap(p.kind);
 const kindIcon  = p => p.kind==='pattern' ? (PATTERN_KINDS[p.pattern_kind]?.icon||'extension') : p.kind==='song'?'music_note':p.kind==='part'?'segment':'school';
+/* ---------- routes (NH-221 / SD-31) — a pattern's route uses its KIND, not the umbrella word "pattern" ---------- */
+const PAT_KINDS = Object.keys(PATTERN_KINDS);                 // beat · fill · rudiment · scale · chord
+const isPatKind = k => PAT_KINDS.includes(k);
+/* slug — friendly, stable URL token (the real schema keeps an opaque ULID id + a separate `slug`). */
+function slugify(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/['’]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+(function fillSlugs(){ const seen=new Set(); PLAYABLES.forEach(p=>{ let base=p.slug||slugify(p.title)||p.id, s=base, i=2; while(seen.has(s)) s=base+'-'+(i++); seen.add(s); p.slug=s; }); })();   // every playable gets a stored slug (auto from title; admin-editable in the real schema). Songs derive to their ids (Yellow→yellow), so those URLs stay stable.
+const sl = it => (it && (it.slug || it.id)) || '';           // the URL token for a playable
+const bySlug = s => PLAYABLES.find(x=>x.slug===s) || PLAYABLES.find(x=>x.id===s) || null;   // resolve a URL token → playable (slug first, id fallback)
+function playablePath(it){ return it.kind==='pattern' ? `/${it.pattern_kind||'pattern'}/${sl(it)}` : `/${it.kind}/${sl(it)}`; }   // e.g. /fill/zoio-de-lula-tom-fill , /song/yellow
+const playableRoute = it => '#'+playablePath(it);
+/* a pattern/part viewed in the CONTEXT of a parent song/lesson — both slugs in the path (POC A): #/song/:slug/<kind>/:cslug */
+function patternInContext(parent, childId, childKind){ const c = childPlayable(childId); const pk = childKind || c?.pattern_kind || 'pattern'; return `#${playablePath(parent)}/${pk}/${sl(c)||childId}`; }
 function usedInCard(items, note){
   const seen=new Set(); const u=(items||[]).filter(p=>p&&!seen.has(p.id)&&(seen.add(p.id),true));
   if(!u.length) return '';
   return `<div class="card"><h3><span class="material-symbols-outlined">hub</span> Used in${note?` <span style="font-weight:400;color:var(--faint)">· ${note}</span>`:''}</h3>
-    ${u.map(p=>`<div class="patrow" data-nav="#/${p.kind}/${p.id}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
+    ${u.map(p=>`<div class="patrow" data-nav="${playableRoute(p)}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
 }
 function patternKindsOf(it){ if(it.kind==='pattern') return it.pattern_kind?[it.pattern_kind]:[]; return [...new Set(stepsFor(it.id).map(s=>childPlayable(s.child_id)).filter(Boolean).map(c=>c.pattern_kind).filter(Boolean))]; }   // a lesson's "kind" = the pattern_kinds of its step children (lesson_type is derived, not stored)
 function hasParts(it){ return it.kind==='song' ? (songParts(it.id).length>0 || !!(it.data&&it.data.sections&&it.data.sections.length)) : stepsFor(it.id).length>0; }
@@ -576,12 +619,21 @@ function render(){
     state.page = +(qp.get('page')||1);
     return renderCatalog();
   }
-  if(seg[0]==='song')   return seg[2]==='section' ? renderSongSection(seg[1], +seg[3]) : renderSong(seg[1]);
-  if(seg[0]==='part')   return renderPart(seg[1]);
-  if(seg[0]==='pattern') return renderPattern(seg[1]);
-  if(seg[0]==='lesson') return seg[2]==='step' ? renderStep(seg[1], +seg[3]) : renderLesson(seg[1]);
-  if(seg[0]==='play')   return renderPlayer();
-  if(seg[0]==='admin')  return renderAdminStub(seg, qp);
+  const last = seg[seg.length-1];
+  if(last==='edit' || last==='new') return renderCrudStub(seg, qp);          // edit lives at each item (#/song/:id/edit), create at #/new?type=
+  if(seg[0]==='song'){
+    if(seg[2]==='section')  return renderSongSection(seg[1], +seg[3]);
+    if(isPatKind(seg[2]))   return renderPattern(seg[3], {parent:bySlug(seg[1]), kind:seg[2]});   // #/song/:id/<kind>/:cid (context)
+    return renderSong(seg[1]);
+  }
+  if(seg[0]==='lesson'){
+    if(seg[2]==='step')     return renderStep(seg[1], +seg[3]);
+    if(isPatKind(seg[2]))   return renderPattern(seg[3], {parent:bySlug(seg[1]), kind:seg[2]});   // #/lesson/:id/<kind>/:cid (context)
+    return renderLesson(seg[1]);
+  }
+  if(seg[0]==='part')    return renderPart(seg[1]);
+  if(isPatKind(seg[0]))  return renderPattern(seg[1], null);                  // standalone #/<kind>/:slug (NH-221)
+  if(seg[0]==='play')    return renderPlayer();
   app.innerHTML = `<div class="empty"><span class="material-symbols-outlined">help</span>Unknown route <code>${esc(location.hash)}</code><br><button class="btn secondary" data-nav="#/catalog" style="margin-top:12px">Back to catalog</button></div>`;
 }
 
@@ -590,7 +642,7 @@ function matches(it){
   if(it.listable===false) return false;                                          // parts (and any listable:false playable) never appear in browse
   if(state.tab==='songs' ? it.kind!=='song' : it.kind==='song') return false;   // Lessons tab = every non-song (lessons + patterns)
   if(state.genre.length && !state.genre.includes(it.genre)) return false;
-  if(state.tab==='songs' && state.artist && it.artist!==state.artist) return false;   // SD-13 artist facet (songs)
+  if(state.artist){ const hasAuthor=(it.author||[]).length>0; if(state.artist===AUTHOR_NONE){ if(hasAuthor) return false; } else if(!(it.author||[]).includes(state.artist)) return false; }   // SD-13/SD-33 author facet (songs=Artist · lessons=Author) — author text[] overlap; AUTHOR_NONE = Unknown
   if(state.tab==='lessons' && state.kind.length && !state.kind.some(k=>patternKindsOf(it).includes(k))) return false;   // Kind filter spans patterns (own kind) + lessons (derived from step children)
   if(state.timeSig.length && !state.timeSig.includes(it.time_sig)) return false;
   if(state.instrument && !(it.instruments||[]).includes(state.instrument)) return false;
@@ -610,19 +662,29 @@ function matches(it){
     else { if(state.score.min!=null && it.best<state.score.min) return false; if(state.score.max!=null && it.best>state.score.max) return false; }
   }
   if(state.skill.length && !state.skill.every(s=>(it.skill||[]).includes(s))) return false;
+  if(state.flags.length){ for(const fl of state.flags){ if(fl==='audio'&&!it.has_audio) return false; if(fl==='video'&&!it.has_video) return false; if(fl==='parts'&&!hasParts(it)) return false; } }   // SD-11 / NH-211 flag filters (ALL-of)
   if(isPitched() && state.musicalKey.length && !state.musicalKey.includes(it.musical_key)) return false;
-  if(state.q){ const t=(it.title+' '+(it.artist||'')).toLowerCase(); if(!t.includes(state.q.toLowerCase())) return false; }
+  if(state.q){ const t=(it.title+' '+((it.author||[]).join(' '))).toLowerCase(); if(!t.includes(state.q.toLowerCase())) return false; }
   if(!isAdmin() && it.status!=='published' && !(it.ownedByUser && signedIn())) return false;
   return true;
 }
 function sortItems(arr){
-  const c=[...arr], s=state.sort;
-  if(s==='level') c.sort((a,b)=>(a.level==null?99:a.level)-(b.level==null?99:b.level));
-  else if(s==='bpm') c.sort((a,b)=>(a.bpm==null?1e9:a.bpm)-(b.bpm==null?1e9:b.bpm));
-  else if(s==='best') c.sort((a,b)=>(b.best==null?-1:b.best)-(a.best==null?-1:a.best));
-  else if(s==='title') c.sort((a,b)=>a.title.localeCompare(b.title));
-  else if(s==='newest') c.sort((a,b)=>(b.new?1:0)-(a.new?1:0));
+  const c=[...arr], s=state.sort, dir=state.sortDir==='desc'?-1:1;
+  const cmp = {
+    level:(a,b)=>(a.level==null?99:a.level)-(b.level==null?99:b.level),
+    bpm:(a,b)=>(a.bpm==null?1e9:a.bpm)-(b.bpm==null?1e9:b.bpm),
+    best:(a,b)=>(a.best==null?-1:a.best)-(b.best==null?-1:b.best),
+    title:(a,b)=>a.title.localeCompare(b.title),
+    newest:(a,b)=>(a.new?1:0)-(b.new?1:0),
+  }[s];
+  if(cmp) c.sort((a,b)=>dir*cmp(a,b));
   return c;
+}
+/* clickable table-header sort: toggles direction on the active column (NH — column sort) */
+function sortHead(label, key){
+  const active = state.sort===key;
+  const arrow = active ? ` <span class="material-symbols-outlined sortarrow">${state.sortDir==='asc'?'arrow_upward':'arrow_downward'}</span>` : '';
+  return `<span class="sortcol${active?' active':''}" data-sortcol="${key}">${label}${arrow}</span>`;
 }
 
 function multiFace(label, arr, fmt){ if(!arr.length) return `<span class="k">${label}:</span> Any`; const f=fmt||cap; return `<span class="k">${label}:</span> ${f(arr[0])}${arr.length>1?' +'+(arr.length-1):''}`; }
@@ -671,7 +733,7 @@ function scorePop(){
 }
 function sortPop(){
   const opts = Object.entries(SORTS).filter(([v])=> v!=='best' || signedIn());
-  return `<div class="fpop r ${state.openPop==='sortPop'?'open':''}" id="sortPop">
+  return `<div class="fpop ${state.openPop==='sortPop'?'open':''}" id="sortPop">
     <div class="opsel">sort by</div>
     ${opts.map(([v,l])=>`<div class="fopt ${state.sort===v?'on':''}" data-sort="${v}"><span class="radio"></span>${l}</div>`).join('')}</div>`;
 }
@@ -681,6 +743,9 @@ function renderCatalog(){
   syncCatalogHash();
   if(el('#q').value!==state.q) el('#q').value=state.q;
   const isLessons = state.tab==='lessons';
+  const authLabel = isLessons ? 'Author' : 'Artist';
+  const authOpts = isLessons ? LESSON_AUTHORS : ARTISTS;
+  const authPicked = state.artist ? (state.artist===AUTHOR_NONE ? 'Unknown' : esc(state.artist)) : null;
   const all = sortItems(PLAYABLES.filter(matches));
   const pages = Math.max(1, Math.ceil(all.length/PAGE_SIZE));
   if(state.page>pages) state.page=pages; if(state.page<1) state.page=1;
@@ -701,18 +766,18 @@ function renderCatalog(){
       </div>
       <span class="vsep"></span>
       ${dyn}
-      ${(!isLessons && state.artist)?`<button class="fbtn on" data-clear-artist title="Clear artist filter"><span class="k">Artist:</span> ${esc(state.artist)} <span class="material-symbols-outlined" style="font-size:15px">close</span></button>`:''}
+      ${state.artist?`<button class="fbtn on" data-clear-artist title="Clear ${authLabel.toLowerCase()} filter"><span class="k">${authLabel}:</span> ${authPicked} <span class="material-symbols-outlined" style="font-size:15px">close</span></button>`:''}
       <div class="fdrop"><button class="fbtn ${(state.level.min!=null||state.level.max!=null)?'on':''}" data-pop="lvlPop">${rangeFace('Level',state.level,gradeLabel)} <span class="material-symbols-outlined caret">expand_more</span></button>${levelPop()}</div>
       <div class="fdrop"><button class="fbtn ${state.instrument?'on':''}" data-pop="instPop">${state.instrument?`<span class="k">Instrument:</span> ${cap(state.instrument)}`:'<span class="k">Instrument:</span> Any'} <span class="material-symbols-outlined caret">expand_more</span></button>
         ${singlePop('instPop',INSTRUMENTS.map(i=>({val:i,label:cap(i),icon:i==='drums'?'graphic_eq':i==='guitar'?'queue_music':'piano'})))}</div>
       <button class="fbtn ${state.advanced?'on':''}" data-more><span class="material-symbols-outlined">tune</span> More <span class="material-symbols-outlined caret">expand_more</span></button>
-      <span style="flex:1"></span>
-      <div class="fdrop sortwrap"><button class="fbtn" data-pop="sortPop"><span class="material-symbols-outlined">swap_vert</span> ${SORTS[state.sort]} <span class="material-symbols-outlined caret">expand_more</span></button>${sortPop()}</div>
     </div>
     <div class="advanced ${state.advanced?'open':''}">
-      ${!isLessons?`<div class="fdrop"><button class="fbtn ${state.artist?'on':''}" data-pop="artistPop">${state.artist?`<span class="k">Artist:</span> ${esc(state.artist)}`:'<span class="k">Artist:</span> Any'} <span class="material-symbols-outlined caret">expand_more</span></button>
-        <div class="fpop ${state.openPop==='artistPop'?'open':''}" id="artistPop" style="max-height:260px;overflow:auto"><div class="opsel">is</div>${ARTISTS.map(a=>`<div class="fopt ${state.artist===a?'on':''}" data-artist-pick="${esc(a)}"><span class="radio"></span>${esc(a)}</div>`).join('')}<div class="foot"><span></span><a data-clear-artist>Clear</a></div></div></div>`:''}
+      <div class="fdrop sortwrap"><button class="fbtn" data-pop="sortPop"><span class="material-symbols-outlined">swap_vert</span> <span class="k">Sort:</span> ${SORTS[state.sort]} <span class="material-symbols-outlined caret">expand_more</span></button>${sortPop()}</div>
+      <div class="fdrop"><button class="fbtn ${state.artist?'on':''}" data-pop="artistPop">${state.artist?`<span class="k">${authLabel}:</span> ${authPicked}`:`<span class="k">${authLabel}:</span> Any`} <span class="material-symbols-outlined caret">expand_more</span></button>
+        <div class="fpop ${state.openPop==='artistPop'?'open':''}" id="artistPop" style="max-height:260px;overflow:auto"><div class="opsel">is</div><div class="fopt ${state.artist===AUTHOR_NONE?'on':''}" data-artist-pick="${AUTHOR_NONE}"><span class="radio"></span><span style="color:var(--faint)">Unknown</span></div>${authOpts.map(a=>`<div class="fopt ${state.artist===a?'on':''}" data-artist-pick="${esc(a)}"><span class="radio"></span>${esc(a)}</div>`).join('')}<div class="foot"><span></span><a data-clear-artist>Clear</a></div></div></div>
       <div class="fdrop"><button class="fbtn ${state.timeSig.length?'on':''}" data-pop="timePop">${multiFace('Time',state.timeSig,x=>x)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('timePop','timeSig',TIMES.map(t=>({val:t,label:t})))}</div>
+      <div class="fdrop"><button class="fbtn ${state.flags.length?'on':''}" data-pop="flagsPop">${multiFace('Has',state.flags,k=>({audio:'Audio',video:'Video',parts:'Parts'}[k]||k))} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('flagsPop','flags',[{val:'audio',label:'Audio',icon:'volume_up'},{val:'video',label:'Video',icon:'smart_display'},{val:'parts',label:'Parts',icon:'splitscreen'}])}</div>
       <div class="fdrop"><button class="fbtn ${state.bpm.min!=null||state.bpm.max!=null?'on':''}" data-pop="bpmPop">${rangeFace('Tempo',state.bpm)} <span class="material-symbols-outlined caret">expand_more</span></button>${bpmPop()}</div>
       <div class="fdrop"><button class="fbtn ${state.skill.length?'on':''}" data-pop="skillPop">${multiFace('Skill',state.skill)} <span class="material-symbols-outlined caret">expand_more</span></button>${multiPop('skillPop','skill',SKILLS.map(s=>({val:s,label:cap(s)})))}</div>
       ${signedIn()?`<div class="fdrop"><button class="fbtn ${state.score.min!=null||state.score.max!=null?'on':''}" data-pop="scorePop">${rangeFace('Best',state.score,x=>x+'%')} <span class="material-symbols-outlined caret">expand_more</span></button>${scorePop()}</div>`:''}
@@ -722,7 +787,7 @@ function renderCatalog(){
     </div>
     ${'' /* continue banner removed with demo data */}
     ${ list.length ? `
-      <div class="tablehead"><span>Name</span><span>Level</span><span>BPM</span><span>Best</span><span></span></div>
+      <div class="tablehead">${sortHead('Name','title')}${sortHead('Level','level')}${sortHead('BPM','bpm')}${sortHead('Best','best')}<span></span></div>
       ${list.map(rowHTML).join('')}
       ${pager(all.length, pages)}
       ` : `<div class="empty"><span class="material-symbols-outlined">search_off</span>No ${state.tab} match these filters.<br><button class="btn secondary" id="clearAll" style="margin-top:12px">Clear all filters</button></div>` }
@@ -739,12 +804,12 @@ function nfv(v){
 function toPlayable(it){
   const ts = it.time_sig ? String(it.time_sig).split('/') : [null,null];
   return {
-    id:it.id, kind:it.kind, title:it.title, description: descOf(it),
+    id:it.id, slug:it.slug||null, kind:it.kind, title:it.title, description: descOf(it),
     parent_id: it.parent_id||it.sourceSong||null,
     notation_id: it.notation_format?('src-'+it.id):(it.notation_alphaTex?('tex-'+it.id):null),
     start_bar: it.start_bar??null, end_bar: it.end_bar??null, sort_order: it.sort_order??null,
     listable: it.listable===false ? false : (it.visibility==='private'?false:true),
-    level: it.level??null, artist: it.artist??null, bpm: it.bpm??null,
+    level: it.level??null, author: it.author??null, author_type: it.author_type??null, bpm: it.bpm??null,
     time_signature_numerator: ts[0]?Number(ts[0]):null, time_signature_denominator: ts[1]?Number(ts[1]):null,
     genre: it.genre??null, musical_key: it.musical_key??null,
     instruments: it.instruments||null, skill: it.skill||null, tags: it.tags||null,
@@ -755,7 +820,7 @@ function toPlayable(it){
     data: it.data||null, created_by: it.owner||null,
   };
 }
-const NF_ORDER = ['id','kind','title','description','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','artist','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
+const NF_ORDER = ['id','slug','kind','title','description','parent_id','notation_id','start_bar','end_bar','sort_order','listable','level','author','author_type','bpm','time_signature_numerator','time_signature_denominator','genre','musical_key','instruments','skill','tags','pattern_kind','family','origin','status','license','has_audio','has_video','data','created_by'];
 /* assemble the playable + its joins (notation, tracks, media) into one object for the inspector */
 function inspectorObject(it){
   const n = toPlayable(it);
@@ -812,15 +877,16 @@ function rowHTML(it){
   const isNew = it.new ? `<span class="pill-new">New</span>` : '';
   const priv = it.visibility==='private' ? `<span class="tag private" style="font-size:10px;padding:1px 6px">Private</span>` : '';
   const diffHl = (it.data&&it.data.difficulty) ? ` <span class="dot"></span> by ${esc(it.data.difficulty.by)}` : '';
+  const authNames = (it.author&&it.author.length) ? it.author.join(', ') : null;
   const sub = isLesson
-    ? `${stepsFor(it.id).length} steps <span class="dot"></span> ${(it.skill||[]).slice(0,2).join(' · ')}`
+    ? `${authNames?`by <span class="rowauthor">${esc(authNames)}</span> <span class="dot"></span> `:''}${stepsFor(it.id).length} steps <span class="dot"></span> ${(it.skill||[]).slice(0,2).join(' · ')}`
     : isPat
     ? `${PATTERN_KINDS[it.pattern_kind]?.label||it.pattern_kind}${it.family?' <span class="dot"></span> '+esc(it.family):''}${it.musical_key?' <span class="dot"></span> '+it.musical_key:(it.genre?' <span class="dot"></span> '+cap(it.genre):'')}${diffHl}`
-    : `${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}${it.musical_key?' <span class="dot"></span> '+it.musical_key:''}`;
+    : `${authNames?`<span class="rowauthor">${esc(authNames)}</span> <span class="dot"></span> `:''}${it.genre?cap(it.genre)+' ':''}<span class="dot"></span> ${it.time_sig} <span class="dot"></span> ${(it.instruments||[]).join('·')}${it.musical_key?' <span class="dot"></span> '+it.musical_key:''}`;
   const bpm = isLesson ? lessonLadder(it) : isPat ? '—' : (it.bpm||'—');
   const lvlTxt = rowLevelText(it);                                   // L1 range across tracks, or the lens instrument's track level
   const lvl = `<span class="lvlpill ${lvlTxt==='Debut'?'debut':''}">${lvlTxt}</span>`;
-  const nav = ` data-nav="#/${it.kind}/${it.id}"`;
+  const nav = ` data-nav="${playableRoute(it)}"`;
   return `<div class="row">
     <div class="name">
       <div class="cover ${it.kind!=='song'?'lesson':''}"><span class="material-symbols-outlined">${cover}</span></div>
@@ -833,7 +899,7 @@ function rowHTML(it){
     ${lvl}
     <span class="bpm mono">${bpm}</span>
     ${donut(it.best)}
-    <button class="play" title="Quick play" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span></button>
+    <button class="play" title="Quick play" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span></button>
     ${allFieldsPanel(it)}
   </div>`;
 }
@@ -853,9 +919,9 @@ function adminCatalogBar(){
   if(!isAdmin()) return '';
   return `<div class="adminbar">
     <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin · curate catalog</span>
-    <button class="adminbtn" data-nav="#/admin/new?type=song"><span class="material-symbols-outlined">add</span> New song</button>
-    <button class="adminbtn" data-nav="#/admin/new?type=lesson"><span class="material-symbols-outlined">add</span> New lesson</button>
-    <button class="adminbtn" data-nav="#/admin/new?type=upload"><span class="material-symbols-outlined">upload</span> Upload file</button>
+    <button class="adminbtn" data-nav="#/new?type=song"><span class="material-symbols-outlined">add</span> New song</button>
+    <button class="adminbtn" data-nav="#/new?type=lesson"><span class="material-symbols-outlined">add</span> New lesson</button>
+    <button class="adminbtn" data-nav="#/new?type=upload"><span class="material-symbols-outlined">upload</span> Upload file</button>
   </div>`;
 }
 
@@ -869,13 +935,13 @@ function relatedCard(it){
   const all=[...lk.uses.map(l=>({p:resolve(l.to),rel:l.relation,dir:sym(l.relation)?'↔':'uses →'})), ...lk.usedByLink.map(l=>({p:resolve(l.from),rel:l.relation,dir:sym(l.relation)?'↔':'← used by'}))].filter(x=>x.p);
   if(!all.length) return '';
   return `<div class="card"><h3><span class="material-symbols-outlined">share</span> Related <span style="font-weight:400;color:var(--faint)">· playable_link</span></h3>
-    ${all.map(x=>`<div class="patrow" data-nav="#/${x.p.kind}/${x.p.id}"><span class="src tex" style="white-space:nowrap">${x.dir}</span><div style="flex:1"><b>${esc(x.p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(x.p)} · ${esc(x.rel)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
+    ${all.map(x=>`<div class="patrow" data-nav="${playableRoute(x.p)}"><span class="src tex" style="white-space:nowrap">${x.dir}</span><div style="flex:1"><b>${esc(x.p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(x.p)} · ${esc(x.rel)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`;
 }
 function patternsCard(it){
   if(!it.patterns||!it.patterns.length) return '';
   return `<div class="card"><h3><span class="material-symbols-outlined">extension</span> Patterns ${it.kind==='song'?'in this song':'this lesson teaches'} <span style="font-weight:400;color:var(--faint)">· reusable grooves / fills / rudiments</span></h3>
     ${it.patterns.map(pid=>{ const pl=childPlayable(pid), d=PATTERNS[pid]; if(!pl&&!d) return ''; const pk=(pl&&pl.pattern_kind)||(d&&d.kind); const k=PATTERN_KINDS[pk]||{label:pk||'Pattern',icon:'extension'}; const title=(pl&&pl.title)||(d&&d.name)||pid; const fam=(pl&&pl.family)||(d&&d.family); const lvl=(pl?pl.level:(d&&d.level));
-      return `<div class="patrow" data-nav="#/pattern/${pid}"><span class="material-symbols-outlined" style="color:var(--accent)">${k.icon}</span>
+      return `<div class="patrow" data-nav="${patternInContext(it, pid, pk)}"><span class="material-symbols-outlined" style="color:var(--accent)">${k.icon}</span>
         <div style="flex:1"><b>${esc(title)}</b><small style="color:var(--faint);display:block">${[k.label,fam,'level '+(lvl??'—')].filter(Boolean).join(' · ')}</small></div>
         ${pl?donut(pl.best):''}<span class="pk ${pk}">${k.label}</span><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`; }).join('')}
     <small style="color:var(--faint);display:block;margin-top:4px">Linked via the m:n <code>patterns[]</code>. Each pattern is its own playable, scored on its own.</small>
@@ -948,7 +1014,7 @@ function metaFoot(it){
 
 /* ---------- screen: SONG detail ---------- */
 function renderSong(id){
-  const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
+  const it = bySlug(id); if(!it) return notFound();
   const sections = it.data?.sections||[];
   const parts = songParts(it.id);
   const sel = selectedTrack(it);   // the page is scoped to one track (instrument lens)
@@ -959,7 +1025,7 @@ function renderSong(id){
     <div class="hero">
       <div class="meta">
         <h1>${esc(it.title)}</h1>
-        <div class="sub">${it.artist?`<a data-artist="${esc(it.artist)}" style="color:var(--accent);cursor:pointer" title="Browse this artist">${esc(it.artist)}</a>`:'Unknown artist'} <span class="tag song">Song</span> ${it.visibility==='private'?'<span class="tag private">Private</span>':''}</div>
+        <div class="sub">${(it.author&&it.author.length)?it.author.map(a=>`<a data-artist="${esc(a)}" style="color:var(--accent);cursor:pointer" title="Browse this author">${esc(a)}</a>`).join(' · '):'Unknown artist'} <span class="tag song">Song</span> ${it.visibility==='private'?'<span class="tag private">Private</span>':''}</div>
         ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${it.bpm}</span> BPM</span>
@@ -972,10 +1038,10 @@ function renderSong(id){
         ${mediaLinks(it)}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           ${signedIn() && it.best!=null
-            ? `<button class="btn primary" data-nav="#/play/${it.id}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
-               <button class="btn secondary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
-            : `<button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>`}
-          ${parts.length?`<button class="btn secondary" data-nav="#/part/${parts[0].id}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
+            ? `<button class="btn primary" data-nav="#/play/${sl(it)}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
+               <button class="btn secondary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
+            : `<button class="btn primary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span> Play full song</button>`}
+          ${parts.length?`<button class="btn secondary" data-nav="#/part/${sl(parts[0])}"><span class="material-symbols-outlined">segment</span> Practice in parts</button>`:''}
         </div>
       </div>
       ${historyCard(it)}
@@ -987,21 +1053,21 @@ function renderSong(id){
         ? `<div class="stephead"><span style="flex:1">Part · section</span><span style="min-width:96px">Techniques</span><span>Bars</span><span style="width:48px">Level</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`
           + occ.map(o=>{ const p=o.part; const cell=sectionCell(it, o.start, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
           <span class="material-symbols-outlined" style="color:var(--accent)">play_circle</span>
-          <div class="si" data-nav="#/part/${p.id}"><b>${esc(p.title)}${o.repTotal>1?` <span style="color:var(--faint);font-weight:400">(${o.rep} of ${o.repTotal})</span>`:''}</b><small style="color:var(--faint);display:block">${descOf(p)?esc(descOf(p)):'kind=part · parent '+esc(it.title)}</small>${voiceChips(cell)}</div>
+          <div class="si" data-nav="#/part/${sl(p)}"><b>${esc(p.title)}${o.repTotal>1?` <span style="color:var(--faint);font-weight:400">(${o.rep} of ${o.repTotal})</span>`:''}</b><small style="color:var(--faint);display:block">${descOf(p)?esc(descOf(p)):'kind=part · parent '+esc(it.title)}</small>${voiceChips(cell)}</div>
           ${diffTechs(cell)}
           <span class="bars">bars ${o.start}–${o.end}</span>
           ${diffLevel(cell)}
           ${donut(p.best)}
-          <button class="play" title="Play this part" data-nav="#/play/${p.id}"><span class="material-symbols-outlined">play_arrow</span></button>
+          <button class="play" title="Play this part" data-nav="#/play/${sl(p)}"><span class="material-symbols-outlined">play_arrow</span></button>
         </div>${o.rep<=1?allFieldsPanel(p):''}</div>`; }).join('')
         : sections.length
         ? sections.map((s,i)=>{ const cell=sectionCell(it, s.startBar, sel?sel.id:null); return `<div class="stepwrap"><div class="step">
           <span class="material-symbols-outlined" style="color:var(--accent)">graphic_eq</span>
-          <div class="si" data-nav="#/song/${it.id}/section/${i+1}"><b>${esc(s.label)}</b><small style="color:var(--faint);display:block">open the score · bars ${s.startBar}–${s.endBar}</small>${voiceChips(cell)}</div>
+          <div class="si" data-nav="#/song/${sl(it)}/section/${i+1}"><b>${esc(s.label)}</b><small style="color:var(--faint);display:block">open the score · bars ${s.startBar}–${s.endBar}</small>${voiceChips(cell)}</div>
           ${diffTechs(cell)}
           <span class="bars">bars ${s.startBar}–${s.endBar}</span>
           ${cell ? diffLevel(cell) : (sel ? `<span class="lvlpill ${sel.level===0?'debut':''}" title="${cap(sel.instrument)} track level — no per-section breakdown in the file yet">${lvlText(sel.level)}</span>` : diffLevel(null))}
-          <button class="play" title="Play from this section" data-nav="#/play/${it.id}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span></button>
+          <button class="play" title="Play from this section" data-nav="#/play/${sl(it)}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span></button>
         </div></div>`; }).join('')
         : `<div class="gate"><span class="material-symbols-outlined">info</span>Sections appear after the file is analysed (AlphaTab) — stored in <code>data.sections[]</code>.</div>`; })()}
       <small style="color:var(--faint);display:block;margin-top:8px">Level + techniques + <b>voices</b> = this track's per-section breakdown (D-3 + SD-15 <code>data.sections[].tracks[]</code>). L1 song range <b>${rangeText(levelRange(tracksOf(it)))}</b> · L2 this track <b>${lvlText(sel?sel.level:null)}</b> · “—” = silent here · voices = which sub-streams sound (kit pieces / piano hands).</small>
@@ -1017,7 +1083,7 @@ function renderSong(id){
 
 /* ---------- screen: PART detail (a slice of a song — its OWN playable, scored on its own id) ---------- */
 function renderPart(id){
-  const it = PLAYABLES.find(x=>x.id===id); if(!it || it.kind!=='part') return notFound();
+  const it = bySlug(id); if(!it || it.kind!=='part') return notFound();
   const song = it.parent_id ? PLAYABLES.find(x=>x.id===it.parent_id) : null;
   const sibs = song ? songParts(song.id) : [];
   const idx  = sibs.findIndex(p=>p.id===it.id);
@@ -1030,7 +1096,7 @@ function renderPart(id){
     <div class="hero">
       <div class="meta">
         <h1>${esc(it.title)}</h1>
-        <div class="sub"><span class="tag song">Part</span> ${song?`of <a data-nav="#/song/${song.id}" style="color:var(--accent);cursor:pointer">${esc(song.title)}</a>`:''}${song&&song.artist?` <span class="dot"></span> <a data-artist="${esc(song.artist)}" style="color:var(--accent);cursor:pointer" title="Browse this artist">${esc(song.artist)}</a>`:''}</div>
+        <div class="sub"><span class="tag song">Part</span> ${song?`of <a data-nav="#/song/${sl(song)}" style="color:var(--accent);cursor:pointer">${esc(song.title)}</a>`:''}${song&&song.author&&song.author.length?` <span class="dot"></span> ${song.author.map(a=>`<a data-artist="${esc(a)}" style="color:var(--accent);cursor:pointer" title="Browse this author">${esc(a)}</a>`).join(' · ')}`:''}</div>
         ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">segment</span>bars ${barsLabel(it)}${it.ranges&&it.ranges.length>1?` · repeated ×${it.ranges.length}`:''}</span>
@@ -1039,9 +1105,9 @@ function renderPart(id){
           <span class="badge"><span class="material-symbols-outlined">music_note</span>${(it.instruments||[]).join('·')}</span>
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play part</button>
-          ${prev?`<button class="btn secondary" data-nav="#/part/${prev.id}"><span class="material-symbols-outlined">arrow_back</span> Previous part</button>`:''}
-          ${next?`<button class="btn secondary" data-nav="#/part/${next.id}">Next part <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+          <button class="btn primary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span> Play part</button>
+          ${prev?`<button class="btn secondary" data-nav="#/part/${sl(prev)}"><span class="material-symbols-outlined">arrow_back</span> Previous part</button>`:''}
+          ${next?`<button class="btn secondary" data-nav="#/part/${sl(next)}">Next part <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
         </div>
       </div>
       ${historyCard(it)}
@@ -1063,12 +1129,12 @@ function stepFieldsPanel(parent, s){
   return `<aside class="fielddock"><div class="fdhead"><span class="material-symbols-outlined" style="font-size:15px">data_object</span> step · junction</div><div class="fdbody"><div class="nfsub">the locked step row — points at a reusable child pattern</div><div class="nfgrid">${grid}</div></div></aside>`;
 }
 function renderStep(lessonId, n){
-  const it = PLAYABLES.find(x=>x.id===lessonId); if(!it) return notFound();
-  const steps = stepsFor(lessonId);
+  const it = bySlug(lessonId); if(!it) return notFound();
+  const steps = stepsFor(it.id);
   const idx = steps.findIndex(s=>s.sort_order===n);
   const s = steps[idx]; if(!s) return notFound();
   const child = childPlayable(s.child_id) || {title:s.child_id, pattern_kind:null};
-  const k = PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const k = child.kind==='part'?{label:'Part',icon:'segment'}:(PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'});
   const prev = idx>0 ? steps[idx-1] : null;
   const next = idx<steps.length-1 ? steps[idx+1] : null;
   app.innerHTML = `
@@ -1078,16 +1144,16 @@ function renderStep(lessonId, n){
       <div class="meta">
         <div class="sub" style="margin-bottom:4px">Step ${n} of ${steps.length} · ${esc(it.title)}</div>
         <h1>${esc(child.title)}</h1>
-        <div class="sub"><span class="tag lesson">${k.label}</span> <a data-nav="#/pattern/${s.child_id}" style="color:var(--accent);cursor:pointer">open pattern →</a> ${reuseCount(s.child_id)>1?`<span class="badge" style="padding:3px 9px">reused ×${reuseCount(s.child_id)}</span>`:''}</div>
+        <div class="sub"><span class="tag lesson">${k.label}</span> <a data-nav="${child.kind==='part'?playableRoute(child):patternInContext(it, s.child_id, child.pattern_kind)}" style="color:var(--accent);cursor:pointer">open ${child.kind==='part'?'part':'pattern'} →</a> ${reuseCount(s.child_id)>1?`<span class="badge" style="padding:3px 9px">reused ×${reuseCount(s.child_id)}</span>`:''}</div>
         ${descOf(child)?`<p class="lead">${esc(descOf(child))}</p>`:''}
         <div class="badges">
           <span class="badge"><span class="material-symbols-outlined">speed</span><span class="mono">${s.start_bpm??'?'} → ${s.goal_bpm??'?'}</span> BPM ladder</span>
           <span class="badge"><span class="material-symbols-outlined">tag</span>step ${s.sort_order} of ${steps.length}</span>
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}/step/${n}"><span class="material-symbols-outlined">play_arrow</span> Play step</button>
-          ${prev?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${prev.sort_order}"><span class="material-symbols-outlined">arrow_back</span> Previous</button>`:''}
-          ${next?`<button class="btn secondary" data-nav="#/lesson/${it.id}/step/${next.sort_order}">Next <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+          <button class="btn primary" data-nav="#/play/${sl(it)}/step/${n}"><span class="material-symbols-outlined">play_arrow</span> Play step</button>
+          ${prev?`<button class="btn secondary" data-nav="#/lesson/${sl(it)}/step/${prev.sort_order}"><span class="material-symbols-outlined">arrow_back</span> Previous</button>`:''}
+          ${next?`<button class="btn secondary" data-nav="#/lesson/${sl(it)}/step/${next.sort_order}">Next <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
         </div>
       </div>
       ${historyCard(child)}
@@ -1102,7 +1168,7 @@ function renderStep(lessonId, n){
 
 /* ---------- screen: SONG SECTION "score" page (the #/song/<id>/section/<n> equivalent of a lesson step) ---------- */
 function renderSongSection(songId, n){
-  const it = PLAYABLES.find(x=>x.id===songId); if(!it || it.kind!=='song') return notFound();
+  const it = bySlug(songId); if(!it || it.kind!=='song') return notFound();
   const secs = (it.data&&it.data.sections)||[];
   const idx = n-1; const s = secs[idx]; if(!s) return notFound();
   const prevN = idx>0 ? n-1 : null, nextN = idx<secs.length-1 ? n+1 : null;
@@ -1122,9 +1188,9 @@ function renderSongSection(songId, n){
           ${lvl!=null?`<span class="badge"><span class="material-symbols-outlined">bar_chart</span>${lvlText(lvl)}</span>`:''}
         </div>
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span> Play from here</button>
-          ${prevN?`<button class="btn secondary" data-nav="#/song/${it.id}/section/${prevN}"><span class="material-symbols-outlined">arrow_back</span> Previous section</button>`:''}
-          ${nextN?`<button class="btn secondary" data-nav="#/song/${it.id}/section/${nextN}">Next section <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
+          <button class="btn primary" data-nav="#/play/${sl(it)}?from=${s.startBar}"><span class="material-symbols-outlined">play_arrow</span> Play from here</button>
+          ${prevN?`<button class="btn secondary" data-nav="#/song/${sl(it)}/section/${prevN}"><span class="material-symbols-outlined">arrow_back</span> Previous section</button>`:''}
+          ${nextN?`<button class="btn secondary" data-nav="#/song/${sl(it)}/section/${nextN}">Next section <span class="material-symbols-outlined">arrow_forward</span></button>`:''}
         </div>
       </div>
     </div>
@@ -1136,8 +1202,8 @@ function renderSongSection(songId, n){
 
 /* ---------- screen: LESSON detail ---------- */
 function renderLesson(id){
-  const it = PLAYABLES.find(x=>x.id===id); if(!it) return notFound();
-  const steps = stepsFor(id);
+  const it = bySlug(id); if(!it) return notFound();
+  const steps = stepsFor(it.id);
   const lk = patternKindsOf(it); const kind = lk.length ? lk.map(k=>PATTERN_KINDS[k]?.label||k).join(' · ') : 'Lesson';
   app.innerHTML = `
     ${crumbs([['#/catalog','Catalog'],['','Lesson · '+esc(it.title)]])}
@@ -1150,9 +1216,9 @@ function renderLesson(id){
         ${descOf(it)?`<p class="lead">${esc(descOf(it))}</p>`:''}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
           ${signedIn() && it.best!=null
-            ? `<button class="btn primary" data-nav="#/play/${it.id}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
-               <button class="btn secondary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
-            : `<button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>`}
+            ? `<button class="btn primary" data-nav="#/play/${sl(it)}?resume=1"><span class="material-symbols-outlined">resume</span> Continue</button>
+               <button class="btn secondary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">replay</span> Play from start</button>`
+            : `<button class="btn primary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span> Play lesson</button>`}
         </div>
       </div>
       ${historyCard(it)}
@@ -1161,22 +1227,24 @@ function renderLesson(id){
       <h3><span class="material-symbols-outlined">list_alt</span> Steps <span style="font-weight:400;color:var(--faint)">· ${steps.length} · each step → a reusable pattern + BPM ladder</span></h3>
       ${steps.length?`<div class="stephead"><span style="flex:1">Step · pattern</span><span>BPM</span><span style="width:54px;text-align:center">Kind</span><span style="width:40px;text-align:center">Best</span><span style="width:36px"></span></div>`:''}
       ${steps.map(s=>stepRow(it,s)).join('')}
-      ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+      ${isAdmin()?`<button class="adminbtn" style="margin-top:6px" data-nav="#/lesson/${sl(it)}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
       <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>Each pattern above is scored on its <b>own</b> id. This lesson's score${signedIn()&&it.best!=null?` (<b>${it.best}%</b>)`:''} is your <b>whole-play</b> attempt — the “final exam” — <b>not</b> an average of the steps. Skip the steps, play it whole, score 100%.</div></div>
     </div>
+    ${relatedCard(it)}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
   `;
 }
 /* ---------- screen: PATTERN detail (first-class playable — score + history) ---------- */
-function renderPattern(id){
-  let it = PLAYABLES.find(x=>x.id===id);
+function renderPattern(id, ctx){
+  let it = bySlug(id);
   if(!it){ const p=PATTERNS[id]; if(p) it={id, kind:'pattern', title:p.name, pattern_kind:p.kind, family:p.family, level:p.level, instruments:['drums'], status:'published', origin:'curated'}; }
   if(!it) return notFound();
   const k = PATTERN_KINDS[it.pattern_kind]||{label:'Pattern',icon:'extension'};
   const diff = it.data&&it.data.difficulty;
+  const parent = ctx&&ctx.parent;   // NH-221 POC A: pattern viewed in the context of a parent song/lesson (#/song/:id/<kind>/:cid)
   app.innerHTML = `
-    ${crumbs([['#/catalog','Catalog'],['','Pattern · '+esc(it.title)]])}
+    ${crumbs(parent?[['#/catalog','Catalog'],[playableRoute(parent),cap(parent.kind)+' · '+esc(parent.title)],['',k.label+' · '+esc(it.title)]]:[['#/catalog','Catalog'],['',k.label+' · '+esc(it.title)]])}
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     ${adminDetailBar(it)}
     <div class="hero">
@@ -1191,15 +1259,12 @@ function renderPattern(id){
         </div>
         ${mediaLinks(it)}
         <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
-          <button class="btn primary" data-nav="#/play/${it.id}"><span class="material-symbols-outlined">play_arrow</span> Play ${kindLabel(it)}</button>
+          <button class="btn primary" data-nav="#/play/${sl(it)}"><span class="material-symbols-outlined">play_arrow</span> Play ${kindLabel(it)}</button>
         </div>
       </div>
       ${historyCard(it)}
     </div>
-    <div class="card" style="border-color:#b5781e;background:rgba(181,120,30,.08)">
-      <h3 style="color:#c98a2e"><span class="material-symbols-outlined">warning</span> Router TODO · SD-31 / NH-221</h3>
-      <div style="font-size:13px;line-height:1.55">Labels now say <b>${k.label}</b>, but the <b>route</b> still uses the umbrella word: <code>#/pattern/${it.id}</code>. It should use the kind — <code>#/${it.pattern_kind||'kind'}/${it.id}</code> (or nested, e.g. <code>#/lesson/${it.pattern_kind||'kind'}/${it.id}</code>). Not changed yet — tracked as <b>NH-221</b>.</div>
-    </div>
+    ${parent?`<div class="tracklens"><span class="material-symbols-outlined" style="color:var(--accent)">subdirectory_arrow_right</span><div>In the context of <a data-nav="${playableRoute(parent)}" style="color:var(--accent);cursor:pointer">${esc(parent.title)}</a> <span style="color:var(--faint)">· this ${k.label.toLowerCase()} as used in that ${esc(parent.kind)} — both ids in the route (<code>${esc(location.hash)}</code>).</span></div></div>`:''}
     ${diff?`<div class="card"><h3><span class="material-symbols-outlined">trending_up</span> Difficulty <span style="font-weight:400;color:var(--faint)">· by ${esc(diff.by)}</span></h3>
       ${diff.tiers.map(t=>`<div class="part"><div style="flex:1"><b>${t.upTo!==undefined?(t.upTo==null?'fastest':'up to '+t.upTo+(diff.by==='bpm'?' BPM':'')):esc(t.when)}</b></div>${signedIn()&&t.score!==undefined?donut(t.score):''}<span class="lvlpill">L${t.level}</span></div>`).join('')}
       <small style="color:var(--faint);display:block;margin-top:6px">Stored in <code>data.difficulty {by, tiers}</code> — a lesson step's level = this curve at the step's goal BPM.</small></div>`:''}
@@ -1207,7 +1272,7 @@ function renderPattern(id){
       ${stepsFor(it.id).map(s=>stepRow(it,s)).join('')}
       <div class="gate" style="margin-top:8px"><span class="material-symbols-outlined">workspace_premium</span><div>This groove is scored on its <b>own</b> id (whole-play)${signedIn()&&it.best!=null?` — <b>${it.best}%</b>`:''}; each sub-pattern keeps its own score. No averaging.</div></div></div>`:''}
     ${(()=>{ const u=usedIn(it.id); return u.length?`<div class="card"><h3><span class="material-symbols-outlined">hub</span> Used in <span style="font-weight:400;color:var(--faint)">· this pattern appears in ${u.length} playable(s) — reuse (steps + song/lesson links)</span></h3>
-      ${u.map(p=>`<div class="patrow" data-nav="#/${p.kind}/${p.id}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`:''; })()}
+      ${u.map(p=>`<div class="patrow" data-nav="${playableRoute(p)}"><span class="material-symbols-outlined" style="color:var(--accent)">${kindIcon(p)}</span><div style="flex:1"><b>${esc(p.title)}</b><small style="color:var(--faint);display:block">${kindLabel(p)}</small></div><span class="material-symbols-outlined" style="color:var(--faint)">chevron_right</span></div>`).join('')}</div>`:''; })()}
     ${relatedCard(it)}
     ${metaFoot(it)}
     ${detailFieldsPanel(it)}
@@ -1229,17 +1294,17 @@ function stepFieldsInline(parent, s){
 }
 function stepRow(parent, s){
   const child = childPlayable(s.child_id) || {title:s.child_id, pattern_kind:null};
-  const k = PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'};
+  const k = child.kind==='part'?{label:'Part',icon:'segment'}:(PATTERN_KINDS[child.pattern_kind]||{label:'Pattern',icon:'extension'});
   const reuse = reuseCount(s.child_id);
   const composite = stepsFor(s.child_id).length>0;
   const ladder = (s.start_bpm||s.goal_bpm) ? `<span class="ladder"><span class="material-symbols-outlined" style="font-size:14px">speed</span>${s.start_bpm??'?'}→${s.goal_bpm??'?'}</span>` : '';
   const meta = [k.label, composite?'composite':null, reuse>1?`reused ×${reuse}`:null].filter(Boolean).join(' · ');
   return `<div class="stepwrap"><div class="step">
     <span class="no">${s.sort_order}</span>
-    <div class="si" data-nav="${parent.kind==='lesson'?`#/lesson/${parent.id}/step/${s.sort_order}`:`#/pattern/${s.child_id}`}"><b>${esc(child.title)}</b><small>${meta}</small></div>
+    <div class="si" data-nav="${parent.kind==='lesson'?`#/lesson/${sl(parent)}/step/${s.sort_order}`:`#/${childPlayable(s.child_id)?.pattern_kind||'pattern'}/${sl(childPlayable(s.child_id))||s.child_id}`}"><b>${esc(child.title)}</b><small>${meta}</small></div>
     ${ladder} <span class="src tex">${k.label}</span> ${signedIn()?donut(child.best):''}
-    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/admin/lesson/${parent.id}/step/${s.sort_order}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
-    <button class="play" title="Play this step" data-nav="#/play/${parent.id}/step/${s.sort_order}"><span class="material-symbols-outlined">play_arrow</span></button>
+    ${isAdmin()?`<button class="adminbtn" title="Edit step" data-nav="#/lesson/${sl(parent)}/step/${s.sort_order}/edit"><span class="material-symbols-outlined">edit</span></button>`:''}
+    <button class="play" title="Play this step" data-nav="#/play/${sl(parent)}/step/${s.sort_order}"><span class="material-symbols-outlined">play_arrow</span></button>
   </div>${stepFieldsInline(parent, s)}</div>`;
 }
 
@@ -1247,43 +1312,52 @@ function stepRow(parent, s){
 function renderPlayer(){
   const {seg, qp} = parseHash();
   const id = seg[1]; const stepNo = seg[2]==='step'?+seg[3]:null;
-  const it = PLAYABLES.find(x=>x.id===id);
+  const it = bySlug(id);
   let ctx = it? (it.kind==='song'?`“${it.title}” — full song @ ${it.bpm} BPM`
               : it.kind==='part'?`“${it.title}” — part · bars ${barsLabel(it)} @ ${it.bpm} BPM`
               : it.kind==='pattern'?`${kindLabel(it)} “${it.title}”`
               :`Lesson “${it.title}”`) : 'item';
-  if(stepNo){ const s=(STEP[id]||[]).find(x=>x.sort_order===stepNo); const c=s?childPlayable(s.child_id):null; if(s) ctx=`“${it.title}” — step ${stepNo}: ${c?c.title:s.child_id} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
+  if(stepNo){ const s=(STEP[it?.id]||[]).find(x=>x.sort_order===stepNo); const c=s?childPlayable(s.child_id):null; if(s) ctx=`“${it.title}” — step ${stepNo}: ${c?c.title:s.child_id} (${s.start_bpm}→${s.goal_bpm} BPM)`; }
   if(qp.get('resume')) ctx += ' · resuming where you left off';
+  // SD-11 / NH-211 — playback-source toggle: synth always available, video/audio only when the item has them; synth is the default
+  const sources = [{k:'synth',label:'Synth',icon:'piano',avail:true},{k:'video',label:'Video',icon:'smart_display',avail:!!(it&&it.has_video)},{k:'audio',label:'Audio',icon:'volume_up',avail:!!(it&&it.has_audio)}];
+  if(!sources.some(s=>s.k===state.playSource && s.avail)) state.playSource='synth';
+  const sourceToggle = `<div class="psource"><span class="pslbl">Playback source</span>${sources.map(s=>`<button data-psource="${s.k}" ${s.avail?'':'disabled'} aria-pressed="${state.playSource===s.k}" title="${s.avail?'play via '+s.label.toLowerCase():'not available for this item'}"><span class="material-symbols-outlined">${s.icon}</span>${s.label}</button>`).join('')}<span class="pshint">synth is the default · video/audio enabled only when the item has them</span></div>`;
   app.innerHTML = `
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     <div class="playerstub">
       <span class="material-symbols-outlined">play_circle</span>
       <h2>🎵 Player here</h2>
-      <div class="ctx">Now playing: <b>${esc(ctx)}</b><br><small>The play screen (notation + HUD + scoring) is a separate draft — stubbed for this flow sim.</small></div>
+      <div class="ctx">Now playing: <b>${esc(ctx)}</b> <span style="color:var(--faint)">· via ${esc(state.playSource)}</span><br><small>The play screen (notation + HUD + scoring) is a separate draft — stubbed for this flow sim.</small></div>
+      ${sourceToggle}
       <button class="btn secondary" data-back style="margin-top:10px">← Back</button>
     </div>
   `;
 }
 
-/* ---------- screen: ADMIN CRUD stub (v2) ---------- */
-function renderAdminStub(seg, qp){
+/* ---------- screen: CRUD stub (v2) — edit lives at each item (#/<item>/edit), create at #/new?type= ---------- */
+function renderCrudStub(seg, qp){
   if(!isAdmin()){
     app.innerHTML = `<div class="stubpanel"><span class="material-symbols-outlined">lock</span>
       <h2 style="margin:8px 0">Admin only</h2><p>Switch role to <b>Admin</b> (top-right) to curate the catalog.</p>
       <button class="btn primary" id="signinHere" style="margin-top:10px">Sign in as admin</button></div>`;
     return;
   }
+  const last = seg[seg.length-1];
   let what='CRUD';
-  if(seg.includes('step')) what = `${qp.get('delete')?'Delete':'Edit'} step`;
-  else if(seg[1]==='new') what = `New ${qp.get('type')||'item'}`;
-  else if(seg[1]==='edit') what = `${qp.get('delete')?'Archive':'Edit'} item`;
+  if(last==='new'){
+    what = seg.includes('step') ? 'Add step' : `New ${qp.get('type')||'item'}`;
+  } else {   // edit / archive — at the item's own route
+    if(seg.includes('step')) what = `${qp.get('delete')?'Delete':'Edit'} step`;
+    else { const it=PLAYABLES.find(x=>x.id===seg[seg.length-2]); const noun=it?it.kind:'item'; what = qp.get('delete') ? `${it&&it.status==='published'?'Archive':'Delete'} ${noun}` : `Edit ${noun}`; }
+  }
   app.innerHTML = `
     <button class="backlink" data-back><span class="material-symbols-outlined">arrow_back</span> Back</button>
     <div class="stubpanel">
       <span class="material-symbols-outlined">draw</span>
       <h2 style="margin:8px 0">${what}</h2>
       <p>CRUD forms (create / edit / delete songs, lessons &amp; steps + uploads) land in <b>v2</b>.<br>
-      This route exists so the admin flow is walkable now: <code>${esc(location.hash)}</code></p>
+      This route exists so the flow is walkable now: <code>${esc(location.hash)}</code></p>
     </div>`;
 }
 
@@ -1319,9 +1393,9 @@ function adminDetailBar(it){
   if(!isAdmin()) return '';
   return `<div class="adminbar">
     <span class="lbl"><span class="material-symbols-outlined">shield_person</span>Admin</span>
-    <button class="adminbtn" data-nav="#/admin/edit/${it.id}"><span class="material-symbols-outlined">edit</span> Edit ${it.kind}</button>
-    ${it.kind==='lesson'?`<button class="adminbtn" data-nav="#/admin/lesson/${it.id}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
-    <button class="adminbtn danger" data-nav="#/admin/edit/${it.id}?delete=1"><span class="material-symbols-outlined">delete</span> ${it.status==='published'?'Archive':'Delete'}</button>
+    <button class="adminbtn" data-nav="${playableRoute(it)}/edit"><span class="material-symbols-outlined">edit</span> Edit ${it.kind}</button>
+    ${it.kind==='lesson'?`<button class="adminbtn" data-nav="#/lesson/${sl(it)}/step/new"><span class="material-symbols-outlined">add</span> Add step</button>`:''}
+    <button class="adminbtn danger" data-nav="${playableRoute(it)}/edit?delete=1"><span class="material-symbols-outlined">delete</span> ${it.status==='published'?'Archive':'Delete'}</button>
   </div>`;
 }
 function crumbs(parts){
@@ -1366,6 +1440,8 @@ document.addEventListener('click', e=>{
   if(ap){ const a=ap.dataset.artistPick; state.artist = state.artist===a?null:a; state.openPop=null; state.page=1; renderCatalog(); return; }
   const rs = e.target.closest('[data-reset]');
   if(rs){ const p=PLAYABLES.find(x=>x.id===rs.dataset.reset); if(p){ p.best=null; }/* SD-21: clear best, keep trend */ render(); return; }
+  const ps = e.target.closest('[data-psource]');
+  if(ps && !ps.disabled){ state.playSource = ps.dataset.psource; render(); return; }   // SD-11 / NH-211 playback-source toggle
   if(e.target.closest('[data-back]')){ history.length>1?history.back():navigate('#/catalog'); return; }
   const popBtn = e.target.closest('[data-pop]');
   if(popBtn){ const id=popBtn.dataset.pop; state.openPop = state.openPop===id?null:id; renderCatalog(); return; }
@@ -1376,20 +1452,22 @@ document.addEventListener('click', e=>{
   const tg = e.target.closest('[data-toggle]');
   if(tg){ state[tg.dataset.toggle]=!state[tg.dataset.toggle]; state.page=1; renderCatalog(); return; }
   const so = e.target.closest('[data-sort]');
-  if(so){ state.sort=so.dataset.sort; state.openPop=null; renderCatalog(); return; }
+  if(so){ state.sort=so.dataset.sort; state.sortDir=SORT_DEFAULT_DIR[state.sort]||'asc'; state.openPop=null; renderCatalog(); return; }
+  const scol = e.target.closest('[data-sortcol]');
+  if(scol){ const k=scol.dataset.sortcol; if(state.sort===k){ state.sortDir=state.sortDir==='asc'?'desc':'asc'; } else { state.sort=k; state.sortDir=SORT_DEFAULT_DIR[k]||'asc'; } state.page=1; renderCatalog(); return; }
   const cl = e.target.closest('[data-clear]');
   if(cl){ clearFilter(cl.dataset.clear); renderCatalog(); return; }
   if(!e.target.closest('.fpop') && !e.target.closest('[data-pop]') && state.openPop){ state.openPop=null; renderCatalog(); }
-  if(e.target.closest('[data-tab]')){ state.tab=e.target.closest('[data-tab]').dataset.tab; state.page=1; state.openPop=null; renderCatalog(); return; }
+  if(e.target.closest('[data-tab]')){ state.tab=e.target.closest('[data-tab]').dataset.tab; state.artist=null; state.page=1; state.openPop=null; renderCatalog(); return; }
   if(e.target.closest('[data-more]')){ state.advanced=!state.advanced; renderCatalog(); return; }
   if(e.target.closest('[data-fields]')){ state.showAll=!state.showAll; document.body.classList.toggle('showall', state.showAll); document.querySelectorAll('[data-fields]').forEach(b=>b.setAttribute('aria-pressed', String(state.showAll))); return; }
   if(e.target.closest('[data-page]')){ state.page=+e.target.closest('[data-page]').dataset.page; renderCatalog(); window.scrollTo({top:0,behavior:'smooth'}); return; }
-  if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); clearFilter('score'); state.instrument=null; state.artist=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
+  if(e.target.closest('#clearAll')){ ['genre','kind','timeSig','skill','musicalKey','flags'].forEach(g=>state[g]=[]); clearFilter('level'); clearFilter('bpm'); clearFilter('score'); state.instrument=null; state.artist=null; state.q=''; el('#q').value=''; state.page=1; renderCatalog(); return; }
   if(e.target.closest('[data-role-set]')){ setRole(e.target.closest('[data-role-set]').dataset.roleSet); return; }
   if(e.target.closest('[data-theme-set]')){ setTheme(e.target.closest('[data-theme-set]').dataset.themeSet); return; }
   if(e.target.closest('#acctBtn') || e.target.closest('#signinHere')){ openModal(); return; }
   if(e.target.closest('#modalX') || e.target===el('#modal')){ closeModal(); return; }
-  if(e.target.closest('#uploadBtn')){ navigate('#/admin/new?type=upload'); return; }
+  if(e.target.closest('#uploadBtn')){ navigate('#/new?type=upload'); return; }
 });
 document.addEventListener('change', e=>{
   if(e.target.matches('[data-track-sel]')){ state.track = e.target.value; render(); return; }
