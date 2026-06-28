@@ -42,6 +42,11 @@ export interface LambdaWithUrlArgs {
    * caps the role to its logging ceiling even if a broader policy is ever attached to it.
    */
   permissionsBoundaryArn?: pulumi.Input<string>;
+  /**
+   * Environment variables for the Lambda (e.g. the Neon `DATABASE_URL`). Wrap secret values with
+   * `pulumi.secret(...)` at the call site so they are masked in state + the `pulumi up` log.
+   */
+  environment?: pulumi.Input<Record<string, pulumi.Input<string>>>;
 }
 
 export class LambdaWithUrl extends pulumi.ComponentResource {
@@ -104,6 +109,7 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
         // loggingConfig.logGroup (not bare dependsOn) is what redirects logging
         // to the managed group; dependsOn makes the ordering explicit.
         loggingConfig: { logFormat: 'JSON', logGroup: logGroup.name },
+        environment: args.environment ? { variables: args.environment } : undefined,
       },
       { parent: this, dependsOn: [logGroup] },
     );

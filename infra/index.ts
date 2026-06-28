@@ -17,6 +17,22 @@ import { LambdaWithUrl } from './lambda-with-url.stack.ts';
  *   pnpm --filter @notation-hero/server run build:lambda   (-> server/dist-lambda)
  *   pnpm --filter @notation-hero/client run build          (-> client/dist)
  */
+/** Read a required env var or throw with a remediation hint (passed by deploy.yml / local export). */
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `${name} is required. In CI it is passed from a GitHub Actions secret to the \`pulumi up\` ` +
+        `step (deploy.yml); for a local \`pulumi preview\`/\`up\`, export it first (see infra/README.md).`,
+    );
+  }
+  return value;
+}
+
+// The Neon nh_app (DML, least-privilege) url — the ONLY connection string the Lambda receives.
+// Wrapped as a secret so it never appears in plaintext in stack state or the deploy log.
+const databaseUrl = pulumi.secret(requireEnv('NEON_DATABASE_URL'));
+
 // The Lambda exec role must carry the CI permissions boundary: the deploy policy REQUIRES it on
 // every CreateRole (privesc guard — review #1). REQUIRED one-time/admin step BEFORE `pulumi up`:
 // run docs/runbooks/aws-ci-oidc-bootstrap.sh, which creates this boundary policy in the account.
@@ -59,6 +75,9 @@ const api = new LambdaWithUrl('api', {
   authorizationType: 'AWS_IAM',
   // Defence-in-depth (review #1): cap the exec role to its logging-only ceiling.
   permissionsBoundaryArn: ciRoleBoundaryArn,
+  // Runtime DB access (NH-79): inject the nh_app url as DATABASE_URL. The owner url
+  // (NEON_MIGRATION_URL) is NEVER injected here — it is CI-migrate-only (§3 strict invariant).
+  environment: { DATABASE_URL: databaseUrl },
 });
 
 const site = new CloudFrontSite('site', {
