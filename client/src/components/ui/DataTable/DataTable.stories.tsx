@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { DataTable } from './DataTable';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, VisibilityState } from '@tanstack/react-table';
 
 interface DemoRow {
   id: string;
@@ -74,4 +75,40 @@ export const SortableHeaders: Story = {
     appearance: 'cards',
     defaultSorting: [{ id: 'title', desc: false }],
   },
+};
+
+export const ColumnVisibilityToggle: Story = {
+  render: () => {
+    const [visibility, setVisibility] = useState<VisibilityState>({});
+    return (
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-2">
+          {(['level', 'bpm'] as const).map((id) => (
+            <button
+              key={id}
+              type="button"
+              className="rounded border border-border px-2 py-1 text-xs"
+              onClick={() => setVisibility((v) => ({ ...v, [id]: v[id] === false ? true : false }))}
+            >
+              Toggle {id}
+            </button>
+          ))}
+        </div>
+        <DataTable
+          data={demo}
+          columns={columns}
+          columnVisibility={visibility}
+          onColumnVisibilityChange={setVisibility}
+        />
+      </div>
+    );
+  },
+};
+
+export const Empty: Story = {
+  args: { data: [], columns, emptyState: 'No pieces found — adjust your filters' },
+};
+
+export const Loading: Story = {
+  args: { data: demo, columns, isLoading: true },
 };

@@ -145,3 +145,52 @@ test('uncontrolled defaultSorting sets the initial order', () => {
   );
   expect(firstColumnText(container)).toEqual(['Alpha', 'Beta']);
 });
+
+test('renders the empty state text when there is no data', () => {
+  render(<DataTable data={[]} columns={columns} emptyState="No pieces found" />);
+  expect(screen.getByText('No pieces found')).toBeInTheDocument();
+});
+
+test('renders a default empty message when none is provided', () => {
+  render(<DataTable data={[]} columns={columns} />);
+  expect(screen.getByText('No results')).toBeInTheDocument();
+});
+
+test('renders 5 skeleton rows when loading and hides the data', () => {
+  const { container } = render(
+    <DataTable data={data} columns={columns} isLoading getRowId={(r) => r.id} />,
+  );
+  expect(container.querySelectorAll('[data-slot="data-table-skeleton-row"]')).toHaveLength(5);
+  expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
+});
+
+test('announces loading to assistive tech (aria-busy + a status region)', () => {
+  render(<DataTable data={data} columns={columns} isLoading getRowId={(r) => r.id} />);
+  expect(screen.getByRole('status')).toHaveTextContent('Loading');
+  expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'true');
+});
+
+test('hides a column via uncontrolled defaultColumnVisibility', () => {
+  render(
+    <DataTable
+      data={data}
+      columns={columns}
+      getRowId={(r) => r.id}
+      defaultColumnVisibility={{ n: false }}
+    />,
+  );
+  expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+  expect(screen.queryByRole('columnheader', { name: 'N' })).not.toBeInTheDocument();
+});
+
+test('hides a column via controlled columnVisibility', () => {
+  render(
+    <DataTable
+      data={data}
+      columns={columns}
+      getRowId={(r) => r.id}
+      columnVisibility={{ n: false }}
+    />,
+  );
+  expect(screen.queryByRole('columnheader', { name: 'N' })).not.toBeInTheDocument();
+});
