@@ -79,6 +79,7 @@ pnpm run pulumi:preview
 - **Owner url:** reset the owner password in Neon -> `gh secret set NEON_MIGRATION_URL`. No runtime
   impact (CI migrate/seed only).
 - **App url (simple):** reset `nh_app` password -> `gh secret set NEON_DATABASE_URL` -> run the
-  **Deploy** workflow via `workflow_dispatch`. Warm Lambdas error briefly until they cycle.
+  **Deploy** workflow via `workflow_dispatch` (`gh workflow run deploy.yml`). Warm Lambdas error
+  briefly until they cycle.
 - **App url (zero-downtime):** create `nh_app_b` + run the Phase-2 grants for it -> point
   `NEON_DATABASE_URL` at it -> run Deploy -> verify -> retire `nh_app`.

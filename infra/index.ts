@@ -7,6 +7,7 @@ import * as pulumi from '@pulumi/pulumi';
 
 import { CloudFrontSite } from './cloudfront-site.stack.ts';
 import { LambdaWithUrl } from './lambda-with-url.stack.ts';
+import { requireEnv } from './require-env.ts';
 
 /**
  * Pulumi composition root — the ARCH-EDGE-1 two-origin slice (NH-206 Phase 1):
@@ -17,17 +18,6 @@ import { LambdaWithUrl } from './lambda-with-url.stack.ts';
  *   pnpm --filter @notation-hero/server run build:lambda   (-> server/dist-lambda)
  *   pnpm --filter @notation-hero/client run build          (-> client/dist)
  */
-/** Read a required env var or throw with a remediation hint (passed by deploy.yml / local export). */
-function requireEnv(name: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(
-      `${name} is required. In CI it is passed from a GitHub Actions secret to the \`pulumi up\` ` +
-        `step (deploy.yml); for a local \`pulumi preview\`/\`up\`, export it first (see infra/README.md).`,
-    );
-  }
-  return value;
-}
 
 // The Neon nh_app (DML, least-privilege) url — the ONLY connection string the Lambda receives.
 // Wrapped as a secret so it never appears in plaintext in stack state or the deploy log.
@@ -77,7 +67,9 @@ const api = new LambdaWithUrl('api', {
   permissionsBoundaryArn: ciRoleBoundaryArn,
   // Runtime DB access (NH-79): inject the nh_app url as DATABASE_URL. The owner url
   // (NEON_MIGRATION_URL) is NEVER injected here — it is CI-migrate-only (§3 strict invariant).
-  environment: { DATABASE_URL: databaseUrl },
+  // NODE_ENV=production keeps Express in production mode (no stack in its default error handler) as
+  // a backstop behind DbExceptionFilter (review A3).
+  environment: { DATABASE_URL: databaseUrl, NODE_ENV: 'production' },
 });
 
 const site = new CloudFrontSite('site', {

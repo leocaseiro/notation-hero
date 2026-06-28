@@ -28,8 +28,10 @@ jobs:
     name: Pulumi up
     # Deploy only a commit whose CI run went green (workflow_run carries the triggering CI
     # conclusion); combined with the master-branch trigger filter, a red or non-master commit
-    # never reaches `up`.
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # never reaches `up`. The workflow_dispatch path is ALSO pinned to refs/heads/master in-repo
+    # (defence-in-depth behind the production environment's deployment-branch policy) so a manual
+    # rotation deploy can't run prod migrate/up from a feature branch (review F-D / NH-79).
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || github.event.workflow_run.conclusion == 'success' }}
     # The master-restricted `production` environment is the SECOND gate alongside the OIDC trust:
     # the deploy role trusts ONLY `...:environment:production`, a subject GitHub mints solely for a
     # job that references this environment — and the environment is limited to the master branch.
