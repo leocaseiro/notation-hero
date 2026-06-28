@@ -3,17 +3,15 @@
 # Each entry is a CONSCIOUS, time-boxed deferral: a reason + a review date. The
 # `deps-cve` job (google/osv-scanner-action, `--recursive ./`) auto-loads this file.
 #
-# Fixed directly instead (see package.json `pnpm.overrides`):
+# Fixed directly instead (see pnpm-workspace.yaml `overrides`):
 #   - GHSA-hmw2-7cc7-3qxx  form-data 4.0.5 -> 4.0.6  (High 8.7, safe patch)
 #   - GHSA-7c78-jf6q-g5cm  tmp       0.2.6 -> 0.2.7  (High 8.2, safe patch)
+#   - GHSA-67mh-4wv8-2f99  esbuild   <0.25 -> 0.25.12  (Medium 5.3, drizzle-kit build transitive; migrate re-validated)
 #
 # Deferred below: deep transitives whose fix we cannot safely force —
 #   - js-yaml + @opentelemetry/core: @pulumi/pulumi transitives; the fix is a MAJOR
 #     bump that risks breaking Pulumi at runtime (unverifiable in CI without AWS creds).
-#   - esbuild 0.18.20: a build-time transitive of drizzle-kit via the DEPRECATED
-#     @esbuild-kit chain; the dev-server CORS vuln is unreachable (transform-only use),
-#     and esbuild >=0.25 cannot be safely forced onto @esbuild-kit (API drift).
-# All Medium severity, build/IaC-time path only — never in the Lambda runtime.
+# All Medium severity, IaC-time path only — never in the Lambda runtime.
 
 [[IgnoredVulns]]
 id = "GHSA-h67p-54hq-rp68"  # js-yaml 3.14.2 (Medium 5.3)
@@ -24,8 +22,3 @@ reason = "js-yaml@3.14.2 is a deep transitive of @pulumi/pulumi (IaC). Fix is js
 id = "GHSA-8988-4f7v-96qf"  # @opentelemetry/core 1.30.1 (Medium 5.3)
 ignoreUntil = 2026-09-16T00:00:00Z
 reason = "@opentelemetry/core@1.30.1 is transitive via @pulumi/pulumi OTLP exporters (@opentelemetry/exporter-*@0.57.2 pin the v1 line). Fix is otel-core v2 — forcing it across the v1 otel set would break Pulumi telemetry. Medium severity, IaC path only. Revisit when @pulumi/pulumi upgrades the otel stack. Tracked: NH-191."
-
-[[IgnoredVulns]]
-id = "GHSA-67mh-4wv8-2f99"  # esbuild 0.18.20 (Medium 5.3) — dev-server CORS
-ignoreUntil = 2026-09-16T00:00:00Z
-reason = "esbuild@0.18.20 is a build-time-only transitive of drizzle-kit via the DEPRECATED @esbuild-kit/core-utils + @esbuild-kit/esm-loader (merged into tsx). The vuln (GHSA-67mh-4wv8-2f99) is the esbuild dev-SERVER CORS issue — unreachable in our usage: drizzle-kit uses esbuild only to load/transform drizzle.config.ts, never `esbuild serve`, and esbuild is never in the Lambda runtime. The fix (esbuild >=0.25) cannot be safely forced onto the deprecated @esbuild-kit chain (API drift risks breaking `drizzle-kit migrate`, which is validated working). Revisit when drizzle-kit drops @esbuild-kit (or we move config loading to tsx). Tracked: NH-191."
