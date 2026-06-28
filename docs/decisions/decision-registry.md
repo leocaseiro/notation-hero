@@ -12,6 +12,23 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-28 — NH-79 lands: connection keys enforced; CORS deferred to NH-250
+
+Implemented the 2026-06-27 connection-keys design (NH-79): two Neon roles (owner DDL / `nh_app`
+DML), both urls as GitHub Actions secrets, a DDL-first Drizzle runner + `0000_playable_init`
+migration, a CI migrate-before-`up` step, an idempotent TS-4 seed (`seed.sql` + one-click
+`seed-catalog` workflow), the `LambdaWithUrl` env injection, the `robots.txt` `/api/` guard, and a
+thin Neon-backed `GET /api/catalog` (Cache-Control header).
+
+- **Status flip:** the 2026-06-27 entry's "⏳ enforcement pending" is now **🤖 enforced** — the CI
+  migrate step, the `LambdaWithUrl` env wiring, and the layout/depcheck guards cover it.
+- **CORS deferred -> [NH-250](https://leocaseiro.atlassian.net/browse/NH-250)** (same sprint as the
+  backend). The thin read ships only the `Cache-Control` header; the site-origin CORS policy §11
+  put in NH-79 moves to NH-250, because the site origin (the CloudFront URL) is a deploy output
+  created after the Lambda — injecting it would be circular — and the app is same-origin today.
+- **Masked single-voice leaves** are seeded `listable=false`, so the thin read's `WHERE listable`
+  hides them as §11 intended.
+
 ### 2026-06-27 — Neon connection keys: GitHub-secret keys + CI-first migrate (NH-79)
 
 Brainstorm-approved design for the Pulumi+Neon **connection-key plumbing** — the foundation under the catalog read slice (NH-79 → NH-123). Full design: `docs/superpowers/specs/2026-06-27-neon-pulumi-connection-keys-design.md`. **Refines a locked decision** (RC-6 / 2026-06-10) — the mechanism only, not the intent.

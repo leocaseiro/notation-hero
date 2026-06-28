@@ -184,7 +184,11 @@ Because both urls are GitHub secrets, every rotation is `gh secret set` + **run 
 Proves the Lambda → Neon path is live: the existing `GET /api/catalog` placeholder is repointed at Neon via the `neon-http` Drizzle adapter, returning a few real seeded rows with a `Cache-Control` header. It deliberately stays minimal — the typed oRPC contract, filters, pagination, and the full query layer are **NH-123**.
 
 - **Boundary (keeps it a validation target, not NH-123):** inline a **typed** Drizzle `select` from `playable` directly in the existing `CatalogController` — no new NestJS providers or repository abstraction (those are NH-123). The typed query imports `catalog.schema.ts`, which keeps that file reachable (§6). **Preserve the existing `CatalogResponse` envelope** `{ items: [{ id, title, kind, difficulty }], count }` — `playable` has **no `difficulty` column**, so derive it from `playable.level` via the N-14 band map (Debut 0 · Beginner 1–3 · …; a lookup, still no join). Filter `WHERE listable AND status = 'published'` + a small `LIMIT`, so internal rows (e.g. the masked single-voice leaves) never reach the public page. `list()` becomes `async`/DB-backed: update the server specs `catalog.controller.spec.ts` (mock the adapter — no live DB) and `http.handler.spec.ts`; the contract above must stay compatible with the live client `client/src/components/About.tsx` (renders `difficulty` + `count`).
-- **CORS:** the thin read sets a CORS policy locked to the site origin. Note: CORS only restricts other **websites' browser** calls — not `curl`/bots; true origin-locking (force `/api/*` through CloudFront, block the raw Lambda url, + WAF/rate-limit) is tracked separately (§14).
+- **CORS (deferred to NH-250):** the thin read ships the `Cache-Control` header only. A site-origin
+  CORS policy was originally planned here, but the site origin is the CloudFront distribution URL —
+  a Pulumi deploy output that does not exist until after the Lambda is created — so injecting it at
+  deploy time would be circular. The app is same-origin today, so deferral has no user-visible
+  impact. True origin-locking is tracked in §14 and NH-250 (same sprint as the backend).
 
 Grounding (2026-06-27 spikes): free-tier posture verified $0/month current; no one-shot "Drizzle → oRPC + NestJS" generator exists — the maintained path is `drizzle-kit` (DDL-first) → `drizzle-zod` → a hand-authored oRPC contract. `@orpc/nest` requires every contract to declare a `path`; oRPC is ESM-only (`module: NodeNext`).
 
@@ -211,7 +215,11 @@ This brainstorm **revises a locked decision** and adds new ones. The decision en
 ## 14. Open follow-ups
 
 - **NH-247** — CloudFront edge-cache for `GET /api/*` (the real compute-budget protection at scale).
-- **NH-248** — lock `/api/*` to CloudFront-only access + WAF/rate-limit (true API origin-hardening; the §11 CORS policy only covers browsers, not `curl`/bots). Overlaps NH-247.
+- **NH-248** — lock `/api/*` to CloudFront-only access + WAF/rate-limit (true API origin-hardening;
+  CORS only covers browsers, not `curl`/bots). Overlaps NH-247.
+- **NH-250** — site-origin CORS policy on the catalog read API (deferred from NH-79; same sprint as
+  the backend). Locks the CORS `Access-Control-Allow-Origin` to the CloudFront distribution URL
+  once it is a stable Pulumi output.
 - **NH-123** — the full read API (oRPC contract, filters, loading skeleton).
 - A `db:env:dev` helper that creates/points a Neon dev branch into `server/.env` (nice-to-have).
 - Confirm the seed transport (`postgres` vs `pg`) and whether the seed is a `.sql` file executed by `seed.util.ts` or inline.
