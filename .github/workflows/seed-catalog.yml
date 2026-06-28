@@ -1,0 +1,25 @@
+name: Seed catalog
+
+# One-click catalog bootstrap (NH-79 §7). Run ONCE after the first deploy, then only to top up.
+# Idempotent (seed.sql is ON CONFLICT DO NOTHING): re-runs only INSERT MISSING rows — they never
+# UPDATE an existing row. To CORRECT a row already in the DB, use the approval-gated full reset
+# (TRUNCATE + re-seed), not this workflow. Uses the OWNER url; declares the master-only
+# `production` environment (same gate as deploy.yml).
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    name: Seed Neon catalog (TS-4)
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: ./.github/actions/setup-js
+      - name: Seed catalog (idempotent)
+        run: pnpm --filter @notation-hero/server run db:seed
+        env:
+          DATABASE_URL: ${{ secrets.NEON_MIGRATION_URL }}
