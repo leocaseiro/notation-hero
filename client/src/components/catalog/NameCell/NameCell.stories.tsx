@@ -52,7 +52,7 @@ const narrowRow: CatalogRow = {
 };
 export const Narrow: Story = {
   // `args` satisfies the required-`row` Meta constraint; `render` supplies the same row
-  // inside a fixed-width frame so both lines truncate to a single ellipsised line.
+  // inside a fixed-width frame so both lines truncate to a single line with an ellipsis.
   args: { row: narrowRow },
   render: () => (
     <div style={{ width: 240 }}>
