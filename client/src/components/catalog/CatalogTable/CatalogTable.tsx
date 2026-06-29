@@ -36,13 +36,9 @@ const columns: ColumnDef<CatalogRow>[] = [
     sortDescFirst: true, // Best sorts high-first
     cell: ({ getValue }) => <ScoreDonut score={getValue<number | null>()} />,
   },
-  {
-    id: 'play',
-    header: '',
-    enableSorting: false,
-    meta: { align: 'right' },
-    cell: ({ row }) => <PlayButton title={row.original.title} onClick={() => {}} />,
-  },
+  // The live cell (closing over onPlay) is always injected per render below; this column
+  // intentionally has no static `cell`.
+  { id: 'play', header: '', enableSorting: false, meta: { align: 'right' } },
 ];
 
 export const CatalogTable = ({
