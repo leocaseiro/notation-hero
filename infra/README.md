@@ -36,13 +36,18 @@ Two least-privilege roles, both as **GitHub Actions secrets** (auto-masked in th
      TO nh_app;
    ```
 
+   Scriptable (committed at `server/src/adapters/neon-postgres/phase2-grants.sql`) — an operator or
+   agent can apply it non-interactively:
+   `psql "$NEON_MIGRATION_URL" -f server/src/adapters/neon-postgres/phase2-grants.sql`.
+
    > ⚠️ On the **first** auto-deploy this is easy to miss: migrate and `pulumi up` run in one
    > workflow, so the Lambda goes live before Phase 2 and the thin read returns **403 until you run
    > this** (the seed still succeeds — it uses the owner url — which masks the gap). Never use
    > `GRANT … ON ALL TABLES` / `ALTER DEFAULT PRIVILEGES` (it would expose `__drizzle_migrations`).
 
 6. **Seed once** — trigger the **Seed catalog** workflow (Actions tab -> Run workflow), or
-   `gh workflow run seed-catalog.yml`. Locally: `pnpm db:seed` against a dev branch. Re-running only
+   `gh workflow run seed-catalog.yml`. Locally: `DATABASE_URL=<dev-branch owner url> pnpm db:seed`
+   against a dev branch. Re-running only
    **INSERTs missing rows** (`ON CONFLICT DO NOTHING`) — it never **UPDATEs** an existing row; to
    correct a row already in the DB, use the approval-gated full reset (TRUNCATE + re-seed), not this
    workflow.
