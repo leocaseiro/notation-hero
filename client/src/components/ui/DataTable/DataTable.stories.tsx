@@ -88,7 +88,7 @@ export const ColumnVisibilityToggle: Story = {
               key={id}
               type="button"
               className="rounded border border-border px-2 py-1 text-xs"
-              onClick={() => setVisibility((v) => ({ ...v, [id]: v[id] === false ? true : false }))}
+              onClick={() => setVisibility((v) => ({ ...v, [id]: v[id] === false }))}
             >
               Toggle {id}
             </button>
