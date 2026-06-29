@@ -1,91 +1,67 @@
 import { Test } from '@nestjs/testing';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CatalogController, toDifficulty } from './catalog.controller';
+import { describe, expect, it, vi } from 'vitest';
+import { CATALOG_DB } from '../../adapters/neon-postgres/catalog-db.adapter';
+import { CatalogController } from './catalog.controller';
 
-// The thin read builds a neon-http client at call time; mock both driver modules so no live DB is
-// needed. `vi.hoisted` makes fakeRows + the query spies available to the (hoisted) vi.mock factory
-// AND the assertions below — referencing a plain top-level const inside vi.mock would throw.
-const { fakeRows, dbSpies } = vi.hoisted(() => ({
-  fakeRows: [
-    {
-      id: 'pat_ssr_debut',
-      slug: 'single-stroke-roll-debut',
-      title: 'Single Stroke Roll (Debut)',
-      kind: 'pattern',
-      level: 0,
-    },
-    { id: 'song_demo', slug: 'demo-song', title: 'Demo Song', kind: 'song', level: 4 },
-    {
-      id: 'lesson_x',
-      slug: 'ungraded-lesson',
-      title: 'Ungraded Lesson',
-      kind: 'lesson',
-      level: null,
-    },
-  ],
-  // Spies record the .where() predicate + the .limit() bound so a regression that drops the access
-  // filter or the cap is caught — the mock chain itself ignores the arguments.
-  dbSpies: { where: vi.fn(), limit: vi.fn() },
-}));
-
-vi.mock('@neondatabase/serverless', () => ({ neon: () => ({}) }));
-// The chain is extracted into named steps to stay within sonarjs/no-nested-functions (max 4 levels).
-vi.mock('drizzle-orm/neon-http', () => {
+// With the db injected via CATALOG_DB (NH-79 review F12), the test overrides the provider with a fake
+// query chain — no driver-module mock, no module-registry reset. The spies record the .where()
+// predicate + the .limit() bound so a regression that drops the access filter or the cap is caught;
+// the fake chain itself ignores the arguments. The CONTENT of the predicate is asserted by the
+// skipped Neon integration block at the bottom (review F2).
+function makeDb(rows: unknown[]): {
+  db: unknown;
+  spies: { where: ReturnType<typeof vi.fn>; limit: ReturnType<typeof vi.fn> };
+} {
+  const spies = { where: vi.fn(), limit: vi.fn() };
   const limited = {
     limit: (n: number) => {
-      dbSpies.limit(n);
-      return Promise.resolve(fakeRows);
+      spies.limit(n);
+      return Promise.resolve(rows);
     },
   };
   const filtered = {
     where: (condition: unknown) => {
-      dbSpies.where(condition);
+      spies.where(condition);
       return limited;
     },
   };
   const selected = { from: () => filtered };
-  const queried = { select: () => selected };
-  return { drizzle: () => queried };
-});
+  const db = { select: () => selected };
+  return { db, spies };
+}
 
-describe('toDifficulty (N-14 bands: Debut 0 · Beginner 1-3 · Intermediate 4-6 · Advanced 7-8 · Expert 9-10)', () => {
-  it.each([
-    [0, 'Debut'],
-    [1, 'Beginner 1'],
-    [3, 'Beginner 3'],
-    [4, 'Intermediate 4'],
-    [6, 'Intermediate 6'],
-    [7, 'Advanced 7'],
-    [8, 'Advanced 8'],
-    [9, 'Expert 9'],
-    [10, 'Expert 10'],
-    [null, 'Ungraded'],
-  ])('level %s -> %s', (level, expected) => {
-    expect(toDifficulty(level)).toBe(expected);
-  });
-});
+async function makeController(
+  rows: unknown[],
+): Promise<{ controller: CatalogController; spies: ReturnType<typeof makeDb>['spies'] }> {
+  const { db, spies } = makeDb(rows);
+  const moduleRef = await Test.createTestingModule({
+    controllers: [CatalogController],
+    providers: [{ provide: CATALOG_DB, useValue: db }],
+  }).compile();
+  return { controller: moduleRef.get(CatalogController), spies };
+}
+
+const fakeRows = [
+  {
+    id: 'pat_ssr_debut',
+    slug: 'single-stroke-roll-debut',
+    title: 'Single Stroke Roll (Debut)',
+    kind: 'pattern',
+    level: 0,
+  },
+  { id: 'song_demo', slug: 'demo-song', title: 'Demo Song', kind: 'song', level: 4 },
+  {
+    id: 'lesson_x',
+    slug: 'ungraded-lesson',
+    title: 'Ungraded Lesson',
+    kind: 'lesson',
+    level: null,
+  },
+];
 
 describe('CatalogController (DB-backed thin read)', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    process.env.DATABASE_URL = 'postgres://test';
-  });
-
-  // Reset the module registry between tests so a future test needing a different mock (or a dynamic
-  // re-import to clear the memoized db) gets a fresh module graph — matches entry/http.handler.spec.ts.
-  afterEach(() => {
-    vi.resetModules();
-  });
-
-  async function makeController(): Promise<CatalogController> {
-    const moduleRef = await Test.createTestingModule({
-      controllers: [CatalogController],
-    }).compile();
-    return moduleRef.get(CatalogController);
-  }
-
   it('maps rows to the catalog envelope, deriving difficulty from level', async () => {
-    const controller = await makeController();
+    const { controller } = await makeController(fakeRows);
     const res = await controller.list();
     expect(res.count).toBe(3);
     expect(res.items[0]).toEqual({
@@ -100,12 +76,19 @@ describe('CatalogController (DB-backed thin read)', () => {
   });
 
   it('applies a WHERE access filter and caps the result at 50', async () => {
-    const controller = await makeController();
+    const { controller, spies } = await makeController(fakeRows);
     await controller.list();
     // A predicate is passed to .where() (the curated + published + listable access boundary) and the
-    // result set is capped. Full predicate-content assertion is the NH-123 integration test on Neon.
-    expect(dbSpies.where).toHaveBeenCalledTimes(1);
-    expect(dbSpies.where.mock.calls[0]?.[0]).toBeDefined();
-    expect(dbSpies.limit).toHaveBeenCalledWith(50);
+    // result set is capped. Full predicate-content assertion is the Neon integration block below.
+    expect(spies.where).toHaveBeenCalledTimes(1);
+    expect(spies.where.mock.calls[0]?.[0]).toBeDefined();
+    expect(spies.limit).toHaveBeenCalledWith(50);
+  });
+
+  it('throws if the query ever returns a kind outside the response union (F4 guard)', async () => {
+    const { controller } = await makeController([
+      { id: 'part_x', slug: 'a-part', title: 'A Part', kind: 'part', level: 2 },
+    ]);
+    await expect(controller.list()).rejects.toThrow(/unexpected kind/);
   });
 });

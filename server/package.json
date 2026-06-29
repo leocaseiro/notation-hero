@@ -60,5 +60,8 @@
     "unplugin-swc": "^1.5.1",
     "vite-tsconfig-paths": "^5.1.0",
     "vitest": "^4.1.9"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }
