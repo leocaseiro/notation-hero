@@ -1,5 +1,3 @@
-import { cn } from '@/lib/utils';
-
 interface FlagsProps {
   audio?: boolean;
   video?: boolean;
@@ -50,9 +48,8 @@ export const Flags = ({ audio, video, parts }: Readonly<FlagsProps>) => {
         <span
           key={flag}
           aria-hidden="true"
-          // parts carries playable sub-sections — accent it (teal) to set it apart from
-          // the neutral audio/video glyphs. Tokens only, no raw hex.
-          className={cn('material-symbols-outlined', flag === 'parts' && 'text-primary')}
+          // All flags share the brand-teal accent (tokens only, no raw hex).
+          className="material-symbols-outlined text-primary"
           style={{ fontSize: '1rem' }}
         >
           {ICON[flag]}
