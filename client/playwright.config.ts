@@ -35,5 +35,9 @@ export default defineConfig({
     url: 'http://localhost:6006',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    // Disable the a11y addon's automatic axe run for this served Storybook: each *.a11y.ts spec
+    // runs its own scoped AxeBuilder sweep, and the addon's auto-run would race it on the same
+    // iframe (axe-core is non-reentrant → "Axe is already running"). Read in .storybook/preview.tsx.
+    env: { STORYBOOK_DISABLE_A11Y_AUTORUN: '1' },
   },
 });
