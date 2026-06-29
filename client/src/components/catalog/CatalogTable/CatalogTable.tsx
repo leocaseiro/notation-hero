@@ -26,13 +26,13 @@ const columns: ColumnDef<CatalogRow>[] = [
   {
     accessorKey: 'bpm',
     header: 'BPM',
-    meta: { align: 'right' },
+    meta: { align: 'center' },
     cell: ({ getValue }) => <Bpm value={getValue<number | string>()} />,
   },
   {
     accessorKey: 'best',
     header: 'Best',
-    meta: { align: 'right' },
+    meta: { align: 'center' },
     sortDescFirst: true, // Best sorts high-first
     cell: ({ getValue }) => <ScoreDonut score={getValue<number | null>()} />,
   },
