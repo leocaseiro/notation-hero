@@ -47,6 +47,7 @@ const makeComponent = (
     timeoutSeconds: number;
     memorySize: number;
     permissionsBoundaryArn: string;
+    environment: Record<string, string>;
   }> = {},
 ): LambdaWithUrl =>
   new LambdaWithUrl(name, {
@@ -118,6 +119,19 @@ test('locks the Function URL to AWS_IAM and applies timeout/memory overrides', a
   const fn = inputsOf(':Function');
   assert.equal(fn.timeout, 5);
   assert.equal(fn.memorySize, 256);
+});
+
+test('injects environment variables into the Lambda Function when provided', async () => {
+  created.length = 0;
+  const component = makeComponent('nh-env', {
+    environment: { DATABASE_URL: 'postgres://nh_app:secret@ep-x.neon.tech/neondb?sslmode=require' },
+  });
+  await resolveOutput(component.url);
+
+  // The nh_app url must land as the Lambda's DATABASE_URL env var (the runtime read path, §4).
+  assert.deepEqual(inputsOf(':Function').environment, {
+    variables: { DATABASE_URL: 'postgres://nh_app:secret@ep-x.neon.tech/neondb?sslmode=require' },
+  });
 });
 
 test('applies the permissions boundary to the Lambda execution role when provided', async () => {

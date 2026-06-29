@@ -15,6 +15,8 @@ on:
     workflows: [CI]
     types: [completed]
     branches: [master]
+  # Manual redeploy (no commit) — used for secret rotation (§9) and recovery.
+  workflow_dispatch:
 
 # id-token: assume the AWS role via OIDC. No `pull-requests` perm — no PR job touches AWS now.
 permissions:
@@ -26,8 +28,10 @@ jobs:
     name: Pulumi up
     # Deploy only a commit whose CI run went green (workflow_run carries the triggering CI
     # conclusion); combined with the master-branch trigger filter, a red or non-master commit
-    # never reaches `up`.
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # never reaches `up`. The workflow_dispatch path is ALSO pinned to refs/heads/master in-repo
+    # (defence-in-depth behind the production environment's deployment-branch policy) so a manual
+    # rotation deploy can't run prod migrate/up from a feature branch (review F-D / NH-79).
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || github.event.workflow_run.conclusion == 'success' }}
     # The master-restricted `production` environment is the SECOND gate alongside the OIDC trust:
     # the deploy role trusts ONLY `...:environment:production`, a subject GitHub mints solely for a
     # job that references this environment — and the environment is limited to the master branch.
@@ -48,6 +52,14 @@ jobs:
       # the SAST "workflow-run-target-code-checkout" rule for the pwn-request pattern.)
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-js
+      # Migrate Neon BEFORE building/deploying (§5). Needs only Node + the GitHub secret (no AWS),
+      # so it runs before any credential is assumed; a failure aborts before `pulumi up`. Idempotent
+      # (drizzle-kit records applied migrations). DATABASE_URL here is the OWNER url (DDL-capable) —
+      # never the nh_app url, which has no DDL rights.
+      - name: Migrate Neon (before deploy)
+        run: pnpm --filter @notation-hero/server run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.NEON_MIGRATION_URL }}
       - name: Build Lambda + SPA (pulumi reads server/dist-lambda + client/dist)
         run: |
           pnpm --filter @notation-hero/server run build:lambda
@@ -69,6 +81,9 @@ jobs:
           cloud-url: s3://${{ vars.PULUMI_STATE_BUCKET }}
         env:
           PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          # The nh_app url infra/index.ts reads (process.env.NEON_DATABASE_URL) and injects as the
+          # Lambda DATABASE_URL. Owner url stays out of this step entirely.
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
       # Only a HARD-killed `up` (job timeout / cancellation) strands the S3-backend lock (no
       # DynamoDB auto-release) — a normal `failure` exits cleanly and releases it. So fire ONLY on
       # `cancelled`, surfacing the recovery command instead of leaving an operator to find the wedge

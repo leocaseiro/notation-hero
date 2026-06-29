@@ -3,14 +3,15 @@
 # Each entry is a CONSCIOUS, time-boxed deferral: a reason + a review date. The
 # `deps-cve` job (google/osv-scanner-action, `--recursive ./`) auto-loads this file.
 #
-# Fixed directly instead (see package.json `pnpm.overrides`):
+# Fixed directly instead (see pnpm-workspace.yaml `overrides`):
 #   - GHSA-hmw2-7cc7-3qxx  form-data 4.0.5 -> 4.0.6  (High 8.7, safe patch)
 #   - GHSA-7c78-jf6q-g5cm  tmp       0.2.6 -> 0.2.7  (High 8.2, safe patch)
+#   - GHSA-67mh-4wv8-2f99  esbuild   <0.25 -> 0.25.12  (Medium 5.3, drizzle-kit build transitive; migrate re-validated)
 #
-# Deferred below: both are deep @pulumi/pulumi transitives whose only fix is a
-# MAJOR bump we cannot force without risking Pulumi at runtime (unverifiable in CI
-# without AWS creds). Medium severity, IaC/build-time path only. Revisit when
-# @pulumi/pulumi upgrades them upstream.
+# Deferred below: deep transitives whose fix we cannot safely force —
+#   - js-yaml + @opentelemetry/core: @pulumi/pulumi transitives; the fix is a MAJOR
+#     bump that risks breaking Pulumi at runtime (unverifiable in CI without AWS creds).
+# All Medium severity, IaC-time path only — never in the Lambda runtime.
 
 [[IgnoredVulns]]
 id = "GHSA-h67p-54hq-rp68"  # js-yaml 3.14.2 (Medium 5.3)

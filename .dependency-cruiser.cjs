@@ -54,7 +54,12 @@ module.exports = {
       severity: 'error',
       from: {
         orphan: true,
-        pathNot: ['\\.(test|spec)\\.(ts|tsx)$', '\\.stories\\.(ts|tsx)$', '^server/src/main\\.ts$'],
+        pathNot: [
+          '\\.(test|spec)\\.(ts|tsx)$',
+          '\\.stories\\.(ts|tsx)$',
+          '^server/src/main\\.ts$',
+          '^server/src/adapters/neon-postgres/seed\\.util\\.ts$',
+        ],
       },
       to: {},
     },

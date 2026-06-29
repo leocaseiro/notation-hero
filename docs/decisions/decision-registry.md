@@ -12,13 +12,42 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-28 — NH-79 lands: connection keys enforced; CORS deferred to NH-250
+
+Implemented the 2026-06-27 connection-keys design (NH-79): two Neon roles (owner DDL / `nh_app`
+DML), both urls as GitHub Actions secrets, a DDL-first Drizzle runner + `0000_playable_init`
+migration, a CI migrate-before-`up` step, an idempotent TS-4 seed (`seed.sql` + one-click
+`seed-catalog` workflow), the `LambdaWithUrl` env injection, the `robots.txt` `/api/` guard, and a
+thin Neon-backed `GET /api/catalog` (Cache-Control header).
+
+- **Status flip:** the 2026-06-27 entry's "⏳ enforcement pending" is now **🤖 enforced** — the CI
+  migrate step, the `LambdaWithUrl` env wiring, and the layout/depcheck guards cover it.
+- **CORS deferred -> [NH-250](https://leocaseiro.atlassian.net/browse/NH-250)** (same sprint as the
+  backend). The thin read ships only the `Cache-Control` header; the site-origin CORS policy §11
+  put in NH-79 moves to NH-250, because the site origin (the CloudFront URL) is a deploy output
+  created after the Lambda — injecting it would be circular — and the app is same-origin today.
+- **Masked single-voice leaves** are seeded `listable=false`, so the thin read's `WHERE listable`
+  hides them as §11 intended.
+
+### 2026-06-27 — Neon connection keys: GitHub-secret keys + CI-first migrate (NH-79)
+
+Brainstorm-approved design for the Pulumi+Neon **connection-key plumbing** — the foundation under the catalog read slice (NH-79 → NH-123). Full design: `docs/superpowers/specs/2026-06-27-neon-pulumi-connection-keys-design.md`. **Refines a locked decision** (RC-6 / 2026-06-10) — the mechanism only, not the intent.
+
+- **RC-6 mechanism refined — Pulumi config secret → GitHub Actions secrets.** The Neon connection string is no longer a `pulumi config set --secret` value; it lives as two GitHub Actions secrets (`NEON_DATABASE_URL`, `NEON_MIGRATION_URL`). RC-6's _intent_ is unchanged (an env var at rest, **not** SSM, $0). Reasons (leocaseiro, 2026-06-27): GitHub **auto-masks** secrets in a **public** repo (safer than `pulumi config get --show-secrets`, which prints plaintext), and it enables **100% CI/CD** with zero recurring local runs.
+- **Two Neon roles (least-privilege).** Owner role = DDL/migrations (`NEON_MIGRATION_URL`, TCP, CI-only); a new least-privilege `nh_app` role = DML/runtime (`NEON_DATABASE_URL`, HTTP `neon-http`, the only url injected into the Lambda env). A leaked Lambda env can read/write rows but cannot alter the schema.
+- **Migrate before deploy, in CI.** `deploy.yml` gains a `drizzle-kit migrate` step as the **first** step (needs only Node + the GitHub secret, no AWS), so it runs before `pulumi up`; idempotent; a failure aborts before any AWS mutation. Seed = a one-click `workflow_dispatch` workflow (not the auto deploy).
+- **DDL-first Drizzle runner.** The raw 8-table DDL stays the migration source of truth (`ARCH-ORM-1`); `drizzle-kit generate --custom` + `migrate`; `catalog.schema.ts` hand-written for query typing; files under `server/src/adapters/neon-postgres/`.
+- **Minimal compute guard.** `robots.txt` disallow `/api/*` + a dev Neon branch + a `Cache-Control` header on the thin read; the CloudFront edge-cache (the real bot/crowd protection) is deferred to **NH-247**. Free-tier verified $0/month current (KMS $0, Lambda/CloudFront perpetual free, Neon 0.5 GB / 100 compute-hours, sleeps after 5 min idle).
+
+**Status:** ✅ decided · ⏳ enforcement pending — flips to 🤖 when NH-79 lands (the migrate CI step, the `nh_app` grants, the `LambdaWithUrl` env injection, the runbook). Approved by leocaseiro in the 2026-06-27 brainstorm; implementation plan deferred (LGTM-pause).
+
 ### 2026-06-27 — `playable.slug` friendly URL token + wireframe author-on-UI / column sort (NH-221, NH-223, PR #88)
 
 New decision (leocaseiro, mid-review on PR #88): every playable gets a stored **`slug`** — a friendly URL token separate from the opaque ULID id — addressed by routes (`#/song/yellow`, `#/fill/zoio-de-lula-tom-fill`) with the id as a fallback; `UNIQUE` index + title→slug backfill → `NOT NULL` modelled in the draft seed (validated: 19 playables → 19 distinct slugs). Full record: `docs/decisions/2026-06-27-playable-slug-url-token.md`.
 
 The same **PR #88** wireframe pass also **realises** existing deltas in the low-fi sim (no new decisions): SD-13/SD-33 `author[]`+`author_type` now **surfaced on the catalog rows** (songs = artist, lessons = **teacher**) with an **Author/Artist facet incl. an "Unknown" option** and author-search in lessons; SD-31 kind+context routes; NH-222 structured song lesson; SD-11 flag filters + playback-source toggle; **SD-10 clickable column-header sort** (the sort dropdown moved into "More"). README version log → v1.4/v1.5.
 
-**Status:** ✅ slug decided · 📄 prose-only until the real migration lands. PR #88 open. NH-221/NH-223/NH-210/NH-211/NH-222.
+**Status:** ✅ slug decided · ✅ **landed in NH-79** (2026-06-28, PR #90): `slug text NOT NULL` + `UNIQUE` index in `0000_playable_init` + a slug per seed row (19 distinct) + returned by the thin read. PR #88 open. NH-221/NH-223/NH-210/NH-211/NH-222.
 
 ### 2026-06-26 — e2e is a required CI gate: Playwright lane + traces (NH-197)
 

@@ -2,6 +2,27 @@ import { NestFactory } from '@nestjs/core';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 
+// The catalog controller is now DB-backed; mock the neon-http driver so the route resolves through
+// the real Nest DI graph without a live DB. Rows are inlined (a vi.mock factory cannot close over a
+// top-level const). The chain is extracted into named steps to stay within sonarjs/no-nested-functions.
+vi.mock('@neondatabase/serverless', () => ({ neon: () => ({}) }));
+vi.mock('drizzle-orm/neon-http', () => {
+  const rows = [
+    {
+      id: 'pat_ssr_debut',
+      slug: 'single-stroke-roll',
+      title: 'Single Stroke Roll',
+      kind: 'pattern',
+      level: 0,
+    },
+  ];
+  const limited = { limit: () => Promise.resolve(rows) };
+  const filtered = { where: () => limited };
+  const selected = { from: () => filtered };
+  const queried = { select: () => selected };
+  return { drizzle: () => queried };
+});
+
 /** Minimal API Gateway v2.0 event — the payload shape a Lambda Function URL emits. */
 function event(method: string, path: string): APIGatewayProxyEventV2 {
   return {
@@ -91,12 +112,13 @@ describe('lambda handler (serverless-express)', () => {
   });
 
   it('serves GET /api/catalog (200) with the catalog shape through the handler', async () => {
+    process.env.DATABASE_URL = 'postgres://test';
     const { handler } = await import('./http.handler.js');
     const res = await handler(event('GET', '/api/catalog'), ctx);
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body as string) as {
       count: number;
-      items: Array<{ id: string; title: string; kind: string }>;
+      items: Array<{ id: string; slug: string; title: string; kind: string; difficulty: string }>;
     };
     expect(Array.isArray(body.items)).toBe(true);
     expect(body.items.length).toBeGreaterThan(0);
@@ -104,8 +126,10 @@ describe('lambda handler (serverless-express)', () => {
     // Each item carries the catalog contract the About page renders.
     for (const item of body.items) {
       expect(typeof item.id).toBe('string');
+      expect(typeof item.slug).toBe('string');
       expect(typeof item.title).toBe('string');
       expect(typeof item.kind).toBe('string');
+      expect(typeof item.difficulty).toBe('string');
     }
   });
 });

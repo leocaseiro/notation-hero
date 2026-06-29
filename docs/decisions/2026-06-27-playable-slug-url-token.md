@@ -2,7 +2,7 @@
 date: 2026-06-27
 type: decision
 topic: playable-slug-url-token
-status: Decided (wireframe + draft seed; ships with the real schema)
+status: Landed (NH-79 / PR #90 — 0000_playable_init + seed + thin read)
 approver: leocaseiro
 ---
 
@@ -34,6 +34,6 @@ key, and lets the URL stay stable even if an internal id ever changes.
 
 ## Status / enforcement
 
-Decided · validated on a scratch Postgres DB (19 playables → 19 distinct non-null slugs).
-Enforcement is the `UNIQUE` index + `NOT NULL` once the real migration lands; prose-only
-until then.
+**Landed in NH-79 (PR #90, 2026-06-28):** `slug text NOT NULL` + `CREATE UNIQUE INDEX playable_slug`
+in `0000_playable_init.sql`, a slug per seed row (19 distinct), and `slug` returned by the thin
+`GET /api/catalog` read. Validated on a throwaway Postgres (19 playables → 19 distinct non-null slugs).

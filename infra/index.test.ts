@@ -11,6 +11,19 @@ import { fileURLToPath } from 'node:url';
 // (review #1 / adversarial: the AWS_IAM lock previously lived on a single untested line.)
 const indexSrc = readFileSync(fileURLToPath(new URL('./index.ts', import.meta.url)), 'utf8');
 
+test('composition root injects the Neon app url as the api Lambda DATABASE_URL env (NH-79)', () => {
+  assert.match(
+    indexSrc,
+    /environment:\s*\{\s*DATABASE_URL:/,
+    'infra/index.ts must inject DATABASE_URL into the api Lambda environment (the runtime Neon read path).',
+  );
+  assert.match(
+    indexSrc,
+    /pulumi\.secret\(\s*requireEnv\(\s*['"]NEON_DATABASE_URL['"]/,
+    'the Neon url must come from NEON_DATABASE_URL wrapped in pulumi.secret() so it is masked in state.',
+  );
+});
+
 test('composition root locks the api Function URL to AWS_IAM (guards a public regression)', () => {
   assert.match(
     indexSrc,
