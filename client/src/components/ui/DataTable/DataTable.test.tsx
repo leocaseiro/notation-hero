@@ -144,12 +144,12 @@ test('clicking a sortable header toggles asc -> desc -> asc (2-state, never unso
 test('the rest sort glyph reflects the column sort state (unsorted/asc/desc)', async () => {
   const user = userEvent.setup();
   render(<DataTable data={unsorted} columns={sortableColumns} getRowId={(r) => r.id} />);
-  // The visible (rest) glyph is in the `.inline` wrapper; the hover-preview glyph is in the
-  // sibling `.hidden` wrapper, so scope to `.inline`. Re-query each time — sorting re-renders.
+  // The visible glyph is in the data-state="rest" wrapper; the hover-preview glyph is in the
+  // sibling data-state="preview" wrapper. Re-query each time — sorting re-renders.
   const restGlyph = () =>
     screen
       .getByRole('button', { name: /name/i })
-      .querySelector('.inline .material-symbols-outlined');
+      .querySelector('[data-state="rest"] .material-symbols-outlined');
   expect(restGlyph()).toHaveTextContent('unfold_more');
   await user.click(screen.getByRole('button', { name: /name/i }));
   expect(restGlyph()).toHaveTextContent('arrow_upward');
@@ -189,7 +189,18 @@ test('controlled sorting calls onSortingChange when a header is clicked', async 
     />,
   );
   await user.click(screen.getByRole('button', { name: /name/i }));
-  expect(onSortingChange).toHaveBeenCalled();
+  // TanStack passes an updater function; assert the shape, not just that it fired.
+  expect(onSortingChange).toHaveBeenCalledWith(expect.any(Function));
+});
+
+test("appearance='rows' sets the data-appearance attribute", () => {
+  const { container } = render(
+    <DataTable data={data} columns={columns} appearance="rows" getRowId={(r) => r.id} />,
+  );
+  expect(container.querySelector('[data-slot="data-table"]')).toHaveAttribute(
+    'data-appearance',
+    'rows',
+  );
 });
 
 test('a non-sortable column has no sort button and no aria-sort', () => {
