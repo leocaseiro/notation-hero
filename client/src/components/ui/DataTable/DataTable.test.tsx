@@ -41,6 +41,19 @@ test('fires onRowClick with the row datum on click', () => {
   expect(onRowClick).toHaveBeenCalledWith(data[0]);
 });
 
+test('does not open the row when the click ends a text selection', () => {
+  const onRowClick = vi.fn();
+  const getSelection = vi
+    .spyOn(globalThis, 'getSelection')
+    .mockReturnValue({ toString: () => 'selected title text' } as Selection);
+  const { container } = render(
+    <DataTable data={data} columns={columns} onRowClick={onRowClick} getRowId={(r) => r.id} />,
+  );
+  fireEvent.click(container.querySelector<HTMLElement>('[data-slot="data-table-row"]')!);
+  expect(onRowClick).not.toHaveBeenCalled();
+  getSelection.mockRestore();
+});
+
 test('fires onRowClick on Enter and Space when a row is focused', async () => {
   const user = userEvent.setup();
   const onRowClick = vi.fn();

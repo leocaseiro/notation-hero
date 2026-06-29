@@ -270,7 +270,19 @@ const DataRows = <TData,>({
         key={row.id}
         data-slot="data-table-row"
         tabIndex={clickable ? 0 : undefined}
-        onClick={clickable ? () => onRowClick?.(row.original) : undefined}
+        // A clickable row activates on clicks bubbling up from its cells, so any in-row
+        // interactive control (e.g. PlayButton) MUST stopPropagation to avoid also opening the
+        // row. (The keyboard path below can't rely on that, so it guards on the event target.)
+        onClick={
+          clickable
+            ? () => {
+                // Don't open the row when the click ends a text selection — drag-to-select
+                // fires a click on mouseup, and navigating away would lose the selection.
+                if (globalThis.getSelection()?.toString()) return;
+                onRowClick?.(row.original);
+              }
+            : undefined
+        }
         onKeyDown={
           clickable
             ? (e) => {
