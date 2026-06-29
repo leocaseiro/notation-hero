@@ -12,6 +12,11 @@ test('single-flag label has no comma or "and"', () => {
   expect(screen.getByRole('img', { name: 'Has audio' })).toBeInTheDocument();
 });
 
+test('two-flag label uses "and" with no comma', () => {
+  render(<Flags audio video />);
+  expect(screen.getByRole('img', { name: 'Has audio and video' })).toBeInTheDocument();
+});
+
 test('renders nothing when no flags are set', () => {
   const { container } = render(<Flags />);
   expect(container).toBeEmptyDOMElement();

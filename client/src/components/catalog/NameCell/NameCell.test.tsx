@@ -62,6 +62,13 @@ test('an explicit row icon overrides the kind preset', () => {
   expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('piano');
 });
 
+test('an explicit icon overrides the lesson school glyph too', () => {
+  const { container } = render(
+    <NameCell row={{ ...base, kind: 'rudiment', isLesson: true, icon: 'drum' }} />,
+  );
+  expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('drum');
+});
+
 test('the title and subtitle carry a native title tooltip with the full text', () => {
   render(<NameCell row={base} />);
   expect(screen.getByText('Billie Jean')).toHaveAttribute('title', 'Billie Jean');

@@ -6,9 +6,9 @@ test('renders the full kind word (no abbreviations)', () => {
   expect(screen.getByText('Rudiment')).toBeInTheDocument();
 });
 
-test('carries the kind-badge slot and outline styling', () => {
+test('carries the kind-badge slot with the kind word', () => {
   const { container } = render(<KindBadge kind="beat" />);
   const el = container.querySelector('[data-slot="kind-badge"]');
   expect(el).toHaveTextContent('Beat');
-  expect(el).toHaveClass('bg-transparent');
+  // The outline visual is covered by the KindBadge VR snapshots, not a brittle class assertion.
 });

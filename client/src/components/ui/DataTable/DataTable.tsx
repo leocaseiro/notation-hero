@@ -387,6 +387,7 @@ const SortGlyph = <TData,>({ column }: Readonly<{ column: Column<TData, unknown>
       aria-hidden="true"
     >
       <span
+        data-state="rest"
         className={cn(
           'inline group-hover/sort:hidden group-focus-visible/sort:hidden',
           active ? 'opacity-100' : 'opacity-50',
@@ -394,7 +395,10 @@ const SortGlyph = <TData,>({ column }: Readonly<{ column: Column<TData, unknown>
       >
         <span className="material-symbols-outlined">{restSortIcon(sorted)}</span>
       </span>
-      <span className="hidden opacity-70 group-hover/sort:inline group-focus-visible/sort:inline">
+      <span
+        data-state="preview"
+        className="hidden opacity-70 group-hover/sort:inline group-focus-visible/sort:inline"
+      >
         <span className="material-symbols-outlined">{previewIcon}</span>
       </span>
     </span>
