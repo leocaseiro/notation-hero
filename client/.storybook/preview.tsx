@@ -37,6 +37,14 @@ const ThemedDocsContainer = (props: ComponentProps<typeof DocsContainer>) => {
   return <DocsContainer {...props} theme={isDark ? themes.dark : themes.light} />;
 };
 
+// The Playwright a11y suite (client/src/**/*.a11y.ts) runs its own scoped AxeBuilder sweep on each
+// story. The addon's automatic axe run (parameters.a11y.test below) races that sweep on the same
+// iframe — axe-core is non-reentrant, so overlapping runs throw "Axe is already running" and flake
+// the suite under parallel workers. playwright.config.ts sets STORYBOOK_DISABLE_A11Y_AUTORUN when
+// it serves Storybook for the tests, so we turn the addon's auto-run off for that run only. Local
+// `pnpm storybook` never sets it, so the interactive a11y panel keeps auto-running axe as before.
+const a11yAutorunDisabled = import.meta.env.STORYBOOK_DISABLE_A11Y_AUTORUN === '1';
+
 const preview: Preview = {
   decorators: [withTheme],
   globalTypes: {
@@ -63,8 +71,9 @@ const preview: Preview = {
     // backgrounds addon's fixed colors would fight it, so disable it.
     backgrounds: { disable: true },
     a11y: {
-      // Fail the test run on accessibility violations.
-      test: 'error',
+      // Auto-run axe on each story for the interactive panel; turned off under the Playwright a11y
+      // run (see a11yAutorunDisabled above) so it can't race the spec's own AxeBuilder sweep.
+      test: a11yAutorunDisabled ? 'off' : 'error',
       // Scope axe to WCAG 2.0/2.1 levels A + AA (includes 4.5:1 color contrast).
       options: {
         runOnly: {

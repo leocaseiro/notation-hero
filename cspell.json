@@ -147,6 +147,7 @@
     "lambdalith",
     "automock",
     "autodocs",
+    "autorun",
     "unstub",
     "tickable",
     "unticked",
