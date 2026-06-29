@@ -1,9 +1,9 @@
-import { neon } from '@neondatabase/serverless';
-import { Controller, Get, Header } from '@nestjs/common';
+import { Controller, Get, Header, Inject } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
-import { drizzle } from 'drizzle-orm/neon-http';
 
+import { CATALOG_DB, type CatalogDb } from '../../adapters/neon-postgres/catalog-db.adapter';
 import { playable } from '../../adapters/neon-postgres/catalog.schema';
+import { toDifficulty } from './catalog.util';
 
 export interface CatalogPlayable {
   id: string;
@@ -20,34 +20,12 @@ export interface CatalogResponse {
   count: number;
 }
 
-/**
- * N-14 band map (display-only): level 0 = Debut, 1-3 Beginner, 4-6 Intermediate, 7-8 Advanced,
- * 9-10 Expert; null = Ungraded. A lookup over playable.level — no join.
- */
-export function toDifficulty(level: number | null): string {
-  if (level === null) return 'Ungraded';
-  if (level === 0) return 'Debut';
-  const n = String(level);
-  if (level <= 3) return `Beginner ${n}`;
-  if (level <= 6) return `Intermediate ${n}`;
-  if (level <= 8) return `Advanced ${n}`;
-  return `Expert ${n}`;
-}
-
-// Lazily build + memoize the neon-http client (the nh_app url). Lazy so module import never
-// connects (keeps unit tests + cold-start import side-effect-free); HTTP is per-query, no pool.
-let db: ReturnType<typeof drizzle> | undefined;
-function getDb(): ReturnType<typeof drizzle> {
-  if (!db) {
-    const url = process.env.DATABASE_URL;
-    if (!url) throw new Error('DATABASE_URL is not set (the nh_app connection string).');
-    db = drizzle(neon(url));
-  }
-  return db;
-}
-
 @Controller('catalog')
 export class CatalogController {
+  // The nh_app neon-http client, injected as a singleton (NH-79 review F12). neon-http is per-query
+  // HTTP (no pool), so one client is reused across warm invocations.
+  constructor(@Inject(CATALOG_DB) private readonly db: CatalogDb) {}
+
   // Validation target (NH-79): a typed Drizzle select against Neon — proves the Lambda -> Neon
   // path. The real read API (oRPC contract, filters, pagination) is NH-123. Cache-Control is
   // forward-compat for the NH-247 edge cache; CORS is deferred to NH-250. A DB failure surfaces as
@@ -55,7 +33,7 @@ export class CatalogController {
   @Get()
   @Header('Cache-Control', 'public, max-age=300')
   async list(): Promise<CatalogResponse> {
-    const rows = await getDb()
+    const rows = await this.db
       .select({
         id: playable.id,
         slug: playable.slug,
@@ -78,15 +56,22 @@ export class CatalogController {
       )
       .limit(50);
 
-    const items: CatalogPlayable[] = rows.map((row) => ({
-      id: row.id,
-      slug: row.slug,
-      title: row.title,
-      // kind is constrained to song|lesson|pattern by the WHERE allow-list above, so this cast is
-      // safe by construction (Drizzle still widens the column type to the full union).
-      kind: row.kind as CatalogPlayable['kind'],
-      difficulty: toDifficulty(row.level),
-    }));
+    const items: CatalogPlayable[] = rows.map((row) => {
+      // The WHERE kind allow-list keeps 'part' out at the DB layer; this guard makes the invariant
+      // explicit at the boundary, so if a future change relaxes the filter an unexpected kind throws
+      // (-> a generic 503) instead of leaking as an unknown kind (review F4). It also narrows
+      // row.kind to the response union, so the previous `as` cast is no longer needed.
+      if (row.kind !== 'song' && row.kind !== 'lesson' && row.kind !== 'pattern') {
+        throw new Error(`catalog read returned an unexpected kind: ${row.kind}`);
+      }
+      return {
+        id: row.id,
+        slug: row.slug,
+        title: row.title,
+        kind: row.kind,
+        difficulty: toDifficulty(row.level),
+      };
+    });
     return { items, count: items.length };
   }
 }

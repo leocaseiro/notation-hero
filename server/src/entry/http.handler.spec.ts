@@ -1,11 +1,13 @@
 import { NestFactory } from '@nestjs/core';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 
 // The catalog controller is now DB-backed; mock the neon-http driver so the route resolves through
 // the real Nest DI graph without a live DB. Rows are inlined (a vi.mock factory cannot close over a
 // top-level const). The chain is extracted into named steps to stay within sonarjs/no-nested-functions.
-vi.mock('@neondatabase/serverless', () => ({ neon: () => ({}) }));
+// `neonConfig` is mocked too — the catalog DI factory (NH-79 F12) sets neonConfig.fetchFunction at
+// app boot, so the real symbol must exist on the mock.
+vi.mock('@neondatabase/serverless', () => ({ neon: () => ({}), neonConfig: {} }));
 vi.mock('drizzle-orm/neon-http', () => {
   const rows = [
     {
@@ -54,6 +56,12 @@ function event(method: string, path: string): APIGatewayProxyEventV2 {
 }
 
 const ctx = {} as Context;
+
+beforeEach(() => {
+  // The catalog DI provider builds its neon-http client at app boot (NH-79 F12), so every AppModule
+  // bootstrap needs the nh_app url present — the Lambda always has it injected in prod.
+  process.env.DATABASE_URL = 'postgres://test';
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -112,7 +120,6 @@ describe('lambda handler (serverless-express)', () => {
   });
 
   it('serves GET /api/catalog (200) with the catalog shape through the handler', async () => {
-    process.env.DATABASE_URL = 'postgres://test';
     const { handler } = await import('./http.handler.js');
     const res = await handler(event('GET', '/api/catalog'), ctx);
     expect(res.statusCode).toBe(200);
