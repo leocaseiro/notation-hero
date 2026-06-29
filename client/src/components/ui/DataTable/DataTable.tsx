@@ -277,15 +277,16 @@ const DataRows = <TData,>({
           appearance === 'rows' && 'border-b border-border',
           clickable &&
             'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring hover:-translate-y-px',
-          // Hover reads as ONE row outline: the teal border recolor only touches the cells'
-          // OUTER edges (rest borders are top/bottom on all cells, left on first, right on last —
-          // no internal verticals), paired with the translateY lift above. The mockup's soft
-          // glow is dropped on purpose: box-shadow (and filter) are no-ops on `display:table-row`
-          // in Chromium, and a per-<td> shadow haloed each cell's internal edges (the reported
-          // bleed). So the outline IS the border, not a shadow.
+          // Hover = the mockup's .trow:hover — lift + teal border + ONE soft row glow. box-shadow
+          // is a no-op on `display:table-row` in Chromium, and a per-<td> shadow haloed every
+          // internal cell edge (the reported bleed). So the glow is a full-row ::after overlay
+          // built ONLY on hover: the row goes `relative`, the overlay is inset-0, rounded to the
+          // card, behind the cells (-z) and pointer-events-none — one shadow around the whole row.
+          // Everything is hover-gated so the resting row (and its VR baseline) is untouched; the
+          // teal border recolor stays on the cells' outer edges only.
           clickable &&
             appearance === 'cards' &&
-            'hover:[&>td]:border-[color-mix(in_oklch,var(--primary)_45%,var(--border))]',
+            "hover:relative hover:after:pointer-events-none hover:after:absolute hover:after:inset-0 hover:after:-z-[1] hover:after:rounded-xl hover:after:content-[''] hover:[&>td]:border-[color-mix(in_oklch,var(--primary)_45%,var(--border))] hover:after:shadow-[0_5px_16px_color-mix(in_oklch,var(--primary)_12%,transparent)]",
         )}
       >
         {row.getVisibleCells().map((cell) => (
