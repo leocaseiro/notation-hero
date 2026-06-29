@@ -274,6 +274,10 @@ const DataRows = <TData,>({
         onKeyDown={
           clickable
             ? (e) => {
+                // Only the row itself activates; ignore keys bubbling up from focusable cell
+                // content (e.g. the in-row Play button). Without this, Enter/Space on an
+                // in-row control fires its action AND the row's onRowClick (double-trigger).
+                if (e.target !== e.currentTarget) return;
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   onRowClick?.(row.original);
