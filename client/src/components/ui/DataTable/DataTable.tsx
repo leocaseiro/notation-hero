@@ -27,6 +27,22 @@ import {
 } from '@/components/ui/Table/Table';
 import { cn } from '@/lib/utils';
 
+// Card-row cell chrome. A real <tr> ignores border-radius, so the rounded-card look lives on the
+// cells: border + card bg on every cell, with the outer cells rounding the corners and drawing the
+// left/right edges (spec F3). Shared by the skeleton and data rows so loading and loaded states
+// stay pixel-identical.
+const CARD_CELL_CHROME =
+  '[&>td]:border-y [&>td]:border-border [&>td]:bg-card [&>td:first-child]:rounded-l-xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-xl [&>td:last-child]:border-r';
+
+// Row hover glow (clickable card rows only) — the mockup's .trow:hover: lift + teal border + ONE
+// soft glow around the whole row. box-shadow is a no-op on `display:table-row` in Chromium, and a
+// per-<td> shadow halos every internal cell edge (the reported bleed). So the glow is a hover-gated
+// full-row ::after overlay: the row goes `relative`, the overlay is inset-0, rounded to the card,
+// behind the cells (-z) and pointer-events-none. Hover-gated so the resting row (and its VR
+// baseline) is untouched; the teal recolor stays on the cells' outer edges.
+const ROW_HOVER_GLOW =
+  "hover:relative hover:after:pointer-events-none hover:after:absolute hover:after:inset-0 hover:after:-z-[1] hover:after:rounded-xl hover:after:content-[''] hover:[&>td]:border-[color-mix(in_oklch,var(--primary)_45%,var(--border))] hover:after:shadow-[0_5px_16px_color-mix(in_oklch,var(--primary)_12%,transparent)]";
+
 export interface DataTableProps<TData> {
   data: TData[];
   columns: ColumnDef<TData>[];
@@ -197,10 +213,7 @@ const SkeletonRows = <TData,>({
         // eslint-disable-next-line react/no-array-index-key -- fixed-length skeleton, no stable id
         key={`skeleton-${i}`}
         data-slot="data-table-skeleton-row"
-        className={cn(
-          appearance === 'cards' &&
-            '[&>td]:border-y [&>td]:border-border [&>td]:bg-card [&>td:first-child]:rounded-l-xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-xl [&>td:last-child]:border-r',
-        )}
+        className={cn(appearance === 'cards' && CARD_CELL_CHROME)}
       >
         {columns.map((col) => (
           <TableCell
@@ -270,23 +283,11 @@ const DataRows = <TData,>({
         }
         className={cn(
           'transition-all',
-          // Card chrome lives on the cells (a <tr> ignores border-radius), so the card
-          // look does NOT depend on per-row border-radius (spec F3).
-          appearance === 'cards' &&
-            '[&>td]:border-y [&>td]:border-border [&>td]:bg-card [&>td:first-child]:rounded-l-xl [&>td:first-child]:border-l [&>td:last-child]:rounded-r-xl [&>td:last-child]:border-r',
+          appearance === 'cards' && CARD_CELL_CHROME,
           appearance === 'rows' && 'border-b border-border',
           clickable &&
             'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring hover:-translate-y-px',
-          // Hover = the mockup's .trow:hover — lift + teal border + ONE soft row glow. box-shadow
-          // is a no-op on `display:table-row` in Chromium, and a per-<td> shadow haloed every
-          // internal cell edge (the reported bleed). So the glow is a full-row ::after overlay
-          // built ONLY on hover: the row goes `relative`, the overlay is inset-0, rounded to the
-          // card, behind the cells (-z) and pointer-events-none — one shadow around the whole row.
-          // Everything is hover-gated so the resting row (and its VR baseline) is untouched; the
-          // teal border recolor stays on the cells' outer edges only.
-          clickable &&
-            appearance === 'cards' &&
-            "hover:relative hover:after:pointer-events-none hover:after:absolute hover:after:inset-0 hover:after:-z-[1] hover:after:rounded-xl hover:after:content-[''] hover:[&>td]:border-[color-mix(in_oklch,var(--primary)_45%,var(--border))] hover:after:shadow-[0_5px_16px_color-mix(in_oklch,var(--primary)_12%,transparent)]",
+          clickable && appearance === 'cards' && ROW_HOVER_GLOW,
         )}
       >
         {row.getVisibleCells().map((cell) => (
