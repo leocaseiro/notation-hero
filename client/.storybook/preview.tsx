@@ -1,4 +1,9 @@
+import { DocsContainer } from '@storybook/addon-docs/blocks';
+import { useEffect, useState } from 'react';
+import { themes } from 'storybook/theming';
 import type { Decorator, Preview } from '@storybook/tanstack-react';
+import type { ComponentProps } from 'react';
+
 import { A11Y_TAGS } from '../src/a11y-tags';
 // Load the design tokens (teal theme + Public Sans) so stories render themed.
 import '../src/styles.css';
@@ -11,6 +16,25 @@ const withTheme: Decorator = (Story, context) => {
   const theme = context.globals.theme ?? 'light';
   document.documentElement.classList.toggle('dark', theme === 'dark');
   return <Story />;
+};
+
+// Docs (autodocs) pages render inside Storybook's own `.sbdocs` container, which paints
+// its own light background/text independent of our app tokens. So the canvas/story view
+// themes via the decorator above, but Docs pages stay light when you pick Dark. The
+// decorator already toggles `.dark` on the docs <html>; mirror it here (React hooks are
+// fine in the container — only Storybook preview hooks like useGlobals are not) so the
+// Docs chrome (background, text, tables, borders) flips with the same toolbar control.
+const ThemedDocsContainer = (props: ComponentProps<typeof DocsContainer>) => {
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  useEffect(() => {
+    const html = document.documentElement;
+    const sync = () => setIsDark(html.classList.contains('dark'));
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(html, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+  return <DocsContainer {...props} theme={isDark ? themes.dark : themes.light} />;
 };
 
 const preview: Preview = {
@@ -31,6 +55,7 @@ const preview: Preview = {
     },
   },
   parameters: {
+    docs: { container: ThemedDocsContainer },
     controls: {
       matchers: { color: /(background|color)$/i, date: /Date$/i },
     },
