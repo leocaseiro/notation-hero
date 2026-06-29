@@ -127,8 +127,8 @@ body,
   --card-foreground: oklch(98.7% 0.002 197.1deg);
   --popover: oklch(21.8% 0.008 223.9deg);
   --popover-foreground: oklch(98.7% 0.002 197.1deg);
-  --primary: oklch(43.7% 0.078 188.216deg);
-  --primary-foreground: oklch(98.4% 0.014 180.72deg);
+  --primary: oklch(78.5% 0.133 181.912deg); /* brand teal #2dd4bf — bright accent, AA on dark bg */
+  --primary-foreground: oklch(27.7% 0.046 192.524deg); /* dark teal — 7.8:1 AA on the fill */
   --secondary: oklch(27.4% 0.006 286.033deg);
   --secondary-foreground: oklch(98.5% 0 0deg);
   --muted: oklch(27.5% 0.011 216.9deg);
