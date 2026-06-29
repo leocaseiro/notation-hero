@@ -318,6 +318,10 @@ function ariaSort<TData>(
 // Sortable columns render a header button (click toggles asc<->desc) with the sort
 // glyph; non-sortable columns render the bare header label.
 const HeaderLabel = <TData,>({ header }: Readonly<{ header: Header<TData, unknown> }>) => {
+  // Opt out of React Compiler memoization: this renders from column.getIsSorted() (external,
+  // mutable table state the compiler can't track), so a memoized version would keep the
+  // initial glyph after a click sorts the column. Re-render every time the table does.
+  'use no memo';
   if (!header.column.getCanSort()) {
     return <>{flexRender(header.column.columnDef.header, header.getContext())}</>;
   }
@@ -351,6 +355,9 @@ function restSortIcon(sorted: false | 'asc' | 'desc'): string {
 // the active column it's the toggle (asc previews desc, desc previews asc). Both come from
 // getNextSortingOrder() since enableSortingRemoval is off. The active column is accented.
 const SortGlyph = <TData,>({ column }: Readonly<{ column: Column<TData, unknown> }>) => {
+  // Same reason as HeaderLabel: the glyph derives from getIsSorted()/getNextSortingOrder(),
+  // so memoizing on the stable `column` ref would freeze it at the first-render value.
+  'use no memo';
   const sorted = column.getIsSorted();
   const active = Boolean(sorted);
   const previewIcon = column.getNextSortingOrder() === 'desc' ? 'arrow_downward' : 'arrow_upward';

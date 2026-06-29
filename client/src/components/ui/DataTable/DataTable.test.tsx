@@ -96,6 +96,22 @@ test('clicking a sortable header toggles asc -> desc -> asc (2-state, never unso
   expect(header()).toHaveAttribute('aria-sort', 'ascending'); // back to asc, NOT none
 });
 
+test('the rest sort glyph reflects the column sort state (unsorted/asc/desc)', async () => {
+  const user = userEvent.setup();
+  render(<DataTable data={unsorted} columns={sortableColumns} getRowId={(r) => r.id} />);
+  // The visible (rest) glyph is in the `.inline` wrapper; the hover-preview glyph is in the
+  // sibling `.hidden` wrapper, so scope to `.inline`. Re-query each time — sorting re-renders.
+  const restGlyph = () =>
+    screen
+      .getByRole('button', { name: /name/i })
+      .querySelector('.inline .material-symbols-outlined');
+  expect(restGlyph()).toHaveTextContent('unfold_more');
+  await user.click(screen.getByRole('button', { name: /name/i }));
+  expect(restGlyph()).toHaveTextContent('arrow_upward');
+  await user.click(screen.getByRole('button', { name: /name/i }));
+  expect(restGlyph()).toHaveTextContent('arrow_downward');
+});
+
 test('sorting reorders the rows', async () => {
   const user = userEvent.setup();
   const { container } = render(
