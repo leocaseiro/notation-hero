@@ -55,3 +55,15 @@ test('play via keyboard plays without also opening the row', async () => {
   expect(onPlay).toHaveBeenCalledWith(rows[0]);
   expect(onOpen).not.toHaveBeenCalled();
 });
+
+test('shows the loading skeleton (not the data) when isLoading', () => {
+  const { container } = render(<CatalogTable data={rows} isLoading />);
+  expect(container.querySelectorAll('[data-slot="data-table-skeleton-row"]')).toHaveLength(5);
+  expect(screen.queryByText('Billie Jean')).not.toBeInTheDocument();
+});
+
+test('hides a column via columnVisibility', () => {
+  render(<CatalogTable data={rows} columnVisibility={{ bpm: false }} />);
+  expect(screen.queryByRole('columnheader', { name: /bpm/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+});
