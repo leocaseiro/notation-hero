@@ -7,9 +7,21 @@ import { CatalogController, toDifficulty } from './catalog.controller';
 // AND the assertions below — referencing a plain top-level const inside vi.mock would throw.
 const { fakeRows, dbSpies } = vi.hoisted(() => ({
   fakeRows: [
-    { id: 'pat_ssr_debut', title: 'Single Stroke Roll (Debut)', kind: 'pattern', level: 0 },
-    { id: 'song_demo', title: 'Demo Song', kind: 'song', level: 4 },
-    { id: 'lesson_x', title: 'Ungraded Lesson', kind: 'lesson', level: null },
+    {
+      id: 'pat_ssr_debut',
+      slug: 'single-stroke-roll-debut',
+      title: 'Single Stroke Roll (Debut)',
+      kind: 'pattern',
+      level: 0,
+    },
+    { id: 'song_demo', slug: 'demo-song', title: 'Demo Song', kind: 'song', level: 4 },
+    {
+      id: 'lesson_x',
+      slug: 'ungraded-lesson',
+      title: 'Ungraded Lesson',
+      kind: 'lesson',
+      level: null,
+    },
   ],
   // Spies record the .where() predicate + the .limit() bound so a regression that drops the access
   // filter or the cap is caught — the mock chain itself ignores the arguments.
@@ -78,6 +90,7 @@ describe('CatalogController (DB-backed thin read)', () => {
     expect(res.count).toBe(3);
     expect(res.items[0]).toEqual({
       id: 'pat_ssr_debut',
+      slug: 'single-stroke-roll-debut',
       title: 'Single Stroke Roll (Debut)',
       kind: 'pattern',
       difficulty: 'Debut',

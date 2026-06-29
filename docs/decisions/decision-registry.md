@@ -47,7 +47,7 @@ New decision (leocaseiro, mid-review on PR #88): every playable gets a stored **
 
 The same **PR #88** wireframe pass also **realises** existing deltas in the low-fi sim (no new decisions): SD-13/SD-33 `author[]`+`author_type` now **surfaced on the catalog rows** (songs = artist, lessons = **teacher**) with an **Author/Artist facet incl. an "Unknown" option** and author-search in lessons; SD-31 kind+context routes; NH-222 structured song lesson; SD-11 flag filters + playback-source toggle; **SD-10 clickable column-header sort** (the sort dropdown moved into "More"). README version log → v1.4/v1.5.
 
-**Status:** ✅ slug decided · 📄 prose-only until the real migration lands. PR #88 open. NH-221/NH-223/NH-210/NH-211/NH-222.
+**Status:** ✅ slug decided · ✅ **landed in NH-79** (2026-06-28, PR #90): `slug text NOT NULL` + `UNIQUE` index in `0000_playable_init` + a slug per seed row (19 distinct) + returned by the thin read. PR #88 open. NH-221/NH-223/NH-210/NH-211/NH-222.
 
 ### 2026-06-26 — e2e is a required CI gate: Playwright lane + traces (NH-197)
 

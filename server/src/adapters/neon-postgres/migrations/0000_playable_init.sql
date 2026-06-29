@@ -28,6 +28,7 @@ CREATE TABLE playable (
   id             text PRIMARY KEY,
   kind           text NOT NULL,
   title          text NOT NULL,
+  slug           text NOT NULL,                       -- friendly URL token (NH-221); UNIQUE index below; minted from title on insert, admin-editable
   description    text,
   parent_id      text REFERENCES playable(id) ON DELETE CASCADE DEFERRABLE INITIALLY IMMEDIATE,
   notation_id    text REFERENCES notation(id) ON DELETE RESTRICT DEFERRABLE INITIALLY IMMEDIATE,
@@ -204,6 +205,7 @@ CREATE TABLE drum_profile (
 -- ─────────────────────────────────────────────────────────────────
 CREATE INDEX playable_parent      ON playable (parent_id);
 CREATE INDEX playable_notation    ON playable (notation_id);
+CREATE UNIQUE INDEX playable_slug ON playable (slug);
 CREATE INDEX playable_browse      ON playable (kind, status, level, bpm) WHERE listable;
 CREATE INDEX playable_instruments ON playable USING gin (instruments);
 CREATE INDEX playable_genre       ON playable USING gin (genre);

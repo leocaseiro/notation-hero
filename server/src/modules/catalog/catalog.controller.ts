@@ -7,6 +7,8 @@ import { playable } from '../../adapters/neon-postgres/catalog.schema';
 
 export interface CatalogPlayable {
   id: string;
+  /** Friendly URL token (NH-221), distinct from the opaque id; routes address playables by slug. */
+  slug: string;
   title: string;
   kind: 'song' | 'pattern' | 'lesson';
   /** Difficulty band label (Debut / Beginner 1-3 / Intermediate 4-6 / ...). */
@@ -56,6 +58,7 @@ export class CatalogController {
     const rows = await getDb()
       .select({
         id: playable.id,
+        slug: playable.slug,
         title: playable.title,
         kind: playable.kind,
         level: playable.level,
@@ -77,6 +80,7 @@ export class CatalogController {
 
     const items: CatalogPlayable[] = rows.map((row) => ({
       id: row.id,
+      slug: row.slug,
       title: row.title,
       // kind is constrained to song|lesson|pattern by the WHERE allow-list above, so this cast is
       // safe by construction (Drizzle still widens the column type to the full union).

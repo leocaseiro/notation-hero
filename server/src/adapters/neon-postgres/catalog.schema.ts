@@ -8,6 +8,8 @@ export const playable = pgTable('playable', {
   // CHECK-enforced in the DDL; typed here so the thin read maps cleanly to the response union.
   kind: text('kind').$type<'song' | 'part' | 'lesson' | 'pattern'>().notNull(),
   title: text('title').notNull(),
+  // Friendly URL token, separate from the opaque id (NH-221); UNIQUE + NOT NULL in the DDL.
+  slug: text('slug').notNull(),
   listable: boolean('listable').notNull().default(true),
   // Nullable 0–10 grade (N-14 bands); null = ungraded.
   level: smallint('level'),

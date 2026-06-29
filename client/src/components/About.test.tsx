@@ -25,13 +25,15 @@ const sampleCatalog = {
   count: 2,
   items: [
     {
-      id: 'single-stroke-roll',
+      id: 'pat_ssr_debut',
+      slug: 'single-stroke-roll',
       title: 'Single Stroke Roll',
       kind: 'pattern',
       difficulty: 'Debut',
     },
     {
-      id: 'demo-groove',
+      id: 'song_demo_groove',
+      slug: 'demo-groove',
       title: 'Demo Groove',
       kind: 'song',
       difficulty: 'Intermediate 4',

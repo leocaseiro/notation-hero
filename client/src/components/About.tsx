@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 // Kept in sync by hand for Phase 1; both collapse into the shared/ oRPC contract in Phase 2.
 interface CatalogPlayable {
   id: string;
+  /** Friendly URL token (NH-221); not rendered yet — routing lands with NH-123/NH-221. */
+  slug: string;
   title: string;
   kind: 'song' | 'pattern' | 'lesson';
   difficulty: string;

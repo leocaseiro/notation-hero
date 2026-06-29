@@ -7,7 +7,15 @@ import type { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 // top-level const). The chain is extracted into named steps to stay within sonarjs/no-nested-functions.
 vi.mock('@neondatabase/serverless', () => ({ neon: () => ({}) }));
 vi.mock('drizzle-orm/neon-http', () => {
-  const rows = [{ id: 'pat_ssr_debut', title: 'Single Stroke Roll', kind: 'pattern', level: 0 }];
+  const rows = [
+    {
+      id: 'pat_ssr_debut',
+      slug: 'single-stroke-roll',
+      title: 'Single Stroke Roll',
+      kind: 'pattern',
+      level: 0,
+    },
+  ];
   const limited = { limit: () => Promise.resolve(rows) };
   const filtered = { where: () => limited };
   const selected = { from: () => filtered };
@@ -110,7 +118,7 @@ describe('lambda handler (serverless-express)', () => {
     expect(res.statusCode).toBe(200);
     const body = JSON.parse(res.body as string) as {
       count: number;
-      items: Array<{ id: string; title: string; kind: string; difficulty: string }>;
+      items: Array<{ id: string; slug: string; title: string; kind: string; difficulty: string }>;
     };
     expect(Array.isArray(body.items)).toBe(true);
     expect(body.items.length).toBeGreaterThan(0);
@@ -118,6 +126,7 @@ describe('lambda handler (serverless-express)', () => {
     // Each item carries the catalog contract the About page renders.
     for (const item of body.items) {
       expect(typeof item.id).toBe('string');
+      expect(typeof item.slug).toBe('string');
       expect(typeof item.title).toBe('string');
       expect(typeof item.kind).toBe('string');
       expect(typeof item.difficulty).toBe('string');
