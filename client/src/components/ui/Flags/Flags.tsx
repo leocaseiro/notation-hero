@@ -8,7 +8,7 @@ interface FlagsProps {
 
 type Flag = 'audio' | 'video' | 'parts';
 
-const ICON: Record<Flag, string> = { audio: 'volume_up', video: 'videocam', parts: 'account_tree' };
+const ICON: Record<Flag, string> = { audio: 'volume_up', video: 'videocam', parts: 'splitscreen' };
 
 // Compose one spoken label across the set flags: "Has audio", "Has audio and video",
 // "Has audio, video and parts". Extracted so the JSX stays index-access-free
