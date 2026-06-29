@@ -61,21 +61,21 @@ INSERT INTO track (id, playable_id, instrument, sort_order, level, techniques, c
 ON CONFLICT (id) DO NOTHING;
 
 -- ── drum_profile per drums track (SD-27: keyed by track_id) ──────────────────
-INSERT INTO drum_profile (track_id, beats, fills, rudiments, kit_pieces) VALUES
- ('trk_ssr_debut','{}','{}','{single-stroke-roll}','{snare}'),
- ('trk_dsr_debut','{}','{}','{double-stroke-roll}','{snare}'),
- ('trk_ssr_l2','{}','{}','{single-stroke-roll}','{snare}'),
- ('trk_ss4_l3','{}','{}','{single-stroke-four}','{snare}'),
- ('trk_5sr_l4','{}','{}','{five-stroke-roll}','{snare}'),
- ('trk_7sr_l6','{}','{}','{seven-stroke-roll}','{snare}'),
- ('trk_swiss_l7','{}','{}','{swiss-army-triplet}','{snare}'),
- ('trk_ssr_l8','{}','{}','{single-stroke-roll}','{snare}'),
- ('trk_basic_rock','{rock,basic-rock}','{}','{}','{hi-hat,snare,kick}'),
- ('trk_snare_fill_l4','{}','{snare-fill}','{single-stroke-roll}','{snare}'),
- ('trk_voice_hh','{}','{}','{}','{hi-hat}'),
- ('trk_voice_sn','{}','{}','{}','{snare}'),
- ('trk_voice_kick','{}','{}','{}','{kick}'),
- ('trk_rock_composite','{rock,basic-rock}','{}','{}','{hi-hat,snare,kick}')
+INSERT INTO drum_profile (track_id, beats, fills, rudiments, kit_pieces, created_by) VALUES
+ ('trk_ssr_debut','{}','{}','{single-stroke-roll}','{snare}','seed'),
+ ('trk_dsr_debut','{}','{}','{double-stroke-roll}','{snare}','seed'),
+ ('trk_ssr_l2','{}','{}','{single-stroke-roll}','{snare}','seed'),
+ ('trk_ss4_l3','{}','{}','{single-stroke-four}','{snare}','seed'),
+ ('trk_5sr_l4','{}','{}','{five-stroke-roll}','{snare}','seed'),
+ ('trk_7sr_l6','{}','{}','{seven-stroke-roll}','{snare}','seed'),
+ ('trk_swiss_l7','{}','{}','{swiss-army-triplet}','{snare}','seed'),
+ ('trk_ssr_l8','{}','{}','{single-stroke-roll}','{snare}','seed'),
+ ('trk_basic_rock','{rock,basic-rock}','{}','{}','{hi-hat,snare,kick}','seed'),
+ ('trk_snare_fill_l4','{}','{snare-fill}','{single-stroke-roll}','{snare}','seed'),
+ ('trk_voice_hh','{}','{}','{}','{hi-hat}','seed'),
+ ('trk_voice_sn','{}','{}','{}','{snare}','seed'),
+ ('trk_voice_kick','{}','{}','{}','{kick}','seed'),
+ ('trk_rock_composite','{rock,basic-rock}','{}','{}','{hi-hat,snare,kick}','seed')
 ON CONFLICT (track_id) DO NOTHING;
 
 -- ── SONGS: notation rows first (FK dependency) ───────────────────────────────
@@ -135,38 +135,38 @@ INSERT INTO track (id, playable_id, instrument, roles, name, sort_order, level, 
 ON CONFLICT (id) DO NOTHING;
 
 -- ── tonal_profile per PITCHED track (SD-27: the bass carries its OWN notes) ──
-INSERT INTO tonal_profile (track_id, musical_key, keys, scales, chords, progression_concrete, progression_roman, progression_family) VALUES
+INSERT INTO tonal_profile (track_id, musical_key, keys, scales, chords, progression_concrete, progression_roman, progression_family, created_by) VALUES
  -- Bohemian: the chart has NO chord symbols → chords empty (not invented); key Bb from the file (plausible).
- ('trk_boh_keys','Bb major','{Bb major}','{}','{}','{}','{}','{}'),
- ('trk_boh_glead','Bb major','{Bb major}','{}','{}','{}','{}','{}'),
- ('trk_boh_grhythm','Bb major','{Bb major}','{}','{}','{}','{}','{}'),
- ('trk_boh_bass','Bb major','{Bb major}','{}','{}','{}','{}','{}'),
+ ('trk_boh_keys','Bb major','{Bb major}','{}','{}','{}','{}','{}','seed'),
+ ('trk_boh_glead','Bb major','{Bb major}','{}','{}','{}','{}','{}','seed'),
+ ('trk_boh_grhythm','Bb major','{Bb major}','{}','{}','{}','{}','{}','seed'),
+ ('trk_boh_bass','Bb major','{Bb major}','{}','{}','{}','{}','{}','seed'),
  -- Yellow: REAL chords from the .gp (B major).
- ('trk_yel_glead','B major','{B major}','{}','{B,Badd9,F#6,E7M,Badd11,G#m,Eadd9,F#m7add11}','{B-Badd9-F#6-E7M}','{I-V-IV}','{I-IV-V}'),
- ('trk_yel_grhythm','B major','{B major}','{}','{B,Badd9,F#6,E7M,Badd11,G#m,Eadd9,F#m7add11}','{B-Badd9-F#6-E7M}','{I-V-IV}','{I-IV-V}'),
- ('trk_yel_bass','B major','{B major}','{}','{B,F#,E}','{}','{}','{}'),
+ ('trk_yel_glead','B major','{B major}','{}','{B,Badd9,F#6,E7M,Badd11,G#m,Eadd9,F#m7add11}','{B-Badd9-F#6-E7M}','{I-V-IV}','{I-IV-V}','seed'),
+ ('trk_yel_grhythm','B major','{B major}','{}','{B,Badd9,F#6,E7M,Badd11,G#m,Eadd9,F#m7add11}','{B-Badd9-F#6-E7M}','{I-V-IV}','{I-IV-V}','seed'),
+ ('trk_yel_bass','B major','{B major}','{}','{B,F#,E}','{}','{}','{}','seed'),
  -- Zoio: chart has NO chord symbols + GP key is a default → tonal honestly unknown.
- ('trk_zoio_glead',NULL,'{}','{}','{}','{}','{}','{}'),
- ('trk_zoio_grhythm',NULL,'{}','{}','{}','{}','{}','{}'),
- ('trk_zoio_bass',NULL,'{}','{}','{}','{}','{}','{}'),
+ ('trk_zoio_glead',NULL,'{}','{}','{}','{}','{}','{}','seed'),
+ ('trk_zoio_grhythm',NULL,'{}','{}','{}','{}','{}','{}','seed'),
+ ('trk_zoio_bass',NULL,'{}','{}','{}','{}','{}','{}','seed'),
  -- I'm Yours: REAL chords from the .gp — B major, I-V-vi-IV (fixes the earlier wrong "C major").
- ('trk_imy_grhythm','B major','{B major}','{}','{B,F#,G#m,E,Fdim,F#/A#}','{B-F#-G#m-E}','{I-V-vi-IV}','{I-V-vi-IV}'),
- ('trk_imy_uke','B major','{B major}','{}','{B,F#,G#m,E,Fdim,F#/A#}','{B-F#-G#m-E}','{I-V-vi-IV}','{I-V-vi-IV}'),
- ('trk_imy_bass','B major','{B major}','{}','{B,F#,G#m,E}','{}','{}','{}'),
+ ('trk_imy_grhythm','B major','{B major}','{}','{B,F#,G#m,E,Fdim,F#/A#}','{B-F#-G#m-E}','{I-V-vi-IV}','{I-V-vi-IV}','seed'),
+ ('trk_imy_uke','B major','{B major}','{}','{B,F#,G#m,E,Fdim,F#/A#}','{B-F#-G#m-E}','{I-V-vi-IV}','{I-V-vi-IV}','seed'),
+ ('trk_imy_bass','B major','{B major}','{}','{B,F#,G#m,E}','{}','{}','{}','seed'),
  -- Angra: NO chord symbols; keys from the real section labels (Chorus III modulates E→G).
- ('trk_angra_glead','E minor','{E minor,G major}','{}','{}','{}','{}','{}'),
- ('trk_angra_grhythm','E minor','{E minor,G major}','{}','{}','{}','{}','{}'),
- ('trk_angra_bass','E minor','{E minor,G major}','{}','{}','{}','{}','{}'),
- ('trk_angra_keys','E minor','{E minor,G major}','{}','{}','{}','{}','{}')
+ ('trk_angra_glead','E minor','{E minor,G major}','{}','{}','{}','{}','{}','seed'),
+ ('trk_angra_grhythm','E minor','{E minor,G major}','{}','{}','{}','{}','{}','seed'),
+ ('trk_angra_bass','E minor','{E minor,G major}','{}','{}','{}','{}','{}','seed'),
+ ('trk_angra_keys','E minor','{E minor,G major}','{}','{}','{}','{}','{}','seed')
 ON CONFLICT (track_id) DO NOTHING;
 
 -- ── drum_profile per DRUMS track (the drum side of the same per-track model) ──
-INSERT INTO drum_profile (track_id, beats, fills, rudiments, kit_pieces) VALUES
- ('trk_boh_drums','{rock}','{tom-fill}','{}','{hi-hat,snare,kick,crash,tom}'),
- ('trk_yel_drums','{rock,pop}','{}','{}','{hi-hat,snare,kick}'),
- ('trk_zoio_drums','{rock,punk}','{snare-fill}','{}','{hi-hat,snare,kick,crash}'),
- ('trk_imy_drums','{pop,reggae}','{}','{}','{hi-hat,snare,kick}'),
- ('trk_angra_drums','{metal,double-bass}','{around-the-kit}','{}','{hi-hat,snare,kick,ride,crash,tom}')
+INSERT INTO drum_profile (track_id, beats, fills, rudiments, kit_pieces, created_by) VALUES
+ ('trk_boh_drums','{rock}','{tom-fill}','{}','{hi-hat,snare,kick,crash,tom}','seed'),
+ ('trk_yel_drums','{rock,pop}','{}','{}','{hi-hat,snare,kick}','seed'),
+ ('trk_zoio_drums','{rock,punk}','{snare-fill}','{}','{hi-hat,snare,kick,crash}','seed'),
+ ('trk_imy_drums','{pop,reggae}','{}','{}','{hi-hat,snare,kick}','seed'),
+ ('trk_angra_drums','{metal,double-bass}','{around-the-kit}','{}','{hi-hat,snare,kick,ride,crash,tom}','seed')
 ON CONFLICT (track_id) DO NOTHING;
 
 -- ── media: one official video per song; audio stems where we flagged has_audio ─
