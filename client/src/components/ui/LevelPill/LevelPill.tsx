@@ -40,7 +40,7 @@ export const LevelPill = ({ level }: Readonly<LevelPillProps>) => {
       role="img"
       aria-label={levelLabel(level)}
       className={cn(
-        'inline-flex min-w-7 items-center justify-center rounded-full border px-2 py-0.5 font-mono text-xs font-semibold tabular-nums',
+        'inline-flex min-w-7 items-center justify-center rounded-md border px-2 py-0.5 font-mono text-xs font-semibold tabular-nums',
         isUngraded ? 'border-dashed border-border text-muted-foreground' : 'border-border bg-muted',
         // Debut = brand-teal accent TEXT only (neutral pill). --level-debut is a teal
         // tuned for AA contrast on --muted in BOTH themes (--primary is a fill colour
