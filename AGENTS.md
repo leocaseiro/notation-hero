@@ -85,6 +85,11 @@ no pnpm install; leave an inline comment saying so.
 - Default branch is `master` (NOT main). Never pass `git commit/push --no-verify`.
 - Server, client, and infra tests run under **Vitest** (DACI L5 / NH-194), not Jest — despite
   `nest new` emitting Jest by default.
+- DB migrations (`server/`) are **DDL-first** (`ARCH-ORM-1`): the raw SQL under
+  `server/src/adapters/neon-postgres/migrations/` is the source of truth. ALWAYS generate via
+  `pnpm --filter @notation-hero/server run db:generate` (it passes `--custom`) — never a bare
+  `drizzle-kit generate`, which diffs the intentionally-empty meta snapshot and emits a bogus
+  duplicate-`CREATE` migration (NH-79 review F10).
 - `@notation-hero/infra` Pulumi ops — **from repo root**: `pnpm pulumi:preview` / `pnpm pulumi:up`
   each run `build:deploy` first (`server`→`dist-lambda` + `client`→`dist`, both required by Pulumi)
   then run Pulumi in `infra/`; `pnpm pulumi:destroy` needs no build. Raw no-prebuild form:
