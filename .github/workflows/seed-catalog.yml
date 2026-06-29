@@ -21,6 +21,8 @@ jobs:
     if: ${{ github.ref == 'refs/heads/master' }}
     environment: production
     runs-on: ubuntu-latest
+    # Fail fast instead of holding the runner if a seed hangs (NH-79 review F11).
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-js

@@ -57,6 +57,9 @@ jobs:
       # (drizzle-kit records applied migrations). DATABASE_URL here is the OWNER url (DDL-capable) —
       # never the nh_app url, which has no DDL rights.
       - name: Migrate Neon (before deploy)
+        # Per-step timeout (NH-79 review F11): a hung drizzle-kit migrate must not hold the
+        # deploy-up-dev concurrency group for the job's full 60-min budget.
+        timeout-minutes: 5
         run: pnpm --filter @notation-hero/server run db:migrate
         env:
           DATABASE_URL: ${{ secrets.NEON_MIGRATION_URL }}
@@ -84,6 +87,19 @@ jobs:
           # The nh_app url infra/index.ts reads (process.env.NEON_DATABASE_URL) and injects as the
           # Lambda DATABASE_URL. Owner url stays out of this step entirely.
           NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      # Post-deploy smoke check (NH-79 review F3): fail the deploy if GET /api/catalog is not 200.
+      # The most likely cause of a non-200 on the first deploy is the Phase-2 nh_app GRANTs not being
+      # applied — without this gate that surfaces only as silent 503s in prod (the owner-url seed
+      # succeeds regardless, masking the gap). cloudfrontUrl is a non-secret stack output of `up`.
+      - name: Smoke-check the public catalog read
+        env:
+          CLOUDFRONT_URL: ${{ steps.pulumi-up.outputs.cloudfrontUrl }}
+        run: |
+          [ -n "$CLOUDFRONT_URL" ] || { echo "::error::cloudfrontUrl output missing from pulumi up"; exit 1; }
+          url="$CLOUDFRONT_URL/api/catalog"
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 --retry 5 --retry-delay 10 --retry-all-errors "$url")"
+          echo "GET $url -> HTTP $code"
+          [ "$code" = "200" ] || { echo "::error::catalog read returned $code (expected 200) — likely the Phase-2 nh_app GRANTs are not applied (NH-79 review F3)"; exit 1; }
       # Only a HARD-killed `up` (job timeout / cancellation) strands the S3-backend lock (no
       # DynamoDB auto-release) — a normal `failure` exits cleanly and releases it. So fire ONLY on
       # `cancelled`, surfacing the recovery command instead of leaving an operator to find the wedge
