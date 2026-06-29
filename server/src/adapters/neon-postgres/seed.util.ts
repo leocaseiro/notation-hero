@@ -3,6 +3,8 @@ import path from 'node:path';
 
 import postgres from 'postgres';
 
+import { redactConnectionString } from '../../core/redact.util';
+
 // Thin, idempotent seed runner: executes the committed seed.sql (every INSERT is ON CONFLICT DO
 // NOTHING) over a single TCP connection, inside one transaction. A standalone `tsx` entry point —
 // nothing imports it (it has a no-orphans exemption in .dependency-cruiser.cjs). Run from CI via
@@ -16,7 +18,9 @@ async function main(): Promise<void> {
   // eslint-disable-next-line unicorn/prefer-module -- CJS output: import.meta.url errors under tsc (TS1470)
   const seedPath = path.join(__dirname, 'seed.sql');
   const seedSql = readFileSync(seedPath, 'utf8');
-  const sql = postgres(url, { max: 1 });
+  // connect_timeout (seconds): fail fast if Neon TCP is unreachable instead of hanging the CI job
+  // (NH-79 review F11). The seed-catalog workflow also carries a job-level timeout-minutes.
+  const sql = postgres(url, { max: 1, connect_timeout: 30 });
   try {
     await sql.begin((tx) => tx.unsafe(seedSql));
     console.log('[seed] seed.sql applied (idempotent — re-runs change nothing).');
@@ -26,6 +30,7 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  console.error('[seed] failed:', error);
+  // Redact any connection string before logging — the seed runs with the OWNER url (NH-79 review F7).
+  console.error('[seed] failed:', redactConnectionString(error));
   process.exitCode = 1;
 });
