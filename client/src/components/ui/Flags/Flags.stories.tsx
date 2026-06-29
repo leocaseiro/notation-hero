@@ -13,5 +13,5 @@ type Story = StoryObj<typeof meta>;
 
 export const All: Story = { args: { audio: true, video: true, parts: true } };
 export const AudioOnly: Story = { args: { audio: true } };
-export const Video: Story = { args: { video: true } };
+export const VideoOnly: Story = { args: { video: true } };
 export const PartsOnly: Story = { args: { parts: true } };
