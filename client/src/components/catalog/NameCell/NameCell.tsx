@@ -25,14 +25,20 @@ export const NameCell = ({ row }: Readonly<NameCellProps>) => (
     <Cover icon={coverIcon(row)} variant={row.isLesson ? 'lesson' : 'song'} />
     <div className="min-w-0 flex-1">
       <div className="flex items-center gap-2">
-        <span className="truncate font-semibold text-foreground">{row.title}</span>
+        {/* native title: the full text on hover when truncated; screen readers already get
+            the full text from the DOM node (truncation is visual-only), so no extra markup */}
+        <span title={row.title} className="truncate font-semibold text-foreground">
+          {row.title}
+        </span>
         {/* song-first ternary (avoids unicorn/no-negated-condition); the else branch narrows
             kind to the non-song union so KindBadge gets a valid 'beat' | 'rudiment' | 'fill' */}
         {row.kind === 'song' ? null : <KindBadge kind={row.kind} />}
         {row.isNew ? <NewPill /> : null}
       </div>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
-        <span className="truncate">{row.subtitle}</span>
+        <span title={row.subtitle} className="truncate">
+          {row.subtitle}
+        </span>
         {/* spread the flags object: exactOptionalPropertyTypes forbids passing an explicit
             `undefined` to Flags' optional boolean props, so omit absent keys entirely */}
         <Flags {...row.flags} />

@@ -54,3 +54,9 @@ test('an explicit row icon overrides the kind preset', () => {
   const { container } = render(<NameCell row={{ ...base, kind: 'beat', icon: 'piano' }} />);
   expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('piano');
 });
+
+test('the title and subtitle carry a native title tooltip with the full text', () => {
+  render(<NameCell row={base} />);
+  expect(screen.getByText('Billie Jean')).toHaveAttribute('title', 'Billie Jean');
+  expect(screen.getByText('Pop · 4/4')).toHaveAttribute('title', 'Pop · 4/4');
+});
