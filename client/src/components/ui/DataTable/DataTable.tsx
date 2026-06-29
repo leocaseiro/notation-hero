@@ -330,29 +330,42 @@ const HeaderLabel = <TData,>({ header }: Readonly<{ header: Header<TData, unknow
   );
 };
 
-// Active column: solid accent arrow. Sortable-but-inactive: a persistent neutral
-// `unfold_more` at rest that, on hover/focus, previews this column's first-click
-// direction (arrow_downward for desc-first columns, arrow_upward otherwise).
+// Rest glyph reflects the column's CURRENT sort: arrow_upward (asc), arrow_downward
+// (desc), or a neutral unfold_more when unsorted. Split out so the JSX stays free of a
+// nested ternary (sonarjs/no-nested-conditional).
+function restSortIcon(sorted: false | 'asc' | 'desc'): string {
+  if (sorted === 'asc') return 'arrow_upward';
+  if (sorted === 'desc') return 'arrow_downward';
+  return 'unfold_more';
+}
+
+// At rest the glyph shows the column's current sort state (above); on hover/focus it
+// previews the direction the NEXT click produces — for an inactive column that's its
+// first-click direction (arrow_downward for sortDescFirst cols, else arrow_upward); for
+// the active column it's the toggle (asc previews desc, desc previews asc). Both come from
+// getNextSortingOrder() since enableSortingRemoval is off. The active column is accented.
 const SortGlyph = <TData,>({ column }: Readonly<{ column: Column<TData, unknown> }>) => {
   const sorted = column.getIsSorted();
-  if (sorted) {
-    return (
-      <span className="material-symbols-outlined text-primary" aria-hidden="true">
-        {sorted === 'asc' ? 'arrow_upward' : 'arrow_downward'}
-      </span>
-    );
-  }
-  const previewArrow = column.getNextSortingOrder() === 'desc' ? 'arrow_downward' : 'arrow_upward';
+  const active = Boolean(sorted);
+  const previewIcon = column.getNextSortingOrder() === 'desc' ? 'arrow_downward' : 'arrow_upward';
   // `.material-symbols-outlined` is unlayered and forces `display: inline-block`, which beats
   // Tailwind's layered `hidden`/`inline`; so the show/hide toggle lives on plain wrapper spans
   // (not the icon-font element) — those wrappers respond to `hidden`/`inline` normally.
   return (
-    <span className="relative inline-flex text-muted-foreground" aria-hidden="true">
-      <span className="inline opacity-50 group-hover/sort:hidden group-focus-visible/sort:hidden">
-        <span className="material-symbols-outlined">unfold_more</span>
+    <span
+      className={cn('relative inline-flex', active ? 'text-primary' : 'text-muted-foreground')}
+      aria-hidden="true"
+    >
+      <span
+        className={cn(
+          'inline group-hover/sort:hidden group-focus-visible/sort:hidden',
+          active ? 'opacity-100' : 'opacity-50',
+        )}
+      >
+        <span className="material-symbols-outlined">{restSortIcon(sorted)}</span>
       </span>
       <span className="hidden opacity-70 group-hover/sort:inline group-focus-visible/sort:inline">
-        <span className="material-symbols-outlined">{previewArrow}</span>
+        <span className="material-symbols-outlined">{previewIcon}</span>
       </span>
     </span>
   );
