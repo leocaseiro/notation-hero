@@ -5,7 +5,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { redactConnectionString } from './redact.util';
+import { redactConnectionString } from '../core/redact.util';
 import type { Response } from 'express';
 
 // Public /api/* catch-all: pass HttpExceptions (404, etc.) through unchanged, but map any other

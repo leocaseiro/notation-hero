@@ -5,8 +5,8 @@ import 'reflect-metadata';
 import serverlessExpress from '@codegenie/serverless-express';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
+import { redactConnectionString } from '../core/redact.util';
 import { DbExceptionFilter } from './db-exception.filter';
-import { redactConnectionString } from './redact.util';
 import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyStructuredResultV2,
