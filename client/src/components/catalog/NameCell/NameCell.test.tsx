@@ -35,3 +35,22 @@ test('renders flags from row.flags', () => {
   render(<NameCell row={{ ...base, flags: { audio: true, parts: true } }} />);
   expect(screen.getByRole('img', { name: 'Has audio and parts' })).toBeInTheDocument();
 });
+
+test('uses the kind preset cover glyph when the row has no icon', () => {
+  const { container, rerender } = render(<NameCell row={{ ...base, kind: 'beat' }} />);
+  expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('graphic_eq');
+  rerender(<NameCell row={{ ...base, kind: 'rudiment' }} />);
+  expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('drag_indicator');
+  rerender(<NameCell row={{ ...base, kind: 'fill' }} />);
+  expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('bolt');
+});
+
+test('a lesson uses the school cover glyph regardless of kind', () => {
+  const { container } = render(<NameCell row={{ ...base, kind: 'fill', isLesson: true }} />);
+  expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('school');
+});
+
+test('an explicit row icon overrides the kind preset', () => {
+  const { container } = render(<NameCell row={{ ...base, kind: 'beat', icon: 'piano' }} />);
+  expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('piano');
+});
