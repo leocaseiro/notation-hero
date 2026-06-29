@@ -43,6 +43,13 @@ test('uses the kind preset cover glyph when the row has no icon', () => {
   expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('drag_indicator');
   rerender(<NameCell row={{ ...base, kind: 'fill' }} />);
   expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('bolt');
+  rerender(<NameCell row={{ ...base, kind: 'song' }} />);
+  expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('music_note');
+});
+
+test('an empty icon string falls back to the kind preset, not a blank cover', () => {
+  const { container } = render(<NameCell row={{ ...base, kind: 'beat', icon: '' }} />);
+  expect(container.querySelector('[data-slot="cover"]')).toHaveTextContent('graphic_eq');
 });
 
 test('a lesson uses the school cover glyph regardless of kind', () => {

@@ -17,8 +17,13 @@ const KIND_ICON: Record<CatalogRow['kind'], string> = {
   fill: 'bolt',
 };
 
-const coverIcon = (row: CatalogRow): string =>
-  row.icon ?? (row.isLesson ? 'school' : KIND_ICON[row.kind]);
+// Truthy guard (not `??`): an explicit non-empty icon wins, but an empty string falls
+// through to the preset instead of rendering a blank cover.
+const coverIcon = (row: CatalogRow): string => {
+  if (row.icon) return row.icon;
+  if (row.isLesson) return 'school';
+  return KIND_ICON[row.kind];
+};
 
 export const NameCell = ({ row }: Readonly<NameCellProps>) => (
   <div data-slot="name-cell" className="flex min-w-0 items-center gap-3 text-left">
