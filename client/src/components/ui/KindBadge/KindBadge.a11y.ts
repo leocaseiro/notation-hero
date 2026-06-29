@@ -1,9 +1,7 @@
-import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { test } from '@playwright/test';
 
-import { A11Y_TAGS } from '../../../a11y-tags';
+import { expectNoA11yViolations } from '../../../a11y-helpers';
 import { KIND_BADGE_STORY_IDS } from './KindBadge.story-ids';
-import type { Page } from '@playwright/test';
 
 // axe-core pass per KindBadge story, in BOTH themes and in BOTH the resting and hover
 // states. Story IDs come from the shared KindBadge.story-ids list (lockstep with VR +
@@ -11,27 +9,6 @@ import type { Page } from '@playwright/test';
 // preview decorator's `.dark` class, so axe sees the real rendered colors. This run is
 // the AA validation gate for the three kind colours (beat / rudiment / fill).
 const themes = ['light', 'dark'] as const;
-
-async function expectNoA11yViolations(page: Page, label: string) {
-  // Scope axe to the story root so future global Storybook chrome can't inject
-  // unrelated violations into a component's result.
-  const { violations } = await new AxeBuilder({ page })
-    .include('#storybook-root')
-    .withTags([...A11Y_TAGS])
-    .analyze();
-
-  // Readable failure: state label + rule + each node's axe summary (the measured
-  // contrast ratio and the two colors), so CI logs are actionable.
-  const report = violations
-    .map(
-      (v) =>
-        `[${v.id}] ${v.help}\n` +
-        v.nodes.map((n) => `    ${n.failureSummary?.replaceAll(/\s+/g, ' ').trim()}`).join('\n'),
-    )
-    .join('\n');
-
-  expect(violations, `${label}\n${report}`).toEqual([]);
-}
 
 for (const theme of themes) {
   for (const story of KIND_BADGE_STORY_IDS) {
