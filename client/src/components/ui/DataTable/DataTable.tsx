@@ -277,10 +277,15 @@ const DataRows = <TData,>({
           appearance === 'rows' && 'border-b border-border',
           clickable &&
             'cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring hover:-translate-y-px',
-          // teal-tinted border + soft glow on hover (mockup .trow:hover)
+          // Hover reads as ONE row outline: the teal border recolor only touches the cells'
+          // OUTER edges (rest borders are top/bottom on all cells, left on first, right on last —
+          // no internal verticals), paired with the translateY lift above. The mockup's soft
+          // glow is dropped on purpose: box-shadow (and filter) are no-ops on `display:table-row`
+          // in Chromium, and a per-<td> shadow haloed each cell's internal edges (the reported
+          // bleed). So the outline IS the border, not a shadow.
           clickable &&
             appearance === 'cards' &&
-            'hover:[&>td]:border-[color-mix(in_oklch,var(--primary)_45%,var(--border))] hover:[&>td]:shadow-[0_5px_16px_color-mix(in_oklch,var(--primary)_12%,transparent)]',
+            'hover:[&>td]:border-[color-mix(in_oklch,var(--primary)_45%,var(--border))]',
         )}
       >
         {row.getVisibleCells().map((cell) => (
