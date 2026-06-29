@@ -163,6 +163,22 @@ test('a sortDescFirst column sorts descending on the first click', async () => {
   );
 });
 
+test('controlled sorting calls onSortingChange when a header is clicked', async () => {
+  const user = userEvent.setup();
+  const onSortingChange = vi.fn();
+  render(
+    <DataTable
+      data={unsorted}
+      columns={sortableColumns}
+      getRowId={(r) => r.id}
+      sorting={[]}
+      onSortingChange={onSortingChange}
+    />,
+  );
+  await user.click(screen.getByRole('button', { name: /name/i }));
+  expect(onSortingChange).toHaveBeenCalled();
+});
+
 test('a non-sortable column has no sort button and no aria-sort', () => {
   render(
     <DataTable
