@@ -44,3 +44,14 @@ test('play click plays without also opening the row', async () => {
   expect(onPlay).toHaveBeenCalledWith(rows[0]);
   expect(onOpen).not.toHaveBeenCalled();
 });
+
+test('play via keyboard plays without also opening the row', async () => {
+  const user = userEvent.setup();
+  const onOpen = vi.fn();
+  const onPlay = vi.fn();
+  render(<CatalogTable data={rows} onOpen={onOpen} onPlay={onPlay} />);
+  screen.getByRole('button', { name: 'Play Billie Jean' }).focus();
+  await user.keyboard('[Enter]');
+  expect(onPlay).toHaveBeenCalledWith(rows[0]);
+  expect(onOpen).not.toHaveBeenCalled();
+});

@@ -60,6 +60,38 @@ test('rows are not focusable when onRowClick is absent', () => {
   expect(row).not.toHaveAttribute('tabindex');
 });
 
+test('a keydown from an interactive descendant does not trigger onRowClick', async () => {
+  const user = userEvent.setup();
+  const onRowClick = vi.fn();
+  const columnsWithButton: ColumnDef<Row>[] = [
+    { accessorKey: 'name', header: 'Name', cell: ({ getValue }) => getValue<string>() },
+    {
+      id: 'action',
+      header: '',
+      enableSorting: false,
+      cell: () => (
+        <button type="button" onClick={(e) => e.stopPropagation()}>
+          Act
+        </button>
+      ),
+    },
+  ];
+  const { container } = render(
+    <DataTable
+      data={data}
+      columns={columnsWithButton}
+      onRowClick={onRowClick}
+      getRowId={(r) => r.id}
+    />,
+  );
+  container.querySelector<HTMLButtonElement>('[data-slot="data-table-row"] button')!.focus();
+  await user.keyboard('[Enter]');
+  await user.keyboard('[Space]');
+  // The row's keyboard handler must ignore keys bubbling up from focusable cell content
+  // (e.g. the catalog Play button) so activation doesn't double-fire.
+  expect(onRowClick).not.toHaveBeenCalled();
+});
+
 const unsorted: Row[] = [
   { id: 'b', name: 'Beta', n: 2 },
   { id: 'a', name: 'Alpha', n: 1 },
