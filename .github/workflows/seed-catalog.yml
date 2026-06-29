@@ -14,6 +14,11 @@ permissions:
 jobs:
   seed:
     name: Seed Neon catalog (TS-4)
+    # Defence-in-depth behind the production environment's deployment-branch policy: a manual
+    # workflow_dispatch can only run the owner-url seed from master — matching deploy.yml's guard.
+    # This workflow runs the MORE privileged owner url (DDL-capable), so it must be no less guarded
+    # than the deploy workflow (review NH-79 — seed-catalog dispatch-guard parity).
+    if: ${{ github.ref == 'refs/heads/master' }}
     environment: production
     runs-on: ubuntu-latest
     steps:
