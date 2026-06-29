@@ -11,7 +11,7 @@ export const Cover = ({ icon = 'music_note', variant = 'song' }: Readonly<CoverP
     data-variant={variant}
     aria-hidden="true"
     className={cn(
-      'inline-grid size-10 place-items-center rounded-xl',
+      'inline-grid size-10 place-items-center rounded-lg',
       variant === 'lesson'
         ? 'bg-sky-500/15 text-sky-600 dark:text-sky-400' // lessons: blue tint (functional, not brand)
         : 'bg-primary/15 text-primary', // songs: teal accent tint
