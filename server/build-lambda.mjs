@@ -48,6 +48,13 @@ await build({
   ],
 });
 
+// The eager CATALOG_DB provider (NH-79 F12) builds its neon-http client at app boot, so booting the
+// app needs DATABASE_URL present. This smoke checks DI metadata + routing (/api/health), NOT DB
+// connectivity — neon-http never opens a connection here — so a dummy url is correct + sufficient.
+// The real Lambda always has the nh_app url injected (infra/index.ts). `??=` keeps a real value if
+// the operator already exported one.
+process.env.DATABASE_URL ??= 'postgresql://smoke:smoke@localhost:5432/smoke';
+
 // DI smoke: invoke the bundled handler against /api/health. If esbuild ever strips the
 // decorator metadata (e.g. a regression to esbuild-of-TS), NestJS DI breaks and this throws —
 // failing the build instead of only surfacing at runtime in Lambda.
