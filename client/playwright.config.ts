@@ -33,6 +33,10 @@ export default defineConfig({
   webServer: {
     command: 'pnpm exec storybook dev -p 6006 --ci',
     url: 'http://localhost:6006',
+    // CI always boots a fresh Storybook, so the env below is applied and the addon auto-run is off.
+    // Locally, an already-running `pnpm storybook` on :6006 is reused WITHOUT this env block — the
+    // addon auto-run stays on and the axe race can resurface. To reproduce CI's gated behavior
+    // locally, run `test:a11y` with no separate dev Storybook up (or stop it first).
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
     // Disable the a11y addon's automatic axe run for this served Storybook: each *.a11y.ts spec
