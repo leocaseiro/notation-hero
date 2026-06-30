@@ -59,7 +59,9 @@ migration, a CI migrate-before-`up` step, an idempotent TS-4 seed (`seed.sql` + 
 thin Neon-backed `GET /api/catalog` (Cache-Control header).
 
 - **Status flip:** the 2026-06-27 entry's "⏳ enforcement pending" is now **🤖 enforced** — the CI
-  migrate step, the `LambdaWithUrl` env wiring, and the layout/depcheck guards cover it.
+  migrate step, the `LambdaWithUrl` env wiring, and the layout/depcheck guards cover it. The
+  auto-derived status table below reconciles on the next `docs(registry)` regen; this entry is
+  authoritative.
 - **CORS deferred -> [NH-250](https://leocaseiro.atlassian.net/browse/NH-250)** (same sprint as the
   backend). The thin read ships only the `Cache-Control` header; the site-origin CORS policy §11
   put in NH-79 moves to NH-250, because the site origin (the CloudFront URL) is a deploy output
