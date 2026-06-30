@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
-import { CATALOG_DB, createCatalogDb } from '../../adapters/neon-postgres/catalog-db.adapter';
 import { CatalogController } from './catalog.controller';
+import { CATALOG_DB, createCatalogDb } from '@/adapters/neon-postgres/catalog-db.adapter';
 
 @Module({
   controllers: [CatalogController],

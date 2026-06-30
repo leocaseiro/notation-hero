@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import postgres from 'postgres';
 
-import { redactConnectionString } from '../../core/redact.util';
+import { redactConnectionString } from '@/core/redact.util';
 
 // Thin, idempotent seed runner: executes the committed seed.sql (every INSERT is ON CONFLICT DO
 // NOTHING) over a single TCP connection, inside one transaction. A standalone `tsx` entry point —

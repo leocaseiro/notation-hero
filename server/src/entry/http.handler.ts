@@ -4,8 +4,6 @@ import 'reflect-metadata';
 
 import serverlessExpress from '@codegenie/serverless-express';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../app.module';
-import { redactConnectionString } from '../core/redact.util';
 import { DbExceptionFilter } from './db-exception.filter';
 import type {
   APIGatewayProxyEventV2,
@@ -13,6 +11,8 @@ import type {
   Context,
 } from 'aws-lambda';
 import type { Express } from 'express';
+import { AppModule } from '@/app.module';
+import { redactConnectionString } from '@/core/redact.util';
 
 // A Lambda Function URL always emits the API Gateway v2.0 payload and expects the structured
 // (object) result — never the bare-string variant — so the return is narrowed accordingly.

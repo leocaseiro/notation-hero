@@ -5,8 +5,8 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { redactConnectionString } from '../core/redact.util';
 import type { Response } from 'express';
+import { redactConnectionString } from '@/core/redact.util';
 
 // Public /api/* catch-all: pass HttpExceptions (404, etc.) through unchanged, but map any other
 // thrown error (a Neon/Drizzle connection or query failure) to a generic 503 — never echo the error
