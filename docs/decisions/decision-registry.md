@@ -12,6 +12,24 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-06-30 — NH-210 catalog table lands: TanStack DataTable + VR/a11y gates
+
+PR #92 ships the NH-210 click-to-sort catalog table: a reusable `ui/DataTable<TData>` TanStack
+engine (2-state asc/desc sort, column visibility, card/rows appearance, loading/empty states) plus
+the catalog cell components (`ScoreDonut`, `LevelPill`, `Cover`, `Flags`, `KindBadge`, `NewPill`,
+`Bpm`, `PlayButton`, `NameCell`) and a thin `catalog/CatalogTable` config. Storybook-tested only —
+wiring into a route is deferred (see the spec's "Out of scope").
+
+- **SD-10 (TanStack Table) — FE half now realised + machine-checked.** The `DataTable` engine
+  exists and every table view builds on it; the per-component VR (`chromium`, darwin + linux
+  baselines) and axe `a11y` Playwright projects are blocking CI gates. The grouped "📄 prose-only
+  → 🤖 at Phase 2 (NH-207)" status above still holds for the **backend** `core/catalog` + Neon
+  adapter; this entry records that the **front-end** table contract is now enforced in CI.
+- **Review fixes (PR #92, ce-code-review):** a row-keydown a11y fix (pressing Enter on the in-row
+  Play button no longer also opens the row), dead-code + duplicated class-string cleanups, a shared
+  axe a11y helper (`client/src/a11y-helpers.ts`, deduped across 13 suites), and a standalone `Badge`
+  harness (its `default` bright-fill variant was previously only axe-tested transitively).
+
 ### 2026-06-28 — NH-79 lands: connection keys enforced; CORS deferred to NH-250
 
 Implemented the 2026-06-27 connection-keys design (NH-79): two Neon roles (owner DDL / `nh_app`

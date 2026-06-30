@@ -229,7 +229,9 @@ New files, grouped by responsibility. `ui/` = reusable app-wide; `catalog/` = on
 
 Plus, per the folder convention, each component folder also gets `.stories.tsx`, `.story-ids.ts`, `.test.tsx`, `.a11y.ts`, `.vr.ts`, `.vr.ts-snapshots/`.
 
-> **Primitives `ui/Table` and `ui/Badge` are infrastructure, not storied components.** Per the spec's Storybook plan they get **no** standalone `.stories.tsx` / `.a11y.ts` / `.vr.ts` — they are exercised transitively (Table via `DataTable`, Badge via `KindBadge` + `NewPill`). They each get only `<Name>.tsx` and a small `<Name>.test.tsx` smoke test.
+> **Primitive `ui/Table` is infrastructure, not a storied component.** Per the spec's Storybook plan it gets **no** standalone `.stories.tsx` / `.a11y.ts` / `.vr.ts` — it is exercised transitively via `DataTable`, and gets only `Table.tsx` + a small `Table.test.tsx` smoke test.
+>
+> **`ui/Badge` originally shared this exemption** (exercised via `KindBadge` + `NewPill`), but the PR #92 code-review found its `default` bright-fill variant (`bg-primary` + `text-primary-foreground`) was never axe-tested directly — neither `KindBadge` (`outline`) nor `NewPill` uses it. Badge therefore now carries the full harness (`.stories.tsx` / `.story-ids.ts` / `.a11y.ts` / `.vr.ts` + darwin/linux baselines), matching the spec's Button precedent.
 
 ---
 
