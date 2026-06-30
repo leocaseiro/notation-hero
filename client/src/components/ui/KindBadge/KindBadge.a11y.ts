@@ -1,40 +1,11 @@
-import { test } from '@playwright/test';
-
-import { expectNoA11yViolations } from '../../../a11y-helpers';
+import { runA11yStories } from '../../../a11y-helpers';
 import { KIND_BADGE_STORY_IDS } from './KindBadge.story-ids';
 
-// axe-core pass per KindBadge story, in BOTH themes and in BOTH the resting and hover
-// states. Story IDs come from the shared KindBadge.story-ids list (lockstep with VR +
-// KindBadge.stories.tsx). Theme is driven via Storybook's `globals` query param → our
-// preview decorator's `.dark` class, so axe sees the real rendered colors. This run is
-// the AA validation gate for the three kind colours (beat / rudiment / fill).
-const themes = ['light', 'dark'] as const;
-
-for (const theme of themes) {
-  for (const story of KIND_BADGE_STORY_IDS) {
-    test(`KindBadge / ${story} / ${theme}`, async ({ page }) => {
-      await page.goto(
-        `/iframe.html?id=ui-kindbadge--${story}&viewMode=story&globals=theme:${theme}`,
-      );
-      await page.locator('#storybook-root').waitFor();
-      await page.locator('[data-slot="kind-badge"]').first().waitFor();
-      if (theme === 'dark') {
-        await page.locator('html.dark').waitFor();
-      }
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-      });
-      // Kill CSS transitions/animations so the hover state applies instantly and axe
-      // reads a deterministic color, not a mid-`transition-all` frame (else flaky).
-      await page.addStyleTag({
-        content:
-          '*, *::before, *::after { transition: none !important; animation: none !important; }',
-      });
-
-      await expectNoA11yViolations(page, `${story}/${theme} resting`);
-
-      await page.locator('[data-slot="kind-badge"]').first().hover();
-      await expectNoA11yViolations(page, `${story}/${theme} hover`);
-    });
-  }
-}
+// axe coverage for KindBadge — the shared runA11yStories factory runs every story x
+// {light,dark} x {resting,hover}. See client/src/a11y-helpers.ts.
+runA11yStories({
+  name: 'KindBadge',
+  storyPrefix: 'ui-kindbadge',
+  storyIds: KIND_BADGE_STORY_IDS,
+  slotSelector: '[data-slot="kind-badge"]',
+});
