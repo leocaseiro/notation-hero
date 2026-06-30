@@ -1,9 +1,9 @@
 import { Controller, Get, Header, Inject } from '@nestjs/common';
 import { and, eq, inArray } from 'drizzle-orm';
 
-import { CATALOG_DB, type CatalogDb } from '../../adapters/neon-postgres/catalog-db.adapter';
-import { playable } from '../../adapters/neon-postgres/catalog.schema';
 import { toDifficulty } from './catalog.util';
+import { CATALOG_DB, type CatalogDb } from '@/adapters/neon-postgres/catalog-db.adapter';
+import { playable } from '@/adapters/neon-postgres/catalog.schema';
 
 export interface CatalogPlayable {
   id: string;

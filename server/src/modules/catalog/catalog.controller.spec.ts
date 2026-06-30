@@ -1,8 +1,8 @@
 import { Test } from '@nestjs/testing';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { CATALOG_DB, createCatalogDb } from '../../adapters/neon-postgres/catalog-db.adapter';
 import { CatalogController } from './catalog.controller';
+import { CATALOG_DB, createCatalogDb } from '@/adapters/neon-postgres/catalog-db.adapter';
 
 // With the db injected via CATALOG_DB (NH-79 review F12), the test overrides the provider with a fake
 // query chain — no driver-module mock, no module-registry reset. The spies record the .where()

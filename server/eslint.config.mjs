@@ -8,7 +8,8 @@ import tseslint from 'typescript-eslint';
 import { base } from '../eslint.config.base.mjs';
 
 export default tseslint.config(
-  { ignores: ['eslint.config.mjs'] },
+  // dist-lambda/ is the esbuild bundle (build:lambda output); ignore it like base ignores dist/.
+  { ignores: ['eslint.config.mjs', 'dist-lambda/**'] },
   eslint.configs.recommended,
   ...tseslint.configs.strictTypeChecked, // upgrade from recommendedTypeChecked (D4)
 
@@ -69,13 +70,48 @@ export default tseslint.config(
     files: ['vitest.config.ts', 'build-lambda.mjs'],
     rules: { 'import/no-default-export': 'off' },
   },
+  // Hexagon import hygiene (NH-79 review): cross-directory imports use the @/ alias, never `../`
+  // relative traversal (same-dir `./` is fine). The alias resolves via tsconfig paths (tsc + vitest's
+  // vite-tsconfig-paths) and .swcrc paths (the nest-build SWC rewrite that keeps dist/ self-contained
+  // so the esbuild lambda bundle + `node dist/main` both resolve it). lefthook (eslint-server) + the
+  // CI lint job enforce this.
   {
-    files: ['src/core/**/*.ts'],
+    files: ['src/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
-          patterns: ['@nestjs/*', '@aws-sdk/*', '@pulumi/*', '../adapters/*', '../modules/*'],
+          patterns: [
+            {
+              regex: '^\\.\\./',
+              message:
+                'Use the @/ alias for cross-directory imports (hexagon), not ../ relative paths.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/core/**/*.ts'],
+    rules: {
+      // Overrides the src/ rule above, so it must repeat the ../ ban + add the core fence: core is
+      // framework-free and may not import adapters/modules — via the @/ alias OR a relative path.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              regex: '^\\.\\./',
+              message:
+                'Use the @/ alias for cross-directory imports (hexagon), not ../ relative paths.',
+            },
+            {
+              group: ['@nestjs/*', '@aws-sdk/*', '@pulumi/*', '@/adapters/*', '@/modules/*'],
+              message:
+                'core is framework-free and must not import adapters/modules (hexagon ARCH-GUARD-1).',
+            },
+          ],
         },
       ],
     },
