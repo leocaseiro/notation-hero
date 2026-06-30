@@ -35,11 +35,14 @@ describe('catalog.schema — playable (typed query surface for the thin read)', 
   // at a live query failure. Asserts every Drizzle column exists in the DDL with a matching NOT NULL
   // stance — id is NOT NULL via PRIMARY KEY, the rest carry an explicit NOT NULL or are nullable.
   it('matches the migration DDL on column presence + NOT NULL', () => {
-    const ddl = playableDdl();
+    const ddlLines = playableDdl().split('\n');
     const ddlLine = (column: string): string => {
-      const match = new RegExp(String.raw`^\s*${column}\s+[^\n]*`, 'm').exec(ddl);
-      expect(match, `column ${column} absent from the migration DDL`).not.toBeNull();
-      return match ? match[0] : '';
+      // Match the column-definition line by its first whitespace-delimited token === the column name.
+      // A literal split (not a regex built from the column name) — avoids the Semgrep non-literal
+      // regexp ReDoS rule and is exact (no accidental prefix match like `id` vs `notation_id`).
+      const line = ddlLines.find((l) => l.trim().split(/\s+/)[0] === column);
+      expect(line, `column ${column} absent from the migration DDL`).toBeDefined();
+      return line ?? '';
     };
     for (const [key, col] of Object.entries(getTableColumns(playable))) {
       const line = ddlLine(col.name);
