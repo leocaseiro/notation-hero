@@ -17,10 +17,20 @@ allowBuilds:
   unrs-resolver: false # import-x native resolver not needed yet
   msw: false # @msw/playwright intercepts via Playwright's context.route — MSW's service-worker postinstall is not needed
 
+# Supply-chain hardening — satisfies the pnpm Semgrep SAST rules (NH-259).
+minimumReleaseAge: 10080 # minutes = 7 days; delay installing freshly-published versions to dodge supply-chain attacks
 minimumReleaseAgeExclude:
   - playwright-core@1.61.1
   - playwright@1.61.1
   - '@playwright/test@1.61.1'
+trustPolicy: no-downgrade # block malicious downgrade of security settings
+# semver@6.3.1 and chokidar@4.0.3 are the canonical, ubiquitous libs; no-downgrade flags these older
+# transitive copies only because higher-provenance newer majors (semver 7, chokidar 5) also resolve in
+# the tree — vetted false positives, not takeovers (NH-259). Exclude keeps no-downgrade on everywhere else.
+trustPolicyExclude:
+  - semver@6.3.1
+  - chokidar@4.0.3
+blockExoticSubdeps: true # block transitive deps from untrusted/exotic sources
 
 # Security overrides — patched transitive deps flagged by osv-scanner (NH-191).
 # pnpm 11 reads overrides here, NOT package.json's pnpm.overrides.
