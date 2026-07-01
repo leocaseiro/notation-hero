@@ -147,6 +147,8 @@ jobs:
         run: pnpm run lint:editorconfig
       - name: sort-package-json (check)
         run: pnpm run lint:sort-pkg
+      - name: supply-chain pins in sync with lockfile (NH-259)
+        run: pnpm run check:supply-chain-pins
 
   # Per-package build via `pnpm -r run build`.
   build:

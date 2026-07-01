@@ -102,6 +102,9 @@ pre-push:
     lint-sort-pkg:
       run: pnpm run lint:sort-pkg
       skip: [merge, rebase]
+    check-supply-chain-pins:
+      run: pnpm run check:supply-chain-pins
+      skip: [merge, rebase]
     typecheck:
       run: pnpm -r --if-present run typecheck
       skip: [merge, rebase]
