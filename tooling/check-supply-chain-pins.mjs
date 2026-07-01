@@ -29,7 +29,8 @@ export function extractPins(workspaceYaml) {
     if (!key) continue;
     const item = LIST_ITEM.exec(line);
     if (item) pins.push({ key, spec: item[1].trim() });
-    else if (line.trim() !== '') key = null; // any other non-blank line ends the block
+    // A `#` comment inside the block must not truncate it (would drop pins after it — fail-open).
+    else if (line.trim() !== '' && !line.trimStart().startsWith('#')) key = null;
   }
   return pins;
 }
