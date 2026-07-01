@@ -6,10 +6,11 @@
   "scripts": {
     "build": "pnpm -r --if-present run build",
     "build:deploy": "pnpm --filter @notation-hero/server run build:lambda && pnpm --filter @notation-hero/client run build",
-    "check:all": "pnpm run format:check && pnpm -r --if-present run lint && pnpm run lint:md && pnpm run lint:css && pnpm run lint:yaml && pnpm run lint:spell && pnpm run lint:shell && pnpm run lint:actions && pnpm run lint:editorconfig && pnpm run lint:sort-pkg && pnpm run check:layout && pnpm run check:coverage-ignore && pnpm -r --if-present run typecheck && pnpm run depcheck && pnpm run check:core-purity && pnpm run syncpack && pnpm -r --if-present run test && pnpm run test:tooling",
+    "check:all": "pnpm run format:check && pnpm -r --if-present run lint && pnpm run lint:md && pnpm run lint:css && pnpm run lint:yaml && pnpm run lint:spell && pnpm run lint:shell && pnpm run lint:actions && pnpm run lint:editorconfig && pnpm run lint:sort-pkg && pnpm run check:layout && pnpm run check:coverage-ignore && pnpm -r --if-present run typecheck && pnpm run depcheck && pnpm run check:core-purity && pnpm run syncpack && pnpm run check:supply-chain-pins && pnpm -r --if-present run test && pnpm run test:tooling",
     "check:core-purity": "bash tooling/check-core-purity-canary.sh",
     "check:coverage-ignore": "bash tooling/check-no-coverage-ignore.sh",
     "check:layout": "bash tooling/check-layout.sh",
+    "check:supply-chain-pins": "node tooling/check-supply-chain-pins.mjs",
     "db:migrate": "pnpm --filter @notation-hero/server run db:migrate",
     "depcheck": "depcruise server/src --config .dependency-cruiser.cjs",
     "fix": "prettier --write --ignore-unknown . ; pnpm --filter @notation-hero/client exec eslint . --fix ; pnpm --filter @notation-hero/server exec eslint . --fix ; stylelint --fix \"**/*.css\" ; markdownlint-cli2 --fix \"**/*.md\" ; git ls-files -z 'package.json' '*/package.json' | xargs -0 sort-package-json",
