@@ -1,3 +1,7 @@
+// Load server/.env into process.env for LOCAL dev only (the Nest CLI does not do this itself).
+// Must run before AppModule imports so process.env.DATABASE_URL is set by request time. The Lambda
+// entry (src/entry/http.handler.ts) does NOT import this — there the platform injects env vars.
+import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
