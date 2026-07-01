@@ -12,6 +12,26 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-02 — NH-259 pnpm supply-chain SAST hardening + release-age window 3→7 days
+
+PR #95 clears the 5 blocking Semgrep supply-chain findings that were failing the `sast` gate on master
+and every open PR (3 pnpm rules on `pnpm-workspace.yaml`, plus `.npmrc` `npm-missing-minimum-release-age`
+and `.github/dependabot.yml` `dependabot-missing-cooldown`).
+
+- **Settings added:** `pnpm-workspace.yaml` — `minimumReleaseAge: 10080` (7 days), `trustPolicy: no-downgrade`
+  (+ `trustPolicyExclude` for the two false-positive transitive pins `semver@6.3.1` / `chokidar@4.0.3`),
+  `blockExoticSubdeps: true`. `.npmrc` — `min-release-age=7` (inert for this pnpm-only repo; clears the npm
+  rule). `.github/dependabot.yml` — `cooldown.default-days: 7`.
+- **Release-age window raised 3 → 7 days.** E-renovate-harden (DACI:213/340) previously specified
+  `minimumReleaseAge '3 days'`, but the Semgrep pnpm rule mandates **≥ 7 days**, so 3 days can no longer
+  satisfy the `sast` gate. Reconciled the DACI + registry to **7 days**; Renovate (NH-89) must use ≥ 7 to
+  match pnpm's install-time gate (a shorter Renovate window would open PRs whose frozen install fails until
+  day 7).
+- **Drift-guard:** the `trustPolicyExclude` / `minimumReleaseAgeExclude` pins are version-exact, so a
+  lockfile bump silently un-matches them and re-trips the gate. `tooling/check-supply-chain-pins.mjs`
+  (`pnpm run check:supply-chain-pins`, wired into CI lint + pre-push) fails early if any pin drifts from
+  `pnpm-lock.yaml`.
+
 ### 2026-06-30 — NH-210 catalog table lands: TanStack DataTable + VR/a11y gates
 
 PR #92 ships the NH-210 click-to-sort catalog table: a reusable `ui/DataTable<TData>` TanStack
@@ -599,22 +619,22 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 
 ## E · Security & hygiene (L9)
 
-| ID                  | Decision                                                                                                                                                     | Status           | Enf | Source   | Gap |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | --- | -------- | --- |
-| E-knip              | Knip for dead-code/drift detection: config now, advisory until apps land, then flip to error.                                                                | 🔒 locked-active | 📄  | DACI:193 | 🟥  |
-| E-syncpack          | Syncpack to enforce consistent dependency versions across the monorepo workspace.                                                                            | ✅ done          | 🤖  | DACI:193 |     |
-| E-pnpm-catalog      | pnpm catalog for centralized version pinning (single source of truth for dep versions).                                                                      | 🔒 locked-active | —   | DACI:193 |     |
-| E-no-orphans-error  | Flip dependency-cruiser no-orphans from WARN to ERROR; configure test/story files as entries so co-location doesn't false-positive.                          | ✅ done          | 🤖  | DACI:193 |     |
-| E-osv-scanner       | osv-scanner as a CI gate that fails the build on any known CVE in dependencies (free SCA).                                                                   | 🔒 locked-active | 🤖  | DACI:194 |     |
-| E-dependabot        | Enable GitHub Dependabot alerts (free, includes private) plus pnpm audit for dependency-vuln visibility.                                                     | 🔒 locked-active | —   | DACI:194 |     |
-| E-renovate          | Renovate for dependency updates: grouped packageRules for low PR noise, pnpm-catalog-aware, automerge only lockFileMaintenance.                              | ⏳ pending       | —   | DACI:195 |     |
-| E-renovate-harden   | Renovate automerge hardening: minimumReleaseAge '3 days'; restrict automerge to lockFileMaintenance only; all version bumps need human review.               | ⏳ pending       | —   | DACI:203 |     |
-| E-gitleaks          | gitleaks always-on for secret scanning: Lefthook pre-commit + CI; free and works on private repos (carries the gap when GHAS native scanning auto-off).      | ✅ done          | 🤖  | DACI:196 |     |
-| E-gh-secret-scan    | Enable GitHub native secret scanning + push protection while public; AWS partner auto-revokes leaked keys; auto-off on private (needs GHAS).                 | ✅ done          | 🤖  | DACI:196 |     |
-| E-semgrep           | Semgrep always-on SAST: fast, runs in Lefthook + PR, free on private repos.                                                                                  | ✅ done          | 🤖  | DACI:197 |     |
-| E-codeql            | CodeQL deep SAST out-of-band: weekly schedule + push-to-main; public-only via repository.visibility workflow guard, auto-disables on private (no GHAS bill). | ✅ done          | 🤖  | DACI:197 |     |
-| E-sec-principle     | Security principle: for SAST and secrets each, run portable free OSS always-on + best free GitHub-native while public; GHAS never required.                  | 🔒 locked-active | —   | DACI:199 |     |
-| E-codeql-guard-impl | CodeQL visibility guard impl: job-level gh api .visibility output gating both CodeQL job and SARIF-upload step with if public (covers schedule events).      | ✅ done          | 🤖  | DACI:205 |     |
+| ID                  | Decision                                                                                                                                                                                         | Status           | Enf | Source   | Gap |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------- | --- | -------- | --- |
+| E-knip              | Knip for dead-code/drift detection: config now, advisory until apps land, then flip to error.                                                                                                    | 🔒 locked-active | 📄  | DACI:193 | 🟥  |
+| E-syncpack          | Syncpack to enforce consistent dependency versions across the monorepo workspace.                                                                                                                | ✅ done          | 🤖  | DACI:193 |     |
+| E-pnpm-catalog      | pnpm catalog for centralized version pinning (single source of truth for dep versions).                                                                                                          | 🔒 locked-active | —   | DACI:193 |     |
+| E-no-orphans-error  | Flip dependency-cruiser no-orphans from WARN to ERROR; configure test/story files as entries so co-location doesn't false-positive.                                                              | ✅ done          | 🤖  | DACI:193 |     |
+| E-osv-scanner       | osv-scanner as a CI gate that fails the build on any known CVE in dependencies (free SCA).                                                                                                       | 🔒 locked-active | 🤖  | DACI:194 |     |
+| E-dependabot        | Enable GitHub Dependabot alerts (free, includes private) plus pnpm audit for dependency-vuln visibility.                                                                                         | 🔒 locked-active | —   | DACI:194 |     |
+| E-renovate          | Renovate for dependency updates: grouped packageRules for low PR noise, pnpm-catalog-aware, automerge only lockFileMaintenance.                                                                  | ⏳ pending       | —   | DACI:195 |     |
+| E-renovate-harden   | Renovate automerge hardening: minimumReleaseAge '7 days' (raised 3→7 to match the pnpm SAST floor, NH-259); restrict automerge to lockFileMaintenance only; all version bumps need human review. | ⏳ pending       | —   | DACI:203 |     |
+| E-gitleaks          | gitleaks always-on for secret scanning: Lefthook pre-commit + CI; free and works on private repos (carries the gap when GHAS native scanning auto-off).                                          | ✅ done          | 🤖  | DACI:196 |     |
+| E-gh-secret-scan    | Enable GitHub native secret scanning + push protection while public; AWS partner auto-revokes leaked keys; auto-off on private (needs GHAS).                                                     | ✅ done          | 🤖  | DACI:196 |     |
+| E-semgrep           | Semgrep always-on SAST: fast, runs in Lefthook + PR, free on private repos.                                                                                                                      | ✅ done          | 🤖  | DACI:197 |     |
+| E-codeql            | CodeQL deep SAST out-of-band: weekly schedule + push-to-main; public-only via repository.visibility workflow guard, auto-disables on private (no GHAS bill).                                     | ✅ done          | 🤖  | DACI:197 |     |
+| E-sec-principle     | Security principle: for SAST and secrets each, run portable free OSS always-on + best free GitHub-native while public; GHAS never required.                                                      | 🔒 locked-active | —   | DACI:199 |     |
+| E-codeql-guard-impl | CodeQL visibility guard impl: job-level gh api .visibility output gating both CodeQL job and SARIF-upload step with if public (covers schedule events).                                          | ✅ done          | 🤖  | DACI:205 |     |
 
 ## F · Integrations & observability (L10–L13)
 
