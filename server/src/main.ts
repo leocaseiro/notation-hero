@@ -16,7 +16,8 @@ async function bootstrap() {
   // /api -> :3001). Override with PORT. On Lambda the entry is http.handler.ts, not this listener.
   await app.listen(port);
 
-  // app.getUrl() already includes the port; do not append it again (avoids a doubled :3001:3001).
-  logger.log(`Application is running on: ${await app.getUrl()}`);
+  // Log a clickable localhost URL. app.getUrl() reports the IPv6 form http://[::1]:<port>, which
+  // many browsers won't open; `port` is built above so we compose the URL directly.
+  logger.log(`Application is running on: http://localhost:${String(port)}`);
 }
 void bootstrap();
