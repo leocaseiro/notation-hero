@@ -1,3 +1,5 @@
+// Load .env for LOCAL seeding so DATABASE_URL is set (no-op in CI, where the url is injected).
+import 'dotenv/config';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
