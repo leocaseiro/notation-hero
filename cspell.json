@@ -258,6 +258,7 @@
     "multer",
     "undici",
     "jsdom",
+    "chokidar",
     "groovescribe",
     "Namecheap",
     "Oxlint",
