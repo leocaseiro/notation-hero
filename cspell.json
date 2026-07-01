@@ -259,6 +259,7 @@
     "undici",
     "jsdom",
     "chokidar",
+    "cooldown",
     "groovescribe",
     "Namecheap",
     "Oxlint",

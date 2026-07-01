@@ -11,6 +11,10 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    # Supply-chain hardening — wait 7 days before proposing updates to newly-published
+    # versions (clears semgrep dependabot-missing-cooldown, NH-259).
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
         patterns:
