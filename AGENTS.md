@@ -65,6 +65,16 @@ Root-level checks — each is a named script AND a CI gate, so run any locally:
 - `pnpm run check:coverage-ignore` — bans istanbul/c8/v8 coverage-ignore directives.
 - `pnpm run syncpack` — cross-package dependency-version consistency.
 - `pnpm run test:tooling` — `node --test` over `tooling/*.test.mjs` plus `tooling/*.test.sh` shell tests.
+- `pnpm run check:supply-chain-pins` — asserts the version-exact `trustPolicyExclude` /
+  `minimumReleaseAgeExclude` pins in `pnpm-workspace.yaml` still resolve in `pnpm-lock.yaml`; a lockfile
+  bump silently un-matches them and re-trips pnpm's `no-downgrade` / 7-day `minimumReleaseAge` gate,
+  re-breaking installs (NH-259).
+
+**Supply-chain release-age gate (NH-259):** `pnpm-workspace.yaml` sets `minimumReleaseAge` (7 days), so
+pnpm holds back versions published < 7 days ago — a plain `pnpm add <pkg>@latest` may resolve an older
+version or wait (intentional: it dodges compromised fresh releases). To pull a security patch inside the
+window, add its exact `name@version` to `minimumReleaseAgeExclude`, then drop it after the window / next
+lockfile refresh.
 
 **When authoring a new CI workflow job**, use `- uses: ./.github/actions/setup-js`
 (pnpm + Node-from-`.nvmrc` + frozen install) AFTER `actions/checkout@v6`; do not inline
