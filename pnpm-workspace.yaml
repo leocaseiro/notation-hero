@@ -19,6 +19,8 @@ allowBuilds:
 
 # Supply-chain hardening — satisfies the pnpm Semgrep SAST rules (NH-259).
 minimumReleaseAge: 10080 # minutes = 7 days; delay installing freshly-published versions to dodge supply-chain attacks
+# minimumReleaseAgeExclude is also the CVE fast-track: to install a security patch published < 7 days
+# ago, add its exact name@version here, then drop it after the window / next lockfile refresh (NH-259).
 minimumReleaseAgeExclude:
   - playwright-core@1.61.1
   - playwright@1.61.1
@@ -27,6 +29,8 @@ trustPolicy: no-downgrade # block malicious downgrade of security settings
 # semver@6.3.1 and chokidar@4.0.3 are the canonical, ubiquitous libs; no-downgrade flags these older
 # transitive copies only because higher-provenance newer majors (semver 7, chokidar 5) also resolve in
 # the tree — vetted false positives, not takeovers (NH-259). Exclude keeps no-downgrade on everywhere else.
+# These pins are version-EXACT: when the lockfile bumps them the exclude stops matching and no-downgrade
+# re-trips. `pnpm run check:supply-chain-pins` (CI lint + pre-push) fails early and points here to re-sync.
 trustPolicyExclude:
   - semver@6.3.1
   - chokidar@4.0.3
