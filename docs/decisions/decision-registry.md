@@ -12,6 +12,24 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-02 — NH-260 markdownlint emphasis/strong styles pinned (MD049/MD050)
+
+`.markdownlint.yaml` now pins `MD049` (emphasis/italic) to `underscore` and `MD050`
+(strong/bold) to `asterisk`, replacing markdownlint's default `consistent` mode.
+Follow-up from NH-260 / PR #96, where this cascade was first hit.
+
+- **Why:** in `consistent` mode the _first_ emphasis span in a file anchors the
+  expected style, so one stray wrong-style span near the top of a doc re-flags every
+  pre-existing span far from the edit — a confusing 132-error cascade that looks like a
+  version/parity bug but is not. An explicit style makes a wrong span fail at its _own_
+  line with `Expected: underscore` instead.
+- **Matches repo convention** — verified bold uses `**` on 6491 lines vs `__` on 44;
+  underscore italics predominant. `pnpm run lint:md` stays green on all 125 `.md` files
+  (no file needed fixing), so the pin is consistent repo-wide, not merely predominant.
+- **Enforcement:** the existing `lint:md` gate (CI + pre-push) now flags a wrong-style
+  span at its own line. Regression-checked: a throwaway asterisk-italic reproduced
+  132 → 2 errors, then reverted.
+
 ### 2026-07-02 — NH-259 pnpm supply-chain SAST hardening + release-age window 3→7 days
 
 PR #95 clears the 5 blocking Semgrep supply-chain findings that were failing the `sast` gate on master
