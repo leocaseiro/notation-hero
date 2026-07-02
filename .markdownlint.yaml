@@ -1,4 +1,15 @@
 default: true
+# -- Emphasis/strong styles pinned explicitly (NOT the default 'consistent') --
+# In 'consistent' mode the FIRST emphasis span in a file anchors the expected
+# style, so one wrong-style span (e.g. a stray *loader* near the top of a doc)
+# re-flags every pre-existing span far from the edit — a confusing cascade that
+# looks like a version/parity bug but isn't. Explicit styles make a wrong span
+# fail at its OWN line ("Expected: underscore") instead. Styles match repo
+# convention (grep: **bold** on 6491 lines vs __bold__ on 44; _italic_ predominant).
+MD049:
+  style: underscore # italics use _x_ (decision-registry + repo convention)
+MD050:
+  style: asterisk # strong/bold uses **x**
 # -- Rules mirrored from base-skill --
 MD013: false # line-length: Prettier owns prose wrapping
 MD024: false # no-duplicate-heading: used legitimately in ADRs / decision docs
