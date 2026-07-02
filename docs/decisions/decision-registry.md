@@ -23,7 +23,7 @@ Follow-up from NH-260 / PR #96, where this cascade was first hit.
   pre-existing span far from the edit — a confusing 132-error cascade that looks like a
   version/parity bug but is not. An explicit style makes a wrong span fail at its _own_
   line with `Expected: underscore` instead.
-- **Matches repo convention** — verified bold uses `**` on 6491 lines vs `__` on 44;
+- **Matches repo convention** — verified bold overwhelmingly uses `**` not `__`;
   underscore italics predominant. `pnpm run lint:md` stays green on all 125 `.md` files
   (no file needed fixing), so the pin is consistent repo-wide, not merely predominant.
 - **Enforcement:** the existing `lint:md` gate (CI + pre-push) now flags a wrong-style

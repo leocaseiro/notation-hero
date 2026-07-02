@@ -5,7 +5,7 @@ default: true
 # re-flags every pre-existing span far from the edit — a confusing cascade that
 # looks like a version/parity bug but isn't. Explicit styles make a wrong span
 # fail at its OWN line ("Expected: underscore") instead. Styles match repo
-# convention (grep: **bold** on 6491 lines vs __bold__ on 44; _italic_ predominant).
+# convention (bold overwhelmingly **x** not __x__; underscore italics predominant).
 MD049:
   style: underscore # italics use _x_ (decision-registry + repo convention)
 MD050:
