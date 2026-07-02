@@ -21,6 +21,7 @@
     "infra/Pulumi.dev.yaml"
   ],
   "words": [
+    "envload",
     "notation",
     "alphatab",
     "alphatex",
