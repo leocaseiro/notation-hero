@@ -122,6 +122,7 @@ loading, shouldFilter: false }` ready to spread onto the component.
 
 ## Out of scope
 
+- The `useFilterOptions` container hook (debounced fetch wiring). The dumb components are already fetch-agnostic — frontend-only (`shouldFilter` on, static `options`) and fetch (`shouldFilter={false}` + `onQueryChange` + `loading`) are both expressible and shown in stories (`Open` vs `Loading`). The hook is a deferred convenience, not a blocker.
 - Wiring a live filter row to `/api/catalog` / the catalog route (NH-123).
 - The relevance / newest / curated **sort dropdown** (part of NH-254 but not in the requested component set — flag for a follow-up if wanted).
 - Server-side keyset pagination decision (NH-253 notes it; the component supports both client- and server-driven paging via props).
