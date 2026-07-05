@@ -92,9 +92,9 @@ const LevelFilter = ({
           expand_more
         </span>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-0">
+      <PopoverContent className="w-72 p-0">
         <p className="px-2 pt-2 pb-1 text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          difficulty range (0 = Debut)
+          difficulty range
         </p>
         <div className="flex items-center gap-2 px-2 pt-1 pb-2">
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground uppercase">

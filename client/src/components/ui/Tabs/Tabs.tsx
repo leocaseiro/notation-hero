@@ -27,8 +27,8 @@ const TabsList = ({ className, ...props }: React.ComponentProps<typeof TabsPrimi
   />
 );
 
-// A single pill. Inactive triggers stay muted; the active one (data-[state=active]) lifts onto a
-// bg-background surface with a subtle shadow and foreground text. Focus-visible draws the ring.
+// A single pill. Inactive triggers stay muted; the active one (data-[state=active]) gets the solid
+// teal (primary) fill with primary-foreground text and a subtle shadow. Focus-visible draws the ring.
 const TabsTrigger = ({
   className,
   ...props
@@ -38,9 +38,9 @@ const TabsTrigger = ({
     className={cn(
       'inline-flex h-7 flex-1 items-center justify-center gap-1.5 rounded-sm px-2.5 text-sm font-medium whitespace-nowrap transition-all outline-none',
       // Inactive triggers keep full-contrast foreground text (muted-foreground on the muted track
-      // is only 4.13:1 — fails AA); the active pill is distinguished by its raised bg + shadow.
+      // is only 4.13:1 — fails AA); the active pill is the solid teal fill (primary), like Button.
       'text-foreground hover:bg-background/60',
-      'data-[state=active]:bg-background data-[state=active]:shadow-sm',
+      'data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm',
       'focus-visible:ring-3 focus-visible:ring-ring/50',
       'disabled:pointer-events-none disabled:opacity-50',
       '[&_.material-symbols-outlined]:text-[1.125rem]',

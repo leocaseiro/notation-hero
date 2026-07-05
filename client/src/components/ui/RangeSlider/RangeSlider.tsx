@@ -63,28 +63,32 @@ const RangeSlider = ({
         disabled={disabled}
         className={cn(
           'relative flex h-5 w-full touch-none items-center select-none',
-          disabled && 'opacity-50',
+          disabled && 'cursor-not-allowed opacity-50',
         )}
       >
         <Slider.Track className="relative h-1 grow rounded-full bg-muted">
           <Slider.Range className="absolute h-full rounded-full bg-primary" />
         </Slider.Track>
+        {/* Thumbs: grab cursor + teal fill while dragging (:active); disabled keys off Radix's
+            data-disabled (a <span> can't match :disabled), which also suppresses the hover ring. */}
         <Slider.Thumb
           aria-label={minLabel}
           className={cn(
-            'block size-4 rounded-full border-2 border-primary bg-background transition-[box-shadow,color]',
+            'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
             'hover:ring-4 hover:ring-ring/30',
             'focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-            'disabled:pointer-events-none',
+            'active:cursor-grabbing active:bg-primary',
+            'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed',
           )}
         />
         <Slider.Thumb
           aria-label={maxLabel}
           className={cn(
-            'block size-4 rounded-full border-2 border-primary bg-background transition-[box-shadow,color]',
+            'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
             'hover:ring-4 hover:ring-ring/30',
             'focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-            'disabled:pointer-events-none',
+            'active:cursor-grabbing active:bg-primary',
+            'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed',
           )}
         />
       </Slider.Root>

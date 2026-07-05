@@ -60,6 +60,12 @@ function selectionLabel(
   return label;
 }
 
+// Selected option labels, comma-joined — feeds the trigger's hover tooltip (title) so a multi-select
+// count badge can reveal WHICH options are chosen on hover without opening the popover.
+function selectedSummary(options: readonly FilterOption[], value: string[]): string {
+  return value.map((v) => options.find((option) => option.value === v)?.label ?? v).join(', ');
+}
+
 // Accessible filter dropdown: a trigger chip opens a cmdk combobox (arrow-key nav, Enter to
 // toggle, teal checkmarks). Keeps the Jira-style layout but fixes keyboard selection. Dumb +
 // fetch-agnostic — static `options` + `shouldFilter` for frontend filtering, or `shouldFilter={false}`
@@ -93,12 +99,16 @@ const FacetFilter = ({
     );
   };
 
+  // Multi-select: expose the chosen labels as a hover tooltip (title) on the count-badge trigger.
+  const summary = mode === 'multiple' && value.length > 0 ? selectedSummary(options, value) : '';
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         type="button"
         data-slot="facet-filter"
         className={cn(TRIGGER_CLASSES, className)}
+        {...(summary ? { title: summary } : {})}
       >
         {icon && (
           <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">

@@ -27,6 +27,9 @@ const PopoverContent = ({
     sideOffset={sideOffset}
     className={cn(
       'z-50 w-64 rounded-md border border-border bg-popover p-2 text-popover-foreground shadow-md outline-none',
+      // When the panel itself takes focus (content with no focusable child), show a ring so keyboard
+      // users see where focus landed instead of it appearing "lost".
+      'focus-visible:ring-3 focus-visible:ring-ring/50',
       className,
     )}
     {...props}
