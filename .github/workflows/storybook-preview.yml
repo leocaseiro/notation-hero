@@ -23,10 +23,11 @@ on:
         required: true
         type: string
 
-# Least-privilege: publish to gh-pages + upsert the PR preview comment. No id-token/AWS.
+# Least-privilege DEFAULT: read-only for the untrusted-code jobs (changes/build). The write scope
+# (gh-pages publish + PR comment) is granted per-job on publish + cleanup ONLY, so the jobs that
+# run untrusted PR code never hold the write token. No id-token/AWS.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 jobs:
   # Diff filter — only pull_request + push carry a base the filter can diff against;
@@ -54,7 +55,7 @@ jobs:
   # target only.
   build:
     needs: changes
-    if: ${{ !cancelled() && github.event.action != 'closed' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.changes.outputs.client == 'true') || (github.event_name == 'pull_request' && (needs.changes.outputs.client == 'true' || contains(github.event.pull_request.labels.*.name, 'preview')))) }}
+    if: ${{ !cancelled() && github.event.action != 'closed' && (github.event.action != 'labeled' || github.event.label.name == 'preview') && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.changes.outputs.client == 'true') || (github.event_name == 'pull_request' && (needs.changes.outputs.client == 'true' || contains(github.event.pull_request.labels.*.name, 'preview')))) }}
     runs-on: ubuntu-latest
     concurrency:
       group: storybook-preview-${{ github.event.pull_request.number || github.event.inputs.pr_number || 'master' }}
@@ -62,7 +63,6 @@ jobs:
     outputs:
       dest: ${{ steps.meta.outputs.dest }}
       pr: ${{ steps.meta.outputs.pr }}
-      base: ${{ steps.meta.outputs.base }}
     steps:
       # Resolve base path + gh-pages destination from event context. The PR number comes from
       # the event (PR) or the dispatch input; passed via env and numeric-validated so untrusted
@@ -103,8 +103,15 @@ jobs:
           BASE: ${{ steps.meta.outputs.base }}
         run: |
           set -euo pipefail
-          grep -q "${BASE}assets/" client/storybook-static/iframe.html \
+          f=client/storybook-static/iframe.html
+          # Existence: the base prefix reached the bundled assets.
+          grep -q "${BASE}assets/" "$f" \
             || { echo "::error::Storybook base path $BASE not applied to built assets"; exit 1; }
+          # Completeness: no asset ref escaped the base as a root-absolute /assets/ path (catches a
+          # partial base application — the plan's R-builder-base risk).
+          if grep -qE '(src|href)="/assets/' "$f"; then
+            echo "::error::found root-absolute /assets/ refs — base path only partially applied"; exit 1
+          fi
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: storybook-static
@@ -113,12 +120,17 @@ jobs:
           retention-days: 3
 
   # Publish to gh-pages. Separate job so its concurrency group (shared, no-cancel) serializes
-  # ALL publishes across PRs — neither peaceiris nor a raw push retries a non-fast-forward, so
-  # serialization is the only cross-PR race guard.
+  # publishes across PRs — neither peaceiris nor a raw push retries a non-fast-forward, so the
+  # group is the race guard. Caveat: a group keeps only ONE pending run, so a burst of 3+
+  # near-simultaneous cross-PR publishes can evict an intermediate one; that PR re-converges on
+  # its next push (the accepted R-concurrency-drop trade-off in the plan).
   publish:
     needs: build
     if: needs.build.result == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     concurrency:
       group: gh-pages-deploy
       cancel-in-progress: false
@@ -163,10 +175,11 @@ jobs:
             const pr = Number(process.env.PR);
             const url = process.env.URL;
             const body = `${marker}\n📚 **Storybook preview**: ${url}\n\n_Updates on every push while this PR is open._`;
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr,
+              per_page: 100,
             });
             const existing = comments.find((c) => c.body && c.body.includes(marker));
             if (existing) {
@@ -186,11 +199,17 @@ jobs:
             }
 
   # Remove a PR's preview folder when the PR closes. Shares the gh-pages-deploy concurrency group
-  # so a cleanup serializes with publishes (no non-fast-forward race). A fork-PR close gets a
-  # read-only token but simply no-ops — nothing was ever published, so no push is attempted.
+  # so a cleanup serializes with publishes (no non-fast-forward race). A fork-PR close no-ops —
+  # nothing was ever published (folder absent), so the push below never runs. Known limitation:
+  # this fires once and shares the single-pending-run group, so a burst of publishes can evict a
+  # queued cleanup, orphaning pr/<n>/ (cosmetic; a reconciliation sweep is deferred — see the
+  # plan's Scope Boundaries).
   cleanup:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
     concurrency:
       group: gh-pages-deploy
       cancel-in-progress: false
@@ -199,11 +218,19 @@ jobs:
         id: ghp
         run: |
           set -euo pipefail
-          if git ls-remote --exit-code --heads "https://github.com/${GITHUB_REPOSITORY}.git" gh-pages >/dev/null 2>&1; then
+          # `ls-remote --exit-code` returns 2 when no ref matches (branch truly absent) and other
+          # non-zero codes for transient/network errors — distinguish them so a transient failure
+          # fails loudly instead of silently skipping cleanup (which would orphan the folder).
+          rc=0
+          git ls-remote --exit-code --heads "https://github.com/${GITHUB_REPOSITORY}.git" gh-pages >/dev/null 2>&1 || rc=$?
+          if [ "$rc" -eq 0 ]; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
-          else
+          elif [ "$rc" -eq 2 ]; then
             echo "exists=false" >> "$GITHUB_OUTPUT"
             echo "gh-pages does not exist; nothing to clean up."
+          else
+            echo "::error::git ls-remote failed (exit $rc) — cannot determine gh-pages state"
+            exit 1
           fi
       - name: Checkout gh-pages
         if: steps.ghp.outputs.exists == 'true'
@@ -235,10 +262,11 @@ jobs:
           script: |
             const marker = '<!-- storybook-preview -->';
             const pr = Number(process.env.PR);
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr,
+              per_page: 100,
             });
             const existing = comments.find((c) => c.body && c.body.includes(marker));
             if (existing) {

@@ -269,6 +269,10 @@ manual triggers), and developer docs.
   third-party action to vet first.
 - **Adding `shared/` to the auto-trigger path filter** — do this if stories begin rendering `shared/` code or
   types (origin spec open question).
+- **Scheduled reconciliation sweep** for orphaned `pr/<n>/` folders — the cleanup job fires once on close and
+  shares the single-pending-run `gh-pages-deploy` group, so a burst of publishes can evict a queued cleanup,
+  leaving a folder orphaned (cosmetic on a solo repo). A periodic workflow diffing `gh-pages` `pr/*` against
+  open PRs would self-heal it. (Code review 2026-07-05: adversarial + reliability reviewers.)
 
 ### Out of Scope (unchanged by this work)
 
