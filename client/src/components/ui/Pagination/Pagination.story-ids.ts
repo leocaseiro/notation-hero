@@ -2,9 +2,10 @@
 // in lockstep with Pagination.stories.tsx — add a story once and both gates pick it up. Named
 // `*.story-ids.ts` so Storybook's stories glob ignores it.
 export const PAGINATION_STORY_IDS = [
-  'default',
+  'first-page',
   'middle',
   'last-page',
-  'single-page',
+  'few-pages',
+  'many-pages',
   'with-page-size',
 ] as const;
