@@ -3,10 +3,13 @@ import type * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
-// Bare styled wrapper over Radix Popover. Content renders INLINE (no Portal) so it stays inside the
+// Styled wrapper over Radix Popover. Content renders INLINE (no Portal) so it stays inside the
 // Storybook story root — that keeps the open panel in scope for the axe a11y sweep and the VR
-// snapshot (both scoped to #storybook-root). Coverage comes via the filter components that consume
-// it (FacetFilter / TokenPicker / LevelFilter), so this primitive ships no standalone story/test.
+// snapshot (both scoped to #storybook-root), and is what FacetFilter / TokenPicker / LevelFilter use.
+// CONSUMER CONSTRAINT: because the content is not portalled, do NOT nest these inside an
+// `overflow-hidden`/`auto`/`scroll` ancestor — the floating panel will clip to it. If a
+// horizontally-scrolling filter row is ever needed, let that row overflow visibly, or add a
+// `portal?` prop here (defaulting to inline for the test path) so real pages can opt into a portal.
 const Popover = PopoverPrimitive.Root;
 const PopoverTrigger = PopoverPrimitive.Trigger;
 const PopoverAnchor = PopoverPrimitive.Anchor;

@@ -29,6 +29,11 @@ test('trigger reads "Level: 2–6" for a range', () => {
   expect(screen.getByRole('button', { name: 'Level: 2–6' })).toBeInTheDocument();
 });
 
+test('an inverted range (min > max) still reads ascending', () => {
+  render(<LevelFilter value={{ min: 8, max: 2 }} onChange={noop} />);
+  expect(screen.getByRole('button', { name: 'Level: 2–8' })).toBeInTheDocument();
+});
+
 test('trigger reads "Level ≤ Debut" for a Debut max', () => {
   render(<LevelFilter value={{ min: null, max: 0 }} onChange={noop} />);
   expect(screen.getByRole('button', { name: 'Level ≤ Debut' })).toBeInTheDocument();

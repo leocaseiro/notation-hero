@@ -57,8 +57,8 @@ test('selecting via keyboard (Enter on the highlighted option) adds a value', as
 test('a selected option is announced and can be toggled off', async () => {
   const user = userEvent.setup();
   render(<Harness initial={['rock']} />);
-  // sr-only ", selected" is part of the accessible name.
-  expect(screen.getByRole('option', { name: /rock, selected/i })).toBeInTheDocument();
+  // sr-only ", checked" is part of the accessible name.
+  expect(screen.getByRole('option', { name: /rock, checked/i })).toBeInTheDocument();
   await user.click(screen.getByRole('option', { name: /rock/i }));
   expect(screen.getByRole('option', { name: 'Rock' })).toBeInTheDocument();
 });

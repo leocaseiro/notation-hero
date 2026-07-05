@@ -60,7 +60,7 @@ function selectionLabel(
   return label;
 }
 
-// Accessible filter dropdown: a trigger chip opens a cmdk combobox (arrow-key nav, Enter/Space to
+// Accessible filter dropdown: a trigger chip opens a cmdk combobox (arrow-key nav, Enter to
 // toggle, teal checkmarks). Keeps the Jira-style layout but fixes keyboard selection. Dumb +
 // fetch-agnostic — static `options` + `shouldFilter` for frontend filtering, or `shouldFilter={false}`
 // + drive `options` from a request keyed off `onQueryChange`.
@@ -127,9 +127,16 @@ const FacetFilter = ({
           />
           <CommandList>
             {loading && (
-              <div className="py-6 text-center text-sm text-muted-foreground">Loading…</div>
+              <div role="status" className="py-6 text-center text-sm text-muted-foreground">
+                Loading…
+              </div>
             )}
-            {!loading && <CommandEmpty>{emptyMessage}</CommandEmpty>}
+            {!loading && options.length === 0 && (
+              <div role="status" className="py-6 text-center text-sm text-muted-foreground">
+                {emptyMessage}
+              </div>
+            )}
+            {!loading && options.length > 0 && <CommandEmpty>{emptyMessage}</CommandEmpty>}
             {!loading &&
               options.map((option) => {
                 const selected = value.includes(option.value);
@@ -149,7 +156,9 @@ const FacetFilter = ({
                       </span>
                     )}
                     <span>{option.label}</span>
-                    {selected && <span className="sr-only">, selected</span>}
+                    {/* "checked", not "selected": cmdk uses aria-selected for the keyboard HIGHLIGHT,
+                        so a distinct word avoids a collision when a row is both highlighted + chosen. */}
+                    {selected && <span className="sr-only">, checked</span>}
                     {selected && (
                       <span
                         className="material-symbols-outlined ml-auto text-[1.125rem] text-primary"

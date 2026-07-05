@@ -43,7 +43,9 @@ function triggerText({ min, max }: LevelRange): string {
   if (min === max) {
     return `Level: only ${levelFace(min)}`;
   }
-  return `Level: ${levelFace(min)}–${levelFace(max)}`;
+  // Show the range ascending even if a user picks Min > Max. The raw {min,max} is still stored as-is
+  // (the container decides validity); this just keeps the label sane instead of a backwards "8–2".
+  return `Level: ${levelFace(Math.min(min, max))}–${levelFace(Math.max(min, max))}`;
 }
 
 // Parse a <select> value ('' = unset) back to a bound. Empty string clears the bound to null.

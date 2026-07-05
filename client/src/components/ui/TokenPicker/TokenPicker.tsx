@@ -117,9 +117,16 @@ const TokenPicker = ({
             />
             <CommandList>
               {loading && (
-                <div className="py-6 text-center text-sm text-muted-foreground">Loading…</div>
+                <div role="status" className="py-6 text-center text-sm text-muted-foreground">
+                  Loading…
+                </div>
               )}
-              {!loading && <CommandEmpty>{emptyMessage}</CommandEmpty>}
+              {!loading && options.length === 0 && (
+                <div role="status" className="py-6 text-center text-sm text-muted-foreground">
+                  {emptyMessage}
+                </div>
+              )}
+              {!loading && options.length > 0 && <CommandEmpty>{emptyMessage}</CommandEmpty>}
               {!loading &&
                 options.map((option) => {
                   const selected = value.includes(option.value);
@@ -139,7 +146,9 @@ const TokenPicker = ({
                         </span>
                       )}
                       <span>{option.label}</span>
-                      {selected && <span className="sr-only">, selected</span>}
+                      {/* "checked", not "selected": cmdk uses aria-selected for the keyboard
+                          HIGHLIGHT, so a distinct word avoids colliding when a row is highlighted. */}
+                      {selected && <span className="sr-only">, checked</span>}
                       {selected && (
                         <span
                           className="material-symbols-outlined ml-auto text-[1.125rem] text-primary"

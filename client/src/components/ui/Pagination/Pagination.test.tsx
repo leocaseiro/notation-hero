@@ -24,6 +24,18 @@ test('a short range renders every page with no ellipsis', () => {
   expect(within(nav).queryByRole('presentation')).not.toBeInTheDocument();
 });
 
+test('shows a single skipped page instead of collapsing it to an ellipsis', () => {
+  // Page 3 of 6 (index 2), siblingCount 1: window is 2-3-4 (+ first 1 + last 6). The only gap hides
+  // just page 5, so it must be shown, not replaced by an ellipsis in the same width.
+  render(<Pagination pageIndex={2} pageCount={6} onPageChange={() => {}} />);
+  const nav = screen.getByRole('navigation', { name: 'Pagination' });
+  const pages = within(nav)
+    .getAllByRole('button', { name: /^Go to page \d+$/ })
+    .map((button) => button.textContent);
+  expect(pages).toEqual(['1', '2', '3', '4', '5', '6']);
+  expect(within(nav).queryByRole('presentation')).not.toBeInTheDocument();
+});
+
 test('clicking page N calls onPageChange with the zero-based index N-1', async () => {
   const user = userEvent.setup();
   const onPageChange = vi.fn();

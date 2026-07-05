@@ -52,8 +52,9 @@ function isVisiblePage(
 
 // Build the sequence of page numbers (zero-based) and ellipsis gaps to render. Walks pages in
 // ascending order (so no sort is needed) keeping the first page, the last page, and the window
-// `current ± siblingCount`; a single 'ellipsis' marker is inserted wherever consecutive kept pages
-// skip a number. Flat + branch-light.
+// `current ± siblingCount`. When kept pages skip EXACTLY ONE number, that number is shown rather
+// than hidden behind an ellipsis (an ellipsis in place of a single page is the same width but
+// hides a reachable page); a gap of 2+ collapses to one 'ellipsis' marker. Flat + branch-light.
 function buildPageItems(pageIndex: number, pageCount: number, siblingCount: number): PageItem[] {
   const lastPage = pageCount - 1;
   const items: PageItem[] = [];
@@ -62,7 +63,10 @@ function buildPageItems(pageIndex: number, pageCount: number, siblingCount: numb
     if (!isVisiblePage(page, pageIndex, lastPage, siblingCount)) {
       continue;
     }
-    if (page - previousKept > 1) {
+    const gap = page - previousKept;
+    if (gap === 2) {
+      items.push(previousKept + 1); // exactly one hidden page — show it, don't hide it
+    } else if (gap > 2) {
       items.push('ellipsis');
     }
     items.push(page);
