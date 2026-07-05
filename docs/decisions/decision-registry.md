@@ -12,6 +12,32 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-05 — Storybook PR previews on GitHub Pages (NH-266, PR #113)
+
+Per-PR Storybook previews publish to the `gh-pages` branch of this public repo — each PR at
+`/pr/<number>/`, latest `master` at the site root — so the component library is reviewable in the
+browser with no local setup. Spec `docs/specs/2026-07-05-storybook-pr-preview-design.md`, plan
+`docs/plans/2026-07-05-storybook-pr-preview-plan.md`.
+
+- **Mechanism = hand-rolled `peaceiris/actions-gh-pages`, NOT `rossjrw/pr-preview-action`.** rossjrw
+  hardcodes a `pr-<n>` inner path (verified in its `lib/main.sh`) and cannot produce the required
+  bare-number `/pr/<n>/`; peaceiris gives exact `destination_dir` control. Cost: a hand-written
+  sticky comment + cleanup-on-close.
+- **Classic `gh-pages` BRANCH source, NOT the `actions/deploy-pages` artifact model** — the artifact
+  model replaces the whole site per deploy, so independently-accumulating per-PR folders need a
+  branch. One-time manual: Settings → Pages → Deploy from a branch → `gh-pages` / root (enabled
+  2026-07-05).
+- **Storybook base path via `viteFinal`** reading `STORYBOOK_BASE_PATH` (default `/`) — Storybook v10
+  has no `--base` CLI flag; the default `/` leaves `dev` / `vr` / `a11y` / `build` unchanged.
+- **NOT a `ci-green` required check** — absent from `ci-green`'s `needs:`, so a skip on a
+  non-`client` PR never deadlocks merge. The build runs untrusted PR code with **no secrets**; only
+  the separate publish + cleanup jobs hold `contents:write` (built-in `GITHUB_TOKEN`, no AWS/OIDC) —
+  the NH-206 no-AWS-creds-on-PRs posture is untouched.
+- **Enforcement:** 🤖 `actionlint` (CI lint job) + a build-time base-path assertion in the workflow;
+  the preview is convenience, not a merge gate. Deferred (plan Scope Boundaries): fork-PR previews
+  via `workflow_run`, a reconciliation sweep for the rare cleanup-eviction orphan, `shared/**` in the
+  path filter.
+
 ### 2026-07-02 — NH-260 markdownlint emphasis/strong styles pinned (MD049/MD050)
 
 `.markdownlint.yaml` now pins `MD049` (emphasis/italic) to `underscore` and `MD050`
