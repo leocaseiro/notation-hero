@@ -1,0 +1,151 @@
+name: Storybook preview
+
+# Publishes a static Storybook to the gh-pages branch of this PUBLIC repo: each PR's
+# preview at /pr/<number>/ and the latest master at the site root. Design + rationale:
+# docs/plans/2026-07-05-storybook-pr-preview-plan.md.
+#
+# NOT a required check (absent from ci.yml's ci-green needs:), so a skip on a non-client
+# PR never deadlocks merge. The build runs untrusted PR code but with NO secrets; only the
+# separate publish job holds the write token (built-in GITHUB_TOKEN) — untrusted code never
+# sees it. No AWS credentials anywhere, so the NH-206 deploy hardening is untouched.
+#
+# One-time manual setup: Settings -> Pages -> Deploy from a branch -> gh-pages / root.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to build a preview for
+        required: true
+        type: string
+
+# Least-privilege: publish to gh-pages. pull-requests:write (the sticky comment) is added
+# alongside the comment step.
+permissions:
+  contents: write
+
+jobs:
+  # Diff filter — only pull_request + push carry a base the filter can diff against;
+  # workflow_dispatch has none, so this job is gated off it (the build guard treats dispatch
+  # as an unconditional build). Mirrors ci.yml's changes job; reuses its pinned SHAs.
+  changes:
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      client: ${{ steps.filter.outputs.client }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+        id: filter
+        with:
+          filters: |
+            client:
+              - 'client/**'
+              - '.github/workflows/storybook-preview.yml'
+
+  # Build the static Storybook with the correct base path. Concurrency keys on the resolved
+  # TARGET (PR number for PR + dispatch, 'master' for push) — NOT github.ref (which aliases
+  # dispatch + push onto one key) and NOT a step output (job-level concurrency is evaluated
+  # before steps run). cancel-in-progress supersedes an older in-flight build of the SAME
+  # target only.
+  build:
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.changes.outputs.client == 'true') || (github.event_name == 'pull_request' && (needs.changes.outputs.client == 'true' || contains(github.event.pull_request.labels.*.name, 'preview')))) }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: storybook-preview-${{ github.event.pull_request.number || github.event.inputs.pr_number || 'master' }}
+      cancel-in-progress: true
+    outputs:
+      dest: ${{ steps.meta.outputs.dest }}
+      pr: ${{ steps.meta.outputs.pr }}
+      base: ${{ steps.meta.outputs.base }}
+    steps:
+      # Resolve base path + gh-pages destination from event context. The PR number comes from
+      # the event (PR) or the dispatch input; passed via env and numeric-validated so untrusted
+      # input never reaches the shell as code (no script injection).
+      - id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_FROM_EVENT: ${{ github.event.pull_request.number }}
+          PR_FROM_INPUT: ${{ github.event.inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "push" ]; then
+            {
+              echo "base=/notation-hero/"
+              echo "dest="
+              echo "pr="
+            } >> "$GITHUB_OUTPUT"
+          else
+            pr="${PR_FROM_EVENT:-$PR_FROM_INPUT}"
+            case "$pr" in '' | *[!0-9]*) echo "::error::invalid PR number '$pr'"; exit 1 ;; esac
+            {
+              echo "base=/notation-hero/pr/$pr/"
+              echo "dest=pr/$pr"
+              echo "pr=$pr"
+            } >> "$GITHUB_OUTPUT"
+          fi
+      # For dispatch, build the named PR's head; otherwise the event's own ref.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/head', github.event.inputs.pr_number) || github.ref }}
+      - uses: ./.github/actions/setup-js
+      - name: Build Storybook
+        env:
+          STORYBOOK_BASE_PATH: ${{ steps.meta.outputs.base }}
+        run: pnpm --filter @notation-hero/client run build-storybook
+      - name: Assert base path applied
+        env:
+          BASE: ${{ steps.meta.outputs.base }}
+        run: |
+          set -euo pipefail
+          grep -q "${BASE}assets/" client/storybook-static/iframe.html \
+            || { echo "::error::Storybook base path $BASE not applied to built assets"; exit 1; }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: storybook-static
+          path: client/storybook-static
+          if-no-files-found: error
+          retention-days: 3
+
+  # Publish to gh-pages. Separate job so its concurrency group (shared, no-cancel) serializes
+  # ALL publishes across PRs — neither peaceiris nor a raw push retries a non-fast-forward, so
+  # serialization is the only cross-PR race guard.
+  publish:
+    needs: build
+    if: needs.build.result == 'success'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: storybook-static
+          path: storybook-static
+      # PR / dispatch -> publish into pr/<n>/, preserving siblings + root (peaceiris scopes
+      # deletion to destination_dir; default keep_files=false refreshes only this PR's folder).
+      - name: Publish PR preview
+        if: needs.build.outputs.dest != ''
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./storybook-static
+          destination_dir: ${{ needs.build.outputs.dest }}
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
+      # push:master -> publish to the site root, keep_files:true so the /pr/* subtree (other
+      # previews) is never swept by a root rebuild.
+      - name: Publish master to root
+        if: needs.build.outputs.dest == ''
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./storybook-static
+          keep_files: true
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
