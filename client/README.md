@@ -80,6 +80,19 @@ Icons use **Material Symbols Outlined**, **self-hosted** via `@fontsource-variab
 
 Browse glyph names at <https://fonts.google.com/icons>.
 
+**Gotcha — you cannot hide a `.material-symbols-outlined` span with `hidden`.** That class sets `display` _outside_ Tailwind's `@layer`, and unlayered CSS beats layered utilities in the cascade — so `hidden` (and any other `display` utility) has no effect on an icon span; it stays visible. To show or hide an icon by state, put the toggle on a plain wrapper and nest the glyph inside:
+
+```tsx
+// The wrapper carries the display toggle; the icon span never does.
+<span className="hidden group-data-[state=checked]/box:block">
+  <span className="material-symbols-outlined" aria-hidden="true">
+    check
+  </span>
+</span>
+```
+
+See `Checkbox/Checkbox.tsx` for a working example.
+
 ### Storybook
 
 ```bash
