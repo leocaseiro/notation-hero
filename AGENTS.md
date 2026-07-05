@@ -247,6 +247,18 @@ If you skip this, commits land **without** the layout / coverage-ignore /
 gitleaks / semgrep checks — CI will still catch them on push,
 but local feedback time is gone. Never use `git commit/push --no-verify`.
 
+## Storybook PR previews (GitHub Pages)
+
+`.github/workflows/storybook-preview.yml` publishes the built Storybook to the
+`gh-pages` branch: each PR at `https://leocaseiro.github.io/notation-hero/pr/<n>/`
+(sticky-commented on the PR), latest `master` at the site root. Auto on `client/**`
+changes; also the **`preview`** label or **Run workflow** (`workflow_dispatch` → PR
+number). **Not** a `ci-green` gate, so a skip never deadlocks merge. The build runs
+untrusted PR code with **no secrets** (only the separate publish job holds the write
+token) — the NH-206 no-AWS-creds-on-PRs posture is untouched. One-time: enable Pages
+(**Settings → Pages → Deploy from a branch → `gh-pages` / root**). Full guide:
+`client/README.md`.
+
 ## Commit & review workflow
 
 **Always `git commit` a coherent, green checkpoint BEFORE asking the user to
