@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface SearchInputProps extends Omit<
   React.ComponentProps<'input'>,
-  'value' | 'onChange' | 'type'
+  'value' | 'onChange' | 'onSubmit' | 'type'
 > {
   /** Controlled search text. */
   value: string;
@@ -13,6 +13,8 @@ interface SearchInputProps extends Omit<
   onChange: (value: string) => void;
   /** Optional side effect when the clear button is pressed (value is emptied regardless). */
   onClear?: () => void;
+  /** Fires with the current value when the user presses Enter in the box. */
+  onSubmit?: (value: string) => void;
   /** Accessible name for the search box (there is no visible label). */
   label?: string;
 }
@@ -24,6 +26,7 @@ const SearchInput = ({
   value,
   onChange,
   onClear,
+  onSubmit,
   label = 'Search',
   placeholder = 'Search…',
   className,
@@ -36,6 +39,12 @@ const SearchInput = ({
     onChange('');
     onClear?.();
     inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      onSubmit?.(value);
+    }
   };
 
   const showClear = value.length > 0 && !disabled;
@@ -71,6 +80,7 @@ const SearchInput = ({
           '[&::-webkit-search-cancel-button]:appearance-none',
         )}
         {...props}
+        onKeyDown={handleKeyDown}
       />
       {showClear && (
         <button

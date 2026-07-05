@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fn } from 'storybook/test';
 import { RangeSlider } from './RangeSlider';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
@@ -17,7 +18,7 @@ const meta = {
   // Baseline args satisfy the required controlled props; individual stories override value/bounds.
   args: {
     value: [20, 80],
-    onChange: () => {},
+    onChange: fn(),
     min: 0,
     max: 100,
   },
@@ -34,7 +35,16 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: (args) => {
     const [value, setValue] = useState<[number, number]>([20, 80]);
-    return <RangeSlider {...args} value={value} onChange={setValue} />;
+    return (
+      <RangeSlider
+        {...args}
+        value={value}
+        onChange={(v) => {
+          setValue(v);
+          args.onChange(v);
+        }}
+      />
+    );
   },
 };
 
@@ -46,7 +56,10 @@ export const Tempo: Story = {
       <RangeSlider
         {...args}
         value={value}
-        onChange={setValue}
+        onChange={(v) => {
+          setValue(v);
+          args.onChange(v);
+        }}
         min={0}
         max={300}
         unit="BPM"
@@ -61,11 +74,20 @@ export const Tempo: Story = {
 export const FullRange: Story = {
   render: (args) => {
     const [value, setValue] = useState<[number, number]>([0, 100]);
-    return <RangeSlider {...args} value={value} onChange={setValue} />;
+    return (
+      <RangeSlider
+        {...args}
+        value={value}
+        onChange={(v) => {
+          setValue(v);
+          args.onChange(v);
+        }}
+      />
+    );
   },
 };
 
 // Disabled: dimmed, thumbs inert.
 export const Disabled: Story = {
-  args: { value: [20, 80], onChange: () => {}, disabled: true },
+  args: { value: [20, 80], disabled: true },
 };

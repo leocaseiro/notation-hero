@@ -29,13 +29,14 @@ interface ToggleChipGroupProps {
   className?: string;
 }
 
-// Chip look shared by every item: a rounded pill that reads as "off" on the neutral border, and
-// tints to the accessible brand teal when Radix marks it data-[state=on]. Radix owns the roving
-// focus, arrow-key movement, and aria-pressed — this only paints the pill + focus ring.
+// Chip look shared by every item: a rounded pill that reads as "off" on a gray secondary fill
+// (like Button `secondary`), and fills SOLID brand teal when Radix marks it data-[state=on] (like
+// Button `default`). Radix owns the roving focus, arrow-key movement, and aria-pressed — this only
+// paints the pill + focus ring.
 const CHIP_CLASS = cn(
   'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors outline-none',
-  'border-border text-foreground hover:bg-muted',
-  'data-[state=on]:border-primary data-[state=on]:bg-primary/10 data-[state=on]:text-primary',
+  'border border-border bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_6%)]',
+  'data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground',
   'focus-visible:ring-3 focus-visible:ring-ring/50',
   'disabled:pointer-events-none disabled:opacity-50',
   '[&_.material-symbols-outlined]:text-[1.125rem]',

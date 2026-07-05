@@ -72,7 +72,8 @@ const RangeSlider = ({
         <Slider.Thumb
           aria-label={minLabel}
           className={cn(
-            'block size-4 rounded-full border-2 border-primary bg-background transition-colors',
+            'block size-4 rounded-full border-2 border-primary bg-background transition-[box-shadow,color]',
+            'hover:ring-4 hover:ring-ring/30',
             'focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
             'disabled:pointer-events-none',
           )}
@@ -80,7 +81,8 @@ const RangeSlider = ({
         <Slider.Thumb
           aria-label={maxLabel}
           className={cn(
-            'block size-4 rounded-full border-2 border-primary bg-background transition-colors',
+            'block size-4 rounded-full border-2 border-primary bg-background transition-[box-shadow,color]',
+            'hover:ring-4 hover:ring-ring/30',
             'focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
             'disabled:pointer-events-none',
           )}

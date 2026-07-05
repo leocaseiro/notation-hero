@@ -46,6 +46,16 @@ test('runs the onClear side effect on clear', async () => {
   expect(onClear).toHaveBeenCalledTimes(1);
 });
 
+test('pressing Enter fires onSubmit with the current value', async () => {
+  const user = userEvent.setup();
+  const onSubmit = vi.fn();
+  render(<SearchInput value="rock" onChange={() => {}} onSubmit={onSubmit} label="Search" />);
+  const box = screen.getByRole('searchbox');
+  box.focus();
+  await user.keyboard('{Enter}');
+  expect(onSubmit).toHaveBeenCalledWith('rock');
+});
+
 test('renders no clear button when disabled', () => {
   render(<SearchInput value="rock" onChange={() => {}} disabled label="Search" />);
   expect(screen.queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();

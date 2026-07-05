@@ -4,17 +4,8 @@ import { useState } from 'react';
 import { RangeSlider } from './RangeSlider';
 
 // Radix Slider measures its track with ResizeObserver and uses pointer-capture on the thumb —
-// neither exists in jsdom (the DOM lib types them as always-present, so these shims are assigned
-// unconditionally). Stub them so the component mounts; the tests then drive it by keyboard.
-class ResizeObserverStub {
-  observe(): void {}
-  unobserve(): void {}
-  disconnect(): void {}
-}
-globalThis.ResizeObserver = ResizeObserverStub;
-Element.prototype.hasPointerCapture = () => false;
-Element.prototype.setPointerCapture = () => {};
-Element.prototype.releasePointerCapture = () => {};
+// neither exists in jsdom. Both are polyfilled globally in vitest.setup.ts; the tests drive the
+// slider by keyboard.
 
 // Controlled harness so arrow-key moves round-trip through real state, like a container would.
 const Harness = ({

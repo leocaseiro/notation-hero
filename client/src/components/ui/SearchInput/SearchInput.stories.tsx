@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fn } from 'storybook/test';
 import { SearchInput } from './SearchInput';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
@@ -18,6 +19,8 @@ const meta = {
   args: {
     value: '',
     onChange: () => {},
+    onSubmit: fn(),
+    onClear: fn(),
     label: 'Search catalog',
     placeholder: 'Search songs & lessons…',
   },
@@ -30,7 +33,8 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // Interactive: local state so typing updates the box in the Storybook canvas. The dumb component
-// is fully controlled, so the story owns the state — this is how a container would wire it.
+// is fully controlled, so the story owns the state — this is how a container would wire it. The
+// spread threads onSubmit (Enter) and onClear from args so they surface in the Actions panel.
 export const Default: Story = {
   render: (args) => {
     const [value, setValue] = useState('');

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fn } from 'storybook/test';
 import { ToggleChipGroup } from './ToggleChipGroup';
 import type { ChipOption } from './ToggleChipGroup';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
@@ -37,7 +38,7 @@ const meta = {
   args: {
     options: TIME_SIGNATURES,
     value: [],
-    onChange: () => {},
+    onChange: fn(),
     'aria-label': 'Time signature',
   },
   argTypes: {
@@ -53,7 +54,16 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   render: (args) => {
     const [value, setValue] = useState<string[]>(['4/4']);
-    return <ToggleChipGroup {...args} value={value} onChange={setValue} />;
+    return (
+      <ToggleChipGroup
+        {...args}
+        value={value}
+        onChange={(v) => {
+          setValue(v);
+          args.onChange(v);
+        }}
+      />
+    );
   },
 };
 
@@ -62,7 +72,16 @@ export const Skills: Story = {
   args: { options: SKILLS, 'aria-label': 'Skills' },
   render: (args) => {
     const [value, setValue] = useState<string[]>(['timing', 'speed']);
-    return <ToggleChipGroup {...args} value={value} onChange={setValue} />;
+    return (
+      <ToggleChipGroup
+        {...args}
+        value={value}
+        onChange={(v) => {
+          setValue(v);
+          args.onChange(v);
+        }}
+      />
+    );
   },
 };
 
@@ -71,7 +90,16 @@ export const Single: Story = {
   args: { type: 'single' },
   render: (args) => {
     const [value, setValue] = useState<string[]>(['3/4']);
-    return <ToggleChipGroup {...args} value={value} onChange={setValue} />;
+    return (
+      <ToggleChipGroup
+        {...args}
+        value={value}
+        onChange={(v) => {
+          setValue(v);
+          args.onChange(v);
+        }}
+      />
+    );
   },
 };
 
@@ -79,7 +107,16 @@ export const Single: Story = {
 export const NoneSelected: Story = {
   render: (args) => {
     const [value, setValue] = useState<string[]>([]);
-    return <ToggleChipGroup {...args} value={value} onChange={setValue} />;
+    return (
+      <ToggleChipGroup
+        {...args}
+        value={value}
+        onChange={(v) => {
+          setValue(v);
+          args.onChange(v);
+        }}
+      />
+    );
   },
 };
 
