@@ -19,8 +19,12 @@ export interface VrStoriesConfig {
   filePrefix: string;
   /** Shared story-id list (lockstep with a11y + the component's *.stories.tsx). */
   storyIds: readonly string[];
-  /** CSS selector for the component root to snapshot. */
+  /** CSS selector for the element to snapshot. Use '#storybook-root' for overlay components
+   *  (e.g. an open dropdown) so the floating panel is captured. */
   slotSelector: string;
+  /** Selector to await before snapshotting; defaults to slotSelector. Set this to the always-present
+   *  trigger when slotSelector is the canvas ('#storybook-root'), so the shot waits for a real render. */
+  readySelector?: string;
   /** Interaction states to capture per story. Defaults to ['resting']. */
   states?: readonly VrState[];
   /** Element to focus for the 'focus' state; defaults to slotSelector. */
@@ -42,6 +46,7 @@ export function runVrStories({
   filePrefix,
   storyIds,
   slotSelector,
+  readySelector,
   states = ['resting'],
   focusSelector,
   hoverSelector,
@@ -54,7 +59,10 @@ export function runVrStories({
           `/iframe.html?id=${storyPrefix}--${story}&viewMode=story&globals=theme:${theme}`,
         );
         const target = page.locator(slotSelector).first();
-        await target.waitFor();
+        await page
+          .locator(readySelector ?? slotSelector)
+          .first()
+          .waitFor();
         if (theme === 'dark') {
           await page.locator('html.dark').waitFor();
         }
