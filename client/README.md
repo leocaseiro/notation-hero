@@ -88,6 +88,19 @@ pnpm --filter @notation-hero/client storybook        # http://localhost:6006
 
 Stories are co-located (`Button.stories.tsx`) and use the `@storybook/tanstack-react` framework. Addons: **docs** (autodocs) and **a11y** (accessibility checks). Tailwind + the theme are wired via `.storybook/preview.tsx` (which imports `src/styles.css`) and `viteFinal` in `.storybook/main.ts`.
 
+### PR previews (GitHub Pages)
+
+Every PR that touches `client/**` publishes a live Storybook to GitHub Pages so you can review it in the browser with no local setup. The URL is posted as a sticky comment on the PR:
+
+- **Per-PR:** `https://leocaseiro.github.io/notation-hero/pr/<number>/`
+- **Latest `master`:** `https://leocaseiro.github.io/notation-hero/`
+
+The workflow (`.github/workflows/storybook-preview.yml`) auto-builds on `client/**` changes. You can also add the **`preview`** label to any PR, or trigger it from the **Actions** tab (**Run workflow** → PR number). Each push rebuilds the same URL; the preview folder is removed when the PR closes. It is **not** a required check, so it never blocks merge.
+
+`STORYBOOK_BASE_PATH` (set only by that workflow; default `/`) drives the Vite `base` in `.storybook/main.ts` so assets resolve under the subpath — `dev`, `vr`, and `a11y` are unaffected.
+
+> **One-time setup:** enable Pages at **Settings → Pages → Deploy from a branch → `gh-pages` / root**. Until then the workflow still runs and creates the `gh-pages` branch, but the URLs 404.
+
 ### Unit tests (Vitest)
 
 ```bash

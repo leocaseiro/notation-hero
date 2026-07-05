@@ -13,7 +13,7 @@ name: Storybook preview
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened, labeled, closed]
   push:
     branches: [master]
   workflow_dispatch:
@@ -33,7 +33,7 @@ jobs:
   # workflow_dispatch has none, so this job is gated off it (the build guard treats dispatch
   # as an unconditional build). Mirrors ci.yml's changes job; reuses its pinned SHAs.
   changes:
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       client: ${{ steps.filter.outputs.client }}
@@ -54,7 +54,7 @@ jobs:
   # target only.
   build:
     needs: changes
-    if: ${{ !cancelled() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.changes.outputs.client == 'true') || (github.event_name == 'pull_request' && (needs.changes.outputs.client == 'true' || contains(github.event.pull_request.labels.*.name, 'preview')))) }}
+    if: ${{ !cancelled() && github.event.action != 'closed' && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.changes.outputs.client == 'true') || (github.event_name == 'pull_request' && (needs.changes.outputs.client == 'true' || contains(github.event.pull_request.labels.*.name, 'preview')))) }}
     runs-on: ubuntu-latest
     concurrency:
       group: storybook-preview-${{ github.event.pull_request.number || github.event.inputs.pr_number || 'master' }}
@@ -182,5 +182,70 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: pr,
                 body,
+              });
+            }
+
+  # Remove a PR's preview folder when the PR closes. Shares the gh-pages-deploy concurrency group
+  # so a cleanup serializes with publishes (no non-fast-forward race). A fork-PR close gets a
+  # read-only token but simply no-ops — nothing was ever published, so no push is attempted.
+  cleanup:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Check gh-pages exists
+        id: ghp
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --heads "https://github.com/${GITHUB_REPOSITORY}.git" gh-pages >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "gh-pages does not exist; nothing to clean up."
+          fi
+      - name: Checkout gh-pages
+        if: steps.ghp.outputs.exists == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: gh-pages
+      - name: Remove preview folder
+        if: steps.ghp.outputs.exists == 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          case "$PR_NUMBER" in '' | *[!0-9]*) echo "::error::invalid PR number '$PR_NUMBER'"; exit 1 ;; esac
+          if [ ! -d "pr/$PR_NUMBER" ]; then
+            echo "No preview at pr/$PR_NUMBER; nothing to remove."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git rm -r --quiet "pr/$PR_NUMBER"
+          git commit -q -m "chore(preview): remove pr/$PR_NUMBER (PR closed)"
+          git push origin HEAD:gh-pages
+      - name: Update preview comment (removed)
+        if: steps.ghp.outputs.exists == 'true'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        with:
+          script: |
+            const marker = '<!-- storybook-preview -->';
+            const pr = Number(process.env.PR);
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: `${marker}\n🧹 Storybook preview removed (PR closed).`,
               });
             }
