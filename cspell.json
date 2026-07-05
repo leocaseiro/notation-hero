@@ -448,6 +448,7 @@
     "togglechipgroup",
     "pressable",
     "checkmarks",
-    "haspopup"
+    "haspopup",
+    "desynced"
   ]
 }
