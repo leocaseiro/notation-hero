@@ -1,0 +1,35 @@
+import{i as e}from"./preload-helper-D_j0eZSB.js";import{t}from"./jsx-runtime-BSqP04oH.js";import{w as n}from"./iframe-BB5GJqIS.js";import{n as r,t as i}from"./utils-DiL01Lu5.js";import{n as a,t as o}from"./dist-DNuoAP34.js";var s,c,l,u,d,f,p,m,h=e((()=>{s=n(),a(),r(),c=t(),l=e=>{let t=(0,s.c)(8),n,r;t[0]===e?(n=t[1],r=t[2]):({className:n,...r}=e,t[0]=e,t[1]=n,t[2]=r);let a;t[3]===n?a=t[4]:(a=i(`group/input-group relative flex w-full items-center rounded-md border border-input shadow-xs transition-[color,box-shadow] outline-none dark:bg-input/30`,`has-[input:focus-visible]:border-ring has-[input:focus-visible]:ring-[3px] has-[input:focus-visible]:ring-ring/50`,`has-[[aria-invalid=true]]:border-destructive has-[[aria-invalid=true]]:ring-destructive/20 dark:has-[[aria-invalid=true]]:ring-destructive/40`,n),t[3]=n,t[4]=a);let o;return t[5]!==r||t[6]!==a?(o=(0,c.jsx)(`div`,{"data-slot":`input-group`,role:`group`,className:a,...r}),t[5]=r,t[6]=a,t[7]=o):o=t[7],o},u=o(`pointer-events-none flex items-center gap-2 text-muted-foreground select-none [&>svg:not([class*='size-'])]:size-4`,{variants:{align:{"inline-start":`order-first pl-3`,"inline-end":`order-last pr-3`}},defaultVariants:{align:`inline-start`}}),d=({className:e,align:t=`inline-start`,...n})=>(0,c.jsx)(`div`,{"data-slot":`input-group-addon`,"data-align":t,className:i(u({align:t}),e),...n}),f=e=>{let t=(0,s.c)(8),n,r;t[0]===e?(n=t[1],r=t[2]):({className:n,...r}=e,t[0]=e,t[1]=n,t[2]=r);let a;t[3]===n?a=t[4]:(a=i(`flex-1 border-0 bg-transparent px-3 py-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50`,n),t[3]=n,t[4]=a);let o;return t[5]!==r||t[6]!==a?(o=(0,c.jsx)(`input`,{"data-slot":`input-group-input`,className:a,...r}),t[5]=r,t[6]=a,t[7]=o):o=t[7],o},p=e=>{let t=(0,s.c)(8),n,r;t[0]===e?(n=t[1],r=t[2]):({className:n,...r}=e,t[0]=e,t[1]=n,t[2]=r);let a;t[3]===n?a=t[4]:(a=i(`flex items-center gap-2 text-sm text-muted-foreground [&>svg:not([class*='size-'])]:size-4`,n),t[3]=n,t[4]=a);let o;return t[5]!==r||t[6]!==a?(o=(0,c.jsx)(`span`,{"data-slot":`input-group-text`,className:a,...r}),t[5]=r,t[6]=a,t[7]=o):o=t[7],o},m=({className:e,type:t=`button`,...n})=>(0,c.jsx)(`button`,{type:t,"data-slot":`input-group-button`,className:i(`pointer-events-auto inline-flex h-6 items-center justify-center gap-1 rounded-sm px-2 text-sm font-medium whitespace-nowrap outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&>svg:not([class*='size-'])]:size-3.5`,e),...n}),l.__docgenInfo={description:"Composable text field that wraps an input with prefix/suffix addons — an icon,\na unit label, or a trailing action button — inside one bordered container.\nCompose it from `InputGroupInput` (the field) plus `InputGroupAddon` slots that\nhold `InputGroupText`, a Material Symbols glyph, or an `InputGroupButton`. The\ncontainer owns the border, shadow, and focus ring: it lights the ring when the\ninner input is focus-visible (`has-[input:focus-visible]`) and turns the border\ndestructive when the input is `aria-invalid`, so the group reads as one control.\nSelf-contained by design — `InputGroupInput` is its own borderless `<input>` and\n`InputGroupButton` its own ghost `<button>`, so the group needs no sibling UI\ncomponents.",methods:[],displayName:`InputGroup`},d.__docgenInfo={description:``,methods:[],displayName:`InputGroupAddon`,props:{align:{defaultValue:{value:`'inline-start'`,computed:!1},required:!1}}},f.__docgenInfo={description:``,methods:[],displayName:`InputGroupInput`},p.__docgenInfo={description:``,methods:[],displayName:`InputGroupText`},m.__docgenInfo={description:``,methods:[],displayName:`InputGroupButton`,props:{type:{defaultValue:{value:`'button'`,computed:!1},required:!1}}}})),g,_,v,y,b,x,S;e((()=>{h(),g=t(),_={title:`UI/InputGroup`,component:l,parameters:{layout:`centered`},tags:[`autodocs`]},v={render:()=>(0,g.jsxs)(l,{className:`w-72`,children:[(0,g.jsx)(d,{children:(0,g.jsx)(p,{children:`https://`})}),(0,g.jsx)(f,{"aria-label":`Website URL`,placeholder:`example.com`})]})},y={render:()=>(0,g.jsxs)(l,{className:`w-72`,children:[(0,g.jsx)(f,{"aria-label":`Search catalog`,placeholder:`Search…`}),(0,g.jsx)(d,{align:`inline-end`,children:(0,g.jsx)(`span`,{className:`material-symbols-outlined`,"aria-hidden":`true`,children:`search`})})]})},b={render:()=>(0,g.jsxs)(l,{className:`w-72`,children:[(0,g.jsx)(f,{"aria-label":`Password`,type:`password`,placeholder:`Password`}),(0,g.jsx)(d,{align:`inline-end`,children:(0,g.jsx)(m,{"aria-label":`Show password`,children:(0,g.jsx)(`span`,{className:`material-symbols-outlined`,"aria-hidden":`true`,children:`visibility`})})})]})},x={render:()=>(0,g.jsxs)(l,{className:`w-72`,children:[(0,g.jsx)(d,{children:(0,g.jsx)(p,{children:`@`})}),(0,g.jsx)(f,{"aria-label":`Username`,"aria-invalid":!0,defaultValue:`bad user`})]})},v.parameters={...v.parameters,docs:{...v.parameters?.docs,source:{originalSource:`{
+  render: () => <InputGroup className="w-72">
+      <InputGroupAddon>
+        <InputGroupText>https://</InputGroupText>
+      </InputGroupAddon>
+      <InputGroupInput aria-label="Website URL" placeholder="example.com" />
+    </InputGroup>
+}`,...v.parameters?.docs?.source}}},y.parameters={...y.parameters,docs:{...y.parameters?.docs,source:{originalSource:`{
+  render: () => <InputGroup className="w-72">
+      <InputGroupInput aria-label="Search catalog" placeholder="Search…" />
+      <InputGroupAddon align="inline-end">
+        <span className="material-symbols-outlined" aria-hidden="true">
+          search
+        </span>
+      </InputGroupAddon>
+    </InputGroup>
+}`,...y.parameters?.docs?.source}}},b.parameters={...b.parameters,docs:{...b.parameters?.docs,source:{originalSource:`{
+  render: () => <InputGroup className="w-72">
+      <InputGroupInput aria-label="Password" type="password" placeholder="Password" />
+      <InputGroupAddon align="inline-end">
+        <InputGroupButton aria-label="Show password">
+          <span className="material-symbols-outlined" aria-hidden="true">
+            visibility
+          </span>
+        </InputGroupButton>
+      </InputGroupAddon>
+    </InputGroup>
+}`,...b.parameters?.docs?.source}}},x.parameters={...x.parameters,docs:{...x.parameters?.docs,source:{originalSource:`{
+  render: () => <InputGroup className="w-72">
+      <InputGroupAddon>
+        <InputGroupText>@</InputGroupText>
+      </InputGroupAddon>
+      <InputGroupInput aria-label="Username" aria-invalid defaultValue="bad user" />
+    </InputGroup>
+}`,...x.parameters?.docs?.source}}},S=[`WithPrefixText`,`WithSuffixIcon`,`WithButton`,`Invalid`]}))();export{x as Invalid,b as WithButton,v as WithPrefixText,y as WithSuffixIcon,S as __namedExportsOrder,_ as default};
