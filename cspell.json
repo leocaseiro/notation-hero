@@ -441,6 +441,8 @@
     "rangeslider",
     "temporange",
     "togglechipgroup",
-    "pressable"
+    "pressable",
+    "checkmarks",
+    "haspopup"
   ]
 }
