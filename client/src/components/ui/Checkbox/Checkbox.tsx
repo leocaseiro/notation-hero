@@ -26,17 +26,17 @@ const Checkbox = ({ className, ...props }: React.ComponentProps<typeof CheckboxP
       data-slot="checkbox-indicator"
       className="flex items-center justify-center text-current"
     >
-      <span
-        className="material-symbols-outlined hidden text-[1rem] group-data-[state=checked]/checkbox:inline"
-        aria-hidden="true"
-      >
-        check
+      {/* Toggle visibility on a plain wrapper, not the icon span itself: the global
+          `.material-symbols-outlined` rule sets `display` *unlayered*, which in the CSS
+          cascade beats Tailwind's layered `hidden`/`block` utilities — so a
+          `.material-symbols-outlined` span cannot be hidden directly (both glyphs would
+          show at once). The wrapper carries no such rule, so the data-state toggle works
+          and exactly one glyph renders per state. */}
+      <span className="hidden group-data-[state=checked]/checkbox:block" aria-hidden="true">
+        <span className="material-symbols-outlined text-[1rem]">check</span>
       </span>
-      <span
-        className="material-symbols-outlined hidden text-[1rem] group-data-[state=indeterminate]/checkbox:inline"
-        aria-hidden="true"
-      >
-        remove
+      <span className="hidden group-data-[state=indeterminate]/checkbox:block" aria-hidden="true">
+        <span className="material-symbols-outlined text-[1rem]">remove</span>
       </span>
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
