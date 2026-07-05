@@ -1,5 +1,12 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/Badge/Badge';
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/Command/Command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover/Popover';
 import { cn } from '@/lib/utils';
 
@@ -12,19 +19,16 @@ export interface FilterOption {
 }
 
 interface FacetFilterProps {
-  /** Filter name shown on the trigger and as the option-list group label. */
+  /** Filter name shown on the trigger and used as the search box's accessible name. */
   label: string;
   options: readonly FilterOption[];
   /** Selected values (length <= 1 when mode="single"). */
   value: string[];
   onChange: (next: string[]) => void;
   mode?: 'single' | 'multiple';
-  /** Show the in-popover search box. */
-  searchable?: boolean;
-  /** Controlled search text (optional — the component keeps its own otherwise). */
-  query?: string;
+  /** Fires with the search text on every keystroke (drive a request off this in fetch mode). */
   onQueryChange?: (query: string) => void;
-  /** Filter the options in memory by the query. Set false for server-driven (fetch) results. */
+  /** Filter the options in memory (cmdk). Set false for server-driven (fetch) results. */
   shouldFilter?: boolean;
   /** Fetch-mode loading row. */
   loading?: boolean;
@@ -42,7 +46,7 @@ const TRIGGER_CLASSES = cn(
 );
 
 // Trigger text: single mode with a selection shows "Label: Value"; otherwise just the label (the
-// count badge carries the multi-select state). Extracted so the JSX has no nested ternary.
+// gray count badge carries multi-select state). Extracted so the JSX has no nested ternary.
 function selectionLabel(
   label: string,
   options: readonly FilterOption[],
@@ -56,18 +60,16 @@ function selectionLabel(
   return label;
 }
 
-// Jira-style filter dropdown: a trigger chip opens a popover with a search box over a native
-// checkbox (multiple) or radio (single) list. Dumb + fetch-agnostic — pass a static `options` and
-// keep `shouldFilter` on for in-memory filtering, or set `shouldFilter={false}` and drive `options`
-// from a request keyed off `onQueryChange`.
+// Accessible filter dropdown: a trigger chip opens a cmdk combobox (arrow-key nav, Enter/Space to
+// toggle, teal checkmarks). Keeps the Jira-style layout but fixes keyboard selection. Dumb +
+// fetch-agnostic — static `options` + `shouldFilter` for frontend filtering, or `shouldFilter={false}`
+// + drive `options` from a request keyed off `onQueryChange`.
 const FacetFilter = ({
   label,
   options,
   value,
   onChange,
   mode = 'multiple',
-  searchable = true,
-  query,
   onQueryChange,
   shouldFilter = true,
   loading = false,
@@ -76,21 +78,12 @@ const FacetFilter = ({
   defaultOpen = false,
   className,
 }: FacetFilterProps) => {
-  const [internalQuery, setInternalQuery] = useState('');
-  const effectiveQuery = query ?? internalQuery;
-
-  const handleQueryChange = (next: string) => {
-    setInternalQuery(next);
-    onQueryChange?.(next);
-  };
-
-  const visibleOptions = shouldFilter
-    ? options.filter((option) => option.label.toLowerCase().includes(effectiveQuery.toLowerCase()))
-    : options;
+  const [open, setOpen] = useState(defaultOpen);
 
   const toggle = (optionValue: string) => {
     if (mode === 'single') {
       onChange(value[0] === optionValue ? [] : [optionValue]);
+      setOpen(false);
       return;
     }
     onChange(
@@ -101,7 +94,7 @@ const FacetFilter = ({
   };
 
   return (
-    <Popover defaultOpen={defaultOpen}>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         type="button"
         data-slot="facet-filter"
@@ -126,70 +119,68 @@ const FacetFilter = ({
         </span>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0">
-        {searchable && (
-          <div className="border-b border-border p-2">
-            <input
-              type="text"
-              aria-label={`Search ${label}`}
-              value={effectiveQuery}
-              placeholder="Search…"
-              onChange={(event) => handleQueryChange(event.target.value)}
-              className={cn(
-                'h-8 w-full rounded-sm bg-transparent px-2 text-sm outline-none',
-                'placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/50',
-              )}
-            />
-          </div>
-        )}
-        <div role="group" aria-label={label} className="max-h-60 overflow-y-auto p-1">
-          {loading && <p className="px-2 py-1.5 text-sm text-muted-foreground">Loading…</p>}
-          {!loading && visibleOptions.length === 0 && (
-            <p className="px-2 py-1.5 text-sm text-muted-foreground">{emptyMessage}</p>
-          )}
-          {!loading &&
-            visibleOptions.map((option) => (
-              <label
-                key={option.value}
+        <Command shouldFilter={shouldFilter}>
+          <CommandInput
+            aria-label={`Search ${label}`}
+            placeholder="Search…"
+            onValueChange={(next) => onQueryChange?.(next)}
+          />
+          <CommandList>
+            {loading && (
+              <div className="py-6 text-center text-sm text-muted-foreground">Loading…</div>
+            )}
+            {!loading && <CommandEmpty>{emptyMessage}</CommandEmpty>}
+            {!loading &&
+              options.map((option) => {
+                const selected = value.includes(option.value);
+                return (
+                  <CommandItem
+                    key={option.value}
+                    value={option.label}
+                    disabled={option.disabled ?? false}
+                    onSelect={() => toggle(option.value)}
+                  >
+                    {option.icon && (
+                      <span
+                        className="material-symbols-outlined text-[1.125rem]"
+                        aria-hidden="true"
+                      >
+                        {option.icon}
+                      </span>
+                    )}
+                    <span>{option.label}</span>
+                    {selected && <span className="sr-only">, selected</span>}
+                    {selected && (
+                      <span
+                        className="material-symbols-outlined ml-auto text-[1.125rem] text-primary"
+                        aria-hidden="true"
+                      >
+                        check
+                      </span>
+                    )}
+                  </CommandItem>
+                );
+              })}
+          </CommandList>
+          {value.length > 0 && (
+            <div className="border-t border-border p-1">
+              <button
+                type="button"
+                onClick={() => onChange([])}
                 className={cn(
-                  'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-muted',
-                  option.disabled && 'pointer-events-none opacity-50',
+                  'flex w-full items-center justify-center gap-1 rounded-sm px-2 py-1.5 text-sm',
+                  'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
                 )}
               >
-                <input
-                  type={mode === 'single' ? 'radio' : 'checkbox'}
-                  name={`facet-${label}`}
-                  checked={value.includes(option.value)}
-                  disabled={option.disabled}
-                  onChange={() => toggle(option.value)}
-                  className="size-4 accent-primary"
-                />
-                {option.icon && (
-                  <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">
-                    {option.icon}
-                  </span>
-                )}
-                <span>{option.label}</span>
-              </label>
-            ))}
-        </div>
-        {value.length > 0 && (
-          <div className="border-t border-border p-1">
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className={cn(
-                'flex w-full items-center justify-center gap-1 rounded-sm px-2 py-1.5 text-sm',
-                'text-muted-foreground hover:bg-muted hover:text-foreground',
-                'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-              )}
-            >
-              <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">
-                close
-              </span>
-              Clear
-            </button>
-          </div>
-        )}
+                <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">
+                  close
+                </span>
+                Clear
+              </button>
+            </div>
+          )}
+        </Command>
       </PopoverContent>
     </Popover>
   );

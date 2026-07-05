@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fn } from 'storybook/test';
 import { FacetFilter } from './FacetFilter';
 import type { FilterOption } from './FacetFilter';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
@@ -28,7 +29,7 @@ const meta = {
   component: FacetFilter,
   parameters: { layout: 'padded' },
   tags: ['autodocs'],
-  // Roomy positioned wrapper so the open popover is captured inside #storybook-root for VR.
+  // Roomy positioned wrapper so the open combobox is captured inside #storybook-root for VR.
   decorators: [
     (Story) => (
       <div className="relative min-h-96 w-72">
@@ -40,30 +41,50 @@ const meta = {
     label: 'Genre',
     options: GENRES,
     value: [],
-    onChange: () => {},
+    onChange: fn(),
+    onQueryChange: fn(),
   },
 } satisfies Meta<typeof FacetFilter>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Closed trigger with a multi-select count badge.
+// Closed trigger with a gray multi-select count badge.
 export const Default: Story = {
   render: (args) => {
     const [value, setValue] = useState<string[]>(['rock', 'pop']);
-    return <FacetFilter {...args} value={value} onChange={setValue} />;
+    return (
+      <FacetFilter
+        {...args}
+        value={value}
+        onChange={(next) => {
+          setValue(next);
+          args.onChange(next);
+        }}
+      />
+    );
   },
 };
 
-// Open multi-select genre list (in-memory filtering — the frontend-only mode).
+// Open multi-select genre combobox (arrow keys + Enter to toggle; teal check on selected).
 export const Open: Story = {
   render: (args) => {
     const [value, setValue] = useState<string[]>(['rock']);
-    return <FacetFilter {...args} value={value} onChange={setValue} defaultOpen />;
+    return (
+      <FacetFilter
+        {...args}
+        value={value}
+        onChange={(next) => {
+          setValue(next);
+          args.onChange(next);
+        }}
+        defaultOpen
+      />
+    );
   },
 };
 
-// Single-select instrument (radio list); the trigger reads "Instrument: Drums".
+// Single-select instrument (selecting replaces + closes); the trigger reads "Instrument: Drums".
 export const Single: Story = {
   render: (args) => {
     const [value, setValue] = useState<string[]>(['drums']);
@@ -74,7 +95,10 @@ export const Single: Story = {
         options={INSTRUMENTS}
         mode="single"
         value={value}
-        onChange={setValue}
+        onChange={(next) => {
+          setValue(next);
+          args.onChange(next);
+        }}
         defaultOpen
       />
     );

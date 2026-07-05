@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fn } from 'storybook/test';
 import { TokenPicker } from './TokenPicker';
 import type { FilterOption } from '@/components/ui/FacetFilter/FacetFilter';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
@@ -24,7 +25,7 @@ const meta = {
   component: TokenPicker,
   parameters: { layout: 'padded' },
   tags: ['autodocs'],
-  // Roomy positioned wrapper so the open suggestion popover is captured inside #storybook-root.
+  // Roomy positioned wrapper so the open combobox is captured inside #storybook-root for VR.
   decorators: [
     (Story) => (
       <div className="relative min-h-80 w-72">
@@ -36,7 +37,8 @@ const meta = {
     label: 'Tags',
     options: TAGS,
     value: [],
-    onChange: () => {},
+    onChange: fn(),
+    onQueryChange: fn(),
     placeholder: 'Add tag…',
   },
 } satisfies Meta<typeof TokenPicker>;
@@ -44,23 +46,42 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Closed picker with two chips.
+// Closed box with two removable gray badges.
 export const Default: Story = {
   render: (args) => {
     const [value, setValue] = useState<string[]>(['ghost-notes', 'syncopation']);
-    return <TokenPicker {...args} value={value} onChange={setValue} />;
+    return (
+      <TokenPicker
+        {...args}
+        value={value}
+        onChange={(next) => {
+          setValue(next);
+          args.onChange(next);
+        }}
+      />
+    );
   },
 };
 
-// Open suggestion list (in-memory filtering — the frontend-only mode).
+// Open combobox (arrow keys + Enter to toggle; teal check on selected).
 export const Open: Story = {
   render: (args) => {
     const [value, setValue] = useState<string[]>(['ghost-notes']);
-    return <TokenPicker {...args} value={value} onChange={setValue} defaultOpen />;
+    return (
+      <TokenPicker
+        {...args}
+        value={value}
+        onChange={(next) => {
+          setValue(next);
+          args.onChange(next);
+        }}
+        defaultOpen
+      />
+    );
   },
 };
 
-// Single-select (pattern): selecting replaces the one chip.
+// Single-select (pattern): selecting replaces the one token and closes.
 export const Single: Story = {
   render: (args) => {
     const [value, setValue] = useState<string[]>(['rock-8th']);
@@ -72,26 +93,10 @@ export const Single: Story = {
         placeholder="Add pattern…"
         mode="single"
         value={value}
-        onChange={setValue}
-        defaultOpen
-      />
-    );
-  },
-};
-
-// Free-text tokens: type a value not in the list and add it (user tags).
-export const Create: Story = {
-  render: (args) => {
-    const [value, setValue] = useState<string[]>([]);
-    const [query, setQuery] = useState('half-time');
-    return (
-      <TokenPicker
-        {...args}
-        allowCreate
-        value={value}
-        onChange={setValue}
-        query={query}
-        onQueryChange={setQuery}
+        onChange={(next) => {
+          setValue(next);
+          args.onChange(next);
+        }}
         defaultOpen
       />
     );

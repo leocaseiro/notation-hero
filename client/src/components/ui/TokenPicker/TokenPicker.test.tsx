@@ -10,19 +10,16 @@ const TAGS: FilterOption[] = [
   { value: 'shuffle', label: 'Shuffle' },
 ];
 
-// Controlled harness so add/remove round-trip through real state.
 const Harness = ({
   mode = 'multiple',
   initial = [],
-  allowCreate = false,
-}: Readonly<{ mode?: 'single' | 'multiple'; initial?: string[]; allowCreate?: boolean }>) => {
+}: Readonly<{ mode?: 'single' | 'multiple'; initial?: string[] }>) => {
   const [value, setValue] = useState<string[]>(initial);
   return (
     <TokenPicker
       label="Tags"
       options={TAGS}
       mode={mode}
-      allowCreate={allowCreate}
       value={value}
       onChange={setValue}
       defaultOpen
@@ -30,37 +27,12 @@ const Harness = ({
   );
 };
 
-test('renders the input and a chip per selected value', () => {
+test('renders a removable badge per selected value', () => {
   render(<TokenPicker label="Tags" options={TAGS} value={['ghost-notes']} onChange={() => {}} />);
-  expect(screen.getByRole('textbox', { name: 'Tags' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Remove Ghost notes' })).toBeInTheDocument();
 });
 
-test('clicking a suggestion adds the token', async () => {
-  const user = userEvent.setup();
-  const onChange = vi.fn();
-  render(<TokenPicker label="Tags" options={TAGS} value={[]} onChange={onChange} defaultOpen />);
-  await user.click(screen.getByRole('button', { name: 'Shuffle' }));
-  expect(onChange).toHaveBeenCalledWith(['shuffle']);
-});
-
-test('typing filters the suggestions in memory', async () => {
-  const user = userEvent.setup();
-  render(<TokenPicker label="Tags" options={TAGS} value={[]} onChange={() => {}} defaultOpen />);
-  await user.type(screen.getByRole('textbox', { name: 'Tags' }), 'sync');
-  expect(screen.getByRole('button', { name: 'Syncopation' })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Shuffle' })).not.toBeInTheDocument();
-});
-
-test('Enter adds the top suggestion', async () => {
-  const user = userEvent.setup();
-  const onChange = vi.fn();
-  render(<TokenPicker label="Tags" options={TAGS} value={[]} onChange={onChange} defaultOpen />);
-  await user.type(screen.getByRole('textbox', { name: 'Tags' }), 'sync{Enter}');
-  expect(onChange).toHaveBeenCalledWith(['syncopation']);
-});
-
-test('removing a chip drops just that token', async () => {
+test('removing a badge drops that token', async () => {
   const user = userEvent.setup();
   render(<Harness initial={['ghost-notes', 'shuffle']} />);
   await user.click(screen.getByRole('button', { name: 'Remove Ghost notes' }));
@@ -68,41 +40,49 @@ test('removing a chip drops just that token', async () => {
   expect(screen.getByRole('button', { name: 'Remove Shuffle' })).toBeInTheDocument();
 });
 
-test('Backspace on an empty input removes the last chip', async () => {
+test('selecting an option from the list adds it', async () => {
   const user = userEvent.setup();
-  render(<Harness initial={['ghost-notes', 'shuffle']} />);
-  screen.getByRole('textbox', { name: 'Tags' }).focus();
-  await user.keyboard('{Backspace}');
-  expect(screen.queryByRole('button', { name: 'Remove Shuffle' })).not.toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Remove Ghost notes' })).toBeInTheDocument();
+  const onChange = vi.fn();
+  render(<TokenPicker label="Tags" options={TAGS} value={[]} onChange={onChange} defaultOpen />);
+  await user.click(screen.getByRole('option', { name: /shuffle/i }));
+  expect(onChange).toHaveBeenCalledWith(['shuffle']);
+});
+
+test('selecting via keyboard (Enter on the highlighted option) adds a value', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(<TokenPicker label="Tags" options={TAGS} value={[]} onChange={onChange} defaultOpen />);
+  screen.getByPlaceholderText('Search…').focus();
+  await user.keyboard('{ArrowDown}{Enter}');
+  expect(onChange).toHaveBeenCalled();
+});
+
+test('the search box filters the options', async () => {
+  const user = userEvent.setup();
+  render(<TokenPicker label="Tags" options={TAGS} value={[]} onChange={() => {}} defaultOpen />);
+  await user.type(screen.getByPlaceholderText('Search…'), 'sync');
+  expect(screen.getByRole('option', { name: /syncopation/i })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: /shuffle/i })).not.toBeInTheDocument();
 });
 
 test('single mode replaces the selection', async () => {
   const user = userEvent.setup();
-  render(<Harness mode="single" initial={['ghost-notes']} />);
-  await user.click(screen.getByRole('button', { name: 'Shuffle' }));
-  expect(screen.getByRole('button', { name: 'Remove Shuffle' })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Remove Ghost notes' })).not.toBeInTheDocument();
-});
-
-test('allowCreate adds a free-text token on Enter', async () => {
-  const user = userEvent.setup();
   const onChange = vi.fn();
   render(
     <TokenPicker
-      label="Tags"
+      label="Pattern"
       options={TAGS}
-      value={[]}
+      mode="single"
+      value={['ghost-notes']}
       onChange={onChange}
-      allowCreate
       defaultOpen
     />,
   );
-  await user.type(screen.getByRole('textbox', { name: 'Tags' }), 'half-time{Enter}');
-  expect(onChange).toHaveBeenCalledWith(['half-time']);
+  await user.click(screen.getByRole('option', { name: /shuffle/i }));
+  expect(onChange).toHaveBeenCalledWith(['shuffle']);
 });
 
-test('shows a loading row, then an empty message', () => {
+test('shows a loading row, then the empty message', () => {
   const { rerender } = render(
     <TokenPicker label="Tags" options={TAGS} value={[]} onChange={() => {}} loading defaultOpen />,
   );

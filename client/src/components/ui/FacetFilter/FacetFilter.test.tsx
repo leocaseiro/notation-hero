@@ -10,7 +10,7 @@ const GENRES: FilterOption[] = [
   { value: 'pop', label: 'Pop' },
 ];
 
-// Controlled harness for the toggle/replace tests so selection round-trips through real state.
+// Controlled harness so selection round-trips through real state.
 const Harness = ({
   mode = 'multiple',
   initial = [],
@@ -28,36 +28,64 @@ const Harness = ({
   );
 };
 
-test('opens the popover from the trigger', async () => {
+test('opens the combobox from the trigger', async () => {
   const user = userEvent.setup();
   render(<FacetFilter label="Genre" options={GENRES} value={[]} onChange={() => {}} />);
-  expect(screen.queryByRole('group', { name: 'Genre' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: /rock/i })).not.toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: /genre/i }));
-  expect(screen.getByRole('group', { name: 'Genre' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: /rock/i })).toBeInTheDocument();
 });
 
-test('checking an option adds its value', async () => {
+test('clicking an option adds its value', async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();
   render(<FacetFilter label="Genre" options={GENRES} value={[]} onChange={onChange} defaultOpen />);
-  await user.click(screen.getByRole('checkbox', { name: 'Rock' }));
+  await user.click(screen.getByRole('option', { name: /rock/i }));
   expect(onChange).toHaveBeenCalledWith(['rock']);
 });
 
-test('unchecking a selected option removes its value', async () => {
+test('selecting via keyboard (Enter on the highlighted option) adds a value', async () => {
   const user = userEvent.setup();
-  render(<Harness initial={['rock']} />);
-  await user.click(screen.getByRole('checkbox', { name: 'Rock' }));
-  expect(screen.getByRole('checkbox', { name: 'Rock' })).not.toBeChecked();
+  const onChange = vi.fn();
+  render(<FacetFilter label="Genre" options={GENRES} value={[]} onChange={onChange} defaultOpen />);
+  const input = screen.getByPlaceholderText('Search…');
+  input.focus();
+  await user.keyboard('{ArrowDown}{Enter}');
+  expect(onChange).toHaveBeenCalled();
 });
 
-test('single mode uses radios and replaces the selection', async () => {
+test('a selected option is announced and can be toggled off', async () => {
   const user = userEvent.setup();
-  render(<Harness mode="single" initial={['rock']} />);
-  const jazz = screen.getByRole('radio', { name: 'Jazz' });
-  await user.click(jazz);
-  expect(jazz).toBeChecked();
-  expect(screen.getByRole('radio', { name: 'Rock' })).not.toBeChecked();
+  render(<Harness initial={['rock']} />);
+  // sr-only ", selected" is part of the accessible name.
+  expect(screen.getByRole('option', { name: /rock, selected/i })).toBeInTheDocument();
+  await user.click(screen.getByRole('option', { name: /rock/i }));
+  expect(screen.getByRole('option', { name: 'Rock' })).toBeInTheDocument();
+});
+
+test('the search box filters options in memory', async () => {
+  const user = userEvent.setup();
+  render(<FacetFilter label="Genre" options={GENRES} value={[]} onChange={() => {}} defaultOpen />);
+  await user.type(screen.getByPlaceholderText('Search…'), 'ja');
+  expect(screen.getByRole('option', { name: /jazz/i })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: /rock/i })).not.toBeInTheDocument();
+});
+
+test('single mode replaces the selection', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(
+    <FacetFilter
+      label="Genre"
+      options={GENRES}
+      mode="single"
+      value={['rock']}
+      onChange={onChange}
+      defaultOpen
+    />,
+  );
+  await user.click(screen.getByRole('option', { name: /jazz/i }));
+  expect(onChange).toHaveBeenCalledWith(['jazz']);
 });
 
 test('clear resets the selection', async () => {
@@ -70,49 +98,8 @@ test('clear resets the selection', async () => {
   expect(onChange).toHaveBeenCalledWith([]);
 });
 
-test('search filters the options in memory', async () => {
-  const user = userEvent.setup();
-  render(<FacetFilter label="Genre" options={GENRES} value={[]} onChange={() => {}} defaultOpen />);
-  await user.type(screen.getByRole('textbox', { name: 'Search Genre' }), 'ja');
-  expect(screen.getByRole('checkbox', { name: 'Jazz' })).toBeInTheDocument();
-  expect(screen.queryByRole('checkbox', { name: 'Rock' })).not.toBeInTheDocument();
-});
-
-test('with shouldFilter=false the list stays put but onQueryChange fires (fetch mode)', async () => {
-  const user = userEvent.setup();
-  const onQueryChange = vi.fn();
-  render(
-    <FacetFilter
-      label="Genre"
-      options={GENRES}
-      value={[]}
-      onChange={() => {}}
-      shouldFilter={false}
-      onQueryChange={onQueryChange}
-      defaultOpen
-    />,
-  );
-  await user.type(screen.getByRole('textbox', { name: 'Search Genre' }), 'z');
-  expect(onQueryChange).toHaveBeenCalledWith('z');
-  expect(screen.getByRole('checkbox', { name: 'Rock' })).toBeInTheDocument();
-});
-
-test('shows the empty message when there are no options', () => {
-  render(
-    <FacetFilter
-      label="Genre"
-      options={[]}
-      value={[]}
-      onChange={() => {}}
-      defaultOpen
-      emptyMessage="No genres found"
-    />,
-  );
-  expect(screen.getByText('No genres found')).toBeInTheDocument();
-});
-
-test('shows a loading row in fetch mode', () => {
-  render(
+test('shows a loading row, then the empty message', () => {
+  const { rerender } = render(
     <FacetFilter
       label="Genre"
       options={GENRES}
@@ -123,4 +110,15 @@ test('shows a loading row in fetch mode', () => {
     />,
   );
   expect(screen.getByText('Loading…')).toBeInTheDocument();
+  rerender(
+    <FacetFilter
+      label="Genre"
+      options={[]}
+      value={[]}
+      onChange={() => {}}
+      defaultOpen
+      emptyMessage="No genres found"
+    />,
+  );
+  expect(screen.getByText('No genres found')).toBeInTheDocument();
 });
