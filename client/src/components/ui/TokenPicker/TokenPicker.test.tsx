@@ -40,6 +40,15 @@ test('removing a badge drops that token', async () => {
   expect(screen.getByRole('button', { name: 'Remove Shuffle' })).toBeInTheDocument();
 });
 
+test('Backspace on the empty box removes the last token', async () => {
+  const user = userEvent.setup();
+  render(<Harness initial={['ghost-notes', 'shuffle']} />);
+  screen.getByRole('combobox').focus();
+  await user.keyboard('{Backspace}');
+  expect(screen.queryByRole('button', { name: 'Remove Shuffle' })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Remove Ghost notes' })).toBeInTheDocument();
+});
+
 test('selecting an option from the list adds it', async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();
@@ -52,7 +61,7 @@ test('selecting via keyboard (Enter on the highlighted option) adds a value', as
   const user = userEvent.setup();
   const onChange = vi.fn();
   render(<TokenPicker label="Tags" options={TAGS} value={[]} onChange={onChange} defaultOpen />);
-  screen.getByPlaceholderText('Search…').focus();
+  screen.getByRole('combobox').focus();
   await user.keyboard('{ArrowDown}{Enter}');
   expect(onChange).toHaveBeenCalled();
 });
@@ -60,7 +69,7 @@ test('selecting via keyboard (Enter on the highlighted option) adds a value', as
 test('the search box filters the options', async () => {
   const user = userEvent.setup();
   render(<TokenPicker label="Tags" options={TAGS} value={[]} onChange={() => {}} defaultOpen />);
-  await user.type(screen.getByPlaceholderText('Search…'), 'sync');
+  await user.type(screen.getByRole('combobox'), 'sync');
   expect(screen.getByRole('option', { name: /syncopation/i })).toBeInTheDocument();
   expect(screen.queryByRole('option', { name: /shuffle/i })).not.toBeInTheDocument();
 });

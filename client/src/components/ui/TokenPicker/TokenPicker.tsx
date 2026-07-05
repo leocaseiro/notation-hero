@@ -1,18 +1,13 @@
+import { Command as CommandPrimitive } from 'cmdk';
 import { useState } from 'react';
 import type { FilterOption } from '@/components/ui/FacetFilter/FacetFilter';
+import type { KeyboardEvent } from 'react';
 import { Badge } from '@/components/ui/Badge/Badge';
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/Command/Command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover/Popover';
+import { Command, CommandEmpty, CommandItem, CommandList } from '@/components/ui/Command/Command';
 import { cn } from '@/lib/utils';
 
 interface TokenPickerProps {
-  /** Accessible name for the search box and the "add" trigger. */
+  /** Accessible name for the inline search box. */
   label: string;
   options: readonly FilterOption[];
   /** Selected token values (length <= 1 when mode="single"). */
@@ -27,6 +22,7 @@ interface TokenPickerProps {
   /** Placeholder shown in the box when nothing is selected. */
   placeholder?: string;
   emptyMessage?: string;
+  /** Start with the suggestion list shown (for stories/tests). */
   defaultOpen?: boolean;
   className?: string;
 }
@@ -36,10 +32,17 @@ function tokenLabel(options: readonly FilterOption[], value: string): string {
   return options.find((option) => option.value === value)?.label ?? value;
 }
 
-// Multiple-combobox token picker (cmdk): selected values show as removable gray badges, and the
-// searchable list (arrow-key nav + Enter to toggle, teal checkmarks) picks from `options`. Dumb +
-// fetch-agnostic — static `options` + `shouldFilter` for frontend filtering, or `shouldFilter={false}`
-// + drive `options` from a request keyed off `onQueryChange`. Serves Tags / Key (multi), Pattern (single).
+// Inline multiple-combobox (shadcn "fancy multi-select" on cmdk): selected values are removable gray
+// badges INSIDE the box, and you type in that same box to filter suggestions that drop below (arrow-key
+// nav + Enter to toggle, teal checkmarks). Dumb + fetch-agnostic — static `options` + `shouldFilter`
+// for frontend filtering, or `shouldFilter={false}` + drive `options` from a request keyed off
+// `onQueryChange`. Serves Tags / Key (multi), Pattern (single).
+//
+// A11Y: cmdk pins role=combobox + aria-expanded=true + aria-controls on the input, so the listbox
+// (CommandList) must always exist for the aria-controls id reference to resolve. When closed we hide
+// it (axe skips hidden nodes, so a momentarily-empty list can't trip aria-required-children) rather
+// than unmounting it (which would dangle aria-controls). Options click via onMouseDown-preventDefault
+// so the pointer-down doesn't blur the input and close the list before onSelect fires.
 const TokenPicker = ({
   label,
   options,
@@ -55,116 +58,131 @@ const TokenPicker = ({
   className,
 }: TokenPickerProps) => {
   const [open, setOpen] = useState(defaultOpen);
+  const [query, setQuery] = useState('');
 
-  const toggle = (optionValue: string) => {
+  const handleSelect = (optionValue: string) => {
     if (mode === 'single') {
       onChange(value[0] === optionValue ? [] : [optionValue]);
-      setOpen(false);
-      return;
+    } else {
+      onChange(
+        value.includes(optionValue)
+          ? value.filter((current) => current !== optionValue)
+          : [...value, optionValue],
+      );
     }
-    onChange(
-      value.includes(optionValue)
-        ? value.filter((current) => current !== optionValue)
-        : [...value, optionValue],
-    );
+    setQuery('');
   };
 
   const removeToken = (tokenValue: string) => {
     onChange(value.filter((current) => current !== tokenValue));
   };
 
+  const handleQueryChange = (next: string) => {
+    setQuery(next);
+    onQueryChange?.(next);
+  };
+
+  // Backspace on an empty box removes the last token — keyboard parity with the × on each badge.
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Backspace' && query === '' && value.length > 0) {
+      onChange(value.slice(0, -1));
+    }
+  };
+
+  const inputPlaceholder = value.length === 0 ? placeholder : 'Add more…';
+
   return (
-    <div
+    <Command
       data-slot="token-picker"
-      className={cn(
-        'flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 text-sm',
-        'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
-        className,
-      )}
+      shouldFilter={shouldFilter}
+      className="overflow-visible bg-transparent"
     >
-      {value.map((token) => (
-        <Badge key={token} variant="secondary" className="gap-1 py-0.5 pr-0.5 pl-1.5">
-          {tokenLabel(options, token)}
-          <button
-            type="button"
-            aria-label={`Remove ${tokenLabel(options, token)}`}
-            onClick={() => removeToken(token)}
-            className="inline-flex items-center rounded-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-          >
-            <span className="material-symbols-outlined text-[1rem]" aria-hidden="true">
-              close
-            </span>
-          </button>
-        </Badge>
-      ))}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger
-          type="button"
+      <div
+        className={cn(
+          'flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 text-sm',
+          'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
+          className,
+        )}
+      >
+        {value.map((token) => (
+          <Badge key={token} variant="secondary" className="gap-1 py-0.5 pr-0.5 pl-1.5">
+            {tokenLabel(options, token)}
+            <button
+              type="button"
+              aria-label={`Remove ${tokenLabel(options, token)}`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => removeToken(token)}
+              className="inline-flex items-center rounded-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+            >
+              <span className="material-symbols-outlined text-[1rem]" aria-hidden="true">
+                close
+              </span>
+            </button>
+          </Badge>
+        ))}
+        <CommandPrimitive.Input
           aria-label={label}
-          className="flex min-w-24 flex-1 items-center gap-1 rounded-sm px-1 py-0.5 text-left text-muted-foreground outline-none focus-visible:text-foreground"
+          value={query}
+          onValueChange={handleQueryChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setOpen(false)}
+          placeholder={inputPlaceholder}
+          className="ml-1 min-w-24 flex-1 bg-transparent py-0.5 text-sm outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      <div className="relative">
+        <CommandList
+          className={cn(
+            'absolute top-1 z-50 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md',
+            !open && 'hidden',
+          )}
         >
-          <span>{value.length === 0 ? placeholder : 'Add more…'}</span>
-          <span className="material-symbols-outlined ml-auto text-[1.125rem]" aria-hidden="true">
-            expand_more
-          </span>
-        </PopoverTrigger>
-        <PopoverContent className="w-64 p-0">
-          <Command shouldFilter={shouldFilter}>
-            <CommandInput
-              aria-label={`Search ${label}`}
-              placeholder="Search…"
-              onValueChange={(next) => onQueryChange?.(next)}
-            />
-            <CommandList>
-              {loading && (
-                <div role="status" className="py-6 text-center text-sm text-muted-foreground">
-                  Loading…
-                </div>
-              )}
-              {!loading && options.length === 0 && (
-                <div role="status" className="py-6 text-center text-sm text-muted-foreground">
-                  {emptyMessage}
-                </div>
-              )}
-              {!loading && options.length > 0 && <CommandEmpty>{emptyMessage}</CommandEmpty>}
-              {!loading &&
-                options.map((option) => {
-                  const selected = value.includes(option.value);
-                  return (
-                    <CommandItem
-                      key={option.value}
-                      value={option.label}
-                      disabled={option.disabled ?? false}
-                      onSelect={() => toggle(option.value)}
+          {loading && (
+            <div role="status" className="py-6 text-center text-sm text-muted-foreground">
+              Loading…
+            </div>
+          )}
+          {!loading && options.length === 0 && (
+            <div role="status" className="py-6 text-center text-sm text-muted-foreground">
+              {emptyMessage}
+            </div>
+          )}
+          {!loading && options.length > 0 && <CommandEmpty>{emptyMessage}</CommandEmpty>}
+          {!loading &&
+            options.map((option) => {
+              const selected = value.includes(option.value);
+              return (
+                <CommandItem
+                  key={option.value}
+                  value={option.label}
+                  disabled={option.disabled ?? false}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onSelect={() => handleSelect(option.value)}
+                >
+                  {option.icon && (
+                    <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">
+                      {option.icon}
+                    </span>
+                  )}
+                  <span>{option.label}</span>
+                  {/* "checked", not "selected": cmdk uses aria-selected for the keyboard HIGHLIGHT,
+                      so a distinct word avoids colliding when a row is highlighted + chosen. */}
+                  {selected && <span className="sr-only">, checked</span>}
+                  {selected && (
+                    <span
+                      className="material-symbols-outlined ml-auto text-[1.125rem] text-primary"
+                      aria-hidden="true"
                     >
-                      {option.icon && (
-                        <span
-                          className="material-symbols-outlined text-[1.125rem]"
-                          aria-hidden="true"
-                        >
-                          {option.icon}
-                        </span>
-                      )}
-                      <span>{option.label}</span>
-                      {/* "checked", not "selected": cmdk uses aria-selected for the keyboard
-                          HIGHLIGHT, so a distinct word avoids colliding when a row is highlighted. */}
-                      {selected && <span className="sr-only">, checked</span>}
-                      {selected && (
-                        <span
-                          className="material-symbols-outlined ml-auto text-[1.125rem] text-primary"
-                          aria-hidden="true"
-                        >
-                          check
-                        </span>
-                      )}
-                    </CommandItem>
-                  );
-                })}
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-    </div>
+                      check
+                    </span>
+                  )}
+                </CommandItem>
+              );
+            })}
+        </CommandList>
+      </div>
+    </Command>
   );
 };
 
