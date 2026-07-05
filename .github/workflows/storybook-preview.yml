@@ -23,10 +23,10 @@ on:
         required: true
         type: string
 
-# Least-privilege: publish to gh-pages. pull-requests:write (the sticky comment) is added
-# alongside the comment step.
+# Least-privilege: publish to gh-pages + upsert the PR preview comment. No id-token/AWS.
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   # Diff filter — only pull_request + push carry a base the filter can diff against;
@@ -149,3 +149,38 @@ jobs:
           keep_files: true
           user_name: github-actions[bot]
           user_email: github-actions[bot]@users.noreply.github.com
+      # Sticky comment with the preview URL — PR / dispatch only (the root publish has no PR).
+      # success() keeps the implicit "previous steps passed" gate the explicit if: would drop.
+      - name: Comment preview URL
+        if: ${{ success() && needs.build.outputs.dest != '' }}
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          PR: ${{ needs.build.outputs.pr }}
+          URL: https://leocaseiro.github.io/notation-hero/${{ needs.build.outputs.dest }}/
+        with:
+          script: |
+            const marker = '<!-- storybook-preview -->';
+            const pr = Number(process.env.PR);
+            const url = process.env.URL;
+            const body = `${marker}\n📚 **Storybook preview**: ${url}\n\n_Updates on every push while this PR is open._`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body,
+              });
+            }
