@@ -424,6 +424,22 @@
     "playbutton",
     "scoredonut",
     "unlayered",
-    "videocam"
+    "videocam",
+    "cmdk",
+    "combobox",
+    "comboboxes",
+    "typeahead",
+    "downshift",
+    "ariakit",
+    "popover",
+    "tabindex",
+    "paradiddle",
+    "searchinput",
+    "facetfilter",
+    "tokenpicker",
+    "levelfilter",
+    "rangeslider",
+    "temporange",
+    "togglechipgroup"
   ]
 }
