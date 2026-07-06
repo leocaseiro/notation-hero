@@ -49,6 +49,22 @@ test('Backspace on the empty box removes the last token', async () => {
   expect(screen.getByRole('button', { name: 'Remove Ghost notes' })).toBeInTheDocument();
 });
 
+test('Enter on a Remove button removes that chip, not a hijacked list selection', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(
+    <TokenPicker
+      label="Tags"
+      options={TAGS}
+      value={['ghost-notes', 'shuffle']}
+      onChange={onChange}
+    />,
+  );
+  screen.getByRole('button', { name: 'Remove Shuffle' }).focus();
+  await user.keyboard('{Enter}');
+  expect(onChange).toHaveBeenCalledWith(['ghost-notes']);
+});
+
 test('selecting an option from the list adds it', async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();

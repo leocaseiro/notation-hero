@@ -107,11 +107,18 @@ const TokenPicker = ({
         {value.map((token) => (
           <Badge key={token} variant="secondary" className="gap-1 py-0.5 pr-0.5 pl-1.5">
             {tokenLabel(options, token)}
+            {/* Enter must remove the chip: stop it bubbling to cmdk's root keydown, which would
+                preventDefault + select the highlighted option even with the list closed. */}
             <button
               type="button"
               aria-label={`Remove ${tokenLabel(options, token)}`}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => removeToken(token)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.stopPropagation();
+                }
+              }}
               className="inline-flex items-center rounded-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
             >
               <span className="material-symbols-outlined text-[1rem]" aria-hidden="true">
