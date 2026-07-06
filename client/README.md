@@ -120,7 +120,7 @@ pnpm --filter @notation-hero/client test:vr:update   # re-generate baselines aft
 
 - Playwright auto-starts Storybook as its `webServer` (see `playwright.config.ts`) — you do **not** need Storybook running separately.
 - Specs match `**/*.vr.{ts,tsx}`. Each test opens `…/iframe.html?id=<story-id>` and calls `toHaveScreenshot`.
-- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed**. They are **OS-specific** (currently `…-chromium-darwin.png`, generated on macOS). Running `test:vr` on Linux will mismatch — CI/Docker-Linux baselines are a deferred follow-up.
+- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed**. They are **per-OS** — Playwright embeds the platform in the filename, so the repo commits both `…-chromium-darwin.png` (macOS) and `…-chromium-linux.png` (Linux). Local Macs compare against `-darwin`; **CI compares against `-linux`** — the `vr` job runs in the `mcr.microsoft.com/playwright:v1.61.1-noble` container, so its rendering matches the committed `-linux` set.
 
 **Debugging a failing VR test:**
 
@@ -136,7 +136,7 @@ pnpm --filter @notation-hero/client exec playwright test --headed
 ```
 
 - On failure Playwright writes `*-actual.png`, `*-expected.png`, and `*-diff.png` under `test-results/`. Open the `-diff` to see exactly which pixels changed.
-- **Change was intentional?** Re-run `test:vr:update` and commit the new baselines.
+- **Change was intentional?** Regenerate **both** OS baselines and commit them — `test:vr:update` covers the local `-darwin` set; regenerate the `-linux` set with Docker (see AGENTS.md §"VR baselines are per-OS — regenerate the Linux set with Docker" for the command).
 - **Looks like a flake?** The usual cause is web fonts not being ready. Specs already `await document.fonts.ready` before snapshotting (so Material Symbols render as glyphs, not the ligature fallback text) — if you introduce a new font/icon, load it the same way.
 - `test-results/`, `playwright-report/`, and `storybook-static/` are git-ignored.
 
