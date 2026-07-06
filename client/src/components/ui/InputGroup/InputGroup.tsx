@@ -92,7 +92,8 @@ const InputGroupText = ({ className, ...props }: React.ComponentProps<'span'>) =
 
 // Small ghost button for a trailing action (clear, toggle visibility). Plain
 // `<button>` — re-enables pointer events the addon disables and defaults to
-// `type="button"` so it never submits a surrounding form by accident.
+// `type="button"` so it never submits a surrounding form by accident. Its focus
+// ring (3px) and active press mirror the Button component so buttons feel the same.
 const InputGroupButton = ({
   className,
   type = 'button',
@@ -102,7 +103,7 @@ const InputGroupButton = ({
     type={type}
     data-slot="input-group-button"
     className={cn(
-      "pointer-events-auto inline-flex h-6 items-center justify-center gap-1 rounded-sm px-2 text-sm font-medium whitespace-nowrap outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&>svg:not([class*='size-'])]:size-3.5",
+      "pointer-events-auto inline-flex h-6 items-center justify-center gap-1 rounded-sm px-2 text-sm font-medium whitespace-nowrap outline-none transition-all hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&>svg:not([class*='size-'])]:size-3.5",
       className,
     )}
     {...props}
