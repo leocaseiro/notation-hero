@@ -34,14 +34,18 @@ const RadioGroupItem = ({
   <RadioGroupPrimitive.Item
     data-slot="radio-group-item"
     className={cn(
-      'aspect-square size-4 shrink-0 rounded-full border border-input text-primary shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:ring-destructive/40',
+      'relative aspect-square size-4 shrink-0 rounded-full border border-input text-primary shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:ring-destructive/40',
       className,
     )}
     {...props}
   >
+    {/* Indicator is taken out of flow (`absolute inset-0`, item is `relative`) so the dot
+        does not sit in the item's inline flow: an in-flow indicator shifts the item's
+        baseline when selected, so an inline radio would jump vertically next to text.
+        Mirrors the Checkbox indicator. */}
     <RadioGroupPrimitive.Indicator
       data-slot="radio-group-indicator"
-      className="relative flex items-center justify-center"
+      className="absolute inset-0 flex items-center justify-center"
     >
       <span
         data-slot="radio-group-dot"
