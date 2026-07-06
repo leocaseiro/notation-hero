@@ -32,6 +32,11 @@ test('renders a removable badge per selected value', () => {
   expect(screen.getByRole('button', { name: 'Remove Ghost notes' })).toBeInTheDocument();
 });
 
+test('the search box exposes an accessible name', () => {
+  render(<TokenPicker label="Tags" options={TAGS} value={[]} onChange={() => {}} />);
+  expect(screen.getByRole('combobox', { name: 'Tags' })).toBeInTheDocument();
+});
+
 test('removing a badge drops that token', async () => {
   const user = userEvent.setup();
   render(<Harness initial={['ghost-notes', 'shuffle']} />);
@@ -105,6 +110,25 @@ test('single mode replaces the selection', async () => {
   );
   await user.click(screen.getByRole('option', { name: /shuffle/i }));
   expect(onChange).toHaveBeenCalledWith(['shuffle']);
+});
+
+test('single mode closes the list after selecting', async () => {
+  const user = userEvent.setup();
+  // jsdom applies no CSS, so the `hidden` class (not display) is the observable close signal.
+  const { container } = render(
+    <TokenPicker
+      label="Pattern"
+      options={TAGS}
+      mode="single"
+      value={['ghost-notes']}
+      onChange={() => {}}
+      defaultOpen
+    />,
+  );
+  const list = container.querySelector('[data-slot="command-list"]');
+  expect(list).not.toHaveClass('hidden');
+  await user.click(screen.getByRole('option', { name: /shuffle/i }));
+  expect(list).toHaveClass('hidden');
 });
 
 test('shows a loading row, then the empty message', () => {

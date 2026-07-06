@@ -63,6 +63,7 @@ const TokenPicker = ({
   const handleSelect = (optionValue: string) => {
     if (mode === 'single') {
       onChange(value[0] === optionValue ? [] : [optionValue]);
+      setOpen(false);
     } else {
       onChange(
         value.includes(optionValue)
@@ -83,8 +84,14 @@ const TokenPicker = ({
   };
 
   // Backspace on an empty box removes the last token — keyboard parity with the × on each badge.
+  // Guard IME composition so a mid-composition Backspace edits the buffer, not a committed chip.
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Backspace' && query === '' && value.length > 0) {
+    if (
+      event.key === 'Backspace' &&
+      query === '' &&
+      value.length > 0 &&
+      !event.nativeEvent.isComposing
+    ) {
       onChange(value.slice(0, -1));
     }
   };
@@ -94,6 +101,7 @@ const TokenPicker = ({
   return (
     <Command
       data-slot="token-picker"
+      label={label}
       shouldFilter={shouldFilter}
       className="overflow-visible bg-transparent"
     >
@@ -107,18 +115,14 @@ const TokenPicker = ({
         {value.map((token) => (
           <Badge key={token} variant="secondary" className="gap-1 py-0.5 pr-0.5 pl-1.5">
             {tokenLabel(options, token)}
-            {/* Enter must remove the chip: stop it bubbling to cmdk's root keydown, which would
-                preventDefault + select the highlighted option even with the list closed. */}
+            {/* Keep cmdk's root keydown (Enter to select, arrow/Home/End nav) from hijacking keys
+                while a remove button is focused — the button owns its keys; the list shouldn't react. */}
             <button
               type="button"
               aria-label={`Remove ${tokenLabel(options, token)}`}
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => removeToken(token)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.stopPropagation();
-                }
-              }}
+              onKeyDown={(event) => event.stopPropagation()}
               className="inline-flex items-center rounded-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
             >
               <span className="material-symbols-outlined text-[1rem]" aria-hidden="true">
@@ -139,7 +143,10 @@ const TokenPicker = ({
         />
       </div>
       <div className="relative">
+        {/* A pointer-down inside the open list (scrollbar, padding, a row) must not blur the input
+            and trip onBlur -> close before the click lands. */}
         <CommandList
+          onMouseDown={(event) => event.preventDefault()}
           className={cn(
             'absolute top-1 z-50 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md',
             !open && 'hidden',
