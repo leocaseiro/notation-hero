@@ -1,4 +1,4 @@
-import{i as e}from"./preload-helper-BhTi32pF.js";import{n as t,t as n}from"./KindBadge-7Tioej4Z.js";var r,i,a,o,s;e((()=>{t(),r={title:`UI/KindBadge`,component:n,parameters:{layout:`centered`},tags:[`autodocs`],argTypes:{kind:{control:`select`,options:[`beat`,`rudiment`,`fill`]}}},i={args:{kind:`beat`}},a={args:{kind:`rudiment`}},o={args:{kind:`fill`}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
+import{i as e}from"./preload-helper-BhTi32pF.js";import{n as t,t as n}from"./KindBadge-BujRCAv4.js";var r,i,a,o,s;e((()=>{t(),r={title:`UI/KindBadge`,component:n,parameters:{layout:`centered`},tags:[`autodocs`],argTypes:{kind:{control:`select`,options:[`beat`,`rudiment`,`fill`]}}},i={args:{kind:`beat`}},a={args:{kind:`rudiment`}},o={args:{kind:`fill`}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
   args: {
     kind: 'beat'
   }
