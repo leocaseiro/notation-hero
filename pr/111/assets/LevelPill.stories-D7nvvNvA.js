@@ -1,4 +1,4 @@
-import{i as e}from"./preload-helper-D_j0eZSB.js";import{n as t,t as n}from"./LevelPill-W8WS6v9Y.js";var r,i,a,o,s,c;e((()=>{t(),r={title:`UI/LevelPill`,component:n,parameters:{layout:`centered`},tags:[`autodocs`]},i={args:{level:null}},a={args:{level:0}},o={args:{level:5}},s={args:{level:10}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
+import{i as e}from"./preload-helper-D_j0eZSB.js";import{n as t,t as n}from"./LevelPill-C4fRu8O7.js";var r,i,a,o,s,c;e((()=>{t(),r={title:`UI/LevelPill`,component:n,parameters:{layout:`centered`},tags:[`autodocs`]},i={args:{level:null}},a={args:{level:0}},o={args:{level:5}},s={args:{level:10}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
   args: {
     level: null
   }
