@@ -95,13 +95,27 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/head', github.event.inputs.pr_number) || github.ref }}
-      # Record exactly what was built (commit + time) so the sticky comment can show staleness —
-      # `git rev-parse HEAD` reads the checked-out commit directly rather than re-deriving it per
-      # event type (pull_request's github.sha is a synthetic merge commit, not the PR head).
+      # Record exactly what was built (commit + time) so the sticky comment can show staleness.
+      # The reported sha is resolved per event type, NOT via a blanket `git rev-parse HEAD`: the
+      # checkout above puts `pull_request` events on refs/pull/<n>/merge (github.ref for that event
+      # type) — an ephemeral two-parent merge commit that never appears in the PR's own history, so
+      # reporting it would make the "is this stale" comparison meaningless. `push`'s github.sha has
+      # no such quirk. workflow_dispatch explicitly checked out refs/pull/<n>/head above, so HEAD
+      # there already is the real PR head.
       - id: built
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_SHA: ${{ github.sha }}
         run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            pull_request) sha="$PR_HEAD_SHA" ;;
+            push) sha="$PUSH_SHA" ;;
+            *) sha="$(git rev-parse HEAD)" ;;
+          esac
           {
-            echo "sha=$(git rev-parse HEAD)"
+            echo "sha=$sha"
             echo "built_at=$(date -u +'%Y-%m-%d %H:%M UTC')"
           } >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/setup-js
