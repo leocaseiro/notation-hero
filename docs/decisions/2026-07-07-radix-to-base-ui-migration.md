@@ -65,6 +65,7 @@ Dropped. Base UI's `Combobox` (multi-select + chips + `filteredItems`/`filter={n
 - **Stay on Radix + keep the hand-rolled `cmdk` combobox** — rejected: the chip/keyboard code is exactly the maintenance burden Base UI's `Combobox` removes, and the surface area only grows if NH-262/NH-264 land first.
 - **Migrate later, after NH-262/NH-264 merge** — rejected: strictly more Radix surface area to re-migrate; today is the cheapest point (leocaseiro, 2026-07-07).
 - **Legacy `@base-ui-components/react` package** — rejected: superseded at the Base UI v1.0.0 stable release (2025-12-11); the correct current package is `@base-ui/react`.
+- **Give TokenPicker a visible label** (it's currently accessible-name-only — screen readers hear it via `aria-label`, sighted users only see the placeholder) — deferred by leocaseiro (2026-07-07): the surrounding filter-row layout already supplies visual context; adding a visible label is a real UI change, not a Base UI migration follow-up.
 
 ---
 
