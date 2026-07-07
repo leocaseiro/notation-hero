@@ -17,6 +17,11 @@ const meta = {
   component: Field,
   parameters: { layout: 'centered' },
   tags: ['autodocs'],
+  // No fn() spies: no Field part defines an event-handler prop (all are
+  // passthrough div/label/p wrappers).
+  argTypes: {
+    orientation: { control: 'select', options: ['vertical', 'horizontal', 'responsive'] },
+  },
 } satisfies Meta<typeof Field>;
 
 export default meta;
@@ -24,35 +29,48 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // Shared input styling so the stories read as real fields without pulling in our
-// Input component (this component folder must build independently).
-const inputClass = 'h-9 rounded-md border border-input bg-background px-3 text-sm';
+// Input component (this component folder must build independently). Carries the
+// Scope 2 tokens: focus ring + invalid border (ring width only on focus).
+const inputClass =
+  'h-9 rounded-md border border-input bg-background px-3 text-sm transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20';
 
 // Baseline vertical field: a label associated with a plain input via `htmlFor`.
 export const Default: Story = {
-  render: () => (
-    <Field className="w-72">
+  render: (args) => (
+    <Field {...args} className="w-72">
       <FieldLabel htmlFor="field-name">Name</FieldLabel>
       <input id="field-name" type="text" placeholder="Ada Lovelace" className={inputClass} />
     </Field>
   ),
 };
 
-// A helper line under the control — `FieldDescription` renders muted, small text.
+// A helper line under the control — `FieldDescription` renders muted, small text,
+// wired to the input via `aria-describedby`.
 export const WithDescription: Story = {
   render: () => (
     <Field className="w-72">
       <FieldLabel htmlFor="field-email">Email</FieldLabel>
-      <input id="field-email" type="email" placeholder="you@example.com" className={inputClass} />
-      <FieldDescription>We&apos;ll only use this to send your receipt.</FieldDescription>
+      <input
+        id="field-email"
+        type="email"
+        placeholder="you@example.com"
+        aria-describedby="field-email-description"
+        className={inputClass}
+      />
+      <FieldDescription id="field-email-description">
+        We&apos;ll only use this to send your receipt.
+      </FieldDescription>
     </Field>
   ),
 };
 
-// Invalid state — `FieldError` renders destructive text and carries `role="alert"`
-// so assistive tech announces it; `aria-invalid` marks the control.
+// Invalid state — `data-invalid` on the wrapper turns the label destructive,
+// `aria-invalid` marks the control (destructive border at rest, ring on focus),
+// and `FieldError` renders destructive text with `role="alert"` so assistive
+// tech announces it.
 export const WithError: Story = {
   render: () => (
-    <Field className="w-72">
+    <Field data-invalid="true" className="w-72">
       <FieldLabel htmlFor="field-password">Password</FieldLabel>
       <input
         id="field-password"
@@ -62,6 +80,44 @@ export const WithError: Story = {
         className={inputClass}
       />
       <FieldError id="field-password-error">Must be at least 8 characters.</FieldError>
+    </Field>
+  ),
+};
+
+// FieldError's `errors` prop — deduped and rendered as a bullet list when more
+// than one message survives.
+export const MultipleErrors: Story = {
+  render: () => (
+    <Field data-invalid="true" className="w-72">
+      <FieldLabel htmlFor="field-username">Username</FieldLabel>
+      <input
+        id="field-username"
+        type="text"
+        aria-invalid="true"
+        aria-describedby="field-username-error"
+        className={inputClass}
+      />
+      <FieldError
+        id="field-username-error"
+        errors={[{ message: 'Must be at least 3 characters.' }, { message: 'Already taken.' }]}
+      />
+    </Field>
+  ),
+};
+
+// Disabled composition — `data-disabled` on the wrapper dims the label
+// (group-data-[disabled=true]) and the disabled input drives peer-disabled.
+export const Disabled: Story = {
+  render: () => (
+    <Field data-disabled="true" className="w-72">
+      <FieldLabel htmlFor="field-disabled-name">Name</FieldLabel>
+      <input
+        id="field-disabled-name"
+        type="text"
+        disabled
+        placeholder="Ada Lovelace"
+        className={`${inputClass} disabled:cursor-not-allowed disabled:opacity-50`}
+      />
     </Field>
   ),
 };
@@ -77,6 +133,7 @@ export const Horizontal: Story = {
 };
 
 // A `FieldSet` + `FieldLegend` groups related fields; `FieldGroup` spaces them.
+// The nested set exercises the legend's `variant="label"` (smaller) style.
 export const Fieldset: Story = {
   render: () => (
     <FieldSet className="w-72">
@@ -90,6 +147,13 @@ export const Fieldset: Story = {
           <FieldLabel htmlFor="fieldset-last">Last name</FieldLabel>
           <input id="fieldset-last" type="text" className={inputClass} />
         </Field>
+        <FieldSet>
+          <FieldLegend variant="label">Preferred contact</FieldLegend>
+          <Field>
+            <FieldLabel htmlFor="fieldset-phone">Phone</FieldLabel>
+            <input id="fieldset-phone" type="tel" className={inputClass} />
+          </Field>
+        </FieldSet>
       </FieldGroup>
     </FieldSet>
   ),
@@ -134,10 +198,11 @@ export const Grouped: Story = {
 };
 
 // Responsive orientation — stacks vertically on narrow containers and switches to
-// a row at the `@md/field-group` breakpoint, so it lives inside a `FieldGroup`.
+// a row at the `@md/field-group` breakpoint (28rem), so the group must be wider
+// than that for the row branch to render (w-72 would always stack).
 export const Responsive: Story = {
   render: () => (
-    <FieldGroup className="w-72">
+    <FieldGroup className="w-[32rem]">
       <Field orientation="responsive">
         <FieldLabel htmlFor="responsive-username">Username</FieldLabel>
         <input

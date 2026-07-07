@@ -1,5 +1,4 @@
 import { cva } from 'class-variance-authority';
-import { Label as LabelPrimitive } from 'radix-ui';
 import { useMemo } from 'react';
 import type { VariantProps } from 'class-variance-authority';
 import type * as React from 'react';
@@ -13,8 +12,9 @@ import { cn } from '@/lib/utils';
  * variant surfaced as `data-orientation`. `FieldSet` + `FieldLegend` group
  * related fields (with `FieldGroup` for spacing), and `FieldSeparator` divides
  * groups. Every part sets its own `data-slot` so styling and tests can target
- * it. `FieldLabel` is built directly on the Radix `Label` primitive (not our
- * `Label` component) to keep this file self-contained.
+ * it. `FieldLabel` is a native `<label>` (not our `Label` component) to keep
+ * this file self-contained; its `select-none` covers the double-click
+ * text-selection guard Radix Label used to provide.
  */
 const fieldVariants = cva('group/field flex w-full gap-3 data-[invalid=true]:text-destructive', {
   variants: {
@@ -51,8 +51,9 @@ const Field = ({
   />
 );
 
-const FieldLabel = ({ className, ...props }: React.ComponentProps<typeof LabelPrimitive.Root>) => (
-  <LabelPrimitive.Root
+const FieldLabel = ({ className, ...props }: React.ComponentProps<'label'>) => (
+  // eslint-disable-next-line jsx-a11y/label-has-associated-control -- generic wrapper: the control association (htmlFor / wrapped input) happens at the call site
+  <label
     data-slot="field-label"
     className={cn(
       'group/field-label peer/field-label flex w-fit gap-2 text-sm leading-snug font-medium select-none group-data-[disabled=true]/field:opacity-50 peer-disabled:cursor-not-allowed peer-disabled:opacity-50',

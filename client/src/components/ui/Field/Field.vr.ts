@@ -1,19 +1,25 @@
-import { expect, test } from '@playwright/test';
+import { runVrStories } from '../../../vr-helpers';
 
 import { FIELD_STORY_IDS } from './Field.story-ids';
 
-// One visual snapshot per Field story, each loaded in isolation through
-// Storybook's iframe. Story IDs come from the shared Field.story-ids list, so VR
-// and a11y stay in lockstep with Field.stories.tsx.
-for (const story of FIELD_STORY_IDS) {
-  test(`Field / ${story}`, async ({ page }) => {
-    await page.goto(`/iframe.html?id=ui-field--${story}&viewMode=story`);
-    const field = page.locator('[data-slot="field"]').first();
-    await field.waitFor();
-    // Wait for web fonts so the field text renders before the snapshot.
-    await page.evaluate(async () => {
-      await document.fonts.ready;
-    });
-    await expect(field).toHaveScreenshot(`field-${story}.png`);
-  });
-}
+// Visual coverage for Field: every story x {light, dark}. Story IDs come from the shared
+// Field.story-ids list, so VR and a11y stay in lockstep with Field.stories.tsx.
+runVrStories({
+  name: 'Field',
+  storyPrefix: 'ui-field',
+  snapshotSlug: 'field',
+  storyIds: FIELD_STORY_IDS,
+  slotSelector: '[data-slot="field"]',
+  // Fieldset/grouped/responsive compositions live inside field-set/field-group wrappers —
+  // the union box frames whichever are present (missing selectors are skipped), instead of
+  // clipping to the first inner Field.
+  captureSelectors: ['[data-slot="field-set"]', '[data-slot="field-group"]', '[data-slot="field"]'],
+  states: ['resting'],
+  // Focus guards the token ring (default) and the destructive invalid ring (with-error);
+  // the other stories are compositions whose focus adds nothing new, and disabled cannot
+  // take focus at all.
+  statesForStory: (story) =>
+    story === 'default' || story === 'with-error' ? ['resting', 'focus'] : ['resting'],
+  // The field wrapper is a non-focusable div — Tab lands on the story's input.
+  focusExpect: '[data-slot="field"] input',
+});

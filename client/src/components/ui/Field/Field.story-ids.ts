@@ -6,6 +6,8 @@ export const FIELD_STORY_IDS = [
   'default',
   'with-description',
   'with-error',
+  'multiple-errors',
+  'disabled',
   'horizontal',
   'fieldset',
   'grouped',
