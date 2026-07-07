@@ -56,12 +56,14 @@ function parseBound(raw: string): number | null {
 const TRIGGER_CLASSES = cn(
   'inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm',
   'shadow-xs hover:bg-muted aria-expanded:bg-muted',
+  'dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
   'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
 );
 
 const SELECT_CLASSES = cn(
   'h-8 w-[84px] rounded-md border border-border bg-background px-2 text-sm tabular-nums',
-  'hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
+  'hover:bg-muted dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
+  'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
 );
 
 // Level filter: a trigger opens a popover with a difficulty *range* — a Min and a Max native

@@ -84,6 +84,7 @@ const TokenPicker = ({
         data-slot="token-picker"
         className={cn(
           'flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 text-sm',
+          'dark:border-input dark:bg-input/30',
           'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
           className,
         )}

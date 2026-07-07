@@ -35,6 +35,7 @@ interface FacetFilterProps {
 const TRIGGER_CLASSES = cn(
   'inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm',
   'shadow-xs hover:bg-muted aria-expanded:bg-muted',
+  'dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
   'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
 );
 

@@ -23,10 +23,13 @@ const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 type PageItem = number | 'ellipsis';
 
 // Base styling for a square 36px control (Prev/Next + each numbered page). Bordered, hover:bg-muted,
-// a focus ring, and disabled = dimmed + non-interactive — mirrors Button's `outline` variant.
+// a focus ring, and disabled = dimmed + non-interactive — mirrors Button's `outline` variant,
+// including its dark-mode tokens (`border-input` + translucent `bg-input`), so the controls match a
+// real outline Button in dark mode instead of keeping the light `border`/`background` tokens.
 const CONTROL_CLASSES = cn(
   'inline-flex size-9 items-center justify-center rounded-md border border-border bg-background text-sm',
   'shadow-xs hover:bg-muted hover:text-foreground',
+  'dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
   'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
   'disabled:pointer-events-none disabled:opacity-50',
 );
@@ -169,6 +172,7 @@ const Pagination = ({
             className={cn(
               'h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground',
               'shadow-xs hover:bg-muted',
+              'dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
               'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
               'disabled:pointer-events-none disabled:opacity-50',
             )}

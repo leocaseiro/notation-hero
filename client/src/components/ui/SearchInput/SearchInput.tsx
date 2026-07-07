@@ -54,6 +54,7 @@ const SearchInput = ({
       data-slot="search-input"
       className={cn(
         'relative flex h-9 items-center rounded-md border border-border bg-background text-sm',
+        'dark:border-input dark:bg-input/30',
         'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
         disabled && 'opacity-50',
         className,

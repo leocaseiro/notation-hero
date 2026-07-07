@@ -47,7 +47,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const TRIGGER_CLASS =
-  'inline-flex h-9 items-center rounded-md border border-border bg-background px-3 text-sm shadow-xs hover:bg-muted focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none';
+  'inline-flex h-9 items-center rounded-md border border-border bg-background px-3 text-sm shadow-xs hover:bg-muted dark:border-input dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none';
 
 const renderPopover = (args: PopoverStoryArgs) => (
   <Popover defaultOpen={args.defaultOpen} modal={args.modal} onOpenChange={args.onOpenChange}>
