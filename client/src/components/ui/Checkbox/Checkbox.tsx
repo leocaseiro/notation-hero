@@ -31,17 +31,20 @@ const Checkbox = ({ className, ...props }: React.ComponentProps<typeof CheckboxP
       data-slot="checkbox-indicator"
       className="absolute inset-0 flex items-center justify-center text-current"
     >
-      {/* Toggle visibility on a plain wrapper, not the icon span itself: the global
-          `.material-symbols-outlined` rule sets `display` *unlayered*, which in the CSS
-          cascade beats Tailwind's layered `hidden`/`block` utilities — so a
-          `.material-symbols-outlined` span cannot be hidden directly (both glyphs would
-          show at once). The wrapper carries no such rule, so the data-state toggle works
-          and exactly one glyph renders per state. */}
-      <span className="hidden group-data-[state=checked]/checkbox:block" aria-hidden="true">
-        <span className="material-symbols-outlined text-[1rem]">check</span>
+      {/* The global `.material-symbols-outlined` rule is *unlayered*, so it beats Tailwind's
+          layered utilities for both `display` and `font-size`. Hence: (1) an icon span can't
+          be hidden by `hidden`, so the show/hide toggle lives on a plain wrapper; (2) the
+          wrapper uses `contents` (not `block`) so the glyph centres in the indicator's
+          flexbox rather than baseline-aligning ~3px too high; (3) the size is forced with `!`
+          to beat the unlayered `font-size` (else the glyph renders 20px and overflows). */}
+      <span className="hidden group-data-[state=checked]/checkbox:contents" aria-hidden="true">
+        <span className="material-symbols-outlined text-[0.875rem]!">check</span>
       </span>
-      <span className="hidden group-data-[state=indeterminate]/checkbox:block" aria-hidden="true">
-        <span className="material-symbols-outlined text-[1rem]">remove</span>
+      <span
+        className="hidden group-data-[state=indeterminate]/checkbox:contents"
+        aria-hidden="true"
+      >
+        <span className="material-symbols-outlined text-[0.875rem]!">remove</span>
       </span>
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
