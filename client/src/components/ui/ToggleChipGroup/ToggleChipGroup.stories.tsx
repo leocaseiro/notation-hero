@@ -43,6 +43,7 @@ const meta = {
   },
   argTypes: {
     disabled: { control: 'boolean' },
+    type: { control: 'radio', options: ['single', 'multiple'] },
   },
 } satisfies Meta<typeof ToggleChipGroup>;
 

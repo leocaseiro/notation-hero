@@ -1,5 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './Tabs';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
+import type { ComponentProps } from 'react';
+
+// TabsList props (not Root's) — Base UI's manual-vs-automatic activation and arrow-key wrap —
+// surfaced here as top-level story args since every story forwards them into its own <TabsList>.
+// See https://base-ui.com/react/components/tabs for the full behavior reference.
+type TabsStoryArgs = ComponentProps<typeof Tabs> &
+  Pick<ComponentProps<typeof TabsList>, 'activateOnFocus' | 'loopFocus'>;
 
 const meta = {
   title: 'UI/Tabs',
@@ -13,7 +20,15 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof Tabs>;
+  args: {
+    activateOnFocus: true,
+    loopFocus: true,
+  },
+  argTypes: {
+    activateOnFocus: { control: 'boolean' },
+    loopFocus: { control: 'boolean' },
+  },
+} satisfies Meta<TabsStoryArgs>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -21,9 +36,9 @@ type Story = StoryObj<typeof meta>;
 // The lesson-type segment control that sits above the catalog: Song vs Lessons, Song active.
 // Each trigger carries a Material Symbols glyph and owns a small content panel.
 export const Default: Story = {
-  render: () => (
+  render: (args) => (
     <Tabs defaultValue="song">
-      <TabsList>
+      <TabsList activateOnFocus={args.activateOnFocus} loopFocus={args.loopFocus}>
         <TabsTrigger value="song">
           <span className="material-symbols-outlined" aria-hidden="true">
             music_note
@@ -49,9 +64,9 @@ export const Default: Story = {
 
 // Same control, but Lessons is the active tab from the start (defaultValue).
 export const LessonsActive: Story = {
-  render: () => (
+  render: (args) => (
     <Tabs defaultValue="lessons">
-      <TabsList>
+      <TabsList activateOnFocus={args.activateOnFocus} loopFocus={args.loopFocus}>
         <TabsTrigger value="song">
           <span className="material-symbols-outlined" aria-hidden="true">
             music_note
@@ -77,9 +92,9 @@ export const LessonsActive: Story = {
 
 // Plain text tabs, no icons — shows the component reused as a generic three-way switch.
 export const Plain: Story = {
-  render: () => (
+  render: (args) => (
     <Tabs defaultValue="all">
-      <TabsList>
+      <TabsList activateOnFocus={args.activateOnFocus} loopFocus={args.loopFocus}>
         <TabsTrigger value="all">All</TabsTrigger>
         <TabsTrigger value="beats">Beats</TabsTrigger>
         <TabsTrigger value="fills">Fills</TabsTrigger>
@@ -99,9 +114,9 @@ export const Plain: Story = {
 
 // One trigger disabled: it is skipped by keyboard navigation and cannot be selected.
 export const Disabled: Story = {
-  render: () => (
+  render: (args) => (
     <Tabs defaultValue="song">
-      <TabsList>
+      <TabsList activateOnFocus={args.activateOnFocus} loopFocus={args.loopFocus}>
         <TabsTrigger value="song">Song</TabsTrigger>
         <TabsTrigger value="lessons" disabled>
           Lessons

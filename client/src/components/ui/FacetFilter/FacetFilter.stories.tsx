@@ -44,6 +44,11 @@ const meta = {
     onChange: fn(),
     onQueryChange: fn(),
   },
+  argTypes: {
+    mode: { control: 'radio', options: ['single', 'multiple'] },
+    shouldFilter: { control: 'boolean' },
+    loading: { control: 'boolean' },
+  },
 } satisfies Meta<typeof FacetFilter>;
 
 export default meta;

@@ -41,6 +41,12 @@ const meta = {
     onQueryChange: fn(),
     placeholder: 'Add tag…',
   },
+  argTypes: {
+    placeholder: { control: 'text' },
+    mode: { control: 'radio', options: ['single', 'multiple'] },
+    shouldFilter: { control: 'boolean' },
+    loading: { control: 'boolean' },
+  },
 } satisfies Meta<typeof TokenPicker>;
 
 export default meta;
