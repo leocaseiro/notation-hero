@@ -17,10 +17,10 @@ test('toggles checked state on click', async () => {
   render(<Checkbox aria-label="Accept terms" />);
   const checkbox = screen.getByRole('checkbox');
   expect(checkbox).toHaveAttribute('aria-checked', 'false');
-  expect(checkbox).toHaveAttribute('data-state', 'unchecked');
+  expect(checkbox).toHaveAttribute('data-unchecked');
   await user.click(checkbox);
   expect(checkbox).toHaveAttribute('aria-checked', 'true');
-  expect(checkbox).toHaveAttribute('data-state', 'checked');
+  expect(checkbox).toHaveAttribute('data-checked');
 });
 
 test('controlled checkbox reports the change but keeps its checked value', async () => {
@@ -30,34 +30,36 @@ test('controlled checkbox reports the change but keeps its checked value', async
   const checkbox = screen.getByRole('checkbox');
   await user.click(checkbox);
   // The click asks to turn it off, but with no state update from the parent the
-  // controlled value stays checked.
-  expect(onCheckedChange).toHaveBeenCalledWith(false);
+  // controlled value stays checked. Base UI passes eventDetails as a second arg.
+  expect(onCheckedChange).toHaveBeenCalledWith(false, expect.anything());
   expect(checkbox).toHaveAttribute('aria-checked', 'true');
-  expect(checkbox).toHaveAttribute('data-state', 'checked');
+  expect(checkbox).toHaveAttribute('data-checked');
 });
 
 test('does not toggle when disabled', async () => {
   const user = userEvent.setup();
   render(<Checkbox aria-label="Accept terms" disabled />);
   const checkbox = screen.getByRole('checkbox');
-  expect(checkbox).toBeDisabled();
+  // Base UI renders a <span role="checkbox">, which can't carry the native disabled
+  // attribute (toBeDisabled) — the disabled state is exposed via aria-disabled.
+  expect(checkbox).toHaveAttribute('aria-disabled', 'true');
   await user.click(checkbox);
   expect(checkbox).toHaveAttribute('aria-checked', 'false');
 });
 
 test('reflects the indeterminate state', () => {
-  render(<Checkbox aria-label="Accept terms" checked="indeterminate" />);
+  render(<Checkbox aria-label="Accept terms" indeterminate />);
   const checkbox = screen.getByRole('checkbox');
   expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
-  expect(checkbox).toHaveAttribute('data-state', 'indeterminate');
+  expect(checkbox).toHaveAttribute('data-indeterminate');
 });
 
 test('indeterminate indicator renders both the check and remove glyphs (CSS-toggled)', () => {
-  const { container } = render(<Checkbox aria-label="Accept terms" checked="indeterminate" />);
+  const { container } = render(<Checkbox aria-label="Accept terms" indeterminate />);
   const indicator = container.querySelector('[data-slot="checkbox-indicator"]');
   expect(indicator).toBeInTheDocument();
   // Both Material Symbols glyphs live in the DOM; the visible one is chosen by
-  // the data-state CSS toggle (covered by VR), not by conditional rendering.
+  // the data-indeterminate CSS toggle (covered by VR), not by conditional rendering.
   expect(indicator).toHaveTextContent('check');
   expect(indicator).toHaveTextContent('remove');
 });

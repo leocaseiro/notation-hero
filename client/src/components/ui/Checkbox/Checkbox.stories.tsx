@@ -1,3 +1,5 @@
+import { fn } from 'storybook/test';
+
 import { Checkbox } from './Checkbox';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
@@ -8,7 +10,15 @@ const meta = {
   tags: ['autodocs'],
   // Every story needs an accessible name for axe; the standalone boxes carry an
   // aria-label, and `with-label` supplies its name through the wrapping <label>.
-  args: { 'aria-label': 'Accept terms' },
+  // onCheckedChange is the one event-handler prop — the fn() spy makes toggles
+  // observable in the Actions panel.
+  args: { 'aria-label': 'Accept terms', onCheckedChange: fn() },
+  argTypes: {
+    checked: { control: 'boolean' },
+    indeterminate: { control: 'boolean' },
+    disabled: { control: 'boolean' },
+    'aria-invalid': { control: 'boolean' },
+  },
 } satisfies Meta<typeof Checkbox>;
 
 export default meta;
@@ -21,9 +31,9 @@ export const Default: Story = {};
 // Checked — `check` glyph on the filled primary background.
 export const Checked: Story = { args: { checked: true } };
 
-// Indeterminate (tri-state) — set via the controlled `checked="indeterminate"`
-// prop; the indicator shows `remove` (a horizontal bar) instead of the check.
-export const Indeterminate: Story = { args: { checked: 'indeterminate' } };
+// Indeterminate — Base UI's separate boolean prop (layered over the boolean
+// checked state); the indicator shows `remove` (a horizontal bar) instead of the check.
+export const Indeterminate: Story = { args: { indeterminate: true } };
 
 // Disabled + unchecked — dimmed with the not-allowed cursor; not interactive.
 export const Disabled: Story = { args: { disabled: true } };

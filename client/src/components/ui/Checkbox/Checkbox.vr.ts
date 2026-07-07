@@ -1,20 +1,21 @@
-import { expect, test } from '@playwright/test';
+import { runVrStories } from '../../../vr-helpers';
 
 import { CHECKBOX_STORY_IDS } from './Checkbox.story-ids';
 
-// One visual snapshot per Checkbox story, each loaded in isolation through
-// Storybook's iframe. Story IDs come from the shared Checkbox.story-ids list, so
+// Full-state visual coverage for Checkbox: every story x {light, dark} x
+// {resting, hover, focus}. Story IDs come from the shared Checkbox.story-ids list, so
 // VR and a11y stay in lockstep with Checkbox.stories.tsx.
-for (const story of CHECKBOX_STORY_IDS) {
-  test(`Checkbox / ${story}`, async ({ page }) => {
-    await page.goto(`/iframe.html?id=ui-checkbox--${story}&viewMode=story`);
-    const checkbox = page.locator('[data-slot="checkbox"]').first();
-    await checkbox.waitFor();
-    // Wait for web fonts (incl. Material Symbols) so the indicator glyph is
-    // rendered before the snapshot — avoids capturing the ligature fallback text.
-    await page.evaluate(async () => {
-      await document.fonts.ready;
-    });
-    await expect(checkbox).toHaveScreenshot(`checkbox-${story}.png`);
-  });
-}
+runVrStories({
+  name: 'Checkbox',
+  storyPrefix: 'ui-checkbox',
+  snapshotSlug: 'checkbox',
+  storyIds: CHECKBOX_STORY_IDS,
+  slotSelector: '[data-slot="checkbox"]',
+  states: ['resting', 'hover', 'focus'],
+  // Disabled boxes are removed from the tab order (cannot focus) and paint no hover
+  // style (cursor swap only), so they get the resting snapshot alone.
+  statesForStory: (story) =>
+    story.startsWith('disabled') ? ['resting'] : ['resting', 'hover', 'focus'],
+  // Only stories that paint a glyph load the Material Symbols font.
+  iconFontStory: (story) => ['checked', 'indeterminate', 'disabled-checked'].includes(story),
+});
