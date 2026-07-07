@@ -26,7 +26,7 @@ stale where they disagree — corrections below.
 
 ## Locked decisions
 
-1. **Primitives = `radix-ui` (already a dep) + native form controls. No new dependency.** The wireframe calls for _"Jira-style filter dropdowns"_ = a search box over a checkbox / radio list, which is fully accessible via native `<input type="checkbox|radio">` inside a Radix `Popover`. A combobox library (`cmdk` / `downshift` / `@ariakit`) is deliberately **not** added: `cmdk` is the stalest of the three, and the dumb-component API means a library can be swapped in later behind the same props if ever wanted.
+1. **Primitives = `radix-ui` (already a dep) + native form controls. No new dependency.** The wireframe calls for _"Jira-style filter dropdowns"_ = a search box over a checkbox / radio list, which is fully accessible via native `<input type="checkbox|radio">` inside a Radix `Popover`. A combobox library (`cmdk` / `downshift` / `@ariakit`) is deliberately **not** added: `cmdk` is the stalest of the three, and the dumb-component API means a library can be swapped in later behind the same props if ever wanted. **⚠️ Superseded (round-2 review):** the hand-rolled native checkbox/radio list was not keyboard-accessible (couldn't select via Enter), so `cmdk` **was** adopted for `FacetFilter` (popover-anchored) + `TokenPicker` (inline) — arrow-key + Enter selection with teal checkmarks; the dumb + fetch-agnostic props are unchanged.
 2. **Icons = self-hosted Material Symbols** (`<span className="material-symbols-outlined">`), never lucide, even though `components.json` says `iconLibrary: lucide`. Match the repo (Button/PlayButton).
 3. **Fetch-agnostic ("frontend-only OR fetch, the component does not care").** Every searchable component takes a static `options` array + a controlled `query` / `onQueryChange` + a `shouldFilter` boolean (default `true`, mirrors the well-known cmdk prop):
    - _Frontend-only_ — pass all `options`, keep `shouldFilter` on; the component filters in memory. No network.
@@ -41,17 +41,17 @@ Each is a folder-per-component under `client/src/components/ui/<Name>/` with the
 full 6-file set (`.tsx`, `.test.tsx`, `.stories.tsx`, `.story-ids.ts`, `.vr.ts`,
 `.a11y.ts`) + committed VR baselines, unless marked _bare primitive_.
 
-| Component                    | Serves (filter)         | Primitive                  | Select              | Notes                                                                |
-| ---------------------------- | ----------------------- | -------------------------- | ------------------- | -------------------------------------------------------------------- |
-| `Popover` _(bare primitive)_ | plumbing                | Radix `Popover`            | —                   | Styled wrapper; coverage via the composites (Table precedent)        |
-| `SearchInput`                | search box              | native `input`             | free text           | Icon + clear button; controlled `value`/`onChange`                   |
-| `Tabs`                       | lesson-type (NH-255)    | Radix `Tabs`               | single              | `tablist`/`tab`, arrow-key roving focus native                       |
-| `Pagination`                 | list paging (NH-253)    | native `nav`               | —                   | Wired to TanStack pagination model; page-size + prev/next/first/last |
-| `LevelFilter`                | level                   | `Popover` + `Toggle`       | single ≤            | Condition row (`is at most ≤`) + Debut…Expert pills (0–10) + Clear   |
-| `FacetFilter`                | genre, kind, instrument | `Popover` + checkbox/radio | multi **or** single | `mode` prop; search box + list + Clear; count badge on trigger       |
-| `TokenPicker`                | tags, pattern, key      | `Popover` + `Badge` chips  | multi **or** single | Typeahead input + suggestions + removable chips                      |
-| `RangeSlider` / `TempoRange` | tempo                   | Radix `Slider`             | range               | Two-thumb `[min,max]`; `TempoRange` adds the BPM label               |
-| `ToggleChipGroup`            | skill, time-signature   | Radix `ToggleGroup`        | multi (or single)   | Chips; `type` prop maps to ToggleGroup single/multiple               |
+| Component                    | Serves (filter)         | Primitive                     | Select              | Notes                                                                    |
+| ---------------------------- | ----------------------- | ----------------------------- | ------------------- | ------------------------------------------------------------------------ |
+| `Popover` _(bare primitive)_ | plumbing                | Radix `Popover`               | —                   | Styled wrapper; coverage via the composites (Table precedent)            |
+| `SearchInput`                | search box              | native `input`                | free text           | Icon + clear button; controlled `value`/`onChange`                       |
+| `Tabs`                       | lesson-type (NH-255)    | Radix `Tabs`                  | single              | `tablist`/`tab`, arrow-key roving focus native                           |
+| `Pagination`                 | list paging (NH-253)    | native `nav`                  | —                   | Wired to TanStack pagination model; page-size + prev/next/first/last     |
+| `LevelFilter`                | level                   | `Popover` + `Toggle`          | single ≤            | Condition row (`is at most ≤`) + Debut…Expert pills (0–10) + Clear       |
+| `FacetFilter`                | genre, kind, instrument | `cmdk` in a Radix `Popover`   | multi **or** single | `mode` prop; search box + list + Clear; count badge on trigger           |
+| `TokenPicker`                | tags, pattern, key      | inline `cmdk` + `Badge` chips | multi **or** single | Inline input + chips in one box; suggestions drop below; removable chips |
+| `RangeSlider` / `TempoRange` | tempo                   | Radix `Slider`                | range               | Two-thumb `[min,max]`; `TempoRange` adds the BPM label                   |
+| `ToggleChipGroup`            | skill, time-signature   | Radix `ToggleGroup`           | multi (or single)   | Chips; `type` prop maps to ToggleGroup single/multiple                   |
 
 ### Filter semantics (drives component config, from the wireframe)
 

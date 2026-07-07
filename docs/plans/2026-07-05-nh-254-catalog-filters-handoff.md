@@ -20,7 +20,7 @@ All under `client/src/components/ui/<Name>/`, each with the 6-file set (`.tsx`, 
 | `Tabs`            | Song \| Lessons toggle (NH-255)         | Radix Tabs, roving focus                                                                       |
 | `Pagination`      | list paging (NH-253)                    | numbered pages **+ ellipsis**, teal active page, TanStack-agnostic props                       |
 | `FacetFilter`     | genre/kind (multi), instrument (single) | **cmdk combobox** — keyboard-accessible, teal checkmarks; keeps the trigger/count-badge layout |
-| `TokenPicker`     | tags/pattern/key                        | shadcn **multiple-combobox** — removable gray badges + cmdk list                               |
+| `TokenPicker`     | tags/pattern/key                        | inline **multi-combobox** — chips + inline cmdk input in one box; suggestions drop below       |
 | `LevelFilter`     | level                                   | **Min/Max range** dropdown (Debut..10), per the wireframe                                      |
 | `RangeSlider`     | tempo (BPM)                             | dual-thumb Radix Slider, hover + focus states                                                  |
 | `ToggleChipGroup` | skill + time-signature                  | toggle chips; selected = solid teal, unselected = gray                                         |
