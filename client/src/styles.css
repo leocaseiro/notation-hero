@@ -54,6 +54,10 @@ body,
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -93,6 +97,13 @@ body,
   --accent: oklch(96.3% 0.002 197.1deg);
   --accent-foreground: oklch(21.8% 0.008 223.9deg);
   --destructive: oklch(50.5% 0.21 27.5deg);
+
+  /* Success/warning: Okabe-Ito green #009e73 / amber #e69f00 (the score hues),
+     AA-darkened for light-theme text on white (same precedent as --kind-fill). */
+  --success: oklch(51.5% 0.1 165.5deg); /* #18795a — 5.3:1 on white */
+  --success-foreground: oklch(98.4% 0.014 165.5deg); /* mint-white — 5.1:1 on the fill */
+  --warning: oklch(53% 0.105 76.8deg); /* #8e6211 — 5.4:1 on white */
+  --warning-foreground: oklch(98.2% 0.018 84deg); /* cream — 5.1:1 on the fill */
   --border: oklch(92.5% 0.005 214.3deg);
   --input: oklch(92.5% 0.005 214.3deg);
   --ring: oklch(72.3% 0.014 214.4deg);
@@ -136,6 +147,13 @@ body,
   --accent: oklch(27.5% 0.011 216.9deg);
   --accent-foreground: oklch(98.7% 0.002 197.1deg);
   --destructive: oklch(70.4% 0.191 22.216deg);
+
+  /* Same values as --score-high / --score-developing (kept as literals so the
+     semantic tokens stay independent of the score palette). */
+  --success: oklch(71.6% 0.143 166.2deg); /* #1fbf8f — 7.4:1 on --popover */
+  --success-foreground: oklch(27% 0.05 166.2deg); /* deep green — 6.3:1 on the fill */
+  --warning: oklch(78.4% 0.152 75.6deg); /* #f0a92e — 8.6:1 on --popover */
+  --warning-foreground: oklch(28% 0.06 76deg); /* deep amber-brown — 7.3:1 on the fill */
   --border: oklch(100% 0 0deg / 10%);
   --input: oklch(100% 0 0deg / 15%);
   --ring: oklch(56% 0.021 213.5deg);

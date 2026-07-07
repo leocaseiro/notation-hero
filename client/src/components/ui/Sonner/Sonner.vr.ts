@@ -1,25 +1,26 @@
-import { expect, test } from '@playwright/test';
+import { runVrStories } from '../../../vr-helpers';
 
 import { SONNER_STORY_IDS } from './Sonner.story-ids';
 
-// Bespoke VR suite: sonner portals its toast (possibly outside #storybook-root),
-// so we snapshot the toast element itself rather than a [data-slot] root. Each
-// story auto-fires a persistent (duration: Infinity) toast on mount; we wait for
-// it, kill animations, wait for fonts, then snapshot. Story IDs come from the
-// shared Sonner.story-ids list so VR and a11y stay in lockstep with the stories.
-for (const story of SONNER_STORY_IDS) {
-  test(`Sonner / ${story}`, async ({ page }) => {
-    await page.goto(`/iframe.html?id=ui-sonner--${story}&viewMode=story`);
-    const toast = page.locator('[data-sonner-toast]').first();
-    await toast.waitFor();
-    // Kill sonner's enter animation so the snapshot is a settled, deterministic frame.
-    await page.addStyleTag({
-      content:
-        '*, *::before, *::after { transition: none !important; animation: none !important; }',
-    });
-    await page.evaluate(async () => {
-      await document.fonts.ready;
-    });
-    await expect(toast).toHaveScreenshot(`sonner-${story}.png`);
-  });
-}
+// Visual coverage for Sonner: every story x {light, dark}. Story IDs come from the
+// shared Sonner.story-ids list, so VR and a11y stay in lockstep with Sonner.stories.tsx.
+// The toast is portalled (position:fixed region outside #storybook-root), so the toast
+// element itself is both the wait target and the capture region — each story fires
+// exactly one persistent (duration: Infinity) toast, making .first() deterministic.
+// The colored Scope 4 states ARE the resting frames of success/error-toast/warning in
+// both themes. Hover/focus only exist on the action button (with-action story).
+runVrStories({
+  name: 'Sonner',
+  storyPrefix: 'ui-sonner',
+  snapshotSlug: 'sonner',
+  storyIds: SONNER_STORY_IDS,
+  slotSelector: '[data-sonner-toast]',
+  states: ['resting'],
+  statesForStory: (story) =>
+    story === 'with-action' ? ['resting', 'hover', 'focus'] : ['resting'],
+  hoverSelector: '[data-action]',
+  // Tab #1 lands on the toast <li> (tabIndex 0); #2 reaches the action button,
+  // whose new 3px design-system ring these frames pixel-guard.
+  focusTabs: 2,
+  focusExpect: '[data-action]',
+});
