@@ -42,7 +42,8 @@ test('does not fire onClick when disabled', () => {
 });
 
 test('renders as the child element when render is set', () => {
-  render(<Button render={<a href="/play">Go</a>} />);
+  // eslint-disable-next-line jsx-a11y/anchor-has-content -- useRender clones the anchor with the Button's children
+  render(<Button render={<a href="/play" />}>Go</Button>);
   const link = screen.getByRole('link', { name: 'Go' });
   expect(link).toBeInTheDocument();
   expect(link).toHaveAttribute('data-slot', 'button');
