@@ -78,7 +78,11 @@ const RangeSlider = ({
               className={cn(
                 'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
                 'hover:ring-4 hover:ring-ring/30',
-                'focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
+                // Base UI's thumb is a styled div wrapping a real (visually-hidden) native
+                // `<input type="range">` — the input receives focus, not this div, so a plain
+                // `focus-visible:` utility here would never match; `has-focus-visible:` reads the
+                // nested input's focus state instead.
+                'has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-focus-visible:outline-none',
                 'active:cursor-grabbing active:bg-primary',
                 'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed',
               )}
@@ -89,7 +93,11 @@ const RangeSlider = ({
               className={cn(
                 'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
                 'hover:ring-4 hover:ring-ring/30',
-                'focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
+                // Base UI's thumb is a styled div wrapping a real (visually-hidden) native
+                // `<input type="range">` — the input receives focus, not this div, so a plain
+                // `focus-visible:` utility here would never match; `has-focus-visible:` reads the
+                // nested input's focus state instead.
+                'has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-focus-visible:outline-none',
                 'active:cursor-grabbing active:bg-primary',
                 'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed',
               )}

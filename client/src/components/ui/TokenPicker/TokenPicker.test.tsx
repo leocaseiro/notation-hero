@@ -37,14 +37,14 @@ test('the search box exposes an accessible name', () => {
   expect(screen.getByRole('combobox', { name: 'Tags' })).toBeInTheDocument();
 });
 
-// KNOWN GAP (see ADR docs/decisions/2026-07-07-radix-to-base-ui-migration.md): with the input
+// KNOWN NUANCE (see ADR docs/decisions/2026-07-07-radix-to-base-ui-migration.md): with the input
 // rendered outside the popup (this chips pattern), Base UI forces modal focus management while the
 // list is open (`ComboboxPopup`: `focusManagerModal = !inputInsidePopup || modal`). Its `markOthers`
 // utility protects only the `<input>` node itself (Base UI's floating `reference`), not its sibling
-// Chip elements — so chip Remove buttons get `aria-hidden` while the list is open. Functionally
-// still clickable (jsdom doesn't enforce aria-hidden pointer-blocking), so these two tests use
-// `{ hidden: true }` to query past it — but this needs real-browser axe verification (flagged as a
-// follow-up: TokenPicker's chip-removal-while-list-open path may trip the a11y gate for real).
+// Chip elements — so chip Remove buttons get `aria-hidden` while the list is open (confirmed in
+// real Chromium too, not just jsdom). Still clickable, so these two tests use `{ hidden: true }` to
+// query past it. Verified against the real a11y gate (TokenPicker.a11y.ts, Playwright + axe-core):
+// it passes — the Remove button's roving `tabindex="-1"` keeps it out of the tab sequence axe checks.
 test('removing a badge drops that token', async () => {
   const user = userEvent.setup();
   render(<Harness initial={['ghost-notes', 'shuffle']} />);

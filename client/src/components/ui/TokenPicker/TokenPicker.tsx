@@ -68,7 +68,6 @@ const TokenPicker = ({
 
   return (
     <Combobox.Root
-      data-slot="token-picker"
       items={items}
       multiple={mode === 'multiple'}
       value={mode === 'multiple' ? value : (value[0] ?? null)}
@@ -82,6 +81,7 @@ const TokenPicker = ({
       onInputValueChange={(next) => onQueryChange?.(next)}
     >
       <Combobox.Chips
+        data-slot="token-picker"
         className={cn(
           'flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 text-sm',
           'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
