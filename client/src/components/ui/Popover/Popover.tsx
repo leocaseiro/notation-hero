@@ -17,12 +17,16 @@ const PopoverClose = PopoverPrimitive.Close;
 const PopoverContent = ({
   className,
   align = 'start',
+  side,
   sideOffset = 6,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Popup> &
-  Pick<React.ComponentProps<typeof PopoverPrimitive.Positioner>, 'align' | 'sideOffset'>) => (
+  Pick<
+    React.ComponentProps<typeof PopoverPrimitive.Positioner>,
+    'align' | 'side' | 'sideOffset'
+  >) => (
   <PopoverPrimitive.Portal container={getStorybookRootContainer()}>
-    <PopoverPrimitive.Positioner align={align} sideOffset={sideOffset}>
+    <PopoverPrimitive.Positioner align={align} side={side} sideOffset={sideOffset}>
       <PopoverPrimitive.Popup
         data-slot="popover-content"
         className={cn(
