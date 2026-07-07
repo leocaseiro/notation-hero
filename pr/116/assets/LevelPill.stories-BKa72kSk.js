@@ -1,4 +1,4 @@
-import{i as e}from"./preload-helper-BPP3zZ57.js";import{n as t,t as n}from"./LevelPill-Ck0lP4Ws.js";var r,i,a,o,s,c;e((()=>{t(),r={title:`UI/LevelPill`,component:n,parameters:{layout:`centered`},tags:[`autodocs`]},i={args:{level:null}},a={args:{level:0}},o={args:{level:5}},s={args:{level:10}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
+import{i as e}from"./preload-helper-BPP3zZ57.js";import{n as t,t as n}from"./LevelPill-Ceiqcvim.js";var r,i,a,o,s,c;e((()=>{t(),r={title:`UI/LevelPill`,component:n,parameters:{layout:`centered`},tags:[`autodocs`]},i={args:{level:null}},a={args:{level:0}},o={args:{level:5}},s={args:{level:10}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
   args: {
     level: null
   }
