@@ -12,6 +12,4 @@ runA11yStories({
   storyIds: NATIVE_SELECT_STORY_IDS,
   slotSelector: '[data-slot="native-select"]',
   iconFontStory: () => true,
-  // The disabled select sets `pointer-events-none`, so Playwright can't hover it.
-  hoverStory: (story) => story !== 'disabled',
 });

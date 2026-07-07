@@ -18,7 +18,7 @@ const NativeSelect = ({ className, children, ...props }: React.ComponentProps<'s
     <select
       data-slot="native-select"
       className={cn(
-        'peer h-9 w-full min-w-0 appearance-none rounded-md border border-input bg-transparent pl-3 pr-8 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30',
+        'peer h-9 w-full min-w-0 appearance-none rounded-md border border-input bg-transparent pl-3 pr-8 text-sm shadow-xs transition-[color,box-shadow] outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30',
         'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
         'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
         className,
@@ -29,7 +29,9 @@ const NativeSelect = ({ className, children, ...props }: React.ComponentProps<'s
     </select>
     <span
       data-slot="native-select-icon"
-      className="material-symbols-outlined pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground select-none peer-disabled:opacity-50"
+      // text-base! beats the unlayered .material-symbols-outlined font-size (1.25rem),
+      // which would overflow and off-center the 16px size-4 box.
+      className="material-symbols-outlined pointer-events-none absolute top-1/2 right-2 size-4 text-base! -translate-y-1/2 text-muted-foreground select-none peer-disabled:opacity-50"
       aria-hidden="true"
     >
       unfold_more
