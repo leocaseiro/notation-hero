@@ -49,8 +49,9 @@ test('prevents text selection on double-click of the label text', () => {
 });
 
 test('leaves mousedown on a wrapped form control untouched', () => {
+  const onMouseDown = vi.fn();
   render(
-    <Label>
+    <Label onMouseDown={onMouseDown}>
       <input type="checkbox" />
       Remember me
     </Label>,
@@ -59,6 +60,9 @@ test('leaves mousedown on a wrapped form control untouched', () => {
   const event = createEvent.mouseDown(checkbox, { detail: 2 });
   fireEvent(checkbox, event);
   expect(event.defaultPrevented).toBe(false);
+  // The early return for a wrapped control skips BOTH preventDefault and the
+  // consumer's onMouseDown (Radix parity) — pin that the handler is not called.
+  expect(onMouseDown).not.toHaveBeenCalled();
 });
 
 test('still calls a user-supplied onMouseDown', () => {
