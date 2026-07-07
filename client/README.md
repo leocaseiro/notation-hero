@@ -84,10 +84,10 @@ Browse glyph names at <https://fonts.google.com/icons>.
 
 ```tsx
 // The wrapper carries the display toggle; the icon span never does.
-<span className="hidden group-data-[state=checked]/box:block">
-  <span className="material-symbols-outlined" aria-hidden="true">
-    check
-  </span>
+// `contents` (not `block`) centres the glyph in a flex parent instead of
+// baseline-aligning it ~3px too high.
+<span className="hidden group-data-checked/checkbox:contents" aria-hidden="true">
+  <span className="material-symbols-outlined">check</span>
 </span>
 ```
 
