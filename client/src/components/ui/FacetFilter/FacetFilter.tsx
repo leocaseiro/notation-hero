@@ -1,14 +1,7 @@
+import { Combobox } from '@base-ui/react/combobox';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/Badge/Badge';
-import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@/components/ui/Command/Command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover/Popover';
-import { cn } from '@/lib/utils';
+import { cn, getStorybookRootContainer } from '@/lib/utils';
 
 export interface FilterOption {
   value: string;
@@ -28,7 +21,7 @@ interface FacetFilterProps {
   mode?: 'single' | 'multiple';
   /** Fires with the search text on every keystroke (drive a request off this in fetch mode). */
   onQueryChange?: (query: string) => void;
-  /** Filter the options in memory (cmdk). Set false for server-driven (fetch) results. */
+  /** Filter the options in memory (Base UI Combobox). Set false for server-driven (fetch) results. */
   shouldFilter?: boolean;
   /** Fetch-mode loading row. */
   loading?: boolean;
@@ -66,10 +59,21 @@ function selectedSummary(options: readonly FilterOption[], value: string[]): str
   return value.map((v) => options.find((option) => option.value === v)?.label ?? v).join(', ');
 }
 
-// Accessible filter dropdown: a trigger chip opens a cmdk combobox (arrow-key nav, Enter to
+// Base UI's Combobox speaks a single value (or null) in single mode, an array in multiple mode —
+// normalize both back to our public string[] contract.
+function toValueArray(mode: 'single' | 'multiple', next: string | string[] | null): string[] {
+  if (mode === 'multiple') return next as string[];
+  if (next === null) return [];
+  return [next as string];
+}
+
+// Accessible filter dropdown: a trigger chip opens a Base UI Combobox (arrow-key nav, Enter to
 // toggle, teal checkmarks). Keeps the Jira-style layout but fixes keyboard selection. Dumb +
 // fetch-agnostic — static `options` + `shouldFilter` for frontend filtering, or `shouldFilter={false}`
 // + drive `options` from a request keyed off `onQueryChange`.
+// Combobox's generic Value type is kept as the plain option `value` string (not the FilterOption
+// object) so the public value/onChange contract stays `string[]`; label/icon/disabled are looked up
+// from `options` by value inside the item renderer.
 const FacetFilter = ({
   label,
   options,
@@ -85,6 +89,7 @@ const FacetFilter = ({
   className,
 }: FacetFilterProps) => {
   const [open, setOpen] = useState(defaultOpen);
+  const items = options.map((option) => option.value);
 
   const toggle = (optionValue: string) => {
     if (mode === 'single') {
@@ -103,10 +108,26 @@ const FacetFilter = ({
   const summary = mode === 'multiple' && value.length > 0 ? selectedSummary(options, value) : '';
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
+    <Combobox.Root
+      items={items}
+      multiple={mode === 'multiple'}
+      value={mode === 'multiple' ? value : (value[0] ?? null)}
+      onValueChange={(next) => {
+        onChange(toValueArray(mode, next));
+        if (mode === 'single') setOpen(false);
+      }}
+      open={open}
+      onOpenChange={(next) => setOpen(next)}
+      filter={shouldFilter ? undefined : null}
+      onInputValueChange={(next) => onQueryChange?.(next)}
+    >
+      <Combobox.Trigger
         type="button"
         data-slot="facet-filter"
+        // Combobox.Trigger is exposed with role="combobox", not "button" — that role computes its
+        // accessible name from aria-label/aria-labelledby, not subtree text content, so it needs an
+        // explicit name (the visible label text alone wouldn't be picked up).
+        aria-label={selectionLabel(label, options, value, mode)}
         className={cn(TRIGGER_CLASSES, className)}
         {...(summary ? { title: summary } : {})}
       >
@@ -127,81 +148,95 @@ const FacetFilter = ({
         >
           expand_more
         </span>
-      </PopoverTrigger>
-      <PopoverContent className="w-64 p-0">
-        <Command shouldFilter={shouldFilter}>
-          <CommandInput
-            aria-label={`Search ${label}`}
-            placeholder="Search…"
-            onValueChange={(next) => onQueryChange?.(next)}
-          />
-          <CommandList>
-            {loading && (
+      </Combobox.Trigger>
+      <Combobox.Portal container={getStorybookRootContainer()}>
+        <Combobox.Positioner align="start" sideOffset={6}>
+          <Combobox.Popup className="w-64 overflow-hidden rounded-md border border-border bg-popover p-0 text-popover-foreground shadow-md outline-none">
+            <div className="flex items-center gap-1 border-b border-border px-2">
+              <span
+                className="material-symbols-outlined text-[1.125rem] text-muted-foreground"
+                aria-hidden="true"
+              >
+                search
+              </span>
+              <Combobox.Input
+                aria-label={`Search ${label}`}
+                placeholder="Search…"
+                className="flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground"
+              />
+            </div>
+            {loading ? (
               <div role="status" className="py-6 text-center text-sm text-muted-foreground">
                 Loading…
               </div>
+            ) : (
+              <>
+                <Combobox.List className="max-h-60 overflow-x-hidden overflow-y-auto p-1">
+                  {(item: string) => {
+                    const option = options.find((candidate) => candidate.value === item);
+                    if (!option) return null;
+                    const selected = value.includes(option.value);
+                    return (
+                      <Combobox.Item
+                        key={option.value}
+                        value={option.value}
+                        disabled={option.disabled ?? false}
+                        onClick={() => toggle(option.value)}
+                        className={cn(
+                          'relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none',
+                          'data-highlighted:bg-muted data-highlighted:text-foreground',
+                          'data-disabled:pointer-events-none data-disabled:opacity-50',
+                        )}
+                      >
+                        {option.icon && (
+                          <span
+                            className="material-symbols-outlined text-[1.125rem]"
+                            aria-hidden="true"
+                          >
+                            {option.icon}
+                          </span>
+                        )}
+                        <span>{option.label}</span>
+                        {selected && <span className="sr-only">, checked</span>}
+                        {selected && (
+                          <span
+                            className="material-symbols-outlined ml-auto text-[1.125rem] text-primary"
+                            aria-hidden="true"
+                          >
+                            check
+                          </span>
+                        )}
+                      </Combobox.Item>
+                    );
+                  }}
+                </Combobox.List>
+                <Combobox.Empty className="py-4 text-center text-sm text-muted-foreground">
+                  {emptyMessage}
+                </Combobox.Empty>
+              </>
             )}
-            {!loading && options.length === 0 && (
-              <div role="status" className="py-6 text-center text-sm text-muted-foreground">
-                {emptyMessage}
+            {value.length > 0 && (
+              <div className="border-t border-border p-1">
+                <button
+                  type="button"
+                  onClick={() => onChange([])}
+                  className={cn(
+                    'flex w-full items-center justify-center gap-1 rounded-sm px-2 py-1.5 text-sm',
+                    'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+                  )}
+                >
+                  <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">
+                    close
+                  </span>
+                  Clear
+                </button>
               </div>
             )}
-            {!loading && options.length > 0 && <CommandEmpty>{emptyMessage}</CommandEmpty>}
-            {!loading &&
-              options.map((option) => {
-                const selected = value.includes(option.value);
-                return (
-                  <CommandItem
-                    key={option.value}
-                    value={option.label}
-                    disabled={option.disabled ?? false}
-                    onSelect={() => toggle(option.value)}
-                  >
-                    {option.icon && (
-                      <span
-                        className="material-symbols-outlined text-[1.125rem]"
-                        aria-hidden="true"
-                      >
-                        {option.icon}
-                      </span>
-                    )}
-                    <span>{option.label}</span>
-                    {/* "checked", not "selected": cmdk uses aria-selected for the keyboard HIGHLIGHT,
-                        so a distinct word avoids a collision when a row is both highlighted + chosen. */}
-                    {selected && <span className="sr-only">, checked</span>}
-                    {selected && (
-                      <span
-                        className="material-symbols-outlined ml-auto text-[1.125rem] text-primary"
-                        aria-hidden="true"
-                      >
-                        check
-                      </span>
-                    )}
-                  </CommandItem>
-                );
-              })}
-          </CommandList>
-          {value.length > 0 && (
-            <div className="border-t border-border p-1">
-              <button
-                type="button"
-                onClick={() => onChange([])}
-                className={cn(
-                  'flex w-full items-center justify-center gap-1 rounded-sm px-2 py-1.5 text-sm',
-                  'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-                )}
-              >
-                <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">
-                  close
-                </span>
-                Clear
-              </button>
-            </div>
-          )}
-        </Command>
-      </PopoverContent>
-    </Popover>
+          </Combobox.Popup>
+        </Combobox.Positioner>
+      </Combobox.Portal>
+    </Combobox.Root>
   );
 };
 

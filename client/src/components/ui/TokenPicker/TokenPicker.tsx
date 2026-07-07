@@ -1,10 +1,7 @@
-import { Command as CommandPrimitive } from 'cmdk';
+import { Combobox } from '@base-ui/react/combobox';
 import { useState } from 'react';
 import type { FilterOption } from '@/components/ui/FacetFilter/FacetFilter';
-import type { KeyboardEvent } from 'react';
-import { Badge } from '@/components/ui/Badge/Badge';
-import { Command, CommandEmpty, CommandItem, CommandList } from '@/components/ui/Command/Command';
-import { cn } from '@/lib/utils';
+import { cn, getStorybookRootContainer } from '@/lib/utils';
 
 interface TokenPickerProps {
   /** Accessible name for the inline search box. */
@@ -16,7 +13,7 @@ interface TokenPickerProps {
   mode?: 'single' | 'multiple';
   /** Fires with the search text on every keystroke (drive a request off this in fetch mode). */
   onQueryChange?: (query: string) => void;
-  /** Filter suggestions in memory (cmdk). Set false for server-driven (fetch) suggestions. */
+  /** Filter suggestions in memory (Base UI Combobox). Set false for server-driven (fetch) suggestions. */
   shouldFilter?: boolean;
   loading?: boolean;
   /** Placeholder shown in the box when nothing is selected. */
@@ -32,17 +29,25 @@ function tokenLabel(options: readonly FilterOption[], value: string): string {
   return options.find((option) => option.value === value)?.label ?? value;
 }
 
-// Inline multiple-combobox (shadcn "fancy multi-select" on cmdk): selected values are removable gray
-// badges INSIDE the box, and you type in that same box to filter suggestions that drop below (arrow-key
-// nav + Enter to toggle, teal checkmarks). Dumb + fetch-agnostic — static `options` + `shouldFilter`
-// for frontend filtering, or `shouldFilter={false}` + drive `options` from a request keyed off
-// `onQueryChange`. Serves Tags / Key (multi), Pattern (single).
+// Base UI's Combobox speaks a single value (or null) in single mode, an array in multiple mode —
+// normalize both back to our public string[] contract.
+function toValueArray(mode: 'single' | 'multiple', next: string | string[] | null): string[] {
+  if (mode === 'multiple') return next as string[];
+  if (next === null) return [];
+  return [next as string];
+}
+
+// Inline multiple-combobox (shadcn "fancy multi-select", now on Base UI's first-class Combobox):
+// selected values are removable gray badges INSIDE the box (Combobox.Chips/Chip/ChipRemove — built
+// in, not hand-rolled), and you type in that same box to filter suggestions that drop below
+// (arrow-key nav + Enter to toggle, teal checkmarks). Dumb + fetch-agnostic — static `options` +
+// `shouldFilter` for frontend filtering, or `shouldFilter={false}` + drive `options` from a request
+// keyed off `onQueryChange`. Serves Tags / Key (multi), Pattern (single).
 //
-// A11Y: cmdk pins role=combobox + aria-expanded=true + aria-controls on the input, so the listbox
-// (CommandList) must always exist for the aria-controls id reference to resolve. When closed we hide
-// it (axe skips hidden nodes, so a momentarily-empty list can't trip aria-required-children) rather
-// than unmounting it (which would dangle aria-controls). Options click via onMouseDown-preventDefault
-// so the pointer-down doesn't blur the input and close the list before onSelect fires.
+// A11Y: Combobox.Input exposes role="combobox" itself here (it isn't rendered inside the popup, so
+// Base UI treats the chips-row input as the combobox surface, not a Trigger button). Backspace-on-
+// empty-box-removes-last-chip and the remove button not hijacking Enter/arrow-key list navigation
+// are both handled natively by Combobox.Input/ChipRemove — no hand-rolled keydown guards needed.
 const TokenPicker = ({
   label,
   options,
@@ -58,54 +63,25 @@ const TokenPicker = ({
   className,
 }: TokenPickerProps) => {
   const [open, setOpen] = useState(defaultOpen);
-  const [query, setQuery] = useState('');
-
-  const handleSelect = (optionValue: string) => {
-    if (mode === 'single') {
-      onChange(value[0] === optionValue ? [] : [optionValue]);
-      setOpen(false);
-    } else {
-      onChange(
-        value.includes(optionValue)
-          ? value.filter((current) => current !== optionValue)
-          : [...value, optionValue],
-      );
-    }
-    setQuery('');
-  };
-
-  const removeToken = (tokenValue: string) => {
-    onChange(value.filter((current) => current !== tokenValue));
-  };
-
-  const handleQueryChange = (next: string) => {
-    setQuery(next);
-    onQueryChange?.(next);
-  };
-
-  // Backspace on an empty box removes the last token — keyboard parity with the × on each badge.
-  // Guard IME composition so a mid-composition Backspace edits the buffer, not a committed chip.
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (
-      event.key === 'Backspace' &&
-      query === '' &&
-      value.length > 0 &&
-      !event.nativeEvent.isComposing
-    ) {
-      onChange(value.slice(0, -1));
-    }
-  };
-
+  const items = options.map((option) => option.value);
   const inputPlaceholder = value.length === 0 ? placeholder : 'Add more…';
 
   return (
-    <Command
+    <Combobox.Root
       data-slot="token-picker"
-      label={label}
-      shouldFilter={shouldFilter}
-      className="overflow-visible bg-transparent"
+      items={items}
+      multiple={mode === 'multiple'}
+      value={mode === 'multiple' ? value : (value[0] ?? null)}
+      onValueChange={(next) => {
+        onChange(toValueArray(mode, next));
+        if (mode === 'single') setOpen(false);
+      }}
+      open={open}
+      onOpenChange={(next) => setOpen(next)}
+      filter={shouldFilter ? undefined : null}
+      onInputValueChange={(next) => onQueryChange?.(next)}
     >
-      <div
+      <Combobox.Chips
         className={cn(
           'flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 text-sm',
           'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
@@ -113,90 +89,83 @@ const TokenPicker = ({
         )}
       >
         {value.map((token) => (
-          <Badge key={token} variant="secondary" className="gap-1 py-0.5 pr-0.5 pl-1.5">
+          <Combobox.Chip
+            key={token}
+            className="flex items-center gap-1 rounded-full bg-secondary py-0.5 pr-0.5 pl-1.5 text-secondary-foreground"
+          >
             {tokenLabel(options, token)}
-            {/* Keep cmdk's root keydown (Enter to select, arrow/Home/End nav) from hijacking keys
-                while a remove button is focused — the button owns its keys; the list shouldn't react. */}
-            <button
-              type="button"
+            <Combobox.ChipRemove
               aria-label={`Remove ${tokenLabel(options, token)}`}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => removeToken(token)}
-              onKeyDown={(event) => event.stopPropagation()}
               className="inline-flex items-center rounded-xs text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
             >
               <span className="material-symbols-outlined text-[1rem]" aria-hidden="true">
                 close
               </span>
-            </button>
-          </Badge>
+            </Combobox.ChipRemove>
+          </Combobox.Chip>
         ))}
-        <CommandPrimitive.Input
+        <Combobox.Input
           aria-label={label}
-          value={query}
-          onValueChange={handleQueryChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setOpen(true)}
-          onBlur={() => setOpen(false)}
           placeholder={inputPlaceholder}
           className="ml-1 min-w-24 flex-1 bg-transparent py-0.5 text-sm outline-none placeholder:text-muted-foreground"
         />
-      </div>
-      <div className="relative">
-        {/* A pointer-down inside the open list (scrollbar, padding, a row) must not blur the input
-            and trip onBlur -> close before the click lands. */}
-        <CommandList
-          onMouseDown={(event) => event.preventDefault()}
-          className={cn(
-            'absolute top-1 z-50 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md',
-            !open && 'hidden',
-          )}
-        >
-          {loading && (
-            <div role="status" className="py-6 text-center text-sm text-muted-foreground">
-              Loading…
-            </div>
-          )}
-          {!loading && options.length === 0 && (
-            <div role="status" className="py-6 text-center text-sm text-muted-foreground">
-              {emptyMessage}
-            </div>
-          )}
-          {!loading && options.length > 0 && <CommandEmpty>{emptyMessage}</CommandEmpty>}
-          {!loading &&
-            options.map((option) => {
-              const selected = value.includes(option.value);
-              return (
-                <CommandItem
-                  key={option.value}
-                  value={option.label}
-                  disabled={option.disabled ?? false}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onSelect={() => handleSelect(option.value)}
-                >
-                  {option.icon && (
-                    <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">
-                      {option.icon}
-                    </span>
-                  )}
-                  <span>{option.label}</span>
-                  {/* "checked", not "selected": cmdk uses aria-selected for the keyboard HIGHLIGHT,
-                      so a distinct word avoids colliding when a row is highlighted + chosen. */}
-                  {selected && <span className="sr-only">, checked</span>}
-                  {selected && (
-                    <span
-                      className="material-symbols-outlined ml-auto text-[1.125rem] text-primary"
-                      aria-hidden="true"
-                    >
-                      check
-                    </span>
-                  )}
-                </CommandItem>
-              );
-            })}
-        </CommandList>
-      </div>
-    </Command>
+      </Combobox.Chips>
+      <Combobox.Portal container={getStorybookRootContainer()}>
+        <Combobox.Positioner align="start" sideOffset={4} className="w-(--anchor-width)">
+          <Combobox.Popup className="rounded-md border border-border bg-popover text-popover-foreground shadow-md outline-none">
+            {loading ? (
+              <div role="status" className="py-6 text-center text-sm text-muted-foreground">
+                Loading…
+              </div>
+            ) : (
+              <>
+                <Combobox.List className="max-h-60 overflow-x-hidden overflow-y-auto p-1">
+                  {(item: string) => {
+                    const option = options.find((candidate) => candidate.value === item);
+                    if (!option) return null;
+                    const selected = value.includes(option.value);
+                    return (
+                      <Combobox.Item
+                        key={option.value}
+                        value={option.value}
+                        disabled={option.disabled ?? false}
+                        className={cn(
+                          'relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none',
+                          'data-highlighted:bg-muted data-highlighted:text-foreground',
+                          'data-disabled:pointer-events-none data-disabled:opacity-50',
+                        )}
+                      >
+                        {option.icon && (
+                          <span
+                            className="material-symbols-outlined text-[1.125rem]"
+                            aria-hidden="true"
+                          >
+                            {option.icon}
+                          </span>
+                        )}
+                        <span>{option.label}</span>
+                        {selected && <span className="sr-only">, checked</span>}
+                        {selected && (
+                          <span
+                            className="material-symbols-outlined ml-auto text-[1.125rem] text-primary"
+                            aria-hidden="true"
+                          >
+                            check
+                          </span>
+                        )}
+                      </Combobox.Item>
+                    );
+                  }}
+                </Combobox.List>
+                <Combobox.Empty className="py-4 text-center text-sm text-muted-foreground">
+                  {emptyMessage}
+                </Combobox.Empty>
+              </>
+            )}
+          </Combobox.Popup>
+        </Combobox.Positioner>
+      </Combobox.Portal>
+    </Combobox.Root>
   );
 };
 

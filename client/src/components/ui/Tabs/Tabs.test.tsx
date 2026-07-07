@@ -64,7 +64,9 @@ test('a disabled tab cannot be selected', async () => {
     </Tabs>,
   );
   const lessons = screen.getByRole('tab', { name: 'Lessons' });
-  expect(lessons).toBeDisabled();
+  // Base UI marks a disabled tab with `aria-disabled` (accessible-disabled pattern), not the native
+  // `disabled` attribute — `toBeDisabled()` checks the latter, so assert the former instead.
+  expect(lessons).toHaveAttribute('aria-disabled', 'true');
   await user.click(lessons);
   expect(screen.getByRole('tab', { name: 'Song' })).toHaveAttribute('aria-selected', 'true');
   expect(lessons).toHaveAttribute('aria-selected', 'false');

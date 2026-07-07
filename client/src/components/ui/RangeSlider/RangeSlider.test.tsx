@@ -22,7 +22,7 @@ test('renders both thumbs as named sliders', () => {
   expect(screen.getByRole('slider', { name: 'High' })).toBeInTheDocument();
 });
 
-test('exposes aria-valuemin / max / now on each thumb', () => {
+test('exposes min / max / aria-valuenow on each thumb', () => {
   render(
     <RangeSlider
       value={[20, 80]}
@@ -36,14 +36,17 @@ test('exposes aria-valuemin / max / now on each thumb', () => {
   const low = screen.getByRole('slider', { name: 'Low' });
   const high = screen.getByRole('slider', { name: 'High' });
 
-  // minStepsBetweenThumbs=0 lets the thumbs cross, so Radix reports the full track bounds on both;
-  // only aria-valuenow differs per thumb.
-  expect(low).toHaveAttribute('aria-valuemin', '0');
-  expect(low).toHaveAttribute('aria-valuemax', '100');
+  // Each thumb is a native `<input type="range">` (Base UI renders the accessible slider as a
+  // real range input, unlike Radix's span[role=slider]) — min/max come from the native `min`/`max`
+  // HTML attributes, not `aria-valuemin`/`aria-valuemax`; `aria-valuenow` is still set explicitly.
+  // minStepsBetweenValues=0 lets the thumbs cross, so both report the full track bounds; only
+  // aria-valuenow differs per thumb.
+  expect(low).toHaveAttribute('min', '0');
+  expect(low).toHaveAttribute('max', '100');
   expect(low).toHaveAttribute('aria-valuenow', '20');
 
-  expect(high).toHaveAttribute('aria-valuemin', '0');
-  expect(high).toHaveAttribute('aria-valuemax', '100');
+  expect(high).toHaveAttribute('min', '0');
+  expect(high).toHaveAttribute('max', '100');
   expect(high).toHaveAttribute('aria-valuenow', '80');
 });
 

@@ -1,4 +1,5 @@
-import { ToggleGroup } from 'radix-ui';
+import { Toggle } from '@base-ui/react/toggle';
+import { ToggleGroup } from '@base-ui/react/toggle-group';
 
 import { cn } from '@/lib/utils';
 
@@ -30,42 +31,23 @@ interface ToggleChipGroupProps {
 }
 
 // Chip look shared by every item: a rounded pill that reads as "off" on a gray secondary fill
-// (like Button `secondary`), and fills SOLID brand teal when Radix marks it data-[state=on] (like
-// Button `default`). Radix owns the roving focus, arrow-key movement, and aria-pressed — this only
+// (like Button `secondary`), and fills SOLID brand teal when Base UI marks it data-pressed (like
+// Button `default`). Base UI owns the roving focus, arrow-key movement, and aria-pressed — this only
 // paints the pill + focus ring.
 const CHIP_CLASS = cn(
   'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors outline-none',
   'border border-border bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_6%)]',
-  'data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground',
+  'data-pressed:border-primary data-pressed:bg-primary data-pressed:text-primary-foreground',
   'focus-visible:ring-3 focus-visible:ring-ring/50',
   'disabled:pointer-events-none disabled:opacity-50',
   '[&_.material-symbols-outlined]:text-[1.125rem]',
 );
 
-// Item body is identical in both modes; only Root differs (single vs multiple have different
-// value/onValueChange shapes in Radix). Rendering the items via one function keeps them in sync.
-function renderChips(options: readonly ChipOption[]): React.ReactNode {
-  return options.map((option) => (
-    <ToggleGroup.Item
-      key={option.value}
-      value={option.value}
-      disabled={option.disabled}
-      data-slot="toggle-chip"
-      className={CHIP_CLASS}
-    >
-      {option.icon ? (
-        <span className="material-symbols-outlined" aria-hidden="true">
-          {option.icon}
-        </span>
-      ) : null}
-      {option.label}
-    </ToggleGroup.Item>
-  ));
-}
-
-// Dumb, controlled group of toggle chips. The PUBLIC API is always a string[]; Radix's single
-// mode speaks a bare string, so we convert only at that boundary (below) and never leak it out.
-// Serves the catalog Skill and Time-signature filters (NH-254).
+// Dumb, controlled group of toggle chips. Base UI's ToggleGroup is always array-valued (`value`/
+// `onValueChange` speak `string[]` regardless of single-vs-multiple selection, unlike Radix's bare
+// string in single mode) — this already matches our public API, so `single` mode needs no
+// boundary conversion, just `multiple={false}`. Serves the catalog Skill and Time-signature
+// filters (NH-254).
 const ToggleChipGroup = ({
   options,
   value,
@@ -74,38 +56,33 @@ const ToggleChipGroup = ({
   disabled,
   'aria-label': ariaLabel,
   className,
-}: ToggleChipGroupProps) => {
-  // Props shared by both Root branches. Optional keys are spread in only when defined so nothing
-  // passes an explicit `undefined` — Radix's ToggleGroup.Root is a discriminated union and
-  // exactOptionalPropertyTypes rejects an undefined-valued optional prop against a union target.
-  const rootProps = {
-    'data-slot': 'toggle-chip-group',
-    className: cn('flex flex-wrap gap-2', className),
-    ...(disabled !== undefined && { disabled }),
-    ...(ariaLabel !== undefined && { 'aria-label': ariaLabel }),
-  };
-
-  // Single mode: Radix value is a string ('' when nothing is on). Map [] <-> '' at the boundary
-  // so callers always deal in string[].
-  if (type === 'single') {
-    return (
-      <ToggleGroup.Root
-        type="single"
-        value={value[0] ?? ''}
-        onValueChange={(next) => onChange(next ? [next] : [])}
-        {...rootProps}
+}: ToggleChipGroupProps) => (
+  <ToggleGroup
+    multiple={type === 'multiple'}
+    value={value}
+    onValueChange={(next) => onChange(next)}
+    data-slot="toggle-chip-group"
+    className={cn('flex flex-wrap gap-2', className)}
+    {...(disabled !== undefined && { disabled })}
+    {...(ariaLabel !== undefined && { 'aria-label': ariaLabel })}
+  >
+    {options.map((option) => (
+      <Toggle
+        key={option.value}
+        value={option.value}
+        disabled={option.disabled}
+        data-slot="toggle-chip"
+        className={CHIP_CLASS}
       >
-        {renderChips(options)}
-      </ToggleGroup.Root>
-    );
-  }
-
-  // Multiple mode: Radix already speaks string[], so it passes straight through.
-  return (
-    <ToggleGroup.Root type="multiple" value={value} onValueChange={onChange} {...rootProps}>
-      {renderChips(options)}
-    </ToggleGroup.Root>
-  );
-};
+        {option.icon ? (
+          <span className="material-symbols-outlined" aria-hidden="true">
+            {option.icon}
+          </span>
+        ) : null}
+        {option.label}
+      </Toggle>
+    ))}
+  </ToggleGroup>
+);
 
 export { ToggleChipGroup };

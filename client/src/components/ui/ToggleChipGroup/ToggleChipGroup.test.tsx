@@ -28,9 +28,11 @@ const Harness = ({
 };
 
 test('renders a labelled group of pressable chips', () => {
-  // Radix multiple-mode: root is a toolbar, each chip is a button with aria-pressed.
+  // Base UI's ToggleGroup root is a generic group (not Radix's toolbar); each chip is a button
+  // with aria-pressed, in both single and multiple mode (Base UI has no separate radio-group
+  // semantics for single-select — see the single-mode tests below).
   render(<Harness />);
-  expect(screen.getByRole('toolbar', { name: 'Time signature' })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'Time signature' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '4/4' })).toHaveAttribute('aria-pressed', 'false');
 });
 
@@ -73,7 +75,8 @@ test('multiple mode keeps earlier selections when adding another', async () => {
 });
 
 test('single mode emits a length<=1 payload and deselects the previous chip', async () => {
-  // Radix single-mode is a radiogroup of radios (aria-checked), so at most one is ever on.
+  // Base UI has no separate radio-group semantics for single-select — `multiple={false}` still
+  // renders plain toggle buttons (aria-pressed), and enforces at-most-one-pressed itself.
   const user = userEvent.setup();
   const onChange = vi.fn();
   render(
@@ -85,20 +88,20 @@ test('single mode emits a length<=1 payload and deselects the previous chip', as
       aria-label="Time signature"
     />,
   );
-  await user.click(screen.getByRole('radio', { name: '6/8' }));
+  await user.click(screen.getByRole('button', { name: '6/8' }));
 
   expect(onChange).toHaveBeenCalledWith(['6/8']);
   const payload = onChange.mock.calls[0]?.[0] as string[];
   expect(payload.length).toBeLessThanOrEqual(1);
 });
 
-test('single mode marks the selected chip checked and the rest unchecked', async () => {
+test('single mode marks the selected chip pressed and the rest unpressed', async () => {
   const user = userEvent.setup();
   render(<Harness type="single" initial={['4/4']} />);
-  await user.click(screen.getByRole('radio', { name: '6/8' }));
+  await user.click(screen.getByRole('button', { name: '6/8' }));
 
-  expect(screen.getByRole('radio', { name: '4/4' })).toHaveAttribute('aria-checked', 'false');
-  expect(screen.getByRole('radio', { name: '6/8' })).toHaveAttribute('aria-checked', 'true');
+  expect(screen.getByRole('button', { name: '4/4' })).toHaveAttribute('aria-pressed', 'false');
+  expect(screen.getByRole('button', { name: '6/8' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('disabled group renders no pressable chips', async () => {

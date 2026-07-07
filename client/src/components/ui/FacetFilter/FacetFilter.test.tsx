@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { FacetFilter } from './FacetFilter';
@@ -29,11 +29,15 @@ const Harness = ({
 };
 
 test('opens the combobox from the trigger', async () => {
+  // Base UI's Combobox.Trigger exposes role="combobox" (not "button" like the Radix/cmdk trigger),
+  // and opening is asynchronous (floating-ui positioning/focus timing) — waitFor the option.
   const user = userEvent.setup();
   render(<FacetFilter label="Genre" options={GENRES} value={[]} onChange={() => {}} />);
   expect(screen.queryByRole('option', { name: /rock/i })).not.toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: /genre/i }));
-  expect(screen.getByRole('option', { name: /rock/i })).toBeInTheDocument();
+  await user.click(screen.getByRole('combobox', { name: /genre/i }));
+  await waitFor(() => {
+    expect(screen.getByRole('option', { name: /rock/i })).toBeInTheDocument();
+  });
 });
 
 test('clicking an option adds its value', async () => {
@@ -120,5 +124,7 @@ test('shows a loading row, then the empty message', () => {
       emptyMessage="No genres found"
     />,
   );
-  expect(screen.getByText('No genres found')).toBeInTheDocument();
+  // Combobox.Empty's live-region text can carry an invisible word-joiner character, so match by
+  // substring instead of exact equality.
+  expect(screen.getByText(/No genres found/)).toBeInTheDocument();
 });
