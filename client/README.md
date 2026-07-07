@@ -136,6 +136,7 @@ pnpm --filter @notation-hero/client exec playwright test --headed
 ```
 
 - On failure Playwright writes `*-actual.png`, `*-expected.png`, and `*-diff.png` under `test-results/`. Open the `-diff` to see exactly which pixels changed.
+- **See it on a PR:** the `vr` CI job uploads a **`playwright-vr-report`** artifact (the run's _Artifacts_ section). Download it, then `npx playwright show-report ./playwright-report` opens the full viewer — the image-diff **Slider** (drag to wipe Expected↔Actual) plus the trace **timeline/filmstrip** for the failed run. Locally, `test:vr` writes the same report; add `--trace on` to also capture the timeline (local runs have no retry, so `on-first-retry` records nothing).
 - **Change was intentional?** Regenerate **both** OS baselines and commit them — `test:vr:update` covers the local `-darwin` set; regenerate the `-linux` set with Docker (see AGENTS.md §"VR baselines are per-OS — regenerate the Linux set with Docker" for the command).
 - **Looks like a flake?** The usual cause is web fonts not being ready. Specs already `await document.fonts.ready` before snapshotting (so Material Symbols render as glyphs, not the ligature fallback text) — if you introduce a new font/icon, load it the same way.
 - `test-results/`, `playwright-report/`, and `storybook-static/` are git-ignored.
