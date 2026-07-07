@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { createEvent, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Label } from './Label';
 
@@ -36,4 +36,34 @@ test('renders wrapped children (implicit association)', () => {
   const label = screen.getByText('Remember me').closest('label');
   expect(label).toBeInTheDocument();
   expect(label?.querySelector('input[type="checkbox"]')).toBeInTheDocument();
+});
+
+test('prevents text selection on double-click of the label text', () => {
+  render(<Label>Email</Label>);
+  const label = screen.getByText('Email');
+  // detail: 2 = second click of a double-click; the component preventDefaults it
+  // so the label text is not selected (Radix Label parity).
+  const event = createEvent.mouseDown(label, { detail: 2 });
+  fireEvent(label, event);
+  expect(event.defaultPrevented).toBe(true);
+});
+
+test('leaves mousedown on a wrapped form control untouched', () => {
+  render(
+    <Label>
+      <input type="checkbox" />
+      Remember me
+    </Label>,
+  );
+  const checkbox = screen.getByRole('checkbox');
+  const event = createEvent.mouseDown(checkbox, { detail: 2 });
+  fireEvent(checkbox, event);
+  expect(event.defaultPrevented).toBe(false);
+});
+
+test('still calls a user-supplied onMouseDown', () => {
+  const onMouseDown = vi.fn();
+  render(<Label onMouseDown={onMouseDown}>Email</Label>);
+  fireEvent.mouseDown(screen.getByText('Email'));
+  expect(onMouseDown).toHaveBeenCalledTimes(1);
 });

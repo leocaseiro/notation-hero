@@ -9,4 +9,5 @@ export const LABEL_STORY_IDS = [
   'disabled',
   'required',
   'long-text',
+  'group-disabled',
 ] as const;

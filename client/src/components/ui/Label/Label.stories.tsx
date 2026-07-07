@@ -1,3 +1,5 @@
+import { fn } from 'storybook/test';
+
 import { Label } from './Label';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
@@ -6,7 +8,13 @@ const meta = {
   component: Label,
   parameters: { layout: 'centered' },
   tags: ['autodocs'],
-  args: { children: 'Email' },
+  // onMouseDown is the one component-mediated handler (double-click selection
+  // guard) — the fn() spy makes it observable in the Actions panel.
+  args: { children: 'Email', onMouseDown: fn() },
+  argTypes: {
+    htmlFor: { control: 'text' },
+    children: { control: 'text' },
+  },
 } satisfies Meta<typeof Label>;
 
 export default meta;
@@ -82,6 +90,24 @@ export const LongText: Story = {
       <Label htmlFor="consent">
         I agree to receive occasional product updates and understand I can unsubscribe at any time
       </Label>
+    </div>
+  ),
+};
+
+// Ancestor group marked data-disabled="true" — the wiring Field-style wrappers
+// use; `group-data-[disabled=true]:` dims the label and shows the not-allowed
+// cursor, mirroring the peer-disabled path.
+export const GroupDisabled: Story = {
+  render: () => (
+    <div className="group grid gap-1.5" data-disabled="true">
+      <Label htmlFor="group-disabled-email">Email</Label>
+      <input
+        id="group-disabled-email"
+        type="email"
+        disabled
+        placeholder="you@example.com"
+        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+      />
     </div>
   ),
 };
