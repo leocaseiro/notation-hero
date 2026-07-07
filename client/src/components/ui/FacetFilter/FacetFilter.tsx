@@ -91,19 +91,6 @@ const FacetFilter = ({
   const [open, setOpen] = useState(defaultOpen);
   const items = options.map((option) => option.value);
 
-  const toggle = (optionValue: string) => {
-    if (mode === 'single') {
-      onChange(value[0] === optionValue ? [] : [optionValue]);
-      setOpen(false);
-      return;
-    }
-    onChange(
-      value.includes(optionValue)
-        ? value.filter((current) => current !== optionValue)
-        : [...value, optionValue],
-    );
-  };
-
   // Multi-select: expose the chosen labels as a hover tooltip (title) on the count-badge trigger.
   const summary = mode === 'multiple' && value.length > 0 ? selectedSummary(options, value) : '';
 
@@ -181,7 +168,6 @@ const FacetFilter = ({
                         key={option.value}
                         value={option.value}
                         disabled={option.disabled ?? false}
-                        onClick={() => toggle(option.value)}
                         className={cn(
                           'relative flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none',
                           'data-highlighted:bg-muted data-highlighted:text-foreground',

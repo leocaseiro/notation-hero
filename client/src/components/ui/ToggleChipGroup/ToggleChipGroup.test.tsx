@@ -123,6 +123,31 @@ test('disabled group renders no pressable chips', async () => {
   expect(onChange).not.toHaveBeenCalled();
 });
 
+test('a single disabled chip is inert while its siblings stay toggleable', async () => {
+  // Per-option `disabled` (distinct from the whole-group `disabled` above) must block just that
+  // chip: clicking it emits nothing, but an enabled sibling still toggles.
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  const options: readonly ChipOption[] = [
+    { value: '4/4', label: '4/4' },
+    { value: '3/4', label: '3/4', disabled: true },
+    { value: '6/8', label: '6/8' },
+  ];
+  render(
+    <ToggleChipGroup
+      options={options}
+      value={[]}
+      onChange={onChange}
+      aria-label="Time signature"
+    />,
+  );
+  expect(screen.getByRole('button', { name: '3/4' })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: '3/4' }));
+  expect(onChange).not.toHaveBeenCalled();
+  await user.click(screen.getByRole('button', { name: '6/8' }));
+  expect(onChange).toHaveBeenCalledWith(['6/8']);
+});
+
 test('ArrowRight moves roving focus to the next chip', async () => {
   const user = userEvent.setup();
   render(<Harness />);

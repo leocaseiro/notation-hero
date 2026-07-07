@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { RangeSlider } from './RangeSlider';
 
-// Radix Slider measures its track with ResizeObserver and uses pointer-capture on the thumb —
+// Base UI Slider measures its track with ResizeObserver and uses pointer-capture on the thumb —
 // neither exists in jsdom. Both are polyfilled globally in vitest.setup.ts; the tests drive the
 // slider by keyboard.
 
@@ -39,8 +39,9 @@ test('exposes min / max / aria-valuenow on each thumb', () => {
   // Each thumb is a native `<input type="range">` (Base UI renders the accessible slider as a
   // real range input, unlike Radix's span[role=slider]) — min/max come from the native `min`/`max`
   // HTML attributes, not `aria-valuemin`/`aria-valuemax`; `aria-valuenow` is still set explicitly.
-  // minStepsBetweenValues=0 lets the thumbs cross, so both report the full track bounds; only
-  // aria-valuenow differs per thumb.
+  // minStepsBetweenValues=0 lets the thumbs MEET (share a value), so both report the full track
+  // bounds as their native min/max; only aria-valuenow differs per thumb. (They meet but never
+  // cross — Base UI clamps each thumb at its neighbour; the clamp test below locks that.)
   expect(low).toHaveAttribute('min', '0');
   expect(low).toHaveAttribute('max', '100');
   expect(low).toHaveAttribute('aria-valuenow', '20');
@@ -81,6 +82,42 @@ test('arrow keys round-trip through controlled state', async () => {
   low.focus();
   await user.keyboard('{ArrowRight}{ArrowRight}');
   expect(low).toHaveAttribute('aria-valuenow', '22');
+});
+
+test('the low thumb clamps at the high thumb — they meet but never cross', async () => {
+  // minStepsBetweenValues=0 lets the thumbs share a value; Base UI clamps the low thumb at the high
+  // one so it never surfaces low > high (an invalid [min, max]). A controlled harness (value must
+  // round-trip for the thumb to actually advance) drives low far past high (from 20 toward 100, past
+  // high=40) and asserts it stops at 40 and every emitted tuple stays ordered.
+  const user = userEvent.setup();
+  const emitted: Array<[number, number]> = [];
+  const Spy = () => {
+    const [value, setValue] = useState<[number, number]>([20, 40]);
+    return (
+      <RangeSlider
+        value={value}
+        onChange={(next) => {
+          emitted.push(next);
+          setValue(next);
+        }}
+        min={0}
+        max={100}
+        step={1}
+        minLabel="Low"
+        maxLabel="High"
+      />
+    );
+  };
+  render(<Spy />);
+  const low = screen.getByRole('slider', { name: 'Low' });
+  low.focus();
+  // 30 presses would reach 50 unclamped; the low thumb must stop at the high value (40).
+  await user.keyboard('{ArrowRight>30/}');
+  expect(low).toHaveAttribute('aria-valuenow', '40');
+  // Every emitted tuple is ordered low <= high — the slider never surfaces an inverted range.
+  for (const [emittedLow, emittedHigh] of emitted) {
+    expect(emittedLow).toBeLessThanOrEqual(emittedHigh);
+  }
 });
 
 test('a disabled slider does not emit onChange on arrow keys', async () => {

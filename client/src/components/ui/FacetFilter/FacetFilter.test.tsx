@@ -40,12 +40,16 @@ test('opens the combobox from the trigger', async () => {
   });
 });
 
-test('clicking an option adds its value', async () => {
+test('clicking an option adds its value exactly once', async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();
   render(<FacetFilter label="Genre" options={GENRES} value={[]} onChange={onChange} defaultOpen />);
   await user.click(screen.getByRole('option', { name: /rock/i }));
   expect(onChange).toHaveBeenCalledWith(['rock']);
+  // Base UI's Combobox onValueChange is the single selection path — a mouse click must fire onChange
+  // once, not twice. (Regression guard: an earlier version also wired a redundant Item onClick, which
+  // double-fired and, in single mode, defeated deselect. toHaveBeenCalledWith alone missed it.)
+  expect(onChange).toHaveBeenCalledTimes(1);
 });
 
 test('selecting via keyboard (Enter on the highlighted option) adds a value', async () => {
@@ -90,6 +94,9 @@ test('single mode replaces the selection', async () => {
   );
   await user.click(screen.getByRole('option', { name: /jazz/i }));
   expect(onChange).toHaveBeenCalledWith(['jazz']);
+  // Single mode also fires exactly once (no redundant Item onClick). Deselect-on-reclick is not a
+  // FacetFilter affordance — matching TokenPicker, single-select clears via the Clear button below.
+  expect(onChange).toHaveBeenCalledTimes(1);
 });
 
 test('clear resets the selection', async () => {
@@ -100,6 +107,23 @@ test('clear resets the selection', async () => {
   );
   await user.click(screen.getByRole('button', { name: 'Clear' }));
   expect(onChange).toHaveBeenCalledWith([]);
+});
+
+test('a disabled option cannot be selected', async () => {
+  // Per-option `disabled` must block selection of just that row; enabled rows still work.
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  const options: FilterOption[] = [
+    { value: 'rock', label: 'Rock' },
+    { value: 'jazz', label: 'Jazz', disabled: true },
+  ];
+  render(
+    <FacetFilter label="Genre" options={options} value={[]} onChange={onChange} defaultOpen />,
+  );
+  await user.click(screen.getByRole('option', { name: /jazz/i }));
+  expect(onChange).not.toHaveBeenCalled();
+  await user.click(screen.getByRole('option', { name: /rock/i }));
+  expect(onChange).toHaveBeenCalledWith(['rock']);
 });
 
 test('shows a loading row, then the empty message', () => {
