@@ -1,4 +1,4 @@
-import{i as e}from"./preload-helper-k9Ak0obN.js";import{n as t,t as n}from"./Badge-C_v7rX3U.js";var r,i,a,o,s,c;e((()=>{t(),r={title:`UI/Badge`,component:n,parameters:{layout:`centered`},tags:[`autodocs`],args:{children:`Badge`},argTypes:{variant:{control:`select`,options:[`default`,`secondary`,`destructive`,`outline`]}}},i={args:{variant:`default`}},a={args:{variant:`secondary`}},o={args:{variant:`destructive`}},s={args:{variant:`outline`}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
+import{i as e}from"./preload-helper-k9Ak0obN.js";import{n as t,t as n}from"./Badge-iYLbE_83.js";var r,i,a,o,s,c;e((()=>{t(),r={title:`UI/Badge`,component:n,parameters:{layout:`centered`},tags:[`autodocs`],args:{children:`Badge`},argTypes:{variant:{control:`select`,options:[`default`,`secondary`,`destructive`,`outline`]}}},i={args:{variant:`default`}},a={args:{variant:`secondary`}},o={args:{variant:`destructive`}},s={args:{variant:`outline`}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
   args: {
     variant: 'default'
   }
