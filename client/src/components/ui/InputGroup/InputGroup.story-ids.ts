@@ -8,4 +8,5 @@ export const INPUT_GROUP_STORY_IDS = [
   'with-suffix-icon',
   'with-button',
   'invalid',
+  'disabled',
 ] as const;

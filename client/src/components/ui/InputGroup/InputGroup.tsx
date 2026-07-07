@@ -71,7 +71,7 @@ const InputGroupInput = ({ className, ...props }: React.ComponentProps<'input'>)
   <input
     data-slot="input-group-input"
     className={cn(
-      'flex-1 border-0 bg-transparent px-3 py-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50',
+      'flex-1 border-0 bg-transparent px-3 py-1 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50',
       className,
     )}
     {...props}
@@ -103,7 +103,7 @@ const InputGroupButton = ({
     type={type}
     data-slot="input-group-button"
     className={cn(
-      "pointer-events-auto inline-flex h-6 items-center justify-center gap-1 rounded-sm px-2 text-sm font-medium whitespace-nowrap outline-none transition-all hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&>svg:not([class*='size-'])]:size-3.5",
+      "pointer-events-auto inline-flex h-6 items-center justify-center gap-1 rounded-sm border border-transparent px-2 text-sm font-medium whitespace-nowrap outline-none transition-all hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&>svg:not([class*='size-'])]:size-3.5",
       className,
     )}
     {...props}

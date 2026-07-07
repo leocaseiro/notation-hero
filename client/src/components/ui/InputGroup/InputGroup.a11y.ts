@@ -8,5 +8,8 @@ runA11yStories({
   storyPrefix: 'ui-inputgroup',
   storyIds: INPUT_GROUP_STORY_IDS,
   slotSelector: '[data-slot="input-group"]',
-  iconFontStory: (story) => story.includes('icon'),
+  // with-button and disabled also render a Material Symbols glyph (visibility),
+  // not just the *icon* stories.
+  iconFontStory: (story) =>
+    story.includes('icon') || story === 'with-button' || story === 'disabled',
 });
