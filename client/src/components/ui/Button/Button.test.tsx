@@ -41,12 +41,8 @@ test('does not fire onClick when disabled', () => {
   expect(onClick).not.toHaveBeenCalled();
 });
 
-test('renders as the child element when asChild is set', () => {
-  render(
-    <Button asChild>
-      <a href="/play">Go</a>
-    </Button>,
-  );
+test('renders as the child element when render is set', () => {
+  render(<Button render={<a href="/play">Go</a>} />);
   const link = screen.getByRole('link', { name: 'Go' });
   expect(link).toBeInTheDocument();
   expect(link).toHaveAttribute('data-slot', 'button');
