@@ -1,3 +1,5 @@
+import { fn } from 'storybook/test';
+
 import { Input } from './Input';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
@@ -7,8 +9,21 @@ const meta = {
   parameters: { layout: 'centered' },
   tags: ['autodocs'],
   // Every story gives the field an accessible name via aria-label so axe passes
-  // without a visible <label> wrapper in the centered canvas.
-  args: { 'aria-label': 'Field' },
+  // without a visible <label> wrapper in the centered canvas. The fn() spies make
+  // typing/focus observable in the Actions panel.
+  args: { 'aria-label': 'Field', onChange: fn(), onFocus: fn(), onBlur: fn() },
+  // Explicit controls: docgen can't expand React.ComponentProps<'input'>.
+  argTypes: {
+    type: {
+      control: 'select',
+      options: ['text', 'email', 'password', 'number', 'file', 'search', 'tel', 'url'],
+    },
+    disabled: { control: 'boolean' },
+    readOnly: { control: 'boolean' },
+    'aria-invalid': { control: 'boolean' },
+    placeholder: { control: 'text' },
+    defaultValue: { control: 'text' },
+  },
 } satisfies Meta<typeof Input>;
 
 export default meta;
