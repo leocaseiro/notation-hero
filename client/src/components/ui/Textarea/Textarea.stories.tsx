@@ -1,3 +1,5 @@
+import { fn } from 'storybook/test';
+
 import { Textarea } from './Textarea';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
@@ -7,8 +9,18 @@ const meta = {
   parameters: { layout: 'centered' },
   tags: ['autodocs'],
   // Every story needs an accessible name for axe; `aria-label` is the default so
-  // stories that don't wrap a visible <label> still pass a11y.
-  args: { 'aria-label': 'Message' },
+  // stories that don't wrap a visible <label> still pass a11y. The fn() spies
+  // make typing/focus observable in the Actions panel.
+  args: { 'aria-label': 'Message', onChange: fn(), onFocus: fn(), onBlur: fn() },
+  // Explicit controls: docgen can't expand React.ComponentProps<'textarea'>.
+  argTypes: {
+    placeholder: { control: 'text' },
+    disabled: { control: 'boolean' },
+    readOnly: { control: 'boolean' },
+    rows: { control: 'number' },
+    'aria-invalid': { control: 'boolean' },
+    defaultValue: { control: 'text' },
+  },
 } satisfies Meta<typeof Textarea>;
 
 export default meta;
