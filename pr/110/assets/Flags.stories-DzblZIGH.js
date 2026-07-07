@@ -1,4 +1,4 @@
-import{i as e}from"./preload-helper-DrU69V4K.js";import{n as t,t as n}from"./Flags-DTkWOPig.js";var r,i,a,o,s,c;e((()=>{t(),r={title:`UI/Flags`,component:n,parameters:{layout:`centered`},tags:[`autodocs`]},i={args:{audio:!0,video:!0,parts:!0}},a={args:{audio:!0}},o={args:{video:!0}},s={args:{parts:!0}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
+import{i as e}from"./preload-helper-DrU69V4K.js";import{n as t,t as n}from"./Flags-DV0_t6-E.js";var r,i,a,o,s,c;e((()=>{t(),r={title:`UI/Flags`,component:n,parameters:{layout:`centered`},tags:[`autodocs`]},i={args:{audio:!0,video:!0,parts:!0}},a={args:{audio:!0}},o={args:{video:!0}},s={args:{parts:!0}},i.parameters={...i.parameters,docs:{...i.parameters?.docs,source:{originalSource:`{
   args: {
     audio: true,
     video: true,
