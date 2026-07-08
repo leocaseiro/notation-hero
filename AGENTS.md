@@ -172,7 +172,8 @@ grayscale antialiasing, different glyph metrics), so one OS is the source of tru
 (`*-chromium-darwin.png`) are git-ignored. **CI compares against `-linux`** in the official
 Playwright container — never run VR natively on a Mac against these baselines.
 
-Locally, run VR through that same container from the repo root:
+Docker Desktop must be running first — on macOS, start it with `open -a Docker` (no need to open
+the app by hand). Then run VR locally through that same container from the repo root:
 
 ```bash
 pnpm test:vr:docker            # compare against the committed Linux baselines
