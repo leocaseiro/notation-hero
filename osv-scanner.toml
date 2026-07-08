@@ -7,16 +7,12 @@
 #   - GHSA-hmw2-7cc7-3qxx  form-data 4.0.5 -> 4.0.6  (High 8.7, safe patch)
 #   - GHSA-7c78-jf6q-g5cm  tmp       0.2.6 -> 0.2.7  (High 8.2, safe patch)
 #   - GHSA-67mh-4wv8-2f99  esbuild   <0.25 -> 0.25.12  (Medium 5.3, drizzle-kit build transitive; migrate re-validated)
+#   - GHSA-h67p-54hq-rp68  js-yaml   3.14.2 -> 3.15.0 (v3-legacy) + 4.1.1 -> 4.2.0  (Medium 5.3, same-major legacy patches — no cross-major bump)
 #
-# Deferred below: deep transitives whose fix we cannot safely force —
-#   - js-yaml + @opentelemetry/core: @pulumi/pulumi transitives; the fix is a MAJOR
-#     bump that risks breaking Pulumi at runtime (unverifiable in CI without AWS creds).
-# All Medium severity, IaC-time path only — never in the Lambda runtime.
-
-[[IgnoredVulns]]
-id = "GHSA-h67p-54hq-rp68"  # js-yaml 3.14.2 (Medium 5.3)
-ignoreUntil = 2026-09-16T00:00:00Z
-reason = "js-yaml@3.14.2 is a deep transitive of @pulumi/pulumi (IaC). Fix is js-yaml v4 — a MAJOR bump that risks breaking Pulumi at runtime (unverifiable in CI). Medium severity, IaC path only. Revisit when @pulumi/pulumi upgrades js-yaml upstream. Tracked: NH-191."
+# Deferred below: one deep transitive whose fix we cannot safely force —
+#   - @opentelemetry/core: @pulumi/pulumi OTLP-exporter transitive; the only fix is a MAJOR
+#     bump (v1 -> v2) that risks breaking Pulumi telemetry at runtime (unverifiable in CI without AWS creds).
+# Medium severity, IaC-time path only — never in the Lambda runtime.
 
 [[IgnoredVulns]]
 id = "GHSA-8988-4f7v-96qf"  # @opentelemetry/core 1.30.1 (Medium 5.3)
