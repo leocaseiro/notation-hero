@@ -44,7 +44,7 @@ src/components/ui/Button/
   Button.test.tsx            # Vitest + Testing Library unit tests
   Button.stories.tsx         # Storybook stories (docs + the source of truth for VR)
   Button.vr.ts               # Playwright visual-regression spec
-  Button.vr.ts-snapshots/    # committed baseline PNGs (per-OS)
+  Button.vr.ts-snapshots/    # committed baseline PNGs (Linux only)
 ```
 
 Import via the `@/` alias (maps to `src/`), e.g. `import { Button } from '@/components/ui/Button/Button'`.
@@ -80,6 +80,19 @@ Icons use **Material Symbols Outlined**, **self-hosted** via `@fontsource-variab
 
 Browse glyph names at <https://fonts.google.com/icons>.
 
+**Gotcha — you cannot hide a `.material-symbols-outlined` span with `hidden`.** That class sets `display` _outside_ Tailwind's `@layer`, and unlayered CSS beats layered utilities in the cascade — so `hidden` (and any other `display` utility) has no effect on an icon span; it stays visible. To show or hide an icon by state, put the toggle on a plain wrapper and nest the glyph inside:
+
+```tsx
+// The wrapper carries the display toggle; the icon span never does.
+// `contents` (not `block`) centres the glyph in a flex parent instead of
+// baseline-aligning it ~3px too high.
+<span className="hidden group-data-checked/checkbox:contents" aria-hidden="true">
+  <span className="material-symbols-outlined">check</span>
+</span>
+```
+
+See `Checkbox/Checkbox.tsx` for a working example.
+
 ### Storybook
 
 ```bash
@@ -87,6 +100,21 @@ pnpm --filter @notation-hero/client storybook        # http://localhost:6006
 ```
 
 Stories are co-located (`Button.stories.tsx`) and use the `@storybook/tanstack-react` framework. Addons: **docs** (autodocs) and **a11y** (accessibility checks). Tailwind + the theme are wired via `.storybook/preview.tsx` (which imports `src/styles.css`) and `viteFinal` in `.storybook/main.ts`.
+
+### PR previews (GitHub Pages)
+
+Every PR that touches `client/**` publishes a live Storybook to GitHub Pages so you can review it in the browser with no local setup. The URL is posted as a sticky comment on the PR:
+
+- **Per-PR:** `https://leocaseiro.github.io/notation-hero/pr/<number>/`
+- **Latest `master`:** `https://leocaseiro.github.io/notation-hero/`
+
+The workflow (`.github/workflows/storybook-preview.yml`) auto-builds on `client/**` changes. You can also add the **`preview`** label to any PR, or trigger it from the **Actions** tab (**Run workflow** → PR number). Each push rebuilds the same URL; the preview folder is removed when the PR closes. It is **not** a required check, so it never blocks merge.
+
+The comment shows the commit SHA and the time it was built (Sydney local time, AEST/AEDT) — compare that against the PR's latest commit to tell whether the preview is stale (e.g. a push that didn't touch `client/**` won't rebuild it). The `cleanup` job in the Checks list shows **skipped** on every push while the PR is open — that's expected, it only runs when the PR closes.
+
+`STORYBOOK_BASE_PATH` (set only by that workflow; default `/`) drives the Vite `base` in `.storybook/main.ts` so assets resolve under the subpath — `dev`, `vr`, and `a11y` are unaffected.
+
+> **One-time setup:** enable Pages at **Settings → Pages → Deploy from a branch → `gh-pages` / root**. Until then the workflow still runs and creates the `gh-pages` branch, but the URLs 404.
 
 ### Unit tests (Vitest)
 
@@ -98,16 +126,22 @@ Vitest runs in jsdom with Testing Library. Tests are `*.test.tsx` beside the com
 
 ### Visual-regression (VR) tests (Playwright)
 
-VR tests render each Storybook story in isolation and compare a screenshot against a committed baseline.
+VR tests render each Storybook story in isolation and compare a screenshot against a committed baseline. Baselines are **Linux-only** (see below), so run them locally through the Playwright container — or just rely on CI:
 
 ```bash
-pnpm --filter @notation-hero/client test:vr          # compare against committed baselines
-pnpm --filter @notation-hero/client test:vr:update   # re-generate baselines after an intended visual change
+# From the repo root — compare against the committed Linux baselines in the Playwright container:
+pnpm test:vr:docker            # compare
+pnpm test:vr:docker:update     # regenerate baselines after an intended visual change, then commit
+
+# Raw commands (used by CI and inside the container above). On a Mac these render against
+# local, git-ignored darwin shots — fine for quick iteration, never the source of truth:
+pnpm --filter @notation-hero/client test:vr
+pnpm --filter @notation-hero/client test:vr:update
 ```
 
 - Playwright auto-starts Storybook as its `webServer` (see `playwright.config.ts`) — you do **not** need Storybook running separately.
 - Specs match `**/*.vr.{ts,tsx}`. Each test opens `…/iframe.html?id=<story-id>` and calls `toHaveScreenshot`.
-- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed**. They are **OS-specific** (currently `…-chromium-darwin.png`, generated on macOS). Running `test:vr` on Linux will mismatch — CI/Docker-Linux baselines are a deferred follow-up.
+- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed** — **Linux only** (`…-chromium-linux.png`). macOS and Linux rasterize fonts differently (subpixel vs grayscale antialiasing, different glyph metrics), so a single OS's baselines are the source of truth. **CI compares against `-linux`** — the `vr` job runs in the `mcr.microsoft.com/playwright:v1.61.1-noble` container, matching the committed set exactly; run `pnpm test:vr:docker` locally to use that same container. Darwin shots (`…-chromium-darwin.png`) are git-ignored, so a Mac `test:vr:update` can't leak them into the repo.
 
 **Debugging a failing VR test:**
 
@@ -122,8 +156,9 @@ pnpm --filter @notation-hero/client exec playwright test --ui
 pnpm --filter @notation-hero/client exec playwright test --headed
 ```
 
-- On failure Playwright writes `*-actual.png`, `*-expected.png`, and `*-diff.png` under `test-results/`. Open the `-diff` to see exactly which pixels changed.
-- **Change was intentional?** Re-run `test:vr:update` and commit the new baselines.
+- **On a failing PR (one-click):** CI publishes the report to gh-pages and posts a **sticky PR comment** linking it — `https://leocaseiro.github.io/notation-hero/vr-report/pr/<n>/` — with the image-diff **Slider** and the trace **timeline**. The comment carries the head SHA + Sydney time and refreshes on every commit while VR fails; it flips to `✅ VR passing` once the run goes green. (The `playwright-vr-report` artifact is still uploaded as a downloadable fallback.)
+- **Locally:** `test:vr` writes the same report; run `npx playwright show-report` to open it, and add `--trace on` to also capture the timeline (local runs have no retry, so `on-first-retry` records nothing).
+- **Change was intentional?** Regenerate the Linux baselines and commit them: `pnpm test:vr:docker:update` (from the repo root — runs in the Playwright container so the shots match CI). See AGENTS.md §"VR baselines are Linux-only".
 - **Looks like a flake?** The usual cause is web fonts not being ready. Specs already `await document.fonts.ready` before snapshotting (so Material Symbols render as glyphs, not the ligature fallback text) — if you introduce a new font/icon, load it the same way.
 - `test-results/`, `playwright-report/`, and `storybook-static/` are git-ignored.
 

@@ -1,0 +1,11 @@
+import { runA11yStories } from '../../../a11y-helpers';
+import { INPUT_STORY_IDS } from './Input.story-ids';
+
+// axe coverage for Input — the shared runA11yStories factory runs every story x
+// {light,dark} x {resting,hover}. See client/src/a11y-helpers.ts.
+runA11yStories({
+  name: 'Input',
+  storyPrefix: 'ui-input',
+  storyIds: INPUT_STORY_IDS,
+  slotSelector: '[data-slot="input"]',
+});
