@@ -156,6 +156,7 @@
     "automock",
     "autodocs",
     "autorun",
+    "baselining",
     "unstub",
     "tickable",
     "unticked",
