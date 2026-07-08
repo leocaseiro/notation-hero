@@ -198,6 +198,10 @@ The `vr` CI job pins `container: mcr.microsoft.com/playwright:v1.61.1-noble`, so
 rendering matches the Docker-generated `-linux` baselines exactly. Bump that image tag in
 lockstep with `@playwright/test`, and regenerate baselines on the bump.
 
+One-time cleanup: `tooling/sweep-darwin-vr-baselines.sh` removes any legacy
+`*-chromium-darwin.png` baselines still tracked in git (committed before the Linux-only
+switch) and opens a PR. Safe + re-runnable — tracked files only, no-op when none remain.
+
 ### e2e tests (Playwright vs the built app)
 
 The e2e lane has its own config (`client/playwright.e2e.config.ts`) and runs against the
