@@ -22,11 +22,12 @@ const InputGroup = ({ className, ...props }: React.ComponentProps<'div'>) => (
     role="group"
     className={cn(
       'group/input-group relative flex w-full items-center rounded-md border border-input shadow-xs transition-[color,box-shadow] outline-none dark:bg-input/30',
-      // Focus ring: driven by the inner input's focus-visible state so the trailing
-      // button focusing does not light the whole group.
-      'has-[input:focus-visible]:border-ring has-[input:focus-visible]:ring-[3px] has-[input:focus-visible]:ring-ring/50',
-      // Error state: an aria-invalid input turns the container border/ring destructive.
-      'has-[[aria-invalid=true]]:border-destructive has-[[aria-invalid=true]]:ring-destructive/20 dark:has-[[aria-invalid=true]]:ring-destructive/40',
+      // Focus ring: driven by the group's OWN input (data-slot=input-group-input), so a
+      // trailing button or an input nested in an addon does not light the whole group.
+      'has-[[data-slot=input-group-input]:focus-visible]:border-ring has-[[data-slot=input-group-input]:focus-visible]:ring-[3px] has-[[data-slot=input-group-input]:focus-visible]:ring-ring/50',
+      // Error state: the group's OWN aria-invalid input turns the container destructive
+      // (scoped to input-group-input so a nested invalid button/element does not).
+      'has-[[data-slot=input-group-input][aria-invalid=true]]:border-destructive has-[[data-slot=input-group-input][aria-invalid=true]]:ring-destructive/20 dark:has-[[data-slot=input-group-input][aria-invalid=true]]:ring-destructive/40',
       className,
     )}
     {...props}

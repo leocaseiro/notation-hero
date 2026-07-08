@@ -75,9 +75,10 @@ test('propagates aria-invalid to the input for the group styling', () => {
   );
   const input = screen.getByRole('textbox', { name: 'Username' });
   expect(input).toHaveAttribute('aria-invalid', 'true');
-  // The container keys its destructive border off a descendant aria-invalid=true.
+  // The container keys its destructive border off its OWN input (data-slot=input-group-input),
+  // not any descendant, so a nested invalid button/element does not redden the group.
   expect(input.closest('[data-slot="input-group"]')).toHaveClass(
-    'has-[[aria-invalid=true]]:border-destructive',
+    'has-[[data-slot=input-group-input][aria-invalid=true]]:border-destructive',
   );
 });
 
