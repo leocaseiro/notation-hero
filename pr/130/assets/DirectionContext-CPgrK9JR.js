@@ -1,1 +1,0 @@
-import{i as e,s as t}from"./preload-helper-DrY9Va-i.js";import{t as n}from"./react-Dvm-mlog.js";function r(){return i.useContext(a)?.direction??`ltr`}var i,a,o=e((()=>{i=t(n(),1),a=i.createContext(void 0)}));export{r as n,o as t};

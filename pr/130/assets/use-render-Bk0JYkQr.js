@@ -1,1 +1,0 @@
-import{i as e}from"./preload-helper-DrY9Va-i.js";import{n as t,t as n}from"./useRenderElement-BTgLYm11.js";function r(e){return t(e.defaultTagName??`div`,e,e)}var i=e((()=>{n()})),a=e((()=>{i()}));export{i as n,r,a as t};
