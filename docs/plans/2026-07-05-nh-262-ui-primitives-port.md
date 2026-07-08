@@ -58,8 +58,13 @@ Folder-per-component; **no barrel files** (import `@/components/ui/<Name>/<Name>
 
 Shared helpers live at `client/src/vr-helpers.ts` and `client/src/a11y-helpers.ts`.
 `runA11yStories` takes an optional `axeInclude` (default `#storybook-root`; set `'body'` for
-portalled content). `runVrStories` takes `states`, `snapshotTarget` (`'slot'` | `'page'` for
-portals), `hoverSelector`, `focusTabs`, and `iconFontStory`.
+portalled content) and `hoverStory`. `runVrStories` takes `states` (or `statesForStory` for a
+per-story override), `captureSelectors` (padded union clip, for portalled content),
+`hoverSelector`, `focusTabs`/`focusExpect`, and `iconFontStory`.
+
+Hooks live at `client/src/hooks/<kebab-name>.ts` with a co-located `<kebab-name>.test.ts` (no
+story/VR/a11y — a hook has no visual surface). The layout guard enforces role suffixes only under
+`server/src/`, so a kebab `.ts` is fine here (`use-mobile.ts`).
 
 ## VR baselines are per-OS — regenerate both
 
