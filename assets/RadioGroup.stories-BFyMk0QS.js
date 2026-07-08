@@ -1,0 +1,87 @@
+import{i as e,s as t}from"./preload-helper-ATQIgOUJ.js";import{t as n}from"./react-B8kcsa1g.js";import{t as r}from"./jsx-runtime-D6I6jW42.js";import{w as i}from"./iframe-CWbM4TVw.js";import{n as a,t as o}from"./utils-_FPbbs9p.js";import{a as s,d as c,f as l,i as u,l as d,m as f,n as p,o as m,p as h,t as g,u as ee}from"./useRenderElement-DN2Fu0BT.js";import{B as _,D as v,E as y,L as te,O as b,R as x,S as ne,T as re,Y as ie,b as ae,dt as oe,f as S,ft as C,i as w,it as T,n as se,o as E,p as D,r as ce,s as O,t as le,x as k,y as ue}from"./visuallyHidden-CaPFC6V9.js";import{c as A,i as de,l as fe,n as pe,t as me}from"./useValueChanged-Fjdbk2X-.js";import{T as he,_ as j,b as M,i as N,r as ge}from"./isElementDisabled-D66i_-CE.js";import{nt as _e,r as P}from"./DirectionContext-DCkFN_d7.js";import{a as F,c as ve,d as I,f as ye,h as be,i as xe,l as Se,m as Ce,n as we,o as Te,p as L,r as R,s as Ee,t as De,u as Oe}from"./useAriaLabelledBy-BV3G1Cos.js";import{i as ke,n as z,r as Ae,t as je}from"./CompositeRoot-jHZpS43D.js";var B,Me=e((()=>{B=function(e){return e.checked=`data-checked`,e.unchecked=`data-unchecked`,e.disabled=`data-disabled`,e.readonly=`data-readonly`,e.required=`data-required`,e.valid=`data-valid`,e.invalid=`data-invalid`,e.touched=`data-touched`,e.dirty=`data-dirty`,e.filled=`data-filled`,e.focused=`data-focused`,e}({})})),V,Ne=e((()=>{oe(),Ce(),Me(),V={checked(e){return e?{[B.checked]:``}:{[B.unchecked]:``}},...C,...L}}));function Pe(e={}){let{id:t,implicit:n=!1,controlRef:r}=e,{controlId:i,registerControlId:a}=xe(),o=ne(t),c=n?i:void 0,u=l(()=>Symbol(`labelable-control`)),d=H.useRef(!1),f=H.useRef(t!=null),p=b(()=>{!d.current||a===s||(d.current=!1,a(u.current,void 0))});return y(()=>{if(a===s)return;let e;if(n){let n=r?.current;e=_(n)&&n.closest(`label`)!=null?t??null:c??o}else if(t!=null)f.current=!0,e=t;else if(f.current)e=o;else{p();return}if(e===void 0){p();return}d.current=!0,a(u.current,e)},[t,r,c,a,n,o,u,p]),H.useEffect(()=>p,[p]),i??o}var H,Fe=e((()=>{H=t(n(),1),re(),v(),c(),x(),be(),k(),R()}));function Ie(){return Le.useContext(Re)}var Le,Re,ze=e((()=>{Le=t(n(),1),Re=Le.createContext(void 0)}));function Be(e){if(e==null)return``;if(typeof e==`string`)return e;try{return JSON.stringify(e)}catch{return String(e)}}var Ve=e((()=>{}));function He(){let e=Ue.useContext(We);if(e===void 0)throw Error(h(52));return e}var Ue,We,Ge=e((()=>{f(),Ue=t(n(),1),We=Ue.createContext(void 0)})),U,Ke,qe,Je=e((()=>{U=t(n(),1),d(),re(),v(),le(),m(),w(),ae(),ie(),be(),Ne(),k(),g(),he(),ke(),N(),I(),Ee(),R(),De(),Fe(),ze(),Ve(),Ge(),Ke=r(),qe=U.forwardRef(function(e,t){let{render:n,className:r,disabled:i=!1,readOnly:a=!1,required:o=!1,"aria-labelledby":c,value:l,inputRef:d,nativeButton:f=!1,id:m,style:h,...g}=e,_=Ie(),{disabled:v,readOnly:x,required:re,form:ie,checkedValue:ae,touched:oe=!1,validation:S,name:C}=_??{},w=_?.setCheckedValue??s,E=_?.setTouched??s,D=_?.registerControlRef??s,O=_?.registerInputRef??s,{setTouched:le,setFilled:k,state:A,disabled:fe}=ye(),pe=ve(),{labelId:me,getDescriptionProps:he}=xe(),j=fe||pe.disabled||v||i,M=x||a,N=re||o,_e=ie,P=_?ae===l:l===``,F=U.useRef(null),I=U.useRef(null),be=b(e=>{e&&D(e,j)}),Se=ee(d,I,O);y(()=>{I.current?.checked&&k(!0)},[k]),y(()=>{if(I.current){if(j&&P){O(null);return}F.current&&D(F.current,j),O(I.current)}},[P,j,D,O]);let Ce=ne(),Te=Pe({id:m,implicit:!1,controlRef:F}),L=f?void 0:Te,R=we(c,me,I,!f,L),Ee={role:`radio`,"aria-checked":P,"aria-required":N||void 0,"aria-readonly":M||void 0,"aria-labelledby":R,[Ae]:P?``:void 0,id:f?Te:Ce,onKeyDown(e){e.key===`Enter`&&e.preventDefault()},onClick(e){if(e.defaultPrevented||j||M)return;e.preventDefault();let t=I.current;t&&t.dispatchEvent(new(te(t)).PointerEvent(`click`,{bubbles:!0,shiftKey:e.shiftKey,ctrlKey:e.ctrlKey,altKey:e.altKey,metaKey:e.metaKey}))},onFocus(e){e.defaultPrevented||j||M||!oe||(I.current?.click(),E(!1))}},{getButtonProps:De,buttonRef:Oe}=de({disabled:j,native:f,composite:!1}),ke={type:`radio`,ref:Se,form:_e,id:L,name:C,tabIndex:-1,style:C?ce:se,"aria-hidden":!0,...l===void 0?u:{value:Be(l)},disabled:j,checked:P,required:N,readOnly:M,onChange(e){if(e.nativeEvent.defaultPrevented||j||M||l===void 0)return;let t=ue(T,e.nativeEvent);w(l,t),!t.isCanceled&&le(!0)},onFocus(){F.current?.focus()}},z=U.useMemo(()=>({...A,required:N,disabled:j,readOnly:M,checked:P}),[A,j,M,P,N]),je=z,B=_!==void 0,Me=[t,F,Oe,be],Ne=[Ee,g,De,he,S?e=>S.getValidationProps(j,e):u],H=p(`span`,e,{enabled:!B,state:z,ref:Me,props:Ne,stateAttributesMapping:V});return(0,Ke.jsxs)(We.Provider,{value:je,children:[B?(0,Ke.jsx)(ge,{tag:`span`,render:n,className:r,style:h,state:z,refs:Me,props:Ne,stateAttributesMapping:V}):H,(0,Ke.jsx)(`input`,{...ke,suppressHydrationWarning:!0})]})})})),Ye,Xe,Ze=e((()=>{Ye=t(n(),1),g(),Ge(),Ne(),E(),S(),Xe=Ye.forwardRef(function(e,t){let{render:n,className:r,style:i,keepMounted:a=!1,...o}=e,s=He(),c=s.checked,{mounted:l,transitionStatus:u,setMounted:d}=D(c),f={...s,transitionStatus:u},m=Ye.useRef(null),h=a||l,g=p(`span`,e,{ref:[t,m],state:f,props:o,stateAttributesMapping:V});return O({open:c,ref:m,onComplete(){c||d(!1)}}),h?g:null})})),Qe=e((()=>{Je(),Ze()})),$e=e((()=>{Qe()}));function et(e=!1){let t=tt.useContext(nt);if(!t&&!e)throw Error(h(86));return t}var tt,nt,rt=e((()=>{f(),tt=t(n(),1),nt=tt.createContext(void 0)})),W,it,at,ot,st=e((()=>{W=t(n(),1),A(),v(),k(),P(),M(),z(),I(),Se(),Ce(),rt(),F(),R(),me(),ze(),it=r(),at=[j],ot=W.forwardRef(function(e,t){let{render:n,className:r,disabled:i,readOnly:a,required:o,onValueChange:s,value:c,defaultValue:l,form:u,name:d,inputRef:f,id:p,style:m,...h}=e,{setTouched:g,setFocused:ee,validationMode:_,name:v,disabled:y,state:te,validation:x,setDirty:re,setFilled:ie,validityData:ae}=ye(),{labelId:oe}=xe(),{clearErrors:S}=Te(),C=et(!0),w=y||i,T=v??d,se=ne(p),[E,D]=fe({controlled:c,default:l,name:`RadioGroup`,state:`value`}),[ce,O]=W.useState(!1),le=b((e,t)=>{s?.(e,t),!t.isCanceled&&D(e)}),k=W.useRef(null),ue=W.useRef(null),A=W.useRef(null);function de(e){let t;return f&&(typeof f==`function`?t=f(e):f.current=e),ue.current=e,x.inputRef.current=e,t}let me=b((e,t=!1)=>{if(e){if(t){k.current===e&&(k.current=null);return}k.current??=e}}),he=b(e=>{if(!e||e.disabled)return;A.current||=e;let t=ue.current;if(e.checked||t==null||t.disabled)return de(e)}),j=b(()=>{let e=ue.current;return!e||e.disabled||!e.checked?null:E??null});Oe(k,se,E??null,j,!w,d),pe(E,()=>{S(T),re(E!==ae.initialValue),ie(E!=null),x.change(E);let e=A.current;E==null&&e&&!e.disabled&&de(e)});let M=h[`aria-labelledby`]??oe??C?.legendId,N={...te,disabled:w??!1,required:o??!1,readOnly:a??!1},ge=W.useMemo(()=>({...te,checkedValue:E,disabled:w,form:u,validation:x,name:T,readOnly:a,registerControlRef:me,registerInputRef:he,required:o,setCheckedValue:le,setTouched:O,touched:ce}),[E,w,u,x,te,T,a,me,he,o,le,O,ce]),P={id:p,role:`radiogroup`,"aria-required":o||void 0,"aria-disabled":w||void 0,"aria-readonly":a||void 0,"aria-labelledby":M,onFocus(){ee(!0)},onBlur(e){_e(e.currentTarget,e.relatedTarget)||(g(!0),ee(!1),_===`onBlur`&&x.commit(E))},onKeyDownCapture(e){e.key.startsWith(`Arrow`)&&(O(!0),ee(!0))}};return(0,it.jsx)(Re.Provider,{value:ge,children:(0,it.jsx)(je,{render:n,className:r,style:m,state:N,props:[P,h,e=>x.getValidationProps(w??!1,e)],refs:[t],stateAttributesMapping:L,enableHomeAndEndKeys:!1,modifierKeys:at})})})})),ct=e((()=>{st()})),lt,G,K,q,ut=e((()=>{lt=i(),$e(),ct(),a(),G=r(),K=e=>{let t=(0,lt.c)(8),n,r;t[0]===e?(n=t[1],r=t[2]):({className:n,...r}=e,t[0]=e,t[1]=n,t[2]=r);let i;t[3]===n?i=t[4]:(i=o(`grid gap-3`,n),t[3]=n,t[4]=i);let a;return t[5]!==r||t[6]!==i?(a=(0,G.jsx)(ot,{"data-slot":`radio-group`,className:i,...r}),t[5]=r,t[6]=i,t[7]=a):a=t[7],a},q=e=>{let t=(0,lt.c)(9),n,r;t[0]===e?(n=t[1],r=t[2]):({className:n,...r}=e,t[0]=e,t[1]=n,t[2]=r);let i;t[3]===n?i=t[4]:(i=o(`relative flex aspect-square size-4 shrink-0 rounded-full border border-input text-primary shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 data-disabled:cursor-not-allowed data-disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:ring-destructive/40`,n),t[3]=n,t[4]=i);let a;t[5]===Symbol.for(`react.memo_cache_sentinel`)?(a=(0,G.jsx)(Xe,{"data-slot":`radio-group-indicator`,className:`absolute inset-0 flex items-center justify-center`,children:(0,G.jsx)(`span`,{"data-slot":`radio-group-dot`,"aria-hidden":`true`,className:`size-2 rounded-full bg-primary`})}),t[5]=a):a=t[5];let s;return t[6]!==r||t[7]!==i?(s=(0,G.jsx)(qe,{"data-slot":`radio-group-item`,className:i,...r,children:a}),t[6]=r,t[7]=i,t[8]=s):s=t[8],s},K.__docgenInfo={description:"Single-select radio group built on Base UI `RadioGroup`. Render one\n`RadioGroupItem` per choice and pair each with a `<label>` via matching\n`id`/`htmlFor` (or wrap the control) so the option is clickable and named.\nSet `defaultValue` (uncontrolled) or `value` + `onValueChange` (controlled) on\nthe group; roving focus + arrow-key navigation come from Base UI. The item\npicks up `disabled` (as `data-disabled` — the item renders a `<span>`, so the\n`:disabled` pseudo-class never matches) and `aria-invalid` styling from the\nsame props Base UI forwards.",methods:[],displayName:`RadioGroup`},q.__docgenInfo={description:"A single radio option. The filled dot is a plain CSS `<span>` (not an icon\nfont) so the visual regression snapshot stays deterministic regardless of font\nloading. Base UI renders the `Indicator` only when this item is the selected one.",methods:[],displayName:`RadioGroupItem`}})),J,dt,ft,Y,X,Z,Q,$,pt;e((()=>{ut(),J=r(),{fn:dt}=__STORYBOOK_MODULE_TEST__,ft={title:`UI/RadioGroup`,component:K,parameters:{layout:`centered`},tags:[`autodocs`],args:{onValueChange:dt()},argTypes:{defaultValue:{control:`select`,options:[`comfortable`,`compact`,`spacious`]},disabled:{control:`boolean`},name:{control:`text`}}},Y={render:e=>(0,J.jsxs)(K,{...e,children:[(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`comfortable`,id:`default-comfortable`}),(0,J.jsx)(`label`,{htmlFor:`default-comfortable`,children:`Comfortable`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`compact`,id:`default-compact`}),(0,J.jsx)(`label`,{htmlFor:`default-compact`,children:`Compact`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`spacious`,id:`default-spacious`}),(0,J.jsx)(`label`,{htmlFor:`default-spacious`,children:`Spacious`})]})]})},X={args:{defaultValue:`compact`},render:e=>(0,J.jsxs)(K,{...e,children:[(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`comfortable`,id:`value-comfortable`}),(0,J.jsx)(`label`,{htmlFor:`value-comfortable`,children:`Comfortable`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`compact`,id:`value-compact`}),(0,J.jsx)(`label`,{htmlFor:`value-compact`,children:`Compact`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`spacious`,id:`value-spacious`}),(0,J.jsx)(`label`,{htmlFor:`value-spacious`,children:`Spacious`})]})]})},Z={args:{disabled:!0,defaultValue:`comfortable`},render:e=>(0,J.jsxs)(K,{...e,children:[(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`comfortable`,id:`disabled-comfortable`}),(0,J.jsx)(`label`,{htmlFor:`disabled-comfortable`,children:`Comfortable`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`compact`,id:`disabled-compact`}),(0,J.jsx)(`label`,{htmlFor:`disabled-compact`,children:`Compact`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`spacious`,id:`disabled-spacious`}),(0,J.jsx)(`label`,{htmlFor:`disabled-spacious`,children:`Spacious`})]})]})},Q={render:e=>(0,J.jsxs)(K,{...e,children:[(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`comfortable`,id:`invalid-comfortable`,"aria-invalid":!0}),(0,J.jsx)(`label`,{htmlFor:`invalid-comfortable`,children:`Comfortable`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`compact`,id:`invalid-compact`,"aria-invalid":!0}),(0,J.jsx)(`label`,{htmlFor:`invalid-compact`,children:`Compact`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`spacious`,id:`invalid-spacious`,"aria-invalid":!0}),(0,J.jsx)(`label`,{htmlFor:`invalid-spacious`,children:`Spacious`})]})]})},$={args:{defaultValue:`comfortable`,className:`flex gap-4`},render:e=>(0,J.jsxs)(K,{...e,children:[(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`comfortable`,id:`horizontal-comfortable`}),(0,J.jsx)(`label`,{htmlFor:`horizontal-comfortable`,children:`Comfortable`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`compact`,id:`horizontal-compact`}),(0,J.jsx)(`label`,{htmlFor:`horizontal-compact`,children:`Compact`})]}),(0,J.jsxs)(`div`,{className:`flex items-center gap-2`,children:[(0,J.jsx)(q,{value:`spacious`,id:`horizontal-spacious`}),(0,J.jsx)(`label`,{htmlFor:`horizontal-spacious`,children:`Spacious`})]})]})},Y.parameters={...Y.parameters,docs:{...Y.parameters?.docs,source:{originalSource:`{
+  render: args => <RadioGroup {...args}>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="comfortable" id="default-comfortable" />
+        <label htmlFor="default-comfortable">Comfortable</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="compact" id="default-compact" />
+        <label htmlFor="default-compact">Compact</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="spacious" id="default-spacious" />
+        <label htmlFor="default-spacious">Spacious</label>
+      </div>
+    </RadioGroup>
+}`,...Y.parameters?.docs?.source}}},X.parameters={...X.parameters,docs:{...X.parameters?.docs,source:{originalSource:`{
+  args: {
+    defaultValue: 'compact'
+  },
+  render: args => <RadioGroup {...args}>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="comfortable" id="value-comfortable" />
+        <label htmlFor="value-comfortable">Comfortable</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="compact" id="value-compact" />
+        <label htmlFor="value-compact">Compact</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="spacious" id="value-spacious" />
+        <label htmlFor="value-spacious">Spacious</label>
+      </div>
+    </RadioGroup>
+}`,...X.parameters?.docs?.source}}},Z.parameters={...Z.parameters,docs:{...Z.parameters?.docs,source:{originalSource:`{
+  args: {
+    disabled: true,
+    defaultValue: 'comfortable'
+  },
+  render: args => <RadioGroup {...args}>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="comfortable" id="disabled-comfortable" />
+        <label htmlFor="disabled-comfortable">Comfortable</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="compact" id="disabled-compact" />
+        <label htmlFor="disabled-compact">Compact</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="spacious" id="disabled-spacious" />
+        <label htmlFor="disabled-spacious">Spacious</label>
+      </div>
+    </RadioGroup>
+}`,...Z.parameters?.docs?.source}}},Q.parameters={...Q.parameters,docs:{...Q.parameters?.docs,source:{originalSource:`{
+  render: args => <RadioGroup {...args}>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="comfortable" id="invalid-comfortable" aria-invalid />
+        <label htmlFor="invalid-comfortable">Comfortable</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="compact" id="invalid-compact" aria-invalid />
+        <label htmlFor="invalid-compact">Compact</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="spacious" id="invalid-spacious" aria-invalid />
+        <label htmlFor="invalid-spacious">Spacious</label>
+      </div>
+    </RadioGroup>
+}`,...Q.parameters?.docs?.source}}},$.parameters={...$.parameters,docs:{...$.parameters?.docs,source:{originalSource:`{
+  args: {
+    defaultValue: 'comfortable',
+    className: 'flex gap-4'
+  },
+  render: args => <RadioGroup {...args}>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="comfortable" id="horizontal-comfortable" />
+        <label htmlFor="horizontal-comfortable">Comfortable</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="compact" id="horizontal-compact" />
+        <label htmlFor="horizontal-compact">Compact</label>
+      </div>
+      <div className="flex items-center gap-2">
+        <RadioGroupItem value="spacious" id="horizontal-spacious" />
+        <label htmlFor="horizontal-spacious">Spacious</label>
+      </div>
+    </RadioGroup>
+}`,...$.parameters?.docs?.source}}},pt=[`Default`,`WithDefaultValue`,`Disabled`,`Invalid`,`Horizontal`]}))();export{Y as Default,Z as Disabled,$ as Horizontal,Q as Invalid,X as WithDefaultValue,pt as __namedExportsOrder,ft as default};
