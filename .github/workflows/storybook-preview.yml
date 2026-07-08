@@ -116,7 +116,10 @@ jobs:
           esac
           {
             echo "sha=$sha"
-            echo "built_at=$(date -u +'%Y-%m-%d %H:%M UTC')"
+            # Australia/Sydney: %Z auto-labels AEST (UTC+10) or AEDT (UTC+11) correctly across the
+            # daylight-saving transition (~Oct-Apr), rather than a fixed offset that would drift an
+            # hour off wall-clock time for part of the year.
+            echo "built_at=$(TZ='Australia/Sydney' date +'%Y-%m-%d %H:%M %Z')"
           } >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/setup-js
       - name: Build Storybook
