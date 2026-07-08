@@ -1,6 +1,7 @@
 import { Combobox } from '@base-ui/react/combobox';
 import { useState } from 'react';
 import { Badge } from '@/components/ui/Badge/Badge';
+import { Button, buttonVariants } from '@/components/ui/Button/Button';
 import { cn, getStorybookRootContainer } from '@/lib/utils';
 
 export interface FilterOption {
@@ -32,12 +33,11 @@ interface FacetFilterProps {
   className?: string;
 }
 
-const TRIGGER_CLASSES = cn(
-  'inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm',
-  'shadow-xs hover:bg-muted aria-expanded:bg-muted',
-  'dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
-  'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-);
+// The trigger reuses Button's `outline` variant tokens (via `buttonVariants` — single source of
+// truth, dark-mode overrides included) on the existing `Combobox.Trigger` element, which keeps its
+// role=combobox + aria-label. `outline` already carries `aria-expanded:bg-muted`, exactly the
+// open-state highlight a trigger wants.
+const TRIGGER_CLASSES = buttonVariants({ variant: 'outline' });
 
 // Trigger text: single mode with a selection shows "Label: Value"; otherwise just the label (the
 // gray count badge carries multi-select state). Extracted so the JSX has no nested ternary.
@@ -204,20 +204,17 @@ const FacetFilter = ({
             )}
             {value.length > 0 && (
               <div className="border-t border-border p-1">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => onChange([])}
-                  className={cn(
-                    'flex w-full items-center justify-center gap-1 rounded-sm px-2 py-1.5 text-sm',
-                    'text-muted-foreground hover:bg-muted hover:text-foreground',
-                    'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-                  )}
+                  className="w-full justify-center text-muted-foreground"
                 >
                   <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">
                     close
                   </span>
                   Clear
-                </button>
+                </Button>
               </div>
             )}
           </Combobox.Popup>

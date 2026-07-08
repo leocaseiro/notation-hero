@@ -1,4 +1,5 @@
-import { cn } from '@/lib/utils';
+import { buttonVariants } from '@/components/ui/Button/Button';
+import { cn, inputSurfaceClasses } from '@/lib/utils';
 
 interface PaginationProps {
   /** Zero-based current page. */
@@ -22,24 +23,17 @@ const DEFAULT_PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
 type PageItem = number | 'ellipsis';
 
-// Base styling for a square 36px control (Prev/Next + each numbered page). Bordered, hover:bg-muted,
-// a focus ring, and disabled = dimmed + non-interactive — mirrors Button's `outline` variant,
-// including its dark-mode tokens (`border-input` + translucent `bg-input`), so the controls match a
-// real outline Button in dark mode instead of keeping the light `border`/`background` tokens.
-const CONTROL_CLASSES = cn(
-  'inline-flex size-9 items-center justify-center rounded-md border border-border bg-background text-sm',
-  'shadow-xs hover:bg-muted hover:text-foreground',
-  'dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
-  'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-  'disabled:pointer-events-none disabled:opacity-50',
-);
+// Square 36px controls (Prev/Next + each numbered page) reuse the real Button `outline` variant via
+// `buttonVariants` — the single source of truth for the token set (including the dark-mode
+// `border-input`/`bg-input` overrides) — so the controls can't drift from a real outline Button.
+const CONTROL_CLASSES = buttonVariants({ variant: 'outline', size: 'icon' });
 
-// The current page reads as a solid teal chip (same tokens as Button's default variant), so it is
-// unmistakable — not a faint tint. It has no hover shift because it is not a target to move to.
+// The current page reads as a solid teal chip (Button's `default` variant), so it is unmistakable —
+// not a faint tint. `hover:bg-primary` neutralises the default variant's hover-darken because the
+// current page is not a target to move to.
 const ACTIVE_PAGE_CLASSES = cn(
-  'inline-flex size-9 items-center justify-center rounded-md border border-transparent text-sm font-medium',
-  'bg-primary text-primary-foreground',
-  'focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
+  buttonVariants({ variant: 'default', size: 'icon' }),
+  'hover:bg-primary',
 );
 
 // True when a zero-based page must be shown: the first page, the last page, or within
@@ -170,9 +164,8 @@ const Pagination = ({
             disabled={disabled}
             onChange={(event) => onPageSizeChange(Number(event.target.value))}
             className={cn(
-              'h-9 rounded-md border border-border bg-background px-2 text-sm text-foreground',
-              'shadow-xs hover:bg-muted',
-              'dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
+              inputSurfaceClasses,
+              'h-9 px-2 text-sm text-foreground shadow-xs hover:bg-muted dark:hover:bg-input/50',
               'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
               'disabled:pointer-events-none disabled:opacity-50',
             )}

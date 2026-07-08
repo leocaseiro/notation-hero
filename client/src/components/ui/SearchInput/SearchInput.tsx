@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import type * as React from 'react';
 
-import { cn } from '@/lib/utils';
+import { cn, inputSurfaceClasses } from '@/lib/utils';
 
 interface SearchInputProps extends Omit<
   React.ComponentProps<'input'>,
@@ -53,8 +53,8 @@ const SearchInput = ({
     <div
       data-slot="search-input"
       className={cn(
-        'relative flex h-9 items-center rounded-md border border-border bg-background text-sm',
-        'dark:border-input dark:bg-input/30',
+        inputSurfaceClasses,
+        'relative flex h-9 items-center text-sm',
         'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
         disabled && 'opacity-50',
         className,

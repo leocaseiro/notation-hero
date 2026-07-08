@@ -1,5 +1,6 @@
+import { Button, buttonVariants } from '@/components/ui/Button/Button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/Popover/Popover';
-import { cn } from '@/lib/utils';
+import { cn, inputSurfaceClasses } from '@/lib/utils';
 
 interface LevelRange {
   /** Lower bound ("at least"). null = unset. */
@@ -53,16 +54,15 @@ function parseBound(raw: string): number | null {
   return raw === '' ? null : Number(raw);
 }
 
-const TRIGGER_CLASSES = cn(
-  'inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm',
-  'shadow-xs hover:bg-muted aria-expanded:bg-muted',
-  'dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
-  'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
-);
+// The trigger reuses Button's `outline` variant tokens (via `buttonVariants`) on the existing
+// PopoverTrigger element — single source of truth, dark overrides + aria-expanded highlight included.
+const TRIGGER_CLASSES = buttonVariants({ variant: 'outline' });
 
+// The Min/Max <select>s reuse the shared input-surface tokens (border/bg + dark input overrides),
+// then add their own select-specific sizing, hover, and focus.
 const SELECT_CLASSES = cn(
-  'h-8 w-[84px] rounded-md border border-border bg-background px-2 text-sm tabular-nums',
-  'hover:bg-muted dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
+  inputSurfaceClasses,
+  'h-8 w-[84px] px-2 text-sm tabular-nums hover:bg-muted dark:hover:bg-input/50',
   'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none',
 );
 
@@ -137,20 +137,17 @@ const LevelFilter = ({
         </div>
         {hasSelection && (
           <div className="border-t border-border p-1">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => onChange({ min: null, max: null })}
-              className={cn(
-                'flex w-full items-center justify-center gap-1 rounded-sm px-2 py-1.5 text-sm',
-                'text-muted-foreground hover:bg-muted hover:text-foreground',
-                'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-              )}
+              className="w-full justify-center text-muted-foreground"
             >
               <span className="material-symbols-outlined text-[1.125rem]" aria-hidden="true">
                 close
               </span>
               Clear
-            </button>
+            </Button>
           </div>
         )}
       </PopoverContent>

@@ -1,7 +1,7 @@
 import { Combobox } from '@base-ui/react/combobox';
 import { useState } from 'react';
 import type { FilterOption } from '@/components/ui/FacetFilter/FacetFilter';
-import { cn, getStorybookRootContainer } from '@/lib/utils';
+import { cn, getStorybookRootContainer, inputSurfaceClasses } from '@/lib/utils';
 
 interface TokenPickerProps {
   /** Accessible name for the inline search box. */
@@ -83,8 +83,8 @@ const TokenPicker = ({
       <Combobox.Chips
         data-slot="token-picker"
         className={cn(
-          'flex min-h-9 flex-wrap items-center gap-1 rounded-md border border-border bg-background px-1.5 py-1 text-sm',
-          'dark:border-input dark:bg-input/30',
+          inputSurfaceClasses,
+          'flex min-h-9 flex-wrap items-center gap-1 px-1.5 py-1 text-sm',
           'focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50',
           className,
         )}

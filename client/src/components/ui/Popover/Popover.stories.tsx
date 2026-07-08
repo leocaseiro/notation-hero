@@ -2,6 +2,7 @@ import { fn } from 'storybook/test';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 import type { ComponentProps } from 'react';
+import { buttonVariants } from '@/components/ui/Button/Button';
 
 // The positioning props (side / align / sideOffset) live on PopoverContent (the panel), not on
 // Root — surfaced here as top-level story args (the same pattern Tabs uses for its List props) so
@@ -46,8 +47,9 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const TRIGGER_CLASS =
-  'inline-flex h-9 items-center rounded-md border border-border bg-background px-3 text-sm shadow-xs hover:bg-muted dark:border-input dark:bg-input/30 dark:hover:bg-input/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none';
+// Demo trigger reuses Button's `outline` tokens (single source of truth) rather than hand-rolled
+// classes — same pattern the shipped filter triggers use.
+const TRIGGER_CLASS = buttonVariants({ variant: 'outline' });
 
 const renderPopover = (args: PopoverStoryArgs) => (
   <Popover defaultOpen={args.defaultOpen} modal={args.modal} onOpenChange={args.onOpenChange}>
