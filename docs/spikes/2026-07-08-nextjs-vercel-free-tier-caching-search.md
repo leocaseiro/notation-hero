@@ -29,8 +29,10 @@ These feed a forthcoming ADR that will supersede `ARCH-FE-1` (Vite SPA) and the 
 - **Search = Postgres FTS** (`tsvector` + GIN) + `pg_trgm` on Neon; no external search service in v1.
 - **Native = deferred** Capacitor shell reusing the shared component package (player-first; iOS needs the CoreMIDI bridge).
 - **Hosting = Vercel now → OpenNext-on-AWS later.** Ship on Vercel Hobby ($0, best DX) for job-hunt speed; migrate to self-hosted **OpenNext + Pulumi** (CloudFront / Lambda / S3 — $0 even when commercial) when monetizing or to earn the AWS-hosting credential. Next.js is portable; **Amplify rejected** (abstracts the wiring — same objection as auth). The migration is itself a portfolio artifact.
+- **API path = `api.notationhero.com` → CloudFront → Lambda.** Origin Access Control locks the raw Function URL to CloudFront (hidden + not publicly callable); branded URL, always-free CloudFront, and it keeps Vercel compute OUT of the data path (Vercel only renders pages, mostly cached). Web + native both call `api.notationhero.com`; Cognito JWT validated at the Lambda. This resolves the auth-across-clouds topology.
+- **Blob store = Cloudflare R2** (10 GB always-free, no egress fees, S3-compatible API) — chosen for $0-forever on the cost priority; adds Cloudflare as a 3rd vendor but each piece stays $0.
 
-**Still open:** v1 offline scope (Dexie in v1 or later) · blob store (S3 vs Cloudflare R2) · auth-across-clouds details.
+**Still open:** v1 offline scope — Dexie in v1, or online-first then add offline (Plane 2) later.
 
 ---
 
@@ -38,15 +40,15 @@ These feed a forthcoming ADR that will supersede `ARCH-FE-1` (Vite SPA) and the 
 
 v1 builds **Plane 1** only (online); **Plane 2** (Dexie offline sync) is a later phase.
 
-| Surface                            | Runs / renders                                     | Offline (v1)? | Hits Neon?                             |
-| ---------------------------------- | -------------------------------------------------- | ------------- | -------------------------------------- |
-| Public song/catalog pages (SEO)    | Vercel · Next.js SSR/SSG from Neon                 | No            | On cache miss / revalidation only      |
-| In-app catalog browse + search     | Vercel · Next.js server render/action → Neon       | No (v1)       | On cache miss only (search: per query) |
-| CMS / authoring **+ blob uploads** | Vercel · Next.js **server actions** → Neon + S3/R2 | No            | On write                               |
-| Auth                               | **AWS Cognito**                                    | tokens cached | No                                     |
+| Surface                            | Runs / renders                                      | Offline (v1)? | Hits Neon?                             |
+| ---------------------------------- | --------------------------------------------------- | ------------- | -------------------------------------- |
+| Public song/catalog pages (SEO)    | Vercel · Next.js SSR/SSG from Neon                  | No            | On cache miss / revalidation only      |
+| In-app catalog browse + search     | Vercel · Next.js server render/action → Neon        | No (v1)       | On cache miss only (search: per query) |
+| CMS / authoring **+ blob uploads** | Vercel · Next.js **server actions** → Neon + **R2** | No            | On write                               |
+| Auth                               | **AWS Cognito**                                     | tokens cached | No                                     |
 
 - **Vercel** = one Next.js deploy: SSR/SSG pages + CMS server-actions + serves the app.
-- **AWS** = Cognito only in v1 (Lambda/DynamoDB/S3 arrive with Plane 2, except CMS blobs which are v1).
+- **AWS** = Cognito only in v1 (Lambda/DynamoDB arrive with Plane 2; CMS blobs use Cloudflare R2, not S3).
 - **Neon** = the catalogue Postgres — the one component the cache is designed to protect.
 
 ---
@@ -151,18 +153,18 @@ Two columns — the difference **is** the value of caching (§3).
 
 ### 6.1 Bill of materials (Vercel FE + AWS backend)
 
-| AWS service                              | Needed? | Cost at portfolio scale                  |
-| ---------------------------------------- | ------- | ---------------------------------------- |
-| Cognito (auth)                           | ✅      | **$0** — always-free MAU                 |
-| Lambda (NestJS backend)                  | ✅      | **$0** — always-free 1M req/mo           |
-| Lambda **Function URL** (exposes Lambda) | ✅      | **$0** — no charge                       |
-| DynamoDB (per-user data)                 | ✅      | **$0** — always-free 25 GB               |
-| S3 (CMS blobs, v1)                       | ✅      | credits → **pennies** (~$0.023/GB-mo)    |
-| CloudWatch Logs (Lambda auto-logs)       | auto    | ~$0 with 7-day retention                 |
-| API Gateway                              | ❌      | avoided — use Function URL               |
-| NAT Gateway                              | ❌      | avoided — **would be ~$32/mo**           |
-| Secrets Manager                          | ❌      | avoided — use SSM Parameter Store (free) |
-| ALB / Route 53                           | ❌      | avoided                                  |
+| AWS service                              | Needed? | Cost at portfolio scale                       |
+| ---------------------------------------- | ------- | --------------------------------------------- |
+| Cognito (auth)                           | ✅      | **$0** — always-free MAU                      |
+| Lambda (NestJS backend)                  | ✅      | **$0** — always-free 1M req/mo                |
+| Lambda **Function URL** (exposes Lambda) | ✅      | **$0** — no charge                            |
+| DynamoDB (per-user data)                 | ✅      | **$0** — always-free 25 GB                    |
+| S3 (CMS blobs)                           | ❌      | not needed — blobs use **Cloudflare R2** ($0) |
+| CloudWatch Logs (Lambda auto-logs)       | auto    | ~$0 with 7-day retention                      |
+| API Gateway                              | ❌      | avoided — use Function URL                    |
+| NAT Gateway                              | ❌      | avoided — **would be ~$32/mo**                |
+| Secrets Manager                          | ❌      | avoided — use SSM Parameter Store (free)      |
+| ALB / Route 53                           | ❌      | avoided                                       |
 
 Vercel → AWS needs a scoped **IAM user's keys** as Vercel env vars (setup, not cost).
 
@@ -175,7 +177,7 @@ Vercel → AWS needs a scoped **IAM user's keys** as Vercel env vars (setup, not
 ### 6.3 The account model + the two non-traffic cliffs
 
 1. **Vercel Hobby is non-commercial (strict).** Verbatim: _"Hobby teams are restricted to non-commercial personal use only."_ Commercial = any deployment for anyone's financial gain — **including ads, affiliate links, payment processing, and even a donations button.** So any monetization (the $2 app, ads, donate) → **Pro (~$20/mo)**. A portfolio app is fine on Hobby until then.
-2. **AWS new-account (2025 model) — this matters operationally.** Your new account gets **$100 credits now + up to $100 more from activities ($200 over 6 months)**, _not_ the classic 12-month tier. **⚠️ The free plan ends after 6 months OR when credits run out, and AWS then CLOSES the account** (data kept 90 days) **unless you upgrade to the Paid plan** (warnings at 15/7/2 days). On the Paid plan the **always-free services (Lambda, DynamoDB, Cognito, CloudFront) stay $0 forever within limits** — so steady-state cost is ~$0 at your scale, but **Paid has no free-plan guardrail** → keep the zero-spend budget + billing alarms on. **Action: reminder to upgrade to Paid around month 5.** S3 (CMS blobs) is covered by credits for 6 months, then pennies on Paid — or $0-forever via **Cloudflare R2** (10 GB always-free, no egress), at the cost of the AWS-native story.
+2. **AWS new-account (2025 model) — this matters operationally.** Your new account gets **$100 credits now + up to $100 more from activities ($200 over 6 months)**, _not_ the classic 12-month tier. **⚠️ The free plan ends after 6 months OR when credits run out, and AWS then CLOSES the account** (data kept 90 days) **unless you upgrade to the Paid plan** (warnings at 15/7/2 days). On the Paid plan the **always-free services (Lambda, DynamoDB, Cognito, CloudFront) stay $0 forever within limits** — so steady-state cost is ~$0 at your scale, but **Paid has no free-plan guardrail** → keep the zero-spend budget + billing alarms on. **Action: reminder to upgrade to Paid around month 5.** **Blobs use Cloudflare R2** (10 GB always-free, no egress) — chosen over S3 for $0-forever, so blobs never touch the AWS bill.
 
 ---
 
