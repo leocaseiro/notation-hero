@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-Bt-lT1_Z.js";import{n as t,t as n}from"./useRenderElement-C29QmoIh.js";function r(e){return t(e.defaultTagName??`div`,e,e)}var i=e((()=>{n()})),a=e((()=>{i()}));export{i as n,r,a as t};
