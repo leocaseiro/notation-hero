@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-SX2l6aD-.js";import{n as t,t as n}from"./useRenderElement-DX-FA2f4.js";function r(e){return t(e.defaultTagName??`div`,e,e)}var i=e((()=>{n()})),a=e((()=>{i()}));export{i as n,r,a as t};
