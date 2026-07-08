@@ -12,6 +12,22 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-08 — FE pivot: Next.js PWA on Vercel + NestJS-on-Lambda (hybrid BFF)
+
+Re-adopts **Next.js** (App Router PWA) as the product FE, hosted on **Vercel** now (optional AWS re-host later — Amplify/EC2, OpenNext skipped); keeps the **NestJS-on-Lambda** backend behind a hidden, OAC-locked
+`api.notationhero.com → CloudFront → Lambda` API, with **Vercel as a BFF** for SSR / server-actions
+(hybrid topology). Neon (catalog, cached via `"use cache"`) + DynamoDB (per-user) + Cognito +
+**Cloudflare R2** blobs + Postgres FTS. ADR `docs/decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md`,
+spike `docs/spikes/2026-07-08-nextjs-vercel-free-tier-caching-search.md`.
+
+- **Supersedes** `ARCH-FE-1` (Vite + TanStack SPA) and closes the 2026-06-16 no-Next.js chain. The new
+  variable that resolves the three-time loop: **Vercel hosting** removes the AWS-SSR $0 objection.
+- **$0 at portfolio scale**, hard-stops at caps. Watch-outs: Vercel Hobby is non-commercial (→ Pro
+  $20/mo, mitigated by re-hosting on AWS — Amplify/EC2), and the new AWS account closes at 6 months unless
+  upgraded to the Paid plan.
+- **Open:** v1 offline scope (Dexie in v1 or later) — deferred to v1 planning. Follow-up: update the
+  `notation_hero_no_nextjs` project memory (currently records Next.js as rejected).
+
 ### 2026-07-08 — VR baselines are Linux-only (NH-189, PR #123)
 
 Visual-regression (VR) baselines are now committed for **Linux only** (`*-chromium-linux.png`); the
