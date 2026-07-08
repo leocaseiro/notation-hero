@@ -12,7 +12,7 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
-### 2026-07-08 — VR baselines are Linux-only (NH-189)
+### 2026-07-08 — VR baselines are Linux-only (NH-189, PR #123)
 
 Visual-regression (VR) baselines are now committed for **Linux only** (`*-chromium-linux.png`); the
 81 macOS `*-chromium-darwin.png` baselines were deleted. macOS and Linux rasterize fonts differently
