@@ -139,7 +139,10 @@ const FacetFilter = ({
       </Combobox.Trigger>
       <Combobox.Portal container={getStorybookRootContainer()}>
         <Combobox.Positioner align="start" sideOffset={6}>
-          <Combobox.Popup className="w-64 overflow-hidden rounded-md border border-border bg-popover p-0 text-popover-foreground shadow-md outline-none">
+          <Combobox.Popup
+            data-slot="facet-filter-content"
+            className="w-64 overflow-hidden rounded-md border border-border bg-popover p-0 text-popover-foreground shadow-md outline-none"
+          >
             <div className="flex items-center gap-1 border-b border-border px-2">
               <span
                 className="material-symbols-outlined text-[1.125rem] text-muted-foreground"

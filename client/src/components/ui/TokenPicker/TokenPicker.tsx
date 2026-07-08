@@ -113,7 +113,10 @@ const TokenPicker = ({
       </Combobox.Chips>
       <Combobox.Portal container={getStorybookRootContainer()}>
         <Combobox.Positioner align="start" sideOffset={4} className="w-(--anchor-width)">
-          <Combobox.Popup className="rounded-md border border-border bg-popover text-popover-foreground shadow-md outline-none">
+          <Combobox.Popup
+            data-slot="token-picker-content"
+            className="rounded-md border border-border bg-popover text-popover-foreground shadow-md outline-none"
+          >
             {loading ? (
               <div role="status" className="py-6 text-center text-sm text-muted-foreground">
                 Loading…

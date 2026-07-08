@@ -63,6 +63,8 @@ jobs:
     outputs:
       dest: ${{ steps.meta.outputs.dest }}
       pr: ${{ steps.meta.outputs.pr }}
+      sha: ${{ steps.built.outputs.sha }}
+      built_at: ${{ steps.built.outputs.built_at }}
     steps:
       # Resolve base path + gh-pages destination from event context. The PR number comes from
       # the event (PR) or the dispatch input; passed via env and numeric-validated so untrusted
@@ -93,6 +95,32 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/head', github.event.inputs.pr_number) || github.ref }}
+      # Record exactly what was built (commit + time) so the sticky comment can show staleness.
+      # The reported sha is resolved per event type, NOT via a blanket `git rev-parse HEAD`: the
+      # checkout above puts `pull_request` events on refs/pull/<n>/merge (github.ref for that event
+      # type) — an ephemeral two-parent merge commit that never appears in the PR's own history, so
+      # reporting it would make the "is this stale" comparison meaningless. `push`'s github.sha has
+      # no such quirk. workflow_dispatch explicitly checked out refs/pull/<n>/head above, so HEAD
+      # there already is the real PR head.
+      - id: built
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            pull_request) sha="$PR_HEAD_SHA" ;;
+            push) sha="$PUSH_SHA" ;;
+            *) sha="$(git rev-parse HEAD)" ;;
+          esac
+          {
+            echo "sha=$sha"
+            # Australia/Sydney: %Z auto-labels AEST (UTC+10) or AEDT (UTC+11) correctly across the
+            # daylight-saving transition (~Oct-Apr), rather than a fixed offset that would drift an
+            # hour off wall-clock time for part of the year.
+            echo "built_at=$(TZ='Australia/Sydney' date +'%Y-%m-%d %H:%M %Z')"
+          } >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/setup-js
       - name: Build Storybook
         env:
@@ -126,7 +154,10 @@ jobs:
   # its next push (the accepted R-concurrency-drop trade-off in the plan).
   publish:
     needs: build
-    if: needs.build.result == 'success'
+    # Same-repo PRs only on the PR path: GitHub caps GITHUB_TOKEN to read-only on fork PRs, so a
+    # fork's publish would 403 (a spurious red check). push:master / workflow_dispatch (trusted)
+    # must still publish, so the fork check is gated to pull_request events only.
+    if: needs.build.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -169,12 +200,20 @@ jobs:
         env:
           PR: ${{ needs.build.outputs.pr }}
           URL: https://leocaseiro.github.io/notation-hero/${{ needs.build.outputs.dest }}/
+          SHA: ${{ needs.build.outputs.sha }}
+          BUILT_AT: ${{ needs.build.outputs.built_at }}
         with:
           script: |
             const marker = '<!-- storybook-preview -->';
             const pr = Number(process.env.PR);
             const url = process.env.URL;
-            const body = `${marker}\n📚 **Storybook preview**: ${url}\n\n_Updates on every push while this PR is open._`;
+            const sha = process.env.SHA;
+            const shortSha = sha.slice(0, 7);
+            const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha}`;
+            const builtAt = process.env.BUILT_AT;
+            // The SHA + timestamp let you tell at a glance whether this preview matches the PR's
+            // latest commit, or is stale from a push that didn't touch client/** (skipped the build).
+            const body = `${marker}\n📚 **Storybook preview**: ${url}\n\nBuilt from [\`${shortSha}\`](${commitUrl}) · ${builtAt}\n\n_Updates on every push while this PR is open._`;
             const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -205,7 +244,12 @@ jobs:
   # queued cleanup, orphaning pr/<n>/ (cosmetic; a reconciliation sweep is deferred — see the
   # plan's Scope Boundaries).
   cleanup:
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    # Explicit display name: this job legitimately shows "skipped" on every push/open/label event
+    # (by design — it only acts on close) and that read as a failure without this label.
+    name: cleanup (only runs when the PR closes)
+    # Same-repo only: a fork PR never published (read-only token), so there is nothing to remove —
+    # skip rather than run a pointless checkout. Mirrors the publish guard.
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -244,14 +288,23 @@ jobs:
         run: |
           set -euo pipefail
           case "$PR_NUMBER" in '' | *[!0-9]*) echo "::error::invalid PR number '$PR_NUMBER'"; exit 1 ;; esac
-          if [ ! -d "pr/$PR_NUMBER" ]; then
-            echo "No preview at pr/$PR_NUMBER; nothing to remove."
-            exit 0
-          fi
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git rm -r --quiet "pr/$PR_NUMBER"
-          git commit -q -m "chore(preview): remove pr/$PR_NUMBER (PR closed)"
+          # Sweep BOTH the Storybook preview and the VR report (ci.yml publishes it at
+          # vr-report/pr/<n>). Either may be absent independently, so remove each if present and
+          # only commit/push when something was actually removed.
+          removed=0
+          for dir in "pr/$PR_NUMBER" "vr-report/pr/$PR_NUMBER"; do
+            if [ -d "$dir" ]; then
+              git rm -r --quiet "$dir"
+              removed=1
+            fi
+          done
+          if [ "$removed" -eq 0 ]; then
+            echo "No preview or VR report at pr/$PR_NUMBER; nothing to remove."
+            exit 0
+          fi
+          git commit -q -m "chore(preview): remove pr/$PR_NUMBER preview + VR report (PR closed)"
           git push origin HEAD:gh-pages
       - name: Update preview comment (removed)
         if: steps.ghp.outputs.exists == 'true'

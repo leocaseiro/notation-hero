@@ -1,18 +1,19 @@
 import { runVrStories } from '../../../vr-helpers';
 import { FACET_FILTER_STORY_IDS } from './FacetFilter.story-ids';
 
-// VR for FacetFilter. Snapshot the whole canvas (#storybook-root) so the open popover panel is
-// captured; wait for the always-present trigger first. Hover/focus states apply to the closed
-// 'default' story (the trigger chip); the open stories are captured resting.
+// VR for FacetFilter. The open stories render the combobox open (defaultOpen), so capture the padded
+// union of the trigger chip + the portalled panel (Base UI portals it into #storybook-root). The
+// closed 'default' story has no panel — its clip is just the trigger, and it also guards the
+// trigger's hover + focus-visible states (a single Tab reaches the trigger).
 runVrStories({
   name: 'FacetFilter',
   storyPrefix: 'ui-facetfilter',
-  filePrefix: 'facetfilter',
+  snapshotSlug: 'facetfilter',
   storyIds: FACET_FILTER_STORY_IDS,
-  slotSelector: '#storybook-root',
-  readySelector: '[data-slot="facet-filter"]',
-  states: ['resting', 'hover', 'focus'],
+  slotSelector: '[data-slot="facet-filter"]',
+  captureSelectors: ['[data-slot="facet-filter"]', '[data-slot="facet-filter-content"]'],
+  states: ['resting'],
   hoverSelector: '[data-slot="facet-filter"]',
-  focusSelector: '[data-slot="facet-filter"]',
-  stateStory: (story, state) => state === 'resting' || story === 'default',
+  focusExpect: '[data-slot="facet-filter"]',
+  statesForStory: (story) => (story === 'default' ? ['resting', 'hover', 'focus'] : ['resting']),
 });

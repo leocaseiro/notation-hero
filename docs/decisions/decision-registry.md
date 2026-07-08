@@ -23,6 +23,69 @@ Full record: [`docs/decisions/2026-07-07-radix-to-base-ui-migration.md`](2026-07
 
 **Status:** ✅ decided · ⏳ enforcement pending — flips to 🤖 (via `package.json`/`pnpm-lock.yaml`) once PR #99's migration lands and `radix-ui`/`cmdk` are removed.
 
+### 2026-07-08 — FE pivot: Next.js PWA on Vercel + NestJS-on-Lambda (hybrid BFF)
+
+Re-adopts **Next.js** (App Router PWA) as the product FE, hosted on **Vercel** now (optional AWS re-host later — Amplify/EC2, OpenNext skipped); keeps the **NestJS-on-Lambda** backend behind a hidden, OAC-locked
+`api.notationhero.com → CloudFront → Lambda` API, with **Vercel as a BFF** for SSR / server-actions
+(hybrid topology). Neon (catalog, cached via `"use cache"`) + DynamoDB (per-user) + Cognito +
+**Cloudflare R2** blobs + Postgres FTS. ADR `docs/decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md`,
+spike `docs/spikes/2026-07-08-nextjs-vercel-free-tier-caching-search.md`.
+
+- **Supersedes** `ARCH-FE-1` (Vite + TanStack SPA) and closes the 2026-06-16 no-Next.js chain. The new
+  variable that resolves the three-time loop: **Vercel hosting** removes the AWS-SSR $0 objection.
+- **$0 at portfolio scale**, hard-stops at caps. Watch-outs: Vercel Hobby is non-commercial (→ Pro
+  $20/mo, mitigated by re-hosting on AWS — Amplify/EC2), and the new AWS account closes at 6 months unless
+  upgraded to the Paid plan.
+- **Open:** v1 offline scope (Dexie in v1 or later) — deferred to v1 planning. Follow-up: update the
+  `notation_hero_no_nextjs` project memory (currently records Next.js as rejected).
+
+### 2026-07-08 — VR baselines are Linux-only (NH-189, PR #123)
+
+Visual-regression (VR) baselines are now committed for **Linux only** (`*-chromium-linux.png`); the
+81 macOS `*-chromium-darwin.png` baselines were deleted. macOS and Linux rasterize fonts differently
+(subpixel vs grayscale antialiasing, different glyph metrics), so every darwin/linux pair differed —
+one OS is enough as the source of truth. Supersedes the per-OS setup from the NH-189 design-system
+foundation.
+
+- **Enforcement:** `*-chromium-darwin.png` is git-ignored (`client/.gitignore`), so a Mac
+  `test:vr:update` can still generate local shots for iteration but can never commit them. 🤖
+- **Local runs use Docker:** new root scripts `test:vr:docker` / `test:vr:docker:update` render in
+  the pinned `mcr.microsoft.com/playwright:v1.61.1-noble` container — the same image the `vr` CI job
+  uses, so local and CI rendering match. Running VR natively on a Mac is no longer a supported path
+  (docs updated in `client/README.md` + `AGENTS.md`).
+- **CI unchanged:** the `vr` job already compared `-linux` inside the container and stays green.
+
+### 2026-07-07 — NH-262 Part 1 primitives ship on Base UI (not Radix) + Button `link` dark-token fix (PR #101)
+
+Records two changes in PR #101 that the plan and PR body originally mis-described. Part of the wider
+**NH-269** Radix→Base UI migration; qualifies the brand-600 link-contrast note in the 2026-06-25
+NH-189 entry below.
+
+- **Primitives are built on `@base-ui/react` `1.6.0` — a NEW dependency, not the existing `radix-ui`.**
+  `Breadcrumb` uses Base UI `useRender` (was Radix `Slot`); `Tooltip` uses `@base-ui/react/tooltip`.
+  The plan's "Radix, not Base UI / no new dependency" decision is reversed: `@base-ui/react` (plus
+  `@base-ui/utils`, `reselect`) is added to `client/package.json`; `radix-ui` stays for the
+  not-yet-migrated components. This aligns the PR with the NH-269 decision taken after the plan was
+  written — the PR moves WITH the migration, so the earlier "hold, builds on Radix" note on it is stale.
+- **Button `link` variant dark-mode token corrected.** `dark:text-brand-600` (#0d9488) → `text-primary`
+  (both themes) + `hover:text-[color-mix(in_oklch,var(--primary),black_12%)]`. **Why:** the NH-189
+  entry recorded brand-600 dark links at 5.27:1, but that was the default dark **background** only.
+  Breadcrumb newly renders the same classes on a `--muted` **surface**, where `dark:text-brand-600`
+  measures **3.95:1 — fails AA**. `text-primary` clears AA on every surface the components paint
+  (resting 7.9–10.6:1, hover 5.6–7.5:1). Read the NH-189 "passes AA on dark bg" note and the
+  `styles.css` brand-600 comment as default-background-scoped.
+- **Enforcement (🤖 NEW):** `client/src/dark-contrast.ts` + `dark-contrast.test.ts` + a `Button.test.tsx`
+  "link variant dark-mode contrast (AA)" block pin AA ratios per token pair, read from the real
+  `styles.css` values, so a future token edit fails fast in unit tests on every surface — not just the
+  one a story happens to render.
+- **Overlap — PR #118 (NH-264, Button+Badge Radix→Base UI):** #118 rewrites `Button.tsx` imports + base
+  class + `asChild`→`render` but does NOT touch the `variants.variant` map, so `Button.tsx` merges
+  cleanly and this PR's `link` fix survives either merge order. Real rebase conflicts (whichever lands
+  second): both PRs independently add `client/src/vr-helpers.ts` (add/add — #118's `statesForStory` API
+  is a superset), `Button.vr.ts` (content), 6 `link` snapshot PNGs, and the `@base-ui/react` specifier
+  (`1.6.0` exact here vs `^1.6.0` in #118 — align before merge). #101 owns the `link` fix; #118
+  reconciles the VR helper on rebase.
+
 ### 2026-07-05 — Storybook PR previews on GitHub Pages (NH-266, PR #113)
 
 Per-PR Storybook previews publish to the `gh-pages` branch of this public repo — each PR at

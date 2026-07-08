@@ -1,15 +1,24 @@
 import '@testing-library/jest-dom/vitest';
 
-// jsdom is missing a few DOM APIs that Base UI (Slider, Combobox) relies on at mount or during
-// keyboard navigation. Polyfill them once here so every component test has them, instead of
-// per-file shims. Unconditional assignment (the DOM lib types these as always-present, so `??=`
-// would trip @typescript-eslint/no-unnecessary-condition).
+// jsdom has no layout engine, so it doesn't implement ResizeObserver — which Base UI primitives
+// (Slider, Combobox, Tooltip, DropdownMenu/Menubar/HoverCard/Dialog, …) instantiate on mount to
+// measure and position content. It also lacks the pointer-capture + scrollIntoView APIs Base UI's
+// Slider/Combobox use during pointer + keyboard interaction. Polyfill them all once here so every
+// component test can render open/positioned Base UI content instead of crashing.
 class ResizeObserverStub {
-  observe() {}
-  unobserve() {}
-  disconnect() {}
+  observe(): void {
+    // no-op: nothing to measure in jsdom.
+  }
+  unobserve(): void {
+    // no-op.
+  }
+  disconnect(): void {
+    // no-op.
+  }
 }
-globalThis.ResizeObserver = ResizeObserverStub;
+if (!globalThis.ResizeObserver) {
+  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}
 Element.prototype.scrollIntoView = () => {};
 Element.prototype.hasPointerCapture = () => false;
 Element.prototype.setPointerCapture = () => {};
