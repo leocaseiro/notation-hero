@@ -72,7 +72,9 @@ test('a disabled group prevents selection', async () => {
     </RadioGroup>,
   );
   const compact = screen.getByRole('radio', { name: 'Compact' });
-  expect(compact).toBeDisabled();
+  // Base UI renders the item as a <span role="radio">, which can't carry the native
+  // disabled attribute (toBeDisabled) — the disabled state is exposed via aria-disabled.
+  expect(compact).toHaveAttribute('aria-disabled', 'true');
   await user.click(compact);
   expect(compact).not.toBeChecked();
 });

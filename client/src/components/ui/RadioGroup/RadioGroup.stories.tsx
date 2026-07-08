@@ -1,3 +1,5 @@
+import { fn } from 'storybook/test';
+
 import { RadioGroup, RadioGroupItem } from './RadioGroup';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
@@ -6,6 +8,14 @@ const meta = {
   component: RadioGroup,
   parameters: { layout: 'centered' },
   tags: ['autodocs'],
+  // onValueChange is the component's one event-handler prop — the fn() spy makes
+  // selections observable in the Actions panel.
+  args: { onValueChange: fn() },
+  argTypes: {
+    defaultValue: { control: 'select', options: ['comfortable', 'compact', 'spacious'] },
+    disabled: { control: 'boolean' },
+    name: { control: 'text' },
+  },
 } satisfies Meta<typeof RadioGroup>;
 
 export default meta;
@@ -15,8 +25,8 @@ type Story = StoryObj<typeof meta>;
 // Baseline group of three options, each item paired with a plain `<label>` via
 // matching `id`/`htmlFor` so the whole row is clickable and has an accessible name.
 export const Default: Story = {
-  render: () => (
-    <RadioGroup>
+  render: (args) => (
+    <RadioGroup {...args}>
       <div className="flex items-center gap-2">
         <RadioGroupItem value="comfortable" id="default-comfortable" />
         <label htmlFor="default-comfortable">Comfortable</label>
@@ -33,11 +43,12 @@ export const Default: Story = {
   ),
 };
 
-// `defaultValue` pre-selects one option (uncontrolled) — Radix renders the filled
+// `defaultValue` pre-selects one option (uncontrolled) — Base UI renders the filled
 // dot on the matching item and gives it the initial roving focus.
 export const WithDefaultValue: Story = {
-  render: () => (
-    <RadioGroup defaultValue="compact">
+  args: { defaultValue: 'compact' },
+  render: (args) => (
+    <RadioGroup {...args}>
       <div className="flex items-center gap-2">
         <RadioGroupItem value="comfortable" id="value-comfortable" />
         <label htmlFor="value-comfortable">Comfortable</label>
@@ -57,8 +68,9 @@ export const WithDefaultValue: Story = {
 // Disabling the group cascades `disabled` to every item — they dim and stop
 // accepting pointer/keyboard selection.
 export const Disabled: Story = {
-  render: () => (
-    <RadioGroup disabled defaultValue="comfortable">
+  args: { disabled: true, defaultValue: 'comfortable' },
+  render: (args) => (
+    <RadioGroup {...args}>
       <div className="flex items-center gap-2">
         <RadioGroupItem value="comfortable" id="disabled-comfortable" />
         <label htmlFor="disabled-comfortable">Comfortable</label>
@@ -78,8 +90,8 @@ export const Disabled: Story = {
 // `aria-invalid` on each item switches its border + ring to the destructive
 // tokens, so a failed validation reads visually without changing the layout.
 export const Invalid: Story = {
-  render: () => (
-    <RadioGroup>
+  render: (args) => (
+    <RadioGroup {...args}>
       <div className="flex items-center gap-2">
         <RadioGroupItem value="comfortable" id="invalid-comfortable" aria-invalid />
         <label htmlFor="invalid-comfortable">Comfortable</label>
@@ -97,10 +109,11 @@ export const Invalid: Story = {
 };
 
 // `flex gap-4` on the group lays the options out in a row instead of the default
-// stacked grid — Radix arrow-key navigation still follows the visual order.
+// stacked grid — Base UI arrow-key navigation still follows the visual order.
 export const Horizontal: Story = {
-  render: () => (
-    <RadioGroup defaultValue="comfortable" className="flex gap-4">
+  args: { defaultValue: 'comfortable', className: 'flex gap-4' },
+  render: (args) => (
+    <RadioGroup {...args}>
       <div className="flex items-center gap-2">
         <RadioGroupItem value="comfortable" id="horizontal-comfortable" />
         <label htmlFor="horizontal-comfortable">Comfortable</label>
