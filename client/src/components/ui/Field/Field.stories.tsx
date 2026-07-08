@@ -12,16 +12,17 @@ import {
 } from './Field';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
+import { Checkbox } from '@/components/ui/Checkbox/Checkbox';
+
 const meta = {
   title: 'UI/Field',
   component: Field,
   parameters: { layout: 'centered' },
   tags: ['autodocs'],
   // No fn() spies: no Field part defines an event-handler prop (all are
-  // passthrough div/label/p wrappers).
-  argTypes: {
-    orientation: { control: 'select', options: ['vertical', 'horizontal', 'responsive'] },
-  },
+  // passthrough div/label/p wrappers). The `orientation` control is scoped to the
+  // Default story (the only one that spreads args) instead of meta — the other
+  // stories fix their own orientation, so a global control would be inert for them.
 } satisfies Meta<typeof Field>;
 
 export default meta;
@@ -34,8 +35,14 @@ type Story = StoryObj<typeof meta>;
 const inputClass =
   'h-9 rounded-md border border-input bg-background px-3 text-sm transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-invalid:border-destructive aria-invalid:ring-destructive/20';
 
-// Baseline vertical field: a label associated with a plain input via `htmlFor`.
+// Baseline vertical field + orientation playground: this story spreads `args`, so its
+// scoped `orientation` control actually drives the layout (vertical / horizontal /
+// responsive).
 export const Default: Story = {
+  args: { orientation: 'vertical' },
+  argTypes: {
+    orientation: { control: 'select', options: ['vertical', 'horizontal', 'responsive'] },
+  },
   render: (args) => (
     <Field {...args} className="w-72">
       <FieldLabel htmlFor="field-name">Name</FieldLabel>
@@ -122,12 +129,14 @@ export const Disabled: Story = {
   ),
 };
 
-// Horizontal orientation — label and control sit on one row (`items-center`).
+// Horizontal orientation — label and control sit on one row (`items-center`). Uses the
+// real Checkbox (horizontal fields are typically a label + toggle), which also exercises
+// the orientation's checkbox/radio alignment (`[role=checkbox]:mt-px`).
 export const Horizontal: Story = {
   render: () => (
     <Field orientation="horizontal" className="w-72">
       <FieldLabel htmlFor="field-newsletter">Subscribe</FieldLabel>
-      <input id="field-newsletter" type="checkbox" />
+      <Checkbox id="field-newsletter" />
     </Field>
   ),
 };
