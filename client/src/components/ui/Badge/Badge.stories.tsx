@@ -21,7 +21,7 @@ type Story = StoryObj<typeof meta>;
 
 // `default` is the bright-fill pairing (bg-primary + text-primary-foreground); it gets its
 // own story so axe validates its contrast directly, not only indirectly via Button.
-export const Default: Story = { args: { variant: 'default', children: 'VR-CHECK' } };
+export const Default: Story = { args: { variant: 'default' } };
 export const Secondary: Story = { args: { variant: 'secondary' } };
 export const Destructive: Story = { args: { variant: 'destructive' } };
 export const Outline: Story = { args: { variant: 'outline' } };
