@@ -12,6 +12,17 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-07 — Component library: Radix + cmdk → Base UI (NH-254 pilot)
+
+Full record: [`docs/decisions/2026-07-07-radix-to-base-ui-migration.md`](2026-07-07-radix-to-base-ui-migration.md). leocaseiro decided to consolidate on **Base UI** (`@base-ui/react`, current package name — not the superseded `@base-ui-components/react`) in place of `radix-ui` + `cmdk`, piloted on the NH-254 catalog components (PR #99) before the wider fleet grows more Radix surface area.
+
+- **Headline change:** `FacetFilter`/`TokenPicker`/`Command` move off a hand-rolled `cmdk` combobox onto Base UI's first-class `Combobox` (built-in multi-select chips + `filteredItems`/`filter={null}`/`onInputValueChange` for async filtering) — `cmdk` is dropped entirely.
+- **Tabs/RangeSlider/ToggleChipGroup/Popover** map cleanly to Base UI equivalents (`Tabs.List` gains `activateOnFocus`/`loopFocus` for NH-268; `Popover` renders inline by omitting `Popover.Portal`, cleaner than the current Radix workaround).
+- **Gap:** `Combobox` has no built-in `loading` boolean — `useTransition`/`aria-busy`/`Combobox.Status` wiring required to keep the existing `loading` prop on the public contract.
+- **Freezes** the in-flight NH-262 (#101/#109/#112) and NH-264 primitive PRs at their current Radix state pending redirect to the Base UI mapping in the ADR.
+
+**Status:** ✅ decided · ⏳ enforcement pending — flips to 🤖 (via `package.json`/`pnpm-lock.yaml`) once PR #99's migration lands and `radix-ui`/`cmdk` are removed.
+
 ### 2026-07-08 — FE pivot: Next.js PWA on Vercel + NestJS-on-Lambda (hybrid BFF)
 
 Re-adopts **Next.js** (App Router PWA) as the product FE, hosted on **Vercel** now (optional AWS re-host later — Amplify/EC2, OpenNext skipped); keeps the **NestJS-on-Lambda** backend behind a hidden, OAC-locked

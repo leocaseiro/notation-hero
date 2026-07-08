@@ -28,7 +28,7 @@ const PAIRS: ReadonlyArray<readonly [string, string, number, string]> = [
     4.5,
     'popover labels + list status rows (LevelFilter, FacetFilter, TokenPicker)',
   ],
-  ['foreground', 'muted', 4.5, 'highlighted cmdk item label + inactive Tab text'],
+  ['foreground', 'muted', 4.5, 'highlighted combobox item label + inactive Tab text'],
   ['primary', 'popover', 3, 'teal check glyph in the open list (decorative)'],
   ['primary', 'muted', 3, 'teal check glyph on a highlighted (bg-muted) item'],
   ['primary-foreground', 'primary', 4.5, 'selected chips, active Tab, active page'],

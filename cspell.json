@@ -442,6 +442,26 @@
     "scrollarea",
     "unlayered",
     "videocam",
-    "cmdk"
+    "cmdk",
+    "combobox",
+    "comboboxes",
+    "typeahead",
+    "downshift",
+    "ariakit",
+    "popover",
+    "tabindex",
+    "paradiddle",
+    "searchinput",
+    "facetfilter",
+    "tokenpicker",
+    "levelfilter",
+    "rangeslider",
+    "temporange",
+    "togglechipgroup",
+    "pressable",
+    "checkmarks",
+    "haspopup",
+    "desynced",
+    "regen"
   ]
 }
