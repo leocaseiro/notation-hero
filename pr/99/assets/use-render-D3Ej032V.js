@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-UTqDGU-u.js";import{n as t,t as n}from"./useRenderElement-Dvn_4gpo.js";function r(e){return t(e.defaultTagName??`div`,e,e)}var i=e((()=>{n()})),a=e((()=>{i()}));export{i as n,r,a as t};
