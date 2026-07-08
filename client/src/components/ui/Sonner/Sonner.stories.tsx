@@ -146,3 +146,32 @@ export const WithAction: Story = {
     />
   ),
 };
+
+// Fires a few short persistent toasts on mount and dismisses ALL of them on unmount
+// (toast.dismiss() with no argument) so they don't leak into other stories. `expand`
+// flows through from args, so the two Stack stories below reuse this same pile.
+const StackOnMount = ({ ...rest }: ComponentProps<typeof Toaster>) => {
+  useEffect(() => {
+    toast('First event created', { duration: Infinity });
+    toast.success('Saved', { duration: Infinity });
+    toast('Second event created', { duration: Infinity });
+    return () => {
+      toast.dismiss();
+    };
+  }, []);
+  return <Toaster {...rest} />;
+};
+
+// Collapsed stack — several toasts pile up (expand={false}, sonner's default) and
+// expand when the user hovers the stack (interactive in Storybook).
+export const Stack: Story = {
+  args: { expand: false },
+  render: (args) => <StackOnMount {...args} />,
+};
+
+// Expanded stack — expand={true} renders every toast already spread out, so the resting
+// snapshot IS the expanded view with no hover timing to race (what VR pixel-guards).
+export const StackExpanded: Story = {
+  args: { expand: true },
+  render: (args) => <StackOnMount {...args} />,
+};
