@@ -44,7 +44,7 @@ src/components/ui/Button/
   Button.test.tsx            # Vitest + Testing Library unit tests
   Button.stories.tsx         # Storybook stories (docs + the source of truth for VR)
   Button.vr.ts               # Playwright visual-regression spec
-  Button.vr.ts-snapshots/    # committed baseline PNGs (per-OS)
+  Button.vr.ts-snapshots/    # committed baseline PNGs (Linux only)
 ```
 
 Import via the `@/` alias (maps to `src/`), e.g. `import { Button } from '@/components/ui/Button/Button'`.
@@ -126,16 +126,22 @@ Vitest runs in jsdom with Testing Library. Tests are `*.test.tsx` beside the com
 
 ### Visual-regression (VR) tests (Playwright)
 
-VR tests render each Storybook story in isolation and compare a screenshot against a committed baseline.
+VR tests render each Storybook story in isolation and compare a screenshot against a committed baseline. Baselines are **Linux-only** (see below), so run them locally through the Playwright container — or just rely on CI:
 
 ```bash
-pnpm --filter @notation-hero/client test:vr          # compare against committed baselines
-pnpm --filter @notation-hero/client test:vr:update   # re-generate baselines after an intended visual change
+# From the repo root — compare against the committed Linux baselines in the Playwright container:
+pnpm test:vr:docker            # compare
+pnpm test:vr:docker:update     # regenerate baselines after an intended visual change, then commit
+
+# Raw commands (used by CI and inside the container above). On a Mac these render against
+# local, git-ignored darwin shots — fine for quick iteration, never the source of truth:
+pnpm --filter @notation-hero/client test:vr
+pnpm --filter @notation-hero/client test:vr:update
 ```
 
 - Playwright auto-starts Storybook as its `webServer` (see `playwright.config.ts`) — you do **not** need Storybook running separately.
 - Specs match `**/*.vr.{ts,tsx}`. Each test opens `…/iframe.html?id=<story-id>` and calls `toHaveScreenshot`.
-- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed**. They are **per-OS** — Playwright embeds the platform in the filename, so the repo commits both `…-chromium-darwin.png` (macOS) and `…-chromium-linux.png` (Linux). Local Macs compare against `-darwin`; **CI compares against `-linux`** — the `vr` job runs in the `mcr.microsoft.com/playwright:v1.61.1-noble` container, so its rendering matches the committed `-linux` set.
+- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed** — **Linux only** (`…-chromium-linux.png`). macOS and Linux rasterize fonts differently (subpixel vs grayscale antialiasing, different glyph metrics), so a single OS's baselines are the source of truth. **CI compares against `-linux`** — the `vr` job runs in the `mcr.microsoft.com/playwright:v1.61.1-noble` container, matching the committed set exactly; run `pnpm test:vr:docker` locally to use that same container. Darwin shots (`…-chromium-darwin.png`) are git-ignored, so a Mac `test:vr:update` can't leak them into the repo.
 
 **Debugging a failing VR test:**
 
@@ -151,7 +157,7 @@ pnpm --filter @notation-hero/client exec playwright test --headed
 ```
 
 - On failure Playwright writes `*-actual.png`, `*-expected.png`, and `*-diff.png` under `test-results/`. Open the `-diff` to see exactly which pixels changed.
-- **Change was intentional?** Regenerate **both** OS baselines and commit them — `test:vr:update` covers the local `-darwin` set; regenerate the `-linux` set with Docker (see AGENTS.md §"VR baselines are per-OS — regenerate the Linux set with Docker" for the command).
+- **Change was intentional?** Regenerate the Linux baselines and commit them: `pnpm test:vr:docker:update` (from the repo root — runs in the Playwright container so the shots match CI). See AGENTS.md §"VR baselines are Linux-only".
 - **Looks like a flake?** The usual cause is web fonts not being ready. Specs already `await document.fonts.ready` before snapshotting (so Material Symbols render as glyphs, not the ligature fallback text) — if you introduce a new font/icon, load it the same way.
 - `test-results/`, `playwright-report/`, and `storybook-static/` are git-ignored.
 
