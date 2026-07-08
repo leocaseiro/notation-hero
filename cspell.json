@@ -114,6 +114,7 @@
     "Caseiro",
     "notationhero",
     "oklch",
+    "oklab",
     "esbuild",
     "shellcheck",
     "sonarjs",
