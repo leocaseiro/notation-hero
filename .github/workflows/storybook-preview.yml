@@ -1,0 +1,332 @@
+name: Storybook preview
+
+# Publishes a static Storybook to the gh-pages branch of this PUBLIC repo: each PR's
+# preview at /pr/<number>/ and the latest master at the site root. Design + rationale:
+# docs/plans/2026-07-05-storybook-pr-preview-plan.md.
+#
+# NOT a required check (absent from ci.yml's ci-green needs:), so a skip on a non-client
+# PR never deadlocks merge. The build runs untrusted PR code but with NO secrets; only the
+# separate publish job holds the write token (built-in GITHUB_TOKEN) — untrusted code never
+# sees it. No AWS credentials anywhere, so the NH-206 deploy hardening is untouched.
+#
+# One-time manual setup: Settings -> Pages -> Deploy from a branch -> gh-pages / root.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, closed]
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to build a preview for
+        required: true
+        type: string
+
+# Least-privilege DEFAULT: read-only for the untrusted-code jobs (changes/build). The write scope
+# (gh-pages publish + PR comment) is granted per-job on publish + cleanup ONLY, so the jobs that
+# run untrusted PR code never hold the write token. No id-token/AWS.
+permissions:
+  contents: read
+
+jobs:
+  # Diff filter — only pull_request + push carry a base the filter can diff against;
+  # workflow_dispatch has none, so this job is gated off it (the build guard treats dispatch
+  # as an unconditional build). Mirrors ci.yml's changes job; reuses its pinned SHAs.
+  changes:
+    if: (github.event_name == 'pull_request' && github.event.action != 'closed') || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      client: ${{ steps.filter.outputs.client }}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4
+        id: filter
+        with:
+          filters: |
+            client:
+              - 'client/**'
+              - '.github/workflows/storybook-preview.yml'
+
+  # Build the static Storybook with the correct base path. Concurrency keys on the resolved
+  # TARGET (PR number for PR + dispatch, 'master' for push) — NOT github.ref (which aliases
+  # dispatch + push onto one key) and NOT a step output (job-level concurrency is evaluated
+  # before steps run). cancel-in-progress supersedes an older in-flight build of the SAME
+  # target only.
+  build:
+    needs: changes
+    if: ${{ !cancelled() && github.event.action != 'closed' && (github.event.action != 'labeled' || github.event.label.name == 'preview') && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && needs.changes.outputs.client == 'true') || (github.event_name == 'pull_request' && (needs.changes.outputs.client == 'true' || contains(github.event.pull_request.labels.*.name, 'preview')))) }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: storybook-preview-${{ github.event.pull_request.number || github.event.inputs.pr_number || 'master' }}
+      cancel-in-progress: true
+    outputs:
+      dest: ${{ steps.meta.outputs.dest }}
+      pr: ${{ steps.meta.outputs.pr }}
+      sha: ${{ steps.built.outputs.sha }}
+      built_at: ${{ steps.built.outputs.built_at }}
+    steps:
+      # Resolve base path + gh-pages destination from event context. The PR number comes from
+      # the event (PR) or the dispatch input; passed via env and numeric-validated so untrusted
+      # input never reaches the shell as code (no script injection).
+      - id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_FROM_EVENT: ${{ github.event.pull_request.number }}
+          PR_FROM_INPUT: ${{ github.event.inputs.pr_number }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "push" ]; then
+            {
+              echo "base=/notation-hero/"
+              echo "dest="
+              echo "pr="
+            } >> "$GITHUB_OUTPUT"
+          else
+            pr="${PR_FROM_EVENT:-$PR_FROM_INPUT}"
+            case "$pr" in '' | *[!0-9]*) echo "::error::invalid PR number '$pr'"; exit 1 ;; esac
+            {
+              echo "base=/notation-hero/pr/$pr/"
+              echo "dest=pr/$pr"
+              echo "pr=$pr"
+            } >> "$GITHUB_OUTPUT"
+          fi
+      # For dispatch, build the named PR's head; otherwise the event's own ref.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/pull/{0}/head', github.event.inputs.pr_number) || github.ref }}
+      # Record exactly what was built (commit + time) so the sticky comment can show staleness.
+      # The reported sha is resolved per event type, NOT via a blanket `git rev-parse HEAD`: the
+      # checkout above puts `pull_request` events on refs/pull/<n>/merge (github.ref for that event
+      # type) — an ephemeral two-parent merge commit that never appears in the PR's own history, so
+      # reporting it would make the "is this stale" comparison meaningless. `push`'s github.sha has
+      # no such quirk. workflow_dispatch explicitly checked out refs/pull/<n>/head above, so HEAD
+      # there already is the real PR head.
+      - id: built
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          case "$EVENT_NAME" in
+            pull_request) sha="$PR_HEAD_SHA" ;;
+            push) sha="$PUSH_SHA" ;;
+            *) sha="$(git rev-parse HEAD)" ;;
+          esac
+          {
+            echo "sha=$sha"
+            # Australia/Sydney: %Z auto-labels AEST (UTC+10) or AEDT (UTC+11) correctly across the
+            # daylight-saving transition (~Oct-Apr), rather than a fixed offset that would drift an
+            # hour off wall-clock time for part of the year.
+            echo "built_at=$(TZ='Australia/Sydney' date +'%Y-%m-%d %H:%M %Z')"
+          } >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/setup-js
+      - name: Build Storybook
+        env:
+          STORYBOOK_BASE_PATH: ${{ steps.meta.outputs.base }}
+        run: pnpm --filter @notation-hero/client run build-storybook
+      - name: Assert base path applied
+        env:
+          BASE: ${{ steps.meta.outputs.base }}
+        run: |
+          set -euo pipefail
+          f=client/storybook-static/iframe.html
+          # Existence: the base prefix reached the bundled assets.
+          grep -q "${BASE}assets/" "$f" \
+            || { echo "::error::Storybook base path $BASE not applied to built assets"; exit 1; }
+          # Completeness: no asset ref escaped the base as a root-absolute /assets/ path (catches a
+          # partial base application — the plan's R-builder-base risk).
+          if grep -qE '(src|href)="/assets/' "$f"; then
+            echo "::error::found root-absolute /assets/ refs — base path only partially applied"; exit 1
+          fi
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: storybook-static
+          path: client/storybook-static
+          if-no-files-found: error
+          retention-days: 3
+
+  # Publish to gh-pages. Separate job so its concurrency group (shared, no-cancel) serializes
+  # publishes across PRs — neither peaceiris nor a raw push retries a non-fast-forward, so the
+  # group is the race guard. Caveat: a group keeps only ONE pending run, so a burst of 3+
+  # near-simultaneous cross-PR publishes can evict an intermediate one; that PR re-converges on
+  # its next push (the accepted R-concurrency-drop trade-off in the plan).
+  publish:
+    needs: build
+    # Same-repo PRs only on the PR path: GitHub caps GITHUB_TOKEN to read-only on fork PRs, so a
+    # fork's publish would 403 (a spurious red check). push:master / workflow_dispatch (trusted)
+    # must still publish, so the fork check is gated to pull_request events only.
+    if: needs.build.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: storybook-static
+          path: storybook-static
+      # PR / dispatch -> publish into pr/<n>/, preserving siblings + root (peaceiris scopes
+      # deletion to destination_dir; default keep_files=false refreshes only this PR's folder).
+      - name: Publish PR preview
+        if: needs.build.outputs.dest != ''
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./storybook-static
+          destination_dir: ${{ needs.build.outputs.dest }}
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
+      # push:master -> publish to the site root, keep_files:true so the /pr/* subtree (other
+      # previews) is never swept by a root rebuild.
+      - name: Publish master to root
+        if: needs.build.outputs.dest == ''
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./storybook-static
+          keep_files: true
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
+      # Sticky comment with the preview URL — PR / dispatch only (the root publish has no PR).
+      # success() keeps the implicit "previous steps passed" gate the explicit if: would drop.
+      - name: Comment preview URL
+        if: ${{ success() && needs.build.outputs.dest != '' }}
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          PR: ${{ needs.build.outputs.pr }}
+          URL: https://leocaseiro.github.io/notation-hero/${{ needs.build.outputs.dest }}/
+          SHA: ${{ needs.build.outputs.sha }}
+          BUILT_AT: ${{ needs.build.outputs.built_at }}
+        with:
+          script: |
+            const marker = '<!-- storybook-preview -->';
+            const pr = Number(process.env.PR);
+            const url = process.env.URL;
+            const sha = process.env.SHA;
+            const shortSha = sha.slice(0, 7);
+            const commitUrl = `https://github.com/${context.repo.owner}/${context.repo.repo}/commit/${sha}`;
+            const builtAt = process.env.BUILT_AT;
+            // The SHA + timestamp let you tell at a glance whether this preview matches the PR's
+            // latest commit, or is stale from a push that didn't touch client/** (skipped the build).
+            const body = `${marker}\n📚 **Storybook preview**: ${url}\n\nBuilt from [\`${shortSha}\`](${commitUrl}) · ${builtAt}\n\n_Updates on every push while this PR is open._`;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body,
+              });
+            }
+
+  # Remove a PR's preview folder when the PR closes. Shares the gh-pages-deploy concurrency group
+  # so a cleanup serializes with publishes (no non-fast-forward race). A fork-PR close no-ops —
+  # nothing was ever published (folder absent), so the push below never runs. Known limitation:
+  # this fires once and shares the single-pending-run group, so a burst of publishes can evict a
+  # queued cleanup, orphaning pr/<n>/ (cosmetic; a reconciliation sweep is deferred — see the
+  # plan's Scope Boundaries).
+  cleanup:
+    # Explicit display name: this job legitimately shows "skipped" on every push/open/label event
+    # (by design — it only acts on close) and that read as a failure without this label.
+    name: cleanup (only runs when the PR closes)
+    # Same-repo only: a fork PR never published (read-only token), so there is nothing to remove —
+    # skip rather than run a pointless checkout. Mirrors the publish guard.
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    steps:
+      - name: Check gh-pages exists
+        id: ghp
+        run: |
+          set -euo pipefail
+          # `ls-remote --exit-code` returns 2 when no ref matches (branch truly absent) and other
+          # non-zero codes for transient/network errors — distinguish them so a transient failure
+          # fails loudly instead of silently skipping cleanup (which would orphan the folder).
+          rc=0
+          git ls-remote --exit-code --heads "https://github.com/${GITHUB_REPOSITORY}.git" gh-pages >/dev/null 2>&1 || rc=$?
+          if [ "$rc" -eq 0 ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          elif [ "$rc" -eq 2 ]; then
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "gh-pages does not exist; nothing to clean up."
+          else
+            echo "::error::git ls-remote failed (exit $rc) — cannot determine gh-pages state"
+            exit 1
+          fi
+      - name: Checkout gh-pages
+        if: steps.ghp.outputs.exists == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: gh-pages
+      - name: Remove preview folder
+        if: steps.ghp.outputs.exists == 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          case "$PR_NUMBER" in '' | *[!0-9]*) echo "::error::invalid PR number '$PR_NUMBER'"; exit 1 ;; esac
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          # Sweep BOTH the Storybook preview and the VR report (ci.yml publishes it at
+          # vr-report/pr/<n>). Either may be absent independently, so remove each if present and
+          # only commit/push when something was actually removed.
+          removed=0
+          for dir in "pr/$PR_NUMBER" "vr-report/pr/$PR_NUMBER"; do
+            if [ -d "$dir" ]; then
+              git rm -r --quiet "$dir"
+              removed=1
+            fi
+          done
+          if [ "$removed" -eq 0 ]; then
+            echo "No preview or VR report at pr/$PR_NUMBER; nothing to remove."
+            exit 0
+          fi
+          git commit -q -m "chore(preview): remove pr/$PR_NUMBER preview + VR report (PR closed)"
+          git push origin HEAD:gh-pages
+      - name: Update preview comment (removed)
+        if: steps.ghp.outputs.exists == 'true'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          PR: ${{ github.event.pull_request.number }}
+        with:
+          script: |
+            const marker = '<!-- storybook-preview -->';
+            const pr = Number(process.env.PR);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: `${marker}\n🧹 Storybook preview removed (PR closed).`,
+              });
+            }

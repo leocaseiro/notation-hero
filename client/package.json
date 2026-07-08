@@ -24,6 +24,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@base-ui/react": "^1.6.0",
     "@fontsource-variable/material-symbols-outlined": "^5.2.45",
     "@fontsource-variable/public-sans": "^5.2.7",
     "@tailwindcss/vite": "^4.3.1",

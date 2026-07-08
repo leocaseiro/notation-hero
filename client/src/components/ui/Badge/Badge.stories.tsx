@@ -25,3 +25,14 @@ export const Default: Story = { args: { variant: 'default' } };
 export const Secondary: Story = { args: { variant: 'secondary' } };
 export const Destructive: Story = { args: { variant: 'destructive' } };
 export const Outline: Story = { args: { variant: 'outline' } };
+
+// The render prop (Base UI useRender) — rendered as a real anchor so VR + a11y gate the
+// interactive-badge composition, including its focus-visible ring.
+export const AsLink: Story = {
+  render: (args) => (
+    // eslint-disable-next-line jsx-a11y/anchor-has-content -- useRender clones the anchor with the Badge's children
+    <Badge {...args} render={<a href="#practice" />}>
+      Link badge
+    </Badge>
+  ),
+};
