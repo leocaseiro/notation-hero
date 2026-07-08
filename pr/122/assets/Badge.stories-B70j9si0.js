@@ -1,7 +1,6 @@
-import{i as e}from"./preload-helper-DaBKe9-U.js";import{t}from"./jsx-runtime-CgGwJWjK.js";import{n,t as r}from"./Badge-BdekQBlh.js";var i,a,o,s,c,l,u,d;e((()=>{n(),i=t(),a={title:`UI/Badge`,component:r,parameters:{layout:`centered`},tags:[`autodocs`],args:{children:`Badge`},argTypes:{variant:{control:`select`,options:[`default`,`secondary`,`destructive`,`outline`]}}},o={args:{variant:`default`,children:`VR-CHECK`}},s={args:{variant:`secondary`}},c={args:{variant:`destructive`}},l={args:{variant:`outline`}},u={render:e=>(0,i.jsx)(r,{...e,render:(0,i.jsx)(`a`,{href:`#practice`}),children:`Link badge`})},o.parameters={...o.parameters,docs:{...o.parameters?.docs,source:{originalSource:`{
+import{i as e}from"./preload-helper-DaBKe9-U.js";import{t}from"./jsx-runtime-CgGwJWjK.js";import{n,t as r}from"./Badge-BdekQBlh.js";var i,a,o,s,c,l,u,d;e((()=>{n(),i=t(),a={title:`UI/Badge`,component:r,parameters:{layout:`centered`},tags:[`autodocs`],args:{children:`Badge`},argTypes:{variant:{control:`select`,options:[`default`,`secondary`,`destructive`,`outline`]}}},o={args:{variant:`default`}},s={args:{variant:`secondary`}},c={args:{variant:`destructive`}},l={args:{variant:`outline`}},u={render:e=>(0,i.jsx)(r,{...e,render:(0,i.jsx)(`a`,{href:`#practice`}),children:`Link badge`})},o.parameters={...o.parameters,docs:{...o.parameters?.docs,source:{originalSource:`{
   args: {
-    variant: 'default',
-    children: 'VR-CHECK'
+    variant: 'default'
   }
 }`,...o.parameters?.docs?.source}}},s.parameters={...s.parameters,docs:{...s.parameters?.docs,source:{originalSource:`{
   args: {
