@@ -19,19 +19,13 @@ const meta = {
   tags: ['autodocs'],
   // className is Card's one tunable prop (width, divider variants) — wire it as
   // a control so the panel isn't empty.
-  args: { className: 'w-80' },
+  args: { className: 'w-80', onClick: fn() },
   argTypes: { className: { control: 'text' } },
 } satisfies Meta<typeof Card>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
-
-// fn() spies on the story buttons (they are children, not Card props) so clicks
-// land in the Actions panel.
-const handleCancel = fn();
-const handlePractice = fn();
-const handleMore = fn();
 
 // Baseline card — header (title + description) over content. The header grid
 // stays single-column because no CardAction is present.
@@ -63,10 +57,10 @@ export const WithFooter: Story = {
         <p className="text-sm">Right left right right, left right left left.</p>
       </CardContent>
       <CardFooter className="justify-end gap-2">
-        <Button variant="outline" onClick={handleCancel}>
+        <Button variant="outline" onClick={() => {}}>
           Cancel
         </Button>
-        <Button onClick={handlePractice}>Practice</Button>
+        <Button onClick={() => {}}>Practice</Button>
       </CardFooter>
     </Card>
   ),
@@ -82,7 +76,7 @@ export const WithAction: Story = {
         <CardTitle>Paradiddle</CardTitle>
         <CardDescription>A foundational sticking pattern.</CardDescription>
         <CardAction>
-          <Button variant="outline" size="icon-sm" aria-label="More options" onClick={handleMore}>
+          <Button variant="outline" size="icon-sm" aria-label="More options" onClick={() => {}}>
             <span className="material-symbols-outlined" aria-hidden="true">
               more_horiz
             </span>
@@ -105,7 +99,7 @@ export const Full: Story = {
         <CardTitle>Paradiddle</CardTitle>
         <CardDescription>A foundational sticking pattern.</CardDescription>
         <CardAction>
-          <Button variant="outline" size="icon-sm" aria-label="More options" onClick={handleMore}>
+          <Button variant="outline" size="icon-sm" aria-label="More options" onClick={() => {}}>
             <span className="material-symbols-outlined" aria-hidden="true">
               more_horiz
             </span>
@@ -116,10 +110,10 @@ export const Full: Story = {
         <p className="text-sm">Right left right right, left right left left.</p>
       </CardContent>
       <CardFooter className="justify-end gap-2">
-        <Button variant="outline" onClick={handleCancel}>
+        <Button variant="outline" onClick={() => {}}>
           Cancel
         </Button>
-        <Button onClick={handlePractice}>Practice</Button>
+        <Button onClick={() => {}}>Practice</Button>
       </CardFooter>
     </Card>
   ),
