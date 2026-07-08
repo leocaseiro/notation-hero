@@ -154,7 +154,10 @@ jobs:
   # its next push (the accepted R-concurrency-drop trade-off in the plan).
   publish:
     needs: build
-    if: needs.build.result == 'success'
+    # Same-repo PRs only on the PR path: GitHub caps GITHUB_TOKEN to read-only on fork PRs, so a
+    # fork's publish would 403 (a spurious red check). push:master / workflow_dispatch (trusted)
+    # must still publish, so the fork check is gated to pull_request events only.
+    if: needs.build.result == 'success' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -244,7 +247,9 @@ jobs:
     # Explicit display name: this job legitimately shows "skipped" on every push/open/label event
     # (by design — it only acts on close) and that read as a failure without this label.
     name: cleanup (only runs when the PR closes)
-    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    # Same-repo only: a fork PR never published (read-only token), so there is nothing to remove —
+    # skip rather than run a pointless checkout. Mirrors the publish guard.
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     permissions:
       contents: write
