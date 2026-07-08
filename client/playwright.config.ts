@@ -14,7 +14,7 @@ export default defineConfig({
     baseURL: 'http://localhost:6006',
   },
   projects: [
-    // VR baselines embed the project name (button-…-chromium-darwin.png), so keep
+    // VR baselines embed the project name (button-…-chromium-linux.png), so keep
     // it "chromium" to avoid orphaning the committed snapshots.
     {
       name: 'chromium',

@@ -157,26 +157,34 @@ The client has four test layers (full guide: `client/README.md`):
 - **a11y** — axe-core over every Storybook story in light + dark, resting + hover
   (`*.a11y.ts`); the `a11y` CI job, **blocks merge**. OS-independent.
 - **VR** — Playwright `toHaveScreenshot` over the stories (`*.vr.ts`); the `vr` CI job,
-  **blocks merge**. Pixel-exact, so baselines are **per-OS**.
+  **blocks merge**. Pixel-exact, so baselines are **Linux-only** (committed `-linux`; CI
+  and the local `test:vr:docker` script both render in the Playwright container).
 - **e2e** — Playwright against the built SPA (`vite preview`, **not** Storybook), with `/api/*`
   mocked by MSW (`*.e2e.ts`, separate `playwright.e2e.config.ts`); the `e2e` CI job, **blocks
   merge**. On failure it uploads traces + the HTML report (D5: `if: !cancelled()`) so a CI failure
   is replayable locally via `npx playwright show-trace`.
 
-### VR baselines are per-OS — regenerate the Linux set with Docker
+### VR baselines are Linux-only — regenerate them with Docker
 
-Snapshots embed the platform (`button-default-chromium-darwin.png` vs `…-linux.png`).
-Local Macs compare against `-darwin`; **CI compares against `-linux`** (run in the official
-Playwright container). After any intended visual change, regenerate **both** and commit them:
+Playwright embeds the platform in each snapshot filename, but we commit **only the Linux set**
+(`button-default-chromium-linux.png`). macOS and Linux rasterize fonts differently (subpixel vs
+grayscale antialiasing, different glyph metrics), so one OS is the source of truth; darwin shots
+(`*-chromium-darwin.png`) are git-ignored. **CI compares against `-linux`** in the official
+Playwright container — never run VR natively on a Mac against these baselines.
+
+Locally, run VR through that same container from the repo root:
 
 ```bash
-# macOS (local) — darwin baselines:
-pnpm --filter @notation-hero/client test:vr:update
+pnpm test:vr:docker            # compare against the committed Linux baselines
+pnpm test:vr:docker:update     # regenerate them after an intended visual change, then commit
+```
 
-# Linux (CI) baselines — via the Playwright image matching @playwright/test (v1.61.1).
-# The anonymous -v volumes shadow node_modules so the local (darwin) install is untouched;
-# --ignore-scripts skips the lefthook `prepare` (its git call can't resolve a worktree's
-# .git inside the container).
+Both wrap the Playwright image matching `@playwright/test` (v1.61.1). The anonymous `-v` volumes
+shadow node_modules so the local (darwin) install is untouched; `--ignore-scripts` skips the
+lefthook `prepare` (its git call can't resolve a worktree's `.git` inside the container). The
+`:update` variant expands to:
+
+```bash
 docker run --rm \
   -v "$PWD":/work \
   -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules \
