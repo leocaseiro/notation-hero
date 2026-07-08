@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
  * this file self-contained; its `select-none` covers the double-click
  * text-selection guard Radix Label used to provide.
  */
-const fieldVariants = cva('group/field flex w-full gap-3 data-[invalid=true]:text-destructive', {
+const fieldVariants = cva('group/field flex w-full gap-2 data-[invalid=true]:text-destructive', {
   variants: {
     orientation: {
       vertical: ['flex-col [&>*]:w-full [&>.sr-only]:w-auto'],
