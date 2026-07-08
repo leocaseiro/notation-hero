@@ -15,6 +15,10 @@ todos.json
 *storybook.log
 storybook-static
 
-# Playwright (VR) run output — baselines under *-snapshots/ ARE committed
+# Playwright (VR) run output — baselines under *-snapshots/ ARE committed (Linux only)
 test-results
 playwright-report
+
+# VR baselines are Linux-only. A local `test:vr:update` on a Mac writes darwin shots
+# for quick local iteration — they must never be committed (regenerate via test:vr:docker).
+*-chromium-darwin.png

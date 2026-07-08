@@ -195,6 +195,157 @@ jobs:
         run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
       - name: Visual regression (vs committed Linux baselines)
         run: pnpm --filter @notation-hero/client run test:vr
+      - name: Upload VR report + traces
+        # NOT `if: failure()` — keep the trace of a flaky-then-passed retry (matches e2e, D5).
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-vr-report
+          path: |
+            client/playwright-report/
+            client/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Publish the Playwright VR report to gh-pages on a VR failure, and post a sticky PR comment
+  # linking it — the image-diff Slider + the trace timeline, one-click, no zip download. Mirrors
+  # storybook-preview.yml's trust model: the write token lives in THIS job only (the vr job that
+  # runs PR/Storybook code stays read-only and just uploads the artifact); it shares the
+  # gh-pages-deploy concurrency group so it never non-fast-forward-races the Storybook publish, and
+  # publishes OUTSIDE pr/<n>/ (Storybook scoped-deletes that path) at vr-report/pr/<n>/. Same-repo
+  # PRs only — a fork's read-only token can't publish/comment. NOT a ci-green gate (absent from its
+  # needs:) and only acts after vr already failed. Spec:
+  # docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md (NH-273).
+  vr-report:
+    needs: vr
+    if: ${{ !cancelled() && needs.vr.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    steps:
+      # continue-on-error + the presence gate below: a vr failure BEFORE Playwright writes the
+      # report (e.g. an install/setup crash) uploads no artifact, so download-artifact would
+      # hard-fail this job. Instead we no-op cleanly — there is no report to link anyway.
+      - name: Download VR report artifact
+        continue-on-error: true
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: playwright-vr-report
+          path: vr-artifact
+      - name: Check report present
+        id: report
+        run: |
+          if [ -f ./vr-artifact/playwright-report/index.html ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No report artifact (vr failed before Playwright wrote one); nothing to publish."
+          fi
+      # keep_files defaults to false, scoping deletion to vr-report/pr/<n> — refreshes only this
+      # PR's report, never other PRs' reports or the Storybook tree.
+      - name: Publish VR report to gh-pages
+        if: steps.report.outputs.present == 'true'
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./vr-artifact/playwright-report
+          destination_dir: vr-report/pr/${{ github.event.pull_request.number }}
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
+      # Timestamp is Sydney time via Intl (AEST in winter, AEDT in summer — label follows); SHA is
+      # the PR head commit, shortened. Untrusted values reach the script only via env.
+      - name: Comment VR report link
+        if: steps.report.outputs.present == 'true'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          URL: https://leocaseiro.github.io/notation-hero/vr-report/pr/${{ github.event.pull_request.number }}/
+        with:
+          script: |
+            const marker = '<!-- vr-report-preview -->';
+            const pr = Number(process.env.PR);
+            const url = process.env.URL;
+            const sha = (process.env.HEAD_SHA || '').substring(0, 7);
+            const when = new Intl.DateTimeFormat('en-AU', {
+              timeZone: 'Australia/Sydney',
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+              timeZoneName: 'short',
+            }).format(new Date());
+            const body = [
+              marker,
+              `🎭 **VR report** (image-diff **Slider** + trace **timeline**): ${url}`,
+              '',
+              `\`${sha}\` · ${when} — from the latest **failing** VR run; refreshes on every commit while VR fails.`,
+            ].join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body,
+              });
+            }
+
+  # When VR PASSES, resolve any existing VR-report comment to a ✅ line (never CREATE one on a green
+  # PR). Its own job so the green path needs only pull-requests:write and NOT the gh-pages-deploy
+  # concurrency slot — a comment-only op shouldn't add eviction pressure to real publishes on every
+  # green PR. Same gating (PR + same-repo). NOT a ci-green gate.
+  vr-report-resolve:
+    needs: vr
+    if: ${{ !cancelled() && needs.vr.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Resolve VR report comment
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const marker = '<!-- vr-report-preview -->';
+            const pr = Number(process.env.PR);
+            const sha = (process.env.HEAD_SHA || '').substring(0, 7);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: `${marker}\n✅ VR passing on \`${sha}\` — no visual diffs to review.`,
+              });
+            }
 
   # End-to-end — Playwright against the built SPA (`vite preview`), with /api/catalog mocked by
   # MSW. Models the `a11y` job (ubuntu + on-demand Chromium); unlike `vr` it is not pixel-exact,
