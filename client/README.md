@@ -97,6 +97,8 @@ Every PR that touches `client/**` publishes a live Storybook to GitHub Pages so 
 
 The workflow (`.github/workflows/storybook-preview.yml`) auto-builds on `client/**` changes. You can also add the **`preview`** label to any PR, or trigger it from the **Actions** tab (**Run workflow** → PR number). Each push rebuilds the same URL; the preview folder is removed when the PR closes. It is **not** a required check, so it never blocks merge.
 
+The comment shows the commit SHA and the time it was built (Sydney local time, AEST/AEDT) — compare that against the PR's latest commit to tell whether the preview is stale (e.g. a push that didn't touch `client/**` won't rebuild it). The `cleanup` job in the Checks list shows **skipped** on every push while the PR is open — that's expected, it only runs when the PR closes.
+
 `STORYBOOK_BASE_PATH` (set only by that workflow; default `/`) drives the Vite `base` in `.storybook/main.ts` so assets resolve under the subpath — `dev`, `vr`, and `a11y` are unaffected.
 
 > **One-time setup:** enable Pages at **Settings → Pages → Deploy from a branch → `gh-pages` / root**. Until then the workflow still runs and creates the `gh-pages` branch, but the URLs 404.
