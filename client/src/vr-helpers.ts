@@ -42,6 +42,13 @@ export interface VrStoriesConfig {
    */
   captureSelectors?: readonly string[];
   /**
+   * Per-story override of `captureSelectors` — return the capture region for a given story (e.g. a
+   * story that renders a stack/region needs a wider selector than the single-element default).
+   * Falls back to `captureSelectors` (then `[slotSelector]`) when omitted or when it returns
+   * undefined for a story.
+   */
+  captureSelectorsForStory?: (story: string) => readonly string[] | undefined;
+  /**
    * Per-story override of `states` — return the states to capture for a given story. Use when one
    * story's element can't reach a state (e.g. a disabled input can't be Tab-focused). Falls back to
    * `states` when omitted.
@@ -137,6 +144,7 @@ export function runVrStories({
   states = ['resting'],
   statesForStory,
   captureSelectors,
+  captureSelectorsForStory,
   hoverSelector,
   focusTabs = 1,
   focusExpect,
@@ -144,12 +152,14 @@ export function runVrStories({
   openArgs = 'open:!true',
   openWaitSelector,
 }: Readonly<VrStoriesConfig>): void {
-  const regionSelectors = captureSelectors ?? [slotSelector];
-  // The panel to wait for in the `open` state (only present once the overlay opens). Defaults to
-  // the last capture selector, which is conventionally the portalled panel.
-  const openWait = openWaitSelector ?? regionSelectors.at(-1) ?? slotSelector;
   for (const theme of THEMES) {
     for (const story of storyIds) {
+      // Capture region can be overridden per story (e.g. a toast STACK needs the whole
+      // `[data-sonner-toaster]` region, not the single `.first()` toast). Recomputed inside the
+      // loop so `captureSelectorsForStory` can vary it; the `open`-state wait target follows it.
+      const regionSelectors = captureSelectorsForStory?.(story) ??
+        captureSelectors ?? [slotSelector];
+      const openWait = openWaitSelector ?? regionSelectors.at(-1) ?? slotSelector;
       const resolvedStates = statesForStory ? statesForStory(story) : states;
       if (resolvedStates.length === 0) {
         // Fail loudly at collection time: an empty return would register ZERO tests for this
