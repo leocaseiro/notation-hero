@@ -181,7 +181,10 @@ body,
   --sidebar-primary-foreground: oklch(27.7% 0.046 192.524deg);
   --sidebar-accent: oklch(27.5% 0.011 216.9deg);
   --sidebar-accent-foreground: oklch(98.7% 0.002 197.1deg);
-  --sidebar-border: oklch(100% 0 0deg / 10%);
+  --sidebar-border: oklch(
+    100% 0 0deg / 15%
+  ); /* matches dark --input, the Button outline border (NH-262 review) */
+
   --sidebar-ring: oklch(56% 0.021 213.5deg);
 }
 
