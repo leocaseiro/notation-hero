@@ -1,4 +1,10 @@
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../DropdownMenu/DropdownMenu';
+import {
   Breadcrumb,
   BreadcrumbEllipsis,
   BreadcrumbItem,
@@ -8,6 +14,7 @@ import {
   BreadcrumbSeparator,
 } from './Breadcrumb';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
+import { Button } from '@/components/ui/Button/Button';
 
 const meta = {
   title: 'UI/Breadcrumb',
@@ -58,7 +65,10 @@ export const Default: Story = {
   ),
 };
 
-// A long trail collapsed with an ellipsis between the root and the tail.
+// A long trail collapsed behind the ellipsis — clicking it opens a DropdownMenu with the hidden
+// crumbs (the shadcn "Collapsed" composition). The trigger renders as a ghost icon Button so
+// hover/focus visibly react (Leo's review), named for assistive tech via aria-label; the ellipsis
+// glyph inside stays decorative.
 export const Collapsed: Story = {
   render: () => (
     <Breadcrumb>
@@ -68,7 +78,20 @@ export const Collapsed: Story = {
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>
-          <BreadcrumbEllipsis />
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger
+              aria-label="Show hidden breadcrumbs"
+              render={
+                <Button variant="ghost" size="icon-sm">
+                  <BreadcrumbEllipsis className="size-auto" />
+                </Button>
+              }
+            />
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem>Rock</DropdownMenuItem>
+              <DropdownMenuItem>Coldplay</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>
@@ -81,6 +104,28 @@ export const Collapsed: Story = {
       </BreadcrumbList>
     </Breadcrumb>
   ),
+  parameters: {
+    docs: {
+      source: {
+        code: `<BreadcrumbItem>
+  <DropdownMenu>
+    <DropdownMenuTrigger
+      aria-label="Show hidden breadcrumbs"
+      render={
+        <Button variant="ghost" size="icon-sm">
+          <BreadcrumbEllipsis className="size-auto" />
+        </Button>
+      }
+    />
+    <DropdownMenuContent align="start">
+      <DropdownMenuItem>Rock</DropdownMenuItem>
+      <DropdownMenuItem>Coldplay</DropdownMenuItem>
+    </DropdownMenuContent>
+  </DropdownMenu>
+</BreadcrumbItem>`,
+      },
+    },
+  },
 };
 
 // A text separator ("/") passed as children instead of the default chevron glyph.
