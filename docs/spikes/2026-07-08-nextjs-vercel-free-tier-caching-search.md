@@ -28,6 +28,7 @@ These feed a forthcoming ADR that will supersede `ARCH-FE-1` (Vite SPA) and the 
 - **Caching = `"use cache"` + `cacheTag` + on-demand `revalidateTag`** for the read-heavy catalog (protects Neon, doubles as the cache-control showcase).
 - **Search = Postgres FTS** (`tsvector` + GIN) + `pg_trgm` on Neon; no external search service in v1.
 - **Native = deferred** Capacitor shell reusing the shared component package (player-first; iOS needs the CoreMIDI bridge).
+- **Hosting = Vercel now → OpenNext-on-AWS later.** Ship on Vercel Hobby ($0, best DX) for job-hunt speed; migrate to self-hosted **OpenNext + Pulumi** (CloudFront / Lambda / S3 — $0 even when commercial) when monetizing or to earn the AWS-hosting credential. Next.js is portable; **Amplify rejected** (abstracts the wiring — same objection as auth). The migration is itself a portfolio artifact.
 
 **Still open:** v1 offline scope (Dexie in v1 or later) · blob store (S3 vs Cloudflare R2) · auth-across-clouds details.
 
@@ -185,7 +186,7 @@ Vercel → AWS needs a scoped **IAM user's keys** as Vercel env vars (setup, not
 - **Search:** Postgres FTS (`tsvector` + GIN) + `pg_trgm` on Neon; no external search service in v1. Add Upstash (500K commands/mo free) only if search gets hot.
 - **AWS account:** set a **month-5 reminder to upgrade to the Paid plan**; keep the zero-spend budget + billing alarms (Paid has no built-in cap). Always-free services then hold at $0.
 - **Blob store:** S3 (pennies, AWS-native) vs Cloudflare R2 (10 GB always-free, no egress) — open (Leo deciding). Both fine.
-- **Upgrade / flip triggers:** monetize in any way incl. ads/donations → **Vercel Pro $20/mo**; sustained >~100k views/mo → Vercel Pro; catalog into tens of thousands + heavy search → dedicated search service; Neon >100 CU-hrs despite caching → Neon paid.
+- **Upgrade / flip triggers:** monetize in any way (ads/donations/paid) → **migrate to OpenNext-on-AWS** ($0 even commercial) rather than pay Vercel Pro $20/mo (the staged plan); sustained >~100k views/mo → same migration; catalog into tens of thousands + heavy search → dedicated search service; Neon >100 CU-hrs despite caching → Neon paid.
 
 ---
 
