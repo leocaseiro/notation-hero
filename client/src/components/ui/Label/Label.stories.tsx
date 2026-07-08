@@ -2,6 +2,7 @@ import { fn } from 'storybook/test';
 
 import { Label } from './Label';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
+import { Checkbox } from '@/components/ui/Checkbox/Checkbox';
 
 const meta = {
   title: 'UI/Label',
@@ -40,12 +41,14 @@ export const WithAssociatedInput: Story = {
   ),
 };
 
-// The label wraps the control instead of using `htmlFor` — the association is
-// implicit, and the `gap-2` base class spaces the checkbox from its text.
+// The label wraps the real Checkbox. Base UI renders it as a `<span role="checkbox">`
+// with the `id` on a hidden `<input>`, so the association is explicit via `htmlFor`/`id`
+// (clicking the text toggles the box); the `gap-2` base class spaces it from the text.
+// This also exercises the onMouseDown guard's role-based selector on a wrapped control.
 export const WrappingInput: Story = {
   render: () => (
-    <Label>
-      <input type="checkbox" />
+    <Label htmlFor="remember">
+      <Checkbox id="remember" />
       Remember me
     </Label>
   ),

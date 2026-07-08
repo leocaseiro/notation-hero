@@ -1,6 +1,7 @@
 import { createEvent, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Label } from './Label';
+import { Checkbox } from '@/components/ui/Checkbox/Checkbox';
 
 test('renders its text content', () => {
   render(<Label>Email</Label>);
@@ -62,6 +63,24 @@ test('leaves mousedown on a wrapped form control untouched', () => {
   expect(event.defaultPrevented).toBe(false);
   // The early return for a wrapped control skips BOTH preventDefault and the
   // consumer's onMouseDown (Radix parity) — pin that the handler is not called.
+  expect(onMouseDown).not.toHaveBeenCalled();
+});
+
+test('leaves mousedown on a wrapped Base UI Checkbox (role=checkbox span) untouched', () => {
+  const onMouseDown = vi.fn();
+  render(
+    <Label htmlFor="remember" onMouseDown={onMouseDown}>
+      <Checkbox id="remember" />
+      Remember me
+    </Label>,
+  );
+  const checkbox = screen.getByRole('checkbox');
+  const event = createEvent.mouseDown(checkbox, { detail: 2 });
+  fireEvent(checkbox, event);
+  // The role-based selector in the guard catches the Base UI span (not a native
+  // <input>), so the guard early-returns: no preventDefault, and the consumer's
+  // onMouseDown is skipped (Radix parity) — same as a native wrapped control.
+  expect(event.defaultPrevented).toBe(false);
   expect(onMouseDown).not.toHaveBeenCalled();
 });
 
