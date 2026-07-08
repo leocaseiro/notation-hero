@@ -8,9 +8,12 @@ import type { CSSProperties, ComponentProps } from 'react';
  *
  * Per-status colors follow the Badge/Button destructive precedent (tinted
  * surface + status-colored text/icon, not a solid fill): success/warning/error
- * get an opaque `color-mix` tint of their token over `--popover` (toasts float
- * over page content, so a translucent `/10` would blend with whatever is
- * beneath), with the border at 25% and sonner's `currentColor` type icon
+ * get an opaque `color-mix` tint of their token over `--popover`, mixed in
+ * `oklab` (rectangular) so the near-achromatic `--popover` can't drag the hue
+ * around the wheel — mixing `in oklch` interpolates hue and turns the low-chroma
+ * result red in light (popover hue 0deg) / blue in dark. Opaque because toasts
+ * float over page content, so a translucent `/10` would blend with whatever is
+ * beneath. Border at 25% and sonner's `currentColor` type icon
  * picking up the status color. The default (untyped) toast sits on the
  * `--secondary` gray via sonner's `--normal-*` variables; `info` stays on that
  * neutral surface too (no info token — its icon is the differentiator).
@@ -30,11 +33,11 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
         description:
           'text-secondary-foreground! group-data-[type=success]/toast:text-success! group-data-[type=warning]/toast:text-warning! group-data-[type=error]/toast:text-destructive!',
         success:
-          'bg-[color-mix(in_oklch,var(--success)_10%,var(--popover))]! text-success! border-success/25!',
+          'bg-[color-mix(in_oklab,var(--success)_10%,var(--popover))]! text-success! border-success/25!',
         warning:
-          'bg-[color-mix(in_oklch,var(--warning)_10%,var(--popover))]! text-warning! border-warning/25!',
+          'bg-[color-mix(in_oklab,var(--warning)_10%,var(--popover))]! text-warning! border-warning/25!',
         error:
-          'bg-[color-mix(in_oklch,var(--destructive)_10%,var(--popover))]! text-destructive! border-destructive/25!',
+          'bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))]! text-destructive! border-destructive/25!',
         // Scope 2 for sonner's built-in action button: it ships a hardcoded 2px
         // rgba(0,0,0,.4) focus ring (invisible on dark, ignores --ring); the `!`
         // modifiers beat its (0,4,0) attribute-selector specificity.
