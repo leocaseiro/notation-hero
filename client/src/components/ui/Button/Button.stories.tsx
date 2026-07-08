@@ -1,3 +1,5 @@
+import { fn } from 'storybook/test';
+
 import { Button } from './Button';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 
@@ -6,7 +8,7 @@ const meta = {
   component: Button,
   parameters: { layout: 'centered' },
   tags: ['autodocs'],
-  args: { children: 'Button' },
+  args: { children: 'Button', onClick: fn() },
   argTypes: {
     variant: {
       control: 'select',
@@ -16,6 +18,7 @@ const meta = {
       control: 'select',
       options: ['default', 'xs', 'sm', 'lg', 'icon', 'icon-xs', 'icon-sm', 'icon-lg'],
     },
+    disabled: { control: 'boolean' },
   },
 } satisfies Meta<typeof Button>;
 
@@ -34,10 +37,11 @@ export const Large: Story = { args: { size: 'lg' } };
 export const Disabled: Story = { args: { disabled: true } };
 
 // Icon-only button — Material Symbols glyph. aria-label gives the accessible
-// name; the glyph span is decorative (aria-hidden).
+// name; the glyph span is decorative (aria-hidden). Args are spread so the
+// variant/disabled controls and the meta onClick spy reach the button (size stays fixed).
 export const Icon: Story = {
-  render: () => (
-    <Button size="icon" aria-label="Play">
+  render: (args) => (
+    <Button {...args} size="icon" aria-label="Play">
       <span className="material-symbols-outlined" aria-hidden="true">
         play_arrow
       </span>
@@ -47,8 +51,8 @@ export const Icon: Story = {
 
 // Text + leading icon.
 export const WithIcon: Story = {
-  render: () => (
-    <Button>
+  render: (args) => (
+    <Button {...args}>
       <span className="material-symbols-outlined" aria-hidden="true">
         play_arrow
       </span>
@@ -61,8 +65,8 @@ export const WithIcon: Story = {
 export const Xs: Story = { args: { size: 'xs' } };
 
 export const IconXs: Story = {
-  render: () => (
-    <Button size="icon-xs" aria-label="Play">
+  render: (args) => (
+    <Button {...args} size="icon-xs" aria-label="Play">
       <span className="material-symbols-outlined" aria-hidden="true">
         play_arrow
       </span>
@@ -71,8 +75,8 @@ export const IconXs: Story = {
 };
 
 export const IconSm: Story = {
-  render: () => (
-    <Button size="icon-sm" aria-label="Play">
+  render: (args) => (
+    <Button {...args} size="icon-sm" aria-label="Play">
       <span className="material-symbols-outlined" aria-hidden="true">
         play_arrow
       </span>
@@ -81,11 +85,22 @@ export const IconSm: Story = {
 };
 
 export const IconLg: Story = {
-  render: () => (
-    <Button size="icon-lg" aria-label="Play">
+  render: (args) => (
+    <Button {...args} size="icon-lg" aria-label="Play">
       <span className="material-symbols-outlined" aria-hidden="true">
         play_arrow
       </span>
+    </Button>
+  ),
+};
+
+// The render prop (Base UI useRender) — the asChild replacement this component ships.
+// Rendered as a real anchor so VR + a11y gate the Button-as-link composition.
+export const AsLink: Story = {
+  render: (args) => (
+    // eslint-disable-next-line jsx-a11y/anchor-has-content -- useRender clones the anchor with the Button's children
+    <Button {...args} render={<a href="#practice" />}>
+      Link button
     </Button>
   ),
 };
