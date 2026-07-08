@@ -20,12 +20,12 @@ The job-hunt pivot toward **FE-heavy full-stack (Next.js) roles** makes a real, 
 
 Adopt **Next.js (App Router) PWA on Vercel** as the product FE, with a **hybrid BFF topology** over the existing **NestJS-on-Lambda** backend.
 
-1. **Hosting = Vercel now → OpenNext-on-AWS later.** Ship on Vercel Hobby ($0, best DX) for speed. Migrate to self-hosted **OpenNext + Pulumi** (CloudFront / Lambda / S3, $0 even when commercial) if/when the app monetizes or to earn the AWS-hosting credential. Next.js is portable; the migration is itself a portfolio artifact.
+1. **Hosting = Vercel now; optional AWS re-host later.** Ship on Vercel Hobby ($0, best DX). Next.js is host-agnostic, so **if** the app monetizes (and Vercel Pro's $20/mo becomes unwanted), re-host on AWS then — candidates **Amplify** (managed) or **EC2 / container** running `next start`; the mechanism is decided at that point. **OpenNext is skipped** (considered outdated/hacky). The re-host is optional + deferred.
 2. **Topology = hybrid BFF.**
    - **Vercel as BFF** for render-time / SEO data and server-action mutations — the Next.js server reads Neon (cached) or calls Lambda server-side. Cached, so low compute.
    - **`api.notationhero.com` → CloudFront → Lambda** for high-frequency client-side calls (per-user data, sync). **Origin Access Control** locks the raw Function URL to CloudFront (hidden, not publicly callable); the browser never sees the AWS URL and these calls bypass Vercel compute.
    - **Rule:** server-side / SEO / mutation → Vercel; high-frequency client / per-user → CloudFront-direct. Same NestJS Lambda backend both ways.
-3. **Backend = keep NestJS on Lambda** (Function URL, OAC-locked behind CloudFront); typed **oRPC** contract.
+3. **Backend = keep NestJS on Lambda** (Function URL, OAC-locked behind CloudFront); typed **oRPC** contract. An OpenAPI/Swagger spec can be generated from oRPC later if a public or non-TS API is ever needed — not v1.
 4. **Data:** **Neon** (catalog, read-heavy, cached) + **DynamoDB** (per-user) + **Cognito** (auth; JWT validated at the Lambda).
 5. **Caching = `"use cache"` + `cacheTag` + on-demand `revalidateTag`** for the read-heavy catalog — keeps Neon under its 100 CU-hours (an uncached, steadily-queried DB can't sleep), and doubles as a cache-control showcase. Public data only in the shared cache; per-user data fetched dynamically.
 6. **Search = Postgres full-text search** (`tsvector` + GIN, `pg_trgm` fuzzy) on Neon; no external search service in v1.
@@ -36,10 +36,10 @@ Adopt **Next.js (App Router) PWA on Vercel** as the product FE, with a **hybrid 
 
 ## Rationale
 
-- **Both résumé stories:** a real deployed Next.js SSR app **and** a self-hosted AWS backend (with a documented Vercel→OpenNext migration path) — FE credential + AWS depth.
+- **Both résumé stories:** a real deployed Next.js SSR app **and** a real AWS backend (NestJS on Lambda + CloudFront + DynamoDB + Cognito) — FE credential + AWS depth.
 - **$0 at portfolio scale:** Vercel Hobby (non-commercial) + always-free AWS (Cognito/Lambda/DynamoDB/CloudFront) + Neon/R2 free tiers. Caching keeps Neon asleep; CloudFront keeps the client API off Vercel's compute budget; Vercel hard-stops at its caps (no surprise bill).
 - **Clean + safe topology:** branded `notationhero.com` / `api.notationhero.com` everywhere the user looks; the raw Lambda URL is hidden and OAC-locked; same-origin render path (no CORS); WAF/rate-limit attachable.
-- **Portability:** the Next.js→OpenNext migration is a $0-commercial escape from Vercel Pro and a demonstrable cloud-migration skill.
+- **Portability:** Next.js is host-agnostic, so a later AWS re-host (Amplify or EC2/container) is a clean escape from Vercel Pro if the flat fee ever becomes unwanted — and a demonstrable cloud-migration skill.
 
 ---
 
@@ -49,7 +49,7 @@ Adopt **Next.js (App Router) PWA on Vercel** as the product FE, with a **hybrid 
 
 **Negative / watch-outs:**
 
-- **Vercel Hobby is non-commercial** — ads, affiliate links, a paid app, even a donations button → Pro ($20/mo). Mitigation: migrate to OpenNext-on-AWS ($0 even commercial).
+- **Vercel Hobby is non-commercial** — ads, affiliate links, a paid app, even a donations button → Pro ($20/mo). Mitigation: re-host on AWS (Amplify or EC2/container) if the flat fee becomes unwanted.
 - **New AWS account closes at 6 months** (2025 model: $100–200 credits + 6-month plan) unless upgraded to the **Paid plan** — after which always-free services stay $0. Action: month-5 reminder + keep the zero-spend budget + billing alarms (Paid has no built-in cap).
 - **Three vendors** (Vercel + AWS + Cloudflare) — more surface, but each stays $0.
 - **Cognito login** briefly shows an AWS URL until branded with a free custom auth domain (`auth.notationhero.com`).
@@ -65,7 +65,7 @@ Adopt **Next.js (App Router) PWA on Vercel** as the product FE, with a **hybrid 
 ## Alternatives considered
 
 - **Vite + TanStack SPA (`ARCH-FE-1`)** — no Next.js credential; superseded by the résumé driver + the Vercel-hosting option that removes the old $0 objection.
-- **Next.js on AWS via OpenNext _now_** — max AWS-learning + $0-commercial, but the OpenNext↔Next version-pinning + infra complexity; adopted as the _later_ migration, not v1.
+- **Next.js on AWS _now_ (Amplify / EC2 / container)** — more AWS surface up front, but slower to ship + more ops; deferred as an optional later re-host, not v1. OpenNext specifically skipped (considered outdated/hacky).
 - **AWS Amplify Hosting** — managed + cheap, but abstracts the AWS wiring (rejected, consistent with the Cognito-over-Amplify decision) and can lag Next.js versions.
 - **All-Vercel BFF** (every call through Vercel) — spends Vercel compute for no SEO benefit on client calls; rejected in favour of the CloudFront-direct client path.
 - **Raw Lambda Function URL to the browser** — exposes the AWS URL + needs CORS; rejected for the CloudFront/OAC path.
