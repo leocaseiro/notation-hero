@@ -12,6 +12,22 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-08 — VR baselines are Linux-only (NH-189, PR #123)
+
+Visual-regression (VR) baselines are now committed for **Linux only** (`*-chromium-linux.png`); the
+81 macOS `*-chromium-darwin.png` baselines were deleted. macOS and Linux rasterize fonts differently
+(subpixel vs grayscale antialiasing, different glyph metrics), so every darwin/linux pair differed —
+one OS is enough as the source of truth. Supersedes the per-OS setup from the NH-189 design-system
+foundation.
+
+- **Enforcement:** `*-chromium-darwin.png` is git-ignored (`client/.gitignore`), so a Mac
+  `test:vr:update` can still generate local shots for iteration but can never commit them. 🤖
+- **Local runs use Docker:** new root scripts `test:vr:docker` / `test:vr:docker:update` render in
+  the pinned `mcr.microsoft.com/playwright:v1.61.1-noble` container — the same image the `vr` CI job
+  uses, so local and CI rendering match. Running VR natively on a Mac is no longer a supported path
+  (docs updated in `client/README.md` + `AGENTS.md`).
+- **CI unchanged:** the `vr` job already compared `-linux` inside the container and stays green.
+
 ### 2026-07-05 — Storybook PR previews on GitHub Pages (NH-266, PR #113)
 
 Per-PR Storybook previews publish to the `gh-pages` branch of this public repo — each PR at
