@@ -2,6 +2,7 @@ import { cva } from 'class-variance-authority';
 import type { VariantProps } from 'class-variance-authority';
 import type * as React from 'react';
 
+import { Button } from '@/components/ui/Button/Button';
 import { cn } from '@/lib/utils';
 
 /**
@@ -12,9 +13,9 @@ import { cn } from '@/lib/utils';
  * container owns the border, shadow, and focus ring: it lights the ring when the
  * inner input is focus-visible (`has-[input:focus-visible]`) and turns the border
  * destructive when the input is `aria-invalid`, so the group reads as one control.
- * Self-contained by design — `InputGroupInput` is its own borderless `<input>` and
- * `InputGroupButton` its own ghost `<button>`, so the group needs no sibling UI
- * components.
+ * `InputGroupInput` is its own borderless `<input>`; `InputGroupButton` renders the
+ * real Button (ghost / xs) so its trailing action stays in lockstep with the Button
+ * component.
  */
 const InputGroup = ({ className, ...props }: React.ComponentProps<'div'>) => (
   <div
@@ -91,22 +92,20 @@ const InputGroupText = ({ className, ...props }: React.ComponentProps<'span'>) =
   />
 );
 
-// Small ghost button for a trailing action (clear, toggle visibility). Plain
-// `<button>` — re-enables pointer events the addon disables and defaults to
-// `type="button"` so it never submits a surrounding form by accident. Its focus
-// ring (3px) and active press mirror the Button component so buttons feel the same.
-const InputGroupButton = ({
-  className,
-  type = 'button',
-  ...props
-}: React.ComponentProps<'button'>) => (
-  <button
-    type={type}
+// Small trailing action (clear, toggle password visibility) rendered as the real
+// Button (ghost / xs) so its radius, sizing, and states can't drift from Button. The
+// addon sets `pointer-events-none`, so re-enable them here; keep
+// `data-slot="input-group-button"` for the VR/a11y selectors (Button's mergeProps lets
+// a caller override the default data-slot), and `type="button"` so a trailing action
+// never submits a surrounding form (this Button renders a bare <button>, which would
+// otherwise default to type="submit").
+const InputGroupButton = ({ className, ...props }: React.ComponentProps<typeof Button>) => (
+  <Button
+    variant="ghost"
+    size="xs"
+    type="button"
     data-slot="input-group-button"
-    className={cn(
-      "pointer-events-auto inline-flex h-6 items-center justify-center gap-1 rounded-sm border border-transparent px-2 text-sm font-medium whitespace-nowrap outline-none transition-all hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&>svg:not([class*='size-'])]:size-3.5",
-      className,
-    )}
+    className={cn('pointer-events-auto', className)}
     {...props}
   />
 );
