@@ -14,9 +14,21 @@ const ICON_FONT = '1rem "Material Symbols Outlined Variable"';
 // measured contrast ratio and the two colors — so CI logs are actionable. `include` widens the
 // scope to 'body' for components whose content Radix portals OUTSIDE #storybook-root (tooltips,
 // menus, popovers) — in the story iframe there is no app chrome to pull in extra violations.
-async function expectNoA11yViolations(page: Page, label: string, include: string): Promise<void> {
+async function expectNoA11yViolations(
+  page: Page,
+  label: string,
+  include: string,
+  disableRules: readonly string[],
+): Promise<void> {
   const { violations } = await new AxeBuilder({ page })
     .include(include)
+    // Base UI renders focus-guard sentinels (<span aria-hidden tabindex="0"
+    // data-base-ui-focus-guard>) around every open popup — the standard focus-trap technique
+    // (floating-ui and Radix-modal ship the same). axe flags them as aria-hidden-focus because
+    // it can't tell a deliberate sentinel from a mistake; exclude exactly that selector so the
+    // rule stays live for real content.
+    .exclude('[data-base-ui-focus-guard]')
+    .disableRules([...disableRules])
     .withTags([...A11Y_TAGS])
     .analyze();
 
@@ -56,9 +68,18 @@ export interface A11yStoriesConfig {
    * Storybook `args` expression appended to the URL to open a controlled overlay before axe runs
    * (e.g. `'open:!true'`, or `'value:file'` for a Menubar). The story stays interactive+closed for
    * humans; a11y still audits the open panel. Pair with `axeInclude: 'body'` for portalled panels.
-   * Defaults to none (story renders at its interactive default).
+   * Pass a `(story) => string` when stories open different things. Defaults to none (story renders
+   * at its interactive default).
    */
-  openArgs?: string;
+  openArgs?: string | ((story: string) => string);
+  /**
+   * Axe rule ids to disable for this component's suite ONLY — for framework-intentional patterns
+   * axe misreads that cannot be fixed from userland (e.g. Base UI's hidden `span[aria-owns]`
+   * popup-linkage child inside `role="menubar"` trips `aria-required-children` on the menubar
+   * element itself, so no child-level exclude can clear it). Say why at the call site.
+   * Defaults to none.
+   */
+  disableRules?: readonly string[];
 }
 
 // Generate the standard a11y suite for a component: one axe pass per story x {light, dark} x
@@ -74,11 +95,13 @@ export function runA11yStories({
   hoverStory = () => true,
   axeInclude = '#storybook-root',
   openArgs,
+  disableRules = [],
 }: Readonly<A11yStoriesConfig>): void {
-  const argsParam = openArgs ? `&args=${openArgs}` : '';
   for (const theme of THEMES) {
     for (const story of storyIds) {
       test(`${name} / ${story} / ${theme}`, async ({ page }) => {
+        const resolvedOpenArgs = typeof openArgs === 'function' ? openArgs(story) : openArgs;
+        const argsParam = resolvedOpenArgs ? `&args=${resolvedOpenArgs}` : '';
         await page.goto(
           `/iframe.html?id=${storyPrefix}--${story}&viewMode=story&globals=theme:${theme}${argsParam}`,
         );
@@ -104,11 +127,11 @@ export function runA11yStories({
             '*, *::before, *::after { transition: none !important; animation: none !important; }',
         });
 
-        await expectNoA11yViolations(page, `${story}/${theme} resting`, axeInclude);
+        await expectNoA11yViolations(page, `${story}/${theme} resting`, axeInclude, disableRules);
 
         if (hoverStory(story)) {
           await page.locator(slotSelector).first().hover();
-          await expectNoA11yViolations(page, `${story}/${theme} hover`, axeInclude);
+          await expectNoA11yViolations(page, `${story}/${theme} hover`, axeInclude, disableRules);
         }
       });
     }
