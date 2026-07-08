@@ -9,9 +9,16 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: 'list',
+  // A failing VR (or a11y) run produces a full HTML report — the image-diff viewer with the
+  // Diff / Side-by-side / Slider modes — plus a trace (the timeline/filmstrip). The `vr` CI job
+  // uploads both as an artifact so a red PR can be inspected via `npx playwright show-report`.
+  // Mirrors playwright.e2e.config.ts.
+  reporter: [['html'], ['list']],
   use: {
     baseURL: 'http://localhost:6006',
+    // Record a trace on the retry of a first-failed test (retries:2 in CI). `on-first-retry`
+    // keeps it cheap — nothing recorded on green runs. Same choice as playwright.e2e.config.ts.
+    trace: 'on-first-retry',
   },
   projects: [
     // VR baselines embed the project name (button-…-chromium-linux.png), so keep

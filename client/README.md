@@ -156,7 +156,8 @@ pnpm --filter @notation-hero/client exec playwright test --ui
 pnpm --filter @notation-hero/client exec playwright test --headed
 ```
 
-- On failure Playwright writes `*-actual.png`, `*-expected.png`, and `*-diff.png` under `test-results/`. Open the `-diff` to see exactly which pixels changed.
+- **On a failing PR (one-click):** CI publishes the report to gh-pages and posts a **sticky PR comment** linking it — `https://leocaseiro.github.io/notation-hero/vr-report/pr/<n>/` — with the image-diff **Slider** and the trace **timeline**. The comment carries the head SHA + Sydney time and refreshes on every commit while VR fails; it flips to `✅ VR passing` once the run goes green. (The `playwright-vr-report` artifact is still uploaded as a downloadable fallback.)
+- **Locally:** `test:vr` writes the same report; run `npx playwright show-report` to open it, and add `--trace on` to also capture the timeline (local runs have no retry, so `on-first-retry` records nothing).
 - **Change was intentional?** Regenerate the Linux baselines and commit them: `pnpm test:vr:docker:update` (from the repo root — runs in the Playwright container so the shots match CI). See AGENTS.md §"VR baselines are Linux-only".
 - **Looks like a flake?** The usual cause is web fonts not being ready. Specs already `await document.fonts.ready` before snapshotting (so Material Symbols render as glyphs, not the ligature fallback text) — if you introduce a new font/icon, load it the same way.
 - `test-results/`, `playwright-report/`, and `storybook-static/` are git-ignored.
