@@ -28,6 +28,37 @@ foundation.
   (docs updated in `client/README.md` + `AGENTS.md`).
 - **CI unchanged:** the `vr` job already compared `-linux` inside the container and stays green.
 
+### 2026-07-07 — NH-262 Part 1 primitives ship on Base UI (not Radix) + Button `link` dark-token fix (PR #101)
+
+Records two changes in PR #101 that the plan and PR body originally mis-described. Part of the wider
+**NH-269** Radix→Base UI migration; qualifies the brand-600 link-contrast note in the 2026-06-25
+NH-189 entry below.
+
+- **Primitives are built on `@base-ui/react` `1.6.0` — a NEW dependency, not the existing `radix-ui`.**
+  `Breadcrumb` uses Base UI `useRender` (was Radix `Slot`); `Tooltip` uses `@base-ui/react/tooltip`.
+  The plan's "Radix, not Base UI / no new dependency" decision is reversed: `@base-ui/react` (plus
+  `@base-ui/utils`, `reselect`) is added to `client/package.json`; `radix-ui` stays for the
+  not-yet-migrated components. This aligns the PR with the NH-269 decision taken after the plan was
+  written — the PR moves WITH the migration, so the earlier "hold, builds on Radix" note on it is stale.
+- **Button `link` variant dark-mode token corrected.** `dark:text-brand-600` (#0d9488) → `text-primary`
+  (both themes) + `hover:text-[color-mix(in_oklch,var(--primary),black_12%)]`. **Why:** the NH-189
+  entry recorded brand-600 dark links at 5.27:1, but that was the default dark **background** only.
+  Breadcrumb newly renders the same classes on a `--muted` **surface**, where `dark:text-brand-600`
+  measures **3.95:1 — fails AA**. `text-primary` clears AA on every surface the components paint
+  (resting 7.9–10.6:1, hover 5.6–7.5:1). Read the NH-189 "passes AA on dark bg" note and the
+  `styles.css` brand-600 comment as default-background-scoped.
+- **Enforcement (🤖 NEW):** `client/src/dark-contrast.ts` + `dark-contrast.test.ts` + a `Button.test.tsx`
+  "link variant dark-mode contrast (AA)" block pin AA ratios per token pair, read from the real
+  `styles.css` values, so a future token edit fails fast in unit tests on every surface — not just the
+  one a story happens to render.
+- **Overlap — PR #118 (NH-264, Button+Badge Radix→Base UI):** #118 rewrites `Button.tsx` imports + base
+  class + `asChild`→`render` but does NOT touch the `variants.variant` map, so `Button.tsx` merges
+  cleanly and this PR's `link` fix survives either merge order. Real rebase conflicts (whichever lands
+  second): both PRs independently add `client/src/vr-helpers.ts` (add/add — #118's `statesForStory` API
+  is a superset), `Button.vr.ts` (content), 6 `link` snapshot PNGs, and the `@base-ui/react` specifier
+  (`1.6.0` exact here vs `^1.6.0` in #118 — align before merge). #101 owns the `link` fix; #118
+  reconciles the VR helper on rebase.
+
 ### 2026-07-05 — Storybook PR previews on GitHub Pages (NH-266, PR #113)
 
 Per-PR Storybook previews publish to the `gh-pages` branch of this public repo — each PR at

@@ -14,6 +14,23 @@
   --color-brand-400: #2dd4bf;
   --color-brand-600: #0d9488;
   --color-brand-700: #0f766e;
+
+  /* Skeleton pulse (NH-262): cycles background-color between the --skeleton (peak) and
+     --skeleton-pulse (trough) tokens instead of Tailwind's opacity-based animate-pulse, whose
+     0.5-opacity trough dropped any token below the 3:1 non-text contrast floor. Same 2s
+     timing as animate-pulse. */
+  --animate-skeleton-pulse: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      background-color: var(--skeleton);
+    }
+
+    50% {
+      background-color: var(--skeleton-pulse);
+    }
+  }
 }
 
 * {
@@ -51,6 +68,8 @@ body,
   --color-score-mastered-foreground: var(--score-mastered-foreground);
   --color-level-debut: var(--level-debut);
   --color-kind-fill: var(--kind-fill);
+  --color-skeleton: var(--skeleton);
+  --color-skeleton-pulse: var(--skeleton-pulse);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
@@ -104,6 +123,8 @@ body,
   --score-mastered-foreground: oklch(97.4% 0.034 90.5deg); /* #fff6dd cream */
   --level-debut: oklch(42% 0.1 186.391deg); /* brand teal as TEXT — AA on --muted */
   --kind-fill: oklch(56% 0.143 35.6deg); /* #b94f34 — AA-darkened from #D2664A (4.97:1 on white) */
+  --skeleton: oklch(62.7% 0 0deg); /* #888 — pulse peak (Leo-picked, NH-262) */
+  --skeleton-pulse: oklch(51% 0 0deg); /* #666 — pulse trough */
   --chart-1: oklch(85.5% 0.138 181.071deg);
   --chart-2: oklch(70.4% 0.14 182.503deg);
   --chart-3: oklch(60% 0.118 184.704deg);
@@ -147,6 +168,8 @@ body,
   --score-mastered-foreground: oklch(24.8% 0.051 91.8deg); /* #2a2000 */
   --level-debut: oklch(78% 0.11 186.391deg); /* brand teal as TEXT — AA on --muted (dark) */
   --kind-fill: oklch(68.8% 0.133 35.8deg); /* #e07a5f */
+  --skeleton: oklch(56.9% 0 0deg); /* #777 — pulse peak (Leo-picked, NH-262) */
+  --skeleton-pulse: oklch(45% 0 0deg); /* #555 — pulse trough */
   --chart-1: oklch(85.5% 0.138 181.071deg);
   --chart-2: oklch(70.4% 0.14 182.503deg);
   --chart-3: oklch(60% 0.118 184.704deg);
