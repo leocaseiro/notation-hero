@@ -18,4 +18,5 @@ export const BUTTON_STORY_IDS = [
   'icon-xs',
   'icon-sm',
   'icon-lg',
+  'as-link',
 ] as const;
