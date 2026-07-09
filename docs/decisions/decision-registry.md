@@ -19,9 +19,9 @@ Full record: [`docs/decisions/2026-07-07-radix-to-base-ui-migration.md`](2026-07
 - **Headline change:** `FacetFilter`/`TokenPicker`/`Command` move off a hand-rolled `cmdk` combobox onto Base UI's first-class `Combobox` (built-in multi-select chips + `filteredItems`/`filter={null}`/`onInputValueChange` for async filtering) — `cmdk` is dropped entirely.
 - **Tabs/RangeSlider/ToggleChipGroup/Popover** map cleanly to Base UI equivalents (`Tabs.List` gains `activateOnFocus`/`loopFocus` for NH-268; `Popover` renders inline by omitting `Popover.Portal`, cleaner than the current Radix workaround).
 - **Gap:** `Combobox` has no built-in `loading` boolean — `useTransition`/`aria-busy`/`Combobox.Status` wiring required to keep the existing `loading` prop on the public contract.
-- **Freezes** the in-flight NH-262 (#101/#109/#112) and NH-264 primitive PRs at their current Radix state pending redirect to the Base UI mapping in the ADR.
+- **Freezes** the in-flight NH-262 (#101/#109/#112) and NH-264 primitive PRs at their current Radix state pending redirect to the Base UI mapping in the ADR. _(Resolved 2026-07-09: those PRs migrated to Base UI and merged to master first; #99 then realigned onto them via merge — zero conflicts.)_
 
-**Status:** ✅ decided · ⏳ enforcement pending — flips to 🤖 (via `package.json`/`pnpm-lock.yaml`) once PR #99's migration lands and `radix-ui`/`cmdk` are removed.
+**Status:** ✅ decided · 🟡 partial (updated 2026-07-09 — PR #99 merged) — `cmdk` removal is machine-checked by its absence from `package.json`/`pnpm-lock.yaml`; `radix-ui` intentionally **stays** for `Button`/`Badge`'s `Slot` only (ADR scope — migrate only if a later PR needs it), and that Slot-only restriction is prose-only today (no lint rule blocks new `radix-ui` imports).
 
 ### 2026-07-08 — FE pivot: Next.js PWA on Vercel + NestJS-on-Lambda (hybrid BFF)
 
