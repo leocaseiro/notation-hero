@@ -1,6 +1,6 @@
 # Design — Next.js 16 web client (`@notation-hero/web`)
 
-- **Status:** Draft for review
+- **Status:** Reviewed (ce-doc-review, 2026-07-10) — Phase 1 build on hold
 - **Date:** 2026-07-09
 - **Author:** leocaseiro (with Claude)
 - **Decision record:** [ADR — FE + hosting: Next.js PWA on Vercel](../decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md) (NH-185)
@@ -57,7 +57,7 @@ notation-hero/
   server/  shared/  infra/
 ```
 
-- The design system stays a **Vite-powered library** (Storybook uses Vite under the hood). Every VR (visual-regression) baseline and a11y (accessibility) test stays untouched.
+- The design system stays a **Vite-powered library** (Storybook uses Vite under the hood). Its components, stories, and VR (visual-regression) + a11y (accessibility) tests are **not rewritten**; Phase 1 makes only additive changes to the package (an `exports` map, a `Button` barrel, a tokens entry — see §5) and re-runs the design system's own checks afterward to confirm no regression.
 - The app is **Next.js 16 / Turbopack**. It imports components across the package boundary; it does not host Storybook.
 - During Phase 1 the design-system package is still named `@notation-hero/client` (dir `client/`). The rename to `@notation-hero/design-system` is Phase 2.
 
@@ -75,8 +75,8 @@ notation-hero/
 
 ### 2. Supply-chain / build hygiene
 
-- The root workspace enforces `minimumReleaseAge: 10080` (7 days). Confirm Next `16.2.10` and React `19.2.4`/`react-dom 19.2.4` are older than 7 days at install time; if not, add exact `name@version` entries to `minimumReleaseAgeExclude` until the window passes (mirrors the existing Playwright pins).
-- Keep versions identical to the scaffold: `next@16.2.10`, `react@19.2.4`, `react-dom@19.2.4`, Tailwind v4, `babel-plugin-react-compiler@1.0.0`.
+- **Match `client/`'s shared-dep ranges, not the scaffold's exact pins.** `check:all` runs `syncpack lint`, which fails on any cross-package version mismatch — so `web` declares `react`/`react-dom` as `^19.2.7` and `babel-plugin-react-compiler` as `^1.0.0` (the ranges `client/` already uses) and reuses `client/`'s `tailwindcss` `^4.3.1`. The scaffold's exact `19.2.4` pins would turn `check:all` red.
+- `next@16.2.10` is the one genuinely new-to-the-workspace package. The root workspace enforces `minimumReleaseAge: 10080` (7 days); if `next@16.2.10` is younger than 7 days at install time, add it to `minimumReleaseAgeExclude` until the window passes (mirrors the existing Playwright pins). Aligning React to the already-installed `^19.2.7` removes any freshness concern there.
 
 ### 3. Toolchain alignment (per-package, matching repo norm)
 
@@ -86,33 +86,34 @@ The workspace convention is that each package keeps its own toolchain. The app t
 - **Prettier:** run `prettier --write` on the app so scaffold double-quotes become the repo style (`singleQuote: true`, `printWidth: 100`, `semi: true`, `trailingComma: 'all'`). Root `format:check` then covers it.
 - **TypeScript:** add `typecheck: tsc --noEmit`; keep the scaffold `tsconfig.json` (bundler resolution, `strict`, the `next` plugin).
 - **cspell:** add any new identifiers the app introduces (e.g. `Turbopack`) to `cspell.json`.
-- The app must pass every relevant gate in `check:all`: `format:check`, `lint`, `typecheck`, and the markdown/spell/yaml linters.
+- The app must pass every relevant gate in `check:all`: `format:check`, `lint`, `typecheck`, `syncpack`, and the markdown/spell/yaml linters.
 
 ### 4. Tailwind v4 wiring
 
-The app's Tailwind entry (`app/globals.css`) must:
+The app runs Tailwind v4 through **`@tailwindcss/postcss`** (the Turbopack-compatible plugin the scaffold already ships) — **not** the client package's `@tailwindcss/vite` plugin, which cannot run under Next. The app's Tailwind entry (`app/globals.css`) must:
 
 1. Load Tailwind v4 (`@import 'tailwindcss'`).
-2. Include the design-system `@theme` tokens (brand teal scale, skeleton animation, etc.). Reuse is preferred (single source of truth); duplicating the `@theme` block into the app is an acceptable Phase-1 fallback, with token extraction into a shared `tokens.css` deferred to Phase 2.
-3. `@source` the design-system component source so the utility classes used by imported components are generated (without this, imported components render unstyled).
-4. Enable dark mode via the same `@custom-variant dark (&:is(.dark *))` the design system uses.
+2. Bring in the client package's **full token surface**, not just its `@theme {}` block. `<Button>` styles with `bg-primary`, but `--primary` and the light/dark values live in the `:root`, `.dark`, and `@theme inline` blocks of `client/src/styles.css` — so `bg-primary` won't resolve from `@theme` alone. Prefer `@import`-ing the client package's exposed `styles.css` (single source of truth); if instead duplicating, copy `@theme` **plus `@theme inline`, `:root`, `.dark`, and the `@custom-variant dark` line**. (When reusing `styles.css` wholesale, drop the app's own `@import 'tailwindcss'` + font imports to avoid double-inclusion.) A Tailwind-free shared `tokens.css` extraction is deferred to Phase 2.
+3. `@source` the client package component source so the utility classes used by imported components are generated (without this they render unstyled). Treat the cross-package scan as an **unverified bet** — confirm it works under `@tailwindcss/postcss` at build time (see Risks).
+4. Enable dark mode via the same `@custom-variant dark (&:is(.dark *))` the client package uses.
 
-Fonts are loaded by reusing the design system's `@fontsource-variable/public-sans` and `@fontsource-variable/material-symbols-outlined` CSS imports (per the fonts decision). `next/font` is explicitly **not** used in Phase 1.
+Fonts reuse the client package's `@fontsource-variable/public-sans` and `@fontsource-variable/material-symbols-outlined` CSS imports (per the fonts decision) — but `web` must declare both `@fontsource-variable/*` packages as its **own** dependencies, since pnpm's strict `node_modules` won't resolve them transitively. `next/font` is explicitly **not** used in Phase 1.
 
 ### 5. Design-system consumption
 
 - Add the design system as a dependency: `"@notation-hero/client": "workspace:*"`.
-- Add a minimal, forward-compatible `exports` to `client/package.json` plus a barrel `client/src/index.ts` that re-exports the `ui/` components, enabling `import { Button } from '@notation-hero/client'`. This is **additive only** and carries into Phase 2. Also expose the tokens entry (`./styles.css` or a dedicated `tokens.css`) for the Tailwind wiring above.
-- **`"use client"`:** interactive Base UI components need a client boundary under the App Router's default Server Components. In Phase 1 the proof page carries a single `"use client"` directive. Systematic per-component `"use client"` placement in the library is a Phase-2 packaging task.
+- Add a minimal, **additive** `exports` map to `client/package.json` — `"."` (a small `client/src/index.ts` re-exporting **only `Button`** for the proof), `"./package.json"`, and the tokens entry `"./styles.css"`. Scoping the barrel to `Button` keeps Phase 1 a one-component proof; the **full** barrel over all ~40 `ui/` components is Phase 2 work. The map must stay additive — do not close off the implicit resolution the design system's own build/Storybook already rely on.
+- **Re-validate the shared package after mutating it:** once the `exports` map + barrel + tokens entry are in, re-run the design system's own `check:all` + `build-storybook` to confirm no regression (it gates CI via VR + a11y).
+- **`"use client"`:** interactive components need a client boundary under the App Router's default Server Components. Put `"use client"` on `Button` (the interactive component being imported), and keep the proof `app/page.tsx` a **Server Component** rendering the client `<Button>` — so Phase 1 validates the real server/client boundary, not a fully client-rendered page. Systematic per-component `"use client"` across the library is a Phase-2 packaging task.
 
 ### 6. Proof page
 
-- `app/page.tsx` renders a design-system component (a `<Button>` with its variants) plus a brand-token swatch, shown in light **and** dark, replacing the Geist boilerplate.
+- `app/page.tsx` is a **Server Component** that renders the client `<Button>` (with its variants) plus a brand-token swatch in light **and** dark — wrap one section in a `.dark` container, since the app has no theme toggle yet — replacing the Geist boilerplate.
 - `app/layout.tsx` imports `globals.css`, sets `<html lang="en">`, applies Public Sans to the body, and removes the Geist `next/font` setup.
 
 ### 7. Next.js config
 
-- `next.config.ts` keeps `reactCompiler: true`; no `webpack` config (Turbopack default). Scripts stay `next dev` / `next build` / `next start`.
+- `next.config.ts` keeps `reactCompiler: true` and adds **`transpilePackages: ['@notation-hero/client']`** — the app imports the client package as raw `.tsx` source, and Next doesn't transpile `node_modules` (a workspace package is symlinked there), so the JSX won't parse without it. No `webpack` config (Turbopack default). Scripts stay `next dev` / `next build` / `next start`.
 
 ### Success criteria (verification)
 
@@ -144,8 +145,8 @@ Vercel deploy + custom domain · PWA · hybrid BFF (`api.notationhero.com` → C
 
 ## Risks / watch-outs
 
-1. **`minimumReleaseAge` gate** may reject `next@16.2.10` / `react@19.2.4` if freshly published — temp-exclude by exact version until the 7-day window passes.
-2. **Tailwind `@source`** must point at the design-system source, or imported components render unstyled.
+1. **`minimumReleaseAge` gate** may reject `next@16.2.10` if freshly published — temp-exclude by exact version until the 7-day window passes. (React aligns to the already-installed `^19.2.7`, so it is not a fresh install.)
+2. **Tailwind `@source`** must point at the client package source, or imported components render unstyled — and the cross-package scan under `@tailwindcss/postcss` is an unverified bet that would surface only at build time.
 3. **`"use client"` boundary** required for interactive design-system components under React Server Components.
 4. **`sharp` build approval** needed for `next/image`.
 5. **Lint gates on new files** — Prettier / cspell / markdownlint must pass before commit (lefthook runs them).
@@ -156,4 +157,4 @@ Vercel deploy + custom domain · PWA · hybrid BFF (`api.notationhero.com` → C
 
 ## Open questions
 
-- None outstanding. Tracked as [NH-275](https://leocaseiro.atlassian.net/browse/NH-275); Phase 1 build is on hold pending review of this spec.
+- None outstanding. Reviewed 2026-07-10 (4-persona ce-doc-review): 7 findings applied, React Compiler kept on per decision. Tracked as [NH-275](https://leocaseiro.atlassian.net/browse/NH-275); Phase 1 build on hold pending your go-ahead.
