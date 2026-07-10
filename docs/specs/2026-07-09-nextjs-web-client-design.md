@@ -4,6 +4,7 @@
 - **Date:** 2026-07-09
 - **Author:** leocaseiro (with Claude)
 - **Decision record:** [ADR — FE + hosting: Next.js PWA on Vercel](../decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md) (NH-185)
+- **Tracking:** [NH-275](https://leocaseiro.atlassian.net/browse/NH-275)
 - **Scope:** Stand up a working Next.js 16 app as the product client, integrated into the pnpm workspace, that consumes the existing design system. Rename of the design-system package is sequenced as a separate follow-up.
 
 ---
@@ -155,4 +156,4 @@ Vercel deploy + custom domain · PWA · hybrid BFF (`api.notationhero.com` → C
 
 ## Open questions
 
-- Whether to open a dedicated NH Jira ticket for this work (the ADR notes "New ticket TBD"). Offered, not blocking.
+- None outstanding. Tracked as [NH-275](https://leocaseiro.atlassian.net/browse/NH-275); Phase 1 build is on hold pending review of this spec.
