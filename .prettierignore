@@ -22,3 +22,6 @@ vectors/
 
 # Local vector-index artifact (skills/memstack index; ignored in the global gitignore, which Prettier doesn't read).
 vectors/
+
+# Next.js build output (web/) — Prettier doesn't read .gitignore.
+.next/
