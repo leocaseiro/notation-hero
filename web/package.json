@@ -2,6 +2,13 @@
   "name": "@notation-hero/web",
   "version": "0.0.1",
   "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev",
+    "lint": "eslint . --max-warnings 0",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@fontsource-variable/material-symbols-outlined": "^5.2.45",
     "@fontsource-variable/public-sans": "^5.2.7",

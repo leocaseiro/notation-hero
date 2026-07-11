@@ -25,3 +25,4 @@ vectors/
 
 # Next.js build output (web/) — Prettier doesn't read .gitignore.
 .next/
+next-env.d.ts
