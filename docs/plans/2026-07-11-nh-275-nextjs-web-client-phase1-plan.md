@@ -244,7 +244,7 @@ Expected: prints the absolute path of `web/` (proves workspace membership).
 
 - [ ] **Step 7: Targeted gates**
 
-Run: `pnpm run syncpack && pnpm run lint:sort-pkg && pnpm run lint:yaml && pnpm exec prettier --check web/package.json .prettierignore .markdownlint-cli2.yaml`
+Run: `pnpm run syncpack && pnpm run lint:sort-pkg && pnpm run lint:yaml && pnpm exec prettier --check web/package.json .markdownlint-cli2.yaml`
 Expected: all pass. (`syncpack lint` proves the shared-dep specifiers match `client/`.)
 
 - [ ] **Step 8: Commit**
@@ -303,7 +303,7 @@ export default nextConfig;
 
 - [ ] **Step 2: Create `web/tsconfig.json`**
 
-```jsonc
+```json
 {
   "compilerOptions": {
     "target": "ES2017",
@@ -324,8 +324,8 @@ export default nextConfig;
     // imports inside transpiled @notation-hero/client source against THIS tsconfig (the app's),
     // never the package's own. The app's own code therefore uses relative imports only.
     "paths": {
-      "@/*": ["../client/src/*"],
-    },
+      "@/*": ["../client/src/*"]
+    }
   },
   "include": [
     "next-env.d.ts",
@@ -333,9 +333,9 @@ export default nextConfig;
     "**/*.tsx",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts",
-    "**/*.mts",
+    "**/*.mts"
   ],
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules"]
 }
 ```
 
