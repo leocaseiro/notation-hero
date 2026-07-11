@@ -9,7 +9,7 @@
 
 > 30-second version so you don't act on a superseded doc. **Source of truth:** [`docs/decisions/decision-registry.md`](docs/decisions/decision-registry.md) (newest-first change-log) + the ADR [`docs/decisions/2026-06-17-architecture-decisions.md`](docs/decisions/2026-06-17-architecture-decisions.md). **If any doc conflicts with this snapshot or the registry, the registry wins.**
 
-- **Foundation** — plain **pnpm workspaces** + folders-in-one-app (Nx DROPPED 2026-06-17). One **NestJS** app (hexagon inside); FE = **Vite SPA** (Next.js DROPPED 2026-06-18).
+- **Foundation** — plain **pnpm workspaces** + folders-in-one-app (Nx DROPPED 2026-06-17). One **NestJS** app (hexagon inside); FE = **Next.js 16 App Router on Vercel** (re-adopted, ADR 2026-07-08 — supersedes the 2026-06-18 Vite-SPA decision), consuming the `client/` design system.
 - **Data** — **Neon Postgres** (catalog) + **DynamoDB** (per-user, M1). **Drizzle** ORM over the `@neondatabase/serverless` HTTP driver. Schema = the 8-table **Playable** model (notation · playable · track · step · playable_link · media · tonal_profile · drum_profile); profiles **per-track**. Schema design is DONE (draft DDL `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`); **not yet applied to a live DB**.
 - **Auth (admin gate, v1)** — **Cognito + Google federation + RBAC via `cognito:groups` (`admin` group) + a framework-free `can(user, item, action)` policy**. NOT CloudFront Basic-Auth, NOT a shared password, NOT deferred to M1. Only **end-user** sign-up + cross-device sync are M1.
 - **CMS** — the admin is the **same catalog UI with admin-gated actions**; NO separate React-Admin SPA.
@@ -21,9 +21,9 @@
 
 ## Hexagon layout & boundaries (pnpm workspaces)
 
-The repo is **plain pnpm workspaces** — Nx was dropped (ADR `ARCH-MONO-1`). Four
-packages: `client/` (Vite + TanStack), `server/` (NestJS), `shared/` (cross-cutting
-types/contracts), `infra/` (Pulumi IaC). The hexagon lives as **folders inside the one
+The repo is **plain pnpm workspaces** — Nx was dropped (ADR `ARCH-MONO-1`). Five packages: `client/` (Vite + TanStack — design system + Storybook), `web/` (Next.js 16 App
+Router — the product client), `server/` (NestJS), `shared/` (cross-cutting types/contracts),
+`infra/` (Pulumi IaC). The hexagon lives as **folders inside the one
 NestJS app** (`ARCH-HEX-1`), under `server/src/`:
 
 | Folder (`server/src/`) | May import                                                            | Never imports                                                                                                                                        |

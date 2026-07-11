@@ -13,7 +13,8 @@ deliberate "swappable backend" system-design portfolio piece.
 ## Stack
 
 - **Monorepo:** pnpm workspaces (`pnpm -r`) — no Nx/Turborepo
-- **Client:** Vite + React, TanStack Router/Query, Tailwind (the PWA)
+- **Client:** Vite + React, TanStack Router/Query, Tailwind (design system + Storybook)
+- **Web:** Next.js 16 App Router on Turbopack (the product PWA — consumes the design system)
 - **Server:** NestJS on AWS Lambda (serverless-express "lambdalith") — SWC compile → esbuild bundle
 - **Language:** TypeScript (strict)
 - **Tests:** Vitest (client + server + infra); `node --test` for the `tooling/` CI scripts
@@ -26,12 +27,13 @@ deliberate "swappable backend" system-design portfolio piece.
 
 ## Layout
 
-| Path      | Package                 | Role                                    |
-| --------- | ----------------------- | --------------------------------------- |
-| `client/` | `@notation-hero/client` | Vite React SPA (the PWA)                |
-| `server/` | `@notation-hero/server` | NestJS API (runs locally and on Lambda) |
-| `shared/` | `@notation-hero/shared` | Cross-cutting types / contracts         |
-| `infra/`  | `@notation-hero/infra`  | Pulumi composition root                 |
+| Path      | Package                 | Role                                       |
+| --------- | ----------------------- | ------------------------------------------ |
+| `client/` | `@notation-hero/client` | Vite React SPA (design system + Storybook) |
+| `web/`    | `@notation-hero/web`    | Next.js 16 App Router (the product PWA)    |
+| `server/` | `@notation-hero/server` | NestJS API (runs locally and on Lambda)    |
+| `shared/` | `@notation-hero/shared` | Cross-cutting types / contracts            |
+| `infra/`  | `@notation-hero/infra`  | Pulumi composition root                    |
 
 Tests and stories live **co-located** next to their source — never in `__tests__/`
 or `stories/` trees (CI enforces this via `tooling/check-layout.sh`).

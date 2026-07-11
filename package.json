@@ -35,8 +35,8 @@
     "test": "pnpm -r --if-present run test",
     "test:tooling": "node --test tooling/*.test.mjs && pnpm run test:tooling:sh",
     "test:tooling:sh": "for t in tooling/*.test.sh; do [ -e \"$t\" ] || continue; echo \"# $t\"; bash \"$t\" || exit 1; done",
-    "test:vr:docker": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr\"",
-    "test:vr:docker:update": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr:update\"",
+    "test:vr:docker": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/web/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr\"",
+    "test:vr:docker:update": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/web/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr:update\"",
     "typecheck": "pnpm -r --if-present run typecheck"
   },
   "devDependencies": {

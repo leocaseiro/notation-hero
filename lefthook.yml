@@ -42,6 +42,12 @@ pre-commit:
       run: pnpm exec eslint --fix {staged_files}
       stage_fixed: true
       skip: [merge, rebase]
+    eslint-web:
+      root: 'web/'
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs}'
+      run: pnpm exec eslint --fix {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
     stylelint:
       glob: '*.css'
       run: pnpm exec stylelint --fix {staged_files}
