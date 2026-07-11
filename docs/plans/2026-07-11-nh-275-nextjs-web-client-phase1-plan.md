@@ -62,6 +62,9 @@ implements its Phase 1. Decision record:
 
 ## Key design decisions
 
+D1–D5 implement decisions the spec locked; D6–D8 are **beyond-spec additions** (each justified
+in its Why cell and recapped at the end of Spec coverage).
+
 | #   | Decision                                                                                                           | Why                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | --- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | D1  | Hand-create all `web/` files; never run `create-next-app`                                                          | Deterministic content, repo-style quotes, correct dep ranges from the start; the scaffold's exact `19.2.4` React pins and nested lockfile were the original failure.                                                                                                                                                                                                                                                |
@@ -539,11 +542,16 @@ boundary under React Server Components; the directive is inert for Vite/Storyboo
 Rollup logs a benign "Module level directives cause errors when bundled … was ignored" warning
 during `build`/`build-storybook`.)
 
-- [ ] **Step 4: Re-validate the design system** (spec §5 requires this after mutating the shared
+- [ ] **Step 4: Re-validate the design system — two checks, BOTH required** (spec §5 mandates
+      re-running the design system's own checks AND `build-storybook` after mutating the shared
       package)
+
+Check 1 of 2:
 
 Run: `pnpm --filter @notation-hero/client run lint && pnpm --filter @notation-hero/client run typecheck && pnpm --filter @notation-hero/client run test`
 Expected: all green (vitest suite unchanged).
+
+Check 2 of 2:
 
 Run: `pnpm --filter @notation-hero/client run build-storybook`
 Expected: exit 0 (the `"use client"` warning noted above is acceptable; errors are not).
@@ -675,14 +683,18 @@ Run:
 
 ```bash
 pnpm --filter @notation-hero/web build
-grep -rl 'group/button' web/.next/static/
+grep -rl --include='*.css' 'bg-clip-padding' web/.next/static/
 ```
 
-Expected: the build succeeds, but `grep` finds **nothing** among the emitted CSS (exit 1) —
-`group/button` appears only inside `Button.tsx`'s cva string in the client package, which
-Tailwind is not yet scanning. (The recursive grep is deliberate: Turbopack's CSS output location
-under `.next/static/` differs from webpack's `static/css/`. If grep DOES match here, the probe is
-broken — stop and investigate before trusting Step 5.)
+Expected: the build succeeds, and `grep` prints nothing — **exit code 1 (no matches) is the
+success condition here**. `bg-clip-padding` is the probe class because it appears in
+`Button.tsx`'s cva base string and nowhere in `web/app` source, so its CSS rule can only be
+generated once Tailwind scans the client package. The `--include='*.css'` filter is load-bearing:
+the raw cva string (containing `bg-clip-padding`) ships verbatim inside the transpiled JS chunks
+under `.next/static/`, so an unfiltered grep would match JS files even without `@source`. (The
+recursive grep is deliberate: Turbopack's CSS output location under `.next/static/` differs from
+webpack's `static/css/`. If grep DOES print a CSS file here, the probe is broken — stop and
+investigate before trusting Step 5.)
 
 - [ ] **Step 4: Add the `@source` directive — the green half**
 
@@ -697,7 +709,7 @@ Append to `web/app/globals.css` (final content of the file):
 
 /* Generate utilities for the classes used INSIDE the design-system source — without this,
    imported components render unstyled (spec §4 calls this cross-package scan an unverified bet;
-   the build-time probe for `group/button` in the plan verifies it). Path is relative to this
+   the build-time probe for `bg-clip-padding` in the plan verifies it). Path is relative to this
    file: web/app/ → ../../client/src. */
 @source '../../client/src';
 ```
@@ -708,13 +720,14 @@ Run:
 
 ```bash
 pnpm --filter @notation-hero/web build
-grep -rl 'group/button' web/.next/static/
+grep -rl --include='*.css' 'bg-clip-padding' web/.next/static/
 grep -rl 'Public Sans Variable' web/.next/static/
 find web/.next/static -name '*.woff2' -print -quit
 ```
 
-Expected: both `grep -rl` calls print at least one file (Button utilities generated; font-face
-CSS bundled), and `find` prints at least one `.woff2` path (self-hosted font assets copied).
+Expected: both `grep -rl` calls print at least one file (the first proves Button's utilities are
+now generated from client source; the second proves the font-face CSS is bundled), and `find`
+prints at least one `.woff2` path (self-hosted font assets copied).
 
 Fallback if the bare directory `@source` does not register under `@tailwindcss/postcss`: use the
 glob form `@source '../../client/src/**/*.tsx';` — same location, same probe. If THAT also fails,
@@ -749,7 +762,7 @@ git commit -m "feat(web): design-system Button + brand tokens on the proof page 
 Server Component page renders the client-boundary <Button> (6 variants) plus a
 token swatch in light and a .dark-wrapped section. globals.css imports the
 client styles.css wholesale (tokens + fonts + dark variant) and @source-scans
-client/src — the cross-package bet verified by the group/button CSS probe.
+client/src — the cross-package bet verified by the bg-clip-padding CSS probe.
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
@@ -956,18 +969,28 @@ Task 3 client mutation) and the `quality`/`lint`/`build` jobs now covering `web/
 
 ## Risks & contingencies
 
-1. **Cross-package `@source` bet** — probed red→green in Task 4; glob-form fallback named there.
-   If both forms fail, stop and surface (spec-level rethink, not a workaround).
-2. **`minimumReleaseAge`** — `next@16.2.10` published 2026-07-01 (> 7 days old); Task 1 Step 1
-   re-verifies at execution time and names the exact-version exclude recipe.
-3. **Alias resolution** — D2 is source-verified for 16.2.10 but not yet empirically executed;
-   Task 4's typecheck + build + server-render checks are the empirical proof. If `@/lib/utils`
-   fails to resolve at build, `turbopack.resolveAlias` is the documented fallback (same
-   single-target caveat).
-4. **React Compiler build time** — accepted trade-off (spec locked it on).
-5. **Port 3000 collision** with the client Vite dev server — only when both run; stop one.
-6. **`pnpm run build` at root now builds `web/` too** (CI `build` job) — expected; `next build`
-   needs no network (fonts self-hosted, no Geist).
+Items 1–7 mirror the spec's §Risks 1–7 in the same order; items 8–9 are plan-added.
+
+1. **`minimumReleaseAge` gate** — `next@16.2.10` published 2026-07-01 (> 7 days old); Task 1
+   Step 1 re-verifies at execution time and names the exact-version exclude recipe.
+2. **Tailwind cross-package `@source` bet** — probed red→green in Task 4; glob-form fallback
+   named there. If both forms fail, stop and surface (spec-level rethink, not a workaround).
+3. **`"use client"` boundary** — Task 3 Step 3 puts the directive on `Button`; Task 4 Step 6's
+   server-rendered `data-slot` count proves the real server/client boundary.
+4. **`sharp` build approval** — Task 1 Step 4 adds `sharp: true` to `allowBuilds`; Task 1 Step 6
+   verifies the install exits clean with no `ERR_PNPM_IGNORED_BUILDS`.
+5. **Lint gates on new files** — every task ends with its relevant gates run explicitly
+   (prettier/eslint/markdownlint/cspell per step), and lefthook auto-fixes staged files
+   pre-commit.
+6. **Dev-server port 3000 collision** with the client Vite dev server — only when both run;
+   stop one first.
+7. **React Compiler build time** — accepted trade-off (spec locked it on).
+8. _(plan-added)_ **Alias resolution** — D2 is source-verified for 16.2.10 but not yet
+   empirically executed; Task 4's typecheck + build + server-render checks are the empirical
+   proof. If `@/lib/utils` fails to resolve at build, `turbopack.resolveAlias` is the documented
+   fallback (same single-target caveat).
+9. _(plan-added)_ **`pnpm run build` at root now builds `web/` too** (CI `build` job) — expected;
+   `next build` needs no network (fonts self-hosted, no Geist).
 
 ## Spec coverage (self-review traceability)
 
@@ -981,7 +1004,7 @@ Task 3 client mutation) and the `quality`/`lint`/`build` jobs now covering `web/
 | §6 Proof page                   | Task 4 Steps 2/6/8 (Server Component, `.dark` section, layout without Geist in Task 2)              |
 | §7 Next.js config               | Task 2 Step 1 (`reactCompiler`, `transpilePackages`, no webpack)                                    |
 | §Success criteria               | Task 6 Step 1 table                                                                                 |
-| §Risks 1–7                      | Risks & contingencies above (1:1)                                                                   |
+| §Risks 1–7                      | Risks & contingencies items 1–7 (1:1, spec order); items 8–9 are plan-added                         |
 | Locked decisions table          | D1–D5 + Global Constraints (folder `web/`, fonts reuse, React Compiler on, app-first sequencing)    |
 
 Beyond-spec additions (each justified in Key design decisions): D6 (CI filter), D7 (lefthook),
