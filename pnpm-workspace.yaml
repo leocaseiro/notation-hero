@@ -51,5 +51,6 @@ overrides:
   file-type: ^21.3.4 # GHSA-5v7r-6r5c-r473 + GHSA-j47w-4g3g-c36v — dev-only via @nestjs/cli
   markdown-it: ^14.2.0 # GHSA-6v5v-wf23-fmfq — dev-only via markdownlint-cli2 (NH-243)
   'esbuild@<0.25.0': 0.25.12 # GHSA-67mh-4wv8-2f99 — drizzle-kit build transitive via deprecated @esbuild-kit; remove once drizzle-orm#5689 ships (Tracked: NH-252)
+  postcss: ^8.5.10 # GHSA-qx2v-qp2m-jg93 — next@16.2.10 pins postcss 8.4.31 internally; 8.5.x is a compatible minor (NH-275)
   # No undici override: jsdom@29 (client tests) needs undici 7.x; master's 6.27.0 pin
   # was for the removed Nx/handler-hello tree and breaks jsdom's dispatcher here.
