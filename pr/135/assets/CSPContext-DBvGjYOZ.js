@@ -1,0 +1,1 @@
+import{i as e,s as t}from"./preload-helper-D0cd7zMF.js";import{t as n}from"./react-B5dul1-y.js";function r(e,t=-(2**53-1),n=2**53-1){return Math.max(t,Math.min(e,n))}var i=e((()=>{}));function a(){return o.useContext(s)??c}var o,s,c,l=e((()=>{o=t(n(),1),s=o.createContext(void 0),c={disableStyleElements:!1}}));export{i,a as n,r,l as t};
