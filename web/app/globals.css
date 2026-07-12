@@ -6,9 +6,13 @@
 
 /* Generate utilities for the classes used INSIDE the design-system source — without this,
    imported components render unstyled (spec §4 calls this cross-package scan an unverified bet;
-   the build-time probe for `bg-clip-padding` in the plan verifies it). Path is relative to this
-   file: web/app/ → ../../client/src.
-   Scoped to the components the Phase-1 barrel actually exports (Button only), not the whole
-   client/src tree — a directory-wide scan generates CSS for all ~40 ui/ components the app never
-   imports (NH-275 review). Add one @source line per component as the barrel grows (Phase 2). */
-@source '../../client/src/components/ui/Button/Button.tsx';
+   the build-time probe for `bg-clip-padding` in the plan verifies it). Paths are relative to
+   this file: web/app/ → ../../client/src.
+   Scan ALL ui/ components, not per-imported-file: Tailwind's scanner is filesystem-based, not
+   import-aware, so a component we don't import still ships its CSS. We accept that bounded,
+   cached over-generation in exchange for never hand-maintaining a per-component @source list
+   (decision: docs/decisions/2026-07-12-design-system-distribution-adr.md, NH-275). The @source
+   not lines drop co-located stories/tests so their dev-only classes never leak into app CSS. */
+@source '../../client/src/components/ui/**/*.tsx';
+@source not '../../client/src/**/*.stories.tsx';
+@source not '../../client/src/**/*.test.tsx';
