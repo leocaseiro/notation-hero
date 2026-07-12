@@ -38,6 +38,7 @@
     "tseslint",
     "lefthook",
     "commitlint",
+    "cosmiconfig",
     "gitleaks",
     "semgrep",
     "osv",
