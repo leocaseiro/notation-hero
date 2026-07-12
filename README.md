@@ -71,6 +71,17 @@ Open the URL Vite prints (defaults to <http://localhost:3000>; Vite picks the ne
 3000 is taken) — the About page fetches `/api/catalog` live through the proxy. Hit the API
 directly with `curl http://localhost:3001/api/catalog`.
 
+The **`web/` Next.js app** (the product PWA) is a separate dev server on **port 3002** (3000 and
+3001 are the client SPA and the API):
+
+```bash
+# terminal 3 — Next.js web app (port 3002)
+pnpm --filter @notation-hero/web run dev
+```
+
+It consumes the `client/` design system across the package boundary; Phase 1 exposes only `Button`
+through the package barrel. See [`web/README.md`](web/README.md).
+
 ## Deploy (AWS)
 
 Infrastructure is **Pulumi (TypeScript)** with a self-managed **S3 state backend**
