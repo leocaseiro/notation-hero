@@ -8,7 +8,7 @@ const swatches = [
   ['--secondary', 'bg-secondary'],
 ] as const;
 
-function ProofSection({ heading }: { heading: string }) {
+function ProofSection({ heading }: Readonly<{ heading: string }>) {
   return (
     <section className="rounded-lg border border-border bg-background p-6 text-foreground">
       <h2 className="mb-4 text-lg font-semibold">{heading}</h2>

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   description: 'Learn an instrument by playing real notation.',
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
       <body>{children}</body>
