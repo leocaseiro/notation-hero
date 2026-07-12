@@ -13,7 +13,7 @@
     "check:supply-chain-pins": "node tooling/check-supply-chain-pins.mjs",
     "db:migrate": "pnpm --filter @notation-hero/server run db:migrate",
     "depcheck": "depcruise server/src --config .dependency-cruiser.cjs",
-    "fix": "prettier --write --ignore-unknown . ; pnpm --filter @notation-hero/client exec eslint . --fix ; pnpm --filter @notation-hero/server exec eslint . --fix ; stylelint --fix \"**/*.css\" ; markdownlint-cli2 --fix \"**/*.md\" ; git ls-files -z 'package.json' '*/package.json' | xargs -0 sort-package-json",
+    "fix": "prettier --write --ignore-unknown . ; pnpm --filter @notation-hero/client exec eslint . --fix ; pnpm --filter @notation-hero/server exec eslint . --fix ; pnpm --filter @notation-hero/web exec eslint . --fix ; stylelint --fix \"**/*.css\" ; markdownlint-cli2 --fix \"**/*.md\" ; git ls-files -z 'package.json' '*/package.json' | xargs -0 sort-package-json",
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown .",
     "knip": "knip",
