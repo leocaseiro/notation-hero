@@ -958,7 +958,9 @@ Task 3 client mutation) and the `quality`/`lint`/`build` jobs now covering `web/
 ## Out of scope (do not build any of this)
 
 - Phase 2: `client/` → `design-system/` rename, full ~41-component barrel, `sideEffects: false`,
-  repointing CI/deploy references, stripping the Vite SPA shell.
+  repointing CI/deploy references — **including `web/tsconfig.json`'s `@/*` mapping and
+  `web/app/globals.css`'s `@source` (both hardcode `client/src`; grep `client/src` +
+  `@notation-hero/client` to catch every hit)** — stripping the Vite SPA shell.
 - Vercel deploy + custom domain · PWA/offline · hybrid BFF · `"use cache"` catalog caching ·
   Postgres FTS · R2 blobs (ADR later milestones).
 - A `web/` unit-test harness, theme toggle, extra routes/pages, `next/font`, favicon polish.

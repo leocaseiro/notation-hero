@@ -131,7 +131,7 @@ Mechanical but touches CI and deploy, so it is verified in isolation:
 
 - `git mv client design-system`; package `@notation-hero/client` → `@notation-hero/design-system`.
 - Full barrel `exports` + `sideEffects: false`; repoint the app's imports.
-- Repoint the ~8 functional references (3 CI workflows, root `package.json`, `pnpm-workspace.yaml`, `infra/index.ts`, one tooling test) and ~4 living docs (`README`, `AGENTS.md`, 2 specs). Dated historical plans stay as point-in-time records.
+- Repoint **every** hardcoded reference — run `grep -rn 'client/src\|@notation-hero/client'` across the repo and update each hit rather than trusting a fixed count. Known hits: 3 CI workflows, root `package.json`, `pnpm-workspace.yaml`, `infra/index.ts`, one tooling test, **`web/tsconfig.json`'s `@/*` mapping and `web/app/globals.css`'s `@source` directive** (both hardcode `client/src`; the `@source` one fails _silently_ if missed — no build error, just unstyled output), and ~4 living docs (`README`, `AGENTS.md`, 2 specs). Dated historical plans stay as point-in-time records.
 - Optionally strip the leftover Vite SPA shell (`src/routes/`, `src/main.tsx`, `index.html`) now that the app lives in `web/`.
 - Note: `infra/index.ts` + `deploy.yml` currently deploy the Vite client to S3/CloudFront; that path is superseded by the Vercel hosting work, so the rename overlaps the deploy rewire.
 
