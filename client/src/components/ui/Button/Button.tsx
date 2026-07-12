@@ -46,13 +46,15 @@ const buttonVariants = cva(
   },
 );
 
+export type ButtonProps = useRender.ComponentProps<'button'> & VariantProps<typeof buttonVariants>;
+
 const Button = ({
   className,
   variant = 'default',
   size = 'default',
   render,
   ...props
-}: useRender.ComponentProps<'button'> & VariantProps<typeof buttonVariants>) =>
+}: ButtonProps) =>
   useRender({
     defaultTagName: 'button',
     render,
