@@ -1,103 +1,106 @@
-# ADR — Design-system distribution: shared workspace package + tokens package (registry demoted to an eject hatch)
+# ADR — Design-system distribution: direct package consumption + accept scoped-glob CSS over-generation
 
-- **Status:** ⏳ Proposed 2026-07-12 — awaiting leocaseiro ratification (not yet in the decision registry).
+- **Status:** ✅ Accepted 2026-07-12 — the CSS-distribution mechanism, the tokens split, and the direct-consumption model are ratified by leocaseiro. The `client/ → design-system/` rename (Phase 2) and the RSC/Capacitor component seam remain **recommended follow-ups**, not yet ratified.
 - **Date:** 2026-07-12
 - **Driver / Approver:** leocaseiro
-- **Ticket:** NH-275 lineage (`web/` design-system consumption, Phase 1). Distribution ticket TBD.
-- **Evidence:** 5-model comparison artifact (code + pros/cons + sources) — <https://claude.ai/code/artifact/f1696c91-6970-4061-a4f8-0ffe77fe9181>. Key sources: Tailwind v4 "Detecting classes in source files" (`@source`); shadcn/ui registry + monorepo docs; Turborepo Tailwind guide; Radix Themes styling; Mantine styles; Nx sharing-tailwind-styles. **Spike TBD** before lock — see Open questions Q1.
-- **Scope:** How the design system (`client/` → `design-system/`) is distributed to `web/` (Next.js 16 App Router, RSC) and the coming `mobile/` (Capacitor). Covers the token split, the CSS mechanism, the RSC ↔ Capacitor component seam, versioning/CI, and how the Phase-2 `client/ → design-system/` rename folds in. Does **not** reopen the component-library choice (Base UI + cva — kept, per 2026-07-07), the FE framework/hosting (Next.js on Vercel — kept, per 2026-07-08), or the hexagon.
-- **Supersedes:** refines the **NH-275 Phase 1** consumption pattern (each consumer hardcodes `@source '../../client/src/...'` in its own `globals.css`). Nothing is superseded outright.
+- **Ticket:** NH-275 lineage (`web/` design-system consumption). Distribution ticket TBD.
+- **Evidence:**
+  - 5-model comparison artifact — <https://claude.ai/code/artifact/f1696c91-6970-4061-a4f8-0ffe77fe9181>.
+  - **ce-code-review performance pass (measured):** the over-broad `@source '../../client/src'` scanned **882 files** (the client Vite SPA's own `routes/`, `hooks/`, plus every component's co-located `*.stories.tsx`/`*.test.tsx`), producing a ~14.4 KB-gzip CSS chunk carrying `.bg-sidebar*`/`.text-sidebar-foreground`/`inset-x-0` from `Sidebar`/`Sheet`/`Field` — components the app can neither import (not in the barrel) nor render.
+  - Sources: Tailwind v4 "Detecting classes in source files" (`@source`); shadcn/ui registry + monorepo docs; Turborepo Tailwind guide; Radix Themes / Mantine styling; vanilla-extract / StyleX (import-aware CSS). **Spike TBD** — see Open questions Q1.
+- **Scope:** How the design system (`client/` → `design-system/`) is distributed to `web/` (Next.js 16, RSC) and the coming `mobile/` (Capacitor) — the JS + CSS channels, the token split, versioning/CI, and the rename fold-in. Does **not** reopen the component library (Base UI + cva — kept), the FE framework (Next.js on Vercel — kept), or the hexagon.
+- **Supersedes:** the NH-275 Phase 1 `@source` choices — both the over-broad `@source '../../client/src'` (perf finding) and the hand-maintained per-file `@source '.../Button/Button.tsx'`.
 
 ---
 
 ## Context
 
-`client/` does double duty today: it is both the (soon-legacy) Vite + TanStack SPA **and** the design-system source — a shadcn-derived library of ~40 UI components (Base UI primitives + Tailwind v4 + `class-variance-authority` variants) with brand-teal design tokens in an `@theme` block (`client/src/styles.css`). Every component is a folder carrying co-located `*.stories.tsx`, `*.test.tsx`, `*.a11y.ts`, `*.vr.ts`, and committed VR snapshots; the VR / a11y / unit suites are **blocking CI gates** — the library's most valuable asset.
+`client/` is both the (soon-legacy) Vite SPA **and** the design-system source — ~40 shadcn-derived components (Base UI + Tailwind v4 + `cva`), with brand-teal tokens in `client/src/styles.css`. Each component folder co-locates `*.stories.tsx`, `*.test.tsx`, `*.a11y.ts`, `*.vr.ts`, and committed VR snapshots; the VR/a11y/unit suites are **blocking CI gates**. `web/` (Next.js) is now the product FE; `mobile/` (Capacitor, also Tailwind) is coming. Goal: components shared across both apps.
 
-The FE pivot (2026-07-08) makes `web/` (Next.js) the product FE and repurposes `client/` to a pure design system, which is what the Phase-2 `client/ → design-system/` rename resolves. A `mobile/` app (Capacitor, **also Tailwind**) is coming, and that same 2026-07-08 ADR already commits (Decision 8) to mobile as "a Capacitor shell **reusing the shared component package**." Goal: components mostly shared across `web/` + `mobile/`, with **best tree-shaking**, **shared variants**, and **automated distribution (no manual copy-paste)**.
+The load-bearing fact, learned the hard way in the NH-275 review and confirmed in a brainstorm:
 
-Two facts frame the whole decision:
+> **JS and CSS travel by two different mechanisms, and only one of them is import-aware.**
+>
+> - **JS** rides the import graph: `import { Button }` + `transpilePackages` bundles only Button's code. Tree-shakes correctly.
+> - **CSS** does **not**. Tailwind's scanner is _filesystem-based_ — it expands `@source` globs to a list of files on disk, reads each as **plain text**, and emits CSS for any class string it finds. It never parses an `import`. So a component's CSS ships **because its file matched the glob**, not because anything imported it. `Sidebar`'s classes shipped even though `Sidebar` isn't even re-exported from the barrel.
 
-1. **"Tree-shaking" here is a CSS-generation problem, not a JS one.** JS tree-shakes fine from any shared ESM package via subpath `exports` + `sideEffects`. The only thing copy-in uniquely buys is that each app's Tailwind scans **only the components it pulled**, rather than `@source`-scanning all ~40 and generating CSS for unused ones. At ~40 shadcn components the utility overlap is high, so that over-generation delta is small (single-digit KB gzipped, shared + cached).
-2. **The repo's governance is built on a single source of truth** (`decision-registry.md`) and on those co-located, gated VR/a11y/unit suites. A shadcn registry copies the `.tsx` (and JS deps) but **not** the co-located test/VR harness — so copy-in as the primary path orphans the coverage that is the crown jewel, and mints N drifting copies against a culture that prizes one canonical answer.
-
-Current state verified on this branch: `@notation-hero/client` has **no** `exports` / `sideEffects` / `main` (it is a private app, not yet a consumable) and **zero** `'use client'` directives (as a Vite SPA it never needed them). Both are real repackaging work, not formalities.
+Every distribution question reduces to: **how wide do we point the CSS scanner, given it can't follow imports?**
 
 ---
 
 ## Decision
 
-Adopt a **shared workspace package** as the single, canonical distribution channel, paired with a **standalone tokens package**. Copy-in (the shadcn custom registry) is explicitly **demoted from primary to an optional per-component eject hatch**.
+Consume the design system **directly** as a shared package, and accept a bounded, measured CSS over-generation rather than bolt import-awareness onto Tailwind.
 
-1. **Primary distribution = one shared workspace package.** Rename `client/` → `@notation-hero/design-system`; `web/` and `mobile/` consume it as a normal `workspace:*` dependency. Components — **and their stories/tests/VR/a11y** — live in exactly one place. Shared `cva` variants (`buttonVariants`, …) are shared by construction because there is one copy. There is **no** copy-in on the primary path.
+1. **JS = direct package consumption.** Apps `import { Button } from '@notation-hero/client'` (→ future `@notation-hero/design-system`) and transpile it (`transpilePackages` on web; Vite on mobile). One canonical source; no copy-in on the primary path. JS tree-shakes via the package `exports` map.
 
-2. **Tokens = a new `@notation-hero/tokens` package. Build this first.** Extract the whole token + dark-variant layer from `styles.css` — `@theme`, `@theme inline`, `:root`, `.dark`, and `@custom-variant dark` — into `tokens.css`. It is framework-agnostic CSS; a `tokens.ts` JS export is deferred until a real non-CSS consumer exists (YAGNI). Both the design-system package's own styles **and** every app import `@notation-hero/tokens/tokens.css`. This is the "pairs-with-any" seam and the lowest-risk first move (it unblocks apps without touching component source).
-
-3. **CSS mechanism = package-owned `@source` + shared tokens; apps compile.** The design-system package ships a `styles.css` that declares **its own** `@source` globs (resolved relative to the package), so a consumer writes:
+2. **CSS = a scoped whole-component `@source` glob; over-generation accepted.** Point Tailwind at **all** UI components, excluding the co-located harness:
 
    ```css
-   @import 'tailwindcss';
-   @import '@notation-hero/tokens/tokens.css';
-   @import '@notation-hero/design-system/styles.css'; /* declares its own @source globs */
-   @source "./app"; /* the consumer scans only its own files */
+   @import '@notation-hero/client/styles.css'; /* tokens + base, single source */
+   @source '../../client/src/components/ui/**/*.tsx'; /* scan ALL components */
+   @source not '../../client/src/**/*.stories.tsx'; /* drop dev-only story classes */
+   @source not '../../client/src/**/*.test.tsx'; /* drop test fixtures */
    ```
 
-   This removes the NH-275 coupling (no consumer hardcodes `../../client/src/...`) while keeping one source of truth. The remaining over-generation (an app's CSS includes classes for components it does not import) is **accepted** as a small, shared, cached cost at this scale. Escape hatches if it ever bites: per-component CSS entrypoints (Mantine model) or the eject hatch (Decision 6).
+   Because the scanner isn't import-aware, this ships CSS for components the app never imports. That is **explicitly accepted**: measured at ~2.6 KB-gzip per fully-unused distinct component, and utilities dedupe heavily, so the whole-library sheet is single-digit-to-low-double-digit KB, generated once per app and cached. The trade we take: **never hand-maintaining a per-component `@source` list**, in exchange for a small, cached over-generation. This supersedes both the over-broad `../../client/src` (which also scanned the SPA + harness) and the per-file `@source` (which required a new line per component).
 
-4. **Ship source; transpile per app.** The package exposes `.tsx` **source** via subpath `exports` (`@notation-hero/design-system/button`, …) with `sideEffects` listing only CSS, so JS tree-shakes automatically. Shipping source preserves `'use client'` boundaries naturally: `web/` compiles it via `transpilePackages`; `mobile/` (Vite) compiles workspace source directly. No library build step is needed **for consumption** (Storybook / standalone dev still build).
+3. **The design-system package should own its `@source`.** Ship the scoped glob + exclusions from the package's own `styles.css` (paths relative to the package), so a consumer writes one `@import` and never hardcodes `../../client/src` — which is precisely the footgun that produced the perf finding. _(Mechanism to confirm — Open question Q1.)_
 
-5. **RSC ↔ Capacitor seam = one source, per-component `'use client'`, thin platform adapter for nav/native only.** One component source serves both apps. Presentational components (Badge, Card, Pill, ScoreDonut) stay server-compatible (no directive) and render in RSC on web and CSR in the Capacitor webview alike; interactive components (Button-with-handlers, Combobox, Popover, Sheet, DataTable) carry `'use client'` — still SSR'd + hydrated on web, still fine in the webview. The **only** things needing a per-platform shell are **platform primitives**: navigation/links (Next `<Link>` vs the mobile router) and native bridges (Web MIDI / CoreMIDI, haptics). Those are injected through a small adapter interface (a `@notation-hero/platform` contract, or props/context) that each app implements. So: shared variants + tokens + logic + presentation in the package; a thin per-platform adapter for nav/native. That adapter is the seam.
+4. **Tokens = a `@notation-hero/tokens` package.** Extract `@theme` + `@theme inline` + `:root`/`.dark` + `@custom-variant dark` into `tokens.css` (CSS-first; a TS token export is deferred until a real non-CSS consumer exists). Both the design-system package and every app import it. Build first — it is safe, independent, and unblocks apps.
 
-6. **Registry = optional per-component eject hatch, not primary.** Keep a shadcn `registry.json` **addable later** (cheap), but build it only if/when a single app genuinely must fork and diverge a component. Ejecting is a **one-way door**, recorded in the decision registry when it happens. This is the deliberate answer to the leading candidate: the custom registry is demoted, not adopted.
+5. **Ship source; transpile per app.** The package exposes `.tsx` source via subpath `exports` + `sideEffects`, so `'use client'` boundaries survive and JS tree-shakes. No library build step is needed for consumption (Storybook/standalone still build).
 
-7. **Versioning / CI = `workspace:*`, no semver, no publish.** While the design system lives in the monorepo, consumers always track HEAD — there is no version negotiation. The existing VR / a11y / unit gates stay **in the design-system package, unmoved**; `web/` and `mobile/` builds join CI as additional consumers. Semver + publishing are deferred unless the design system ever leaves the monorepo (YAGNI).
+6. **Registry (copy-in) = optional per-component eject hatch, not primary.** shadcn copy-in gives exact CSS (the component becomes the app's own scanned file) and per-app editability, but it mints drifting copies and orphans the co-located VR/a11y/unit gates. Keep a `registry.json` addable later for the rare deliberate fork; do not build it now.
 
-8. **Rename fold-in = two PRs, in order.** (a) Extract `@notation-hero/tokens` — safe, independent, unblocks apps. (b) Rename `client/ → design-system/` **and** repackage in one move: add subpath `exports` + `sideEffects`, move `@source` ownership into the package's `styles.css`, run the `'use client'` annotation pass (Decision 5), and update `pnpm-workspace.yaml`, the `@notation-hero/client` → `@notation-hero/design-system` specifier, and (when it lands/rebases) `web/`'s `globals.css`. Rename-with-repackage avoids rewriting every import path twice.
+7. **Versioning/CI = `workspace:*`, no semver/publish** while in-monorepo. Existing VR/a11y/unit gates stay in the design-system package, unmoved; `web/`/`mobile/` builds join CI.
+
+8. **Rename fold-in (recommended follow-up).** Two PRs: (a) extract `@notation-hero/tokens`; (b) rename `client/ → design-system/` + repackage (subpath `exports`, package-owned `@source`, `'use client'` audit, update `pnpm-workspace.yaml` + specifiers + `web/`'s `globals.css`).
+
+---
+
+## RSC ↔ Capacitor seam (recommended, not yet ratified)
+
+One component source serves both apps. The seam is **per-component `'use client'`**, not per-platform shells: presentational components stay server-compatible; interactive ones carry `'use client'` (SSR'd + hydrated on web, CSR in the Capacitor webview). The only per-platform piece is a thin adapter for **navigation/links + native bridges** (Web MIDI/CoreMIDI, haptics) — a small `@notation-hero/platform` contract each app implements. `client/src` has **zero** `'use client'` directives today (it was a Vite SPA), so this implies a real annotation pass when interactive components are consumed under RSC.
 
 ---
 
 ## Rationale
 
-- **Dominates on this repo's own terms.** Single source of truth, intact blocking VR/a11y/unit gates, shared variants for free, minimal moving parts — all the things the governance culture and simplicity-first already optimize for — with only a small, cached CSS over-generation given up in return. Copy-in's unique win (per-app editability) is a non-goal under driver A.
-- **Consistent with committed decisions.** The 2026-07-08 ADR already names a "shared component package" for mobile; this ADR makes that concrete rather than introducing a competing copy-in model.
-- **Fixes the real NH-275 complaint** (build coupled to the library's file layout) by moving `@source` ownership into the package, without abandoning the scan-the-source model that keeps theming ergonomic and tokens live.
-- **Capacitor-ready by construction.** Fonts are already self-hosted (`@fontsource-variable/*`) for a CSP-clean, offline webview; one shared package keeps that wiring in one place instead of re-deriving it per app.
-- **Scale-as-learning.** A tokens package + a properly-`exports`-ed component package is the well-architected shape even at two apps, and it is exactly the shape a third consumer (or a future extraction) would need — no rework.
+- **Matches how Tailwind actually works.** The scanner can't follow imports; fighting that with a per-import script or a tool switch costs more than the bytes it saves. The scoped glob embraces the model and stays a one-liner.
+- **Small, measured, bounded cost.** ~2.6 KB-gzip per unused component, deduped and cached; "modest today" per the perf pass. The scoping (components only, no SPA, no harness) removes the genuinely wasteful part the review caught.
+- **Keeps the repo's crown jewels.** One canonical library with its VR/a11y/unit gates intact; shared `cva` variants identical across apps by construction.
+- **Consistent with committed decisions.** The 2026-07-08 ADR already names a shared component package for mobile.
 
 ---
 
 ## Consequences
 
-**Positive:** one canonical library; blocking VR/a11y/unit gates untouched; shared `cva` variants guaranteed identical across web + mobile; JS tree-shakes per-component; consumers decoupled from the library's file layout; tokens reusable by any future consumer (marketing site, emails) without pulling React.
+**Positive:** one canonical library; blocking gates untouched; identical variants across web + mobile; JS tree-shakes per-component; consumers stop hardcoding the library's file layout; tokens reusable by any consumer.
 
 **Negative / watch-outs:**
 
-- **CSS over-generation is accepted, not eliminated.** Each app's stylesheet carries classes for components it does not import. Small at ~40 components; revisit with per-component CSS or the eject hatch only if a bundle-size gate ever flags it. Note the cost honestly rather than implying perfect tree-shaking.
-- **A real `'use client'` annotation pass is required.** `client/src` has zero directives today; interactive components must be marked before `web/` (RSC) consumes them, and the package must ship source (or a build that preserves the banners) so the boundaries survive.
-- **Library-owned `@source` resolution is a linchpin assumption** (Q1). If a spike disproves it, fall back to a consumer-declared `@source` pointing at the package path — still single-source, marginally more coupling.
-- **No per-app divergence.** If a genuine need to fork a component in one app appears, it goes through the eject hatch (Decision 6), consciously and recorded — not by default.
+- **CSS over-generation is accepted, not eliminated.** Each app ships CSS for unimported components. Bounded/cached; revisit only if a bundle gate ever flags it (escape hatches: the eject hatch, or per-component compiled CSS).
+- **A real `'use client'` annotation pass** is required before RSC consumes interactive components.
+- **Package-owned `@source` (Decision 3) rests on Q1.**
+- **No per-app divergence** without going through the eject hatch (Decision 6).
 
 ---
 
-## Alternatives considered (the five models)
+## Alternatives considered
 
-1. **Consumer `@source`-scans the shared package (NH-275 Phase 1).** _Refined, not rejected_ — kept as the scan model, but `@source` ownership moves into the package (Decision 3) to kill the file-layout coupling.
-2. **Library ships prebuilt CSS (Radix Themes / Mantine).** _Rejected as primary._ Decouples consumers but goes static; monolithic CSS tree-shakes worst, and per-component CSS adds a real library build step. Retained as a **future lever** if over-generation ever bites.
-3. **Copy-in via shadcn custom registry (`shadcn build` + `shadcn add <url>`).** _Rejected as primary; kept as eject hatch (Decision 6)._ Best CSS tree-shaking and per-app editability, but it mints N drifting copies, **orphans the co-located VR/a11y/unit gates**, and needs sync tooling — all against the single-source-of-truth culture. Only earns its keep under driver B (editability is the point).
-4. **Shared `@theme` tokens package.** _Adopted_ (Decision 2) — it pairs with the shared component package rather than competing with it.
-5. **CSS-in-JS.** _Ruled out_ by constraint.
-
----
-
-## Appendix — registry eject-hatch mechanics (for if/when Decision 6 fires)
-
-Hosting a custom registry in this pnpm monorepo is light: a `registry.json` at the design-system root; `shadcn build` emits per-item JSON that can be served from the **existing gh-pages site** (already stood up for Storybook PR previews, 2026-07-05) or referenced as a workspace-relative file. A consumer runs `shadcn add <url-or-path>` to copy an item into its own `app/` source; **re-sync = re-run `add`, which overwrites** — which is precisely why an eject is a one-way door and any subsequent local edits are tracked divergence. This stays fully compatible with the shared package: eject one component into one app without disturbing the canonical copy the other app still imports.
+1. **Per-import `@source` script** (generate exact `@source` lines from the app's imports). _Rejected._ To be correct it must resolve each component's **transitive** graph (a `DataTable` that renders `<Button>` needs `Button.tsx` scanned too, or it renders unstyled); misses fail **silently**; and no off-the-shelf tool exists because it fights Tailwind's model.
+2. **Copy-in / shadcn registry.** _Rejected as primary; kept as an eject hatch (Decision 6)._ Exact CSS + editability, but drift + orphans the co-located VR/a11y/unit gates. It is, honestly, the ecosystem's usual "only ship what I use" answer for Tailwind — but it trades away the single source of truth this repo is built on.
+3. **Import-aware CSS tools — vanilla-extract, StyleX, Mantine per-component CSS, Panda.** _Rejected._ These genuinely solve import-aware CSS tree-shaking (CSS is _imported_, not _scanned_, so unused components' CSS drops and code-splits). But adopting one means **leaving Tailwind and rewriting the 40 `cva` components** — not worth it at this scale, and out of scope.
+4. **Over-broad `@source '../../client/src'`** (the perf-flagged status quo). _Rejected._ Scans the SPA `routes/` + `hooks/` + the full test/story harness (882 files). Superseded by the scoped component glob (Decision 2).
+5. **Library ships prebuilt CSS (Radix/Mantine pattern), monolithic or per-component.** _Deferred lever._ Decouples consumers and enables per-component CSS code-splitting, but adds a library build step; hold unless over-generation ever bites.
+6. **CSS-in-JS.** _Ruled out_ by constraint.
 
 ---
 
 ## Open questions
 
-1. **Spike (blocks lock of Decision 3):** confirm Tailwind v4 resolves `@source` globs **relative to the library CSS file** when that CSS is `@import`ed from `node_modules` — the linchpin that lets the package own its own scan paths. If not, fall back to a consumer-declared `@source` at the package path (still single-source), or lib-prebuilt per-component CSS.
-2. **`mobile/` platform-adapter surface** — enumerate the nav + native primitives (links, router, Web MIDI/CoreMIDI, haptics) when `mobile/` scaffolds; that list defines the `@notation-hero/platform` contract.
-3. **Tokens TS export** — add `tokens.ts` only when a real non-CSS consumer (native, server-rendered email) appears. Defer.
-4. **Driver check (gates the whole ADR):** this ADR assumes driver **A** — tree-shaking + automation, per-app editability not required. If the real driver is **B** (editability is the point), Decision 1 flips to registry-primary and Decisions 3–8 change accordingly.
+1. **Spike (blocks Decision 3's package-owned `@source`):** confirm Tailwind v4 resolves `@source` globs relative to the **library** CSS file when `@import`ed from `node_modules`. If not, the app declares the scoped glob itself (still single-source, slightly more coupling).
+2. **`mobile/` platform-adapter surface** — enumerate nav + native primitives when `mobile/` scaffolds.
+3. **Tokens TS export** — add only when a real non-CSS consumer appears.
+4. **Driver (was: A vs B) — RESOLVED 2026-07-12.** leocaseiro ratified **accepting the scoped-glob over-generation** (Decision 2) — not copy-in, not a tool switch. This ADR's headline is decided.
