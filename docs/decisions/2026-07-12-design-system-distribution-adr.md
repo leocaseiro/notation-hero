@@ -7,7 +7,7 @@
 - **Evidence:**
   - 5-model comparison artifact — <https://claude.ai/code/artifact/f1696c91-6970-4061-a4f8-0ffe77fe9181>.
   - **ce-code-review performance pass (measured):** the over-broad `@source '../../client/src'` scanned **882 files** (the client Vite SPA's own `routes/`, `hooks/`, plus every component's co-located `*.stories.tsx`/`*.test.tsx`), producing a ~14.4 KB-gzip CSS chunk carrying `.bg-sidebar*`/`.text-sidebar-foreground`/`inset-x-0` from `Sidebar`/`Sheet`/`Field` — components the app can neither import (not in the barrel) nor render.
-  - Sources: Tailwind v4 "Detecting classes in source files" (`@source`); shadcn/ui registry + monorepo docs; Turborepo Tailwind guide; Radix Themes / Mantine styling; vanilla-extract / StyleX (import-aware CSS). **Spike TBD** — see Open questions Q1.
+  - Sources: Tailwind v4 "Detecting classes in source files" (`@source`); shadcn/ui registry + monorepo docs; Turborepo Tailwind guide; Radix Themes / Mantine styling; vanilla-extract / StyleX (import-aware CSS). **Spike done** (Q1 resolved 2026-07-12) — see Open questions Q1.
 - **Scope:** How the design system (`client/` → `design-system/`) is distributed to `web/` (Next.js 16, RSC) and the coming `mobile/` (Capacitor) — the JS + CSS channels, the token split, versioning/CI, and the rename fold-in. Does **not** reopen the component library (Base UI + cva — kept), the FE framework (Next.js on Vercel — kept), or the hexagon.
 - **Supersedes:** the NH-275 Phase 1 `@source` choices — both the over-broad `@source '../../client/src'` (perf finding) and the hand-maintained per-file `@source '.../Button/Button.tsx'`.
 
@@ -43,9 +43,9 @@ Consume the design system **directly** as a shared package, and accept a bounded
    @source not '../../client/src/**/*.test.tsx'; /* drop test fixtures */
    ```
 
-   Because the scanner isn't import-aware, this ships CSS for components the app never imports. That is **explicitly accepted**: measured at ~2.6 KB-gzip per fully-unused distinct component, and utilities dedupe heavily, so the whole-library sheet is single-digit-to-low-double-digit KB, generated once per app and cached. The trade we take: **never hand-maintaining a per-component `@source` list**, in exchange for a small, cached over-generation. This supersedes both the over-broad `../../client/src` (which also scanned the SPA + harness) and the per-file `@source` (which required a new line per component).
+   Because the scanner isn't import-aware, this ships CSS for components the app never imports. That is **explicitly accepted**: the whole-library sheet is ~14 KB-gzip (all ~40 components) vs ~6 KB for a Button-only scan, and utilities dedupe heavily — so the _marginal_ cost of one more unused component is **~0.2 KB-gzip** (measured, ce-code-review perf pass), and the sheet is generated once per app and cached. The trade we take: **never hand-maintaining a per-component `@source` list**, in exchange for a small, cached over-generation. This supersedes both the over-broad `../../client/src` (which also scanned the SPA + harness) and the per-file `@source` (which required a new line per component).
 
-3. **The design-system package should own its `@source`.** Ship the scoped glob + exclusions from the package's own `styles.css` (paths relative to the package), so a consumer writes one `@import` and never hardcodes `../../client/src` — which is precisely the footgun that produced the perf finding. _(Mechanism to confirm — Open question Q1.)_
+3. **The design-system package should own its `@source`.** Ship the scoped glob + exclusions from the package's own `styles.css` (paths relative to the package), so a consumer writes one `@import` and never hardcodes `../../client/src` — which is precisely the footgun that produced the perf finding. _(Mechanism **confirmed** — Q1 spike 2026-07-12: a package-owned `@source` in the library's `styles.css` resolves through the `node_modules` symlink; `web/` built styled with **zero** app-side `@source`.)_
 
 4. **Tokens = a `@notation-hero/tokens` package.** Extract `@theme` + `@theme inline` + `:root`/`.dark` + `@custom-variant dark` into `tokens.css` (CSS-first; a TS token export is deferred until a real non-CSS consumer exists). Both the design-system package and every app import it. Build first — it is safe, independent, and unblocks apps.
 
@@ -68,7 +68,7 @@ One component source serves both apps. The seam is **per-component `'use client'
 ## Rationale
 
 - **Matches how Tailwind actually works.** The scanner can't follow imports; fighting that with a per-import script or a tool switch costs more than the bytes it saves. The scoped glob embraces the model and stays a one-liner.
-- **Small, measured, bounded cost.** ~2.6 KB-gzip per unused component, deduped and cached; "modest today" per the perf pass. The scoping (components only, no SPA, no harness) removes the genuinely wasteful part the review caught.
+- **Small, measured, bounded cost.** ~0.2 KB-gzip _marginal_ per unused component (heavily deduped — ~14 KB whole-library vs ~6 KB Button-only per the perf pass), cached; "modest today". The scoping (components only, no SPA, no harness) removes the genuinely wasteful part the review caught.
 - **Keeps the repo's crown jewels.** One canonical library with its VR/a11y/unit gates intact; shared `cva` variants identical across apps by construction.
 - **Consistent with committed decisions.** The 2026-07-08 ADR already names a shared component package for mobile.
 
@@ -82,7 +82,7 @@ One component source serves both apps. The seam is **per-component `'use client'
 
 - **CSS over-generation is accepted, not eliminated.** Each app ships CSS for unimported components. Bounded/cached; revisit only if a bundle gate ever flags it (escape hatches: the eject hatch, or per-component compiled CSS).
 - **A real `'use client'` annotation pass** is required before RSC consumes interactive components.
-- **Package-owned `@source` (Decision 3) rests on Q1.**
+- **Package-owned `@source` (Decision 3) — Q1 spike confirmed it resolves (2026-07-12); no longer a risk.**
 - **No per-app divergence** without going through the eject hatch (Decision 6).
 
 ---
@@ -100,7 +100,7 @@ One component source serves both apps. The seam is **per-component `'use client'
 
 ## Open questions
 
-1. **Spike (blocks Decision 3's package-owned `@source`):** confirm Tailwind v4 resolves `@source` globs relative to the **library** CSS file when `@import`ed from `node_modules`. If not, the app declares the scoped glob itself (still single-source, slightly more coupling).
+1. **RESOLVED 2026-07-12 (spike).** Tailwind v4 **does** resolve a package-owned `@source` glob (relative to the library's `styles.css`) when `@import`ed through the `node_modules` symlink — `web/` built with Button's classes generated and **zero** app-side `@source`. Decision 3 is unblocked: consumers write one `@import` and hardcode nothing. Spike write-up: `docs/spikes/2026-07-12-package-owned-source-resolution.md`.
 2. **`mobile/` platform-adapter surface** — enumerate nav + native primitives when `mobile/` scaffolds.
 3. **Tokens TS export** — add only when a real non-CSS consumer appears.
 4. **Driver (was: A vs B) — RESOLVED 2026-07-12.** leocaseiro ratified **accepting the scoped-glob over-generation** (Decision 2) — not copy-in, not a tool switch. This ADR's headline is decided.
