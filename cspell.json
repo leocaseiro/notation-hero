@@ -58,6 +58,7 @@
     "yamllint",
     "actionlint",
     "cspell",
+    "editability",
     "editorconfig",
     "noble",
     "knip",

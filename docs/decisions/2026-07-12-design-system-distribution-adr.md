@@ -36,9 +36,9 @@ Adopt a **shared workspace package** as the single, canonical distribution chann
 3. **CSS mechanism = package-owned `@source` + shared tokens; apps compile.** The design-system package ships a `styles.css` that declares **its own** `@source` globs (resolved relative to the package), so a consumer writes:
 
    ```css
-   @import "tailwindcss";
-   @import "@notation-hero/tokens/tokens.css";
-   @import "@notation-hero/design-system/styles.css"; /* declares its own @source globs */
+   @import 'tailwindcss';
+   @import '@notation-hero/tokens/tokens.css';
+   @import '@notation-hero/design-system/styles.css'; /* declares its own @source globs */
    @source "./app"; /* the consumer scans only its own files */
    ```
 
@@ -81,11 +81,11 @@ Adopt a **shared workspace package** as the single, canonical distribution chann
 
 ## Alternatives considered (the five models)
 
-1. **Consumer `@source`-scans the shared package (NH-275 Phase 1).** *Refined, not rejected* — kept as the scan model, but `@source` ownership moves into the package (Decision 3) to kill the file-layout coupling.
-2. **Library ships prebuilt CSS (Radix Themes / Mantine).** *Rejected as primary.* Decouples consumers but goes static; monolithic CSS tree-shakes worst, and per-component CSS adds a real library build step. Retained as a **future lever** if over-generation ever bites.
-3. **Copy-in via shadcn custom registry (`shadcn build` + `shadcn add <url>`).** *Rejected as primary; kept as eject hatch (Decision 6).* Best CSS tree-shaking and per-app editability, but it mints N drifting copies, **orphans the co-located VR/a11y/unit gates**, and needs sync tooling — all against the single-source-of-truth culture. Only earns its keep under driver B (editability is the point).
-4. **Shared `@theme` tokens package.** *Adopted* (Decision 2) — it pairs with the shared component package rather than competing with it.
-5. **CSS-in-JS.** *Ruled out* by constraint.
+1. **Consumer `@source`-scans the shared package (NH-275 Phase 1).** _Refined, not rejected_ — kept as the scan model, but `@source` ownership moves into the package (Decision 3) to kill the file-layout coupling.
+2. **Library ships prebuilt CSS (Radix Themes / Mantine).** _Rejected as primary._ Decouples consumers but goes static; monolithic CSS tree-shakes worst, and per-component CSS adds a real library build step. Retained as a **future lever** if over-generation ever bites.
+3. **Copy-in via shadcn custom registry (`shadcn build` + `shadcn add <url>`).** _Rejected as primary; kept as eject hatch (Decision 6)._ Best CSS tree-shaking and per-app editability, but it mints N drifting copies, **orphans the co-located VR/a11y/unit gates**, and needs sync tooling — all against the single-source-of-truth culture. Only earns its keep under driver B (editability is the point).
+4. **Shared `@theme` tokens package.** _Adopted_ (Decision 2) — it pairs with the shared component package rather than competing with it.
+5. **CSS-in-JS.** _Ruled out_ by constraint.
 
 ---
 
