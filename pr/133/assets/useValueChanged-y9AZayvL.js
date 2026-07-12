@@ -1,1 +1,0 @@
-import{i as e,s as t}from"./preload-helper-BoMmBYap.js";import{t as n}from"./react-cmu_Fh1j.js";import{c as r,l as i,s as a,u as o}from"./owner-C-iZjv_N.js";function s(e,t){let n=c.useRef(e),i=o(t);r(()=>{n.current!==e&&i(n.current)},[e,i]),r(()=>{n.current=e},[e])}var c,l=e((()=>{c=t(n(),1),a(),i()}));export{s as n,l as t};
