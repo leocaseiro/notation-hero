@@ -12,6 +12,17 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-12 — Design-system distribution: direct consumption + accept scoped-glob CSS over-generation (NH-275)
+
+leocaseiro ratified how apps consume the design system (`client/` → future `design-system/`). Full record: [`docs/decisions/2026-07-12-design-system-distribution-adr.md`](2026-07-12-design-system-distribution-adr.md). Refines the NH-275 Phase 1 `@source` pattern; pairs with the 2026-07-08 FE-pivot entry.
+
+- **CSS distribution = scoped whole-component `@source` glob; over-generation accepted.** Apps consume directly (JS via the package + `transpilePackages`; CSS via Tailwind scanning the shared source). Tailwind's scanner is filesystem-based, **not** import-aware, so every scanned component ships its CSS whether or not the app imports it — an explicitly accepted, measured trade (~2.6 KB-gzip per unused component; single-digit KB total, cached once) in exchange for never hand-maintaining a per-component `@source` list. Glob is scoped to components and excludes co-located stories/tests: `@source '…/components/ui/**/*.tsx'` + `@source not '…/*.stories.tsx'` + `@source not '…/*.test.tsx'`.
+- **Rejected:** a per-import `@source` script (transitive-graph fragility, silent missing-class failures, no off-the-shelf tool); copy-in / shadcn registry as primary (drift + orphans the co-located VR/a11y/unit gates — kept only as an eject hatch); switching to import-aware CSS (vanilla-extract/StyleX/Mantine/Panda — they solve it but require leaving Tailwind / rewriting the 40 `cva` components).
+- **Evidence:** a ce-code-review performance pass measured the over-broad `@source '../../client/src'` scanning **882 files** (the client SPA `routes/`/`hooks/` + the test/story harness, not just components) and shipping `Sidebar`/`Sheet`/`Field` classes the app can't import. The scoped-glob fix applied to the NH-275 web PR (#135).
+- **Also decided (from the brief):** extract tokens to `@notation-hero/tokens`; the design-system package should own its `@source` so consumers don't hardcode `../../client/src`.
+
+**Status:** ✅ decided (CSS-distribution mechanism + tokens split + direct-consumption model) · ⏳ enforcement pending — flips when the scoped glob lands in #135 and the tokens / `design-system` rename ships (Phase 2). The `client/ → design-system/` rename and the RSC/Capacitor component seam remain **recommended follow-ups** in the ADR, not yet ratified. Approved by leocaseiro 2026-07-12.
+
 ### 2026-07-07 — Component library: Radix + cmdk → Base UI (NH-254 pilot)
 
 Full record: [`docs/decisions/2026-07-07-radix-to-base-ui-migration.md`](2026-07-07-radix-to-base-ui-migration.md). leocaseiro decided to consolidate on **Base UI** (`@base-ui/react`, current package name — not the superseded `@base-ui-components/react`) in place of `radix-ui` + `cmdk`, piloted on the NH-254 catalog components (PR #99) before the wider fleet grows more Radix surface area.
