@@ -36,8 +36,10 @@ trustPolicy: no-downgrade # block malicious downgrade of security settings
 trustPolicyExclude:
   - semver@6.3.1
   - chokidar@4.0.3
-  # eslint-import-resolver-typescript 3.10.1: legacy 3.x branch pulled in by eslint-config-next@16.2.10;
-  # 4.x (provenance) resolves elsewhere in the tree — vetted false positive, not a takeover (NH-275).
+  # eslint-import-resolver-typescript 3.10.1: the exact version eslint-config-next@16.2.10 requires.
+  # no-downgrade flags it as a provenance downgrade — 3.10.1 has no provenance attestation while the
+  # package's newer 4.x line on the registry does — even though no 4.x resolves anywhere in this tree
+  # and 3.10.1 is integrity-pinned in the lockfile. Vetted false positive, not a takeover (NH-275).
   # (Comment must stay on its own line: check-supply-chain-pins.mjs reads the list item verbatim.)
   - eslint-import-resolver-typescript@3.10.1
 blockExoticSubdeps: true # block transitive deps from untrusted/exotic sources
