@@ -48,6 +48,6 @@ overrides:
   # js-yaml GHSA-h67p-54hq-rp68 (merge-key quadratic DoS) affects BOTH majors in the tree; each has a
   # same-major legacy patch, so we fix in place per line (no cross-major bump — Pulumi's v3 API is unchanged).
   'js-yaml@3': 3.15.0 # GHSA-h67p-54hq-rp68 — @pulumi/pulumi IaC transitive; v3-legacy patch (3.14.2 -> 3.15.0)
-  'js-yaml@4': 4.2.0 # GHSA-h67p-54hq-rp68 — dev-only via markdownlint-cli2 (4.1.1 -> 4.2.0; 4.2.0 already resolves elsewhere)
+  'js-yaml@4': 4.2.0 # GHSA-h67p-54hq-rp68 — now only via cosmiconfig (markdownlint-cli2 0.23.0 moved to js-yaml v5)
   # No undici override: jsdom@29 (client tests) needs undici 7.x; master's 6.27.0 pin
   # was for the removed Nx/handler-hello tree and breaks jsdom's dispatcher here.
