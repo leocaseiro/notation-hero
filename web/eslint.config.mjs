@@ -44,10 +44,10 @@ const eslintConfig = defineConfig([
   },
   // The tsconfig `@/*` alias exists ONLY so Turbopack can resolve the transpiled client package's
   // internal `@/lib/utils` import; first-party web app code must use the `@notation-hero/client`
-  // package specifier or relative paths (plan D2). Block `@/*` in app source so it can't reach into
+  // package specifier or relative paths (plan D2). Block `@/*` in all web source so it can't reach into
   // client/src and bypass the exports map + Button-only barrel (NH-275 review, F4).
   {
-    files: ['app/**/*.{ts,tsx}'],
+    files: ['**/*.{ts,tsx}'],
     rules: {
       'no-restricted-imports': [
         'error',

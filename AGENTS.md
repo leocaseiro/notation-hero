@@ -109,8 +109,8 @@ One system across packages — see
 `docs/superpowers/specs/2026-06-26-unified-linting-formatting-design.md`.
 
 - **ESLint**: shared base `eslint.config.base.mjs` + per-package extends
-  (`client/eslint.config.js`, `server/eslint.config.mjs`). Invocation on both:
-  `eslint . --max-warnings 0`. The base must **not** re-register plugins a
+  (`client/eslint.config.js`, `server/eslint.config.mjs`, `web/eslint.config.mjs`).
+  Invocation on all three: `eslint . --max-warnings 0`. The base must **not** re-register plugins a
   generator provides (tanstack: `@typescript-eslint`/`import`/`@stylistic`/`node`);
   verify with `eslint --print-config`.
 - **Prettier**: one root `prettier.config.mjs` (`printWidth: 100`), separate from

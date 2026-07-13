@@ -8,6 +8,8 @@
     "./package.json": "./package.json",
     "./styles.css": "./src/styles.css"
   },
+  "main": "src/index.ts",
+  "types": "src/index.ts",
   "scripts": {
     "build": "vite build",
     "build-storybook": "storybook build",

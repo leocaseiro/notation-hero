@@ -163,10 +163,12 @@ jobs:
       # Guard the cross-package Tailwind `@source` scan (web/app/globals.css -> client/src): a
       # successful `next build` does NOT fail when the scan silently generates zero design-system
       # utilities, so assert the Button utilities actually landed in the built CSS (NH-275).
+      # Sentinel = `bg-clip-padding`, a client-only class in client Button.tsx's cva base
+      # (a mirrored note there points back here). If a Button restyle drops it, update this.
       - name: web design-system CSS generated (@source scan guard)
         run: |
           grep -rlq --include='*.css' 'bg-clip-padding' web/.next/static/ \
-            || { echo "::error file=web/app/globals.css::web build produced no design-system utilities - the @source cross-package scan into client/src generated nothing."; exit 1; }
+            || { echo "::error file=web/app/globals.css::missing the bg-clip-padding sentinel - the @source scan into client/src generated nothing (or Button dropped that class; see client Button.tsx)."; exit 1; }
 
   # Accessibility — axe-core (WCAG 2 A+AA) over the Storybook stories via Playwright,
   # in light + dark. Deterministic (no pixel baselines, unlike VR), so it's a real
