@@ -12,7 +12,9 @@
   "dependencies": {
     "@fontsource-variable/material-symbols-outlined": "^5.2.45",
     "@fontsource-variable/public-sans": "^5.2.7",
+    "@neondatabase/serverless": "^1.1.0",
     "@notation-hero/client": "workspace:*",
+    "drizzle-orm": "^0.45.2",
     "next": "16.2.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
