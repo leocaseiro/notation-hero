@@ -1,0 +1,1 @@
+import{i as e,s as t}from"./preload-helper-DjTKt6ui.js";import{t as n}from"./react-CKe_U2PE.js";import{c as r,l as i,s as a,u as o}from"./owner-FB_vSKOm.js";function s(e,t){let n=c.useRef(e),i=o(t);r(()=>{n.current!==e&&i(n.current)},[e,i]),r(()=>{n.current=e},[e])}var c,l=e((()=>{c=t(n(),1),a(),i()}));export{s as n,l as t};

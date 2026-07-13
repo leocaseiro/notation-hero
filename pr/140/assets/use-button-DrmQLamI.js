@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-DjTKt6ui.js";import{t}from"./useButton-wZ8tynwG.js";var n=e((()=>{t()}));export{n as t};

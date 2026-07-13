@@ -1,0 +1,1 @@
+import{i as e,s as t}from"./preload-helper-DjTKt6ui.js";import{t as n}from"./react-CKe_U2PE.js";function r({controlled:e,default:t,name:n,state:r=`value`}){let{current:a}=i.useRef(e!==void 0),[o,s]=i.useState(t);return[a?e:o,i.useCallback(e=>{a||s(e)},[])]}var i,a=e((()=>{i=t(n(),1)}));export{r as n,a as t};

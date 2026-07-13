@@ -1,0 +1,1 @@
+import{i as e,s as t}from"./preload-helper-DjTKt6ui.js";import{t as n}from"./react-CKe_U2PE.js";import{m as r,p as i}from"./useRenderElement-DyDDtyf5.js";function a(e){let t=o.useContext(s);if(t===void 0&&!e)throw Error(i(69));return t}var o,s,c=e((()=>{r(),o=t(n(),1),s=o.createContext(void 0)}));export{a as n,c as t};
