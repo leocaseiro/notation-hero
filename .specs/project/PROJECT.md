@@ -12,8 +12,11 @@ Built as a portfolio + learning project on AWS, targeting the $0 free tier.
 
 ## Stack (high level)
 
-- **Frontend:** Vite SPA + React 19 + TanStack Router/Query + Tailwind v4
-  (CSS-first `@theme`). **No Next.js** (locked, 2026-06-18).
+- **Frontend:** ⛔ _Superseded 2026-07-08 — the "No Next.js (locked)" call was reversed._
+  **Next.js 16** (App Router, on Vercel) is the product PWA (`web/`); `client/` is now the design
+  system (Vite + React 19 + TanStack + Tailwind v4, CSS-first `@theme`, Storybook). ADR
+  `docs/decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md`; source of truth =
+  `docs/decisions/decision-registry.md`.
 - **Backend:** NestJS (hexagon/DDD inside), Lambda entry points.
 - **Data:** DynamoDB (per-user) + Neon Postgres/JSONB (catalog).
 - **Infra:** Pulumi (AWS); auth via Cognito.

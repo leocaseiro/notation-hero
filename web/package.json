@@ -1,0 +1,31 @@
+{
+  "name": "@notation-hero/web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "next build",
+    "dev": "next dev --port 3002",
+    "lint": "eslint . --max-warnings 0",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource-variable/material-symbols-outlined": "^5.2.45",
+    "@fontsource-variable/public-sans": "^5.2.7",
+    "@notation-hero/client": "workspace:*",
+    "next": "16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "eslint": "^9.20.0",
+    "eslint-config-next": "16.2.10",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^5.7.3"
+  }
+}

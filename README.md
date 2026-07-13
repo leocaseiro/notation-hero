@@ -13,7 +13,8 @@ deliberate "swappable backend" system-design portfolio piece.
 ## Stack
 
 - **Monorepo:** pnpm workspaces (`pnpm -r`) — no Nx/Turborepo
-- **Client:** Vite + React, TanStack Router/Query, Tailwind (the PWA)
+- **Client:** Vite + React, TanStack Router/Query, Tailwind (design system + Storybook)
+- **Web:** Next.js 16 App Router on Turbopack (the product PWA — consumes the design system)
 - **Server:** NestJS on AWS Lambda (serverless-express "lambdalith") — SWC compile → esbuild bundle
 - **Language:** TypeScript (strict)
 - **Tests:** Vitest (client + server + infra); `node --test` for the `tooling/` CI scripts
@@ -26,12 +27,13 @@ deliberate "swappable backend" system-design portfolio piece.
 
 ## Layout
 
-| Path      | Package                 | Role                                    |
-| --------- | ----------------------- | --------------------------------------- |
-| `client/` | `@notation-hero/client` | Vite React SPA (the PWA)                |
-| `server/` | `@notation-hero/server` | NestJS API (runs locally and on Lambda) |
-| `shared/` | `@notation-hero/shared` | Cross-cutting types / contracts         |
-| `infra/`  | `@notation-hero/infra`  | Pulumi composition root                 |
+| Path      | Package                 | Role                                       |
+| --------- | ----------------------- | ------------------------------------------ |
+| `client/` | `@notation-hero/client` | Vite React SPA (design system + Storybook) |
+| `web/`    | `@notation-hero/web`    | Next.js 16 App Router (the product PWA)    |
+| `server/` | `@notation-hero/server` | NestJS API (runs locally and on Lambda)    |
+| `shared/` | `@notation-hero/shared` | Cross-cutting types / contracts            |
+| `infra/`  | `@notation-hero/infra`  | Pulumi composition root                    |
 
 Tests and stories live **co-located** next to their source — never in `__tests__/`
 or `stories/` trees (CI enforces this via `tooling/check-layout.sh`).
@@ -68,6 +70,17 @@ pnpm --filter @notation-hero/client run dev
 Open the URL Vite prints (defaults to <http://localhost:3000>; Vite picks the next free port if
 3000 is taken) — the About page fetches `/api/catalog` live through the proxy. Hit the API
 directly with `curl http://localhost:3001/api/catalog`.
+
+The **`web/` Next.js app** (the product PWA) is a separate dev server on **port 3002** (3000 and
+3001 are the client SPA and the API):
+
+```bash
+# terminal 3 — Next.js web app (port 3002)
+pnpm --filter @notation-hero/web run dev
+```
+
+It consumes the `client/` design system across the package boundary; Phase 1 exposes only `Button`
+through the package barrel. See [`web/README.md`](web/README.md).
 
 ## Deploy (AWS)
 

@@ -3,11 +3,12 @@
 // COMPOSITION RULE (spec §3): this base must NOT register plugins a consumer's
 // generator already provides. @tanstack/eslint-config (client) registers
 // @typescript-eslint, import (import-x), @stylistic, node (eslint-plugin-n);
-// typescript-eslint's config() (server) registers @typescript-eslint. So this base
+// typescript-eslint's config() (server) registers @typescript-eslint;
+// eslint-config-next (web) registers @typescript-eslint + import. So this base
 // registers ONLY plugins nobody else provides (unicorn, sonarjs, promise, regexp,
 // eslint-comments) and supplies @typescript-eslint + import-x RULES without
-// re-declaring those plugin keys. Verify with `eslint --print-config` on BOTH
-// packages (must not throw "Cannot redefine plugin").
+// re-declaring those plugin keys. Verify with `eslint --print-config` on all
+// three packages (must not throw "Cannot redefine plugin").
 //
 // @ts-check
 import eslintComments from '@eslint-community/eslint-plugin-eslint-comments';

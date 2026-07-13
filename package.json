@@ -13,7 +13,7 @@
     "check:supply-chain-pins": "node tooling/check-supply-chain-pins.mjs",
     "db:migrate": "pnpm --filter @notation-hero/server run db:migrate",
     "depcheck": "depcruise server/src --config .dependency-cruiser.cjs",
-    "fix": "prettier --write --ignore-unknown . ; pnpm --filter @notation-hero/client exec eslint . --fix ; pnpm --filter @notation-hero/server exec eslint . --fix ; stylelint --fix \"**/*.css\" ; markdownlint-cli2 --fix \"**/*.md\" ; git ls-files -z 'package.json' '*/package.json' | xargs -0 sort-package-json",
+    "fix": "prettier --write --ignore-unknown . ; pnpm --filter @notation-hero/client exec eslint . --fix ; pnpm --filter @notation-hero/server exec eslint . --fix ; pnpm --filter @notation-hero/web exec eslint . --fix ; stylelint --fix \"**/*.css\" ; markdownlint-cli2 --fix \"**/*.md\" ; git ls-files -z 'package.json' '*/package.json' | xargs -0 sort-package-json",
     "format": "prettier --write --ignore-unknown .",
     "format:check": "prettier --check --ignore-unknown .",
     "knip": "knip",
@@ -35,8 +35,8 @@
     "test": "pnpm -r --if-present run test",
     "test:tooling": "node --test tooling/*.test.mjs && pnpm run test:tooling:sh",
     "test:tooling:sh": "for t in tooling/*.test.sh; do [ -e \"$t\" ] || continue; echo \"# $t\"; bash \"$t\" || exit 1; done",
-    "test:vr:docker": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr\"",
-    "test:vr:docker:update": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr:update\"",
+    "test:vr:docker": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/web/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr\"",
+    "test:vr:docker:update": "docker run --rm -v \"$PWD\":/work -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules -v /work/shared/node_modules -v /work/infra/node_modules -v /work/web/node_modules -v /work/.pnpm-store -w /work mcr.microsoft.com/playwright:v1.61.1-noble bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr:update\"",
     "typecheck": "pnpm -r --if-present run typecheck"
   },
   "devDependencies": {

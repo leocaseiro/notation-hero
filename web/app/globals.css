@@ -1,0 +1,18 @@
+/* The design system's styles.css is the single token source of truth: it already includes
+   Tailwind v4 itself, the @fontsource-variable font imports (Public Sans + Material Symbols),
+   the `@custom-variant dark` line, and the full :root/.dark/@theme token surface — so this file
+   adds NO tailwind/font imports of its own (spec §4: avoid double-inclusion). */
+@import '@notation-hero/client/styles.css';
+
+/* Generate utilities for the classes used INSIDE the design-system source — without this,
+   imported components render unstyled (spec §4 calls this cross-package scan an unverified bet;
+   the build-time probe for `bg-clip-padding` in the plan verifies it). Paths are relative to
+   this file: web/app/ → ../../client/src.
+   Scan ALL ui/ components, not per-imported-file: Tailwind's scanner is filesystem-based, not
+   import-aware, so a component we don't import still ships its CSS. We accept that bounded,
+   cached over-generation in exchange for never hand-maintaining a per-component @source list
+   (decision: docs/decisions/2026-07-12-design-system-distribution-adr.md, NH-275). The @source
+   not lines drop co-located stories/tests so their dev-only classes never leak into app CSS. */
+@source '../../client/src/components/ui/**/*.tsx';
+@source not '../../client/src/**/*.stories.tsx';
+@source not '../../client/src/**/*.test.tsx';

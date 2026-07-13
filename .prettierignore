@@ -20,5 +20,12 @@ vectors/
 # Agent scratch (SDD briefs/reports/ledger; not committed source).
 .superpowers/
 
+# SpecStory editor-extension chat logs (gitignored local scratch, which markdownlint/Prettier don't read .gitignore for).
+.specstory/
+
 # Local vector-index artifact (skills/memstack index; ignored in the global gitignore, which Prettier doesn't read).
 vectors/
+
+# Next.js build output (web/) — Prettier doesn't read .gitignore.
+.next/
+next-env.d.ts

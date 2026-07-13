@@ -40,6 +40,7 @@ jobs:
           filters: |
             code:
               - 'client/**'
+              - 'web/**'
               - 'server/**'
               - 'shared/**'
               - 'infra/**'
@@ -159,6 +160,15 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       - uses: ./.github/actions/setup-js
       - run: pnpm run build
+      # Guard the cross-package Tailwind `@source` scan (web/app/globals.css -> client/src): a
+      # successful `next build` does NOT fail when the scan silently generates zero design-system
+      # utilities, so assert the Button utilities actually landed in the built CSS (NH-275).
+      # Sentinel = `bg-clip-padding`, a client-only class in client Button.tsx's cva base
+      # (a mirrored note there points back here). If a Button restyle drops it, update this.
+      - name: web design-system CSS generated (@source scan guard)
+        run: |
+          grep -rlq --include='*.css' 'bg-clip-padding' web/.next/static/ \
+            || { echo "::error file=web/app/globals.css::missing the bg-clip-padding sentinel - the @source scan into client/src generated nothing (or Button dropped that class; see client Button.tsx)."; exit 1; }
 
   # Accessibility — axe-core (WCAG 2 A+AA) over the Storybook stories via Playwright,
   # in light + dark. Deterministic (no pixel baselines, unlike VR), so it's a real
