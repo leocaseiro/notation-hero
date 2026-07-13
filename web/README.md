@@ -18,8 +18,9 @@ typecheck across every package.
 
 ## Deploy
 
-Hosted on **Vercel Hobby** ($0, non-commercial). The Vercel GitHub integration auto-deploys on
-push to `master` and creates preview deploys for PR branches. Configuration: [`vercel.json`](vercel.json).
+Hosted on **Vercel Hobby** ($0, non-commercial) at <https://notation-hero-web.vercel.app>.
+The Vercel GitHub integration auto-deploys on push to `master` and creates preview deploys for
+PR branches. Configuration: [`vercel.json`](vercel.json).
 
 ## Design-system boundary
 

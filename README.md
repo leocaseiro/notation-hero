@@ -146,7 +146,7 @@ pnpm pulumi:destroy
 The Next.js product PWA (`web/`) is hosted on **Vercel Hobby** ($0, non-commercial) via the
 native **Vercel GitHub integration** (no GitHub Actions workflow required):
 
-- **Push to `master` →** production deploy at the `*.vercel.app` URL.
+- **Push to `master` →** production deploy at <https://notation-hero-web.vercel.app>.
 - **PR branches →** preview deploys (unique URL per commit, linked in the PR checks).
 
 Configuration is in [`web/vercel.json`](web/vercel.json). The Vercel project's root directory is
