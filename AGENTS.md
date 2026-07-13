@@ -49,7 +49,8 @@ catalog lives in Neon Postgres + JSONB (future `server/src/adapters/neon-postgre
 
 ## Targets & how to run them
 
-Each package exposes `lint`, `typecheck`, `test`, `build` as `package.json` scripts.
+Each package exposes `lint`, `typecheck`, `test`, `build` as `package.json` scripts
+(`web/` omits `test` until Phase 2 — `pnpm -r --if-present` skips it safely).
 Run across all packages from the repo root with `pnpm -r --if-present run <target>`.
 **Never** chain targets as `pnpm -r lint typecheck` — that runs `lint` with `typecheck`
 as a positional arg, silently skipping the second. Chain root scripts instead:
