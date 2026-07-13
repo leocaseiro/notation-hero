@@ -1,4 +1,5 @@
 import { and, eq, inArray } from 'drizzle-orm';
+import { cacheLife, cacheTag } from 'next/cache';
 
 import { playable } from '../lib/catalog-schema';
 import { createDb } from '../lib/db';
@@ -18,6 +19,10 @@ function toDifficulty(level: number | null): string {
 }
 
 async function getCatalog(): Promise<CatalogItem[]> {
+  'use cache';
+  cacheLife('max');
+  cacheTag('catalog');
+
   const db = createDb();
 
   const rows = await db
