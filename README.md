@@ -24,6 +24,8 @@ deliberate "swappable backend" system-design portfolio piece.
 - **CI / CD:** GitHub Actions — `ci.yml` (lint / typecheck / test / build); `deploy.yml`
   runs `pulumi up` on `master` **after CI passes**, via **GitHub → AWS OIDC** (no stored keys).
   `pulumi preview` is local-only. Local deploys still work — see **Deploy (AWS)** below.
+- **Web hosting:** Vercel (Hobby, $0 non-commercial) — auto-deploys `web/` on push to `master`;
+  PR branches get preview deploys. See **Deploy (Vercel)** below.
 
 ## Layout
 
@@ -138,6 +140,19 @@ Tear down at any time (the slice stays within AWS always-free tiers either way):
 ```bash
 pnpm pulumi:destroy
 ```
+
+## Deploy (Vercel) — `web/`
+
+The Next.js product PWA (`web/`) is hosted on **Vercel Hobby** ($0, non-commercial) via the
+native **Vercel GitHub integration** (no GitHub Actions workflow required):
+
+- **Push to `master` →** production deploy at the `*.vercel.app` URL.
+- **PR branches →** preview deploys (unique URL per commit, linked in the PR checks).
+
+Configuration is in [`web/vercel.json`](web/vercel.json). The Vercel project's root directory is
+set to `web/`; Vercel detects the pnpm monorepo and installs from the repo root automatically.
+
+Domain wiring (`notationhero.com`) is a separate ticket.
 
 ## Documentation
 

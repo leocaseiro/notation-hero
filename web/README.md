@@ -16,6 +16,11 @@ the `client/` design system across the package boundary.
 Root orchestration (`pnpm -r`) picks these up automatically; `pnpm run check:all` covers lint +
 typecheck across every package.
 
+## Deploy
+
+Hosted on **Vercel Hobby** ($0, non-commercial). The Vercel GitHub integration auto-deploys on
+push to `master` and creates preview deploys for PR branches. Configuration: [`vercel.json`](vercel.json).
+
 ## Design-system boundary
 
 Components come from `@notation-hero/client` through its **package barrel**. **Phase 1 exposes only
