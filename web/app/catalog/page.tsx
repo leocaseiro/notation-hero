@@ -5,7 +5,7 @@ import { createDb } from '../lib/db';
 import { CatalogDataTable } from './catalog-table';
 import type { CatalogItem } from './catalog-table';
 
-export const revalidate = 300;
+export const dynamic = 'force-dynamic';
 
 function toDifficulty(level: number | null): string {
   if (level === null) return 'Ungraded';
