@@ -42,9 +42,11 @@ from both runtimes. **It does not work**, for a structural reason:
 Web stops reading Neon directly and instead fetches the server's existing `GET /api/catalog`
 **server-side**, caching the response. Chosen over the alternatives because:
 
-- **Honors the "don't share a database between services" principle** (database-per-service). Only the
-  server owns Neon; web integrates through the API — the proper service boundary. The duplication was a
-  _symptom_ of the shared-DB coupling; this removes the coupling.
+- **Eliminates the dual-package hazard and the duplicated visibility WHERE** — the two problems §1
+  identified. The server already owns the schema, policy, and Neon client; web becomes a pure API
+  consumer, matching the service-boundary direction (aligns with database-per-service) without requiring
+  a dual-built shared package. The duplication was a _symptom_ of the shared-DB coupling; this removes
+  the coupling.
 - **Dissolves the duplication and the ESM/CJS hazard in one move** — the fix is _deletion_, not
   extraction. Web sheds `drizzle-orm` + `@neondatabase/serverless` entirely.
 - **`shared/` holds only a pure TypeScript response contract** — its chartered purpose — with no drizzle,
@@ -61,6 +63,16 @@ on a truly-cold blocking miss (first load / week-idle) or immediately after an a
   removing it.
 - **Share pure-only** (`toDifficulty` + kind allow-list + guard). Zero hazard/tax, but the schema — the
   biggest duplication — stays duplicated. Fails the primary goal.
+- **Accept the duplication** (status quo). Keeps the ratified BFF ADR intact and defers to oRPC (NH-123),
+  which will unify the contract anyway. Rejected because: the visibility WHERE already diverged once
+  (web was missing `origin = 'curated'`), and the duplication surface grows with every filter/sort
+  addition — deferral compounds the drift risk rather than containing it.
+- **Server ESM migration** (`type: module` in `server/package.json`). Would dissolve the dual-package
+  hazard by making both runtimes ESM, enabling the shared schema approach. Already rejected in
+  `ARCH-FMT-1` (2026-06-17 ADR + NestJS Lambda SWC spike): NestJS decorator metadata, `reflect-metadata`,
+  and `@codegenie/serverless-express` are CJS-rooted; esbuild bundles ESM-only deps into the CJS artifact,
+  and tree-shaking operates on ESM source regardless of output format — server ESM output adds interop
+  friction for zero gain.
 
 ## 4. Architecture
 
@@ -111,6 +123,8 @@ is a pure API consumer.
   `transpilePackages` in `next.config.ts` (raw-TS types — safe, pure contract).
 - Add `API_BASE_URL` env var (local: `http://localhost:3001`; prod: the deployed API origin) — web env +
   Vercel project env (redeploy after adding — existing deploys don't pick up new env vars).
+- Guard `getCatalog()` with `if (!response.ok) throw new Error(...)` before parsing — the route error
+  boundary (`error.tsx`) handles the throw.
 - `error.tsx` stays — a fetch failure trips the same route error boundary.
 
 ## 6. Caching & revalidation
@@ -122,7 +136,7 @@ Cache lives on the **web (Vercel remote cache)** wrapping the `/api/catalog` fet
   "delay after latest save" behavior. **No auto-purge on catalog writes** — per the requirement, we do
   not wire `revalidateTag` into every write.
 - **Admin-triggered purge (immediate).** `cacheTag('catalog')` is kept in place now so a future
-  `revalidateTag('catalog')` can force-refresh on demand. The **secured revalidation route + the admin
+  `updateTag('catalog')` can force-refresh on demand. The **secured revalidation route + the admin
   "publish/refresh" button ship with the admin/CMS work** (they need the admin UI; out of scope here).
   This is a documented follow-up, not dropped.
 - A true "1 day _after the last save_" debounce would need a scheduler — deemed overkill; the timer +
@@ -130,27 +144,30 @@ Cache lives on the **web (Vercel remote cache)** wrapping the `/api/catalog` fet
 
 **Latency profile (why the Lambda hop is acceptable):** a user waits on the Lambda cold start only on a
 cold blocking miss (first load / >1 week idle) or the first visit right after an admin purge. Steady-state
-hits and the background stale-while-revalidate refresh never make a user wait on the Lambda.
+hits and the background stale-while-revalidate refresh never make a user wait on the Lambda. Cold-start
+latency has not been measured yet — add a benchmark before merge (see §10).
 
-## 7. Testing (trophy — integration-first for web)
+## 7. Testing (integration-first for web)
 
 - **Server (existing lane):** the schema DDL-drift spec, `toDifficulty` spec, and the visibility/guard
   behavior stay server-side and keep their coverage (unchanged — the logic never left the server).
-  If `level`/orderBy is added to the response, extend the controller's coverage accordingly.
+  The `level` field and `orderBy` additions (§5) require extending the controller spec: update the `makeDb` mock chain to include an `orderBy` step between `where()` and `limit()`, and add `level` to the expected response assertions.
 - **Web (new vitest lane — the "test web now" decision):** stand up `vitest` + Testing Library + jsdom,
   mirroring `client/`. Cover:
   - `getCatalog()` maps a mocked `/api/catalog` JSON response to `CatalogItem[]` (mock `fetch`); asserts
     the shape + a failure path (fetch error → throws → error boundary).
   - `CatalogDataTable` renders rows from data + the empty state.
-- **Shared contract:** pure types (no runtime to test). Runtime response validation (Zod) is a noted
-  enhancement (§10), not required now.
+- **Shared contract:** pure types (no runtime to test). Runtime response validation (Zod) is a
+  recommended fast follow (§10 — risk mitigation), not required for this PR.
 
 ## 8. Governance — supersede the BFF ADR + capture the diagram
 
 - **New superseding ADR** (`docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md`): documents the
-  Path 2 decision and **supersedes** the 2026-07-08 hybrid-BFF direct-Neon read. Embed the cache /
-  cold-start scenarios diagram as inline **SVG** (renders on GitHub; the HTML widget does not).
-- **Banner** the superseded direct-Neon part of the 2026-07-08 ADR, and add a `decision-registry.md`
+  Path 2 decision and **supersedes the direct-Neon read path for catalog (and any Drizzle-dependent read)**
+  from the 2026-07-08 hybrid-BFF ADR — not a blanket prohibition. Future reads that don't share Drizzle
+  schema across CJS/ESM boundaries may still use direct Neon access per the original BFF ADR. Embed the
+  cache / cold-start scenarios diagram as inline **SVG** (renders on GitHub; the HTML widget does not).
+- **Banner** the superseded direct-Neon part of the 2026-07-08 ADR (`docs/decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md`), and add a `decision-registry.md`
   Change-log entry (date, outcome, reasoning: DB-boundary principle + ESM/CJS hazard + spike evidence).
   The register update travels in this PR so it lands atomically.
 - Update `AGENTS.md`'s "Current direction" snapshot line about the web reading Neon directly.
@@ -164,15 +181,19 @@ tests · superseding ADR (+ embedded diagram) + registry + AGENTS.md · keep `ca
 
 **Out:** the secured revalidation endpoint + admin "publish/refresh" button (ship with admin/CMS work) ·
 any Neon schema/migration change · web Playwright/VR/a11y lanes · a debounce-since-save scheduler ·
-Zod runtime validation of the response (noted enhancement).
+Zod runtime validation of the response (recommended fast follow — §10).
 
 ## 10. Open questions / follow-ups
 
 - **`API_BASE_URL` in production:** the exact origin (Function URL vs CloudFront vs API Gateway) — confirm
   against the current infra. Local dev = `http://localhost:3001`.
-- **Response validation:** plain TS cast now; a Zod-validated contract in `shared/` is a good "do it
-  right" enhancement (verify zod cross-package first — it lacks drizzle's private-member hazard, so low
-  risk). Follow-up.
+- **Cold-start latency benchmark:** measure Lambda cold start (Lambda init + Neon connect + query) for the
+  catalog endpoint before merge. Record the number in §6 so the "acceptable" claim is grounded.
+- **Response validation (risk mitigation):** the shared contract is currently a TS type cast
+  (`as CatalogResponse`). Moving from compile-time Drizzle types to a runtime JSON convention relocated
+  the drift risk rather than eliminating it. A Zod schema in `shared/` would catch server-side shape
+  drift at runtime instead of silently producing undefined fields. Low cross-package risk (Zod has no
+  private-member hazard). Recommended as a fast follow.
 - **Revalidation endpoint + admin button:** follow-up ticket with the admin/CMS work (§6).
 - **Server-side filtering / search / pagination (NH-123):** today the API returns the full curated list
   (≤50) pre-sorted (F1), and web caches it whole + sorts/filters on the client (TanStack). When the
