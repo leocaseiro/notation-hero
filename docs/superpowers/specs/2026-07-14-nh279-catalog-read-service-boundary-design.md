@@ -1,6 +1,7 @@
 # Catalog read — service boundary + de-duplication (NH-279)
 
-**Date:** 2026-07-14 · **Ticket:** NH-279 · **PR:** #140 · **Status:** design (awaiting approval)
+**Date:** 2026-07-14 · **Ticket:** NH-279 · **PR:** #140 · **Status:** approved by leocaseiro
+2026-07-14 (pending a `ce-doc-review` pass)
 
 ## 1. Problem
 
@@ -87,8 +88,9 @@ is a pure API consumer.
 ### `server/`
 
 - `catalog.controller.ts`: **add `level`** to the response object (it already selects `level` for
-  `toDifficulty`; include it in the output). Optionally add `.orderBy(asc(level), asc(title))` so the API
-  returns a deterministic order.
+  `toDifficulty`; include it in the output). **Add `.orderBy(asc(level), asc(title))`** (F1, non-optional)
+  so the cached response snapshot has a stable default order; interactive re-sorting stays client-side
+  (TanStack).
 - Type the response with `@notation-hero/shared` `CatalogResponse`/`CatalogItem` (shared contract).
   `CatalogPlayable` becomes `CatalogItem` from shared.
 - Everything else (schema, `catalog.util`, db-adapter, the WHERE, the guard) **stays as-is** — no
@@ -143,19 +145,22 @@ hits and the background stale-while-revalidate refresh never make a user wait on
 - **Shared contract:** pure types (no runtime to test). Runtime response validation (Zod) is a noted
   enhancement (§10), not required now.
 
-## 8. Governance (BFF ADR amendment)
+## 8. Governance — supersede the BFF ADR + capture the diagram
 
-- Amend the 2026-07-08 hybrid-BFF ADR: the catalog read moves from **direct-Neon** to **via-`/api`**.
-  Record the reasoning (DB-boundary principle + ESM/CJS hazard + spike evidence) in the
-  `decision-registry.md` Change log, and flip the affected decision's note. The register update travels in
-  this PR so it lands atomically.
+- **New superseding ADR** (`docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md`): documents the
+  Path 2 decision and **supersedes** the 2026-07-08 hybrid-BFF direct-Neon read. Embed the cache /
+  cold-start scenarios diagram as inline **SVG** (renders on GitHub; the HTML widget does not).
+- **Banner** the superseded direct-Neon part of the 2026-07-08 ADR, and add a `decision-registry.md`
+  Change-log entry (date, outcome, reasoning: DB-boundary principle + ESM/CJS hazard + spike evidence).
+  The register update travels in this PR so it lands atomically.
 - Update `AGENTS.md`'s "Current direction" snapshot line about the web reading Neon directly.
 
 ## 9. Scope
 
 **In:** shared contract type · server adds `level` (+ optional orderBy) + types via shared · web fetches
 the cached API + deletes its DB code + sheds drizzle/neon deps · `API_BASE_URL` wiring · web vitest lane +
-tests · ADR amendment + registry + AGENTS.md · keep `cacheTag('catalog')` + `cacheLife` hooks.
+tests · superseding ADR (+ embedded diagram) + registry + AGENTS.md · keep `cacheTag('catalog')` +
+`cacheLife` hooks.
 
 **Out:** the secured revalidation endpoint + admin "publish/refresh" button (ship with admin/CMS work) ·
 any Neon schema/migration change · web Playwright/VR/a11y lanes · a debounce-since-save scheduler ·
@@ -169,6 +174,13 @@ Zod runtime validation of the response (noted enhancement).
   right" enhancement (verify zod cross-package first — it lacks drizzle's private-member hazard, so low
   risk). Follow-up.
 - **Revalidation endpoint + admin button:** follow-up ticket with the admin/CMS work (§6).
+- **Server-side filtering / search / pagination (NH-123):** today the API returns the full curated list
+  (≤50) pre-sorted (F1), and web caches it whole + sorts/filters on the client (TanStack). When the
+  catalog needs real search + pagination, the API grows query params
+  (`?search=&level=&page=&sort=`) and does the work DB-side; caching then shifts to per-key (cache the
+  default page; short/no cache for high-cardinality searches — Next's cache-key guidance). Path 2 is the
+  right base: the query logic lives once in the server, and web stays a thin cached client (direct-Neon
+  would force web to duplicate the paginated-search query).
 
 ## 11. Verification gates (all must pass before push)
 
