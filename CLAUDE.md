@@ -1,6 +1,8 @@
 # CLAUDE.md — Notation Hero
 
-Behavioral guidelines to reduce common LLM coding mistakes. For **project + tooling conventions** (hexagon layout, pnpm workspaces, lint/test/CI, naming), see [AGENTS.md](AGENTS.md) and the decision records under `docs/decisions/` + `docs/spikes/`.
+@AGENTS.md
+
+Behavioral guidelines to reduce common LLM coding mistakes. For **project + tooling conventions** (hexagon layout, pnpm workspaces, lint/test/CI, naming), see the `@AGENTS.md` import above — Claude Code reads `CLAUDE.md`, not `AGENTS.md`, so that import is what loads the project conventions into every session. Also see the decision records under `docs/decisions/` + `docs/spikes/`.
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
