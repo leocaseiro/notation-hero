@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --port 3002",
+    "dev:debug": "next dev --port 3002 --inspect=9230",
     "lint": "eslint . --max-warnings 0",
     "start": "next start",
     "test": "vitest run",

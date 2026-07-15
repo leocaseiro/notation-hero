@@ -50,11 +50,36 @@ catalog lives in Neon Postgres + JSONB (future `server/src/adapters/neon-postgre
 ## Targets & how to run them
 
 Each package exposes `lint`, `typecheck`, `test`, `build` as `package.json` scripts
-(`web/` omits `test` until Phase 2 — `pnpm -r --if-present` skips it safely).
+(`web/` gained its `test` lane with the NH-279 catalog read — Vitest, same as the rest).
 Run across all packages from the repo root with `pnpm -r --if-present run <target>`.
 **Never** chain targets as `pnpm -r lint typecheck` — that runs `lint` with `typecheck`
 as a positional arg, silently skipping the second. Chain root scripts instead:
 `pnpm run lint && pnpm run typecheck`.
+
+### Running the apps locally (dev / debug)
+
+`pnpm dev` opens a tmux session (`nh-dev`) with a pane per app, so the server and web logs stay
+separate and either can be restarted alone — which matters because a `/catalog` request now spans
+three runtimes (browser → Next.js server → NestJS server → Neon).
+
+| Command             | What it runs                                                   |
+| ------------------- | -------------------------------------------------------------- |
+| `pnpm dev`          | both apps in tmux — API on 3001, web on 3002                   |
+| `pnpm dev:debug`    | both apps with Node inspectors (server **9229**, web **9230**) |
+| `pnpm dev:server`   | NestJS only (`nest start --watch`)                             |
+| `pnpm dev:web`      | Next.js only (`next dev --port 3002`)                          |
+| `pnpm debug:server` | NestJS with an inspector on 9229                               |
+| `pnpm debug:web`    | Next.js with an inspector on 9230                              |
+
+`SERVER_PORT=3010 pnpm dev` moves the API when something already holds 3001; the web pane inherits
+`API_BASE_URL` from it, so the two never disagree (Next.js resolves `process.env` ahead of
+`.env.local` — see its bundled `environment-variables.md`, "Environment Variable Load Order"). The
+two inspectors MUST differ: both default to 9229, so `debug:web` pins 9230.
+
+Debugging gotcha: `getCatalog()` is wrapped in `'use cache: remote'`, so once the cache is warm it
+does not re-run and breakpoints in `web/app/catalog/page.tsx`, `web/app/lib/catalog.ts`, and the
+whole NestJS side never fire. Edit either file to invalidate the dev cache (HMR refresh hash) and
+force a miss.
 
 Root-level checks — each is a named script AND a CI gate, so run any locally:
 
