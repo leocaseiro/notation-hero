@@ -102,7 +102,7 @@ NH-189 entry below.
 Per-PR Storybook previews publish to the `gh-pages` branch of this public repo — each PR at
 `/pr/<number>/`, latest `master` at the site root — so the component library is reviewable in the
 browser with no local setup. Spec `docs/specs/2026-07-05-storybook-pr-preview-design.md`, plan
-`docs/plans/2026-07-05-storybook-pr-preview-plan.md`.
+`docs/archive/2026-07/plans/2026-07-05-storybook-pr-preview-plan.md`.
 
 - **Mechanism = hand-rolled `peaceiris/actions-gh-pages`, NOT `rossjrw/pr-preview-action`.** rossjrw
   hardcodes a `pr-<n>` inner path (verified in its `lib/main.sh`) and cannot produce the required

@@ -68,7 +68,7 @@ Update `docs/wireframe/index.html` (the catalog wireframe, already on the locked
 
 ```
 host localhost · port 5432 · db nh_tonal_scratch · user leocaseiro
-reload:  psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f docs/wireframe/2026-06-19-tonal-drum-schema-draft.sql
+reload:  psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f docs/archive/2026-07/wireframe/2026-06-19-tonal-drum-schema-draft.sql
          psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql
 ```
 

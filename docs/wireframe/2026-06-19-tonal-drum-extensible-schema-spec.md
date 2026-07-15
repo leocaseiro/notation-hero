@@ -4,7 +4,7 @@ date: 2026-06-19
 status: draft — for Leo review (brainstorm output)
 worktree: wireframe-pattern-lesson-model
 branch: docs/wireframe-pattern-lesson-model
-supersedes_open_question: docs/wireframe/2026-06-18-HANDOFF-tonal-schema-open-question.md (§3 open question)
+supersedes_open_question: docs/archive/2026-07/wireframe/2026-06-18-HANDOFF-tonal-schema-open-question.md (§3 open question)
 relates:
   - docs/wireframe/2026-06-17-notation-model-draft.sql (locked Playable model + draft DDL)
   - docs/wireframe/2026-06-16-schema-deltas.md (SD ledger)
