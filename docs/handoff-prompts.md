@@ -11,7 +11,7 @@
 ## Track 1 — Player-app UI design
 
 ```text
-NotationHero — define the PLAYER-APP UI (Track 1 of a parallel plan). Drum-practice / rhythm-game PWA; spiritual successor to classic standalone drum-tutor software. The feature freeze is locked.
+NotationHero — define the PLAYER-APP UI (Track 1 of a parallel plan). Drum-practice / rhythm-game PWA; spiritual successor to Roland's DT-1 V-Drums Tutor. The feature freeze is locked.
 
 Goal: design the player app's UI — screens, navigation, settings, and the feedback visual language. Player app ONLY (the admin CMS is a separate track). You do NOT need the song-file schema for this.
 
@@ -19,9 +19,9 @@ Read first (absolute paths):
 - /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/pensive-boyd-6d17e3/docs/feature-freeze.md  — esp. the rows marked 🎨 design-shotgun-gated (A-2 feedback colors, A-6 a11y palette, F-4 dark mode, C-2 per-tier score display, B-9 timeline A/B UI) and the full feature list for what views must exist.
 - /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/pensive-boyd-6d17e3/scope.md  — feedback + player-feature requirements.
 - /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/serene-grothendieck-fb5e67/stack-brainstorm.md  — §6 friendly-view UI design (highway + gem shapes + tendency meter + combo glow + accessibility).
-- the reference tutor reference screenshots: /Users/leocaseiro/Downloads/internal-reference-1.jpg (notation + live kit SVG) and /Users/leocaseiro/Downloads/internal-reference-2.jpg (friendly view + score panel).
+- DT-1 reference screenshots: /Users/leocaseiro/Downloads/dt-1_ss_main_notation_gal.jpg (notation + live kit SVG) and /Users/leocaseiro/Downloads/dt-1_ss_game_mode_gal.jpg (friendly view + score panel).
 
-Scope: library/song-select, main play (standard notation + per-note feedback), practice/settings modal, results/score, and the friendly view (design-gated, lands at the "Friendly" milestone). Resolve the 🎨 decisions: perfect/early/late/missed/extra visual language (note: scope wants green=perfect; fork currently uses blue — reconcile), a11y (pair color with shape + text/label; consider a feedback-color picker), dark mode keep/restyle/skip, score display (per-tier Excellent/Good/OK/Miss like the reference tutor?), and the timeline A/B UI.
+Scope: library/song-select, main play (standard notation + per-note feedback), practice/settings modal, results/score, and the friendly view (design-gated, lands at the "Friendly" milestone). Resolve the 🎨 decisions: perfect/early/late/missed/extra visual language (note: scope wants green=perfect; fork currently uses blue — reconcile), a11y (pair color with shape + text/label; consider a feedback-color picker), dark mode keep/restyle/skip, score display (per-tier Excellent/Good/OK/Miss like DT-1?), and the timeline A/B UI.
 
 Constraints: PWA-first; standard notation is primary (Alpha), friendly view is later; tablet-primary (iPad + Android, 44pt touch targets, landscape); keep architecture friendly-view-ready (a single renderer interface — see A-7). Suggest running /design-shotgun.
 
