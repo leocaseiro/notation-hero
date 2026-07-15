@@ -6,7 +6,7 @@
 -- reopen them. text PKs here are human slugs for readability; real schema mints ULIDs (R13).
 --
 -- Reload after edits (pristine base, then this file):
---   psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f docs/wireframe/2026-06-19-tonal-drum-schema-draft.sql
+--   psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f docs/archive/2026-07/wireframe/2026-06-19-tonal-drum-schema-draft.sql
 --   psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql
 --
 -- ── D-1 · track relation — DECISIONS RATIFIED 2026-06-20 ───────────────────

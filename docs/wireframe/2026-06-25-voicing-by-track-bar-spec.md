@@ -1,7 +1,7 @@
 ---
 project: notation-hero
 date: 2026-06-25
-status: draft — for Leo review (brainstorm output, NH-213 / SD-15)
+status: ✅ decided — SD-15 resolved "stay Thin"; wireframe + seed merged in PR #76 (NH-213, 2026-06-26)
 worktree: nh-213-voicing-by-track-bar
 branch: worktree-nh-213-voicing-by-track-bar
 builds_on:

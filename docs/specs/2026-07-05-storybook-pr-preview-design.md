@@ -1,7 +1,9 @@
 # Storybook PR Preview — GitHub Pages per-PR + latest on master
 
-**Status:** accepted (brainstormed + decided with leocaseiro 2026-07-05)
-**Spec:** this doc · **Plan:** to follow in `docs/plans/` · **Jira:** optional (create NH-XXX to track if wanted)
+> 📖 **Post-implementation reference (2026-07-15 triage).** The system this spec describes **shipped** in PR #113 (NH-266, 2026-07-05) and was refined in PR #117 (NH-267 SHA/timestamp stamp). The Goal, Decision, URL-layout, and alternatives-considered sections remain the canonical explanation of why the system works this way; the plan section is fulfilled by the shipped workflow.
+
+**Status:** ✅ shipped (NH-266, PR #113) · refined (NH-267, PR #117)
+**Spec:** this doc · **Plan:** [archived](../archive/2026-07/plans/2026-07-05-storybook-pr-preview-plan.md) · **Jira:** [NH-266](https://leocaseiro.atlassian.net/browse/NH-266)
 
 ---
 

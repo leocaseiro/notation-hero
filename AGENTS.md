@@ -17,7 +17,21 @@
 - **Infra** — **Pulumi** (TS); deploy = **push-to-master only** via GitHub OIDC (no AWS creds on PRs); least-privilege role. **Neon is NOT Pulumi-provisioned** (off-AWS); connection string = **Pulumi-secret → Lambda `DATABASE_URL` env var** (not SSM); migrations in an operator runbook.
 - **Tracker** — Jira project **NH** (NH-NN). Linear dead; KAN drained.
 
-> **Superseded (bannered) docs — do not treat as current:** the admin-auth in `feature-freeze.md` / `cms-approach.md` / `specs/2026-06-15-cms-admin.md` (Basic-Auth/password), `spikes/2026-06-16-fe-framework-nextjs.md` (Next.js), and any "pnpm + **Nx**" cliff-banner.
+> **Superseded (bannered) docs — do not treat as current:** the admin-auth in `feature-freeze.md` / `cms-approach.md` / `specs/2026-06-15-cms-admin.md` (Basic-Auth/password), `spikes/2026-06-16-fe-framework-nextjs.md` (Next.js), and any "pnpm + **Nx**" cliff-banner. Fully-superseded shipped-ticket plans and predecessor schema drafts moved to [`docs/archive/2026-07/`](docs/archive/2026-07/) on 2026-07-15.
+
+## Working on this repo — READ BEFORE OPENING A PR
+
+For every non-trivial PR, follow the canonical 15-step workflow in [`docs/runbooks/before-pr.md`](docs/runbooks/before-pr.md) (brainstorming → doc-review → plan → doc-review → execute → code-review → audit → merge). That runbook also lists the escape hatches for the ~5% of trivial changes that skip the full workflow (typos, mechanical renames, dependency bumps, clarifications, extra tests, "clear wins" like `any` → concrete type).
+
+> ⛔ **Ship-mode freeze — ACTIVE (2026-07-15).**
+>
+> **NO new spec, plan, or ADR of any kind** until leocaseiro explicitly ends this freeze via a `docs/decisions/decision-registry.md` change-log entry titled "End ship-mode freeze".
+>
+> **Why:** forcing function against the start-many-finish-few pattern surfaced during the 2026-07-15 docs-cleanup review. Every pivot leaves ~3 doc artifacts; almost nothing gets deleted. Freeze until the current backlog drains.
+>
+> **What's unaffected:** bugfixes, code changes, cleanup PRs (like the one landing this rule), banner updates on already-superseded docs, and PRs that update existing plans/specs to record shipped state.
+>
+> **What's frozen:** creating new `docs/plans/*`, `docs/specs/*`, `docs/decisions/*` files. Registry change-log entries for already-decided work are allowed (they document, they don't create new decisions).
 
 ## Hexagon layout & boundaries (pnpm workspaces)
 
@@ -55,6 +69,31 @@ Run across all packages from the repo root with `pnpm -r --if-present run <targe
 **Never** chain targets as `pnpm -r lint typecheck` — that runs `lint` with `typecheck`
 as a positional arg, silently skipping the second. Chain root scripts instead:
 `pnpm run lint && pnpm run typecheck`.
+
+### Running the apps locally (dev / debug)
+
+`pnpm dev` opens a tmux session (`nh-dev`) with a pane per app, so the server and web logs stay
+separate and either can be restarted alone.
+
+| Command             | What it runs                                                   |
+| ------------------- | -------------------------------------------------------------- |
+| `pnpm dev`          | both apps in tmux — API on 3001, web on 3002                   |
+| `pnpm dev:debug`    | both apps with Node inspectors (server **9229**, web **9230**) |
+| `pnpm dev:server`   | NestJS only (`nest start --watch`)                             |
+| `pnpm dev:web`      | Next.js only (`next dev --port 3002`)                          |
+| `pnpm debug:server` | NestJS with an inspector on 9229                               |
+| `pnpm debug:web`    | Next.js with an inspector on 9230                              |
+
+`SERVER_PORT=3010 pnpm dev` moves the API when something already holds 3001; the web pane inherits
+`API_BASE_URL` from it, so the two never disagree (Next.js resolves `process.env` ahead of
+`.env.local` — see its bundled `environment-variables.md`, "Environment Variable Load Order"). The
+two inspectors MUST differ: both default to 9229, so `debug:web` pins 9230.
+
+**Debugging gotcha with cached fetches.** Server functions wrapped in `'use cache: remote'` do not
+re-run once the cache is warm; breakpoints in those files and their downstream callers never fire.
+Edit either file to invalidate the dev cache (HMR refresh hash) and force a miss.
+
+> ⚠️ **Provenance:** cherry-picked from the on-hold PR #140 (`claude/neon-data-nextjs-table-416796`) on 2026-07-15. The specific `getCatalog()` / `web/app/catalog/page.tsx` file references from that PR were generalized here since NH-279 implementation is being re-brainstormed.
 
 Root-level checks — each is a named script AND a CI gate, so run any locally:
 
@@ -106,23 +145,7 @@ no pnpm install; leave an inline comment saying so.
 
 ### Linting & formatting (NH-243)
 
-One system across packages — see
-`docs/superpowers/specs/2026-06-26-unified-linting-formatting-design.md`.
-
-- **ESLint**: shared base `eslint.config.base.mjs` + per-package extends
-  (`client/eslint.config.js`, `server/eslint.config.mjs`, `web/eslint.config.mjs`).
-  Invocation on all three: `eslint . --max-warnings 0`. The base must **not** re-register plugins a
-  generator provides (tanstack: `@typescript-eslint`/`import`/`@stylistic`/`node`);
-  verify with `eslint --print-config`.
-- **Prettier**: one root `prettier.config.mjs` (`printWidth: 100`), separate from
-  ESLint (no `eslint-plugin-prettier`).
-- **Extra linters**: markdownlint, stylelint, yamllint, cspell, shellcheck,
-  actionlint, editorconfig-checker, sort-package-json.
-- **Run locally**: `pnpm run fix` (auto-fix), `pnpm run check:all` (everything the CI `lint` + `quality` jobs run — not `build`/`a11y`/`vr`/security scans).
-- **Binary tools**: `pnpm run lint:setup` documents the `brew`/`pip` installs
-  (shellcheck, yamllint, actionlint). Local hooks skip a missing binary; CI is the hard gate.
-- **Hooks**: lefthook auto-fixes staged files on commit, runs the full check on push.
-- **CI**: dedicated `lint` job (check-and-block), gated on `code || docs_or_config`.
+One system across packages: **ESLint + Prettier + markdownlint + stylelint + yamllint + cspell + shellcheck + actionlint + editorconfig-checker + sort-package-json**. Auto-fix locally with `pnpm run fix`; run everything CI runs with `pnpm run check:all`. Lefthook auto-fixes on commit, runs the full check on push. Dedicated `lint` CI job, gated on `code || docs_or_config` paths-filter. **Full runbook:** [`docs/runbooks/lint-setup.md`](docs/runbooks/lint-setup.md).
 
 ## Test & story layout — co-located, NEVER `__tests__/`
 
@@ -152,126 +175,19 @@ rule and still shows `__tests__/` paths — those are SUPERSEDED; co-locate inst
 
 ## VR & a11y testing (`client/` — Storybook + Playwright)
 
-The client has four test layers (full guide: `client/README.md`):
+Four test layers in `client/`: **Unit** (Vitest, `quality` job), **a11y** (axe-core over Storybook stories, light + dark + hover — `a11y` job, blocks merge, OS-independent), **VR** (Playwright `toHaveScreenshot` — `vr` job, blocks merge, **Linux-only baselines**, regenerate via `pnpm test:vr:docker:update`), **e2e** (Playwright vs built SPA, MSW mocks `/api/*` — `e2e` job, blocks merge, uploads traces on failure).
 
-- **Unit** — Vitest + Testing Library (`*.test.tsx`); runs in the `quality` CI job.
-- **a11y** — axe-core over every Storybook story in light + dark, resting + hover
-  (`*.a11y.ts`); the `a11y` CI job, **blocks merge**. OS-independent.
-- **VR** — Playwright `toHaveScreenshot` over the stories (`*.vr.ts`); the `vr` CI job,
-  **blocks merge**. Pixel-exact, so baselines are **Linux-only** (committed `-linux`; CI
-  and the local `test:vr:docker` script both render in the Playwright container).
-- **e2e** — Playwright against the built SPA (`vite preview`, **not** Storybook), with `/api/*`
-  mocked by MSW (`*.e2e.ts`, separate `playwright.e2e.config.ts`); the `e2e` CI job, **blocks
-  merge**. On failure it uploads traces + the HTML report (D5: `if: !cancelled()`) so a CI failure
-  is replayable locally via `npx playwright show-trace`.
-
-### VR baselines are Linux-only — regenerate them with Docker
-
-Playwright embeds the platform in each snapshot filename, but we commit **only the Linux set**
-(`button-default-chromium-linux.png`). macOS and Linux rasterize fonts differently (subpixel vs
-grayscale antialiasing, different glyph metrics), so one OS is the source of truth; darwin shots
-(`*-chromium-darwin.png`) are git-ignored. **CI compares against `-linux`** in the official
-Playwright container — never run VR natively on a Mac against these baselines.
-
-Docker Desktop must be running first — on macOS, start it with `open -a Docker` (no need to open
-the app by hand). Then run VR locally through that same container from the repo root:
-
-```bash
-pnpm test:vr:docker            # compare against the committed Linux baselines
-pnpm test:vr:docker:update     # regenerate them after an intended visual change, then commit
-```
-
-Both wrap the Playwright image matching `@playwright/test` (v1.61.1). The anonymous `-v` volumes
-shadow node_modules so the local (darwin) install is untouched; `--ignore-scripts` skips the
-lefthook `prepare` (its git call can't resolve a worktree's `.git` inside the container). The
-`:update` variant expands to:
-
-```bash
-docker run --rm \
-  -v "$PWD":/work \
-  -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules \
-  -v /work/shared/node_modules -v /work/infra/node_modules -v /work/.pnpm-store \
-  -w /work mcr.microsoft.com/playwright:v1.61.1-noble \
-  bash -c "corepack enable && pnpm install --frozen-lockfile --ignore-scripts && \
-    pnpm --filter @notation-hero/client exec playwright test --project=chromium --update-snapshots"
-```
-
-The `vr` CI job pins `container: mcr.microsoft.com/playwright:v1.61.1-noble`, so its
-rendering matches the Docker-generated `-linux` baselines exactly. Bump that image tag in
-lockstep with `@playwright/test`, and regenerate baselines on the bump.
-
-One-time cleanup: `tooling/sweep-darwin-vr-baselines.sh` removes any legacy
-`*-chromium-darwin.png` baselines still tracked in git (committed before the Linux-only
-switch) and opens a PR. Safe + re-runnable — tracked files only, no-op when none remain.
-
-### e2e tests (Playwright vs the built app)
-
-The e2e lane has its own config (`client/playwright.e2e.config.ts`) and runs against the
-production build served by `vite preview` — a different server from the Storybook one VR/a11y use.
-MSW intercepts `/api/*` at the browser network layer (Playwright `context.route`) and is the source
-of catalog data (`client/e2e/mocks/handlers.ts`); there is no real backend in CI. The fixture's
-`onUnhandledRequest` errors on any unmocked `/api/*` call, so a mock miss fails loudly at the
-network layer instead of silently falling back to the app's "Could not reach the API" state.
-
-```bash
-pnpm --filter @notation-hero/client test:e2e       # build -> preview -> run the smoke test
-pnpm --filter @notation-hero/client test:e2e:ui    # interactive UI mode
-```
-
-**Debugging a CI failure (traces):** the `e2e` job uploads a `playwright-e2e-report` artifact on
-every non-cancelled run (so flaky-then-passed traces are kept too). Download it from the run's
-**Artifacts** section, unzip, then open the trace timeline (DOM snapshots, network, console,
-action-by-action):
-
-```bash
-npx playwright show-trace path/to/test-results/<test>/trace.zip
-```
+**Full runbook:** [`docs/runbooks/vr-a11y-testing.md`](docs/runbooks/vr-a11y-testing.md) — VR-in-Docker mechanics, e2e config, trace debugging.
 
 ## Setup in a fresh worktree / clone
 
-**Node version** — run `nvm use` (or `fnm use` / `asdf install nodejs`) in
-the repo root before anything else; `.nvmrc` pins Node 24 to match CI. The
-CI composite (`.github/actions/setup-js`) reads the same `.nvmrc` via
-`node-version-file:`, so local and CI Node versions stay in sync from one
-file. Volta users: `.nvmrc` is not picked up automatically — run
-`volta pin node@24` once in the repo root, then Volta uses that pin.
-(`asdf install nodejs` requires `legacy_version_file = yes` in
-`~/.asdfrc` to read `.nvmrc`; otherwise install via `asdf install nodejs 24`.)
+`nvm use` in the repo root (Node 24 pinned via `.nvmrc`; matches CI). Then `pnpm install` — its `prepare` script installs lefthook git hooks (`pre-commit`, `commit-msg`, `pre-push`) that mirror the CI gates. **Full runbook** (asdf/Volta quirks, `core.hooksPath is set locally` recovery, verification): [`docs/runbooks/worktree-setup.md`](docs/runbooks/worktree-setup.md).
 
-Lefthook git hooks (`pre-commit`, `commit-msg`, `pre-push`) are the local-side
-of the CI gates. They must be **installed once per worktree**:
-
-1. `pnpm install` — runs the `prepare` script which calls `lefthook install`.
-2. If `pnpm install` fails on the `prepare` step with `core.hooksPath is set
-locally`, the worktree has a stale per-worktree hooks path. Recover with:
-
-   ```sh
-   git config --unset-all --local core.hooksPath
-   pnpm install --ignore-scripts
-   pnpm exec lefthook install
-   ```
-
-   (Adding deps in the same recovery state: `pnpm add -D -w <pkg> --ignore-scripts`.)
-
-3. Verify hooks fire: `git config --get core.hooksPath` should be unset (empty
-   output); `.git/hooks/pre-commit` should exist. If hooks silently no-op
-   after a worktree move, re-run `pnpm exec lefthook install`.
-
-If you skip this, commits land **without** the layout / coverage-ignore /
-gitleaks / semgrep checks — CI will still catch them on push,
-but local feedback time is gone. Never use `git commit/push --no-verify`.
+**Never** use `git commit/push --no-verify`.
 
 ## Storybook PR previews (GitHub Pages)
 
-`.github/workflows/storybook-preview.yml` publishes the built Storybook to the
-`gh-pages` branch: each PR at `https://leocaseiro.github.io/notation-hero/pr/<n>/`
-(sticky-commented on the PR), latest `master` at the site root. Auto on `client/**`
-changes; also the **`preview`** label or **Run workflow** (`workflow_dispatch` → PR
-number). **Not** a `ci-green` gate, so a skip never deadlocks merge. The build runs
-untrusted PR code with **no secrets** (only the separate publish job holds the write
-token) — the NH-206 no-AWS-creds-on-PRs posture is untouched. One-time: enable Pages
-(**Settings → Pages → Deploy from a branch → `gh-pages` / root**). Full guide:
-`client/README.md`.
+Each PR gets a Storybook at `https://leocaseiro.github.io/notation-hero/pr/<n>/` (sticky-commented); latest `master` at the site root. Auto on `client/**` changes; also the `preview` label or `workflow_dispatch`. Not a merge gate. Untrusted PR code runs with no secrets. **Full runbook:** [`docs/runbooks/storybook-previews.md`](docs/runbooks/storybook-previews.md).
 
 ## Commit & review workflow
 

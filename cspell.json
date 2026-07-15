@@ -12,6 +12,8 @@
     ".claude/worktrees/**",
     "**/routeTree.gen.ts",
     "docs/decisions/decision-registry.md",
+    "docs/decisions/decision-changelog.md",
+    "docs/archive/**",
     "docs/runbooks/skill-routing.md",
     "docs/spikes/**",
     "docs/research/**",
