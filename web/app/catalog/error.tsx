@@ -2,9 +2,9 @@
 
 import { Button } from '@notation-hero/client';
 
-// Route-level error boundary for /catalog. A Neon outage, request timeout, or a missing
-// DATABASE_URL throws inside getCatalog(); this renders a recoverable fallback with a retry
-// instead of the framework default error page.
+// Route-level error boundary for /catalog. A catalog API outage, a non-OK response, or an unset
+// API_BASE_URL throws inside getCatalog(); this renders a recoverable fallback with a retry instead
+// of the framework default error page.
 export default function CatalogError({
   reset,
 }: Readonly<{ error: Error & { digest?: string }; reset: () => void }>) {

@@ -2,15 +2,7 @@
 
 import { DataTable, LevelPill } from '@notation-hero/client';
 import type { ColumnDef } from '@notation-hero/client';
-
-export interface CatalogItem {
-  id: string;
-  slug: string;
-  title: string;
-  kind: 'song' | 'pattern' | 'lesson';
-  difficulty: string;
-  level: number | null;
-}
+import type { CatalogItem } from '@notation-hero/shared';
 
 const columns: ColumnDef<CatalogItem>[] = [
   { accessorKey: 'title', header: 'Name' },
