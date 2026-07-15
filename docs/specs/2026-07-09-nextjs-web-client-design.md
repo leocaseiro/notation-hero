@@ -1,6 +1,6 @@
 # Design — Next.js 16 web client (`@notation-hero/web`)
 
-- **Status:** Reviewed (ce-doc-review, 2026-07-10) — Phase 1 build on hold
+- **Status:** ✅ **Phase 1 shipped** via PR #135 (2026-07-13). §4 Tailwind wiring and §5 Design-system consumption are **superseded by** [`docs/decisions/2026-07-12-design-system-distribution-adr.md`](../decisions/2026-07-12-design-system-distribution-adr.md) — read those two sections for context only; the ADR is the current mechanism. Everything else (Phase 2 rename plan, out-of-scope, risks, open questions) still stands.
 - **Date:** 2026-07-09
 - **Author:** leocaseiro (with Claude)
 - **Decision record:** [ADR — FE + hosting: Next.js PWA on Vercel](../decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md) (NH-185)

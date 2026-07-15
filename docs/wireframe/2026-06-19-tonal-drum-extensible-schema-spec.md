@@ -1,7 +1,7 @@
 ---
 project: notation-hero
 date: 2026-06-19
-status: draft — for Leo review (brainstorm output)
+status: decided — brainstorm banked (PR #52); D2 superseded by SD-27 (per-track profiles, 2026-06-21)
 worktree: wireframe-pattern-lesson-model
 branch: docs/wireframe-pattern-lesson-model
 supersedes_open_question: docs/archive/2026-07/wireframe/2026-06-18-HANDOFF-tonal-schema-open-question.md (§3 open question)
@@ -15,6 +15,8 @@ relates:
 deciders: Leo (driver), Claude (brainstorm)
 companion_visual: /tmp/nh-tonal/index.html (interactive — served on :8782 during the session)
 ---
+
+> ⚠️ **Partial-supersession banner (2026-07-15 triage).** D1, D3–D7 are still the current design and were banked in PR #52. **D2 was later re-decided** — tonal/drum profiles now key off **`track`**, not `playable` (per SD-27, 2026-06-21). Runnable DDL lives in [`docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`](2026-06-21-per-track-profiles-and-seed-draft.sql), not the archived 2026-06-19 draft. Everything else in this doc (design rationale, extensibility spike, facet shapes) is still current.
 
 # Extensible Tonal + Drum Schema — design spec
 
