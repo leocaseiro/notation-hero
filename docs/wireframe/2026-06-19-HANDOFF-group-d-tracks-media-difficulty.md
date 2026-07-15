@@ -32,7 +32,7 @@ Run with superpowers:brainstorming + MemStack Database Architect.
 The tonal/drum schema work is **done, validated on Postgres, and in PR #52**. Group D builds on it; don't re-open it.
 
 - **Spec:** `docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md`
-- **Runnable draft SQL:** `docs/wireframe/2026-06-19-tonal-drum-schema-draft.sql` (loads clean under `psql ON_ERROR_STOP`)
+- **Runnable draft SQL:** `docs/archive/2026-07/wireframe/2026-06-19-tonal-drum-schema-draft.sql` (loads clean under `psql ON_ERROR_STOP`)
 - **Locked decisions:** Hybrid (C) — `tonal_profile` + `drum_profile` per-domain side-tables (zero cross-domain NULLs); D1–D7; CP-1 (progression = composite pattern + link + denormalised facets); base-model reconciliation A+B+R15 (DEFERRABLE FKs, `created_by`, `visibility`, `upload_status` incl. device-local `client`, `origin` naming); polish (`genre`/`family`→`text[]`, `author text[]`+`author_type`, audit columns everywhere, universal `description text` ≤255); tonaljs value model (store canonical strings, derive `{tonic,type,bass}` on read).
 - **Guard rails (keep intact):** the **Thin** model (Neon = browse/search metadata + file keys; AlphaTab owns score internals), the **Playable umbrella** (`playable · notation · step · playable_link`), and the **hybrid** rule (hot facets = GIN-indexed columns; long-tail = jsonb; promote jsonb→column when a real filter appears).
 
@@ -91,7 +91,7 @@ CREATE TABLE media (
 ## 4 · Key files (full paths)
 
 - Spec: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md`
-- Draft SQL: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-19-tonal-drum-schema-draft.sql`
+- Draft SQL: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/archive/2026-07/wireframe/2026-06-19-tonal-drum-schema-draft.sql`
 - SD ledger (Current-status table + Round-6 + SD-24): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md`
 - v3 Round-6 DDL sketches (track/media/difficulty): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-17-notation-model-draft.sql` (bottom)
 - GP→tonal spike (NH-196): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/keen-neumann-0405de/docs/spikes/2026-06-19-gp-tonal/FINDINGS.md`
@@ -105,7 +105,7 @@ A local Postgres 14 is running; the draft schema is loaded into a **throwaway** 
 
 ```
 host localhost · port 5432 · db nh_tonal_scratch · user leocaseiro
-reload after edits:  psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f docs/wireframe/2026-06-19-tonal-drum-schema-draft.sql
+reload after edits:  psql -d nh_tonal_scratch -v ON_ERROR_STOP=1 -f docs/archive/2026-07/wireframe/2026-06-19-tonal-drum-schema-draft.sql
 ```
 
 Poke-around queries are at the bottom of the `.sql`.
