@@ -12,6 +12,23 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-14 — Catalog read: service boundary (web reads via the server API) (NH-279)
+
+leocaseiro approved having `web/` read the catalog via the server's `GET /api/catalog` (cached) instead of
+querying Neon directly. Full record: [`docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md`](2026-07-14-catalog-read-service-boundary-adr.md).
+
+- **Why:** PR #140 review found `web/` duplicated the server's Drizzle schema + the ARCH-AUTHZ-1 visibility
+  `WHERE`; the "extract to a shared drizzle table" fix fails the CJS/ESM dual-package hazard (server is
+  CJS `nodenext`, `shared` is ESM). Path 2 dissolves the duplication by deletion — `shared/` carries only a
+  pure TypeScript contract; web sheds `drizzle-orm` + `@neondatabase/serverless`.
+- **Scope:** supersedes the direct-Neon read path **for the catalog + Drizzle-schema-dependent reads**
+  only (not a blanket ban); the 2026-07-08 BFF ADR otherwise stands (bannered).
+- **Cost accepted:** a Lambda hop on cache-miss reads (bounded, cacheable-away).
+
+**Status:** ✅ decided · 🟡 partial enforcement — machine-visible via web `package.json`/lockfile no longer
+listing drizzle/neon; the revalidation endpoint + admin refresh button + Zod runtime validation remain
+follow-ups. Approved by leocaseiro 2026-07-14; lands with PR #140.
+
 ### 2026-07-12 — Design-system distribution: direct consumption + accept scoped-glob CSS over-generation (NH-275)
 
 leocaseiro ratified how apps consume the design system (`client/` → future `design-system/`). Full record: [`docs/decisions/2026-07-12-design-system-distribution-adr.md`](2026-07-12-design-system-distribution-adr.md). Refines the NH-275 Phase 1 `@source` pattern; pairs with the 2026-07-08 FE-pivot entry.
