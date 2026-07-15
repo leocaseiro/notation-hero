@@ -12,6 +12,26 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-15 — Docs graveyard cleanup + canonical before-PR runbook + HARD ship-mode freeze (meta)
+
+Session `docs-confusion-review` (worktree `clever-mendel-8e382c`, PR #143) triaged the doc graveyard (30+ `SUPERSEDED` markers), archived 8 shipped-ticket plans + predecessors → `docs/archive/2026-07/`, strengthened 8 partial-supersession banners with explicit "sections still current" lists, and landed `docs/runbooks/before-pr.md` (the 15-step canonical workflow leocaseiro codified: brainstorming → doc-review → plan → doc-review → execute → code-review → audit → merge, with 4 supplemental rules and 8 escape hatches for trivial changes).
+
+- **Ship-mode freeze — HARD, ACTIVE from 2026-07-15.** No new spec/plan/ADR of any kind until leocaseiro explicitly ends the freeze in a change-log entry titled "End ship-mode freeze". Rationale: forcing function against the start-many-finish-few pattern surfaced during this review. Bugfixes, code changes, cleanup PRs, and change-log entries documenting already-decided work are unaffected.
+- **Related out-of-PR work in the same session:** 5 dirty worktrees preserved as WIP branches on origin ([issue #142](https://github.com/leocaseiro/notation-hero/issues/142)); 14 worktrees pruned (Tier 1 + Tier 2, 62 → 48).
+- **Not in this PR:** deeper Tier 3 worktree cleanup (46 remaining with novel commits / dirty files) — deferred.
+
+**Status:** ✅ ratified · 🟡 partial enforcement — the freeze is prose-only (agent behavior); the runbook is prose-only (agent behavior); the archive move is machine-visible (directory-level signal). Approved by leocaseiro 2026-07-15.
+
+### 2026-07-14 — Catalog read: service boundary (web reads via the server API) (NH-279)
+
+leocaseiro approved having `web/` read the catalog via the server's `GET /api/catalog` (cached) instead of querying Neon directly. Full record: [`docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md`](2026-07-14-catalog-read-service-boundary-adr.md).
+
+- **Why:** PR #140 review found `web/` duplicated the server's Drizzle schema + the ARCH-AUTHZ-1 visibility `WHERE`; the "extract to a shared drizzle table" fix fails the CJS/ESM dual-package hazard (server is CJS `nodenext`, `shared` is ESM). Path 2 dissolves the duplication by deletion — `shared/` carries only a pure TypeScript contract; web sheds `drizzle-orm` + `@neondatabase/serverless`.
+- **Scope:** supersedes the direct-Neon read path **for the catalog + Drizzle-schema-dependent reads** only (not a blanket ban); the 2026-07-08 BFF ADR otherwise stands (bannered).
+- **Cost accepted:** a Lambda hop on cache-miss reads (bounded, cacheable-away).
+
+**Status:** ✅ decided · 🟡 partial enforcement — the ADR is filed, but the implementation (PR #140) is on hold pending a further brainstorm on the concrete shape. This change-log entry preserves the ratified decision independently of the implementation PR's outcome. Approved by leocaseiro 2026-07-14 (cherry-picked into PR #143 on 2026-07-15).
+
 ### 2026-07-12 — Design-system distribution: direct consumption + accept scoped-glob CSS over-generation (NH-275)
 
 leocaseiro ratified how apps consume the design system (`client/` → future `design-system/`). Full record: [`docs/decisions/2026-07-12-design-system-distribution-adr.md`](2026-07-12-design-system-distribution-adr.md). Refines the NH-275 Phase 1 `@source` pattern; pairs with the 2026-07-08 FE-pivot entry.

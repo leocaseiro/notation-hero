@@ -70,6 +70,31 @@ Run across all packages from the repo root with `pnpm -r --if-present run <targe
 as a positional arg, silently skipping the second. Chain root scripts instead:
 `pnpm run lint && pnpm run typecheck`.
 
+### Running the apps locally (dev / debug)
+
+`pnpm dev` opens a tmux session (`nh-dev`) with a pane per app, so the server and web logs stay
+separate and either can be restarted alone.
+
+| Command             | What it runs                                                   |
+| ------------------- | -------------------------------------------------------------- |
+| `pnpm dev`          | both apps in tmux — API on 3001, web on 3002                   |
+| `pnpm dev:debug`    | both apps with Node inspectors (server **9229**, web **9230**) |
+| `pnpm dev:server`   | NestJS only (`nest start --watch`)                             |
+| `pnpm dev:web`      | Next.js only (`next dev --port 3002`)                          |
+| `pnpm debug:server` | NestJS with an inspector on 9229                               |
+| `pnpm debug:web`    | Next.js with an inspector on 9230                              |
+
+`SERVER_PORT=3010 pnpm dev` moves the API when something already holds 3001; the web pane inherits
+`API_BASE_URL` from it, so the two never disagree (Next.js resolves `process.env` ahead of
+`.env.local` — see its bundled `environment-variables.md`, "Environment Variable Load Order"). The
+two inspectors MUST differ: both default to 9229, so `debug:web` pins 9230.
+
+**Debugging gotcha with cached fetches.** Server functions wrapped in `'use cache: remote'` do not
+re-run once the cache is warm; breakpoints in those files and their downstream callers never fire.
+Edit either file to invalidate the dev cache (HMR refresh hash) and force a miss.
+
+> ⚠️ **Provenance:** cherry-picked from the on-hold PR #140 (`claude/neon-data-nextjs-table-416796`) on 2026-07-15. The specific `getCatalog()` / `web/app/catalog/page.tsx` file references from that PR were generalized here since NH-279 implementation is being re-brainstormed.
+
 Root-level checks — each is a named script AND a CI gate, so run any locally:
 
 - `pnpm run depcheck` — dependency-cruiser hexagon fence over `server/src`. Stays a
