@@ -13,6 +13,8 @@ Single canonical per-feature go/no-go. Each row has a **Milestone** (your decisi
 
 > Locked decisions, newest first. Applied to the rows below.
 
+- **2026-06-09 (data store):** **Catalogue store = Neon PostgreSQL + JSONB** (hybrid: typed columns + `data jsonb`). **Not** DynamoDB, **not** MongoDB Atlas. **DynamoDB stays** for per-user data (scores/settings/mappings/sync) + analytics counters. **Lesson ≠ Song** (distinct schemas; Song `parts` later). MongoDB/DocumentDB evaluated and dropped (interview talking-point + optional local-Docker side exercise). Affects `H-3`, `H-11`, `K-1`, `K-3`, `song-schema.md`. See [decisions/2026-06-09-catalogue-store-postgres-neon.md](decisions/2026-06-09-catalogue-store-postgres-neon.md).
+
 - **2026-06-05 (LOCKED):** freeze locked — all rows frozen except `H-10` (upload policy = open, decide before M1). Folded into design-stack.md (pointer + ladder + marker; `tone@^15` dropped).
 
 - **2026-06-05 (review complete):**
@@ -29,7 +31,7 @@ Single canonical per-feature go/no-go. Each row has a **Milestone** (your decisi
   - **Ladder renumbered (monotonic):** `M3` = enhancements · `M4` = desktop · `M5` = pro-audio (ASIO).
   - **Sync model:** *no per-device sync.* User data = **localStorage in Alpha/Beta**; **cross-device sync = M1** (Cognito User Pools).
   - **Area `K` added (Admin/CMS):** Alpha; hosted admin gated by a **CloudFront Function (Basic Auth)** — no Cognito; produces the shared lesson library (feeds `H-11`).
-  - **Competitor-name scrub:** feature names generic; load-bearing strategic refs kept (the reference tutor north-star, positioning-wedge in design-stack.md, the reference tutor screenshots).
+  - **Competitor-name scrub:** feature names generic; load-bearing strategic refs kept (DT-1 north-star, Melodics-wedge in design-stack.md, DT-1 screenshots).
 
 ---
 
@@ -89,7 +91,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | B-8 | Display options | Scale / stretch / layout / cursors / highlight | R | ✓ | XS | sug: DynamoDB sync @M1 | Alpha | approved | IMPLEMENTATION_SUMMARY.md `[Q: ...good candidate for dynamoDB sync. WDYT?` → yes, @M1 |
 | B-9 | A/B loop (timeline UI) | Click point A & B; loop a range | R | ◑ | M | — | Friendly | approved 🎨 | basic A/B works via AlphaTab (Alpha); timeline-view UI polish = Friendly `[note: already available in the fork; selection owned by AlphaTab; improve UI w/ friendly-view]` |
 | B-10 | Per-instrument volume mixer | Volume per track (drums/guitar/bass) | R | ◑ | M | sug: DynamoDB sync @M1 | Beta | approved | ✚ `mixer-ui`; ⚠ API = `changeTrackVolume`; IMPLEMENTATION_SUMMARY.md `[approved with dynamoDB]` |
-| B-10-a | Mute-mine / solo-mine | Solo/mute the player's own instrument | R | ◑ | M | — | Beta | approved | AlphaTab `changeTrackMute`/`changeTrackSolo` exist; mute/solo-mine UX new (the reference tutor "Minus Drums/Drums Only") `[Q: I'ts already done, isn't?]` → partial |
+| B-10-a | Mute-mine / solo-mine | Solo/mute the player's own instrument | R | ◑ | M | — | Beta | approved | AlphaTab `changeTrackMute`/`changeTrackSolo` exist; mute/solo-mine UX new (DT-1 "Minus Drums/Drums Only") `[Q: I'ts already done, isn't?]` → partial |
 | B-11 | MIDI instrument selector | Choose drums (default) or keyboard | R | ◑ | S | localStorage; sug: DynamoDB @M1 | Beta | approved | track-display toggles = groundwork; input-instrument selector new `[Q: ...partially, no?` `[approved with dynamoDB]` |
 | B-12 | Keyboard shortcuts | Hotkeys play/pause/restart etc | N | ✗ | S | — | M4 | approved | FEATURES.md (shortcuts TODO); desktop-focused |
 
@@ -98,7 +100,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | ID | Feature | Description | Scope | Fork | Est | AWS | Milestone | Status | Ref/Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | C-1 | Hit-scoring engine | Timing-window scoring (JS / Web MIDI) | R | ✓ | M | — | Alpha | approved | ⚠ **Sightread scrub** (50/300ms consts + comments); PERFORMANCE.md |
-| C-2 | Score % at song end | 0-100 score per play | R | ✓ | XS | — | Alpha | approved 🎨 | FEATURES.md [x]; per-tier display (the reference tutor Excellent/Good/OK/Miss) → design-shotgun |
+| C-2 | Score % at song end | 0-100 score per play | R | ✓ | XS | — | Alpha | approved 🎨 | FEATURES.md [x]; per-tier display (DT-1 Excellent/Good/OK/Miss) → design-shotgun |
 | C-3 | 5-star rating | Map score % → 5 stars | R | ◑ | S | — | Alpha | approved | scope §rating |
 | C-4 | In-session streak | Current + longest streak within a play | R | ✓ | XS | — | Alpha | approved | FEATURES.md [x] |
 | C-5 | Save score each play | Persist each play's score (local; sync later) | R | ✗ | S | localStorage; sug: DynamoDB @M1 | Beta | approved | event-source for `H-6` analytics; Streams roll-ups @M1 `[approved with dynamoDB. set score with game mode: practice/game/game-memory]` `[Q: SQS/SNS or Kafka here? → analytics path H-6, not storage]` |
@@ -147,7 +149,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | ID | Feature | Description | Scope | Fork | Est | AWS | Milestone | Status | Ref/Notes |
 |---|---|---|---|---|---|---|---|---|---|
 | G-1 | Friendly highway view | Horizontal highway (primary) | N | ✗ | XL | — | Friendly | approved | ✚ `/design-shotgun`; stack-brainstorm §6; PixiJS. ⚠ must handle written repeats itself (AlphaTab does standard view) |
-| G-1-a | Vertical falling-notes (alt) | Vertical falling-notes alternate view | N | ✗ | L | — | Friendly | approved | stack-brainstorm §6 (renamed — no competitor names); the reference tutor game-mode screenshot is the reference |
+| G-1-a | Vertical falling-notes (alt) | Vertical falling-notes alternate view | N | ✗ | L | — | Friendly | approved | stack-brainstorm §6 (renamed — no competitor names); DT-1 game-mode screenshot is the reference |
 | G-2 | Friendly-view feedback | Gem shapes, tendency meter, combo glow, hit-window band | N | ✗ | L | — | Friendly | approved | stack-brainstorm §6; carries full a11y (color+shape+text) per `A-6` |
 
 ## H. AWS backend & infra  *(portfolio track — runs parallel; PWA-first unblocks it)*
@@ -156,7 +158,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 |---|---|---|---|---|---|---|---|---|---|
 | H-1 | Pulumi TS IaC | Provision all AWS as TypeScript code | A | ✗ | M | req: (all) | Alpha | approved | interview multiplier |
 | H-2 | Lambda Function URL | Public Lambda (hello-world → API) | A | ✗ | M | req: Lambda | Alpha | approved | JWT-in-handler added with `H-9` |
-| H-3 | DynamoDB single-table + GSI | Shared content + (at M1) per-user cross-device sync | A | ✗ | L | req: DynamoDB | Alpha | approved | Alpha = shared data (lessons via `K`, analytics); per-user cross-device sync = M1 |
+| H-3 | DynamoDB single-table + GSI | Per-user data (M1 cross-device sync) + analytics counters | A | ✗ | L | req: DynamoDB | Alpha | approved | **2026-06-09: lesson catalogue moved to Neon Postgres** (`song-schema.md`); DynamoDB now = per-user sync + analytics shared-counters (NOT the catalogue); per-user cross-device sync = M1 |
 | H-4 | S3 + CloudFront + OAC | Host the PWA static bundle | A | ✗ | M | req: S3·CloudFront | Alpha | approved | 1 TB free tier |
 | H-5 | Offline-sync engine | RxDB vs Legend-State pull/push handler | A | ✗ | M | — | M1 | approved | the SYNC engine (cross-device = M1). App-shell offline = `H-13`. Spike both `[Q: only client offline? Service Worker too? → H-13]` |
 | H-6 | SQS/SNS → S3 → Athena analytics | Usage-event pipeline (queue + data lake) | A | ✗ | L | req: SQS·SNS·S3·Athena | Beta | approved | **richest interview piece**; needs `J-8`. Athena = SQL over the S3 event lake (most-practiced lessons, accuracy trends, funnels) `[Q: Where is Athena? → here]` |
@@ -164,7 +166,7 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | H-8 | Sentry client errors | Client JS error tracking | A | ✗ | S | — | Alpha | approved | ⚠ PII masking (doc-review) |
 | H-9 | Cognito auth (User Pools) | Hosted UI + PKCE + Google → real accounts | A | ✗ | L | req: Cognito | M1 | approved | enables cross-device sync; ⚠ Capacitor-redirect spike (F-15). (Admin `K-2` uses CloudFront-Function Basic Auth, not Cognito) |
 | H-10 | S3 uploads + validation | Pre-signed PUT, magic-byte validate, quarantine, rate-limit | R | ✗ | L | req: S3·Lambda | M1 | TBD (open) | ⚠ **upload policy OPEN** — leaning private-per-user / no public sharing; ToS + DMCA. Admin pipeline reused by `K-1` |
-| H-11 | Lesson / song library | Curated lessons (S3 files + DynamoDB metadata) | N | ✗ | M | req: S3·DynamoDB | Beta | approved | produced by area `K` (CMS, Alpha); initial preloaded exercise set in Beta; expand at M1 `[Note: I want a list of exercises preloaded in Beta]` |
+| H-11 | Lesson / song library | Curated lessons (S3 files + **Neon Postgres** metadata + search) | N | ✗ | M | req: S3 · Neon Postgres | Beta | approved | **2026-06-09: metadata store = Neon Postgres+JSONB** (was DynamoDB); produced by area `K` (CMS, Alpha); preloaded exercise set in Beta; expand at M1 `[Note: I want a list of exercises preloaded in Beta]` |
 | H-12 | Kafka (local Docker) | Queue-vs-log learning, off-AWS | A | ✗ | M | — | deferred | approved | **exercise:** rebuild `H-6` ingestion in Kafka (Redpanda) — consumer groups + offsets + **replay** (vs SQS delete-on-consume). Or Aiven/Confluent free tier `[OK, any suggestion to use Kafka? → this]` |
 | H-13 | PWA install + offline shell | Service Worker + manifest (offline app-shell, installable) | A | ✗ | S | — | Beta | approved | offline *app shell* (loads w/o network); separate from the M1 sync engine (`H-5`) |
 
@@ -190,8 +192,8 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 | J-2 | Video (MP4/YouTube) sync | Background video synced to playback | N | ✗ | L | — | M2 | approved | sync to AlphaSynth `playerPositionChanged` clock; no Tone.js; #2397 caveat `[same as above]` |
 | J-3 | Import alphaTex / .midi | Import via AlphaTab alphaTex or raw `.midi` | N | ✗ | M | — | M3 | approved | `[Note: use AlphaTab alphaTex https://alphatab.net/docs/alphatex/introduction]` (also authors `K`/`H-11` exercises) |
 | J-4 | Share results (PDF/CSV) | Export score/results | N | ✗ | S | sug: Lambda gen ~S | deferred | approved | FEATURES.md (future) |
-| J-5 | Ghost-note dynamics detect + chart | Detect dynamics; the reference tutor-style dynamics chart | N | ✗ | L | — | M3 | approved | scope nice (dynamic detection) |
-| J-6 | Drumkit SVG (play-time) | Live kit visualization — lights up struck pads; shown in notation + friendly views | N | ✗ | L | — | M3 | approved | **distinct from `D-2-f`** (mapping diagram); the reference tutor-style (see `internal-reference-1.jpg`) `[show in both views]` |
+| J-5 | Ghost-note dynamics detect + chart | Detect dynamics; DT-1-style dynamics chart | N | ✗ | L | — | M3 | approved | scope nice (dynamic detection) |
+| J-6 | Drumkit SVG (play-time) | Live kit visualization — lights up struck pads; shown in notation + friendly views | N | ✗ | L | — | M3 | approved | **distinct from `D-2-f`** (mapping diagram); DT-1-style (see `dt-1_ss_main_notation_gal.jpg`) `[show in both views]` |
 | J-7 | Mobile phone support | Small-screen redesign | N | ✗ | XL | — | deferred | approved | phone = its own project |
 | J-8 | Analytics instrumentation (client) | Emit usage events to the pipeline | A | ✗ | S | req: feeds `H-6` | Beta | approved | enables `H-6` (and the `H-12` Kafka exercise) |
 | J-9 | Discord / social / publishing | Community + alternate.to listings | N | ✗ | XS | — | deferred | approved | ops, not app |
@@ -200,20 +202,20 @@ No "v" labels — SemVer is reserved for real releases. These are planning rungs
 
 | ID | Feature | Description | Scope | Fork | Est | AWS | Milestone | Status | Ref/Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| K-1 | Lesson store (files + catalog) | Store + validate lesson files and metadata | A | ✗ | M | req: S3 · DynamoDB · Lambda(validate) | Alpha | approved | shared content (no identity); feeds `H-11`; admin-curated → sidesteps `B-1`/`H-10` copyright |
+| K-1 | Lesson store (files + catalog) | Store + validate lesson files and metadata | A | ✗ | M | req: S3 · **Neon Postgres** · Lambda(validate) | Alpha | approved | **catalogue metadata = Neon Postgres+JSONB** (2026-06-09, was DynamoDB); shared content (no identity); feeds `H-11`; admin-curated → sidesteps `B-1`/`H-10` copyright |
 | K-2 | Hosted admin SPA + CRUD | Manage/upload lessons; htpasswd-style gate | A | ✗ | M | req: S3 · CloudFront · CloudFront Function (Basic Auth) · Lambda FURL | Alpha | approved | **no Cognito**; edge Basic-Auth (rotate = redeploy, HTTPS-only); edge-auth portfolio piece |
-| K-3 | Lesson catalog API + delivery | App reads catalog + downloads lesson files | A | ✗ | S | req: Lambda · CloudFront | Alpha | approved | consumed by the app; feeds `H-11` |
+| K-3 | Lesson catalog API + delivery | App reads catalog + downloads lesson files | A | ✗ | S | req: Lambda · CloudFront | Alpha | approved | consumed by the app; feeds `H-11`; **Lambda → Neon Postgres** via serverless HTTP driver (store swappable behind this API) |
 
 ---
 
 ## AWS portfolio candidates (ranked by interview value)
 
-Per the **sync model**: per-user data is localStorage in Alpha/Beta; DynamoDB *cross-device* sync arrives at M1. DynamoDB earns its place early via **shared data** (lessons `K`, analytics).
+Per the **sync model**: per-user data is localStorage in Alpha/Beta; DynamoDB *cross-device* sync arrives at M1. DynamoDB earns its early place via **analytics counters** (the lesson *catalogue* moved to **Neon Postgres** on 2026-06-09 — see Decisions log).
 
 1. `H-6` Analytics pipeline (SQS/SNS → S3 → Athena) — messaging + data-lake — **L** — *Beta*
 2. `H-7` CloudWatch/X-Ray SLOs + burn-rate — SRE/observability — **L** — *Beta*
-3. `K-1`/`K-2`/`K-3` Admin CMS — S3 + DynamoDB + Lambda + CloudFront + edge Basic-Auth — **Alpha**
-4. `H-3` DynamoDB single-table + GSI (shared now; per-user sync @M1) — **L** — *Alpha*
+3. `K-1`/`K-2`/`K-3` Admin CMS — S3 + **Neon Postgres** + Lambda + CloudFront + edge Basic-Auth — **Alpha**
+4. `H-3` DynamoDB single-table + GSI (per-user sync @M1 + analytics counters; catalogue → Neon Postgres) — **L** — *Alpha*
 5. `H-1` Pulumi IaC — **M** — *Alpha* · 6. `H-2` Lambda Function URL — **M** — *Alpha* · 7. `H-4` S3 + CloudFront + OAC — **M** — *Alpha*
 8. `H-9` Cognito User Pools (OAuth2/PKCE) — unlocks cross-device sync — **L** — *M1* · 9. `H-10` S3 uploads + validation — **L** — *M1*
 10. `H-12` Kafka (local) — queue-vs-log + **replay** — **M** — *deferred (learning)*
@@ -242,4 +244,4 @@ Per the **sync model**: per-user data is localStorage in Alpha/Beta; DynamoDB *c
 - **scope.md** · **docs/design-stack.md** · **docs/aws-learning-map.md**
 - **Fork plans** (`~/Sites/alphaTabWebsite/.../AlphaTabRhythmGame/`): FEATURES.md · AUTO_BPM.md · PERFORMANCE.md · PRACTICE_MODAL_PLAN.md · IMPLEMENTATION_SUMMARY.md · MIDI_MAPPING_PLAN(.md/_SUMMARY/_QUICK_REF/_VISUAL_GUIDE) · IMPLEMENTATION_COMPLETE.md · IMPROVEMENTS_SUMMARY.md
 - **Brainstorms** (`serene-grothendieck-fb5e67/`): stack-aws-brainstorm.md · stack-brainstorm.md (§6 friendly-view UI)
-- **the reference tutor reference screenshots:** `~/Downloads/internal-reference-1.jpg` (notation + kit SVG) · `~/Downloads/internal-reference-2.jpg` (friendly view + score panel)
+- **DT-1 reference screenshots:** `~/Downloads/dt-1_ss_main_notation_gal.jpg` (notation + kit SVG) · `~/Downloads/dt-1_ss_game_mode_gal.jpg` (friendly view + score panel)
