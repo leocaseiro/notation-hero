@@ -17,7 +17,21 @@
 - **Infra** — **Pulumi** (TS); deploy = **push-to-master only** via GitHub OIDC (no AWS creds on PRs); least-privilege role. **Neon is NOT Pulumi-provisioned** (off-AWS); connection string = **Pulumi-secret → Lambda `DATABASE_URL` env var** (not SSM); migrations in an operator runbook.
 - **Tracker** — Jira project **NH** (NH-NN). Linear dead; KAN drained.
 
-> **Superseded (bannered) docs — do not treat as current:** the admin-auth in `feature-freeze.md` / `cms-approach.md` / `specs/2026-06-15-cms-admin.md` (Basic-Auth/password), `spikes/2026-06-16-fe-framework-nextjs.md` (Next.js), and any "pnpm + **Nx**" cliff-banner.
+> **Superseded (bannered) docs — do not treat as current:** the admin-auth in `feature-freeze.md` / `cms-approach.md` / `specs/2026-06-15-cms-admin.md` (Basic-Auth/password), `spikes/2026-06-16-fe-framework-nextjs.md` (Next.js), and any "pnpm + **Nx**" cliff-banner. Fully-superseded shipped-ticket plans and predecessor schema drafts moved to [`docs/archive/2026-07/`](docs/archive/2026-07/) on 2026-07-15.
+
+## Working on this repo — READ BEFORE OPENING A PR
+
+For every non-trivial PR, follow the canonical 15-step workflow in [`docs/runbooks/before-pr.md`](docs/runbooks/before-pr.md) (brainstorming → doc-review → plan → doc-review → execute → code-review → audit → merge). That runbook also lists the escape hatches for the ~5% of trivial changes that skip the full workflow (typos, mechanical renames, dependency bumps, clarifications, extra tests, "clear wins" like `any` → concrete type).
+
+> ⛔ **Ship-mode freeze — ACTIVE (2026-07-15).**
+>
+> **NO new spec, plan, or ADR of any kind** until leocaseiro explicitly ends this freeze via a `docs/decisions/decision-registry.md` change-log entry titled "End ship-mode freeze".
+>
+> **Why:** forcing function against the start-many-finish-few pattern surfaced during the 2026-07-15 docs-cleanup review. Every pivot leaves ~3 doc artifacts; almost nothing gets deleted. Freeze until the current backlog drains.
+>
+> **What's unaffected:** bugfixes, code changes, cleanup PRs (like the one landing this rule), banner updates on already-superseded docs, and PRs that update existing plans/specs to record shipped state.
+>
+> **What's frozen:** creating new `docs/plans/*`, `docs/specs/*`, `docs/decisions/*` files. Registry change-log entries for already-decided work are allowed (they document, they don't create new decisions).
 
 ## Hexagon layout & boundaries (pnpm workspaces)
 
