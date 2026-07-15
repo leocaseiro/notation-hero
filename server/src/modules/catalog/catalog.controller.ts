@@ -1,24 +1,12 @@
 import { Controller, Get, Header, Inject } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 
 import { toDifficulty } from './catalog.util';
+// Type-only import: erases at runtime, so the CJS server never require()s the ESM shared package
+// (the property that keeps the pure contract free of the ESM/CJS dual-package hazard). NH-279.
+import type { CatalogItem, CatalogResponse } from '@notation-hero/shared';
 import { CATALOG_DB, type CatalogDb } from '@/adapters/neon-postgres/catalog-db.adapter';
 import { playable } from '@/adapters/neon-postgres/catalog.schema';
-
-export interface CatalogPlayable {
-  id: string;
-  /** Friendly URL token (NH-221), distinct from the opaque id; routes address playables by slug. */
-  slug: string;
-  title: string;
-  kind: 'song' | 'pattern' | 'lesson';
-  /** Difficulty band label (Debut / Beginner 1-3 / Intermediate 4-6 / ...). */
-  difficulty: string;
-}
-
-export interface CatalogResponse {
-  items: CatalogPlayable[];
-  count: number;
-}
 
 @Controller('catalog')
 export class CatalogController {
@@ -54,9 +42,12 @@ export class CatalogController {
           inArray(playable.kind, ['song', 'lesson', 'pattern']),
         ),
       )
+      // Deterministic default order so the cached web snapshot is stable (easiest first, then A-Z);
+      // interactive re-sorting stays client-side (TanStack). NH-279 F1.
+      .orderBy(asc(playable.level), asc(playable.title))
       .limit(50);
 
-    const items: CatalogPlayable[] = rows.map((row) => {
+    const items: CatalogItem[] = rows.map((row) => {
       // The WHERE kind allow-list keeps 'part' out at the DB layer; this guard makes the invariant
       // explicit at the boundary, so if a future change relaxes the filter an unexpected kind throws
       // (-> a generic 503) instead of leaking as an unknown kind (review F4). It also narrows
@@ -70,6 +61,7 @@ export class CatalogController {
         title: row.title,
         kind: row.kind,
         difficulty: toDifficulty(row.level),
+        level: row.level,
       };
     });
     return { items, count: items.length };

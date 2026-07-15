@@ -9,21 +9,36 @@ import { CATALOG_DB, createCatalogDb } from '@/adapters/neon-postgres/catalog-db
 // predicate + the .limit() bound so a regression that drops the access filter or the cap is caught;
 // the fake chain itself ignores the arguments. The CONTENT of the predicate is asserted by the
 // skipped Neon integration block at the bottom (review F2).
+// The fake chain now mirrors select().from().where().orderBy().limit(). `where()` returns an object
+// carrying BOTH orderBy and limit so a controller that has NOT yet added .orderBy() still runs and
+// fails on the assertions below (orderBy spy uncalled + missing `level`) — a clean behavior-red,
+// not a TypeError.
 function makeDb(rows: unknown[]): {
   db: unknown;
-  spies: { where: ReturnType<typeof vi.fn>; limit: ReturnType<typeof vi.fn> };
+  spies: {
+    where: ReturnType<typeof vi.fn>;
+    orderBy: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
+  };
 } {
-  const spies = { where: vi.fn(), limit: vi.fn() };
+  const spies = { where: vi.fn(), orderBy: vi.fn(), limit: vi.fn() };
   const limited = {
     limit: (n: number) => {
       spies.limit(n);
       return Promise.resolve(rows);
     },
   };
+  const afterWhere = {
+    orderBy: (...cols: unknown[]) => {
+      spies.orderBy(...cols);
+      return limited;
+    },
+    limit: limited.limit,
+  };
   const filtered = {
     where: (condition: unknown) => {
       spies.where(condition);
-      return limited;
+      return afterWhere;
     },
   };
   const selected = { from: () => filtered };
@@ -71,6 +86,7 @@ describe('CatalogController (DB-backed thin read)', () => {
       title: 'Single Stroke Roll (Debut)',
       kind: 'pattern',
       difficulty: 'Debut',
+      level: 0,
     });
     expect(res.items[1]?.difficulty).toBe('Intermediate 4');
     expect(res.items[2]?.difficulty).toBe('Ungraded');
@@ -84,6 +100,13 @@ describe('CatalogController (DB-backed thin read)', () => {
     expect(spies.where).toHaveBeenCalledTimes(1);
     expect(spies.where.mock.calls[0]?.[0]).toBeDefined();
     expect(spies.limit).toHaveBeenCalledWith(50);
+  });
+
+  it('orders by level then title for a stable cached snapshot (F1)', async () => {
+    const { controller, spies } = await makeController(fakeRows);
+    await controller.list();
+    expect(spies.orderBy).toHaveBeenCalledTimes(1);
+    expect(spies.orderBy.mock.calls[0]).toHaveLength(2);
   });
 
   it('throws if the query ever returns a kind outside the response union (F4 guard)', async () => {
