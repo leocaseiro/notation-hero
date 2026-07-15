@@ -153,7 +153,7 @@ We run no server of our own, so this means **error tracking + usage analytics + 
 
 ## 6. Friendly notation UI + feedback (design notes)
 
-- **Primary friendly view:** **horizontal-highway-style horizontal highway** (lanes = kit pieces, rhythm reads left→right). Optional **falling-notes-style vertical waterfall** as an alternate.
+- **Primary friendly view:** **Melodics-style horizontal highway** (lanes = kit pieces, rhythm reads left→right). Optional **Synthesia-style vertical waterfall** as an alternate.
 - Lanes **mirror the physical kit** (cymbals/hat top, kick bottom), configurable. **Gem shape encodes articulation**: filled = normal, **X = cymbals**, halo = accent, small/dim = ghost note. Translucent band at the now-line shows the **hit window**. Velocity → brightness/size.
 
 | Event | Standard notation (scope) | Friendly view |

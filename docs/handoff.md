@@ -9,8 +9,8 @@
 ## Project identity
 
 - **Name:** NotationHero (brand); repo + dir `notation-hero` (renamed from `notation-hero`)
-- **What:** drum-practice / rhythm-game app, spiritual successor to a discontinued
-  discontinued classic standalone drum-tutor. Wedge vs subscription tutor: custom song upload
+- **What:** drum-practice / rhythm-game app, spiritual successor to Roland's
+  discontinued DT-1 V-Drums Tutor. Wedge vs Melodics: custom song upload
   (MIDI + Guitar Pro) and Android support.
 - **Domain:** being acquired (`notation-hero.*` / `notationhero.*` — TBD)
 - **Stage:** pre-code. Repo currently holds docs only (`scope.md`,
@@ -146,7 +146,7 @@ resolution (newest wins) — do not re-litigate:
 
 `stack-brainstorm.md` also holds two things to PRESERVE into `design-stack.md`
 post-review:
-- The fullest **friendly-notation UI design** (horizontal-highway-style horizontal
+- The fullest **friendly-notation UI design** (Melodics-style horizontal
   highway, lanes mirror the kit, gem shape encodes articulation, translucent
   hit-window band, tendency meter, combo glow, accessibility = color+shape+text).
   This answers scope.md's "friendly view = TBD".
