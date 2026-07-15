@@ -1,3 +1,4 @@
+import eslint from '@eslint/js';
 import { defineConfig, globalIgnores } from 'eslint/config';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
@@ -5,6 +6,12 @@ import nextTs from 'eslint-config-next/typescript';
 import { base } from '../eslint.config.base.mjs';
 
 const eslintConfig = defineConfig([
+  // ESLint's own core rules, as server/eslint.config.mjs already does. Neither the Next generator
+  // nor base supplies them, so without this `no-debugger` resolves to "NOT SET" and a stray
+  // `debugger;` passes lint and CI (NH-279 review F-9). tseslint's layer below deliberately turns
+  // off the core rules the compiler already covers (no-dupe-keys, no-unreachable); no-debugger is
+  // not one of them.
+  eslint.configs.recommended,
   ...nextVitals,
   ...nextTs,
   // base's TS layer includes type-aware rules (e.g. @typescript-eslint/no-unsafe-assignment) that
