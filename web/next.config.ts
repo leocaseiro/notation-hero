@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // The app imports @notation-hero/client as raw .tsx source. Next doesn't transpile
   // node_modules (a workspace package is symlinked there), so the JSX won't parse without this.
-  transpilePackages: ['@notation-hero/client'],
+  transpilePackages: ['@notation-hero/client', '@notation-hero/shared'],
   // Cache Components (Next 16): enables `'use cache: remote'` for durable caching shared across
   // server instances (plain `'use cache'` is in-memory per instance and does NOT survive Vercel
   // cold starts, so Neon would be re-hit on each). Also makes Partial Prerendering the default,
