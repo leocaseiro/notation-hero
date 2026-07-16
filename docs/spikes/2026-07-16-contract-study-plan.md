@@ -673,3 +673,140 @@ And two about this architecture:
 
 **No paywalled sources are in this plan.** The one Medium article kept (Koerselman) was checked specifically for
 a member-wall and is open. Everything above is free, public, and login-free.
+
+---
+
+## Appendix — paste-ready URL lists for NotebookLM
+
+The sections above carry the caveats; **this appendix is just URLs**, one per line, grouped by notebook. Paste a
+block straight into NotebookLM's "Add source → Website".
+
+**Three rules before pasting:**
+
+1. **Never use a `docs.nestjs.com` URL.** It is a JS-rendered SPA and returns no body text — NotebookLM ingests an
+   empty page. The `raw.githubusercontent.com` equivalents below are verified and carry the real content.
+2. **Never use an `npmjs.com` package page.** They return HTTP 403 to fetchers.
+3. **Next.js URLs end in `.md` on purpose.** That returns clean markdown with `version:` and `lastUpdated:`
+   front-matter, so NotebookLM can see the version and will not blend in Next 14/15 answers.
+
+### Notebook A — Why my shared package broke
+
+```text
+https://nextjs.org/docs/app/api-reference/config/next-config-js/transpilePackages.md
+https://colinhacks.com/essays/live-types-typescript-monorepo
+https://turborepo.dev/docs/core-concepts/internal-packages
+https://nodejs.org/api/packages.html
+https://www.typescriptlang.org/docs/handbook/project-references.html
+https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction
+https://martinfowler.com/articles/micro-frontends.html
+https://pnpm.io/workspaces
+https://pnpm.io/catalogs
+https://dev.to/hotjar/monorepos-with-pnpm-part-1-a-performant-package-manager-5g41
+https://thijs-koerselman.medium.com/my-quest-for-the-perfect-ts-monorepo-62653d3047eb
+https://matthewwolfe.github.io/blog/code-sharing-react-and-react-native
+https://docs.expo.dev/guides/monorepos/
+```
+
+### Notebook B — Inference vs codegen (should the contract derive from the DB?)
+
+```text
+https://blog.acolyer.org/2016/09/13/data-on-the-outside-versus-data-on-the-inside/
+https://martinfowler.com/bliki/PublishedInterface.html
+https://relay.dev/blog/2021/12/08/introducing-the-new-relay-compiler/
+https://docs.pact.io/pact_broker/can_i_deploy
+https://www.cidrdb.org/cidr2005/papers/P12.pdf
+https://martinfowler.com/bliki/IntegrationDatabase.html
+https://nhpatt.com/bounded-context-in-apis/
+https://docs.postgrest.org/en/v14/index.html
+https://news.ycombinator.com/item?id=21435195
+https://conroy.org/introducing-sqlc
+https://martinfowler.com/articles/consumerDrivenContracts.html
+https://kristiandupont.github.io/kanel/
+https://orm.drizzle.team/docs/zod
+https://orm.drizzle.team/docs/v0-v1-changes
+https://pgtyped.dev/
+https://gql-tada.0no.co/get-started/workflows
+https://zod.dev/v4
+https://github.com/microsoft/TypeScript-wiki/blob/main/Performance.md
+https://dev.to/nicklucas/typescript-runtime-validators-and-dx-a-type-checking-performance-analysis-of-zodsuperstructyuptypebox-5416
+https://sookocheff.com/post/api/the-false-dichotomoy-of-design-first-and-code-first-api-development/
+https://apisyouwonthate.com/blog/api-design-first-vs-code-first/
+https://devblogs.microsoft.com/ise/design-api-first-with-typespec/
+https://docs.sqlc.dev/en/latest/howto/ci-cd.html
+https://7tonshark.com/posts/handling-generated-code-in-rush/
+https://github.com/dotansimha/graphql-code-generator/discussions/4253
+https://www.youtube.com/watch?v=KT3XKDBZW7M
+https://www.youtube.com/watch?v=WxPtYJRjLL0
+https://martinfowler.com/bliki/ContractTest.html
+https://docs.pact.io/
+```
+
+### Notebook C — Defending the architecture (BFF + lambdalith)
+
+```text
+https://samnewman.io/patterns/architectural/bff/
+https://learn.microsoft.com/en-us/azure/architecture/patterns/backends-for-frontends
+https://marmelab.com/blog/2025/10/01/do-you-need-a-backend-for-frontend.html
+https://auth0.com/blog/things-developers-get-wrong-about-the-backend-for-frontend-pattern/
+https://raw.githubusercontent.com/nestjs/docs.nestjs.com/master/content/faq/serverless.md
+https://theburningmonk.com/2025/03/the-pros-and-cons-of-lambdalith/
+https://rehanvdm.com/blog/should-you-use-a-lambda-monolith-lambdalith-for-the-api
+https://dev.to/aws-builders/aws-lambda-cold-starts-the-case-of-a-nestjs-mono-lambda-api-4j42
+```
+
+### Notebook D — The contract landscape
+
+```text
+https://zod.dev/basics
+https://www.youtube.com/watch?v=S6rcrkbsDI0
+https://blog.logrocket.com/trpc-vs-orpc-type-safe-rpc/
+https://github.com/trpc/trpc/discussions/2448
+https://orpc.dev/docs/openapi/integrations/implement-contract-in-nest
+https://www.youtube.com/watch?v=a7V-W0DbIbc
+https://raw.githubusercontent.com/nestjs/docs.nestjs.com/master/content/openapi/introduction.md
+https://raw.githubusercontent.com/nestjs/docs.nestjs.com/master/content/openapi/cli-plugin.md
+https://heyapi.dev/docs/openapi/typescript/get-started
+https://nordicapis.com/whats-the-difference-between-swagger-and-openapi/
+https://www.openapis.org/faq
+https://www.youtube.com/watch?v=_oHJUxkAM1w
+https://www.youtube.com/watch?v=x4mu-jOiA0Q
+https://orpc.dev/docs/comparison
+https://ts-rest.com/
+```
+
+### Notebook E — `'use cache: remote'` and its cost
+
+```text
+https://vercel.com/docs/caching/runtime-cache
+https://vercel.com/docs/pricing/regional-pricing
+https://vercel.com/docs/plans/hobby
+https://vercel.com/docs/limits
+https://vercel.com/docs/incremental-static-regeneration/limits-and-pricing
+https://nextjs.org/docs/app/guides/migrating-to-cache-components.md
+https://nextjs.org/docs/app/getting-started/caching.md
+https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheComponents.md
+https://nextjs.org/docs/app/api-reference/functions/cacheLife.md
+https://nextjs.org/docs/app/api-reference/functions/connection.md
+https://nextjs.org/blog/next-16
+https://vercel.com/academy/nextjs-foundations/cache-components
+https://github.com/vercel/next.js/discussions/85882
+https://github.com/vercel/next.js/discussions/89375
+```
+
+**Upload these as files, not URLs** — they are local and version-exact for 16.2.10, which no public URL can
+guarantee. Drag them into Notebook E from:
+
+```text
+web/node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md
+web/node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache-remote.md
+web/node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache-private.md
+```
+
+_(They exist in any worktree where `pnpm install` has run — e.g. `.claude/worktrees/nh-279-service-boundary/`.)_
+
+### If you only make one notebook
+
+Make **B**. It is the only one whose sources argue with each other about the actual question, and NotebookLM is at
+its best on a real disagreement. Ask it: **_"Should my API contract be generated from my database schema?"_** —
+Helland, Fowler and Robinson say no; PostgREST and sqlc say yes; the Hacker News thread has someone who tried it
+and regretted it.
