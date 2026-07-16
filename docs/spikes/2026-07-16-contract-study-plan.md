@@ -159,11 +159,11 @@ axes, not the verdict.
   on. Worth knowing either way: _"I evaluated catalogs and kept syncpack because X"_ is a strong interview
   answer; not knowing they exist is a weak one. _Caveat: not a decision doc._
 - [Monorepos with pnpm — Hotjar](https://dev.to/hotjar/monorepos-with-pnpm-part-1-a-performant-package-manager-5g41) ·
-  ~6 min · 2022-12-27. Real numbers, not vendor claims: node*modules 3.2 GB → 1.3 GB, CI install 4m50s → 1m30s.
+  ~6 min · 2022-12-27. Real numbers, not vendor claims: node\*modules 3.2 GB → 1.3 GB, CI install 4m50s → 1m30s.
   **Caveat — read honestly: Hotjar had 50+ workspaces. This repo has five.** Those wins will not materialise at
   this scale and claiming them in an interview would be a bluff. What **does** transfer at any size: pnpm's
-  strict non-hoisted `node_modules` catching phantom dependencies. *~3.5 years old; predates catalogs and
-  `minimumReleaseAge`.\_
+  strict non-hoisted `node_modules` catching phantom dependencies. _Roughly 3.5 years old; it predates catalogs
+  and `minimumReleaseAge`._
 
 Optional: [My Quest for the Perfect TS Monorepo](https://thijs-koerselman.medium.com/my-quest-for-the-perfect-ts-monorepo-62653d3047eb) —
 Thijs Koerselman · ~21 min · 2023-12-26 · **confirmed not paywalled**. Second voice on JIT vs compiled, and
@@ -482,27 +482,147 @@ benchmarking this** — that follow-up is the fix for this gap.
 
 ## §5 — `'use cache: remote'` and what it costs
 
-> ⏳ **Source hunt in progress.** This section lands in a follow-up commit.
+**Why it is here.** `web/app/catalog/page.tsx` uses `'use cache: remote'` — **not** plain `'use cache'`. They are
+**three different directives with three separate docs pages** in the bundled Next 16.2.10 docs
+(`use-cache.md`, `use-cache-remote.md`, `use-cache-private.md`). Since CloudFront has caching **disabled** on
+`/api/*`, this directive is **the only thing between page views and Lambda invocations**.
 
-**Why it is here.** `web/app/catalog/page.tsx` uses `'use cache: remote'` — **not** plain `'use cache'`. They
-are **three different directives with three separate docs pages** in the bundled Next 16.2.10 docs
-(`use-cache.md`, `use-cache-remote.md`, `use-cache-private.md`). The distinction is load-bearing: plain
-`'use cache'` is **in-memory per instance** and re-hits the origin on every cold start, so it would **not**
-protect the Lambda. `'use cache: remote'` is durable and shared across instances, so it does.
+### The cost answer: on Hobby, a surprise bill is structurally impossible
 
-**The open question, straight from the bundled docs:**
+The bundled docs flag `'use cache: remote'` as one that _"typically incurs platform fees"_, which raised the
+question. Verified answer, from [vercel.com/docs/plans/hobby](https://vercel.com/docs/plans/hobby) (updated
+**2026-06-16**):
 
-> _"`'use cache: remote'` allows platforms to provide a dedicated cache handler, though it requires a network
-> roundtrip to check the cache and **typically incurs platform fees**."_
-> — `web/node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache.md:22`
+> _"As the Hobby plan is a free tier there are no billing cycles. In most cases, if you exceed your usage limits
+> on the Hobby plan, you will have to wait until 30 days have passed before you can use the feature again."_
 
-**So the directive protecting the AWS Lambda free tier is the one Next's own docs flag as costing money on the
-platform side.** Whether Vercel charges for it, on which plan, and against which meter is **unverified** — the
-hunt is answering it. **No pricing is guessed here.**
+**The failure mode on Hobby is downtime, not a charge.** _(Hobby is restricted to non-commercial personal use — a
+portfolio qualifies.)_
 
-**Related, already tracked:** `docs/spikes/2026-07-08-nextjs-vercel-free-tier-caching-search.md:94-96` still
-shows the **stale bare `'use cache'`** pattern with no banner — the wrong variant, for exactly the
-cold-start reason above.
+**The remote cache IS billed — on paid plans only.** The only page that states it is
+[vercel.com/docs/pricing/regional-pricing](https://vercel.com/docs/pricing/regional-pricing) (updated
+**2026-02-27**):
+
+| Resource                 | On-demand rate (varies by region)           |
+| ------------------------ | ------------------------------------------- |
+| Runtime Cache **Writes** | 1,000,000 Write Units for **$4.00 – $6.40** |
+| Runtime Cache **Reads**  | 1,000,000 Read Units for **$0.40 – $0.64**  |
+
+[The Runtime Cache doc](https://vercel.com/docs/caching/runtime-cache) (updated **2026-06-29**) confirms:
+_"Usage of runtime cache is charged."_ The meter is **reads and writes — not storage, not transfer.** Storage is
+unmetered; each project gets a fixed limit with LRU eviction (size unpublished).
+
+**Does `cacheLife('days')` stay inside a free tier? Yes, by a wide margin** — and the reason matters:
+`cacheLife('days')` revalidates once a day, so roughly **30 writes/month**, and `getCatalog()` **takes no
+arguments and closes over nothing**, so it produces **exactly one cache entry**. No key explosion is possible.
+Even at 1,000,000 reads/month the read bill would be **$0.40 – $0.64**.
+
+**A documentation gap, stated plainly: Vercel never publishes a Hobby quota for Runtime Cache.** It appears in
+neither the Hobby "Included Usage" table, nor [/docs/limits](https://vercel.com/docs/limits) (updated
+2026-07-01), nor the marketing pricing page. **Vercel's own pages contradict each other** — `/docs/limits` lists
+ISR Reads/Writes under Pro on-demand resources but omits Runtime Cache; `/docs/pricing/regional-pricing` lists
+them. Treat regional-pricing as the authority.
+
+**One number deliberately not asserted:** Vercel defines a Read/Write Unit as **8 KB** for ISR
+([ISR pricing](https://vercel.com/docs/incremental-static-regeneration/limits-and-pricing), updated 2026-02-23).
+Runtime Cache uses identical unit names _and_ identical rates, but its page never states the unit size. **8 KB is
+a strong inference, not a documented fact.**
+
+### 🚩 The hazard that actually matters
+
+**Runtime Cache silently refuses items over 2 MB.** _"Item size — 2 MB (items larger won't be cached)."_ If the
+catalog JSON ever crosses 2 MB, **caching stops silently and every page view hits the Lambda**. Given this
+directive is the only protection, that deserves a guard. The API caps at 50 rows today, so there is headroom — but
+nothing enforces the relationship.
+
+**The real cost risk is elsewhere.** `connection()` means every `/catalog` view runs a Vercel function. On Hobby
+the meters that can actually pause the site are **Function Invocations (1M/month)**, **Active CPU (4 CPU-hrs)**
+and **Fast Data Transfer (100 GB)**. The remote cache is not the risk — it is what protects Lambda and Neon, which
+are the things with real bills.
+
+### Two corrections to the repo's own code
+
+- **The comment in `page.tsx` is correct, and understates the problem.** It says plain `'use cache'` "re-hits the
+  origin on every cold start". The docs are harsher: _"In serverless environments, memory is not shared between
+  instances and is typically destroyed **after serving a request**, leading to frequent cache misses."_ Memory can
+  die after **every request**, not just cold starts. The reasoning for choosing `remote` is sound and better
+  supported than the comment claims.
+- **⚠️ `revalidateTag(tag)` single-argument form is DEPRECATED in 16.2.10** — _"It currently works if TypeScript
+  errors are suppressed, but this behavior may be removed in a future version."_ The signature is now
+  `revalidateTag(tag, profile)`. **This affects the F-5 follow-up** (the admin publish/refresh button) in
+  `docs/superpowers/plans/2026-07-15-nh279-followups.md`, which plans the deprecated form. The docs recommend
+  **`updateTag('catalog')`** in a Server Action (read-your-own-writes, so the admin sees the change immediately),
+  or `revalidateTag('catalog', 'max')` in a Route Handler.
+
+### Real `cacheLife('days')` values — not the numbers circulating online
+
+| Profile | `stale` (client) | `revalidate` (server) | `expire`   |
+| ------- | ---------------- | --------------------- | ---------- |
+| `days`  | 5 minutes        | **1 day**             | **1 week** |
+
+So: roughly one origin fetch per day, and **after a week with no traffic the next visitor waits on the Lambda**.
+
+### Minimum viable path — 4 items, in this order
+
+| #   | Source                                                                                                                          | Type / length               | Date · version           |
+| --- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ------------------------ |
+| 1   | **Bundled `use-cache-remote.md`** — `web/node_modules/next/dist/docs/01-app/03-api-reference/01-directives/use-cache-remote.md` | Local markdown, **~15 min** | **Exactly 16.2.10**      |
+| 2   | [Runtime Cache (Vercel)](https://vercel.com/docs/caching/runtime-cache)                                                         | Docs, **~12 min**           | **2026-06-29**           |
+| 3   | [Regional Pricing (Vercel)](https://vercel.com/docs/pricing/regional-pricing)                                                   | Reference, **~3 min**       | **2026-02-27**           |
+| 4   | [Migrating to Cache Components](https://nextjs.org/docs/app/guides/migrating-to-cache-components.md)                            | Docs, **~20 min**           | **2026-06-23 · 16.2.10** |
+
+**#1** carries the three-directive comparison table and a "When to avoid remote caching" section — authoritative
+for this exact build. **#2** is the only page saying what `'use cache: remote'` maps to on Vercel, plus the 2 MB
+limit. **#3** is the only page with real numbers. **#4** is the best single explanation of the model and covers why
+`use cache` is not durable.
+
+### Deep path
+
+- [Getting Started: Caching](https://nextjs.org/docs/app/getting-started/caching.md) · ~18 min · 2026-05-13 ·
+  **v16.2.10** — the "How rendering works" section explains the `connection()` + `<Suspense>` pattern in use here.
+- [cacheComponents config](https://nextjs.org/docs/app/api-reference/config/next-config-js/cacheComponents.md) ·
+  ~5 min · **v16.2.10** — what the flag turns on. **PPR is now the default; `experimental.ppr` was removed.**
+- [cacheLife](https://nextjs.org/docs/app/api-reference/functions/cacheLife.md) · ~18 min · **v16.2.10** — the real
+  profile numbers, plus the nested-cache and "dynamic hole" rules.
+- [connection()](https://nextjs.org/docs/app/api-reference/functions/connection.md) · ~4 min · **v16.2.10** — short;
+  confirms the pattern here is the documented one.
+- [Next.js 16 release post](https://nextjs.org/blog/next-16) · ~20 min · **2025-10-21** — why Cache Components
+  exists; the `revalidateTag`/`updateTag`/`refresh` changes.
+- [Vercel Academy — Cache Components](https://vercel.com/academy/nextjs-foundations/cache-components) · ~15 min ·
+  undated — gentlest intro. _Mentions `'use cache: remote'` only in passing; **no cost content**._
+- Bundled `use-cache.md` / `use-cache-private.md` · **16.2.10** — cache keys, serialization, the closure rule.
+  `private` is marked **experimental**.
+- [Vercel Hobby plan](https://vercel.com/docs/plans/hobby) · [Limits](https://vercel.com/docs/limits) · ~5 min each ·
+  2026-06-16 / **2026-07-01** — the "paused, not billed" evidence.
+
+### Independent writing barely exists — and that is the finding
+
+**Almost nobody outside Vercel has written seriously about `'use cache: remote'`.** The entire honest independent
+record:
+
+| Source                                                                                                                                                   | Verdict                                                                                                                        |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| [Discussion #85882 — "Cache Components force to utilize CPU"](https://github.com/vercel/next.js/discussions/85882) · **~8 min** · 2025-11-07, 12 replies | **The best independent signal.** Real user, reproducible evidence, a Vercel collaborator responds. Ends **partly unresolved**. |
+| [Discussion #89375](https://github.com/vercel/next.js/discussions/89375) · ~5 min · 2026-02-02, 2 replies                                                | Real, but **no Vercel team member answered** — community only.                                                                 |
+| [tigerabrodi.blog — "use cache: remote"](https://tigerabrodi.blog/next-js-use-cache-remote-a-distributed-cache-in-one-line)                              | Genuine hands-on writing, **~8 min**. ⚠️ **No byline, no date** — freshness unconfirmable.                                     |
+| [shubhra.dev — Cache Components migration](https://shubhra.dev/tutorials/nextjs-16-cache-components) · 2026-04-30                                        | Substantive, **~40 min**. ⚠️ Funnels to the author's paid "Cache Pro Kit" — content marketing.                                 |
+
+**This matters: the mechanism protecting the Lambda has essentially no public stress-testing.** No production
+post-mortems, no independent benchmarks, no critical cost analysis at scale. **Saying that out loud in an interview
+is a strength, not a gap** — it shows the risk was measured rather than assumed.
+
+### Rejected — including one trap worth naming
+
+| Source                                                                                                                                                                   | Why                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **"Vercel Remote Cache is now free" changelog**                                                                                                                          | ⚠️ **A trap.** That is **Turborepo/Nx build-artifact caching** — a completely different product from Runtime Cache. **The names collide.**                                                                                                                                                                                                                                                                             |
+| [digitalapplied.com — "Next.js 15 to 16 Migration Playbook"](https://www.digitalapplied.com/blog/next-js-15-to-16-migration-playbook-cache-components-2026) · 2026-05-15 | **Factually wrong.** Claims _"The cache key is derived from the function arguments; closures are invisible to the key"_ and warns of cross-tenant leaks. **The bundled docs say the opposite:** closure variables are _"automatically captured and bound as arguments, making them part of the cache key."_ The real footgun is the reverse — silent capture **multiplies cache entries**, a cost problem, not a leak. |
+| Nandann Creative Agency — "Next.js 16: Revolutionary Features"                                                                                                           | Agency SEO filler.                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Medium / "Better Dev" (Melvin Prince) — "Next.js 16 Caching: Finally, It Makes Sense"                                                                                    | Content farm.                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Anything about `unstable_cache`, `fetch` + `force-cache`, `export const dynamic`, or `experimental.ppr`**                                                              | That is the **previous** model. `experimental.ppr` was **removed** in 16. **Actively misleading.**                                                                                                                                                                                                                                                                                                                     |
+
+**Related, already tracked:** `docs/spikes/2026-07-08-nextjs-vercel-free-tier-caching-search.md:94-96` still shows
+the **stale bare `'use cache'`** pattern with no banner — the wrong variant, for exactly the reason above.
 
 ---
 
