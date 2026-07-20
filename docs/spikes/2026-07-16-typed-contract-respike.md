@@ -17,6 +17,8 @@
 - **oRPC's headline benefit — inferred types, zero codegen — does not apply on NestJS.** It is contract-first only.
 - Every candidate accepts Standard Schema, so **a hand-authored Zod schema is portable to all of them**. Deferring loses nothing structural.
 - **Recommendation (not a decision): defer the framework. Nothing is installed; this is a free choice, not a migration.**
+- **Two more candidates were spiked later** (§8): **Kanel** — works, and the live-DB objection is dead via an offline PGlite trick, but it yields three `z.string()`s here; **`nestjs-trpc`** — the client validates NOTHING (5/5 bad payloads pass), so it does not fix the bug.
+- **➡️ The decision checklist with confidence ratings is [§9](#9--decision-checklist).** Start there.
 
 ## Why this spike ran
 
@@ -379,11 +381,170 @@ maintainer.
       bug, independent of the contract decision.
 - [ ] **The uncached legacy `/api/catalog` browser path** (§5) — free-tier exposure, own ticket.
 
+## §8 — Candidate spikes run after the initial re-spike
+
+Two candidates were spiked empirically after the sections above were written — one because the user asked
+for it (Kanel), one because the user found it (`nestjs-trpc`). Both **ran against the real repo**; findings
+are measured, not reasoned.
+
+### §8.1 — Kanel (`kanel` + `kanel-zod`): the DB→Zod codegen the user wanted
+
+Ran `kanel@4.0.2` + `kanel-zod@4.0.0` against the real Neon `schema-validation` branch.
+
+**It works, and every objection raised against it before the spike was wrong:**
+
+- **The live-DB requirement is DEAD.** `extract-pg-schema` (Kanel's engine) routes a `file:` connection
+  string to **PGlite** (Postgres compiled to WASM, in-process). Ran the real `0000_playable_init.sql` into
+  PGlite with `DATABASE_URL` unset and diffed against the live-Neon output: **byte-identical, 1.8 s, no
+  network, no secret, works on fork PRs.** It generates from the DDL, which `ARCH-ORM-1` already declares
+  the source of truth — arguably _more_ correct than introspecting a shared branch.
+- **The registry rejection was misread (again, by this agent).** `ARCH-CONTRACT-1` does not reject kanel-zod
+  for introspecting a DB. Its actual reasons: **(a)** the DB→Zod layer was "owned by Drizzle + drizzle-zod",
+  and **(b)** API shape ≠ DB shape. **Reason (a) has evaporated** — drizzle-zod is barred from `web` by
+  NH-279's no-drizzle rule, so the layer is now unowned. Reason (b) survives and the spike proves it.
+- **Zero drizzle in the browser — CONFIRMED by bundling.** `grep` of a minified browser bundle: **0**
+  occurrences of `drizzle`. Kanel's marginal cost is **4,788 bytes / 2 modules** (555 gzipped). (The honest
+  number: the bundle is 64.6 kb gzipped and _all_ of it is zod — the price of any runtime validation, not a
+  Kanel cost. Today's contract is a TS `interface` at 0 runtime bytes.)
+
+**But it does not pay off for THIS contract, and the reason is the same as everywhere in this doc — API
+shape ≠ DB shape:**
+
+- The response has 6 fields. Kanel generates **3** (`id`, `slug`, `title`), all plain `z.string()`.
+- The other 3 are hand-written regardless: `kind` narrowed to 3 values, `level` ranged 0–10, and
+  `difficulty` **is not a column** (computed by `toDifficulty(level)`). Kanel cannot know any of this.
+- **Kanel never reads CHECK constraints.** The real DDL is `text` + `CHECK (kind IN (...))` with **zero**
+  `CREATE TYPE ... AS ENUM`, so `kind → z.string()` and `level → z.number().nullable()` (not even `.int()`,
+  and the `CHECK (level BETWEEN 0 AND 10)` is invisible). A **real** pg enum would emit
+  `z.enum(['song','part','lesson','pattern'])` for free — **Kanel's automation quality is a direct function
+  of the DDL modelling.**
+- **The alarms mostly do not fire.** With `.pick()`/`.extend()` curation: renaming `slug` fires (cryptically —
+  `Type 'true' is not assignable to type 'never'`, never names `slug`); but `level` smallint→text is
+  **SILENT**, and `title` type-change is **SILENT** (proved — `title` became `number`, compiled green),
+  because `.extend()` replaces the field so the generated type is never consulted. **Only the committed-file
+  `git diff` drift check is reliable** — and that is the cheap part.
+- **Required config is non-obvious** (would be rediscovered painfully later): `castToSchema: false` (or
+  `.pick()` does not exist on the output), `generateIdentifierType: undefined` (or every fixture/MSW handler
+  breaks on branded ids), `importsExtension: '.ts'` (or the value import fails under `shared/`'s `type:
+module`), plus an explicit conformance anchor to the published contract or type drift is silent.
+
+**Verdict: not for this contract now** (1,278 generated lines to replace a 20-line file, gaining three
+`string` types). **Revisit at the 8-table admin CMS (NH-207)**, where the shape genuinely is the table and
+it runs server-side. **Carry forward regardless:** (1) the **PGlite `file:` trick** is reusable and
+undocumented — record it; (2) the cheapest real win is **migrating `kind`/`status`/`origin` from `text`+CHECK
+to real pg enums**, after which _any_ generator emits the union for free and Postgres enforces the domain.
+
+### §8.2 — `nestjs-trpc`: the Relay-style codegen the user found
+
+Ran `nestjs-trpc@2.12.0` + `@trpc/server@11.18.0` + `@trpc/client@11.18.0` against a real port of the
+catalog controller.
+
+**It works far better mechanically than expected — and does not fix the bug the user needs fixed:**
+
+- **THE DECISIVE FINDING — the tRPC client validates NOTHING.** `.output()` runs **server-side** (validates
+  what the server sends before sending). The client only receives compile-time types, which are erased at
+  runtime. Pointed a real `@trpc/client` at a server returning bad payloads — **5 of 5 passed through with
+  no throw** (missing field, wrong shape, `items` a string, `null` items, wrong types). A hand-written Zod
+  `.parse()` threw `ZodError` on all 5. It **reproduces `catalog.ts:20` exactly** — `typeof difficulty →
+  undefined → React renders "undefined"\*\*.
+- **Deploy skew is worse than stated.** Vercel deploys on push and is normally _faster_ than the GitHub-OIDC
+  Lambda deploy, so **web-newer-than-Lambda is the DEFAULT skew** — exactly the case that renders "undefined".
+  A server-side `.output()` cannot help: the old Lambda's response is valid against its own old schema, so it
+  returns 200 happily.
+- **Corrections to this agent's priors, all in nestjs-trpc's favour:** the Rust CLI does **not** have the
+  `@nestjs/swagger`-under-SWC problem (it is a standalone binary that parses `.ts` source, never touches
+  tsc/SWC — proved by deleting `dist/` and regenerating); the output path **is** configurable
+  (`-o ../shared/src/@generated`, so `web` need not depend on `server`); the full pipeline stays green **and
+  the DI smoke test passes** (decorator metadata survives SWC→esbuild); generation is deterministic (5 runs,
+  identical SHA-256).
+- **A real packaging bug:** the published tarball lost the execute bit on **4 of 5** binaries — only
+  `x86_64-unknown-linux-gnu` is executable, so **CI (ubuntu) passes while an Apple-Silicon Mac fails**
+  (`EACCES`). Reproduced with a clean `npm install` outside the workspace. One `chmod +x` fixes it, carried
+  forever. Also: `--version` reports `0.1.0`; pins an exact `rxjs 7.8.1` peer the repo already violates.
+- **Friction with this repo's gates:** the generated file fails Prettier and ESLint (`--max-warnings 0`) and
+  the layout guard's role-suffix rule; all solvable (`.prettierignore`, `-r "**/*.resolver.ts"`, emit into
+  `shared/`) but each is deliberate work. **And lefthook's `prettier --write` fights the generator's own
+  formatting** — a format-on-commit and a `generate && git diff --exit-code` gate would undo each other.
+- **OpenAPI, confirmed on all three counts:** `trpc-openapi` is **archived** (last push 2024-11-19, 100
+  issues frozen); **every** published `@trpc/openapi` version is alpha/canary (`latest` = `11.18.0-alpha`,
+  no stable ever); `nestjs-trpc` itself has no OpenAPI (0 matches in `dist/`, README, or the Rust binary).
+  **The user's instinct that OpenAPI is the reason to prefer oRPC is verified correct.**
+
+**Verdict: no.** At one endpoint it adds a Rust binary, a CI drift gate, three lint/format workarounds, a
+`chmod +x`, and a **bus-factor-1 (KevinEdry 220 / next human 8), 4,497/wk** dependency — to avoid writing 20
+lines, **and still leaves the validation bug**. The codegen benefit is real and grows with endpoint count,
+but the client-does-not-validate problem grows with it too, and oRPC gives the same scaling benefit with
+stable OpenAPI and 6× the adoption.
+
+### §8.3 — What both later spikes agree on
+
+- **Add the Zod `.parse()` in `fetchCatalog` now, regardless of the contract choice.** It is the only thing
+  measured to fix the live bug. `z.infer<typeof schema>` is automated typing too — the real choice was never
+  "automated vs hand-written types", it is **"automated types that do NOT validate" vs "automated types that
+  DO"**.
+- Neither candidate is the answer. The framework decision (defer / oRPC / other) is unchanged by them and
+  remains the user's to make.
+
+## §9 — Decision checklist
+
+> Confidence basis matters more than the number. **measured** = a spike ran it (trust these); **verified** =
+> read from real code/docs; **reasoned** = agent judgment (the category that was wrong repeatedly this
+> session — weight accordingly); **disputed** = this doc's own spikes disagree, the user decides.
+
+### Group 1 — Do regardless of `ARCH-CONTRACT-1`
+
+| Item                                                                                  | Call                                                                                                   | Confidence · basis                                     |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ |
+| Zod `.parse()` in `fetchCatalog` — kills the "undefined" bug                          | Do                                                                                                     | **95%** measured (both spikes)                         |
+| `shared/` gets a real build (~10 lines)                                               | Do                                                                                                     | **90%** measured (8 build paths)                       |
+| R-1 — no fetch timeout → `AbortSignal.timeout(8000)`                                  | Do                                                                                                     | **95%** verified (3 reviewers)                         |
+| F-8 — `API_BASE_URL` unset in prod → user sets CloudFront URL in Vercel, redeploy     | Do (user action)                                                                                       | **90%** verified (`pulumi stack output cloudfrontUrl`) |
+| R-4 — Difficulty sorts alphabetically → sort by `level`                               | Do                                                                                                     | **85%** verified                                       |
+| R-3 — sort order untested → snapshot `orderBy.mock.calls[0]`; Neon-in-CI = own ticket | Do (interim)                                                                                           | **80%** verified fact, agent's fix idea                |
+| R-5 — Level sorts Ungraded above 0 → null-aware comparator                            | Do (caveat: TanStack negates for desc)                                                                 | **75%** verified                                       |
+| R-6 — trailing-slash guard on `API_BASE_URL`                                          | **Probably skip** — user's CloudFront URL has no trailing slash, so the review's reason does not apply | **40%** verified                                       |
+
+### Group 2 — The `ARCH-CONTRACT-1` (NH-284) decisions
+
+| Decision                        | Call                                           | Confidence · basis           |
+| ------------------------------- | ---------------------------------------------- | ---------------------------- |
+| `nestjs-trpc`?                  | **No**                                         | **95%** measured (§8.2)      |
+| drizzle-zod in `shared/`?       | **No**                                         | **95%** measured (§3)        |
+| Kanel for the catalog contract? | **Not now** (revisit at CMS)                   | **85%** measured (§8.1)      |
+| Hand-author the Zod contract?   | **Yes, for now** (`z.infer` = still automated) | **85%** reasoned             |
+| Adopt oRPC now, or defer?       | **⚠️ Lean defer**                              | **50%** DISPUTED — see below |
+
+**The disputed one:** the initial re-spike says _defer_ (no framework at N=1; bus factor 1; `@orpc/openapi@1.14.8`
+does not export `openapi()`, so **no documented path to adopt stable**). The nestjs-trpc spike says _oRPC_ — but
+that is a **relative** verdict (oRPC beats nestjs-trpc); it never re-examined "any framework at N=1", nor the
+undocumented-stable problem. The tiebreaker is the user's OpenAPI need: it is now **verified** that oRPC is the
+only live OpenAPI option (tRPC's is permanently alpha). Deferring loses nothing structural (the Zod drops into
+`oc.route().output()` unchanged).
+
+### Group 3 — Newly found, need triage
+
+| Item                                                                                                         | Call                                                    | Confidence · basis                                          |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------- | ----------------------------------------------------------- |
+| `revalidateTag(tag)` deprecated in 16.2.10 — F-5's admin button plans that form → use `updateTag('catalog')` | Fix in F-5                                              | **90%** verified (bundled docs)                             |
+| `About.tsx` fetches `/api/catalog` from the browser, uncached                                                | Own ticket                                              | **85%** verified (`CACHE_DISABLED`)                         |
+| Runtime Cache silently drops items > 2 MB                                                                    | Add a guard                                             | **70%** verified hazard, fix undesigned                     |
+| Migrate `kind`/`status`/`origin` from `text`+CHECK → real pg enums                                           | Worth doing on its own merits                           | **65%** reasoned (Kanel measured the enum payoff)           |
+| Record the PGlite offline-codegen trick                                                                      | Record it                                               | **85%** measured (§8.1)                                     |
+| ESLint ban on `as` casts (user's idea)                                                                       | Own ticket (needs scoping — 4 legit casts in `server/`) | **60%** verified                                            |
+| R-8 — commit `f02f78a` (NH-277) stranded in the #140 branch                                                  | Name NH-277 in PR body, or cherry-pick                  | **70%** verified                                            |
+| Banner the stale bare `'use cache'` in the 2026-07-08 spike                                                  | Banner it                                               | **90%** verified                                            |
+| PR #140 (draft) — unpark once Group 1 lands                                                                  | Unpark later                                            | **80%** reasoned (boundary work endorsed by every reviewer) |
+
+**The one load-bearing 95%:** the Zod `.parse()`. It fixes a live bug, is ~20 lines, and every option leads
+through it. Confidence is inverted from intuition — highest on the small mechanical items, genuinely 50/50 on
+the big architectural one, because that is where this doc's own evidence conflicts.
+
 ## Sources
 
 All npm/GitHub data queried live **2026-07-15/16**. Empirical tests run against a detached worktree of
 `origin/claude/neon-data-nextjs-table-416796` on Node 24.16.0, TypeScript 5.9.3, esbuild 0.28.1;
-working tree left clean.
+working tree left clean. §8.1/§8.2 spikes run **2026-07-16** against the same base; `kanel@4.0.2` /
+`kanel-zod@4.0.0` and `nestjs-trpc@2.12.0` / `@trpc/server|client@11.18.0`.
 
 [nestjs/swagger#2493](https://github.com/nestjs/swagger/issues/2493) ·
 [NestJS OpenAPI CLI Plugin](https://docs.nestjs.com/openapi/cli-plugin) ·
