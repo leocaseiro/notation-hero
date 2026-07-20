@@ -1,7 +1,30 @@
 # Spike — Typed API contract (oRPC vs ts-rest vs hey-api) — 2026-06-17
 
+> ⚠️ **UNDER REVIEW (2026-07-16) — do not act on this verdict without reading the re-spike:**
+> [`2026-07-16-typed-contract-respike.md`](2026-07-16-typed-contract-respike.md). `ARCH-CONTRACT-1`
+> is **not** changed — leocaseiro paused the decision pending study — but this spike's two load-bearing
+> premises were both falsified:
+>
+> 1. **"Moots the `@nestjs/swagger`-under-SWC problem"** — that problem was already solved.
+>    `nestjs/swagger#2493` closed as **completed 2023-07-11**, three years before this spike cited it.
+> 2. **"post-v1.0 Dec 2025"** — there is no `1.0.0`; the 1.x line began **2025-04-15**. December 2025
+>    is the InfoQ _article's_ date. (This error favoured oRPC.)
+>
+> Also stale/absent: oRPC **v2 entered beta 2026-06-21 — four days after this spike** (rewrite, no
+> migration guide); bus factor is **1** (945 commits vs next-human 3, no company behind `middleapi`);
+> `@orpc/nest` is **28,450/wk**, 3× fewer than _frozen_ ts-rest's Nest adapter; oRPC's live docs describe
+> v2-beta and **`@orpc/openapi@1.14.8` does not export `openapi()`**, so there is no documented path to
+> adopt stable. Critically, **oRPC + NestJS is contract-first ONLY** — the "types infer for free, zero
+> codegen" benefit this spike sells **does not apply to a NestJS backend**. The stack also changed:
+> the FE pivoted from Vite SPA to **Next.js 16 on Vercel** (ADR 2026-07-08), and oRPC's Next.js pattern
+> forwards `headers()`, which **fails immediately** inside `'use cache'`.
+>
+> **What still holds:** ts-rest is dead (re-verified — no publish in 13.5 months); "weekly releases" was
+> accurate (1.31/week measured); the `@hey-api` flip condition is sound and now looks stronger.
+>
 > **Feeds:** `ARCH-CONTRACT-1` (oRPC). **Verdict:** use **oRPC**; ts-rest is frozen.
 > Stack: NestJS 11 + React/Vite/TanStack Query, shared contract package, pnpm workspaces.
+> ⚠️ _That stack line is itself superseded — the FE is now Next.js 16 on Vercel._
 
 ## ts-rest issue #797 ("Future of ts-rest") — what it says
 
