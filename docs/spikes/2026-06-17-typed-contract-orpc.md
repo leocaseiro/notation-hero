@@ -1,8 +1,8 @@
 # Spike — Typed API contract (oRPC vs ts-rest vs hey-api) — 2026-06-17
 
-> ⚠️ **UNDER REVIEW (2026-07-16) — do not act on this verdict without reading the re-spike:**
-> [`2026-07-16-typed-contract-respike.md`](2026-07-16-typed-contract-respike.md). `ARCH-CONTRACT-1`
-> is **not** changed — leocaseiro paused the decision pending study — but this spike's two load-bearing
+> ⚠️ **SUPERSEDED (decided 2026-07-21) — do not act on this verdict. Read the re-spike:**
+> [`2026-07-16-typed-contract-respike.md`](2026-07-16-typed-contract-respike.md). `ARCH-CONTRACT-1` was
+> **DECIDED = DEFER the framework** (not oRPC) — leocaseiro reversed this June pick after study — because this spike's two load-bearing
 > premises were both falsified:
 >
 > 1. **"Moots the `@nestjs/swagger`-under-SWC problem"** — that problem was already solved.

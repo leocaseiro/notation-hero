@@ -12,6 +12,17 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-21 — Typed API contract: DEFER the framework (reverses June's oRPC pick) (NH-284)
+
+leocaseiro personally decided `ARCH-CONTRACT-1` after the re-spike and a NotebookLM study pause. Findings: [`docs/spikes/2026-07-16-typed-contract-respike.md`](../spikes/2026-07-16-typed-contract-respike.md). **Reverses the June oRPC decision** — both premises behind it were false (the `@nestjs/swagger`-under-SWC blocker was fixed in 2023, `nestjs/swagger#2493`; "post-v1.0 Dec 2025" misread the InfoQ article date). Nothing was ever installed, so this was a free choice, not a migration.
+
+- **Framework = DEFER.** No oRPC / tRPC / `@nestjs/swagger` now. At one endpoint a framework does no real work, and deferring is **provably lossless** — a hand-authored Zod schema is a Standard Schema and drops into oRPC/tRPC later unchanged.
+- **Interim contract = hand-authored Zod** in `shared/` + `z.infer` types, validated at the web boundary with `.parse()` (this fixes the live "undefined"-render bug). A server-side `import type` drift-guard ties the wire type to the Drizzle row at zero web-bundle cost.
+- **Flip conditions:** ~5 endpoints · the CMS write surface (NH-207) begins · or a real external OpenAPI consumer. **Default at the flip = `@nestjs/swagger` + `nestjs-zod` (+ `@hey-api` client)** — the healthy first-party OpenAPI path, **not** oRPC. Reconsider oRPC only after v2 reaches stable + a migration guide + a second substantive maintainer.
+- **Rejected:** `nestjs-trpc` (its tRPC client validates nothing — 5/5 bad payloads passed; reproduces the bug); a `drizzle-zod`-derived contract (ships 33 KB of drizzle to the browser, breaks NH-279; derives only three bare `z.string()`s). **Parked:** Kanel (works, and the live-DB objection is dead via the offline PGlite trick — but API-shape ≠ DB-shape at the read; revisit at the CMS where the shape genuinely is the table).
+
+**Status:** ✅ decided (framework deferred; interim = hand-authored Zod) · 📄 prose-only enforcement — the boundary lands with the unparked PR #140 + the Group-1 fixes. `ARCH-CONTRACT-1` updated below. Decided by leocaseiro 2026-07-21.
+
 ### 2026-07-12 — Design-system distribution: direct consumption + accept scoped-glob CSS over-generation (NH-275)
 
 leocaseiro ratified how apps consume the design system (`client/` → future `design-system/`). Full record: [`docs/decisions/2026-07-12-design-system-distribution-adr.md`](2026-07-12-design-system-distribution-adr.md). Refines the NH-275 Phase 1 `@source` pattern; pairs with the 2026-07-08 FE-pivot entry.
@@ -465,7 +476,7 @@ Brainstorm-approved by leocaseiro (2026-06-17). Decides the 8 open architecture 
 - `ARCH-LAMBDA-1` one API Lambda (`@codegenie/serverless-express` v5 + Function URL + cached singleton); workers via `createApplicationContext`.
 - `ARCH-FMT-1` server CJS / client ESM.
 - `ARCH-EDGE-1` one CloudFront, two origins (S3 FE + Lambda API).
-- `ARCH-CONTRACT-1` oRPC (ts-rest frozen — #797); ditch kanel-zod (drizzle-zod derive+curate).
+- `ARCH-CONTRACT-1` ~~oRPC~~ → **DEFER the framework** (NH-284, 2026-07-21): hand-authored Zod in `shared/` + `z.infer` + `.parse()`; no framework now. Flip-default `@nestjs/swagger`+`nestjs-zod` (**not** oRPC). Reject nestjs-trpc/drizzle-zod; Kanel → CMS. **Supersedes the June oRPC pick — see change log.**
 - `ARCH-ORM-1` Drizzle — **reaffirms `DS-1`**; confirmed over Prisma/TypeORM/Kysely for Neon-HTTP + SWC.
 - `ARCH-FE-1` Vite + TanStack Router + TanStack Query — **supersedes the 2026-06-16 Next.js FE ADR (`NH-185`)** (leocaseiro 2026-06-17: explicitly superseding yesterday's Next.js decision).
 - `ARCH-OFFLINE-1` plain Dexie + insert-only outbox, sync via API (RxDB rejected — paywalled fast storage).

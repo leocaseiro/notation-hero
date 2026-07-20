@@ -1,8 +1,10 @@
 # Spike — Typed API contract, re-decided from scratch — 2026-07-16
 
-> **Status: NO DECISION. `ARCH-CONTRACT-1` is under review, not changed.**
-> leocaseiro paused all decisions and implementation on 2026-07-16 pending study. This document
-> records **findings only**. Nothing here is ratified. The registry is deliberately untouched.
+> **Status: DECIDED 2026-07-21 — `ARCH-CONTRACT-1` = DEFER the framework** (reverses the June oRPC pick).
+> leocaseiro decided personally after the 2026-07-16 study pause. Outcome: a **hand-authored Zod contract in
+> `shared/` + `z.infer` + `.parse()`**; **no framework now**; flip-default `@nestjs/swagger` + `nestjs-zod`
+> (**not** oRPC). Rejected: nestjs-trpc, drizzle-zod. Parked: Kanel → CMS. Recorded in the
+> [decision registry](../decisions/decision-registry.md) change log (2026-07-21); §9 holds the per-item calls.
 >
 > **Re-opens:** [`2026-06-17-typed-contract-orpc.md`](2026-06-17-typed-contract-orpc.md) (which fed `ARCH-CONTRACT-1` = oRPC).
 > **Companion:** [`2026-07-16-contract-study-plan.md`](2026-07-16-contract-study-plan.md) — the reading list.
