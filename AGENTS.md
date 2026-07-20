@@ -13,7 +13,7 @@
 - **Data** — **Neon Postgres** (catalog) + **DynamoDB** (per-user, M1). **Drizzle** ORM over the `@neondatabase/serverless` HTTP driver. Schema = the 8-table **Playable** model (notation · playable · track · step · playable_link · media · tonal_profile · drum_profile); profiles **per-track**. Schema design is DONE (draft DDL `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`); **not yet applied to a live DB**.
 - **Auth (admin gate, v1)** — **Cognito + Google federation + RBAC via `cognito:groups` (`admin` group) + a framework-free `can(user, item, action)` policy**. NOT CloudFront Basic-Auth, NOT a shared password, NOT deferred to M1. Only **end-user** sign-up + cross-device sync are M1.
 - **CMS** — the admin is the **same catalog UI with admin-gated actions**; NO separate React-Admin SPA.
-- **API contract** — **oRPC** (ts-rest rejected). **Lint/format** — ESLint + Prettier (Biome rejected).
+- **API contract** — **DEFERRED** (NH-284, 2026-07-21): hand-authored Zod contract in `shared/` + `z.infer` + `.parse()`, no framework now; flip-default `@nestjs/swagger` + `nestjs-zod` (**not** oRPC). ts-rest rejected; nestjs-trpc/drizzle-zod rejected; Kanel → CMS. **Lint/format** — ESLint + Prettier (Biome rejected).
 - **Infra** — **Pulumi** (TS); deploy = **push-to-master only** via GitHub OIDC (no AWS creds on PRs); least-privilege role. **Neon is NOT Pulumi-provisioned** (off-AWS); connection string = **Pulumi-secret → Lambda `DATABASE_URL` env var** (not SSM); migrations in an operator runbook.
 - **Tracker** — Jira project **NH** (NH-NN). Linear dead; KAN drained.
 
