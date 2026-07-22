@@ -39,6 +39,17 @@ querying Neon directly. Full record: [`docs/decisions/2026-07-14-catalog-read-se
 listing drizzle/neon; the revalidation endpoint + admin refresh button + Zod runtime validation remain
 follow-ups. Approved by leocaseiro 2026-07-14; lands with PR #140.
 
+### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
+
+leocaseiro ratified three fixes to the AskUserQuestion conventions in [`AGENTS.md`](../../AGENTS.md) section 3, after reporting that agents were using the follow-up catcher to force decisions. Each fix was approved separately in a picker on 2026-07-16.
+
+- **The `[Q-add]` catcher is INERT — it approves nothing.** Its options must carry zero scope and zero action, and the approval verb "go ahead" is banned from them. Evidence: an observed picker put a work scope into the "Nothing" option's _description_ — `{"label":"Nothing — go ahead","description":"Start drafting: plugin scaffold, SessionStart hook, …"}` — so declining to add context silently authorized a scope that was never approved. **Declining to add context is not consent**; approval for a scope is a real question on its own card.
+- **`[No preference]` means NOT READY — never "you pick".** That is the literal the harness records when the Skip button is pressed. Agents were reading it as indifference and choosing the option themselves — the exact inverse of the intent, which is "not ready to answer this". Agents must not choose, must not proceed on that decision, and must not re-ask in a loop; they do the unblocked parts and name what is parked. The literal was **verified against real transcripts** (present in 58 files, in situ inside AskUserQuestion results) — the plausible-looking `[Not a preference]` does not exist, so a rule pinned to that string would have been dead text.
+- **The catcher moves to the LAST card, reframed to any-topic.** As card 1 it asked for a response "before I act on these" before "these" had been read. It is **not** a duplicate of the per-card "Other" box: "Other" carries context about that card's own question; the catcher carries everything else — an earlier picker's question, a new topic, an unrelated suggestion.
+- **Rejected:** deleting the catcher outright. It was proposed on the premise that the catcher duplicated the "Other" box; leocaseiro corrected the premise — the two channels differ in scope, so the catcher stays and is made inert instead.
+
+**Status:** ✅ decided · 📄 prose-only enforcement — these are agent-contract prose in `AGENTS.md`; no machine check today (🟥 no gate can read a picker's options). Approved by leocaseiro 2026-07-16.
+
 ### 2026-07-12 — Design-system distribution: direct consumption + accept scoped-glob CSS over-generation (NH-275)
 
 leocaseiro ratified how apps consume the design system (`client/` → future `design-system/`). Full record: [`docs/decisions/2026-07-12-design-system-distribution-adr.md`](2026-07-12-design-system-distribution-adr.md). Refines the NH-275 Phase 1 `@source` pattern; pairs with the 2026-07-08 FE-pivot entry.
