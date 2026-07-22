@@ -1,5 +1,11 @@
 # ADR — FE + hosting: Next.js PWA on Vercel + NestJS-on-Lambda (hybrid BFF)
 
+> **⚠️ Partially superseded (2026-07-14, NH-279):** the **catalog** read no longer goes web→Neon directly.
+> Web now reads the catalog via the server API (`GET /api/catalog`, cached) — see the
+> [catalog-read service-boundary ADR](2026-07-14-catalog-read-service-boundary-adr.md). This applies to
+> the catalog and any Drizzle-schema-dependent read; the rest of this ADR (framework, hosting, topology,
+> DynamoDB, Cognito, non-Drizzle direct reads) stands.
+
 - **Status:** ✅ Accepted 2026-07-08.
 - **Date:** 2026-07-08
 - **Driver / Approver:** leocaseiro

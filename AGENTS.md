@@ -10,10 +10,10 @@
 > 30-second version so you don't act on a superseded doc. **Source of truth:** [`docs/decisions/decision-registry.md`](docs/decisions/decision-registry.md) (newest-first change-log) + the ADR [`docs/decisions/2026-06-17-architecture-decisions.md`](docs/decisions/2026-06-17-architecture-decisions.md). **If any doc conflicts with this snapshot or the registry, the registry wins.**
 
 - **Foundation** — plain **pnpm workspaces** + folders-in-one-app (Nx DROPPED 2026-06-17). One **NestJS** app (hexagon inside); FE = **Next.js 16 App Router on Vercel** (re-adopted, ADR 2026-07-08 — supersedes the 2026-06-18 Vite-SPA decision), consuming the `client/` design system.
-- **Data** — **Neon Postgres** (catalog) + **DynamoDB** (per-user, M1). **Drizzle** ORM over the `@neondatabase/serverless` HTTP driver. Schema = the 8-table **Playable** model (notation · playable · track · step · playable_link · media · tonal_profile · drum_profile); profiles **per-track**. Schema design is DONE (draft DDL `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`); **not yet applied to a live DB**.
+- **Data** — **Neon Postgres** (catalog) + **DynamoDB** (per-user, M1). **Drizzle** ORM over the `@neondatabase/serverless` HTTP driver. Schema = the 8-table **Playable** model (notation · playable · track · step · playable_link · media · tonal_profile · drum_profile); profiles **per-track**. Schema design is DONE (draft DDL `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`); **not yet applied to a live DB**. Web reads the catalog via the server API (`GET /api/catalog`, cached) — a service boundary, not direct-Neon (ADR 2026-07-14, supersedes the 2026-07-08 direct-read path for Drizzle-dependent reads).
 - **Auth (admin gate, v1)** — **Cognito + Google federation + RBAC via `cognito:groups` (`admin` group) + a framework-free `can(user, item, action)` policy**. NOT CloudFront Basic-Auth, NOT a shared password, NOT deferred to M1. Only **end-user** sign-up + cross-device sync are M1.
 - **CMS** — the admin is the **same catalog UI with admin-gated actions**; NO separate React-Admin SPA.
-- **API contract** — **oRPC** (ts-rest rejected). **Lint/format** — ESLint + Prettier (Biome rejected).
+- **API contract** — DEFERRED (ARCH-CONTRACT-1, NH-284): hand-authored Zod schemas in `shared/` are the interim contract (oRPC/ts-rest not adopted — reverses the earlier oRPC pick); the first (the catalog read) is colocated in `web/` until `shared/` emits a JS build (NH-279). **Lint/format** — ESLint + Prettier (Biome rejected).
 - **Infra** — **Pulumi** (TS); deploy = **push-to-master only** via GitHub OIDC (no AWS creds on PRs); least-privilege role. **Neon is NOT Pulumi-provisioned** (off-AWS); connection string = **Pulumi-secret → Lambda `DATABASE_URL` env var** (not SSM); migrations in an operator runbook.
 - **Tracker** — Jira project **NH** (NH-NN). Linear dead; KAN drained.
 
@@ -50,11 +50,36 @@ catalog lives in Neon Postgres + JSONB (future `server/src/adapters/neon-postgre
 ## Targets & how to run them
 
 Each package exposes `lint`, `typecheck`, `test`, `build` as `package.json` scripts
-(`web/` omits `test` until Phase 2 — `pnpm -r --if-present` skips it safely).
+(`web/` gained its `test` lane with the NH-279 catalog read — Vitest, same as the rest).
 Run across all packages from the repo root with `pnpm -r --if-present run <target>`.
 **Never** chain targets as `pnpm -r lint typecheck` — that runs `lint` with `typecheck`
 as a positional arg, silently skipping the second. Chain root scripts instead:
 `pnpm run lint && pnpm run typecheck`.
+
+### Running the apps locally (dev / debug)
+
+`pnpm dev` opens a tmux session (`nh-dev`) with a pane per app, so the server and web logs stay
+separate and either can be restarted alone — which matters because a `/catalog` request now spans
+three runtimes (browser → Next.js server → NestJS server → Neon).
+
+| Command             | What it runs                                                   |
+| ------------------- | -------------------------------------------------------------- |
+| `pnpm dev`          | both apps in tmux — API on 3001, web on 3002                   |
+| `pnpm dev:debug`    | both apps with Node inspectors (server **9229**, web **9230**) |
+| `pnpm dev:server`   | NestJS only (`nest start --watch`)                             |
+| `pnpm dev:web`      | Next.js only (`next dev --port 3002`)                          |
+| `pnpm debug:server` | NestJS with an inspector on 9229                               |
+| `pnpm debug:web`    | Next.js with an inspector on 9230                              |
+
+`SERVER_PORT=3010 pnpm dev` moves the API when something already holds 3001; the web pane inherits
+`API_BASE_URL` from it, so the two never disagree (Next.js resolves `process.env` ahead of
+`.env.local` — see its bundled `environment-variables.md`, "Environment Variable Load Order"). The
+two inspectors MUST differ: both default to 9229, so `debug:web` pins 9230.
+
+Debugging gotcha: `getCatalog()` is wrapped in `'use cache: remote'`, so once the cache is warm it
+does not re-run and breakpoints in `web/app/catalog/page.tsx`, `web/app/lib/catalog.ts`, and the
+whole NestJS side never fire. Edit either file to invalidate the dev cache (HMR refresh hash) and
+force a miss.
 
 Root-level checks — each is a named script AND a CI gate, so run any locally:
 

@@ -88,10 +88,12 @@ The only per-user cache is the **client-side Router Cache** (each browser, for b
 
 ### 3.2 The pattern
 
+> Corrected per NH-279: use `'use cache: remote'` (durable, shared across Lambda instances) — bare `'use cache'` is per-instance and lost on cold start.
+
 ```ts
 // ✅ Public catalog — shared cache, revalidate only when an admin edits
 async function getCatalog() {
-  'use cache';
+  'use cache: remote';
   cacheTag('catalog'); // revalidateTag('catalog') on edit
   cacheLife('days'); // long-lived; content rarely changes
   return db.select().from(playables); // Neon hit ~only on revalidation

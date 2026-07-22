@@ -19,7 +19,8 @@ vi.mock('drizzle-orm/neon-http', () => {
     },
   ];
   const limited = { limit: () => Promise.resolve(rows) };
-  const filtered = { where: () => limited };
+  const afterWhere = { orderBy: () => limited };
+  const filtered = { where: () => afterWhere };
   const selected = { from: () => filtered };
   const queried = { select: () => selected };
   return { drizzle: () => queried };

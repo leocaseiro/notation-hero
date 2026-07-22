@@ -1,29 +1,46 @@
 import { Test } from '@nestjs/testing';
+import { asc } from 'drizzle-orm';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { CatalogController } from './catalog.controller';
 import { CATALOG_DB, createCatalogDb } from '@/adapters/neon-postgres/catalog-db.adapter';
+import { playable } from '@/adapters/neon-postgres/catalog.schema';
 
 // With the db injected via CATALOG_DB (NH-79 review F12), the test overrides the provider with a fake
 // query chain — no driver-module mock, no module-registry reset. The spies record the .where()
 // predicate + the .limit() bound so a regression that drops the access filter or the cap is caught;
 // the fake chain itself ignores the arguments. The CONTENT of the predicate is asserted by the
 // skipped Neon integration block at the bottom (review F2).
+// The fake chain now mirrors select().from().where().orderBy().limit(). `where()` returns an object
+// carrying BOTH orderBy and limit so a controller that has NOT yet added .orderBy() still runs and
+// fails on the assertions below (orderBy spy uncalled + missing `level`) — a clean behavior-red,
+// not a TypeError.
 function makeDb(rows: unknown[]): {
   db: unknown;
-  spies: { where: ReturnType<typeof vi.fn>; limit: ReturnType<typeof vi.fn> };
+  spies: {
+    where: ReturnType<typeof vi.fn>;
+    orderBy: ReturnType<typeof vi.fn>;
+    limit: ReturnType<typeof vi.fn>;
+  };
 } {
-  const spies = { where: vi.fn(), limit: vi.fn() };
+  const spies = { where: vi.fn(), orderBy: vi.fn(), limit: vi.fn() };
   const limited = {
     limit: (n: number) => {
       spies.limit(n);
       return Promise.resolve(rows);
     },
   };
+  const afterWhere = {
+    orderBy: (...cols: unknown[]) => {
+      spies.orderBy(...cols);
+      return limited;
+    },
+    limit: limited.limit,
+  };
   const filtered = {
     where: (condition: unknown) => {
       spies.where(condition);
-      return limited;
+      return afterWhere;
     },
   };
   const selected = { from: () => filtered };
@@ -71,6 +88,7 @@ describe('CatalogController (DB-backed thin read)', () => {
       title: 'Single Stroke Roll (Debut)',
       kind: 'pattern',
       difficulty: 'Debut',
+      level: 0,
     });
     expect(res.items[1]?.difficulty).toBe('Intermediate 4');
     expect(res.items[2]?.difficulty).toBe('Ungraded');
@@ -84,6 +102,16 @@ describe('CatalogController (DB-backed thin read)', () => {
     expect(spies.where).toHaveBeenCalledTimes(1);
     expect(spies.where.mock.calls[0]?.[0]).toBeDefined();
     expect(spies.limit).toHaveBeenCalledWith(50);
+  });
+
+  it('orders by level then title for a stable cached snapshot (F1)', async () => {
+    const { controller, spies } = await makeController(fakeRows);
+    await controller.list();
+    expect(spies.orderBy).toHaveBeenCalledTimes(1);
+    // Pin BOTH the columns AND the asc direction (was arity-only, which let a wrong-column or an
+    // asc->desc swap pass). The column objects are reference-shared from the schema, so rebuilding
+    // the expected asc() SQL and deep-equaling matches structurally — and fails a real swap (F-3).
+    expect(spies.orderBy.mock.calls[0]).toEqual([asc(playable.level), asc(playable.title)]);
   });
 
   it('throws if the query ever returns a kind outside the response union (F4 guard)', async () => {

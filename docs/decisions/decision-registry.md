@@ -12,6 +12,33 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-22 — First hand-authored Zod contract + AGENTS.md reconciled to the oRPC deferral (NH-279)
+
+NH-279 / PR #140 introduced the project's **first hand-authored Zod schema** — a runtime validator for the `GET /api/catalog` response — and reconciled `AGENTS.md` to decision **NH-284** (2026-07-21), which **defers** the typed-contract framework (`ARCH-CONTRACT-1`) and makes hand-authored Zod the interim contract, reversing the earlier **oRPC** pick (oRPC / ts-rest not adopted).
+
+- **What landed:** `web/app/lib/catalog.ts` now `parse()`s the catalog response against a local `catalogResponseSchema`, bound to shared's `CatalogResponse` type via `satisfies z.ZodType<CatalogResponse>` so the two cannot drift. This closes the F-2 (runtime validation) and F-3 (bad-shape response caches `undefined`) review findings. `shared/src/contracts/catalog.ts` stays **type-only**.
+- **Why `web/`, not `shared/` (Option C fallback):** the intended home is `shared/` (one schema for web + the server later), but `shared/` ships raw `.ts` whose `.js`-specifier re-export Turbopack cannot resolve as a runtime **value** import (the NH-284 resolution failure) — while the server needs that `.js` extension for its `nodenext` type-only import. So `shared/` stays type-only; the schema graduates to `shared/` once it emits a real JS build.
+- **Docs reconciled:** the `AGENTS.md` "API contract" line changed from "**oRPC** (ts-rest rejected)" to the deferral above. (The older `ARCH-CONTRACT-1`/spike lines lower in this file are historical and left as-is.)
+
+**Status:** ✅ recorded · 📄 prose-only — the contract deferral is a direction, not a machine-checked rule; the Zod validation itself is enforced by the `web/` test suite. Lands with PR #140 (NH-279).
+
+### 2026-07-14 — Catalog read: service boundary (web reads via the server API) (NH-279)
+
+leocaseiro approved having `web/` read the catalog via the server's `GET /api/catalog` (cached) instead of
+querying Neon directly. Full record: [`docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md`](2026-07-14-catalog-read-service-boundary-adr.md).
+
+- **Why:** PR #140 review found `web/` duplicated the server's Drizzle schema + the ARCH-AUTHZ-1 visibility
+  `WHERE`; the "extract to a shared drizzle table" fix fails the CJS/ESM dual-package hazard (server is
+  CJS `nodenext`, `shared` is ESM). Path 2 dissolves the duplication by deletion — `shared/` carries only a
+  pure TypeScript contract; web sheds `drizzle-orm` + `@neondatabase/serverless`.
+- **Scope:** supersedes the direct-Neon read path **for the catalog + Drizzle-schema-dependent reads**
+  only (not a blanket ban); the 2026-07-08 BFF ADR otherwise stands (bannered).
+- **Cost accepted:** a Lambda hop on cache-miss reads (bounded, cacheable-away).
+
+**Status:** ✅ decided · 🟡 partial enforcement — machine-visible via web `package.json`/lockfile no longer
+listing drizzle/neon; the revalidation endpoint + admin refresh button + Zod runtime validation remain
+follow-ups. Approved by leocaseiro 2026-07-14; lands with PR #140.
+
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
 
 leocaseiro ratified three fixes to the AskUserQuestion conventions in [`AGENTS.md`](../../AGENTS.md) section 3, after reporting that agents were using the follow-up catcher to force decisions. Each fix was approved separately in a picker on 2026-07-16.

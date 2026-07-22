@@ -305,6 +305,7 @@
     "codegen",
     "polyfilling",
     "prerender",
+    "prerenders",
     "collab",
     "dedup",
     "endgoal",
