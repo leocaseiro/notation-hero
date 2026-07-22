@@ -1,8 +1,10 @@
 import { Test } from '@nestjs/testing';
+import { asc } from 'drizzle-orm';
 import postgres from 'postgres';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { CatalogController } from './catalog.controller';
 import { CATALOG_DB, createCatalogDb } from '@/adapters/neon-postgres/catalog-db.adapter';
+import { playable } from '@/adapters/neon-postgres/catalog.schema';
 
 // With the db injected via CATALOG_DB (NH-79 review F12), the test overrides the provider with a fake
 // query chain — no driver-module mock, no module-registry reset. The spies record the .where()
@@ -106,7 +108,10 @@ describe('CatalogController (DB-backed thin read)', () => {
     const { controller, spies } = await makeController(fakeRows);
     await controller.list();
     expect(spies.orderBy).toHaveBeenCalledTimes(1);
-    expect(spies.orderBy.mock.calls[0]).toHaveLength(2);
+    // Pin BOTH the columns AND the asc direction (was arity-only, which let a wrong-column or an
+    // asc->desc swap pass). The column objects are reference-shared from the schema, so rebuilding
+    // the expected asc() SQL and deep-equaling matches structurally — and fails a real swap (F-3).
+    expect(spies.orderBy.mock.calls[0]).toEqual([asc(playable.level), asc(playable.title)]);
   });
 
   it('throws if the query ever returns a kind outside the response union (F4 guard)', async () => {
