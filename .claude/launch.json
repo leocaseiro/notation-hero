@@ -6,6 +6,12 @@
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@notation-hero/web", "dev"],
       "port": 3002
+    },
+    {
+      "name": "server-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@notation-hero/server", "start:dev"],
+      "port": 3001
     }
   ]
 }
