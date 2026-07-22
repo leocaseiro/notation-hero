@@ -41,9 +41,32 @@ describe('fetchCatalog', () => {
 
     const items = await fetchCatalog();
 
-    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/catalog');
+    expect(fetchMock).toHaveBeenCalledWith('http://localhost:3001/api/catalog', {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest expect.any() is typed as any; the matcher is the correct idiom here
+      signal: expect.any(AbortSignal),
+    });
     expect(items).toHaveLength(2);
     expect(items[0]).toEqual(OK_RESPONSE.items[0]);
+  });
+
+  it('strips a trailing slash from API_BASE_URL so the path never doubles', async () => {
+    // AWS Lambda Function URLs come with a trailing slash; ${base}/api/catalog must not become
+    // //api/catalog (NH-279).
+    process.env.API_BASE_URL = 'https://abc123.lambda-url.us-east-1.on.aws/';
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: () => Promise.resolve(OK_RESPONSE) });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchCatalog();
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://abc123.lambda-url.us-east-1.on.aws/api/catalog',
+      {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- vitest expect.any() is typed as any; the matcher is the correct idiom here
+        signal: expect.any(AbortSignal),
+      },
+    );
   });
 
   it('throws when the API responds non-OK (trips the route error boundary)', async () => {

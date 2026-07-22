@@ -7,12 +7,20 @@ import type { CatalogItem, CatalogResponse } from '@notation-hero/shared';
 // (error.tsx). The JSON is trusted to match the shared contract; a runtime Zod check is a
 // recommended fast-follow (spec §10), not part of this PR.
 export async function fetchCatalog(): Promise<CatalogItem[]> {
-  const base = process.env.API_BASE_URL;
+  // AWS Lambda Function URLs come WITH a trailing slash; strip trailing slashes so
+  // `${base}/api/catalog` never doubles into `//api/catalog` (NH-279). A loop (not a `/\/+$/`
+  // regex) keeps it linear — sonarjs flags the `+$` regex as super-linear backtracking.
+  let base = process.env.API_BASE_URL ?? '';
+  while (base.endsWith('/')) {
+    base = base.slice(0, -1);
+  }
   if (!base) {
     throw new Error('API_BASE_URL is not set');
   }
 
-  const response = await fetch(`${base}/api/catalog`);
+  // 8s abort so a cold or hung Lambda fails fast into error.tsx instead of holding the Vercel
+  // function to its platform timeout (NH-279; restores the bound the deleted db.ts once had).
+  const response = await fetch(`${base}/api/catalog`, { signal: AbortSignal.timeout(8000) });
   if (!response.ok) {
     throw new Error(`catalog API returned ${response.status}`);
   }
