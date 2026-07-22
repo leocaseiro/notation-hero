@@ -12,6 +12,16 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-07-22 — First hand-authored Zod contract + AGENTS.md reconciled to the oRPC deferral (NH-279)
+
+NH-279 / PR #140 introduced the project's **first hand-authored Zod schema** — a runtime validator for the `GET /api/catalog` response — and reconciled `AGENTS.md` to decision **NH-284** (2026-07-21), which **defers** the typed-contract framework (`ARCH-CONTRACT-1`) and makes hand-authored Zod the interim contract, reversing the earlier **oRPC** pick (oRPC / ts-rest not adopted).
+
+- **What landed:** `web/app/lib/catalog.ts` now `parse()`s the catalog response against a local `catalogResponseSchema`, bound to shared's `CatalogResponse` type via `satisfies z.ZodType<CatalogResponse>` so the two cannot drift. This closes the F-2 (runtime validation) and F-3 (bad-shape response caches `undefined`) review findings. `shared/src/contracts/catalog.ts` stays **type-only**.
+- **Why `web/`, not `shared/` (Option C fallback):** the intended home is `shared/` (one schema for web + the server later), but `shared/` ships raw `.ts` whose `.js`-specifier re-export Turbopack cannot resolve as a runtime **value** import (the NH-284 resolution failure) — while the server needs that `.js` extension for its `nodenext` type-only import. So `shared/` stays type-only; the schema graduates to `shared/` once it emits a real JS build.
+- **Docs reconciled:** the `AGENTS.md` "API contract" line changed from "**oRPC** (ts-rest rejected)" to the deferral above. (The older `ARCH-CONTRACT-1`/spike lines lower in this file are historical and left as-is.)
+
+**Status:** ✅ recorded · 📄 prose-only — the contract deferral is a direction, not a machine-checked rule; the Zod validation itself is enforced by the `web/` test suite. Lands with PR #140 (NH-279).
+
 ### 2026-07-14 — Catalog read: service boundary (web reads via the server API) (NH-279)
 
 leocaseiro approved having `web/` read the catalog via the server's `GET /api/catalog` (cached) instead of
