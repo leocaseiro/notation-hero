@@ -1,11 +1,34 @@
+import { z } from 'zod';
+
 import type { CatalogItem, CatalogResponse } from '@notation-hero/shared';
+
+// The catalog read response as a runtime Zod schema. It lives HERE, not in shared/, because shared/
+// ships raw .ts with a `.js`-specifier re-export that Turbopack cannot resolve as a runtime VALUE
+// import (NH-284) — so shared/ stays type-only. `satisfies z.ZodType<CatalogResponse>` binds the
+// schema to shared's type so the two cannot drift; a mismatch fails the web typecheck. (This is the
+// approved "Option C" fallback for NH-279 F-2: promote the schema into shared/ once shared emits a
+// real JS build, so web and the server can share one schema.)
+const catalogResponseSchema = z.object({
+  items: z.array(
+    z.object({
+      id: z.string(),
+      slug: z.string(),
+      title: z.string(),
+      kind: z.enum(['song', 'pattern', 'lesson']),
+      difficulty: z.string(),
+      level: z.number().nullable(),
+    }),
+  ),
+  count: z.number(),
+}) satisfies z.ZodType<CatalogResponse>;
 
 // Server-side read of the catalog via the server API (NH-279 service boundary). Runs inside the
 // cached getCatalog() wrapper in page.tsx ('use cache: remote'), so a user waits on the Lambda only
 // on a cache miss. No CORS: this is a server-to-server fetch (Vercel function -> Lambda), not a
 // browser-origin call. A non-OK response throws, tripping the /catalog route error boundary
-// (error.tsx). The JSON is trusted to match the shared contract; a runtime Zod check is a
-// recommended fast-follow (spec §10), not part of this PR.
+// (error.tsx). The response is validated at runtime against catalogResponseSchema: a bad-shape
+// response (e.g. a deploy-skew window where web and server disagree) throws into error.tsx instead
+// of caching undefined fields (NH-279 F-2/F-3).
 export async function fetchCatalog(): Promise<CatalogItem[]> {
   // AWS Lambda Function URLs come WITH a trailing slash; strip trailing slashes so
   // `${base}/api/catalog` never doubles into `//api/catalog` (NH-279). A loop (not a `/\/+$/`
@@ -25,6 +48,6 @@ export async function fetchCatalog(): Promise<CatalogItem[]> {
     throw new Error(`catalog API returned ${response.status}`);
   }
 
-  const data = (await response.json()) as CatalogResponse;
+  const data = catalogResponseSchema.parse(await response.json());
   return data.items;
 }

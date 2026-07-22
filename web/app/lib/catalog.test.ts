@@ -79,6 +79,21 @@ describe('fetchCatalog', () => {
     await expect(fetchCatalog()).rejects.toThrow(/503/);
   });
 
+  it('throws when the response shape is invalid (Zod parse — deploy-skew guard)', async () => {
+    // An OK response whose items miss required fields must throw (into error.tsx) rather than cache
+    // undefined cells — the F-2/F-3 reason for runtime validation (NH-279).
+    process.env.API_BASE_URL = 'http://localhost:3001';
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ items: [{ id: 'song_demo' }], count: 1 }),
+      }),
+    );
+
+    await expect(fetchCatalog()).rejects.toThrow();
+  });
+
   it('throws when API_BASE_URL is unset', async () => {
     delete process.env.API_BASE_URL;
     await expect(fetchCatalog()).rejects.toThrow('API_BASE_URL is not set');
