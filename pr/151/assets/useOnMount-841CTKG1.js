@@ -1,1 +1,0 @@
-import{i as e,s as t}from"./preload-helper-OpOEFoZ4.js";import{t as n}from"./react-BgJj-OaY.js";function r(e){i.useEffect(e,a)}var i,a,o=e((()=>{i=t(n(),1),a=[]}));export{r as n,o as t};

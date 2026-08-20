@@ -1,1 +1,0 @@
-import{i as e}from"./preload-helper-OpOEFoZ4.js";var t,n,r,i=e((()=>{t={clipPath:`inset(50%)`,overflow:`hidden`,whiteSpace:`nowrap`,border:0,padding:0,width:1,height:1,margin:-1},n={...t,position:`fixed`,top:0,left:0},r={...t,position:`absolute`}}));export{n,r,i as t};
