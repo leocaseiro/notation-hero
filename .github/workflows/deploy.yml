@@ -50,7 +50,7 @@ jobs:
       # `branches: [master]`, so it only ever runs for a master commit (never PR code), and
       # deploying the latest master is correct. (Pinning ref to workflow_run.head_sha would trip
       # the SAST "workflow-run-target-code-checkout" rule for the pwn-request pattern.)
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
       # Migrate Neon BEFORE building/deploying (§5). Needs only Node + the GitHub secret (no AWS),
       # so it runs before any credential is assumed; a failure aborts before `pulumi up`. Idempotent
@@ -67,7 +67,7 @@ jobs:
         run: |
           pnpm --filter @notation-hero/server run build:lambda
           pnpm --filter @notation-hero/client run build
-      - uses: aws-actions/configure-aws-credentials@254c19bd240aabef8777f48595e9d2d7b972184b # v6.2.1
+      - uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
