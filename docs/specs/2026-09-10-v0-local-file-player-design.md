@@ -79,7 +79,8 @@ unmount. Verified against React 19 strict mode: mounts equal disposes across rem
 never exceed one, DOM is empty after unmount.
 
 **Do not use `dynamic(..., { ssr: false })`.** It is illegal in an App Router Server Component and
-unnecessary — AlphaTab's module scope is SSR-safe and the spike route prerenders static.
+unnecessary — AlphaTab's module scope is SSR-safe and the spike route renders as static
+output at build time.
 
 Use `useRef`, not the prototype's `React.createRef()` in a render body, which creates a fresh ref on
 every render.
@@ -102,7 +103,7 @@ const alphaTab = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as
    compile time and fail the build. Holding it in a `const` also stops Turbopack re-bundling it.
 2. **Minified files must be placed under the plain names.** `alphaTab.min.mjs` imports
    `./alphaTab.core.mjs` internally, so a minified copy stored under a `.min` name causes the browser
-   to fetch the unminified 3.0 MB core instead.
+   to fetch the full 3.0 MB core instead of the minified one.
 
 Vendoring runs as a prebuild step so it is never a manual chore:
 
@@ -133,8 +134,8 @@ live, not just that notation appeared.
 **PWA precache floor ≈ 870 KB compressed.** The engine is a one-time cost and per-chart cost is
 trivial, so caching many charts is cheap.
 
-**Open cost item:** `next start` served the `.sf3` uncompressed. It gzips to 302 KB and brotlis to
-277 KB. Whether Vercel's CDN compresses an unknown MIME type needs checking — it is the single
+**Open cost item:** `next start` served the `.sf3` uncompressed. It gzips to 302 KB, and to
+277 KB with Brotli. Whether Vercel's CDN compresses an unknown MIME type needs checking — it is the single
 biggest cheap win on the route.
 
 ## 7. Component plan (D3 — pulled by the screen)
