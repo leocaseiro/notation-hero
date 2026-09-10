@@ -11,6 +11,7 @@
     "test-results/**",
     ".claude/worktrees/**",
     "**/routeTree.gen.ts",
+    "web/public/alphatab/**",
     "docs/decisions/decision-registry.md",
     "docs/runbooks/skill-routing.md",
     "docs/spikes/**",
@@ -21,6 +22,9 @@
     "infra/Pulumi.dev.yaml"
   ],
   "words": [
+    "networkidle",
+    "requestfailed",
+    "sonivox",
     "peaceiris",
     "rossjrw",
     "marocchino",
