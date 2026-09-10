@@ -185,6 +185,9 @@ v0.2  → scoring: Web MIDI input, hit detection, feedback rings
 
 ### v0.1 settings — captured now so the design is not lost
 
+> **Full design:** [`2026-09-11-v01-settings-panel-design.md`](2026-09-11-v01-settings-panel-design.md).
+> The summary below is the short version.
+
 Modelled on a widely-used pattern (VS Code, macOS System Settings, Chrome, Firefox all ship
 variants of it):
 
