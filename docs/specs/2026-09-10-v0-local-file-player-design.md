@@ -55,6 +55,11 @@ Two routes, one package. Nothing leaves the device.
 | `/`     | Drop zone plus recent files |
 | `/play` | The player                  |
 
+**How the file crosses between them:** an `ArrayBuffer` cannot travel in a URL. On open, the buffer
+is written to IndexedDB under a generated id, then `/` navigates to `/play?id=<id>`. This keeps the
+player reload-safe and makes browser back/forward behave, at no extra cost — the same IndexedDB
+write already backs the recent-files list.
+
 ### Data flow
 
 ```text
@@ -138,11 +143,13 @@ biggest cheap win on the route.
 `Separator`, `Sonner`, `DropdownMenu`, `ScrollArea`, `Skeleton`, `Tabs`, `Field`, `SearchInput`,
 `Checkbox`, `NativeSelect`, `Input`.
 
-**To build for v0:** the transport row layout, the A/B loop scrubber, the notation-surface wrapper,
-and the drop zone.
+**To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
+time), the notation-surface wrapper, and the drop zone.
 
-**Deferred to v0.1:** `Dialog` and `Accordion` — neither exists yet, and both are needed by the
-settings panel.
+**Deferred:** the mockup's **A/B loop markers** on the scrubber are a practice feature, not part of
+"open a file and hear it" — v0 ships a plain seek bar and the markers land with the practice work.
+`Dialog` and `Accordion` go to v0.1, since both are needed by the settings panel and neither exists
+yet.
 
 ## 8. Success criteria
 
