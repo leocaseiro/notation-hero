@@ -19,6 +19,14 @@ type TrackInfo = { index: number; name: string; isPercussion: boolean };
  */
 const lifecycle = { mounts: 0, disposes: 0 };
 
+/**
+ * CONTROL. A bare effect with no external system attached, counted the same way. If React 19's
+ * dev-only strict-mode double-invoke is active, `control.runs` reaches 2 while `control.cleanups`
+ * reaches 1 on first mount. Without this control we could not tell "AlphaTab survived strict mode"
+ * apart from "strict mode never double-invoked", which are very different claims.
+ */
+const control = { runs: 0, cleanups: 0 };
+
 /** Formats an alphaSynth millisecond position as m:ss. Hoisted out of the effect for lint. */
 function formatMs(ms: number): string {
   const seconds = Math.floor(ms / 1000);
@@ -50,6 +58,14 @@ export function AlphaTabDrums() {
   const [tracks, setTracks] = useState<TrackInfo[]>([]);
   const [tempo, setTempo] = useState(1);
   const [position, setPosition] = useState('0:00 / 0:00');
+
+  useEffect(() => {
+    control.runs += 1;
+    (globalThis as unknown as { __spikeControl?: typeof control }).__spikeControl = control;
+    return () => {
+      control.cleanups += 1;
+    };
+  }, []);
 
   useEffect(() => {
     const host = hostRef.current;

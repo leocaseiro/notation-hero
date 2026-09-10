@@ -3,7 +3,7 @@ import { Button } from '@notation-hero/client';
 // SPIKE probe: imported directly (no `next/dynamic`). `dynamic(..., { ssr: false })` is ILLEGAL in
 // an App Router Server Component, so the usual Pages-Router recipe does not port. Testing whether
 // AlphaTab's module scope survives SSR on its own instead.
-import { AlphaTabDrums } from './AlphaTabDrums';
+import { SpikeHarness } from './SpikeHarness';
 
 export default function SpikePage() {
   return (
@@ -17,7 +17,7 @@ export default function SpikePage() {
         </p>
         <Button variant="outline">Design-system Button (coexistence check)</Button>
       </header>
-      <AlphaTabDrums />
+      <SpikeHarness />
     </main>
   );
 }

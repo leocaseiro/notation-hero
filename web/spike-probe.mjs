@@ -43,6 +43,10 @@ for (let i = 0; i < 40; i++) {
 }
 
 const svgCount = await page.locator('[data-testid="alphatab-host"] svg').count();
+// Authoritative mount/dispose counters (module-level, so they survive re-renders).
+const strictMode = await page.evaluate(() => globalThis.__spikeLifecycle ?? null);
+// How many AlphaTab render surfaces exist? >1 means a strict-mode double mount leaked a surface.
+const surfaces = await page.locator('[data-testid="alphatab-host"] .at-surface').count();
 const trackText = await page
   .locator('[data-testid="tracks"]')
   .textContent()
@@ -71,6 +75,8 @@ await page.screenshot({ path: `${outDir}${tag}.png`, fullPage: true });
 const report = {
   url,
   state,
+  strictMode,
+  surfaces,
   svgCount,
   trackText,
   playback,
@@ -79,7 +85,11 @@ const report = {
 };
 writeFileSync(`${outDir}${tag}.json`, JSON.stringify(report, null, 2));
 console.log(
-  JSON.stringify({ state, svgCount, trackText, playback, failedRequests: failed }, null, 2),
+  JSON.stringify(
+    { state, strictMode, surfaces, svgCount, trackText, playback, failedRequests: failed },
+    null,
+    2,
+  ),
 );
 console.log('--- console (first 60) ---');
 console.log(logs.slice(0, 60).join('\n'));
