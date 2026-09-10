@@ -29,3 +29,6 @@ vectors/
 # Next.js build output (web/) — Prettier doesn't read .gitignore.
 .next/
 next-env.d.ts
+
+# Vendored third-party dist self-hosted for AlphaTab's worker (spike NH alphatab-in-nextjs).
+web/public/alphatab/

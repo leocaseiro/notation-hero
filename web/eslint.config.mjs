@@ -64,7 +64,17 @@ const eslintConfig = defineConfig([
     },
   },
   // Override default ignores of eslint-config-next.
-  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts']),
+  // `public/alphatab/**` is vendored third-party dist (AlphaTab's classic build, self-hosted so its
+  // web worker can `importScripts()` it — see docs/spikes/2026-09-10-alphatab-in-nextjs-app-router.md).
+  // `eslint .` otherwise walks public/ and reports ~11k problems in a minified bundle we don't author.
+  globalIgnores([
+    '.next/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts',
+    'public/alphatab/**',
+    'spike-out/**',
+  ]),
 ]);
 
 export default eslintConfig;
