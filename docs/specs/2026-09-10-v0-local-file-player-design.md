@@ -69,9 +69,10 @@ Two routes, one package. Nothing leaves the device.
 **Screen target:** tablet landscape, per [`player-app-ui.md`](../player-app-ui.md) (44 px minimum
 touch targets). Desktop uses the same layout.
 
-**How the file crosses between them:** an `ArrayBuffer` cannot travel in a URL. On open, the buffer
-is written to IndexedDB under a generated id, then `/` navigates to `/play?id=<id>`. This keeps the
-player reload-safe and makes browser back/forward behave.
+**How the file crosses between them:** an `ArrayBuffer` cannot travel in a URL, and v0 stores
+nothing. On open the buffer stays in a client store and `/` navigates to `/play` — no id, no
+IndexedDB. A reload on `/play` has nothing to load, so it redirects to `/` and you pick the file
+again.
 
 **Accepted files** (same as the prototype): the picker's `accept` is
 `.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx` (Guitar Pro, MusicXML and Capella; extensions
@@ -84,9 +85,8 @@ file" toast (see Failure states).
 ```text
 file picker / drag-and-drop  (on /)
   → ArrayBuffer (in memory)
-  → IndexedDB write under a generated id (the route handoff)
-  → navigate to /play?id=<id>
-  → read the buffer back from IndexedDB
+  → hold it in the client store
+  → navigate to /play
   → parse with AlphaTab's ScoreLoader
   → pick the drum tracks (any staff with isPercussion)
   → api.renderScore(score, drumTrackIndexes)
@@ -101,12 +101,12 @@ No upload, no network call for user content. The only network traffic is the sta
 
 ### Failure states
 
-| Case                               | Behavior                                               |
-| ---------------------------------- | ------------------------------------------------------ |
-| Unsupported or corrupt file        | Sonner toast; stay on `/`                              |
-| No drum track in the file          | Inline "no drum track in this file" message on `/play` |
-| Unknown or missing `/play?id=`     | Redirect to `/` with a toast                           |
-| Engine or SoundFont download fails | An error message in place of the disabled Play button  |
+| Case                                   | Behavior                                               |
+| -------------------------------------- | ------------------------------------------------------ |
+| Unsupported or corrupt file            | Sonner toast; stay on `/`                              |
+| No drum track in the file              | Inline "no drum track in this file" message on `/play` |
+| `/play` reached with no file in memory | Redirect to `/` with a toast                           |
+| Engine or SoundFont download fails     | An error message in place of the disabled Play button  |
 
 ### Mounting AlphaTab
 
