@@ -32,7 +32,10 @@ Named explicitly so they do not creep in:
 - **No catalog.** Nothing to browse — you bring the file.
 - **No offline mode.** v0 installs as a PWA but needs a network. Offline is a later milestone (§10).
 - **No raw MIDI (`.mid`) files.** AlphaTab has no MIDI importer, so MIDI needs its own path.
-- The mockup's **scoring HUD** and **practice/game rail** render hidden, because both need scoring.
+- **No recent-files list.** You pick a file each time; v0 keeps no history.
+- The mockup's **scoring HUD** and **practice/game rail** render hidden, because both need scoring. The
+  header's **Settings gear** and **MIDI status icon** are hidden too: no settings dialog until v0.1,
+  no Web MIDI until v0.2.
 
 ## 3. Decisions
 
@@ -57,18 +60,17 @@ All approved by leocaseiro on 2026-09-10.
 
 Two routes, one package. Nothing leaves the device.
 
-| Route   | Purpose                     |
-| ------- | --------------------------- |
-| `/`     | Drop zone plus recent files |
-| `/play` | The player                  |
+| Route   | Purpose    |
+| ------- | ---------- |
+| `/`     | Drop zone  |
+| `/play` | The player |
 
 **Screen target:** tablet landscape, per [`player-app-ui.md`](../player-app-ui.md) (44 px minimum
 touch targets). Desktop uses the same layout.
 
 **How the file crosses between them:** an `ArrayBuffer` cannot travel in a URL. On open, the buffer
 is written to IndexedDB under a generated id, then `/` navigates to `/play?id=<id>`. This keeps the
-player reload-safe and makes browser back/forward behave, at no extra cost — the same IndexedDB
-write already backs the recent-files list.
+player reload-safe and makes browser back/forward behave.
 
 **Accepted files** (same as the prototype): the picker's `accept` is
 `.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx` (Guitar Pro, MusicXML and Capella; extensions
@@ -81,7 +83,7 @@ file" toast (see Failure states).
 ```text
 file picker / drag-and-drop  (on /)
   → ArrayBuffer (in memory)
-  → IndexedDB write under a generated id (also backs recent files)
+  → IndexedDB write under a generated id (the route handoff)
   → navigate to /play?id=<id>
   → read the buffer back from IndexedDB
   → parse with AlphaTab's ScoreLoader
@@ -205,9 +207,8 @@ v0 is done when, on a deployed Vercel URL:
 1. A `.gp5` drum chart opened from local disk renders as standard drum notation.
 2. Pressing play produces **audible** drum audio with a cursor that tracks it.
 3. Tempo and per-track mute/solo work.
-4. Reopening the app offers the recent file without re-picking it.
-5. The app installs as a PWA.
-6. leocaseiro loads **his own** chart and it plays.
+4. The app installs as a PWA.
+5. leocaseiro loads **his own** chart and it plays.
 
 The criteria are checked in desktop Chrome. iPad and Android get a manual check too; it does not
 block v0. Criterion 2 is called out deliberately — see the open questions.
