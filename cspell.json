@@ -471,6 +471,7 @@
     "checkmarks",
     "haspopup",
     "desynced",
-    "regen"
+    "regen",
+    "capx"
   ]
 }

@@ -31,6 +31,7 @@ Named explicitly so they do not creep in:
 - **No settings dialog.** That is v0.1.
 - **No catalog.** Nothing to browse — you bring the file.
 - **No offline mode.** v0 installs as a PWA but needs a network. Offline is a later milestone (§10).
+- **No raw MIDI (`.mid`) files.** AlphaTab has no MIDI importer, so MIDI needs its own path.
 - The mockup's **scoring HUD** and **practice/game rail** render hidden, because both need scoring.
 
 ## 3. Decisions
@@ -69,17 +70,40 @@ is written to IndexedDB under a generated id, then `/` navigates to `/play?id=<i
 player reload-safe and makes browser back/forward behave, at no extra cost — the same IndexedDB
 write already backs the recent-files list.
 
+**Accepted files** (same as the prototype): the picker's `accept` is
+`.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx` (Guitar Pro, MusicXML and Capella; extensions
+only). On iOS the picker is a `<label>` tied to a hidden file input, so the filter still applies.
+Drag-and-drop takes one file with no filter; a file AlphaTab cannot parse gets the "unsupported
+file" toast (see Failure states).
+
 ### Data flow
 
 ```text
-file picker / drag-and-drop
+file picker / drag-and-drop  (on /)
   → ArrayBuffer (in memory)
-  → alphaTab api.load(buffer)
-  → SVG drum notation + AlphaSynth playback + synced cursor
-  → IndexedDB (remember recent files)
+  → IndexedDB write under a generated id (also backs recent files)
+  → navigate to /play?id=<id>
+  → read the buffer back from IndexedDB
+  → parse with AlphaTab's ScoreLoader
+  → pick the drum tracks (any staff with isPercussion)
+  → api.renderScore(score, drumTrackIndexes)
+  → SVG drum notation + AlphaSynth playback (all tracks) + synced cursor
 ```
 
+Only the drum tracks render; every track stays in playback, so per-track mute/solo works. The
+prototype always renders track 0 (its to-do list says "always go to drum"), so this rule is new.
+v0 tests include a multi-track chart whose drums are not track 0.
+
 No upload, no network call for user content. The only network traffic is the static engine assets.
+
+### Failure states
+
+| Case                               | Behavior                                               |
+| ---------------------------------- | ------------------------------------------------------ |
+| Unsupported or corrupt file        | Sonner toast; stay on `/`                              |
+| No drum track in the file          | Inline "no drum track in this file" message on `/play` |
+| Unknown or missing `/play?id=`     | Redirect to `/` with a toast                           |
+| Engine or SoundFont download fails | An error message in place of the disabled Play button  |
 
 ### Mounting AlphaTab
 
