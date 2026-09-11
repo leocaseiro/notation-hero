@@ -37,15 +37,15 @@ Named explicitly so they do not creep in:
 
 All approved by leocaseiro on 2026-09-10.
 
-| #   | Decision                                                             | Rationale                                                                                                                                                 |
-| --- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Stay in the existing repo; ship in `web/`                            | The design system is already wired in and working; Vercel is already configured; zero migration cost. A new repo would cost days before any product code. |
-| D2  | v0 is **player only**                                                | AlphaTab provides render, playback, cursor, tempo and track mixing nearly for free. Days, not months.                                                     |
-| D3  | The design system is **pulled by the screen**                        | Building components first is what produced 41 components and no product. The player decides what gets built.                                              |
-| D4  | **Port** the `rhythm-game` prototype rather than only referencing it | The integration was already solved once; zero API breakage 1.8.1 → 1.8.4 made the port clean.                                                             |
-| D5  | AlphaTab delivery: **self-hosted ESM** from `public/`                | Verified end-to-end in a production build. Native module workers, keeps Turbopack, ships AlphaTab once (~273 KB gzip) instead of twice.                   |
-| D6  | The spike branch **seeds** the player                                | `spike/alphatab-nextjs-poc` already proves the mount, asset wiring and config. Rebuilding would re-solve solved work.                                     |
-| D7  | Safari and iPad verification happens **after v0 ships**              | Chrome and Android are enough for a first ship. Recorded as a known untested surface, not ignored.                                                        |
+| #   | Decision                                                                                     | Rationale                                                                                                                                                                                                                                                                   |
+| --- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Stay in the existing repo; ship in `web/`                                                    | The design system is already wired in and working; Vercel is already configured; zero migration cost. A new repo would cost days before any product code.                                                                                                                   |
+| D2  | v0 is **player only**                                                                        | AlphaTab provides render, playback, cursor, tempo and track mixing nearly for free. Days, not months.                                                                                                                                                                       |
+| D3  | The design system is **pulled by the screen**                                                | Building components first is what produced 41 components and no product. The player decides what gets built.                                                                                                                                                                |
+| D4  | **Port** the `rhythm-game` prototype's patterns, clean-room, rather than only referencing it | The integration was already solved once; zero API breakage 1.8.1 → 1.8.4 made the port clean. Clean-room: the MPL-2.0 fork stays open for reference only and no files are copied, per the [2026-06-18 licensing spike](../spikes/2026-06-18-file-formats-and-licensing.md). |
+| D5  | AlphaTab delivery: **self-hosted ESM** from `public/`                                        | Verified end-to-end in a production build. Native module workers, keeps Turbopack, ships AlphaTab once (~273 KB gzip) instead of twice.                                                                                                                                     |
+| D6  | The spike branch **seeds** the player                                                        | `spike/alphatab-nextjs-poc` already proves the mount, asset wiring and config. Rebuilding would re-solve solved work.                                                                                                                                                       |
+| D7  | Safari and iPad verification happens **after v0 ships**                                      | Desktop Chrome is the v0 gate. iPad and Android get a manual check that does not block v0. Recorded as a known untested surface, not ignored.                                                                                                                               |
 
 > **On D5:** option A (the `@coderline/alphatab-webpack` plugin, as the prototype used) was
 > considered and rejected. Note that the prototype's exact import path is dead in 1.8.4 regardless —
@@ -60,6 +60,9 @@ Two routes, one package. Nothing leaves the device.
 | ------- | --------------------------- |
 | `/`     | Drop zone plus recent files |
 | `/play` | The player                  |
+
+**Screen target:** tablet landscape, per [`player-app-ui.md`](../player-app-ui.md) (44 px minimum
+touch targets). Desktop uses the same layout.
 
 **How the file crosses between them:** an `ArrayBuffer` cannot travel in a URL. On open, the buffer
 is written to IndexedDB under a generated id, then `/` navigates to `/play?id=<id>`. This keeps the
@@ -171,7 +174,8 @@ v0 is done when, on a deployed Vercel URL:
 5. The app installs as a PWA.
 6. leocaseiro loads **his own** chart and it plays.
 
-Criterion 2 is called out deliberately — see the open questions.
+The criteria are checked in desktop Chrome. iPad and Android get a manual check too; it does not
+block v0. Criterion 2 is called out deliberately — see the open questions.
 
 ## 9. Open questions and known gaps
 
@@ -180,7 +184,7 @@ Criterion 2 is called out deliberately — see the open questions.
 | Q1  | **Nobody has heard the audio.** The spike verified playback by state (position advancing, cursor moving), not by ear — headless Chromium is silent. Timing accuracy and latency are untested. | v0 acceptance       |
 | Q2  | Vercel CDN compression for `.sf3`, and MIME types for `public/alphatab/esm/*.mjs`. No Vercel deploy has happened yet.                                                                         | v0 deploy           |
 | Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. Confirm whether the real worklet path or a fallback is in use.                                      | before v0.2 scoring |
-| Q4  | Safari, Firefox, iPad — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                 | after v0 ships (D7) |
+| Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                        | after v0 ships (D7) |
 | Q5  | Drum **tablature** needs a patch to AlphaTab and ongoing maintenance. Standard drum **notation** needs no patch. Decide separately whether tablature is wanted.                               | not scheduled       |
 
 ## 10. Roadmap position
