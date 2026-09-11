@@ -3,7 +3,7 @@ lap: 2
 last_applied: P1
 ---
 
-# v0 — local-file drum player PWA
+# v0 — local-file drum player
 
 |                   |                                                                                                                    |
 | ----------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -31,7 +31,8 @@ Named explicitly so they do not creep in:
 - **No global settings panel.** The searchable settings panel is v0.1. v0 builds one
   player-controls popup (tempo, tracks) with the same `Dialog` + `Tabs` + `Accordion` shape.
 - **No catalog.** Nothing to browse — you bring the file.
-- **No offline mode.** v0 installs as a PWA but needs a network. Offline is a later milestone (§10).
+- **No PWA.** v0 is a plain web page: no install prompt, no offline mode. Both belong to a later
+  milestone (§10).
 - **No raw MIDI (`.mid`) files.** AlphaTab has no MIDI importer, so MIDI needs its own path.
 - **No recent-files list.** You pick a file each time; v0 keeps no history.
 - The mockup's **scoring HUD** and **practice/game rail** render hidden, because both need scoring. The
@@ -148,8 +149,11 @@ const alphaTab = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as
    to fetch the full 3.0 MB core instead of the minified one.
 3. **Import `@coderline/alphatab` only with `import type`.** One value import, even of an enum,
    makes Turbopack bundle the library again: AlphaTab ships twice, and a component can drive the
-   bundled copy, which restores the silent playback failure. `web/eslint.config.mjs` enforces this
-   with `@typescript-eslint/no-restricted-imports` (`allowTypeImports: true`), next to the `@/*` rule.
+   bundled copy, which restores the silent playback failure. **v0 builds this guard:**
+   `web/eslint.config.mjs` today carries only the core `no-restricted-imports` rule with the `@/*`
+   group, so replace it with `@typescript-eslint/no-restricted-imports` holding both that `@/*`
+   group and a new `@coderline/alphatab` group with `allowTypeImports: true` — the extension rule
+   requires the core rule to be off.
 
 Vendoring runs before both `next dev` and `next build` (a pre-step of the `dev` and `build` scripts),
 so it is never a manual chore and a fresh clone works in dev too. `web/public/alphatab/` is generated
@@ -174,8 +178,10 @@ live, not just that notation appeared.
 **The test:** Playwright in `web/`, with a config mirroring `client/playwright.e2e.config.ts` whose
 web server runs `next build` then `next start`. It asserts that `Environment.webPlatform` is
 `BrowserModule`, that no "Could not detect alphaTab script file" or "Audio Worklet creation failed"
-console error appears, and that the playback position advances after Play. A `web` step joins the CI
-`e2e` job, so it blocks merge like the other browser jobs.
+console error appears, that the browser requests `/alphatab/esm/alphaTab.worklet.mjs` before the
+player reports playing, and that the playback position advances after Play. A `web` step joins the CI
+`e2e` job, so it blocks merge like the other browser jobs. The worklet request is the one assertion
+the ScriptProcessor fallback cannot pass: it logs nothing and never fetches that file.
 
 ## 6. Payload budget
 
@@ -188,8 +194,8 @@ console error appears, and that the playback position advances after Play. A `we
 | Next.js app JS + CSS    | —       | —      | not measured yet                                                         |
 | A chart                 | ~3 KB   | —      | per-song marginal cost                                                   |
 
-**PWA precache floor ≈ 1.6 MB compressed, before Next.js JS and CSS.** The engine is a one-time cost
-and per-chart cost is trivial, so caching many charts is cheap. Offline is not part of v0 (§2); this budget is the input
+**First-load engine payload ≈ 1.6 MB compressed, before Next.js JS and CSS.** The engine is a one-time cost
+and per-chart cost is trivial, so caching many charts is cheap. Install and offline are out of v0 (§2); this budget is the input
 for that later milestone.
 
 **Open cost item:** `next start` served the `.sf3` uncompressed. It gzips to 302 KB, and to
@@ -225,21 +231,20 @@ v0 is done when, on a deployed Vercel URL:
 1. A `.gp5` drum chart opened from local disk renders as standard drum notation.
 2. Pressing play produces **audible** drum audio with a cursor that tracks it.
 3. Tempo and per-track mute/solo work.
-4. The app installs as a PWA.
-5. leocaseiro loads **his own** chart and it plays.
+4. leocaseiro loads **his own** chart and it plays.
 
 The criteria are checked in desktop Chrome. iPad and Android get a manual check too; it does not
 block v0. Criterion 2 is called out deliberately — see the open questions.
 
 ## 9. Open questions and known gaps
 
-| #   | Item                                                                                                                                                                                          | When it matters     |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| Q1  | **Nobody has heard the audio.** The spike verified playback by state (position advancing, cursor moving), not by ear — headless Chromium is silent. Timing accuracy and latency are untested. | v0 acceptance       |
-| Q2  | Vercel CDN compression for `.sf3`, and MIME types for `public/alphatab/esm/*.mjs`. No Vercel deploy has happened yet.                                                                         | v0 deploy           |
-| Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. Confirm whether the real worklet path or a fallback is in use.                                      | before v0.2 scoring |
-| Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                        | after v0 ships (D7) |
-| Q5  | Drum **tablature** needs a patch to AlphaTab and ongoing maintenance. Standard drum **notation** needs no patch. Decide separately whether tablature is wanted.                               | not scheduled       |
+| #   | Item                                                                                                                                                                                                   | When it matters     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| Q1  | **Nobody has heard the audio.** The spike verified playback by state (position advancing, cursor moving), not by ear — headless Chromium is silent. Timing accuracy and latency are untested.          | v0 acceptance       |
+| Q2  | Vercel CDN compression for `.sf3`, and MIME types for `public/alphatab/esm/*.mjs`. No Vercel deploy has happened yet.                                                                                  | v0 deploy           |
+| Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. Confirm whether the real worklet path or a fallback is in use — the §5 test now asserts the worklet request. | v0 acceptance       |
+| Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                 | after v0 ships (D7) |
+| Q5  | Drum **tablature** needs a patch to AlphaTab and ongoing maintenance. Standard drum **notation** needs no patch. Decide separately whether tablature is wanted.                                        | not scheduled       |
 
 ## 10. Roadmap position
 
@@ -247,7 +252,7 @@ block v0. Criterion 2 is called out deliberately — see the open questions.
 v0    → player: open a local file, see drum notation, hear it        ← this spec
 v0.1  → settings: the searchable global panel (Dialog + Accordion already built in v0)
 v0.2  → scoring: Web MIDI input, hit detection, feedback rings
-later → offline: service worker + precache (budget in §6); order not set
+later → PWA: install (manifest + icons) and offline (service worker + precache); order not set
 ```
 
 **Paused, not dropped:** the catalog, the backend (Neon, Cognito) and the Playable schema. Their
