@@ -179,20 +179,22 @@ console error appears, and that the playback position advances after Play. A `we
 
 ## 6. Payload budget
 
-| Asset                   | Raw     | gzip   | Notes                                                  |
-| ----------------------- | ------- | ------ | ------------------------------------------------------ |
-| `soundfont/sonivox.sf3` | 954 KB  | 302 KB | AlphaTab's own — **not** the prototype's 3.9 MB `.sf2` |
-| `font/Bravura.woff2`    | 306 KB  | 305 KB | the only font fetched; skip the `.otf` and `.woff`     |
-| AlphaTab library        | 1092 KB | 273 KB | shipped once under D5                                  |
-| A chart                 | ~3 KB   | —      | per-song marginal cost                                 |
+| Asset                   | Raw     | gzip   | Notes                                                                    |
+| ----------------------- | ------- | ------ | ------------------------------------------------------------------------ |
+| `soundfont/sonivox.sf3` | 954 KB  | 302 KB | AlphaTab's own — **not** the prototype's 3.9 MB `.sf2`                   |
+| `font/Bravura.woff2`    | 306 KB  | 305 KB | the only font fetched; skip the `.otf` and `.woff`                       |
+| AlphaTab library        | 1092 KB | 273 KB | shipped once under D5                                                    |
+| Material Symbols icons  | 727 KB  | 727 KB | woff2, no further compression; pulled in by the design-system stylesheet |
+| Next.js app JS + CSS    | —       | —      | not measured yet                                                         |
+| A chart                 | ~3 KB   | —      | per-song marginal cost                                                   |
 
-**PWA precache floor ≈ 870 KB compressed.** The engine is a one-time cost and per-chart cost is
-trivial, so caching many charts is cheap. Offline is not part of v0 (§2); this budget is the input
+**PWA precache floor ≈ 1.6 MB compressed, before Next.js JS and CSS.** The engine is a one-time cost
+and per-chart cost is trivial, so caching many charts is cheap. Offline is not part of v0 (§2); this budget is the input
 for that later milestone.
 
 **Open cost item:** `next start` served the `.sf3` uncompressed. It gzips to 302 KB, and to
-277 KB with Brotli. Whether Vercel's CDN compresses an unknown MIME type needs checking — it is the single
-biggest cheap win on the route.
+277 KB with Brotli. Whether Vercel's CDN compresses an unknown MIME type needs checking — it is the
+biggest compression win on the route; the icon font is bigger but cannot be compressed further.
 
 ## 7. Component plan (D3 — pulled by the screen)
 
