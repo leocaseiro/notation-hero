@@ -1,3 +1,8 @@
+---
+lap: 1
+last_applied: P1
+---
+
 # v0 — local-file drum player PWA
 
 |                   |                                                                                                                    |
@@ -25,6 +30,7 @@ Named explicitly so they do not creep in:
 - **No scoring, no Web MIDI input, no feedback rings.** That is v0.2.
 - **No settings dialog.** That is v0.1.
 - **No catalog.** Nothing to browse — you bring the file.
+- **No offline mode.** v0 installs as a PWA but needs a network. Offline is a later milestone (§10).
 - The mockup's **scoring HUD** and **practice/game rail** render hidden, because both need scoring.
 
 ## 3. Decisions
@@ -132,7 +138,8 @@ live, not just that notation appeared.
 | A chart                 | ~3 KB   | —      | per-song marginal cost                                 |
 
 **PWA precache floor ≈ 870 KB compressed.** The engine is a one-time cost and per-chart cost is
-trivial, so caching many charts is cheap.
+trivial, so caching many charts is cheap. Offline is not part of v0 (§2); this budget is the input
+for that later milestone.
 
 **Open cost item:** `next start` served the `.sf3` uncompressed. It gzips to 302 KB, and to
 277 KB with Brotli. Whether Vercel's CDN compresses an unknown MIME type needs checking — it is the single
@@ -147,10 +154,11 @@ biggest cheap win on the route.
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
 time), the notation-surface wrapper, and the drop zone.
 
-**Deferred:** the mockup's **A/B loop markers** on the scrubber are a practice feature, not part of
-"open a file and hear it" — v0 ships a plain seek bar and the markers land with the practice work.
-`Dialog` and `Accordion` go to v0.1, since both are needed by the settings panel and neither exists
-yet.
+**Deferred:** the mockup's **A/B loop markers** on the scrubber. For v0, A–B repeat uses AlphaTab's
+native range selection: select bars in the notation and playback repeats them (range selection
+with `isLooping` on). The custom markers land later, once an A–B UI exists that stays in sync with
+AlphaTab's selection. v0 ships a plain seek bar. `Dialog` and `Accordion` go to v0.1, since both are
+needed by the settings panel and neither exists yet.
 
 ## 8. Success criteria
 
@@ -160,7 +168,7 @@ v0 is done when, on a deployed Vercel URL:
 2. Pressing play produces **audible** drum audio with a cursor that tracks it.
 3. Tempo and per-track mute/solo work.
 4. Reopening the app offers the recent file without re-picking it.
-5. The app installs as a PWA and the player works offline.
+5. The app installs as a PWA.
 6. leocaseiro loads **his own** chart and it plays.
 
 Criterion 2 is called out deliberately — see the open questions.
@@ -181,7 +189,11 @@ Criterion 2 is called out deliberately — see the open questions.
 v0    → player: open a local file, see drum notation, hear it        ← this spec
 v0.1  → settings: Dialog + Accordion + the search/tabs/accordion panel
 v0.2  → scoring: Web MIDI input, hit detection, feedback rings
+later → offline: service worker + precache (budget in §6); order not set
 ```
+
+**Paused, not dropped:** the catalog, the backend (Neon, Cognito) and the Playable schema. Their
+return point is not set yet.
 
 ### v0.1 settings — captured now so the design is not lost
 
