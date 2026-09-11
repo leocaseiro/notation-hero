@@ -12,6 +12,22 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-12 — v0 local-file player: player before catalog, and the v0 spec review (NH-291, NH-292)
+
+leocaseiro ratified the v0 direction, then reviewed the spec finding by finding
+([`docs/specs/2026-09-10-v0-local-file-player-design.md`](../specs/2026-09-10-v0-local-file-player-design.md), doc-review-loop lap 1). D1–D7 were approved on 2026-09-10; the review decisions below on 2026-09-12.
+
+- **Player before catalog.** v0 is a local-file drum player shipped in `web/` (D1, D2). The catalog, the backend (Neon, Cognito) and the Playable schema are **paused, not dropped**; the return point is not set. This reverses the 2026-06-15 build order ("(1) CRUD for catalog … (2) play a song") recorded further down this log.
+- **AlphaTab delivery = self-hosted ESM** from `public/` (D5). The `@coderline/alphatab-webpack` plugin was rejected, and `web/` may import the package only with `import type`, so Turbopack cannot bundle it a second time.
+- **D4 clarified — clean-room.** The `rhythm-game` prototype's patterns are ported with the fork open for reference and **no files copied**, per the 2026-06-18 licensing spike (the fork is MPL-2.0; this repo is proprietary).
+- **Offline is out of v0.** v0 installs as a PWA but needs a network; the service worker and precache become their own later milestone, sized by the spec's payload budget — which now includes the 727 KB Material Symbols font, so the floor is ~1.6 MB, not 870 KB.
+- **v0 builds a player-controls popup** (Base UI `Dialog` + `Tabs` + `Accordion`) with Tempo and Tracks tabs, following the prototype's behaviour. The searchable global settings panel stays v0.1 and reuses those components.
+- **Scope trims:** no recent-files list; no `?id=` handoff (the buffer is held in a client store and a reload on `/play` returns to `/`); no raw `.mid` files. A–B repeat in v0 is AlphaTab's native range selection.
+- **Verification:** desktop Chrome is the v0 gate; iPad and Android get a manual check that does not block v0 (D7 refined). The silent-playback regression test becomes a Playwright lane in `web/` wired into the CI `e2e` job.
+- **Rejected:** designing the offline layer inside v0; reordering the roadmap to put practice before settings; keeping a recent-files list in v0.
+
+**Status:** ✅ decided · 📄 prose-only enforcement so far — the spec is the contract; the machine gate arrives with the v0 build (the Playwright lane in `web/`). Approved by leocaseiro 2026-09-10 (D1–D7) and 2026-09-12 (review decisions).
+
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
 
 leocaseiro ratified three fixes to the AskUserQuestion conventions in [`AGENTS.md`](../../AGENTS.md) section 3, after reporting that agents were using the follow-up catcher to force decisions. Each fix was approved separately in a picker on 2026-07-16.
