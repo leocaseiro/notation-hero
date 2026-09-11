@@ -28,13 +28,14 @@ Named explicitly so they do not creep in:
 
 - **No authentication, no backend, no database.** `server/`, `infra/`, Neon and Cognito stay dormant.
 - **No scoring, no Web MIDI input, no feedback rings.** That is v0.2.
-- **No settings dialog.** That is v0.1.
+- **No global settings panel.** The searchable settings panel is v0.1. v0 builds one
+  player-controls popup (tempo, tracks) with the same `Dialog` + `Tabs` + `Accordion` shape.
 - **No catalog.** Nothing to browse — you bring the file.
 - **No offline mode.** v0 installs as a PWA but needs a network. Offline is a later milestone (§10).
 - **No raw MIDI (`.mid`) files.** AlphaTab has no MIDI importer, so MIDI needs its own path.
 - **No recent-files list.** You pick a file each time; v0 keeps no history.
 - The mockup's **scoring HUD** and **practice/game rail** render hidden, because both need scoring. The
-  header's **Settings gear** and **MIDI status icon** are hidden too: no settings dialog until v0.1,
+  header's **Settings gear** and **MIDI status icon** are hidden too: no global settings panel until v0.1,
   no Web MIDI until v0.2.
 
 ## 3. Decisions
@@ -110,8 +111,14 @@ No upload, no network call for user content. The only network traffic is the sta
 ### Mounting AlphaTab
 
 A single `'use client'` component owns the `AlphaTabApi` instance in a `useRef`, and disposes it on
-unmount. Verified against React 19 strict mode: mounts equal disposes across remounts, surfaces
-never exceed one, DOM is empty after unmount.
+unmount. Verified against React 19 strict mode on variant A (the rejected webpack build), which
+mounts synchronously: mounts equal disposes across remounts, surfaces never exceed one, DOM is
+empty after unmount.
+
+D5's mount adds an `await import()` before the API exists, so the effect must re-check a `disposed`
+flag after every await before it constructs or loads. Otherwise an unmount inside that window leaks
+a live `AlphaTabApi` and its workers. The spike's ESM component already does this; re-run the
+remount probe against that component and assert the surface count never goes above one.
 
 **Do not use `dynamic(..., { ssr: false })`.** It is illegal in an App Router Server Component and
 unnecessary — AlphaTab's module scope is SSR-safe and the spike route renders as static
@@ -164,6 +171,12 @@ Without the fix, **notation still renders** on a main-thread fallback and only *
 The page looks correct until you press play. v0 must carry a test that asserts the worker path is
 live, not just that notation appeared.
 
+**The test:** Playwright in `web/`, with a config mirroring `client/playwright.e2e.config.ts` whose
+web server runs `next build` then `next start`. It asserts that `Environment.webPlatform` is
+`BrowserModule`, that no "Could not detect alphaTab script file" or "Audio Worklet creation failed"
+console error appears, and that the playback position advances after Play. A `web` step joins the CI
+`e2e` job, so it blocks merge like the other browser jobs.
+
 ## 6. Payload budget
 
 | Asset                   | Raw     | gzip   | Notes                                                  |
@@ -192,13 +205,16 @@ player uses a component, export it from that barrel, add `'use client'` to its f
 client checks plus the Storybook VR and a11y gates. The design-system rename stays in Phase 2.
 
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
-time), the notation-surface wrapper, and the drop zone.
+time), the notation-surface wrapper, the drop zone, and a **player-controls popup** — Base UI
+`Dialog` + `Tabs` + `Accordion`, opened from the mockup's "Tracks / mixer" button, with a **Tempo**
+tab (BPM = chart tempo × `playbackSpeed`, ±5 buttons, a 1–200% slider that snaps to 100%) and a
+**Tracks** tab (per-track solo, mute and volume; solo is not exclusive, as in AlphaTab and the
+prototype). `Bpm` is display-only, so the tempo control is new.
 
 **Deferred:** the mockup's **A/B loop markers** on the scrubber. For v0, A–B repeat uses AlphaTab's
 native range selection: select bars in the notation and playback repeats them (range selection
 with `isLooping` on). The custom markers land later, once an A–B UI exists that stays in sync with
-AlphaTab's selection. v0 ships a plain seek bar. `Dialog` and `Accordion` go to v0.1, since both are
-needed by the settings panel and neither exists yet.
+AlphaTab's selection. v0 ships a plain seek bar.
 
 ## 8. Success criteria
 
@@ -227,7 +243,7 @@ block v0. Criterion 2 is called out deliberately — see the open questions.
 
 ```text
 v0    → player: open a local file, see drum notation, hear it        ← this spec
-v0.1  → settings: Dialog + Accordion + the search/tabs/accordion panel
+v0.1  → settings: the searchable global panel (Dialog + Accordion already built in v0)
 v0.2  → scoring: Web MIDI input, hit detection, feedback rings
 later → offline: service worker + precache (budget in §6); order not set
 ```
@@ -250,6 +266,9 @@ variants of it):
   pair a number input in the row with a slider on the line beneath.
 - **Search is global across all tabs.** Results replace the tab view and group under `Tab > Section`
   breadcrumb headers, with controls staying live and editable in the results.
+
+v0 already builds `Dialog`, `Tabs` and `Accordion` for the player-controls popup (§7), so v0.1 adds
+the search index, the categories and the settings rows.
 
 Categories will be drum-specific (audio, MIDI, notation, practice). Write original label copy rather
 than borrowing strings from any reference product.
