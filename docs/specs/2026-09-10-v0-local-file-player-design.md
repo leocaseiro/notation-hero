@@ -40,7 +40,7 @@ All approved by leocaseiro on 2026-09-10.
 
 | #   | Decision                                                                                     | Rationale                                                                                                                                                                                                                                                                   |
 | --- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | Stay in the existing repo; ship in `web/`                                                    | The design system is already wired in and working; Vercel is already configured; zero migration cost. A new repo would cost days before any product code.                                                                                                                   |
+| D1  | Stay in the existing repo; ship in `web/`                                                    | The design system is wired in (only `Button` is exported so far; see §7); Vercel is already configured; zero migration cost. A new repo would cost days before any product code.                                                                                            |
 | D2  | v0 is **player only**                                                                        | AlphaTab provides render, playback, cursor, tempo and track mixing nearly for free. Days, not months.                                                                                                                                                                       |
 | D3  | The design system is **pulled by the screen**                                                | Building components first is what produced 41 components and no product. The player decides what gets built.                                                                                                                                                                |
 | D4  | **Port** the `rhythm-game` prototype's patterns, clean-room, rather than only referencing it | The integration was already solved once; zero API breakage 1.8.1 → 1.8.4 made the port clean. Clean-room: the MPL-2.0 fork stays open for reference only and no files are copied, per the [2026-06-18 licensing spike](../spikes/2026-06-18-file-formats-and-licensing.md). |
@@ -130,15 +130,21 @@ const ALPHATAB_ESM_URL = '/alphatab/esm/alphaTab.mjs';
 const alphaTab = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as typeof AlphaTab;
 ```
 
-**Two requirements that are easy to get wrong:**
+**Three requirements that are easy to get wrong:**
 
 1. **The specifier must be a variable, not a string literal.** A literal makes `tsc` resolve it at
    compile time and fail the build. Holding it in a `const` also stops Turbopack re-bundling it.
 2. **Minified files must be placed under the plain names.** `alphaTab.min.mjs` imports
    `./alphaTab.core.mjs` internally, so a minified copy stored under a `.min` name causes the browser
    to fetch the full 3.0 MB core instead of the minified one.
+3. **Import `@coderline/alphatab` only with `import type`.** One value import, even of an enum,
+   makes Turbopack bundle the library again: AlphaTab ships twice, and a component can drive the
+   bundled copy, which restores the silent playback failure. `web/eslint.config.mjs` enforces this
+   with `@typescript-eslint/no-restricted-imports` (`allowTypeImports: true`), next to the `@/*` rule.
 
-Vendoring runs as a prebuild step so it is never a manual chore:
+Vendoring runs before both `next dev` and `next build` (a pre-step of the `dev` and `build` scripts),
+so it is never a manual chore and a fresh clone works in dev too. `web/public/alphatab/` is generated
+output: git-ignored and never committed (the spike's committed copies are removed). The copy step:
 
 ```sh
 cp dist/alphaTab.min.mjs         public/alphatab/esm/alphaTab.mjs
@@ -147,7 +153,8 @@ cp dist/alphaTab.worker.min.mjs  public/alphatab/esm/alphaTab.worker.mjs
 cp dist/alphaTab.worklet.min.mjs public/alphatab/esm/alphaTab.worklet.mjs
 ```
 
-Plus `dist/soundfont/sonivox.sf3` and `dist/font/Bravura.woff2`.
+Plus `dist/soundfont/sonivox.sf3` and `dist/font/Bravura.woff2`, each with its license file
+(`dist/soundfont/LICENSE`, `dist/font/Bravura-OFL.txt`) copied next to it.
 
 ### Regression test — the silent failure
 
@@ -177,6 +184,10 @@ biggest cheap win on the route.
 **Already built:** `PlayButton`, `Bpm`, `Button`, `Tooltip`, `Popover`, `Sheet`, `RangeSlider`,
 `Separator`, `Sonner`, `DropdownMenu`, `ScrollArea`, `Skeleton`, `Tabs`, `Field`, `SearchInput`,
 `Checkbox`, `NativeSelect`, `Input`.
+
+**Prerequisite:** only `Button` is exported to `web/` today (`client/src/index.ts`). Before the
+player uses a component, export it from that barrel, add `'use client'` to its file, and re-run the
+client checks plus the Storybook VR and a11y gates. The design-system rename stays in Phase 2.
 
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
 time), the notation-surface wrapper, and the drop zone.
