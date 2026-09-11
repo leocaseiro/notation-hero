@@ -37,7 +37,8 @@ Named explicitly so they do not creep in:
 - **No recent-files list.** You pick a file each time; v0 keeps no history.
 - The mockup's **scoring HUD** and **practice/game rail** render hidden, because both need scoring. The
   header's **Settings gear** and **MIDI status icon** are hidden too: no global settings panel until v0.1,
-  no Web MIDI until v0.2.
+  no Web MIDI until v0.2. The rail's **Open file** button stays — only the practice/game toggle is
+  hidden.
 
 ## 3. Decisions
 
@@ -62,18 +63,18 @@ All approved by leocaseiro on 2026-09-10.
 
 Two routes, one package. Nothing leaves the device.
 
-| Route   | Purpose    |
-| ------- | ---------- |
-| `/`     | Drop zone  |
-| `/play` | The player |
+| Route   | Purpose                                        |
+| ------- | ---------------------------------------------- |
+| `/`     | Landing — a Play button that opens the player  |
+| `/play` | The player; files are opened and replaced here |
 
 **Screen target:** tablet landscape, per [`player-app-ui.md`](../player-app-ui.md) (44 px minimum
 touch targets). Desktop uses the same layout.
 
-**How the file crosses between them:** an `ArrayBuffer` cannot travel in a URL, and v0 stores
-nothing. On open the buffer stays in a client store and `/` navigates to `/play` — no id, no
-IndexedDB. A reload on `/play` has nothing to load, so it redirects to `/` and you pick the file
-again.
+**Where the file is opened:** in the player, the same shape the prototype uses. `/` is a landing with
+a **Play** button that opens `/play`; the player owns the file picker and drag-and-drop. Opening
+another file replaces the loaded one in place, with no navigation, so the `ArrayBuffer` never has to
+cross routes and nothing is stored.
 
 **Accepted files** (same as the prototype): the picker's `accept` is
 `.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx` (Guitar Pro, MusicXML and Capella; extensions
@@ -84,10 +85,9 @@ file" toast (see Failure states).
 ### Data flow
 
 ```text
-file picker / drag-and-drop  (on /)
+/ (landing) → press Play → /play (the player, no file yet)
+  → open a file there: picker or drag-and-drop
   → ArrayBuffer (in memory)
-  → hold it in the client store
-  → navigate to /play
   → parse with AlphaTab's ScoreLoader
   → pick the drum tracks (any staff with isPercussion)
   → api.renderScore(score, drumTrackIndexes)
@@ -102,12 +102,12 @@ No upload, no network call for user content. The only network traffic is the sta
 
 ### Failure states
 
-| Case                                   | Behavior                                               |
-| -------------------------------------- | ------------------------------------------------------ |
-| Unsupported or corrupt file            | Sonner toast; stay on `/`                              |
-| No drum track in the file              | Inline "no drum track in this file" message on `/play` |
-| `/play` reached with no file in memory | Redirect to `/` with a toast                           |
-| Engine or SoundFont download fails     | An error message in place of the disabled Play button  |
+| Case                               | Behavior                                               |
+| ---------------------------------- | ------------------------------------------------------ |
+| Unsupported or corrupt file        | Sonner toast; stay on `/`                              |
+| No drum track in the file          | Inline "no drum track in this file" message on `/play` |
+| `/play` open with no file yet      | The player's empty state, waiting for a file           |
+| Engine or SoundFont download fails | An error message in place of the disabled Play button  |
 
 ### Mounting AlphaTab
 
@@ -213,11 +213,17 @@ player uses a component, export it from that barrel, add `'use client'` to its f
 client checks plus the Storybook VR and a11y gates. The design-system rename stays in Phase 2.
 
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
-time), the notation-surface wrapper, the drop zone, and a **player-controls popup** — Base UI
+time), the notation-surface wrapper, the landing **Play** button, the player's **Open file** control
+(picker plus drag-and-drop, replacing the loaded chart in place), and a **player-controls popup** — Base UI
 `Dialog` + `Tabs` + `Accordion`, opened from the mockup's "Tracks / mixer" button, with a **Tempo**
 tab (BPM = chart tempo × `playbackSpeed`, ±5 buttons, a 1–200% slider that snaps to 100%) and a
 **Tracks** tab (per-track solo, mute and volume; solo is not exclusive, as in AlphaTab and the
 prototype). `Bpm` is display-only, so the tempo control is new.
+
+`Dialog` and `Accordion` are new design-system components — neither exists in
+`client/src/components/ui/`. Each needs a Storybook story plus the VR and a11y baselines that block
+merge, and `Sheet.tsx` already wraps `@base-ui/react/dialog` as the precedent to port from. Each can
+land as its own small PR.
 
 **Deferred:** the mockup's **A/B loop markers** on the scrubber. For v0, A–B repeat uses AlphaTab's
 native range selection: select bars in the notation and playback repeats them (range selection
