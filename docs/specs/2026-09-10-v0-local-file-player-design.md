@@ -73,6 +73,13 @@ Two routes, one package. Nothing leaves the device.
 **Screen target:** tablet landscape, per [`player-app-ui.md`](../player-app-ui.md) (44 px minimum
 touch targets). Desktop uses the same layout.
 
+**The mockup does not meet that 44 px rule and v0 must.** Nothing in
+[`player-flatrow-teal.html`](../mockups/player-flatrow-teal.html) uses 44 px: the header pill's ±
+buttons carry no size class at all, so their hit area is just the glyph, and eleven footer transport
+buttons are `w-10 h-10` (40 px). Only the Play button and its neighbour, at `w-12 h-12`, pass. v0
+pads every control's hit area to at least 44 px while keeping the glyphs at their drawn size, and the
+mockup should be updated to match rather than copied literally.
+
 **Where the file is opened:** in the player, the same shape the prototype uses. `/` is a landing with
 a **Play** button that opens `/play`; the player owns the file picker and drag-and-drop. Opening
 another file replaces the loaded one in place, with no navigation, so the `ArrayBuffer` never has to
@@ -138,9 +145,14 @@ No upload, no network call for user content. The only network traffic is the sta
 **While it loads (first visit):** about 1.6 MB of engine, soundfont and font arrives. Two
 affordances, each covering a different part of that wait:
 
-- `Skeleton` over the notation area covers the **engine import and the fonts** — the AlphaTab ESM
-  (273 KB gzip), Bravura (306 KB) and the Material Symbols face (727 KB). None of it is observable
-  through AlphaTab, because `AlphaTabApi` does not exist until the dynamic import resolves.
+- `Skeleton` over the notation area covers the **engine import and the music font** — the AlphaTab
+  ESM (273 KB gzip) and Bravura (306 KB). Neither is observable through AlphaTab, because
+  `AlphaTabApi` does not exist until the dynamic import resolves.
+- The **Material Symbols face (727 KB) has no loading affordance** — the largest single asset in the
+  budget. It arrives through the design system's own global `@import` in `client/src/styles.css` and
+  styles the header gear, the transport buttons and the Open-file control, all of which sit outside
+  the notation area the `Skeleton` covers. Its symptom is unstyled icon glyphs in the chrome, not a
+  blank notation area, so say so rather than implying it is covered.
 - The progress indicator driven by `soundFontLoad` (`loaded / total`, as the prototype does) covers
   the **soundfont only** — 302 KB gzip of that ~1.6 MB. It is not a whole-payload bar, so do not
   frame it as one: it can only start once the engine has already downloaded.
@@ -319,8 +331,11 @@ the soundfont **progress bar** (§4)
 (picker plus drag-and-drop, replacing the loaded chart in place), the transport row's **Loop**,
 **Metronome** and **Count-In** toggles (AlphaTab's `isLooping`, `metronomeVolume` and
 `countInVolume`, as the prototype does), and the header's **tempo control**
-(BPM = chart tempo × `playbackSpeed`, ±5 buttons, a 12.5–200% slider that snaps to 100%; 12.5% is
-AlphaTab's documented `playbackSpeed` floor). `Bpm` is display-only, so the tempo control is new.
+(BPM = chart tempo × `playbackSpeed`, ±5 buttons, and the percentage shown only while adjusting —
+the shape [`player-app-ui.md`](../player-app-ui.md) describes). `Bpm` is display-only, so the tempo
+control is new. **The 12.5–200% slider lives in the Settings popover's Player group**, not in the
+header pill: neither design source draws a slider there, and "two popovers, not modals" leaves no
+third surface for one. 12.5% is AlphaTab's documented `playbackSpeed` floor.
 
 **Tempo sits in the header, not the transport row** — the pill block the mockup draws there, and what
 [`player-app-ui.md`](../player-app-ui.md) calls the BPM control ("`– 120 +` stepper; `%` shown only
