@@ -30,6 +30,36 @@ leocaseiro ratified the v0 direction, then reviewed the spec finding by finding
 - **Corrections found in lap 2:** the spec had claimed an ESLint value-import guard that does not exist — it is now stated as v0 work on the `@typescript-eslint` extension rule; and the regression test now asserts the audio-worklet file is actually requested, because the previous assertions also passed on the silent ScriptProcessor fallback.
 - **Rejected in lap 2:** a PWA manifest inside v0; extra MusicXML/Capella drum-detection test charts (AlphaTab is trusted here until a real bug appears).
 
+- **Lap 3 (same day) corrected facts and closed gaps, 17 decisions.** **Replacing a file asks
+  first** — a native `window.confirm()` for now (no `Dialog` is built); cancel keeps the current
+  chart, confirm stages the load so a corrupt replacement leaves the playing chart intact. **No drum
+  staff is not an error** — drums are v0's default, not its requirement, so a file with no percussion
+  staff falls back to AlphaTab's default track and a guitar or piano chart plays; this reverses lap
+  2's drum-only rule and drops the "no drum track" failure state. **`Slider` joins `Accordion`** as a
+  new design-system component (`RangeSlider` is dual-thumb only, so it cannot serve the scrubber,
+  tempo, volume or settings rows). **Build items are split by package** — controls to `client/` under
+  the VR + a11y gates, AlphaTab-aware composition to `web/` — and v0 adds an **axe check to the new
+  `web` Playwright lane**, because those two CI jobs only run against `client/` today. **Settings
+  persist** to one `localStorage` key. **Tempo lives in the header**, per the mockup and
+  `player-app-ui.md`, and **Auto-Speed is v0.2** (a practice feature). **Acceptance grows to seven
+  criteria**, covering the transport toggles, the scrubber and both popovers. **A sample chart
+  ships** (`web/public/charts/1-beat.gp`) with test fixtures in `web/e2e/fixtures/` covering 6 of the
+  9 accepted extensions. **v0.1 keeps the prototype's settings groups** exactly, with MIDI arriving
+  as a new tab later — which settles S1 in the v0.1 design.
+- **Corrections found in lap 3.** The regression test's justification was wrong: AlphaTab logs a
+  distinct line per output path (`…with worklets for playback` versus `…with ScriptProcessor for
+playback`), so the fallback was never silent, and the worklet fetch is lazy, so the test must not
+  require it before playback. Q3's "worklet never observed" was an instrumentation gap —
+  `web/spike-probe.mjs` only recorded failed requests. §5's type-only import rule collided with §7's
+  settings dropdowns, resolved by making the awaited namespace the only runtime source of AlphaTab
+  values. A–B **range** repeat is mouse-only in AlphaTab, so it is desktop-only in v0 and supersedes
+  `player-app-ui.md` D‑5. The `soundFontLoad` bar covers 302 KB of a ~1.6 MB first load, not the
+  whole payload. `AGENTS.md`'s READ-FIRST snapshot still claimed v0 installs as a PWA.
+- **Rejected in lap 3:** a styled confirm dialog for v0 (native `window.confirm()` instead); an
+  `Advanced` group for the engine settings; re-grouping v0.1's settings into drum-specific
+  categories. A licensing concern about two charts copied from the MPL-2.0 fork was **withdrawn** —
+  leocaseiro authored them.
+
 **Status:** ✅ decided · 📄 prose-only enforcement so far — the spec is the contract; the machine gate arrives with the v0 build (the Playwright lane in `web/`). Approved by leocaseiro 2026-09-10 (D1–D7) and 2026-09-12 (review decisions).
 
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
