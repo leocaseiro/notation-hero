@@ -120,11 +120,12 @@ No upload, no network call for user content. The only network traffic is the sta
 
 ### Failure states
 
-| Case                               | Behavior                                                                                                                                       |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unsupported or corrupt file        | Sonner toast; stay on `/play`. A chart already playing is never cleared by a failed load                                                       |
-| `/play` open with no file yet      | Empty state: a large **Open file** action plus a secondary **Load the sample beat**, drag-and-drop anywhere on the surface, transport disabled |
-| Engine or SoundFont download fails | An error message in place of the disabled Play button                                                                                          |
+| Case                          | Behavior                                                                                                                                                                                                                                                                                       |
+| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unsupported or corrupt file   | Sonner toast; stay on `/play`. A chart already playing is never cleared by a failed load                                                                                                                                                                                                       |
+| `/play` open with no file yet | Empty state: a large **Open file** action plus a secondary **Load the sample beat**, drag-and-drop anywhere on the surface, transport disabled                                                                                                                                                 |
+| Engine import fails           | An error message in place of the disabled Play button. `api.error` cannot see this: the dynamic import rejects before `AlphaTabApi` exists, so the mount component's own `try`/`catch` around the import sets the state — the spike's bare `void (async () => …)()` has none and must gain one |
+| SoundFont download fails      | The same message, raised through AlphaTab's `error` event                                                                                                                                                                                                                                      |
 
 **While it loads (first visit):** about 1.6 MB of engine, soundfont and font arrives. Two
 affordances, each covering a different part of that wait:

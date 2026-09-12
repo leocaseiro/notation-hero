@@ -94,7 +94,17 @@ pre-push:
       run: pnpm run lint:spell
       skip: [merge, rebase]
     lint-editorconfig:
-      run: pnpm run lint:editorconfig
+      # The npm wrapper fetches a platform binary at runtime and has no darwin-arm64 build
+      # (NH-293), so a missing binary is an environment gap, not a violation — skip only
+      # that case; real violations still fail. CI runs the same script as a hard gate.
+      run: |
+        out=$(pnpm run lint:editorconfig 2>&1) && { printf '%s\n' "$out"; exit 0; }
+        case "$out" in
+          *"Failed to download binary"*)
+            echo "editorconfig-checker binary unavailable on this platform — skipped (CI gates; NH-293)" ;;
+          *)
+            printf '%s\n' "$out"; exit 1 ;;
+        esac
       skip: [merge, rebase]
     lint-yaml:
       run: if command -v yamllint >/dev/null 2>&1; then pnpm run lint:yaml; else echo "yamllint missing — skipped (CI gates)"; fi
