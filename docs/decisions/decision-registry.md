@@ -26,6 +26,10 @@ leocaseiro ratified the v0 direction, then reviewed the spec finding by finding
 - **Verification:** desktop Chrome is the v0 gate; iPad and Android get a manual check that does not block v0 (D7 refined). The silent-playback regression test becomes a Playwright lane in `web/` wired into the CI `e2e` job.
 - **Rejected:** designing the offline layer inside v0; reordering the roadmap to put practice before settings; keeping a recent-files list in v0.
 
+- **Lap 2 (same day) trimmed and reshaped v0 again:** **no PWA at all** in v0 — install and offline become one later milestone; the **file picker lives in the player**, `/` is reduced to a landing Play button and no buffer crosses routes; **two popovers, never modals** — Settings on the header gear carrying the prototype's full option set in accordion sections (colors as plain text inputs for now), and Tracks on the transport button. `Popover` already exists, so **`Accordion` is the only new component** and `Dialog`/`Tabs` drop out of v0. Loop, Metronome and Count-In ship through AlphaTab's own `isLooping` / `metronomeVolume` / `countInVolume`; the A–B marker UI and its selection sync are **not** planned. The tempo floor is AlphaTab's documented 12.5%.
+- **Corrections found in lap 2:** the spec had claimed an ESLint value-import guard that does not exist — it is now stated as v0 work on the `@typescript-eslint` extension rule; and the regression test now asserts the audio-worklet file is actually requested, because the previous assertions also passed on the silent ScriptProcessor fallback.
+- **Rejected in lap 2:** a PWA manifest inside v0; extra MusicXML/Capella drum-detection test charts (AlphaTab is trusted here until a real bug appears).
+
 **Status:** ✅ decided · 📄 prose-only enforcement so far — the spec is the contract; the machine gate arrives with the v0 build (the Playwright lane in `web/`). Approved by leocaseiro 2026-09-10 (D1–D7) and 2026-09-12 (review decisions).
 
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
