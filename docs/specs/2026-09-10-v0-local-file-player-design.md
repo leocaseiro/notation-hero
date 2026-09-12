@@ -173,6 +173,16 @@ const alphaTab = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as
    group and a new `@coderline/alphatab` group with `allowTypeImports: true` — the extension rule
    requires the core rule to be off.
 
+   **So the awaited namespace object is the only runtime source of AlphaTab values** — enums
+   (`LayoutMode`, `ScrollMode`, `PlayerMode`, `TrackNamePolicy`), `ScoreLoader`, `model.Color`,
+   `model.Font`. No module-scope constant may reference one, because that needs the value import
+   this rule forbids. The mount component therefore shares its loaded instance with its consumers —
+   Settings, Tracks and Open-file — through React context, and every enum-valued settings row reads
+   its options off that instance rather than off a static import. The spike component already works
+   this way (`LogLevel`, `PlayerMode`, `ScrollMode`, `synth.PlayerState`); the prototype's settings
+   panel does not, since it uses `import * as alphaTab`, so this is the one place the port diverges
+   from its source.
+
 Vendoring runs before both `next dev` and `next build` (a pre-step of the `dev` and `build` scripts),
 so it is never a manual chore and a fresh clone works in dev too. `web/public/alphatab/` is generated
 output: git-ignored and never committed (the spike's committed copies are removed). The copy step:
@@ -194,12 +204,19 @@ The page looks correct until you press play. v0 must carry a test that asserts t
 live, not just that notation appeared.
 
 **The test:** Playwright in `web/`, with a config mirroring `client/playwright.e2e.config.ts` whose
-web server runs `next build` then `next start`. It asserts that `Environment.webPlatform` is
-`BrowserModule`, that no "Could not detect alphaTab script file" or "Audio Worklet creation failed"
-console error appears, that the browser requests `/alphatab/esm/alphaTab.worklet.mjs` before the
-player reports playing, and that the playback position advances after Play. A `web` step joins the CI
-`e2e` job, so it blocks merge like the other browser jobs. The worklet request is the one assertion
-the ScriptProcessor fallback cannot pass: it logs nothing and never fetches that file.
+web server runs `next build` then `next start`. With `core.logLevel` at `Debug` it asserts that
+AlphaTab logs `Will use webworkers for synthesizing and web audio api with worklets for playback`,
+that `Environment.webPlatform` is `BrowserModule`, that no "Could not detect alphaTab script file"
+or "Audio Worklet creation failed" console error appears, that the browser requests
+`/alphatab/esm/alphaTab.worklet.mjs` at some point, and that the playback position advances after
+Play. A `web` step joins the CI `e2e` job, so it blocks merge like the other browser jobs.
+
+Two corrections to how that gate was justified. The fallback is **not** silent: AlphaTab logs the
+same line ending `with ScriptProcessor for playback` instead, so the debug line is a direct
+discriminator between the two output paths and is the cheaper of the two checks. And the worklet
+module is fetched lazily — the `audioWorklet.addModule` call sits behind a `BrowserModule` guard in
+a factory callback, not at init — so the assertion must not depend on the request arriving before
+playback starts.
 
 ## 6. Payload budget
 
@@ -261,6 +278,13 @@ PR.
 selection instead: select bars in the notation, and the transport's **Loop** toggle flips
 `isLooping`. No custom marker UI and no marker/selection sync are planned. v0 ships a plain seek bar.
 
+**A–B range repeat is desktop-only in v0.** AlphaTab builds that selection from `mousedown` /
+`mousemove` / `mouseup` on the canvas and gates it on the left mouse button; it registers no
+`touchstart` or `pointerdown`, so on a touch screen a drag across bars scrolls instead of selecting.
+The **Loop** toggle itself works everywhere — only setting a bar range is mouse-bound. This
+supersedes [`player-app-ui.md`](../player-app-ui.md) D‑5 ("Tap-set A/B, drag to adjust") until the
+marker work lands, and it is why A–B is not in the acceptance set.
+
 ## 8. Success criteria
 
 v0 is done when, on a deployed Vercel URL:
@@ -275,13 +299,13 @@ block v0. Criterion 2 is called out deliberately — see the open questions.
 
 ## 9. Open questions and known gaps
 
-| #   | Item                                                                                                                                                                                                   | When it matters     |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
-| Q1  | **Nobody has heard the audio.** The spike verified playback by state (position advancing, cursor moving), not by ear — headless Chromium is silent. Timing accuracy and latency are untested.          | v0 acceptance       |
-| Q2  | Vercel CDN compression for `.sf3`, and MIME types for `public/alphatab/esm/*.mjs`. No Vercel deploy has happened yet.                                                                                  | v0 deploy           |
-| Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. Confirm whether the real worklet path or a fallback is in use — the §5 test now asserts the worklet request. | v0 acceptance       |
-| Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                 | after v0 ships (D7) |
-| Q5  | Drum **tablature** needs a patch to AlphaTab and ongoing maintenance. Standard drum **notation** needs no patch. Decide separately whether tablature is wanted.                                        | not scheduled       |
+| #   | Item                                                                                                                                                                                                                                                                                                                        | When it matters     |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| Q1  | **Nobody has heard the audio.** The spike verified playback by state (position advancing, cursor moving), not by ear — headless Chromium is silent. Timing accuracy and latency are untested.                                                                                                                               | v0 acceptance       |
+| Q2  | Vercel CDN compression for `.sf3`, and MIME types for `public/alphatab/esm/*.mjs`. No Vercel deploy has happened yet.                                                                                                                                                                                                       | v0 deploy           |
+| Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. That was an instrumentation gap, not evidence: `web/spike-probe.mjs` only records `requestfailed` and `status() >= 400`, so it never logged a successful request. The §5 test now asserts the worklet request and the debug line. | v0 acceptance       |
+| Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                                                                                                                                      | after v0 ships (D7) |
+| Q5  | Drum **tablature** needs a patch to AlphaTab and ongoing maintenance. Standard drum **notation** needs no patch. Decide separately whether tablature is wanted.                                                                                                                                                             | not scheduled       |
 
 ## 10. Roadmap position
 

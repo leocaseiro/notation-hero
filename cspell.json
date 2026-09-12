@@ -475,6 +475,13 @@
     "capx",
     "ktds",
     "frontmatter",
-    "subsetting"
+    "subsetting",
+    "webworkers",
+    "worklets",
+    "mousedown",
+    "mousemove",
+    "mouseup",
+    "touchstart",
+    "pointerdown"
   ]
 }
