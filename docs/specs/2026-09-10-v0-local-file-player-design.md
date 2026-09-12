@@ -83,10 +83,18 @@ see §7).
 file → it loads (a parse error raises a toast). From then on the file can be replaced at any time,
 and replacing prompts for confirmation. v0 uses the browser's native `window.confirm()` — a
 deliberate shortcut, since no `Dialog` component is built; a styled confirm can replace it later.
+**Playback pauses before the prompt** — `window.confirm()` freezes clicks and keystrokes but not Web
+Audio, so without that the drum track would keep sounding, uncontrollably, behind the dialog.
 **Cancel** keeps the current chart and discards the new file. **Confirm** stages the load: AlphaTab's
-`ScoreLoader` parses the new buffer first and the player is torn down only once the parse succeeds,
-so a corrupt replacement leaves the playing chart intact. Every step runs client-side, as in the
-prototype.
+`ScoreLoader` parses the new buffer first, and only on success does the live `AlphaTabApi` take the
+new score via `renderScore(...)` — nothing is destroyed, the workers and the loaded soundfont are
+reused, and disposal stays tied to unmount (§"Mounting AlphaTab"). A corrupt replacement therefore
+leaves the playing chart intact.
+
+**Reset the input's `value` to `''` at the end of every change handler** — cancel, parse failure and
+success alike. A file input fires no `change` event when its value is unchanged, so without the reset
+a user who cancels and then re-picks the _same_ file gets nothing, and the natural retry after a
+failed parse is dead too. Every step runs client-side, as in the prototype.
 
 **Accepted files** (same as the prototype): the picker's `accept` is
 `.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx` (Guitar Pro, MusicXML and Capella; extensions
@@ -195,9 +203,11 @@ const alphaTab = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as
    **So the awaited namespace object is the only runtime source of AlphaTab values** — enums
    (`LayoutMode`, `ScrollMode`, `PlayerMode`, `TrackNamePolicy`), `ScoreLoader`, `model.Color`,
    `model.Font`. No module-scope constant may reference one, because that needs the value import
-   this rule forbids. The mount component therefore shares its loaded instance with its consumers —
-   Settings, Tracks and Open-file — through React context, and every enum-valued settings row reads
-   its options off that instance rather than off a static import. The spike component already works
+   this rule forbids. The mount component therefore shares its loaded instance through a React
+   context **scoped to `web/` consumers** — itself, Open-file and the popover composition. It cannot
+   reach into `client/`: the dependency edge runs one way, so a context created in `web/` is
+   invisible there. The `client/` rows instead receive their enum options and accessors as props
+   (§7), which is what keeps them gated on real markup. The spike component already works
    this way (`LogLevel`, `PlayerMode`, `ScrollMode`, `synth.PlayerState`); the prototype's settings
    panel does not, since it uses `import * as alphaTab`, so this is the one place the port diverges
    from its source.
@@ -223,12 +233,21 @@ The page looks correct until you press play. v0 must carry a test that asserts t
 live, not just that notation appeared.
 
 **The test:** Playwright in `web/`, with a config mirroring `client/playwright.e2e.config.ts` whose
-web server runs `next build` then `next start`. With `core.logLevel` at `Debug` it asserts that
-AlphaTab logs `Will use webworkers for synthesizing and web audio api with worklets for playback`,
-that `Environment.webPlatform` is `BrowserModule`, that no "Could not detect alphaTab script file"
-or "Audio Worklet creation failed" console error appears, that the browser requests
-`/alphatab/esm/alphaTab.worklet.mjs` at some point, and that the playback position advances after
-Play. A `web` step joins the CI `e2e` job, so it blocks merge like the other browser jobs.
+web server runs `next build` then `next start`. With `core.logLevel` at `Debug` it asserts four
+things: that AlphaTab logs `Platform: BrowserModule` (emitted by `Environment.printEnvironmentInfo`,
+which reads `Environment.webPlatform` — so the log is the test hook and no debug DOM attribute is
+needed), that **no** `Failed to create worker for synthesizing audio` console error appears, that the
+browser requests `/alphatab/esm/alphaTab.worklet.mjs` at some point, and that the playback position
+advances after Play. A `web` step joins the CI `e2e` job, so it blocks merge like the other browser
+jobs.
+
+**Why those two log assertions and not the obvious one.** `Will use webworkers … with worklets for
+playback` looks like the natural check and is useless as one: `createWorkerPlayer` emits it whenever
+`window.isSecureContext && 'AudioWorkletNode' in window && player.outputMode ===
+WebAudioAudioWorklets`, never consulting `Environment.webPlatform`. In the exact regression D5 guards
+against, that line still logs and the failure surfaces on the next line as the worker-construction
+error. The `ScriptProcessor` variant of the line is a different fallback — no `AudioWorkletNode`, or
+an insecure context — and still plays audio, so the two are not halves of a discriminator.
 
 The same lane carries v0's **accessibility check for `web/`** (§7): an axe-core run over `/` and
 `/play` — empty, loaded, and with each popover open. Three setup notes, since `web/` has no test
@@ -236,7 +255,11 @@ lane today: `@playwright/test` must be added at `client/`'s exact range (root `s
 cross-package version consistency), the job needs its own `playwright install --with-deps chromium`
 step, and the script must **not** be called `test` — the `quality` job runs
 `pnpm -r --if-present run test` with no browsers installed. Add `web/playwright-report/` and
-`web/test-results/` to the `e2e` job's upload paths when the lane lands.
+`web/test-results/` to the `e2e` job's upload paths when the lane lands. A fourth note for the
+replace flow: the lane must register a `page.on('dialog', …)` handler **before** any action that
+replaces a loaded chart — accepting for the confirm path, dismissing for the cancel path — because
+Playwright auto-dismisses `window.confirm()` when no listener is attached, which would silently turn
+every replace test into a cancel test.
 
 **Charts the lane uses.** Test fixtures live in `web/e2e/fixtures/` — outside `public/`, so they are
 never served — aiming at one chart per accepted extension, because the picker's `accept` list is a
@@ -251,12 +274,9 @@ The one chart that ships is the sample, `web/public/charts/1-beat.gp`. **It is a
 1.8.4. So §4's required test, "a multi-track chart whose drums are not track 0", has nothing to run
 against, and neither does the no-percussion fallback. Both fixtures still have to be produced (Q7).
 
-Two corrections to how that gate was justified. The fallback is **not** silent: AlphaTab logs the
-same line ending `with ScriptProcessor for playback` instead, so the debug line is a direct
-discriminator between the two output paths and is the cheaper of the two checks. And the worklet
-module is fetched lazily — the `audioWorklet.addModule` call sits behind a `BrowserModule` guard in
-a factory callback, not at init — so the assertion must not depend on the request arriving before
-playback starts.
+One more thing the assertions must not assume: the worklet module is fetched **lazily** — the
+`audioWorklet.addModule` call sits behind a `BrowserModule` guard inside a factory callback, not at
+init — so no assertion may require that request to arrive before playback starts.
 
 ## 6. Payload budget
 
@@ -305,13 +325,21 @@ control and the transport row has none.
 **Which package each item lands in**, because that decides whether it is gated. The `a11y` and `vr`
 CI jobs both run `pnpm --filter @notation-hero/client`, so only `client/` is covered by them today.
 
-| Package   | Items                                                                                                                | Gated by                                  |
-| --------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `client/` | playback scrubber, tempo control, Loop / Metronome / Count-In toggles, settings + tracks rows, `Accordion`, `Slider` | Storybook story + VR + a11y (block merge) |
-| `web/`    | transport row layout, notation-surface wrapper, landing **Play** button, **Open file** control                       | the `web` Playwright lane (§5)            |
+| Package   | Items                                                                                                                                                                           | Gated by                                  |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `client/` | playback scrubber, tempo control, Loop / Metronome / Count-In toggles, settings + tracks rows, soundfont progress bar, `Accordion`, `Slider`                                    | Storybook story + VR + a11y (block merge) |
+| `web/`    | transport row layout, notation-surface wrapper, landing **Play** button, **Open file** control, the settings group/accessor schema and the AlphaTab React context that feeds it | the `web` Playwright lane (§5)            |
 
 The split is by reusability: a control that any screen could use belongs in the design system, while
-composition that knows about AlphaTab's API belongs in the player. Because `web/` has no Storybook
+composition that knows about AlphaTab's API belongs in the player.
+
+**Every `client/` item is presentation-only** — `value` in, `onChange` out, option lists passed as
+plain arrays — and imports nothing from `@coderline/alphatab`. That is not a style preference: it is
+what makes the gate real. `client/` has no AlphaTab dependency, and a `client/` Storybook story has
+no engine instance to provide, so a row that read its options off the library would be gated while
+rendering fabricated options. Keeping the controls AlphaTab-free means the VR and a11y baselines
+exercise the component a user will actually see. The schema of accessors, and the React context
+carrying the loaded namespace, therefore live in `web/` (§5) where the instance exists. Because `web/` has no Storybook
 and no axe job, **v0 adds an accessibility check to the `web` Playwright lane** it is already
 building for the worklet test (§5) — otherwise the product's own UI would be the only ungated
 surface in the repo while 18 design-system components are gated.
