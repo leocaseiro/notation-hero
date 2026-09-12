@@ -9,10 +9,10 @@
 
 ## 1. Why this exists, and when
 
-v0 ships with **no global settings panel**. v0 does build a player-controls popup (tempo, tracks)
-with the same shape, so `Dialog`, `Tabs` and `Accordion` already exist when this panel starts. This
-panel is the **v0.1** milestone, landing right after the player works and **ahead of** the v0.2
-scoring layer. That ordering was chosen deliberately: settings make the player usable day-to-day.
+v0 already ships the settings themselves — a popover on the header gear, with accordion sections and
+the prototype's full option set. What v0 lacks is **search**. That is this **v0.1** milestone,
+landing right after the player works and **ahead of** the v0.2 scoring layer, because search is what
+makes a large settings set usable day-to-day.
 
 This document captures the design while it is fresh. It is not a build plan.
 
@@ -87,12 +87,12 @@ slider gives coarse, fast adjustment. Both edit the same value.
 
 ## 5. Components
 
-**Built in v0 for the player-controls popup, reused here:**
+**Components:**
 
-| Component   | Source              | Notes                                                                         |
-| ----------- | ------------------- | ----------------------------------------------------------------------------- |
-| `Dialog`    | Base UI `Dialog`    | Built in v0; the design system had `Sheet` and `Popover` but no modal dialog. |
-| `Accordion` | Base UI `Accordion` | Built in v0; holds the sections.                                              |
+| Component   | Source              | Notes                                                       |
+| ----------- | ------------------- | ----------------------------------------------------------- |
+| `Dialog`    | Base UI `Dialog`    | Only if v0.1 wants a modal; v0 uses the existing `Popover`. |
+| `Accordion` | Base UI `Accordion` | Built in v0; holds the sections.                            |
 
 **Already built and reusable:** `Tabs`, `SearchInput`, `Checkbox`, `NativeSelect`, `RangeSlider`,
 `Input`, `Tooltip`, `Field`, `Separator`, `ScrollArea`.

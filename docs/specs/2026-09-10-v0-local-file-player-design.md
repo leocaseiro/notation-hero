@@ -28,16 +28,16 @@ Named explicitly so they do not creep in:
 
 - **No authentication, no backend, no database.** `server/`, `infra/`, Neon and Cognito stay dormant.
 - **No scoring, no Web MIDI input, no feedback rings.** That is v0.2.
-- **No global settings panel.** The searchable settings panel is v0.1. v0 builds one
-  player-controls popup (tempo, tracks) with the same `Dialog` + `Tabs` + `Accordion` shape.
+- **No settings search.** v0 ships the settings themselves in a popover; the search index, the
+  category tabs and the breadcrumb results are v0.1.
 - **No catalog.** Nothing to browse — you bring the file.
 - **No PWA.** v0 is a plain web page: no install prompt, no offline mode. Both belong to a later
   milestone (§10).
 - **No raw MIDI (`.mid`) files.** AlphaTab has no MIDI importer, so MIDI needs its own path.
 - **No recent-files list.** You pick a file each time; v0 keeps no history.
 - The mockup's **scoring HUD** and **practice/game rail** render hidden, because both need scoring. The
-  header's **Settings gear** and **MIDI status icon** are hidden too: no global settings panel until v0.1,
-  no Web MIDI until v0.2. The rail's **Open file** button stays — only the practice/game toggle is
+  header's **MIDI status icon** is hidden too: no Web MIDI until v0.2. The **Settings gear** opens the
+  settings popover, and the rail's **Open file** button stays — only the practice/game toggle is
   hidden.
 
 ## 3. Decisions
@@ -220,16 +220,25 @@ client checks plus the Storybook VR and a11y gates. The design-system rename sta
 time), the notation-surface wrapper, the landing **Play** button, the player's **Open file** control
 (picker plus drag-and-drop, replacing the loaded chart in place), the transport row's **Loop**,
 **Metronome** and **Count-In** toggles (AlphaTab's `isLooping`, `metronomeVolume` and
-`countInVolume`, as the prototype does), and a **player-controls popup** — Base UI
-`Dialog` + `Tabs` + `Accordion`, opened from the mockup's "Tracks / mixer" button, with a **Tempo**
-tab (BPM = chart tempo × `playbackSpeed`, ±5 buttons, a 1–200% slider that snaps to 100%) and a
-**Tracks** tab (per-track solo, mute and volume; solo is not exclusive, as in AlphaTab and the
-prototype). `Bpm` is display-only, so the tempo control is new.
+`countInVolume`, as the prototype does), and the transport's **tempo control**
+(BPM = chart tempo × `playbackSpeed`, ±5 buttons, a 12.5–200% slider that snaps to 100%; 12.5% is
+AlphaTab's documented `playbackSpeed` floor). `Bpm` is display-only, so the tempo control is new.
 
-`Dialog` and `Accordion` are new design-system components — neither exists in
-`client/src/components/ui/`. Each needs a Storybook story plus the VR and a11y baselines that block
-merge, and `Sheet.tsx` already wraps `@base-ui/react/dialog` as the precedent to port from. Each can
-land as its own small PR.
+**Two popovers, not modals** — neither blocks the player:
+
+- **Settings** (the header gear): accordion sections carrying the prototype's full settings set —
+  Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools. Colors are plain
+  text inputs for now; a color-picker row can replace them in a later release.
+- **Tracks** (the transport's "Tracks / mixer" button): one row per track with solo, mute and
+  volume; solo is not exclusive, as in AlphaTab and the prototype.
+
+Build the rows from one small set of reusable controls — toggle, text, number, dropdown, slider —
+driven by a schema of groups with an accessor per row, so a value edited in two places (the tempo
+control and the Player group, for example) stays in sync. The prototype does exactly this.
+
+`Accordion` is the only new design-system component: `Popover` is already built, and `Dialog` and
+`Tabs` are not needed for v0. It needs a Storybook story plus the VR and a11y baselines that block
+merge, and can land as its own small PR.
 
 **Deferred:** the mockup's **A/B loop markers** on the scrubber. v0 uses AlphaTab's native range
 selection instead: select bars in the notation, and the transport's **Loop** toggle flips
@@ -261,7 +270,7 @@ block v0. Criterion 2 is called out deliberately — see the open questions.
 
 ```text
 v0    → player: open a local file, see drum notation, hear it        ← this spec
-v0.1  → settings: the searchable global panel (Dialog + Accordion already built in v0)
+v0.1  → settings: search across the settings v0 already ships (Accordion built in v0)
 v0.2  → scoring: Web MIDI input, hit detection, feedback rings
 later → PWA: install (manifest + icons) and offline (service worker + precache); order not set
 ```
@@ -285,8 +294,8 @@ variants of it):
 - **Search is global across all tabs.** Results replace the tab view and group under `Tab > Section`
   breadcrumb headers, with controls staying live and editable in the results.
 
-v0 already builds `Dialog`, `Tabs` and `Accordion` for the player-controls popup (§7), so v0.1 adds
-the search index, the categories and the settings rows.
+v0 already ships the settings rows themselves in a popover (§7), so v0.1 adds the search index and
+the categories on top of them.
 
 Categories will be drum-specific (audio, MIDI, notation, practice). Write original label copy rather
 than borrowing strings from any reference product.
