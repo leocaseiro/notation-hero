@@ -250,10 +250,14 @@ error. The `ScriptProcessor` variant of the line is a different fallback — no 
 an insecure context — and still plays audio, so the two are not halves of a discriminator.
 
 The same lane carries v0's **accessibility check for `web/`** (§7): an axe-core run over `/` and
-`/play` — empty, loaded, and with each popover open. Three setup notes, since `web/` has no test
-lane today: `@playwright/test` must be added at `client/`'s exact range (root `syncpack` enforces
-cross-package version consistency), the job needs its own `playwright install --with-deps chromium`
-step, and the script must **not** be called `test` — the `quality` job runs
+`/play` in five states — empty, loaded, with each popover open, during the first-visit `Skeleton`,
+and while the replacement `toast.loading()` is up. The last two matter because this is the only a11y
+gate `web/` gets, and whether Sonner's loading toast is announced to assistive tech is exactly the
+kind of thing that otherwise ships unchecked. Four setup notes, since `web/` has no test lane today:
+`@playwright/test` and `@axe-core/playwright` must both be added at `client/`'s exact ranges
+(`@axe-core/playwright` is `^4.12.1` there, and root `syncpack` enforces cross-package version
+consistency, so a drifting range fails the `quality` job), the job needs its own
+`playwright install --with-deps chromium` step, and the script must **not** be called `test` — the `quality` job runs
 `pnpm -r --if-present run test` with no browsers installed. Add `web/playwright-report/` and
 `web/test-results/` to the `e2e` job's upload paths when the lane lands. A fourth note for the
 replace flow: the lane must register a `page.on('dialog', …)` handler **before** any action that
@@ -357,6 +361,13 @@ surface in the repo while 18 design-system components are gated.
   current value (`changeTrackVolume([track], next / track.playbackInfo.volume)`), which is how the
   prototype does it — not as an absolute.
 
+  The row carries the prototype's **full** control set, not a subset: a **render-select** checkbox
+  (`api.renderTracks(...)`, so the user can change which tracks are drawn, not only which are
+  audible), **solo**, **mute**, **volume**, the four per-staff display toggles (standard notation,
+  tablature, slash, numbered — all four exist on `Staff` in the pinned 1.8.4) and **transposition**
+  (`changeTrackTranspositionPitch` then `updateSettings()` + `render()`). Drums may hide the
+  tablature toggle; every other instrument gets all of them.
+
 Both popovers' rows **compose controls that already exist** — `Checkbox` (toggle), `Input` (text and
 number), `NativeSelect` (dropdown) and the new `Slider` — with `Field`'s `horizontal` orientation
 giving the label-left / control-right layout. None of those is new work. What _is_ new is the schema
@@ -366,6 +377,12 @@ group, for example) stays in sync. The prototype does exactly this.
 **Settings values persist.** v0 writes them as JSON under a single `localStorage` key and restores
 them on load, which answers the storage question the v0.1 design left open (its S4). Chart files and
 playback history are never stored — the no-recent-files rule is about charts, not preferences.
+
+**A bad stored value must never break the player.** Wrap the read in `try`/`catch` and fall back to
+the shipped defaults whenever the value is missing, is not valid JSON, or fails a basic shape check.
+This is not a hypothetical: §10 layers v0.1's search and tabs over these same settings, so the stored
+shape changes soon after v0 ships, and an uncaught `JSON.parse` during the restore step would stop
+the player mounting at all — the one thing v0 exists to do.
 
 **Three** new design-system components: `Accordion`, a single-value `Slider`, and a determinate
 **progress bar** for the soundfont download (§4). `RangeSlider` is dual-thumb only
@@ -416,7 +433,7 @@ behaviour and desktop-only (§7).
 | Q2  | Vercel CDN compression for `.sf3`, and MIME types for `public/alphatab/esm/*.mjs`. No Vercel deploy has happened yet.                                                                                                                                                                                                                                                                                                                                                                                                                                                              | v0 deploy           |
 | Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. That was an instrumentation gap, not evidence: `web/spike-probe.mjs` only records `requestfailed` and `status() >= 400`, so it never logged a successful request. The §5 test now asserts the worklet request and the debug line.                                                                                                                                                                                                                                                        | v0 acceptance       |
 | Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                                                                                                                                                                                                                                                                                                                                                                                             | after v0 ships (D7) |
-| Q5  | Drum **tablature** needs a patch to AlphaTab and ongoing maintenance. Standard drum **notation** needs no patch. Decide separately whether tablature is wanted.                                                                                                                                                                                                                                                                                                                                                                                                                    | not scheduled       |
+| Q5  | Drum **tablature** is implemented upstream ([alphaTab PR #2591](https://github.com/CoderLine/alphaTab/pull/2591)), so it no longer needs a local patch. One thing to confirm before relying on it: whether that PR is in the pinned **1.8.4** or a later release — the per-staff `showTablature` flag exists in 1.8.4, but if the rendering work landed afterwards, v0 needs a version bump, which touches the vendoring step and the payload budget.                                                                                                                              | not scheduled       |
 | Q6  | **Six accepted extensions have no test chart.** `.musicxml`, `.mxml` and `.xml` need a genuine MusicXML export — the most important gap, since MusicXML is the only open format on the accept list and the one a user of free notation software would bring. `.gp3` and `.gp4` need real Guitar Pro 3/4 exports, and `.capx` needs Capella — renaming a `.gp5` does not help, because `ScoreLoader` reads the bytes and would just import it as GP5 again, testing nothing. All six are claimed by the picker but unverified, so either the charts or the accept list has to give. | before v0 ships     |
 | Q7  | **No multi-track chart and no percussion-free chart exist.** Every chart in the repo parses to a single percussion track, so §4's own required test ("a multi-track chart whose drums are not track 0") and the settled no-drum-staff fallback both ship unverified — a regression to always-rendering-track-0 would pass CI. Two fixtures are needed: one with drums off index 0 plus a non-percussion track, and one with no percussion at all.                                                                                                                                  | before v0 ships     |
 
