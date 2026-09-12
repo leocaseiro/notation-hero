@@ -38,7 +38,9 @@ Named explicitly so they do not creep in:
 - The mockup's **scoring HUD** and **practice/game rail** render hidden, because both need scoring. The
   header's **MIDI status icon** is hidden too: no Web MIDI until v0.2. The **Settings gear** opens the
   settings popover, and the rail's **Open file** button stays — only the practice/game toggle is
-  hidden.
+  hidden. The header pill's **Auto-Speed** toggle is v0.2 as well: it is a practice feature
+  (`player-app-ui.md` files "auto-speed target+step" under Practice settings), so it needs the
+  scoring work. Its BPM stepper stays — that is the tempo control (§7).
 
 ## 3. Decisions
 
@@ -260,9 +262,14 @@ client checks plus the Storybook VR and a11y gates. The design-system rename sta
 time), the notation-surface wrapper, the landing **Play** button, the player's **Open file** control
 (picker plus drag-and-drop, replacing the loaded chart in place), the transport row's **Loop**,
 **Metronome** and **Count-In** toggles (AlphaTab's `isLooping`, `metronomeVolume` and
-`countInVolume`, as the prototype does), and the transport's **tempo control**
+`countInVolume`, as the prototype does), and the header's **tempo control**
 (BPM = chart tempo × `playbackSpeed`, ±5 buttons, a 12.5–200% slider that snaps to 100%; 12.5% is
 AlphaTab's documented `playbackSpeed` floor). `Bpm` is display-only, so the tempo control is new.
+
+**Tempo sits in the header, not the transport row** — the pill block the mockup draws there, and what
+[`player-app-ui.md`](../player-app-ui.md) calls the BPM control ("`– 120 +` stepper; `%` shown only
+while adjusting"). Both design documents place it in the header, so the player has exactly one tempo
+control and the transport row has none.
 
 **Which package each item lands in**, because that decides whether it is gated. The `a11y` and `vr`
 CI jobs both run `pnpm --filter @notation-hero/client`, so only `client/` is covered by them today.
@@ -322,9 +329,15 @@ v0 is done when, on a deployed Vercel URL:
 2. Pressing play produces **audible** drum audio with a cursor that tracks it.
 3. Tempo and per-track mute/solo work.
 4. leocaseiro loads **his own** chart and it plays.
+5. Loop, Metronome and Count-In each audibly change playback.
+6. The scrubber seeks and the cursor follows.
+7. The Settings and Tracks popovers open, and their rows change the rendered score.
 
 The criteria are checked in desktop Chrome. iPad and Android get a manual check too; it does not
-block v0. Criterion 2 is called out deliberately — see the open questions.
+block v0. Criterion 2 is called out deliberately — see the open questions. Criteria 5–7 exist because
+§7 commits to ten build items: without them v0 could be called done with the transport toggles, the
+seek bar and both popovers broken. A–B bar-range repeat is deliberately absent — it is AlphaTab's own
+behaviour and desktop-only (§7).
 
 ## 9. Open questions and known gaps
 
