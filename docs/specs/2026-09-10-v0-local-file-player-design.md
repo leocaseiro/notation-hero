@@ -74,7 +74,8 @@ touch targets). Desktop uses the same layout.
 **Where the file is opened:** in the player, the same shape the prototype uses. `/` is a landing with
 a **Play** button that opens `/play`; the player owns the file picker and drag-and-drop. Opening
 another file replaces the loaded one in place, with no navigation, so the `ArrayBuffer` never has to
-cross routes and nothing is stored.
+cross routes and the chart itself is never written to disk (settings are the one thing v0 persists —
+see §7).
 
 **Replacing a loaded chart asks first.** The flow is: `/` → press **Play** → `/play` → pick or drop a
 file → it loads (a parse error raises a toast). From then on the file can be replaced at any time,
@@ -211,6 +212,14 @@ or "Audio Worklet creation failed" console error appears, that the browser reque
 `/alphatab/esm/alphaTab.worklet.mjs` at some point, and that the playback position advances after
 Play. A `web` step joins the CI `e2e` job, so it blocks merge like the other browser jobs.
 
+The same lane carries v0's **accessibility check for `web/`** (§7): an axe-core run over `/` and
+`/play` — empty, loaded, and with each popover open. Three setup notes, since `web/` has no test
+lane today: `@playwright/test` must be added at `client/`'s exact range (root `syncpack` enforces
+cross-package version consistency), the job needs its own `playwright install --with-deps chromium`
+step, and the script must **not** be called `test` — the `quality` job runs
+`pnpm -r --if-present run test` with no browsers installed. Add `web/playwright-report/` and
+`web/test-results/` to the `e2e` job's upload paths when the lane lands.
+
 Two corrections to how that gate was justified. The fallback is **not** silent: AlphaTab logs the
 same line ending `with ScriptProcessor for playback` instead, so the debug line is a direct
 discriminator between the two output paths and is the cheaper of the two checks. And the worklet
@@ -255,6 +264,20 @@ time), the notation-surface wrapper, the landing **Play** button, the player's *
 (BPM = chart tempo × `playbackSpeed`, ±5 buttons, a 12.5–200% slider that snaps to 100%; 12.5% is
 AlphaTab's documented `playbackSpeed` floor). `Bpm` is display-only, so the tempo control is new.
 
+**Which package each item lands in**, because that decides whether it is gated. The `a11y` and `vr`
+CI jobs both run `pnpm --filter @notation-hero/client`, so only `client/` is covered by them today.
+
+| Package   | Items                                                                                                                | Gated by                                  |
+| --------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `client/` | playback scrubber, tempo control, Loop / Metronome / Count-In toggles, settings + tracks rows, `Accordion`, `Slider` | Storybook story + VR + a11y (block merge) |
+| `web/`    | transport row layout, notation-surface wrapper, landing **Play** button, **Open file** control                       | the `web` Playwright lane (§5)            |
+
+The split is by reusability: a control that any screen could use belongs in the design system, while
+composition that knows about AlphaTab's API belongs in the player. Because `web/` has no Storybook
+and no axe job, **v0 adds an accessibility check to the `web` Playwright lane** it is already
+building for the worklet test (§5) — otherwise the product's own UI would be the only ungated
+surface in the repo while 18 design-system components are gated.
+
 **Two popovers, not modals** — neither blocks the player:
 
 - **Settings** (the header gear): accordion sections carrying the prototype's full settings set —
@@ -263,9 +286,15 @@ AlphaTab's documented `playbackSpeed` floor). `Bpm` is display-only, so the temp
 - **Tracks** (the transport's "Tracks / mixer" button): one row per track with solo, mute and
   volume; solo is not exclusive, as in AlphaTab and the prototype.
 
-Build the rows from one small set of reusable controls — toggle, text, number, dropdown, slider —
-driven by a schema of groups with an accessor per row, so a value edited in two places (the tempo
-control and the Player group, for example) stays in sync. The prototype does exactly this.
+Both popovers' rows **compose controls that already exist** — `Checkbox` (toggle), `Input` (text and
+number), `NativeSelect` (dropdown) and the new `Slider` — with `Field`'s `horizontal` orientation
+giving the label-left / control-right layout. None of those is new work. What _is_ new is the schema
+of groups with an accessor per row, so a value edited in two places (the tempo control and the Player
+group, for example) stays in sync. The prototype does exactly this.
+
+**Settings values persist.** v0 writes them as JSON under a single `localStorage` key and restores
+them on load, which answers the storage question the v0.1 design left open (its S4). Chart files and
+playback history are never stored — the no-recent-files rule is about charts, not preferences.
 
 `Accordion` and a single-value `Slider` are the new design-system components. `RangeSlider` is
 dual-thumb only (`value: [number, number]`), so it cannot serve the scrubber, the tempo slider,
