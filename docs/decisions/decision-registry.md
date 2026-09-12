@@ -60,6 +60,39 @@ playback`), so the fallback was never silent, and the worklet fetch is lazy, so 
   categories. A licensing concern about two charts copied from the MPL-2.0 fork was **withdrawn** —
   leocaseiro authored them.
 
+- **Lap 4 (same day) found that lap 3's own new text carried real defects, 12 decisions.** The
+  **merge gate was rewritten again**: lap 3 had it assert `…with worklets for playback`, but
+  `createWorkerPlayer` emits that line whenever `isSecureContext && 'AudioWorkletNode' in window &&
+outputMode === WebAudioAudioWorklets`, never reading `Environment.webPlatform` — so it logs in the
+  broken build too, right before `Failed to create worker for synthesizing audio`. The gate now
+  asserts `Platform: BrowserModule` (from `printEnvironmentInfo`) plus the absence of that error.
+  **The package-split table was unbuildable**: it gave `client/` the tempo control, the transport
+  toggles and the settings rows, but `client/` has no `@coderline/alphatab` and a `client/` Storybook
+  story has no engine — so every `client/` item is now presentation-only and the React context is
+  scoped to `web/`. **The native confirm needed three fixes**: pause playback before it (it freezes
+  input, not Web Audio), reset the file input's `value` in every change handler (no `change` event
+  fires when the value is unchanged, so cancel-then-re-pick was dead), and register a
+  `page.on('dialog')` handler or Playwright silently turns every replace test into a cancel test.
+  **The Tracks row takes the prototype's full control set** including render-select, per leocaseiro;
+  drum tablature is implemented upstream (alphaTab PR #2591) so Q5 no longer records a local patch.
+  **Criteria 8 and 9** cover the sample-load action and the no-percussion fallback; **criterion 7**
+  splits render from audible mix. **A third new design-system component** — a determinate progress
+  bar — joins `Accordion` and `Slider`. **Settings restore falls back to defaults** on a corrupt or
+  stale value. **The axe lane** gains two states and `@axe-core/playwright`. **The tempo slider moves
+  to the Settings popover** and hit areas are padded to 44 px, because nothing in the mockup meets
+  that rule. **v0.1 stays non-blocking** — no modal, no `Dialog`, in v0 or v0.1.
+- **Corrections to lap 3's own output, found in lap 4.** Three false statements traced to one unsound
+  `strings` probe: the `.xml` fixture is a Guitar Pro 5 binary, not MusicXML, so copying it to
+  `.musicxml`/`.mxml` covered nothing and real coverage is 3 of 9, not 6; `1-beat.gp` is a single drum
+  track, not multi-track, so §4's required "drums are not track 0" test has no fixture (Q7); and
+  "renaming a `.gp5` will not parse" is backwards, since `ScoreLoader` reads the bytes. A dangling
+  sentence left by the first of those fixes was repaired. The `Skeleton` does not cover the Material
+  Symbols face, which has no loading affordance at all. `ScoreLoader` is `importer.ScoreLoader` and
+  takes a `Uint8Array`.
+- **Also fixed in lap 4:** NH-293 — `lint-editorconfig` blocked every local push because the npm
+  wrapper has no darwin-arm64 binary; the hook now skips that one failure the way `lint-yaml` and
+  `lint-shell` skip a missing binary, with CI unchanged as the hard gate.
+
 **Status:** ✅ decided · 📄 prose-only enforcement so far — the spec is the contract; the machine gate arrives with the v0 build (the Playwright lane in `web/`). Approved by leocaseiro 2026-09-10 (D1–D7) and 2026-09-12 (review decisions).
 
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)

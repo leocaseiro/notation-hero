@@ -1,5 +1,5 @@
 ---
-lap: 3
+lap: 4
 last_applied: P1
 ---
 
@@ -115,7 +115,7 @@ file" toast (see Failure states).
 / (landing) → press Play → /play (the player, no file yet)
   → open a file there: picker or drag-and-drop
   → ArrayBuffer (in memory)
-  → parse with AlphaTab's ScoreLoader
+  → wrap as Uint8Array, then alphaTab.importer.ScoreLoader.loadScoreFromBytes(bytes)
   → pick the drum tracks (any staff with isPercussion)
   → none found? fall back to AlphaTab's default track
   → api.renderScore(score, drumTracks.length ? drumTracks : undefined)
@@ -138,7 +138,7 @@ No upload, no network call for user content. The only network traffic is the sta
 | Case                          | Behavior                                                                                                                                                                                                                                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Unsupported or corrupt file   | Sonner toast; stay on `/play`. A chart already playing is never cleared by a failed load                                                                                                                                                                                                       |
-| `/play` open with no file yet | Empty state: a large **Open file** action plus a secondary **Load the sample beat**, drag-and-drop anywhere on the surface, transport disabled                                                                                                                                                 |
+| `/play` open with no file yet | Empty state: a large **Open file** control plus a secondary **Load the sample beat** action, drag-and-drop anywhere on the surface, transport disabled                                                                                                                                         |
 | Engine import fails           | An error message in place of the disabled Play button. `api.error` cannot see this: the dynamic import rejects before `AlphaTabApi` exists, so the mount component's own `try`/`catch` around the import sets the state — the spike's bare `void (async () => …)()` has none and must gain one |
 | SoundFont download fails      | The same message, raised through AlphaTab's `error` event                                                                                                                                                                                                                                      |
 
@@ -213,8 +213,9 @@ const alphaTab = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as
    requires the core rule to be off.
 
    **So the awaited namespace object is the only runtime source of AlphaTab values** — enums
-   (`LayoutMode`, `ScrollMode`, `PlayerMode`, `TrackNamePolicy`), `ScoreLoader`, `model.Color`,
-   `model.Font`. No module-scope constant may reference one, because that needs the value import
+   (`LayoutMode`, `ScrollMode`, `PlayerMode`, `TrackNamePolicy`), `importer.ScoreLoader` (nested
+   under `importer`, and its `loadScoreFromBytes` takes a `Uint8Array` — so wrap the `ArrayBuffer`
+   first), `model.Color`, `model.Font`. No module-scope constant may reference one, because that needs the value import
    this rule forbids. The mount component therefore shares its loaded instance through a React
    context **scoped to `web/` consumers** — itself, Open-file and the popover composition. It cannot
    reach into `client/`: the dependency edge runs one way, so a context created in `web/` is
@@ -445,7 +446,7 @@ behaviour and desktop-only (§7).
 | #   | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | When it matters     |
 | --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
 | Q1  | **Nobody has heard the audio.** The spike verified playback by state (position advancing, cursor moving), not by ear — headless Chromium is silent. Timing accuracy and latency are untested.                                                                                                                                                                                                                                                                                                                                                                                      | v0 acceptance       |
-| Q2  | Vercel CDN compression for `.sf3`, and MIME types for `public/alphatab/esm/*.mjs`. No Vercel deploy has happened yet.                                                                                                                                                                                                                                                                                                                                                                                                                                                              | v0 deploy           |
+| Q2  | **Split by when it can bite.** The MIME types Vercel serves for `public/alphatab/esm/*.mjs` are D5's one unverified premise, and §5's variable specifier, plain-name copy step, type-only guard, context sharing and regression test all hang off D5 — so check it **before** the player is built on it, by deploying the existing `/spike/esm` route. Reversing to variant A afterwards would touch the mount component, the vendoring step, the eslint guard and §6. CDN compression for `.sf3` is a cost question, not a correctness one, and can wait for the v0 deploy.       | v0 deploy           |
 | Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. That was an instrumentation gap, not evidence: `web/spike-probe.mjs` only records `requestfailed` and `status() >= 400`, so it never logged a successful request. The §5 test now asserts the worklet request and the debug line.                                                                                                                                                                                                                                                        | v0 acceptance       |
 | Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                                                                                                                                                                                                                                                                                                                                                                                             | after v0 ships (D7) |
 | Q5  | Drum **tablature** is implemented upstream ([alphaTab PR #2591](https://github.com/CoderLine/alphaTab/pull/2591)), so it no longer needs a local patch. One thing to confirm before relying on it: whether that PR is in the pinned **1.8.4** or a later release — the per-staff `showTablature` flag exists in 1.8.4, but if the rendering work landed afterwards, v0 needs a version bump, which touches the vendoring step and the payload budget.                                                                                                                              | not scheduled       |
@@ -472,7 +473,10 @@ return point is not set yet.
 Modelled on a widely-used pattern (VS Code, macOS System Settings, Chrome, Firefox all ship
 variants of it):
 
-- Modal dialog with a close control and a full-width search input at the top
+- **The same non-blocking popover v0 ships, not a modal** — a full-width search input goes at the
+  top of it. v0 chose a popover for one reason, that it never blocks the player, and v0.1 keeps
+  that: a drummer can still search and change a setting while the chart plays. `Dialog` is not
+  built in v0 and is not needed in v0.1 either.
 - Tabs for top-level categories
 - Accordion sections inside each tab; labels read as `Section:`
 - Row grammar: label left, control right-aligned, optional help icon after the label. Numeric values

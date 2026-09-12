@@ -18,10 +18,12 @@ This document captures the design while it is fresh. It is not a build plan.
 
 ## 2. Shape
 
-A modal dialog. Search at the top, category tabs beneath it, accordion sections inside each tab.
+The **same non-blocking popover v0 ships — not a modal** (settled 2026-09-12). Search at the top,
+category tabs beneath it, accordion sections inside each tab. v0 chose a popover because it never
+blocks the player, and v0.1 keeps that property.
 
 ```text
-┌─ modal dialog ───────────────────────────────────┐
+┌─ settings popover ───────────────────────────────┐
 │ [✕]   🔍  Search settings                        │  close + full-width search
 ├──────────────────────────────────────────────────┤
 │   Audio   │   MIDI   │   Notation  ◄ active      │  tabs, underline on active
@@ -89,10 +91,10 @@ slider gives coarse, fast adjustment. Both edit the same value.
 
 **Components:**
 
-| Component   | Source              | Notes                                                       |
-| ----------- | ------------------- | ----------------------------------------------------------- |
-| `Dialog`    | Base UI `Dialog`    | Only if v0.1 wants a modal; v0 uses the existing `Popover`. |
-| `Accordion` | Base UI `Accordion` | Built in v0; holds the sections.                            |
+| Component   | Source              | Notes                                                                        |
+| ----------- | ------------------- | ---------------------------------------------------------------------------- |
+| `Dialog`    | Base UI `Dialog`    | **Not needed.** v0.1 keeps v0's non-blocking `Popover` (settled 2026-09-12). |
+| `Accordion` | Base UI `Accordion` | Built in v0; holds the sections.                                             |
 
 **Already built and reusable:** `Tabs`, `SearchInput`, `Checkbox`, `NativeSelect`, `RangeSlider`,
 `Input`, `Tooltip`, `Field`, `Separator`, `ScrollArea`.
