@@ -472,6 +472,9 @@
     "haspopup",
     "desynced",
     "regen",
-    "capx"
+    "capx",
+    "ktds",
+    "frontmatter",
+    "subsetting"
   ]
 }
