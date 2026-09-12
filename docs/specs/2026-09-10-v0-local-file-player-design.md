@@ -310,7 +310,8 @@ client checks plus the Storybook VR and a11y gates. The design-system rename sta
 
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
 time), the notation-surface wrapper, the landing **Play** button, the player's **Open file** control
-and its secondary **Load the sample beat** action
+and its secondary **Load the sample beat** action, the **Settings** and **Tracks** popovers (below),
+the soundfont **progress bar** (§4)
 (picker plus drag-and-drop, replacing the loaded chart in place), the transport row's **Loop**,
 **Metronome** and **Count-In** toggles (AlphaTab's `isLooping`, `metronomeVolume` and
 `countInVolume`, as the prototype does), and the header's **tempo control**
@@ -349,8 +350,12 @@ surface in the repo while 18 design-system components are gated.
 - **Settings** (the header gear): accordion sections carrying the prototype's full settings set —
   Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools. Colors are plain
   text inputs for now; a color-picker row can replace them in a later release.
-- **Tracks** (the transport's "Tracks / mixer" button): one row per track with solo, mute and
-  volume; solo is not exclusive, as in AlphaTab and the prototype.
+- **Tracks** (the transport's "Tracks / mixer" button): one row for **every track in the score**,
+  not only the rendered drum staves — the prototype maps `score.tracks`, and every track stays
+  audible (§4), so all of them are controllable. Each row carries solo, mute and volume; solo is not
+  exclusive, as in AlphaTab and the prototype. Volume is applied as a **ratio** against the track's
+  current value (`changeTrackVolume([track], next / track.playbackInfo.volume)`), which is how the
+  prototype does it — not as an absolute.
 
 Both popovers' rows **compose controls that already exist** — `Checkbox` (toggle), `Input` (text and
 number), `NativeSelect` (dropdown) and the new `Slider` — with `Field`'s `horizontal` orientation
@@ -362,12 +367,13 @@ group, for example) stays in sync. The prototype does exactly this.
 them on load, which answers the storage question the v0.1 design left open (its S4). Chart files and
 playback history are never stored — the no-recent-files rule is about charts, not preferences.
 
-`Accordion` and a single-value `Slider` are the new design-system components. `RangeSlider` is
-dual-thumb only (`value: [number, number]`), so it cannot serve the scrubber, the tempo slider,
-per-track volume or the settings slider rows; `Popover` is already built; `Dialog` and `Tabs` are not
-needed for v0 (the replace confirmation uses native `window.confirm()`). Each new component needs a
-Storybook story plus the VR and a11y baselines that block merge, and each can land as its own small
-PR.
+**Three** new design-system components: `Accordion`, a single-value `Slider`, and a determinate
+**progress bar** for the soundfont download (§4). `RangeSlider` is dual-thumb only
+(`value: [number, number]`), so it cannot serve the scrubber, the tempo slider, per-track volume or
+the settings slider rows, and the design system has no `Progress`, `Spinner` or `Loader` at all.
+`Popover` is already built; `Dialog` and `Tabs` are not needed for v0 (the replace confirmation uses
+native `window.confirm()`). Each new component needs a Storybook story plus the VR and a11y baselines
+that block merge, and each can land as its own small PR.
 
 **Deferred:** the mockup's **A/B loop markers** on the scrubber. v0 uses AlphaTab's native range
 selection instead: select bars in the notation, and the transport's **Loop** toggle flips
@@ -390,12 +396,16 @@ v0 is done when, on a deployed Vercel URL:
 4. leocaseiro loads **his own** chart and it plays.
 5. Loop, Metronome and Count-In each audibly change playback.
 6. The scrubber seeks and the cursor follows.
-7. The Settings and Tracks popovers open, and their rows change the rendered score.
+7. The Settings popover's rows change the rendered score, and the Tracks popover lists **every**
+   track in the score with solo / mute / volume rows that change the audible mix.
+8. From a clean `/play` with no file, **Load the sample beat** fetches and plays the bundled chart.
+9. A chart with no percussion staff opens and plays on AlphaTab's default track.
 
 The criteria are checked in desktop Chrome. iPad and Android get a manual check too; it does not
-block v0. Criterion 2 is called out deliberately — see the open questions. Criteria 5–7 exist because
-§7 commits to ten build items: without them v0 could be called done with the transport toggles, the
-seek bar and both popovers broken. A–B bar-range repeat is deliberately absent — it is AlphaTab's own
+block v0. Criterion 2 is called out deliberately — see the open questions. Criteria 5–9 exist because §7
+commits to more than the four things the original criteria covered: without them v0 could be called
+done with the transport toggles, the seek bar, both popovers, the sample-load action or the
+no-percussion fallback broken. A–B bar-range repeat is deliberately absent — it is AlphaTab's own
 behaviour and desktop-only (§7).
 
 ## 9. Open questions and known gaps
