@@ -1,5 +1,5 @@
 ---
-lap: 4
+lap: 5
 last_applied: P1
 ---
 
@@ -154,15 +154,30 @@ affordances, each covering a different part of that wait:
 
 - `Skeleton` over the notation area covers the **engine import and the music font** — the AlphaTab
   ESM (273 KB gzip) and Bravura (306 KB). Neither is observable through AlphaTab, because
-  `AlphaTabApi` does not exist until the dynamic import resolves.
-- The **Material Symbols face (727 KB) has no loading affordance** — the largest single asset in the
-  budget. It arrives through the design system's own global `@import` in `client/src/styles.css` and
-  styles the header gear, the transport buttons and the Open-file control, all of which sit outside
-  the notation area the `Skeleton` covers. Its symptom is unstyled icon glyphs in the chrome, not a
-  blank notation area.
+  `AlphaTabApi` does not exist until the dynamic import resolves. **Lift it only once both the
+  `await import()` has resolved and `document.fonts.load('1em Bravura')` has settled.** Dismissing it
+  on the import alone leaves the 306 KB font fetch uncovered, and AlphaTab holds rendering until its
+  internal `FontLoadingChecker` reports the family available — so the notation area would go blank for
+  exactly the window the `Skeleton` exists to cover. That checker uses the same `document.fonts.load`
+  call and publishes no font event, so it is the available hook.
+- The **Material Symbols face (727 KB)** is the largest single asset in the budget and sits outside
+  the notation area entirely: it arrives through the design system's own global `@import` in
+  `client/src/styles.css` and styles the header gear, the transport buttons and the Open-file control,
+  so no `Skeleton` over the notation surface can cover it. Worse than a blank slot — the face ships
+  `font-display: swap` and `.material-symbols-outlined` declares no icon fallback, so during the swap
+  period the browser paints the **ligature source text**: a cold first visit renders the literal words
+  `settings`, `play_arrow` and `folder_open` where the controls should be. **v0 work:** override that
+  one face with `font-display: block` in `client/src/styles.css` beside the existing `@import`. That
+  is the icon font's affordance — a brief invisible period, then the real glyphs, which is the standard
+  choice for an icon font precisely because its fallback text is meaningless.
 - The progress indicator driven by `soundFontLoad` (`loaded / total`, as the prototype does) covers
   the **soundfont only** — 302 KB gzip of that ~1.6 MB. It is not a whole-payload bar, so do not
-  frame it as one: it can only start once the engine has already downloaded.
+  frame it as one: it can only start once the engine has already downloaded. Two numeric cases the
+  component must handle, because AlphaTab forwards the raw `XMLHttpRequest` `ProgressEvent`: `total`
+  is **0** when the response carries no `Content-Length` — fall back to an indeterminate style — and
+  `total` is the _encoded_ length while `loaded` counts decoded bytes when the CDN compresses, so
+  **clamp `loaded / total` to 1**. Q2 leaves `.sf3` compression on Vercel unverified, so both branches
+  are reachable.
 
 Play stays disabled until the synth is ready.
 
@@ -426,6 +441,12 @@ a11y baselines that block merge.
   `staff.tuning.length > 0`. Parsing `Punk.gp` confirms it — its two drum staves report
   `showTablature=false, tuningLen=0` while its guitar staff reports `true, 6`. That also rules out
   piano and vocal staves, which carry no tuning either.
+
+  **Eight controls do not fit on one line, so the row discloses.** An always-visible primary cluster
+  carries the track name, render-select, solo, mute and volume; the per-staff display toggles and both
+  transposition sliders sit behind a per-row expand control. `player-app-ui.md` gave this same control
+  set a persistent full-height sidebar because a mixer needs room — v0 puts it in a `Popover` instead,
+  so the disclosure is what keeps it scannable. `Punk.gp` alone is three rows; a band chart is more.
 
 Both popovers' rows **compose controls that already exist** — `Checkbox` (toggle), `Input` (text and
 number), `NativeSelect` (dropdown) and the new `Slider` — with `Field`'s `horizontal` orientation

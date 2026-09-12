@@ -93,6 +93,50 @@ outputMode === WebAudioAudioWorklets`, never reading `Environment.webPlatform` �
   wrapper has no darwin-arm64 binary; the hook now skips that one failure the way `lint-yaml` and
   `lint-shell` skip a missing binary, with CI unchanged as the hard gate.
 
+- **Lap 5 (the cap) reviewed only the text lap 4 rewrote, 12 decisions — and found lap 4 had defects
+  of its own.** The **pause before `window.confirm()` was reversed**: `confirm()` blocks the main
+  thread where AlphaTab's sample pump runs, so the worklet drains its buffer and zero-fills by itself,
+  and `pause()` only posts to the synth worker whose reply is handled on that blocked thread — so the
+  pause landed _after_ the prompt and stopped a chart the next sentence promised to keep playing. It
+  now runs on the confirm path only, and the handler resumes playback on both the cancel and
+  parse-failure paths. **Criterion 7 was extended** after five of six reviewers independently found it
+  checked three of the Tracks row's eight controls. **The gate gained three fixes**: the log level
+  comes from `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL` (Debug only in the Playwright `webServer.env`, since
+  shipping Debug prints every visitor's user agent), the worklet check asserts a 200 with a JavaScript
+  MIME type rather than only that the request fired, and the console assertions run last because those
+  errors only exist once the player is constructed. **Settings restore goes through
+  `Settings.fillFromJson`** — assignment would have silently broken Colors and Fonts, since
+  `JSON.parse` returns plain objects where `RenderingResources` holds real `model.Color`/`model.Font`
+  instances and a plain object breaks rendering without throwing — plus a `version` integer, a per-key
+  merge against defaults, and a toast when a value is discarded. **The loading toast's accessibility
+  check moved to `client/`**, where `Sonner` is already a component and `openArgs` can hold an overlay
+  open; the `web` axe lane keeps four reachable states. **Criterion 10** covers the replace path.
+  **The icon font** paints its ligature names (`settings`, `play_arrow`) on a cold visit because it
+  ships `font-display: swap` with no fallback, so v0 overrides that one face to `block`. The
+  **Tracks row discloses** its last three controls behind a per-row expand. The **`Skeleton` lifts**
+  only after `document.fonts.load('1em Bravura')` settles, and the **progress bar** clamps to 1 and
+  goes indeterminate when `total` is 0.
+- **Corrections to lap 4's output, found in lap 5.** **Drum tablature is impossible in the pinned
+  1.8.4** — `Staff.finish()` forces `showTablature = false` on any percussion staff,
+  `TabBarRendererFactory` sets `hideOnPercussionTrack = true` and requires `staff.tuning.length > 0`,
+  verified against `Punk.gp` — so alphaTab PR #2591 is not in this build, Q5 is answered rather than
+  open, and the toggle belongs to stringed staves with a tuning (which excludes piano and vocal too).
+  `renderScore` takes `trackIndexes: number[]`, but the data flow passed `drumTracks`, which as `Track`
+  objects would render an **empty** score with no track-0 fallback. The fork has **two** transposition
+  sliders (Transpose Audio and Transpose Full) that lap 4 fused into one, dropping the
+  notation-transposing path. The 44 px paragraph miscounted (ten `w-10 h-10` across header, rail and
+  footer, not eleven in the footer); "18 design-system components are gated" understated 40 of 41;
+  Q2's timing column contradicted its own body; Q6 had made the legacy formats a ship blocker against
+  the settled decision; a lap-4 insertion detached the Open-file parenthetical; the package table had
+  no home for the popovers or the sample action; and an instruction addressed to the author had been
+  left in §4.
+- **Fixtures leocaseiro supplied during the review** now live in `web/e2e/fixtures/`, and
+  `web/public/charts/1-beat.gp` is the shipped sample. `Punk.gp` closes the multi-track half of Q7 —
+  drums at indexes `[0, 2]` around a guitar track, so a regression to rendering only track 0 drops the
+  left-hand staff — and it demonstrates the volume coupling §7 now records, since both drum tracks sit
+  on MIDI channel 9. Q7 narrows to the percussion-free chart criterion 9 needs; Q6 narrows to a real
+  MusicXML export.
+
 **Status:** ✅ decided · 📄 prose-only enforcement so far — the spec is the contract; the machine gate arrives with the v0 build (the Playwright lane in `web/`). Approved by leocaseiro 2026-09-10 (D1–D7) and 2026-09-12 (review decisions).
 
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
