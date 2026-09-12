@@ -75,8 +75,9 @@ touch targets). Desktop uses the same layout.
 
 **The mockup does not meet that 44 px rule and v0 must.** Nothing in
 [`player-flatrow-teal.html`](../mockups/player-flatrow-teal.html) uses 44 px: the header pill's ±
-buttons carry no size class at all, so their hit area is just the glyph, and eleven footer transport
-buttons are `w-10 h-10` (40 px). Only the Play button and its neighbour, at `w-12 h-12`, pass. v0
+buttons carry no size class at all, so their hit area is just the glyph, and **ten** elements are
+`w-10 h-10` (40 px) — four in the header, two in the left rail and four in the footer transport. Only
+two controls pass, both `w-12 h-12`: the footer Play button and the left rail's Open-file button. v0
 pads every control's hit area to at least 44 px while keeping the glyphs at their drawn size, and the
 mockup should be updated to match rather than copied literally.
 
@@ -118,7 +119,7 @@ file" toast (see Failure states).
   → wrap as Uint8Array, then alphaTab.importer.ScoreLoader.loadScoreFromBytes(bytes)
   → pick the drum tracks (any staff with isPercussion)
   → none found? fall back to AlphaTab's default track
-  → api.renderScore(score, drumTracks.length ? drumTracks : undefined)
+  → api.renderScore(score, drumTrackIndexes.length ? drumTrackIndexes : undefined)  // INDEXES, not Track objects
   → SVG notation + AlphaSynth playback (all tracks) + synced cursor
 ```
 
@@ -152,7 +153,7 @@ affordances, each covering a different part of that wait:
   budget. It arrives through the design system's own global `@import` in `client/src/styles.css` and
   styles the header gear, the transport buttons and the Open-file control, all of which sit outside
   the notation area the `Skeleton` covers. Its symptom is unstyled icon glyphs in the chrome, not a
-  blank notation area, so say so rather than implying it is covered.
+  blank notation area.
 - The progress indicator driven by `soundFontLoad` (`loaded / total`, as the prototype does) covers
   the **soundfont only** — 302 KB gzip of that ~1.6 MB. It is not a whole-payload bar, so do not
   frame it as one: it can only start once the engine has already downloaded.
@@ -286,10 +287,14 @@ nothing about MusicXML: it would load through whichever importer the bytes call 
 would go green having tested nothing. `1-beat.xml` is kept as exactly that case — a Guitar Pro 5
 binary under an XML extension, a useful check that content-sniffing works and **not** MusicXML
 coverage. Six extensions are still unverified (Q6).
-The one chart that ships is the sample, `web/public/charts/1-beat.gp`. **It is a single drum track**
-— and so is every other chart in the repo today, verified by parsing each one with the vendored
-1.8.4. So §4's required test, "a multi-track chart whose drums are not track 0", has nothing to run
-against, and neither does the no-percussion fallback. Both fixtures still have to be produced (Q7).
+The one chart that ships is the sample, `web/public/charts/1-beat.gp` — a single drum track, as is
+every chart under `web/public/charts/`. The multi-track case lives in the fixtures:
+**`web/e2e/fixtures/Punk.gp`** parses to three tracks — `0:Drumkit` (percussion, MIDI channel 9),
+`1:Distortion Guitar` (not percussion) and `2:Drumkit Left` (percussion, channel 9). Drum indexes are
+`[0, 2]`, so a regression that rendered only track 0 would silently drop the left-hand staff, and its
+guitar track gives the Tracks popover three rows to audit instead of one. It is also the chart that
+demonstrates the volume coupling §7 records, since both drum tracks sit on channel 9. Still missing:
+a chart with **no** percussion staff, which criterion 9 needs (Q7).
 
 One more thing the assertions must not assume: the worklet module is fetched **lazily** — the
 `audioWorklet.addModule` call sits behind a `BrowserModule` guard inside a factory callback, not at
@@ -327,9 +332,9 @@ client checks plus the Storybook VR and a11y gates. The design-system rename sta
 
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
 time), the notation-surface wrapper, the landing **Play** button, the player's **Open file** control
-and its secondary **Load the sample beat** action, the **Settings** and **Tracks** popovers (below),
-the soundfont **progress bar** (§4)
-(picker plus drag-and-drop, replacing the loaded chart in place), the transport row's **Loop**,
+(picker plus drag-and-drop, replacing the loaded chart in place) and its secondary **Load the sample
+beat** action, the **Settings** and **Tracks** popovers (below), the soundfont **progress bar** (§4),
+the transport row's **Loop**,
 **Metronome** and **Count-In** toggles (AlphaTab's `isLooping`, `metronomeVolume` and
 `countInVolume`, as the prototype does), and the header's **tempo control**
 (BPM = chart tempo × `playbackSpeed`, ±5 buttons, and the percentage shown only while adjusting —
@@ -346,10 +351,10 @@ control and the transport row has none.
 **Which package each item lands in**, because that decides whether it is gated. The `a11y` and `vr`
 CI jobs both run `pnpm --filter @notation-hero/client`, so only `client/` is covered by them today.
 
-| Package   | Items                                                                                                                                                                           | Gated by                                  |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `client/` | playback scrubber, tempo control, Loop / Metronome / Count-In toggles, settings + tracks rows, soundfont progress bar, `Accordion`, `Slider`                                    | Storybook story + VR + a11y (block merge) |
-| `web/`    | transport row layout, notation-surface wrapper, landing **Play** button, **Open file** control, the settings group/accessor schema and the AlphaTab React context that feeds it | the `web` Playwright lane (§5)            |
+| Package   | Items                                                                                                                                                                                                                                                                  | Gated by                                  |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `client/` | playback scrubber, tempo control, Loop / Metronome / Count-In toggles, settings + tracks rows, soundfont progress bar, `Accordion`, `Slider`                                                                                                                           | Storybook story + VR + a11y (block merge) |
+| `web/`    | transport row layout, notation-surface wrapper, landing **Play** button, **Open file** control, **Load the sample beat** action, the **Settings** and **Tracks** popover compositions, the settings group/accessor schema and the AlphaTab React context that feeds it | the `web` Playwright lane (§5)            |
 
 The split is by reusability: a control that any screen could use belongs in the design system, while
 composition that knows about AlphaTab's API belongs in the player.
@@ -363,7 +368,8 @@ exercise the component a user will actually see. The schema of accessors, and th
 carrying the loaded namespace, therefore live in `web/` (§5) where the instance exists. Because `web/` has no Storybook
 and no axe job, **v0 adds an accessibility check to the `web` Playwright lane** it is already
 building for the worklet test (§5) — otherwise the product's own UI would be the only ungated
-surface in the repo while 18 design-system components are gated.
+surface in the repo while 40 of the 41 components under `client/src/components/ui/` carry VR and
+a11y baselines that block merge.
 
 **Two popovers, not modals** — neither blocks the player:
 
@@ -375,14 +381,26 @@ surface in the repo while 18 design-system components are gated.
   audible (§4), so all of them are controllable. Each row carries solo, mute and volume; solo is not
   exclusive, as in AlphaTab and the prototype. Volume is applied as a **ratio** against the track's
   current value (`changeTrackVolume([track], next / track.playbackInfo.volume)`), which is how the
-  prototype does it — not as an absolute.
+  prototype does it — not as an absolute. `next` uses `playbackInfo.volume`'s own **0–16** scale (the
+  fork's slider is `min=0 max=16`), and the ratio must guard a zero denominator. Note the coupling
+  v0 accepts: `changeTrackVolume` sets the volume on the track's primary **and secondary** MIDI
+  channels, so tracks sharing a channel move together — `Punk.gp`'s two drum tracks are both on
+  channel 9, so its Drumkit and Drumkit Left sliders are not independent.
 
   The row carries the prototype's **full** control set, not a subset: a **render-select** checkbox
   (`api.renderTracks(...)`, so the user can change which tracks are drawn, not only which are
-  audible), **solo**, **mute**, **volume**, the four per-staff display toggles (standard notation,
-  tablature, slash, numbered — all four exist on `Staff` in the pinned 1.8.4) and **transposition**
-  (`changeTrackTranspositionPitch` then `updateSettings()` + `render()`). Drums may hide the
-  tablature toggle; every other instrument gets all of them.
+  audible), **solo**, **mute**, **volume**, the per-staff display toggles, and the
+  prototype's **two** transposition sliders — Transpose Audio (`changeTrackTranspositionPitch`, no
+  re-render) and Transpose Full (writes `settings.notation.transpositionPitches[track.index]`, then
+  `updateSettings()` + `render()`). They are separate controls in the fork and must stay separate;
+  fusing them drops the notation-transposing path entirely.
+
+  **The tablature toggle only appears for a stringed staff that has a tuning.** The pinned 1.8.4
+  cannot render percussion tablature at all: `Staff.finish()` forces `showTablature = false` on any
+  percussion staff, and `TabBarRendererFactory` sets `hideOnPercussionTrack = true` and requires
+  `staff.tuning.length > 0`. Parsing `Punk.gp` confirms it — its two drum staves report
+  `showTablature=false, tuningLen=0` while its guitar staff reports `true, 6`. That also rules out
+  piano and vocal staves, which carry no tuning either.
 
 Both popovers' rows **compose controls that already exist** — `Checkbox` (toggle), `Input` (text and
 number), `NativeSelect` (dropdown) and the new `Slider` — with `Field`'s `horizontal` orientation
@@ -443,15 +461,15 @@ behaviour and desktop-only (§7).
 
 ## 9. Open questions and known gaps
 
-| #   | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | When it matters     |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| Q1  | **Nobody has heard the audio.** The spike verified playback by state (position advancing, cursor moving), not by ear — headless Chromium is silent. Timing accuracy and latency are untested.                                                                                                                                                                                                                                                                                                                                                                                      | v0 acceptance       |
-| Q2  | **Split by when it can bite.** The MIME types Vercel serves for `public/alphatab/esm/*.mjs` are D5's one unverified premise, and §5's variable specifier, plain-name copy step, type-only guard, context sharing and regression test all hang off D5 — so check it **before** the player is built on it, by deploying the existing `/spike/esm` route. Reversing to variant A afterwards would touch the mount component, the vendoring step, the eslint guard and §6. CDN compression for `.sf3` is a cost question, not a correctness one, and can wait for the v0 deploy.       | v0 deploy           |
-| Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. That was an instrumentation gap, not evidence: `web/spike-probe.mjs` only records `requestfailed` and `status() >= 400`, so it never logged a successful request. The §5 test now asserts the worklet request and the debug line.                                                                                                                                                                                                                                                        | v0 acceptance       |
-| Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                                                                                                                                                                                                                                                                                                                                                                                             | after v0 ships (D7) |
-| Q5  | Drum **tablature** is implemented upstream ([alphaTab PR #2591](https://github.com/CoderLine/alphaTab/pull/2591)), so it no longer needs a local patch. One thing to confirm before relying on it: whether that PR is in the pinned **1.8.4** or a later release — the per-staff `showTablature` flag exists in 1.8.4, but if the rendering work landed afterwards, v0 needs a version bump, which touches the vendoring step and the payload budget.                                                                                                                              | not scheduled       |
-| Q6  | **Six accepted extensions have no test chart.** `.musicxml`, `.mxml` and `.xml` need a genuine MusicXML export — the most important gap, since MusicXML is the only open format on the accept list and the one a user of free notation software would bring. `.gp3` and `.gp4` need real Guitar Pro 3/4 exports, and `.capx` needs Capella — renaming a `.gp5` does not help, because `ScoreLoader` reads the bytes and would just import it as GP5 again, testing nothing. All six are claimed by the picker but unverified, so either the charts or the accept list has to give. | before v0 ships     |
-| Q7  | **No multi-track chart and no percussion-free chart exist.** Every chart in the repo parses to a single percussion track, so §4's own required test ("a multi-track chart whose drums are not track 0") and the settled no-drum-staff fallback both ship unverified — a regression to always-rendering-track-0 would pass CI. Two fixtures are needed: one with drums off index 0 plus a non-percussion track, and one with no percussion at all.                                                                                                                                  | before v0 ships     |
+| #   | Item                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | When it matters                                                        |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Q1  | **Nobody has heard the audio.** The spike verified playback by state (position advancing, cursor moving), not by ear — headless Chromium is silent. Timing accuracy and latency are untested.                                                                                                                                                                                                                                                                                                                                                                                                                      | v0 acceptance                                                          |
+| Q2  | **Split by when it can bite.** The MIME types Vercel serves for `public/alphatab/esm/*.mjs` are D5's one unverified premise, and §5's variable specifier, plain-name copy step, type-only guard, context sharing and regression test all hang off D5 — so check it **before** the player is built on it, by deploying the existing `/spike/esm` route. Reversing to variant A afterwards would touch the mount component, the vendoring step, the eslint guard and §6. CDN compression for `.sf3` is a cost question, not a correctness one, and can wait for the v0 deploy.                                       | MIME types: before the player is built · `.sf3` compression: v0 deploy |
+| Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. That was an instrumentation gap, not evidence: `web/spike-probe.mjs` only records `requestfailed` and `status() >= 400`, so it never logged a successful request. The §5 test now asserts the worklet request and the debug line.                                                                                                                                                                                                                                                                                        | v0 acceptance                                                          |
+| Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                                                                                                                                                                                                                                                                                                                                                                                                                             | after v0 ships (D7)                                                    |
+| Q5  | Drum **tablature** is implemented upstream ([alphaTab PR #2591](https://github.com/CoderLine/alphaTab/pull/2591)), so it no longer needs a local patch. One thing to confirm before relying on it: whether that PR is in the pinned **1.8.4** or a later release — the per-staff `showTablature` flag exists in 1.8.4, but if the rendering work landed afterwards, v0 needs a version bump, which touches the vendoring step and the payload budget.                                                                                                                                                              | not scheduled                                                          |
+| Q6  | **Six accepted extensions have no test chart.** `.musicxml`, `.mxml` and `.xml` need a genuine MusicXML export — the most important gap, since MusicXML is the only open format on the accept list and the one a user of free notation software would bring. `.gp3` and `.gp4` need real Guitar Pro 3/4 exports, and `.capx` needs Capella — renaming a `.gp5` does not help, because `ScoreLoader` reads the bytes and would just import it as GP5 again, testing nothing. MusicXML is the one that blocks: the accept list is settled, so the chart has to give. The legacy trio stays non-blocking, as settled. | MusicXML: before v0 ships · `.gp3`/`.gp4`/`.capx`: when charts exist   |
+| Q7  | **A percussion-free chart is still missing.** The multi-track half is closed: `web/e2e/fixtures/Punk.gp` has drums at indexes `[0, 2]` around a guitar track, so §4's drum-track rule and the Tracks popover's multi-row layout both have something to run against. What remains is a chart with no percussion staff at all, which criterion 9 needs — without it the no-drum fallback ships unverified.                                                                                                                                                                                                           | before v0 ships                                                        |
 
 ## 10. Roadmap position
 
