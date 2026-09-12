@@ -91,8 +91,14 @@ see §7).
 file → it loads (a parse error raises a toast). From then on the file can be replaced at any time,
 and replacing prompts for confirmation. v0 uses the browser's native `window.confirm()` — a
 deliberate shortcut, since no `Dialog` component is built; a styled confirm can replace it later.
-**Playback pauses before the prompt** — `window.confirm()` freezes clicks and keystrokes but not Web
-Audio, so without that the drum track would keep sounding, uncontrollably, behind the dialog.
+**The prompt needs no pause, and the handler must remember the playing state.** `window.confirm()`
+blocks the main thread, which is where AlphaTab's sample pump runs — so the audio worklet drains its
+~500 ms buffer and zero-fills on its own while the dialog is up. Calling `pause()` first would not
+help anyway: it only posts a message to the synth worker, and the reply that stops the audio graph is
+handled on the blocked main thread, so the pause lands _after_ the prompt returns — which would leave
+a cancelled chart stopped, contradicting the promise below. So the handler records whether playback
+was running, pauses only on the **confirm** path (to stop the synth before `renderScore` swaps the
+score), and resumes from the same position on **both** the cancel path and the parse-failure path.
 **Cancel** keeps the current chart and discards the new file. **Confirm** stages the load: AlphaTab's
 `ScoreLoader` parses the new buffer first, and only on success does the live `AlphaTabApi` take the
 new score via `renderScore(...)` — nothing is destroyed, the workers and the loaded soundfont are
@@ -247,15 +253,31 @@ The page looks correct until you press play. v0 must carry a test that asserts t
 live, not just that notation appeared.
 
 **The test:** Playwright in `web/`, with a config mirroring `client/playwright.e2e.config.ts` whose
-web server runs `next build` then `next start`. With `core.logLevel` at `Debug` it asserts four
-things: that AlphaTab logs `Platform: BrowserModule` (emitted by `Environment.printEnvironmentInfo`,
-which reads `Environment.webPlatform` — so the log is the test hook and no debug DOM attribute is
-needed), that **no** `Failed to create worker for synthesizing audio` console error appears, that the
-browser requests `/alphatab/esm/alphaTab.worklet.mjs` at some point, and that the playback position
-advances after Play. A `web` step joins the CI `e2e` job, so it blocks merge like the other browser
-jobs.
+web server runs `next build` then `next start`. It asserts four things: that AlphaTab logs
+`Platform: BrowserModule` (emitted by `Environment.printEnvironmentInfo`, which reads
+`Environment.webPlatform` — so the log is the test hook and no debug DOM attribute is needed), that
+the response for `/alphatab/esm/alphaTab.worklet.mjs` is **HTTP 200 with a JavaScript MIME type**,
+that **neither** `Failed to create worker for synthesizing audio` **nor** `Audio Worklet creation
+failed` appears in the console, and that the playback position advances after Play. A `web` step
+joins the CI `e2e` job, so it blocks merge like the other browser jobs.
 
-**Why those two log assertions and not the obvious one.** `Will use webworkers … with worklets for
+Three things that shape how those assertions are written:
+
+- **Debug logging needs a mechanism, not a hardcoded setting.** Both log assertions require
+  `core.logLevel = Debug`, but this lane runs a production build — and shipping `Debug` prints the
+  visitor's user agent, window size and screen size to their console. Read the level from a
+  `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL` env var defaulting to `Info`, and set `Debug` in the Playwright
+  config's `webServer.env`.
+- **Assert the response, not just the request.** `addModule` fires unconditionally on the
+  `BrowserModule` branch, so a 404 or a wrong MIME type still produces the request and then rejects
+  with `Audio Worklet creation failed` — which is why that string is in the absence set and why the
+  status and MIME type are checked. Q2 names exactly those MIME types as D5's one unverified premise.
+- **The console assertions run last**, over the whole collected log, after the position-advance
+  check. Those errors only fire once the player is constructed, and construction returns early until
+  a score is loaded — so a console check made before pressing Play passes on a broken build. The
+  worklet request stays order-free: it is fetched lazily from inside the output's `play()`.
+
+**Why `Platform: BrowserModule` and not the obvious line.** `Will use webworkers … with worklets for
 playback` looks like the natural check and is useless as one: `createWorkerPlayer` emits it whenever
 `window.isSecureContext && 'AudioWorkletNode' in window && player.outputMode ===
 WebAudioAudioWorklets`, never consulting `Environment.webPlatform`. In the exact regression D5 guards
@@ -295,10 +317,6 @@ every chart under `web/public/charts/`. The multi-track case lives in the fixtur
 guitar track gives the Tracks popover three rows to audit instead of one. It is also the chart that
 demonstrates the volume coupling §7 records, since both drum tracks sit on channel 9. Still missing:
 a chart with **no** percussion staff, which criterion 9 needs (Q7).
-
-One more thing the assertions must not assume: the worklet module is fetched **lazily** — the
-`audioWorklet.addModule` call sits behind a `BrowserModule` guard inside a factory callback, not at
-init — so no assertion may require that request to arrive before playback starts.
 
 ## 6. Payload budget
 
@@ -447,8 +465,11 @@ v0 is done when, on a deployed Vercel URL:
 4. leocaseiro loads **his own** chart and it plays.
 5. Loop, Metronome and Count-In each audibly change playback.
 6. The scrubber seeks and the cursor follows.
-7. The Settings popover's rows change the rendered score, and the Tracks popover lists **every**
-   track in the score with solo / mute / volume rows that change the audible mix.
+7. The Settings popover's rows change the rendered score. The Tracks popover lists **every** track
+   in the score, and its rows work in both directions: solo / mute / volume change the audible mix,
+   while render-select changes which tracks are drawn, and the display toggles and both transposition
+   sliders change the rendered score. (Tablature is excluded — 1.8.4 cannot render it on a percussion
+   staff.)
 8. From a clean `/play` with no file, **Load the sample beat** fetches and plays the bundled chart.
 9. A chart with no percussion staff opens and plays on AlphaTab's default track.
 
@@ -467,7 +488,7 @@ behaviour and desktop-only (§7).
 | Q2  | **Split by when it can bite.** The MIME types Vercel serves for `public/alphatab/esm/*.mjs` are D5's one unverified premise, and §5's variable specifier, plain-name copy step, type-only guard, context sharing and regression test all hang off D5 — so check it **before** the player is built on it, by deploying the existing `/spike/esm` route. Reversing to variant A afterwards would touch the mount component, the vendoring step, the eslint guard and §6. CDN compression for `.sf3` is a cost question, not a correctness one, and can wait for the v0 deploy.                                       | MIME types: before the player is built · `.sf3` compression: v0 deploy |
 | Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. That was an instrumentation gap, not evidence: `web/spike-probe.mjs` only records `requestfailed` and `status() >= 400`, so it never logged a successful request. The §5 test now asserts the worklet request and the debug line.                                                                                                                                                                                                                                                                                        | v0 acceptance                                                          |
 | Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                                                                                                                                                                                                                                                                                                                                                                                                                             | after v0 ships (D7)                                                    |
-| Q5  | Drum **tablature** is implemented upstream ([alphaTab PR #2591](https://github.com/CoderLine/alphaTab/pull/2591)), so it no longer needs a local patch. One thing to confirm before relying on it: whether that PR is in the pinned **1.8.4** or a later release — the per-staff `showTablature` flag exists in 1.8.4, but if the rendering work landed afterwards, v0 needs a version bump, which touches the vendoring step and the payload budget.                                                                                                                                                              | not scheduled                                                          |
+| Q5  | **Answered: the pinned 1.8.4 cannot render drum tablature.** `Staff.finish()` forces `showTablature = false` on any percussion staff, `TabBarRendererFactory` sets `hideOnPercussionTrack = true`, and it requires `staff.tuning.length > 0` — verified by parsing `Punk.gp`, whose drum staves report `showTablature=false, tuningLen=0`. So whatever [alphaTab PR #2591](https://github.com/CoderLine/alphaTab/pull/2591) does, it is not in this build. Drum tablature would need a version bump, which touches the vendoring step and the payload budget; §7 scopes the toggle to stringed staves meanwhile.   | not scheduled (needs a version bump)                                   |
 | Q6  | **Six accepted extensions have no test chart.** `.musicxml`, `.mxml` and `.xml` need a genuine MusicXML export — the most important gap, since MusicXML is the only open format on the accept list and the one a user of free notation software would bring. `.gp3` and `.gp4` need real Guitar Pro 3/4 exports, and `.capx` needs Capella — renaming a `.gp5` does not help, because `ScoreLoader` reads the bytes and would just import it as GP5 again, testing nothing. MusicXML is the one that blocks: the accept list is settled, so the chart has to give. The legacy trio stays non-blocking, as settled. | MusicXML: before v0 ships · `.gp3`/`.gp4`/`.capx`: when charts exist   |
 | Q7  | **A percussion-free chart is still missing.** The multi-track half is closed: `web/e2e/fixtures/Punk.gp` has drums at indexes `[0, 2]` around a guitar track, so §4's drum-track rule and the Tracks popover's multi-row layout both have something to run against. What remains is a chart with no percussion staff at all, which criterion 9 needs — without it the no-drum fallback ships unverified.                                                                                                                                                                                                           | before v0 ships                                                        |
 
