@@ -286,10 +286,17 @@ error. The `ScriptProcessor` variant of the line is a different fallback — no 
 an insecure context — and still plays audio, so the two are not halves of a discriminator.
 
 The same lane carries v0's **accessibility check for `web/`** (§7): an axe-core run over `/` and
-`/play` in five states — empty, loaded, with each popover open, during the first-visit `Skeleton`,
-and while the replacement `toast.loading()` is up. The last two matter because this is the only a11y
-gate `web/` gets, and whether Sonner's loading toast is announced to assistive tech is exactly the
-kind of thing that otherwise ships unchecked. Four setup notes, since `web/` has no test lane today:
+`/play` in four states — empty, loaded, with each popover open, and during the first-visit
+`Skeleton`, which is reachable because the engine import is a real request the lane can stall with
+`page.route` on `/alphatab/esm/alphaTab.mjs`.
+
+**The replacement loading toast is audited in `client/`, not here.** Nothing is skipped — it moves to
+where the check can actually run. That state is a millisecond race in `web/`: `loadScoreFromBytes` is
+synchronous, so the only async step on the replace path is the `FileReader` read of a 3–16 KB local
+file, leaving no request to stall and no event to hold the toast open. `Sonner` is already a `client/`
+component, so a `loading` story plus its id in `Sonner.story-ids.ts` puts the toast under the existing
+axe and visual-regression gates, which hold an overlay open deterministically through the `openArgs`
+mechanism in `client/src/a11y-helpers.ts`. Four setup notes, since `web/` has no test lane today:
 `@playwright/test` and `@axe-core/playwright` must both be added at `client/`'s exact ranges
 (`@axe-core/playwright` is `^4.12.1` there, and root `syncpack` enforces cross-package version
 consistency, so a drifting range fails the `quality` job), the job needs its own
@@ -426,15 +433,25 @@ giving the label-left / control-right layout. None of those is new work. What _i
 of groups with an accessor per row, so a value edited in two places (the tempo control and the Player
 group, for example) stays in sync. The prototype does exactly this.
 
-**Settings values persist.** v0 writes them as JSON under a single `localStorage` key and restores
-them on load, which answers the storage question the v0.1 design left open (its S4). Chart files and
-playback history are never stored — the no-recent-files rule is about charts, not preferences.
+**Settings values persist.** v0 stores **AlphaTab's own settings JSON** under a single `localStorage`
+key, alongside a `version` integer, which answers the storage question the v0.1 design left open (its
+S4). Chart files and playback history are never stored — the no-recent-files rule is about charts, not
+preferences.
 
-**A bad stored value must never break the player.** Wrap the read in `try`/`catch` and fall back to
-the shipped defaults whenever the value is missing, is not valid JSON, or fails a basic shape check.
-This is not a hypothetical: §10 layers v0.1's search and tabs over these same settings, so the stored
-shape changes soon after v0 ships, and an uncaught `JSON.parse` during the restore step would stop
-the player mounting at all — the one thing v0 exists to do.
+**Restore through `Settings.fillFromJson(parsed)`, not by assignment.** `JSON.parse` returns plain
+objects, but `RenderingResources` holds real `model.Color` and `model.Font` instances — and a plain
+object assigned into the settings tree breaks rendering **without throwing**, so a `try`/`catch` would
+never fire and the Colors and Fonts groups would silently stop working. `Settings.fillFromJson` is
+public and `@target web` in 1.8.4 and rebuilds both through their `fromJson` helpers.
+
+**A bad stored value must never break the player, and must not vanish quietly.** Wrap that call in
+`try`/`catch`. On a missing, invalid or wrong-shaped value, **merge per key** against the shipped
+defaults using the stored `version` rather than discarding the whole object — then raise a Sonner
+toast saying settings were reset, the same surface the corrupt-file and engine-failure states use.
+Without the toast a drummer watches their colors and fonts revert with no way to tell it from a bug.
+None of this is hypothetical: §10 layers v0.1's search and tabs over these same settings, so the
+stored shape changes soon after v0 ships, and an uncaught throw during restore would stop the player
+mounting at all — the one thing v0 exists to do.
 
 **Three** new design-system components: `Accordion`, a single-value `Slider`, and a determinate
 **progress bar** for the soundfont download (§4). `RangeSlider` is dual-thumb only
@@ -472,12 +489,16 @@ v0 is done when, on a deployed Vercel URL:
    staff.)
 8. From a clean `/play` with no file, **Load the sample beat** fetches and plays the bundled chart.
 9. A chart with no percussion staff opens and plays on AlphaTab's default track.
+10. Replacing a loaded chart prompts for confirmation. **Cancel** keeps the current chart playing from
+    where it was, and re-picking the same file prompts again. **Confirm** renders the new chart. A
+    corrupt replacement leaves the playing chart intact.
 
 The criteria are checked in desktop Chrome. iPad and Android get a manual check too; it does not
 block v0. Criterion 2 is called out deliberately — see the open questions. Criteria 5–9 exist because §7
 commits to more than the four things the original criteria covered: without them v0 could be called
-done with the transport toggles, the seek bar, both popovers, the sample-load action or the
-no-percussion fallback broken. A–B bar-range repeat is deliberately absent — it is AlphaTab's own
+done with the transport toggles, the seek bar, both popovers, the sample-load action, the
+no-percussion fallback or the entire replace path broken — and replacing is the only way to open a
+second chart. A–B bar-range repeat is deliberately absent — it is AlphaTab's own
 behaviour and desktop-only (§7).
 
 ## 9. Open questions and known gaps
