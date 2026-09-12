@@ -76,6 +76,15 @@ a **Play** button that opens `/play`; the player owns the file picker and drag-a
 another file replaces the loaded one in place, with no navigation, so the `ArrayBuffer` never has to
 cross routes and nothing is stored.
 
+**Replacing a loaded chart asks first.** The flow is: `/` → press **Play** → `/play` → pick or drop a
+file → it loads (a parse error raises a toast). From then on the file can be replaced at any time,
+and replacing prompts for confirmation. v0 uses the browser's native `window.confirm()` — a
+deliberate shortcut, since no `Dialog` component is built; a styled confirm can replace it later.
+**Cancel** keeps the current chart and discards the new file. **Confirm** stages the load: AlphaTab's
+`ScoreLoader` parses the new buffer first and the player is torn down only once the parse succeeds,
+so a corrupt replacement leaves the playing chart intact. Every step runs client-side, as in the
+prototype.
+
 **Accepted files** (same as the prototype): the picker's `accept` is
 `.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx` (Guitar Pro, MusicXML and Capella; extensions
 only). On iOS the picker is a `<label>` tied to a hidden file input, so the filter still applies.
@@ -90,13 +99,19 @@ file" toast (see Failure states).
   → ArrayBuffer (in memory)
   → parse with AlphaTab's ScoreLoader
   → pick the drum tracks (any staff with isPercussion)
-  → api.renderScore(score, drumTrackIndexes)
-  → SVG drum notation + AlphaSynth playback (all tracks) + synced cursor
+  → none found? fall back to AlphaTab's default track
+  → api.renderScore(score, drumTracks.length ? drumTracks : undefined)
+  → SVG notation + AlphaSynth playback (all tracks) + synced cursor
 ```
 
-Only the drum tracks render; every track stays in playback, so per-track mute/solo works. The
-prototype always renders track 0 (its to-do list says "always go to drum"), so this rule is new.
-v0 tests include a multi-track chart whose drums are not track 0.
+Where a drum staff exists, only the drum tracks render; every track stays in playback, so per-track
+mute/solo works. The prototype always renders track 0 (its to-do list says "always go to drum"), so
+this rule is new. v0 tests include a multi-track chart whose drums are not track 0.
+
+**No drum staff is not an error.** Drums are v0's default, not its requirement: the app is aimed at
+drummers but must not turn any other musician away. A file with no percussion staff falls back to
+AlphaTab's default track, which is what an omitted `trackIndexes` argument already does — so a
+guitar or piano chart opens and plays instead of showing a dead end.
 
 No upload, no network call for user content. The only network traffic is the static engine assets.
 
@@ -104,8 +119,7 @@ No upload, no network call for user content. The only network traffic is the sta
 
 | Case                               | Behavior                                                                                             |
 | ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Unsupported or corrupt file        | Sonner toast; stay on `/`                                                                            |
-| No drum track in the file          | Inline "no drum track in this file" message on `/play`                                               |
+| Unsupported or corrupt file        | Sonner toast; stay on `/play`. A chart already playing is never cleared by a failed load             |
 | `/play` open with no file yet      | Empty state: a large **Open file** action, drag-and-drop anywhere on the surface, transport disabled |
 | Engine or SoundFont download fails | An error message in place of the disabled Play button                                                |
 
@@ -236,9 +250,12 @@ Build the rows from one small set of reusable controls — toggle, text, number,
 driven by a schema of groups with an accessor per row, so a value edited in two places (the tempo
 control and the Player group, for example) stays in sync. The prototype does exactly this.
 
-`Accordion` is the only new design-system component: `Popover` is already built, and `Dialog` and
-`Tabs` are not needed for v0. It needs a Storybook story plus the VR and a11y baselines that block
-merge, and can land as its own small PR.
+`Accordion` and a single-value `Slider` are the new design-system components. `RangeSlider` is
+dual-thumb only (`value: [number, number]`), so it cannot serve the scrubber, the tempo slider,
+per-track volume or the settings slider rows; `Popover` is already built; `Dialog` and `Tabs` are not
+needed for v0 (the replace confirmation uses native `window.confirm()`). Each new component needs a
+Storybook story plus the VR and a11y baselines that block merge, and each can land as its own small
+PR.
 
 **Deferred:** the mockup's **A/B loop markers** on the scrubber. v0 uses AlphaTab's native range
 selection instead: select bars in the notation, and the transport's **Loop** toggle flips
