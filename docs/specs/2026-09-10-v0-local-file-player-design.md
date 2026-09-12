@@ -120,11 +120,11 @@ No upload, no network call for user content. The only network traffic is the sta
 
 ### Failure states
 
-| Case                               | Behavior                                                                                             |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Unsupported or corrupt file        | Sonner toast; stay on `/play`. A chart already playing is never cleared by a failed load             |
-| `/play` open with no file yet      | Empty state: a large **Open file** action, drag-and-drop anywhere on the surface, transport disabled |
-| Engine or SoundFont download fails | An error message in place of the disabled Play button                                                |
+| Case                               | Behavior                                                                                                                                       |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unsupported or corrupt file        | Sonner toast; stay on `/play`. A chart already playing is never cleared by a failed load                                                       |
+| `/play` open with no file yet      | Empty state: a large **Open file** action plus a secondary **Load the sample beat**, drag-and-drop anywhere on the surface, transport disabled |
+| Engine or SoundFont download fails | An error message in place of the disabled Play button                                                                                          |
 
 **While it loads:** the first visit fetches about 1.6 MB of engine, soundfont and font. `/play` shows a
 progress indicator driven by AlphaTab's `soundFontLoad` event (`loaded / total`, as the prototype
@@ -222,6 +222,14 @@ step, and the script must **not** be called `test` — the `quality` job runs
 `pnpm -r --if-present run test` with no browsers installed. Add `web/playwright-report/` and
 `web/test-results/` to the `e2e` job's upload paths when the lane lands.
 
+**Charts the lane uses.** Test fixtures live in `web/e2e/fixtures/` — outside `public/`, so they are
+never served — with one chart per accepted extension, because the picker's `accept` list is a promise
+the tests should keep. Covered today: `.gp`, `.gp5`, `.gpx`, `.xml`, `.musicxml`, `.mxml` (the last
+two are the same format as `.xml`, so one source file covers all three names). Still missing:
+`.gp3`, `.gp4` and `.capx` (Q6). The one chart that ships is the sample, `web/public/charts/1-beat.gp`
+— a multi-track chart carrying both drums and guitar, so it also exercises the drum-track rule and the
+"drums are not track 0" case §4 calls for.
+
 Two corrections to how that gate was justified. The fallback is **not** silent: AlphaTab logs the
 same line ending `with ScriptProcessor for playback` instead, so the debug line is a direct
 discriminator between the two output paths and is the cheaper of the two checks. And the worklet
@@ -231,14 +239,15 @@ playback starts.
 
 ## 6. Payload budget
 
-| Asset                   | Raw     | gzip   | Notes                                                                    |
-| ----------------------- | ------- | ------ | ------------------------------------------------------------------------ |
-| `soundfont/sonivox.sf3` | 954 KB  | 302 KB | AlphaTab's own — **not** the prototype's 3.9 MB `.sf2`                   |
-| `font/Bravura.woff2`    | 306 KB  | 305 KB | the only font fetched; skip the `.otf` and `.woff`                       |
-| AlphaTab library        | 1092 KB | 273 KB | shipped once under D5                                                    |
-| Material Symbols icons  | 727 KB  | 727 KB | woff2, no further compression; pulled in by the design-system stylesheet |
-| Next.js app JS + CSS    | —       | —      | not measured yet                                                         |
-| A chart                 | ~3 KB   | —      | per-song marginal cost                                                   |
+| Asset                    | Raw     | gzip   | Notes                                                                    |
+| ------------------------ | ------- | ------ | ------------------------------------------------------------------------ |
+| `soundfont/sonivox.sf3`  | 954 KB  | 302 KB | AlphaTab's own — **not** the prototype's 3.9 MB `.sf2`                   |
+| `font/Bravura.woff2`     | 306 KB  | 305 KB | the only font fetched; skip the `.otf` and `.woff`                       |
+| AlphaTab library         | 1092 KB | 273 KB | shipped once under D5                                                    |
+| Material Symbols icons   | 727 KB  | 727 KB | woff2, no further compression; pulled in by the design-system stylesheet |
+| Next.js app JS + CSS     | —       | —      | not measured yet                                                         |
+| Sample chart `1-beat.gp` | 16 KB   | —      | the one chart that ships; part of first load                             |
+| A user's own chart       | ~3 KB   | —      | per-song marginal cost, nothing downloaded                               |
 
 **First-load engine payload ≈ 1.6 MB compressed, before Next.js JS and CSS.** The engine is a one-time cost
 and per-chart cost is trivial, so caching many charts is cheap. Install and offline are out of v0 (§2); this budget is the input
@@ -260,6 +269,7 @@ client checks plus the Storybook VR and a11y gates. The design-system rename sta
 
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
 time), the notation-surface wrapper, the landing **Play** button, the player's **Open file** control
+and its secondary **Load the sample beat** action
 (picker plus drag-and-drop, replacing the loaded chart in place), the transport row's **Loop**,
 **Metronome** and **Count-In** toggles (AlphaTab's `isLooping`, `metronomeVolume` and
 `countInVolume`, as the prototype does), and the header's **tempo control**
@@ -348,6 +358,7 @@ behaviour and desktop-only (§7).
 | Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. That was an instrumentation gap, not evidence: `web/spike-probe.mjs` only records `requestfailed` and `status() >= 400`, so it never logged a successful request. The §5 test now asserts the worklet request and the debug line. | v0 acceptance       |
 | Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                                                                                                                                      | after v0 ships (D7) |
 | Q5  | Drum **tablature** needs a patch to AlphaTab and ongoing maintenance. Standard drum **notation** needs no patch. Decide separately whether tablature is wanted.                                                                                                                                                             | not scheduled       |
+| Q6  | Three accepted extensions have no test chart: `.gp3` and `.gp4` need real Guitar Pro 3/4 exports (renaming a `.gp5` will not parse) and `.capx` needs Capella. The picker accepts all three today, so they are claimed but unverified. Non-blocking for v0.                                                                 | when charts exist   |
 
 ## 10. Roadmap position
 
