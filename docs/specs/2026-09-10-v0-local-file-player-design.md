@@ -102,12 +102,16 @@ No upload, no network call for user content. The only network traffic is the sta
 
 ### Failure states
 
-| Case                               | Behavior                                               |
-| ---------------------------------- | ------------------------------------------------------ |
-| Unsupported or corrupt file        | Sonner toast; stay on `/`                              |
-| No drum track in the file          | Inline "no drum track in this file" message on `/play` |
-| `/play` open with no file yet      | The player's empty state, waiting for a file           |
-| Engine or SoundFont download fails | An error message in place of the disabled Play button  |
+| Case                               | Behavior                                                                                             |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Unsupported or corrupt file        | Sonner toast; stay on `/`                                                                            |
+| No drum track in the file          | Inline "no drum track in this file" message on `/play`                                               |
+| `/play` open with no file yet      | Empty state: a large **Open file** action, drag-and-drop anywhere on the surface, transport disabled |
+| Engine or SoundFont download fails | An error message in place of the disabled Play button                                                |
+
+**While it loads:** the first visit fetches about 1.6 MB of engine, soundfont and font. `/play` shows a
+progress indicator driven by AlphaTab's `soundFontLoad` event (`loaded / total`, as the prototype
+does) with `Skeleton` over the notation area, and Play stays disabled until the synth is ready.
 
 ### Mounting AlphaTab
 
@@ -214,7 +218,9 @@ client checks plus the Storybook VR and a11y gates. The design-system rename sta
 
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
 time), the notation-surface wrapper, the landing **Play** button, the player's **Open file** control
-(picker plus drag-and-drop, replacing the loaded chart in place), and a **player-controls popup** — Base UI
+(picker plus drag-and-drop, replacing the loaded chart in place), the transport row's **Loop**,
+**Metronome** and **Count-In** toggles (AlphaTab's `isLooping`, `metronomeVolume` and
+`countInVolume`, as the prototype does), and a **player-controls popup** — Base UI
 `Dialog` + `Tabs` + `Accordion`, opened from the mockup's "Tracks / mixer" button, with a **Tempo**
 tab (BPM = chart tempo × `playbackSpeed`, ±5 buttons, a 1–200% slider that snaps to 100%) and a
 **Tracks** tab (per-track solo, mute and volume; solo is not exclusive, as in AlphaTab and the
@@ -225,10 +231,9 @@ prototype). `Bpm` is display-only, so the tempo control is new.
 merge, and `Sheet.tsx` already wraps `@base-ui/react/dialog` as the precedent to port from. Each can
 land as its own small PR.
 
-**Deferred:** the mockup's **A/B loop markers** on the scrubber. For v0, A–B repeat uses AlphaTab's
-native range selection: select bars in the notation and playback repeats them (range selection
-with `isLooping` on). The custom markers land later, once an A–B UI exists that stays in sync with
-AlphaTab's selection. v0 ships a plain seek bar.
+**Deferred:** the mockup's **A/B loop markers** on the scrubber. v0 uses AlphaTab's native range
+selection instead: select bars in the notation, and the transport's **Loop** toggle flips
+`isLooping`. No custom marker UI and no marker/selection sync are planned. v0 ships a plain seek bar.
 
 ## 8. Success criteria
 
