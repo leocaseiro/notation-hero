@@ -126,9 +126,24 @@ No upload, no network call for user content. The only network traffic is the sta
 | `/play` open with no file yet      | Empty state: a large **Open file** action plus a secondary **Load the sample beat**, drag-and-drop anywhere on the surface, transport disabled |
 | Engine or SoundFont download fails | An error message in place of the disabled Play button                                                                                          |
 
-**While it loads:** the first visit fetches about 1.6 MB of engine, soundfont and font. `/play` shows a
-progress indicator driven by AlphaTab's `soundFontLoad` event (`loaded / total`, as the prototype
-does) with `Skeleton` over the notation area, and Play stays disabled until the synth is ready.
+**While it loads (first visit):** about 1.6 MB of engine, soundfont and font arrives. Two
+affordances, each covering a different part of that wait:
+
+- `Skeleton` over the notation area covers the **engine import and the fonts** — the AlphaTab ESM
+  (273 KB gzip), Bravura (306 KB) and the Material Symbols face (727 KB). None of it is observable
+  through AlphaTab, because `AlphaTabApi` does not exist until the dynamic import resolves.
+- The progress indicator driven by `soundFontLoad` (`loaded / total`, as the prototype does) covers
+  the **soundfont only** — 302 KB gzip of that ~1.6 MB. It is not a whole-payload bar, so do not
+  frame it as one: it can only start once the engine has already downloaded.
+
+Play stays disabled until the synth is ready.
+
+**While a replacement chart parses:** the chart on screen keeps playing (the load is staged, §4
+above), so nothing covers the notation area. Instead a `toast.loading()` through the built `Sonner`
+names the incoming file, then resolves into success or into the same "unsupported file" error toast
+the Failure states table already specifies — so loading, success and failure share one surface.
+Sonner ships its own spinner, so this needs no new component; the design system has no `Spinner`,
+`Loader` or `Progress`, and `Skeleton` would hide a chart that is still playable.
 
 ### Mounting AlphaTab
 
@@ -389,7 +404,9 @@ variants of it):
   breadcrumb headers, with controls staying live and editable in the results.
 
 v0 already ships the settings rows themselves in a popover (§7), so v0.1 adds the search index and
-the categories on top of them.
+the tab chrome on top of them.
 
-Categories will be drum-specific (audio, MIDI, notation, practice). Write original label copy rather
-than borrowing strings from any reference product.
+**The groups stay exactly the prototype's** — Display ▸ General, Colors, Fonts, Paddings, Notation,
+Player, Stylesheet, Tools — so v0.1 is search plus tabs over rows that already exist, not a
+re-grouping. **MIDI arrives as a new tab** in a later version, with the Web MIDI work (§2). Write
+original label copy rather than borrowing strings from any reference product.
