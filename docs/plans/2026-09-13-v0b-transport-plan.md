@@ -49,15 +49,15 @@ Each folder holds the six files named in Global Constraints, plus a `X.vr.ts-sna
 
 **Modified**
 
-| File                               | Change                                                             |
-| ---------------------------------- | ------------------------------------------------------------------ |
-| `client/src/index.ts`              | Export the five new components.                                    |
-| `web/app/play/PlayerShell.tsx`     | Hold transport state; render the transport row and the header.     |
-| `web/app/play/TransportRow.tsx`    | _(new)_ The row layout, wired to the api.                          |
-| `web/app/play/PlayerHeader.tsx`    | _(new)_ The header bar carrying the tempo pill.                    |
-| `web/app/play/NotationSurface.tsx` | Report the parsed score's tempo and the soundfont progress upward. |
-| `web/e2e/player.e2e.ts`            | Cases for criteria 5 and 6.                                        |
-| `web/e2e/a11y.e2e.ts`              | Axe over the loaded state now that the transport exists.           |
+| File                               | Change                                                                                                  |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `client/src/index.ts`              | Export the five new components.                                                                         |
+| `web/app/play/PlayerShell.tsx`     | Hold transport and soundfont-progress state; render the transport row, the header and the progress bar. |
+| `web/app/play/TransportRow.tsx`    | _(new)_ The row layout, wired to the api.                                                               |
+| `web/app/play/PlayerHeader.tsx`    | _(new)_ The header bar carrying the tempo pill.                                                         |
+| `web/app/play/NotationSurface.tsx` | Report the parsed score's tempo and the soundfont progress upward.                                      |
+| `web/e2e/player.e2e.ts`            | Cases for criteria 3, 5 and 6.                                                                          |
+| `web/e2e/a11y.e2e.ts`              | Axe over the loaded state now that the transport exists.                                                |
 
 ---
 
@@ -75,7 +75,7 @@ Each folder holds the six files named in Global Constraints, plus a `X.vr.ts-sna
 **Interfaces:**
 
 - Consumes: `@base-ui/react/slider`, `cn` from `@/lib/utils`.
-- Produces: `<Slider value={number} onChange={(next: number) => void} min? max? step? label? formatValue? unit? showReadout? disabled? className? />`, `data-slot="slider"`. Tasks 3 and 5 consume it; Plan C's settings rows and per-track volume consume it too.
+- Produces: `<Slider value={number} onChange={(next: number) => void} min? max? step? label? formatValue? unit? showReadout? disabled? className? />`, `data-slot="slider"`. Task 3 consumes it; Plan C's settings rows and per-track volume consume it too.
 
 - [ ] **Step 1: Write the failing test**
 

@@ -75,7 +75,7 @@ Both were deferred deliberately on 2026-09-13. Record them in the PR body; do no
 | `web/eslint.config.mjs`                          | Swap the core `no-restricted-imports` for `@typescript-eslint/no-restricted-imports` and add the `@coderline/alphatab` group with `allowTypeImports: true`. |
 | `web/app/layout.tsx`                             | Mount the single `<Toaster />`.                                                                                                                             |
 | `web/app/page.tsx`                               | Replace the design-system proof page with the landing Play button.                                                                                          |
-| `client/src/index.ts`                            | Export `Skeleton`, `Toaster`, `toast`, `PlayButton`.                                                                                                        |
+| `client/src/index.ts`                            | Export `Skeleton`, `Toaster`, `toast`.                                                                                                                      |
 | `client/src/components/ui/Skeleton/Skeleton.tsx` | Add `'use client'`.                                                                                                                                         |
 | `client/src/components/ui/Sonner/Sonner.tsx`     | Add `'use client'`.                                                                                                                                         |
 | `client/src/styles.css`                          | Override the Material Symbols face to `font-display: block`.                                                                                                |
@@ -646,9 +646,9 @@ Expected: all PASS. The `font-display` change alters _when_ glyphs paint, not ho
 
 ```bash
 git add client/src/index.ts client/src/components/ui/Skeleton/Skeleton.tsx \
-  client/src/components/ui/Sonner/Sonner.tsx client/src/components/ui/PlayButton/PlayButton.tsx \
+  client/src/components/ui/Sonner/Sonner.tsx \
   client/src/styles.css web/app/layout.tsx
-git commit -m "feat(client): export Skeleton/Sonner/PlayButton and block the icon-font swap (NH-291)"
+git commit -m "feat(client): export Skeleton/Sonner and block the icon-font swap (NH-291)"
 ```
 
 ---
