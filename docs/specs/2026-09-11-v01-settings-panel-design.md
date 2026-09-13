@@ -1,6 +1,7 @@
 ---
 lap: 1
 last_applied: P0
+re-lap: declined 2026-09-13 — leocaseiro closed the review at lap 1
 ---
 
 # v0.1 — settings panel

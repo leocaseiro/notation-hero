@@ -25,7 +25,7 @@ leocaseiro reviewed [`docs/specs/2026-09-11-v01-settings-panel-design.md`](../sp
 - **Also settled:** a zero-match state for search ("No settings found", search box and clear control stay active); and §3's claim that the index is the one genuinely non-trivial piece — it is a flat projection of the per-row accessor schema v0 already builds, so v0.1's new engineering is the result view and its focus/screen-reader model.
 - **Left as FYI, not applied:** §1's "usable day-to-day" claim is asserted without naming which settings a drummer reaches for mid-practice; the new search-clear control is unchecked against the 44 px hit-area rule; and S2 looks for its answer in reference screenshots when Base UI's `Accordion.Root` already decides it (`multiple` defaults to `false`).
 
-**Status:** ✅ decided · 📄 prose-only enforcement — the spec is the contract. Approved by leocaseiro 2026-09-13. The spec now carries `lap: 1` / `last_applied: P0` in frontmatter; because a P0 was applied, the review loop's re-lap trigger is armed and lap 2 is due before this design is built.
+**Status:** ✅ decided · 📄 prose-only enforcement — the spec is the contract. Approved by leocaseiro 2026-09-13. The spec now carries `lap: 1` / `last_applied: P0` in frontmatter; a P0 was applied, so the review loop's re-lap trigger fired — **leocaseiro declined lap 2 and closed the review at lap 1**, on the grounds that this is a design capture rather than a build plan. Re-open it when the design becomes one.
 
 ### 2026-09-12 — v0 local-file player: player before catalog, and the v0 spec review (NH-291, NH-292)
 
