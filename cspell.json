@@ -482,6 +482,15 @@
     "mousemove",
     "mouseup",
     "touchstart",
-    "pointerdown"
+    "pointerdown",
+    "countin",
+    "pkill",
+    "settingrow",
+    "tempocontrol",
+    "trackrow",
+    "transporttoggle",
+    "typechecks",
+    "tolower",
+    "unminified"
   ]
 }

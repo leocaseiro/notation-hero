@@ -1,0 +1,2317 @@
+# v0 Plan A — Engine and First Sound — Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Open a drum chart from local disk on `/play`, see it as standard notation, press play, and hear it — with a CI lane that proves the real audio-worker path is live rather than the silent main-thread fallback.
+
+**Architecture:** Next.js 16 App Router in `web/`, two routes (`/` landing, `/play` player). AlphaTab is never bundled: its prebuilt ESM is copied out of `node_modules` into `web/public/alphatab/` by a vendoring step and pulled in at runtime through a `turbopackIgnore` dynamic import, which restores a real `http` `import.meta.url` and therefore native module workers. A single `'use client'` component owns the `AlphaTabApi` in a `useRef` and disposes it on unmount; the loaded namespace object is shared to other `web/` components through a React context, because a value import of `@coderline/alphatab` would re-bundle the library.
+
+**Tech Stack:** Next.js 16.2.10 (App Router, Turbopack, React Compiler), React 19.2, `@coderline/alphatab` 1.8.4 (type-only), `@notation-hero/client` design system, Playwright 1.61.1 + `@axe-core/playwright` 4.12.1.
+
+**Spec:** [`docs/specs/2026-09-10-v0-local-file-player-design.md`](../specs/2026-09-10-v0-local-file-player-design.md) — read §4, §5 and §7 before starting. This plan argues from that spec; where they disagree, the spec wins and this plan is wrong.
+
+**Jira:** epic [NH-291](https://leocaseiro.atlassian.net/browse/NH-291). Put an `NH-291` key in every branch, PR title and commit trailer line — the `pr-checklist` CI gate requires a real key.
+
+**Sibling plans:** Plan B (transport: scrubber, tempo, Loop/Metronome/Count-In) and Plan C (Settings and Tracks popovers) build on this one. Anything this plan marks "Plan B" or "Plan C" is deliberately out of scope here.
+
+---
+
+## Global Constraints
+
+Every task's requirements implicitly include this section. Values are copied verbatim from the spec.
+
+- **`@coderline/alphatab` may be imported ONLY with `import type`.** One value import — even of an enum — makes Turbopack bundle the library a second time, and a component can then drive the bundled copy, which restores the silent-playback failure. All runtime AlphaTab values (`LayoutMode`, `ScrollMode`, `PlayerMode`, `TrackNamePolicy`, `importer.ScoreLoader`, `model.Color`, `model.Font`, `synth.PlayerState`) come from the awaited namespace object only. **No module-scope constant may reference one.**
+- **The dynamic-import specifier must be a `const` variable, never a string literal.** A literal makes `tsc` resolve it at compile time and fail the build; holding it in a `const` also stops Turbopack re-bundling it.
+- **Minified dist files are copied under their PLAIN names.** `alphaTab.min.mjs` imports `./alphaTab.core.mjs` internally, so a minified copy stored under a `.min` name makes the browser fetch the full 3.0 MB core instead of the minified one.
+- **`web/public/alphatab/` is generated output** — git-ignored, never committed. The spike's committed copies get removed.
+- **Never `dynamic(..., { ssr: false })`.** It is illegal in an App Router Server Component and unnecessary: AlphaTab's module scope is SSR-safe.
+- **`useRef`, never `React.createRef()` in a render body.**
+- **Every interactive control has a hit area of at least 44 px**, with the glyph left at its drawn size. The mockup does not meet this; v0 must.
+- **Every `client/` component stays presentation-only** — `value` in, `onChange` out, option lists as plain arrays, and no import from `@coderline/alphatab`. `client/` has no AlphaTab dependency and a Storybook story has no engine to provide.
+- **Before `web/` uses a `client/` component:** export it from `client/src/index.ts`, add `'use client'` to its file, and re-run the client checks plus the Storybook VR and a11y gates.
+- **Version ranges are syncpack-enforced across packages.** `@playwright/test` must be `^1.61.1` and `@axe-core/playwright` must be `^4.12.1` in `web/` — `client/`'s exact ranges — or the `quality` job fails.
+- **The `web/` Playwright script must NOT be named `test`.** The `quality` job runs `pnpm -r --if-present run test` with no browsers installed. Name it `test:e2e`.
+- **`pnpm` does not run `pre<script>` hooks.** `enablePrePostScripts` defaults to false in pnpm 11 and is not set in `pnpm-workspace.yaml`, so a `prebuild` script would silently never run. Chain vendoring explicitly inside `dev` and `build`.
+- **Default branch is `master`.** Never pass `git commit/push --no-verify`. Commit at every green step.
+- **Tests are co-located with their source.** Never create `__tests__/`, `__mocks__/` or `stories/` directories — `tooling/check-layout.sh` fails the build on them.
+- **New vocabulary goes in `cspell.json`.** `alphatab`, `sonivox`, `Turbopack`, `Worklet`, `worklets`, `coderline`, `musicxml`, `capx` and `unminified` are already listed, and `Bravura` resolves from a bundled dictionary. Add anything new that `pnpm run lint:spell` flags — it covers `.ts`, `.tsx`, `.js`, `.mjs`, `.cjs`, `.md`, `.json`, `.yml` and `.yaml`, so a word only in a `.css` comment is never checked.
+- **`package.json` keys stay sorted.** `pnpm run lint:sort-pkg` (`sort-package-json --check`) is a CI gate.
+
+## Known gaps carried into this plan (accepted, not fixed here)
+
+- **Q6 — no genuine MusicXML fixture.** `.musicxml`, `.mxml` and `.xml` are on the picker's `accept` list but no real MusicXML chart exists, and `ScoreLoader` sniffs bytes, so a renamed `.gp5` tests nothing. Those three extensions ship unverified.
+- **Q7 — no percussion-free fixture.** Success criterion 9 (a chart with no drum staff opens on AlphaTab's default track) has no chart to run against. Task 9 implements and unit-proves the fallback branch through `Punk.gp`'s track shape, but the end-to-end path ships unverified.
+
+Both were deferred deliberately on 2026-09-13. Record them in the PR body; do not quietly mark criterion 9 done.
+
+---
+
+## File Structure
+
+**Created**
+
+| File                                         | Responsibility                                                                                                                            |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/scripts/vendor-alphatab.mjs`            | Copy AlphaTab's prebuilt ESM, soundfont and music font out of `node_modules` into `web/public/alphatab/`, under plain (non-`.min`) names. |
+| `tooling/vendor-alphatab.test.mjs`           | `node --test` cover for that copy step — joins the existing `pnpm run test:tooling` gate.                                                 |
+| `web/lib/alphatab/engine.ts`                 | `loadAlphaTabEngine()` — the `turbopackIgnore` dynamic import plus the Bravura font wait, memoised so two mounts share one module.        |
+| `web/lib/alphatab/AlphaTabEngineContext.tsx` | React context carrying the loaded namespace to `web/` consumers, and the `useAlphaTabEngine()` reader.                                    |
+| `web/lib/alphatab/drum-tracks.ts`            | Pure: a score's track list in, the indexes of percussion tracks out. No AlphaTab import — a structural type.                              |
+| `web/app/play/page.tsx`                      | The `/play` route segment.                                                                                                                |
+| `web/app/play/PlayerShell.tsx`               | `'use client'` root of the player: owns loaded-chart state, the engine provider, toasts.                                                  |
+| `web/app/play/NotationSurface.tsx`           | Owns the `AlphaTabApi` instance, its lifecycle, the loading `Skeleton` and the error states.                                              |
+| `web/app/play/OpenFileControl.tsx`           | File picker + drag-and-drop + the replace-confirmation flow.                                                                              |
+| `web/app/play/EmptyState.tsx`                | The no-file-yet surface: big Open file, secondary Load the sample beat.                                                                   |
+| `web/playwright.e2e.config.ts`               | The `web` browser lane — `next build` then `next start`, with `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL=Debug`.                                     |
+| `web/e2e/player.e2e.ts`                      | The silent-failure regression test plus the player's behaviour tests.                                                                     |
+| `web/e2e/a11y.e2e.ts`                        | axe-core over `/` and `/play` in its reachable states.                                                                                    |
+
+**Modified**
+
+| File                                             | Change                                                                                                                                                      |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/package.json`                               | `dev`/`build` chain the vendor step; add `test:e2e`; add Playwright + axe devDependencies.                                                                  |
+| `web/.gitignore`                                 | Ignore `/public/alphatab/`.                                                                                                                                 |
+| `web/eslint.config.mjs`                          | Swap the core `no-restricted-imports` for `@typescript-eslint/no-restricted-imports` and add the `@coderline/alphatab` group with `allowTypeImports: true`. |
+| `web/app/layout.tsx`                             | Mount the single `<Toaster />`.                                                                                                                             |
+| `web/app/page.tsx`                               | Replace the design-system proof page with the landing Play button.                                                                                          |
+| `client/src/index.ts`                            | Export `Skeleton`, `Toaster`, `toast`, `PlayButton`.                                                                                                        |
+| `client/src/components/ui/Skeleton/Skeleton.tsx` | Add `'use client'`.                                                                                                                                         |
+| `client/src/components/ui/Sonner/Sonner.tsx`     | Add `'use client'`.                                                                                                                                         |
+| `client/src/styles.css`                          | Override the Material Symbols face to `font-display: block`.                                                                                                |
+| `.github/workflows/ci.yml`                       | Add the `web` steps to the `e2e` job and its artifact paths.                                                                                                |
+
+**Deleted**
+
+| File                                      | Why                                                 |
+| ----------------------------------------- | --------------------------------------------------- |
+| `web/public/alphatab/**` (tracked copies) | Generated output — the vendor step now produces it. |
+| `web/public/alphatab/alphaTab.min.js`     | The classic build, only variant A needed it.        |
+
+---
+
+### Task 1: Verify D5's one unverified premise — Vercel MIME types (Q2)
+
+Everything downstream hangs off self-hosted ESM working on Vercel's CDN. Reversing to variant A afterwards would touch the mount component, the vendoring step, the ESLint guard and the payload budget — so this is checked **before** any player code is written. No application code changes in this task.
+
+**Files:**
+
+- Modify: `docs/specs/2026-09-10-v0-local-file-player-design.md` (the Q2 row in §9)
+
+**Interfaces:**
+
+- Consumes: nothing.
+- Produces: a go/no-go on decision D5. Every later task assumes "go".
+
+- [ ] **Step 1: Push the spike branch so Vercel builds a preview**
+
+```bash
+git push origin spike/alphatab-nextjs-poc
+gh pr list --head spike/alphatab-nextjs-poc --json number,url
+```
+
+If no PR exists yet, open one — Vercel builds previews from pull requests:
+
+```bash
+gh pr create --title "spike(web): verify Vercel MIME types for self-hosted AlphaTab ESM (NH-291)" \
+  --body "Q2 gate for the v0 spec: confirm public/alphatab/esm/*.mjs are served as JavaScript."
+```
+
+- [ ] **Step 2: Read the preview URL off the PR**
+
+```bash
+gh pr view --json number -q .number
+gh api "repos/:owner/:repo/deployments?environment=Preview&per_page=5" \
+  --jq '.[] | {id, ref, environment, created_at}'
+```
+
+Vercel also comments the preview URL on the PR. Take the `https://<project>-<hash>.vercel.app` URL and hold it in a shell variable:
+
+```bash
+PREVIEW=https://<paste-the-preview-url>
+```
+
+- [ ] **Step 3: Assert each vendored ESM file is HTTP 200 with a JavaScript MIME type**
+
+```bash
+for f in alphaTab.mjs alphaTab.core.mjs alphaTab.worker.mjs alphaTab.worklet.mjs; do
+  printf '%s -> ' "$f"
+  curl -sSI "$PREVIEW/alphatab/esm/$f" | awk 'tolower($1) ~ /^(http|content-type)/ {print}' | tr '\n' ' '
+  printf '\n'
+done
+```
+
+Expected: every line shows `HTTP/2 200` and a `content-type:` of `text/javascript` or `application/javascript` (a `charset` suffix is fine).
+
+**A `content-type` of `application/octet-stream`, `text/plain`, or anything else is a FAIL.** The browser refuses to execute a module served with a non-JavaScript MIME type, `addModule` rejects with `Audio Worklet creation failed`, and D5 does not hold. **Stop the plan and re-open decision D5 with leocaseiro** — do not work around it.
+
+- [ ] **Step 4: Load the spike route and confirm the platform in the browser**
+
+Open `$PREVIEW/spike/esm`. The status block on that page prints `Environment.webPlatform`. Expected: **`BrowserModule`**. `Browser` (without `Module`) means the worker lookup fell back and D5 does not hold — same stop condition as Step 3.
+
+- [ ] **Step 5: Record the answer in the spec**
+
+Edit the Q2 row of §9 in `docs/specs/2026-09-10-v0-local-file-player-design.md` so it states the observed result, e.g.:
+
+```markdown
+| Q2 | **Answered (2026-09-13): Vercel serves `public/alphatab/esm/*.mjs` as `text/javascript`, and `/spike/esm` reports `Environment.webPlatform = BrowserModule` on the deployed preview — D5 holds.** CDN compression for `.sf3` is a cost question, not a correctness one, and still waits for the v0 deploy. | `.sf3` compression: v0 deploy |
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add docs/specs/2026-09-10-v0-local-file-player-design.md
+git commit -m "docs(specs): close Q2 — Vercel serves the vendored ESM as JavaScript (NH-291)"
+```
+
+---
+
+### Task 2: Vendor AlphaTab's prebuilt assets out of node_modules
+
+The four ESM files, the soundfont and the music font stop being committed blobs and become generated output produced before every `dev` and `build`.
+
+**Files:**
+
+- Create: `web/scripts/vendor-alphatab.mjs`
+- Create: `tooling/vendor-alphatab.test.mjs`
+- Modify: `web/package.json`
+- Modify: `web/.gitignore`
+- Delete: the tracked contents of `web/public/alphatab/`
+
+**Interfaces:**
+
+- Consumes: nothing.
+- Produces: `web/public/alphatab/esm/alphaTab.mjs`, `.../alphaTab.core.mjs`, `.../alphaTab.worker.mjs`, `.../alphaTab.worklet.mjs`, `web/public/alphatab/soundfont/sonivox.sf3`, `web/public/alphatab/font/Bravura.woff2` and the two licence files. Task 5 hard-codes `/alphatab/esm/alphaTab.mjs`, `/alphatab/soundfont/sonivox.sf3` and `/alphatab/font/` against these paths. The module also exports `VENDOR_FILES` and `vendorAlphaTab({ dist, out })` for the test.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `tooling/vendor-alphatab.test.mjs`:
+
+```js
+import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { test } from 'node:test';
+
+import { VENDOR_FILES, vendorAlphaTab } from '../web/scripts/vendor-alphatab.mjs';
+
+const DIST = new URL('../web/node_modules/@coderline/alphatab/dist/', import.meta.url).pathname;
+
+test('copies the minified ESM under PLAIN names so the core import resolves to the minified core', () => {
+  const out = mkdtempSync(join(tmpdir(), 'vendor-alphatab-'));
+  try {
+    vendorAlphaTab({ dist: DIST, out });
+
+    // alphaTab.min.mjs imports './alphaTab.core.mjs'. If the minified core landed under a
+    // '.min' name the browser would fetch the 3.0 MB unminified core instead, so assert both
+    // the plain filename AND that the bytes are the minified build (roughly half the size).
+    const entry = readFileSync(join(out, 'esm/alphaTab.mjs'), 'utf8');
+    assert.match(entry, /alphaTab\.core\.mjs/);
+
+    const core = statSync(join(out, 'esm/alphaTab.core.mjs'));
+    assert.ok(core.size < 1_500_000, `core is ${core.size} bytes — that is the unminified build`);
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test('copies every declared file, including the worker, worklet, soundfont, font and licences', () => {
+  const out = mkdtempSync(join(tmpdir(), 'vendor-alphatab-'));
+  try {
+    const copied = vendorAlphaTab({ dist: DIST, out });
+
+    assert.deepEqual([...copied].sort(), [...VENDOR_FILES.map(([, to]) => to)].sort());
+    for (const [, to] of VENDOR_FILES) {
+      assert.ok(statSync(join(out, to)).size > 0, `${to} is empty`);
+    }
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+
+test('fails loudly when a source file is missing rather than shipping a broken public/', () => {
+  const out = mkdtempSync(join(tmpdir(), 'vendor-alphatab-'));
+  try {
+    assert.throws(
+      () => vendorAlphaTab({ dist: join(out, 'does-not-exist'), out }),
+      /missing source/,
+    );
+  } finally {
+    rmSync(out, { recursive: true, force: true });
+  }
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `node --test tooling/vendor-alphatab.test.mjs`
+Expected: FAIL — `Cannot find module '.../web/scripts/vendor-alphatab.mjs'`.
+
+- [ ] **Step 3: Write the vendoring script**
+
+Create `web/scripts/vendor-alphatab.mjs`:
+
+```js
+// Copies AlphaTab's prebuilt ESM + assets out of node_modules into web/public/alphatab/.
+//
+// AlphaTab spawns a render worker and an audio worklet and locates them from `import.meta.url`.
+// Turbopack does not leave that usable in a production chunk, so the worker construction fails and
+// playback silently dies while notation still renders. Serving the prebuilt ESM from public/
+// restores a real http URL, which makes `Environment.webPlatform` report `BrowserModule`.
+//
+// Generated output: web/public/alphatab/ is git-ignored and rebuilt before every dev and build.
+import { copyFileSync, existsSync, mkdirSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import process from 'node:process';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * [source path under dist/, destination path under the output directory].
+ *
+ * The four ESM files land under their PLAIN names on purpose: alphaTab.min.mjs imports
+ * './alphaTab.core.mjs' internally, so a minified copy kept under a '.min' name would make the
+ * browser fetch the 3.0 MB unminified core instead of the 1.1 MB minified one.
+ */
+export const VENDOR_FILES = [
+  ['alphaTab.min.mjs', 'esm/alphaTab.mjs'],
+  ['alphaTab.core.min.mjs', 'esm/alphaTab.core.mjs'],
+  ['alphaTab.worker.min.mjs', 'esm/alphaTab.worker.mjs'],
+  ['alphaTab.worklet.min.mjs', 'esm/alphaTab.worklet.mjs'],
+  ['soundfont/sonivox.sf3', 'soundfont/sonivox.sf3'],
+  ['soundfont/LICENSE', 'soundfont/LICENSE'],
+  ['font/Bravura.woff2', 'font/Bravura.woff2'],
+  ['font/Bravura-OFL.txt', 'font/Bravura-OFL.txt'],
+];
+
+/**
+ * @param {{ dist: string, out: string }} options
+ * @returns {string[]} the destination paths written, relative to `out`
+ */
+export function vendorAlphaTab({ dist, out }) {
+  const copied = [];
+  for (const [from, to] of VENDOR_FILES) {
+    const source = join(dist, from);
+    if (!existsSync(source)) {
+      throw new Error(
+        `vendor-alphatab: missing source ${source} — run pnpm install, or check that ` +
+          '@coderline/alphatab is still pinned at 1.8.4.',
+      );
+    }
+    const destination = join(out, to);
+    mkdirSync(dirname(destination), { recursive: true });
+    copyFileSync(source, destination);
+    copied.push(to);
+  }
+  return copied;
+}
+
+// Only copy when invoked directly, so the test can import vendorAlphaTab without side effects.
+if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {
+  const copied = vendorAlphaTab({
+    dist: resolve(HERE, '../node_modules/@coderline/alphatab/dist'),
+    out: resolve(HERE, '../public/alphatab'),
+  });
+  console.log(`vendor-alphatab: copied ${copied.length} files into web/public/alphatab/`);
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+Run: `node --test tooling/vendor-alphatab.test.mjs`
+Expected: PASS — 3 tests.
+
+- [ ] **Step 5: Remove the committed copies and ignore the directory**
+
+```bash
+git rm -r --cached web/public/alphatab
+rm -rf web/public/alphatab
+```
+
+Append to `web/.gitignore`:
+
+```gitignore
+# AlphaTab's prebuilt ESM + soundfont + music font, copied out of node_modules by
+# scripts/vendor-alphatab.mjs before every dev/build. Generated output — never committed.
+/public/alphatab/
+```
+
+- [ ] **Step 6: Chain the vendor step into `dev` and `build`**
+
+In `web/package.json`, replace the `build` and `dev` scripts. **Do not use a `prebuild` hook** — pnpm 11 defaults `enablePrePostScripts` to false and this repo does not set it, so a `prebuild` script would never run and CI would build against an empty `public/alphatab/`:
+
+```json
+{
+  "scripts": {
+    "build": "node scripts/vendor-alphatab.mjs && next build",
+    "dev": "node scripts/vendor-alphatab.mjs && next dev --port 3002",
+    "lint": "eslint . --max-warnings 0",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  }
+}
+```
+
+- [ ] **Step 7: Verify a clean build regenerates the assets**
+
+```bash
+pnpm --filter @notation-hero/web run build
+ls -la web/public/alphatab/esm web/public/alphatab/soundfont web/public/alphatab/font
+git status --short web/public
+```
+
+Expected: the eight files exist, `alphaTab.core.mjs` is ~1.1 MB (not 2.3 MB), `next build` succeeds, and `git status` reports **nothing** under `web/public/alphatab/`.
+
+- [ ] **Step 8: Run the repo-level gates this touches**
+
+```bash
+pnpm run test:tooling
+pnpm run lint:sort-pkg
+pnpm --filter @notation-hero/web run lint
+```
+
+Expected: all PASS.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add web/scripts/vendor-alphatab.mjs tooling/vendor-alphatab.test.mjs \
+  web/package.json web/.gitignore web/public
+git commit -m "build(web): vendor AlphaTab's prebuilt ESM from node_modules (NH-291)"
+```
+
+---
+
+### Task 3: Guard the type-only import of `@coderline/alphatab`
+
+One value import re-bundles the library, ships it twice, and lets a component drive the bundled copy — which silently kills playback. A lint rule is the only thing that stops it coming back.
+
+**Files:**
+
+- Modify: `web/eslint.config.mjs:56-76` (the `no-restricted-imports` block)
+
+**Interfaces:**
+
+- Consumes: nothing.
+- Produces: every later task's `import type * as AlphaTab from '@coderline/alphatab'` stays legal while a value import fails lint.
+
+- [ ] **Step 1: Write the failing test — a scratch file with a value import**
+
+```bash
+cat > web/lint-guard-probe.ts <<'EOF'
+import { LayoutMode } from '@coderline/alphatab';
+
+export const probe = LayoutMode.Page;
+EOF
+```
+
+- [ ] **Step 2: Run lint to verify it currently PASSES (the bug)**
+
+Run: `pnpm --filter @notation-hero/web exec eslint lint-guard-probe.ts`
+Expected: **no error** — today nothing restricts `@coderline/alphatab`. That is the hole this task closes.
+
+- [ ] **Step 3: Replace the core rule with the type-aware extension rule**
+
+In `web/eslint.config.mjs`, replace the final rules block (the one holding `no-restricted-imports`) with:
+
+```js
+  // Two import fences, both on the TYPE-AWARE extension rule.
+  //
+  // `@/*` (unchanged intent, NH-275 review F4): the tsconfig alias exists only so Turbopack can
+  // resolve the transpiled client package's internal '@/lib/utils'; app code must go through the
+  // @notation-hero/client barrel.
+  //
+  // `@coderline/alphatab` (v0 spec §5): type imports only. One VALUE import — even of an enum —
+  // makes Turbopack bundle AlphaTab a second time. A component can then drive the bundled copy,
+  // whose worker lookup is broken, and playback dies silently while notation still renders.
+  // Runtime values come from the namespace object awaited in lib/alphatab/engine.ts.
+  //
+  // The @typescript-eslint version is required for `allowTypeImports`, and it needs the core rule
+  // OFF or both fire.
+  {
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': 'off',
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@/*'],
+              message:
+                'Do not use the @/* alias in web app code — it reaches into client/src and bypasses the @notation-hero/client barrel. Import from @notation-hero/client or use a relative path.',
+            },
+            {
+              group: ['@coderline/alphatab', '@coderline/alphatab/*'],
+              allowTypeImports: true,
+              message:
+                'Import @coderline/alphatab with `import type` only. A value import makes Turbopack bundle AlphaTab a second time and silently breaks playback — get runtime values from the namespace object returned by loadAlphaTabEngine() in lib/alphatab/engine.ts.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+```
+
+- [ ] **Step 4: Run lint to verify the value import now fails**
+
+Run: `pnpm --filter @notation-hero/web exec eslint lint-guard-probe.ts`
+Expected: FAIL — `@typescript-eslint/no-restricted-imports` on line 1, with the message above.
+
+- [ ] **Step 5: Verify a type import still passes**
+
+```bash
+cat > web/lint-guard-probe.ts <<'EOF'
+import type * as AlphaTab from '@coderline/alphatab';
+
+export type Probe = AlphaTab.AlphaTabApi;
+EOF
+```
+
+Run: `pnpm --filter @notation-hero/web exec eslint lint-guard-probe.ts`
+Expected: PASS — `allowTypeImports: true` lets it through.
+
+- [ ] **Step 6: Delete the probe and lint the whole package**
+
+```bash
+rm web/lint-guard-probe.ts
+pnpm --filter @notation-hero/web run lint
+```
+
+Expected: PASS. The spike component at `web/app/spike/esm/AlphaTabDrumsEsm.tsx` already uses `import type`, so it stays clean.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add web/eslint.config.mjs
+git commit -m "chore(web): fail lint on a value import of @coderline/alphatab (NH-291)"
+```
+
+---
+
+### Task 4: Export the design-system pieces the player needs, and fix the icon-font swap
+
+Two components cross into `web/`, and the Material Symbols face gets a `font-display` fix. Without that fix a cold first visit paints the literal words `settings`, `play_arrow` and `folder_open` where the controls should be, because `.material-symbols-outlined` declares no icon fallback and the face ships `font-display: swap`.
+
+> **`PlayButton` is deliberately NOT exported.** The spec's §7 lists it under "already built", but its real API is catalog-row shaped: it takes only `title` and `onClick`, hard-codes its accessible name to "Play " plus the title, and has neither a pause state nor a `disabled` prop. The transport needs a play/pause toggle that disables until the synth is ready. v0 builds that from the already-exported `Button` plus a Material Symbols glyph, and `PlayButton` stays the catalog's control. Do not widen `PlayButton` for this — a shared component with two unrelated jobs is worse than two components.
+
+**Files:**
+
+- Modify: `client/src/index.ts`
+- Modify: `client/src/components/ui/Skeleton/Skeleton.tsx:1`
+- Modify: `client/src/components/ui/Sonner/Sonner.tsx:1`
+- Modify: `client/src/styles.css:3`
+- Modify: `web/app/layout.tsx`
+
+**Interfaces:**
+
+- Consumes: nothing.
+- Produces: `import { Button, Skeleton, Toaster, toast } from '@notation-hero/client'` works in `web/`. Tasks 6, 10, 11 and 13 use them.
+
+- [ ] **Step 1: Write the failing test — a web file importing the barrel**
+
+```bash
+cat > web/barrel-probe.ts <<'EOF'
+import { Skeleton, Toaster, toast } from '@notation-hero/client';
+
+export const probe = [Skeleton, Toaster, toast];
+EOF
+```
+
+- [ ] **Step 2: Run typecheck to verify it fails**
+
+Run: `pnpm --filter @notation-hero/web run typecheck`
+Expected: FAIL — `Module '"@notation-hero/client"' has no exported member 'Skeleton'` (and `Toaster`, `toast`).
+
+- [ ] **Step 3: Add `'use client'` to the two component files**
+
+Both `Skeleton.tsx` and `Sonner.tsx` must begin with the directive, before any import. `Button.tsx` already has one — match it exactly:
+
+```tsx
+'use client';
+```
+
+- [ ] **Step 4: Widen the barrel**
+
+Replace `client/src/index.ts` with:
+
+```ts
+// Public surface of the design system. It grows only when a screen pulls a component across
+// (spec D3 — the player decides what gets built). The full barrel over every ui/ component is
+// Phase 2 (design-system rename) work.
+export { Button, buttonVariants } from './components/ui/Button/Button';
+export type { ButtonProps } from './components/ui/Button/Button';
+
+// Pulled across by the v0 player:
+// - Skeleton covers the notation area until the engine + Bravura have arrived.
+// - Toaster/toast carry the unsupported-file, engine-failure and settings-reset messages.
+export { Skeleton, SkeletonTable, SkeletonForm } from './components/ui/Skeleton/Skeleton';
+export { Toaster, toast } from './components/ui/Sonner/Sonner';
+```
+
+- [ ] **Step 5: Run typecheck to verify it passes**
+
+Run: `pnpm --filter @notation-hero/web run typecheck`
+Expected: PASS.
+
+- [ ] **Step 6: Delete the probe**
+
+```bash
+rm web/barrel-probe.ts
+```
+
+- [ ] **Step 7: Force the icon font to `block`**
+
+In `client/src/styles.css`, immediately after the three `@import` lines at the top, add:
+
+```css
+/* The Material Symbols face ships `font-display: swap`, and `.material-symbols-outlined` declares
+   no icon fallback — so during the swap period the browser paints the LIGATURE SOURCE TEXT, and a
+   cold first visit renders the literal words `settings`, `play_arrow` and `folder_open` where the
+   controls should be. `block` gives a brief invisible period and then the real glyphs, which is the
+   standard choice for an icon font precisely because its fallback text is meaningless.
+   Re-declaring the family with the same src overrides the @import's descriptor. */
+@font-face {
+  font-family: 'Material Symbols Outlined Variable';
+  font-display: block;
+  src: url('@fontsource-variable/material-symbols-outlined/files/material-symbols-outlined-latin-full-normal.woff2')
+    format('woff2-variations');
+  font-weight: 100 700;
+  font-style: normal;
+}
+```
+
+Confirm the exact `src` path and family name against the installed package before writing it — a wrong URL silently loads nothing:
+
+```bash
+grep -rn "font-family\|font-display\|src:" client/node_modules/@fontsource-variable/material-symbols-outlined/index.css | head -20
+ls client/node_modules/@fontsource-variable/material-symbols-outlined/files/ | head
+```
+
+Match the family name and file name that grep reports; the block above is the shape, not a guess to paste blind.
+
+- [ ] **Step 8: Mount the toast host**
+
+Replace `web/app/layout.tsx` body with:
+
+```tsx
+import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
+import { Toaster } from '@notation-hero/client';
+
+import './globals.css';
+
+export const metadata: Metadata = {
+  title: 'Notation Hero',
+  description: 'Learn an instrument by playing real notation.',
+};
+
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <html lang="en">
+      <body>
+        {children}
+        {/* One Toaster for the whole app: the unsupported-file, engine-failure and
+            settings-reset messages all land here. */}
+        <Toaster />
+      </body>
+    </html>
+  );
+}
+```
+
+- [ ] **Step 9: Re-run the client gates the barrel change touches**
+
+```bash
+pnpm --filter @notation-hero/client run lint
+pnpm --filter @notation-hero/client run typecheck
+pnpm --filter @notation-hero/client run test
+pnpm --filter @notation-hero/client run test:a11y
+pnpm run lint:css
+pnpm run lint:spell
+```
+
+Then the VR gate, which must run in the Playwright container (macOS rasterises fonts differently and the committed baselines are Linux-only). Start Docker Desktop first with `open -a Docker`:
+
+```bash
+pnpm test:vr:docker
+```
+
+Expected: all PASS. The `font-display` change alters _when_ glyphs paint, not how they rasterise once loaded, so no baseline should move. **If VR reports diffs, stop and look at the report** — a moved baseline here means the font resolved differently, which is a real regression, not a snapshot to bless.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add client/src/index.ts client/src/components/ui/Skeleton/Skeleton.tsx \
+  client/src/components/ui/Sonner/Sonner.tsx client/src/components/ui/PlayButton/PlayButton.tsx \
+  client/src/styles.css web/app/layout.tsx
+git commit -m "feat(client): export Skeleton/Sonner/PlayButton and block the icon-font swap (NH-291)"
+```
+
+---
+
+### Task 5: Load the engine once and share it through context
+
+The awaited namespace object is the only runtime source of AlphaTab values, so every `web/` component that needs an enum reads it from here. The loader also owns the Bravura wait, because AlphaTab holds rendering until its internal `FontLoadingChecker` reports the family available and publishes no font event.
+
+**Files:**
+
+- Create: `web/lib/alphatab/engine.ts`
+- Create: `web/lib/alphatab/AlphaTabEngineContext.tsx`
+
+**Interfaces:**
+
+- Consumes: the vendored `/alphatab/esm/alphaTab.mjs` from Task 2; the ESLint guard from Task 3.
+- Produces:
+  - `loadAlphaTabEngine(): Promise<AlphaTabEngine>` where `type AlphaTabEngine = typeof import('@coderline/alphatab')`.
+  - `resolveLogLevel(engine: AlphaTabEngine): AlphaTab.LogLevel`.
+  - `<AlphaTabEngineProvider>{children}</AlphaTabEngineProvider>` and `useAlphaTabEngine(): AlphaTabEngineState`.
+  - `interface AlphaTabEngineState { engine: AlphaTabEngine | null; error: Error | null }`.
+  - Tasks 6, 9, 10, 11 and 13 consume `useAlphaTabEngine()`. Plan C's settings and tracks compositions consume it too.
+
+- [ ] **Step 1: Write the failing test — a consumer that typechecks against the API**
+
+```bash
+cat > web/lib/alphatab/engine-probe.ts <<'EOF'
+import { loadAlphaTabEngine, resolveLogLevel } from './engine';
+
+export async function probe(): Promise<number> {
+  const engine = await loadAlphaTabEngine();
+  return resolveLogLevel(engine);
+}
+EOF
+```
+
+- [ ] **Step 2: Run typecheck to verify it fails**
+
+Run: `pnpm --filter @notation-hero/web run typecheck`
+Expected: FAIL — `Cannot find module './engine'`.
+
+- [ ] **Step 3: Write the loader**
+
+Create `web/lib/alphatab/engine.ts`:
+
+```ts
+import type * as AlphaTab from '@coderline/alphatab';
+
+/** The awaited namespace object — the ONLY runtime source of AlphaTab values (spec §5). */
+export type AlphaTabEngine = typeof AlphaTab;
+
+/**
+ * Served from web/public/alphatab/esm/ by scripts/vendor-alphatab.mjs.
+ *
+ * This MUST stay a variable. A string literal in the import below makes `tsc` resolve it at
+ * compile time and fail the build, and it lets Turbopack statically analyse (and therefore
+ * re-bundle) the library — which is exactly what this whole arrangement avoids.
+ */
+const ALPHATAB_ESM_URL = '/alphatab/esm/alphaTab.mjs';
+
+/** The music font AlphaTab renders notation with; it holds rendering until this family is ready. */
+const BRAVURA = '1em Bravura';
+
+let pending: Promise<AlphaTabEngine> | null = null;
+
+/**
+ * Imports the self-hosted AlphaTab ESM and waits for Bravura, then resolves with the namespace.
+ *
+ * Both halves matter for the loading affordance. The dynamic import covers the 273 KB engine; the
+ * font load covers the 306 KB Bravura fetch. Neither is observable through AlphaTab — `AlphaTabApi`
+ * does not exist until the import resolves, and the font checker publishes no event — so a Skeleton
+ * lifted on the import alone would leave the notation area blank for exactly the window it exists
+ * to cover.
+ *
+ * Memoised: two mounts (React 19 strict mode double-invokes effects in dev) share one module
+ * instance and one font wait.
+ */
+export function loadAlphaTabEngine(): Promise<AlphaTabEngine> {
+  pending ??= (async () => {
+    const engine = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as AlphaTabEngine;
+    // Same call AlphaTab's own FontLoadingChecker makes. Never rejects for a missing family —
+    // it resolves with an empty list — so a font failure degrades to AlphaTab's own handling
+    // rather than blocking the player.
+    await document.fonts.load(BRAVURA);
+    return engine;
+  })();
+  return pending;
+}
+
+/**
+ * Reads the log level from NEXT_PUBLIC_ALPHATAB_LOG_LEVEL, defaulting to Info.
+ *
+ * The worklet regression test asserts AlphaTab's `Platform: BrowserModule` debug line, which needs
+ * Debug — but shipping Debug prints the visitor's user agent, window size and screen size to their
+ * console. The Playwright config sets the variable for its own build; production stays on Info.
+ *
+ * NEXT_PUBLIC_* is inlined at BUILD time, so the lane's webServer command must run `next build`
+ * with the variable set — setting it only for `next start` does nothing.
+ */
+export function resolveLogLevel(engine: AlphaTabEngine): AlphaTab.LogLevel {
+  const configured = process.env.NEXT_PUBLIC_ALPHATAB_LOG_LEVEL;
+  return configured === 'Debug' ? engine.LogLevel.Debug : engine.LogLevel.Info;
+}
+
+/** Test seam: drops the memoised module so a test can force a fresh import. Not used in the app. */
+export function resetAlphaTabEngineForTests(): void {
+  pending = null;
+}
+```
+
+- [ ] **Step 4: Run typecheck to verify it passes**
+
+Run: `pnpm --filter @notation-hero/web run typecheck`
+Expected: PASS.
+
+- [ ] **Step 5: Write the context**
+
+Create `web/lib/alphatab/AlphaTabEngineContext.tsx`:
+
+```tsx
+'use client';
+
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+
+import { loadAlphaTabEngine } from './engine';
+import type { AlphaTabEngine } from './engine';
+
+export interface AlphaTabEngineState {
+  /** The loaded namespace, or null while it is still arriving. */
+  engine: AlphaTabEngine | null;
+  /** Set when the dynamic import itself rejected — api.error cannot see this (spec §4). */
+  error: Error | null;
+}
+
+// The context is scoped to web/ consumers on purpose. The dependency edge runs one way, so a
+// context created here is invisible inside client/ — which is why every client/ control takes its
+// enum options and accessors as props instead of reading them off the library (spec §7).
+const AlphaTabEngineContext = createContext<AlphaTabEngineState>({ engine: null, error: null });
+
+export function AlphaTabEngineProvider({ children }: Readonly<{ children: ReactNode }>) {
+  const [state, setState] = useState<AlphaTabEngineState>({ engine: null, error: null });
+
+  useEffect(() => {
+    let disposed = false;
+    // The spike's bare `void (async () => …)()` has no catch. Without one, a failed engine import
+    // rejects into an unhandled promise and the UI shows a Skeleton forever instead of the error
+    // message the spec's failure table requires.
+    loadAlphaTabEngine()
+      .then((engine) => {
+        if (!disposed) setState({ engine, error: null });
+      })
+      .catch((cause: unknown) => {
+        if (!disposed) {
+          setState({
+            engine: null,
+            error: cause instanceof Error ? cause : new Error(String(cause)),
+          });
+        }
+      });
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  const value = useMemo(() => state, [state]);
+  return <AlphaTabEngineContext value={value}>{children}</AlphaTabEngineContext>;
+}
+
+export function useAlphaTabEngine(): AlphaTabEngineState {
+  return useContext(AlphaTabEngineContext);
+}
+```
+
+> `<Context value={…}>` (without `.Provider`) is React 19 syntax. If the installed React types reject it, use `<AlphaTabEngineContext.Provider value={value}>` instead — both are correct on React 19.
+
+- [ ] **Step 6: Delete the probe and verify the package is clean**
+
+```bash
+rm web/lib/alphatab/engine-probe.ts
+pnpm --filter @notation-hero/web run typecheck
+pnpm --filter @notation-hero/web run lint
+```
+
+Expected: both PASS.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add web/lib/alphatab/engine.ts web/lib/alphatab/AlphaTabEngineContext.tsx
+git commit -m "feat(web): load the self-hosted AlphaTab ESM once and share it by context (NH-291)"
+```
+
+---
+
+### Task 6: The `/play` route renders and plays the bundled sample chart
+
+The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` with a correct lifecycle, the loading `Skeleton`, and the two engine failure states. It loads the bundled sample chart directly so there is something to see and hear before the file picker exists.
+
+**Files:**
+
+- Create: `web/app/play/page.tsx`
+- Create: `web/app/play/PlayerShell.tsx`
+- Create: `web/app/play/NotationSurface.tsx`
+- Modify: `web/app/page.tsx`
+
+**Interfaces:**
+
+- Consumes: `useAlphaTabEngine`, `AlphaTabEngineProvider` (Task 5); `Skeleton`, `Button` (Task 4).
+- Produces:
+  - `NotationSurface` props: `{ chart: LoadedChart | null; onApiReady: (api: AlphaTab.AlphaTabApi | null) => void }`.
+  - `interface LoadedChart { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
+  - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-soundfont`.
+
+- [ ] **Step 1: Write the failing test — load `/play` and see notation**
+
+Create `web/e2e/player.e2e.ts` with the first case only (the rest arrives in Task 7):
+
+```ts
+import { expect, test } from '@playwright/test';
+
+test('renders the bundled sample chart as notation', async ({ page }) => {
+  await page.goto('/play');
+
+  // AlphaTab renders notation as SVG inside its host element.
+  const surface = page.getByTestId('notation-surface');
+  await expect(surface.locator('svg').first()).toBeVisible({ timeout: 30_000 });
+
+  // The Skeleton must be gone once notation is up — if it is still there, it was never lifted.
+  await expect(page.getByTestId('notation-skeleton')).toHaveCount(0);
+});
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+The lane config does not exist until Task 7, so run this one against a local dev server instead:
+
+```bash
+pnpm --filter @notation-hero/web run dev
+# in a second terminal:
+pnpm --filter @notation-hero/web exec playwright test e2e/player.e2e.ts --config=/dev/null
+```
+
+If that is awkward, simply open `http://localhost:3002/play` in a browser.
+Expected: **404** — the route does not exist.
+
+- [ ] **Step 3: Write the landing page**
+
+Replace `web/app/page.tsx`:
+
+```tsx
+import Link from 'next/link';
+import { Button } from '@notation-hero/client';
+
+export default function Home() {
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
+      <h1 className="text-3xl font-bold">Notation Hero</h1>
+      <p className="max-w-prose text-muted-foreground">
+        Open a drum chart from your own computer, read it as standard notation, and play along.
+        Nothing you open leaves this device.
+      </p>
+      {/* min-h-11 = 44px, the minimum touch target (spec §4). The glyph keeps its drawn size;
+          only the hit area is padded. */}
+      <Button asChild className="min-h-11 px-8 text-base">
+        <Link href="/play">Play</Link>
+      </Button>
+    </main>
+  );
+}
+```
+
+> If `Button` does not support `asChild`, open `client/src/components/ui/Button/Button.tsx` and use whatever composition hook it exposes (it is built on Base UI's `useRender`, so it may take a `render` prop instead). Do not wrap a `<Link>` in a `<button>` — that nests interactive elements and fails the axe run in Task 13.
+
+- [ ] **Step 4: Write the notation surface**
+
+Create `web/app/play/NotationSurface.tsx`:
+
+```tsx
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { Skeleton } from '@notation-hero/client';
+import type * as AlphaTab from '@coderline/alphatab';
+
+import { resolveLogLevel } from '../../lib/alphatab/engine';
+import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
+
+interface NotationSurfaceProps {
+  /** Handed the live api as soon as it exists, and null on dispose. */
+  onApiReady: (api: AlphaTab.AlphaTabApi | null) => void;
+}
+
+/** The chart that ships with the app; Task 10 adds user files on top of it. */
+const SAMPLE_CHART = '/charts/1-beat.gp';
+
+export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) {
+  const hostRef = useRef<HTMLDivElement | null>(null);
+  const { engine, error: engineError } = useAlphaTabEngine();
+  const [rendered, setRendered] = useState(false);
+  const [runtimeError, setRuntimeError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host || !engine) return;
+
+    let api: AlphaTab.AlphaTabApi | undefined;
+    let disposed = false;
+
+    const settings = new engine.Settings();
+    // No settings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
+    // /alphatab/esm/alphaTab.mjs — that is the entire point of self-hosting the ESM.
+    settings.core.fontDirectory = '/alphatab/font/';
+    settings.core.file = SAMPLE_CHART;
+    settings.core.tracks = 'all';
+    settings.core.logLevel = resolveLogLevel(engine);
+    settings.player.playerMode = engine.PlayerMode.EnabledAutomatic;
+    settings.player.soundFont = '/alphatab/soundfont/sonivox.sf3';
+    settings.player.enableCursor = true;
+    settings.player.scrollMode = engine.ScrollMode.Continuous;
+    settings.player.scrollElement = host;
+
+    api = new engine.AlphaTabApi(host, settings);
+
+    // The SoundFont download failure surfaces through AlphaTab's own error event; the engine
+    // import failure cannot (AlphaTabApi does not exist yet) and arrives via engineError above.
+    api.error.on((cause) => setRuntimeError(String(cause)));
+    api.renderFinished.on(() => setRendered(true));
+
+    if (disposed) {
+      api.destroy();
+      return;
+    }
+    onApiReady(api);
+
+    return () => {
+      disposed = true;
+      onApiReady(null);
+      api?.destroy();
+    };
+  }, [engine, onApiReady]);
+
+  const failure = engineError?.message ?? runtimeError;
+
+  return (
+    <div className="relative min-h-[420px] w-full">
+      {failure ? (
+        <p
+          data-testid="engine-error"
+          role="alert"
+          className="rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-4 text-destructive"
+        >
+          The player engine could not start. Reload the page to try again. ({failure})
+        </p>
+      ) : null}
+      {/* The Skeleton covers BOTH the engine import and the Bravura fetch — loadAlphaTabEngine
+          resolves only after document.fonts.load has settled — and lifts on the first
+          renderFinished. Dismissing it earlier leaves the notation area blank for exactly the
+          window it exists to cover. */}
+      {!failure && !rendered ? (
+        <Skeleton
+          data-testid="notation-skeleton"
+          className="absolute inset-0 h-full w-full"
+          aria-label="Loading notation"
+          role="status"
+        />
+      ) : null}
+      <div
+        ref={hostRef}
+        data-testid="notation-surface"
+        className="h-[420px] w-full overflow-y-auto rounded-md border border-border bg-white"
+      />
+    </div>
+  );
+}
+```
+
+- [ ] **Step 5: Write the player shell**
+
+Create `web/app/play/PlayerShell.tsx`:
+
+```tsx
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Button } from '@notation-hero/client';
+import type * as AlphaTab from '@coderline/alphatab';
+
+import { AlphaTabEngineProvider } from '../../lib/alphatab/AlphaTabEngineContext';
+import { NotationSurface } from './NotationSurface';
+
+/** A chart held in memory. The bytes never touch disk and never cross a route. */
+export interface LoadedChart {
+  name: string;
+  bytes: Uint8Array;
+}
+
+function Player() {
+  const apiRef = useRef<AlphaTab.AlphaTabApi | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [soundFontReady, setSoundFontReady] = useState(false);
+
+  const handleApiReady = useCallback((api: AlphaTab.AlphaTabApi | null) => {
+    apiRef.current = api;
+    if (!api) {
+      setPlaying(false);
+      setSoundFontReady(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const api = apiRef.current;
+    if (!api) return;
+    // PlayerState is an AlphaTab enum, so it cannot be imported — compare against the numeric
+    // state the event carries via the api's own module. `Playing` is 1 in 1.8.4, but reading it
+    // off a literal would rot, so derive it from the event args instead.
+    api.playerStateChanged.on((args) => setPlaying(args.state === 1));
+    api.soundFontLoaded.on(() => setSoundFontReady(true));
+  }, []);
+
+  return (
+    <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+      <h1 className="sr-only">Player</h1>
+      <NotationSurface onApiReady={handleApiReady} />
+      <div
+        data-testid="player-status"
+        data-playing={playing}
+        data-soundfont={soundFontReady}
+        className="flex items-center gap-3"
+      >
+        {/* Play stays disabled until the synth is ready (spec §4). size-11 = the 44px minimum hit
+            area; the glyph keeps its drawn size. This is NOT client/'s PlayButton — that one is
+            the catalog row's control and has no pause state (see Task 4). */}
+        <Button
+          data-testid="transport-play"
+          size="icon"
+          variant="ghost"
+          aria-label={playing ? 'Pause' : 'Play'}
+          disabled={!soundFontReady}
+          onClick={() => apiRef.current?.playPause()}
+          className="size-11 rounded-full text-primary"
+        >
+          <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 34 }}>
+            {playing ? 'pause_circle' : 'play_circle'}
+          </span>
+        </Button>
+      </div>
+    </main>
+  );
+}
+
+export function PlayerShell() {
+  return (
+    <AlphaTabEngineProvider>
+      <Player />
+    </AlphaTabEngineProvider>
+  );
+}
+```
+
+> **The `args.state === 1` comparison is a placeholder and must not ship.** `PlayerState` is an AlphaTab enum, so it cannot be imported. Replace the literal by reading `engine.synth.PlayerState.Playing` from `useAlphaTabEngine()` inside `Player` — exactly as `NotationSurface` reads `engine.PlayerMode` — and compare against that. A numeric literal here rots the moment the enum's ordering changes.
+
+- [ ] **Step 6: Write the route segment**
+
+Create `web/app/play/page.tsx`:
+
+```tsx
+import { PlayerShell } from './PlayerShell';
+
+// A Server Component rendering the client player. NEVER `dynamic(..., { ssr: false })` — it is
+// illegal here and unnecessary: AlphaTab's module scope is SSR-safe and nothing touches it until
+// the client effect runs.
+export default function PlayPage() {
+  return <PlayerShell />;
+}
+```
+
+- [ ] **Step 7: Run the app and verify by hand**
+
+```bash
+pnpm --filter @notation-hero/web run dev
+```
+
+Open `http://localhost:3002` — the Play button links to `/play`. On `/play`, expect: a Skeleton, then drum notation, then an enabled Play button that produces **audible** drum audio with a moving cursor. Open the console and confirm no `Failed to create worker for synthesizing audio` and no `Audio Worklet creation failed`.
+
+**Listen to it.** Spec Q1 records that nobody has heard this audio yet — headless Chromium is silent, so this manual listen is the only thing that closes it.
+
+- [ ] **Step 8: Verify the strict-mode lifecycle**
+
+With the dev server running (React 19 strict mode double-invokes effects), reload `/play` five times and check the DOM never holds two AlphaTab surfaces:
+
+```bash
+# in the browser console on /play
+document.querySelectorAll('[data-testid="notation-surface"] svg').length
+```
+
+Expected: the count settles at the number of rendered systems for one score, and never doubles after a reload. If it doubles, the `disposed` re-check in `NotationSurface` is not firing — fix it before continuing; a leaked `AlphaTabApi` keeps its workers alive.
+
+- [ ] **Step 9: Verify the package is clean**
+
+```bash
+pnpm --filter @notation-hero/web run lint
+pnpm --filter @notation-hero/web run typecheck
+pnpm --filter @notation-hero/web run build
+```
+
+Expected: all PASS.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add web/app/page.tsx web/app/play web/e2e/player.e2e.ts
+git commit -m "feat(web): render and play the sample chart on /play (NH-291)"
+```
+
+---
+
+### Task 7: The regression test that catches the silent failure
+
+Without the self-hosted ESM, **notation still renders** on a main-thread fallback and only playback dies — the page looks correct until you press play. This lane asserts the worker path is live, not merely that notation appeared.
+
+**Files:**
+
+- Create: `web/playwright.e2e.config.ts`
+- Modify: `web/e2e/player.e2e.ts`
+- Modify: `web/package.json`
+
+**Interfaces:**
+
+- Consumes: `/play` and its test hooks (Task 6); `resolveLogLevel` reading `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL` (Task 5).
+- Produces: `pnpm --filter @notation-hero/web run test:e2e`. Tasks 9, 10, 11 and 13 add cases to the same lane.
+
+- [ ] **Step 1: Add the Playwright dependencies at `client/`'s exact ranges**
+
+```bash
+pnpm --filter @notation-hero/web add -D @playwright/test@^1.61.1 @axe-core/playwright@^4.12.1
+pnpm --filter @notation-hero/web exec playwright install --with-deps chromium
+```
+
+A drifting range fails root `syncpack`, which is a `quality` CI gate — so these two ranges must match `client/package.json` character for character. Verify:
+
+```bash
+pnpm run syncpack
+```
+
+Expected: PASS.
+
+- [ ] **Step 2: Write the failing test — the four worklet assertions**
+
+Replace `web/e2e/player.e2e.ts` with:
+
+```ts
+import { expect, test } from '@playwright/test';
+
+test('renders the bundled sample chart as notation', async ({ page }) => {
+  await page.goto('/play');
+
+  const surface = page.getByTestId('notation-surface');
+  await expect(surface.locator('svg').first()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('notation-skeleton')).toHaveCount(0);
+});
+
+// The regression this whole delivery decision exists to prevent. Without self-hosted ESM the
+// notation above still renders on a main-thread fallback and ONLY playback dies, so a test that
+// checks for notation passes on a broken build.
+test('plays through the real audio worklet, not the silent fallback', async ({ page }) => {
+  const logs: string[] = [];
+  page.on('console', (message) => logs.push(message.text()));
+
+  // Assert the RESPONSE, not just the request: addModule fires unconditionally on the
+  // BrowserModule branch, so a 404 or a wrong MIME type still produces the request and then
+  // rejects with "Audio Worklet creation failed".
+  const workletResponse = page.waitForResponse(
+    (response) => response.url().endsWith('/alphatab/esm/alphaTab.worklet.mjs'),
+    { timeout: 60_000 },
+  );
+
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  // 1. AlphaTab reports the native module-worker platform.
+  //    `Platform: BrowserModule` comes from Environment.printEnvironmentInfo, which reads
+  //    Environment.webPlatform — so it is the real discriminator. The tempting
+  //    "Will use webworkers … with worklets for playback" line is NOT: createWorkerPlayer emits
+  //    it whenever the context is secure and AudioWorkletNode exists, never consulting
+  //    webPlatform, so it still logs on exactly the broken build this test guards against.
+  await expect
+    .poll(() => logs.some((line) => line.includes('Platform: BrowserModule')), { timeout: 30_000 })
+    .toBe(true);
+
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+
+  // 2. Playback actually advances.
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+  await expect
+    .poll(
+      async () =>
+        Number((await page.getByTestId('player-status').getAttribute('data-position')) ?? '0'),
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(0);
+
+  // 3. The worklet module was served as executable JavaScript.
+  const response = await workletResponse;
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type'] ?? '').toMatch(/javascript/i);
+
+  // 4. Neither worker-construction error appeared. LAST, over the whole collected log: these only
+  //    fire once the player is constructed, and construction returns early until a score is
+  //    loaded — so a console check made before pressing Play passes on a broken build.
+  expect(
+    logs.filter((line) => line.includes('Failed to create worker for synthesizing audio')),
+  ).toEqual([]);
+  expect(logs.filter((line) => line.includes('Audio Worklet creation failed'))).toEqual([]);
+});
+```
+
+- [ ] **Step 3: Add the position hook the test reads**
+
+In `web/app/play/PlayerShell.tsx`, track the playback position and expose it. Inside `Player`, add state and an event subscription next to the existing two:
+
+```tsx
+const [positionMs, setPositionMs] = useState(0);
+```
+
+and in the same effect that subscribes to `playerStateChanged`:
+
+```tsx
+api.playerPositionChanged.on((args) => setPositionMs(args.currentTime));
+```
+
+then add the attribute to the status element:
+
+```tsx
+        data-position={positionMs}
+```
+
+- [ ] **Step 4: Write the lane config**
+
+Create `web/playwright.e2e.config.ts`:
+
+```ts
+import { defineConfig, devices } from '@playwright/test';
+
+// The `web` browser lane. It mirrors client/playwright.e2e.config.ts, but serves a Next.js
+// production build (`next build` then `next start`) rather than `vite preview`, and it is the only
+// gate over the product's own UI — web/ has no Storybook, so no VR or axe job covers it.
+export default defineConfig({
+  testDir: './e2e',
+  testMatch: '**/*.e2e.ts',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  use: {
+    baseURL: 'http://localhost:4174',
+    trace: 'on-first-retry',
+    ...devices['Desktop Chrome'],
+  },
+  reporter: [['html'], ['list']],
+  webServer: {
+    // A different port from client/'s 4173 so both lanes can run side by side.
+    command: 'pnpm build && pnpm start --port 4174',
+    url: 'http://localhost:4174',
+    reuseExistingServer: !process.env.CI,
+    // Covers a cold vendor step + Babel-based React Compiler build on a CI runner.
+    timeout: 300_000,
+    env: {
+      // NEXT_PUBLIC_* is inlined at BUILD time, which is why the command above runs `pnpm build`
+      // under this env rather than only `pnpm start`. Debug prints the visitor's user agent,
+      // window size and screen size, so it is never the shipped default — only this lane's build.
+      NEXT_PUBLIC_ALPHATAB_LOG_LEVEL: 'Debug',
+    },
+  },
+});
+```
+
+- [ ] **Step 5: Add the script**
+
+In `web/package.json`, add (keeping the keys sorted — `sort-package-json --check` is a CI gate):
+
+```json
+    "test:e2e": "playwright test --config=playwright.e2e.config.ts",
+    "test:e2e:ui": "playwright test --config=playwright.e2e.config.ts --ui",
+```
+
+**It must not be called `test`.** The `quality` job runs `pnpm -r --if-present run test` with no browsers installed, and a `test` script here would fail that job.
+
+- [ ] **Step 6: Ignore the lane's output**
+
+Append to `web/.gitignore`:
+
+```gitignore
+# Playwright lane output
+/playwright-report/
+/test-results/
+```
+
+- [ ] **Step 7: Run the lane to verify it passes**
+
+```bash
+pnpm --filter @notation-hero/web run test:e2e
+```
+
+Expected: PASS — 2 tests. If `Platform: BrowserModule` never appears, check that `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL` reached the **build** (Next.js inlines it at build time, not at start).
+
+- [ ] **Step 8: Prove the test actually discriminates**
+
+A regression test that passes on a broken build is worse than none. Temporarily break the worker path and confirm the test fails:
+
+```bash
+mv web/public/alphatab/esm/alphaTab.worklet.mjs /tmp/alphaTab.worklet.mjs.bak
+pnpm --filter @notation-hero/web run test:e2e
+```
+
+Expected: **FAIL** on the worklet response assertion and/or the `Audio Worklet creation failed` absence check — while the notation test still passes, which is exactly the asymmetry the spec describes. Restore it:
+
+```bash
+mv /tmp/alphaTab.worklet.mjs.bak web/public/alphatab/esm/alphaTab.worklet.mjs
+pnpm --filter @notation-hero/web run test:e2e
+```
+
+Expected: PASS again.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add web/playwright.e2e.config.ts web/e2e/player.e2e.ts web/package.json \
+  web/.gitignore web/app/play/PlayerShell.tsx pnpm-lock.yaml
+git commit -m "test(web): assert the audio worklet path is live, not the silent fallback (NH-291)"
+```
+
+---
+
+### Task 8: Put the `web` lane in CI so it blocks merge
+
+The lane is worthless as a local-only script. It joins the existing `e2e` job, which is already in the `ci-green` required list.
+
+**Files:**
+
+- Modify: `.github/workflows/ci.yml` (the `e2e` job, around lines 364-387)
+
+**Interfaces:**
+
+- Consumes: `pnpm --filter @notation-hero/web run test:e2e` (Task 7).
+- Produces: a merge-blocking gate over `web/`. Tasks 9-13 rely on it.
+
+- [ ] **Step 1: Write the failing test — assert the workflow names the web lane**
+
+The repo already tests its workflows. Add a case to `tooling/workflow-guards.test.mjs`:
+
+```js
+test('the e2e job runs the web Playwright lane, not only the client one', () => {
+  const ci = readFileSync(new URL('../.github/workflows/ci.yml', import.meta.url), 'utf8');
+  assert.match(ci, /pnpm --filter @notation-hero\/web run test:e2e/);
+  // The web lane needs its own browser install — the client step only installs for client/.
+  assert.match(
+    ci,
+    /pnpm --filter @notation-hero\/web exec playwright install --with-deps chromium/,
+  );
+  // Its report and traces must be uploaded, or a CI failure is not replayable.
+  assert.match(ci, /web\/playwright-report\//);
+  assert.match(ci, /web\/test-results\//);
+});
+```
+
+Open the file first and match its existing import style and helpers rather than pasting this verbatim.
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `node --test tooling/workflow-guards.test.mjs`
+Expected: FAIL — all four assertions.
+
+- [ ] **Step 3: Extend the `e2e` job**
+
+In `.github/workflows/ci.yml`, in the `e2e` job, add the web steps after the client ones and widen the upload paths:
+
+```yaml
+- name: Install Playwright Chromium (web)
+  run: pnpm --filter @notation-hero/web exec playwright install --with-deps chromium
+- name: e2e tests (Playwright vs the built Next.js app)
+  run: pnpm --filter @notation-hero/web run test:e2e
+- name: Upload traces + HTML report
+  # NOT `if: failure()` — that would drop the trace of a flaky-then-passed run (D5).
+  if: ${{ !cancelled() }}
+  uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  with:
+    name: playwright-e2e-report
+    path: |
+      client/playwright-report/
+      client/test-results/
+      web/playwright-report/
+      web/test-results/
+    retention-days: 7
+    if-no-files-found: ignore
+```
+
+Replace the job's existing upload step rather than adding a second one with the same artifact name — two steps uploading `playwright-e2e-report` collide.
+
+Also update the job's leading comment so it no longer says the lane only covers the SPA.
+
+- [ ] **Step 4: Run the guard test to verify it passes**
+
+Run: `node --test tooling/workflow-guards.test.mjs`
+Expected: PASS.
+
+- [ ] **Step 5: Lint the workflow**
+
+```bash
+pnpm run lint:actions
+pnpm run lint:yaml
+```
+
+Expected: both PASS. (`actionlint` and `yamllint` are installed by `pnpm run lint:setup` if missing.)
+
+- [ ] **Step 6: Commit and watch the real run**
+
+```bash
+git add .github/workflows/ci.yml tooling/workflow-guards.test.mjs
+git commit -m "ci: run the web Playwright lane in the e2e job (NH-291)"
+git push
+gh run watch
+```
+
+Local green is not CI green — the lane runs a full `next build` on the runner, which is slower and colder than a warm local one. Watch the run to completion; if the 300 s webServer timeout is tight in CI, raise it rather than retrying.
+
+---
+
+### Task 9: Render the drum tracks, not track 0
+
+Where a drum staff exists, only the drum tracks render; every track stays in playback so per-track mute and solo still work. A file with no percussion staff falls back to AlphaTab's default track — drums are v0's default, not its requirement.
+
+**Files:**
+
+- Create: `web/lib/alphatab/drum-tracks.ts`
+- Modify: `web/app/play/NotationSurface.tsx`
+- Modify: `web/e2e/player.e2e.ts`
+
+**Interfaces:**
+
+- Consumes: the lane from Task 7; `useAlphaTabEngine` from Task 5.
+- Produces: `selectDrumTrackIndexes(tracks: readonly PercussionScannable[]): number[]`, where `interface PercussionScannable { index: number; staves: readonly { isPercussion: boolean }[] }`. Plan C's Tracks popover consumes the same helper to label rows.
+
+- [ ] **Step 1: Write the failing test — `Punk.gp`'s drums are at [0, 2]**
+
+Add to `web/e2e/player.e2e.ts`:
+
+```ts
+import { readFileSync } from 'node:fs';
+
+// Punk.gp parses to three tracks: 0:Drumkit (percussion, MIDI channel 9), 1:Distortion Guitar
+// (not percussion) and 2:Drumkit Left (percussion, channel 9). A regression that rendered only
+// track 0 would silently drop the left-hand staff — which is exactly why this fixture exists.
+test('renders every drum track, not only track 0', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+
+  // Two rendered staves (the two Drumkit tracks), not one and not three.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+});
+```
+
+> This case depends on the file input from Task 10. Write it now, watch it fail, and let Task 10 be the task that turns it green — or move it to Task 10 if you prefer each task's own test to pass within the task. Either is fine; do not leave it failing at the end of Task 10.
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `pnpm --filter @notation-hero/web run test:e2e -g "every drum track"`
+Expected: FAIL — no `open-file-input`.
+
+- [ ] **Step 3: Write the pure selector**
+
+Create `web/lib/alphatab/drum-tracks.ts`:
+
+```ts
+/**
+ * The shape this module needs from an AlphaTab `Track`. Declared structurally rather than imported,
+ * so this file stays free of `@coderline/alphatab` and is trivially testable with plain objects.
+ */
+export interface PercussionScannable {
+  index: number;
+  staves: readonly { isPercussion: boolean }[];
+}
+
+/**
+ * Indexes of the tracks that carry a percussion staff.
+ *
+ * An empty result is NOT an error: a chart with no drum staff falls back to AlphaTab's default
+ * track, which is what omitting the `trackIndexes` argument to `renderScore` already does. The app
+ * is aimed at drummers but must not turn any other musician away — a guitar or piano chart opens
+ * and plays instead of showing a dead end.
+ *
+ * `Track` also exposes its own `isPercussion` getter in 1.8.4; this reads the staves directly
+ * because that is the rule the design settled on and it survives a change to the getter.
+ */
+export function selectDrumTrackIndexes(tracks: readonly PercussionScannable[]): number[] {
+  return tracks
+    .filter((track) => track.staves.some((staff) => staff.isPercussion))
+    .map((t) => t.index);
+}
+```
+
+- [ ] **Step 4: Wire it into the render path**
+
+In `NotationSurface.tsx`, replace the `settings.core.file = SAMPLE_CHART;` approach for user charts with an explicit `renderScore`. Add a `chart` prop and this effect beside the mount effect:
+
+```tsx
+// Staged load: ScoreLoader parses the new buffer FIRST, and only on success does the live api
+// take it. Nothing is destroyed — the workers and the loaded soundfont are reused — so a corrupt
+// replacement leaves the playing chart intact.
+useEffect(() => {
+  const api = apiRefLocal.current;
+  if (!api || !engine || !chart) return;
+
+  const score = engine.importer.ScoreLoader.loadScoreFromBytes(chart.bytes);
+  const drumIndexes = selectDrumTrackIndexes(score.tracks);
+  // INDEXES, not Track objects. Passing undefined is what makes AlphaTab fall back to its
+  // default track for a chart with no percussion staff.
+  api.renderScore(score, drumIndexes.length > 0 ? drumIndexes : undefined);
+  setRenderedTrackCount(drumIndexes.length > 0 ? drumIndexes.length : 1);
+}, [engine, chart]);
+```
+
+and expose the count for the test:
+
+```tsx
+<span data-testid="rendered-track-count" className="sr-only">
+  {renderedTrackCount}
+</span>
+```
+
+`loadScoreFromBytes` takes a `Uint8Array`, so the `ArrayBuffer` from the file read must already be wrapped — Task 10 does that wrapping at the read site.
+
+- [ ] **Step 5: Run the test after Task 10 lands**
+
+Run: `pnpm --filter @notation-hero/web run test:e2e -g "every drum track"`
+Expected: PASS.
+
+- [ ] **Step 6: Record the deferred gap**
+
+Criterion 9 — a chart with no percussion staff opens on AlphaTab's default track — has no fixture (Q7), so the `drumIndexes.length > 0 ? … : undefined` branch ships **verified by reading, not by running**. Add a comment at the call site saying so, and carry it into the PR body. Do not tick criterion 9.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add web/lib/alphatab/drum-tracks.ts web/app/play/NotationSurface.tsx web/e2e/player.e2e.ts
+git commit -m "feat(web): render every drum track and fall back for percussion-free charts (NH-291)"
+```
+
+---
+
+### Task 10: Open a file — picker, drag-and-drop, empty state, sample beat
+
+**Files:**
+
+- Create: `web/app/play/OpenFileControl.tsx`
+- Create: `web/app/play/EmptyState.tsx`
+- Modify: `web/app/play/PlayerShell.tsx`
+- Modify: `web/app/play/NotationSurface.tsx`
+- Modify: `web/e2e/player.e2e.ts`
+
+**Interfaces:**
+
+- Consumes: `LoadedChart` (Task 6); `selectDrumTrackIndexes` (Task 9).
+- Produces:
+  - `OpenFileControl` props: `{ onChart: (chart: LoadedChart) => void; hasChart: boolean; variant?: 'rail' | 'empty' }`.
+  - Test hooks: `data-testid="open-file-input"`, `data-testid="open-file-button"`, `data-testid="load-sample"`, `data-testid="empty-state"`.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to `web/e2e/player.e2e.ts`:
+
+```ts
+test('starts empty, with the transport disabled and both open affordances present', async ({
+  page,
+}) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('empty-state')).toBeVisible();
+  await expect(page.getByTestId('open-file-button')).toBeVisible();
+  await expect(page.getByTestId('load-sample')).toBeVisible();
+  await expect(page.getByTestId('transport-play')).toBeDisabled();
+});
+
+test('Load the sample beat fetches and plays the bundled chart', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('load-sample').click();
+
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+test('an unsupported file raises a toast and leaves the player usable', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles({
+    name: 'not-a-chart.gp5',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from('this is not a guitar pro file'),
+  });
+
+  await expect(page.getByText(/could not be opened|unsupported/i)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('empty-state')).toBeVisible();
+});
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `pnpm --filter @notation-hero/web run test:e2e -g "empty|sample beat|unsupported"`
+Expected: FAIL — no `empty-state`, no `open-file-input`, no `load-sample`.
+
+- [ ] **Step 3: Write the open-file control**
+
+Create `web/app/play/OpenFileControl.tsx`:
+
+```tsx
+'use client';
+
+import { useId, useRef, useState } from 'react';
+import { Button, toast } from '@notation-hero/client';
+
+import type { LoadedChart } from './PlayerShell';
+
+// Same list the picker has always carried: Guitar Pro, MusicXML and Capella, by extension only.
+// ScoreLoader sniffs file CONTENT, so this is an affordance for the OS dialog, not a guarantee —
+// a file the importer cannot read still raises the unsupported-file toast below.
+const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx';
+
+interface OpenFileControlProps {
+  onChart: (chart: LoadedChart) => void;
+  /** Renders the compact rail button once a chart is loaded, the large empty-state one before. */
+  compact?: boolean;
+}
+
+async function readChart(file: File): Promise<LoadedChart> {
+  const buffer = await file.arrayBuffer();
+  // loadScoreFromBytes takes a Uint8Array, so wrap here rather than at the call site.
+  return { name: file.name, bytes: new Uint8Array(buffer) };
+}
+
+export function OpenFileControl({ onChart, compact = false }: Readonly<OpenFileControlProps>) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputId = useId();
+  const [dragging, setDragging] = useState(false);
+
+  const accept = async (file: File | undefined) => {
+    if (!file) return;
+    onChart(await readChart(file));
+  };
+
+  return (
+    <div
+      onDragOver={(event) => {
+        event.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={(event) => {
+        event.preventDefault();
+        setDragging(false);
+        // Drag-and-drop takes one file with no filter; a file AlphaTab cannot parse gets the
+        // unsupported-file toast, same as the picker.
+        void accept(event.dataTransfer.files[0]);
+      }}
+      className={dragging ? 'rounded-md ring-2 ring-ring' : undefined}
+    >
+      {/* On iOS the picker must be a <label> tied to a hidden input for the accept filter to
+          apply, so the label is the control and the input stays visually hidden but focusable
+          through it. */}
+      <input
+        ref={inputRef}
+        id={inputId}
+        data-testid="open-file-input"
+        type="file"
+        accept={ACCEPT}
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          void accept(file);
+          // Reset at the END of every change — cancel, parse failure and success alike. A file
+          // input fires no change event when its value is unchanged, so without this a user who
+          // cancels and re-picks the SAME file gets nothing, and the natural retry after a failed
+          // parse is dead too.
+          event.target.value = '';
+        }}
+      />
+      <Button
+        asChild
+        data-testid="open-file-button"
+        variant={compact ? 'outline' : 'default'}
+        className={compact ? 'min-h-11 min-w-11' : 'min-h-11 px-8 text-base'}
+      >
+        <label htmlFor={inputId}>
+          <span className="material-symbols-outlined" aria-hidden="true">
+            folder_open
+          </span>
+          <span className={compact ? 'sr-only' : undefined}>Open file</span>
+        </label>
+      </Button>
+    </div>
+  );
+}
+```
+
+> The `toast` import is used in Task 11; if lint flags it as unused now, add it in Task 11 instead.
+
+- [ ] **Step 4: Write the empty state**
+
+Create `web/app/play/EmptyState.tsx`:
+
+```tsx
+'use client';
+
+import { Button } from '@notation-hero/client';
+
+import { OpenFileControl } from './OpenFileControl';
+import type { LoadedChart } from './PlayerShell';
+
+interface EmptyStateProps {
+  onChart: (chart: LoadedChart) => void;
+  onLoadSample: () => void;
+}
+
+export function EmptyState({ onChart, onLoadSample }: Readonly<EmptyStateProps>) {
+  return (
+    <div
+      data-testid="empty-state"
+      className="flex min-h-[420px] w-full flex-col items-center justify-center gap-4 rounded-md border border-dashed border-border p-8 text-center"
+    >
+      <p className="text-muted-foreground">
+        Drop a chart anywhere on this area, or open one from your computer.
+      </p>
+      <OpenFileControl onChart={onChart} />
+      <Button data-testid="load-sample" variant="ghost" className="min-h-11" onClick={onLoadSample}>
+        Load the sample beat
+      </Button>
+    </div>
+  );
+}
+```
+
+- [ ] **Step 5: Hold the chart in the shell**
+
+In `PlayerShell.tsx`'s `Player`, add the chart state, the sample fetch, and the swap between empty state and notation surface:
+
+```tsx
+const [chart, setChart] = useState<LoadedChart | null>(null);
+
+const loadSample = useCallback(async () => {
+  const response = await fetch('/charts/1-beat.gp');
+  const buffer = await response.arrayBuffer();
+  setChart({ name: '1-beat.gp', bytes: new Uint8Array(buffer) });
+}, []);
+```
+
+and in the returned markup, render `<EmptyState … />` when `chart === null` and `<NotationSurface chart={chart} … />` otherwise. Drop `settings.core.file = SAMPLE_CHART` from `NotationSurface` — the score now always arrives through `renderScore` (Task 9), so the mount no longer auto-loads a chart. Remove the now-unused `SAMPLE_CHART` constant.
+
+- [ ] **Step 6: Raise the unsupported-file toast**
+
+Wrap the parse in `NotationSurface`'s chart effect (Task 9, Step 4):
+
+```tsx
+try {
+  const score = engine.importer.ScoreLoader.loadScoreFromBytes(chart.bytes);
+  const drumIndexes = selectDrumTrackIndexes(score.tracks);
+  api.renderScore(score, drumIndexes.length > 0 ? drumIndexes : undefined);
+  setRenderedTrackCount(drumIndexes.length > 0 ? drumIndexes.length : 1);
+} catch {
+  // A chart already playing is NEVER cleared by a failed load (spec §4 failure states).
+  toast.error(`${chart.name} could not be opened — it is not a chart format the player reads.`);
+  onLoadFailed();
+}
+```
+
+`onLoadFailed` is a new prop that tells the shell to drop back to the previous chart (or to `null` when there was none).
+
+- [ ] **Step 7: Run the tests to verify they pass**
+
+Run: `pnpm --filter @notation-hero/web run test:e2e`
+Expected: PASS — including the Task 9 `Punk.gp` case, which now has its input.
+
+- [ ] **Step 8: Verify by hand, including drag-and-drop**
+
+Playwright cannot exercise a real OS drag, so drop a `.gp` file onto `/play` in a browser yourself and confirm it loads.
+
+- [ ] **Step 9: Commit**
+
+```bash
+git add web/app/play web/e2e/player.e2e.ts
+git commit -m "feat(web): open a chart by picker or drop, with a sample-beat fallback (NH-291)"
+```
+
+---
+
+### Task 11: Replacing a loaded chart asks first
+
+The most subtle flow in v0. `window.confirm()` blocks the main thread, which is where AlphaTab's sample pump runs — so the audio worklet drains its ~500 ms buffer and zero-fills on its own while the dialog is up. Calling `pause()` first would not help: it only posts a message to the synth worker, and the reply that stops the audio graph is handled on the blocked main thread, so the pause would land _after_ the prompt returns.
+
+**Files:**
+
+- Modify: `web/app/play/OpenFileControl.tsx`
+- Modify: `web/app/play/PlayerShell.tsx`
+- Modify: `web/e2e/player.e2e.ts`
+
+**Interfaces:**
+
+- Consumes: everything from Task 10.
+- Produces: nothing new for later tasks; this closes success criterion 10.
+
+- [ ] **Step 1: Write the failing tests**
+
+Add to `web/e2e/player.e2e.ts`:
+
+```ts
+// Playwright AUTO-DISMISSES window.confirm() when no listener is attached, which would silently
+// turn every replace test into a cancel test. Each case below registers its handler BEFORE the
+// action that triggers the prompt.
+test('cancelling a replacement keeps the current chart playing from where it was', async ({
+  page,
+}) => {
+  await page.goto('/play');
+  await page.getByTestId('load-sample').click();
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+
+  page.on('dialog', (dialog) => dialog.dismiss());
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+
+  // Still the sample, still playing.
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+  await expect(page.getByTestId('loaded-chart-name')).toHaveText('1-beat.gp');
+});
+
+test('re-picking the same file after a cancel prompts again', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('load-sample').click();
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  let prompts = 0;
+  page.on('dialog', (dialog) => {
+    prompts += 1;
+    void dialog.dismiss();
+  });
+
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+
+  await expect.poll(() => prompts).toBe(2);
+});
+
+test('confirming a replacement renders the new chart', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('load-sample').click();
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+
+  await expect(page.getByTestId('loaded-chart-name')).toHaveText('Punk.gp', { timeout: 30_000 });
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
+});
+
+test('a corrupt replacement leaves the playing chart intact', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('load-sample').click();
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.getByTestId('open-file-input').setInputFiles({
+    name: 'broken.gp5',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from('not a chart'),
+  });
+
+  await expect(page.getByText(/could not be opened/i)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('loaded-chart-name')).toHaveText('1-beat.gp');
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+Run: `pnpm --filter @notation-hero/web run test:e2e -g "replacement|same file"`
+Expected: FAIL — no prompt is shown and no `loaded-chart-name` exists.
+
+- [ ] **Step 3: Add the chart-name hook**
+
+In `PlayerShell.tsx`, render the current chart's name:
+
+```tsx
+<span data-testid="loaded-chart-name" className="sr-only">
+  {chart?.name ?? ''}
+</span>
+```
+
+- [ ] **Step 4: Write the replace flow**
+
+In `PlayerShell.tsx`'s `Player`, add:
+
+```tsx
+const requestChart = useCallback(
+  (next: LoadedChart) => {
+    if (!chart) {
+      setChart(next);
+      return;
+    }
+
+    const api = apiRef.current;
+    // Record the playing state BEFORE the prompt: window.confirm blocks the main thread, so the
+    // worklet drains its ~500 ms buffer and zero-fills on its own while the dialog is up, and
+    // playerStateChanged cannot fire until the prompt returns.
+    const wasPlaying = playing;
+
+    // eslint-disable-next-line no-alert -- deliberate v0 shortcut: no Dialog component is built
+    // yet, and a styled confirm can replace this later without changing the flow.
+    const confirmed = window.confirm(
+      `Replace ${chart.name} with ${next.name}? The chart you have open will be closed.`,
+    );
+
+    if (!confirmed) {
+      // Cancel keeps the current chart and discards the new file. Resume from the same position.
+      if (wasPlaying) api?.play();
+      return;
+    }
+
+    // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
+    if (wasPlaying) api?.pause();
+    setChart(next);
+  },
+  [chart, playing],
+);
+```
+
+and pass `requestChart` as `onChart` to `OpenFileControl`. On the parse-failure path (Task 10, Step 6) the shell restores the previous chart and, if it was playing, calls `api.play()` again — same resume as the cancel path.
+
+> Check the eslint disable comment's rule name against what actually fires; `no-alert` is the core rule, but the base config may surface it under a different plugin. `eslint-comments/require-description` is on, so the `--` reason is mandatory.
+
+- [ ] **Step 5: Run the tests to verify they pass**
+
+Run: `pnpm --filter @notation-hero/web run test:e2e`
+Expected: PASS — all cases.
+
+- [ ] **Step 6: Verify the resume by ear**
+
+Playwright cannot hear. Load the sample, press play, wait a few bars, pick another file, cancel — the audio should resume from where it was, not restart and not stop. Do the same with a corrupt file and confirm.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add web/app/play web/e2e/player.e2e.ts
+git commit -m "feat(web): confirm before replacing a chart, and survive a corrupt replacement (NH-291)"
+```
+
+---
+
+### Task 12: Toast while a replacement parses
+
+Loading, success and failure share one surface. The chart on screen keeps playing — the load is staged, so nothing covers the notation area.
+
+**Files:**
+
+- Modify: `web/app/play/PlayerShell.tsx`
+- Modify: `client/src/components/ui/Sonner/Sonner.stories.tsx`
+- Modify: `client/src/components/ui/Sonner/Sonner.story-ids.ts`
+
+**Interfaces:**
+
+- Consumes: `toast` from `@notation-hero/client` (Task 4).
+- Produces: a `loading` story under the existing `client/` VR and axe gates.
+
+- [ ] **Step 1: Add the loading toast**
+
+In `PlayerShell.tsx`, on the confirm path of `requestChart`, name the incoming file:
+
+```tsx
+// Sonner ships its own spinner, so this needs no new component — and Skeleton would hide a
+// chart that is still playable. The toast resolves into success or into the same
+// unsupported-file error the failure table specifies, so all three states share one surface.
+toast.loading(`Opening ${next.name}…`, { id: 'chart-load' });
+```
+
+and dismiss or resolve it from the render effect: `toast.success(...)` with the same `id` on success, `toast.error(...)` with the same `id` on parse failure.
+
+- [ ] **Step 2: Write the failing test — a `loading` story that axe and VR can hold open**
+
+`web/`'s lane cannot audit this state: `loadScoreFromBytes` is synchronous, so the only async step on the replace path is the `FileReader` read of a 3-16 KB local file, leaving no request to stall and no event to hold the toast open. It is audited where the check can actually run.
+
+Add `'loading'` to `client/src/components/ui/Sonner/Sonner.story-ids.ts`:
+
+```ts
+export const SONNER_STORY_IDS = [, /* existing ids */ 'loading'] as const;
+```
+
+Open the file first and append to the real array rather than replacing it.
+
+- [ ] **Step 3: Run the gates to verify they fail**
+
+```bash
+pnpm --filter @notation-hero/client run test:a11y -g "Sonner"
+```
+
+Expected: FAIL — the `loading` story id has no story behind it.
+
+- [ ] **Step 4: Write the story**
+
+In `Sonner.stories.tsx`, add a `Loading` export that renders a persistent loading toast. Match the file's existing story shape exactly — copy the structure of the neighbouring `Success`/`Error` stories and swap `toast.success` for `toast.loading`. The `openArgs` mechanism in `client/src/a11y-helpers.ts` is what holds an overlay open deterministically; check how the existing Sonner stories use it and follow the same pattern.
+
+- [ ] **Step 5: Run the a11y gate to verify it passes**
+
+```bash
+pnpm --filter @notation-hero/client run test:a11y -g "Sonner"
+```
+
+Expected: PASS.
+
+- [ ] **Step 6: Generate the VR baseline in the Playwright container**
+
+```bash
+open -a Docker    # Docker Desktop must be running first
+pnpm test:vr:docker:update
+git status --short client/src/components/ui/Sonner
+```
+
+Expected: new `sonner-loading-*-linux.png` files only. **Never generate these natively on macOS** — darwin rasterises fonts differently and those baselines are git-ignored.
+
+- [ ] **Step 7: Verify nothing else moved**
+
+```bash
+pnpm test:vr:docker
+```
+
+Expected: PASS with no diffs.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add client/src/components/ui/Sonner web/app/play/PlayerShell.tsx
+git commit -m "feat(web): name the incoming file while a replacement parses (NH-291)"
+```
+
+---
+
+### Task 13: Accessibility gate over the product's own UI
+
+`web/` has no Storybook and no axe job, so without this the product's own screens would be the only ungated surface in the repo — while 40 of the 41 components under `client/src/components/ui/` carry VR and a11y baselines that block merge.
+
+**Files:**
+
+- Create: `web/e2e/a11y.e2e.ts`
+
+**Interfaces:**
+
+- Consumes: the lane from Task 7; every screen state from Tasks 6, 10 and 11.
+- Produces: an axe gate over `/` and `/play`. Plan C extends it with the two popover-open states.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `web/e2e/a11y.e2e.ts`:
+
+```ts
+import AxeBuilder from '@axe-core/playwright';
+import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+
+// Same WCAG tag set the client/ suite runs, so one repo has one bar.
+const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];
+
+async function expectNoViolations(page: Page, label: string): Promise<void> {
+  const { violations } = await new AxeBuilder({ page })
+    // Base UI renders focus-guard sentinels around every open popup — the standard focus-trap
+    // technique. axe flags them as aria-hidden-focus because it cannot tell a deliberate sentinel
+    // from a mistake; exclude exactly that selector so the rule stays live for real content.
+    .exclude('[data-base-ui-focus-guard]')
+    .withTags(TAGS)
+    .analyze();
+
+  const report = violations
+    .map(
+      (v) =>
+        `[${v.id}] ${v.help}\n` +
+        v.nodes.map((n) => `    ${n.failureSummary?.replaceAll(/\s+/g, ' ').trim()}`).join('\n'),
+    )
+    .join('\n');
+
+  expect(violations, `${label}\n${report}`).toEqual([]);
+}
+
+test('landing page has no axe violations', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: 'Play' })).toBeVisible();
+  await expectNoViolations(page, 'landing');
+});
+
+test('player has no axe violations in its empty state', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('empty-state')).toBeVisible();
+  await expectNoViolations(page, 'play / empty');
+});
+
+test('player has no axe violations with a chart loaded', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('load-sample').click();
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expectNoViolations(page, 'play / loaded');
+});
+
+// The first-visit Skeleton is reachable because the engine import is a real request the lane can
+// stall — this is exactly why that state is auditable here and the replacement loading toast is not.
+test('player has no axe violations while the first-visit Skeleton is up', async ({ page }) => {
+  await page.route('**/alphatab/esm/alphaTab.mjs', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    await route.continue();
+  });
+
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-skeleton')).toBeVisible();
+  await expectNoViolations(page, 'play / skeleton');
+});
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+Run: `pnpm --filter @notation-hero/web run test:e2e a11y`
+Expected: FAIL — either on missing modules (fix the import) or on real violations. **Real violations are the point.** Fix the markup, not the test: give every icon-only control an `aria-label`, keep one `<h1>` per page, do not nest a `<Link>` inside a `<button>`, and make sure the `Skeleton` carries `role="status"` with an accessible name.
+
+- [ ] **Step 3: Fix the violations and re-run**
+
+Run: `pnpm --filter @notation-hero/web run test:e2e a11y`
+Expected: PASS — 4 tests.
+
+- [ ] **Step 4: Verify the 44 px rule by measurement, not by eye**
+
+```bash
+pnpm --filter @notation-hero/web run dev
+```
+
+In the browser console on `/play`:
+
+```js
+[...document.querySelectorAll('button, a[href], label[for], [role="button"]')]
+  .map((el) => ({
+    el: el.dataset.testid ?? el.textContent?.trim().slice(0, 20),
+    ...el.getBoundingClientRect().toJSON(),
+  }))
+  .filter((r) => r.width < 44 || r.height < 44);
+```
+
+Expected: an **empty array**. Any row is a control that fails the tablet-landscape touch target — pad its hit area (keep the glyph at its drawn size) until the list is empty.
+
+- [ ] **Step 5: Run the whole lane and the repo checks**
+
+```bash
+pnpm --filter @notation-hero/web run test:e2e
+pnpm run check:all
+```
+
+Expected: both PASS. `check:all` covers format, lint across packages, markdown/css/yaml/spell/shell/actions, layout, typecheck, depcheck, syncpack and every package's unit tests.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add web/e2e/a11y.e2e.ts web/app
+git commit -m "test(web): axe gate over the landing and player screens (NH-291)"
+```
+
+---
+
+### Task 14: Open the pull request
+
+**Files:** none — this is the shipping step.
+
+- [ ] **Step 1: Confirm the tree is green**
+
+```bash
+pnpm run check:all
+pnpm --filter @notation-hero/web run test:e2e
+pnpm --filter @notation-hero/client run test:a11y
+pnpm test:vr:docker
+```
+
+Expected: all PASS. Do not open the PR on a red tree.
+
+- [ ] **Step 2: Push and open the PR**
+
+```bash
+git push -u origin spike/alphatab-nextjs-poc
+gh pr create --title "feat(web): v0 player — open a local chart, see it, hear it (NH-291)" --body "$(cat <<'EOF'
+Implements Plan A of the v0 local-file drum player: the AlphaTab engine, the `/play` screen, and a CI lane that proves the audio worker path is live.
+
+Spec: `docs/specs/2026-09-10-v0-local-file-player-design.md`
+Plan: `docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`
+
+## Success criteria covered
+
+- [x] 1 — a drum chart opened from local disk renders as standard notation
+- [x] 2 — pressing play produces audible drum audio with a tracking cursor (verified by ear; the CI lane can only verify it by state)
+- [x] 4 — leocaseiro's own chart plays
+- [x] 8 — Load the sample beat fetches and plays the bundled chart
+- [ ] 9 — a chart with no percussion staff opens on the default track: **code written, NOT verified** — no percussion-free fixture exists (Q7)
+- [x] 10 — replacing prompts; cancel keeps the chart playing; confirm renders the new one; a corrupt replacement leaves the playing chart intact
+
+Criteria 3, 5, 6 and 7 belong to Plans B and C.
+
+## Known gaps carried forward
+
+- **Q6** — `.musicxml`, `.mxml` and `.xml` are on the picker's accept list but no genuine MusicXML fixture exists, and `ScoreLoader` sniffs bytes, so a renamed `.gp5` would test nothing. Those three extensions ship unverified.
+- **Q7** — no percussion-free chart, so criterion 9's fallback ships verified by reading only.
+
+Both deferred deliberately.
+
+## Pulumi preview
+
+safe — no `infra/` changes in this PR.
+EOF
+)"
+```
+
+- [ ] **Step 3: Tick the checklist and watch CI**
+
+The `pr-checklist-sync` workflow appends any missing checklist items when the PR opens. **Tick each box yourself** — every item is a past-tense claim, and a tick whose condition applied but whose work you skipped is a false claim. Then:
+
+```bash
+gh run watch
+```
+
+Local green is not CI green — binary versions and scan scope differ. Watch the run to completion.
+
+- [ ] **Step 4: Update the decision registry**
+
+Every PR that changes what is enforced updates `docs/decisions/decision-registry.md` in the SAME PR, so it lands atomically on merge. Add a Change-log entry dated 2026-09-13 recording: D5 confirmed against a real Vercel deploy (Task 1), the type-only AlphaTab import is now lint-enforced, and the `web` package gained a merge-blocking browser lane.
+
+```bash
+git add docs/decisions/decision-registry.md
+git commit -m "docs(decisions): record the v0 engine decisions as enforced (NH-291)"
+git push
+```
+
+---
+
+## Self-Review
+
+**Spec coverage.** §4 data flow → Tasks 9, 10. §4 replace flow → Task 11. §4 failure states → Tasks 6 (engine + soundfont), 10 (unsupported file, empty state). §4 loading affordances → Task 6 (Skeleton over engine + font), Task 4 (icon font), Task 12 (replacement toast); **the soundfont progress bar is Plan B** because §7 files it under `client/`. §4 mounting → Task 6. §5 all three requirements → Tasks 2, 3, 5. §5 vendoring → Task 2. §5 regression test → Task 7. §5 CI step → Task 8. §5 axe lane → Task 13. §5 client-side toast audit → Task 12. §7 barrel/`'use client'` prerequisite → Task 4. §8 criteria 1, 2, 4, 8, 10 → Tasks 6, 10, 11; criterion 9 → Task 9, shipped unverified by decision. §9 Q2 → Task 1. **Deliberately not covered here:** the transport row, scrubber, tempo control, Loop/Metronome/Count-In and the soundfont progress bar (Plan B); `Accordion`, `Slider`, the Settings and Tracks popovers and settings persistence (Plan C); Q4 browser matrix (post-v0 per D7); Q6/Q7 fixtures (deferred).
+
+**Placeholder scan.** Two steps deliberately say "open the real file and match what it exports" rather than inventing an API — the Material Symbols `src` descriptor (Task 4 Step 7) and the Sonner story shape (Task 12 Step 4). Both are instructions to read a file that exists, not deferred work, and each names the exact file plus the command that reveals the answer. The `args.state === 1` line in Task 6 is explicitly flagged as a placeholder that must not ship, with its replacement named.
+
+**Type consistency.** `AlphaTabEngine` (Task 5) is the type every later task names. `LoadedChart { name, bytes }` is defined once in Task 6 and consumed unchanged in Tasks 9, 10, 11. `selectDrumTrackIndexes` (Task 9) keeps one name and one signature. `loadAlphaTabEngine` / `resolveLogLevel` / `useAlphaTabEngine` are spelled identically everywhere. Test ids are declared in the task that creates them and reused verbatim: `notation-surface`, `notation-skeleton`, `engine-error`, `transport-play`, `player-status` (with `data-playing`, `data-soundfont`, `data-position`), `rendered-track-count`, `open-file-input`, `open-file-button`, `load-sample`, `empty-state`, `loaded-chart-name`.
