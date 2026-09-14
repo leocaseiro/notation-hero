@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Open a drum chart from local disk on `/play`, see it as standard notation, press play, and hear it — with a CI lane that proves the real audio-worker path is live rather than the silent main-thread fallback.
+**Goal:** Open a drum score from local disk on `/play`, see it as standard notation, press play, and hear it — with a CI lane that proves the real audio-worker path is live rather than the silent main-thread fallback.
 
 **Architecture:** Next.js 16 App Router in `web/`, two routes (`/` landing, `/play` player). AlphaTab is never bundled: its prebuilt ESM is copied out of `node_modules` into `web/public/alphatab/` by a vendoring step and pulled in at runtime through a `turbopackIgnore` dynamic import, which restores a real `http` `import.meta.url` and therefore native module workers. A single `'use client'` component owns the `AlphaTabApi` in a `useRef` and disposes it on unmount; the loaded namespace object is shared to other `web/` components through a React context, because a value import of `@coderline/alphatab` would re-bundle the library.
 
@@ -35,14 +35,39 @@ Every task's requirements implicitly include this section. Values are copied ver
 - **Default branch is `master`.** Never pass `git commit/push --no-verify`. Commit at every green step.
 - **Tests are co-located with their source.** Never create `__tests__/`, `__mocks__/` or `stories/` directories — `tooling/check-layout.sh` fails the build on them.
 - **New vocabulary goes in `cspell.json`.** `alphatab`, `sonivox`, `Turbopack`, `Worklet`, `worklets`, `coderline`, `musicxml`, `capx` and `unminified` are already listed, and `Bravura` resolves from a bundled dictionary. Add anything new that `pnpm run lint:spell` flags — it covers `.ts`, `.tsx`, `.js`, `.mjs`, `.cjs`, `.md`, `.json`, `.yml` and `.yaml`, so a word only in a `.css` comment is never checked.
+- **A notation file is rejected above 25 MB, before it is read.** `ScoreLoader.loadScoreFromBytes`
+  is synchronous and runs on the main thread, and drag-and-drop applies no extension filter at all,
+  so an unbounded read freezes or crashes the tab with no message and no `try`/`catch` that can
+  recover. Notation-only files are 3-16 KB, but a Guitar Pro file with an embedded backing track is
+  legitimately 7-8 MB — so the bound is generous. The check runs before `file.arrayBuffer()` and
+  raises the same unsupported-file toast a parse failure raises. It does NOT bound decompressed
+  size: `.gpx` is a ZIP container AlphaTab inflates, which would need a worker-side bound (post-v0).
 - **`package.json` keys stay sorted.** `pnpm run lint:sort-pkg` (`sort-package-json --check`) is a CI gate.
 
-## Known gaps carried into this plan (accepted, not fixed here)
+## Open questions closed during planning
 
-- **Q6 — no genuine MusicXML fixture.** `.musicxml`, `.mxml` and `.xml` are on the picker's `accept` list but no real MusicXML chart exists, and `ScoreLoader` sniffs bytes, so a renamed `.gp5` tests nothing. Those three extensions ship unverified.
-- **Q7 — no percussion-free fixture.** Success criterion 9 (a chart with no drum staff opens on AlphaTab's default track) has no chart to run against. Task 9 implements and unit-proves the fallback branch through `Punk.gp`'s track shape, but the end-to-end path ships unverified.
+Both gaps the spec left open for v0 were closed on 2026-09-14 by **running** the pinned importer
+rather than by reasoning about it. Neither ships unverified.
 
-Both were deferred deliberately on 2026-09-13. Record them in the PR body; do not quietly mark criterion 9 done.
+- **Q6 — MusicXML fixture. Closed.** A hand-authored MusicXML file parses with
+  `@coderline/alphatab` 1.8.4 first try: a 336-byte `<score-partwise>` with one part, one measure
+  and one note is enough, and a percussion variant (`<clef><sign>percussion</sign>` plus
+  `<unpitched>` notes) parses and reports `isPercussion = true`. `web/e2e/fixtures/drums.musicxml`
+  is that percussion variant, and Task 10 opens it. **`ScoreLoader` never sees a filename** — it
+  loops `Environment.buildImporters()` and breaks on the first importer that does not throw — so
+  the picker's `accept` list is a UI filter only, and one fixture covers `.musicxml`, `.mxml` and
+  `.xml` alike. Note `web/e2e/fixtures/1-beat.xml` is a Guitar Pro v5.10 binary wearing an `.xml`
+  name (it opens `18 46 49 43 48 49 45 52` — the length-prefixed `FICHIER GUITAR PRO v5.10`): it is
+  GP5 coverage, not MusicXML coverage.
+- **Q7 — percussion-free fixture. Closed.** `web/e2e/fixtures/guitar-no-percussion.gp` (2,866 bytes)
+  is generated from a one-line alphaTex string via `importer.AlphaTexImporter` + `exporter.Gp7Exporter`
+  and round-trips through `ScoreLoader.loadScoreFromBytes` as one track, one staff,
+  `isPercussion = false`. Success criterion 9 is verified by running, not by reading.
+
+**Correction that applies to every task below: AlphaTab has no "default track".**
+`renderScore(score, undefined)` renders `score.tracks[0]` — the FIRST track
+(`if (!trackIndexes) { … tracks.push(score.tracks[0]); }` in `alphaTab.core.mjs`). That is fine for a
+percussion-free score, where any track is as good as another, but never describe it as a preference.
 
 ---
 
@@ -54,17 +79,22 @@ Both were deferred deliberately on 2026-09-13. Record them in the PR body; do no
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `web/scripts/vendor-alphatab.mjs`            | Copy AlphaTab's prebuilt ESM, soundfont and music font out of `node_modules` into `web/public/alphatab/`, under plain (non-`.min`) names. |
 | `tooling/vendor-alphatab.test.mjs`           | `node --test` cover for that copy step — joins the existing `pnpm run test:tooling` gate.                                                 |
-| `web/lib/alphatab/engine.ts`                 | `loadAlphaTabEngine()` — the `turbopackIgnore` dynamic import plus the Bravura font wait, memoised so two mounts share one module.        |
+| `web/lib/alphatab/engine.ts`                 | `loadAlphaTabEngine()` — the `turbopackIgnore` dynamic import, memoised so two mounts share one module. No font wait (see Task 5).        |
 | `web/lib/alphatab/AlphaTabEngineContext.tsx` | React context carrying the loaded namespace to `web/` consumers, and the `useAlphaTabEngine()` reader.                                    |
 | `web/lib/alphatab/drum-tracks.ts`            | Pure: a score's track list in, the indexes of percussion tracks out. No AlphaTab import — a structural type.                              |
 | `web/app/play/page.tsx`                      | The `/play` route segment.                                                                                                                |
-| `web/app/play/PlayerShell.tsx`               | `'use client'` root of the player: owns loaded-chart state, the engine provider, toasts.                                                  |
+| `web/app/play/PlayerShell.tsx`               | `'use client'` root of the player: owns loaded-score state, the engine provider, toasts.                                                  |
 | `web/app/play/NotationSurface.tsx`           | Owns the `AlphaTabApi` instance, its lifecycle, the loading `Skeleton` and the error states.                                              |
 | `web/app/play/OpenFileControl.tsx`           | File picker + drag-and-drop + the replace-confirmation flow.                                                                              |
 | `web/app/play/EmptyState.tsx`                | The no-file-yet surface: big Open file, secondary Load the sample beat.                                                                   |
 | `web/playwright.e2e.config.ts`               | The `web` browser lane — `next build` then `next start`, with `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL=Debug`.                                     |
 | `web/e2e/player.e2e.ts`                      | The silent-failure regression test plus the player's behaviour tests.                                                                     |
-| `web/e2e/a11y.e2e.ts`                        | axe-core over `/` and `/play` in its reachable states.                                                                                    |
+| `web/e2e/a11y.e2e.ts`                        | axe-core over `/` and `/play` in its reachable states, plus the 44 px hit-area gate.                                                      |
+| `web/lib/alphatab/drum-tracks.test.ts`       | Co-located unit cover for `selectDrumTrackIndexes` — plain objects, no browser.                                                           |
+| `web/app/error.tsx`                          | Root React error boundary (App Router `error.tsx` convention) — the app survives an unexpected render crash.                              |
+| `web/app/play/error.tsx`                     | Player-segment error boundary, so a crash in the player leaves the landing page alive.                                                    |
+| `web/e2e/fixtures/drums.musicxml`            | Hand-authored percussion MusicXML — closes Q6 and covers `.musicxml`/`.mxml`/`.xml`.                                                      |
+| `web/e2e/fixtures/guitar-no-percussion.gp`   | Generated via `AlphaTexImporter` + `Gp7Exporter` — closes Q7 and success criterion 9.                                                     |
 
 **Modified**
 
@@ -75,18 +105,26 @@ Both were deferred deliberately on 2026-09-13. Record them in the PR body; do no
 | `web/eslint.config.mjs`                          | Swap the core `no-restricted-imports` for `@typescript-eslint/no-restricted-imports` and add the `@coderline/alphatab` group with `allowTypeImports: true`. |
 | `web/app/layout.tsx`                             | Mount the single `<Toaster />`.                                                                                                                             |
 | `web/app/page.tsx`                               | Replace the design-system proof page with the landing Play button.                                                                                          |
-| `client/src/index.ts`                            | Export `Skeleton`, `Toaster`, `toast`.                                                                                                                      |
+| `client/src/index.ts`                            | Export `Skeleton`, `Toaster`, `toast`, `Card`, `CardContent`.                                                                                               |
 | `client/src/components/ui/Skeleton/Skeleton.tsx` | Add `'use client'`.                                                                                                                                         |
 | `client/src/components/ui/Sonner/Sonner.tsx`     | Add `'use client'`.                                                                                                                                         |
 | `client/src/styles.css`                          | Override the Material Symbols face to `font-display: block`.                                                                                                |
 | `.github/workflows/ci.yml`                       | Add the `web` steps to the `e2e` job and its artifact paths.                                                                                                |
+| `web/vercel.json`                                | Add `buildCommand` so the vendor step is unconditional and cannot be overridden invisibly from the dashboard.                                               |
+| `web/public/charts/` -> `web/public/notation/`   | Renamed with its three files; every `/charts/...` URL becomes `/notation/...`. "chart" is not this project's vocabulary (CONCEPTS.md).                      |
 
 **Deleted**
 
-| File                                      | Why                                                 |
-| ----------------------------------------- | --------------------------------------------------- |
-| `web/public/alphatab/**` (tracked copies) | Generated output — the vendor step now produces it. |
-| `web/public/alphatab/alphaTab.min.js`     | The classic build, only variant A needed it.        |
+| File                                      | Why                                                                                                        |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `web/public/alphatab/**` (tracked copies) | Generated output — the vendor step now produces it.                                                        |
+| `web/public/alphatab/alphaTab.min.js`     | The classic build, only variant A needed it.                                                               |
+| `web/app/spike/AlphaTabDrums.tsx`         | Variant A — carries the value import the Task 3 fence bans, and loads the `alphaTab.min.js` deleted above. |
+| `web/app/spike/SpikeHarness.tsx`          | Variant A's harness.                                                                                       |
+| `web/app/spike/page.tsx`                  | The `/spike` route — scratch quality, must not ship.                                                       |
+| `web/app/spike/esm/**`                    | The `/spike/esm` route; Task 1 is its last consumer.                                                       |
+| `web/spike-probe.mjs`                     | Scratch probe.                                                                                             |
+| `web/spike-lifecycle-probe.mjs`           | Scratch probe.                                                                                             |
 
 ---
 
@@ -113,8 +151,12 @@ gh pr list --head spike/alphatab-nextjs-poc --json number,url
 If no PR exists yet, open one — Vercel builds previews from pull requests:
 
 ```bash
-gh pr create --title "spike(web): verify Vercel MIME types for self-hosted AlphaTab ESM (NH-291)" \
+gh pr create --title "ci(web): verify Vercel MIME types for self-hosted AlphaTab ESM (NH-291)" \
   --body "Q2 gate for the v0 spec: confirm public/alphatab/esm/*.mjs are served as JavaScript."
+# `ci`, NOT `spike`: the required pr-title job (.github/workflows/ci.yml:433) pipes the PR title
+# through commitlint, and commitlint.config.cjs extends @commitlint/config-conventional with no
+# custom type-enum — `spike` is not an allowed type, so ci-green would never go green.
+# This PR is the one Task 14 retitles; do not open a second one for this branch.
 ```
 
 - [ ] **Step 2: Read the preview URL off the PR**
@@ -354,7 +396,25 @@ In `web/package.json`, replace the `build` and `dev` scripts. **Do not use a `pr
 }
 ```
 
-- [ ] **Step 7: Verify a clean build regenerates the assets**
+- [ ] **Step 7: Pin the build command in `web/vercel.json`**
+
+Vercel's Next.js preset does run the package's `build` script — its docs say it "checks for the
+`build` command in `scripts` and uses this to build the project", falling back to `next build`
+only if absent. But the documented precedence is `vercel.json buildCommand` -> dashboard Override
+-> `package.json scripts.build` -> framework default, and the dashboard Override has no
+representation in this repo. If anyone ever sets it to `next build`, every engine asset 404s on
+the deploy and no local gate notices. Pin it in the file a reviewer actually reads:
+
+```json
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "corepack enable && pnpm install --frozen-lockfile",
+  "buildCommand": "node scripts/vendor-alphatab.mjs && next build"
+}
+```
+
+- [ ] **Step 8: Verify a clean build regenerates the assets**
 
 ```bash
 pnpm --filter @notation-hero/web run build
@@ -474,19 +534,37 @@ EOF
 Run: `pnpm --filter @notation-hero/web exec eslint lint-guard-probe.ts`
 Expected: PASS — `allowTypeImports: true` lets it through.
 
-- [ ] **Step 6: Delete the probe and lint the whole package**
+- [ ] **Step 6: Delete the spike surface**
+
+Seven spike files are tracked on this branch and absent from `master`. `web/app/spike/AlphaTabDrums.tsx:9`
+is `import * as alphaTab from '@coderline/alphatab';` — a VALUE import, exactly what the fence above
+bans — so the package lint below fails until it is gone, and so does every later `check:all`
+(Tasks 6, 13, 14) and the CI `lint` job. Keeping it is not an option either: Task 2 deletes
+`web/public/alphatab/alphaTab.min.js`, which `AlphaTabDrums.tsx:87` loads at runtime via
+`settings.core.scriptFile`, so `/spike` dies silently after Task 2 regardless — and a route whose
+own header reads "scratch quality on purpose" would ship on the demo URL.
+
+Task 1 is the last consumer of `/spike/esm` (it reads `Environment.webPlatform` off that page), so
+this is the first moment the whole surface can go.
+
+```bash
+git rm -r web/app/spike
+git rm web/spike-probe.mjs web/spike-lifecycle-probe.mjs
+```
+
+- [ ] **Step 7: Delete the probe and lint the whole package**
 
 ```bash
 rm web/lint-guard-probe.ts
 pnpm --filter @notation-hero/web run lint
 ```
 
-Expected: PASS. The spike component at `web/app/spike/esm/AlphaTabDrumsEsm.tsx` already uses `import type`, so it stays clean.
+Expected: PASS — the only value import in the package was variant A's, deleted in Step 6.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add web/eslint.config.mjs
+git add web/eslint.config.mjs web/app/spike web/spike-probe.mjs web/spike-lifecycle-probe.mjs
 git commit -m "chore(web): fail lint on a value import of @coderline/alphatab (NH-291)"
 ```
 
@@ -709,30 +787,27 @@ export type AlphaTabEngine = typeof AlphaTab;
  */
 const ALPHATAB_ESM_URL = '/alphatab/esm/alphaTab.mjs';
 
-/** The music font AlphaTab renders notation with; it holds rendering until this family is ready. */
-const BRAVURA = '1em Bravura';
-
 let pending: Promise<AlphaTabEngine> | null = null;
 
 /**
- * Imports the self-hosted AlphaTab ESM and waits for Bravura, then resolves with the namespace.
+ * Imports the self-hosted AlphaTab ESM and resolves with the namespace object.
  *
- * Both halves matter for the loading affordance. The dynamic import covers the 273 KB engine; the
- * font load covers the 306 KB Bravura fetch. Neither is observable through AlphaTab — `AlphaTabApi`
- * does not exist until the import resolves, and the font checker publishes no event — so a Skeleton
- * lifted on the import alone would leave the notation area blank for exactly the window it exists
- * to cover.
+ * There is deliberately NO font wait here. AlphaTab registers its SMuFL face under the family
+ * `alphaTab` (generated as `alphaTab${fontSuffix}` in BrowserUiFacade), not `Bravura` — "Bravura"
+ * survives only as the FILE NAME in the @font-face src — and it injects that face during
+ * `AlphaTabApi` construction, long after this import resolves. So `document.fonts.load('1em Bravura')`
+ * matches zero registered faces and settles instantly: verified in Chromium, 0 faces matched in
+ * both orderings. (`document.fonts.check('1em Bravura')` is worse — it returns TRUE with no faces
+ * registered, reporting the system fallback.) The Skeleton still covers the 306 KB font fetch,
+ * because it lifts on `api.renderFinished`, which AlphaTab holds until its own FontLoadingChecker
+ * reports the `alphaTab` family available.
  *
  * Memoised: two mounts (React 19 strict mode double-invokes effects in dev) share one module
- * instance and one font wait.
+ * instance.
  */
 export function loadAlphaTabEngine(): Promise<AlphaTabEngine> {
   pending ??= (async () => {
     const engine = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as AlphaTabEngine;
-    // Same call AlphaTab's own FontLoadingChecker makes. Never rejects for a missing family —
-    // it resolves with an empty list — so a font failure degrades to AlphaTab's own handling
-    // rather than blocking the player.
-    await document.fonts.load(BRAVURA);
     return engine;
   })();
   return pending;
@@ -844,9 +919,9 @@ git commit -m "feat(web): load the self-hosted AlphaTab ESM once and share it by
 
 ---
 
-### Task 6: The `/play` route renders and plays the bundled sample chart
+### Task 6: The `/play` route renders and plays the bundled sample score
 
-The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` with a correct lifecycle, the loading `Skeleton`, and the two engine failure states. It loads the bundled sample chart directly so there is something to see and hear before the file picker exists.
+The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` with a correct lifecycle, the loading `Skeleton`, and the two engine failure states. It loads the bundled sample score directly so there is something to see and hear before the file picker exists.
 
 **Files:**
 
@@ -859,8 +934,8 @@ The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` wit
 
 - Consumes: `useAlphaTabEngine`, `AlphaTabEngineProvider` (Task 5); `Skeleton`, `Button` (Task 4).
 - Produces:
-  - `NotationSurface` props: `{ chart: LoadedChart | null; onApiReady: (api: AlphaTab.AlphaTabApi | null) => void }`.
-  - `interface LoadedChart { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
+  - `NotationSurface` props: `{ notation: LoadedNotation | null; onApiReady: (api: AlphaTab.AlphaTabApi | null) => void }`.
+  - `interface LoadedNotation { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
   - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-soundfont`.
 
 - [ ] **Step 1: Write the failing test — load `/play` and see notation**
@@ -870,7 +945,7 @@ Create `web/e2e/player.e2e.ts` with the first case only (the rest arrives in Tas
 ```ts
 import { expect, test } from '@playwright/test';
 
-test('renders the bundled sample chart as notation', async ({ page }) => {
+test('renders the bundled sample score as notation', async ({ page }) => {
   await page.goto('/play');
 
   // AlphaTab renders notation as SVG inside its host element.
@@ -908,7 +983,7 @@ export default function Home() {
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
       <h1 className="text-3xl font-bold">Notation Hero</h1>
       <p className="max-w-prose text-muted-foreground">
-        Open a drum chart from your own computer, read it as standard notation, and play along.
+        Open a drum score from your own computer, read it as standard notation, and play along.
         Nothing you open leaves this device.
       </p>
       {/* min-h-11 = 44px, the minimum touch target (spec §4). The glyph keeps its drawn size;
@@ -942,8 +1017,8 @@ interface NotationSurfaceProps {
   onApiReady: (api: AlphaTab.AlphaTabApi | null) => void;
 }
 
-/** The chart that ships with the app; Task 10 adds user files on top of it. */
-const SAMPLE_CHART = '/charts/1-beat.gp';
+/** The score that ships with the app; Task 10 adds user files on top of it. */
+const SAMPLE_NOTATION = '/notation/1-beat.gp';
 
 export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -962,7 +1037,7 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     // No settings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
     // /alphatab/esm/alphaTab.mjs — that is the entire point of self-hosting the ESM.
     settings.core.fontDirectory = '/alphatab/font/';
-    settings.core.file = SAMPLE_CHART;
+    settings.core.file = SAMPLE_NOTATION;
     settings.core.tracks = 'all';
     settings.core.logLevel = resolveLogLevel(engine);
     settings.player.playerMode = engine.PlayerMode.EnabledAutomatic;
@@ -1040,8 +1115,8 @@ import type * as AlphaTab from '@coderline/alphatab';
 import { AlphaTabEngineProvider } from '../../lib/alphatab/AlphaTabEngineContext';
 import { NotationSurface } from './NotationSurface';
 
-/** A chart held in memory. The bytes never touch disk and never cross a route. */
-export interface LoadedChart {
+/** A score held in memory. The bytes never touch disk and never cross a route. */
+export interface LoadedNotation {
   name: string;
   bytes: Uint8Array;
 }
@@ -1161,7 +1236,7 @@ Expected: all PASS.
 
 ```bash
 git add web/app/page.tsx web/app/play web/e2e/player.e2e.ts
-git commit -m "feat(web): render and play the sample chart on /play (NH-291)"
+git commit -m "feat(web): render and play the sample score on /play (NH-291)"
 ```
 
 ---
@@ -1203,7 +1278,7 @@ Replace `web/e2e/player.e2e.ts` with:
 ```ts
 import { expect, test } from '@playwright/test';
 
-test('renders the bundled sample chart as notation', async ({ page }) => {
+test('renders the bundled sample score as notation', async ({ page }) => {
   await page.goto('/play');
 
   const surface = page.getByTestId('notation-surface');
@@ -1542,9 +1617,9 @@ export interface PercussionScannable {
 /**
  * Indexes of the tracks that carry a percussion staff.
  *
- * An empty result is NOT an error: a chart with no drum staff falls back to AlphaTab's default
+ * An empty result is NOT an error: a score with no drum staff falls back to AlphaTab's default
  * track, which is what omitting the `trackIndexes` argument to `renderScore` already does. The app
- * is aimed at drummers but must not turn any other musician away — a guitar or piano chart opens
+ * is aimed at drummers but must not turn any other musician away — a guitar or piano score opens
  * and plays instead of showing a dead end.
  *
  * `Track` also exposes its own `isPercussion` getter in 1.8.4; this reads the staves directly
@@ -1559,23 +1634,23 @@ export function selectDrumTrackIndexes(tracks: readonly PercussionScannable[]): 
 
 - [ ] **Step 4: Wire it into the render path**
 
-In `NotationSurface.tsx`, replace the `settings.core.file = SAMPLE_CHART;` approach for user charts with an explicit `renderScore`. Add a `chart` prop and this effect beside the mount effect:
+In `NotationSurface.tsx`, replace the `settings.core.file = SAMPLE_NOTATION;` approach for user scores with an explicit `renderScore`. Add a `notation` prop and this effect beside the mount effect:
 
 ```tsx
 // Staged load: ScoreLoader parses the new buffer FIRST, and only on success does the live api
 // take it. Nothing is destroyed — the workers and the loaded soundfont are reused — so a corrupt
-// replacement leaves the playing chart intact.
+// replacement leaves the playing score intact.
 useEffect(() => {
   const api = apiRefLocal.current;
-  if (!api || !engine || !chart) return;
+  if (!api || !engine || !notation) return;
 
-  const score = engine.importer.ScoreLoader.loadScoreFromBytes(chart.bytes);
+  const score = engine.importer.ScoreLoader.loadScoreFromBytes(notation.bytes);
   const drumIndexes = selectDrumTrackIndexes(score.tracks);
   // INDEXES, not Track objects. Passing undefined is what makes AlphaTab fall back to its
-  // default track for a chart with no percussion staff.
+  // default track for a score with no percussion staff.
   api.renderScore(score, drumIndexes.length > 0 ? drumIndexes : undefined);
   setRenderedTrackCount(drumIndexes.length > 0 ? drumIndexes.length : 1);
-}, [engine, chart]);
+}, [engine, notation]);
 ```
 
 and expose the count for the test:
@@ -1595,13 +1670,13 @@ Expected: PASS.
 
 - [ ] **Step 6: Record the deferred gap**
 
-Criterion 9 — a chart with no percussion staff opens on AlphaTab's default track — has no fixture (Q7), so the `drumIndexes.length > 0 ? … : undefined` branch ships **verified by reading, not by running**. Add a comment at the call site saying so, and carry it into the PR body. Do not tick criterion 9.
+Criterion 9 — a score with no percussion staff opens on AlphaTab's default track — has no fixture (Q7), so the `drumIndexes.length > 0 ? … : undefined` branch ships **verified by reading, not by running**. Add a comment at the call site saying so, and carry it into the PR body. Do not tick criterion 9.
 
 - [ ] **Step 7: Commit**
 
 ```bash
 git add web/lib/alphatab/drum-tracks.ts web/app/play/NotationSurface.tsx web/e2e/player.e2e.ts
-git commit -m "feat(web): render every drum track and fall back for percussion-free charts (NH-291)"
+git commit -m "feat(web): render every drum track and fall back for percussion-free scores (NH-291)"
 ```
 
 ---
@@ -1618,9 +1693,9 @@ git commit -m "feat(web): render every drum track and fall back for percussion-f
 
 **Interfaces:**
 
-- Consumes: `LoadedChart` (Task 6); `selectDrumTrackIndexes` (Task 9).
+- Consumes: `LoadedNotation` (Task 6); `selectDrumTrackIndexes` (Task 9).
 - Produces:
-  - `OpenFileControl` props: `{ onChart: (chart: LoadedChart) => void; hasChart: boolean; variant?: 'rail' | 'empty' }`.
+  - `OpenFileControl` props: `{ onNotation: (notation: LoadedNotation) => void; hasNotation: boolean; variant?: 'rail' | 'empty' }`.
   - Test hooks: `data-testid="open-file-input"`, `data-testid="open-file-button"`, `data-testid="load-sample"`, `data-testid="empty-state"`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1638,7 +1713,7 @@ test('starts empty, with the transport disabled and both open affordances presen
   await expect(page.getByTestId('transport-play')).toBeDisabled();
 });
 
-test('Load the sample beat fetches and plays the bundled chart', async ({ page }) => {
+test('Load the sample beat fetches and plays the bundled score', async ({ page }) => {
   await page.goto('/play');
   await page.getByTestId('load-sample').click();
 
@@ -1654,7 +1729,7 @@ test('Load the sample beat fetches and plays the bundled chart', async ({ page }
 test('an unsupported file raises a toast and leaves the player usable', async ({ page }) => {
   await page.goto('/play');
   await page.getByTestId('open-file-input').setInputFiles({
-    name: 'not-a-chart.gp5',
+    name: 'not-a-score.gp5',
     mimeType: 'application/octet-stream',
     buffer: Buffer.from('this is not a guitar pro file'),
   });
@@ -1679,7 +1754,7 @@ Create `web/app/play/OpenFileControl.tsx`:
 import { useId, useRef, useState } from 'react';
 import { Button, toast } from '@notation-hero/client';
 
-import type { LoadedChart } from './PlayerShell';
+import type { LoadedNotation } from './PlayerShell';
 
 // Same list the picker has always carried: Guitar Pro, MusicXML and Capella, by extension only.
 // ScoreLoader sniffs file CONTENT, so this is an affordance for the OS dialog, not a guarantee —
@@ -1687,25 +1762,25 @@ import type { LoadedChart } from './PlayerShell';
 const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx';
 
 interface OpenFileControlProps {
-  onChart: (chart: LoadedChart) => void;
-  /** Renders the compact rail button once a chart is loaded, the large empty-state one before. */
+  onNotation: (notation: LoadedNotation) => void;
+  /** Renders the compact rail button once a score is loaded, the large empty-state one before. */
   compact?: boolean;
 }
 
-async function readChart(file: File): Promise<LoadedChart> {
+async function readNotation(file: File): Promise<LoadedNotation> {
   const buffer = await file.arrayBuffer();
   // loadScoreFromBytes takes a Uint8Array, so wrap here rather than at the call site.
   return { name: file.name, bytes: new Uint8Array(buffer) };
 }
 
-export function OpenFileControl({ onChart, compact = false }: Readonly<OpenFileControlProps>) {
+export function OpenFileControl({ onNotation, compact = false }: Readonly<OpenFileControlProps>) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = useId();
   const [dragging, setDragging] = useState(false);
 
   const accept = async (file: File | undefined) => {
     if (!file) return;
-    onChart(await readChart(file));
+    onNotation(await readNotation(file));
   };
 
   return (
@@ -1774,23 +1849,23 @@ Create `web/app/play/EmptyState.tsx`:
 import { Button } from '@notation-hero/client';
 
 import { OpenFileControl } from './OpenFileControl';
-import type { LoadedChart } from './PlayerShell';
+import type { LoadedNotation } from './PlayerShell';
 
 interface EmptyStateProps {
-  onChart: (chart: LoadedChart) => void;
+  onNotation: (notation: LoadedNotation) => void;
   onLoadSample: () => void;
 }
 
-export function EmptyState({ onChart, onLoadSample }: Readonly<EmptyStateProps>) {
+export function EmptyState({ onNotation, onLoadSample }: Readonly<EmptyStateProps>) {
   return (
     <div
       data-testid="empty-state"
       className="flex min-h-[420px] w-full flex-col items-center justify-center gap-4 rounded-md border border-dashed border-border p-8 text-center"
     >
       <p className="text-muted-foreground">
-        Drop a chart anywhere on this area, or open one from your computer.
+        Drop a score anywhere on this area, or open one from your computer.
       </p>
-      <OpenFileControl onChart={onChart} />
+      <OpenFileControl onNotation={onNotation} />
       <Button data-testid="load-sample" variant="ghost" className="min-h-11" onClick={onLoadSample}>
         Load the sample beat
       </Button>
@@ -1799,40 +1874,40 @@ export function EmptyState({ onChart, onLoadSample }: Readonly<EmptyStateProps>)
 }
 ```
 
-- [ ] **Step 5: Hold the chart in the shell**
+- [ ] **Step 5: Hold the score in the shell**
 
-In `PlayerShell.tsx`'s `Player`, add the chart state, the sample fetch, and the swap between empty state and notation surface:
+In `PlayerShell.tsx`'s `Player`, add the score state, the sample fetch, and the swap between empty state and notation surface:
 
 ```tsx
-const [chart, setChart] = useState<LoadedChart | null>(null);
+const [notation, setNotation] = useState<LoadedNotation | null>(null);
 
 const loadSample = useCallback(async () => {
-  const response = await fetch('/charts/1-beat.gp');
+  const response = await fetch('/notation/1-beat.gp');
   const buffer = await response.arrayBuffer();
-  setChart({ name: '1-beat.gp', bytes: new Uint8Array(buffer) });
+  setNotation({ name: '1-beat.gp', bytes: new Uint8Array(buffer) });
 }, []);
 ```
 
-and in the returned markup, render `<EmptyState … />` when `chart === null` and `<NotationSurface chart={chart} … />` otherwise. Drop `settings.core.file = SAMPLE_CHART` from `NotationSurface` — the score now always arrives through `renderScore` (Task 9), so the mount no longer auto-loads a chart. Remove the now-unused `SAMPLE_CHART` constant.
+and in the returned markup, render `<EmptyState … />` when `notation === null` and `<NotationSurface notation={notation} … />` otherwise. Drop `settings.core.file = SAMPLE_NOTATION` from `NotationSurface` — the score now always arrives through `renderScore` (Task 9), so the mount no longer auto-loads a score. Remove the now-unused `SAMPLE_NOTATION` constant.
 
 - [ ] **Step 6: Raise the unsupported-file toast**
 
-Wrap the parse in `NotationSurface`'s chart effect (Task 9, Step 4):
+Wrap the parse in `NotationSurface`'s score effect (Task 9, Step 4):
 
 ```tsx
 try {
-  const score = engine.importer.ScoreLoader.loadScoreFromBytes(chart.bytes);
+  const score = engine.importer.ScoreLoader.loadScoreFromBytes(notation.bytes);
   const drumIndexes = selectDrumTrackIndexes(score.tracks);
   api.renderScore(score, drumIndexes.length > 0 ? drumIndexes : undefined);
   setRenderedTrackCount(drumIndexes.length > 0 ? drumIndexes.length : 1);
 } catch {
-  // A chart already playing is NEVER cleared by a failed load (spec §4 failure states).
-  toast.error(`${chart.name} could not be opened — it is not a chart format the player reads.`);
+  // A score already playing is NEVER cleared by a failed load (spec §4 failure states).
+  toast.error(`${notation.name} could not be opened — it is not a score format the player reads.`);
   onLoadFailed();
 }
 ```
 
-`onLoadFailed` is a new prop that tells the shell to drop back to the previous chart (or to `null` when there was none).
+`onLoadFailed` is a new prop that tells the shell to drop back to the previous score (or to `null` when there was none).
 
 - [ ] **Step 7: Run the tests to verify they pass**
 
@@ -1847,12 +1922,12 @@ Playwright cannot exercise a real OS drag, so drop a `.gp` file onto `/play` in 
 
 ```bash
 git add web/app/play web/e2e/player.e2e.ts
-git commit -m "feat(web): open a chart by picker or drop, with a sample-beat fallback (NH-291)"
+git commit -m "feat(web): open a score by picker or drop, with a sample-beat fallback (NH-291)"
 ```
 
 ---
 
-### Task 11: Replacing a loaded chart asks first
+### Task 11: Replacing a loaded score asks first
 
 The most subtle flow in v0. `window.confirm()` blocks the main thread, which is where AlphaTab's sample pump runs — so the audio worklet drains its ~500 ms buffer and zero-fills on its own while the dialog is up. Calling `pause()` first would not help: it only posts a message to the synth worker, and the reply that stops the audio graph is handled on the blocked main thread, so the pause would land _after_ the prompt returns.
 
@@ -1875,7 +1950,7 @@ Add to `web/e2e/player.e2e.ts`:
 // Playwright AUTO-DISMISSES window.confirm() when no listener is attached, which would silently
 // turn every replace test into a cancel test. Each case below registers its handler BEFORE the
 // action that triggers the prompt.
-test('cancelling a replacement keeps the current chart playing from where it was', async ({
+test('cancelling a replacement keeps the current score playing from where it was', async ({
   page,
 }) => {
   await page.goto('/play');
@@ -1890,7 +1965,7 @@ test('cancelling a replacement keeps the current chart playing from where it was
 
   // Still the sample, still playing.
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
-  await expect(page.getByTestId('loaded-chart-name')).toHaveText('1-beat.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveText('1-beat.gp');
 });
 
 test('re-picking the same file after a cancel prompts again', async ({ page }) => {
@@ -1912,7 +1987,7 @@ test('re-picking the same file after a cancel prompts again', async ({ page }) =
   await expect.poll(() => prompts).toBe(2);
 });
 
-test('confirming a replacement renders the new chart', async ({ page }) => {
+test('confirming a replacement renders the new score', async ({ page }) => {
   await page.goto('/play');
   await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
@@ -1922,11 +1997,11 @@ test('confirming a replacement renders the new chart', async ({ page }) => {
   page.on('dialog', (dialog) => dialog.accept());
   await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
 
-  await expect(page.getByTestId('loaded-chart-name')).toHaveText('Punk.gp', { timeout: 30_000 });
+  await expect(page.getByTestId('loaded-notation-name')).toHaveText('Punk.gp', { timeout: 30_000 });
   await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
 });
 
-test('a corrupt replacement leaves the playing chart intact', async ({ page }) => {
+test('a corrupt replacement leaves the playing score intact', async ({ page }) => {
   await page.goto('/play');
   await page.getByTestId('load-sample').click();
   const play = page.getByTestId('transport-play');
@@ -1938,11 +2013,11 @@ test('a corrupt replacement leaves the playing chart intact', async ({ page }) =
   await page.getByTestId('open-file-input').setInputFiles({
     name: 'broken.gp5',
     mimeType: 'application/octet-stream',
-    buffer: Buffer.from('not a chart'),
+    buffer: Buffer.from('not a score'),
   });
 
   await expect(page.getByText(/could not be opened/i)).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId('loaded-chart-name')).toHaveText('1-beat.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveText('1-beat.gp');
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
 });
 ```
@@ -1950,15 +2025,15 @@ test('a corrupt replacement leaves the playing chart intact', async ({ page }) =
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e -g "replacement|same file"`
-Expected: FAIL — no prompt is shown and no `loaded-chart-name` exists.
+Expected: FAIL — no prompt is shown and no `loaded-notation-name` exists.
 
-- [ ] **Step 3: Add the chart-name hook**
+- [ ] **Step 3: Add the score-name hook**
 
-In `PlayerShell.tsx`, render the current chart's name:
+In `PlayerShell.tsx`, render the current score's name:
 
 ```tsx
-<span data-testid="loaded-chart-name" className="sr-only">
-  {chart?.name ?? ''}
+<span data-testid="loaded-notation-name" className="sr-only">
+  {notation?.name ?? ''}
 </span>
 ```
 
@@ -1967,10 +2042,10 @@ In `PlayerShell.tsx`, render the current chart's name:
 In `PlayerShell.tsx`'s `Player`, add:
 
 ```tsx
-const requestChart = useCallback(
-  (next: LoadedChart) => {
-    if (!chart) {
-      setChart(next);
+const requestNotation = useCallback(
+  (next: LoadedNotation) => {
+    if (!score) {
+      setNotation(next);
       return;
     }
 
@@ -1983,24 +2058,24 @@ const requestChart = useCallback(
     // eslint-disable-next-line no-alert -- deliberate v0 shortcut: no Dialog component is built
     // yet, and a styled confirm can replace this later without changing the flow.
     const confirmed = window.confirm(
-      `Replace ${chart.name} with ${next.name}? The chart you have open will be closed.`,
+      `Replace ${notation.name} with ${next.name}? The score you have open will be closed.`,
     );
 
     if (!confirmed) {
-      // Cancel keeps the current chart and discards the new file. Resume from the same position.
+      // Cancel keeps the current score and discards the new file. Resume from the same position.
       if (wasPlaying) api?.play();
       return;
     }
 
     // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
     if (wasPlaying) api?.pause();
-    setChart(next);
+    setNotation(next);
   },
-  [chart, playing],
+  [score, playing],
 );
 ```
 
-and pass `requestChart` as `onChart` to `OpenFileControl`. On the parse-failure path (Task 10, Step 6) the shell restores the previous chart and, if it was playing, calls `api.play()` again — same resume as the cancel path.
+and pass `requestNotation` as `onNotation` to `OpenFileControl`. On the parse-failure path (Task 10, Step 6) the shell restores the previous score and, if it was playing, calls `api.play()` again — same resume as the cancel path.
 
 > Check the eslint disable comment's rule name against what actually fires; `no-alert` is the core rule, but the base config may surface it under a different plugin. `eslint-comments/require-description` is on, so the `--` reason is mandatory.
 
@@ -2017,14 +2092,14 @@ Playwright cannot hear. Load the sample, press play, wait a few bars, pick anoth
 
 ```bash
 git add web/app/play web/e2e/player.e2e.ts
-git commit -m "feat(web): confirm before replacing a chart, and survive a corrupt replacement (NH-291)"
+git commit -m "feat(web): confirm before replacing a score, and survive a corrupt replacement (NH-291)"
 ```
 
 ---
 
 ### Task 12: Toast while a replacement parses
 
-Loading, success and failure share one surface. The chart on screen keeps playing — the load is staged, so nothing covers the notation area.
+Loading, success and failure share one surface. The score on screen keeps playing — the load is staged, so nothing covers the notation area.
 
 **Files:**
 
@@ -2039,13 +2114,13 @@ Loading, success and failure share one surface. The chart on screen keeps playin
 
 - [ ] **Step 1: Add the loading toast**
 
-In `PlayerShell.tsx`, on the confirm path of `requestChart`, name the incoming file:
+In `PlayerShell.tsx`, on the confirm path of `requestNotation`, name the incoming file:
 
 ```tsx
 // Sonner ships its own spinner, so this needs no new component — and Skeleton would hide a
-// chart that is still playable. The toast resolves into success or into the same
+// score that is still playable. The toast resolves into success or into the same
 // unsupported-file error the failure table specifies, so all three states share one surface.
-toast.loading(`Opening ${next.name}…`, { id: 'chart-load' });
+toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
 ```
 
 and dismiss or resolve it from the render effect: `toast.success(...)` with the same `id` on success, `toast.error(...)` with the same `id` on parse failure.
@@ -2166,7 +2241,7 @@ test('player has no axe violations in its empty state', async ({ page }) => {
   await expectNoViolations(page, 'play / empty');
 });
 
-test('player has no axe violations with a chart loaded', async ({ page }) => {
+test('player has no axe violations with a score loaded', async ({ page }) => {
   await page.goto('/play');
   await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
@@ -2255,7 +2330,7 @@ Expected: all PASS. Do not open the PR on a red tree.
 
 ```bash
 git push -u origin spike/alphatab-nextjs-poc
-gh pr create --title "feat(web): v0 player — open a local chart, see it, hear it (NH-291)" --body "$(cat <<'EOF'
+gh pr create --title "feat(web): v0 player — open a local score, see it, hear it (NH-291)" --body "$(cat <<'EOF'
 Implements Plan A of the v0 local-file drum player: the AlphaTab engine, the `/play` screen, and a CI lane that proves the audio worker path is live.
 
 Spec: `docs/specs/2026-09-10-v0-local-file-player-design.md`
@@ -2263,19 +2338,19 @@ Plan: `docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`
 
 ## Success criteria covered
 
-- [x] 1 — a drum chart opened from local disk renders as standard notation
+- [x] 1 — a drum score opened from local disk renders as standard notation
 - [x] 2 — pressing play produces audible drum audio with a tracking cursor (verified by ear; the CI lane can only verify it by state)
-- [x] 4 — leocaseiro's own chart plays
-- [x] 8 — Load the sample beat fetches and plays the bundled chart
-- [ ] 9 — a chart with no percussion staff opens on the default track: **code written, NOT verified** — no percussion-free fixture exists (Q7)
-- [x] 10 — replacing prompts; cancel keeps the chart playing; confirm renders the new one; a corrupt replacement leaves the playing chart intact
+- [x] 4 — leocaseiro's own score plays
+- [x] 8 — Load the sample beat fetches and plays the bundled score
+- [ ] 9 — a score with no percussion staff opens on the default track: **code written, NOT verified** — no percussion-free fixture exists (Q7)
+- [x] 10 — replacing prompts; cancel keeps the score playing; confirm renders the new one; a corrupt replacement leaves the playing score intact
 
 Criteria 3, 5, 6 and 7 belong to Plans B and C.
 
 ## Known gaps carried forward
 
 - **Q6** — `.musicxml`, `.mxml` and `.xml` are on the picker's accept list but no genuine MusicXML fixture exists, and `ScoreLoader` sniffs bytes, so a renamed `.gp5` would test nothing. Those three extensions ship unverified.
-- **Q7** — no percussion-free chart, so criterion 9's fallback ships verified by reading only.
+- **Q7** — no percussion-free score, so criterion 9's fallback ships verified by reading only.
 
 Both deferred deliberately.
 
@@ -2314,4 +2389,4 @@ git push
 
 **Placeholder scan.** Two steps deliberately say "open the real file and match what it exports" rather than inventing an API — the Material Symbols `src` descriptor (Task 4 Step 7) and the Sonner story shape (Task 12 Step 4). Both are instructions to read a file that exists, not deferred work, and each names the exact file plus the command that reveals the answer. The `args.state === 1` line in Task 6 is explicitly flagged as a placeholder that must not ship, with its replacement named.
 
-**Type consistency.** `AlphaTabEngine` (Task 5) is the type every later task names. `LoadedChart { name, bytes }` is defined once in Task 6 and consumed unchanged in Tasks 9, 10, 11. `selectDrumTrackIndexes` (Task 9) keeps one name and one signature. `loadAlphaTabEngine` / `resolveLogLevel` / `useAlphaTabEngine` are spelled identically everywhere. Test ids are declared in the task that creates them and reused verbatim: `notation-surface`, `notation-skeleton`, `engine-error`, `transport-play`, `player-status` (with `data-playing`, `data-soundfont`, `data-position`), `rendered-track-count`, `open-file-input`, `open-file-button`, `load-sample`, `empty-state`, `loaded-chart-name`.
+**Type consistency.** `AlphaTabEngine` (Task 5) is the type every later task names. `LoadedNotation { name, bytes }` is defined once in Task 6 and consumed unchanged in Tasks 9, 10, 11. `selectDrumTrackIndexes` (Task 9) keeps one name and one signature. `loadAlphaTabEngine` / `resolveLogLevel` / `useAlphaTabEngine` are spelled identically everywhere. Test ids are declared in the task that creates them and reused verbatim: `notation-surface`, `notation-skeleton`, `engine-error`, `transport-play`, `player-status` (with `data-playing`, `data-soundfont`, `data-position`), `rendered-track-count`, `open-file-input`, `open-file-button`, `load-sample`, `empty-state`, `loaded-notation-name`.
