@@ -1007,8 +1007,8 @@ export default function Home() {
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
       <h1 className="text-3xl font-bold">Notation Hero</h1>
       <p className="max-w-prose text-muted-foreground">
-        Open a drum score from your own computer, read it as standard notation, and play along.
-        Nothing you open leaves this device.
+        Open a score from your own computer, read it as standard notation, and play along. Nothing
+        you open leaves this device.
       </p>
       {/* min-h-11 = 44px, the minimum touch target (spec §4). The glyph keeps its drawn size;
           only the hit area is padded. */}

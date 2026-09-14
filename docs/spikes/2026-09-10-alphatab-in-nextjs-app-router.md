@@ -159,9 +159,28 @@ Two non-obvious requirements for variant B:
   ```
 
 Also note: the `@coderline/alphatab/webpack` and `/vite` subpath exports still appear in 1.8.4's
-`exports` map but the `dist/webpack` and `dist/vite` **directories do not exist** — those plugins
-moved to the separate `@coderline/alphatab-webpack` / `@coderline/alphatab-vite` packages. The
-prototype's `AlphaTabWebPackPlugin` import path is therefore dead in 1.8.4 regardless of bundler.
+`exports` map, and `dist/alphaTab.webpack.mjs` / `dist/alphaTab.vite.mjs` do exist — but each is a
+**deprecation shim** importing from a `dist/webpack/` or `dist/vite/` directory the package does not
+ship, so the import throws after printing "deprecated. Please use the new
+`@coderline/alphatab-webpack` npm package". The prototype's subpath import is dead in 1.8.4.
+
+> **Correction (2026-09-14): that does NOT mean the webpack route is unavailable, and this spike
+> never evaluated it.** The separate `@coderline/alphatab-webpack` package is the live, supported
+> one, and CoderLine ship an official Next.js 16 sample built on it —
+> <https://github.com/CoderLine/alphaTabSamplesWeb/tree/main/src/webpack-nextjs-16> — whose entire
+> `next.config.ts` is a `webpack(config)` hook registering
+> `AlphaTabWebPackPlugin({ assetOutputDir: 'public/alphatab' })`, and whose README says plainly:
+> _"Do NOT use the new Turbopack bundler they built for Next.js They do not offer a plugin system
+> and their built-in systems do not support WebWorkers & Audio Worklets like we need it."_
+>
+> What this spike does establish is that the authors' warning is about **bundled** AlphaTab under
+> Turbopack: self-hosting the prebuilt ESM sidesteps it, and `Environment.webPlatform` reported
+> `BrowserModule` with playback advancing. Note both routes end up self-hosting to
+> `public/alphatab/` — the plugin via `assetOutputDir`, this spike via a vendoring script — so the
+> real difference is _plugin-managed copy plus a normal value import on webpack_ versus _hand-rolled
+> copy plus a `turbopackIgnore` dynamic import on Turbopack_. Deciding between them on evidence is
+> handed off in
+> [`docs/plans/2026-09-14-alphatab-webpack-vs-turbopack-spike-handoff.md`](../plans/2026-09-14-alphatab-webpack-vs-turbopack-spike-handoff.md).
 
 ### 2. SoundFont + worker asset serving — **`public/`, and the SoundFont is the budget**
 
@@ -292,14 +311,14 @@ against `dist/alphaTab.d.ts`: `boundsLookup`, `tickCache`, `tickPosition`, `actu
 
 What changed is **the environment around it**, not the API:
 
-| Prototype (Docusaurus, 1.8.1)                                   | Ported to `web/` (Next.js 16, 1.8.4)                               |
-| --------------------------------------------------------------- | ------------------------------------------------------------------ |
-| `AlphaTabWebPackPlugin` from `@coderline/alphatab-webpack`      | **dropped** — no Turbopack plugin exists; replaced by risk-1 fix   |
-| `webpack resolve.fallback` node-polyfill block                  | **dropped** — not needed                                           |
-| `environment.withBaseUrl()` over `siteConfig.baseUrl`           | plain `/alphatab/...` paths from `public/`                         |
-| `useColorMode()` from `@docusaurus/theme-common` for dark theme | dropped from the spike; the real player wires this to the NH theme |
-| `useAlphaTab` hook using `React.createRef()` in a render body   | `useRef` — the prototype's pattern makes a fresh ref every render  |
-| a local patch enabling drum **tablature**                       | **not ported** — see below                                         |
+| Prototype (Docusaurus, 1.8.1)                                   | Ported to `web/` (Next.js 16, 1.8.4)                                                                                                      |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `AlphaTabWebPackPlugin` from `@coderline/alphatab-webpack`      | **dropped** — but only because this spike assumed Turbopack; NOT weighed against `next build --webpack`. See the correction under risk 1. |
+| `webpack resolve.fallback` node-polyfill block                  | **dropped** — not needed                                                                                                                  |
+| `environment.withBaseUrl()` over `siteConfig.baseUrl`           | plain `/alphatab/...` paths from `public/`                                                                                                |
+| `useColorMode()` from `@docusaurus/theme-common` for dark theme | dropped from the spike; the real player wires this to the NH theme                                                                        |
+| `useAlphaTab` hook using `React.createRef()` in a render body   | `useRef` — the prototype's pattern makes a fresh ref every render                                                                         |
+| a local patch enabling drum **tablature**                       | **not ported** — see below                                                                                                                |
 
 > **The prototype's alphaTab patch is for drum _tablature_, not drum notation.**
 > `patches/@coderline+alphatab+1.8.1.patch` in the fork forces `showTablature` on percussion staves
