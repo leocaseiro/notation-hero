@@ -22,7 +22,7 @@ Every task's requirements implicitly include this section. Values are copied ver
 
 - **`@coderline/alphatab` may be imported ONLY with `import type`.** One value import — even of an enum — makes Turbopack bundle the library a second time, and a component can then drive the bundled copy, which restores the silent-playback failure. All runtime AlphaTab values (`LayoutMode`, `ScrollMode`, `PlayerMode`, `TrackNamePolicy`, `importer.ScoreLoader`, `model.Color`, `model.Font`, `synth.PlayerState`) come from the awaited namespace object only. **No module-scope constant may reference one.**
 - **The dynamic-import specifier must be a `const` variable, never a string literal.** A literal makes `tsc` resolve it at compile time and fail the build; holding it in a `const` also stops Turbopack re-bundling it.
-- **Minified dist files are copied under their PLAIN names.** `alphaTab.min.mjs` imports `./alphaTab.core.mjs` internally, so a minified copy stored under a `.min` name makes the browser fetch the full 3.0 MB core instead of the minified one.
+- **Minified dist files are copied under their PLAIN names.** `alphaTab.min.mjs` imports `./alphaTab.core.mjs` internally, so a minified copy stored under a `.min` name makes the browser fetch the full 2.3 MB core instead of the minified one.
 - **`web/public/alphatab/` is generated output** — git-ignored, never committed. The spike's committed copies get removed.
 - **Never `dynamic(..., { ssr: false })`.** It is illegal in an App Router Server Component and unnecessary: AlphaTab's module scope is SSR-safe.
 - **`useRef`, never `React.createRef()` in a render body.**
@@ -235,7 +235,7 @@ The four ESM files, the soundfont and the music font stop being committed blobs 
 **Interfaces:**
 
 - Consumes: nothing.
-- Produces: `web/public/alphatab/esm/alphaTab.mjs`, `.../alphaTab.core.mjs`, `.../alphaTab.worker.mjs`, `.../alphaTab.worklet.mjs`, `web/public/alphatab/soundfont/sonivox.sf3`, `web/public/alphatab/font/Bravura.woff2` and the two licence files. Task 5 hard-codes `/alphatab/esm/alphaTab.mjs`, `/alphatab/soundfont/sonivox.sf3` and `/alphatab/font/` against these paths. The module also exports `VENDOR_FILES` and `vendorAlphaTab({ dist, out })` for the test.
+- Produces: `web/public/alphatab/esm/alphaTab.mjs`, `.../alphaTab.core.mjs`, `.../alphaTab.worker.mjs`, `.../alphaTab.worklet.mjs`, `web/public/alphatab/soundfont/sonivox.sf3`, `web/public/alphatab/font/Bravura.woff2` and the two licence files. Task 5 hard-codes `/alphatab/esm/alphaTab.mjs` against these paths; Task 6 hard-codes `/alphatab/soundfont/sonivox.sf3` and `/alphatab/font/`. The module also exports `VENDOR_FILES` and `vendorAlphaTab({ dist, out })` for the test.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -258,7 +258,7 @@ test('copies the minified ESM under PLAIN names so the core import resolves to t
     vendorAlphaTab({ dist: DIST, out });
 
     // alphaTab.min.mjs imports './alphaTab.core.mjs'. If the minified core landed under a
-    // '.min' name the browser would fetch the 3.0 MB unminified core instead, so assert both
+    // '.min' name the browser would fetch the 2.3 MB unminified core instead, so assert both
     // the plain filename AND that the bytes are the minified build (roughly half the size).
     const entry = readFileSync(join(out, 'esm/alphaTab.mjs'), 'utf8');
     assert.match(entry, /alphaTab\.core\.mjs/);
@@ -327,7 +327,7 @@ const HERE = dirname(fileURLToPath(import.meta.url));
  *
  * The four ESM files land under their PLAIN names on purpose: alphaTab.min.mjs imports
  * './alphaTab.core.mjs' internally, so a minified copy kept under a '.min' name would make the
- * browser fetch the 3.0 MB unminified core instead of the 1.1 MB minified one.
+ * browser fetch the 2.3 MB unminified core instead of the 1.1 MB minified one.
  */
 export const VENDOR_FILES = [
   ['alphaTab.min.mjs', 'esm/alphaTab.mjs'],
@@ -462,7 +462,7 @@ One value import re-bundles the library, ships it twice, and lets a component dr
 
 **Files:**
 
-- Modify: `web/eslint.config.mjs:56-76` (the `no-restricted-imports` block)
+- Modify: `web/eslint.config.mjs:49-65` (the `no-restricted-imports` block)
 
 **Interfaces:**
 
@@ -1301,10 +1301,10 @@ With the dev server running (React 19 strict mode double-invokes effects), reloa
 
 ```bash
 # in the browser console on /play
-document.querySelectorAll('[data-testid="notation-surface"] svg').length
+document.querySelectorAll('[data-testid="notation-surface"] .at-surface').length
 ```
 
-Expected: the count settles at the number of rendered systems for one score, and never doubles after a reload. If it doubles, the cleanup's `api?.destroy()` is not running — check the effect's `[engine, onApiReady]` dependency list and that `handleApiReady` is a stable `useCallback`. That cleanup is what actually prevents the leak: with it in place a React 19.2 repro settled at exactly one live `AlphaTabApi` across four constructions under strict mode.
+Expected: exactly **1**. AlphaTab renders one `<svg>` per system, so counting `svg` varies with the score and gives you no baseline to compare against; `.at-surface` is one per surface. Check it on a single load — strict mode double-invokes within one commit, and a reload tears the tree down anyway, so reloading proves nothing. If it doubles, the cleanup's `api?.destroy()` is not running — check the effect's `[engine, onApiReady]` dependency list and that `handleApiReady` is a stable `useCallback`. That cleanup is what actually prevents the leak: with it in place a React 19.2 repro settled at exactly one live `AlphaTabApi` across four constructions under strict mode.
 
 - [ ] **Step 9: Verify the package is clean**
 
@@ -1737,10 +1737,10 @@ export interface PercussionScannable {
 /**
  * Indexes of the tracks that carry a percussion staff.
  *
- * An empty result is NOT an error: a score with no drum staff falls back to AlphaTab's default
- * track, which is what omitting the `trackIndexes` argument to `renderScore` already does. The app
- * is aimed at drummers but must not turn any other musician away — a guitar or piano score opens
- * and plays instead of showing a dead end.
+ * An empty result is NOT an error: a score with no percussion staff renders `score.tracks[0]` —
+ * AlphaTab's FIRST track, not a "default" or preferred one — which is what omitting the
+ * `trackIndexes` argument to `renderScore` already does. The app leads with drums but must not turn
+ * any other musician away: a guitar or piano score opens and plays instead of showing a dead end.
  *
  * `Track` also exposes its own `isPercussion` getter in 1.8.4; this reads the staves directly
  * because that is the rule the design settled on and it survives a change to the getter.
@@ -2556,7 +2556,14 @@ In `PlayerShell.tsx`, on the confirm path of `requestNotation`, name the incomin
 toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
 ```
 
-and dismiss or resolve it from the render effect: `toast.success(...)` with the same `id` on success, `toast.error(...)` with the same `id` on parse failure.
+and resolve it from the render effect, reusing the same `id` so all three states share one toast:
+
+```tsx
+toast.success(`${next.name} loaded`, { id: 'notation-load' });
+toast.error(`${next.name} could not be opened — it is not a score format the player reads.`, {
+  id: 'notation-load',
+});
+```
 
 - [ ] **Step 2: Write the failing test — a `loading` story that axe and VR can hold open**
 

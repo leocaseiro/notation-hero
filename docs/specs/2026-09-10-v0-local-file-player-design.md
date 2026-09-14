@@ -225,7 +225,7 @@ const alphaTab = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as
    compile time and fail the build. Holding it in a `const` also stops Turbopack re-bundling it.
 2. **Minified files must be placed under the plain names.** `alphaTab.min.mjs` imports
    `./alphaTab.core.mjs` internally, so a minified copy stored under a `.min` name causes the browser
-   to fetch the full 3.0 MB core instead of the minified one.
+   to fetch the full 2.3 MB core instead of the minified one.
 3. **Import `@coderline/alphatab` only with `import type`.** One value import, even of an enum,
    makes Turbopack bundle the library again: AlphaTab ships twice, and a component can drive the
    bundled copy, which restores the silent playback failure. **v0 builds this guard:**
