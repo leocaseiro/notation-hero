@@ -1,16 +1,22 @@
-# v0 Plan B — Transport — Implementation Plan
+# v0 Transport — Implementation Plan B "Playback Control" (2 of 3)
 
+> **🧑 HUMAN GATES.** Four steps in this plan cannot be performed by a machine — they need human ears
+> (Task 6 Step 7, Task 7 Step 7) or a human browser console (Task 8 Step 6, Task 9 Step 3). Each is marked
+> `🧑 HUMAN GATE`. An agentic worker must **stop at each one and hand back**, never self-certify it and
+> never tick the checklist item it backs. This repo's `pr-checklist` gate is presence-only — it checks that
+> a box is ticked, not that the claim is true — so a ticked box is the artefact a reviewer trusts.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Give the player its transport — a seek bar that scrubs, a tempo control in the header, Loop / Metronome / Count-In toggles that audibly change playback, and a determinate progress bar for the soundfont download.
 
-**Architecture:** Five new presentation-only components in `client/` (`Slider`, `Progress`, `Scrubber`, `TransportToggle`, `TempoControl`), each with a Storybook story plus the VR and axe baselines that block merge. `web/` composes them into the transport row and the header pill and wires each to an `AlphaTabApi` accessor. Nothing in `client/` imports `@coderline/alphatab` — that is what keeps the gate real, because a `client/` story has no engine instance to provide.
+**Architecture:** Five new presentation-only components in `client/` (`Slider`, `Progress`, `Scrubber`, `TransportToggle`, `TempoControl`), each built on a Base UI primitive and each with a Storybook story plus the VR and axe baselines that block merge. The already-built `Tooltip` is exported alongside them. `web/` composes them into the transport row and the header pill and wires each to an `AlphaTabApi` accessor. Nothing in `client/` imports `@coderline/alphatab` — that is what keeps the gate real, because a `client/` story has no engine instance to provide.
 
-**Tech Stack:** `@base-ui/react` 1.6 (Slider primitive), Tailwind 4 tokens, Storybook 10, Playwright 1.61.1 + axe.
+**Tech Stack:** `@base-ui/react` 1.6 — `Slider`, `Progress`, `Toggle` and `NumberField` primitives; every new control is built on one of them rather than hand-rolled. Tailwind 4 tokens, Storybook 10, Playwright 1.61.1 + axe.
 
 **Spec:** [`docs/specs/2026-09-10-v0-local-file-player-design.md`](../specs/2026-09-10-v0-local-file-player-design.md) — §7 is the component split; §4 is the soundfont progress behaviour.
 
-**Depends on:** [Plan A](2026-09-13-v0a-engine-and-first-sound-plan.md) — the engine context, the `/play` screen, the `AlphaTabApi` handle and the `web` Playwright lane must all exist first.
+**Depends on:** [v0 Engine and First Sound — Plan A (1 of 3)](2026-09-13-v0a-engine-and-first-sound-plan.md) — the engine context, the `/play` screen, the `AlphaTabApi` handle and the `web` Playwright lane must all exist first.
 
 **Jira:** epic [NH-291](https://leocaseiro.atlassian.net/browse/NH-291).
 
@@ -25,11 +31,56 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Every `client/` component here is presentation-only**: `value` in, `onChange` out, option lists as plain arrays, and **no import from `@coderline/alphatab`**. `client/` has no AlphaTab dependency and a Storybook story has no engine instance, so a control that read its options off the library would be gated while rendering fabricated options.
 - **Each new `client/` component needs all six files, co-located in its own folder**: `X.tsx`, `X.stories.tsx`, `X.story-ids.ts`, `X.test.tsx`, `X.a11y.ts`, `X.vr.ts`. Never a `__tests__/` or `stories/` directory — `tooling/check-layout.sh` fails the build on them.
 - **VR baselines are Linux-only.** Generate them with `pnpm test:vr:docker:update` (Docker Desktop running — `open -a Docker`), never natively on macOS. Kill any Storybook already on `:6006` first, or Playwright's `reuseExistingServer` serves desynced stories and the baselines come out wrong.
+- **`test:vr:docker:update` re-blesses EVERY baseline in `client/`, not just the new component's.** It passes no filter, so after every regeneration run `git status --short client/src` (package-wide, never folder-scoped) and commit only what you meant to change. Re-running `pnpm test:vr:docker` afterwards compares against the files you just wrote, so it proves the suite is green — it cannot detect drift.
 - **Every control's hit area is at least 44 px**, with the glyph left at its drawn size. The mockup's transport is `w-10 h-10` (40 px) and its header `±` buttons carry no size class at all — both are too small and v0 must not copy them.
-- **Tempo lives in the header, not the transport row.** Both design sources put it there, so the player has exactly one tempo control and the transport row has none.
-- **The 12.5–200 % speed slider is Plan C's** — it belongs to the Settings popover's Player group, not the header pill. Plan B builds the `± 5` stepper and the `%` readout only.
+- **The seek and volume rails meet the 44 px rule through the slider's `Control`, not its thumb.** Base UI handles click/drag on `Slider.Control`, so the height belongs there (`h-11`); the rail stays `h-1` and the thumb `size-4`, centred inside an invisible 44 px target. Measuring the nested `input[type="range"]` is therefore the wrong test — Base UI sizes it to the 16 px thumb no matter how large the real target is.
+- **Vocabulary: a piece of music is a `score`; a `notation` is the score FILE.** The word "chart" is not
+  used anywhere in this plan or in the data model — the schema's instrument-agnostic unit is `playable`
+  (song · part · lesson · pattern) and `notation` is the S3 file or inline alphaTex. `score` is the
+  user-facing and log-facing word, and it matches AlphaTab's own `api.score` / `score.title`.
+- **Tempo lives in the header, not the transport row.** Both design sources put it there, so the transport row has none.
+- **v0 ships TWO speed controls over ONE value, and `applySpeed` is the only writer.** The header BPM stepper
+  (this plan) and the Settings popover's 12.5–200 % slider (Plan C) both edit the same `speed` multiplier;
+  `PlayerShell`'s `applySpeed` is the **sole** code path that assigns `api.playbackSpeed`, and Plan C's
+  Player-group row must call it rather than the settings-JSON accessor path. This is not stylistic:
+  `playbackSpeed` is an `AlphaTabApi` **property**, not a field in AlphaTab's `Settings` JSON, so a row
+  wired like the other settings rows would write a value that never reaches the engine — the slider moves,
+  the `%` updates, the audio does not.
+- **The 12.5–200 % speed slider is Plan C's** — it belongs to the Settings popover's Player group, not the header pill. This plan builds the editable BPM number field (`± 1` with hold-to-repeat, wheel scrub, drag scrub) and the `%` readout only.
 - **A–B loop markers are out of scope.** v0 ships a plain seek bar; looping uses AlphaTab's native bar-range selection plus the Loop toggle. Do not build marker UI.
-- `@coderline/alphatab` 1.8.4 facts this plan relies on: `api.isLooping: boolean`, `api.metronomeVolume: number`, `api.countInVolume: number`, `api.playbackSpeed: number`, `api.timePosition: number` (settable — this is the seek), `api.endTime: number`, `api.playerPositionChanged` emitting `{ currentTime, endTime, currentTick, endTick }`, and `api.soundFontLoad` emitting `{ loaded, total }`.
+- `@coderline/alphatab` 1.8.4 facts this plan relies on — all verified against the installed
+  `dist/alphaTab.d.ts` and, where marked **observed**, against a headless run of the real synth:
+  - `api.isLooping: boolean`, `api.metronomeVolume: number`, `api.countInVolume: number`,
+    `api.playbackSpeed: number`, `api.endTime: number`, `api.timePosition: number` (settable — this is
+    the seek). Set these directly; `api.updateSettings()` is **not** required (alphaTab's own docs show
+    `api.metronomeVolume = 0.5`).
+  - `api.playerPositionChanged` emits **seven** fields:
+    `{ currentTime, endTime, currentTick, endTick, isSeek, originalTempo, modifiedTempo }`.
+  - `api.midiLoaded` — fires when the score's MIDI is ready, carrying a `PositionChangedEventArgs` built
+    at tick 0. This is the clean bootstrap for the tempo readout.
+  - `api.soundFontLoad` emits `{ loaded, total }`; `api.soundFontLoaded` is completion (no payload); and
+    `api.soundFontLoadFailed: IEventEmitterOfT<Error>` is the failure path. All three must be handled —
+    subscribing only to the first leaves the progress bar on screen forever.
+  - `api.playbackRange: PlaybackRange | null` plus
+    `api.playbackRangeChanged: IEventEmitterOfT<PlaybackRangeChangedEventArgs>` — how the Loop toggle
+    learns whether a bar range is selected.
+  - **`score.tempo` is the INITIAL tempo only.** It is a getter over
+    `masterBars[0].tempoAutomations[0].value`, so on a score whose tempo changes it reports the opening
+    value for the whole piece (**observed**: a 90 → 120 → 60 score reported 90 throughout). Use
+    `args.originalTempo`, which is recomputed from the MIDI tempo table on every position update and
+    tracks automations at bar and sub-bar granularity (**observed** flipping exactly at the automation
+    ticks). Multiply by `playbackSpeed` yourself rather than displaying `modifiedTempo`: the two are
+    identical in the plain synth path, but `modifiedTempo` is defined as `syncPointTempo × playbackSpeed`
+    and diverges once backing-track sync points exist.
+  - **`playerPositionChanged` replays a hardcoded stub on subscribe.** It has a `fireOnRegister` provider
+    and `on()` invokes synchronously at registration with
+    `PositionChangedEventArgs(0, 0, 0, 0, false, 120, 120)`. A naive mount subscription therefore flashes
+    **120 BPM on a 90 BPM score** (**observed**). Guard the first callback on `endTime > 0`.
+  - **A seek is followed by a burst of stale position events.** They carry `isSeek: false` — the same value
+    every ordinary playback tick carries — so the flag alone cannot filter them (**observed**: blocking the
+    main thread 25 ms produced 8 stale events; 60 ms produced 18). The echo of the seek itself carries
+    `isSeek: true` and **exactly** the requested `currentTime` (clamped to `endTime`), and MessagePort
+    delivery is FIFO, so the stale burst always precedes it. See Task 6 Step 5 for the guard.
 
 ---
 
@@ -43,7 +94,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 | `Progress/`        | Determinate progress bar, with an indeterminate fallback. The design system has no `Progress`, `Spinner` or `Loader` at all.                                                           |
 | `Scrubber/`        | Current time, seek bar, total time. Composes `Slider`.                                                                                                                                 |
 | `TransportToggle/` | Icon toggle with a pressed state — one component used three times (Loop, Metronome, Count-In).                                                                                         |
-| `TempoControl/`    | The header pill: `– <BPM> +` stepper, with the `%` shown only while adjusting.                                                                                                         |
+| `TempoControl/`    | The header pill: `– <BPM> +` on Base UI `NumberField` — editable, wheel- and drag-scrubbable, `± 1` with hold-to-repeat — with the `%` shown on hover/focus and never at 100 %.        |
 
 Each folder holds the six files named in Global Constraints, plus a `X.vr.ts-snapshots/` directory of committed `-linux` PNGs.
 
@@ -107,8 +158,11 @@ test('renders one named slider', () => {
 test('exposes min / max / aria-valuenow', () => {
   render(<Slider value={30} onChange={() => {}} min={0} max={60} label="Volume" />);
   const thumb = screen.getByRole('slider', { name: 'Volume' });
-  expect(thumb).toHaveAttribute('aria-valuemin', '0');
-  expect(thumb).toHaveAttribute('aria-valuemax', '60');
+  // Base UI renders the thumb as a real (visually-hidden) <input type="range"> and sets ONLY
+  // aria-valuenow on it — the bounds live on the native min/max attributes. RangeSlider.test.tsx
+  // already asserts them this way; do not add redundant aria-* to the thumb to satisfy a test.
+  expect(thumb).toHaveAttribute('min', '0');
+  expect(thumb).toHaveAttribute('max', '60');
   expect(thumb).toHaveAttribute('aria-valuenow', '30');
 });
 
@@ -162,6 +216,21 @@ Create `client/src/components/ui/Slider/Slider.tsx`. Keep the thumb classes byte
 import { Slider as SliderPrimitive } from '@base-ui/react/slider';
 
 import { cn } from '@/lib/utils';
+
+// Shared with RangeSlider so the two read as one system and cannot drift apart. Exported from
+// slider-classes.ts and imported by BOTH components; the earlier plan said to keep the thumb
+// classes "byte-identical" by hand, which is exactly the duplication that drifts.
+export const SLIDER_CONTROL_CLASS = 'flex h-11 w-full items-center';
+export const SLIDER_TRACK_CLASS = 'relative h-1 grow rounded-full bg-muted';
+export const SLIDER_THUMB_CLASS = cn(
+  'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
+  'hover:ring-4 hover:ring-ring/30',
+  // Base UI's thumb is a styled div wrapping a real (visually-hidden) native <input type="range">
+  // — the INPUT takes focus, not this div, so a plain focus-visible: utility never matches.
+  'has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-focus-visible:outline-none',
+  'active:cursor-grabbing active:bg-primary',
+  'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed',
+);
 
 interface SliderProps {
   /** Controlled value. */
@@ -222,12 +291,15 @@ const Slider = ({
         step={step}
         disabled={disabled}
         className={cn(
-          'relative flex h-5 w-full touch-none items-center select-none',
+          'relative flex w-full touch-none items-center select-none',
           disabled && 'cursor-not-allowed opacity-50',
         )}
       >
-        <SliderPrimitive.Control className="flex w-full items-center">
-          <SliderPrimitive.Track className="relative h-1 grow rounded-full bg-muted">
+        {/* 44 px pointer target lives on CONTROL, not Root: Base UI puts the click/drag handling
+            on Control, so height on Root alone leaves the touchable area at the rail's 4 px. The
+            rail stays h-1 and is centred inside it — invisible padding, full-size target. */}
+        <SliderPrimitive.Control className={SLIDER_CONTROL_CLASS}>
+          <SliderPrimitive.Track className={SLIDER_TRACK_CLASS}>
             <SliderPrimitive.Indicator className="absolute h-full rounded-full bg-primary" />
             {/* Thumb: grab cursor + teal fill while dragging (:active); disabled keys off Base
                 UI's data-disabled (a <span> can't match :disabled), which also suppresses the
@@ -235,17 +307,7 @@ const Slider = ({
                 native <input type="range"> — the INPUT receives focus, not this div, so a plain
                 focus-visible: utility would never match; has-focus-visible: reads the nested
                 input's focus state instead. */}
-            <SliderPrimitive.Thumb
-              index={0}
-              aria-label={label}
-              className={cn(
-                'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
-                'hover:ring-4 hover:ring-ring/30',
-                'has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-focus-visible:outline-none',
-                'active:cursor-grabbing active:bg-primary',
-                'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed',
-              )}
-            />
+            <SliderPrimitive.Thumb index={0} aria-label={label} className={SLIDER_THUMB_CLASS} />
           </SliderPrimitive.Track>
         </SliderPrimitive.Control>
       </SliderPrimitive.Root>
@@ -331,15 +393,15 @@ Expected: PASS. Killing any stale `:6006` Storybook first is not optional — `r
 ```bash
 open -a Docker
 pnpm test:vr:docker:update
-git status --short client/src/components/ui/Slider
+git status --short client/src
 ```
 
-Expected: only new `slider-*-linux.png` files. **Never generate these on macOS** — darwin rasterises fonts differently and those snapshots are git-ignored.
+Expected: only new `slider-*-linux.png` files. The status is scoped to **all** of `client/src`, not just this component's folder: `test:vr:docker:update` runs `playwright test --update-snapshots` with no filter, so it re-blesses every baseline in the package. A shared-token shift that moved `Button`'s baseline would be invisible under a folder-scoped status, would stay uncommitted (every commit step uses a path-scoped `git add`), and would then fail CI against the committed file. **Never generate these on macOS** — darwin rasterises fonts differently and those snapshots are git-ignored.
 
-- [ ] **Step 9: Verify nothing else moved**
+- [ ] **Step 9: Confirm the suite is green against the new baselines**
 
 Run: `pnpm test:vr:docker`
-Expected: PASS, no diffs outside the new `Slider` snapshots.
+Expected: PASS. Note what this step can and cannot do: it re-runs against the very files Step 8 just wrote, so it proves the suite is green — it **cannot** detect drift. Step 8's `git status --short client/src` is the drift check.
 
 - [ ] **Step 10: Commit**
 
@@ -350,7 +412,7 @@ git commit -m "feat(client): add a single-value Slider primitive (NH-291)"
 
 ---
 
-### Task 2: `Progress` — the determinate bar
+### Task 2: `Progress` — the determinate bar, on Base UI
 
 **Files:**
 
@@ -363,8 +425,15 @@ git commit -m "feat(client): add a single-value Slider primitive (NH-291)"
 
 **Interfaces:**
 
-- Consumes: `cn` from `@/lib/utils`.
+- Consumes: `@base-ui/react/progress`, `cn` from `@/lib/utils`.
 - Produces: `<Progress value={number | null} label={string} className? />`, `data-slot="progress"`. `value` is a **fraction 0–1**, or `null` for the indeterminate style. Task 8 consumes it.
+
+> **Use Base UI's `Progress`, do not hand-roll a `role="progressbar"` div.** `@base-ui/react/progress`
+> ships `Root · Track · Indicator · Label · Value`, and its `Root` is documented as _"The current value.
+> The component is indeterminate when value is `null`."_ — exactly this component's semantics, already
+> built. It also supplies `min`/`max` (defaulting 0/100), `format`, `getAriaValueText`, and a `status`
+> state of `'indeterminate' | 'progressing' | 'complete'` that the indeterminate styling keys off. That
+> deletes a manual clamp, a manual `aria-valuenow` omission, and the hand-written ARIA wiring.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -383,16 +452,17 @@ test('exposes a named progressbar with the value mapped to 0-100', () => {
 });
 
 // AlphaTab forwards the raw XMLHttpRequest ProgressEvent: `total` is 0 when the response carries
-// no Content-Length. The caller maps that to null, and this renders the indeterminate style —
-// which, per ARIA, means NO aria-valuenow at all.
+// no Content-Length. The caller maps that to null, and Base UI renders the indeterminate state —
+// which, per ARIA, means NO aria-valuenow at all. Base UI does this for us.
 test('renders indeterminate with no aria-valuenow when value is null', () => {
   render(<Progress value={null} label="Loading sounds" />);
   const bar = screen.getByRole('progressbar', { name: 'Loading sounds' });
   expect(bar).not.toHaveAttribute('aria-valuenow');
+  expect(bar).toHaveAttribute('data-indeterminate');
 });
 
-// `total` is the ENCODED length while `loaded` counts decoded bytes when the CDN compresses, so
-// the fraction can exceed 1. Clamping is the component's job as well as the caller's.
+// `total` is the ENCODED length while `loaded` counts decoded bytes when the CDN compresses, so the
+// fraction can exceed 1. Base UI clamps to max; this asserts we pass the fraction through correctly.
 test('clamps an over-unity fraction to 100', () => {
   render(<Progress value={1.8} label="Loading sounds" />);
   expect(screen.getByRole('progressbar', { name: 'Loading sounds' })).toHaveAttribute(
@@ -420,6 +490,8 @@ Expected: FAIL — `Failed to resolve import "./Progress"`.
 Create `client/src/components/ui/Progress/Progress.tsx`:
 
 ```tsx
+import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
+
 import { cn } from '@/lib/utils';
 
 interface ProgressProps {
@@ -429,7 +501,7 @@ interface ProgressProps {
    * Null is a real case, not a guard: AlphaTab forwards the raw XMLHttpRequest ProgressEvent, and
    * `total` is 0 whenever the response carries no Content-Length — so there is genuinely no
    * fraction to show. Values above 1 are real too (a compressed response reports the ENCODED
-   * total against DECODED loaded bytes), hence the clamp.
+   * total against DECODED loaded bytes).
    */
   value: number | null;
   /** Accessible name — required; a bare progressbar tells a screen-reader user nothing. */
@@ -437,42 +509,40 @@ interface ProgressProps {
   className?: string;
 }
 
-const clampPercent = (value: number): number => Math.round(Math.min(1, Math.max(0, value)) * 100);
-
-// Determinate progress bar with an indeterminate fallback. The design system has no Progress,
-// Spinner or Loader at all, so this is the first of its kind — keep it presentation-only.
+// Determinate progress bar with an indeterminate fallback, over Base UI's Progress. Base UI owns
+// the ARIA contract — it omits aria-valuenow entirely on the indeterminate branch (which is what
+// ARIA defines as "value unknown"; rendering 0 would announce "0 percent" forever) and clamps the
+// value into [min, max] for us. This wrapper only paints the track/indicator and adds data-slot.
 //
-// The indeterminate branch omits aria-valuenow entirely, which is what ARIA defines as "the value
-// is unknown"; rendering 0 instead would announce "0 percent" forever.
-const Progress = ({ value, label, className }: Readonly<ProgressProps>) => {
-  const percent = value === null ? null : clampPercent(value);
-
-  return (
-    <div
-      data-slot="progress"
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      {...(percent === null ? {} : { 'aria-valuenow': percent })}
-      className={cn('relative h-1.5 w-full overflow-hidden rounded-full bg-muted', className)}
-    >
-      {percent === null ? (
-        <div className="animate-skeleton-pulse absolute inset-0 bg-primary/40" />
-      ) : (
-        <div
-          className="h-full rounded-full bg-primary transition-[width] duration-150"
-          style={{ width: `${percent}%` }}
-        />
-      )}
-    </div>
-  );
-};
+// The indeterminate fill reuses the repo's skeleton keyframe AS-IS. Do not stack a `bg-*` tint on
+// it: `animate-skeleton-pulse` animates `background-color` across the whole cycle, so a keyframe
+// declaration outranks a normal utility on the same element and the tint is simply never painted —
+// while `runVrStories` freezes animations before snapshotting, so the committed baseline would show
+// the tint the live page never renders. `Skeleton.tsx` pairs the animation with `bg-skeleton`.
+const Progress = ({ value, label, className }: Readonly<ProgressProps>) => (
+  <ProgressPrimitive.Root
+    value={value === null ? null : value * 100}
+    data-slot="progress"
+    aria-label={label}
+    className={cn('relative h-1.5 w-full overflow-hidden rounded-full', className)}
+  >
+    <ProgressPrimitive.Track className="h-full w-full overflow-hidden rounded-full bg-muted">
+      <ProgressPrimitive.Indicator
+        className={cn(
+          'h-full rounded-full bg-primary transition-[width] duration-150',
+          'data-[indeterminate]:animate-skeleton-pulse data-[indeterminate]:bg-skeleton data-[indeterminate]:w-full',
+        )}
+      />
+    </ProgressPrimitive.Track>
+  </ProgressPrimitive.Root>
+);
 
 export { Progress };
 ```
 
-> `animate-skeleton-pulse` is the repo's existing keyframe (see `Skeleton.tsx` and `styles.css`). Confirm the class name still exists before relying on it; if it has been renamed, use whatever `Skeleton.tsx` uses today rather than inventing a new animation.
+> Confirm `animate-skeleton-pulse` and the `bg-skeleton` token still exist before relying on them
+> (`Skeleton.tsx` and `client/src/styles.css`). If either has been renamed, use whatever `Skeleton.tsx`
+> uses today rather than inventing a new animation.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -488,9 +558,12 @@ Expected: PASS — 4 tests.
 export const PROGRESS_STORY_IDS = ['default', 'complete', 'indeterminate'] as const;
 ```
 
-Stories: `title: 'UI/Progress'`, four exports matching those ids (`Default` at 0.42, `Complete` at 1, `Indeterminate` at null). Model the file on `RangeSlider.stories.tsx`.
+Stories: `title: 'UI/Progress'`, **three** exports matching those ids exactly — `Default` at 0.42,
+`Complete` at 1, `Indeterminate` at null. Model the file on `RangeSlider.stories.tsx`.
 
-`Progress.a11y.ts` and `Progress.vr.ts` follow the Task 1 shape with `storyPrefix: 'ui-progress'`, `snapshotSlug: 'progress'`, `slotSelector: '[data-slot="progress"]'`. A progress bar has no focus or hover state, so use `states: ['resting']` in VR and set `hoverStory: () => false` in a11y.
+`Progress.a11y.ts` and `Progress.vr.ts` follow the Task 1 shape with `storyPrefix: 'ui-progress'`,
+`snapshotSlug: 'progress'`, `slotSelector: '[data-slot="progress"]'`. A progress bar has no focus or
+hover state, so use `states: ['resting']` in VR and set `hoverStory: () => false` in a11y.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 
@@ -499,18 +572,21 @@ pkill -f "storybook.*6006" || true
 pnpm --filter @notation-hero/client run test:a11y -g "Progress"
 open -a Docker
 pnpm test:vr:docker:update
+git status --short client/src
 pnpm test:vr:docker
 ```
 
 Expected: a11y PASS; only new `progress-*-linux.png` files; the second VR run clean.
 
-> The indeterminate story animates. If VR flakes on it, `runVrStories` already freezes transitions and animations before snapshotting — check `vr-helpers.ts` rather than adding a bespoke freeze.
+> The indeterminate story animates, and `runVrStories` already freezes transitions and animations
+> before snapshotting — check `vr-helpers.ts` rather than adding a bespoke freeze. Note the frozen
+> baseline therefore guards only the keyframe's base frame, not the pulse trough.
 
 - [ ] **Step 7: Commit**
 
 ```bash
 git add client/src/components/ui/Progress
-git commit -m "feat(client): add a determinate Progress bar (NH-291)"
+git commit -m "feat(client): add a Progress bar on Base UI (NH-291)"
 ```
 
 ---
@@ -556,8 +632,9 @@ test('pads seconds below ten', () => {
 test('the seek bar is a named slider over the song length in seconds', () => {
   render(<Scrubber positionMs={0} durationMs={260_000} onSeek={() => {}} />);
   const bar = screen.getByRole('slider', { name: 'Seek' });
-  expect(bar).toHaveAttribute('aria-valuemin', '0');
-  expect(bar).toHaveAttribute('aria-valuemax', '260');
+  // Native min/max, not aria-valuemin/max — see the note in Slider.test.tsx.
+  expect(bar).toHaveAttribute('min', '0');
+  expect(bar).toHaveAttribute('max', '260');
 });
 
 test('arrow keys seek and report milliseconds to the caller', async () => {
@@ -572,7 +649,7 @@ test('arrow keys seek and report milliseconds to the caller', async () => {
   expect(screen.getByText('00:01')).toBeInTheDocument();
 });
 
-// A chart that has not loaded yet has no length; the bar must not render NaN or a 1-second song.
+// A score that has not loaded yet has no length; the bar must not render NaN or a 1-second song.
 test('renders a disabled zero-length bar when there is no duration', () => {
   render(<Scrubber positionMs={0} durationMs={0} onSeek={() => {}} />);
   expect(screen.getByRole('slider', { name: 'Seek' })).toBeDisabled();
@@ -608,7 +685,7 @@ interface ScrubberProps {
 }
 
 // mm:ss. Beyond an hour this reads as minutes past 60 (e.g. 65:00) rather than growing an hour
-// field — no practice chart runs that long, and a third field would jitter the row's width.
+// field — no practice score runs that long, and a third field would jitter the row's width.
 const formatClock = (ms: number): string => {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const minutes = Math.floor(totalSeconds / 60);
@@ -621,7 +698,7 @@ const formatClock = (ms: number): string => {
 //
 // The bar works in SECONDS internally so one arrow-key press is a one-second step, which is the
 // granularity a drummer wants; milliseconds would need a step of 1000 and would report a
-// misleading aria-valuemax of 260000.
+// misleading max of 260000.
 //
 // A–B loop markers are deliberately absent: v0 uses AlphaTab's native bar-range selection plus the
 // Loop toggle, so there is no marker UI and no marker/selection sync to keep.
@@ -678,6 +755,7 @@ pkill -f "storybook.*6006" || true
 pnpm --filter @notation-hero/client run test:a11y -g "Scrubber"
 open -a Docker
 pnpm test:vr:docker:update
+git status --short client/src
 pnpm test:vr:docker
 ```
 
@@ -692,7 +770,7 @@ git commit -m "feat(client): add the playback Scrubber (NH-291)"
 
 ---
 
-### Task 4: `TransportToggle` — one component, three uses
+### Task 4: `TransportToggle` — one component, three uses, on Base UI
 
 **Files:**
 
@@ -700,8 +778,18 @@ git commit -m "feat(client): add the playback Scrubber (NH-291)"
 
 **Interfaces:**
 
-- Consumes: `Button`, `cn`.
-- Produces: `<TransportToggle pressed={boolean} onPressedChange={(next: boolean) => void} label={string} icon={ReactNode} disabled? />`, `data-slot="transport-toggle"`. Task 6 renders it three times.
+- Consumes: `@base-ui/react/toggle`, `buttonVariants`, `Tooltip`, `cn`.
+- Produces: `<TransportToggle pressed={boolean} onPressedChange={(next: boolean) => void} label={string} icon={ReactNode} tooltip? disabled? ...buttonProps />`, `data-slot="transport-toggle"`. Task 6 renders it three times.
+
+> **Use Base UI's `Toggle`, do not hand-roll `aria-pressed` on a `Button`.** `@base-ui/react/toggle` is
+> documented as _"A two-state button that can be on or off. Renders a `<button>` element."_ — it owns
+> `pressed` / `onPressedChange`, sets `aria-pressed`, emits `data-pressed`, and extends
+> `NativeButtonProps`, so `data-testid` and every other button attribute pass through without a bespoke
+> rest-spread. The repo already uses it: `ToggleChipGroup.tsx` imports the same primitive.
+>
+> Not the `Switch` (that is the settings-row affordance, Plan C) and not `ToggleGroup` — Loop, Metronome
+> and Count-In are three independent booleans, and a group would bind them into one roving-focus widget
+> sitting next to a scrubber.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -775,19 +863,23 @@ Create `client/src/components/ui/TransportToggle/TransportToggle.tsx`:
 ```tsx
 'use client';
 
-import type { ReactNode } from 'react';
+import { Toggle } from '@base-ui/react/toggle';
+import type { ComponentProps, ReactNode } from 'react';
 
-import { Button } from '../Button/Button';
+import { buttonVariants } from '../Button/Button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip/Tooltip';
 
 import { cn } from '@/lib/utils';
 
-interface TransportToggleProps {
+interface TransportToggleProps extends Omit<ComponentProps<'button'>, 'onChange' | 'children'> {
   pressed: boolean;
   onPressedChange: (next: boolean) => void;
   /** Accessible name — the control is icon-only, so this is the only label a reader gets. */
   label: string;
   /** The glyph. Pass it aria-hidden; `label` carries the name. */
   icon: ReactNode;
+  /** Optional hover/focus hint. Use it where the control implies a gesture the UI never teaches. */
+  tooltip?: string;
   disabled?: boolean;
   className?: string;
 }
@@ -805,28 +897,55 @@ const TransportToggle = ({
   onPressedChange,
   label,
   icon,
+  tooltip,
   disabled = false,
   className,
-}: Readonly<TransportToggleProps>) => (
-  <Button
-    data-slot="transport-toggle"
-    type="button"
-    variant="ghost"
-    size="icon"
-    aria-pressed={pressed}
-    aria-label={label}
-    disabled={disabled}
-    onClick={() => onPressedChange(!pressed)}
-    className={cn('size-11 rounded-lg', pressed && 'bg-secondary text-primary', className)}
-  >
-    {icon}
-  </Button>
-);
+  ...rest
+}: Readonly<TransportToggleProps>) => {
+  const toggle = (
+    <Toggle
+      {...rest}
+      data-slot="transport-toggle"
+      pressed={pressed}
+      onPressedChange={(next) => onPressedChange(next)}
+      aria-label={label}
+      disabled={disabled}
+      className={cn(
+        buttonVariants({ variant: 'ghost', size: 'icon' }),
+        'size-11 rounded-lg',
+        // Pressed = SOLID brand teal, matching every other selected/active control in the system:
+        // ToggleChipGroup (`data-pressed:border-primary data-pressed:bg-primary
+        // data-pressed:text-primary-foreground`), Tabs (`data-active:bg-primary
+        // data-active:text-primary-foreground`) and Sidebar's active item. A gray fill with a teal
+        // glyph is NOT an existing pattern here — do not invent one.
+        'data-pressed:border-primary data-pressed:bg-primary data-pressed:text-primary-foreground',
+        className,
+      )}
+    >
+      {icon}
+    </Toggle>
+  );
+
+  // Base UI sets aria-pressed and the accessible name on the Toggle itself, so the tooltip is a
+  // redundant hint rather than the control's name — safe to omit per-instance.
+  return tooltip ? (
+    <Tooltip>
+      <TooltipTrigger render={toggle} />
+      <TooltipContent>{tooltip}</TooltipContent>
+    </Tooltip>
+  ) : (
+    toggle
+  );
+};
 
 export { TransportToggle };
 ```
 
-> Pressed uses the solid-teal-on-secondary pairing the design system already uses for selected state (`bg-secondary` + `text-primary`), not a faint tint. If `Button`'s `ghost` variant already sets a conflicting background, override it here rather than changing `Button`.
+> `Base UI`'s `Toggle` renders its own `<button>`, so the look comes from `buttonVariants(...)` rather
+> than from wrapping `<Button>` — that is the repo's reuse rule (never hand-copy Button's class
+> strings) without nesting two buttons. Verify with `--print-config`-style inspection that
+> `data-slot="transport-toggle"` wins over any `data-slot` the variants set, since the VR and axe
+> helpers select on it.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -835,7 +954,7 @@ Expected: PASS — 3 tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
-`TransportToggle.story-ids.ts`: `['default', 'pressed', 'disabled']`. Stories under `title: 'UI/TransportToggle'`, each passing a Material Symbols glyph as `icon`. In `TransportToggle.a11y.ts` set `iconFontStory: () => true` — every story renders a glyph, and that flag makes the helper assert the icon font actually loaded, so a failed load cannot pass silently as ligature fallback text. VR: `states: ['resting', 'focus', 'hover']`, `statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover'])`.
+`TransportToggle.story-ids.ts`: `['default', 'pressed', 'disabled', 'with-tooltip']`. Stories under `title: 'UI/TransportToggle'`, each passing a Material Symbols glyph as `icon`. In `TransportToggle.a11y.ts` set `iconFontStory: () => true` — every story renders a glyph, and that flag makes the helper assert the icon font actually loaded, so a failed load cannot pass silently as ligature fallback text. VR: `states: ['resting', 'focus', 'hover']`, `statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover'])`.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 
@@ -844,6 +963,7 @@ pkill -f "storybook.*6006" || true
 pnpm --filter @notation-hero/client run test:a11y -g "TransportToggle"
 open -a Docker
 pnpm test:vr:docker:update
+git status --short client/src
 pnpm test:vr:docker
 ```
 
@@ -858,9 +978,11 @@ git commit -m "feat(client): add the TransportToggle used by Loop, Metronome and
 
 ---
 
-### Task 5: `TempoControl` — the header pill
+### Task 5: `TempoControl` — the header pill, on Base UI `NumberField`
 
-`Bpm` is display-only, so the tempo control is new. The displayed number is the **chart's tempo multiplied by the playback speed**, the `±` buttons move it by 5 BPM, and the percentage shows **only while adjusting** — the shape both design sources describe.
+`Bpm` is display-only, so the tempo control is new. The displayed number is the **score's tempo
+multiplied by the playback speed**; the value is directly editable, the `±` buttons move it by **1 BPM**
+with hold-to-repeat, and the percentage appears **on hover or focus** (see the visibility rule below).
 
 **Files:**
 
@@ -868,8 +990,43 @@ git commit -m "feat(client): add the TransportToggle used by Loop, Metronome and
 
 **Interfaces:**
 
-- Consumes: `Button`, `cn`.
-- Produces: `<TempoControl chartTempo={number} speed={number} onSpeedChange={(next: number) => void} minSpeed? maxSpeed? disabled? />`, `data-slot="tempo-control"`. Task 7 consumes it. Plan C's Player settings group edits the same `speed` value, which is why it is the single source of truth rather than a BPM number.
+- Consumes: `@base-ui/react/number-field`, `buttonVariants`, `inputSurfaceClasses`, `cn`.
+- Produces: `<TempoControl scoreTempo={number} speed={number} onSpeedChange={(next: number) => void} minSpeed? maxSpeed? showPercent? disabled? />`, `data-slot="tempo-control"`. Task 7 consumes it. Plan C's Player settings group edits the same `speed` value, which is why it is the single source of truth rather than a BPM number.
+
+> **Use Base UI's `NumberField`, do not hand-roll a stepper.** `@base-ui/react/number-field` ships
+> `Root · Group · Input · Increment · Decrement · ScrubArea · ScrubAreaCursor` and supplies, out of the
+> box, every behaviour this control needs: a real editable input (no click-to-convert), mouse-wheel
+> stepping via `allowWheelScrub`, `step` / `smallStep` / `largeStep` / `snapOnStep`, `min` / `max`
+> clamping, `format` / `locale`, and **hold-to-repeat on the buttons** (`START_AUTO_CHANGE_DELAY = 400`
+> then a tick every `CHANGE_VALUE_TICK_DELAY = 60`). `ScrubArea` additionally gives a DAW-style
+> drag-sideways-to-change gesture for free.
+>
+> The hold repeat is a constant 60 ms tick rather than accelerating, so at `step={1}` a hold moves about
+> 16 BPM per second — 120 → 60 takes roughly 3.75 s. Acceptable for v0; an accelerating hold is a
+> nice-to-have, not a blocker.
+
+#### The percentage-visibility rule
+
+BPM is the unit the user controls; the percentage is the only thing that says whether they are hearing
+the score at its **written** speed. So:
+
+1. **On focus** — which covers keyboard use and the editable input, i.e. "while adjusting".
+2. **On hover.**
+3. **Hidden on blur**, or **3 s** after the last change (the touch path).
+4. **At exactly 100 %, never shown** — there is nothing to report, and showing everything at once is noise.
+
+Rules 1–3 are **pure CSS**: `group-hover` and `group-focus-within` drive visibility, and
+`:focus-within` gives "hide on blur" for free with no blur listener and no cleanup. Only the 3 s linger
+needs JavaScript. Note what the linger is actually for: on touch, tapping `±` **focuses** the button, so
+`:focus-within` holds the percentage until the user taps away and the timer never visibly expires. The
+linger covers changes that carry no focus — a wheel scrub, or Plan C's Settings slider moving `speed`.
+
+> **Spec Delta.** `docs/specs/2026-09-10-v0-local-file-player-design.md` (§7, the tempo-control line) says
+> the percentage is "shown only while adjusting", with `±5` buttons. This plan changes three things:
+> hover and blur join focus as triggers, the step becomes 1 BPM (the control is now a number field with
+> hold-to-repeat, so coarse steps are no longer needed to keep the press count sane), and the linger moves
+> from 2 s to 3 s. Ratified by the maintainer during the 2026-09-13 plan review; record it in
+> `docs/decisions/decision-registry.md` with the rest of this plan's entry.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -881,61 +1038,99 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { TempoControl } from './TempoControl';
 
-const Harness = ({ chartTempo = 120, initial = 1 }) => {
+// Base UI's NumberField uses pointer capture on its ScrubArea and ResizeObserver internally;
+// both are polyfilled globally in vitest.setup.ts. These tests drive it by keyboard and clicks.
+
+const Harness = ({ scoreTempo = 120, initial = 1 }) => {
   const [speed, setSpeed] = useState(initial);
-  return <TempoControl chartTempo={chartTempo} speed={speed} onSpeedChange={setSpeed} />;
+  return <TempoControl scoreTempo={scoreTempo} speed={speed} onSpeedChange={setSpeed} />;
 };
 
-test('shows the chart tempo scaled by the speed', () => {
-  render(<TempoControl chartTempo={120} speed={1} onSpeedChange={() => {}} />);
-  expect(screen.getByTestId('tempo-value')).toHaveTextContent('120');
-
-  render(<TempoControl chartTempo={120} speed={0.5} onSpeedChange={() => {}} />);
-  expect(screen.getAllByTestId('tempo-value')[1]).toHaveTextContent('60');
+test('shows the score tempo scaled by the speed', () => {
+  render(<TempoControl scoreTempo={120} speed={1} onSpeedChange={() => {}} />);
+  expect(screen.getByRole('textbox', { name: 'Tempo' })).toHaveValue('120');
 });
 
-test('the plus button raises the tempo by 5 BPM and reports a SPEED back', async () => {
+test('a half speed reads as half the BPM', () => {
+  render(<TempoControl scoreTempo={120} speed={0.5} onSpeedChange={() => {}} />);
+  expect(screen.getByRole('textbox', { name: 'Tempo' })).toHaveValue('60');
+});
+
+test('the increment button moves one BPM and reports a speed', async () => {
   const user = userEvent.setup();
-  render(<Harness chartTempo={120} />);
+  const onSpeedChange = vi.fn();
+  render(<TempoControl scoreTempo={120} speed={1} onSpeedChange={onSpeedChange} />);
 
   await user.click(screen.getByRole('button', { name: 'Increase tempo' }));
-  // 125 / 120 = 1.041666…, and the display rounds to 125.
-  expect(screen.getByTestId('tempo-value')).toHaveTextContent('125');
+  // 121 / 120 — the component owns SPEED, never BPM.
+  expect(onSpeedChange).toHaveBeenCalledWith(121 / 120);
 });
 
-test('the minus button lowers the tempo by 5 BPM', async () => {
+test('the decrement button moves one BPM down', async () => {
   const user = userEvent.setup();
-  render(<Harness chartTempo={120} />);
-
+  render(<Harness />);
   await user.click(screen.getByRole('button', { name: 'Decrease tempo' }));
-  expect(screen.getByTestId('tempo-value')).toHaveTextContent('115');
+  expect(screen.getByRole('textbox', { name: 'Tempo' })).toHaveValue('119');
 });
 
-// 12.5% is AlphaTab's documented playbackSpeed floor; 200% is the ceiling the settings slider uses.
-test('clamps to the 12.5 percent floor', async () => {
+test('typing a BPM directly sets the speed', async () => {
   const user = userEvent.setup();
-  render(<Harness chartTempo={100} initial={0.13} />);
-
-  await user.click(screen.getByRole('button', { name: 'Decrease tempo' }));
-  expect(screen.getByTestId('tempo-value')).toHaveTextContent('13');
+  render(<Harness />);
+  const input = screen.getByRole('textbox', { name: 'Tempo' });
+  await user.clear(input);
+  await user.type(input, '60');
+  await user.tab();
+  expect(input).toHaveValue('60');
 });
 
-test('clamps to the 200 percent ceiling', async () => {
+test('clamps to the 12.5% floor', async () => {
   const user = userEvent.setup();
-  render(<Harness chartTempo={100} initial={1.99} />);
+  render(<Harness />);
+  const input = screen.getByRole('textbox', { name: 'Tempo' });
+  await user.clear(input);
+  await user.type(input, '1');
+  await user.tab();
+  // 12.5% of 120 BPM, rounded.
+  expect(input).toHaveValue('15');
+});
 
+test('clamps to the 200% ceiling', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  const input = screen.getByRole('textbox', { name: 'Tempo' });
+  await user.clear(input);
+  await user.type(input, '900');
+  await user.tab();
+  expect(input).toHaveValue('240');
+});
+
+// F-22 rule 4: at written speed there is nothing to report, so the percentage is never rendered
+// visible — not on hover, not on focus.
+test('renders no percentage at exactly 100%', () => {
+  render(<TempoControl scoreTempo={120} speed={1} onSpeedChange={() => {}} />);
+  expect(screen.getByTestId('tempo-control')).toHaveAttribute('data-off-speed', 'false');
+});
+
+test('marks itself off-speed when the speed is not 1', () => {
+  render(<TempoControl scoreTempo={120} speed={0.5} onSpeedChange={() => {}} />);
+  expect(screen.getByTestId('tempo-control')).toHaveAttribute('data-off-speed', 'true');
+  expect(screen.getByTestId('tempo-percent')).toHaveTextContent('50%');
+});
+
+// F-13: the value changes as a side effect of pressing a button, which a text input does not
+// announce on its own.
+test('announces the new tempo in a live region', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
   await user.click(screen.getByRole('button', { name: 'Increase tempo' }));
-  expect(screen.getByTestId('tempo-value')).toHaveTextContent('200');
+  expect(screen.getByRole('status')).toHaveTextContent('121 BPM');
 });
 
-// "% shown only while adjusting" — the percentage is not part of the resting pill.
-test('shows the percentage only after an adjustment', async () => {
-  const user = userEvent.setup();
-  render(<Harness chartTempo={120} />);
-  expect(screen.queryByTestId('tempo-percent')).not.toBeInTheDocument();
-
-  await user.click(screen.getByRole('button', { name: 'Increase tempo' }));
-  expect(screen.getByTestId('tempo-percent')).toBeInTheDocument();
+test('disabled blocks both steppers and the input', () => {
+  render(<TempoControl scoreTempo={120} speed={1} onSpeedChange={() => {}} disabled />);
+  expect(screen.getByRole('button', { name: 'Increase tempo' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Decrease tempo' })).toBeDisabled();
+  expect(screen.getByRole('textbox', { name: 'Tempo' })).toBeDisabled();
 });
 ```
 
@@ -951,140 +1146,185 @@ Create `client/src/components/ui/TempoControl/TempoControl.tsx`:
 ```tsx
 'use client';
 
+import { NumberField } from '@base-ui/react/number-field';
 import { useEffect, useRef, useState } from 'react';
 
-import { Button } from '../Button/Button';
+import { buttonVariants } from '../Button/Button';
 
 import { cn } from '@/lib/utils';
 
 interface TempoControlProps {
-  /** The chart's own initial tempo in BPM. The displayed number is this times `speed`. */
-  chartTempo: number;
-  /** Playback speed multiplier; 1 is the chart's own tempo. */
+  /** The score's live tempo in BPM. The displayed number is this times `speed`. */
+  scoreTempo: number;
+  /** Playback speed multiplier; 1 is the score's own tempo. */
   speed: number;
   onSpeedChange: (next: number) => void;
   /** AlphaTab's documented playbackSpeed floor. */
   minSpeed?: number;
   maxSpeed?: number;
+  /** Force the percentage visible. For stories and VR only; leave undefined in the app. */
+  showPercent?: boolean;
   disabled?: boolean;
   className?: string;
 }
 
-/** One press of the stepper, in BPM. */
-const STEP_BPM = 5;
-/** How long the percentage stays visible after the last adjustment. */
-const PERCENT_LINGER_MS = 2000;
+/** How long the percentage stays visible after a change that carried no focus. */
+const PERCENT_LINGER_MS = 3000;
 
-// The header's tempo control. SPEED is the value it owns, not BPM: AlphaTab's playbackSpeed is
-// what actually changes playback, and the Player settings group (Plan C) edits the same number —
-// so keeping speed as the single source of truth is what stops the two controls drifting apart.
-// BPM is the presentation.
+// The header's tempo control. SPEED is the value it owns, not BPM: AlphaTab's playbackSpeed is what
+// actually changes playback, and the Player settings group (Plan C) edits the same number — so
+// keeping speed as the single source of truth is what stops the two controls drifting apart. BPM is
+// the presentation, and the user edits it directly.
 //
-// The percentage appears only while adjusting, per both design sources: at rest the pill is just
-// `– 120 +`, and the `%` would be noise.
+// Base UI's NumberField owns the interaction model: the editable input, wheel scrubbing, the
+// min/max clamp, and hold-to-repeat on the buttons. This wrapper converts BPM <-> speed at the
+// boundary, paints the pill, and implements the percentage-visibility rule.
 const TempoControl = ({
-  chartTempo,
+  scoreTempo,
   speed,
   onSpeedChange,
   minSpeed = 0.125,
   maxSpeed = 2,
+  showPercent,
   disabled = false,
   className,
 }: Readonly<TempoControlProps>) => {
-  const [adjusting, setAdjusting] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [lingering, setLingering] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  useEffect(
-    () => () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    },
-    [],
-  );
+  const displayedBpm = Math.round(scoreTempo * speed);
+  const percent = Math.round(speed * 100);
+  const offSpeed = Math.abs(speed - 1) > 0.0001;
 
-  const displayedBpm = Math.round(chartTempo * speed);
-  const percent = Math.round(speed * 1000) / 10;
+  useEffect(() => () => clearTimeout(timerRef.current), []);
 
-  const step = (direction: 1 | -1) => {
-    // The stepper moves BPM, so convert back to a speed. A chart with no tempo would divide by
-    // zero, so fall back to a bare speed step.
-    const nextBpm = displayedBpm + direction * STEP_BPM;
-    const nextSpeed = chartTempo > 0 ? nextBpm / chartTempo : speed + direction * 0.05;
-    onSpeedChange(Math.min(maxSpeed, Math.max(minSpeed, nextSpeed)));
-
-    setAdjusting(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setAdjusting(false), PERCENT_LINGER_MS);
+  const handleBpm = (nextBpm: number | null) => {
+    if (nextBpm === null || scoreTempo <= 0) return; // a score with no tempo would divide by zero
+    const next = Math.min(maxSpeed, Math.max(minSpeed, nextBpm / scoreTempo));
+    onSpeedChange(next);
+    setLingering(true);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setLingering(false), PERCENT_LINGER_MS);
   };
 
   return (
-    <div
+    <NumberField.Root
+      value={displayedBpm}
+      onValueChange={handleBpm}
+      min={Math.round(scoreTempo * minSpeed)}
+      max={Math.round(scoreTempo * maxSpeed)}
+      step={1}
+      largeStep={5}
+      allowWheelScrub
+      disabled={disabled}
       data-slot="tempo-control"
-      className={cn(
-        'flex items-center gap-1 rounded-full border border-border bg-secondary p-1',
-        className,
-      )}
+      data-testid="tempo-control"
+      // The visibility rule lives in these two attributes plus the CSS below. data-off-speed=false
+      // means "at written speed", and rule 4 says the percentage is then never shown at all.
+      data-off-speed={offSpeed}
+      data-linger={showPercent ?? lingering}
+      className={cn('group flex items-center gap-0.5', className)}
     >
-      {/* size-11 = the 44px minimum hit area. The mockup's ± buttons carry NO size class at all,
-          so their hit area is just the glyph — v0 must not copy that. */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label="Decrease tempo"
-        disabled={disabled}
-        onClick={() => step(-1)}
-        className="size-11 rounded-full"
-      >
-        <span className="material-symbols-outlined" aria-hidden="true">
-          remove
-        </span>
-      </Button>
+      <NumberField.Group className="flex items-center gap-0.5">
+        <NumberField.Decrement
+          aria-label="Decrease tempo"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11 rounded-lg')}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">
+            remove
+          </span>
+        </NumberField.Decrement>
 
-      <div className="flex min-w-16 flex-col items-center px-2">
-        <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-          BPM
-        </span>
-        <span data-testid="tempo-value" className="text-sm leading-none font-bold tabular-nums">
-          {displayedBpm}
-        </span>
-        {adjusting ? (
+        {/* ScrubArea wraps the readout: dragging sideways over the BPM changes it, the DAW gesture. */}
+        <NumberField.ScrubArea className="flex cursor-ew-resize flex-col items-center px-2">
+          <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+            BPM
+          </span>
+          <NumberField.Input
+            aria-label="Tempo"
+            className={cn(
+              'w-12 border-0 bg-transparent p-0 text-center text-sm leading-none font-bold tabular-nums',
+              'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+            )}
+          />
+          {/* Rule 1-4, entirely in CSS: hover or focus reveals it, blur hides it (focus-within does
+              that for free), data-linger covers a change that carries no focus, and the whole thing is gated
+              on data-off-speed so 100% never shows anything. */}
           <span
             data-testid="tempo-percent"
-            className="text-[10px] text-muted-foreground tabular-nums"
+            aria-hidden="true"
+            className={cn(
+              'text-[10px] text-primary tabular-nums opacity-0 transition-opacity',
+              'group-data-[off-speed=true]:group-hover:opacity-100',
+              'group-data-[off-speed=true]:group-focus-within:opacity-100',
+              'group-data-[off-speed=true]:group-data-[linger=true]:opacity-100',
+            )}
           >
             {percent}%
           </span>
-        ) : null}
-      </div>
+          <NumberField.ScrubAreaCursor />
+        </NumberField.ScrubArea>
 
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        aria-label="Increase tempo"
-        disabled={disabled}
-        onClick={() => step(1)}
-        className="size-11 rounded-full"
-      >
-        <span className="material-symbols-outlined" aria-hidden="true">
-          add
-        </span>
-      </Button>
-    </div>
+        <NumberField.Increment
+          aria-label="Increase tempo"
+          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11 rounded-lg')}
+        >
+          <span className="material-symbols-outlined" aria-hidden="true">
+            add
+          </span>
+        </NumberField.Increment>
+      </NumberField.Group>
+
+      {/* F-13: Base UI's Input is a text input carrying aria-roledescription, not role="spinbutton",
+          so a value change driven by the +/- buttons is not announced. This is the same visually
+          hidden live region DataTable.tsx uses for the same shape of problem. */}
+      <span role="status" aria-live="polite" className="sr-only">
+        {displayedBpm} BPM
+      </span>
+    </NumberField.Root>
   );
 };
 
 export { TempoControl };
 ```
 
+> Two things to verify while building, rather than assume: that `NumberField.Input` reports
+> `role="textbox"` to Testing Library in the installed version (adjust the queries if it exposes
+> `spinbutton` instead), and that `group-data-[…]` nesting resolves as written under Tailwind 4 — if the
+> doubled `group-*` variant does not compose, hoist the gate to a single `data-percent` attribute
+> computed in TypeScript rather than fighting the variant syntax.
+
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TempoControl`
-Expected: PASS — 6 tests.
+Expected: PASS — 11 tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
-`TempoControl.story-ids.ts`: `['default', 'slowed', 'adjusting', 'disabled']`. The `adjusting` story must render with the percentage visible so VR and axe can see it — give the component a `defaultAdjusting` prop **only if** the story cannot reach that state otherwise; prefer driving it from the story with a click in `play()`. `storyPrefix: 'ui-tempocontrol'`, `snapshotSlug: 'tempocontrol'`, `slotSelector: '[data-slot="tempo-control"]'`, `iconFontStory: () => true`.
+`TempoControl.story-ids.ts`: `['default', 'slowed', 'disabled']` — three stories, not four. The
+percentage no longer needs a story of its own, because **hover and focus are the two states VR already
+captures**; see the next paragraph.
+
+Stories under `title: 'UI/TempoControl'`, each holding local state so the steppers work in the canvas.
+`storyPrefix: 'ui-tempocontrol'`, `snapshotSlug: 'tempocontrol'`,
+`slotSelector: '[data-slot="tempo-control"]'`, `iconFontStory: () => true`.
+
+**VR and a11y states — this is where the old plan had a race.** The percentage used to be driven only
+by a `setTimeout`, which `runVrStories`' `animation: none` freeze cannot stop and which no story
+`play()` could reach (neither helper invokes or awaits `play()`, and **no story under `client/src` uses
+it**). With the rule above, two of the three triggers are CSS, so the existing states cover them:
+
+```ts
+// TempoControl.vr.ts
+states: ['resting', 'focus', 'hover'],
+statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover']),
+focusExpect: 'input',
+```
+
+The `slowed` story's `hover` and `focus` snapshots are what guard the visible percentage; `resting`
+guards its absence. The linger needs no snapshot of its own — but if you want one, drive it with the
+controlled `showPercent` prop through `openArgs: 'showPercent:!true'` plus the `open` state, the
+mechanism `HoverCard.a11y.ts` and five other components already use. **Do not** add a `play()` click.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 
@@ -1093,6 +1333,7 @@ pkill -f "storybook.*6006" || true
 pnpm --filter @notation-hero/client run test:a11y -g "TempoControl"
 open -a Docker
 pnpm test:vr:docker:update
+git status --short client/src
 pnpm test:vr:docker
 ```
 
@@ -1102,7 +1343,7 @@ Expected: a11y PASS; only new `tempocontrol-*-linux.png`; the second run clean.
 
 ```bash
 git add client/src/components/ui/TempoControl
-git commit -m "feat(client): add the header TempoControl stepper (NH-291)"
+git commit -m "feat(client): add the header TempoControl on Base UI NumberField (NH-291)"
 ```
 
 ---
@@ -1187,7 +1428,19 @@ export { Progress } from './components/ui/Progress/Progress';
 export { Scrubber } from './components/ui/Scrubber/Scrubber';
 export { TransportToggle } from './components/ui/TransportToggle/TransportToggle';
 export { TempoControl } from './components/ui/TempoControl/TempoControl';
+// Already built, tested, and carrying committed VR + axe baselines — it was simply never exported.
+// The transport's icon-only toggles and the tempo steppers all use it.
+export {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+  TooltipProvider,
+} from './components/ui/Tooltip/Tooltip';
 ```
+
+Note the file's own header comment says the Phase 1 surface is "ONLY Button (NH-275 one-component
+proof)" and defers the full barrel to Phase 2. These six exports are a deliberate, scoped widening for
+v0 — update that comment in the same edit rather than leaving it contradicting the file.
 
 - [ ] **Step 4: Write the transport row**
 
@@ -1241,11 +1494,16 @@ export function TransportRow({
   return (
     <div className="flex w-full items-center gap-4 border-t border-border px-6 py-3">
       {playButton}
+      {/* The label names WHAT will repeat. With no bar range selected AlphaTab's isLooping restarts
+          the whole score when it ends; with one it repeats the selection. The button looks identical
+          either way, and the selection gesture (a mouse drag across the notation) is taught nowhere —
+          so the label carries it. No marker UI, so the out-of-scope constraint holds. */}
       <TransportToggle
         data-testid="toggle-loop"
         pressed={looping}
         onPressedChange={onLoopingChange}
-        label="Loop"
+        label={hasRange ? 'Loop selection' : 'Loop score'}
+        tooltip={hasRange ? undefined : 'Drag across bars in the notation to loop just that range'}
         icon={<Glyph name="repeat" />}
         disabled={disabled}
       />
@@ -1281,7 +1539,9 @@ export function TransportRow({
 }
 ```
 
-> `TransportToggle` must forward `data-testid` to its `Button`. If it does not, add a `...rest` spread to its props in Task 4's component and re-run that task's gates — do not reach around it with a wrapper div, which would break the axe name/role checks.
+> `data-testid` reaches the rendered `<button>` without any extra work: Base UI's `Toggle` extends
+> `NativeButtonProps`, and Task 4's props spread `...rest` onto it. Do not wrap the toggle in a div to
+> attach test hooks — that would break the axe name/role checks.
 
 - [ ] **Step 5: Wire the shell to the api**
 
@@ -1292,15 +1552,47 @@ const [durationMs, setDurationMs] = useState(0);
 const [looping, setLooping] = useState(false);
 const [metronome, setMetronome] = useState(false);
 const [countIn, setCountIn] = useState(false);
+// Whether AlphaTab currently holds a bar-range selection — drives the Loop toggle's label only.
+const [hasRange, setHasRange] = useState(false);
 ```
 
-Extend the `playerPositionChanged` subscription from Plan A to record the length too:
+Extend the `playerPositionChanged` subscription from Plan A. It now carries three jobs — position,
+length and the live tempo — and two guards that are **not** optional:
 
 ```tsx
+// Guard 1 — `endTime === 0` is the hardcoded PositionChangedEventArgs(0,0,0,0,false,120,120) stub that
+// `fireOnRegister` replays synchronously at subscribe time. Without this the header flashes 120 BPM on
+// a 90 BPM score.
+//
+// Guard 2 — after a seek, alphaTab delivers a burst of STALE position events before the seek's own
+// echo. They carry `isSeek: false`, identical to every ordinary tick, so the flag cannot filter them.
+// What does: the echo carries `isSeek: true` AND exactly the requested time (clamped to endTime), and
+// MessagePort delivery is FIFO, so drop everything until that pair matches. The 250 ms timeout is
+// mandatory, not decoration — a seek issued during a count-in emits NO event at all (alphaTab gates
+// the trigger on `isPlayingMain`), and without the bound the UI would latch forever.
+const pendingSeek = useRef<{ target: number; since: number } | null>(null);
+
 api.playerPositionChanged.on((args) => {
+  if (args.endTime === 0) return; // guard 1
+
+  if (pendingSeek.current) {
+    // guard 2
+    const expect = Math.min(pendingSeek.current.target, args.endTime);
+    const matched = args.isSeek && Math.abs(args.currentTime - expect) < 1;
+    if (!matched && performance.now() - pendingSeek.current.since < 250) return;
+    pendingSeek.current = null;
+  }
+
   setPositionMs(args.currentTime);
   setDurationMs(args.endTime);
+  setScoreTempo(args.originalTempo); // live; score.tempo is the INITIAL tempo only
 });
+
+// The correct opening tempo, before a single frame has played. Also replays for late subscribers.
+api.midiLoaded.on((args) => setScoreTempo(args.originalTempo));
+
+// F-15: the Loop toggle's label needs to know whether a bar range is selected.
+api.playbackRangeChanged.on((args) => setHasRange(args.playbackRange !== null));
 ```
 
 and add the three accessors, each writing to the api and mirroring into state:
@@ -1329,7 +1621,8 @@ const applyCountIn = useCallback((next: boolean) => {
 const seek = useCallback((ms: number) => {
   const api = apiRef.current;
   if (api) api.timePosition = ms;
-  setPositionMs(ms);
+  setPositionMs(ms); // optimistic; the guard above reconciles on the echo
+  pendingSeek.current = { target: ms, since: performance.now() };
 }, []);
 ```
 
@@ -1347,13 +1640,13 @@ Render `<TransportRow … />` below the notation surface, move the existing play
 Run: `pnpm --filter @notation-hero/web run test:e2e`
 Expected: PASS — including Plan A's cases, which must not regress.
 
-- [ ] **Step 7: Verify by ear — this is what criterion 5 actually asks**
+- [ ] **Step 7: 🧑 HUMAN GATE — hand back to the maintainer. Verify by ear; this is what criterion 5 actually asks**
 
 ```bash
 pnpm --filter @notation-hero/web run dev
 ```
 
-On `/play` with the sample loaded: turn Metronome on and confirm you **hear a click**; turn Count-In on, press play, and confirm you hear a count before the music; select a bar range in the notation with the mouse, turn Loop on, and confirm the range repeats. Headless Chromium is silent, so the CI lane can only prove the state flipped — the sound is yours to confirm.
+On `/play` with the sample loaded: turn Metronome on and confirm you **hear a click**; turn Count-In on, press play, and confirm you hear a count before the music; select a bar range in the notation with the mouse, turn Loop on, and confirm the range repeats. Then, **with the score paused and again while it plays, drag the scrubber to the middle and confirm the notation cursor jumps to the matching bar and continues from there** — nothing in CI observes the cursor, and `seek` writes `setPositionMs(ms)` unconditionally, so `data-position` reports the requested value whether or not AlphaTab accepted it. Headless Chromium is silent, so the CI lane can only prove the state flipped — the sound is yours to confirm.
 
 A–B range selection is **mouse-only**: AlphaTab builds it from `mousedown`/`mousemove`/`mouseup` and registers no touch or pointer handlers, so on a touch screen a drag across bars scrolls instead of selecting. The Loop toggle itself works everywhere. That is expected, not a bug.
 
@@ -1379,7 +1672,7 @@ git commit -m "feat(web): wire the transport row — loop, metronome, count-in a
 **Interfaces:**
 
 - Consumes: `TempoControl` (Task 5); the parsed score's `tempo`.
-- Produces: `onScoreLoaded: (score: { tempo: number; title: string }) => void` on `NotationSurface`; `data-speed` on `player-status`.
+- Produces: `onScoreLoaded: (score: { title: string }) => void` on `NotationSurface`; `data-speed` on `player-status`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1391,13 +1684,15 @@ test('the header tempo stepper changes playback speed', async ({ page }) => {
   await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
-  const value = page.getByTestId('tempo-value');
-  const shown = Number(await value.textContent());
+  // The readout is a real input now (Base UI NumberField), so read its value, not its text.
+  const value = page.getByRole('textbox', { name: 'Tempo' });
+  const shown = Number(await value.inputValue());
   expect(shown).toBeGreaterThan(0);
 
   await page.getByRole('button', { name: 'Increase tempo' }).click();
-  await expect(value).toHaveText(String(shown + 5));
-  // The percentage appears only while adjusting.
+  await expect(value).toHaveValue(String(shown + 1));
+  // Off written speed now, and the button still holds focus, so the percentage is visible.
+  await expect(page.getByTestId('tempo-control')).toHaveAttribute('data-off-speed', 'true');
   await expect(page.getByTestId('tempo-percent')).toBeVisible();
 
   // And the engine actually took it.
@@ -1410,14 +1705,17 @@ test('the header tempo stepper changes playback speed', async ({ page }) => {
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e -g "tempo stepper"`
-Expected: FAIL — no `tempo-value`.
+Expected: FAIL — no `Tempo` input.
 
-- [ ] **Step 3: Report the score's tempo upward**
+- [ ] **Step 3: Report the score's title upward**
 
-In `NotationSurface.tsx`, add an `onScoreLoaded` prop and call it from the chart effect right after a successful parse, before `renderScore`:
+In `NotationSurface.tsx`, add an `onScoreLoaded` prop and call it from the score effect right after a successful parse, before `renderScore`:
 
 ```tsx
-onScoreLoaded({ tempo: score.tempo, title: score.title });
+// Title only. The TEMPO deliberately does not travel this path: `score.tempo` is AlphaTab's
+// INITIAL tempo and is wrong from the first tempo automation onward (see Global Constraints).
+// PlayerShell sources the live tempo from `midiLoaded` + `playerPositionChanged` instead.
+onScoreLoaded({ title: score.title });
 ```
 
 - [ ] **Step 4: Write the header**
@@ -1430,8 +1728,8 @@ Create `web/app/play/PlayerHeader.tsx`:
 import { TempoControl } from '@notation-hero/client';
 
 interface PlayerHeaderProps {
-  chartTitle: string;
-  chartTempo: number;
+  scoreTitle: string;
+  scoreTempo: number;
   speed: number;
   onSpeedChange: (next: number) => void;
   disabled: boolean;
@@ -1443,8 +1741,8 @@ interface PlayerHeaderProps {
 // Deliberately absent in v0: the Auto-Speed toggle (a practice feature — it needs the v0.2 scoring
 // work) and the MIDI status icon (no Web MIDI until v0.2). The Settings gear arrives in Plan C.
 export function PlayerHeader({
-  chartTitle,
-  chartTempo,
+  scoreTitle,
+  scoreTempo,
   speed,
   onSpeedChange,
   disabled,
@@ -1452,9 +1750,9 @@ export function PlayerHeader({
   return (
     <header className="flex h-16 items-center gap-8 border-b border-border px-6">
       <span className="font-bold text-primary">Notation Hero</span>
-      <span className="flex-1 truncate text-muted-foreground">{chartTitle}</span>
+      <span className="flex-1 truncate text-muted-foreground">{scoreTitle}</span>
       <TempoControl
-        chartTempo={chartTempo}
+        scoreTempo={scoreTempo}
         speed={speed}
         onSpeedChange={onSpeedChange}
         disabled={disabled}
@@ -1470,19 +1768,22 @@ In `PlayerShell.tsx`'s `Player`:
 
 ```tsx
 const [speed, setSpeed] = useState(1);
-const [chartTempo, setChartTempo] = useState(120);
-const [chartTitle, setChartTitle] = useState('');
+// Seeded from `api.midiLoaded` and kept live by `playerPositionChanged` (Task 6 Step 5), never from
+// `score.tempo`. The 120 here is only the pre-load placeholder.
+const [scoreTempo, setScoreTempo] = useState(120);
+const [scoreTitle, setScoreTitle] = useState('');
 
+// The ONLY writer of api.playbackSpeed in the app — see Global Constraints. Plan C's Settings
+// Player-group row must call this, not the settings-JSON accessor path.
 const applySpeed = useCallback((next: number) => {
   setSpeed(next);
   const api = apiRef.current;
   if (api) api.playbackSpeed = next;
 }, []);
 
-const handleScoreLoaded = useCallback(({ tempo, title }: { tempo: number; title: string }) => {
-  setChartTempo(tempo);
-  setChartTitle(title);
-  // A new chart keeps the speed the drummer chose — the BPM readout moves because the chart's
+const handleScoreLoaded = useCallback(({ title }: { title: string }) => {
+  setScoreTitle(title);
+  // A new score keeps the speed the drummer chose — the BPM readout moves because the score's
   // own tempo changed, not because the multiplier was reset.
 }, []);
 ```
@@ -1494,7 +1795,7 @@ Render `<PlayerHeader … />` above the notation surface, pass `onScoreLoaded={h
 Run: `pnpm --filter @notation-hero/web run test:e2e`
 Expected: PASS.
 
-- [ ] **Step 7: Verify by ear**
+- [ ] **Step 7: 🧑 HUMAN GATE — hand back to the maintainer. Verify by ear**
 
 With the sample playing, press `+` several times and confirm the music genuinely speeds up (not just the number). Press `−` past the floor and confirm it stops at 12.5 %.
 
@@ -1553,7 +1854,7 @@ test('shows a soundfont progress bar while the sounds download, then hides it', 
 Run: `pnpm --filter @notation-hero/web run test:e2e -g "soundfont progress"`
 Expected: FAIL — no progressbar.
 
-- [ ] **Step 3: Subscribe to `soundFontLoad`**
+- [ ] **Step 3: Subscribe to all three soundfont events**
 
 In `NotationSurface.tsx`'s mount effect, beside the existing `api.error` and `api.renderFinished` subscriptions:
 
@@ -1569,24 +1870,55 @@ api.soundFontLoad.on((progress) => {
 });
 ```
 
-- [ ] **Step 4: Render the bar**
-
-In `PlayerShell.tsx`, hold `soundFontProgress: number | null | undefined` (`undefined` meaning "not downloading"), set it from the callback, clear it to `undefined` when `soundFontLoaded` fires, and render beneath the notation surface:
+`soundFontLoad` is progress only. The two terminal events are wired in `PlayerShell` beside the
+`playerPositionChanged` subscription, because the callback above is typed
+`(fraction: number | null) => void` and **cannot carry the `undefined` that means "not downloading"**:
 
 ```tsx
+api.soundFontLoaded.on(() => setSoundFontProgress(undefined));
+
+// Without this the bar freezes at whatever fraction it last reported, forever, with nothing on
+// screen saying why — for a failure the spec already handles like the corrupt-file toast.
+api.soundFontLoadFailed.on((error) => {
+  setSoundFontProgress(undefined);
+  showFailureToast(error); // the same path the corrupt-file and engine-import failures use
+});
+```
+
+- [ ] **Step 4: Render the bar**
+
+In `PlayerShell.tsx`, hold `soundFontProgress: number | null | undefined` (`undefined` meaning "not
+downloading"), set it from the callback, and clear it in the two terminal handlers from Step 3.
+
+Rendering is **delay-then-hold**, not immediate. On a normal connection this download is a sub-second
+window — the e2e case below has to stall the request by four seconds just to make the bar observable —
+so rendering it the instant progress starts produces a strobe at exactly the moment the user is first
+orienting. Show it only once the download has been running ~300 ms, and keep it mounted at least 500 ms
+once shown:
+
+```tsx
+// visible === progress has run past the delay; a fast connection never shows the bar at all.
+const visible = useDelayedVisibility(soundFontProgress !== undefined, {
+  appearAfterMs: 300,
+  holdForMs: 500,
+});
+
 {
-  soundFontProgress !== undefined ? (
-    <Progress value={soundFontProgress} label="Loading sounds" className="w-full" />
+  visible ? (
+    <Progress value={soundFontProgress ?? null} label="Loading sounds" className="w-full" />
   ) : null;
 }
 ```
+
+Keep `useDelayedVisibility` local to `web/app/play/` — it is one small hook over two timers, not a
+design-system concern, and `client/` has no other consumer for it.
 
 - [ ] **Step 5: Run the lane to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e`
 Expected: PASS.
 
-- [ ] **Step 6: Exercise the indeterminate branch by hand**
+- [ ] **Step 6: 🧑 HUMAN GATE — hand back to the maintainer. Exercise the indeterminate branch by hand**
 
 The `total === 0` branch only fires when the response carries no `Content-Length`. Force it locally to prove the code path renders rather than throwing:
 
@@ -1594,7 +1926,7 @@ The `total === 0` branch only fires when the response carries no `Content-Length
 pnpm --filter @notation-hero/web run dev
 ```
 
-In the browser console before loading a chart:
+In the browser console before loading a score:
 
 ```js
 // Strip Content-Length from the soundfont response so total lands as 0.
@@ -1649,16 +1981,22 @@ test('player has no axe violations with every transport toggle pressed', async (
 Run: `pnpm --filter @notation-hero/web run test:e2e a11y`
 Expected: PASS. Fix any violation in the markup, never by loosening the assertion.
 
-- [ ] **Step 3: Measure every new control's hit area**
+- [ ] **Step 3: 🧑 HUMAN GATE — hand back to the maintainer. Measure every new control's hit area**
 
 ```bash
 pnpm --filter @notation-hero/web run dev
 ```
 
-In the browser console on a loaded `/play`:
+In the browser console on a loaded `/play`. Measure the **pointer target**, not the hidden input — a Base UI
+slider's `input[type="range"]` is sized to its 16 px thumb by design and can never pass a 44 px test; the
+element that receives the click is the slider's `Control`, which carries `h-11`:
 
 ```js
-[...document.querySelectorAll('button, a[href], label[for], [role="button"], input[type="range"]')]
+[
+  ...document.querySelectorAll(
+    'button, a[href], label[for], [role="button"], [data-slot="slider"] [class*="h-11"]',
+  ),
+]
   .map((el) => ({
     label: el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 20),
     ...el.getBoundingClientRect().toJSON(),
@@ -1666,7 +2004,7 @@ In the browser console on a loaded `/play`:
   .filter((r) => r.width < 44 || r.height < 44);
 ```
 
-Expected: an **empty array**. The scrubber's own thumb is exempt only if its parent rail gives it a 44 px tall pointer target — check the rail, not the thumb.
+Expected: an **empty array**.
 
 - [ ] **Step 4: Run every gate**
 
@@ -1693,13 +2031,16 @@ Plan: `docs/plans/2026-09-13-v0b-transport-plan.md`
 
 ## New design-system components
 
-`Slider` (single-value), `Progress` (determinate), `Scrubber`, `TransportToggle`, `TempoControl` — each with a Storybook story plus VR and axe baselines that block merge.
+`Slider` (single-value, on Base UI `Slider`), `Progress` (determinate + indeterminate, on Base UI
+`Progress`), `Scrubber`, `TransportToggle` (on Base UI `Toggle`) and `TempoControl` (on Base UI
+`NumberField` — editable, wheel- and drag-scrubbable) — each with a Storybook story plus VR and axe
+baselines that block merge. `Tooltip` was already built, with committed VR and axe baselines; this PR only exports it.
 
 ## Success criteria covered
 
 - [x] 3 (tempo half) — the header stepper changes playback speed; per-track mute/solo is Plan C
 - [x] 5 — Loop, Metronome and Count-In each audibly change playback (verified by ear; CI verifies the state)
-- [x] 6 — the scrubber seeks and the cursor follows
+- [x] 6 — the scrubber seeks and the cursor follows (cursor confirmed by eye; CI verifies only the reported position)
 
 ## Notes
 
@@ -1716,14 +2057,31 @@ gh run watch
 
 - [ ] **Step 6: Update the decision registry**
 
-Add a Change-log entry recording that the design system gained `Slider`, `Progress`, `Scrubber`, `TransportToggle` and `TempoControl`, all gated by VR + axe, and commit it in this PR so it lands atomically on merge.
+Add a Change-log entry in `docs/decisions/decision-registry.md` and commit it in this PR so it lands
+atomically on merge. It must record:
+
+- The design system gained `Slider`, `Progress`, `Scrubber`, `TransportToggle` and `TempoControl`, all
+  gated by VR + axe, and `Tooltip` became part of the public surface.
+- **Every new control is built on a Base UI primitive** (`Slider`, `Progress`, `Toggle`, `NumberField`)
+  rather than hand-rolled — the standing convention, ratified again in the 2026-09-13 plan review.
+- The **Spec Delta** on the tempo control: percentage on hover/focus and never at 100 %, `± 1` with
+  hold-to-repeat instead of `± 5`, and a 3 s linger — superseding the "only while adjusting, ±5" line in
+  `docs/specs/2026-09-10-v0-local-file-player-design.md` §7.
+- The vocabulary decision: a piece of music is a **`score`**, a **`notation`** is the score file, and
+  "chart" is not used.
 
 ---
 
 ## Self-Review
 
-**Spec coverage.** §7 `client/` list → Tasks 1-5 (playback scrubber, tempo control, Loop/Metronome/Count-In toggles, soundfont progress bar, `Slider`). §7 `web/` "transport row layout" → Task 6. §7 tempo-in-the-header rule → Task 7. §7 "12.5–200 % slider lives in the Settings popover" → explicitly deferred to Plan C in Global Constraints. §7 "Deferred: A/B loop markers" → stated in Global Constraints and in `Scrubber`'s own comment. §4 soundfont progress, both numeric edge cases → Tasks 2 and 8. §8 criteria 3, 5, 6 → Tasks 6, 7. **Deliberately not covered here:** `Accordion`, the settings and tracks rows, the two popovers and settings persistence (Plan C); the engine, file opening and the test lane (Plan A).
+**Spec coverage.** §7 `client/` list → Tasks 1-5 (playback scrubber, tempo control, Loop/Metronome/Count-In toggles, soundfont progress bar, `Slider`). §7 `web/` "transport row layout" → Task 6. §7 tempo-in-the-header rule → Task 7. §7 "12.5–200 % slider lives in the Settings popover" → explicitly deferred to Plan C in Global Constraints. §7 "Deferred: A/B loop markers" → stated in Global Constraints and in `Scrubber`'s own comment. §4 soundfont progress, both numeric edge cases → Tasks 2 and 8. §8 criteria 3, 5, 6 → Tasks 6, 7. **One Spec Delta**, recorded in Task 5 and in the registry step: the tempo control's percentage rule and step size supersede §7's "only while adjusting, ±5". **Deliberately not covered here:** `Accordion`, the settings and tracks rows, the two popovers and settings persistence (Plan C); the engine, file opening and the test lane (Plan A).
 
-**Placeholder scan.** Three steps describe a stories file by its shape rather than transcribing it (Tasks 1, 2, 3, 5, Step 5) — each names the exact template file to copy (`RangeSlider.stories.tsx`), the exact story ids, and the exact helper config values, so nothing is left to invent. The metronome glyph is a named, shipped default (`avg_pace`) with a flagged design question, not a TODO. One conditional fallback is named explicitly: if Base UI rejects `max === min`, fix `Scrubber`, not the test.
+**Base UI first.** Every new control sits on a Base UI primitive rather than a hand-rolled equivalent — `Slider` on `Slider`, `Progress` on `Progress`, `TransportToggle` on `Toggle`, `TempoControl` on `NumberField`. Each choice deletes hand-written ARIA, clamping or interaction code the primitive already owns. `Scrubber` is the one composition (it wraps `Slider`), and `Tooltip` already existed.
 
-**Type consistency.** `Slider`'s `onChange: (next: number) => void` is the same signature `Scrubber` calls. `Scrubber`'s `onSeek` reports **milliseconds** everywhere — the unit `api.timePosition` takes — while its internal bar works in seconds; that conversion lives in one place. `TempoControl` owns `speed` (a multiplier), never BPM, in both the component and `PlayerShell`, which is what keeps it in sync with Plan C's Player settings group. `Progress`'s `value` is a **fraction 0–1 or null** in the component, its test, and the `soundFontLoad` handler. `TransportToggle`'s `pressed` / `onPressedChange` pair is spelled identically in the component, its test, and all three call sites.
+**Placeholder scan.** Several Step 5 blocks describe a stories file by its shape rather than transcribing it — each names the exact template file to copy (`RangeSlider.stories.tsx`), the exact story ids, and the exact helper config values, so nothing is left to invent. The metronome glyph is a named, shipped default (`avg_pace`) with a flagged design question, not a TODO. Three conditional fallbacks are named explicitly rather than left open: if Base UI rejects `max === min`, fix `Scrubber` not the test; if `NumberField.Input` reports `spinbutton` rather than `textbox`, adjust the queries; if the doubled `group-data-[…]` variant does not compose under Tailwind 4, hoist the gate to a single computed attribute.
+
+**Verified against the installed packages, not assumed.** Every AlphaTab member in Global Constraints resolves in `@coderline/alphatab` 1.8.4's `dist/alphaTab.d.ts`, and the four behaviours marked **observed** were confirmed by running the real synth headless: `score.tempo` reporting the opening tempo for a whole 90→120→60 score, `originalTempo` tracking automations at sub-bar granularity, the `fireOnRegister` 120/120 stub replaying on subscribe, and the post-seek stale-event burst carrying `isSeek: false`. Every `runVrStories` / `runA11yStories` option this plan passes exists in `client/src/vr-helpers.ts` and `a11y-helpers.ts`, and `animate-skeleton-pulse` plus `bg-skeleton` exist in `styles.css` / `Skeleton.tsx`.
+
+**Type consistency.** `Slider`'s `onChange: (next: number) => void` is the same signature `Scrubber` calls. `Scrubber`'s `onSeek` reports **milliseconds** everywhere — the unit `api.timePosition` takes — while its internal bar works in seconds; that conversion lives in one place. `TempoControl` owns `speed` (a multiplier), never BPM, in both the component and `PlayerShell`, and converts BPM↔speed only at its own boundary — which is what keeps it in sync with Plan C's Player settings group. `Progress`'s `value` is a **fraction 0–1 or null** in the component, its test, and the `soundFontLoad` handler; the `undefined` that means "not downloading" lives only in `PlayerShell`, because `onSoundFontProgress` cannot carry it. `TransportToggle`'s `pressed` / `onPressedChange` pair is spelled identically in the component, its test, and all three call sites.
+
+**Four steps a machine cannot do.** Task 6 Step 7, Task 7 Step 7, Task 8 Step 6 and Task 9 Step 3 need human ears or a human browser console. Each is marked `🧑 HUMAN GATE`; an agentic worker stops and hands back rather than self-certifying, and the PR-body box each one backs is ticked only after a person confirms.
