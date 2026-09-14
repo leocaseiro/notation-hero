@@ -593,13 +593,14 @@ Two components cross into `web/`, and the Material Symbols face gets a `font-dis
 - Modify: `client/src/index.ts`
 - Modify: `client/src/components/ui/Skeleton/Skeleton.tsx:1`
 - Modify: `client/src/components/ui/Sonner/Sonner.tsx:1`
+- Modify: `client/src/components/ui/Card/Card.tsx:1`
 - Modify: `client/src/styles.css:3`
 - Modify: `web/app/layout.tsx`
 
 **Interfaces:**
 
 - Consumes: nothing.
-- Produces: `import { Button, Skeleton, Toaster, toast } from '@notation-hero/client'` works in `web/`. Tasks 6, 10, 11 and 13 use them.
+- Produces: `import { Button, Skeleton, Toaster, toast, Card, CardContent } from '@notation-hero/client'` works in `web/`. Tasks 6, 10, 11 and 13 use them.
 
 - [ ] **Step 1: Write the failing test — a web file importing the barrel**
 
@@ -616,9 +617,9 @@ EOF
 Run: `pnpm --filter @notation-hero/web run typecheck`
 Expected: FAIL — `Module '"@notation-hero/client"' has no exported member 'Skeleton'` (and `Toaster`, `toast`).
 
-- [ ] **Step 3: Add `'use client'` to the two component files**
+- [ ] **Step 3: Add `'use client'` to the three component files**
 
-Both `Skeleton.tsx` and `Sonner.tsx` must begin with the directive, before any import. `Button.tsx` already has one — match it exactly:
+`Skeleton.tsx`, `Sonner.tsx` and `Card.tsx` must each begin with the directive, before any import. `Button.tsx` already has one — match it exactly:
 
 ```tsx
 'use client';
@@ -640,6 +641,8 @@ export type { ButtonProps } from './components/ui/Button/Button';
 // - Toaster/toast carry the unsupported-file, engine-failure and settings-reset messages.
 export { Skeleton, SkeletonTable, SkeletonForm } from './components/ui/Skeleton/Skeleton';
 export { Toaster, toast } from './components/ui/Sonner/Sonner';
+// - Card/CardContent frame the empty state's drop target (Task 10).
+export { Card, CardContent } from './components/ui/Card/Card';
 ```
 
 - [ ] **Step 5: Run typecheck to verify it passes**
@@ -940,13 +943,16 @@ The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` wit
 - Create: `web/app/play/page.tsx`
 - Create: `web/app/play/PlayerShell.tsx`
 - Create: `web/app/play/NotationSurface.tsx`
+- Create: `web/app/play/error.tsx`
+- Create: `web/app/error.tsx`
+- Create: `web/e2e/player.e2e.ts`
 - Modify: `web/app/page.tsx`
 
 **Interfaces:**
 
 - Consumes: `useAlphaTabEngine`, `AlphaTabEngineProvider` (Task 5); `Skeleton`, `Button` (Task 4).
 - Produces:
-  - `NotationSurface` props: `{ notation: LoadedNotation | null; onApiReady: (api: AlphaTab.AlphaTabApi | null) => void }`.
+  - `NotationSurface` props: `{ onApiReady: (api: AlphaTab.AlphaTabApi | null) => void }`. Task 9 Step 4 later adds a required `notation: OpenNotation` prop — not `LoadedNotation`.
   - `interface LoadedNotation { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
   - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-soundfont`.
 
@@ -1151,7 +1157,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@notation-hero/client';
 import type * as AlphaTab from '@coderline/alphatab';
 
-import { AlphaTabEngineProvider } from '../../lib/alphatab/AlphaTabEngineContext';
+import {
+  AlphaTabEngineProvider,
+  useAlphaTabEngine,
+} from '../../lib/alphatab/AlphaTabEngineContext';
 import { NotationSurface } from './NotationSurface';
 
 /** A score held in memory. The bytes never touch disk and never cross a route. */
@@ -1319,7 +1328,7 @@ Expected: all PASS.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add web/app/page.tsx web/app/play web/e2e/player.e2e.ts
+git add web/app/page.tsx web/app/error.tsx web/app/play web/e2e/player.e2e.ts web/package.json pnpm-lock.yaml
 git commit -m "feat(web): render and play the sample score on /play (NH-291)"
 ```
 
@@ -1664,6 +1673,7 @@ Where a drum staff exists, only the drum tracks render; every track stays in pla
 **Files:**
 
 - Create: `web/lib/alphatab/drum-tracks.ts`
+- Create: `web/lib/alphatab/drum-tracks.test.ts`
 - Modify: `web/app/play/NotationSurface.tsx`
 - Modify: `web/e2e/player.e2e.ts`
 
@@ -2271,6 +2281,7 @@ and the markup, replacing the plain `<main>` body:
     <div
       data-testid="player-status"
       data-playing={playing}
+      data-position={positionMs}
       data-soundfont={soundFontReady}
       className="flex items-center gap-3"
     >
@@ -2801,7 +2812,7 @@ Plan: `docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`
 
 - [x] 1 — a drum score opened from local disk renders as standard notation (the lane opens `Punk.gp`, `alphatex-GP5.gp5`, `alphatex-GPX.gpx` and `drums.musicxml`)
 - [x] 2 — pressing play produces audible drum audio with a tracking cursor (verified by ear; the CI lane can only verify it by state)
-- [ ] 4 — leocaseiro's own score plays — **MANUAL**: tick only after Step 5 below
+- [ ] 4 — leocaseiro's own score plays — **MANUAL**: tick only after Step 4 below
 - [x] 8 — Load the sample beat fetches and plays the bundled score
 - [x] 9 — a score with no percussion staff opens on `score.tracks[0]` (the lane opens `guitar-no-percussion.gp`; Q7 closed)
 - [x] 10 — replacing prompts; cancel keeps the score playing from the same position; confirm renders the new one; a corrupt replacement leaves the playing score intact
