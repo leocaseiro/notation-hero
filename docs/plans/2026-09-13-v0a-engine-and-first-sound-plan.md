@@ -938,9 +938,21 @@ The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` wit
   - `interface LoadedNotation { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
   - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-soundfont`.
 
-- [ ] **Step 1: Write the failing test — load `/play` and see notation**
+- [ ] **Step 1: Add the Playwright dependencies, then write the failing test**
 
-Create `web/e2e/player.e2e.ts` with the first case only (the rest arrives in Task 7):
+The install comes FIRST, here and not in Task 7. `web/tsconfig.json` includes `**/*.ts`, so the
+moment `web/e2e/player.e2e.ts` exists, `tsc --noEmit` type-checks it — and Step 9's typecheck
+would die with `Cannot find module '@playwright/test'` if the package only arrived a task later.
+The ranges must match `client/package.json` character for character or root `syncpack` (a
+`quality` CI gate) fails.
+
+```bash
+pnpm --filter @notation-hero/web add -D @playwright/test@^1.61.1 @axe-core/playwright@^4.12.1
+pnpm --filter @notation-hero/web exec playwright install --with-deps chromium
+pnpm run syncpack   # Expected: PASS
+```
+
+Then create `web/e2e/player.e2e.ts` with the first case only (the rest arrives in Task 7):
 
 ```ts
 import { expect, test } from '@playwright/test';
@@ -988,15 +1000,20 @@ export default function Home() {
       </p>
       {/* min-h-11 = 44px, the minimum touch target (spec §4). The glyph keeps its drawn size;
           only the hit area is padded. */}
-      <Button asChild className="min-h-11 px-8 text-base">
-        <Link href="/play">Play</Link>
+      {/* `render`, NOT `asChild`. client/src/components/ui/Button/Button.tsx types its props as
+          useRender.ComponentProps<'button'> & VariantProps<typeof buttonVariants> — `asChild`
+          appears nowhere in client/src, it was dropped in the Radix -> Base UI migration. The
+          precedent is Button.test.tsx:52 and the AsLink story. Passing `asChild` would land as a
+          stray DOM attribute and the Link would never render. */}
+      <Button render={<Link href="/play" />} className="min-h-11 px-8 text-base">
+        Play
       </Button>
     </main>
   );
 }
 ```
 
-> If `Button` does not support `asChild`, open `client/src/components/ui/Button/Button.tsx` and use whatever composition hook it exposes (it is built on Base UI's `useRender`, so it may take a `render` prop instead). Do not wrap a `<Link>` in a `<button>` — that nests interactive elements and fails the axe run in Task 13.
+> Do not wrap a `<Link>` in a `<button>` — that nests interactive elements and fails the axe run in Task 13. The `render` prop is the composition hook this repo ships; it puts the Button's classes on the `<a>` rather than nesting one inside the other.
 
 - [ ] **Step 4: Write the notation surface**
 
@@ -1022,8 +1039,12 @@ const SAMPLE_NOTATION = '/notation/1-beat.gp';
 
 export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) {
   const hostRef = useRef<HTMLDivElement | null>(null);
+  // Task 9's score effect needs the live api from a SIBLING effect, so it cannot live in the
+  // mount effect's local `const`. Declared here, assigned at construction, cleared on dispose.
+  const apiRef = useRef<AlphaTab.AlphaTabApi | null>(null);
   const { engine, error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
+  const [renderedTrackCount, setRenderedTrackCount] = useState(0);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1031,7 +1052,6 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     if (!host || !engine) return;
 
     let api: AlphaTab.AlphaTabApi | undefined;
-    let disposed = false;
 
     const settings = new engine.Settings();
     // No settings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
@@ -1047,20 +1067,23 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     settings.player.scrollElement = host;
 
     api = new engine.AlphaTabApi(host, settings);
+    apiRef.current = api;
 
     // The SoundFont download failure surfaces through AlphaTab's own error event; the engine
     // import failure cannot (AlphaTabApi does not exist yet) and arrives via engineError above.
     api.error.on((cause) => setRuntimeError(String(cause)));
     api.renderFinished.on(() => setRendered(true));
 
-    if (disposed) {
-      api.destroy();
-      return;
-    }
+    // No `if (disposed)` re-check. Everything above is synchronous — no await, no .then — and the
+    // only thing that could set such a flag is the cleanup, returned three lines below, so the
+    // branch is unreachable by construction (a React 19.2 repro took it 0 times in 6 scenarios).
+    // Its bare `return` would also have skipped registering this cleanup. The spike component
+    // needs that guard because it awaits the import INSIDE its effect; here the engine arrives
+    // through context, so there is no suspension point to be disposed across.
     onApiReady(api);
 
     return () => {
-      disposed = true;
+      apiRef.current = null;
       onApiReady(null);
       api?.destroy();
     };
@@ -1123,26 +1146,39 @@ export interface LoadedNotation {
 
 function Player() {
   const apiRef = useRef<AlphaTab.AlphaTabApi | null>(null);
+  const { engine } = useAlphaTabEngine();
   const [playing, setPlaying] = useState(false);
   const [soundFontReady, setSoundFontReady] = useState(false);
 
-  const handleApiReady = useCallback((api: AlphaTab.AlphaTabApi | null) => {
-    apiRef.current = api;
-    if (!api) {
-      setPlaying(false);
-      setSoundFontReady(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const api = apiRef.current;
-    if (!api) return;
-    // PlayerState is an AlphaTab enum, so it cannot be imported — compare against the numeric
-    // state the event carries via the api's own module. `Playing` is 1 in 1.8.4, but reading it
-    // off a literal would rot, so derive it from the event args instead.
-    api.playerStateChanged.on((args) => setPlaying(args.state === 1));
-    api.soundFontLoaded.on(() => setSoundFontReady(true));
-  }, []);
+  const handleApiReady = useCallback(
+    (api: AlphaTab.AlphaTabApi | null) => {
+      apiRef.current = api;
+      if (!api || !engine) {
+        setPlaying(false);
+        setSoundFontReady(false);
+        return;
+      }
+      // Subscribe HERE, never from a []-deps effect. AlphaTabEngineProvider is the PARENT-MOST
+      // component, so its effect runs LAST: loadAlphaTabEngine() has not even been called when
+      // Player's own effects run, the api therefore cannot exist during that commit, and a
+      // []-deps effect reading apiRef.current is pinned to null forever. Measured against React
+      // 19.2 — with the effect form, soundFontLoaded ended with 0 handlers, data-playing never
+      // moved and Play stayed disabled, strict mode on and off, so Task 7's `toBeEnabled` would
+      // time out on a perfectly healthy build.
+      //
+      // Safe against repeats: handleApiReady fires once per CONSTRUCTED api (4 calls under strict
+      // mode plus score changes, never twice for the same instance — each preceded by a cleanup
+      // that destroyed the previous one), so per-api handler counts stay at exactly 1.
+      //
+      // PlayerState is an AlphaTab enum and cannot be imported; read it off the namespace object
+      // instead of comparing against the literal 1, which would rot if the ordering ever changed.
+      api.playerStateChanged.on((args) =>
+        setPlaying(args.state === engine.synth.PlayerState.Playing),
+      );
+      api.soundFontLoaded.on(() => setSoundFontReady(true));
+    },
+    [engine],
+  );
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
@@ -1184,7 +1220,7 @@ export function PlayerShell() {
 }
 ```
 
-> **The `args.state === 1` comparison is a placeholder and must not ship.** `PlayerState` is an AlphaTab enum, so it cannot be imported. Replace the literal by reading `engine.synth.PlayerState.Playing` from `useAlphaTabEngine()` inside `Player` — exactly as `NotationSurface` reads `engine.PlayerMode` — and compare against that. A numeric literal here rots the moment the enum's ordering changes.
+> **No placeholder here.** `PlayerState` is an AlphaTab enum and cannot be imported, so `handleApiReady` reads `engine.synth.PlayerState.Playing` off the namespace object — exactly as `NotationSurface` reads `engine.PlayerMode`. Do not reintroduce the numeric literal `1`: it happens to be correct in 1.8.4 and would rot silently the moment the enum's ordering changed.
 
 - [ ] **Step 6: Write the route segment**
 
@@ -1220,7 +1256,7 @@ With the dev server running (React 19 strict mode double-invokes effects), reloa
 document.querySelectorAll('[data-testid="notation-surface"] svg').length
 ```
 
-Expected: the count settles at the number of rendered systems for one score, and never doubles after a reload. If it doubles, the `disposed` re-check in `NotationSurface` is not firing — fix it before continuing; a leaked `AlphaTabApi` keeps its workers alive.
+Expected: the count settles at the number of rendered systems for one score, and never doubles after a reload. If it doubles, the cleanup's `api?.destroy()` is not running — check the effect's `[engine, onApiReady]` dependency list and that `handleApiReady` is a stable `useCallback`. That cleanup is what actually prevents the leak: with it in place a React 19.2 repro settled at exactly one live `AlphaTabApi` across four constructions under strict mode.
 
 - [ ] **Step 9: Verify the package is clean**
 
@@ -1256,20 +1292,14 @@ Without the self-hosted ESM, **notation still renders** on a main-thread fallbac
 - Consumes: `/play` and its test hooks (Task 6); `resolveLogLevel` reading `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL` (Task 5).
 - Produces: `pnpm --filter @notation-hero/web run test:e2e`. Tasks 9, 10, 11 and 13 add cases to the same lane.
 
-- [ ] **Step 1: Add the Playwright dependencies at `client/`'s exact ranges**
+- [ ] **Step 1: Confirm the Playwright dependencies are in place**
+
+They were added in Task 6 Step 1 — the test file written there imports `@playwright/test`, so the
+install cannot wait until now. Re-verify only:
 
 ```bash
-pnpm --filter @notation-hero/web add -D @playwright/test@^1.61.1 @axe-core/playwright@^4.12.1
-pnpm --filter @notation-hero/web exec playwright install --with-deps chromium
+pnpm run syncpack   # Expected: PASS — the ranges match client/package.json exactly
 ```
-
-A drifting range fails root `syncpack`, which is a `quality` CI gate — so these two ranges must match `client/package.json` character for character. Verify:
-
-```bash
-pnpm run syncpack
-```
-
-Expected: PASS.
 
 - [ ] **Step 2: Write the failing test — the four worklet assertions**
 
@@ -1293,14 +1323,12 @@ test('plays through the real audio worklet, not the silent fallback', async ({ p
   const logs: string[] = [];
   page.on('console', (message) => logs.push(message.text()));
 
-  // Assert the RESPONSE, not just the request: addModule fires unconditionally on the
-  // BrowserModule branch, so a 404 or a wrong MIME type still produces the request and then
-  // rejects with "Audio Worklet creation failed".
-  const workletResponse = page.waitForResponse(
-    (response) => response.url().endsWith('/alphatab/esm/alphaTab.worklet.mjs'),
-    { timeout: 60_000 },
-  );
-
+  // NOTE: do NOT arm page.waitForResponse for alphaTab.worklet.mjs. Chromium does not expose an
+  // AudioWorklet.addModule() fetch to ANY Playwright observer — not page.on('request'), not
+  // context.on('request'), not context.route(), not even CDP Network.requestWillBeSent. Measured:
+  // the server logged serving the file while all four observers missed it, and the plan's original
+  // waitForResponse timed out identically on a healthy build, on a 404, and on a wrong MIME type —
+  // zero discriminating power. Assertion 3 below uses a direct request instead.
   await page.goto('/play');
   await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
     timeout: 30_000,
@@ -1330,10 +1358,11 @@ test('plays through the real audio worklet, not the silent fallback', async ({ p
     )
     .toBeGreaterThan(0);
 
-  // 3. The worklet module was served as executable JavaScript.
-  const response = await workletResponse;
-  expect(response.status()).toBe(200);
-  expect(response.headers()['content-type'] ?? '').toMatch(/javascript/i);
+  // 3. The worklet module is served as executable JavaScript. A direct request, not a network
+  //    event: deterministic, no timing race, and independent of the plumbing described above.
+  const worklet = await page.request.get('/alphatab/esm/alphaTab.worklet.mjs');
+  expect(worklet.status()).toBe(200);
+  expect(worklet.headers()['content-type'] ?? '').toMatch(/javascript/i);
 
   // 4. Neither worker-construction error appeared. LAST, over the whole collected log: these only
   //    fire once the player is constructed, and construction returns early until a score is
@@ -1347,13 +1376,16 @@ test('plays through the real audio worklet, not the silent fallback', async ({ p
 
 - [ ] **Step 3: Add the position hook the test reads**
 
-In `web/app/play/PlayerShell.tsx`, track the playback position and expose it. Inside `Player`, add state and an event subscription next to the existing two:
+In `web/app/play/PlayerShell.tsx`, track the playback position and expose it. Inside `Player`, add the state next to the existing two:
 
 ```tsx
 const [positionMs, setPositionMs] = useState(0);
 ```
 
-and in the same effect that subscribes to `playerStateChanged`:
+and the subscription inside `handleApiReady`, beside the other two — **not** in a `useEffect`. The
+api does not exist during the first commit's effect flush (Task 6 explains why), so an effect-based
+subscription never attaches and `data-position` never moves. The failure would surface here as a
+60-second `toBeEnabled` timeout pointing at the worklet rather than at the wiring:
 
 ```tsx
 api.playerPositionChanged.on((args) => setPositionMs(args.currentTime));
@@ -1435,21 +1467,43 @@ Expected: PASS — 2 tests. If `Platform: BrowserModule` never appears, check th
 
 - [ ] **Step 8: Prove the test actually discriminates**
 
-A regression test that passes on a broken build is worse than none. Temporarily break the worker path and confirm the test fails:
+A regression test that passes on a broken build is worse than none. Two drills, because the two
+things that can break are different.
+
+**Do NOT break `web/public/alphatab/esm/` — that directory is regenerated.** The lane's
+`webServer.command` is `pnpm build && pnpm start --port 4174`, and Task 2 defined `build` as
+`node scripts/vendor-alphatab.mjs && next build`, so the vendor step copies any file you move there
+straight back before a single test runs. The drill would report PASS where it claims FAIL.
+
+**Drill 1 — the asset is missing or mistyped.** Break the vendoring SOURCE, which survives the
+rebuild. Stub rather than delete: the vendor step throws its own `missing source` error on a
+deleted file and never reaches the browser, which proves nothing about the test.
 
 ```bash
-mv web/public/alphatab/esm/alphaTab.worklet.mjs /tmp/alphaTab.worklet.mjs.bak
+cp web/node_modules/@coderline/alphatab/dist/alphaTab.worklet.min.mjs /tmp/worklet.bak
+: > web/node_modules/@coderline/alphatab/dist/alphaTab.worklet.min.mjs
 pnpm --filter @notation-hero/web run test:e2e
 ```
 
-Expected: **FAIL** on the worklet response assertion and/or the `Audio Worklet creation failed` absence check — while the notation test still passes, which is exactly the asymmetry the spec describes. Restore it:
+Expected: **FAIL** on assertion 3's content check and/or the `Audio Worklet creation failed`
+absence check — while the notation test still passes, which is exactly the asymmetry the spec
+describes. Restore and re-run:
 
 ```bash
-mv /tmp/alphaTab.worklet.mjs.bak web/public/alphatab/esm/alphaTab.worklet.mjs
-pnpm --filter @notation-hero/web run test:e2e
+cp /tmp/worklet.bak web/node_modules/@coderline/alphatab/dist/alphaTab.worklet.min.mjs
+pnpm --filter @notation-hero/web run test:e2e   # Expected: PASS again
 ```
 
-Expected: PASS again.
+**Drill 2 — the regression this whole delivery decision exists to prevent: a BUNDLED copy.**
+Deleting an asset only ever produces a 404. It cannot produce the state where Turbopack has bundled
+AlphaTab, `import.meta.url` stops being a usable http URL, and `Environment.webPlatform` reports
+`Browser` instead of `BrowserModule` — notation still renders and only playback dies. Assertion 1 is
+the only check that catches that, so it is the one that must be proven.
+
+Temporarily replace the `turbopackIgnore` dynamic import in `web/lib/alphatab/engine.ts` with a
+static `import * as AlphaTab from '@coderline/alphatab'` (disable the Task 3 rule on that line
+only), rebuild, and confirm the `Platform: BrowserModule` poll is the assertion that fails. Then
+revert it.
 
 - [ ] **Step 9: Commit**
 
@@ -1557,7 +1611,7 @@ Local green is not CI green — the lane runs a full `next build` on the runner,
 
 ### Task 9: Render the drum tracks, not track 0
 
-Where a drum staff exists, only the drum tracks render; every track stays in playback so per-track mute and solo still work. A file with no percussion staff falls back to AlphaTab's default track — drums are v0's default, not its requirement.
+Where a drum staff exists, only the drum tracks render; every track stays in playback so per-track mute and solo still work. A file with no percussion staff falls back to `score.tracks[0]`, AlphaTab's FIRST track — drums are v0's default, not its requirement.
 
 **Files:**
 
@@ -1570,30 +1624,48 @@ Where a drum staff exists, only the drum tracks render; every track stays in pla
 - Consumes: the lane from Task 7; `useAlphaTabEngine` from Task 5.
 - Produces: `selectDrumTrackIndexes(tracks: readonly PercussionScannable[]): number[]`, where `interface PercussionScannable { index: number; staves: readonly { isPercussion: boolean }[] }`. Plan C's Tracks popover consumes the same helper to label rows.
 
-- [ ] **Step 1: Write the failing test — `Punk.gp`'s drums are at [0, 2]**
+- [ ] **Step 1: Write the failing test — a co-located unit cover for the selector**
 
-Add to `web/e2e/player.e2e.ts`:
+The end-to-end `Punk.gp` case belongs to **Task 10**, because it needs the file input Task 10 adds.
+Committing it here would make this task's own commit red, against the Global Constraint "commit at
+every green step" — and a red commit is one you cannot `git revert` to. `selectDrumTrackIndexes` is
+pure, so it is fully provable here with plain objects and no browser.
+
+Create `web/lib/alphatab/drum-tracks.test.ts`:
 
 ```ts
-import { readFileSync } from 'node:fs';
+import { describe, expect, it } from 'vitest';
 
-// Punk.gp parses to three tracks: 0:Drumkit (percussion, MIDI channel 9), 1:Distortion Guitar
-// (not percussion) and 2:Drumkit Left (percussion, channel 9). A regression that rendered only
-// track 0 would silently drop the left-hand staff — which is exactly why this fixture exists.
-test('renders every drum track, not only track 0', async ({ page }) => {
-  await page.goto('/play');
-  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
-    timeout: 30_000,
+import { selectDrumTrackIndexes } from './drum-tracks';
+
+const staff = (isPercussion: boolean) => ({ isPercussion });
+
+describe('selectDrumTrackIndexes', () => {
+  it("returns every percussion track, not just the first — Punk.gp's shape", () => {
+    // Punk.gp parses to three tracks: 0:Drumkit (percussion), 1:Distortion Guitar (not),
+    // 2:Drumkit Left (percussion). A regression that kept only track 0 would silently drop
+    // the left-hand staff, which is exactly why that fixture exists.
+    expect(
+      selectDrumTrackIndexes([
+        { index: 0, staves: [staff(true)] },
+        { index: 1, staves: [staff(false)] },
+        { index: 2, staves: [staff(true)] },
+      ]),
+    ).toEqual([0, 2]);
   });
 
-  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  it('returns an empty array when no track has a percussion staff', () => {
+    // NOT an error: the caller passes undefined to renderScore, which renders score.tracks[0].
+    expect(selectDrumTrackIndexes([{ index: 0, staves: [staff(false)] }])).toEqual([]);
+  });
 
-  // Two rendered staves (the two Drumkit tracks), not one and not three.
-  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  it('counts a track whose percussion staff is not the first one', () => {
+    expect(selectDrumTrackIndexes([{ index: 0, staves: [staff(false), staff(true)] }])).toEqual([
+      0,
+    ]);
+  });
 });
 ```
-
-> This case depends on the file input from Task 10. Write it now, watch it fail, and let Task 10 be the task that turns it green — or move it to Task 10 if you prefer each task's own test to pass within the task. Either is fine; do not leave it failing at the end of Task 10.
 
 - [ ] **Step 2: Run it to verify it fails**
 
@@ -1637,20 +1709,23 @@ export function selectDrumTrackIndexes(tracks: readonly PercussionScannable[]): 
 In `NotationSurface.tsx`, replace the `settings.core.file = SAMPLE_NOTATION;` approach for user scores with an explicit `renderScore`. Add a `notation` prop and this effect beside the mount effect:
 
 ```tsx
-// Staged load: ScoreLoader parses the new buffer FIRST, and only on success does the live api
-// take it. Nothing is destroyed — the workers and the loaded soundfont are reused — so a corrupt
-// replacement leaves the playing score intact.
+// The score arrives ALREADY PARSED. PlayerShell parses inside requestNotation, before it swaps
+// state (Task 10), so a file that does not parse never becomes the open notation — there is no
+// rollback path to build because there is nothing to roll back. This effect only renders, and
+// nothing is destroyed: the workers and the loaded soundfont are reused, so a rejected
+// replacement leaves the playing score untouched by construction.
 useEffect(() => {
-  const api = apiRefLocal.current;
-  if (!api || !engine || !notation) return;
+  const api = apiRef.current;
+  if (!api || !notation) return;
 
-  const score = engine.importer.ScoreLoader.loadScoreFromBytes(notation.bytes);
-  const drumIndexes = selectDrumTrackIndexes(score.tracks);
-  // INDEXES, not Track objects. Passing undefined is what makes AlphaTab fall back to its
-  // default track for a score with no percussion staff.
-  api.renderScore(score, drumIndexes.length > 0 ? drumIndexes : undefined);
+  const drumIndexes = selectDrumTrackIndexes(notation.score.tracks);
+  // INDEXES, not Track objects. Passing undefined makes AlphaTab render score.tracks[0] — its
+  // FIRST track, not a "default" or preferred one (see renderScore in alphaTab.core.mjs). Fine
+  // here: this branch only runs when no track carries a percussion staff at all, where any
+  // track is as good as another.
+  api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
   setRenderedTrackCount(drumIndexes.length > 0 ? drumIndexes.length : 1);
-}, [engine, notation]);
+}, [notation]);
 ```
 
 and expose the count for the test:
@@ -1661,21 +1736,52 @@ and expose the count for the test:
 </span>
 ```
 
-`loadScoreFromBytes` takes a `Uint8Array`, so the `ArrayBuffer` from the file read must already be wrapped — Task 10 does that wrapping at the read site.
+`NotationSurface`'s prop is therefore the parsed shape, not the bytes:
+
+```tsx
+interface OpenNotation {
+  name: string;
+  score: AlphaTab.model.Score;
+}
+```
+
+`loadScoreFromBytes` takes a `Uint8Array`, so the `ArrayBuffer` from the file read is wrapped at the read site in Task 10, parsed there, and only the result reaches this component.
 
 - [ ] **Step 5: Run the test after Task 10 lands**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e -g "every drum track"`
 Expected: PASS.
 
-- [ ] **Step 6: Record the deferred gap**
+- [ ] **Step 6: Generate the percussion-free fixture (closes Q7)**
 
-Criterion 9 — a score with no percussion staff opens on AlphaTab's default track — has no fixture (Q7), so the `drumIndexes.length > 0 ? … : undefined` branch ships **verified by reading, not by running**. Add a comment at the call site saying so, and carry it into the PR body. Do not tick criterion 9.
+`web/e2e/fixtures/guitar-no-percussion.gp` is produced from a one-line alphaTex string with the
+pinned 1.8.4 importer/exporter, then round-tripped to prove it is what criterion 9 needs. Verified:
+2,866 bytes, a real GP7 zip (`VERSION`, `Content/score.gpif`), reading back as one track, one staff,
+`isPercussion = false`. Write the generator beside the other tooling tests so the fixture can be
+regenerated rather than being an unexplained binary:
+
+```js
+// tooling/make-percussion-free-fixture.mjs — run once, output committed.
+const at = await import('../web/node_modules/@coderline/alphatab/dist/alphaTab.mjs');
+const score = at.importer.AlphaTexImporter.importFromString(
+  '\\title "Guitar (no percussion)" . 3.3.4 3.3.4 3.3.4 3.3.4 |',
+);
+await writeFile(
+  'web/e2e/fixtures/guitar-no-percussion.gp',
+  new at.exporter.Gp7Exporter().export(score),
+);
+```
+
+Check the exact importer entry point against `dist/alphaTab.d.ts` before running it — the namespace
+exports `AlphaTexImporter`, `ScoreLoader`, `Gp7Exporter` and `ScoreExporter`, but the convenience
+signature differs between them. Task 10 adds the e2e case that opens this fixture.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add web/lib/alphatab/drum-tracks.ts web/app/play/NotationSurface.tsx web/e2e/player.e2e.ts
+git add web/lib/alphatab/drum-tracks.ts web/lib/alphatab/drum-tracks.test.ts \
+  web/app/play/NotationSurface.tsx web/e2e/fixtures/guitar-no-percussion.gp \
+  tooling/make-percussion-free-fixture.mjs
 git commit -m "feat(web): render every drum track and fall back for percussion-free scores (NH-291)"
 ```
 
