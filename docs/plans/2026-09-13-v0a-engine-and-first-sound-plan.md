@@ -1237,6 +1237,38 @@ export default function PlayPage() {
 }
 ```
 
+Then add the two error boundaries. In App Router, `error.tsx` **is** the React error boundary — the
+Next.js docs are explicit: "`error.js` wraps a route segment and its nested children in a React Error
+Boundary". Two of them, so a crash in the player does not take the landing page with it. Note what
+they do and do not catch: rendering errors, yes; event-handler and async failures, no — those are
+already handled explicitly (the engine-import catch in Task 5, the parse catch in Task 10). These are
+the net for the unexpected.
+
+```tsx
+// web/app/play/error.tsx — 'use client' is required; error boundaries are client components.
+'use client';
+
+import { Button } from '@notation-hero/client';
+
+export default function PlayerError({ reset }: Readonly<{ error: Error; reset: () => void }>) {
+  return (
+    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
+      <h1 className="text-2xl font-bold">The player stopped unexpectedly</h1>
+      <p className="max-w-prose text-muted-foreground">
+        Nothing you opened was sent anywhere. Try again, or reload the page.
+      </p>
+      <Button className="min-h-11 px-8" onClick={reset}>
+        Try again
+      </Button>
+    </main>
+  );
+}
+```
+
+Add the same shape at `web/app/error.tsx` for the rest of the app, worded for a general failure.
+Do **not** add `global-error.tsx` in v0 — it only earns its place once the root layout does more
+than mount a `<Toaster />`.
+
 - [ ] **Step 7: Run the app and verify by hand**
 
 ```bash
@@ -1796,12 +1828,15 @@ git commit -m "feat(web): render every drum track and fall back for percussion-f
 - Modify: `web/app/play/PlayerShell.tsx`
 - Modify: `web/app/play/NotationSurface.tsx`
 - Modify: `web/e2e/player.e2e.ts`
+- Modify: `web/app/globals.css` (the drag-overlay styles)
+- Create: `web/e2e/fixtures/drums.musicxml`
 
 **Interfaces:**
 
 - Consumes: `LoadedNotation` (Task 6); `selectDrumTrackIndexes` (Task 9).
 - Produces:
-  - `OpenFileControl` props: `{ onNotation: (notation: LoadedNotation) => void; hasNotation: boolean; variant?: 'rail' | 'empty' }`.
+  - `OpenFileControl` props: `{ onNotation: (file: LoadedNotation) => void; compact?: boolean }`, plus an exported `readNotation(file)` the shell's drop handler reuses. **This matches the implementation** — the earlier `hasNotation` / `variant` pair was never implemented and is gone.
+  - `OpenNotation { name: string; score: AlphaTab.model.Score }` — what the shell holds after parsing; `NotationSurface` takes it as its `notation` prop.
   - Test hooks: `data-testid="open-file-input"`, `data-testid="open-file-button"`, `data-testid="load-sample"`, `data-testid="empty-state"`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1843,11 +1878,64 @@ test('an unsupported file raises a toast and leaves the player usable', async ({
   await expect(page.getByText(/could not be opened|unsupported/i)).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('empty-state')).toBeVisible();
 });
+
+// Punk.gp parses to three tracks: 0:Drumkit (percussion, MIDI channel 9), 1:Distortion Guitar
+// (not percussion) and 2:Drumkit Left (percussion, channel 9). A regression that rendered only
+// track 0 would silently drop the left-hand staff — which is exactly why this fixture exists.
+// (Moved here from Task 9: it needs the file input this task adds, and Task 9 must not commit
+// a red suite.)
+test('renders every drum track, not only track 0', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+});
+
+// Criterion 9. guitar-no-percussion.gp has one track whose only staff is NOT percussion, so
+// selectDrumTrackIndexes returns [], the caller passes undefined, and AlphaTab renders
+// score.tracks[0]. Verified by RUNNING, not by reading (closes Q7).
+test('a score with no percussion staff opens on the first track', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/guitar-no-percussion.gp');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1');
+});
+
+// The spec's three-extension coverage, and the evidence behind criterion 1's `.gp5`. Both
+// fixtures are already committed (alphatex-GP5.gp5, alphatex-GPX.gpx) — no new content needed.
+// drums.musicxml closes Q6: ScoreLoader never sees a filename, so one MusicXML fixture covers
+// .musicxml, .mxml and .xml alike.
+for (const fixture of ['alphatex-GP5.gp5', 'alphatex-GPX.gpx', 'drums.musicxml']) {
+  test(`opens ${fixture} and renders notation`, async ({ page }) => {
+    await page.goto('/play');
+    await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
+    await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+}
 ```
+
+**Then fix the three tests written earlier, which this task breaks.** Task 6's notation case and
+Task 7's worklet case both `goto('/play')` and wait on `notation-surface svg` — but from this task
+on, a bare `/play` shows the empty state, because Step 5 drops `settings.core.file`. Insert the
+sample click after each `goto`:
+
+```ts
+await page.goto('/play');
+await page.getByTestId('load-sample').click(); // this task removed the auto-load
+await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+  timeout: 30_000,
+});
+```
+
+The sample is still the fixture — only the way it arrives changed — so both tests keep asserting
+exactly what they asserted before.
 
 - [ ] **Step 2: Run them to verify they fail**
 
-Run: `pnpm --filter @notation-hero/web run test:e2e -g "empty|sample beat|unsupported"`
+Run: `pnpm --filter @notation-hero/web run test:e2e`
 Expected: FAIL — no `empty-state`, no `open-file-input`, no `load-sample`.
 
 - [ ] **Step 3: Write the open-file control**
@@ -1857,15 +1945,25 @@ Create `web/app/play/OpenFileControl.tsx`:
 ```tsx
 'use client';
 
-import { useId, useRef, useState } from 'react';
+import { useId, useRef } from 'react';
 import { Button, toast } from '@notation-hero/client';
 
 import type { LoadedNotation } from './PlayerShell';
 
 // Same list the picker has always carried: Guitar Pro, MusicXML and Capella, by extension only.
-// ScoreLoader sniffs file CONTENT, so this is an affordance for the OS dialog, not a guarantee —
-// a file the importer cannot read still raises the unsupported-file toast below.
+// ScoreLoader sniffs file CONTENT and never sees a filename — it loops Environment.buildImporters()
+// and breaks on the first that does not throw — so this is an affordance for the OS dialog, not a
+// guarantee. A file the importer cannot read still raises the unsupported-file toast, and one
+// MusicXML fixture covers .musicxml, .mxml and .xml alike.
 const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx';
+
+// Notation-only files are 3-16 KB, but a Guitar Pro file with an embedded backing track is
+// legitimately 7-8 MB, so the bound is deliberately generous. It exists because
+// loadScoreFromBytes is SYNCHRONOUS and runs on the main thread: a mis-dropped video or disk
+// image would freeze or crash the tab with no message, and no try/catch recovers from that.
+// Checked before arrayBuffer(), so the bytes never reach memory. It does NOT bound decompressed
+// size — .gpx is a ZIP container AlphaTab inflates, which needs a worker-side bound (post-v0).
+const MAX_NOTATION_BYTES = 25 * 1024 * 1024;
 
 interface OpenFileControlProps {
   onNotation: (notation: LoadedNotation) => void;
@@ -1874,6 +1972,9 @@ interface OpenFileControlProps {
 }
 
 async function readNotation(file: File): Promise<LoadedNotation> {
+  if (file.size > MAX_NOTATION_BYTES) {
+    throw new Error(`${file.name} is too large to open.`);
+  }
   const buffer = await file.arrayBuffer();
   // loadScoreFromBytes takes a Uint8Array, so wrap here rather than at the call site.
   return { name: file.name, bytes: new Uint8Array(buffer) };
@@ -1882,32 +1983,22 @@ async function readNotation(file: File): Promise<LoadedNotation> {
 export function OpenFileControl({ onNotation, compact = false }: Readonly<OpenFileControlProps>) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = useId();
-  const [dragging, setDragging] = useState(false);
 
+  // Every failure on this boundary lands on ONE surface. `void accept(...)` is the idiom that
+  // silences the floating-promise lint rule — and it would silence the rejection with it, so a
+  // file the browser cannot read (moved, deleted, volume unmounted between the pick and the read)
+  // would produce nothing at all: no toast, no error state, just a control the user keeps pressing.
   const accept = async (file: File | undefined) => {
     if (!file) return;
-    onNotation(await readNotation(file));
+    try {
+      onNotation(await readNotation(file));
+    } catch {
+      toast.error(`${file.name} could not be opened.`);
+    }
   };
 
   return (
-    <div
-      onDragOver={(event) => {
-        event.preventDefault();
-        setDragging(true);
-      }}
-      onDragLeave={() => setDragging(false)}
-      onDrop={(event) => {
-        event.preventDefault();
-        setDragging(false);
-        // Drag-and-drop takes one file with no filter; a file AlphaTab cannot parse gets the
-        // unsupported-file toast, same as the picker.
-        void accept(event.dataTransfer.files[0]);
-      }}
-      className={dragging ? 'rounded-md ring-2 ring-ring' : undefined}
-    >
-      {/* On iOS the picker must be a <label> tied to a hidden input for the accept filter to
-          apply, so the label is the control and the input stays visually hidden but focusable
-          through it. */}
+    <>
       <input
         ref={inputRef}
         id={inputId}
@@ -1915,6 +2006,13 @@ export function OpenFileControl({ onNotation, compact = false }: Readonly<OpenFi
         type="file"
         accept={ACCEPT}
         className="sr-only"
+        // tabIndex -1 takes the invisible input out of the tab order; aria-hidden takes it out of
+        // the accessibility tree too. BOTH are required. With tabIndex alone the input is no
+        // longer tied to a label, and axe reports a CRITICAL "Form elements must have labels"
+        // violation that blocks the a11y job — measured 0 violations with the old label form,
+        // 1 critical with tabIndex alone, 0 again once aria-hidden was added.
+        tabIndex={-1}
+        aria-hidden="true"
         onChange={(event) => {
           const file = event.target.files?.[0];
           void accept(file);
@@ -1925,25 +2023,40 @@ export function OpenFileControl({ onNotation, compact = false }: Readonly<OpenFi
           event.target.value = '';
         }}
       />
+      {/* A REAL button, not a <label> wrapping the input. Button's focus-visible ring classes only
+          activate on the element that actually has focus — with the label form, Tab lands on the
+          sr-only input and the ring never paints: measured 0 differing pixels between focused and
+          unfocused, a WCAG 2.4.7 failure. The button form paints the ring and keeps one tab stop.
+          `accept` stays on the real <input>, which is still what opens the picker, so the OS
+          filter is unaffected (file-chooser verified firing on both the click and Space paths).
+          Do NOT "fix" the old form by making the label focusable: a label has no native keyboard
+          activation, so Enter and Space produced no file chooser at all. */}
       <Button
-        asChild
+        type="button"
         data-testid="open-file-button"
         variant={compact ? 'outline' : 'default'}
         className={compact ? 'min-h-11 min-w-11' : 'min-h-11 px-8 text-base'}
+        onClick={() => inputRef.current?.click()}
       >
-        <label htmlFor={inputId}>
-          <span className="material-symbols-outlined" aria-hidden="true">
-            folder_open
-          </span>
-          <span className={compact ? 'sr-only' : undefined}>Open file</span>
-        </label>
+        <span className="material-symbols-outlined" aria-hidden="true">
+          folder_open
+        </span>
+        <span className={compact ? 'sr-only' : undefined}>Open file</span>
       </Button>
-    </div>
+    </>
   );
 }
 ```
 
-> The `toast` import is used in Task 11; if lint flags it as unused now, add it in Task 11 instead.
+> **iOS is out of v0 scope and unverified.** The alphaTab fork this project references uses the
+> button-and-ref form above on every non-iOS browser, and branches to a persistent hidden input plus
+> a `<label>` only under a runtime `isIOS()` check — dropping `accept` entirely on the iOS
+> programmatic-click path. So if iOS ever enters scope, add an `isIOS()` branch and verify it on a
+> real device; do not keep a label everywhere for it, which fails focus visibility on every desktop
+> browser. v0's gate is desktop web.
+
+> The drag handlers that used to live on this component's wrapper `<div>` are gone — they belong on
+> the whole player surface (Task 10 Step 5), not on a button-sized box. See that step for why.
 
 - [ ] **Step 4: Write the empty state**
 
@@ -1952,82 +2065,257 @@ Create `web/app/play/EmptyState.tsx`:
 ```tsx
 'use client';
 
-import { Button } from '@notation-hero/client';
+import { Button, Card, CardContent } from '@notation-hero/client';
 
 import { OpenFileControl } from './OpenFileControl';
 import type { LoadedNotation } from './PlayerShell';
 
 interface EmptyStateProps {
-  onNotation: (notation: LoadedNotation) => void;
+  onNotation: (file: LoadedNotation) => void;
   onLoadSample: () => void;
 }
 
 export function EmptyState({ onNotation, onLoadSample }: Readonly<EmptyStateProps>) {
   return (
-    <div
-      data-testid="empty-state"
-      className="flex min-h-[420px] w-full flex-col items-center justify-center gap-4 rounded-md border border-dashed border-border p-8 text-center"
-    >
-      <p className="text-muted-foreground">
-        Drop a score anywhere on this area, or open one from your computer.
-      </p>
-      <OpenFileControl onNotation={onNotation} />
-      <Button data-testid="load-sample" variant="ghost" className="min-h-11" onClick={onLoadSample}>
-        Load the sample beat
-      </Button>
-    </div>
+    // Card, not a hand-rolled bordered div. It is one of the 41 gated components under
+    // client/src/components/ui/, so the empty state inherits its VR and axe baselines and its
+    // token-driven surface instead of re-deriving them by hand. `nh-empty` is the hook the drag
+    // overlay hides against in Step 5.
+    <Card data-testid="empty-state" className="nh-empty min-h-[420px] border-dashed">
+      <CardContent className="flex h-full flex-col items-center justify-center gap-4 text-center">
+        <p className="text-muted-foreground">
+          Drop a score anywhere on this area, or open one from your computer.
+        </p>
+        <OpenFileControl onNotation={onNotation} />
+        <Button
+          data-testid="load-sample"
+          variant="ghost"
+          className="min-h-11"
+          onClick={onLoadSample}
+        >
+          Load the sample beat
+        </Button>
+      </CardContent>
+    </Card>
   );
 }
 ```
 
-- [ ] **Step 5: Hold the score in the shell**
+- [ ] **Step 5: Parse in the shell, and hold the open score there**
 
-In `PlayerShell.tsx`'s `Player`, add the score state, the sample fetch, and the swap between empty state and notation surface:
+The shell owns the OPEN notation — its name plus the **parsed** score. Parsing happens here,
+before any state change, which is the staged load the spec specifies: a file that does not parse
+never becomes the open notation, so the score on screen is untouched **by construction** and there
+is no rollback path to build. Add to `PlayerShell.tsx`:
 
 ```tsx
-const [notation, setNotation] = useState<LoadedNotation | null>(null);
+/** What the picker produces: a file read into memory, not yet parsed. */
+export interface LoadedNotation {
+  name: string;
+  bytes: Uint8Array;
+}
+
+/** What the player holds: a name and the PARSED score. */
+interface OpenNotation {
+  name: string;
+  score: AlphaTab.model.Score;
+}
+
+const [notation, setNotation] = useState<OpenNotation | null>(null);
+
+const requestNotation = useCallback(
+  (file: LoadedNotation) => {
+    if (!engine) return;
+
+    let score: AlphaTab.model.Score;
+    try {
+      score = engine.importer.ScoreLoader.loadScoreFromBytes(file.bytes);
+    } catch {
+      toast.error(`${file.name} could not be opened — it is not a score format the player reads.`);
+      return;
+    }
+
+    // Task 11 inserts the replace confirmation HERE, between the successful parse and the swap.
+    setNotation({ name: file.name, score });
+  },
+  [engine],
+);
 
 const loadSample = useCallback(async () => {
-  const response = await fetch('/notation/1-beat.gp');
-  const buffer = await response.arrayBuffer();
-  setNotation({ name: '1-beat.gp', bytes: new Uint8Array(buffer) });
-}, []);
+  try {
+    const response = await fetch('/notation/1-beat.gp');
+    // Without this a 404's HTML body is read as score bytes and fails later, deeper, with a
+    // misleading "not a score format the player reads" message.
+    if (!response.ok) throw new Error(String(response.status));
+    const buffer = await response.arrayBuffer();
+    requestNotation({ name: '1-beat.gp', bytes: new Uint8Array(buffer) });
+  } catch {
+    toast.error('The sample beat could not be loaded.');
+  }
+}, [requestNotation]);
 ```
 
-and in the returned markup, render `<EmptyState … />` when `notation === null` and `<NotationSurface notation={notation} … />` otherwise. Drop `settings.core.file = SAMPLE_NOTATION` from `NotationSurface` — the score now always arrives through `renderScore` (Task 9), so the mount no longer auto-loads a score. Remove the now-unused `SAMPLE_NOTATION` constant.
+Drop `settings.core.file = SAMPLE_NOTATION` from `NotationSurface` — the score now always arrives
+through `renderScore` (Task 9), so the mount no longer auto-loads anything. Remove the now-unused
+`SAMPLE_NOTATION` constant. Export `readNotation` from `OpenFileControl.tsx` so the shell's drop
+handler below can reuse it (same size gate, same failure toast).
 
-- [ ] **Step 6: Raise the unsupported-file toast**
+- [ ] **Step 6: Make the whole player surface the drop target**
 
-Wrap the parse in `NotationSurface`'s score effect (Task 9, Step 4):
+The fork this project references puts `onDragOver`/`onDrop` on its **outermost** player wrapper, so
+a file can be dropped anywhere on the player in either state. Do the same — and add the affordance
+the fork lacks, because its only drag feedback is the OS cursor (`dropEffect = 'link'`), which is
+easy to miss.
 
 ```tsx
-try {
-  const score = engine.importer.ScoreLoader.loadScoreFromBytes(notation.bytes);
-  const drumIndexes = selectDrumTrackIndexes(score.tracks);
-  api.renderScore(score, drumIndexes.length > 0 ? drumIndexes : undefined);
-  setRenderedTrackCount(drumIndexes.length > 0 ? drumIndexes.length : 1);
-} catch {
-  // A score already playing is NEVER cleared by a failed load (spec §4 failure states).
-  toast.error(`${notation.name} could not be opened — it is not a score format the player reads.`);
-  onLoadFailed();
+const [dragging, setDragging] = useState(false);
+const depth = useRef(0);
+const endDrag = useCallback(() => {
+  depth.current = 0;
+  setDragging(false);
+}, []);
+
+// A cancelled drag (Esc, or releasing outside the window) fires NO further drag event, so the
+// counter never unwinds and the overlay would stay up forever. Pointer events are suppressed for
+// the duration of a drag, so the first pointermove afterwards is a reliable "it is over" signal
+// and does not fire mid-drag.
+useEffect(() => {
+  const onEnd = () => {
+    if (depth.current !== 0) endDrag();
+  };
+  window.addEventListener('dragend', onEnd);
+  window.addEventListener('pointermove', onEnd);
+  return () => {
+    window.removeEventListener('dragend', onEnd);
+    window.removeEventListener('pointermove', onEnd);
+  };
+}, [endDrag]);
+```
+
+and the markup, replacing the plain `<main>` body:
+
+```tsx
+<main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+  <h1 className="sr-only">Player</h1>
+
+  {/* A dragenter/dragleave COUNTER, never a bare setDragging(false). `dragleave` also fires on
+      the container whenever the pointer crosses into a CHILD, with relatedTarget set to that
+      child, so the naive form cannot tell "left for a child" from "left the surface" — measured
+      14 state transitions on one drag across the control, a visible strobe. Clamped at 0 so a
+      stray leave cannot make the next enter a no-op. */}
+  <section
+    className="relative flex flex-col gap-4"
+    data-dragging={dragging || undefined}
+    onDragEnter={(event) => {
+      event.preventDefault();
+      depth.current += 1;
+      setDragging(true);
+    }}
+    onDragLeave={() => {
+      depth.current = Math.max(0, depth.current - 1);
+      setDragging(depth.current > 0);
+    }}
+    onDragOver={(event) => {
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'link';
+    }}
+    onDrop={(event) => {
+      event.preventDefault();
+      endDrag();
+      // One file, no extension filter — the same size gate and the same unsupported-file toast
+      // the picker uses. ScoreLoader sniffs content, so a filter here would buy nothing.
+      void acceptDropped(event.dataTransfer.files[0]);
+    }}
+  >
+    <div className="relative">
+      {notation === null ? (
+        <EmptyState onNotation={requestNotation} onLoadSample={loadSample} />
+      ) : (
+        <NotationSurface notation={notation} onApiReady={handleApiReady} />
+      )}
+      {dragging ? (
+        /* MUST be a descendant of the drop container AND pointer-events-none. An overlay mounted
+           outside the container oscillated forever: every dragleave's relatedTarget was the
+           overlay, which is not a descendant, so no matching dragenter ever arrived inside and
+           the counter could not balance. aria-hidden is deliberate — it is decorative during a
+           pointer gesture, and the keyboard path is the labelled Open file button. */
+        <div
+          aria-hidden
+          className="nh-drop-overlay pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5"
+        >
+          <span className="material-symbols-outlined text-primary" aria-hidden="true">
+            upload
+          </span>
+          <p className="text-lg font-semibold text-foreground">Drop to open</p>
+          <p className="text-sm text-foreground opacity-75">Guitar Pro, MusicXML or Capella</p>
+        </div>
+      ) : null}
+    </div>
+
+    <div
+      data-testid="player-status"
+      data-playing={playing}
+      data-soundfont={soundFontReady}
+      className="flex items-center gap-3"
+    >
+      {/* …the Play button from Task 6… */}
+      {/* The rail control. Without it OpenFileControl unmounts together with EmptyState the moment
+          a score opens, taking open-file-input out of the DOM: every Task 11 replace test would
+          fail on element-not-found, requestNotation's confirm branch would be unreachable, and a
+          user would have no way to open a second score at all. This is the call site the
+          already-implemented `compact` variant never had. */}
+      {notation !== null ? <OpenFileControl compact onNotation={requestNotation} /> : null}
+    </div>
+  </section>
+</main>
+```
+
+The overlay's own styles go in `web/app/globals.css` — no hardcoded white or black, so it reads in
+both themes:
+
+```css
+.nh-drop-overlay {
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--background) 80%, transparent);
+  /* Without the blur the empty state's own teal Open file button shows through directly behind
+     the hint line. */
+  backdrop-filter: blur(3px);
+}
+/* The whole surface signals "drop anywhere in here"; only the score area carries the scrim, so
+   the transport stays legible rather than reading as a broken player. */
+[data-dragging] {
+  outline: 2px dashed var(--primary);
+  outline-offset: 6px;
+  border-radius: var(--radius);
+}
+/* The empty-state prompt is redundant while dragging and collides with the overlay message.
+   `visibility`, not `opacity`, so it leaves the accessibility tree and the tab order too. */
+[data-dragging] .nh-empty {
+  visibility: hidden;
 }
 ```
 
-`onLoadFailed` is a new prop that tells the shell to drop back to the previous score (or to `null` when there was none).
+Measured on this markup: axe reports **0 violations** in all four states (empty/loaded x light/dark),
+and the overlay text clears WCAG **AAA** in every one — worst case 8.52:1 for the small hint line
+against a 4.5:1 AAA bar, sampled from real pixels at the glyph coordinates.
 
 - [ ] **Step 7: Run the tests to verify they pass**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e`
-Expected: PASS — including the Task 9 `Punk.gp` case, which now has its input.
+Expected: PASS — the whole lane, including the two earlier cases this task just repaired.
 
 - [ ] **Step 8: Verify by hand, including drag-and-drop**
 
-Playwright cannot exercise a real OS drag, so drop a `.gp` file onto `/play` in a browser yourself and confirm it loads.
+Playwright cannot exercise a real OS drag, so drop a `.gp` file onto `/play` in a browser yourself
+and confirm it loads. Check all four drag states while you are there: the dashed ring appears on the
+whole surface, the overlay message appears over the score area only, the overlay does **not** strobe
+as you move the pointer across the buttons, and pressing **Esc** mid-drag clears it (that path fires
+no drag event at all, which is what the `pointermove` safety net covers).
 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add web/app/play web/e2e/player.e2e.ts
+git add web/app/play web/app/globals.css web/e2e/player.e2e.ts web/e2e/fixtures/drums.musicxml
 git commit -m "feat(web): open a score by picker or drop, with a sample-beat fallback (NH-291)"
 ```
 
@@ -2066,12 +2354,29 @@ test('cancelling a replacement keeps the current score playing from where it was
   await play.click();
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
 
+  // Capture the position BEFORE the prompt — this is the value the resume has to preserve, and
+  // it is the only assertion here with any discriminating power. `data-playing` is already 'true'
+  // and window.confirm blocks the main thread, so playerStateChanged cannot fire while the dialog
+  // is up: re-checking it afterwards re-reads a value that could not have moved, and would pass
+  // just as happily if the resume logic were deleted or playback restarted from bar 1.
+  const before = Number(
+    (await page.getByTestId('player-status').getAttribute('data-position')) ?? '0',
+  );
+  expect(before).toBeGreaterThan(0);
+
   page.on('dialog', (dialog) => dialog.dismiss());
   await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
 
   // Still the sample, still playing.
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
   await expect(page.getByTestId('loaded-notation-name')).toHaveText('1-beat.gp');
+
+  // Resumed from where it was, and still advancing — not restarted, not frozen.
+  await expect
+    .poll(async () =>
+      Number((await page.getByTestId('player-status').getAttribute('data-position')) ?? '0'),
+    )
+    .toBeGreaterThan(before);
 });
 
 test('re-picking the same file after a cancel prompts again', async ({ page }) => {
@@ -2161,8 +2466,14 @@ const requestNotation = useCallback(
     // playerStateChanged cannot fire until the prompt returns.
     const wasPlaying = playing;
 
-    // eslint-disable-next-line no-alert -- deliberate v0 shortcut: no Dialog component is built
-    // yet, and a styled confirm can replace this later without changing the flow.
+    // eslint-disable-next-line no-alert -- deliberate v0 shortcut. To be precise about what is
+    // and is not missing: the Base UI Dialog PRIMITIVE is already in the repo — Sheet is a shadcn
+    // port over `@base-ui/react/dialog`, with focus trap, scroll lock, overlay and a required
+    // title, carrying VR and axe baselines. What does not exist is an AlertDialog COMPONENT
+    // (six co-located files plus baselines). Building it is Plan C work, and it would be a real
+    // simplification here, not just a prettier dialog: a non-blocking dialog removes the buffer
+    // drain, the `wasPlaying` capture and the resume-on-cancel below, because playback simply
+    // never stops. v0 keeps window.confirm; do not describe the primitive as missing.
     const confirmed = window.confirm(
       `Replace ${notation.name} with ${next.name}? The score you have open will be closed.`,
     );
@@ -2253,7 +2564,7 @@ Expected: FAIL — the `loading` story id has no story behind it.
 
 - [ ] **Step 4: Write the story**
 
-In `Sonner.stories.tsx`, add a `Loading` export that renders a persistent loading toast. Match the file's existing story shape exactly — copy the structure of the neighbouring `Success`/`Error` stories and swap `toast.success` for `toast.loading`. The `openArgs` mechanism in `client/src/a11y-helpers.ts` is what holds an overlay open deterministically; check how the existing Sonner stories use it and follow the same pattern.
+In `Sonner.stories.tsx`, add a `Loading` export that renders a persistent loading toast. Copy the neighbouring `Error` story's shape exactly and swap `toast.error` for `toast.loading`. What holds the toast open is the file's **own local `ToastOnMount` wrapper** (`Sonner.stories.tsx:42`) firing `toast.*(…, { duration: Infinity })` — **not** `openArgs`: `Sonner.a11y.ts` is a bespoke suite that navigates the story iframe and waits for `[data-sonner-toast]`, and it imports neither `openArgs` nor `a11y-helpers.ts`. Do not go looking for a shared helper here; there isn't one for this component.
 
 - [ ] **Step 5: Run the a11y gate to verify it passes**
 
@@ -2365,6 +2676,11 @@ test('player has no axe violations while the first-visit Skeleton is up', async 
   });
 
   await page.goto('/play');
+  // NotationSurface — and therefore notation-skeleton — only mounts once a score is chosen, so a
+  // bare /play shows EmptyState and this case would wait forever. Clicking the sample mounts the
+  // surface while the stalled import keeps `engine` null, which IS the first-visit state this
+  // case exists to audit.
+  await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('notation-skeleton')).toBeVisible();
   await expectNoViolations(page, 'play / skeleton');
 });
@@ -2380,24 +2696,36 @@ Expected: FAIL — either on missing modules (fix the import) or on real violati
 Run: `pnpm --filter @notation-hero/web run test:e2e a11y`
 Expected: PASS — 4 tests.
 
-- [ ] **Step 4: Verify the 44 px rule by measurement, not by eye**
+- [ ] **Step 4: Gate the 44 px rule in the lane, not by eye**
 
-```bash
-pnpm --filter @notation-hero/web run dev
+A one-time hand check does not stop a later control shrinking below the minimum, and axe cannot
+catch it either: the tag set above is `wcag2a/2aa/21a/21aa`, none of which carries a target-size
+rule. (For the record on the bar: WCAG 2.5.8 AA asks only 24x24 CSS px — 44 px is 2.5.5 AAA and the
+platform HIG, and it is what this plan's own Global Constraints demand. The assertion below enforces
+the stricter rule deliberately.) Add to `web/e2e/a11y.e2e.ts`:
+
+```ts
+async function expectHitAreas(page: Page, label: string): Promise<void> {
+  const tooSmall = await page.evaluate(() =>
+    [...document.querySelectorAll('button, a[href], label[for], [role="button"]')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        // Skip controls that are not rendered at all; a hidden element has no hit area to fail.
+        return r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44);
+      })
+      .map((el) => ({
+        id: (el as HTMLElement).dataset.testid ?? el.textContent?.trim().slice(0, 24) ?? '?',
+        w: Math.round(el.getBoundingClientRect().width),
+        h: Math.round(el.getBoundingClientRect().height),
+      })),
+  );
+  expect(tooSmall, `${label}: controls under the 44px minimum`).toEqual([]);
+}
 ```
 
-In the browser console on `/play`:
-
-```js
-[...document.querySelectorAll('button, a[href], label[for], [role="button"]')]
-  .map((el) => ({
-    el: el.dataset.testid ?? el.textContent?.trim().slice(0, 20),
-    ...el.getBoundingClientRect().toJSON(),
-  }))
-  .filter((r) => r.width < 44 || r.height < 44);
-```
-
-Expected: an **empty array**. Any row is a control that fails the tablet-landscape touch target — pad its hit area (keep the glyph at its drawn size) until the list is empty.
+Call it from each of the four cases above, beside `expectNoViolations`. Any entry is a control that
+fails the tablet-landscape touch target — pad its hit area (keep the glyph at its drawn size) until
+the list is empty.
 
 - [ ] **Step 5: Run the whole lane and the repo checks**
 
@@ -2434,9 +2762,13 @@ Expected: all PASS. Do not open the PR on a red tree.
 
 - [ ] **Step 2: Push and open the PR**
 
+Task 1 already opened this PR (to get a Vercel preview for the Q2 check), and GitHub refuses a
+second open pull request for the same head branch — so this **retitles and re-bodies** it rather
+than creating one. `git push` needs no `-u`: Task 1 set the upstream.
+
 ```bash
-git push -u origin spike/alphatab-nextjs-poc
-gh pr create --title "feat(web): v0 player — open a local score, see it, hear it (NH-291)" --body "$(cat <<'EOF'
+git push
+gh pr edit --title "feat(web): v0 player — open a local score, see it, hear it (NH-291)" --body "$(cat <<'EOF'
 Implements Plan A of the v0 local-file drum player: the AlphaTab engine, the `/play` screen, and a CI lane that proves the audio worker path is live.
 
 Spec: `docs/specs/2026-09-10-v0-local-file-player-design.md`
@@ -2444,21 +2776,24 @@ Plan: `docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`
 
 ## Success criteria covered
 
-- [x] 1 — a drum score opened from local disk renders as standard notation
+- [x] 1 — a drum score opened from local disk renders as standard notation (the lane opens `Punk.gp`, `alphatex-GP5.gp5`, `alphatex-GPX.gpx` and `drums.musicxml`)
 - [x] 2 — pressing play produces audible drum audio with a tracking cursor (verified by ear; the CI lane can only verify it by state)
-- [x] 4 — leocaseiro's own score plays
+- [ ] 4 — leocaseiro's own score plays — **MANUAL**: tick only after Step 5 below
 - [x] 8 — Load the sample beat fetches and plays the bundled score
-- [ ] 9 — a score with no percussion staff opens on the default track: **code written, NOT verified** — no percussion-free fixture exists (Q7)
-- [x] 10 — replacing prompts; cancel keeps the score playing; confirm renders the new one; a corrupt replacement leaves the playing score intact
+- [x] 9 — a score with no percussion staff opens on `score.tracks[0]` (the lane opens `guitar-no-percussion.gp`; Q7 closed)
+- [x] 10 — replacing prompts; cancel keeps the score playing from the same position; confirm renders the new one; a corrupt replacement leaves the playing score intact
 
 Criteria 3, 5, 6 and 7 belong to Plans B and C.
 
-## Known gaps carried forward
+## Open questions closed
 
-- **Q6** — `.musicxml`, `.mxml` and `.xml` are on the picker's accept list but no genuine MusicXML fixture exists, and `ScoreLoader` sniffs bytes, so a renamed `.gp5` would test nothing. Those three extensions ship unverified.
-- **Q7** — no percussion-free score, so criterion 9's fallback ships verified by reading only.
+- **Q6** — closed. `web/e2e/fixtures/drums.musicxml` is a hand-authored MusicXML file the pinned 1.8.4 importer parses, and `ScoreLoader` never sees a filename, so one fixture covers `.musicxml`, `.mxml` and `.xml`. (`1-beat.xml` was a Guitar Pro binary under an `.xml` name — GP5 coverage, not MusicXML.)
+- **Q7** — closed. `web/e2e/fixtures/guitar-no-percussion.gp` is generated via `AlphaTexImporter` + `Gp7Exporter` and round-trips as one non-percussion track, so criterion 9 is verified by running.
 
-Both deferred deliberately.
+## Known limitations
+
+- The 25 MB size gate bounds the file read, not the decompressed size: `.gpx` is a ZIP container AlphaTab inflates, which would need a worker-side bound. Out of scope for v0.
+- iOS is unverified. The picker uses a button plus a programmatic `input.click()`, which is what the alphaTab fork ships on every non-iOS browser; iOS needs an `isIOS()` branch, verified on a real device, if it ever enters scope. v0's gate is desktop web.
 
 ## Pulumi preview
 
@@ -2467,7 +2802,37 @@ EOF
 )"
 ```
 
-- [ ] **Step 3: Tick the checklist and watch CI**
+- [ ] **Step 3: Re-verify on the deployed preview**
+
+Task 1's go/no-go ran against the **committed** `web/public/alphatab/**`, and Task 2 then deleted
+that directory and made it build output. Nothing has checked the _generated_ files on a real deploy
+since — yet every success criterion in the spec is written "on a deployed Vercel URL", and the lane
+only ever serves a local `next start`. Two things are only true on Vercel: the pinned `buildCommand`
+actually running, and the vendor script reading through a pnpm symlink that resolves **outside**
+`web/` (Vercel's Root Directory docs say files outside it are not accessible; the existing deploy
+already reaches out for `transpilePackages`, so it likely resolves — but it is unverified for this
+script). Once the PR's preview has built:
+
+```bash
+PREVIEW=https://<the new preview URL>
+for f in alphaTab.mjs alphaTab.core.mjs alphaTab.worker.mjs alphaTab.worklet.mjs; do
+  printf '%s -> ' "$f"
+  curl -sSI "$PREVIEW/alphatab/esm/$f" | awk 'tolower($1) ~ /^(http|content-type)/ {print}' | tr '\n' ' '
+  printf '\n'
+done
+```
+
+Expected: `HTTP/2 200` and a JavaScript `content-type` for all four. Then open `$PREVIEW/play` and
+walk criteria 1, 2, 8 and 10 there. A 404 means the vendor step did not run on the builder — stop
+and fix `buildCommand` before merging, not after.
+
+- [ ] **Step 4: Open your own score (criterion 4)**
+
+Criterion 4 has no automated evidence and no other step. On `$PREVIEW/play`, open one of your own
+Guitar Pro files — including a large one with an embedded backing track, which is what the 25 MB
+gate exists for — press play, and listen. Only then tick criterion 4 in the PR body.
+
+- [ ] **Step 5: Tick the checklist and watch CI**
 
 The `pr-checklist-sync` workflow appends any missing checklist items when the PR opens. **Tick each box yourself** — every item is a past-tense claim, and a tick whose condition applied but whose work you skipped is a false claim. Then:
 
@@ -2477,9 +2842,9 @@ gh run watch
 
 Local green is not CI green — binary versions and scan scope differ. Watch the run to completion.
 
-- [ ] **Step 4: Update the decision registry**
+- [ ] **Step 6: Update the decision registry**
 
-Every PR that changes what is enforced updates `docs/decisions/decision-registry.md` in the SAME PR, so it lands atomically on merge. Add a Change-log entry dated 2026-09-13 recording: D5 confirmed against a real Vercel deploy (Task 1), the type-only AlphaTab import is now lint-enforced, and the `web` package gained a merge-blocking browser lane.
+Every PR that changes what is enforced updates `docs/decisions/decision-registry.md` in the SAME PR, so it lands atomically on merge. Add a Change-log entry dated 2026-09-14 recording: D5 confirmed against a real Vercel deploy (Task 1, re-verified on the generated assets in Step 3), the type-only AlphaTab import is now lint-enforced, the `web` package gained a merge-blocking browser lane, and `web/vercel.json` pins `buildCommand` so the vendor step cannot be bypassed.
 
 ```bash
 git add docs/decisions/decision-registry.md
@@ -2491,8 +2856,57 @@ git push
 
 ## Self-Review
 
-**Spec coverage.** §4 data flow → Tasks 9, 10. §4 replace flow → Task 11. §4 failure states → Tasks 6 (engine + soundfont), 10 (unsupported file, empty state). §4 loading affordances → Task 6 (Skeleton over engine + font), Task 4 (icon font), Task 12 (replacement toast); **the soundfont progress bar is Plan B** because §7 files it under `client/`. §4 mounting → Task 6. §5 all three requirements → Tasks 2, 3, 5. §5 vendoring → Task 2. §5 regression test → Task 7. §5 CI step → Task 8. §5 axe lane → Task 13. §5 client-side toast audit → Task 12. §7 barrel/`'use client'` prerequisite → Task 4. §8 criteria 1, 2, 4, 8, 10 → Tasks 6, 10, 11; criterion 9 → Task 9, shipped unverified by decision. §9 Q2 → Task 1. **Deliberately not covered here:** the transport row, scrubber, tempo control, Loop/Metronome/Count-In and the soundfont progress bar (Plan B); `Accordion`, `Slider`, the Settings and Tracks popovers and settings persistence (Plan C); Q4 browser matrix (post-v0 per D7); Q6/Q7 fixtures (deferred).
+Regenerated 2026-09-14, after a seven-persona review and four spikes. The earlier version's
+placeholder scan claimed a completeness it did not have, so this one says where each item closes.
 
-**Placeholder scan.** Two steps deliberately say "open the real file and match what it exports" rather than inventing an API — the Material Symbols `src` descriptor (Task 4 Step 7) and the Sonner story shape (Task 12 Step 4). Both are instructions to read a file that exists, not deferred work, and each names the exact file plus the command that reveals the answer. The `args.state === 1` line in Task 6 is explicitly flagged as a placeholder that must not ship, with its replacement named.
+**Spec coverage.** §4 data flow → Tasks 9, 10. §4 replace flow → Task 11. §4 failure states →
+Tasks 6 (engine + soundfont), 10 (unsupported file, oversized file, unreadable file, sample fetch,
+empty state). §4 loading affordances → Task 6 (Skeleton, lifted on `renderFinished`), Task 4 (icon
+font), Task 12 (replacement toast); **the soundfont progress bar is Plan B** because §7 files it
+under `client/`. §4 mounting → Task 6. §5 all three requirements → Tasks 2, 3, 5. §5 vendoring →
+Task 2 (plus the pinned `buildCommand`). §5 regression test → Task 7. §5 CI step → Task 8. §5 axe
+lane → Task 13. §5 client-side toast audit → Task 12. §7 barrel/`'use client'` prerequisite →
+Task 4. §8 criteria 1, 2, 8, 9, 10 → Tasks 6, 10, 11; criterion 4 → Task 14 Step 4, by hand, on the
+deployed preview. §9 Q2 → Task 1, re-verified on the generated assets in Task 14 Step 3.
+**Deliberately not covered here:** the transport row, scrubber, tempo control, Loop/Metronome/Count-In
+and the soundfont progress bar (Plan B); `Accordion`, `Slider`, the Settings and Tracks popovers and
+settings persistence (Plan C); a styled replace dialog (Plan C — the Base UI Dialog primitive exists,
+the AlertDialog component does not); Q4 browser matrix (post-v0 per D7); CSP headers for `web/`
+(`ARCH-SEC-2` is written for the dropped CloudFront delivery and needs re-scoping to Vercel);
+a decompressed-size bound for `.gpx`; iOS.
 
-**Type consistency.** `AlphaTabEngine` (Task 5) is the type every later task names. `LoadedNotation { name, bytes }` is defined once in Task 6 and consumed unchanged in Tasks 9, 10, 11. `selectDrumTrackIndexes` (Task 9) keeps one name and one signature. `loadAlphaTabEngine` / `resolveLogLevel` / `useAlphaTabEngine` are spelled identically everywhere. Test ids are declared in the task that creates them and reused verbatim: `notation-surface`, `notation-skeleton`, `engine-error`, `transport-play`, `player-status` (with `data-playing`, `data-soundfont`, `data-position`), `rendered-track-count`, `open-file-input`, `open-file-button`, `load-sample`, `empty-state`, `loaded-notation-name`.
+**Placeholder scan.** Exactly **one** step says "open the real file and match what it exports"
+rather than inventing an API: the Material Symbols `src` descriptor (Task 4 Step 7). It names the
+exact file and the `grep` that reveals the answer, so it is an instruction to read something that
+exists, not deferred work. **Everything the previous scan missed is now closed in place, not
+deferred:** `apiRefLocal` is gone — `NotationSurface` declares a real `apiRef` in Task 6;
+`<Button asChild>` is gone — the landing page uses Base UI's `render` prop and `OpenFileControl` is a
+real `<button>`, because `asChild` appears nowhere in `client/src`; `args.state === 1` is gone —
+`handleApiReady` reads `engine.synth.PlayerState.Playing`; and the Sonner story instruction now names
+the actual mechanism (`ToastOnMount` + `duration: Infinity`) instead of an `openArgs` helper that
+component's suite never imports.
+
+**Verification honesty.** Every "Expected: PASS" in this plan should now be true when you reach it.
+The three that were not: Task 3 Step 6 lint (variant A's value import — the spike surface is deleted
+in Step 6 now), Task 6 Step 9 typecheck (`@playwright/test` arrived a task too late — the install
+moved to Task 6 Step 1), and Task 10 Step 7 (three earlier tests broke when the auto-load went — the
+sample click is inserted in Step 1). Task 7's lane could neither pass nor fail honestly: its worklet
+assertion used `page.waitForResponse`, which Chromium never fires for an `AudioWorklet.addModule()`
+fetch, and its discrimination drill moved a file that `pnpm build` re-vendors before any test runs.
+Both are fixed, and a second drill now exercises `Platform: BrowserModule` — the assertion that
+actually catches the bundled-copy regression, which deleting an asset never could.
+
+**Type consistency.** `AlphaTabEngine` (Task 5) is the type every later task names.
+`LoadedNotation { name, bytes }` is what the picker produces; `OpenNotation { name, score }` is what
+the shell holds after parsing, and is `NotationSurface`'s `notation` prop — the two are distinct on
+purpose, because parsing before the state swap is what removes the rollback path.
+`selectDrumTrackIndexes` keeps one name and one signature. `loadAlphaTabEngine` / `resolveLogLevel` /
+`useAlphaTabEngine` are spelled identically everywhere. Test ids are declared in the task that
+creates them and reused verbatim: `notation-surface`, `notation-skeleton`, `engine-error`,
+`transport-play`, `player-status` (with `data-playing`, `data-soundfont`, `data-position`),
+`rendered-track-count`, `open-file-input`, `open-file-button`, `load-sample`, `empty-state`,
+`loaded-notation-name`.
+
+**Vocabulary.** This plan says `notation` for the opened file, `score` for AlphaTab's parsed object
+and in user-facing copy, and never "chart" (`CONCEPTS.md`). AlphaTab's own API names — `ScoreLoader`,
+`loadScoreFromBytes`, `renderScore`, `model.Score` — are left verbatim.
