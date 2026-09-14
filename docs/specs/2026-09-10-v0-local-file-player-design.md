@@ -16,7 +16,7 @@ last_applied: P1
 
 ## 1. Goal
 
-Ship the first thing that makes a sound. Open a drum chart from your own disk, see it as standard
+Ship the first thing that makes a sound. Open a drum score from your own disk, see it as standard
 notation, press play, hear it.
 
 This is deliberately the smallest complete product, not the smallest technical slice. It is a thing
@@ -84,10 +84,10 @@ mockup should be updated to match rather than copied literally.
 **Where the file is opened:** in the player, the same shape the prototype uses. `/` is a landing with
 a **Play** button that opens `/play`; the player owns the file picker and drag-and-drop. Opening
 another file replaces the loaded one in place, with no navigation, so the `ArrayBuffer` never has to
-cross routes and the chart itself is never written to disk (settings are the one thing v0 persists —
+cross routes and the score itself is never written to disk (settings are the one thing v0 persists —
 see §7).
 
-**Replacing a loaded chart asks first.** The flow is: `/` → press **Play** → `/play` → pick or drop a
+**Replacing a loaded score asks first.** The flow is: `/` → press **Play** → `/play` → pick or drop a
 file → it loads (a parse error raises a toast). From then on the file can be replaced at any time,
 and replacing prompts for confirmation. v0 uses the browser's native `window.confirm()` — a
 deliberate shortcut, since no `Dialog` component is built; a styled confirm can replace it later.
@@ -96,14 +96,14 @@ blocks the main thread, which is where AlphaTab's sample pump runs — so the au
 ~500 ms buffer and zero-fills on its own while the dialog is up. Calling `pause()` first would not
 help anyway: it only posts a message to the synth worker, and the reply that stops the audio graph is
 handled on the blocked main thread, so the pause lands _after_ the prompt returns — which would leave
-a cancelled chart stopped, contradicting the promise below. So the handler records whether playback
+a cancelled score stopped, contradicting the promise below. So the handler records whether playback
 was running, pauses only on the **confirm** path (to stop the synth before `renderScore` swaps the
 score), and resumes from the same position on **both** the cancel path and the parse-failure path.
-**Cancel** keeps the current chart and discards the new file. **Confirm** stages the load: AlphaTab's
+**Cancel** keeps the current score and discards the new file. **Confirm** stages the load: AlphaTab's
 `ScoreLoader` parses the new buffer first, and only on success does the live `AlphaTabApi` take the
 new score via `renderScore(...)` — nothing is destroyed, the workers and the loaded soundfont are
 reused, and disposal stays tied to unmount (§"Mounting AlphaTab"). A corrupt replacement therefore
-leaves the playing chart intact.
+leaves the playing score intact.
 
 **Reset the input's `value` to `''` at the end of every change handler** — cancel, parse failure and
 success alike. A file input fires no `change` event when its value is unchanged, so without the reset
@@ -131,12 +131,12 @@ file" toast (see Failure states).
 
 Where a drum staff exists, only the drum tracks render; every track stays in playback, so per-track
 mute/solo works. The prototype always renders track 0 (its to-do list says "always go to drum"), so
-this rule is new. v0 tests include a multi-track chart whose drums are not track 0.
+this rule is new. v0 tests include a multi-track score whose drums are not track 0.
 
 **No drum staff is not an error.** Drums are v0's default, not its requirement: the app is aimed at
 drummers but must not turn any other musician away. A file with no percussion staff falls back to
 AlphaTab's default track, which is what an omitted `trackIndexes` argument already does — so a
-guitar or piano chart opens and plays instead of showing a dead end.
+guitar or piano score opens and plays instead of showing a dead end.
 
 No upload, no network call for user content. The only network traffic is the static engine assets.
 
@@ -144,7 +144,7 @@ No upload, no network call for user content. The only network traffic is the sta
 
 | Case                          | Behavior                                                                                                                                                                                                                                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unsupported or corrupt file   | Sonner toast; stay on `/play`. A chart already playing is never cleared by a failed load                                                                                                                                                                                                       |
+| Unsupported or corrupt file   | Sonner toast; stay on `/play`. A score already playing is never cleared by a failed load                                                                                                                                                                                                       |
 | `/play` open with no file yet | Empty state: a large **Open file** control plus a secondary **Load the sample beat** action, drag-and-drop anywhere on the surface, transport disabled                                                                                                                                         |
 | Engine import fails           | An error message in place of the disabled Play button. `api.error` cannot see this: the dynamic import rejects before `AlphaTabApi` exists, so the mount component's own `try`/`catch` around the import sets the state — the spike's bare `void (async () => …)()` has none and must gain one |
 | SoundFont download fails      | The same message, raised through AlphaTab's `error` event                                                                                                                                                                                                                                      |
@@ -181,12 +181,12 @@ affordances, each covering a different part of that wait:
 
 Play stays disabled until the synth is ready.
 
-**While a replacement chart parses:** the chart on screen keeps playing (the load is staged, §4
+**While a replacement score parses:** the score on screen keeps playing (the load is staged, §4
 above), so nothing covers the notation area. Instead a `toast.loading()` through the built `Sonner`
 names the incoming file, then resolves into success or into the same "unsupported file" error toast
 the Failure states table already specifies — so loading, success and failure share one surface.
 Sonner ships its own spinner, so this needs no new component; the design system has no `Spinner`,
-`Loader` or `Progress`, and `Skeleton` would hide a chart that is still playable.
+`Loader` or `Progress`, and `Skeleton` would hide a score that is still playable.
 
 ### Mounting AlphaTab
 
@@ -319,26 +319,26 @@ consistency, so a drifting range fails the `quality` job), the job needs its own
 `pnpm -r --if-present run test` with no browsers installed. Add `web/playwright-report/` and
 `web/test-results/` to the `e2e` job's upload paths when the lane lands. A fourth note for the
 replace flow: the lane must register a `page.on('dialog', …)` handler **before** any action that
-replaces a loaded chart — accepting for the confirm path, dismissing for the cancel path — because
+replaces a loaded score — accepting for the confirm path, dismissing for the cancel path — because
 Playwright auto-dismisses `window.confirm()` when no listener is attached, which would silently turn
 every replace test into a cancel test.
 
-**Charts the lane uses.** Test fixtures live in `web/e2e/fixtures/` — outside `public/`, so they are
-never served — aiming at one chart per accepted extension, because the picker's `accept` list is a
+**Scores the lane uses.** Test fixtures live in `web/e2e/fixtures/` — outside `public/`, so they are
+never served — aiming at one score per accepted extension, because the picker's `accept` list is a
 promise the tests should keep. **Covered today: `.gp`, `.gp5` and `.gpx` only** — three of the nine.
 `ScoreLoader` sniffs file _content_, not the extension, so naming a fixture `.musicxml` proves
 nothing about MusicXML: it would load through whichever importer the bytes call for and the lane
 would go green having tested nothing. `1-beat.xml` is kept as exactly that case — a Guitar Pro 5
 binary under an XML extension, a useful check that content-sniffing works and **not** MusicXML
 coverage. Six extensions are still unverified (Q6).
-The one chart that ships is the sample, `web/public/charts/1-beat.gp` — a single drum track, as is
-every chart under `web/public/charts/`. The multi-track case lives in the fixtures:
+The one score that ships is the sample, `web/public/notation/1-beat.gp` — a single drum track, as is
+every score under `web/public/notation/`. The multi-track case lives in the fixtures:
 **`web/e2e/fixtures/Punk.gp`** parses to three tracks — `0:Drumkit` (percussion, MIDI channel 9),
 `1:Distortion Guitar` (not percussion) and `2:Drumkit Left` (percussion, channel 9). Drum indexes are
 `[0, 2]`, so a regression that rendered only track 0 would silently drop the left-hand staff, and its
-guitar track gives the Tracks popover three rows to audit instead of one. It is also the chart that
+guitar track gives the Tracks popover three rows to audit instead of one. It is also the score that
 demonstrates the volume coupling §7 records, since both drum tracks sit on channel 9. Still missing:
-a chart with **no** percussion staff, which criterion 9 needs (Q7).
+a score with **no** percussion staff, which criterion 9 needs (Q7).
 
 ## 6. Payload budget
 
@@ -349,11 +349,11 @@ a chart with **no** percussion staff, which criterion 9 needs (Q7).
 | AlphaTab library         | 1092 KB | 273 KB | shipped once under D5                                                    |
 | Material Symbols icons   | 727 KB  | 727 KB | woff2, no further compression; pulled in by the design-system stylesheet |
 | Next.js app JS + CSS     | —       | —      | not measured yet                                                         |
-| Sample chart `1-beat.gp` | 16 KB   | —      | the one chart that ships; part of first load                             |
-| A user's own chart       | ~3 KB   | —      | per-song marginal cost, nothing downloaded                               |
+| Sample score `1-beat.gp` | 16 KB   | —      | the one score that ships; part of first load                             |
+| A user's own score       | ~3 KB   | —      | per-song marginal cost, nothing downloaded                               |
 
 **First-load engine payload ≈ 1.6 MB compressed, before Next.js JS and CSS.** The engine is a one-time cost
-and per-chart cost is trivial, so caching many charts is cheap. Install and offline are out of v0 (§2); this budget is the input
+and per-score cost is trivial, so caching many scores is cheap. Install and offline are out of v0 (§2); this budget is the input
 for that later milestone.
 
 **Open cost item:** `next start` served the `.sf3` uncompressed. It gzips to 302 KB, and to
@@ -372,12 +372,12 @@ client checks plus the Storybook VR and a11y gates. The design-system rename sta
 
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
 time), the notation-surface wrapper, the landing **Play** button, the player's **Open file** control
-(picker plus drag-and-drop, replacing the loaded chart in place) and its secondary **Load the sample
+(picker plus drag-and-drop, replacing the loaded score in place) and its secondary **Load the sample
 beat** action, the **Settings** and **Tracks** popovers (below), the soundfont **progress bar** (§4),
 the transport row's **Loop**,
 **Metronome** and **Count-In** toggles (AlphaTab's `isLooping`, `metronomeVolume` and
 `countInVolume`, as the prototype does), and the header's **tempo control**
-(BPM = chart tempo × `playbackSpeed`, ±5 buttons, and the percentage shown only while adjusting —
+(BPM = score tempo × `playbackSpeed`, ±5 buttons, and the percentage shown only while adjusting —
 the shape [`player-app-ui.md`](../player-app-ui.md) describes). `Bpm` is display-only, so the tempo
 control is new. **The 12.5–200% slider lives in the Settings popover's Player group**, not in the
 header pill: neither design source draws a slider there, and "two popovers, not modals" leaves no
@@ -446,7 +446,7 @@ a11y baselines that block merge.
   carries the track name, render-select, solo, mute and volume; the per-staff display toggles and both
   transposition sliders sit behind a per-row expand control. `player-app-ui.md` gave this same control
   set a persistent full-height sidebar because a mixer needs room — v0 puts it in a `Popover` instead,
-  so the disclosure is what keeps it scannable. `Punk.gp` alone is three rows; a band chart is more.
+  so the disclosure is what keeps it scannable. `Punk.gp` alone is three rows; a band score is more.
 
 Both popovers' rows **compose controls that already exist** — `Checkbox` (toggle), `Input` (text and
 number), `NativeSelect` (dropdown) and the new `Slider` — with `Field`'s `horizontal` orientation
@@ -456,7 +456,7 @@ group, for example) stays in sync. The prototype does exactly this.
 
 **Settings values persist.** v0 stores **AlphaTab's own settings JSON** under a single `localStorage`
 key, alongside a `version` integer, which answers the storage question the v0.1 design left open (its
-S4). Chart files and playback history are never stored — the no-recent-files rule is about charts, not
+S4). Score files and playback history are never stored — the no-recent-files rule is about scores, not
 preferences.
 
 **Restore through `Settings.fillFromJson(parsed)`, not by assignment.** `JSON.parse` returns plain
@@ -497,10 +497,10 @@ marker work lands, and it is why A–B is not in the acceptance set.
 
 v0 is done when, on a deployed Vercel URL:
 
-1. A `.gp5` drum chart opened from local disk renders as standard drum notation.
+1. A `.gp5` drum score opened from local disk renders as standard drum notation.
 2. Pressing play produces **audible** drum audio with a cursor that tracks it.
 3. Tempo and per-track mute/solo work.
-4. leocaseiro loads **his own** chart and it plays.
+4. leocaseiro loads **his own** score and it plays.
 5. Loop, Metronome and Count-In each audibly change playback.
 6. The scrubber seeks and the cursor follows.
 7. The Settings popover's rows change the rendered score. The Tracks popover lists **every** track
@@ -508,18 +508,18 @@ v0 is done when, on a deployed Vercel URL:
    while render-select changes which tracks are drawn, and the display toggles and both transposition
    sliders change the rendered score. (Tablature is excluded — 1.8.4 cannot render it on a percussion
    staff.)
-8. From a clean `/play` with no file, **Load the sample beat** fetches and plays the bundled chart.
-9. A chart with no percussion staff opens and plays on AlphaTab's default track.
-10. Replacing a loaded chart prompts for confirmation. **Cancel** keeps the current chart playing from
-    where it was, and re-picking the same file prompts again. **Confirm** renders the new chart. A
-    corrupt replacement leaves the playing chart intact.
+8. From a clean `/play` with no file, **Load the sample beat** fetches and plays the bundled score.
+9. A score with no percussion staff opens and plays on AlphaTab's default track.
+10. Replacing a loaded score prompts for confirmation. **Cancel** keeps the current score playing from
+    where it was, and re-picking the same file prompts again. **Confirm** renders the new score. A
+    corrupt replacement leaves the playing score intact.
 
 The criteria are checked in desktop Chrome. iPad and Android get a manual check too; it does not
 block v0. Criterion 2 is called out deliberately — see the open questions. Criteria 5–9 exist because §7
 commits to more than the four things the original criteria covered: without them v0 could be called
 done with the transport toggles, the seek bar, both popovers, the sample-load action, the
 no-percussion fallback or the entire replace path broken — and replacing is the only way to open a
-second chart. A–B bar-range repeat is deliberately absent — it is AlphaTab's own
+second score. A–B bar-range repeat is deliberately absent — it is AlphaTab's own
 behaviour and desktop-only (§7).
 
 ## 9. Open questions and known gaps
@@ -531,8 +531,8 @@ behaviour and desktop-only (§7).
 | Q3  | The ESM variant's audio worklet was never observed being fetched, though playback worked. That was an instrumentation gap, not evidence: `web/spike-probe.mjs` only records `requestfailed` and `status() >= 400`, so it never logged a successful request. The §5 test now asserts the worklet request and the debug line.                                                                                                                                                                                                                                                                                        | v0 acceptance                                                          |
 | Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                                                                                                                                                                                                                                                                                                                                                                                                                             | after v0 ships (D7)                                                    |
 | Q5  | **Answered: the pinned 1.8.4 cannot render drum tablature.** `Staff.finish()` forces `showTablature = false` on any percussion staff, `TabBarRendererFactory` sets `hideOnPercussionTrack = true`, and it requires `staff.tuning.length > 0` — verified by parsing `Punk.gp`, whose drum staves report `showTablature=false, tuningLen=0`. So whatever [alphaTab PR #2591](https://github.com/CoderLine/alphaTab/pull/2591) does, it is not in this build. Drum tablature would need a version bump, which touches the vendoring step and the payload budget; §7 scopes the toggle to stringed staves meanwhile.   | not scheduled (needs a version bump)                                   |
-| Q6  | **Six accepted extensions have no test chart.** `.musicxml`, `.mxml` and `.xml` need a genuine MusicXML export — the most important gap, since MusicXML is the only open format on the accept list and the one a user of free notation software would bring. `.gp3` and `.gp4` need real Guitar Pro 3/4 exports, and `.capx` needs Capella — renaming a `.gp5` does not help, because `ScoreLoader` reads the bytes and would just import it as GP5 again, testing nothing. MusicXML is the one that blocks: the accept list is settled, so the chart has to give. The legacy trio stays non-blocking, as settled. | MusicXML: before v0 ships · `.gp3`/`.gp4`/`.capx`: when charts exist   |
-| Q7  | **A percussion-free chart is still missing.** The multi-track half is closed: `web/e2e/fixtures/Punk.gp` has drums at indexes `[0, 2]` around a guitar track, so §4's drum-track rule and the Tracks popover's multi-row layout both have something to run against. What remains is a chart with no percussion staff at all, which criterion 9 needs — without it the no-drum fallback ships unverified.                                                                                                                                                                                                           | before v0 ships                                                        |
+| Q6  | **Six accepted extensions have no test score.** `.musicxml`, `.mxml` and `.xml` need a genuine MusicXML export — the most important gap, since MusicXML is the only open format on the accept list and the one a user of free notation software would bring. `.gp3` and `.gp4` need real Guitar Pro 3/4 exports, and `.capx` needs Capella — renaming a `.gp5` does not help, because `ScoreLoader` reads the bytes and would just import it as GP5 again, testing nothing. MusicXML is the one that blocks: the accept list is settled, so the score has to give. The legacy trio stays non-blocking, as settled. | MusicXML: before v0 ships · `.gp3`/`.gp4`/`.capx`: when scores exist   |
+| Q7  | **A percussion-free score is still missing.** The multi-track half is closed: `web/e2e/fixtures/Punk.gp` has drums at indexes `[0, 2]` around a guitar track, so §4's drum-track rule and the Tracks popover's multi-row layout both have something to run against. What remains is a score with no percussion staff at all, which criterion 9 needs — without it the no-drum fallback ships unverified.                                                                                                                                                                                                           | before v0 ships                                                        |
 
 ## 10. Roadmap position
 
@@ -556,7 +556,7 @@ variants of it):
 
 - **The same non-blocking popover v0 ships, not a modal** — a full-width search input goes at the
   top of it. v0 chose a popover for one reason, that it never blocks the player, and v0.1 keeps
-  that: a drummer can still search and change a setting while the chart plays. `Dialog` is not
+  that: a drummer can still search and change a setting while the score plays. `Dialog` is not
   built in v0 and is not needed in v0.1 either.
 - Tabs for top-level categories
 - Accordion sections inside each tab; labels read as `Section:`

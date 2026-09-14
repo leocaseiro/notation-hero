@@ -4,7 +4,7 @@
 
 **Goal:** Give the player its two popovers — Settings (the header gear: eight accordion sections of rows that change the rendered score, and that survive a reload) and Tracks (the transport's mixer: one row per track in the score, with solo, mute, volume, render-select, the per-staff display toggles and both transposition sliders).
 
-**Architecture:** Two new presentation-only components in `client/` (`Accordion` and `SettingRow`) plus a `TrackRow`, each gated by a Storybook story with VR and axe baselines. `web/` owns the schema of groups with an accessor per row, the React context that feeds it the loaded AlphaTab namespace, and both popover compositions. Neither popover blocks the player: a drummer can change a setting while the chart plays.
+**Architecture:** Two new presentation-only components in `client/` (`Accordion` and `SettingRow`) plus a `TrackRow`, each gated by a Storybook story with VR and axe baselines. `web/` owns the schema of groups with an accessor per row, the React context that feeds it the loaded AlphaTab namespace, and both popover compositions. Neither popover blocks the player: a drummer can change a setting while the score plays.
 
 **Tech Stack:** `@base-ui/react` 1.6 (`accordion`, `popover`, `slider`), Tailwind 4 tokens, Storybook 10, Playwright 1.61.1 + axe.
 
@@ -606,7 +606,7 @@ git commit -m "feat(client): add the SettingRow used by every settings group (NH
 
 ### Task 3: `TrackRow`
 
-Eight controls do not fit on one line, so the row discloses. An always-visible primary cluster carries the track name, render-select, solo, mute and volume; the per-staff display toggles and both transposition sliders sit behind a per-row expand control. `Punk.gp` alone is three rows; a band chart is more.
+Eight controls do not fit on one line, so the row discloses. An always-visible primary cluster carries the track name, render-select, solo, mute and volume; the per-staff display toggles and both transposition sliders sit behind a per-row expand control. `Punk.gp` alone is three rows; a band score is more.
 
 **Files:**
 
@@ -1197,7 +1197,7 @@ interface SettingsPopoverProps {
 }
 
 // The header gear. A POPOVER, not a modal — it never blocks the player, so a drummer can change a
-// setting while the chart plays. That is the single reason v0 chose this shape, and v0.1's search
+// setting while the score plays. That is the single reason v0 chose this shape, and v0.1's search
 // and tabs are layered over these same rows.
 //
 // The 12.5-200% playback-speed slider lives in this popover's Player group, not in the header pill:
@@ -1309,7 +1309,7 @@ git commit -m "feat(web): add the Settings popover (NH-291)"
 
 ### Task 6: Persist the settings
 
-One `localStorage` key holding AlphaTab's own settings JSON alongside a `version` integer. Chart files and playback history are never stored — the no-recent-files rule is about charts, not preferences.
+One `localStorage` key holding AlphaTab's own settings JSON alongside a `version` integer. Score files and playback history are never stored — the no-recent-files rule is about scores, not preferences.
 
 **Files:**
 
@@ -1702,7 +1702,7 @@ const applyStaffDisplay = (
 };
 ```
 
-Wrap the rows in a `Popover` triggered from the transport's `instant_mix` button, put them inside a `ScrollArea` (a band chart is many rows), and give each row `data-testid={`track-row-${track.index}`}`.
+Wrap the rows in a `Popover` triggered from the transport's `instant_mix` button, put them inside a `ScrollArea` (a band score is many rows), and give each row `data-testid={`track-row-${track.index}`}`.
 
 - [ ] **Step 5: Add the trigger to the transport row**
 
