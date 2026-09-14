@@ -71,6 +71,18 @@ percussion-free score, where any track is as good as another, but never describe
 
 ---
 
+## Deferred past v0
+
+The review that produced this plan also surfaced fourteen items we are deliberately **not** doing in
+v0 — a bundle-count CI gate, CSP headers for `web/`, a decompressed-size bound for `.gpx`, a test
+behind the "nothing leaves this device" claim, a `PlayPauseButton` in `client/`, an `AlertDialog` to
+replace `window.confirm`, an iOS picker branch, Sentry, a written fallback for D5, and five smaller
+open questions. They are tracked together as a Smart Checklist on
+**[NH-298](https://leocaseiro.atlassian.net/browse/NH-298)**, with enough context on each to act
+without this plan. Nothing in the tasks below depends on any of them.
+
+---
+
 ## File Structure
 
 **Created**
