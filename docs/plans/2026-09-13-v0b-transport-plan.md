@@ -1516,7 +1516,7 @@ export function TransportRow({
       />
       {/* Material Symbols has no metronome glyph. `avg_pace` is the nearest stock icon; the repo's
           own mockup (docs/mockups/player-flatrow-teal.html) instead inlines an SVG path. Start with
-          the stock glyph so nothing unlicensed ships, and raise the icon choice with leocaseiro —
+          the stock glyph so nothing unlicensed ships; the icon choice is tracked as NH-294 —
           it is a design call, not an implementation detail. */}
       <TransportToggle
         data-testid="toggle-metronome"
@@ -2045,7 +2045,18 @@ baselines that block merge. `Tooltip` was already built, with committed VR and a
 ## Notes
 
 - A–B loop markers are deliberately absent: v0 uses AlphaTab's native bar-range selection plus the Loop toggle. Range selection is mouse-only — AlphaTab registers no touch or pointer handlers — which is why A–B is not in the acceptance set.
-- The metronome glyph is the stock Material Symbols `avg_pace`; Material Symbols ships no metronome icon and the mockup's inline SVG has unestablished provenance. Icon choice is open for review.
+- The metronome glyph is the stock Material Symbols `avg_pace`; Material Symbols ships no metronome icon and the mockup's inline SVG has unestablished provenance. Icon choice tracked as [NH-294](https://leocaseiro.atlassian.net/browse/NH-294).
+- Playback speed does **not** survive a reload: `playbackSpeed` is an `AlphaTabApi` property, not a field in AlphaTab's `Settings` JSON, so it cannot ride the settings persistence the other preferences use. Tracked as [NH-295](https://leocaseiro.atlassian.net/browse/NH-295).
+- Task 7 creates `PlayerHeader.tsx` carrying the app name, the score title and the tempo pill. If Plan A already renders app chrome on `/play`, that becomes a merge rather than a create — tracked as [NH-296](https://leocaseiro.atlassian.net/browse/NH-296).
+
+## Open items tracked outside this plan
+
+| Ticket | Item |
+| --- | --- |
+| [NH-294](https://leocaseiro.atlassian.net/browse/NH-294) | Decide the Metronome toggle's glyph — `avg_pace` is a flagged placeholder |
+| [NH-295](https://leocaseiro.atlassian.net/browse/NH-295) | Decide whether playback speed survives a reload |
+| [NH-296](https://leocaseiro.atlassian.net/browse/NH-296) | Check Plan A's `/play` chrome does not duplicate Task 7's header |
+| [NH-297](https://leocaseiro.atlassian.net/browse/NH-297) | `alphaTabWebsite` fork: `score.tempo` mis-times its hit windows (not a notation-hero change) |
 
 ## Pulumi preview
 
