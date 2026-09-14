@@ -1114,6 +1114,10 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
           role="status"
         />
       ) : null}
+      {/* `bg-white`, deliberately NOT a token. AlphaTab draws notation as dark glyphs and this
+          plan never sets `model.Color`, so a theme-following surface would make the score
+          invisible in dark mode. This is the one place in the player that pins a literal colour;
+          it stops being correct the moment the glyph colour becomes themeable. */}
       <div
         ref={hostRef}
         data-testid="notation-surface"
