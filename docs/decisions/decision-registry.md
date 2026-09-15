@@ -50,11 +50,21 @@ Approved by leocaseiro 2026-09-16:
   becomes "the score's first track" (three places); §5's Sonner audit holds the toast with the
   story's own `ToastOnMount` and `duration: Infinity`, not `openArgs`. The plan names the spec as its
   authority, so a stale spec would steer an implementer back to the font wait Task 5 removed.
-- **A failed open shows one message per reason** — too large, unreadable, not a score — with the
-  size limit in the message read from the code constant, so changing the limit updates the copy.
-  _Decided in part:_ whether each message also carries an error number is still open.
+- **A failed open shows one message per reason** — too large (E101), unreadable (E102), not a score
+  (E103) — with the size limit in the message read from the `MAX_NOTATION_MB` constant, so changing
+  the limit updates the copy. Before this, the size check's own message was thrown away and three
+  different wordings reached the user.
+- **Every failure message carries an error number, starting in v0,** over recording the idea for a
+  later plan. leocaseiro asked for numbers so a report names the exact case, and noted they had been
+  missing from the spec. Nine numbers — 1xx opening a file, 2xx the engine and its assets, 9xx an
+  unexpected crash — live in `web/lib/player-errors.ts` (Task 6); spec §4's failure table gains a
+  Number column and the two music-font rows it lacked. The e2e lane pins E101, E103 and E203.
+- **Also raised:** a `TODO` comment fails lint in every package (`sonarjs/todo-tag` is an error in the
+  shared base). leocaseiro asked that lint stop blocking TODO comments, JSDoc `@todo` in particular;
+  that change is handled separately, off `master`.
 
-**Status:** F-13 waits on the error-number question; lap 3, a re-review, is due after it.
+**Status:** all lap-2 findings are triaged and applied. Lap 3, a re-review, is next, because P0 and
+P1 findings were applied in lap 2.
 
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 

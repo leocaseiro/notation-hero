@@ -45,9 +45,15 @@ Every task's requirements implicitly include this section. Values are copied ver
   so an unbounded read freezes or crashes the tab with no message and no `try`/`catch` that can
   recover. Notation-only files are 3-16 KB, but a Guitar Pro file with an embedded backing track is
   legitimately 7-8 MB — so the bound is generous. The check runs before `file.arrayBuffer()` and
-  raises the same unsupported-file toast a parse failure raises. It does NOT bound decompressed
+  raises its own toast, which names the limit (read from `MAX_NOTATION_MB`, so the copy follows the
+  constant) and error E101. It does NOT bound decompressed
   size: `.gpx` is a ZIP container AlphaTab inflates, which would need a worker-side bound (post-v0).
 - **`package.json` keys stay sorted.** `pnpm run lint:sort-pkg` (`sort-package-json --check`) is a CI gate.
+- **Every failure message ends with its error number** — `(Error E101)` in a toast or the
+  engine-error message, `Error E901` on its own line on an error page — taken from `PLAYER_ERROR` in
+  `web/lib/player-errors.ts`, never typed as a literal. There is one number per failure reason
+  (1xx opening a file, 2xx the engine and its assets, 9xx an unexpected crash), and spec §4's failure
+  table lists the same numbers. A new failure gets a new number in both places.
 - **`globalThis`, never `window`, in `web/` code.** `unicorn/prefer-global-this` is an error there:
   `window.setTimeout`, `window.addEventListener` and `window.confirm` all fail lint, and their
   `globalThis.*` forms pass both lint and `tsc`. `no-alert` is not enabled in `web/`, so never add an
@@ -105,6 +111,7 @@ without this plan. Nothing in the tasks below depends on any of them.
 | `web/lib/alphatab/engine.ts`                 | `loadAlphaTabEngine()` — the `turbopackIgnore` dynamic import, memoised so two mounts share one module. No font wait (see Task 5).        |
 | `web/lib/alphatab/AlphaTabEngineContext.tsx` | React context carrying the loaded namespace to `web/` consumers, and the `useAlphaTabEngine()` reader.                                    |
 | `web/lib/alphatab/drum-tracks.ts`            | Pure: a score's track list in, the indexes of percussion tracks out. No AlphaTab import — a structural type.                              |
+| `web/lib/player-errors.ts`                   | `PLAYER_ERROR` — the error number each failure message ends with (1xx file, 2xx engine, 9xx crash); spec §4 lists the same numbers.       |
 | `web/app/play/page.tsx`                      | The `/play` route segment.                                                                                                                |
 | `web/app/play/PlayerShell.tsx`               | `'use client'` root of the player: owns loaded-score state, the engine provider, toasts.                                                  |
 | `web/app/play/NotationSurface.tsx`           | Owns the `AlphaTabApi` instance, its lifecycle, the loading `Skeleton` and the error states.                                              |
@@ -1123,6 +1130,7 @@ The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` wit
 - Create: `web/app/play/NotationSurface.tsx`
 - Create: `web/app/play/error.tsx`
 - Create: `web/app/error.tsx`
+- Create: `web/lib/player-errors.ts`
 - Create: `web/e2e/player.e2e.ts`
 - Modify: `web/app/page.tsx`
 - Rename: `web/public/charts/` → `web/public/notation/` (Step 1)
@@ -1131,6 +1139,7 @@ The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` wit
 
 - Consumes: `useAlphaTabEngine`, `AlphaTabEngineProvider` (Task 5); `Skeleton`, `Button` (Task 4).
 - Produces:
+  - `PLAYER_ERROR` from `web/lib/player-errors.ts` — the error number every failure message ends with. Tasks 10, 11 and 12 use it.
   - `NotationSurface` props: `{ onApiReady: (api: AlphaTab.AlphaTabApi | null) => void }`. Task 10 Step 5 later adds `notation: OpenNotation | null` — the parsed score, not `LoadedNotation`.
   - `interface LoadedNotation { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
   - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-soundfont`.
@@ -1213,9 +1222,46 @@ export default function Home() {
 
 > Do not wrap a `<Link>` in a `<button>` — that nests interactive elements and fails the axe run in Task 13. The `render` prop is the composition hook this repo ships; it puts the Button's classes on the `<a>` rather than nesting one inside the other.
 
-- [ ] **Step 4: Write the notation surface**
+- [ ] **Step 4: Write the error numbers, then the notation surface**
 
-Create `web/app/play/NotationSurface.tsx`:
+Every failure the player shows ends with an error number, so a report can name the exact case. The
+numbers live in one module; spec §4's failure table lists the same ones. Create
+`web/lib/player-errors.ts`:
+
+```ts
+/**
+ * The error number for every failure the player shows. The number goes at the end of the message, so
+ * a report can name the exact case. Spec §4's failure table lists the same numbers: change both
+ * together, and never reuse a retired number.
+ *
+ * 1xx — opening a file · 2xx — the engine and its assets · 9xx — an unexpected crash.
+ */
+export const PLAYER_ERROR = {
+  /** Over the size limit; the file is never read. */
+  fileTooLarge: 'E101',
+  /** The browser could not read the file — moved, deleted or unmounted after it was picked. */
+  fileUnreadable: 'E102',
+  /** No AlphaTab importer accepts the bytes. */
+  notAScore: 'E103',
+  /** The bundled sample beat could not be fetched. */
+  sampleUnavailable: 'E104',
+  /** The self-hosted AlphaTab module failed to import. */
+  engineImport: 'E201',
+  /** AlphaTab raised its own error event — in practice, the soundfont download. */
+  engineRuntime: 'E202',
+  /** The music font download failed (`loadingerror` on `document.fonts`). */
+  musicFontFailed: 'E203',
+  /** The music font did not arrive within 60 seconds. */
+  musicFontTimeout: 'E204',
+  /** A render crash caught by an error boundary. */
+  unexpectedCrash: 'E901',
+} as const;
+```
+
+This module and the message shapes below were checked against `web/`'s lint (`--max-warnings 0`) and
+`tsc` on 2026-09-16.
+
+Then create `web/app/play/NotationSurface.tsx`:
 
 ```tsx
 'use client';
@@ -1226,6 +1272,7 @@ import type * as AlphaTab from '@coderline/alphatab';
 
 import { resolveLogLevel } from '../../lib/alphatab/engine';
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
+import { PLAYER_ERROR } from '../../lib/player-errors';
 
 interface NotationSurfaceProps {
   /** Handed the live api as soon as it exists, and null on dispose. */
@@ -1272,7 +1319,9 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     // the family filter.
     const onFontError = (event: FontFaceSetLoadEvent) => {
       if (event.fontfaces.some((face) => face.family.startsWith('alphaTab'))) {
-        setRuntimeError('the music font could not be downloaded');
+        setRuntimeError(
+          `Error ${PLAYER_ERROR.musicFontFailed}: the music font could not be downloaded`,
+        );
       }
     };
     document.fonts.addEventListener('loadingerror', onFontError);
@@ -1283,13 +1332,18 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     // Backstop for a download that hangs without ever failing: no event arrives, so give up after
     // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
     const firstRenderTimeout = globalThis.setTimeout(
-      () => setRuntimeError('the music font did not arrive within 60 seconds'),
+      () =>
+        setRuntimeError(
+          `Error ${PLAYER_ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
+        ),
       60_000,
     );
 
     // The SoundFont download failure surfaces through AlphaTab's own error event; the engine
     // import failure cannot (AlphaTabApi does not exist yet) and arrives via engineError above.
-    api.error.on((cause) => setRuntimeError(String(cause)));
+    api.error.on((cause) =>
+      setRuntimeError(`Error ${PLAYER_ERROR.engineRuntime}: ${String(cause)}`),
+    );
     api.renderFinished.on(() => {
       globalThis.clearTimeout(firstRenderTimeout);
       setRendered(true);
@@ -1312,7 +1366,9 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     };
   }, [engine, onApiReady]);
 
-  const failure = engineError?.message ?? runtimeError;
+  const failure = engineError
+    ? `Error ${PLAYER_ERROR.engineImport}: ${engineError.message}`
+    : runtimeError;
 
   return (
     <div className="relative min-h-[420px] w-full">
@@ -1491,6 +1547,8 @@ the net for the unexpected.
 
 import { Button } from '@notation-hero/client';
 
+import { PLAYER_ERROR } from '../../lib/player-errors';
+
 export default function PlayerError({ reset }: Readonly<{ error: Error; reset: () => void }>) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
@@ -1498,6 +1556,7 @@ export default function PlayerError({ reset }: Readonly<{ error: Error; reset: (
       <p className="max-w-prose text-muted-foreground">
         Nothing you opened was sent anywhere. Try again, or reload the page.
       </p>
+      <p className="text-sm text-muted-foreground">Error {PLAYER_ERROR.unexpectedCrash}</p>
       <Button className="min-h-11 px-8" onClick={reset}>
         Try again
       </Button>
@@ -1506,7 +1565,8 @@ export default function PlayerError({ reset }: Readonly<{ error: Error; reset: (
 }
 ```
 
-Add the same shape at `web/app/error.tsx` for the rest of the app, worded for a general failure.
+Add the same shape at `web/app/error.tsx` for the rest of the app, worded for a general failure and
+ending with the same `PLAYER_ERROR.unexpectedCrash` number (import it from `../lib/player-errors`).
 Do **not** add `global-error.tsx` in v0 — it only earns its place once the root layout does more
 than mount a `<Toaster />`.
 
@@ -1544,7 +1604,8 @@ Expected: all PASS.
 - [ ] **Step 10: Commit**
 
 ```bash
-git add web/app/page.tsx web/app/error.tsx web/app/play web/e2e/player.e2e.ts web/package.json pnpm-lock.yaml
+git add web/app/page.tsx web/app/error.tsx web/app/play web/lib/player-errors.ts \
+  web/e2e/player.e2e.ts web/package.json pnpm-lock.yaml
 git commit -m "feat(web): render and play the sample score on /play (NH-291)"
 ```
 
@@ -2098,7 +2159,26 @@ test('an unsupported file raises a toast and leaves the player usable', async ({
     buffer: Buffer.from('this is not a guitar pro file'),
   });
 
-  await expect(page.getByText(/could not be opened|unsupported/i)).toBeVisible({ timeout: 15_000 });
+  // The number, not only the wording: it is the contract spec §4's failure table documents.
+  await expect(page.getByText(/not a score format the player reads\. \(Error E103\)/)).toBeVisible({
+    timeout: 15_000,
+  });
+  await expect(page.getByTestId('empty-state')).toBeVisible();
+});
+
+// The 25 MB gate runs before the file is read, so a zero-filled buffer one byte over the limit is
+// enough — its content never reaches the parser.
+test('a file over 25 MB is refused before it is read', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles({
+    name: 'too-big.gp',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.alloc(25 * 1024 * 1024 + 1),
+  });
+
+  await expect(
+    page.getByText(/too large to open\. The limit is 25 MB\. \(Error E101\)/),
+  ).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('empty-state')).toBeVisible();
 });
 
@@ -2139,6 +2219,7 @@ test('a failed music-font download shows the engine error, not an endless Skelet
   await page.goto('/play');
   await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('engine-error')).toContainText('Error E203');
   await expect(page.getByTestId('notation-skeleton')).toBeHidden();
 });
 
@@ -2194,6 +2275,7 @@ Create `web/app/play/OpenFileControl.tsx`:
 import { useId, useRef } from 'react';
 import { Button, toast } from '@notation-hero/client';
 
+import { PLAYER_ERROR } from '../../lib/player-errors';
 import type { LoadedNotation } from './PlayerShell';
 
 // Every extension of a format AlphaTab 1.8.4 reads (spec §4): Guitar Pro 3-8, MusicXML plain and
@@ -2210,7 +2292,9 @@ const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxl,.xml,.capx,.atex,.alphate
 // image would freeze or crash the tab with no message, and no try/catch recovers from that.
 // Checked before arrayBuffer(), so the bytes never reach memory. It does NOT bound decompressed
 // size — .gpx is a ZIP container AlphaTab inflates, which needs a worker-side bound (post-v0).
-const MAX_NOTATION_BYTES = 25 * 1024 * 1024;
+// The limit is written once, in megabytes, so the toast below always names the real one.
+const MAX_NOTATION_MB = 25;
+const MAX_NOTATION_BYTES = MAX_NOTATION_MB * 1024 * 1024;
 
 interface OpenFileControlProps {
   onNotation: (notation: LoadedNotation) => void;
@@ -2220,11 +2304,23 @@ interface OpenFileControlProps {
 
 async function readNotation(file: File): Promise<LoadedNotation> {
   if (file.size > MAX_NOTATION_BYTES) {
-    throw new Error(`${file.name} is too large to open.`);
+    // Not user copy: the caller shows readFailureMessage(file) instead.
+    throw new Error(`over the ${MAX_NOTATION_MB} MB limit`);
   }
   const buffer = await file.arrayBuffer();
   // loadScoreFromBytes takes a Uint8Array, so wrap here rather than at the call site.
   return { name: file.name, bytes: new Uint8Array(buffer) };
+}
+
+/**
+ * Toast text for a file that never reached the parser — over the size limit, or unreadable — each
+ * with its own error number. The limit in the text comes from the constant, so changing the limit
+ * changes the message. A file that is read but does not parse gets E103 from requestNotation.
+ */
+function readFailureMessage(file: File): string {
+  return file.size > MAX_NOTATION_BYTES
+    ? `${file.name} is too large to open. The limit is ${MAX_NOTATION_MB} MB. (Error ${PLAYER_ERROR.fileTooLarge})`
+    : `${file.name} could not be read. Check that the file still exists, then try again. (Error ${PLAYER_ERROR.fileUnreadable})`;
 }
 
 export function OpenFileControl({ onNotation, compact = false }: Readonly<OpenFileControlProps>) {
@@ -2240,7 +2336,7 @@ export function OpenFileControl({ onNotation, compact = false }: Readonly<OpenFi
     try {
       onNotation(await readNotation(file));
     } catch {
-      toast.error(`${file.name} could not be opened.`);
+      toast.error(readFailureMessage(file));
     }
   };
 
@@ -2392,7 +2488,9 @@ const requestNotation = useCallback(
     try {
       score = at.importer.ScoreLoader.loadScoreFromBytes(file.bytes);
     } catch {
-      toast.error(`${file.name} could not be opened — it is not a score format the player reads.`);
+      toast.error(
+        `${file.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
+      );
       return;
     }
 
@@ -2410,15 +2508,15 @@ const loadSample = useCallback(async () => {
     const buffer = await response.arrayBuffer();
     requestNotation({ name: '1-beat.gp', bytes: new Uint8Array(buffer) });
   } catch {
-    toast.error('The sample beat could not be loaded.');
+    toast.error(`The sample beat could not be loaded. (Error ${PLAYER_ERROR.sampleUnavailable})`);
   }
 }, [requestNotation]);
 ```
 
 Drop `settings.core.file = SAMPLE_NOTATION` from `NotationSurface` — the score now always arrives
 through `renderScore` (below), so the mount no longer auto-loads anything. Remove the now-unused
-`SAMPLE_NOTATION` constant. Export `readNotation` from `OpenFileControl.tsx` so the shell's drop
-handler below can reuse it (same size gate, same failure toast).
+`SAMPLE_NOTATION` constant. Export `readNotation` and `readFailureMessage` from `OpenFileControl.tsx`
+so the shell's drop handler below can reuse them (same size gate, same failure toasts and numbers).
 
 Then wire the selector into `NotationSurface.tsx`. This is where rendering changes, so it lands in
 the same task as the end-to-end tests that exercise it. Import the selector, add the prop, and take
@@ -2487,13 +2585,15 @@ the fork lacks, because its only drag feedback is the OS cursor (`dropEffect = '
 easy to miss.
 
 First widen `PlayerShell.tsx`'s imports. From this task on the file uses `toast` and
-`loadAlphaTabEngine` (Step 5's `requestNotation`), `OpenFileControl` (the rail control below) and
-`readNotation` (the drop handler below), and Task 6's import list has only `Button`:
+`loadAlphaTabEngine` and `PLAYER_ERROR` (Step 5's `requestNotation` and `loadSample`),
+`OpenFileControl` (the rail control below) and `readNotation` plus `readFailureMessage` (the drop
+handler below), and Task 6's import list has only `Button`:
 
 ```tsx
 import { Button, toast } from '@notation-hero/client';
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
-import { OpenFileControl, readNotation } from './OpenFileControl';
+import { PLAYER_ERROR } from '../../lib/player-errors';
+import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
 ```
 
 In `Player`, read the engine's error as well — the markup below shows it when the engine never loaded:
@@ -2510,15 +2610,15 @@ const endDrag = useCallback(() => {
   setDragging(false);
 }, []);
 
-// Same boundary as OpenFileControl's `accept`: the 25 MB check, then one failure toast. Without the
-// try/catch, `void acceptDropped(...)` would hide a rejected read and show nothing at all.
+// Same boundary as OpenFileControl's `accept`: the 25 MB check, then the same failure toast (E101 or
+// E102). Without the try/catch, `void acceptDropped(...)` would hide a rejected read and show nothing.
 const acceptDropped = useCallback(
   async (file: File | undefined) => {
     if (!file) return;
     try {
       requestNotation(await readNotation(file));
     } catch {
-      toast.error(`${file.name} could not be opened.`);
+      toast.error(readFailureMessage(file));
     }
   },
   [requestNotation],
@@ -2571,7 +2671,7 @@ and the markup, replacing the plain `<main>` body:
     onDrop={(event) => {
       event.preventDefault();
       endDrag();
-      // One file, no extension filter — the same size gate and the same unsupported-file toast
+      // One file, no extension filter — the same size gate and the same failure toasts
       // the picker uses. ScoreLoader sniffs content, so a filter here would buy nothing.
       void acceptDropped(event.dataTransfer.files[0]);
     }}
@@ -2587,7 +2687,7 @@ and the markup, replacing the plain `<main>` body:
           role="alert"
           className="flex min-h-[420px] items-center justify-center rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-6 text-center text-destructive"
         >
-          The player engine could not start. Reload the page to try again. ({engineError.message})
+          {`The player engine could not start. Reload the page to try again. (Error ${PLAYER_ERROR.engineImport}: ${engineError.message})`}
         </p>
       ) : null}
       {!engineError && notation === null && !pending ? (
@@ -2793,7 +2893,7 @@ test('a corrupt replacement leaves the playing score intact', async ({ page }) =
     buffer: Buffer.from('not a score'),
   });
 
-  await expect(page.getByText(/could not be opened/i)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/\(Error E103\)/)).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('loaded-notation-name')).toHaveText('1-beat.gp');
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
 });
@@ -2863,7 +2963,9 @@ const requestNotation = useCallback(
     try {
       score = at.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
     } catch {
-      toast.error(`${next.name} could not be opened — it is not a score format the player reads.`);
+      toast.error(
+        `${next.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
+      );
       // The open score was never replaced. Only restart playback: the dialog emptied the buffer.
       if (wasPlaying) api?.play();
       return;
@@ -2952,9 +3054,10 @@ Clear `pending` on both outcomes of the parse. In the catch, give the parse-fail
 ```tsx
 } catch {
   setPending(false);
-  toast.error(`${next.name} could not be opened — it is not a score format the player reads.`, {
-    id: 'notation-load',
-  });
+  toast.error(
+    `${next.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
+    { id: 'notation-load' },
+  );
 ```
 
 and around `setNotation({ name: next.name, score });`:
