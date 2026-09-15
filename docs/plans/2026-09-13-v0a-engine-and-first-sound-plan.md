@@ -2295,6 +2295,12 @@ import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
 import { OpenFileControl, readNotation } from './OpenFileControl';
 ```
 
+In `Player`, read the engine's error as well — the markup below shows it when the engine never loaded:
+
+```tsx
+const { engine, error: engineError } = useAlphaTabEngine();
+```
+
 ```tsx
 const [dragging, setDragging] = useState(false);
 const depth = useRef(0);
@@ -2370,11 +2376,25 @@ and the markup, replacing the plain `<main>` body:
     }}
   >
     <div className="relative">
-      {notation === null && !pending ? (
+      {/* Exactly one of these three fills the notation area. When the engine never loaded, nothing
+          can open or play, so the message replaces the empty state — the Play button stays where it
+          is, disabled (spec §4). Flat conditionals, not a nested ternary:
+          sonarjs/no-nested-conditional is an error in web/. */}
+      {engineError ? (
+        <p
+          data-testid="engine-error"
+          role="alert"
+          className="flex min-h-[420px] items-center justify-center rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-6 text-center text-destructive"
+        >
+          The player engine could not start. Reload the page to try again. ({engineError.message})
+        </p>
+      ) : null}
+      {!engineError && notation === null && !pending ? (
         <EmptyState onNotation={requestNotation} onLoadSample={loadSample} />
-      ) : (
+      ) : null}
+      {!engineError && (notation !== null || pending) ? (
         <NotationSurface notation={notation} onApiReady={handleApiReady} />
-      )}
+      ) : null}
       {dragging ? (
         /* MUST be a descendant of the drop container AND pointer-events-none. An overlay mounted
            outside the container oscillated forever: every dragleave's relatedTarget was the
