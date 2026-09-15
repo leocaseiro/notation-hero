@@ -35,8 +35,26 @@ Approved by leocaseiro 2026-09-16:
   (Task 3 Steps 8-9), rather than moving the group into `eslint.config.base.mjs`: in flat config a
   later block's options replace an earlier block's, so a group defined in the base silently disappears
   from `web/`. Spec §5 updated.
+- **Both AlphaTab import fences get a committed test,** `tooling/alphatab-import-fence.test.sh`
+  (Task 3 Step 10), run by `pnpm run test:tooling`, instead of Task 3's throwaway probes only. It was
+  run against the real configs: it fails before Task 3, passes with both fences, and fails again when
+  a later block for the same rule follows the fence — the silent loss it exists to catch.
+- **A first open shows the Skeleton through the parse** (Task 12, renamed "Loading feedback while a
+  score parses"), over a toast on every open and over accepting the freeze. Measured with AlphaTab
+  1.8.4: file size barely matters (a 7.35 MB file with an embedded asset parses in 9 ms), score
+  length does (2,000 bars of 16th notes: 382 ms on an Apple M5 Pro, longer on slower machines).
+  leocaseiro accepted the brief Skeleton flash this causes on a fast laptop, preferring it to a
+  frozen empty state. Spec §4 updated.
+- **Three spec passages the plan had disproved are corrected now,** not at PR time: §4's Skeleton
+  lifts on `renderFinished`, not on `document.fonts.load('1em Bravura')`; "AlphaTab's default track"
+  becomes "the score's first track" (three places); §5's Sonner audit holds the toast with the
+  story's own `ToastOnMount` and `duration: Infinity`, not `openArgs`. The plan names the spec as its
+  authority, so a stale spec would steer an implementer back to the font wait Task 5 removed.
+- **A failed open shows one message per reason** — too large, unreadable, not a score — with the
+  size limit in the message read from the code constant, so changing the limit updates the copy.
+  _Decided in part:_ whether each message also carries an error number is still open.
 
-**Status:** triage continues with F-13, F-17 and F-18; lap 3, a re-review, is due after them.
+**Status:** F-13 waits on the error-number question; lap 3, a re-review, is due after it.
 
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 

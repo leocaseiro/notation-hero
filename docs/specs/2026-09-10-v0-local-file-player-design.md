@@ -126,7 +126,7 @@ file" toast (see Failure states).
   → ArrayBuffer (in memory)
   → wrap as Uint8Array, then alphaTab.importer.ScoreLoader.loadScoreFromBytes(bytes)
   → pick the drum tracks (any staff with isPercussion)
-  → none found? fall back to AlphaTab's default track
+  → none found? fall back to the score's first track (score.tracks[0])
   → api.renderScore(score, drumTrackIndexes.length ? drumTrackIndexes : undefined)  // INDEXES, not Track objects
   → SVG notation + AlphaSynth playback (all tracks) + synced cursor
 ```
@@ -137,7 +137,7 @@ this rule is new. v0 tests include a multi-track score whose drums are not track
 
 **No drum staff is not an error.** Drums are v0's default, not its requirement: the app is aimed at
 drummers but must not turn any other musician away. A file with no percussion staff falls back to
-AlphaTab's default track, which is what an omitted `trackIndexes` argument already does — so a
+the score's first track, `score.tracks[0]`, which is what an omitted `trackIndexes` argument already does — so a
 guitar or piano score opens and plays instead of showing a dead end.
 
 No upload, no network call for user content. The only network traffic is the static engine assets.
@@ -155,13 +155,13 @@ No upload, no network call for user content. The only network traffic is the sta
 affordances, each covering a different part of that wait:
 
 - `Skeleton` over the notation area covers the **engine import and the music font** — the AlphaTab
-  ESM (273 KB gzip) and Bravura (306 KB). Neither is observable through AlphaTab, because
-  `AlphaTabApi` does not exist until the dynamic import resolves. **Lift it only once both the
-  `await import()` has resolved and `document.fonts.load('1em Bravura')` has settled.** Dismissing it
-  on the import alone leaves the 306 KB font fetch uncovered, and AlphaTab holds rendering until its
-  internal `FontLoadingChecker` reports the family available — so the notation area would go blank for
-  exactly the window the `Skeleton` exists to cover. That checker uses the same `document.fonts.load`
-  call and publishes no font event, so it is the available hook.
+  ESM (273 KB gzip) and Bravura (306 KB) — and, on a first open, the synchronous parse of the score.
+  **Lift it on the first `renderFinished`.** AlphaTab holds rendering until its internal
+  `FontLoadingChecker` reports its music font available, so that event already covers the 306 KB
+  font fetch, and dismissing the `Skeleton` any earlier leaves the notation area blank for exactly
+  the window it exists to cover. Do not wait on `document.fonts.load('1em Bravura')`: AlphaTab
+  registers the face under the family `alphaTab` — "Bravura" is only the file name — so that call
+  matches no face and settles at once (measured in Chromium; v0a plan, Task 5).
 - The **Material Symbols face (727 KB)** is the largest single asset in the budget and sits outside
   the notation area entirely: it arrives through the design system's own global `@import` in
   `client/src/styles.css` and styles the header gear, the transport buttons and the Open-file control,
@@ -316,8 +316,8 @@ where the check can actually run. That state is a millisecond race in `web/`: `l
 synchronous, so the only async step on the replace path is the `FileReader` read of a 3–16 KB local
 file, leaving no request to stall and no event to hold the toast open. `Sonner` is already a `client/`
 component, so a `loading` story plus its id in `Sonner.story-ids.ts` puts the toast under the existing
-axe and visual-regression gates, which hold an overlay open deterministically through the `openArgs`
-mechanism in `client/src/a11y-helpers.ts`. Four setup notes, since `web/` has no test lane today:
+axe and visual-regression gates, which hold the toast open through the story file's own
+`ToastOnMount` wrapper, firing it with `duration: Infinity` (`Sonner.a11y.ts` does not use `openArgs`). Four setup notes, since `web/` has no test lane today:
 `@playwright/test` and `@axe-core/playwright` must both be added at `client/`'s exact ranges
 (`@axe-core/playwright` is `^4.12.1` there, and root `syncpack` enforces cross-package version
 consistency, so a drifting range fails the `quality` job), the job needs its own
@@ -517,7 +517,7 @@ v0 is done when, on a deployed Vercel URL:
    sliders change the rendered score. (Tablature is excluded — 1.8.4 cannot render it on a percussion
    staff.)
 8. From a clean `/play` with no file, **Load the sample beat** fetches and plays the bundled score.
-9. A score with no percussion staff opens and plays on AlphaTab's default track.
+9. A score with no percussion staff opens and plays on its first track (`score.tracks[0]`).
 10. Replacing a loaded score prompts for confirmation. **Cancel** keeps the current score playing from
     where it was, and re-picking the same file prompts again. **Confirm** renders the new score. A
     corrupt replacement leaves the playing score intact.

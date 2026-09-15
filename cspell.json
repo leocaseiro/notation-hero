@@ -500,6 +500,7 @@
     "dragenter",
     "dragleave",
     "partwise",
-    "pointermove"
+    "pointermove",
+    "toplevel"
   ]
 }

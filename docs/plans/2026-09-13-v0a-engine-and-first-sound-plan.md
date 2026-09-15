@@ -101,6 +101,7 @@ without this plan. Nothing in the tasks below depends on any of them.
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
 | `web/scripts/vendor-alphatab.mjs`            | Copy AlphaTab's prebuilt ESM, soundfont and music font out of `node_modules` into `web/public/alphatab/`, under plain (non-`.min`) names. |
 | `tooling/vendor-alphatab.test.mjs`           | `node --test` cover for that copy step — joins the existing `pnpm run test:tooling` gate.                                                 |
+| `tooling/alphatab-import-fence.test.sh`      | Proves both AlphaTab import fences still fire (`web/`: value imports; `client/`: any import) — joins the same `test:tooling` gate.        |
 | `web/lib/alphatab/engine.ts`                 | `loadAlphaTabEngine()` — the `turbopackIgnore` dynamic import, memoised so two mounts share one module. No font wait (see Task 5).        |
 | `web/lib/alphatab/AlphaTabEngineContext.tsx` | React context carrying the loaded namespace to `web/` consumers, and the `useAlphaTabEngine()` reader.                                    |
 | `web/lib/alphatab/drum-tracks.ts`            | Pure: a score's track list in, the indexes of percussion tracks out. No AlphaTab import — a structural type.                              |
@@ -501,6 +502,7 @@ One value import re-bundles the library, ships it twice, and lets a component dr
 
 - Modify: `web/eslint.config.mjs:49-65` (the `no-restricted-imports` block)
 - Modify: `client/eslint.config.js` (the client-specific rules block)
+- Create: `tooling/alphatab-import-fence.test.sh`
 
 **Interfaces:**
 
@@ -669,10 +671,89 @@ pnpm --filter @notation-hero/client run lint
 
 Expected: PASS.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 10: Keep both fences under a committed test**
+
+Steps 4 and 9 prove the fences once, with probe files that are then deleted. Nothing proves later
+that they still fire, and flat config makes a silent loss easy: a
+`@typescript-eslint/no-restricted-imports` block added to `web/eslint.config.mjs` after this task's
+block replaces its options, and lint stays green. Reproduced on 2026-09-16: a later block banning an
+unrelated package dropped the AlphaTab group, and a value import linted clean. This test follows
+`tooling/check-core-purity-canary.sh` and needs no CI wiring — `pnpm run test:tooling` already runs
+every `tooling/*.test.sh`, and the `quality` job requires it.
+
+Create `tooling/alphatab-import-fence.test.sh`:
 
 ```bash
-git add web/eslint.config.mjs client/eslint.config.js \
+#!/usr/bin/env bash
+#
+# AlphaTab import-fence test (v0a plan, Task 3) — proves both lint fences still REJECT a forbidden
+# @coderline/alphatab import, so a later config change cannot switch them off unnoticed.
+#
+#   web/     type imports only: a VALUE import must fail @typescript-eslint/no-restricted-imports.
+#   client/  nothing at all: even a TYPE import must fail no-restricted-imports (v0 spec §7).
+#
+# A one-time probe is not enough. In ESLint flat config a later block's options for a rule REPLACE
+# an earlier block's, so a no-restricted-imports block added after Task 3's would drop the AlphaTab
+# group while lint stays green. Runs under `pnpm run test:tooling` (every tooling/*.test.sh), a
+# required step of the CI `quality` job. The probe files are ephemeral and never committed.
+#
+# NOTE: deliberately NOT `set -e` — eslint is EXPECTED to exit non-zero (the fence firing).
+set -uo pipefail
+
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || true
+[ -n "$ROOT" ] || { printf '::error::alphatab-import-fence.test.sh must run inside the git work tree\n' >&2; exit 1; }
+cd "$ROOT" || exit 1
+
+# Unique per-process names, so concurrent runs never delete each other's probe mid-lint.
+WEB_PROBE="app/__alphatab_fence_probe_$$__.ts"
+CLIENT_PROBE="src/__alphatab_fence_probe_$$__.ts"
+# shellcheck disable=SC2317,SC2329 # cleanup IS invoked via trap EXIT (SC2329 = shellcheck >=0.10; SC2317 = older CI shellcheck)
+cleanup() { rm -f "web/$WEB_PROBE" "client/$CLIENT_PROBE"; }
+trap cleanup EXIT
+
+printf "import { LayoutMode } from '@coderline/alphatab';\n\nexport const probe = LayoutMode.Page;\n" > "web/$WEB_PROBE" \
+  || { printf '::error::failed to write the web/ probe (I/O error, NOT a fence problem)\n' >&2; exit 1; }
+printf "import type * as AlphaTab from '@coderline/alphatab';\n\nexport type Probe = AlphaTab.AlphaTabApi;\n" > "client/$CLIENT_PROBE" \
+  || { printf '::error::failed to write the client/ probe (I/O error, NOT a fence problem)\n' >&2; exit 1; }
+
+# expect_rejected <package> <probe path inside the package> <ERE for the rule id>
+expect_rejected() {
+  local out rc
+  out="$(pnpm --filter "@notation-hero/$1" exec eslint "$2" 2>&1)"
+  rc=$?
+  # A whole rule id, so an unrelated error (a parse failure, a missing module) cannot pass for the
+  # fence, and neither can a renamed rule.
+  if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qE "(^|[[:space:]])$3([[:space:]]|$)"; then
+    echo "ok — $1/ rejects the probe"
+  else
+    printf '::error::the %s/ AlphaTab import fence did not fire (eslint exit %s)\n%s\n' "$1" "$rc" "$out" >&2
+    exit 1
+  fi
+}
+
+# web/ needs the @typescript-eslint version: only it has allowTypeImports. client/ may use either.
+expect_rejected web "$WEB_PROBE" '@typescript-eslint/no-restricted-imports'
+expect_rejected client "$CLIENT_PROBE" '(@typescript-eslint/)?no-restricted-imports'
+echo "AlphaTab import fences OK — web/ rejects a value import, client/ rejects even a type import."
+```
+
+Run it, then the gates it joins:
+
+```bash
+bash tooling/alphatab-import-fence.test.sh
+pnpm run test:tooling
+pnpm run lint:shell
+```
+
+Expected: all PASS, with `ok — web/ rejects the probe` and `ok — client/ rejects the probe`. This
+exact script was run against the real configs on 2026-09-16: it FAILS before this task (a value import
+lints clean in `web/`), PASSES with Steps 3 and 8 in place, and FAILS again when a later block for the
+same rule follows the fence. shellcheck 0.11.0 reports nothing.
+
+- [ ] **Step 11: Commit**
+
+```bash
+git add web/eslint.config.mjs client/eslint.config.js tooling/alphatab-import-fence.test.sh \
   web/app/spike web/spike-probe.mjs web/spike-lifecycle-probe.mjs
 git commit -m "chore(lint): fence @coderline/alphatab imports in web/ and client/ (NH-291)"
 ```
@@ -1700,7 +1781,8 @@ revert it.
 What this drill does NOT cover: a second bundled copy that nothing drives. One value import of
 `@coderline/alphatab` anywhere — an enum, for example — bundles the library again, but `engine.ts`
 still loads the self-hosted copy. Playback works, `webPlatform` stays `BrowserModule`, and
-assertion 1 passes. That case costs payload, not sound, and the Task 3 lint fence is the only guard
+assertion 1 passes. That case costs payload, not sound, and the Task 3 lint fence — kept honest by
+`tooling/alphatab-import-fence.test.sh` — is the only guard
 against it until the deferred bundle-count gate lands.
 
 - [ ] **Step 9: Commit**
@@ -2820,9 +2902,9 @@ git commit -m "feat(web): confirm before replacing a score, and survive a corrup
 
 ---
 
-### Task 12: Toast while a replacement parses
+### Task 12: Loading feedback while a score parses
 
-Loading, success and failure share one surface. The score on screen keeps playing — the load is staged, so nothing covers the notation area.
+A replacement gets a toast: loading, success and failure share one surface, and the score on screen keeps playing — the load is staged, so nothing covers the notation area. A first open has nothing playing, so there the Skeleton covers the parse instead.
 
 **Files:**
 
@@ -2835,37 +2917,58 @@ Loading, success and failure share one surface. The score on screen keeps playin
 - Consumes: `toast` from `@notation-hero/client` (Task 4).
 - Produces: a `loading` story under the existing `client/` VR and axe gates.
 
-- [ ] **Step 1: Add the loading toast**
+- [ ] **Step 1: Add the loading feedback**
 
-In `PlayerShell.tsx`'s `requestNotation` (Task 11's version), show the toast on the confirm path —
-after the dialog returns — and resolve it in the same function: it is the one place that knows the
-file name and whether this is a replacement. One `id` makes all three states share one toast.
+In `PlayerShell.tsx`'s `requestNotation` (Task 11's version), show feedback before the parse — the
+toast on the confirm path, after the dialog returns, and the Skeleton on a first open — and resolve
+it in the same function: it is the one place that knows the file name and whether this is a
+replacement. One `id` makes all three toast states share one toast.
 
-After `if (!confirmed) { … return; }`, still inside `if (notation !== null)`:
+Give `if (notation !== null)` an `else` branch, and wait for a painted frame after the whole block:
 
 ```tsx
-// Sonner ships its own spinner, so this needs no new component — and Skeleton would hide a
-// score that is still playable. Wait one painted frame before parsing: loadScoreFromBytes is
-// synchronous, so without the wait the toast would appear only once the parse had finished.
-toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
+if (notation !== null) {
+  // …the confirm and its cancel path, unchanged from Task 11…
+
+  // Sonner ships its own spinner, so this needs no new component — and Skeleton would hide a
+  // score that is still playable.
+  toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
+} else {
+  // A first open has nothing playable to hide, so the Skeleton covers the parse instead. A long,
+  // dense score takes a noticeable time to parse (2,000 bars of 16ths: ~0.4 s on a fast laptop,
+  // longer on a slow one), while file size barely matters. On a fast machine a small file makes
+  // this a brief Skeleton flash — accepted over a frozen empty state.
+  setPending(true);
+}
+
+// loadScoreFromBytes is synchronous: wait for a painted frame first, or the toast or the Skeleton
+// would appear only once the parse had finished.
 await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 ```
 
-Give the parse-failure toast the same `id`, so the failure replaces the spinner instead of stacking
-beside it:
+Clear `pending` on both outcomes of the parse. In the catch, give the parse-failure toast the same
+`id`, so the failure replaces the spinner instead of stacking beside it:
 
 ```tsx
-toast.error(`${next.name} could not be opened — it is not a score format the player reads.`, {
-  id: 'notation-load',
-});
+} catch {
+  setPending(false);
+  toast.error(`${next.name} could not be opened — it is not a score format the player reads.`, {
+    id: 'notation-load',
+  });
 ```
 
-and after `setNotation({ name: next.name, score });`:
+and around `setNotation({ name: next.name, score });`:
 
 ```tsx
-// Only a replacement showed the loading toast; a first load has nothing to resolve.
+setPending(false);
+setNotation({ name: next.name, score });
+// Only a replacement showed the loading toast; a first open's Skeleton lifts on renderFinished.
 if (notation !== null) toast.success(`${next.name} loaded`, { id: 'notation-load' });
 ```
+
+`setPending(false)` and `setNotation(…)` batch into one render, so the notation surface stays mounted
+between the parse and the render. On a failed first open, the surface unmounts and the empty state
+returns with the toast.
 
 - [ ] **Step 2: Write the failing test — a `loading` story that axe and VR can hold open**
 
@@ -2921,7 +3024,7 @@ Expected: PASS with no diffs.
 
 ```bash
 git add client/src/components/ui/Sonner web/app/play/PlayerShell.tsx
-git commit -m "feat(web): name the incoming file while a replacement parses (NH-291)"
+git commit -m "feat(web): show loading feedback while a score parses (NH-291)"
 ```
 
 ---
@@ -3190,7 +3293,7 @@ placeholder scan claimed a completeness it did not have, so this one says where 
 **Spec coverage.** §4 data flow → Tasks 9, 10. §4 replace flow → Task 11. §4 failure states →
 Tasks 6 (engine + soundfont), 10 (unsupported file, oversized file, unreadable file, sample fetch,
 empty state). §4 loading affordances → Task 6 (Skeleton, lifted on `renderFinished`), Task 4 (icon
-font), Task 12 (replacement toast); **the soundfont progress bar is Plan B** because §7 files it
+font), Task 12 (replacement toast, and the Skeleton through a first open's parse); **the soundfont progress bar is Plan B** because §7 files it
 under `client/`. §4 mounting → Task 6. §5 all three requirements → Tasks 2, 3, 5. §5 vendoring →
 Task 2 (plus the pinned `buildCommand`). §5 regression test → Task 7. §5 CI step → Task 8. §5 axe
 lane → Task 13. §5 client-side toast audit → Task 12. §7 barrel/`'use client'` prerequisite →
