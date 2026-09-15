@@ -455,6 +455,32 @@ git add web/scripts/vendor-alphatab.mjs tooling/vendor-alphatab.test.mjs \
 git commit -m "build(web): vendor AlphaTab's prebuilt ESM from node_modules (NH-291)"
 ```
 
+- [ ] **Step 11: Re-verify the generated assets on a Vercel preview**
+
+Task 1 checked the committed copies, and Step 5 deleted them. Check the generated ones now, before
+Tasks 3-13 build on them. Push to the PR Task 1 opened — Vercel rebuilds its preview — and read the
+new preview URL off the PR, as in Task 1 Step 2:
+
+```bash
+git push
+PREVIEW=https://<the new preview URL>
+for f in esm/alphaTab.mjs esm/alphaTab.core.mjs esm/alphaTab.worker.mjs esm/alphaTab.worklet.mjs \
+  font/Bravura.woff2 soundfont/sonivox.sf3; do
+  printf '%s -> ' "$f"
+  curl -sSI "$PREVIEW/alphatab/$f" | awk 'tolower($1) ~ /^(http|content-type)/ {print}' | tr '\n' ' '
+  printf '\n'
+done
+```
+
+Expected: `HTTP/2 200` for all six, and a JavaScript `content-type` for the four `.mjs` files.
+
+- **404s, and the Vercel build log shows the vendor script's `missing source` error:** the script
+  could not read `node_modules` through the pnpm symlink outside `web/` — a Root Directory setting
+  problem, not a `buildCommand` one.
+- **404s, and the build log shows no vendor output at all:** the pinned `buildCommand` did not run.
+- **A `.mjs` file with a non-JavaScript `content-type`:** Task 1's FAIL — stop and re-open D5 with
+  leocaseiro.
+
 ---
 
 ### Task 3: Guard the type-only import of `@coderline/alphatab`
@@ -954,7 +980,7 @@ The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` wit
 
 - Consumes: `useAlphaTabEngine`, `AlphaTabEngineProvider` (Task 5); `Skeleton`, `Button` (Task 4).
 - Produces:
-  - `NotationSurface` props: `{ onApiReady: (api: AlphaTab.AlphaTabApi | null) => void }`. Task 9 Step 4 later adds a required `notation: OpenNotation` prop — not `LoadedNotation`.
+  - `NotationSurface` props: `{ onApiReady: (api: AlphaTab.AlphaTabApi | null) => void }`. Task 10 Step 5 later adds `notation: OpenNotation | null` — the parsed score, not `LoadedNotation`.
   - `interface LoadedNotation { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
   - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-soundfont`.
 
@@ -1060,7 +1086,7 @@ const SAMPLE_NOTATION = '/notation/1-beat.gp';
 
 export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  // Task 9's score effect needs the live api from a SIBLING effect, so it cannot live in the
+  // Task 10's score effect needs the live api from a SIBLING effect, so it cannot live in the
   // mount effect's local `const`. Declared here, assigned at construction, cleared on dispose.
   const apiRef = useRef<AlphaTab.AlphaTabApi | null>(null);
   const { engine, error: engineError } = useAlphaTabEngine();
@@ -1675,9 +1701,9 @@ Local green is not CI green — the lane runs a full `next build` on the runner,
 
 ---
 
-### Task 9: Render the drum tracks, not track 0
+### Task 9: Select the drum tracks — a pure, tested function
 
-Where a drum staff exists, only the drum tracks render; every track stays in playback so per-track mute and solo still work. A file with no percussion staff falls back to `score.tracks[0]`, AlphaTab's FIRST track — drums are v0's default, not its requirement.
+Where a drum staff exists, only the drum tracks render; every track stays in playback so per-track mute and solo still work. A file with no percussion staff falls back to `score.tracks[0]`, AlphaTab's FIRST track — drums are v0's default, not its requirement. This task builds and unit-tests the selector; Task 10 wires it into rendering, in the same task as the end-to-end tests that exercise it.
 
 **Files:**
 
@@ -1685,13 +1711,12 @@ Where a drum staff exists, only the drum tracks render; every track stays in pla
 - Create: `web/lib/alphatab/drum-tracks.test.ts`
 - Create: `web/e2e/fixtures/guitar-no-percussion.gp`
 - Create: `tooling/make-percussion-free-fixture.mjs`
-- Modify: `web/app/play/NotationSurface.tsx`
 - Modify: `web/package.json`, `pnpm-lock.yaml` (vitest and a `test` script)
 - Modify: `AGENTS.md` (`web/` no longer omits `test`)
 
 **Interfaces:**
 
-- Consumes: the lane from Task 7; `useAlphaTabEngine` from Task 5.
+- Consumes: nothing — the unit test needs no browser and no engine.
 - Produces: `selectDrumTrackIndexes(tracks: readonly PercussionScannable[]): number[]`, where `interface PercussionScannable { index: number; staves: readonly { isPercussion: boolean }[] }`. Plan C's Tracks popover consumes the same helper to label rows.
 
 - [ ] **Step 1: Write the failing test — a co-located unit cover for the selector**
@@ -1788,55 +1813,12 @@ export function selectDrumTrackIndexes(tracks: readonly PercussionScannable[]): 
 }
 ```
 
-- [ ] **Step 4: Wire it into the render path**
-
-In `NotationSurface.tsx`, replace the `settings.core.file = SAMPLE_NOTATION;` approach for user scores with an explicit `renderScore`. Add a `notation` prop and this effect beside the mount effect:
-
-```tsx
-// The score arrives ALREADY PARSED. PlayerShell parses inside requestNotation, before it swaps
-// state (Task 10), so a file that does not parse never becomes the open notation — there is no
-// rollback path to build because there is nothing to roll back. This effect only renders, and
-// nothing is destroyed: the workers and the loaded soundfont are reused, so a rejected
-// replacement leaves the playing score untouched by construction.
-useEffect(() => {
-  const api = apiRef.current;
-  if (!api || !notation) return;
-
-  const drumIndexes = selectDrumTrackIndexes(notation.score.tracks);
-  // INDEXES, not Track objects. Passing undefined makes AlphaTab render score.tracks[0] — its
-  // FIRST track, not a "default" or preferred one (see renderScore in alphaTab.core.mjs). Fine
-  // here: this branch only runs when no track carries a percussion staff at all, where any
-  // track is as good as another.
-  api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
-  setRenderedTrackCount(drumIndexes.length > 0 ? drumIndexes.length : 1);
-}, [notation]);
-```
-
-and expose the count for the test:
-
-```tsx
-<span data-testid="rendered-track-count" className="sr-only">
-  {renderedTrackCount}
-</span>
-```
-
-`NotationSurface`'s prop is therefore the parsed shape, not the bytes:
-
-```tsx
-interface OpenNotation {
-  name: string;
-  score: AlphaTab.model.Score;
-}
-```
-
-`loadScoreFromBytes` takes a `Uint8Array`, so the `ArrayBuffer` from the file read is wrapped at the read site in Task 10, parsed there, and only the result reaches this component.
-
-- [ ] **Step 5: Run the test to verify it passes**
+- [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web run test`
 Expected: PASS — 3 tests. The end-to-end `Punk.gp` case runs in Task 10.
 
-- [ ] **Step 6: Generate the percussion-free fixture (closes Q7)**
+- [ ] **Step 5: Generate the percussion-free fixture (closes Q7)**
 
 `web/e2e/fixtures/guitar-no-percussion.gp` is produced from a one-line alphaTex string with the
 pinned 1.8.4 importer/exporter, then round-tripped to prove it is what criterion 9 needs. Verified:
@@ -1862,13 +1844,13 @@ Check the exact importer entry point against `dist/alphaTab.d.ts` before running
 exports `AlphaTexImporter`, `ScoreLoader`, `Gp7Exporter` and `ScoreExporter`, but the convenience
 signature differs between them. Task 10 adds the e2e case that opens this fixture.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add web/lib/alphatab/drum-tracks.ts web/lib/alphatab/drum-tracks.test.ts \
-  web/app/play/NotationSurface.tsx web/e2e/fixtures/guitar-no-percussion.gp \
-  tooling/make-percussion-free-fixture.mjs web/package.json pnpm-lock.yaml AGENTS.md
-git commit -m "feat(web): render every drum track and fall back for percussion-free scores (NH-291)"
+  web/e2e/fixtures/guitar-no-percussion.gp tooling/make-percussion-free-fixture.mjs \
+  web/package.json pnpm-lock.yaml AGENTS.md
+git commit -m "feat(web): select every drum track, with a percussion-free fallback (NH-291)"
 ```
 
 ---
@@ -2220,9 +2202,68 @@ const loadSample = useCallback(async () => {
 ```
 
 Drop `settings.core.file = SAMPLE_NOTATION` from `NotationSurface` — the score now always arrives
-through `renderScore` (Task 9), so the mount no longer auto-loads anything. Remove the now-unused
+through `renderScore` (below), so the mount no longer auto-loads anything. Remove the now-unused
 `SAMPLE_NOTATION` constant. Export `readNotation` from `OpenFileControl.tsx` so the shell's drop
 handler below can reuse it (same size gate, same failure toast).
+
+Then wire the selector into `NotationSurface.tsx`. This is where rendering changes, so it lands in
+the same task as the end-to-end tests that exercise it. Import the selector, add the prop, and take
+it in the signature:
+
+```tsx
+import { selectDrumTrackIndexes } from '../../lib/alphatab/drum-tracks';
+
+interface NotationSurfaceProps {
+  /** Handed the live api as soon as it exists, and null on dispose. */
+  onApiReady: (api: AlphaTab.AlphaTabApi | null) => void;
+  /** The open score, already parsed by the shell; null until one is open. */
+  notation: OpenNotation | null;
+}
+
+export function NotationSurface({ notation, onApiReady }: Readonly<NotationSurfaceProps>) {
+```
+
+Replace the `settings.core.file = SAMPLE_NOTATION;` approach for user scores with an explicit
+`renderScore` — add this effect beside the mount effect:
+
+```tsx
+// The score arrives ALREADY PARSED. PlayerShell parses inside requestNotation, before it swaps
+// state (above), so a file that does not parse never becomes the open notation — there is no
+// rollback path to build because there is nothing to roll back. This effect only renders, and
+// nothing is destroyed: the workers and the loaded soundfont are reused, so a rejected
+// replacement leaves the playing score untouched by construction.
+useEffect(() => {
+  const api = apiRef.current;
+  if (!api || !notation) return;
+
+  const drumIndexes = selectDrumTrackIndexes(notation.score.tracks);
+  // INDEXES, not Track objects. Passing undefined makes AlphaTab render score.tracks[0] — its
+  // FIRST track, not a "default" or preferred one (see renderScore in alphaTab.core.mjs). Fine
+  // here: this branch only runs when no track carries a percussion staff at all, where any
+  // track is as good as another.
+  api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
+  setRenderedTrackCount(drumIndexes.length > 0 ? drumIndexes.length : 1);
+}, [notation]);
+```
+
+and expose the count for the test:
+
+```tsx
+<span data-testid="rendered-track-count" className="sr-only">
+  {renderedTrackCount}
+</span>
+```
+
+`NotationSurface`'s prop is therefore the parsed shape, not the bytes:
+
+```tsx
+interface OpenNotation {
+  name: string;
+  score: AlphaTab.model.Score;
+}
+```
+
+`loadScoreFromBytes` takes a `Uint8Array`, so the `ArrayBuffer` from the file read is wrapped at the read site (`readNotation`), parsed in `requestNotation` above, and only the result reaches this component.
 
 - [ ] **Step 6: Make the whole player surface the drop target**
 
@@ -2910,27 +2951,14 @@ EOF
 
 - [ ] **Step 3: Re-verify on the deployed preview**
 
-Task 1's go/no-go ran against the **committed** `web/public/alphatab/**`, and Task 2 then deleted
-that directory and made it build output. Nothing has checked the _generated_ files on a real deploy
-since — yet every success criterion in the spec is written "on a deployed Vercel URL", and the lane
-only ever serves a local `next start`. Two things are only true on Vercel: the pinned `buildCommand`
-actually running, and the vendor script reading through a pnpm symlink that resolves **outside**
-`web/` (Vercel's Root Directory docs say files outside it are not accessible; the existing deploy
-already reaches out for `transpilePackages`, so it likely resolves — but it is unverified for this
-script). Once the PR's preview has built:
+Task 2 Step 11 first checked the _generated_ files on a preview. Re-run the same check on the PR's
+final build: every success criterion in the spec is written "on a deployed Vercel URL", and the lane
+only ever serves a local `next start`. Once the PR's preview has built, run Task 2 Step 11's loop
+against the new `PREVIEW` URL.
 
-```bash
-PREVIEW=https://<the new preview URL>
-for f in alphaTab.mjs alphaTab.core.mjs alphaTab.worker.mjs alphaTab.worklet.mjs; do
-  printf '%s -> ' "$f"
-  curl -sSI "$PREVIEW/alphatab/esm/$f" | awk 'tolower($1) ~ /^(http|content-type)/ {print}' | tr '\n' ' '
-  printf '\n'
-done
-```
-
-Expected: `HTTP/2 200` and a JavaScript `content-type` for all four. Then open `$PREVIEW/play` and
-walk criteria 1, 2, 8 and 10 there. A 404 means the vendor step did not run on the builder — stop
-and fix `buildCommand` before merging, not after.
+Expected: the same as Task 2 Step 11. Then open `$PREVIEW/play` and walk criteria 1, 2, 8 and 10
+there. A failure here, after Task 2 Step 11 passed, means something changed since — compare the two
+previews' build logs, using Step 11's diagnoses, before merging.
 
 - [ ] **Step 4: Open your own score (criterion 4)**
 
