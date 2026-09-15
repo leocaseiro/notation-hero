@@ -1,3 +1,8 @@
+---
+lap: 2 # the 2026-09-14 review was lap 1; the 2026-09-15 triage is lap 2
+last_applied: P0
+---
+
 # v0 Plan A — Engine and First Sound — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
@@ -963,7 +968,7 @@ git commit -m "feat(web): load the self-hosted AlphaTab ESM once and share it by
 
 ### Task 6: The `/play` route renders and plays the bundled sample score
 
-The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` with a correct lifecycle, the loading `Skeleton`, and the two engine failure states. It loads the bundled sample score directly so there is something to see and hear before the file picker exists.
+The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` with a correct lifecycle, the loading `Skeleton`, and the three failure states — engine import, soundfont download, music-font download. It loads the bundled sample score directly so there is something to see and hear before the file picker exists.
 
 **Files:**
 
@@ -1113,16 +1118,39 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     settings.player.scrollMode = engine.ScrollMode.Continuous;
     settings.player.scrollElement = host;
 
+    // AlphaTab injects its music font as a CSS @font-face named `alphaTab…` during construction. If
+    // that download fails, its font checker has no fallback family: it logs "rendering cannot
+    // start", never fires renderFinished and raises no api.error — so the Skeleton would stay up
+    // forever. The browser reports it at once, as `loadingerror` on document.fonts (verified in
+    // Chromium), so listen before constructing. Text-font checkers have system fallbacks, hence
+    // the family filter.
+    const onFontError = (event: FontFaceSetLoadEvent) => {
+      if (event.fontfaces.some((face) => face.family.startsWith('alphaTab'))) {
+        setRuntimeError('the music font could not be downloaded');
+      }
+    };
+    document.fonts.addEventListener('loadingerror', onFontError);
+
     api = new engine.AlphaTabApi(host, settings);
     apiRef.current = api;
+
+    // Backstop for a download that hangs without ever failing: no event arrives, so give up after
+    // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
+    const firstRenderTimeout = window.setTimeout(
+      () => setRuntimeError('the music font did not arrive within 60 seconds'),
+      60_000,
+    );
 
     // The SoundFont download failure surfaces through AlphaTab's own error event; the engine
     // import failure cannot (AlphaTabApi does not exist yet) and arrives via engineError above.
     api.error.on((cause) => setRuntimeError(String(cause)));
-    api.renderFinished.on(() => setRendered(true));
+    api.renderFinished.on(() => {
+      window.clearTimeout(firstRenderTimeout);
+      setRendered(true);
+    });
 
     // No `if (disposed)` re-check. Everything above is synchronous — no await, no .then — and the
-    // only thing that could set such a flag is the cleanup, returned three lines below, so the
+    // only thing that could set such a flag is the cleanup, returned below, so the
     // branch is unreachable by construction (a React 19.2 repro took it 0 times in 6 scenarios).
     // Its bare `return` would also have skipped registering this cleanup. The spike component
     // needs that guard because it awaits the import INSIDE its effect; here the engine arrives
@@ -1130,6 +1158,8 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     onApiReady(api);
 
     return () => {
+      document.fonts.removeEventListener('loadingerror', onFontError);
+      window.clearTimeout(firstRenderTimeout);
       apiRef.current = null;
       onApiReady(null);
       api?.destroy();
@@ -1149,10 +1179,10 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
           The player engine could not start. Reload the page to try again. ({failure})
         </p>
       ) : null}
-      {/* The Skeleton covers BOTH the engine import and the Bravura fetch — loadAlphaTabEngine
-          resolves only after document.fonts.load has settled — and lifts on the first
-          renderFinished. Dismissing it earlier leaves the notation area blank for exactly the
-          window it exists to cover. */}
+      {/* The Skeleton covers BOTH the engine import and the music-font fetch, and lifts on the
+          first renderFinished: AlphaTab holds that event until its own font checker sees the
+          `alphaTab` face load (Task 5 — there is no font wait in loadAlphaTabEngine). Dismissing
+          it earlier leaves the notation area blank for exactly the window it exists to cover. */}
       {!failure && !rendered ? (
         <Skeleton
           data-testid="notation-skeleton"
@@ -1941,6 +1971,19 @@ test('a score with no percussion staff opens on the first track', async ({ page 
   await expect(page.getByTestId('rendered-track-count')).toHaveText('1');
 });
 
+// A failed music-font download used to leave the Skeleton up forever: AlphaTab's font checker has
+// no fallback, fires no renderFinished and raises no api.error. Abort every font request and expect
+// the engine error instead (NotationSurface's loadingerror listener, Task 6).
+test('a failed music-font download shows the engine error, not an endless Skeleton', async ({
+  page,
+}) => {
+  await page.route('**/alphatab/font/**', (route) => route.abort());
+  await page.goto('/play');
+  await page.getByTestId('load-sample').click();
+  await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('notation-skeleton')).toBeHidden();
+});
+
 // One fixture per importer path, and the evidence behind criterion 1's `.gp5`. All are already
 // committed — no new content needed. Q6: 1-beat.musicxml and 1-beat.mxl are real MuseScore
 // exports (plain and compressed MusicXML take different code paths); 1-beat.atex is a real
@@ -2715,22 +2758,34 @@ Loading, success and failure share one surface. The score on screen keeps playin
 
 - [ ] **Step 1: Add the loading toast**
 
-In `PlayerShell.tsx`, on the confirm path of `requestNotation`, name the incoming file:
+In `PlayerShell.tsx`'s `requestNotation` (Task 11's version), show the toast on the confirm path —
+after the dialog returns — and resolve it in the same function: it is the one place that knows the
+file name and whether this is a replacement. One `id` makes all three states share one toast.
+
+After `if (!confirmed) { … return; }`, still inside `if (notation !== null)`:
 
 ```tsx
 // Sonner ships its own spinner, so this needs no new component — and Skeleton would hide a
-// score that is still playable. The toast resolves into success or into the same
-// unsupported-file error the failure table specifies, so all three states share one surface.
+// score that is still playable. Wait one painted frame before parsing: loadScoreFromBytes is
+// synchronous, so without the wait the toast would appear only once the parse had finished.
 toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
+await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 ```
 
-and resolve it from the render effect, reusing the same `id` so all three states share one toast:
+Give the parse-failure toast the same `id`, so the failure replaces the spinner instead of stacking
+beside it:
 
 ```tsx
-toast.success(`${next.name} loaded`, { id: 'notation-load' });
 toast.error(`${next.name} could not be opened — it is not a score format the player reads.`, {
   id: 'notation-load',
 });
+```
+
+and after `setNotation({ name: next.name, score });`:
+
+```tsx
+// Only a replacement showed the loading toast; a first load has nothing to resolve.
+if (notation !== null) toast.success(`${next.name} loaded`, { id: 'notation-load' });
 ```
 
 - [ ] **Step 2: Write the failing test — a `loading` story that axe and VR can hold open**
