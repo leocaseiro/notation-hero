@@ -32,7 +32,7 @@ Every task's requirements implicitly include this section. Values are copied ver
 - **Never `dynamic(..., { ssr: false })`.** It is illegal in an App Router Server Component and unnecessary: AlphaTab's module scope is SSR-safe.
 - **`useRef`, never `React.createRef()` in a render body.**
 - **Every interactive control has a hit area of at least 44 px**, with the glyph left at its drawn size. The mockup does not meet this; v0 must.
-- **Every `client/` component stays presentation-only** — `value` in, `onChange` out, option lists as plain arrays, and no import from `@coderline/alphatab`. `client/` has no AlphaTab dependency and a Storybook story has no engine to provide.
+- **Every `client/` component stays presentation-only** — `value` in, `onChange` out, option lists as plain arrays, and no import from `@coderline/alphatab`. `client/` has no AlphaTab dependency and a Storybook story has no engine to provide. Task 3 makes the import ban a lint error in `client/`.
 - **Before `web/` uses a `client/` component:** export it from `client/src/index.ts`, add `'use client'` to its file, and re-run the client checks plus the Storybook VR and a11y gates.
 - **Version ranges are syncpack-enforced across packages.** `@playwright/test` must be `^1.61.1` and `@axe-core/playwright` must be `^4.12.1` in `web/` — `client/`'s exact ranges — or the `quality` job fails.
 - **The `web/` Playwright script must NOT be named `test`.** The `quality` job runs `pnpm -r --if-present run test` with no browsers installed. Name it `test:e2e`.
@@ -48,6 +48,10 @@ Every task's requirements implicitly include this section. Values are copied ver
   raises the same unsupported-file toast a parse failure raises. It does NOT bound decompressed
   size: `.gpx` is a ZIP container AlphaTab inflates, which would need a worker-side bound (post-v0).
 - **`package.json` keys stay sorted.** `pnpm run lint:sort-pkg` (`sort-package-json --check`) is a CI gate.
+- **`globalThis`, never `window`, in `web/` code.** `unicorn/prefer-global-this` is an error there:
+  `window.setTimeout`, `window.addEventListener` and `window.confirm` all fail lint, and their
+  `globalThis.*` forms pass both lint and `tsc`. `no-alert` is not enabled in `web/`, so never add an
+  `eslint-disable` for it — an unused directive is a warning, and lint runs with `--max-warnings 0`.
 
 ## Open questions closed during planning
 
@@ -120,6 +124,7 @@ without this plan. Nothing in the tasks below depends on any of them.
 | `web/package.json`                               | `dev`/`build` chain the vendor step; add `test:e2e`; add Playwright + axe devDependencies.                                                                  |
 | `web/.gitignore`                                 | Ignore `/public/alphatab/`.                                                                                                                                 |
 | `web/eslint.config.mjs`                          | Swap the core `no-restricted-imports` for `@typescript-eslint/no-restricted-imports` and add the `@coderline/alphatab` group with `allowTypeImports: true`. |
+| `client/eslint.config.js`                        | Ban every `@coderline/alphatab` import, type imports included: `client/` is presentation-only, and `transpilePackages` compiles it into `web/`'s bundle.    |
 | `web/app/layout.tsx`                             | Mount the single `<Toaster />`.                                                                                                                             |
 | `web/app/page.tsx`                               | Replace the design-system proof page with the landing Play button.                                                                                          |
 | `client/src/index.ts`                            | Export `Skeleton`, `Toaster`, `toast`, `Card`, `CardContent`.                                                                                               |
@@ -495,11 +500,12 @@ One value import re-bundles the library, ships it twice, and lets a component dr
 **Files:**
 
 - Modify: `web/eslint.config.mjs:49-65` (the `no-restricted-imports` block)
+- Modify: `client/eslint.config.js` (the client-specific rules block)
 
 **Interfaces:**
 
 - Consumes: nothing.
-- Produces: every later task's `import type * as AlphaTab from '@coderline/alphatab'` stays legal while a value import fails lint.
+- Produces: every later task's `import type * as AlphaTab from '@coderline/alphatab'` stays legal in `web/` while a value import fails lint. In `client/`, any import of it fails lint.
 
 - [ ] **Step 1: Write the failing test — a scratch file with a value import**
 
@@ -605,11 +611,70 @@ pnpm --filter @notation-hero/web run lint
 
 Expected: PASS — the only value import in the package was variant A's, deleted in Step 6.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Fence `client/` too — no AlphaTab import at all**
+
+`web/next.config.ts` sets `transpilePackages: ['@notation-hero/client']`, so `client/src` is compiled
+into `web/`'s bundle, and Plans B and C add `client/` components. A value import there would bundle
+AlphaTab a second time. Today `client/` cannot import it at all — it has no `@coderline/alphatab`
+dependency, so `tsc` fails with `TS2307` — but that guard disappears the day someone adds the
+dependency to type a prop. `client/` is presentation-only (spec §7), so its fence bans **every**
+import, type imports included.
+
+In `client/eslint.config.js`, add to the client-specific rules block:
+
+```js
+      // client/ is presentation-only (v0 spec §7): it takes AlphaTab values as props and imports
+      // nothing from the library, not even a type. It is also compiled into web/'s bundle
+      // (transpilePackages), so a value import here would bundle AlphaTab a second time. The core
+      // rule is enough, because unlike web/'s fence this one must NOT allow type imports.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@coderline/alphatab', '@coderline/alphatab/*'],
+              message:
+                'client/ components take AlphaTab values as props — import nothing from @coderline/alphatab (v0 spec §7).',
+            },
+          ],
+        },
+      ],
+```
+
+**Do not move either group into `eslint.config.base.mjs`.** In flat config, a later block's options
+for the same rule _replace_ an earlier block's. `web/`'s own `@/*` block comes after `...base`, so a
+group defined in the base silently disappears from `web/` — reproduced with a two-block config, where
+only the later block's group fired. `server/` also sets its own `no-restricted-imports`.
+
+- [ ] **Step 9: Prove the client fence fires — on a type import**
+
+A type import is the strict case: `web/` allows it, `client/` must not.
 
 ```bash
-git add web/eslint.config.mjs web/app/spike web/spike-probe.mjs web/spike-lifecycle-probe.mjs
-git commit -m "chore(web): fail lint on a value import of @coderline/alphatab (NH-291)"
+cat > client/src/lint-guard-probe.ts <<'EOF'
+import type * as AlphaTab from '@coderline/alphatab';
+
+export type Probe = AlphaTab.AlphaTabApi;
+EOF
+pnpm --filter @notation-hero/client exec eslint src/lint-guard-probe.ts
+```
+
+Expected: FAIL — `no-restricted-imports` on line 1, with the message above. Then delete the probe and
+lint the package:
+
+```bash
+rm client/src/lint-guard-probe.ts
+pnpm --filter @notation-hero/client run lint
+```
+
+Expected: PASS.
+
+- [ ] **Step 10: Commit**
+
+```bash
+git add web/eslint.config.mjs client/eslint.config.js \
+  web/app/spike web/spike-probe.mjs web/spike-lifecycle-probe.mjs
+git commit -m "chore(lint): fence @coderline/alphatab imports in web/ and client/ (NH-291)"
 ```
 
 ---
@@ -1136,7 +1201,7 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
 
     // Backstop for a download that hangs without ever failing: no event arrives, so give up after
     // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
-    const firstRenderTimeout = window.setTimeout(
+    const firstRenderTimeout = globalThis.setTimeout(
       () => setRuntimeError('the music font did not arrive within 60 seconds'),
       60_000,
     );
@@ -1145,7 +1210,7 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     // import failure cannot (AlphaTabApi does not exist yet) and arrives via engineError above.
     api.error.on((cause) => setRuntimeError(String(cause)));
     api.renderFinished.on(() => {
-      window.clearTimeout(firstRenderTimeout);
+      globalThis.clearTimeout(firstRenderTimeout);
       setRendered(true);
     });
 
@@ -1159,7 +1224,7 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
 
     return () => {
       document.fonts.removeEventListener('loadingerror', onFontError);
-      window.clearTimeout(firstRenderTimeout);
+      globalThis.clearTimeout(firstRenderTimeout);
       apiRef.current = null;
       onApiReady(null);
       api?.destroy();
@@ -1195,10 +1260,21 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
           plan never sets `model.Color`, so a theme-following surface would make the score
           invisible in dark mode. This is the one place in the player that pins a literal colour;
           it stops being correct the moment the glyph colour becomes themeable. */}
+      {/* A named region a keyboard user can focus. `tabIndex={0}` is required: a score taller than
+          420 px makes this box scroll, and axe's scrollable-region-focusable (serious, wcag2a) fails
+          a scroll box with nothing focusable inside, whatever its role. `region`, not `img`: the
+          notation takes mouse input (AlphaTab moves the cursor and selects bars on click) and needs
+          keyboard control too, and an `img`'s children are presentational. Never `aria-label`
+          without a role — on a plain div that fails axe's aria-prohibited-attr (serious). The focus
+          ring copies client/'s ScrollArea viewport, which solved the same axe rule. Task 13 audits
+          the scrolling state with Punk.gp. */}
       <div
         ref={hostRef}
         data-testid="notation-surface"
-        className="h-[420px] w-full overflow-y-auto rounded-md border border-border bg-white"
+        role="region"
+        aria-label="Score"
+        tabIndex={0}
+        className="h-[420px] w-full overflow-y-auto rounded-md border border-border bg-white outline-none transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
       />
     </div>
   );
@@ -2374,11 +2450,11 @@ useEffect(() => {
   const onEnd = () => {
     if (depth.current !== 0) endDrag();
   };
-  window.addEventListener('dragend', onEnd);
-  window.addEventListener('pointermove', onEnd);
+  globalThis.addEventListener('dragend', onEnd);
+  globalThis.addEventListener('pointermove', onEnd);
   return () => {
-    window.removeEventListener('dragend', onEnd);
-    window.removeEventListener('pointermove', onEnd);
+    globalThis.removeEventListener('dragend', onEnd);
+    globalThis.removeEventListener('pointermove', onEnd);
   };
 }, [endDrag]);
 ```
@@ -2681,15 +2757,15 @@ const requestNotation = useCallback(
 
     // Spec §4 order: confirm FIRST, then parse, then swap. A first load has nothing to replace.
     if (notation !== null) {
-      // eslint-disable-next-line no-alert -- deliberate v0 shortcut. To be precise about what is
-      // and is not missing: the Base UI Dialog PRIMITIVE is already in the repo — Sheet is a shadcn
-      // port over `@base-ui/react/dialog`, with focus trap, scroll lock, overlay and a required
-      // title, carrying VR and axe baselines. What does not exist is an AlertDialog COMPONENT
-      // (six co-located files plus baselines). Building it is Plan C work, and it would be a real
+      // Deliberate v0 shortcut. To be precise about what is and is not missing: the Base UI
+      // Dialog PRIMITIVE is already in the repo — Sheet is a shadcn port over
+      // `@base-ui/react/dialog`, with focus trap, scroll lock, overlay and a required title,
+      // carrying VR and axe baselines. What does not exist is an AlertDialog COMPONENT (six
+      // co-located files plus baselines). Building it is Plan C work, and it would be a real
       // simplification here, not just a prettier dialog: a non-blocking dialog removes the buffer
       // drain, the `wasPlaying` capture and the resume-on-cancel below, because playback simply
       // never stops. v0 keeps window.confirm; do not describe the primitive as missing.
-      const confirmed = window.confirm(
+      const confirmed = globalThis.confirm(
         `Replace ${notation.name} with ${next.name}? The score you have open will be closed.`,
       );
 
@@ -2721,7 +2797,10 @@ const requestNotation = useCallback(
 
 and pass `requestNotation` as `onNotation` to `OpenFileControl`. On the parse-failure path the open score was never replaced, so there is nothing to restore — the function only restarts playback, because the confirm dialog emptied the audio buffer. It is the same restart the cancel path does.
 
-> Check the eslint disable comment's rule name against what actually fires; `no-alert` is the core rule, but the base config may surface it under a different plugin. `eslint-comments/require-description` is on, so the `--` reason is mandatory.
+> **No `eslint-disable` comment here, and `globalThis.confirm`, not `window.confirm`.** Both are
+> checked against `web/`'s lint (`--max-warnings 0`): `no-alert` is not enabled in `web/`, so an
+> `eslint-disable-next-line no-alert` is reported as an unused directive and fails lint wherever it
+> is placed; and `unicorn/prefer-global-this` is an error, so `window.confirm` fails too.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
@@ -2913,6 +2992,22 @@ test('player has no axe violations with a score loaded', async ({ page }) => {
   await expectNoViolations(page, 'play / loaded');
 });
 
+// The sample renders 185 px tall and never scrolls; Punk.gp's two drum tracks render 1,026 px at this
+// lane's width, so the 420 px notation box scrolls. Without this case axe's
+// scrollable-region-focusable rule never meets a scrolling surface, and dropping the host's
+// tabIndex would pass the gate.
+test('player has no axe violations with a score long enough to scroll', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  const surface = page.getByTestId('notation-surface');
+  await expect(surface.locator('svg').first()).toBeVisible({ timeout: 30_000 });
+  // Prove the state this case exists for: the box really scrolls.
+  await expect
+    .poll(() => surface.evaluate((el) => el.scrollHeight > el.clientHeight), { timeout: 30_000 })
+    .toBe(true);
+  await expectNoViolations(page, 'play / scrolling score');
+});
+
 // The first-visit Skeleton is reachable because the engine import is a real request the lane can
 // stall — this is exactly why that state is auditable here and the replacement loading toast is not.
 test('player has no axe violations while the first-visit Skeleton is up', async ({ page }) => {
@@ -2940,7 +3035,7 @@ Expected: FAIL — either on missing modules (fix the import) or on real violati
 - [ ] **Step 3: Fix the violations and re-run**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e a11y`
-Expected: PASS — 4 tests.
+Expected: PASS — 5 tests.
 
 - [ ] **Step 4: Gate the 44 px rule in the lane, not by eye**
 
@@ -2969,7 +3064,7 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
 }
 ```
 
-Call it from each of the four cases above, beside `expectNoViolations`. Any entry is a control that
+Call it from each of the five cases above, beside `expectNoViolations`. Any entry is a control that
 fails the tablet-landscape touch target — pad its hit area (keep the glyph at its drawn size) until
 the list is empty.
 

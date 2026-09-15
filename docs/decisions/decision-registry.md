@@ -12,6 +12,32 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-16 — v0 Plan A review, lap 2 finished: the last open findings triaged (NH-291)
+
+The findings the 2026-09-15 entry left open were checked against the installed packages before
+triage: lint probes in `web/` and `client/`, axe-core 4.12.1 over the notation-box markup, and parse
+timings with the pinned AlphaTab 1.8.4. Three of the handoff's proposed fixes turned out to fail.
+leocaseiro triaged each from a checked Before → After.
+
+Approved by leocaseiro 2026-09-16:
+
+- **The notation box is a focusable, named region** — `role="region"`, `aria-label="Score"`,
+  `tabIndex={0}` (Task 6) — chosen over `role="img"`, which the agent had recommended, and
+  `role="figure"`. His reason: the notation already takes mouse input and needs keyboard control, and
+  an image's children are presentational. `tabIndex` is needed under every role: a score taller than
+  the 420 px box fails axe's `scrollable-region-focusable` (serious, `wcag2a`) without it, so Task 13
+  gains a case that opens `Punk.gp`, which scrolls. Spec §5 updated.
+- **`web/` code uses `globalThis`, never `window`, and has no `eslint-disable` for `no-alert`.**
+  `unicorn/prefer-global-this` is an error in `web/` — all 8 `window.*` calls in the plan failed it —
+  and `no-alert` is not enabled there, so the directive Task 11 carried was itself a lint failure.
+  Recorded as a Global Constraint.
+- **`client/` gets its own AlphaTab import fence, banning every import, type imports included**
+  (Task 3 Steps 8-9), rather than moving the group into `eslint.config.base.mjs`: in flat config a
+  later block's options replace an earlier block's, so a group defined in the base silently disappears
+  from `web/`. Spec §5 updated.
+
+**Status:** triage continues with F-13, F-17 and F-18; lap 3, a re-review, is due after them.
+
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 
 A seven-persona `ce-doc-review` of Plan A ([`docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`](../plans/2026-09-13-v0a-engine-and-first-sound-plan.md))

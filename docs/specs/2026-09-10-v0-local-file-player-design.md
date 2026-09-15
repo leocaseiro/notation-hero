@@ -234,7 +234,9 @@ const alphaTab = (await import(/* turbopackIgnore: true */ ALPHATAB_ESM_URL)) as
    `web/eslint.config.mjs` today carries only the core `no-restricted-imports` rule with the `@/*`
    group, so replace it with `@typescript-eslint/no-restricted-imports` holding both that `@/*`
    group and a new `@coderline/alphatab` group with `allowTypeImports: true` — the extension rule
-   requires the core rule to be off.
+   requires the core rule to be off. `client/eslint.config.js` gets its own fence that bans every
+   import of the library, type imports included: `client/src` is compiled into `web/`'s bundle
+   through `transpilePackages`, and §7 keeps `client/` free of AlphaTab.
 
    **So the awaited namespace object is the only runtime source of AlphaTab values** — enums
    (`LayoutMode`, `ScrollMode`, `PlayerMode`, `TrackNamePolicy`), `importer.ScoreLoader` (nested
@@ -303,9 +305,11 @@ error. The `ScriptProcessor` variant of the line is a different fallback — no 
 an insecure context — and still plays audio, so the two are not halves of a discriminator.
 
 The same lane carries v0's **accessibility check for `web/`** (§7): an axe-core run over `/` and
-`/play` in four states — empty, loaded, with each popover open, and during the first-visit
-`Skeleton`, which is reachable because the engine import is a real request the lane can stall with
-`page.route` on `/alphatab/esm/alphaTab.mjs`.
+`/play` in five states — empty, loaded, loaded with a score long enough to scroll, with each popover
+open, and during the first-visit `Skeleton`, which is reachable because the engine import is a real
+request the lane can stall with `page.route` on `/alphatab/esm/alphaTab.mjs`. The scrolling state
+exists because the notation box is a focusable, named region (`role="region"`, `tabIndex={0}`): a
+short score never scrolls, so without it axe's `scrollable-region-focusable` rule checks nothing.
 
 **The replacement loading toast is audited in `client/`, not here.** Nothing is skipped — it moves to
 where the check can actually run. That state is a millisecond race in `web/`: `loadScoreFromBytes` is
