@@ -436,7 +436,7 @@ git status --short web/public
 
 Expected: the eight files exist, `alphaTab.core.mjs` is ~1.1 MB (not 2.3 MB), `next build` succeeds, and `git status` reports **nothing** under `web/public/alphatab/`.
 
-- [ ] **Step 8: Run the repo-level gates this touches**
+- [ ] **Step 9: Run the repo-level gates this touches**
 
 ```bash
 pnpm run test:tooling
@@ -446,7 +446,7 @@ pnpm --filter @notation-hero/web run lint
 
 Expected: all PASS.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 10: Commit**
 
 ```bash
 git add web/scripts/vendor-alphatab.mjs tooling/vendor-alphatab.test.mjs \
@@ -947,6 +947,7 @@ The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` wit
 - Create: `web/app/error.tsx`
 - Create: `web/e2e/player.e2e.ts`
 - Modify: `web/app/page.tsx`
+- Rename: `web/public/charts/` → `web/public/notation/` (Step 1)
 
 **Interfaces:**
 
@@ -965,6 +966,7 @@ The ranges must match `client/package.json` character for character or root `syn
 `quality` CI gate) fails.
 
 ```bash
+git mv web/public/charts web/public/notation   # this task holds the first /notation/ URL
 pnpm --filter @notation-hero/web add -D @playwright/test@^1.61.1 @axe-core/playwright@^4.12.1
 pnpm --filter @notation-hero/web exec playwright install --with-deps chromium
 pnpm run syncpack   # Expected: PASS
@@ -2153,6 +2155,7 @@ const requestNotation = useCallback(
   (file: LoadedNotation) => {
     if (!engine) return;
 
+    // Task 11 inserts the replace confirmation HERE — before the parse, per spec §4.
     let score: AlphaTab.model.Score;
     try {
       score = engine.importer.ScoreLoader.loadScoreFromBytes(file.bytes);
@@ -2161,7 +2164,6 @@ const requestNotation = useCallback(
       return;
     }
 
-    // Task 11 inserts the replace confirmation HERE, between the successful parse and the swap.
     setNotation({ name: file.name, score });
   },
   [engine],
@@ -2193,6 +2195,15 @@ a file can be dropped anywhere on the player in either state. Do the same — an
 the fork lacks, because its only drag feedback is the OS cursor (`dropEffect = 'link'`), which is
 easy to miss.
 
+First widen `PlayerShell.tsx`'s imports. From this task on the file uses `toast` (Step 5's
+`requestNotation`), `OpenFileControl` (the rail control below) and `readNotation` (the drop handler
+below), and Task 6's import list has only `Button`:
+
+```tsx
+import { Button, toast } from '@notation-hero/client';
+import { OpenFileControl, readNotation } from './OpenFileControl';
+```
+
 ```tsx
 const [dragging, setDragging] = useState(false);
 const depth = useRef(0);
@@ -2200,6 +2211,20 @@ const endDrag = useCallback(() => {
   depth.current = 0;
   setDragging(false);
 }, []);
+
+// Same boundary as OpenFileControl's `accept`: the 25 MB check, then one failure toast. Without the
+// try/catch, `void acceptDropped(...)` would hide a rejected read and show nothing at all.
+const acceptDropped = useCallback(
+  async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      requestNotation(await readNotation(file));
+    } catch {
+      toast.error(`${file.name} could not be opened.`);
+    }
+  },
+  [requestNotation],
+);
 
 // A cancelled drag (Esc, or releasing outside the window) fires NO further drag event, so the
 // counter never unwinds and the overlay would stay up forever. Pointer events are suppressed for
@@ -2482,10 +2507,7 @@ In `PlayerShell.tsx`'s `Player`, add:
 ```tsx
 const requestNotation = useCallback(
   (next: LoadedNotation) => {
-    if (!score) {
-      setNotation(next);
-      return;
-    }
+    if (!engine) return;
 
     const api = apiRef.current;
     // Record the playing state BEFORE the prompt: window.confirm blocks the main thread, so the
@@ -2493,33 +2515,47 @@ const requestNotation = useCallback(
     // playerStateChanged cannot fire until the prompt returns.
     const wasPlaying = playing;
 
-    // eslint-disable-next-line no-alert -- deliberate v0 shortcut. To be precise about what is
-    // and is not missing: the Base UI Dialog PRIMITIVE is already in the repo — Sheet is a shadcn
-    // port over `@base-ui/react/dialog`, with focus trap, scroll lock, overlay and a required
-    // title, carrying VR and axe baselines. What does not exist is an AlertDialog COMPONENT
-    // (six co-located files plus baselines). Building it is Plan C work, and it would be a real
-    // simplification here, not just a prettier dialog: a non-blocking dialog removes the buffer
-    // drain, the `wasPlaying` capture and the resume-on-cancel below, because playback simply
-    // never stops. v0 keeps window.confirm; do not describe the primitive as missing.
-    const confirmed = window.confirm(
-      `Replace ${notation.name} with ${next.name}? The score you have open will be closed.`,
-    );
+    // Spec §4 order: confirm FIRST, then parse, then swap. A first load has nothing to replace.
+    if (notation !== null) {
+      // eslint-disable-next-line no-alert -- deliberate v0 shortcut. To be precise about what is
+      // and is not missing: the Base UI Dialog PRIMITIVE is already in the repo — Sheet is a shadcn
+      // port over `@base-ui/react/dialog`, with focus trap, scroll lock, overlay and a required
+      // title, carrying VR and axe baselines. What does not exist is an AlertDialog COMPONENT
+      // (six co-located files plus baselines). Building it is Plan C work, and it would be a real
+      // simplification here, not just a prettier dialog: a non-blocking dialog removes the buffer
+      // drain, the `wasPlaying` capture and the resume-on-cancel below, because playback simply
+      // never stops. v0 keeps window.confirm; do not describe the primitive as missing.
+      const confirmed = window.confirm(
+        `Replace ${notation.name} with ${next.name}? The score you have open will be closed.`,
+      );
 
-    if (!confirmed) {
-      // Cancel keeps the current score and discards the new file. Resume from the same position.
+      if (!confirmed) {
+        // Cancel keeps the current score and discards the new file. Resume from the same position.
+        if (wasPlaying) api?.play();
+        return;
+      }
+    }
+
+    // Confirm stages the load: parse the new buffer first, and swap only on success.
+    let score: AlphaTab.model.Score;
+    try {
+      score = engine.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
+    } catch {
+      toast.error(`${next.name} could not be opened — it is not a score format the player reads.`);
+      // The open score was never replaced. Only restart playback: the dialog emptied the buffer.
       if (wasPlaying) api?.play();
       return;
     }
 
     // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
     if (wasPlaying) api?.pause();
-    setNotation(next);
+    setNotation({ name: next.name, score });
   },
-  [score, playing],
+  [engine, notation, playing],
 );
 ```
 
-and pass `requestNotation` as `onNotation` to `OpenFileControl`. On the parse-failure path (Task 10, Step 6) the shell restores the previous score and, if it was playing, calls `api.play()` again — same resume as the cancel path.
+and pass `requestNotation` as `onNotation` to `OpenFileControl`. On the parse-failure path the open score was never replaced, so there is nothing to restore — the function only restarts playback, because the confirm dialog emptied the audio buffer. It is the same restart the cancel path does.
 
 > Check the eslint disable comment's rule name against what actually fires; `no-alert` is the core rule, but the base config may surface it under a different plugin. `eslint-comments/require-description` is on, so the `--` reason is mandatory.
 
