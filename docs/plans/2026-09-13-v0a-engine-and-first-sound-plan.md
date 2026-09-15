@@ -74,10 +74,10 @@ percussion-free score, where any track is as good as another, but never describe
 
 ## Deferred past v0
 
-The review that produced this plan also surfaced fourteen items we are deliberately **not** doing in
+The review that produced this plan also surfaced thirteen items we are deliberately **not** doing in
 v0 — a bundle-count CI gate, CSP headers for `web/`, a decompressed-size bound for `.gpx`, a test
 behind the "nothing leaves this device" claim, a `PlayPauseButton` in `client/`, an `AlertDialog` to
-replace `window.confirm`, an iOS picker branch, Sentry, a written fallback for D5, and five smaller
+replace `window.confirm`, an iOS picker branch, Sentry, and five smaller
 open questions. They are tracked together as a Smart Checklist on
 **[NH-298](https://leocaseiro.atlassian.net/browse/NH-298)**, with enough context on each to act
 without this plan. Nothing in the tasks below depends on any of them.
@@ -143,7 +143,7 @@ without this plan. Nothing in the tasks below depends on any of them.
 
 ### Task 1: Verify D5's one unverified premise — Vercel MIME types (Q2)
 
-Everything downstream hangs off self-hosted ESM working on Vercel's CDN. Reversing to variant A afterwards would touch the mount component, the vendoring step, the ESLint guard and the payload budget — so this is checked **before** any player code is written. No application code changes in this task.
+D5 stands: we stay on Turbopack with the self-hosted ESM import. Everything downstream hangs off that working on Vercel's CDN, so this is checked **before** any player code is written. No application code changes in this task.
 
 **Files:**
 
@@ -198,7 +198,7 @@ done
 
 Expected: every line shows `HTTP/2 200` and a `content-type:` of `text/javascript` or `application/javascript` (a `charset` suffix is fine).
 
-**A `content-type` of `application/octet-stream`, `text/plain`, or anything else is a FAIL.** The browser refuses to execute a module served with a non-JavaScript MIME type, `addModule` rejects with `Audio Worklet creation failed`, and D5 does not hold. **Stop the plan and re-open decision D5 with leocaseiro** — do not work around it.
+**A `content-type` of `application/octet-stream`, `text/plain`, or anything else is a FAIL.** The browser refuses to execute a module served with a non-JavaScript MIME type, `addModule` rejects with `Audio Worklet creation failed`, and D5 does not hold. **Stop the plan and re-open decision D5 with leocaseiro** — do not work around it. For that conversation only: the registry keeps a verified webpack recipe as D5's emergency fallback (`docs/spikes/2026-09-14-alphatab-webpack-vs-turbopack.md`).
 
 - [ ] **Step 4: Load the spike route and confirm the platform in the browser**
 
@@ -2168,15 +2168,28 @@ interface OpenNotation {
 }
 
 const [notation, setNotation] = useState<OpenNotation | null>(null);
+// True while a file waits for the engine: the surface shows its Skeleton instead of the empty state.
+const [pending, setPending] = useState(false);
 
 const requestNotation = useCallback(
-  (file: LoadedNotation) => {
-    if (!engine) return;
+  async (file: LoadedNotation) => {
+    let at = engine;
+    if (!at) {
+      // Opened before the engine arrived — a fast click on the empty state, or Task 13's stalled
+      // import. Keep the file and show the loading surface now, then wait for the SAME memoised
+      // import the provider is waiting on. This is the event path, not an effect, so the
+      // `react-hooks/set-state-in-effect` lint error does not apply.
+      setPending(true);
+      at = await loadAlphaTabEngine().catch(() => null);
+      setPending(false);
+      // The engine failed; that failure is reported by the engine-error message, not by a toast.
+      if (!at) return;
+    }
 
     // Task 11 inserts the replace confirmation HERE — before the parse, per spec §4.
     let score: AlphaTab.model.Score;
     try {
-      score = engine.importer.ScoreLoader.loadScoreFromBytes(file.bytes);
+      score = at.importer.ScoreLoader.loadScoreFromBytes(file.bytes);
     } catch {
       toast.error(`${file.name} could not be opened — it is not a score format the player reads.`);
       return;
@@ -2272,12 +2285,13 @@ a file can be dropped anywhere on the player in either state. Do the same — an
 the fork lacks, because its only drag feedback is the OS cursor (`dropEffect = 'link'`), which is
 easy to miss.
 
-First widen `PlayerShell.tsx`'s imports. From this task on the file uses `toast` (Step 5's
-`requestNotation`), `OpenFileControl` (the rail control below) and `readNotation` (the drop handler
-below), and Task 6's import list has only `Button`:
+First widen `PlayerShell.tsx`'s imports. From this task on the file uses `toast` and
+`loadAlphaTabEngine` (Step 5's `requestNotation`), `OpenFileControl` (the rail control below) and
+`readNotation` (the drop handler below), and Task 6's import list has only `Button`:
 
 ```tsx
 import { Button, toast } from '@notation-hero/client';
+import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
 import { OpenFileControl, readNotation } from './OpenFileControl';
 ```
 
@@ -2356,7 +2370,7 @@ and the markup, replacing the plain `<main>` body:
     }}
   >
     <div className="relative">
-      {notation === null ? (
+      {notation === null && !pending ? (
         <EmptyState onNotation={requestNotation} onLoadSample={loadSample} />
       ) : (
         <NotationSurface notation={notation} onApiReady={handleApiReady} />
@@ -2375,7 +2389,9 @@ and the markup, replacing the plain `<main>` body:
             upload
           </span>
           <p className="text-lg font-semibold text-foreground">Drop to open</p>
-          <p className="text-sm text-foreground opacity-75">Guitar Pro, MusicXML or Capella</p>
+          <p className="text-sm text-foreground opacity-75">
+            Guitar Pro, MusicXML, Capella or alphaTex
+          </p>
         </div>
       ) : null}
     </div>
@@ -2583,8 +2599,16 @@ In `PlayerShell.tsx`'s `Player`, add:
 
 ```tsx
 const requestNotation = useCallback(
-  (next: LoadedNotation) => {
-    if (!engine) return;
+  async (next: LoadedNotation) => {
+    let at = engine;
+    if (!at) {
+      // Same as Task 10: opened before the engine arrived. Nothing can be open yet, so there is
+      // nothing to confirm — keep the file, show the loading surface, and wait for the import.
+      setPending(true);
+      at = await loadAlphaTabEngine().catch(() => null);
+      setPending(false);
+      if (!at) return;
+    }
 
     const api = apiRef.current;
     // Record the playing state BEFORE the prompt: window.confirm blocks the main thread, so the
@@ -2616,7 +2640,7 @@ const requestNotation = useCallback(
     // Confirm stages the load: parse the new buffer first, and swap only on success.
     let score: AlphaTab.model.Score;
     try {
-      score = engine.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
+      score = at.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
     } catch {
       toast.error(`${next.name} could not be opened — it is not a score format the player reads.`);
       // The open score was never replaced. Only restart playback: the dialog emptied the buffer.
