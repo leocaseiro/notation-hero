@@ -12,6 +12,30 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
+
+A seven-persona `ce-doc-review` of Plan A ([`docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`](../plans/2026-09-13-v0a-engine-and-first-sound-plan.md))
+applied 7 mechanical fixes and raised 18 findings needing a decision; verifying them during triage surfaced 5 more.
+leocaseiro triaged them one at a time, each shown as a verified Before → After. Everything below is applied and pushed on
+`spike/alphatab-nextjs-poc`. Six items remain to triage — see
+[`docs/plans/2026-09-15-v0a-plan-review-lap2-handoff.md`](../plans/2026-09-15-v0a-plan-review-lap2-handoff.md).
+
+Approved by leocaseiro 2026-09-15:
+
+- **Replace flow follows spec §4 — confirm first, then parse, then swap** (Task 11), over parse-first: the plan names the spec as its authority.
+- **`web/` gets a unit-test runner:** vitest `^4.1.9` with `"test": "vitest run"`; AGENTS.md's "`web/` omits `test` until Phase 2" note is removed when Task 9 lands.
+- **The file picker accepts every extension of a format AlphaTab 1.8.4 reads:** `.gp .gp3 .gp4 .gp5 .gpx .musicxml .mxl .xml .capx .atex .alphatex`. `.mxml` is removed — no standard defines it (W3C MusicXML 4.0 names `.musicxml` and `.mxl`). `.mid` stays out: AlphaTab has no MIDI importer. Spec §4 and Q6 updated.
+- **MusicXML and alphaTex are tested with real exports** — MuseScore (`1-beat.mxl`, `1-beat.musicxml`, `Punk.mxl`) and Tabtify (`1-beat.atex`, `Punk.alphatex`), committed in `web/e2e/fixtures/`. Q6 is closed.
+- **Task 9 is the pure drum-track selector;** the `NotationSurface` render wiring moves to Task 10, beside the end-to-end tests that exercise it.
+- **The generated AlphaTab assets are re-checked on a Vercel preview right after vendoring** (new Task 2 Step 11), not first at Task 14.
+- **D5 wording — we stay on Turbopack.** The webpack recipe is named only inside Task 1's stop condition, as the emergency fallback the 2026-09-14 entry recorded.
+- **A file opened before the engine has loaded is kept,** and the loading surface shows at once (Tasks 10 and 11).
+- **An engine-import failure replaces the empty state;** the player's Play button stays where it is, disabled — in v0a and in the later full player bar. Chosen from a mockup of both placements ([`docs/mockups/player-engine-error-placement.html`](../mockups/player-engine-error-placement.html)). Spec failure table updated.
+- **A failed music-font download is detected with the browser's `loadingerror` event on `document.fonts`,** plus a 60 s first-render backstop for a download that hangs.
+- **The replacement loading toast lives in `requestNotation`,** shares one id with its result, and waits one painted frame before the synchronous parse.
+
+**Status:** Plan A stays in review. Lap 2 has 6 findings left to triage; lap 3, a re-review, is due after them, because P0 and P1 findings were applied this lap.
+
 ### 2026-09-14 — D5 re-closed: we stay on Turbopack; the official webpack route becomes D5's written fallback (NH-291, NH-298)
 
 The bundler spike handed off earlier the same day was run end to end, in a scratch Next 16 app **outside the repo** (the worktree was untouched). Full evidence: [`docs/spikes/2026-09-14-alphatab-webpack-vs-turbopack.md`](../spikes/2026-09-14-alphatab-webpack-vs-turbopack.md).
