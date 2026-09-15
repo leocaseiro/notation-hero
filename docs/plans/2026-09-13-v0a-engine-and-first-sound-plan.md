@@ -49,14 +49,15 @@ Every task's requirements implicitly include this section. Values are copied ver
 Both gaps the spec left open for v0 were closed on 2026-09-14 by **running** the pinned importer
 rather than by reasoning about it. Neither ships unverified.
 
-- **Q6 — MusicXML fixture. Closed.** A hand-authored MusicXML file parses with
-  `@coderline/alphatab` 1.8.4 first try: a 336-byte `<score-partwise>` with one part, one measure
-  and one note is enough, and a percussion variant (`<clef><sign>percussion</sign>` plus
-  `<unpitched>` notes) parses and reports `isPercussion = true`. `web/e2e/fixtures/drums.musicxml`
-  is that percussion variant, and Task 10 opens it. **`ScoreLoader` never sees a filename** — it
-  loops `Environment.buildImporters()` and breaks on the first importer that does not throw — so
-  the picker's `accept` list is a UI filter only, and one fixture covers `.musicxml`, `.mxml` and
-  `.xml` alike. Note `web/e2e/fixtures/1-beat.xml` is a Guitar Pro v5.10 binary wearing an `.xml`
+- **Q6 — MusicXML fixture. Closed.** Real exports, verified with `@coderline/alphatab` 1.8.4 on
+  2026-09-15 and already committed in `web/e2e/fixtures/`: `1-beat.mxl` (compressed MusicXML, a
+  MuseScore export — 1 track, percussion) and `1-beat.musicxml` (the `score.xml` inside it,
+  uncompressed); `Punk.mxl` (MuseScore, 3 tracks — the same shape as `Punk.gp`); and the alphaTex
+  exports `1-beat.atex` and `Punk.alphatex` (Tabtify; `.atex` is the extension AlphaTab's docs
+  recommend). Plain and compressed MusicXML take different code paths in the importer, so both are
+  tested. **`ScoreLoader` never sees a filename** — it loops `Environment.buildImporters()` and
+  breaks on the first importer that does not throw — so the picker's `accept` list is a UI filter
+  only. Note `web/e2e/fixtures/1-beat.xml` is a Guitar Pro v5.10 binary wearing an `.xml`
   name (it opens `18 46 49 43 48 49 45 52` — the length-prefixed `FICHIER GUITAR PRO v5.10`): it is
   GP5 coverage, not MusicXML coverage.
 - **Q7 — percussion-free fixture. Closed.** `web/e2e/fixtures/guitar-no-percussion.gp` (2,866 bytes)
@@ -105,7 +106,6 @@ without this plan. Nothing in the tasks below depends on any of them.
 | `web/lib/alphatab/drum-tracks.test.ts`       | Co-located unit cover for `selectDrumTrackIndexes` — plain objects, no browser.                                                           |
 | `web/app/error.tsx`                          | Root React error boundary (App Router `error.tsx` convention) — the app survives an unexpected render crash.                              |
 | `web/app/play/error.tsx`                     | Player-segment error boundary, so a crash in the player leaves the landing page alive.                                                    |
-| `web/e2e/fixtures/drums.musicxml`            | Hand-authored percussion MusicXML — closes Q6 and covers `.musicxml`/`.mxml`/`.xml`.                                                      |
 | `web/e2e/fixtures/guitar-no-percussion.gp`   | Generated via `AlphaTexImporter` + `Gp7Exporter` — closes Q7 and success criterion 9.                                                     |
 
 **Modified**
@@ -120,6 +120,7 @@ without this plan. Nothing in the tasks below depends on any of them.
 | `client/src/index.ts`                            | Export `Skeleton`, `Toaster`, `toast`, `Card`, `CardContent`.                                                                                               |
 | `client/src/components/ui/Skeleton/Skeleton.tsx` | Add `'use client'`.                                                                                                                                         |
 | `client/src/components/ui/Sonner/Sonner.tsx`     | Add `'use client'`.                                                                                                                                         |
+| `client/src/components/ui/Card/Card.tsx`         | Add `'use client'`.                                                                                                                                         |
 | `client/src/styles.css`                          | Override the Material Symbols face to `font-display: block`.                                                                                                |
 | `.github/workflows/ci.yml`                       | Add the `web` steps to the `e2e` job and its artifact paths.                                                                                                |
 | `web/vercel.json`                                | Add `buildCommand` so the vendor step is unconditional and cannot be overridden invisibly from the dashboard.                                               |
@@ -1882,7 +1883,6 @@ git commit -m "feat(web): render every drum track and fall back for percussion-f
 - Modify: `web/app/play/NotationSurface.tsx`
 - Modify: `web/e2e/player.e2e.ts`
 - Modify: `web/app/globals.css` (the drag-overlay styles)
-- Create: `web/e2e/fixtures/drums.musicxml`
 
 **Interfaces:**
 
@@ -1935,13 +1935,17 @@ test('an unsupported file raises a toast and leaves the player usable', async ({
 // Punk.gp parses to three tracks: 0:Drumkit (percussion, MIDI channel 9), 1:Distortion Guitar
 // (not percussion) and 2:Drumkit Left (percussion, channel 9). A regression that rendered only
 // track 0 would silently drop the left-hand staff — which is exactly why this fixture exists.
+// Punk.mxl (MuseScore) and Punk.alphatex (Tabtify) are exports of the same score and parse to the
+// same three tracks, so the promise is checked on Guitar Pro, MusicXML and alphaTex alike.
 // (Moved here from Task 9: it needs the file input this task adds, and Task 9 must not commit
 // a red suite.)
-test('renders every drum track, not only track 0', async ({ page }) => {
-  await page.goto('/play');
-  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
-  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
-});
+for (const fixture of ['Punk.gp', 'Punk.mxl', 'Punk.alphatex']) {
+  test(`renders every drum track, not only track 0 — ${fixture}`, async ({ page }) => {
+    await page.goto('/play');
+    await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
+    await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  });
+}
 
 // Criterion 9. guitar-no-percussion.gp has one track whose only staff is NOT percussion, so
 // selectDrumTrackIndexes returns [], the caller passes undefined, and AlphaTab renders
@@ -1955,11 +1959,17 @@ test('a score with no percussion staff opens on the first track', async ({ page 
   await expect(page.getByTestId('rendered-track-count')).toHaveText('1');
 });
 
-// The spec's three-extension coverage, and the evidence behind criterion 1's `.gp5`. Both
-// fixtures are already committed (alphatex-GP5.gp5, alphatex-GPX.gpx) — no new content needed.
-// drums.musicxml closes Q6: ScoreLoader never sees a filename, so one MusicXML fixture covers
-// .musicxml, .mxml and .xml alike.
-for (const fixture of ['alphatex-GP5.gp5', 'alphatex-GPX.gpx', 'drums.musicxml']) {
+// One fixture per importer path, and the evidence behind criterion 1's `.gp5`. All are already
+// committed — no new content needed. Q6: 1-beat.musicxml and 1-beat.mxl are real MuseScore
+// exports (plain and compressed MusicXML take different code paths); 1-beat.atex is a real
+// alphaTex export. ScoreLoader never sees a filename, so one fixture per path is enough.
+for (const fixture of [
+  'alphatex-GP5.gp5',
+  'alphatex-GPX.gpx',
+  '1-beat.musicxml',
+  '1-beat.mxl',
+  '1-beat.atex',
+]) {
   test(`opens ${fixture} and renders notation`, async ({ page }) => {
     await page.goto('/play');
     await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
@@ -2003,12 +2013,13 @@ import { Button, toast } from '@notation-hero/client';
 
 import type { LoadedNotation } from './PlayerShell';
 
-// Same list the picker has always carried: Guitar Pro, MusicXML and Capella, by extension only.
-// ScoreLoader sniffs file CONTENT and never sees a filename — it loops Environment.buildImporters()
-// and breaks on the first that does not throw — so this is an affordance for the OS dialog, not a
-// guarantee. A file the importer cannot read still raises the unsupported-file toast, and one
-// MusicXML fixture covers .musicxml, .mxml and .xml alike.
-const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx';
+// Every extension of a format AlphaTab 1.8.4 reads (spec §4): Guitar Pro 3-8, MusicXML plain and
+// compressed, Capella and alphaTex, by extension only. ScoreLoader sniffs file CONTENT and never
+// sees a filename — it loops Environment.buildImporters() and breaks on the first that does not
+// throw — so this is an affordance for the OS dialog, not a guarantee. A file the importer cannot
+// read still raises the unsupported-file toast. `.mxml` is absent on purpose: no standard defines
+// it. So is `.mid`: AlphaTab has no MIDI importer.
+const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxl,.xml,.capx,.atex,.alphatex';
 
 // Notation-only files are 3-16 KB, but a Guitar Pro file with an embedded backing track is
 // legitimately 7-8 MB, so the bound is deliberately generous. It exists because
@@ -2392,7 +2403,7 @@ no drag event at all, which is what the `pointermove` safety net covers).
 - [ ] **Step 9: Commit**
 
 ```bash
-git add web/app/play web/app/globals.css web/e2e/player.e2e.ts web/e2e/fixtures/drums.musicxml
+git add web/app/play web/app/globals.css web/e2e/player.e2e.ts
 git commit -m "feat(web): open a score by picker or drop, with a sample-beat fallback (NH-291)"
 ```
 
@@ -2871,7 +2882,7 @@ Plan: `docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`
 
 ## Success criteria covered
 
-- [x] 1 — a drum score opened from local disk renders as standard notation (the lane opens `Punk.gp`, `alphatex-GP5.gp5`, `alphatex-GPX.gpx` and `drums.musicxml`)
+- [x] 1 — a drum score opened from local disk renders as standard notation (the lane opens `Punk.gp`, `Punk.mxl`, `Punk.alphatex`, `alphatex-GP5.gp5`, `alphatex-GPX.gpx`, `1-beat.musicxml`, `1-beat.mxl` and `1-beat.atex`)
 - [x] 2 — pressing play produces audible drum audio with a tracking cursor (verified by ear; the CI lane can only verify it by state)
 - [ ] 4 — leocaseiro's own score plays — **MANUAL**: tick only after Step 4 below
 - [x] 8 — Load the sample beat fetches and plays the bundled score
@@ -2882,7 +2893,7 @@ Criteria 3, 5, 6 and 7 belong to Plans B and C.
 
 ## Open questions closed
 
-- **Q6** — closed. `web/e2e/fixtures/drums.musicxml` is a hand-authored MusicXML file the pinned 1.8.4 importer parses, and `ScoreLoader` never sees a filename, so one fixture covers `.musicxml`, `.mxml` and `.xml`. (`1-beat.xml` was a Guitar Pro binary under an `.xml` name — GP5 coverage, not MusicXML.)
+- **Q6** — closed. Real exports cover every MusicXML and alphaTex path, verified with the pinned 1.8.4 importer: `1-beat.musicxml` and `1-beat.mxl` (MuseScore — plain and compressed MusicXML take different code paths), `Punk.mxl` (MuseScore, three tracks), and `1-beat.atex` and `Punk.alphatex` (Tabtify). `ScoreLoader` never sees a filename, so one fixture per path is enough. (`1-beat.xml` was a Guitar Pro binary under an `.xml` name — GP5 coverage, not MusicXML.)
 - **Q7** — closed. `web/e2e/fixtures/guitar-no-percussion.gp` is generated via `AlphaTexImporter` + `Gp7Exporter` and round-trips as one non-percussion track, so criterion 9 is verified by running.
 
 ## Known limitations
