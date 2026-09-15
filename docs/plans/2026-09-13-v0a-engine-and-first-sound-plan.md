@@ -1564,6 +1564,12 @@ static `import * as AlphaTab from '@coderline/alphatab'` (disable the Task 3 rul
 only), rebuild, and confirm the `Platform: BrowserModule` poll is the assertion that fails. Then
 revert it.
 
+What this drill does NOT cover: a second bundled copy that nothing drives. One value import of
+`@coderline/alphatab` anywhere — an enum, for example — bundles the library again, but `engine.ts`
+still loads the self-hosted copy. Playback works, `webPlatform` stays `BrowserModule`, and
+assertion 1 passes. That case costs payload, not sound, and the Task 3 lint fence is the only guard
+against it until the deferred bundle-count gate lands.
+
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -1676,8 +1682,11 @@ Where a drum staff exists, only the drum tracks render; every track stays in pla
 
 - Create: `web/lib/alphatab/drum-tracks.ts`
 - Create: `web/lib/alphatab/drum-tracks.test.ts`
+- Create: `web/e2e/fixtures/guitar-no-percussion.gp`
+- Create: `tooling/make-percussion-free-fixture.mjs`
 - Modify: `web/app/play/NotationSurface.tsx`
-- Modify: `web/e2e/player.e2e.ts`
+- Modify: `web/package.json`, `pnpm-lock.yaml` (vitest and a `test` script)
+- Modify: `AGENTS.md` (`web/` no longer omits `test`)
 
 **Interfaces:**
 
@@ -1690,6 +1699,20 @@ The end-to-end `Punk.gp` case belongs to **Task 10**, because it needs the file 
 Committing it here would make this task's own commit red, against the Global Constraint "commit at
 every green step" — and a red commit is one you cannot `git revert` to. `selectDrumTrackIndexes` is
 pure, so it is fully provable here with plain objects and no browser.
+
+`web/` has no unit-test runner yet, so add one first. Use the exact range `client/`, `server/` and
+`infra/` already use — root `syncpack` (a `quality` CI gate) fails on any other:
+
+```bash
+pnpm --filter @notation-hero/web add -D vitest@^4.1.9
+```
+
+Then add `"test": "vitest run"` to `web/package.json` — the same script `client/` and `server/` use —
+with the keys kept sorted (`lint:sort-pkg` is a CI gate). It is a vitest script, not a Playwright one,
+so the Global Constraint that keeps the Playwright script out of `test` still holds, and CI's
+`quality` job now runs it with no browser. Finally, in `AGENTS.md`, delete the parenthetical
+"(`web/` omits `test` until Phase 2 — `pnpm -r --if-present` skips it safely)" — it stops being true
+in this task.
 
 Create `web/lib/alphatab/drum-tracks.test.ts`:
 
@@ -1729,8 +1752,8 @@ describe('selectDrumTrackIndexes', () => {
 
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `pnpm --filter @notation-hero/web run test:e2e -g "every drum track"`
-Expected: FAIL — no `open-file-input`.
+Run: `pnpm --filter @notation-hero/web run test`
+Expected: FAIL — vitest cannot resolve `./drum-tracks`, because the selector does not exist yet.
 
 - [ ] **Step 3: Write the pure selector**
 
@@ -1807,10 +1830,10 @@ interface OpenNotation {
 
 `loadScoreFromBytes` takes a `Uint8Array`, so the `ArrayBuffer` from the file read is wrapped at the read site in Task 10, parsed there, and only the result reaches this component.
 
-- [ ] **Step 5: Run the test after Task 10 lands**
+- [ ] **Step 5: Run the test to verify it passes**
 
-Run: `pnpm --filter @notation-hero/web run test:e2e -g "every drum track"`
-Expected: PASS.
+Run: `pnpm --filter @notation-hero/web run test`
+Expected: PASS — 3 tests. The end-to-end `Punk.gp` case runs in Task 10.
 
 - [ ] **Step 6: Generate the percussion-free fixture (closes Q7)**
 
@@ -1822,6 +1845,8 @@ regenerated rather than being an unexplained binary:
 
 ```js
 // tooling/make-percussion-free-fixture.mjs — run once, output committed.
+import { writeFile } from 'node:fs/promises';
+
 const at = await import('../web/node_modules/@coderline/alphatab/dist/alphaTab.mjs');
 const score = at.importer.AlphaTexImporter.importFromString(
   '\\title "Guitar (no percussion)" . 3.3.4 3.3.4 3.3.4 3.3.4 |',
@@ -1841,7 +1866,7 @@ signature differs between them. Task 10 adds the e2e case that opens this fixtur
 ```bash
 git add web/lib/alphatab/drum-tracks.ts web/lib/alphatab/drum-tracks.test.ts \
   web/app/play/NotationSurface.tsx web/e2e/fixtures/guitar-no-percussion.gp \
-  tooling/make-percussion-free-fixture.mjs
+  tooling/make-percussion-free-fixture.mjs web/package.json pnpm-lock.yaml AGENTS.md
 git commit -m "feat(web): render every drum track and fall back for percussion-free scores (NH-291)"
 ```
 
