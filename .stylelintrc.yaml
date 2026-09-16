@@ -13,6 +13,21 @@ rules:
         - utility
         - variant
         - source
+  # stylelint 17.15 enforces at-rule-prelude-no-invalid, which parses every at-rule prelude as
+  # standard CSS. Tailwind's at-rules carry utility-class preludes ("@apply font-sans"), not CSS
+  # values, so the same ignore list as at-rule-no-unknown above applies here (NH-231).
+  at-rule-prelude-no-invalid:
+    - true
+    - ignoreAtRules:
+        - theme
+        - plugin
+        - custom-variant
+        - apply
+        - layer
+        - tailwind
+        - utility
+        - variant
+        - source
   import-notation: string
   property-no-unknown: true
   color-no-invalid-hex: true
