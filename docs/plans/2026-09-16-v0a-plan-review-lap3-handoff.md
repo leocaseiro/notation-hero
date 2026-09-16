@@ -204,36 +204,25 @@ Added on 2026-09-16:
 
 ---
 
-## Two decisions outside the plan
+## Outside the plan — two open pull requests, one shared blocker
 
-1. **PR [#154](https://github.com/leocaseiro/notation-hero/pull/154)** (NH-299, allow `TODO` comments;
-   carries NH-293's editorconfig hook fix) is open and cannot go green: the required `deps-cve` job
-   reports **74 advisories from `pnpm-lock.yaml`** — all pre-existing, none from that PR, and the
-   lockfile is byte-identical to `master`. A read-only triage produced the numbers below; the
-   fix-versus-allowlist call is leocaseiro's, per his standing rule.
-   - **57 of 74 rows close with no version decision at all** — they float inside ranges the repo
-     already declares (`@pulumi/pulumi ^3.247.0` → 3.261.0 alone clears the OpenTelemetry and js-yaml
-     v3 rows; `vitest ^4.1.9` → 4.1.11 clears the 9.4 Critical). The lockfile is simply ~2.5 months
-     stale.
-   - **4 rows** need two `overrides` edits (`js-yaml@4` is pinned exact at 4.2.0, which is what blocks
-     it; `smol-toml` needs a new entry).
-   - **13 rows** need a real decision: `next` is pinned exact at 16.2.10, and the two Critical advisories need
-     16.3.3+. Taking 16.3.5 also clears both `sharp` rows. The risk is the 16.2 → 16.3 minor against
-     React Compiler plus `transpilePackages`.
-   - **Reachability:** only `qs` (Express's query parser in the deployed Lambda) is reachable by an
-     anonymous request today, and only at Medium. The two Critical advisories in the "free" bucket (`tar` via
-     Pulumi, `@vitest/browser`) are not reachable here at all.
-   - **Hold `@playwright/test` at 1.61.1** during any refresh: a float to 1.63.0 breaks the
-     `check:supply-chain-pins` gate (NH-259) and breaks the match with the visual-regression container image.
-   - `osv-scanner.toml`'s ignore for `GHSA-8988-4f7v-96qf` **expired at midnight today** and its stated
-     reason is obsolete (Pulumi moved to OpenTelemetry v2 upstream). Dropping the block is correct;
-     it is noise, not the cause of the failure.
-   - The triage recommends one dependency PR that takes the scan to zero, with the `next` bump as the
-     only judgement call, and splitting `next` out behind a 30-day ignore if it breaks the build.
-2. **PR #154 itself** still needs review and merge once `deps-cve` is resolved. Its other jobs pass;
-   any red "CI Green" from an earlier cancelled run is superseded.
-
----
+1. **PR [#155](https://github.com/leocaseiro/notation-hero/pull/155)** (NH-231) refreshes dependencies
+   and takes `deps-cve` from **74 advisories to 0**, verified by the real CI job. leocaseiro chose a
+   real fix over an allowlist on 2026-09-16. Two things the triage got wrong and the work corrected:
+   `next` landed on **16.3.4**, not 16.3.5 — 16.3.5 was four days old and would have forced a
+   `minimumReleaseAgeExclude` entry, punching a hole in the gate NH-259 exists to hold; and nine rows
+   needed same-major `overrides` pins because `pnpm update` reuses a parent's snapshot. The expired
+   `GHSA-8988-4f7v-96qf` ignore is deleted rather than renewed, the now-consumerless `js-yaml@3`
+   override is gone, Playwright is still 1.61.1, and no visual-regression baseline moved.
+2. **PR [#154](https://github.com/leocaseiro/notation-hero/pull/154)** (NH-299) allows `TODO` comments
+   and carries NH-293's editorconfig **pre-push hook** fix. Still open.
+3. **Both are blocked by the same pre-existing CI failure, and so is every other open PR.** The `lint`
+   job's `editorconfig-checker` cannot download its binary: the npm wrapper asks GitHub for release
+   `latest` and expects `ec-*` assets, but upstream renamed every asset in **v4.0.0 on 2026-09-03**.
+   The last green `master` run was 2026-07-16. The wrapper reads `process.env.EC_VERSION` (verified in
+   `dist/index.js`), so pinning `EC_VERSION: v3.11.3` in the `lint` job — or bumping the wrapper once
+   it supports the new asset names — is the whole fix. It belongs to NH-293, whose scope so far covered
+   only the local hook.
 
 ## How to resume
 
