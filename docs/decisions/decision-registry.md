@@ -12,6 +12,28 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-16 — `editorconfig-checker` pinned to v3.11.3: the `lint` job runs again (NH-293)
+
+The `lint` job had been failing on every pull request since **2026-07-16** — the last green `master`
+run — and took `CI Green` down with it, blocking every open PR. It is not a violation in the
+repository: `editorconfig-checker`'s npm wrapper downloads its binary from GitHub releases, asks for
+release `latest`, and looks for an asset whose name starts with `ec-<platform>-<arch>`. Upstream
+renamed every asset to `editorconfig-checker-*` in **v4.0.0 (2026-09-03)**, so the lookup finds
+nothing and the wrapper exits 1 with `The binary 'ec-…' not found`.
+
+- **Fix:** `lint:editorconfig` sets `EC_VERSION=v3.11.3`, the last release carrying the old asset
+  names. The wrapper reads that variable (verified in its shipped `dist/index.js`, where it defaults
+  to `latest`), so one script line fixes the CI job, the lefthook pre-push check and `check:all`
+  together — rather than pinning the workflow and the hook separately.
+- **Verified locally before the PR:** with the pin, the binary downloads and the check passes with
+  **zero violations**; without it, the run reproduces the exact CI error. So the two months of red
+  were entirely the download, not unnoticed formatting drift.
+- **Not accepted as an allowlist or a skip.** The pre-push hook's existing "binary unavailable —
+  skipped" branch (also NH-293) stays as a safety net for a genuine network failure; it is no longer
+  the normal path.
+- **Removing the pin** needs a wrapper release that resolves a v4 asset name; check that before
+  dropping it. Recorded in `AGENTS.md` beside the other binary-tool notes.
+
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
 
 leocaseiro ratified three fixes to the AskUserQuestion conventions in [`AGENTS.md`](../../AGENTS.md) section 3, after reporting that agents were using the follow-up catcher to force decisions. Each fix was approved separately in a picker on 2026-07-16.
