@@ -101,6 +101,16 @@ Approved by leocaseiro 2026-09-16:
   span, and a sighted user never saw which file was playing. `Tooltip` joins the client barrel; the
   replace tests read the file name from a `data-file` attribute instead of the element's text. The
   real logo in place of the wordmark stays a later visual task.
+- **Both AlphaTab import fences also ban a dynamic `import()`**, via a `no-restricted-syntax`
+  `ImportExpression` selector beside each `no-restricted-imports` block (Task 3). leocaseiro asked
+  for a spike before applying; it was run against the real `web/eslint.config.mjs` carrying Task 3's
+  exact block: a value import errored, `await import('@coderline/alphatab')` **exited 0**, and the
+  selector turned it into an error — the import rules match `import`/`export` declarations only, so
+  without it a second bundled AlphaTab returns with lint green. `client/`'s selector is **appended to
+  its existing `no-restricted-syntax` array** (the inline-colour rule), because a second block would
+  replace that array. `loadAlphaTabEngine()`'s own import holds its URL in a `const`, so it carries no
+  `source.value` literal and cannot match — verified. `tooling/alphatab-import-fence.test.sh` gains a
+  dynamic probe per package so the guard cannot be switched off unnoticed.
 
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 

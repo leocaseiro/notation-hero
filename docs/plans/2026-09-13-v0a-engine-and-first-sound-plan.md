@@ -104,55 +104,55 @@ without this plan. Nothing in the tasks below depends on any of them.
 
 **Created**
 
-| File                                         | Responsibility                                                                                                                            |
-| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `web/scripts/vendor-alphatab.mjs`            | Copy AlphaTab's prebuilt ESM, soundfont and music font out of `node_modules` into `web/public/alphatab/`, under plain (non-`.min`) names. |
-| `tooling/vendor-alphatab.test.mjs`           | `node --test` cover for that copy step — joins the existing `pnpm run test:tooling` gate.                                                 |
-| `tooling/alphatab-import-fence.test.sh`      | Proves both AlphaTab import fences still fire (`web/`: value imports; `client/`: any import) — joins the same `test:tooling` gate.        |
-| `web/lib/alphatab/engine.ts`                 | `loadAlphaTabEngine()` — the `turbopackIgnore` dynamic import, memoised so two mounts share one module. No font wait (see Task 5).        |
-| `web/lib/alphatab/AlphaTabEngineContext.tsx` | React context carrying the loaded namespace to `web/` consumers, and the `useAlphaTabEngine()` reader.                                    |
-| `web/lib/alphatab/drum-tracks.ts`            | Pure: a score's track list in, the indexes of percussion tracks out. No AlphaTab import — a structural type.                              |
-| `web/lib/player-errors.ts`                   | `PLAYER_ERROR` — the error number each failure message ends with (1xx file, 2xx engine, 9xx crash); spec §4 lists the same numbers.       |
-| `web/app/play/page.tsx`                      | The `/play` route segment.                                                                                                                |
-| `web/app/play/PlayerShell.tsx`               | `'use client'` root of the player: owns loaded-score state, the engine provider, toasts.                                                  |
-| `web/app/play/NotationSurface.tsx`           | Owns the `AlphaTabApi` instance, its lifecycle, the loading `Skeleton` and the error states.                                              |
-| `web/app/play/OpenFileControl.tsx`           | File picker + drag-and-drop + the replace-confirmation flow.                                                                              |
-| `web/app/play/EmptyState.tsx`                | The no-file-yet surface: big Open file, secondary Load the sample beat.                                                                   |
-| `web/playwright.e2e.config.ts`               | The `web` browser lane — `next build` then `next start`, with `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL=Debug`.                                     |
-| `web/e2e/player.e2e.ts`                      | The silent-failure regression test plus the player's behaviour tests.                                                                     |
-| `web/e2e/a11y.e2e.ts`                        | axe-core over `/` and `/play` in its reachable states, plus the 44 px hit-area gate.                                                      |
-| `web/lib/alphatab/drum-tracks.test.ts`       | Co-located unit cover for `selectDrumTrackIndexes` — plain objects, no browser.                                                           |
-| `web/app/error.tsx`                          | Root React error boundary (App Router `error.tsx` convention) — the app survives an unexpected render crash.                              |
-| `web/app/play/error.tsx`                     | Player-segment error boundary, so a crash in the player leaves the landing page alive.                                                    |
-| `web/e2e/fixtures/guitar-no-percussion.gp`   | Generated via `AlphaTexImporter` + `Gp7Exporter` — closes Q7 and success criterion 9.                                                     |
-| `tooling/make-percussion-free-fixture.mjs`   | One-shot generator for that fixture, committed so the binary can be regenerated rather than trusted (Task 9).                             |
+| File                                         | Responsibility                                                                                                                                               |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `web/scripts/vendor-alphatab.mjs`            | Copy AlphaTab's prebuilt ESM, soundfont and music font out of `node_modules` into `web/public/alphatab/`, under plain (non-`.min`) names.                    |
+| `tooling/vendor-alphatab.test.mjs`           | `node --test` cover for that copy step — joins the existing `pnpm run test:tooling` gate.                                                                    |
+| `tooling/alphatab-import-fence.test.sh`      | Proves both AlphaTab import fences still fire (`web/`: value imports; `client/`: any import; both: dynamic `import()`) — joins the same `test:tooling` gate. |
+| `web/lib/alphatab/engine.ts`                 | `loadAlphaTabEngine()` — the `turbopackIgnore` dynamic import, memoised so two mounts share one module. No font wait (see Task 5).                           |
+| `web/lib/alphatab/AlphaTabEngineContext.tsx` | React context carrying the loaded namespace to `web/` consumers, and the `useAlphaTabEngine()` reader.                                                       |
+| `web/lib/alphatab/drum-tracks.ts`            | Pure: a score's track list in, the indexes of percussion tracks out. No AlphaTab import — a structural type.                                                 |
+| `web/lib/player-errors.ts`                   | `PLAYER_ERROR` — the error number each failure message ends with (1xx file, 2xx engine, 9xx crash); spec §4 lists the same numbers.                          |
+| `web/app/play/page.tsx`                      | The `/play` route segment.                                                                                                                                   |
+| `web/app/play/PlayerShell.tsx`               | `'use client'` root of the player: owns loaded-score state, the engine provider, toasts.                                                                     |
+| `web/app/play/NotationSurface.tsx`           | Owns the `AlphaTabApi` instance, its lifecycle, the loading `Skeleton` and the error states.                                                                 |
+| `web/app/play/OpenFileControl.tsx`           | File picker + drag-and-drop + the replace-confirmation flow.                                                                                                 |
+| `web/app/play/EmptyState.tsx`                | The no-file-yet surface: big Open file, secondary Load the sample beat.                                                                                      |
+| `web/playwright.e2e.config.ts`               | The `web` browser lane — `next build` then `next start`, with `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL=Debug`.                                                        |
+| `web/e2e/player.e2e.ts`                      | The silent-failure regression test plus the player's behaviour tests.                                                                                        |
+| `web/e2e/a11y.e2e.ts`                        | axe-core over `/` and `/play` in its reachable states, plus the 44 px hit-area gate.                                                                         |
+| `web/lib/alphatab/drum-tracks.test.ts`       | Co-located unit cover for `selectDrumTrackIndexes` — plain objects, no browser.                                                                              |
+| `web/app/error.tsx`                          | Root React error boundary (App Router `error.tsx` convention) — the app survives an unexpected render crash.                                                 |
+| `web/app/play/error.tsx`                     | Player-segment error boundary, so a crash in the player leaves the landing page alive.                                                                       |
+| `web/e2e/fixtures/guitar-no-percussion.gp`   | Generated via `AlphaTexImporter` + `Gp7Exporter` — closes Q7 and success criterion 9.                                                                        |
+| `tooling/make-percussion-free-fixture.mjs`   | One-shot generator for that fixture, committed so the binary can be regenerated rather than trusted (Task 9).                                                |
 
 **Modified**
 
-| File                                                   | Change                                                                                                                                                      |
-| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `web/package.json`                                     | `dev`/`build` chain the vendor step; add `test:e2e`; add Playwright + axe devDependencies.                                                                  |
-| `web/.gitignore`                                       | Ignore `/public/alphatab/`.                                                                                                                                 |
-| `web/eslint.config.mjs`                                | Swap the core `no-restricted-imports` for `@typescript-eslint/no-restricted-imports` and add the `@coderline/alphatab` group with `allowTypeImports: true`. |
-| `client/eslint.config.js`                              | Ban every `@coderline/alphatab` import, type imports included: `client/` is presentation-only, and `transpilePackages` compiles it into `web/`'s bundle.    |
-| `web/app/layout.tsx`                                   | Mount the single `<Toaster />`.                                                                                                                             |
-| `web/app/page.tsx`                                     | Replace the design-system proof page with the landing Play button.                                                                                          |
-| `client/src/index.ts`                                  | Export `Skeleton`, `Toaster`, `toast`, `Card`, `CardContent`.                                                                                               |
-| `client/src/components/ui/Skeleton/Skeleton.tsx`       | Add `'use client'`.                                                                                                                                         |
-| `client/src/components/ui/Sonner/Sonner.tsx`           | Add `'use client'`.                                                                                                                                         |
-| `client/src/components/ui/Card/Card.tsx`               | Add `'use client'`.                                                                                                                                         |
-| `client/src/components/ui/Tooltip/Tooltip.tsx`         | Add `'use client'` — the player header puts the open file's name in a tooltip behind the score title (Task 11).                                             |
-| `client/src/styles.css`                                | Override the Material Symbols face to `font-display: block`.                                                                                                |
-| `.github/workflows/ci.yml`                             | Add the `web` steps to the `e2e` job and its artifact paths.                                                                                                |
-| `web/vercel.json`                                      | Add `buildCommand` so the vendor step is unconditional and cannot be overridden invisibly from the dashboard.                                               |
-| `web/public/charts/` -> `web/public/notation/`         | Renamed with its three files; every `/charts/...` URL becomes `/notation/...`. "chart" is not this project's vocabulary (CONCEPTS.md).                      |
-| `web/app/globals.css`                                  | The drag-overlay styles (Task 10 Step 6).                                                                                                                   |
-| `client/src/components/ui/Sonner/Sonner.stories.tsx`   | A `Loading` story, so the replacement toast is audited where the gates can hold it open (Task 12).                                                          |
-| `client/src/components/ui/Sonner/Sonner.story-ids.ts`  | The `loading` story id that the a11y and VR suites read (Task 12).                                                                                          |
-| `tooling/workflow-guards.test.mjs`                     | A case asserting the `e2e` job runs the web lane and uploads its report (Task 8).                                                                           |
-| `AGENTS.md`                                            | Drop the "`web/` omits `test`" note once Task 9 adds the vitest script.                                                                                     |
-| `docs/specs/2026-09-10-v0-local-file-player-design.md` | Task 1 Step 5 records the Q2 answer in §9.                                                                                                                  |
-| `docs/decisions/decision-registry.md`                  | Task 14 Step 6 adds the Change-log entry for the decisions this PR enforces.                                                                                |
+| File                                                   | Change                                                                                                                                                                                                                   |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `web/package.json`                                     | `dev`/`build` chain the vendor step; add `test:e2e`; add Playwright + axe devDependencies.                                                                                                                               |
+| `web/.gitignore`                                       | Ignore `/public/alphatab/`.                                                                                                                                                                                              |
+| `web/eslint.config.mjs`                                | Swap the core `no-restricted-imports` for `@typescript-eslint/no-restricted-imports` and add the `@coderline/alphatab` group with `allowTypeImports: true`, plus a `no-restricted-syntax` selector for the dynamic form. |
+| `client/eslint.config.js`                              | Ban every `@coderline/alphatab` import, type and dynamic included: `client/` is presentation-only, and `transpilePackages` compiles it into `web/`'s bundle.                                                             |
+| `web/app/layout.tsx`                                   | Mount the single `<Toaster />`.                                                                                                                                                                                          |
+| `web/app/page.tsx`                                     | Replace the design-system proof page with the landing Play button.                                                                                                                                                       |
+| `client/src/index.ts`                                  | Export `Skeleton`, `Toaster`, `toast`, `Card`, `CardContent`.                                                                                                                                                            |
+| `client/src/components/ui/Skeleton/Skeleton.tsx`       | Add `'use client'`.                                                                                                                                                                                                      |
+| `client/src/components/ui/Sonner/Sonner.tsx`           | Add `'use client'`.                                                                                                                                                                                                      |
+| `client/src/components/ui/Card/Card.tsx`               | Add `'use client'`.                                                                                                                                                                                                      |
+| `client/src/components/ui/Tooltip/Tooltip.tsx`         | Add `'use client'` — the player header puts the open file's name in a tooltip behind the score title (Task 11).                                                                                                          |
+| `client/src/styles.css`                                | Override the Material Symbols face to `font-display: block`.                                                                                                                                                             |
+| `.github/workflows/ci.yml`                             | Add the `web` steps to the `e2e` job and its artifact paths.                                                                                                                                                             |
+| `web/vercel.json`                                      | Add `buildCommand` so the vendor step is unconditional and cannot be overridden invisibly from the dashboard.                                                                                                            |
+| `web/public/charts/` -> `web/public/notation/`         | Renamed with its three files; every `/charts/...` URL becomes `/notation/...`. "chart" is not this project's vocabulary (CONCEPTS.md).                                                                                   |
+| `web/app/globals.css`                                  | The drag-overlay styles (Task 10 Step 6).                                                                                                                                                                                |
+| `client/src/components/ui/Sonner/Sonner.stories.tsx`   | A `Loading` story, so the replacement toast is audited where the gates can hold it open (Task 12).                                                                                                                       |
+| `client/src/components/ui/Sonner/Sonner.story-ids.ts`  | The `loading` story id that the a11y and VR suites read (Task 12).                                                                                                                                                       |
+| `tooling/workflow-guards.test.mjs`                     | A case asserting the `e2e` job runs the web lane and uploads its report (Task 8).                                                                                                                                        |
+| `AGENTS.md`                                            | Drop the "`web/` omits `test`" note once Task 9 adds the vitest script.                                                                                                                                                  |
+| `docs/specs/2026-09-10-v0-local-file-player-design.md` | Task 1 Step 5 records the Q2 answer in §9.                                                                                                                                                                               |
+| `docs/decisions/decision-registry.md`                  | Task 14 Step 6 adds the Change-log entry for the decisions this PR enforces.                                                                                                                                             |
 
 **Deleted**
 
@@ -518,13 +518,13 @@ One value import re-bundles the library, ships it twice, and lets a component dr
 **Files:**
 
 - Modify: `web/eslint.config.mjs:49-65` (the `no-restricted-imports` block)
-- Modify: `client/eslint.config.js` (the client-specific rules block)
+- Modify: `client/eslint.config.js` (the client-specific rules block, and its existing `no-restricted-syntax` array)
 - Create: `tooling/alphatab-import-fence.test.sh`
 
 **Interfaces:**
 
 - Consumes: nothing.
-- Produces: every later task's `import type * as AlphaTab from '@coderline/alphatab'` stays legal in `web/` while a value import fails lint. In `client/`, any import of it fails lint.
+- Produces: every later task's `import type * as AlphaTab from '@coderline/alphatab'` stays legal in `web/` while a value import fails lint. In `client/`, any import of it fails lint. A dynamic `import()` of it fails lint in both.
 
 - [ ] **Step 1: Write the failing test — a scratch file with a value import**
 
@@ -559,9 +559,24 @@ In `web/eslint.config.mjs`, replace the final rules block (the one holding `no-r
   //
   // The @typescript-eslint version is required for `allowTypeImports`, and it needs the core rule
   // OFF or both fire.
+  //
+  // Neither no-restricted-imports rule sees a DYNAMIC import: both match import/export
+  // declarations only, so `await import('@coderline/alphatab')` walks through the fence and the
+  // second bundled copy comes back with lint green (verified 2026-09-16 against this exact block —
+  // the value probe errored, the dynamic probe exited 0). The no-restricted-syntax selector below
+  // closes that hole on the ImportExpression node itself. loadAlphaTabEngine()'s own dynamic import
+  // holds its URL in a const, so it carries no `source.value` literal and cannot match.
   {
     files: ['**/*.{ts,tsx}'],
     rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "ImportExpression[source.value=/^@coderline.alphatab/]",
+          message:
+            'Do not dynamically import @coderline/alphatab. It bundles AlphaTab a second time just as a value import does, and the no-restricted-imports fence cannot see it. Get runtime values from the namespace object returned by loadAlphaTabEngine() in lib/alphatab/engine.ts.',
+        },
+      ],
       'no-restricted-imports': 'off',
       '@typescript-eslint/no-restricted-imports': [
         'error',
@@ -660,6 +675,19 @@ In `client/eslint.config.js`, add to the client-specific rules block:
       ],
 ```
 
+Then close the dynamic-import hole here too. `client/eslint.config.js` **already has** a
+`no-restricted-syntax` array (the hardcoded-colour-in-inline-styles rule). **Append** this entry to
+that existing array — do NOT add a second `no-restricted-syntax` block, which in flat config would
+_replace_ the array and silently delete the colour rule (same replacement behaviour proven below):
+
+```js
+        {
+          selector: "ImportExpression[source.value=/^@coderline.alphatab/]",
+          message:
+            'client/ components take AlphaTab values as props — do not dynamically import @coderline/alphatab either (v0 spec §7).',
+        },
+```
+
 **Do not move either group into `eslint.config.base.mjs`.** In flat config, a later block's options
 for the same rule _replace_ an earlier block's. `web/`'s own `@/*` block comes after `...base`, so a
 group defined in the base silently disappears from `web/` — reproduced with a two-block config, where
@@ -708,6 +736,9 @@ Create `tooling/alphatab-import-fence.test.sh`:
 #
 #   web/     type imports only: a VALUE import must fail @typescript-eslint/no-restricted-imports.
 #   client/  nothing at all: even a TYPE import must fail no-restricted-imports (v0 spec §7).
+#   both     a DYNAMIC `await import('@coderline/alphatab')` must fail no-restricted-syntax. Neither
+#            no-restricted-imports rule can see one — they match import/export DECLARATIONS only, so
+#            without the selector a dynamic import bundles a second AlphaTab with lint green.
 #
 # A one-time probe is not enough. In ESLint flat config a later block's options for a rule REPLACE
 # an earlier block's, so a no-restricted-imports block added after Task 3's would drop the AlphaTab
@@ -724,14 +755,22 @@ cd "$ROOT" || exit 1
 # Unique per-process names, so concurrent runs never delete each other's probe mid-lint.
 WEB_PROBE="app/__alphatab_fence_probe_$$__.ts"
 CLIENT_PROBE="src/__alphatab_fence_probe_$$__.ts"
+WEB_DYN_PROBE="app/__alphatab_fence_dyn_probe_$$__.ts"
+CLIENT_DYN_PROBE="src/__alphatab_fence_dyn_probe_$$__.ts"
 # shellcheck disable=SC2317,SC2329 # cleanup IS invoked via trap EXIT (SC2329 = shellcheck >=0.10; SC2317 = older CI shellcheck)
-cleanup() { rm -f "web/$WEB_PROBE" "client/$CLIENT_PROBE"; }
+cleanup() { rm -f "web/$WEB_PROBE" "client/$CLIENT_PROBE" "web/$WEB_DYN_PROBE" "client/$CLIENT_DYN_PROBE"; }
 trap cleanup EXIT
 
 printf "import { LayoutMode } from '@coderline/alphatab';\n\nexport const probe = LayoutMode.Page;\n" > "web/$WEB_PROBE" \
   || { printf '::error::failed to write the web/ probe (I/O error, NOT a fence problem)\n' >&2; exit 1; }
 printf "import type * as AlphaTab from '@coderline/alphatab';\n\nexport type Probe = AlphaTab.AlphaTabApi;\n" > "client/$CLIENT_PROBE" \
   || { printf '::error::failed to write the client/ probe (I/O error, NOT a fence problem)\n' >&2; exit 1; }
+# The dynamic form, identical in both packages: invisible to no-restricted-imports, caught only by
+# the ImportExpression selector. A literal specifier on purpose — that is what the selector matches.
+for pkg_probe in "web/$WEB_DYN_PROBE" "client/$CLIENT_DYN_PROBE"; do
+  printf "export async function probe() {\n  return await import('@coderline/alphatab');\n}\n" > "$pkg_probe" \
+    || { printf '::error::failed to write %s (I/O error, NOT a fence problem)\n' "$pkg_probe" >&2; exit 1; }
+done
 
 # expect_rejected <package> <probe path inside the package> <ERE for the rule id>
 expect_rejected() {
@@ -751,7 +790,10 @@ expect_rejected() {
 # web/ needs the @typescript-eslint version: only it has allowTypeImports. client/ may use either.
 expect_rejected web "$WEB_PROBE" '@typescript-eslint/no-restricted-imports'
 expect_rejected client "$CLIENT_PROBE" '(@typescript-eslint/)?no-restricted-imports'
-echo "AlphaTab import fences OK — web/ rejects a value import, client/ rejects even a type import."
+# The dynamic-import hole. Both packages, both on no-restricted-syntax — not the import rule.
+expect_rejected web "$WEB_DYN_PROBE" 'no-restricted-syntax'
+expect_rejected client "$CLIENT_DYN_PROBE" 'no-restricted-syntax'
+echo "AlphaTab import fences OK — web/ rejects a value import, client/ rejects even a type import, both reject a dynamic import()."
 ```
 
 Run it, then the gates it joins:
