@@ -34,6 +34,22 @@ export default [
       'react/no-array-index-key': 'warn',
       'react/jsx-props-no-spreading': 'off', // shadcn/Radix spread {...props}
       'react/no-unknown-property': 'error',
+      // client/ is presentation-only (v0 spec §7): it takes AlphaTab values as props and imports
+      // nothing from the library, not even a type. It is also compiled into web/'s bundle
+      // (transpilePackages), so a value import here would bundle AlphaTab a second time. The core
+      // rule is enough, because unlike web/'s fence this one must NOT allow type imports.
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['@coderline/alphatab', '@coderline/alphatab/*'],
+              message:
+                'client/ components take AlphaTab values as props — import nothing from @coderline/alphatab (v0 spec §7).',
+            },
+          ],
+        },
+      ],
       'no-restricted-syntax': [
         'error',
         {
@@ -41,6 +57,11 @@ export default [
             'JSXAttribute[name.name="style"] > JSXExpressionContainer > ObjectExpression > Property[key.name=/^(color|background|backgroundColor|borderColor|outlineColor|fill|stroke)$/i] > Literal[value=/^(#|rgb|rgba|hsl|oklch)/i]',
           message:
             'Use a CSS variable (var(--...)) instead of a hardcoded colour in inline styles.',
+        },
+        {
+          selector: 'ImportExpression[source.value=/^@coderline.alphatab/]',
+          message:
+            'client/ components take AlphaTab values as props — do not dynamically import @coderline/alphatab either (v0 spec §7).',
         },
       ],
     },
