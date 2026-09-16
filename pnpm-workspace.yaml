@@ -36,7 +36,7 @@ trustPolicy: no-downgrade # block malicious downgrade of security settings
 trustPolicyExclude:
   - semver@6.3.1
   - chokidar@4.0.3
-  # eslint-import-resolver-typescript 3.10.1: the exact version eslint-config-next@16.2.10 requires.
+  # eslint-import-resolver-typescript 3.10.1: the exact version eslint-config-next@16.3.4 requires.
   # no-downgrade flags it as a provenance downgrade — 3.10.1 has no provenance attestation while the
   # package's newer 4.x line on the registry does — even though no 4.x resolves anywhere in this tree
   # and 3.10.1 is integrity-pinned in the lockfile. Vetted false positive, not a takeover (NH-275).
