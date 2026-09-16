@@ -275,6 +275,8 @@
     "protobufjs",
     "unrs",
     "multer",
+    "minimatch",
+    "smol",
     "undici",
     "jsdom",
     "chokidar",

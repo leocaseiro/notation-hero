@@ -49,14 +49,25 @@ blockExoticSubdeps: true # block transitive deps from untrusted/exotic sources
 overrides:
   form-data: 4.0.6 # GHSA-hmw2-7cc7-3qxx
   tmp: 0.2.7 # GHSA-7c78-jf6q-g5cm
-  multer: ^2.2.0 # GHSA-72gw-mp4g-v24j (High) + GHSA-3p4h-7m6x-2hcm — via @nestjs/platform-express
+  multer: ^2.3.0 # GHSA-72gw-mp4g-v24j + GHSA-3p4h-7m6x-2hcm + GHSA-535w-7cp7-47q4 + GHSA-qfvm-cv95-jqjf + GHSA-wc9g-mqfw-jrwm + GHSA-qvfw-j98x-7q72 — via @nestjs/platform-express
   file-type: ^21.3.4 # GHSA-5v7r-6r5c-r473 + GHSA-j47w-4g3g-c36v — dev-only via @nestjs/cli
   markdown-it: ^14.2.0 # GHSA-6v5v-wf23-fmfq — dev-only via markdownlint-cli2 (NH-243)
   'esbuild@<0.25.0': 0.25.12 # GHSA-67mh-4wv8-2f99 — drizzle-kit build transitive via deprecated @esbuild-kit; remove once drizzle-orm#5689 ships (Tracked: NH-252)
-  postcss: ^8.5.10 # GHSA-qx2v-qp2m-jg93 — next@16.2.10 pins postcss 8.4.31 internally; 8.5.x is a compatible minor (NH-275)
-  # js-yaml GHSA-h67p-54hq-rp68 (merge-key quadratic DoS) affects BOTH majors in the tree; each has a
-  # same-major legacy patch, so we fix in place per line (no cross-major bump — Pulumi's v3 API is unchanged).
-  'js-yaml@3': 3.15.0 # GHSA-h67p-54hq-rp68 — @pulumi/pulumi IaC transitive; v3-legacy patch (3.14.2 -> 3.15.0)
-  'js-yaml@4': 4.2.0 # GHSA-h67p-54hq-rp68 — now only via cosmiconfig (markdownlint-cli2 0.23.0 moved to js-yaml v5)
+  postcss: ^8.5.23 # GHSA-qx2v-qp2m-jg93 + GHSA-r28c-9q8g-f849 + GHSA-fxqj-rqcc-2cmp — next pins postcss internally; 8.5.x is a compatible minor (NH-275). Also floats nanoid past GHSA-28wg-ghj8-5hjv + GHSA-2v37-7h3g-55p8.
+  # js-yaml: the v3 line left the tree completely with @pulumi/pulumi 3.261.0, so the old
+  # 'js-yaml@3' override is dropped rather than renewed — nothing resolves to js-yaml 3.x now.
+  # v4 survives via cosmiconfig and was pinned EXACT at 4.2.0, so it could not float to the patches.
+  'js-yaml@4': 4.3.2 # GHSA-2883-xcg3-v3hh + GHSA-5p4m-2wfm-xmqj + GHSA-52cp-r559-cp3m (supersedes GHSA-h67p-54hq-rp68)
+  # NH-231: each parent below resolves its copy under the patched version, and pnpm reuses the
+  # parent's existing snapshot, so `pnpm update` alone cannot float them — the override is the only
+  # lever. Every entry stays inside the SAME major the parent declares, so no API surface changes.
+  'brace-expansion@1': ^1.1.18 # GHSA-3jxr-9vmj-r5cp + GHSA-mh99-v99m-4gvg + GHSA-rgw5-rvv9-x895 — via minimatch@3
+  'brace-expansion@2': ^2.1.4 # the same three — via minimatch@9
+  'brace-expansion@5': ^5.0.9 # the same three — via minimatch@10
+  'fast-uri@3': ^3.1.6 # GHSA-4c8g-83qw-93j6 + GHSA-v2hh-gcrm-f6hx + GHSA-7p8r-x3mc-p8w7 + GHSA-f65p-4m7j-42xc + GHSA-fph4-wmhf-6fwf + GHSA-jqff-g426-hqxp — via ajv@8
+  'qs@6': ^6.16.0 # GHSA-4mjr-xmp4-gh2g + GHSA-x5fp-wj9c-mxmx — via express@5 and body-parser@2
+  smol-toml: ^1.7.1 # GHSA-7w5x-hrqm-74c2 — markdownlint-cli2 0.23.2 still pins smol-toml 1.7.0 exactly
+
+
   # No undici override: jsdom@29 (client tests) needs undici 7.x; master's 6.27.0 pin
   # was for the removed Nx/handler-hello tree and breaks jsdom's dispatcher here.
