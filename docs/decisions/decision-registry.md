@@ -12,6 +12,19 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-16 — Dependency CVE refresh: fix every advisory, keep the ignore list empty (NH-231)
+
+The `deps-cve` gate (osv-scanner) had drifted to **74 advisories across 29 packages** (4 Critical, 43 High, 26 Medium, 1 Low) — all from `pnpm-lock.yaml` on `master`, none from an open PR. leocaseiro chose a **real version fix over an allowlist**: the refresh takes the gate to **0**, and `osv-scanner.toml` now carries **no ignores at all**.
+
+- **The expired ignore was dropped, not renewed.** `GHSA-8988-4f7v-96qf` (`@opentelemetry/core` 1.30.1) expired at `2026-09-16T00:00:00Z`. Its stated reason — that the only fix was an unverifiable otel v1 → v2 major bump under `@pulumi/pulumi` — had become obsolete, because Pulumi 3.255.0 made that move upstream. Bumping `@pulumi/pulumi` to 3.261.0 closes the advisory outright and drops the whole js-yaml v3 line out of the tree, so the `js-yaml@3` override went with it. An expired ignore must be re-argued, never rubber-stamped.
+- **Targeted updates only — no blanket `pnpm update -r`.** A blanket run would move the pixel-sensitive UI stack (Base UI, Storybook, TanStack, React, Tailwind) and invalidate the visual-regression baselines. Only named carriers moved.
+- **Playwright is held at 1.61.1** (`playwright`, `playwright-core`, `@playwright/test`). Floating it would un-match the three version-exact `minimumReleaseAgeExclude` pins and re-trip the NH-259 release-age gate, and would desynchronise the `mcr.microsoft.com/playwright:v1.61.1-noble` container the `-linux` VR baselines are rendered in. All 612 VR snapshots still match, unchanged.
+- **`overrides` is the lever for the deep transitives.** Where a parent resolves its copy below the patch, pnpm reuses the parent's snapshot and `pnpm update` cannot reach it. Nine advisories needed a same-major `overrides` pin (`brace-expansion@1/@2/@5`, `fast-uri@3`, `qs@6`, `smol-toml`, plus raised floors on `multer` and `postcss`). Same major as the parent declares, so no API surface moves.
+- **Next.js: 16.2.10 → 16.3.4, not 16.3.5.** Both `next` and `eslint-config-next` were pinned exact, so the 11 `next` advisories could not float. 16.2.11 closes only 9; the two Criticals need 16.3.3+. 16.3.4 declares the same `sharp: ^0.35.4` as 16.3.5 — so it clears both `sharp` rows too — but it is 15 days old rather than 4, which keeps it **outside** the 7-day `minimumReleaseAge` window. Taking 16.3.5 would have forced a `minimumReleaseAgeExclude` entry for a very fresh release, opening a hole in the gate that exists to dodge compromised publishes. **No release-age exception was added by this refresh.**
+- **Pre-approved fallback NOT used.** If the 16.2 → 16.3 bump had broken anything, the agreed fallback was to keep the other 61 fixes, revert only `next`/`eslint-config-next`, and time-box a 30-day ignore for the 13 `next`/`sharp` rows. Nothing broke, so no ignore was added.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `deps-cve` CI job is the enforcement, and it now passes with an empty ignore list, so any regression or new ignore is visible in the diff. Approved by leocaseiro 2026-09-16.
+
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
 
 leocaseiro ratified three fixes to the AskUserQuestion conventions in [`AGENTS.md`](../../AGENTS.md) section 3, after reporting that agents were using the follow-up catcher to force decisions. Each fix was approved separately in a picker on 2026-07-16.
