@@ -165,7 +165,7 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "status": "open"
+      "status": "applied — standing test/VR authorization"
     },
     {
       "id": "L2-08",
@@ -250,7 +250,7 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "status": "open"
+      "status": "applied — standing test/VR authorization"
     },
     {
       "id": "L2-09",
@@ -380,7 +380,7 @@
       "depends_on": null,
       "conflicts": [],
       "bucket": "actionable",
-      "status": "open"
+      "status": "open — drafted fix has wrong numbers, needs correction before it is shown"
     },
     {
       "id": "L2-19",
@@ -870,6 +870,20 @@
       {
         "id": "L2-10",
         "wiring_sensitive": "low — File Structure row text"
+      },
+      {
+        "id": "L2-06",
+        "authority": "standing authorization: a change needed to make tests pass, one clear option",
+        "follow_on": [
+          "Base-UI blockquote no longer claims Progress clamps",
+          "over-unity test comment"
+        ],
+        "wiring_sensitive": "none — client/"
+      },
+      {
+        "id": "L2-11",
+        "authority": "standing authorization: a change needed to make VR baseline generation pass, one clear option",
+        "wiring_sensitive": "none — client/"
       }
     ],
     "parked_for_plan_a_useAlphaTab_refactor": [
@@ -908,6 +922,7 @@
         "context": "~/Sites/alphaTabWebsite rhythm-game player-controls-group.tsx has zero mediaType/actualPlayerMode/backingTrack references; switching to MediaType.Audio leaves both live and silent. NH-297-shaped fork ticket candidate."
       }
     ],
-    "residual_correction": "Lap 2 reviewers verified AlphaTab claims against 1.8.1 (the fork copy), but this repo pins 1.8.4 — installed at node_modules/.pnpm/@coderline+alphatab@1.8.4. Re-verify AlphaTab claims against 1.8.4 next lap."
+    "residual_correction": "Lap 2 reviewers verified AlphaTab claims against 1.8.1 (the fork copy), but this repo pins 1.8.4 — installed at node_modules/.pnpm/@coderline+alphatab@1.8.4. Re-verify AlphaTab claims against 1.8.4 next lap.",
+    "l2_14_correction": "NOT auto-applied despite the test authorization, because the drafted After is wrong on the facts. Its comment says the soundfont is 302 KB (~2.5 s at 120 KB/s); the self-hosted web/public/alphatab soundfont sonivox.sf3 is 954 KB (~8 s). And Network.emulateNetworkConditions throttles the WHOLE page before navigation, so alphaTab.core.mjs (1092 KB), Bravura.woff2 (306 KB) and the app bundle also load at 120 KB/s — roughly 20 s of alphaTab assets alone, against a 30 s default test timeout. Needs a corrected throughput sized to the real bytes, or a throttle applied only after the engine has loaded."
   }
 }

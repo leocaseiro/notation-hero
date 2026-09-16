@@ -437,7 +437,9 @@ git commit -m "feat(client): add a single-value Slider primitive (NH-291)"
 > The component is indeterminate when value is `null`."_ — exactly this component's semantics, already
 > built. It also supplies `min`/`max` (defaulting 0/100), `format`, `getAriaValueText`, and a `status`
 > state of `'indeterminate' | 'progressing' | 'complete'` that the indeterminate styling keys off. That
-> deletes a manual clamp, a manual `aria-valuenow` omission, and the hand-written ARIA wiring.
+> deletes a manual `aria-valuenow` omission and the hand-written ARIA wiring. It does **not** delete the
+> clamp: `Progress` in 1.6.0 passes `value` straight to `aria-valuenow` and sizes the indicator from an
+> unclamped percentage, so the wrapper keeps a one-line clamp (Step 3).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -466,7 +468,8 @@ test('renders indeterminate with no aria-valuenow when value is null', () => {
 });
 
 // `total` is the ENCODED length while `loaded` counts decoded bytes when the CDN compresses, so the
-// fraction can exceed 1. Base UI clamps to max; this asserts we pass the fraction through correctly.
+// fraction can exceed 1. Base UI's Progress does NOT clamp (1.6.0 renders aria-valuenow="180"), so this
+// asserts the wrapper's own clamp.
 test('clamps an over-unity fraction to 100', () => {
   render(<Progress value={1.8} label="Loading sounds" />);
   expect(screen.getByRole('progressbar', { name: 'Loading sounds' })).toHaveAttribute(
@@ -514,9 +517,11 @@ interface ProgressProps {
 }
 
 // Determinate progress bar with an indeterminate fallback, over Base UI's Progress. Base UI owns
-// the ARIA contract — it omits aria-valuenow entirely on the indeterminate branch (which is what
-// ARIA defines as "value unknown"; rendering 0 would announce "0 percent" forever) and clamps the
-// value into [min, max] for us. This wrapper only paints the track/indicator and adds data-slot.
+// the indeterminate half of the ARIA contract — it omits aria-valuenow entirely on that branch (which
+// is what ARIA defines as "value unknown"; rendering 0 would announce "0 percent" forever). It does
+// NOT clamp: in 1.6.0 ProgressRoot sets `aria-valuenow: value ?? undefined` and the indicator sizes
+// itself from an unclamped (value - min) * 100 / (max - min), so the wrapper clamps before handing the
+// value over. This wrapper otherwise only paints the track/indicator and adds data-slot.
 //
 // The indeterminate fill reuses the repo's skeleton keyframe AS-IS. Do not stack a `bg-*` tint on
 // it: `animate-skeleton-pulse` animates `background-color` across the whole cycle, so a keyframe
@@ -525,7 +530,7 @@ interface ProgressProps {
 // the tint the live page never renders. `Skeleton.tsx` pairs the animation with `bg-skeleton`.
 const Progress = ({ value, label, className }: Readonly<ProgressProps>) => (
   <ProgressPrimitive.Root
-    value={value === null ? null : value * 100}
+    value={value === null ? null : Math.min(100, Math.max(0, value * 100))}
     data-slot="progress"
     aria-label={label}
     className={cn('relative h-1.5 w-full overflow-hidden rounded-full', className)}
@@ -1323,6 +1328,9 @@ it**). With the rule above, two of the three triggers are CSS, so the existing s
 states: ['resting', 'focus', 'hover'],
 statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover']),
 focusExpect: 'input',
+// Tab 1 lands on NumberField.Decrement — Base UI's stepper buttons set no tabIndex, so they are
+// ordinary tab stops and the input is the SECOND stop inside NumberField.Root.
+focusTabs: 2,
 ```
 
 The `slowed` story's `hover` and `focus` snapshots are what guard the visible percentage; `resting`
