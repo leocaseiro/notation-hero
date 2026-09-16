@@ -501,6 +501,7 @@
     "dragleave",
     "partwise",
     "pointermove",
-    "toplevel"
+    "toplevel",
+    "pathspec"
   ]
 }

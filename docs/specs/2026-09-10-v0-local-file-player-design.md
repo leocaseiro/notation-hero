@@ -194,6 +194,14 @@ affordances, each covering a different part of that wait:
 
 Play stays disabled until the synth is ready.
 
+**A file that embeds an audio track plays that recording.** AlphaTab's `EnabledAutomatic` player mode
+hands any score whose file carries embedded audio to its backing-track player, and v0 keeps that
+deliberately: the notation is on screen and the drummer plays along to the real recording. In that
+mode AlphaTab's synthesizer ignores **mute, solo, track volume, the metronome and the count-in** — so
+those controls (§7, built in Plans B and C) must render **disabled, with a tooltip** saying the file
+is playing its own recording. They must never look live and do nothing. A toggle between the
+recording and the synthesizer is out of v0.
+
 **While a replacement score parses:** the score on screen keeps playing (the load is staged, §4
 above), so nothing covers the notation area. Instead a `toast.loading()` through the built `Sonner`
 names the incoming file, then resolves into success or into the same "unsupported file" error toast
@@ -316,8 +324,8 @@ error. The `ScriptProcessor` variant of the line is a different fallback — no 
 an insecure context — and still plays audio, so the two are not halves of a discriminator.
 
 The same lane carries v0's **accessibility check for `web/`** (§7): an axe-core run over `/` and
-`/play` in five states — empty, loaded, loaded with a score long enough to scroll, with each popover
-open, and during the first-visit `Skeleton`, which is reachable because the engine import is a real
+`/play` in six states — empty, loaded, loaded with a score long enough to scroll, with each popover
+open, when the engine failed to load, and during the first-visit `Skeleton`, which is reachable because the engine import is a real
 request the lane can stall with `page.route` on `/alphatab/esm/alphaTab.mjs`. The scrolling state
 exists because the notation box is a focusable, named region (`role="region"`, `tabIndex={0}`): a
 short score never scrolls, so without it axe's `scrollable-region-focusable` rule checks nothing.
@@ -438,7 +446,9 @@ a11y baselines that block merge.
 - **Tracks** (the transport's "Tracks / mixer" button): one row for **every track in the score**,
   not only the rendered drum staves — the prototype maps `score.tracks`, and every track stays
   audible (§4), so all of them are controllable. Each row carries solo, mute and volume; solo is not
-  exclusive, as in AlphaTab and the prototype. Volume is applied as a **ratio** against the track's
+  exclusive, as in AlphaTab and the prototype. **While a file plays its own embedded recording (§4),
+  solo, mute and volume — and the transport's metronome and count-in — render disabled with a
+  tooltip**, because AlphaTab's backing-track synthesizer ignores them. Volume is applied as a **ratio** against the track's
   current value (`changeTrackVolume([track], next / track.playbackInfo.volume)`), which is how the
   prototype does it — not as an absolute. `next` uses `playbackInfo.volume`'s own **0–16** scale (the
   fork's slider is `min=0 max=16`), and the ratio must guard a zero denominator. Note the coupling

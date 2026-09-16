@@ -63,8 +63,34 @@ Approved by leocaseiro 2026-09-16:
   shared base). leocaseiro asked that lint stop blocking TODO comments, JSDoc `@todo` in particular;
   that change is handled separately, off `master`.
 
-**Status:** all lap-2 findings are triaged and applied. Lap 3, a re-review, is next, because P0 and
-P1 findings were applied in lap 2.
+**Status:** all lap-2 findings are triaged and applied.
+
+### 2026-09-16 — v0 Plan A, lap 3: seven-persona re-review, first decisions applied (NH-291)
+
+Lap 3 ran `ce-doc-review` in headless mode with the same seven personas, primed with every lap-1 and
+lap-2 decision so settled alternatives were not re-raised. No cross-model pass (no second-provider
+CLI on this machine). 18 findings; 2 mechanical fixes applied without a decision — Task 3's commit
+named paths that its own `git rm` had already removed, which stages **nothing** (reproduced), and the
+File Structure tables were missing eight files the tasks touch.
+
+Approved by leocaseiro 2026-09-16:
+
+- **A file that embeds an audio track keeps playing that recording** (`PlayerMode.EnabledAutomatic`
+  stays), over pinning the synthesizer, which the reviewers and the agent had recommended. His
+  reason: he plays along to his own audio-track files and wants the notation on screen while the
+  recording plays. The cost is recorded instead of removed — AlphaTab's backing-track synthesizer
+  ignores mute, solo, track volume, the metronome and the count-in (verified in 1.8.4: those methods
+  are empty), so spec §4 and §7 now require those controls to render **disabled with a tooltip** in
+  Plans B and C rather than looking live and doing nothing. A toggle between the recording and the
+  synthesizer joins the deferred list (NH-298).
+- **Task 14 re-runs `pr-checklist-sync` by hand after rewriting the PR body.** `gh pr edit --body`
+  replaces the whole body, and that workflow runs only on `opened`, `workflow_dispatch` and template
+  pushes to master — so without the manual run the required `pr-checklist` job fails on every item.
+- **The accessibility gate gains a sixth case** covering the engine-error screen, whose destructive
+  tint no check had measured.
+- **Scope note for alpha-v0:** full WCAG AA is not the bar for this release. Basic accessibility yes;
+  anything expensive is skipped, because the release exists to show the app working. The axe gate
+  still runs the AA tag set — revisit only if it blocks a release.
 
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 

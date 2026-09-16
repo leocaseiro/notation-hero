@@ -89,10 +89,11 @@ percussion-free score, where any track is as good as another, but never describe
 
 ## Deferred past v0
 
-The review that produced this plan also surfaced thirteen items we are deliberately **not** doing in
+The review that produced this plan also surfaced fourteen items we are deliberately **not** doing in
 v0 — a bundle-count CI gate, CSP headers for `web/`, a decompressed-size bound for `.gpx`, a test
 behind the "nothing leaves this device" claim, a `PlayPauseButton` in `client/`, an `AlertDialog` to
-replace `window.confirm`, an iOS picker branch, Sentry, and five smaller
+replace `window.confirm`, an iOS picker branch, Sentry, a toggle between a file's embedded recording
+and the synthesizer (added 2026-09-16 — v0 keeps AlphaTab's automatic choice), and five smaller
 open questions. They are tracked together as a Smart Checklist on
 **[NH-298](https://leocaseiro.atlassian.net/browse/NH-298)**, with enough context on each to act
 without this plan. Nothing in the tasks below depends on any of them.
@@ -124,25 +125,33 @@ without this plan. Nothing in the tasks below depends on any of them.
 | `web/app/error.tsx`                          | Root React error boundary (App Router `error.tsx` convention) — the app survives an unexpected render crash.                              |
 | `web/app/play/error.tsx`                     | Player-segment error boundary, so a crash in the player leaves the landing page alive.                                                    |
 | `web/e2e/fixtures/guitar-no-percussion.gp`   | Generated via `AlphaTexImporter` + `Gp7Exporter` — closes Q7 and success criterion 9.                                                     |
+| `tooling/make-percussion-free-fixture.mjs`   | One-shot generator for that fixture, committed so the binary can be regenerated rather than trusted (Task 9).                             |
 
 **Modified**
 
-| File                                             | Change                                                                                                                                                      |
-| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `web/package.json`                               | `dev`/`build` chain the vendor step; add `test:e2e`; add Playwright + axe devDependencies.                                                                  |
-| `web/.gitignore`                                 | Ignore `/public/alphatab/`.                                                                                                                                 |
-| `web/eslint.config.mjs`                          | Swap the core `no-restricted-imports` for `@typescript-eslint/no-restricted-imports` and add the `@coderline/alphatab` group with `allowTypeImports: true`. |
-| `client/eslint.config.js`                        | Ban every `@coderline/alphatab` import, type imports included: `client/` is presentation-only, and `transpilePackages` compiles it into `web/`'s bundle.    |
-| `web/app/layout.tsx`                             | Mount the single `<Toaster />`.                                                                                                                             |
-| `web/app/page.tsx`                               | Replace the design-system proof page with the landing Play button.                                                                                          |
-| `client/src/index.ts`                            | Export `Skeleton`, `Toaster`, `toast`, `Card`, `CardContent`.                                                                                               |
-| `client/src/components/ui/Skeleton/Skeleton.tsx` | Add `'use client'`.                                                                                                                                         |
-| `client/src/components/ui/Sonner/Sonner.tsx`     | Add `'use client'`.                                                                                                                                         |
-| `client/src/components/ui/Card/Card.tsx`         | Add `'use client'`.                                                                                                                                         |
-| `client/src/styles.css`                          | Override the Material Symbols face to `font-display: block`.                                                                                                |
-| `.github/workflows/ci.yml`                       | Add the `web` steps to the `e2e` job and its artifact paths.                                                                                                |
-| `web/vercel.json`                                | Add `buildCommand` so the vendor step is unconditional and cannot be overridden invisibly from the dashboard.                                               |
-| `web/public/charts/` -> `web/public/notation/`   | Renamed with its three files; every `/charts/...` URL becomes `/notation/...`. "chart" is not this project's vocabulary (CONCEPTS.md).                      |
+| File                                                   | Change                                                                                                                                                      |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `web/package.json`                                     | `dev`/`build` chain the vendor step; add `test:e2e`; add Playwright + axe devDependencies.                                                                  |
+| `web/.gitignore`                                       | Ignore `/public/alphatab/`.                                                                                                                                 |
+| `web/eslint.config.mjs`                                | Swap the core `no-restricted-imports` for `@typescript-eslint/no-restricted-imports` and add the `@coderline/alphatab` group with `allowTypeImports: true`. |
+| `client/eslint.config.js`                              | Ban every `@coderline/alphatab` import, type imports included: `client/` is presentation-only, and `transpilePackages` compiles it into `web/`'s bundle.    |
+| `web/app/layout.tsx`                                   | Mount the single `<Toaster />`.                                                                                                                             |
+| `web/app/page.tsx`                                     | Replace the design-system proof page with the landing Play button.                                                                                          |
+| `client/src/index.ts`                                  | Export `Skeleton`, `Toaster`, `toast`, `Card`, `CardContent`.                                                                                               |
+| `client/src/components/ui/Skeleton/Skeleton.tsx`       | Add `'use client'`.                                                                                                                                         |
+| `client/src/components/ui/Sonner/Sonner.tsx`           | Add `'use client'`.                                                                                                                                         |
+| `client/src/components/ui/Card/Card.tsx`               | Add `'use client'`.                                                                                                                                         |
+| `client/src/styles.css`                                | Override the Material Symbols face to `font-display: block`.                                                                                                |
+| `.github/workflows/ci.yml`                             | Add the `web` steps to the `e2e` job and its artifact paths.                                                                                                |
+| `web/vercel.json`                                      | Add `buildCommand` so the vendor step is unconditional and cannot be overridden invisibly from the dashboard.                                               |
+| `web/public/charts/` -> `web/public/notation/`         | Renamed with its three files; every `/charts/...` URL becomes `/notation/...`. "chart" is not this project's vocabulary (CONCEPTS.md).                      |
+| `web/app/globals.css`                                  | The drag-overlay styles (Task 10 Step 6).                                                                                                                   |
+| `client/src/components/ui/Sonner/Sonner.stories.tsx`   | A `Loading` story, so the replacement toast is audited where the gates can hold it open (Task 12).                                                          |
+| `client/src/components/ui/Sonner/Sonner.story-ids.ts`  | The `loading` story id that the a11y and VR suites read (Task 12).                                                                                          |
+| `tooling/workflow-guards.test.mjs`                     | A case asserting the `e2e` job runs the web lane and uploads its report (Task 8).                                                                           |
+| `AGENTS.md`                                            | Drop the "`web/` omits `test`" note once Task 9 adds the vitest script.                                                                                     |
+| `docs/specs/2026-09-10-v0-local-file-player-design.md` | Task 1 Step 5 records the Q2 answer in §9.                                                                                                                  |
+| `docs/decisions/decision-registry.md`                  | Task 14 Step 6 adds the Change-log entry for the decisions this PR enforces.                                                                                |
 
 **Deleted**
 
@@ -759,9 +768,12 @@ same rule follows the fence. shellcheck 0.11.0 reports nothing.
 
 - [ ] **Step 11: Commit**
 
+Step 6's `git rm` already staged the spike deletions. Naming those paths again here is a fatal
+pathspec error — `git add` then stages **nothing**, and the commit lands the deletions without the
+fences (reproduced in a scratch repository).
+
 ```bash
-git add web/eslint.config.mjs client/eslint.config.js tooling/alphatab-import-fence.test.sh \
-  web/app/spike web/spike-probe.mjs web/spike-lifecycle-probe.mjs
+git add web/eslint.config.mjs client/eslint.config.js tooling/alphatab-import-fence.test.sh
 git commit -m "chore(lint): fence @coderline/alphatab imports in web/ and client/ (NH-291)"
 ```
 
@@ -1305,6 +1317,14 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     settings.core.file = SAMPLE_NOTATION;
     settings.core.tracks = 'all';
     settings.core.logLevel = resolveLogLevel(engine);
+    // EnabledAutomatic on purpose (2026-09-16): a Guitar Pro file that embeds an audio track plays
+    // that recording, with the notation on screen — that is how leocaseiro plays along to his own
+    // files. AlphaTab resolves EnabledAutomatic to its backing-track player whenever
+    // `score.backingTrack.rawAudioFile` exists, and that player's synthesizer stubs out
+    // channelSetMute, channelSetSolo, channelSetMixVolume and the metronome channel (verified in
+    // 1.8.4). Nothing in v0a drives those, but Plan B's metronome and count-in and Plan C's mixer
+    // rows MUST render disabled, with a tooltip saying the file is playing its own recording
+    // (spec §4). A toggle between the recording and the synth is deferred (NH-298).
     settings.player.playerMode = engine.PlayerMode.EnabledAutomatic;
     settings.player.soundFont = '/alphatab/soundfont/sonivox.sf3';
     settings.player.enableCursor = true;
@@ -3231,6 +3251,16 @@ test('player has no axe violations while the first-visit Skeleton is up', async 
   await expect(page.getByTestId('notation-skeleton')).toBeVisible();
   await expectNoViolations(page, 'play / skeleton');
 });
+
+// The engine-error state is reachable and permanent — abort the engine module the way the case above
+// stalls it. Its `role="alert"` sits on the one player surface no gate has measured: a
+// color-mix(in oklab, …) destructive tint.
+test('player has no axe violations when the engine fails to load', async ({ page }) => {
+  await page.route('**/alphatab/esm/alphaTab.mjs', (route) => route.abort());
+  await page.goto('/play');
+  await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
+  await expectNoViolations(page, 'play / engine error');
+});
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -3241,7 +3271,7 @@ Expected: FAIL — either on missing modules (fix the import) or on real violati
 - [ ] **Step 3: Fix the violations and re-run**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e a11y`
-Expected: PASS — 5 tests.
+Expected: PASS — 6 tests.
 
 - [ ] **Step 4: Gate the 44 px rule in the lane, not by eye**
 
@@ -3270,7 +3300,7 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
 }
 ```
 
-Call it from each of the five cases above, beside `expectNoViolations`. Any entry is a control that
+Call it from each of the six cases above, beside `expectNoViolations`. Any entry is a control that
 fails the tablet-landscape touch target — pad its hit area (keep the glyph at its drawn size) until
 the list is empty.
 
@@ -3341,12 +3371,23 @@ Criteria 3, 5, 6 and 7 belong to Plans B and C.
 
 - The 25 MB size gate bounds the file read, not the decompressed size: `.gpx` is a ZIP container AlphaTab inflates, which would need a worker-side bound. Out of scope for v0.
 - iOS is unverified. The picker uses a button plus a programmatic `input.click()`, which is what the alphaTab fork ships on every non-iOS browser; iOS needs an `isIOS()` branch, verified on a real device, if it ever enters scope. v0's gate is desktop web.
+- A Guitar Pro file that embeds an audio track plays **that recording**, with the notation on screen — AlphaTab's automatic choice, kept deliberately. In that mode its synthesizer ignores mute, solo, track volume and the metronome, so Plan B's metronome and count-in and Plan C's mixer rows must render disabled with a tooltip. A toggle between the recording and the synthesizer is deferred (NH-298).
 
 ## Pulumi preview
 
 safe — no `infra/` changes in this PR.
 EOF
 )"
+```
+
+`gh pr edit --body` replaces the **whole** body, including the checklist `pr-checklist-sync` added
+when Task 1 opened this PR — and that workflow runs only on `opened`, `workflow_dispatch` and
+template pushes to `master`, never on `edited`. Without the manual run below, Step 5 has no boxes to
+tick and the required `pr-checklist` job fails on every canonical item:
+
+```bash
+gh workflow run pr-checklist-sync.yml
+gh run watch
 ```
 
 - [ ] **Step 3: Re-verify on the deployed preview**
@@ -3366,9 +3407,14 @@ Criterion 4 has no automated evidence and no other step. On `$PREVIEW/play`, ope
 Guitar Pro files — including a large one with an embedded backing track, which is what the 25 MB
 gate exists for — press play, and listen. Only then tick criterion 4 in the PR body.
 
+**Expect two different sounds, both correct.** A plain score plays the soundfont synth. A file that
+embeds an audio track plays **that recording** instead, because `EnabledAutomatic` hands it to
+AlphaTab's backing-track player (Task 6). Both show the notation and the moving cursor. If a
+recording-backed file plays the synth, or a plain file falls silent, that is the failure to report.
+
 - [ ] **Step 5: Tick the checklist and watch CI**
 
-The `pr-checklist-sync` workflow appends any missing checklist items when the PR opens. **Tick each box yourself** — every item is a past-tense claim, and a tick whose condition applied but whose work you skipped is a false claim. Then:
+Step 2's manual `pr-checklist-sync` run restored the checklist items that the body rewrite removed. **Tick each box yourself** — every item is a past-tense claim, and a tick whose condition applied but whose work you skipped is a false claim. Then:
 
 ```bash
 gh run watch
