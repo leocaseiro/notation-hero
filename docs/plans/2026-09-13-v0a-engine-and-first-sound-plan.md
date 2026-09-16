@@ -1,6 +1,6 @@
 ---
-lap: 2 # the 2026-09-14 review was lap 1; the 2026-09-15 triage is lap 2
-last_applied: P0
+lap: 3 # 2026-09-14 review = lap 1; 2026-09-15/16 triage = lap 2; 2026-09-16 re-review = lap 3
+last_applied: P1 # lap 3 is triaged only in part — see 2026-09-16-v0a-plan-review-lap3-handoff.md
 ---
 
 # v0 Plan A — Engine and First Sound — Implementation Plan

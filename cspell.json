@@ -503,6 +503,7 @@
     "pointermove",
     "toplevel",
     "pathspec",
-    "wordmark"
+    "wordmark",
+    "smol"
   ]
 }
