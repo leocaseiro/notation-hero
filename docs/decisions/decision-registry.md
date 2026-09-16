@@ -91,6 +91,16 @@ Approved by leocaseiro 2026-09-16:
 - **Scope note for alpha-v0:** full WCAG AA is not the bar for this release. Basic accessibility yes;
   anything expensive is skipped, because the release exists to show the app working. The axe gate
   still runs the AA tag set — revisit only if it blocks a release.
+- **Opening a score moves focus into the notation region** (one line in the mount effect). Without it
+  the control the user pressed is removed with the empty state and the browser resets focus to
+  `<body>`, so a keyboard user Tabs from the top of the page again. Returning focus to the Open file
+  button after a _failed_ open is deliberately left out — too much wiring for this release's bar.
+- **v0a gains the mockup's player header:** the wordmark, then the open score's **title**, with the
+  **file name** in a `Tooltip` behind it (leocaseiro's design call, matching
+  `docs/mockups/player-flatrow-teal.html`). Before this the file name existed only in a screen-reader
+  span, and a sighted user never saw which file was playing. `Tooltip` joins the client barrel; the
+  replace tests read the file name from a `data-file` attribute instead of the element's text. The
+  real logo in place of the wordmark stays a later visual task.
 
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 

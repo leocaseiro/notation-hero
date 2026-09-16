@@ -398,7 +398,10 @@ player uses a component, export it from that barrel, add `'use client'` to its f
 client checks plus the Storybook VR and a11y gates. The design-system rename stays in Phase 2.
 
 **To build for v0:** the transport row layout, a **playback scrubber** (current time, seek bar, total
-time), the notation-surface wrapper, the landing **Play** button, the player's **Open file** control
+time), the notation-surface wrapper, the **player header** — the wordmark plus the open score's
+title, with the file name in a `Tooltip` behind it, as the mockup draws it at the top left (the score
+title comes from the file's metadata, so the file name has to stay reachable) — the landing **Play**
+button, the player's **Open file** control
 (picker plus drag-and-drop, replacing the loaded score in place) and its secondary **Load the sample
 beat** action, the **Settings** and **Tracks** popovers (below), the soundfont **progress bar** (§4),
 the transport row's **Loop**,

@@ -141,6 +141,7 @@ without this plan. Nothing in the tasks below depends on any of them.
 | `client/src/components/ui/Skeleton/Skeleton.tsx`       | Add `'use client'`.                                                                                                                                         |
 | `client/src/components/ui/Sonner/Sonner.tsx`           | Add `'use client'`.                                                                                                                                         |
 | `client/src/components/ui/Card/Card.tsx`               | Add `'use client'`.                                                                                                                                         |
+| `client/src/components/ui/Tooltip/Tooltip.tsx`         | Add `'use client'` — the player header puts the open file's name in a tooltip behind the score title (Task 11).                                             |
 | `client/src/styles.css`                                | Override the Material Symbols face to `font-display: block`.                                                                                                |
 | `.github/workflows/ci.yml`                             | Add the `web` steps to the `e2e` job and its artifact paths.                                                                                                |
 | `web/vercel.json`                                      | Add `buildCommand` so the vendor step is unconditional and cannot be overridden invisibly from the dashboard.                                               |
@@ -791,13 +792,14 @@ Two components cross into `web/`, and the Material Symbols face gets a `font-dis
 - Modify: `client/src/components/ui/Skeleton/Skeleton.tsx:1`
 - Modify: `client/src/components/ui/Sonner/Sonner.tsx:1`
 - Modify: `client/src/components/ui/Card/Card.tsx:1`
+- Modify: `client/src/components/ui/Tooltip/Tooltip.tsx:1`
 - Modify: `client/src/styles.css:3`
 - Modify: `web/app/layout.tsx`
 
 **Interfaces:**
 
 - Consumes: nothing.
-- Produces: `import { Button, Skeleton, Toaster, toast, Card, CardContent } from '@notation-hero/client'` works in `web/`. Tasks 6, 10, 11 and 13 use them.
+- Produces: `import { Button, Skeleton, Toaster, toast, Card, CardContent, Tooltip, TooltipTrigger, TooltipContent } from '@notation-hero/client'` works in `web/`. Tasks 6, 10, 11 and 13 use them.
 
 - [ ] **Step 1: Write the failing test — a web file importing the barrel**
 
@@ -814,9 +816,9 @@ EOF
 Run: `pnpm --filter @notation-hero/web run typecheck`
 Expected: FAIL — `Module '"@notation-hero/client"' has no exported member 'Skeleton'` (and `Toaster`, `toast`).
 
-- [ ] **Step 3: Add `'use client'` to the three component files**
+- [ ] **Step 3: Add `'use client'` to the four component files**
 
-`Skeleton.tsx`, `Sonner.tsx` and `Card.tsx` must each begin with the directive, before any import. `Button.tsx` already has one — match it exactly:
+`Skeleton.tsx`, `Sonner.tsx`, `Card.tsx` and `Tooltip.tsx` must each begin with the directive, before any import. `Button.tsx` already has one — match it exactly:
 
 ```tsx
 'use client';
@@ -840,6 +842,8 @@ export { Skeleton, SkeletonTable, SkeletonForm } from './components/ui/Skeleton/
 export { Toaster, toast } from './components/ui/Sonner/Sonner';
 // - Card/CardContent frame the empty state's drop target (Task 10).
 export { Card, CardContent } from './components/ui/Card/Card';
+// - Tooltip carries the open score's file name behind its title in the player header (Task 11).
+export { Tooltip, TooltipTrigger, TooltipContent } from './components/ui/Tooltip/Tooltip';
 ```
 
 - [ ] **Step 5: Run typecheck to verify it passes**
@@ -936,6 +940,7 @@ Expected: all PASS. The `font-display` change alters _when_ glyphs paint, not ho
 
 ```bash
 git add client/src/index.ts client/src/components/ui/Skeleton/Skeleton.tsx \
+  client/src/components/ui/Card/Card.tsx client/src/components/ui/Tooltip/Tooltip.tsx \
   client/src/components/ui/Sonner/Sonner.tsx \
   client/src/styles.css web/app/layout.tsx
 git commit -m "feat(client): export Skeleton/Sonner and block the icon-font swap (NH-291)"
@@ -1348,6 +1353,13 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
 
     api = new engine.AlphaTabApi(host, settings);
     apiRef.current = api;
+
+    // Take focus when this surface replaces the empty state: the control the user just pressed
+    // (Open file, or Load the sample beat) is removed from the page along with it, and the browser
+    // would reset focus to <body> — so a keyboard user would Tab from the top of the page again.
+    // The host is already a named, focusable region (role="region", aria-label="Score"), so focus
+    // lands somewhere announced, and the arrow keys scroll the score straight away.
+    host.focus();
 
     // Backstop for a download that hangs without ever failing: no event arrives, so give up after
     // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
@@ -2855,7 +2867,7 @@ test('cancelling a replacement keeps the current score playing from where it was
 
   // Still the sample, still playing.
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
-  await expect(page.getByTestId('loaded-notation-name')).toHaveText('1-beat.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', '1-beat.gp');
 
   // Resumed from where it was, and still advancing — not restarted, not frozen.
   await expect
@@ -2894,7 +2906,9 @@ test('confirming a replacement renders the new score', async ({ page }) => {
   page.on('dialog', (dialog) => dialog.accept());
   await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
 
-  await expect(page.getByTestId('loaded-notation-name')).toHaveText('Punk.gp', { timeout: 30_000 });
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+    timeout: 30_000,
+  });
   await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
 });
 
@@ -2914,7 +2928,7 @@ test('a corrupt replacement leaves the playing score intact', async ({ page }) =
   });
 
   await expect(page.getByText(/\(Error E103\)/)).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId('loaded-notation-name')).toHaveText('1-beat.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', '1-beat.gp');
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
 });
 ```
@@ -2924,15 +2938,50 @@ test('a corrupt replacement leaves the playing score intact', async ({ page }) =
 Run: `pnpm --filter @notation-hero/web run test:e2e -g "replacement|same file"`
 Expected: FAIL — no prompt is shown and no `loaded-notation-name` exists.
 
-- [ ] **Step 3: Add the score-name hook**
+- [ ] **Step 3: Name the open score in a header**
 
-In `PlayerShell.tsx`, render the current score's name:
+The mockup ([`player-flatrow-teal.html`](../mockups/player-flatrow-teal.html)) keeps the song name at
+the top left, beside the brand. v0a has no header yet, so this adds the smallest one that carries it:
+the wordmark, then the score's **title**, with the **file name** in a tooltip behind it. A title comes
+from the file's own metadata and two files can share one, so the file name stays reachable — and it
+stays a `data-` attribute as well, which is what the tests below read.
+
+Widen the client import in `PlayerShell.tsx` (Task 10 Step 6's list gains three names):
 
 ```tsx
-<span data-testid="loaded-notation-name" className="sr-only">
-  {notation?.name ?? ''}
-</span>
+import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '@notation-hero/client';
 ```
+
+Then add the header as the first child of `<main>`, above the `<section>`:
+
+```tsx
+<header className="flex items-center gap-3">
+  {/* The wordmark stands in for the logo the mockup draws; the real mark is a later visual task. */}
+  <span className="text-sm font-semibold">Notation Hero</span>
+  {notation !== null ? (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          // A real <button> so the tooltip is reachable by keyboard, not only by hover. It does
+          // nothing on click; min-h-11/min-w-11 keeps it over the 44 px hit area Task 13 enforces.
+          <button
+            type="button"
+            data-testid="loaded-notation-name"
+            data-file={notation.name}
+            className="min-h-11 min-w-11 truncate px-1 text-left text-sm text-muted-foreground"
+          >
+            {notation.score.title || notation.name}
+          </button>
+        }
+      />
+      <TooltipContent>{notation.name}</TooltipContent>
+    </Tooltip>
+  ) : null}
+</header>
+```
+
+`score.title` is AlphaTab's own field and is an empty string when the file carries no title — hence
+the fall back to the file name, so the header is never blank while a score is open.
 
 - [ ] **Step 4: Write the replace flow**
 

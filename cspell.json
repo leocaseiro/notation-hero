@@ -502,6 +502,7 @@
     "partwise",
     "pointermove",
     "toplevel",
-    "pathspec"
+    "pathspec",
+    "wordmark"
   ]
 }
