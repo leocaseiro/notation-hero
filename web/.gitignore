@@ -7,3 +7,7 @@ next-env.d.ts
 
 # Spike probe output (screenshots + json reports) — regenerate with spike-probe.mjs
 /spike-out/
+
+# AlphaTab's prebuilt ESM + soundfont + music font, copied out of node_modules by
+# scripts/vendor-alphatab.mjs before every dev/build. Generated output — never committed.
+/public/alphatab/

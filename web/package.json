@@ -3,8 +3,8 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "next build",
-    "dev": "next dev --port 3002",
+    "build": "node scripts/vendor-alphatab.mjs && next build",
+    "dev": "node scripts/vendor-alphatab.mjs && next dev --port 3002",
     "lint": "eslint . --max-warnings 0",
     "start": "next start",
     "typecheck": "tsc --noEmit"
