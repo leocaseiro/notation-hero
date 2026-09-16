@@ -1,6 +1,6 @@
 ---
 lap: 3 # 2026-09-14 review = lap 1; 2026-09-15/16 triage = lap 2; 2026-09-16 re-review = lap 3
-last_applied: P1 # lap 3 is triaged only in part — see 2026-09-16-v0a-plan-review-lap3-handoff.md
+last_applied: P1 # lap 3 fully triaged 2026-09-16; P1 is the highest severity applied, so lap 4 is due
 ---
 
 # v0 Plan A — Engine and First Sound — Implementation Plan
@@ -47,7 +47,10 @@ Every task's requirements implicitly include this section. Values are copied ver
   legitimately 7-8 MB — so the bound is generous. The check runs before `file.arrayBuffer()` and
   raises its own toast, which names the limit (read from `MAX_NOTATION_MB`, so the copy follows the
   constant) and error E101. It does NOT bound decompressed
-  size: `.gpx` is a ZIP container AlphaTab inflates, which would need a worker-side bound (post-v0).
+  size: `.gpx` is a **BCFZ** container whose 4-byte header declares its own decompressed length,
+  which AlphaTab's `GpxFileSystem` expands to with no bound. The real ZIP formats (`.gp`, `.mxl`,
+  `.capx`) go through `ZipReader`, already capped per entry by
+  `settings.importer.maxDecodingBufferSize` (128 MB default). A decompressed-size bound is post-v0.
 - **`package.json` keys stay sorted.** `pnpm run lint:sort-pkg` (`sort-package-json --check`) is a CI gate.
 - **Every failure message ends with its error number** — `(Error E101)` in a toast or the
   engine-error message, `Error E901` on its own line on an error page — taken from `PLAYER_ERROR` in
@@ -90,7 +93,8 @@ percussion-free score, where any track is as good as another, but never describe
 ## Deferred past v0
 
 The review that produced this plan also surfaced fourteen items we are deliberately **not** doing in
-v0 — a bundle-count CI gate, CSP headers for `web/`, a decompressed-size bound for `.gpx`, a test
+v0 — a bundle-count CI gate, CSP headers for `web/`, a decompressed-size bound (the BCFZ header
+length for `.gpx`, and the ZIP total across entries for `.gp`/`.mxl`/`.capx`), a test
 behind the "nothing leaves this device" claim, a `PlayPauseButton` in `client/`, an `AlertDialog` to
 replace `window.confirm`, an iOS picker branch, Sentry, a toggle between a file's embedded recording
 and the synthesizer (added 2026-09-16 — v0 keeps AlphaTab's automatic choice), and five smaller
@@ -1894,7 +1898,7 @@ things that can break are different.
 `node scripts/vendor-alphatab.mjs && next build`, so the vendor step copies any file you move there
 straight back before a single test runs. The drill would report PASS where it claims FAIL.
 
-**Drill 1 — the asset is missing or mistyped.** Break the vendoring SOURCE, which survives the
+**Drill 1 — the worklet is served but broken.** Break the vendoring SOURCE, which survives the
 rebuild. Stub rather than delete: the vendor step throws its own `missing source` error on a
 deleted file and never reaches the browser, which proves nothing about the test.
 
@@ -1904,9 +1908,19 @@ cp web/node_modules/@coderline/alphatab/dist/alphaTab.worklet.min.mjs /tmp/workl
 pnpm --filter @notation-hero/web run test:e2e
 ```
 
-Expected: **FAIL** on assertion 3's content check and/or the `Audio Worklet creation failed`
-absence check — while the notation test still passes, which is exactly the asymmetry the spec
-describes. Restore and re-run:
+Expected: **FAIL** on assertion 2 — the `data-position` poll — after its 20 s timeout, while the
+notation test still passes, which is exactly the asymmetry the spec describes.
+
+Assertions 3 and 4 stay **GREEN** on an empty module, so do not read them as a broken drill. An
+empty file is still served HTTP 200 with a JavaScript content type, so assertion 3 passes. And
+`addModule` **resolves** for an empty module: AlphaTab calls
+`createAlphaSynthAudioWorklet(...).then(onFulfilled, onRejected)` — the two-argument form — and
+`new AudioWorkletNode(ctx, 'alphatab', …)` throws inside `onFulfilled` because no processor by that
+name was registered. A throw in `onFulfilled` is not routed to `onRejected`; it becomes an unhandled
+rejection, so `Audio Worklet creation failed` never logs and assertion 4 stays empty. The MIME risk
+assertion 3 exists for is exercised instead by the Vercel `curl` checks in Tasks 1, 2 and 14.
+
+Restore and re-run:
 
 ```bash
 cp /tmp/worklet.bak web/node_modules/@coderline/alphatab/dist/alphaTab.worklet.min.mjs
@@ -2376,7 +2390,9 @@ const ACCEPT = '.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxl,.xml,.capx,.atex,.alphate
 // loadScoreFromBytes is SYNCHRONOUS and runs on the main thread: a mis-dropped video or disk
 // image would freeze or crash the tab with no message, and no try/catch recovers from that.
 // Checked before arrayBuffer(), so the bytes never reach memory. It does NOT bound decompressed
-// size — .gpx is a ZIP container AlphaTab inflates, which needs a worker-side bound (post-v0).
+// size — .gpx is BCFZ, not ZIP: its header declares the decompressed length and GpxFileSystem
+// expands to it unbounded, so a small file can claim gigabytes. The ZIP formats (.gp, .mxl, .capx)
+// are already capped per entry by settings.importer.maxDecodingBufferSize. Bound post-v0.
 // The limit is written once, in megabytes, so the toast below always names the real one.
 const MAX_NOTATION_MB = 25;
 const MAX_NOTATION_BYTES = MAX_NOTATION_MB * 1024 * 1024;
@@ -2932,29 +2948,55 @@ test('cancelling a replacement keeps the current score playing from where it was
   await play.click();
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
 
-  // Capture the position BEFORE the prompt — this is the value the resume has to preserve, and
-  // it is the only assertion here with any discriminating power. `data-playing` is already 'true'
-  // and window.confirm blocks the main thread, so playerStateChanged cannot fire while the dialog
-  // is up: re-checking it afterwards re-reads a value that could not have moved, and would pass
-  // just as happily if the resume logic were deleted or playback restarted from bar 1.
+  // Wait for the position to MOVE, not just for data-playing. AlphaSynth._playInternal sets
+  // PlayerState.Playing and fires stateChanged synchronously, before the worklet has played a
+  // sample; positionChanged only follows later, from updateTimePosition, once the worklet reports
+  // samplesPlayed back. Reading data-position the instant data-playing turns true therefore reads
+  // 0 on a perfectly good build — and the plain expect that used to sit below does not retry.
+  // Task 7's assertion 2 polls the same value for the same reason.
+  await expect
+    .poll(
+      async () =>
+        Number((await page.getByTestId('player-status').getAttribute('data-position')) ?? '0'),
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(0);
+
+  // Capture the position BEFORE the prompt — this is the value the resume has to preserve.
+  // `data-playing` is already 'true' and window.confirm blocks the main thread, so
+  // playerStateChanged cannot fire while the dialog is up: re-checking that attribute afterwards
+  // re-reads a value that could not have moved.
   const before = Number(
     (await page.getByTestId('player-status').getAttribute('data-position')) ?? '0',
   );
-  expect(before).toBeGreaterThan(0);
 
-  page.on('dialog', (dialog) => dialog.dismiss());
+  // Chain the dismissal onto waitForEvent rather than awaiting the dialog after setInputFiles:
+  // window.confirm blocks the page, so a dismissal that waits for setInputFiles to resolve could
+  // deadlock. This arms the handler first, dismisses as soon as the dialog fires, and still gives
+  // us something to await before asserting.
+  const dialogHandled = page.waitForEvent('dialog').then((dialog) => dialog.dismiss());
   await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await dialogHandled;
 
   // Still the sample, still playing.
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', '1-beat.gp');
 
-  // Resumed from where it was, and still advancing — not restarted, not frozen.
+  // Resumed from where it was — NOT restarted. A lone `.toBeGreaterThan(before)` proves nothing
+  // here: a restart from bar 1 climbs past `before` inside the poll window exactly as a resume
+  // does. The discriminator is the FIRST read after the dialog, taken while a restart would still
+  // be near zero — a resume cannot have gone backwards.
+  const after = Number(
+    (await page.getByTestId('player-status').getAttribute('data-position')) ?? '0',
+  );
+  expect(after).toBeGreaterThanOrEqual(before);
+
+  // …and still advancing, not frozen.
   await expect
     .poll(async () =>
       Number((await page.getByTestId('player-status').getAttribute('data-position')) ?? '0'),
     )
-    .toBeGreaterThan(before);
+    .toBeGreaterThan(after);
 });
 
 test('re-picking the same file after a cancel prompts again', async ({ page }) => {
@@ -3498,7 +3540,7 @@ Criteria 3, 5, 6 and 7 belong to Plans B and C.
 
 ## Known limitations
 
-- The 25 MB size gate bounds the file read, not the decompressed size: `.gpx` is a ZIP container AlphaTab inflates, which would need a worker-side bound. Out of scope for v0.
+- The 25 MB size gate bounds the file read, not the decompressed size. `.gpx` is a **BCFZ** container, not ZIP: its header declares how large it expands to and AlphaTab expands to that with no bound (a 215 KB input reached 4.6 GB). The genuine ZIP formats (`.gp`, `.mxl`, `.capx`) are already capped per entry by `settings.importer.maxDecodingBufferSize`. A decompressed-size bound is out of scope for v0.
 - iOS is unverified. The picker uses a button plus a programmatic `input.click()`, which is what the alphaTab fork ships on every non-iOS browser; iOS needs an `isIOS()` branch, verified on a real device, if it ever enters scope. v0's gate is desktop web.
 - A Guitar Pro file that embeds an audio track plays **that recording**, with the notation on screen — AlphaTab's automatic choice, kept deliberately. In that mode its synthesizer ignores mute, solo, track volume and the metronome, so Plan B's metronome and count-in and Plan C's mixer rows must render disabled with a tooltip. A toggle between the recording and the synthesizer is deferred (NH-298).
 

@@ -128,6 +128,30 @@ Approved by leocaseiro 2026-09-16:
   its construction site, `useEffect` leaves Task 6's `PlayerShell` import and rejoins it in Task 10
   where the drag-cancel effect first needs it, the engine `.then` returns, and the provider gains a
   return type. Re-extracted and re-linted after the edits: zero problems.
+- **Task 11's cancel test polls for movement and can tell a resume from a restart.** It had two
+  defects at once. It could fail on a correct build: `data-playing` flips when `_playInternal` sets
+  `PlayerState.Playing` synchronously, before the worklet has played a sample, so the position read
+  straight after it is 0 — and the assertion was a plain `expect`, which does not retry (Task 7's
+  equivalent already polls). And it could pass on a broken one: a cancel that restarted from bar 1
+  climbs past the captured position just as a resume does. It now polls until the position moves,
+  then asserts the FIRST read after the dialog is not lower than the captured one — which a restart
+  cannot satisfy — before confirming it is still advancing.
+- **`.gpx` is BCFZ, not ZIP** — corrected in three places and in the deferred bound's name. Both
+  `.gpx` fixtures begin with the bytes `BCFZ`; `GpxFileSystem.decompress` reads a length from the
+  4-byte header and expands to it with **no cap**, while the genuine ZIP formats (`.gp`, `.mxl`,
+  `.capx`) go through `ZipReader`, which throws `OverflowError` at three separate checks against
+  `settings.importer.maxDecodingBufferSize`. The deferred NH-298 item is renamed to "a
+  decompressed-size bound (the BCFZ header length, and the ZIP total across entries)", so it targets
+  the unbounded path instead of one AlphaTab already guards.
+- **Task 7's Drill 1 names the assertion that actually fires.** Renamed "the worklet is served but
+  broken", with Expected pointing at assertion 2's position poll rather than assertions 3 and 4.
+  Both of those stay green on an empty module: it is served 200 with a JavaScript type, and
+  `addModule` resolves, so `new AudioWorkletNode` throws inside the success handler of a
+  two-argument `.then(onFulfilled, onRejected)` — which does not route a throw in `onFulfilled` to
+  `onRejected`, so AlphaTab's `Audio Worklet creation failed` never logs.
+
+leocaseiro's standing instruction from this round: findings that only remove ambiguity are applied
+without a picker; anything carrying a choice or a behaviour change still goes to him.
 
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 
