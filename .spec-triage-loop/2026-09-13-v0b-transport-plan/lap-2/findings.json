@@ -38,7 +38,8 @@
       "why_it_works": "It threads the value along the same prop path every other transport value already uses, so `TransportRow` keeps its stated contract of holding no AlphaTab knowledge while the shell stays the single owner of the subscription.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": ["L2-02"]
+      "conflicts": ["L2-02"],
+      "status": "applied"
     },
     {
       "id": "L2-02",
@@ -58,7 +59,8 @@
       "why_it_works": "It satisfies the spec's and Plan A's explicit disabled-with-tooltip requirement using a value the shell can already compute, and because the flag comes from `notation` rather than a one-shot callback it stays correct across Plan A's replace/cancel flow. Loop and the Scrubber keep the generic `disabled` prop, which is all the spec gates them on.",
       "recommended_action": "Apply",
       "depends_on": "L2-08",
-      "conflicts": ["L2-01", "L2-08"]
+      "conflicts": ["L2-01", "L2-08"],
+      "status": "parked — Plan A useAlphaTab refactor"
     },
     {
       "id": "L2-05",
@@ -78,7 +80,8 @@
       "why_it_works": "It turns an unenforceable cross-plan statement into a reachable code path plus an exclusion stated at the exact step where the wrong row would otherwise be added, so the mistake cannot be made silently in Plan C.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": []
+      "conflicts": [],
+      "status": "applied"
     },
     {
       "id": "L2-04",
@@ -98,7 +101,8 @@
       "why_it_works": "It names the one placement Plan A proved works and rules out the fallback Plan A measured as broken, so the implementer neither guesses nor stops to ask — and it keeps every player subscription in the single callback Plan A already owns.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": ["L2-03"]
+      "conflicts": ["L2-03"],
+      "status": "applied"
     },
     {
       "id": "L2-03",
@@ -118,7 +122,8 @@
       "why_it_works": "Each task then compiles and lints on its own commit: Task 6 tracks position, length and the loop range only, and the tempo setter first appears in the same task as the state it writes, matching Task 7's own back-reference comment.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": ["L2-04"]
+      "conflicts": ["L2-04"],
+      "status": "applied"
     },
     {
       "id": "L2-10",
@@ -138,7 +143,8 @@
       "why_it_works": "The summary table then matches both task bodies after L2-08 removes the `onScoreLoaded` path, so the map can no longer send an implementer down the initial-tempo route the plan spends a whole step forbidding.",
       "recommended_action": "Apply",
       "depends_on": "L2-08",
-      "conflicts": ["L2-08"]
+      "conflicts": ["L2-08"],
+      "status": "applied"
     },
     {
       "id": "L2-06",
@@ -158,7 +164,8 @@
       "why_it_works": "The clamp lives in the one wrapper that owns the fraction-to-percent conversion, so both asserted tests pass and the real compressed-response case can no longer produce an out-of-range `aria-valuenow`; the indeterminate branch is untouched, which is the part Base UI genuinely does own.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": []
+      "conflicts": [],
+      "status": "open"
     },
     {
       "id": "L2-08",
@@ -178,7 +185,8 @@
       "why_it_works": "It removes a step that cannot be built and recovers a value the shell already owns, so the title also stays in step with Plan A's replace/cancel flow — which a one-shot load callback could never do — and the empty-title fallback survives.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": ["L2-02", "L2-10", "L2-12"]
+      "conflicts": ["L2-02", "L2-10", "L2-12"],
+      "status": "applied"
     },
     {
       "id": "L2-07",
@@ -198,7 +206,8 @@
       "why_it_works": "It calls something that exists and keeps the soundfont failure inside Plan A's one-number-per-failure-reason contract, so the message is reportable like every other failure instead of being the single exception.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": []
+      "conflicts": [],
+      "status": "parked — Plan A useAlphaTab refactor"
     },
     {
       "id": "L2-13",
@@ -219,7 +228,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-11",
@@ -239,7 +249,8 @@
       "why_it_works": "`runVrStories` presses Tab exactly `focusTabs` times before asserting, so two presses land on the input and the `slowed` story's focus snapshot captures the percentage the rule is supposed to reveal.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": []
+      "conflicts": [],
+      "status": "open"
     },
     {
       "id": "L2-09",
@@ -259,7 +270,8 @@
       "why_it_works": "It removes the three duplicate names that break typecheck while keeping the one export Plan A did not add, and it aims the comment instruction at text that will actually be in the file when Task 6 runs.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": []
+      "conflicts": [],
+      "status": "open"
     },
     {
       "id": "L2-12",
@@ -279,7 +291,8 @@
       "why_it_works": "One header ships instead of two, spec §7's file-name Tooltip survives, and Plan A's three `loaded-notation-name` assertions keep passing — which the naive fix of deleting either copy would break.",
       "recommended_action": "Apply",
       "depends_on": null,
-      "conflicts": ["L2-08"]
+      "conflicts": ["L2-08"],
+      "status": "parked — Plan A useAlphaTab refactor"
     },
     {
       "id": "L2-16",
@@ -300,7 +313,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": ["L2-29"],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-17",
@@ -321,7 +335,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-15",
@@ -342,7 +357,8 @@
       "recommended_action": "Apply",
       "depends_on": "L2-04",
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "parked — Plan A useAlphaTab refactor"
     },
     {
       "id": "L2-14",
@@ -363,7 +379,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-19",
@@ -384,7 +401,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-30",
@@ -405,7 +423,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-24",
@@ -426,7 +445,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-23",
@@ -447,7 +467,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": ["FYI-6"],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-22",
@@ -468,7 +489,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-25",
@@ -489,7 +511,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-20",
@@ -510,7 +533,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-28",
@@ -531,7 +555,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "parked — Plan A useAlphaTab refactor"
     },
     {
       "id": "L2-21",
@@ -552,7 +577,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-27",
@@ -573,7 +599,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": ["FYI-3"],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-26",
@@ -594,7 +621,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": [],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     },
     {
       "id": "L2-29",
@@ -615,7 +643,8 @@
       "recommended_action": "Apply",
       "depends_on": null,
       "conflicts": ["L2-16"],
-      "bucket": "actionable"
+      "bucket": "actionable",
+      "status": "open"
     }
   ],
   "fyi": [
@@ -806,5 +835,79 @@
     "clean": false,
     "reason": "The headless envelope carries both a Proposed fixes section (26 items) and a Decisions section (4 items), so the document is not clean. Re-lap is indicated once this lap triage completes."
   },
-  "next_invocation": "Run the TRIAGE half: read THIS file and nothing else, walk the top 8 findings past the maintainer as chunks-then-picker per the triage skill, apply the Apply decisions, then write the undecided findings and the decisions back here."
+  "next_invocation": "Run the TRIAGE half: read THIS file and nothing else, walk the top 8 findings past the maintainer as chunks-then-picker per the triage skill, apply the Apply decisions, then write the undecided findings and the decisions back here.",
+  "triage": {
+    "session_date": "2026-09-16/17",
+    "picker_rounds_used": 5,
+    "applied": [
+      {
+        "id": "L2-01",
+        "wiring_sensitive": "low — prop threading only"
+      },
+      {
+        "id": "L2-03",
+        "wiring_sensitive": "HIGH — its Task 7 landing comment says register the midiLoaded subscription inside handleApiReady"
+      },
+      {
+        "id": "L2-04",
+        "wiring_sensitive": "HIGH — the paragraph rules out useEffect because Plan A holds the api in a useRef; a useAlphaTab hook that stores the api in useState makes useEffect subscriptions valid and this text wrong"
+      },
+      {
+        "id": "L2-05",
+        "wiring_sensitive": "medium — threads applySpeed down from PlayerShell; a hook-owned api may move applySpeed"
+      },
+      {
+        "id": "L2-08",
+        "wiring_sensitive": "low — derives the title from the notation state",
+        "note": "Applied after a collision check: no Plan A code exists on any branch; the edit matches Plan A NotationSurfaceProps and its line-3098 title derivation",
+        "follow_on": [
+          "Produces line",
+          "scoreTitle state -> derived const",
+          "handleScoreLoaded removed",
+          "render sentence"
+        ]
+      },
+      {
+        "id": "L2-10",
+        "wiring_sensitive": "low — File Structure row text"
+      }
+    ],
+    "parked_for_plan_a_useAlphaTab_refactor": [
+      {
+        "id": "L2-02",
+        "why": "Backing-track disabled state. Maintainer paused it: Plan A is being refactored to its own useAlphaTab. Revised fix already agreed in substance — gate on api.actualPlayerMode === PlayerMode.EnabledBackingTrack read on playerReady (NOT score.backingTrack.rawAudioFile, NOT scoreLoaded). Only the state HOME is open, and it depends on the new hook."
+      },
+      {
+        "id": "L2-07",
+        "why": "showFailureToast fix lives inside a soundfont subscription handler and adds a code to Plan A web/lib/player-errors.ts, a file under active refactor."
+      },
+      {
+        "id": "L2-12",
+        "why": "Task 7 header merge with Plan A inline header — depends on Plan A PlayerShell render tree, which the refactor restructures. Also resolves NH-296."
+      },
+      {
+        "id": "L2-15",
+        "why": "Re-applying transport state to a rebuilt api is directly about api lifecycle — the exact thing useAlphaTab changes."
+      },
+      {
+        "id": "L2-28",
+        "why": "Header empty-title state depends on L2-12 header shape."
+      }
+    ],
+    "new_findings_raised_in_triage": [
+      {
+        "id": "L2-NEW-1",
+        "title": "Record why the plans hand-roll the React wiring",
+        "decision": "Skip — decide later",
+        "context": "Research 2026-09-16: @coderline/alphatab 1.8.4 and the 1.9.0 alpha ship NO React integration (exports: . ./webpack ./vite ./soundfont/* ./font/*; @coderline/alphatab-react is E404). useAlphaTab is the fork own ~/Sites/alphaTabWebsite/src/hooks.ts, never published; its settings callback receives alphaTab.Settings, not the api. It uses a static value import that Plan A Task 4 fence rejects, and its useAlphaTabEvent is a useEffect Plan B rules out. actualPlayerMode has no change event under either design. Superseded in part by the maintainer refactoring Plan A to its own useAlphaTab."
+      },
+      {
+        "id": "L2-NEW-2",
+        "title": "Fork gap: metronome and count-in buttons are never gated on player mode",
+        "decision": "not raised as a card — FYI to maintainer",
+        "context": "~/Sites/alphaTabWebsite rhythm-game player-controls-group.tsx has zero mediaType/actualPlayerMode/backingTrack references; switching to MediaType.Audio leaves both live and silent. NH-297-shaped fork ticket candidate."
+      }
+    ],
+    "residual_correction": "Lap 2 reviewers verified AlphaTab claims against 1.8.1 (the fork copy), but this repo pins 1.8.4 — installed at node_modules/.pnpm/@coderline+alphatab@1.8.4. Re-verify AlphaTab claims against 1.8.4 next lap."
+  }
 }

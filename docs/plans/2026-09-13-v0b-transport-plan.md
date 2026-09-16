@@ -46,6 +46,10 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
   `playbackSpeed` is an `AlphaTabApi` **property**, not a field in AlphaTab's `Settings` JSON, so a row
   wired like the other settings rows would write a value that never reaches the engine — the slider moves,
   the `%` updates, the audio does not.
+  **So `applySpeed` must be reachable from Plan C:** Task 7 Step 5 threads it down to `PlayerHeader`
+  alongside `onSpeedChange`, and `SettingsPopover` takes it as its own prop. Plan C's Task 4 must
+  **exclude** the Player group's speed row from the generic settings-JSON schema and wire that one row
+  to `applySpeed` directly — a blocking note on Plan C, tracked with its own ticket beside NH-294-NH-297.
 - **The 12.5–200 % speed slider is Plan C's** — it belongs to the Settings popover's Player group, not the header pill. This plan builds the editable BPM number field (`± 1` with hold-to-repeat, wheel scrub, drag scrub) and the `%` readout only.
 - **A–B loop markers are out of scope.** v0 ships a plain seek bar; looping uses AlphaTab's native bar-range selection plus the Loop toggle. Do not build marker UI.
 - `@coderline/alphatab` 1.8.4 facts this plan relies on — all verified against the installed
@@ -100,15 +104,15 @@ Each folder holds the six files named in Global Constraints, plus a `X.vr.ts-sna
 
 **Modified**
 
-| File                               | Change                                                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `client/src/index.ts`              | Export the five new components.                                                                         |
-| `web/app/play/PlayerShell.tsx`     | Hold transport and soundfont-progress state; render the transport row, the header and the progress bar. |
-| `web/app/play/TransportRow.tsx`    | _(new)_ The row layout, wired to the api.                                                               |
-| `web/app/play/PlayerHeader.tsx`    | _(new)_ The header bar carrying the tempo pill.                                                         |
-| `web/app/play/NotationSurface.tsx` | Report the parsed score's tempo and the soundfont progress upward.                                      |
-| `web/e2e/player.e2e.ts`            | Cases for criteria 3, 5 and 6.                                                                          |
-| `web/e2e/a11y.e2e.ts`              | Axe over the loaded state now that the transport exists.                                                |
+| File                               | Change                                                                                                                                                                                                        |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `client/src/index.ts`              | Export the five new components.                                                                                                                                                                               |
+| `web/app/play/PlayerShell.tsx`     | Hold transport and soundfont-progress state; render the transport row, the header and the progress bar.                                                                                                       |
+| `web/app/play/TransportRow.tsx`    | _(new)_ The row layout, wired to the api.                                                                                                                                                                     |
+| `web/app/play/PlayerHeader.tsx`    | _(new)_ The header bar carrying the tempo pill.                                                                                                                                                               |
+| `web/app/play/NotationSurface.tsx` | Report the soundfont download progress upward — and only that. The tempo comes from `api.midiLoaded` / `api.playerPositionChanged` and the title from the `notation` the shell already holds (Task 7 Step 3). |
+| `web/e2e/player.e2e.ts`            | Cases for criteria 3, 5 and 6.                                                                                                                                                                                |
+| `web/e2e/a11y.e2e.ts`              | Axe over the loaded state now that the transport exists.                                                                                                                                                      |
 
 ---
 
@@ -1462,6 +1466,8 @@ interface TransportRowProps {
   onMetronomeChange: (next: boolean) => void;
   countIn: boolean;
   onCountInChange: (next: boolean) => void;
+  /** Whether AlphaTab currently holds a bar-range selection — picks the Loop label and tooltip. */
+  hasRange: boolean;
   disabled: boolean;
   /** The play/pause control, owned by the shell because it drives api.playPause(). */
   playButton: ReactNode;
@@ -1488,6 +1494,7 @@ export function TransportRow({
   onMetronomeChange,
   countIn,
   onCountInChange,
+  hasRange,
   disabled,
   playButton,
 }: Readonly<TransportRowProps>) {
@@ -1557,7 +1564,14 @@ const [hasRange, setHasRange] = useState(false);
 ```
 
 Extend the `playerPositionChanged` subscription from Plan A. It now carries three jobs — position,
-length and the live tempo — and two guards that are **not** optional:
+length and the live tempo — and two guards that are **not** optional.
+
+**Where this code goes.** Only `pendingSeek` and the `useState` declarations belong in `Player`'s own
+body. Every `api.….on(...)` call below — and Task 8 Step 3's two soundfont terminal handlers — goes
+**inside Plan A's `handleApiReady` callback**, beside its existing `playerStateChanged`,
+`soundFontLoaded` and `playerPositionChanged` registrations, never in a `useEffect`: the api does not
+exist during the first commit's effect flush, so an effect-based subscription never attaches and the
+failure surfaces as a 60-second `toBeEnabled` timeout pointing at the worklet, not at the wiring.
 
 ```tsx
 // Guard 1 — `endTime === 0` is the hardcoded PositionChangedEventArgs(0,0,0,0,false,120,120) stub that
@@ -1585,15 +1599,14 @@ api.playerPositionChanged.on((args) => {
 
   setPositionMs(args.currentTime);
   setDurationMs(args.endTime);
-  setScoreTempo(args.originalTempo); // live; score.tempo is the INITIAL tempo only
 });
-
-// The correct opening tempo, before a single frame has played. Also replays for late subscribers.
-api.midiLoaded.on((args) => setScoreTempo(args.originalTempo));
 
 // F-15: the Loop toggle's label needs to know whether a bar range is selected.
 api.playbackRangeChanged.on((args) => setHasRange(args.playbackRange !== null));
 ```
+
+The tempo half of this subscription lands in **Task 7 Step 5**, where `scoreTempo` is declared —
+Task 6 declares no tempo state, so nothing in this task would read one.
 
 and add the three accessors, each writing to the api and mirroring into state:
 
@@ -1626,7 +1639,7 @@ const seek = useCallback((ms: number) => {
 }, []);
 ```
 
-Render `<TransportRow … />` below the notation surface, move the existing play/pause `Button` into its `playButton` prop, and add the new attributes to the status element:
+Render `<TransportRow … />` below the notation surface, passing `hasRange={hasRange}` alongside the other transport values, move the existing play/pause `Button` into its `playButton` prop, and add the new attributes to the status element:
 
 ```tsx
         data-duration={durationMs}
@@ -1672,7 +1685,7 @@ git commit -m "feat(web): wire the transport row — loop, metronome, count-in a
 **Interfaces:**
 
 - Consumes: `TempoControl` (Task 5); the parsed score's `tempo`.
-- Produces: `onScoreLoaded: (score: { title: string }) => void` on `NotationSurface`; `data-speed` on `player-status`.
+- Produces: `data-speed` on `player-status`. No new `NotationSurface` prop — the title is derived in `PlayerShell` from the `notation` it already holds (Step 3).
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1707,15 +1720,20 @@ test('the header tempo stepper changes playback speed', async ({ page }) => {
 Run: `pnpm --filter @notation-hero/web run test:e2e -g "tempo stepper"`
 Expected: FAIL — no `Tempo` input.
 
-- [ ] **Step 3: Report the score's title upward**
+- [ ] **Step 3: Source the score title from the shell's own state**
 
-In `NotationSurface.tsx`, add an `onScoreLoaded` prop and call it from the score effect right after a successful parse, before `renderScore`:
+No `NotationSurface` change is needed, and `onScoreLoaded` is not built: after Plan A's Task 10 the
+score arrives at `NotationSurface` **already parsed**, so there is no parse there to hang a callback
+on. `PlayerShell` already holds it as `notation: OpenNotation | null`, and Plan A's header already
+derives the title from it — reuse that expression, including its fallback:
 
 ```tsx
-// Title only. The TEMPO deliberately does not travel this path: `score.tempo` is AlphaTab's
-// INITIAL tempo and is wrong from the first tempo automation onward (see Global Constraints).
-// PlayerShell sources the live tempo from `midiLoaded` + `playerPositionChanged` instead.
-onScoreLoaded({ title: score.title });
+// `score.title` is AlphaTab's own field and is an empty string when the file carries no title, so
+// the file name is the fallback — the same one Plan A's Task 11 header uses. The TEMPO deliberately
+// does not travel this path either: `score.tempo` is AlphaTab's INITIAL tempo and is wrong from the
+// first tempo automation onward (see Global Constraints). PlayerShell sources the live tempo from
+// `midiLoaded` + `playerPositionChanged` instead.
+const scoreTitle = notation ? notation.score.title || notation.name : '';
 ```
 
 - [ ] **Step 4: Write the header**
@@ -1771,7 +1789,16 @@ const [speed, setSpeed] = useState(1);
 // Seeded from `api.midiLoaded` and kept live by `playerPositionChanged` (Task 6 Step 5), never from
 // `score.tempo`. The 120 here is only the pre-load placeholder.
 const [scoreTempo, setScoreTempo] = useState(120);
-const [scoreTitle, setScoreTitle] = useState('');
+// Derived, not state — see Step 3. `score.title` is empty when the file carries no title, so the
+// file name is the fallback, the same one Plan A's Task 11 header uses.
+const scoreTitle = notation ? notation.score.title || notation.name : '';
+
+// The tempo half of Task 6 Step 5's handler lands here, where scoreTempo is declared. Add this line
+// to that same playerPositionChanged handler's body:
+//   setScoreTempo(args.originalTempo); // live; score.tempo is the INITIAL tempo only
+// and register its seeding subscription beside the others inside Plan A's handleApiReady:
+//   // The correct opening tempo, before a frame has played. Also replays for late subscribers.
+//   api.midiLoaded.on((args) => setScoreTempo(args.originalTempo));
 
 // The ONLY writer of api.playbackSpeed in the app — see Global Constraints. Plan C's Settings
 // Player-group row must call this, not the settings-JSON accessor path.
@@ -1780,15 +1807,12 @@ const applySpeed = useCallback((next: number) => {
   const api = apiRef.current;
   if (api) api.playbackSpeed = next;
 }, []);
-
-const handleScoreLoaded = useCallback(({ title }: { title: string }) => {
-  setScoreTitle(title);
-  // A new score keeps the speed the drummer chose — the BPM readout moves because the score's
-  // own tempo changed, not because the multiplier was reset.
-}, []);
 ```
 
-Render `<PlayerHeader … />` above the notation surface, pass `onScoreLoaded={handleScoreLoaded}` to `NotationSurface`, and add `data-speed={speed}` to the status element.
+A new score keeps the speed the drummer chose — the BPM readout moves because the score's own tempo
+changed, not because the multiplier was reset, and `scoreTitle` follows `notation` with no reset step.
+
+Render `<PlayerHeader … />` above the notation surface and add `data-speed={speed}` to the status element.
 
 - [ ] **Step 6: Run the lane to verify it passes**
 
