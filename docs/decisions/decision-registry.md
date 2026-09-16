@@ -153,6 +153,14 @@ Approved by leocaseiro 2026-09-16:
 leocaseiro's standing instruction from this round: findings that only remove ambiguity are applied
 without a picker; anything carrying a choice or a behaviour change still goes to him.
 
+**The review of Plan A is CLOSED at lap 3** (leocaseiro, 2026-09-16). The loop's own rule made lap 4
+due — `last_applied: P1` arms the re-lap trigger, and the cap is lap 5 — and he chose to stop
+anyway, with lap 3's six open findings all decided and applied. The frontmatter keeps the honest
+`last_applied: P1` rather than a value doctored to look finished, and carries a comment saying the
+armed trigger is a decided skip, not an oversight, so a later agent does not auto-run lap 4. Three
+laps produced 21 applied decisions; anything lap 4 would have raised can be raised against the code
+during implementation instead.
+
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 
 A seven-persona `ce-doc-review` of Plan A ([`docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`](../plans/2026-09-13-v0a-engine-and-first-sound-plan.md))
