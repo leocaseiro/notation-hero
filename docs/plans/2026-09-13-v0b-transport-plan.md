@@ -1190,7 +1190,7 @@ const TempoControl = ({
   className,
 }: Readonly<TempoControlProps>) => {
   const [lingering, setLingering] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const displayedBpm = Math.round(scoreTempo * speed);
   const percent = Math.round(speed * 100);
