@@ -46,6 +46,7 @@ nothing and the wrapper exits 1 with `The binary 'ec-…' not found`.
   the normal path.
 - **Removing the pin** needs a wrapper release that resolves a v4 asset name; check that before
   dropping it. Recorded in `AGENTS.md` beside the other binary-tool notes.
+
 ### 2026-09-16 — ESLint allows TODO comments: `sonarjs/todo-tag` off (NH-299)
 
 leocaseiro asked that ESLint stop blocking TODO comments — in particular, a JSDoc `@todo` tag (`/** @todo … */`) must lint clean in every package. The shared base spreads `sonarjs.configs.recommended`, which turns on `sonarjs/todo-tag` as an error, so every TODO note failed `eslint . --max-warnings 0` in `web/`, `client/` and `server/`. The rule has no option to exempt JSDoc tags, so it is turned off.
