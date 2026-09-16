@@ -1123,7 +1123,7 @@ export interface AlphaTabEngineState {
 // enum options and accessors as props instead of reading them off the library (spec §7).
 const AlphaTabEngineContext = createContext<AlphaTabEngineState>({ engine: null, error: null });
 
-export function AlphaTabEngineProvider({ children }: Readonly<{ children: ReactNode }>) {
+export function AlphaTabEngineProvider({ children }: Readonly<{ children: ReactNode }>): ReactNode {
   const [state, setState] = useState<AlphaTabEngineState>({ engine: null, error: null });
 
   useEffect(() => {
@@ -1134,6 +1134,8 @@ export function AlphaTabEngineProvider({ children }: Readonly<{ children: ReactN
     loadAlphaTabEngine()
       .then((engine) => {
         if (!disposed) setState({ engine, error: null });
+        // `promise/always-return` is an error in web/: every .then must return or throw.
+        return engine;
       })
       .catch((cause: unknown) => {
         if (!disposed) {
@@ -1163,11 +1165,17 @@ export function useAlphaTabEngine(): AlphaTabEngineState {
 
 ```bash
 rm web/lib/alphatab/engine-probe.ts
+pnpm --filter @notation-hero/web exec eslint --fix .
 pnpm --filter @notation-hero/web run typecheck
 pnpm --filter @notation-hero/web run lint
 ```
 
 Expected: both PASS.
+
+`eslint --fix` first, deliberately: `import/order` is machine work, so this plan's snippets are not
+kept in canonical order by hand — the order drifts the moment an import changes. Everything `--fix`
+cannot repair is already fixed in the snippets above, so after one `--fix` pass the check below is
+expected to be clean, not merely closer.
 
 - [ ] **Step 7: Commit**
 
@@ -1348,14 +1356,11 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
   const apiRef = useRef<AlphaTab.AlphaTabApi | null>(null);
   const { engine, error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
-  const [renderedTrackCount, setRenderedTrackCount] = useState(0);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
 
   useEffect(() => {
     const host = hostRef.current;
     if (!host || !engine) return;
-
-    let api: AlphaTab.AlphaTabApi | undefined;
 
     const settings = new engine.Settings();
     // No settings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
@@ -1393,7 +1398,7 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     };
     document.fonts.addEventListener('loadingerror', onFontError);
 
-    api = new engine.AlphaTabApi(host, settings);
+    const api = new engine.AlphaTabApi(host, settings);
     apiRef.current = api;
 
     // Take focus when this surface replaces the empty state: the control the user just pressed
@@ -1499,7 +1504,7 @@ Create `web/app/play/PlayerShell.tsx`:
 ```tsx
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Button } from '@notation-hero/client';
 import type * as AlphaTab from '@coderline/alphatab';
 
@@ -1668,12 +1673,18 @@ Expected: exactly **1**. AlphaTab renders one `<svg>` per system, so counting `s
 - [ ] **Step 9: Verify the package is clean**
 
 ```bash
+pnpm --filter @notation-hero/web exec eslint --fix .
 pnpm --filter @notation-hero/web run lint
 pnpm --filter @notation-hero/web run typecheck
 pnpm --filter @notation-hero/web run build
 ```
 
 Expected: all PASS.
+
+`eslint --fix` first, deliberately: `import/order` is machine work, so this plan's snippets are not
+kept in canonical order by hand — the order drifts the moment an import changes. Everything `--fix`
+cannot repair is already fixed in the snippets above, so after one `--fix` pass the check below is
+expected to be clean, not merely closer.
 
 - [ ] **Step 10: Commit**
 
@@ -2628,8 +2639,31 @@ useEffect(() => {
   // here: this branch only runs when no track carries a percussion staff at all, where any
   // track is as good as another.
   api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
-  setRenderedTrackCount(drumIndexes.length > 0 ? drumIndexes.length : 1);
 }, [notation]);
+```
+
+The count the test reads comes from AlphaTab, **not** from `drumIndexes`. Deriving it from the
+array we just passed in would make it echo the request: the three `Punk` assertions and success
+criterion 9 would pass even if AlphaTab drew only track 0 — including the Track-objects-instead-of-
+indexes mistake this task warns about twice, where `renderScore`'s `index >= 0` guard rejects every
+entry and nothing is drawn. `api.tracks` is AlphaTab's own resolved list (`renderScore` in
+`alphaTab.core.mjs` turns the indexes into `Track` objects and stores them; the getter is typed
+`get tracks(): Track[]` on `AlphaTabApiBase`, which `AlphaTabApi` extends, so the type-only import
+reaches it). Add the state here — Task 6 does not use it — and set it from the `renderFinished`
+handler Task 6 already registered:
+
+```tsx
+const [renderedTrackCount, setRenderedTrackCount] = useState(0);
+```
+
+```tsx
+api.renderFinished.on(() => {
+  globalThis.clearTimeout(firstRenderTimeout);
+  setRendered(true);
+  // What AlphaTab actually drew, not what we asked for. The no-percussion branch still reports
+  // 1, because renderScore pushes score.tracks[0] when the index list is undefined.
+  setRenderedTrackCount(api.tracks.length);
+});
 ```
 
 and expose the count for the test:
@@ -2663,7 +2697,11 @@ First widen `PlayerShell.tsx`'s imports. From this task on the file uses `toast`
 `OpenFileControl` (the rail control below) and `readNotation` plus `readFailureMessage` (the drop
 handler below), and Task 6's import list has only `Button`:
 
+`useEffect` also rejoins the `react` import — Task 6 left it out because nothing used it there, and
+the drag-cancel cleanup below is its first use:
+
 ```tsx
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, toast } from '@notation-hero/client';
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
 import { PLAYER_ERROR } from '../../lib/player-errors';

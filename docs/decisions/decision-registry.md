@@ -111,6 +111,23 @@ Approved by leocaseiro 2026-09-16:
   replace that array. `loadAlphaTabEngine()`'s own import holds its URL in a `const`, so it carries no
   `source.value` literal and cannot match — verified. `tooling/alphatab-import-fence.test.sh` gains a
   dynamic probe per package so the guard cannot be switched off unnoticed.
+- **The `rendered-track-count` test hook reports what AlphaTab drew, not what was requested** —
+  `setRenderedTrackCount(api.tracks.length)` inside the `renderFinished` handler, replacing a count
+  derived from the `drumIndexes` array the effect had just passed to `renderScore` (Task 10).
+  leocaseiro asked whether the drum track was set somewhere else; it is — `renderScore` on the line
+  above does the real work, and the removed line only fed an `sr-only` span the Playwright tests
+  read. As written, the three `Punk` assertions and success criterion 9 would have passed even if
+  AlphaTab drew only track 0, including the Track-objects-instead-of-indexes mistake the plan warns
+  about twice. `api.tracks` is AlphaTab's resolved list, verified in the installed 1.8.4.
+- **The plan's own React snippets are fixed only where `eslint --fix` cannot help**, and both
+  `Expected: PASS` steps now run `eslint --fix` first (Tasks 5 and 6). leocaseiro's call: import
+  ordering is machine work and does not belong in a hand-maintained plan. Measured before deciding —
+  the snippets raised 18 problems, `--fix` cleared 7, and **11 survived** across all three files, so
+  two of the three still failed the check the plan promised would pass. The 11 are fixed in place:
+  `renderedTrackCount` state moves from Task 6 to Task 10 (6 of them), `let api` becomes `const` at
+  its construction site, `useEffect` leaves Task 6's `PlayerShell` import and rejoins it in Task 10
+  where the drag-cancel effect first needs it, the engine `.then` returns, and the provider gains a
+  return type. Re-extracted and re-linted after the edits: zero problems.
 
 ### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
 
