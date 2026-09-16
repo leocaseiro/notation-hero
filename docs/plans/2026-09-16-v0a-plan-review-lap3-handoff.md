@@ -212,8 +212,8 @@ Added on 2026-09-16:
    `next` landed on **16.3.4**, not 16.3.5 — 16.3.5 was four days old and would have forced a
    `minimumReleaseAgeExclude` entry, punching a hole in the gate NH-259 exists to hold; and nine rows
    needed same-major `overrides` pins because `pnpm update` reuses a parent's snapshot. The expired
-   `GHSA-8988-4f7v-96qf` ignore is deleted rather than renewed, the now-consumerless `js-yaml@3`
-   override is gone, Playwright is still 1.61.1, and no visual-regression baseline moved.
+   `GHSA-8988-4f7v-96qf` ignore is deleted rather than renewed, the `js-yaml@3` override is gone now that nothing
+   resolves to it, Playwright is still 1.61.1, and no visual-regression baseline moved.
 2. **PR [#154](https://github.com/leocaseiro/notation-hero/pull/154)** (NH-299) allows `TODO` comments
    and carries NH-293's editorconfig **pre-push hook** fix. Still open.
 3. **Both are blocked by the same pre-existing CI failure, and so is every other open PR.** The `lint`
