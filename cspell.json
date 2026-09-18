@@ -468,6 +468,11 @@
     "checkmarks",
     "haspopup",
     "desynced",
-    "regen"
+    "regen",
+    "keyup",
+    "mousedown",
+    "pointerdown",
+    "mouseleave",
+    "focusability"
   ]
 }
