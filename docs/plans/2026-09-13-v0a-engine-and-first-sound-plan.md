@@ -12,7 +12,12 @@ last_applied: P1 # highest severity applied in lap 3; lap 3 fully triaged 2026-0
 
 **Goal:** Open a drum score from local disk on `/play`, see it as standard notation, press play, and hear it — with a CI lane that proves the real audio-worker path is live rather than the silent main-thread fallback.
 
-**Architecture:** Next.js 16 App Router in `web/`, two routes (`/` landing, `/play` player). AlphaTab is never bundled: its prebuilt ESM is copied out of `node_modules` into `web/public/alphatab/` by a vendoring step and pulled in at runtime through a `turbopackIgnore` dynamic import, which restores a real `http` `import.meta.url` and therefore native module workers. A single `'use client'` component owns the `AlphaTabApi` in a `useRef` and disposes it on unmount; the loaded namespace object is shared to other `web/` components through a React context, because a value import of `@coderline/alphatab` would re-bundle the library.
+**Entry point:** Tasks 1-4 shipped in the Tasks-1-4 pull request (vendored AlphaTab assets, the
+`@coderline/alphatab` lint fences, the `client/` barrel and the icon-font fix). Start at **Task 5**
+on a fresh branch off master; Tasks 1-4 below are the record of what already landed, and their
+"Expected: FAIL" gates read as already-satisfied, not as work to redo.
+
+**Architecture:** Next.js 16 App Router in `web/`, two routes (`/` landing, `/play` player). AlphaTab is never bundled: its prebuilt ESM is copied out of `node_modules` into `web/public/alphatab/` by a vendoring step and pulled in at runtime through a `turbopackIgnore` dynamic import, which restores a real `http` `import.meta.url` and therefore native module workers. A single `'use client'` component owns the `AlphaTabApi` as React state, through the ported `useAlphaTab` hook, and the hook disposes it on unmount; the loaded namespace object is shared to other `web/` components through a React context, because a value import of `@coderline/alphatab` would re-bundle the library.
 
 **Tech Stack:** Next.js 16.2.10 (App Router, Turbopack, React Compiler), React 19.2, `@coderline/alphatab` 1.8.4 (type-only), `@notation-hero/client` design system, Playwright 1.61.1 + `@axe-core/playwright` 4.12.1.
 
@@ -81,7 +86,7 @@ rather than by reasoning about it. Neither ships unverified.
   only. Note `web/e2e/fixtures/1-beat.xml` is a Guitar Pro v5.10 binary wearing an `.xml`
   name (it opens `18 46 49 43 48 49 45 52` — the length-prefixed `FICHIER GUITAR PRO v5.10`): it is
   GP5 coverage, not MusicXML coverage.
-- **Q7 — percussion-free fixture. Closed.** `web/e2e/fixtures/guitar-no-percussion.gp` (2,866 bytes)
+- **Q7 — percussion-free fixture. Closed.** `web/e2e/fixtures/guitar-no-percussion.gp` (2,741 bytes)
   is generated from a one-line alphaTex string via `importer.AlphaTexImporter` + `exporter.Gp7Exporter`
   and round-trips through `ScoreLoader.loadScoreFromBytes` as one track, one staff,
   `isPercussion = false`. Success criterion 9 is verified by running, not by reading.
@@ -104,6 +109,13 @@ and the synthesizer (added 2026-09-16 — v0 keeps AlphaTab's automatic choice),
 open questions. They are tracked together as a Smart Checklist on
 **[NH-298](https://leocaseiro.atlassian.net/browse/NH-298)**, with enough context on each to act
 without this plan. Nothing in the tasks below depends on any of them.
+
+Two more tickets came out of the 2026-09-18 fork-parity triage and are referenced from the tasks
+below: **[NH-302](https://leocaseiro.atlassian.net/browse/NH-302)** carries the five deferred
+fork-parity findings — the `updateSettings()` funnel (F-C3), the dark-mode colour path (F-C5),
+soundfont download progress (F-D1), the asset-path helper (F-D3) and F-C1's font-family stack — and
+**[NH-303](https://leocaseiro.atlassian.net/browse/NH-303)** carries "remember the last song", the
+song cache. Nothing in the tasks below depends on either.
 
 ---
 
@@ -1019,7 +1031,7 @@ This task also lands the pieces every later task builds on, ported from the `rhy
   - `interface AlphaTabEngineState { engine: AlphaTabEngine | null; error: Error | null }`.
   - `setAlphaTabDefaults(settings, engine)` — the settings identical for every instance.
   - `useAlphaTab(settingsInit) -> [api, hostRef]` — the ONLY way a component gets an `AlphaTabApi`.
-  - `useAlphaTabEvent(api, event, handler, deps?)` — every `.on()` paired with an `.off()`.
+  - `useAlphaTabEvent(api, event, handler)` — every `.on()` paired with an `.off()`.
   - Tasks 6, 9, 10, 11 and 13 consume `useAlphaTabEngine()`. Plan C's settings and tracks compositions consume it too.
 
 - [ ] **Step 1: Write the failing test — a consumer that typechecks against the API**
@@ -1076,6 +1088,12 @@ let pending: Promise<AlphaTabEngine> | null = null;
  *
  * Memoised: two mounts (React 19 strict mode double-invokes effects in dev) share one module
  * instance.
+ *
+ * The memo caches a REJECTION as well as a success: `pending ??=` keeps the first promise whatever
+ * it settles to, so one failed import is permanent for the page and a reload is the only recovery —
+ * which is exactly what the engine-error message tells the visitor. The `.catch(() => null)` retry
+ * in Tasks 10 and 11 therefore cannot succeed after a failure; it only covers the case where the
+ * import is still in flight.
  */
 export function loadAlphaTabEngine(): Promise<AlphaTabEngine> {
   pending ??= (async () => {
@@ -1197,7 +1215,7 @@ import { resolveLogLevel } from './engine';
  *
  * The fork also sets a 16-line sans/serif family stack here for AlphaTab's title, marker and
  * fingering text (`environment.ts:45-60`). That needs a product typeface decision, so it is
- * deferred to the NH-291 follow-up issue, not guessed here.
+ * deferred to NH-302, not guessed here.
  */
 export function setAlphaTabDefaults(settings: AlphaTab.Settings, engine: AlphaTabEngine): void {
   settings.core.fontDirectory = '/alphatab/font/';
@@ -1219,11 +1237,12 @@ list is `[engine]` rather than `[]` because the namespace arrives asynchronously
 'use client';
 
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import type { DependencyList, RefObject } from 'react';
+import type { RefObject } from 'react';
 import type * as AlphaTab from '@coderline/alphatab';
 
 import { useAlphaTabEngine } from './AlphaTabEngineContext';
 import { setAlphaTabDefaults } from './defaults';
+import type { AlphaTabEngine } from './engine';
 
 /** The host div carries the live api for DevTools: `$0.at` on a selected notation box. */
 type HostWithApi = HTMLDivElement & { at?: AlphaTab.AlphaTabApi };
@@ -1301,7 +1320,7 @@ export type AlphaTabApiEvents = {
 export function useAlphaTabEvent<
   T extends keyof AlphaTabApiEvents,
   H extends Parameters<AlphaTab.AlphaTabApi[T]['on']>[0],
->(api: AlphaTab.AlphaTabApi | undefined, event: T, handler: H, deps?: DependencyList): void {
+>(api: AlphaTab.AlphaTabApi | undefined, event: T, handler: H): void {
   const latest = useRef(handler);
   // Written in an effect, never during render: `react-hooks/refs` is an error in web/.
   useEffect(() => {
@@ -1310,16 +1329,21 @@ export function useAlphaTabEvent<
 
   useEffect(() => {
     if (!api) return;
-    const listener = ((...args: unknown[]) =>
-      (latest.current as (...a: unknown[]) => void)(...args)) as H;
-    api[event].on(listener);
+    const listener = (...args: unknown[]) => {
+      (latest.current as (...a: unknown[]) => void)(...args);
+    };
+    // Narrow the emitter ONCE, here — not by indexing at the call site. While `event` is still
+    // generic, `api[event]` is the union of every emitter member and TypeScript resolves `.on` to
+    // IEventEmitter's zero-argument overload, which a union-typed listener cannot satisfy (TS2345).
+    const emitter = api[event] as unknown as AlphaTab.IEventEmitterOfT<unknown>;
+    emitter.on(listener);
     return () => {
-      api[event].off(listener);
+      emitter.off(listener);
     };
     // `handler` is deliberately absent — see the ref above. Upstream reached the same conclusion
     // in commit a614efdb, but without the ref, which froze its handlers at first render and
     // silently defeated its own position throttle. Do not copy that half.
-  }, [api, event, ...(deps ?? [])]);
+  }, [api, event]);
 }
 ```
 
@@ -1330,11 +1354,12 @@ export function useAlphaTabEvent<
    `useRef` host with `[engine]` deps was linted clean against this repo's resolved config on
    2026-09-18; a `useState` host is what fails it. If the `setApi` call is flagged anyway, fix the
    shape — do not add an `eslint-disable`.
-2. The mapped type uses `IEventEmitterOfT<never>` because `@typescript-eslint/no-explicit-any` is an
-   error in `web/` (`eslint.config.base.mjs:74`), where the fork writes `any`. If `never` narrows the
-   union so far that a real event name stops resolving, widen it to `IEventEmitterOfT<unknown>` and
-   check `api.renderFinished`, `api.error`, `api.playerStateChanged`, `api.soundFontLoaded` and
-   `api.playerPositionChanged` all still typecheck.
+2. The mapped type's `IEventEmitterOfT<never>` resolves correctly against 1.8.4 and needs no
+   widening: a conditional-type probe confirms `renderFinished`, `error`, `playerStateChanged`,
+   `playerReady` and `playerPositionChanged` all survive it, while `playPause` is correctly
+   excluded. `never` is deliberate — `@typescript-eslint/no-explicit-any` is an error in `web/`
+   (`eslint.config.base.mjs:74`), where the fork writes `any`. The cast that matters is on the
+   emitter inside the effect, above.
 
 - [ ] **Step 8: Delete the probe and verify the package is clean**
 
@@ -1366,10 +1391,11 @@ git commit -m "feat(web): load the self-hosted AlphaTab ESM once, share it by co
 
 The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` with a correct lifecycle, the loading `Skeleton`, and the three failure states — engine import, soundfont download, music-font download. It loads the bundled sample score directly so there is something to see and hear before the file picker exists.
 
-Two rules this task establishes, and every later task inherits (triaged 2026-09-18):
+Three rules this task establishes, and every later task inherits (triaged 2026-09-18):
 
 1. **The notation box is mounted for the whole life of the page.** The player always has a score, so nothing ever replaces the box — not the loading state, not an error. Anything that must cover it is an overlay. A replaced box leaves AlphaTab rendering into a detached node with no error raised anywhere: notation vanishes while audio keeps playing.
 2. **`Player` owns the api; everything else receives it.** `useAlphaTab` is called in exactly one place, and no component constructs an `AlphaTabApi` or calls `.on()` by hand.
+3. **The scroll viewport survives score changes, so reset it.** It is ours, not AlphaTab's (F-C2), and it is never unmounted — so anything that renders a new score sets `scrollTop = 0` first.
 
 **Not here:** `host.focus()`. Taking focus makes sense when _the person opens a score_ — Task 10 does it there — but this task's score loads on page load, and moving focus into a box the visitor did not ask for is a keyboard trap of our own making.
 
@@ -1392,7 +1418,7 @@ Two rules this task establishes, and every later task inherits (triaged 2026-09-
   - `PLAYER_ERROR` from `web/lib/player-errors.ts` — the error number every failure message ends with. Tasks 10, 11 and 12 use it.
   - `NotationSurface` props: `{ api: AlphaTab.AlphaTabApi | undefined; hostRef; viewportRef }`. It owns no api of its own — `Player` calls `useAlphaTab` and hands the pieces down (F-B3, triaged 2026-09-18). Task 10 Step 5 later adds `notation: OpenNotation | null` — the parsed score, not `LoadedNotation`.
   - `interface LoadedNotation { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
-  - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-soundfont`.
+  - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-player-ready`.
 
 - [ ] **Step 1: Add the Playwright dependencies, then write the failing test**
 
@@ -1493,8 +1519,8 @@ export const PLAYER_ERROR = {
   fileUnreadable: 'E102',
   /** No AlphaTab importer accepts the bytes. */
   notAScore: 'E103',
-  /** The bundled sample beat could not be fetched. */
-  sampleUnavailable: 'E104',
+  /** A cached or catalog score could not be loaded; the player falls back to the bundled beat. */
+  cachedScoreUnavailable: 'E104',
   /** The self-hosted AlphaTab module failed to import. */
   engineImport: 'E201',
   /** AlphaTab raised its own error event — in practice, the soundfont download. */
@@ -1682,7 +1708,7 @@ function Player() {
   const { engine } = useAlphaTabEngine();
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [playing, setPlaying] = useState(false);
-  const [soundFontReady, setSoundFontReady] = useState(false);
+  const [playerReady, setPlayerReady] = useState(false);
 
   // The ONE owner of the api (F-B3). There is no second apiRef and no onApiReady callback: a
   // callback prop in the hook's dependency list rebuilds the engine on an ordinary state change,
@@ -1728,7 +1754,12 @@ function Player() {
   useAlphaTabEvent(api, 'playerStateChanged', (args) => {
     setPlaying(args.state === engine?.synth.PlayerState.Playing);
   });
-  useAlphaTabEvent(api, 'soundFontLoaded', () => setSoundFontReady(true));
+  // `playerReady`, not `soundFontLoaded`: 1.8.4 builds soundFontLoaded as a bare `new EventEmitter()`,
+  // so it fires once and is never replayed — a subscription that lands one commit after the api was
+  // constructed can miss it and latch Play disabled forever. `api.playerReady` returns the player
+  // wrapper's `readyForPlayback`, built as `new EventEmitter(() => this.isReadyForPlayback)`, which
+  // reports the current value to a late subscriber.
+  useAlphaTabEvent(api, 'playerReady', () => setPlayerReady(true));
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
@@ -1737,7 +1768,7 @@ function Player() {
       <div
         data-testid="player-status"
         data-playing={playing}
-        data-soundfont={soundFontReady}
+        data-player-ready={playerReady}
         className="flex items-center gap-3"
       >
         {/* Play stays disabled until the synth is ready (spec §4). size-11 = the 44px minimum hit
@@ -1748,7 +1779,7 @@ function Player() {
           size="icon"
           variant="ghost"
           aria-label={playing ? 'Pause' : 'Play'}
-          disabled={!soundFontReady}
+          disabled={!playerReady}
           onClick={() => api?.playPause()}
           className="size-11 rounded-full text-primary"
         >
@@ -1853,7 +1884,7 @@ With the dev server running (React 19 strict mode double-invokes effects), reloa
 document.querySelectorAll('[data-testid="notation-surface"] .at-surface').length
 ```
 
-Expected: exactly **1**. AlphaTab renders one `<svg>` per system, so counting `svg` varies with the score and gives you no baseline to compare against; `.at-surface` is one per surface. Check it on a single load — strict mode double-invokes within one commit, and a reload tears the tree down anyway, so reloading proves nothing. If it doubles, the hook's cleanup `created.destroy()` is not running — check that `useAlphaTab`'s effect list is exactly `[engine]`, and that nothing has crept back into it. A function prop in that list is the whole failure mode: it changes identity on a render, the effect re-runs, and a second engine is built. That cleanup is what prevents the leak: with it in place a React 19.2 repro settled at exactly one live `AlphaTabApi` across four constructions under strict mode.
+Expected: exactly **1**. AlphaTab renders one `<svg>` per system, so counting `svg` varies with the score and gives you no baseline to compare against; `.at-surface` is one per surface. Check it on a single load — strict mode double-invokes within one commit, and a reload tears the tree down anyway, so reloading proves nothing. If it doubles, the hook's cleanup `created.destroy()` is not running — check that `useAlphaTab`'s effect list is exactly `[engine]`, and that nothing has crept back into it. A function prop in that list is the whole failure mode: it changes identity on a render, the effect re-runs, and a second engine is built. That cleanup is what keeps exactly one AlphaTab SURFACE bound to the host: a React 19.2 repro settled at one `.at-surface` across four constructions under strict mode. It does not prove the destroyed apis are collectable — see Known limitations.
 
 Also confirm in the same console that the debug handle is live, since it is now the fastest way to inspect a running player (F-D2): select the notation box in the Elements panel and evaluate `$0.at.score.title` — or from the console, `document.querySelector('[data-testid="notation-surface"] > div').at`.
 
@@ -2348,7 +2379,7 @@ Expected: PASS — 3 tests. The end-to-end `Punk.gp` case runs in Task 10.
 
 `web/e2e/fixtures/guitar-no-percussion.gp` is produced from a one-line alphaTex string with the
 pinned 1.8.4 importer/exporter, then round-tripped to prove it is what criterion 9 needs. Verified:
-2,866 bytes, a real GP7 zip (`VERSION`, `Content/score.gpif`), reading back as one track, one staff,
+2,741 bytes, a real GP7 zip (`VERSION`, `Content/score.gpif`), reading back as one track, one staff,
 `isPercussion = false`. Write the generator beside the other tooling tests so the fixture can be
 regenerated rather than being an unexplained binary:
 
@@ -2357,9 +2388,13 @@ regenerated rather than being an unexplained binary:
 import { writeFile } from 'node:fs/promises';
 
 const at = await import('../web/node_modules/@coderline/alphatab/dist/alphaTab.mjs');
-const score = at.importer.AlphaTexImporter.importFromString(
+// Instance API, not a static: 1.8.4's AlphaTexImporter has no `importFromString`.
+const importer = new at.importer.AlphaTexImporter();
+importer.initFromString(
   '\\title "Guitar (no percussion)" . 3.3.4 3.3.4 3.3.4 3.3.4 |',
+  new at.Settings(),
 );
+const score = importer.readScore();
 await writeFile(
   'web/e2e/fixtures/guitar-no-percussion.gp',
   new at.exporter.Gp7Exporter().export(score),
@@ -2395,7 +2430,7 @@ git commit -m "feat(web): select every drum track, with a percussion-free fallba
 
 - Consumes: `LoadedNotation` (Task 6); `selectDrumTrackIndexes` (Task 9).
 - Produces:
-  - `OpenFileControl` props: `{ onNotation: (file: LoadedNotation) => void; compact?: boolean }`, plus an exported `readNotation(file)` the shell's drop handler reuses. **This matches the implementation** — the earlier `hasNotation` / `variant` pair was never implemented and is gone.
+  - `OpenFileControl` props: `{ onNotation: (file: LoadedNotation) => void }`, plus an exported `readNotation(file)` the shell's drop handler reuses. **This matches the implementation** — the earlier `hasNotation` / `variant` / `compact` trio was never reachable and is gone: the control has one shape, the compact rail button beside Play.
   - `OpenNotation { name: string; score: AlphaTab.model.Score }` — what the shell holds after parsing; `NotationSurface` takes it as its `notation` prop.
   - Test hooks: `data-testid="open-file-input"`, `data-testid="open-file-button"`.
 
@@ -2561,9 +2596,6 @@ const MAX_NOTATION_BYTES = MAX_NOTATION_MB * 1024 * 1024;
 
 interface OpenFileControlProps {
   onNotation: (notation: LoadedNotation) => void;
-  /** The compact rail button beside Play. The large variant has no call site in v0a — a score
-   *  is always open — but it stays for a future start screen and its stories. */
-  compact?: boolean;
 }
 
 async function readNotation(file: File): Promise<LoadedNotation> {
@@ -2587,7 +2619,7 @@ function readFailureMessage(file: File): string {
     : `${file.name} could not be read. Check that the file still exists, then try again. (Error ${PLAYER_ERROR.fileUnreadable})`;
 }
 
-export function OpenFileControl({ onNotation, compact = false }: Readonly<OpenFileControlProps>) {
+export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const inputId = useId();
 
@@ -2641,14 +2673,14 @@ export function OpenFileControl({ onNotation, compact = false }: Readonly<OpenFi
       <Button
         type="button"
         data-testid="open-file-button"
-        variant={compact ? 'outline' : 'default'}
-        className={compact ? 'min-h-11 min-w-11' : 'min-h-11 px-8 text-base'}
+        variant="outline"
+        className="min-h-11 min-w-11"
         onClick={() => inputRef.current?.click()}
       >
         <span className="material-symbols-outlined" aria-hidden="true">
           folder_open
         </span>
-        <span className={compact ? 'sr-only' : undefined}>Open file</span>
+        <span className="sr-only">Open file</span>
       </Button>
     </>
   );
@@ -2720,7 +2752,7 @@ const requestNotation = useCallback(
 **Keep `settings.core.file = SAMPLE_NOTATION` exactly as Task 6 wrote it.** AlphaTab loads the
 bundled beat at construction, and a file the person opens is rendered on top of it through
 `renderScore`. There is no `loadSample` function and no "Load the sample beat" button: the sample
-is not something to fetch, it is what the player already has. `PLAYER_ERROR.sampleUnavailable`
+is not something to fetch, it is what the player already has. `PLAYER_ERROR.cachedScoreUnavailable`
 (E104) stays in the error table for the day a cached or catalog score fails to load, and is unused
 in v0a.
 
@@ -2762,6 +2794,11 @@ Replace the `settings.core.file = SAMPLE_NOTATION;` approach for user scores wit
 // replacement leaves the playing score untouched by construction.
 useEffect(() => {
   if (!api || !notation) return;
+
+  // Back to the top before the new score paints. The viewport survives score changes now (F-C2 —
+  // it is ours, not AlphaTab's), so without this, opening a short score after scrolling deep into
+  // a long one leaves the person looking at blank space below the last system.
+  if (viewportRef.current) viewportRef.current.scrollTop = 0;
 
   const drumIndexes = selectDrumTrackIndexes(notation.score.tracks);
   // INDEXES, not Track objects. Passing undefined makes AlphaTab render score.tracks[0] — its
@@ -2951,7 +2988,7 @@ and the markup, replacing the plain `<main>` body:
     <div
       data-testid="player-status"
       data-playing={playing}
-      data-soundfont={soundFontReady}
+      data-player-ready={playerReady}
       className="flex items-center gap-3"
     >
       {/* …the Play button from Task 6… */}
@@ -2959,7 +2996,7 @@ and the markup, replacing the plain `<main>` body:
           page: a score is always open, so there is no other place for it to live, Task 11's
           replace tests always find `open-file-input`, and the person's focus is never moved by a
           control disappearing out from under them. */}
-      <OpenFileControl compact onNotation={requestNotation} />
+      <OpenFileControl onNotation={requestNotation} />
     </div>
   </section>
 </main>
@@ -3115,10 +3152,10 @@ test('cancelling a replacement keeps the current score playing from where it was
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
 
-  // Resumed from where it was — NOT restarted. A lone `.toBeGreaterThan(before)` proves nothing
-  // here: a restart from bar 1 climbs past `before` inside the poll window exactly as a resume
-  // does. The discriminator is the FIRST read after the dialog, taken while a restart would still
-  // be near zero — a resume cannot have gone backwards.
+  // Never interrupted — NOT restarted. A lone `.toBeGreaterThan(before)` proves nothing here: a
+  // restart from bar 1 climbs past `before` inside the poll window exactly as uninterrupted
+  // playback does. The discriminator is the FIRST read after the dialog, taken while a restart
+  // would still be near zero — playback that never stopped cannot have gone backwards.
   const after = await positionMs();
   expect(after).toBeGreaterThanOrEqual(before);
 
@@ -3265,15 +3302,18 @@ const requestNotation = useCallback(
       // carrying VR and axe baselines. What does not exist is an AlertDialog COMPONENT (six
       // co-located files plus baselines). Building it is Plan C work, and it would be a real
       // simplification here, not just a prettier dialog: a non-blocking dialog removes the buffer
-      // drain, the `wasPlaying` capture and the resume-on-cancel below, because playback simply
-      // never stops. v0 keeps window.confirm; do not describe the primitive as missing.
+      // drain and the `wasPlaying` capture, because playback simply never stops — and it is what
+      // would finally make a real resume-on-cancel necessary. v0 keeps window.confirm; do not
+      // describe the primitive as missing.
       const confirmed = globalThis.confirm(
         `Replace ${notation.name} with ${next.name}? The score you have open will be closed.`,
       );
 
       if (!confirmed) {
-        // Cancel keeps the current score and discards the new file. Resume from the same position.
-        if (wasPlaying) api?.play();
+        // Cancel keeps the current score and discards the new file. Nothing to resume: playback was
+        // never interrupted. `window.confirm` blocks the main thread, so the player is still in
+        // PlayerState.Playing when the dialog returns — `AlphaSynthBase.play()` would return false
+        // without acting — and AlphaTab's pump refills the drained buffer on its own.
         return;
       }
     }
@@ -3286,8 +3326,8 @@ const requestNotation = useCallback(
       toast.error(
         `${next.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
       );
-      // The open score was never replaced. Only restart playback: the dialog emptied the buffer.
-      if (wasPlaying) api?.play();
+      // The open score was never replaced, and playback was never interrupted — the worklet drained
+      // its buffer while the dialog was up and the pump refills it. Nothing to restart.
       return;
     }
 
@@ -3556,7 +3596,7 @@ Expected: FAIL — either on missing modules (fix the import) or on real violati
 - [ ] **Step 3: Fix the violations and re-run**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e a11y`
-Expected: PASS — 6 tests.
+Expected: PASS — 5 tests.
 
 - [ ] **Step 4: Gate the 44 px rule in the lane, not by eye**
 
@@ -3585,7 +3625,7 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
 }
 ```
 
-Call it from each of the six cases above, beside `expectNoViolations`. Any entry is a control that
+Call it from each of the five cases above, beside `expectNoViolations`. Any entry is a control that
 fails the tablet-landscape touch target — pad its hit area (keep the glyph at its drawn size) until
 the list is empty.
 
@@ -3624,13 +3664,14 @@ Expected: all PASS. Do not open the PR on a red tree.
 
 - [ ] **Step 2: Push and open the PR**
 
-Task 1 already opened this PR (to get a Vercel preview for the Q2 check), and GitHub refuses a
-second open pull request for the same head branch — so this **retitles and re-bodies** it rather
-than creating one. `git push` needs no `-u`: Task 1 set the upstream.
+Tasks 1-4 shipped in their own pull request (vendored assets, the lint fences, the design-system
+barrel) and this branch was cut fresh off master, so there is no PR to retitle — open one.
+`pr-checklist-sync` runs on `opened`, so a newly created PR gets its checklist automatically and
+needs no manual workflow run.
 
 ```bash
-git push
-gh pr edit --title "feat(web): v0 player — open a local score, see it, hear it (NH-291)" --body "$(cat <<'EOF'
+git push -u origin <branch>
+gh pr create --title "feat(web): v0 player — open a local score, see it, hear it (NH-291)" --body "$(cat <<'EOF'
 Implements Plan A of the v0 local-file drum player: the AlphaTab engine, the `/play` screen, and a CI lane that proves the audio worker path is live.
 
 Spec: `docs/specs/2026-09-10-v0-local-file-player-design.md`
@@ -3657,22 +3698,19 @@ Criteria 3, 5, 6 and 7 belong to Plans B and C.
 - The 25 MB size gate bounds the file read, not the decompressed size. `.gpx` is a **BCFZ** container, not ZIP: its header declares how large it expands to and AlphaTab expands to that with no bound (a 215 KB input reached 4.6 GB). The genuine ZIP formats (`.gp`, `.mxl`, `.capx`) are already capped per entry by `settings.importer.maxDecodingBufferSize`. A decompressed-size bound is out of scope for v0.
 - iOS is unverified. The picker uses a button plus a programmatic `input.click()`, which is what the alphaTab fork ships on every non-iOS browser; iOS needs an `isIOS()` branch, verified on a real device, if it ever enters scope. v0's gate is desktop web.
 - A Guitar Pro file that embeds an audio track plays **that recording**, with the notation on screen — AlphaTab's automatic choice, kept deliberately. In that mode its synthesizer ignores mute, solo, track volume and the metronome, so Plan B's metronome and count-in and Plan C's mixer rows must render disabled with a tooltip. A toggle between the recording and the synthesizer is deferred (NH-298).
+- `api.destroy()` in AlphaTab 1.8.4 does not fully detach from the host. It never removes the
+  `container.resize` subscription registered in `AlphaTabApiBase`'s constructor, and
+  `BrowserUiFacade.destroy()` never disconnects its `IntersectionObserver`. Because the host element
+  is deliberately stable for the page's whole life, each construct/destroy cycle leaves another
+  listener and observer entry pointing at a destroyed api, which therefore stays reachable with its
+  parsed score and renderer. `_isDestroyed` keeps it silent. One api per page visit bounds the cost
+  in v0; the `.at-surface` count in Task 6 Step 8 cannot see it.
 
 ## Pulumi preview
 
 safe — no `infra/` changes in this PR.
 EOF
 )"
-```
-
-`gh pr edit --body` replaces the **whole** body, including the checklist `pr-checklist-sync` added
-when Task 1 opened this PR — and that workflow runs only on `opened`, `workflow_dispatch` and
-template pushes to `master`, never on `edited`. Without the manual run below, Step 5 has no boxes to
-tick and the required `pr-checklist` job fails on every canonical item:
-
-```bash
-gh workflow run pr-checklist-sync.yml
-gh run watch
 ```
 
 - [ ] **Step 3: Re-verify on the deployed preview**
@@ -3740,6 +3778,13 @@ the AlertDialog component does not); Q4 browser matrix (post-v0 per D7); CSP hea
 (`ARCH-SEC-2` is written for the dropped CloudFront delivery and needs re-scoping to Vercel);
 a decompressed-size bound for `.gpx`; iOS.
 
+**Plan B needs re-triage before dispatch.** `docs/plans/2026-09-13-v0b-transport-plan.md` Task 6
+still specifies `data-position` on `player-status` fed from React playhead state, and a hand-written
+`api.playerPositionChanged.on(...)` described as "the subscription from Plan A" — a subscription this
+plan no longer creates, a test hook it explicitly does not produce, and a shape the 2026-09-18
+no-test-instrumentation rule removed for the ~60-renders-per-second cost. Re-triage Plan B against
+that rule and rewrite it onto `useAlphaTabEvent` before it is dispatched.
+
 **Placeholder scan.** Exactly **one** step says "open the real file and match what it exports"
 rather than inventing an API: the Material Symbols `src` descriptor (Task 4 Step 7). It names the
 exact file and the `grep` that reveals the answer, so it is an instruction to read something that
@@ -3769,7 +3814,7 @@ purpose, because parsing before the state swap is what removes the rollback path
 `selectDrumTrackIndexes` keeps one name and one signature. `loadAlphaTabEngine` / `resolveLogLevel` /
 `useAlphaTabEngine` are spelled identically everywhere. Test ids are declared in the task that
 creates them and reused verbatim: `notation-surface`, `notation-skeleton`, `engine-error`,
-`transport-play`, `player-status` (with `data-playing` and `data-soundfont` — no `data-position`,
+`transport-play`, `player-status` (with `data-playing` and `data-player-ready` — no `data-position`,
 see Task 7), `rendered-track-count`, `open-file-input`, `open-file-button`, `loaded-notation-name`.
 AlphaTab's own `.at-surface` and `.at-cursor-beat` class names are read directly in two places, and
 the debug handle `host.at` in one — all three are the library's, not ours to name.
