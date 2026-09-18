@@ -433,6 +433,81 @@ outputMode === WebAudioAudioWorklets`, never reading `Environment.webPlatform` �
   MusicXML export.
 
 **Status:** ✅ decided · 📄 prose-only enforcement so far — the spec is the contract; the machine gate arrives with the v0 build (the Playwright lane in `web/`). Approved by leocaseiro 2026-09-10 (D1–D7) and 2026-09-12 (review decisions).
+### 2026-09-18 — `resources/` is data, not code: excluded from the editorconfig gate (NH-291)
+
+Tracking the source chart files under `resources/charts/` made the `lint` job fail 14 times across 4
+files. The cause is not formatting drift: `.editorconfig` requires `end_of_line = lf`, `charset = utf-8`
+and `insert_final_newline` of **every** file, and a Guitar Pro binary cannot satisfy any of them.
+`editorconfig-checker` skips ZIP-container (`.gp`, `.mxl`) and MIDI files on its own, but a `BCFZ`
+(GP6/`.gpx`) and a `FICHIER GUITAR PRO v5` (`.gp5`) header carries enough printable ASCII to be read
+as text, so those four were scanned and rejected.
+
+leocaseiro's call, 2026-09-18: **exclude both the directory and the formats** —
+`.editorconfig-checker.json` gains `^resources/` and `\.(gp|gp5|gpx|mid|mxl)$`.
+
+- **The directory pattern is the principled half.** `resources/` holds third-party musical artifacts
+  exported by other tools; it is **data, not code**, and no source-formatting rule should apply to it.
+  This also covers `resources/charts/1-beat.xml`, which despite its extension is a Guitar Pro 5
+  binary, so no per-file pattern is needed for it.
+- **The extension pattern is the travelling half.** Copies of these charts already live under
+  `web/public/charts/` and `web/e2e/fixtures/`; excluding by extension means the gate does not have
+  to be revisited each time a chart lands outside `resources/`.
+- **Accepted cost:** the four alphaTex **text** files (`beat.alphatex`/`.atex`,
+  `Punk.alphatex`/`.atex`) are inside `resources/` and so are no longer checked, even though they
+  pass today. That follows from treating the directory as data; it was not an oversight.
+- **Not a weakened gate elsewhere.** No CI job, workflow or `.editorconfig` rule changed. Every other
+  path is checked exactly as before, and the canary for this gate is that removing either pattern
+  brings the same 14 errors straight back.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `lint` CI job runs `pnpm run lint:editorconfig`
+against this config, so any change to the exclusion list is visible in the diff. Approved by
+leocaseiro 2026-09-18.
+
+### 2026-09-16 — Dependency CVE refresh: fix every advisory, keep the ignore list empty (NH-231)
+
+The `deps-cve` gate (osv-scanner) had drifted to **74 advisories across 29 packages** (4 Critical, 43 High, 26 Medium, 1 Low) — all from `pnpm-lock.yaml` on `master`, none from an open PR. leocaseiro chose a **real version fix over an allowlist**: the refresh takes the gate to **0**, and `osv-scanner.toml` now carries **no ignores at all**.
+
+- **The expired ignore was dropped, not renewed.** `GHSA-8988-4f7v-96qf` (`@opentelemetry/core` 1.30.1) expired at `2026-09-16T00:00:00Z`. Its stated reason — that the only fix was an unverifiable otel v1 → v2 major bump under `@pulumi/pulumi` — had become obsolete, because Pulumi 3.255.0 made that move upstream. Bumping `@pulumi/pulumi` to 3.261.0 closes the advisory outright and drops the whole js-yaml v3 line out of the tree, so the `js-yaml@3` override went with it. An expired ignore must be re-argued, never rubber-stamped.
+- **Targeted updates only — no blanket `pnpm update -r`.** A blanket run would move the pixel-sensitive UI stack (Base UI, Storybook, TanStack, React, Tailwind) and invalidate the visual-regression baselines. Only named carriers moved.
+- **Playwright is held at 1.61.1** (`playwright`, `playwright-core`, `@playwright/test`). Floating it would un-match the three version-exact `minimumReleaseAgeExclude` pins and re-trip the NH-259 release-age gate, and would desynchronise the `mcr.microsoft.com/playwright:v1.61.1-noble` container the `-linux` VR baselines are rendered in. All 612 VR snapshots still match, unchanged.
+- **`overrides` is the lever for the deep transitives.** Where a parent resolves its copy below the patch, pnpm reuses the parent's snapshot and `pnpm update` cannot reach it. Nine advisories needed a same-major `overrides` pin (`brace-expansion@1/@2/@5`, `fast-uri@3`, `qs@6`, `smol-toml`, plus raised floors on `multer` and `postcss`). Same major as the parent declares, so no API surface moves.
+- **Next.js: 16.2.10 → 16.3.4, not 16.3.5.** Both `next` and `eslint-config-next` were pinned exact, so the 11 `next` advisories could not float. 16.2.11 closes only 9; the two Criticals need 16.3.3+. 16.3.4 declares the same `sharp: ^0.35.4` as 16.3.5 — so it clears both `sharp` rows too — but it is 15 days old rather than 4, which keeps it **outside** the 7-day `minimumReleaseAge` window. Taking 16.3.5 would have forced a `minimumReleaseAgeExclude` entry for a very fresh release, opening a hole in the gate that exists to dodge compromised publishes. **No release-age exception was added by this refresh.**
+- **Pre-approved fallback NOT used.** If the 16.2 → 16.3 bump had broken anything, the agreed fallback was to keep the other 61 fixes, revert only `next`/`eslint-config-next`, and time-box a 30-day ignore for the 13 `next`/`sharp` rows. Nothing broke, so no ignore was added.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `deps-cve` CI job is the enforcement, and it now passes with an empty ignore list, so any regression or new ignore is visible in the diff. Approved by leocaseiro 2026-09-16.
+
+### 2026-09-16 — `editorconfig-checker` pinned to v3.11.3: the `lint` job runs again (NH-293)
+
+The `lint` job had been failing on every pull request since **2026-07-16** — the last green `master`
+run — and took `CI Green` down with it, blocking every open PR. It is not a violation in the
+repository: `editorconfig-checker`'s npm wrapper downloads its binary from GitHub releases, asks for
+release `latest`, and looks for an asset whose name starts with `ec-<platform>-<arch>`. Upstream
+renamed every asset to `editorconfig-checker-*` in **v4.0.0 (2026-09-03)**, so the lookup finds
+nothing and the wrapper exits 1 with `The binary 'ec-…' not found`.
+
+- **Fix:** `lint:editorconfig` sets `EC_VERSION=v3.11.3`, the last release carrying the old asset
+  names. The wrapper reads that variable (verified in its shipped `dist/index.js`, where it defaults
+  to `latest`), so one script line fixes the CI job, the lefthook pre-push check and `check:all`
+  together — rather than pinning the workflow and the hook separately.
+- **Verified locally before the PR:** with the pin, the binary downloads and the check passes with
+  **zero violations**; without it, the run reproduces the exact CI error. So the two months of red
+  were entirely the download, not unnoticed formatting drift.
+- **Not accepted as an allowlist or a skip.** The pre-push hook's existing "binary unavailable —
+  skipped" branch (also NH-293) stays as a safety net for a genuine network failure; it is no longer
+  the normal path.
+- **Removing the pin** needs a wrapper release that resolves a v4 asset name; check that before
+  dropping it. Recorded in `AGENTS.md` beside the other binary-tool notes.
+
+### 2026-09-16 — ESLint allows TODO comments: `sonarjs/todo-tag` off (NH-299)
+
+leocaseiro asked that ESLint stop blocking TODO comments — in particular, a JSDoc `@todo` tag (`/** @todo … */`) must lint clean in every package. The shared base spreads `sonarjs.configs.recommended`, which turns on `sonarjs/todo-tag` as an error, so every TODO note failed `eslint . --max-warnings 0` in `web/`, `client/` and `server/`. The rule has no option to exempt JSDoc tags, so it is turned off.
+
+- **`sonarjs/todo-tag` → off** in the shared rule layer of [`eslint.config.base.mjs`](../../eslint.config.base.mjs), so the change reaches all three packages; no package config turns it back on.
+- **`unicorn/expiring-todo-comments` stays on** (from `eslint-plugin-unicorn` recommended, with `allowWarningComments: true`): plain TODOs pass, and a TODO that carries an expiry condition (for example, a past-due date) still fails.
+- **`sonarjs/fixme-tag` is unchanged** — still an error; the request covers TODOs only.
+- **Verified:** `eslint --print-config` shows `sonarjs/todo-tag: [0]` and `sonarjs/fixme-tag: [2]` in all three packages. A probe file with `// TODO: …` and `/** @todo … */` failed on `sonarjs/todo-tag` before the change and lints clean after it; a probe with a past-due TODO and a FIXME still fails on `unicorn/expiring-todo-comments` and `sonarjs/fixme-tag`.
+
+**Status:** ✅ decided · 🤖 machine enforcement (the ESLint config itself). Requested by leocaseiro 2026-09-16.
 
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
 

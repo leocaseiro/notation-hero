@@ -43,6 +43,9 @@ export const base = [
       'unicorn/prevent-abbreviations': 'off',
       'unicorn/no-null': 'off',
       'unicorn/relative-url-style': ['error', 'always'],
+      // Allow TODO notes, including JSDoc `@todo` tags (NH-299). unicorn/expiring-todo-comments
+      // still checks TODOs that carry an expiry condition, and sonarjs/fixme-tag stays on.
+      'sonarjs/todo-tag': 'off',
       'arrow-body-style': ['error', 'as-needed'],
       'import/no-default-export': 'error',
       'import/no-cycle': 'off', // dependency-cruiser owns cycles

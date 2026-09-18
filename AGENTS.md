@@ -122,6 +122,12 @@ One system across packages — see
 - **Run locally**: `pnpm run fix` (auto-fix), `pnpm run check:all` (everything the CI `lint` + `quality` jobs run — not `build`/`a11y`/`vr`/security scans).
 - **Binary tools**: `pnpm run lint:setup` documents the `brew`/`pip` installs
   (shellcheck, yamllint, actionlint). Local hooks skip a missing binary; CI is the hard gate.
+- **`editorconfig-checker` is version-pinned** — `lint:editorconfig` sets `EC_VERSION=v3.11.3`
+  (NH-293). Its npm wrapper downloads a binary from GitHub releases and looks for an asset named
+  `ec-<platform>-<arch>`; upstream renamed every asset to `editorconfig-checker-*` in v4.0.0
+  (2026-09-03), so the default `latest` fails with `The binary 'ec-…' not found` and takes the whole
+  `lint` job down. v3.11.3 is the last release carrying the old names. Drop the pin once the wrapper
+  handles the new ones — check that a bumped wrapper resolves a v4 asset before removing it.
 - **Hooks**: lefthook auto-fixes staged files on commit, runs the full check on push.
 - **CI**: dedicated `lint` job (check-and-block), gated on `code || docs_or_config`.
 

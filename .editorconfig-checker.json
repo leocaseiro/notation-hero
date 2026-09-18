@@ -1,7 +1,8 @@
 {
   "Exclude": [
     "docs/decisions/decision-registry\\.md",
-    "\\.(gp|gp3|gp4|gp5|gpx|musicxml|mxl|capx)$",
+    "^resources/",
+    "\\.(gp|gp3|gp4|gp5|gpx|mid|musicxml|mxl|capx)$",
     "^web/e2e/fixtures/",
     "^web/public/charts/"
   ],
