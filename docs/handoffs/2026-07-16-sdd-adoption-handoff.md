@@ -80,7 +80,7 @@ MEMORY.md index also updated + compacted (20.7KB → ~12KB) with these 3 new ent
 
 ## Suggested opening prompt for the new session
 
-> _"Resume SDD adoption for notation-hero. Read [docs/handoffs/2026-07-16-sdd-adoption-handoff.md](docs/handoffs/2026-07-16-sdd-adoption-handoff.md). PR #143 has merged (or is about to). Start by picking the roles question (superpowers:writing-plans / executing-plans overlap with tlc). Then draft `docs/runbooks/spec-driven-workflow.md` codifying the mixed folder strategy + tlc + superpowers + ce chain. Then decide whether to end the ship-mode freeze via a `decision-changelog.md` entry before writing `.specs/project/PROJECT.md`."_
+> _"Resume SDD adoption for notation-hero. Read `docs/handoffs/2026-07-16-sdd-adoption-handoff.md`. PR #143 has merged (or is about to). Start by picking the roles question (superpowers:writing-plans / executing-plans overlap with tlc). Then draft `docs/runbooks/spec-driven-workflow.md` codifying the mixed folder strategy + tlc + superpowers + ce chain. Then decide whether to end the ship-mode freeze via a `decision-changelog.md` entry before writing `.specs/project/PROJECT.md`."_
 
 ## Do NOT re-do in the new session
 

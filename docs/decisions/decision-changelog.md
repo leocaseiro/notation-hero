@@ -98,19 +98,19 @@ leocaseiro ratified three fixes to the AskUserQuestion conventions in [`AGENTS.m
 
 **Status:** ✅ decided · 📄 prose-only enforcement — these are agent-contract prose in `AGENTS.md`; no machine check today (🟥 no gate can read a picker's options). Approved by leocaseiro 2026-07-16.
 
-### 2026-07-15 — Docs graveyard cleanup + canonical before-PR runbook + HARD ship-mode freeze (meta)
+### 2026-07-15 — Docs graveyard cleanup + canonical before-PR runbook + ship-mode freeze switch (meta)
 
 Session `docs-confusion-review` (worktree `clever-mendel-8e382c`, PR #143) triaged the doc graveyard (30+ `SUPERSEDED` markers), archived 8 shipped-ticket plans + predecessors → `docs/archive/2026-07/`, strengthened 8 partial-supersession banners with explicit "sections still current" lists, and landed `docs/runbooks/before-pr.md` (the 15-step canonical workflow leocaseiro codified: brainstorming → doc-review → plan → doc-review → execute → code-review → audit → merge, with 4 supplemental rules and 8 escape hatches for trivial changes).
 
-- **Ship-mode freeze — HARD, ACTIVE from 2026-07-15.** No new spec/plan/ADR of any kind until leocaseiro explicitly ends the freeze in a change-log entry titled "End ship-mode freeze". Rationale: forcing function against the start-many-finish-few pattern surfaced during this review. Bugfixes, code changes, cleanup PRs, and change-log entries documenting already-decided work are unaffected.
+- **Ship-mode freeze — the switch, not a running freeze.** Written on 2026-07-15 as "HARD, ACTIVE", and while it is ON it means no new spec/plan/ADR of any kind. It never came on: this PR stayed open until 2026-09-18, and the work that landed in between (NH-299, NH-293, NH-231, NH-291) plus the open NH-284 spike all ran without it. So it merges **OFF**. leocaseiro turns it on with an entry titled "Start ship-mode freeze" and off again with "End ship-mode freeze"; no agent flips it. Rationale for having it at all: a forcing function against the start-many-finish-few pattern surfaced during this review. Bugfixes, code changes, cleanup PRs, and change-log entries documenting already-decided work are never affected.
 - **Related out-of-PR work in the same session:** 5 dirty worktrees preserved as WIP branches on origin ([issue #142](https://github.com/leocaseiro/notation-hero/issues/142)); 14 worktrees pruned (Tier 1 + Tier 2, 62 → 48).
 - **Not in this PR:** deeper Tier 3 worktree cleanup (46 remaining with novel commits / dirty files) — deferred.
 
-**Status:** ✅ ratified · 🟡 partial enforcement — the freeze is prose-only (agent behavior); the runbook is prose-only (agent behavior); the archive move is machine-visible (directory-level signal). Approved by leocaseiro 2026-07-15.
+**Status:** ✅ ratified · 🟡 partial enforcement — the freeze switch and the runbook are prose-only (agent behavior); the archive move is machine-visible (directory-level signal). Approved by leocaseiro 2026-07-15; merged 2026-09-18 after a conflict-resolution pass that re-verified every claim against this changelog (freeze left OFF, see above).
 
 ### 2026-07-14 — Catalog read: service boundary (web reads via the server API) (NH-279)
 
-leocaseiro approved having `web/` read the catalog via the server's `GET /api/catalog` (cached) instead of querying Neon directly. Full record: [`docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md`](2026-07-14-catalog-read-service-boundary-adr.md).
+leocaseiro approved having `web/` read the catalog via the server's `GET /api/catalog` (cached) instead of querying Neon directly. The full ADR (`docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md`) is written but not yet on `master` — it lands with its implementation PR #140, which is still open. This entry is the ratified decision; the ADR is its long form.
 
 - **Why:** PR #140 review found `web/` duplicated the server's Drizzle schema + the ARCH-AUTHZ-1 visibility `WHERE`; the "extract to a shared drizzle table" fix fails the CJS/ESM dual-package hazard (server is CJS `nodenext`, `shared` is ESM). Path 2 dissolves the duplication by deletion — `shared/` carries only a pure TypeScript contract; web sheds `drizzle-orm` + `@neondatabase/serverless`.
 - **Scope:** supersedes the direct-Neon read path **for the catalog + Drizzle-schema-dependent reads** only (not a blanket ban); the 2026-07-08 BFF ADR otherwise stands (bannered).
