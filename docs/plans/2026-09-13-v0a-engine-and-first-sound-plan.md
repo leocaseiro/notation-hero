@@ -271,7 +271,7 @@ The four ESM files, the soundfont and the music font stop being committed blobs 
 **Interfaces:**
 
 - Consumes: nothing.
-- Produces: `web/public/alphatab/esm/alphaTab.mjs`, `.../alphaTab.core.mjs`, `.../alphaTab.worker.mjs`, `.../alphaTab.worklet.mjs`, `web/public/alphatab/soundfont/sonivox.sf3`, `web/public/alphatab/font/Bravura.woff2` and the two licence files. Task 5 hard-codes `/alphatab/esm/alphaTab.mjs` against these paths; Task 6 hard-codes `/alphatab/soundfont/sonivox.sf3` and `/alphatab/font/`. The module also exports `VENDOR_FILES` and `vendorAlphaTab({ dist, out })` for the test.
+- Produces: `web/public/alphatab/esm/alphaTab.mjs`, `.../alphaTab.core.mjs`, `.../alphaTab.worker.mjs`, `.../alphaTab.worklet.mjs`, `web/public/alphatab/soundfont/sonivox.sf3`, `web/public/alphatab/font/Bravura.woff2` and the two licence files. Task 5 hard-codes `/alphatab/esm/alphaTab.mjs` against these paths, and its `defaults.ts` hard-codes `/alphatab/soundfont/sonivox.sf3` and `/alphatab/font/`. The module also exports `VENDOR_FILES` and `vendorAlphaTab({ dist, out })` for the test.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -997,14 +997,18 @@ git commit -m "feat(client): export Skeleton/Sonner and block the icon-font swap
 
 ---
 
-### Task 5: Load the engine once and share it through context
+### Task 5: Load the engine once, share it by context, and port the fork's hook
 
-The awaited namespace object is the only runtime source of AlphaTab values, so every `web/` component that needs an enum reads it from here. The loader also owns the Bravura wait, because AlphaTab holds rendering until its internal `FontLoadingChecker` reports the family available and publishes no font event.
+The awaited namespace object is the only runtime source of AlphaTab values, so every `web/` component that needs an enum reads it from here. There is no font wait in the loader — AlphaTab injects its own SMuFL face during `AlphaTabApi` construction and holds `renderFinished` until its internal `FontLoadingChecker` reports the family available, which is what the Skeleton covers (Step 3's comment carries the measurements).
+
+This task also lands the pieces every later task builds on, ported from the `rhythm-game` fork (spec decision D4, triaged 2026-09-18 — see `docs/plans/2026-09-16-v0a-fork-parity-triage-handoff.md`, section "Triage outcome"): the mount hook `useAlphaTab`, the typed event helper `useAlphaTabEvent`, and the shared settings defaults. After this task, **no component constructs an `AlphaTabApi` by hand**.
 
 **Files:**
 
 - Create: `web/lib/alphatab/engine.ts`
 - Create: `web/lib/alphatab/AlphaTabEngineContext.tsx`
+- Create: `web/lib/alphatab/defaults.ts`
+- Create: `web/lib/alphatab/useAlphaTab.ts`
 
 **Interfaces:**
 
@@ -1014,6 +1018,9 @@ The awaited namespace object is the only runtime source of AlphaTab values, so e
   - `resolveLogLevel(engine: AlphaTabEngine): AlphaTab.LogLevel`.
   - `<AlphaTabEngineProvider>{children}</AlphaTabEngineProvider>` and `useAlphaTabEngine(): AlphaTabEngineState`.
   - `interface AlphaTabEngineState { engine: AlphaTabEngine | null; error: Error | null }`.
+  - `setAlphaTabDefaults(settings, engine)` — the settings identical for every instance.
+  - `useAlphaTab(settingsInit) -> [api, hostRef]` — the ONLY way a component gets an `AlphaTabApi`.
+  - `useAlphaTabEvent(api, event, handler, deps?)` — every `.on()` paired with an `.off()`.
   - Tasks 6, 9, 10, 11 and 13 consume `useAlphaTabEngine()`. Plan C's settings and tracks compositions consume it too.
 
 - [ ] **Step 1: Write the failing test — a consumer that typechecks against the API**
@@ -1168,7 +1175,166 @@ export function useAlphaTabEngine(): AlphaTabEngineState {
 
 > `<Context value={…}>` (without `.Provider`) is React 19 syntax. If the installed React types reject it, use `<AlphaTabEngineContext.Provider value={value}>` instead — both are correct on React 19.
 
-- [ ] **Step 6: Delete the probe and verify the package is clean**
+- [ ] **Step 6: Write the shared settings defaults**
+
+Create `web/lib/alphatab/defaults.ts`:
+
+```ts
+import type * as AlphaTab from '@coderline/alphatab';
+
+import type { AlphaTabEngine } from './engine';
+import { resolveLogLevel } from './engine';
+
+/**
+ * The settings that are identical for EVERY AlphaTab instance in the app — the "shipped defaults".
+ *
+ * Ported from the fork's `environment.setAlphaTabDefaults` (F-C1). It is a separate stage, not
+ * inlined in the hook, because two later features need to read the shipped values rather than
+ * guess them: Plan C's localStorage restore merges against them, and its "reset" puts them back.
+ * Buried in a closure they are reachable by neither.
+ *
+ * Per-instance settings — the file, the tracks, the player mode, the scroll element — belong in
+ * the call site's `settingsInit` callback, which runs AFTER this.
+ *
+ * The fork also sets a 16-line sans/serif family stack here for AlphaTab's title, marker and
+ * fingering text (`environment.ts:45-60`). That needs a product typeface decision, so it is
+ * deferred to the NH-291 follow-up issue, not guessed here.
+ */
+export function setAlphaTabDefaults(settings: AlphaTab.Settings, engine: AlphaTabEngine): void {
+  settings.core.fontDirectory = '/alphatab/font/';
+  settings.core.logLevel = resolveLogLevel(engine);
+  settings.player.soundFont = '/alphatab/soundfont/sonivox.sf3';
+}
+```
+
+- [ ] **Step 7: Write the mount hook and the typed event helper**
+
+Create `web/lib/alphatab/useAlphaTab.ts`. This is the fork's `hooks.ts:6-81` with four deliberate
+changes, each one triaged: the namespace comes from context instead of a static import (forced by
+D5), `useRef` replaces `React.createRef()` in a render body (F-A1 — the fork's version allocates a
+new ref every render, which its own `cross-markers.tsx:52-55` had to work around), the dependency
+list is `[engine]` rather than `[]` because the namespace arrives asynchronously, and
+`settingsInit` is wrapped in `useEffectEvent`.
+
+```tsx
+'use client';
+
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import type { DependencyList, RefObject } from 'react';
+import type * as AlphaTab from '@coderline/alphatab';
+
+import { useAlphaTabEngine } from './AlphaTabEngineContext';
+import { setAlphaTabDefaults } from './defaults';
+
+/** The host div carries the live api for DevTools: `$0.at` on a selected notation box. */
+type HostWithApi = HTMLDivElement & { at?: AlphaTab.AlphaTabApi };
+
+/**
+ * Creates one AlphaTabApi bound to the returned host element, and destroys it on unmount.
+ *
+ * The host div MUST stay mounted for the component's whole life (spec: the player always has a
+ * score, so it is never hidden). A conditionally mounted host would leave `hostRef.current` null
+ * on the only run of this effect, and nothing would ever build the api.
+ */
+export function useAlphaTab(
+  settingsInit: (settings: AlphaTab.Settings) => void,
+): [api: AlphaTab.AlphaTabApi | undefined, hostRef: RefObject<HTMLDivElement | null>] {
+  const { engine } = useAlphaTabEngine();
+  const [api, setApi] = useState<AlphaTab.AlphaTabApi>();
+  const hostRef = useRef<HTMLDivElement | null>(null);
+
+  // useEffectEvent, never a dependency. `settingsInit` is a fresh arrow at every call site on
+  // every render: in the dependency list it would destroy the api and construct a new one on an
+  // ordinary state change, throwing away the loaded score, the downloaded soundfont and both
+  // workers (F-B3). Verified exported by the installed React 19.2.7 under this exact name.
+  const init = useEffectEvent(settingsInit);
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!engine || !host) return;
+
+    const settings = new engine.Settings();
+    setAlphaTabDefaults(settings, engine);
+    init(settings);
+
+    const created = new engine.AlphaTabApi(host, settings);
+    setApi(created);
+    // Shipped in production on purpose (F-D2, approved 2026-09-18): one property assignment at
+    // construction, no cost while running, and it makes a live player inspectable from DevTools.
+    // It is the deliberate exception to "no test-only code in production" — this one is for
+    // debugging a real deployment, not for a test.
+    (host as HostWithApi).at = created;
+
+    return () => {
+      (host as HostWithApi).at = undefined;
+      setApi(undefined);
+      created.destroy();
+    };
+  }, [engine]);
+
+  return [api, hostRef];
+}
+
+/** The AlphaTabApi members that are event emitters — the only valid `event` names below. */
+export type AlphaTabApiEvents = {
+  [K in keyof AlphaTab.AlphaTabApi as AlphaTab.AlphaTabApi[K] extends
+    | AlphaTab.IEventEmitter
+    | AlphaTab.IEventEmitterOfT<never>
+    ? K
+    : never]: AlphaTab.AlphaTabApi[K];
+};
+
+/**
+ * Subscribes for as long as `api` lives, and ALWAYS unsubscribes (F-B2). The plan previously
+ * hand-wrote five `.on()` calls across two components and no `.off()` anywhere, leaning entirely
+ * on `api.destroy()`; Plan C's popovers mount and unmount while the api stays alive, so they need
+ * a pattern that detaches.
+ *
+ * `api` may be undefined, so call sites need no guard. The handler is read through a ref, so an
+ * inline arrow does NOT cause a resubscribe on every render — which matters more than it looks:
+ * AlphaTab re-fires several events at the moment you subscribe (`alphaTab.core.mjs:24721-24727`),
+ * so resubscribe churn is a feedback loop, not merely waste. That is the failure that produced
+ * four separate "maximum update depth" commits in the earlier alpha-drums attempt.
+ */
+export function useAlphaTabEvent<
+  T extends keyof AlphaTabApiEvents,
+  H extends Parameters<AlphaTab.AlphaTabApi[T]['on']>[0],
+>(api: AlphaTab.AlphaTabApi | undefined, event: T, handler: H, deps?: DependencyList): void {
+  const latest = useRef(handler);
+  // Written in an effect, never during render: `react-hooks/refs` is an error in web/.
+  useEffect(() => {
+    latest.current = handler;
+  });
+
+  useEffect(() => {
+    if (!api) return;
+    const listener = ((...args: unknown[]) =>
+      (latest.current as (...a: unknown[]) => void)(...args)) as H;
+    api[event].on(listener);
+    return () => {
+      api[event].off(listener);
+    };
+    // `handler` is deliberately absent — see the ref above. Upstream reached the same conclusion
+    // in commit a614efdb, but without the ref, which froze its handlers at first render and
+    // silently defeated its own position throttle. Do not copy that half.
+  }, [api, event, ...(deps ?? [])]);
+}
+```
+
+**Verify these two while writing them** — both are the kind of claim that rots:
+
+1. `pnpm --filter @notation-hero/web run lint` must pass with **no suppression**.
+   `react-hooks/set-state-in-effect` is an error here and `web/` runs `--max-warnings 0`. The
+   `useRef` host with `[engine]` deps was linted clean against this repo's resolved config on
+   2026-09-18; a `useState` host is what fails it. If the `setApi` call is flagged anyway, fix the
+   shape — do not add an `eslint-disable`.
+2. The mapped type uses `IEventEmitterOfT<never>` because `@typescript-eslint/no-explicit-any` is an
+   error in `web/` (`eslint.config.base.mjs:74`), where the fork writes `any`. If `never` narrows the
+   union so far that a real event name stops resolving, widen it to `IEventEmitterOfT<unknown>` and
+   check `api.renderFinished`, `api.error`, `api.playerStateChanged`, `api.soundFontLoaded` and
+   `api.playerPositionChanged` all still typecheck.
+
+- [ ] **Step 8: Delete the probe and verify the package is clean**
 
 ```bash
 rm web/lib/alphatab/engine-probe.ts
@@ -1184,11 +1350,12 @@ kept in canonical order by hand — the order drifts the moment an import change
 cannot repair is already fixed in the snippets above, so after one `--fix` pass the check below is
 expected to be clean, not merely closer.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
-git add web/lib/alphatab/engine.ts web/lib/alphatab/AlphaTabEngineContext.tsx
-git commit -m "feat(web): load the self-hosted AlphaTab ESM once and share it by context (NH-291)"
+git add web/lib/alphatab/engine.ts web/lib/alphatab/AlphaTabEngineContext.tsx \
+        web/lib/alphatab/defaults.ts web/lib/alphatab/useAlphaTab.ts
+git commit -m "feat(web): load the self-hosted AlphaTab ESM once, share it by context, port the fork's hook (NH-291)"
 ```
 
 ---
