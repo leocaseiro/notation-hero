@@ -1,9 +1,10 @@
 ---
-lap: 3 # 2026-09-14 review = lap 1; 2026-09-15/16 triage = lap 2; 2026-09-16 re-review = lap 3
-last_applied: P1 # highest severity applied in lap 3; lap 3 fully triaged 2026-09-16
-# REVIEW CLOSED AT LAP 3 by leocaseiro, 2026-09-16. `last_applied: P1` still arms the loop's re-lap
-# trigger, and that is left truthful on purpose — but lap 4 is a decided skip, not an oversight.
-# Do NOT auto-run it. See the 2026-09-16 lap-3 entry in docs/decisions/decision-registry.md.
+lap: 4 # 2026-09-14 review = lap 1; 2026-09-15/16 triage = lap 2; 2026-09-16 re-review = lap 3;
+# 2026-09-18 review of the useAlphaTab-hook rewrite = lap 4, fully triaged the same day.
+last_applied: P1 # highest severity applied in lap 4 (26 findings: 25 decided, 1 deferred by choice)
+# LAP 4 IS CLOSED. `last_applied: P1` arms the loop's re-lap trigger and that is left truthful on
+# purpose, but lap 5 is the cap and a further lap is leocaseiro's call, not automatic. See the two
+# 2026-09-18 entries in docs/decisions/decision-registry.md.
 ---
 
 # v0 Plan A — Engine and First Sound — Implementation Plan

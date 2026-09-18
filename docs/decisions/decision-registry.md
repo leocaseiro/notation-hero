@@ -12,6 +12,41 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-18 — Plan A review lap 4: 26 findings triaged, and Button becomes keyboard-reachable (NH-291)
+
+The rewritten v0 Plan A was reviewed before any code was written against it — six reviewer lenses,
+26 findings surviving verification. Every finding was verified by running the tool it claims about
+(ESLint, `tsc`, Node against the installed AlphaTab 1.8.4), not by reading.
+
+Approved by leocaseiro 2026-09-18:
+
+- **Auto-resolve the mechanical half; ask only about real decisions.** His instruction, recorded
+  because it governs future triage sessions too: findings that break a pipeline or are mechanically
+  wrong are applied without a question. Twenty-three landed that way, across three commits — five
+  build breakers (a spread dependency array that fails `--max-warnings 0`, a `TS2345` on the event
+  helper, a missing import, a fixture generator calling an API 1.8.4 does not expose, and a Play gate
+  racing a one-shot event), twelve plan-versus-reality corrections, and six spec passages left over
+  from the "always has a score open" decision (D8).
+- **The playback cursor gets token-driven CSS.** AlphaTab ships no stylesheet at all, so
+  `enableCursor` was painting nothing. The brand teal, with the explicit beat-cursor width upstream
+  documents as required. Rejected: upstream's own yellow-and-blue defaults, because they ignore the
+  palette.
+- **Opening a file moves focus to Play and announces the file name.** His decision, against the
+  reviewers' proposal of focusing the notation region: the next thing the person wants is to press
+  Play. A polite live region names the file, because focus alone never says _which_ score loaded.
+- **`disabled` buttons must stay keyboard-reachable, and the design system owns that** — not each
+  consumer. A natively disabled button cannot receive focus, so the focus-on-open above would be a
+  silent no-op while the engine loads. Tracked as
+  [NH-304](https://leocaseiro.atlassian.net/browse/NH-304): `Button` renders `aria-disabled` with its
+  own activation guard. Plan B (46 sites) and Plan C (11) inherit it.
+- **Plan-local task numbers never ship inside code comments.** "(Task 10)" means nothing to a reader
+  ten years from now, or to anyone outside this one document. Twenty-two comments now name the thing
+  instead of the task; prose, steps and tables keep their numbers.
+
+Still open, deliberately: whether `Card`/`CardContent` — exported by the shipped design-system barrel
+but rendered by no screen, since the empty state that wanted one was deleted — should lose the
+export. leocaseiro chose "decide later".
+
 ### 2026-09-18 — fork-parity triage closed: the player takes upstream's AlphaTab shape (NH-291)
 
 Execution of the v0 Plan A build was paused at Task 5 because the plan never ported the
