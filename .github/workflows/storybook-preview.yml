@@ -2,7 +2,7 @@ name: Storybook preview
 
 # Publishes a static Storybook to the gh-pages branch of this PUBLIC repo: each PR's
 # preview at /pr/<number>/ and the latest master at the site root. Design + rationale:
-# docs/plans/2026-07-05-storybook-pr-preview-plan.md.
+# docs/archive/2026-07/plans/2026-07-05-storybook-pr-preview-plan.md.
 #
 # NOT a required check (absent from ci.yml's ci-green needs:), so a skip on a non-client
 # PR never deadlocks merge. The build runs untrusted PR code but with NO secrets; only the

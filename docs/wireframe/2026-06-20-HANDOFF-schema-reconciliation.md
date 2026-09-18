@@ -99,7 +99,7 @@ profiles sit on the playable, but Group D added per-track; per-instrument tonal/
 
 - Wireframe: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/index.html`
 - Model map: `.../docs/wireframe/model-map.html`
-- Latest base schema: `.../docs/wireframe/2026-06-19-tonal-drum-schema-draft.sql` + spec `.../2026-06-19-tonal-drum-extensible-schema-spec.md`
+- Latest base schema: `.../docs/archive/2026-07/wireframe/2026-06-19-tonal-drum-schema-draft.sql` + spec `.../2026-06-19-tonal-drum-extensible-schema-spec.md`
 - Group D: `.../docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql` + spec `.../2026-06-20-group-d-spec.md`
 - SD ledger: `.../docs/wireframe/2026-06-16-schema-deltas.md` (newest = SD-27)
 - Open questions: `.../docs/wireframe/notation-model-open-questions.md` (OQ2)

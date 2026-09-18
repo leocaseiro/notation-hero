@@ -1,5 +1,7 @@
 # Catalog schema — UI-surfaced deltas (running ledger)
 
+> 📖 **Live SD ledger (2026-07-15 triage) — READ THE "Current status" TABLE, NOT THE ROUND-BY-ROUND HISTORY.** The **current-status table** below (starting `## ✅ Current status — 2026-06-19 reconciliation`), the **2026-06-23 Jira-mapping table**, and the **2026-06-24 schema-delta decisions** are the current source of truth per SD. Everything from `## ✅ SD-1 …` onwards is **historical round-by-round content**, kept for provenance only. Runnable DDL: [`2026-06-21-per-track-profiles-and-seed-draft.sql`](2026-06-21-per-track-profiles-and-seed-draft.sql).
+
 Findings from the catalog **wireframe** (`docs/wireframe/index.html`) that touch the **locked** schema
 (`docs/specs/2026-06-10-catalog-schema.md`).
 

@@ -2,6 +2,8 @@
 
 > ⛔ **SUPERSEDED — admin-auth direction (2026-06-17).** Rows that say the admin gate (`K-2`) uses a **CloudFront Function Basic-Auth** / `htpasswd`-style credential with **"no Cognito"**, and that **Cognito is M1** (`H-9`), are **outdated for the admin gate**. The locked direction: the **admin gate is Cognito + Google federation + RBAC (Cognito groups) + `can()` policy in v1 (early)** — Pulumi-provisioned. Only **end-user accounts / cross-device sync** stay at M1. Source of truth: [`decisions/2026-06-17-architecture-decisions.md`](decisions/2026-06-17-architecture-decisions.md) — ARCH-AUTH-1 / ARCH-ROLE-1 / ARCH-AUTHZ-1 / ARCH-OWN-1. All non-auth rows still stand.
 
+> ✅ **Sections still current** (2026-07-15 triage): every feature-area table (A · B · C · D · E · F · G · I · J · K), the milestone ladder, the legend, and the decisions log — **minus** the two auth rows (`K-2` gate spec, `H-9` status). Read anything except those two rows as current.
+
 > **Status:** 🔒 **LOCKED 2026-06-05** — per-feature milestones frozen (one row open: `H-10` upload policy = TBD). Folded into design-stack.md.
 > **Created:** 2026-06-05 · **Owner:** leocaseiro
 > **Companions:** [docs/design-stack.md](design-stack.md) · [scope.md](../scope.md) · [docs/aws-learning-map.md](aws-learning-map.md)
