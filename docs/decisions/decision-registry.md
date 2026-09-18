@@ -47,6 +47,17 @@ nothing and the wrapper exits 1 with `The binary 'ec-…' not found`.
 - **Removing the pin** needs a wrapper release that resolves a v4 asset name; check that before
   dropping it. Recorded in `AGENTS.md` beside the other binary-tool notes.
 
+### 2026-09-16 — ESLint allows TODO comments: `sonarjs/todo-tag` off (NH-299)
+
+leocaseiro asked that ESLint stop blocking TODO comments — in particular, a JSDoc `@todo` tag (`/** @todo … */`) must lint clean in every package. The shared base spreads `sonarjs.configs.recommended`, which turns on `sonarjs/todo-tag` as an error, so every TODO note failed `eslint . --max-warnings 0` in `web/`, `client/` and `server/`. The rule has no option to exempt JSDoc tags, so it is turned off.
+
+- **`sonarjs/todo-tag` → off** in the shared rule layer of [`eslint.config.base.mjs`](../../eslint.config.base.mjs), so the change reaches all three packages; no package config turns it back on.
+- **`unicorn/expiring-todo-comments` stays on** (from `eslint-plugin-unicorn` recommended, with `allowWarningComments: true`): plain TODOs pass, and a TODO that carries an expiry condition (for example, a past-due date) still fails.
+- **`sonarjs/fixme-tag` is unchanged** — still an error; the request covers TODOs only.
+- **Verified:** `eslint --print-config` shows `sonarjs/todo-tag: [0]` and `sonarjs/fixme-tag: [2]` in all three packages. A probe file with `// TODO: …` and `/** @todo … */` failed on `sonarjs/todo-tag` before the change and lints clean after it; a probe with a past-due TODO and a FIXME still fails on `unicorn/expiring-todo-comments` and `sonarjs/fixme-tag`.
+
+**Status:** ✅ decided · 🤖 machine enforcement (the ESLint config itself). Requested by leocaseiro 2026-09-16.
+
 ### 2026-07-16 — AskUserQuestion picker: inert `[Q-add]` catcher + `[No preference]` = NOT READY (NH-285)
 
 leocaseiro ratified three fixes to the AskUserQuestion conventions in [`AGENTS.md`](../../AGENTS.md) section 3, after reporting that agents were using the follow-up catcher to force decisions. Each fix was approved separately in a picker on 2026-07-16.
