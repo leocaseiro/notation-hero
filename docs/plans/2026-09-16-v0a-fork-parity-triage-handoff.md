@@ -5,7 +5,7 @@ title: 'v0 Plan A — fork-parity triage handoff'
 summary: 'Execution of the v0a plan was paused at Task 5 because the plan never ports the rhythm-game fork useAlphaTab pattern, which spec decision D4 mandates. An audit found 15 confirmed divergences; only 2 are forced by D5. This handoff explains each one so they can be triaged.'
 keywords: ['nh-291', 'v0a', 'plan-a', 'alphatab', 'fork-parity', 'triage', 'handoff']
 cwd: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
-resume_focus: 'Triage is DONE — see "Triage outcome" (2026-09-18) at the end of this file. Next: one pass over Tasks 5, 6, 7, 10, 11 plus light touches in 3, 13, 14; then the Spec Delta; then the Jira issues; then re-dispatch Task 5.'
+resume_focus: 'Triage, the plan rewrite, the spec delta and the Jira issues are ALL DONE — see "Triage outcome" and "State after the triage" at the end of this file. Next: leocaseiro reviews PR #157, then regenerate the stale task briefs from the rewritten plan and re-dispatch Task 5.'
 repository: 'leocaseiro/notation-hero'
 branch: 'spike/alphatab-nextjs-poc'
 head: 'f5359efb'
@@ -454,12 +454,37 @@ leocaseiro's standing rule, recorded here because it governs future plans too: *
 instrumentation must never ship to production, especially when it can cost performance.** The
 zero-cost debug handle of F-D2 is the deliberate exception he asked for.
 
-## Revised next steps
+## State after the triage (2026-09-18)
 
-1. **One pass over eight briefs.** Real edits: Tasks 5, 6, 7, 11. Task 10 **shrinks** (the empty
-   state goes). Light touches: Tasks 3, 13, 14.
-2. **Spec Delta**, covering the hook shape, the always-load rule, the removed empty state, and the
-   test change. The `decision-registry.md` change-log entry lands with this document.
-3. **Jira under epic NH-291:** one issue for the deferred findings (F-C3, F-C5, F-D1, F-D3, plus
-   F-C1's font-family stack), and a separate issue plus small spec for the song cache.
-4. **Re-dispatch Task 5**, then continue the task loop from Task 6.
+Steps 1-3 below are **done and pushed** to `spike/alphatab-nextjs-poc` (PR #157). Only step 4 is left.
+
+1. ✅ **The plan is rewritten** —
+   [`2026-09-13-v0a-engine-and-first-sound-plan.md`](2026-09-13-v0a-engine-and-first-sound-plan.md).
+   Task 5 gains the hook, the event helper and the shared defaults; Task 6 is rebuilt around one api
+   owner and an always-mounted box with a split viewport; Task 7 proves playback from AlphaTab's own
+   cursor; Task 10 loses the empty state (−81 lines); Task 11 asks only about scores the person
+   opened; Tasks 12, 13, 14 and the appendix follow.
+2. ✅ **Spec delta applied** — `docs/specs/2026-09-10-v0-local-file-player-design.md` gains **D8**
+   (the player always has a score open) and rewritten §4 mounting, §4 failure states, §5 regression
+   test, §7 and criterion 8. The `decision-registry.md` change-log entry is in the same branch.
+3. ✅ **Jira filed under NH-291** — **NH-302** carries the five deferred findings as a Smart
+   Checklist (F-C3, F-C5, F-D1, F-D3 and F-C1's font stack), and **NH-303** is the song cache,
+   marked "needs a small spec before any code".
+4. ⬜ **Re-dispatch Task 5**, then continue the task loop from Task 6.
+
+> **Before re-dispatching: the task briefs under
+> `.superpowers/sdd/2026-09-13-v0a-engine-and-first-sound-plan/` are STALE.** They were generated
+> from the old plan and are not tracked by git, so nothing in this branch updated them. Regenerate
+> them from the rewritten plan — at minimum for Tasks 5, 6, 7, 10, 11 — or delete them so they are
+> rebuilt. An agent that reads `task-6-brief.md` as it stands will build the shape this triage
+> removed.
+
+### For whoever picks this up
+
+- **The api is never rebuilt to change a score.** Opening a file is `renderScore` on the live
+  engine. A destroy-and-rebuild costs a fresh 956 KB sound-bank fetch and parse (AlphaTab caches it
+  nowhere), two workers re-parsing the ~1 MB core module, and a new `AudioContext`.
+- **Nothing may replace the notation box.** Error and loading states are overlays. Unmounting it
+  while the api is alive leaves AlphaTab rendering into a detached node, silently.
+- **No test-only code in production.** The one deliberate exception is the DevTools handle
+  (`host.at = api`), which leocaseiro asked to keep in production builds.
