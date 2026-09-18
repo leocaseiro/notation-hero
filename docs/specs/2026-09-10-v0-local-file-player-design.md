@@ -56,6 +56,17 @@ All approved by leocaseiro on 2026-09-10.
 | D6  | The spike branch **seeds** the player                                                        | `spike/alphatab-nextjs-poc` already proves the mount, asset wiring and config. Rebuilding would re-solve solved work.                                                                                                                                                       |
 | D7  | Safari and iPad verification happens **after v0 ships**                                      | Desktop Chrome is the v0 gate. iPad and Android get a manual check that does not block v0. Recorded as a known untested surface, not ignored.                                                                                                                               |
 
+| D8 | The player **always has a score open**; there is no empty state | Decided 2026-09-18. The bundled beat loads when nothing else is cached, later the last score played, later still the id on the `/play` route. It removes a whole state from the product, keeps AlphaTab's host element mounted for the life of the page, and means a first-time visitor hears something without choosing anything. |
+
+> **Spec deltas — 2026-09-18 (the fork-parity triage).** D4 was not being honoured: the build plan
+> constructed `AlphaTabApi` by hand instead of porting the prototype's `useAlphaTab` hook. The audit,
+> the evidence and every disposition live in
+> [`docs/plans/2026-09-16-v0a-fork-parity-triage-handoff.md`](../plans/2026-09-16-v0a-fork-parity-triage-handoff.md).
+> What changed in THIS document: D8 above (new), §4 data flow and failure states (no empty state),
+> §4 mounting (the hook, and the host element that never unmounts), §5 regression test (it reads
+> AlphaTab's own cursor, so nothing test-only ships), §7 (no "Load the sample beat" control) and
+> §8 criterion 8.
+
 > **On D5:** option A (the `@coderline/alphatab-webpack` plugin, as the prototype used) was
 > considered and rejected. Note that the prototype's exact import path is dead in 1.8.4 regardless —
 > the `@coderline/alphatab/webpack` subpath still appears in the `exports` map but `dist/webpack`
@@ -121,8 +132,8 @@ file" toast (see Failure states).
 ### Data flow
 
 ```text
-/ (landing) → press Play → /play (the player, no file yet)
-  → open a file there: picker or drag-and-drop
+/ (landing) → press Play → /play (the player, already showing the bundled beat)
+  → open your own file there: picker or drag-and-drop
   → ArrayBuffer (in memory)
   → wrap as Uint8Array, then alphaTab.importer.ScoreLoader.loadScoreFromBytes(bytes)
   → pick the drum tracks (any staff with isPercussion)
@@ -144,18 +155,18 @@ No upload, no network call for user content. The only network traffic is the sta
 
 ### Failure states
 
-| Case                          | Number | Behavior                                                                                                                                                                                                                                                                                                                                                                                               |
-| ----------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| File over 25 MB               | E101   | Sonner toast naming the limit; the file is never read; stay on `/play`                                                                                                                                                                                                                                                                                                                                 |
-| File cannot be read           | E102   | Sonner toast — the file was moved, deleted or unmounted after it was picked; stay on `/play`                                                                                                                                                                                                                                                                                                           |
-| Unsupported or corrupt file   | E103   | Sonner toast; stay on `/play`. A score already playing is never cleared by a failed load                                                                                                                                                                                                                                                                                                               |
-| Sample beat fails to load     | E104   | Sonner toast; the empty state stays                                                                                                                                                                                                                                                                                                                                                                    |
-| `/play` open with no file yet | —      | Empty state: a large **Open file** control plus a secondary **Load the sample beat** action, drag-and-drop anywhere on the surface, transport disabled                                                                                                                                                                                                                                                 |
-| Engine import fails           | E201   | An error message in the notation area, in place of the empty state; the Play button stays where it is, disabled — the same place in the full player bar later. `api.error` cannot see this: the dynamic import rejects before `AlphaTabApi` exists, so the mount component's own `try`/`catch` around the import sets the state — the spike's bare `void (async () => …)()` has none and must gain one |
-| SoundFont download fails      | E202   | The same message, raised through AlphaTab's `error` event                                                                                                                                                                                                                                                                                                                                              |
-| Music font download fails     | E203   | The same message, raised by a `loadingerror` event on `document.fonts`: AlphaTab's font checker has no fallback, so it fires no `renderFinished` and no `api.error`                                                                                                                                                                                                                                    |
-| Music font never arrives      | E204   | The same message, after 60 s without a first render                                                                                                                                                                                                                                                                                                                                                    |
-| Unexpected crash              | E901   | The route segment's error page (`error.tsx`) with a **Try again** button                                                                                                                                                                                                                                                                                                                               |
+| Case                              | Number | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| --------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File over 25 MB                   | E101   | Sonner toast naming the limit; the file is never read; stay on `/play`                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| File cannot be read               | E102   | Sonner toast — the file was moved, deleted or unmounted after it was picked; stay on `/play`                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Unsupported or corrupt file       | E103   | Sonner toast; stay on `/play`. A score already playing is never cleared by a failed load                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| Cached or catalog score fails     | E104   | Sonner toast; the player falls back to the bundled beat. Unused in v0a, where the bundled beat IS the score that loads                                                                                                                                                                                                                                                                                                                                                                                    |
+| `/play` before anything is picked | —      | The bundled beat, already rendering. **Open file** sits in the transport row beside Play, permanently; drag-and-drop works anywhere on the surface; the transport is disabled only until the sound bank has downloaded                                                                                                                                                                                                                                                                                    |
+| Engine import fails               | E201   | An error message **over** the notation area — never in place of it, because unmounting the box while the engine is alive leaves AlphaTab drawing into a detached node; the Play button stays where it is, disabled — the same place in the full player bar later. `api.error` cannot see this: the dynamic import rejects before `AlphaTabApi` exists, so the mount component's own `try`/`catch` around the import sets the state — the spike's bare `void (async () => …)()` has none and must gain one |
+| SoundFont download fails          | E202   | The same message, raised through AlphaTab's `error` event                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Music font download fails         | E203   | The same message, raised by a `loadingerror` event on `document.fonts`: AlphaTab's font checker has no fallback, so it fires no `renderFinished` and no `api.error`                                                                                                                                                                                                                                                                                                                                       |
+| Music font never arrives          | E204   | The same message, after 60 s without a first render                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Unexpected crash                  | E901   | The route segment's error page (`error.tsx`) with a **Try again** button                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 
 **Error numbers.** Every failure message ends with its number — `(Error E101)` — so a report names the
 exact case: 1xx opening a file, 2xx the engine and its assets, 9xx an unexpected crash. The numbers
@@ -211,15 +222,23 @@ Sonner ships its own spinner, so this needs no new component; the design system 
 
 ### Mounting AlphaTab
 
-A single `'use client'` component owns the `AlphaTabApi` instance in a `useRef`, and disposes it on
-unmount. Verified against React 19 strict mode on variant A (the rejected webpack build), which
-mounts synchronously: mounts equal disposes across remounts, surfaces never exceed one, DOM is
-empty after unmount.
+**One hook creates every `AlphaTabApi`** — `useAlphaTab(settingsInit) -> [api, hostRef]`, ported from
+the prototype (D4) and living in `web/lib/alphatab/`. No component calls `new AlphaTabApi` or `.on()`
+by hand; a second hook, `useAlphaTabEvent`, pairs every subscription with its removal. One component
+holds the api and passes it down as a prop, so children need no null checks and no callback carries
+the api back up. A callback prop in the creation effect's dependency list is the failure mode to
+avoid: it changes identity on an ordinary state change, rebuilds the engine, and throws away the
+loaded score, the downloaded sound bank and both workers.
 
-D5's mount adds an `await import()` before the API exists, so the effect must re-check a `disposed`
-flag after every await before it constructs or loads. Otherwise an unmount inside that window leaks
-a live `AlphaTabApi` and its workers. The spike's ESM component already does this; re-run the
-remount probe against that component and assert the surface count never goes above one.
+**The host element is mounted for the life of the page** (D8). Loading states and error messages are
+overlays, never replacements: unmounting the element while the api is alive leaves AlphaTab rendering
+into a detached node, with no error raised anywhere. Never hide it with `display:none` either —
+AlphaTab then defers its first render and can lay the score out at zero width.
+
+The engine module arrives asynchronously through a context, so the creation effect depends on it
+rather than on `[]`, and the per-call-site `settingsInit` callback is wrapped in `useEffectEvent` so
+it can never enter that dependency list. There is no `disposed` flag to re-check: nothing is awaited
+inside the effect any more.
 
 **Do not use `dynamic(..., { ssr: false })`.** It is illegal in an App Router Server Component and
 unnecessary — AlphaTab's module scope is SSR-safe and the spike route renders as static
@@ -227,6 +246,9 @@ output at build time.
 
 Use `useRef`, not the prototype's `React.createRef()` in a render body, which creates a fresh ref on
 every render.
+
+The api itself is React state, not a ref, so anything that must react to its arrival — a
+subscription, a score to render — re-runs when it appears.
 
 ## 5. AlphaTab integration (D5 — self-hosted ESM)
 
@@ -296,7 +318,9 @@ web server runs `next build` then `next start`. It asserts four things: that Alp
 `Environment.webPlatform` — so the log is the test hook and no debug DOM attribute is needed), that
 the response for `/alphatab/esm/alphaTab.worklet.mjs` is **HTTP 200 with a JavaScript MIME type**,
 that **neither** `Failed to create worker for synthesizing audio` **nor** `Audio Worklet creation
-failed` appears in the console, and that the playback position advances after Play. A `web` step
+failed` appears in the console, and that **AlphaTab's own beat cursor moves** after Play. The
+cursor, not an attribute the app maintains: test-only instrumentation must never ship to production,
+and a mocked engine would replace the very component whose delivery this test exists to check. A `web` step
 joins the CI `e2e` job, so it blocks merge like the other browser jobs.
 
 Three things that shape how those assertions are written:
@@ -421,10 +445,10 @@ control and the transport row has none.
 **Which package each item lands in**, because that decides whether it is gated. The `a11y` and `vr`
 CI jobs both run `pnpm --filter @notation-hero/client`, so only `client/` is covered by them today.
 
-| Package   | Items                                                                                                                                                                                                                                                                  | Gated by                                  |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
-| `client/` | playback scrubber, tempo control, Loop / Metronome / Count-In toggles, settings + tracks rows, soundfont progress bar, `Accordion`, `Slider`                                                                                                                           | Storybook story + VR + a11y (block merge) |
-| `web/`    | transport row layout, notation-surface wrapper, landing **Play** button, **Open file** control, **Load the sample beat** action, the **Settings** and **Tracks** popover compositions, the settings group/accessor schema and the AlphaTab React context that feeds it | the `web` Playwright lane (§5)            |
+| Package   | Items                                                                                                                                                                                                                                                                                               | Gated by                                  |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `client/` | playback scrubber, tempo control, Loop / Metronome / Count-In toggles, settings + tracks rows, soundfont progress bar, `Accordion`, `Slider`                                                                                                                                                        | Storybook story + VR + a11y (block merge) |
+| `web/`    | transport row layout, notation-surface wrapper, landing **Play** button, **Open file** control, the AlphaTab hook and context (`useAlphaTab`, `useAlphaTabEvent`, the engine provider), the **Settings** and **Tracks** popover compositions and the settings group/accessor schema that feeds them | the `web` Playwright lane (§5)            |
 
 The split is by reusability: a control that any screen could use belongs in the design system, while
 composition that knows about AlphaTab's API belongs in the player.
@@ -540,7 +564,7 @@ v0 is done when, on a deployed Vercel URL:
    while render-select changes which tracks are drawn, and the display toggles and both transposition
    sliders change the rendered score. (Tablature is excluded — 1.8.4 cannot render it on a percussion
    staff.)
-8. From a clean `/play` with no file, **Load the sample beat** fetches and plays the bundled score.
+8. `/play` opens on the bundled sample beat and plays it, with no file picked and nothing clicked.
 9. A score with no percussion staff opens and plays on its first track (`score.tracks[0]`).
 10. Replacing a loaded score prompts for confirmation. **Cancel** keeps the current score playing from
     where it was, and re-picking the same file prompts again. **Confirm** renders the new score. A
