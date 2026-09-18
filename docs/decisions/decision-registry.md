@@ -12,6 +12,36 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-18 — `resources/` is data, not code: excluded from the editorconfig gate (NH-291)
+
+Tracking the source chart files under `resources/charts/` made the `lint` job fail 14 times across 4
+files. The cause is not formatting drift: `.editorconfig` requires `end_of_line = lf`, `charset = utf-8`
+and `insert_final_newline` of **every** file, and a Guitar Pro binary cannot satisfy any of them.
+`editorconfig-checker` skips ZIP-container (`.gp`, `.mxl`) and MIDI files on its own, but a `BCFZ`
+(GP6/`.gpx`) and a `FICHIER GUITAR PRO v5` (`.gp5`) header carries enough printable ASCII to be read
+as text, so those four were scanned and rejected.
+
+leocaseiro's call, 2026-09-18: **exclude both the directory and the formats** —
+`.editorconfig-checker.json` gains `^resources/` and `\.(gp|gp5|gpx|mid|mxl)$`.
+
+- **The directory pattern is the principled half.** `resources/` holds third-party musical artifacts
+  exported by other tools; it is **data, not code**, and no source-formatting rule should apply to it.
+  This also covers `resources/charts/1-beat.xml`, which despite its extension is a Guitar Pro 5
+  binary, so no per-file pattern is needed for it.
+- **The extension pattern is the travelling half.** Copies of these charts already live under
+  `web/public/charts/` and `web/e2e/fixtures/`; excluding by extension means the gate does not have
+  to be revisited each time a chart lands outside `resources/`.
+- **Accepted cost:** the four alphaTex **text** files (`beat.alphatex`/`.atex`,
+  `Punk.alphatex`/`.atex`) are inside `resources/` and so are no longer checked, even though they
+  pass today. That follows from treating the directory as data; it was not an oversight.
+- **Not a weakened gate elsewhere.** No CI job, workflow or `.editorconfig` rule changed. Every other
+  path is checked exactly as before, and the canary for this gate is that removing either pattern
+  brings the same 14 errors straight back.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `lint` CI job runs `pnpm run lint:editorconfig`
+against this config, so any change to the exclusion list is visible in the diff. Approved by
+leocaseiro 2026-09-18.
+
 ### 2026-09-16 — Dependency CVE refresh: fix every advisory, keep the ignore list empty (NH-231)
 
 The `deps-cve` gate (osv-scanner) had drifted to **74 advisories across 29 packages** (4 Critical, 43 High, 26 Medium, 1 Low) — all from `pnpm-lock.yaml` on `master`, none from an open PR. leocaseiro chose a **real version fix over an allowlist**: the refresh takes the gate to **0**, and `osv-scanner.toml` now carries **no ignores at all**.
