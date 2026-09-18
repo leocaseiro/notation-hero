@@ -145,6 +145,27 @@ describe('disabled (aria-disabled, focusable)', () => {
     expect(handlers.onBlur).toHaveBeenCalledTimes(1);
   });
 
+  // Positive control for the test above: the same handlers DO run while enabled. They are taken
+  // out of `props` and passed back by name, so a dropped or mis-keyed one would fail here.
+  test('passes the key and pointer handlers through while enabled', () => {
+    const handlers = {
+      onKeyDown: vi.fn(),
+      onKeyUp: vi.fn(),
+      onMouseDown: vi.fn(),
+      onPointerDown: vi.fn(),
+    };
+    render(<Button {...handlers}>Go</Button>);
+    const button = screen.getByRole('button', { name: 'Go' });
+    fireEvent.keyDown(button, { key: 'ArrowDown' });
+    fireEvent.keyUp(button, { key: 'ArrowDown' });
+    fireEvent.mouseDown(button);
+    fireEvent.pointerDown(button);
+    expect(handlers.onKeyDown).toHaveBeenCalledTimes(1);
+    expect(handlers.onKeyUp).toHaveBeenCalledTimes(1);
+    expect(handlers.onMouseDown).toHaveBeenCalledTimes(1);
+    expect(handlers.onPointerDown).toHaveBeenCalledTimes(1);
+  });
+
   test('prevents the default of Enter and Space only, so other keys keep working', () => {
     render(<Button disabled>Nope</Button>);
     const button = screen.getByRole('button', { name: 'Nope' });
@@ -203,6 +224,25 @@ describe('disabled (aria-disabled, focusable)', () => {
     expect(button).toHaveFocus();
   });
 
+  // The mirror case, and the NH-291 one: Play has focus while disabled and becomes enabled with
+  // Space still held. The keydown was default-prevented, so the release must not activate it.
+  test('does not activate on a press that starts disabled and ends enabled', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    const { rerender } = render(
+      <Button disabled onClick={onClick}>
+        Play
+      </Button>,
+    );
+    const button = screen.getByRole('button', { name: 'Play' });
+    button.focus();
+    await user.keyboard('[Space>]');
+    rerender(<Button onClick={onClick}>Play</Button>);
+    await user.keyboard('[/Space]');
+    expect(onClick).not.toHaveBeenCalled();
+    expect(button).toHaveFocus();
+  });
+
   test('a disabled type="submit" does not submit, by click or by Enter in a sibling input', async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn((event: SubmitEvent<HTMLFormElement>) => event.preventDefault());
@@ -237,6 +277,10 @@ describe('disabled (aria-disabled, focusable)', () => {
     const click = createEvent.click(link);
     fireEvent(link, click);
     expect(click.defaultPrevented).toBe(true);
+    // Enter is what activates a link from the keyboard.
+    const enter = createEvent.keyDown(link, { key: 'Enter' });
+    fireEvent(link, enter);
+    expect(enter.defaultPrevented).toBe(true);
   });
 
   test('a Base UI trigger that renders a disabled Button stays closed', async () => {
@@ -261,6 +305,28 @@ describe('disabled (aria-disabled, focusable)', () => {
     rerender(menu(false));
     await user.click(screen.getByRole('button', { name: 'Actions' }));
     expect(await screen.findByText('Rename')).toBeInTheDocument();
+  });
+
+  // Base UI passes the trigger's own `disabled` down as a prop, so it takes the same path.
+  test('a trigger disabled at the trigger level renders a focusable aria-disabled Button', async () => {
+    const user = userEvent.setup();
+    render(
+      <DropdownMenu>
+        <DropdownMenuTrigger disabled render={<Button />}>
+          Actions
+        </DropdownMenuTrigger>
+        <DropdownMenuContent>
+          <DropdownMenuItem>Rename</DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>,
+    );
+    const trigger = screen.getByRole('button', { name: 'Actions' });
+    expect(trigger).toHaveAttribute('aria-disabled', 'true');
+    expect(trigger).not.toHaveAttribute('disabled');
+    await user.tab();
+    expect(trigger).toHaveFocus();
+    await user.keyboard('[Enter]');
+    expect(screen.queryByText('Rename')).not.toBeInTheDocument();
   });
 
   test('keeps its aria-describedby description, so a consumer can say why it is unavailable', () => {
