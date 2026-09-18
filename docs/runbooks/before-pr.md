@@ -11,7 +11,8 @@
 Before you touch anything, read the source of truth:
 
 1. [`docs/decisions/decision-registry.md`](../decisions/decision-registry.md) — current state per topic.
-2. [`AGENTS.md`](../../AGENTS.md) — current direction + hexagon layout + operational rules.
+2. [`docs/decisions/decision-changelog.md`](../decisions/decision-changelog.md) — the dated record of what was decided and when; new entries land here, not in the registry.
+3. [`AGENTS.md`](../../AGENTS.md) — current direction + hexagon layout + operational rules.
 
 If your session's assumed direction conflicts with either, **the registry wins**. Do not proceed with a superseded direction; ratify a new decision first.
 
@@ -23,7 +24,7 @@ Ordered. Each `→ ce-doc-review` or `→ ce-code-review` step may need multiple
 
 1. **`superpowers:brainstorming`** — explore the problem shape before you build. Not the implementation — the requirements + trade-offs.
 2. **`ce-doc-review`** — surface findings against the brainstorm output.
-3. **Triage step 2's findings + apply changes.** Every triage follows the review pattern from `~/.claude/adhd-collaboration-rules.md` §4 (chunked findings + section-by-section walk).
+3. **Triage step 2's findings + apply changes.** Every triage follows the chunked-review pattern (findings in prose chunks, then the picker) — [`AGENTS.md` § Working with the user](../../AGENTS.md#working-with-the-user) §4, mirrored in the user's global collaboration rules under `~/.claude/`.
 4. **(iterate)** — depending on step 3, run another `ce-doc-review` and iterate through steps 2-3 as many times as needed.
 5. **`superpowers:writing-plans`** — turn the brainstorm into a concrete plan (task list, verification criteria, atomic commit sequence).
 6. **`ce-doc-review`** — review the plan.
@@ -43,9 +44,9 @@ Ordered. Each `→ ce-doc-review` or `→ ce-code-review` step may need multiple
 
 These apply throughout the 15 steps. **Every step, every session.**
 
-### Rule 1 — Every triage follows the ADHD collaboration rules
+### Rule 1 — Every triage follows the collaboration rules
 
-Every `triage step` in the workflow (steps 3, 7, 11) walks section-by-section per `~/.claude/adhd-collaboration-rules.md`:
+Every `triage step` in the workflow (steps 3, 7, 11) walks section-by-section per [`AGENTS.md` § Working with the user](../../AGENTS.md#working-with-the-user) (and the user's global copy of the same rules under `~/.claude/`):
 
 - Findings established in prose chunks (📖 F-N with **What's wrong / Proposed fix / Why it works**) BEFORE the picker.
 - The decision is an `AskUserQuestion` picker in the SAME turn — never a numbered prose "answer 1-4" list.
@@ -76,7 +77,7 @@ Agents SHOULD NOT recommend strategies or approaches sourced only from training 
 
 ### Bonus — Portfolio-scale mindset
 
-This is a personal project AND a portfolio. Strategies decided here are meant to apply at **Enterprise scale**. When choosing between "shortcut for this one project" and "the way this would be done at scale," default to the latter unless a clear reason argues otherwise. See the "well-architected-even-at-tiny-scale" position in [`docs/decisions/decision-registry.md`](../decisions/decision-registry.md).
+This is a personal project AND a portfolio. Strategies decided here are meant to apply at **Enterprise scale**. When choosing between "shortcut for this one project" and "the way this would be done at scale," default to the latter unless a clear reason argues otherwise. See the "well-architected even at tiny scale" principle as applied in [`docs/specs/2026-06-26-nh-197-e2e-traces.md`](../specs/2026-06-26-nh-197-e2e-traces.md) and [`docs/wireframe/2026-06-24-schema-delta-decisions.md`](../wireframe/2026-06-24-schema-delta-decisions.md).
 
 ---
 
@@ -105,12 +106,12 @@ Skip the full workflow when the change is one of these. **If you hesitate on whe
 
 An orthogonal rule that runs alongside this workflow. See [`AGENTS.md` § Ship-mode freeze](../../AGENTS.md#ship-mode-freeze) for the current freeze state.
 
-**In short:** when the freeze is ACTIVE, no new spec/plan/ADR of any kind until leocaseiro explicitly ends the freeze in a `docs/decisions/decision-registry.md` change-log entry. The freeze is a forcing function against the start-many-finish-few pattern; the workflow above is how you actually finish.
+**In short:** the freeze is a switch only leocaseiro flips, via a [`docs/decisions/decision-changelog.md`](../decisions/decision-changelog.md) entry ("Start ship-mode freeze" / "End ship-mode freeze"). While it is ON, no new spec/plan/ADR of any kind. **It is OFF today.** The freeze is a forcing function against the start-many-finish-few pattern; the workflow above is how you actually finish.
 
 ---
 
 ## Related docs
 
-- [`~/.claude/adhd-collaboration-rules.md`](file:///Users/leocaseiro/.claude/adhd-collaboration-rules.md) — the collaboration rules every triage follows.
+- [`AGENTS.md` § Working with the user](../../AGENTS.md#working-with-the-user) — the collaboration rules every triage follows (the user keeps a global copy under `~/.claude/`, imported by `CLAUDE.md`).
 - [`AGENTS.md`](../../AGENTS.md) — current-direction snapshot + hexagon layout + operational rules.
-- [`docs/decisions/decision-registry.md`](../decisions/decision-registry.md) — source of truth for current state per topic.
+- [`docs/decisions/decision-registry.md`](../decisions/decision-registry.md) — source of truth for current state per topic; its dated history lives in [`decision-changelog.md`](../decisions/decision-changelog.md).
