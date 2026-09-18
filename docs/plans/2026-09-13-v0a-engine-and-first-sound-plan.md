@@ -1237,7 +1237,7 @@ type HostWithApi = HTMLDivElement & { at?: AlphaTab.AlphaTabApi };
  * on the only run of this effect, and nothing would ever build the api.
  */
 export function useAlphaTab(
-  settingsInit: (settings: AlphaTab.Settings) => void,
+  settingsInit: (settings: AlphaTab.Settings, engine: AlphaTabEngine) => void,
 ): [api: AlphaTab.AlphaTabApi | undefined, hostRef: RefObject<HTMLDivElement | null>] {
   const { engine } = useAlphaTabEngine();
   const [api, setApi] = useState<AlphaTab.AlphaTabApi>();
@@ -1255,7 +1255,10 @@ export function useAlphaTab(
 
     const settings = new engine.Settings();
     setAlphaTabDefaults(settings, engine);
-    init(settings);
+    // The engine goes to the call site too: every AlphaTab enum (PlayerMode, ScrollMode) is a
+    // runtime value that D5 forbids importing, so a call site has no other way to reach one.
+    // The fork passes only `settings`; it can afford to, because it imports the namespace.
+    init(settings, engine);
 
     const created = new engine.AlphaTabApi(host, settings);
     setApi(created);
@@ -1364,6 +1367,13 @@ git commit -m "feat(web): load the self-hosted AlphaTab ESM once, share it by co
 
 The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` with a correct lifecycle, the loading `Skeleton`, and the three failure states — engine import, soundfont download, music-font download. It loads the bundled sample score directly so there is something to see and hear before the file picker exists.
 
+Two rules this task establishes, and every later task inherits (triaged 2026-09-18):
+
+1. **The notation box is mounted for the whole life of the page.** The player always has a score, so nothing ever replaces the box — not the loading state, not an error. Anything that must cover it is an overlay. A replaced box leaves AlphaTab rendering into a detached node with no error raised anywhere: notation vanishes while audio keeps playing.
+2. **`Player` owns the api; everything else receives it.** `useAlphaTab` is called in exactly one place, and no component constructs an `AlphaTabApi` or calls `.on()` by hand.
+
+**Not here:** `host.focus()`. Taking focus makes sense when _the person opens a score_ — Task 10 does it there — but this task's score loads on page load, and moving focus into a box the visitor did not ask for is a keyboard trap of our own making.
+
 **Files:**
 
 - Create: `web/app/play/page.tsx`
@@ -1378,10 +1388,10 @@ The first end-to-end slice: a landing page, a player route, an `AlphaTabApi` wit
 
 **Interfaces:**
 
-- Consumes: `useAlphaTabEngine`, `AlphaTabEngineProvider` (Task 5); `Skeleton`, `Button` (Task 4).
+- Consumes: `useAlphaTab`, `useAlphaTabEvent`, `useAlphaTabEngine`, `AlphaTabEngineProvider` (Task 5); `Skeleton`, `Button` (Task 4).
 - Produces:
   - `PLAYER_ERROR` from `web/lib/player-errors.ts` — the error number every failure message ends with. Tasks 10, 11 and 12 use it.
-  - `NotationSurface` props: `{ onApiReady: (api: AlphaTab.AlphaTabApi | null) => void }`. Task 10 Step 5 later adds `notation: OpenNotation | null` — the parsed score, not `LoadedNotation`.
+  - `NotationSurface` props: `{ api: AlphaTab.AlphaTabApi | undefined; hostRef; viewportRef }`. It owns no api of its own — `Player` calls `useAlphaTab` and hands the pieces down (F-B3, triaged 2026-09-18). Task 10 Step 5 later adds `notation: OpenNotation | null` — the parsed score, not `LoadedNotation`.
   - `interface LoadedNotation { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
   - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-soundfont`.
 
@@ -1509,60 +1519,38 @@ Then create `web/app/play/NotationSurface.tsx`:
 
 import { useEffect, useRef, useState } from 'react';
 import { Skeleton } from '@notation-hero/client';
+import type { RefObject } from 'react';
 import type * as AlphaTab from '@coderline/alphatab';
 
-import { resolveLogLevel } from '../../lib/alphatab/engine';
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
+import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { PLAYER_ERROR } from '../../lib/player-errors';
 
 interface NotationSurfaceProps {
-  /** Handed the live api as soon as it exists, and null on dispose. */
-  onApiReady: (api: AlphaTab.AlphaTabApi | null) => void;
+  /** The live api, or undefined until the engine has loaded. `Player` owns it (F-B3). */
+  api: AlphaTab.AlphaTabApi | undefined;
+  /** AlphaTab's own element, from `useAlphaTab`. */
+  hostRef: RefObject<HTMLDivElement | null>;
+  /** The scroll box: ours. The landmark, the focus ring, the overflow, `player.scrollElement`. */
+  viewportRef: RefObject<HTMLDivElement | null>;
 }
 
-/** The score that ships with the app; Task 10 adds user files on top of it. */
-const SAMPLE_NOTATION = '/notation/1-beat.gp';
-
-export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  // Task 10's score effect needs the live api from a SIBLING effect, so it cannot live in the
-  // mount effect's local `const`. Declared here, assigned at construction, cleared on dispose.
-  const apiRef = useRef<AlphaTab.AlphaTabApi | null>(null);
-  const { engine, error: engineError } = useAlphaTabEngine();
+export function NotationSurface({ api, hostRef, viewportRef }: Readonly<NotationSurfaceProps>) {
+  const { error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const timeoutRef = useRef<number | undefined>(undefined);
 
+  // The two music-font failures AlphaTab itself never reports. Keyed on [api] because the font
+  // face is injected during AlphaTabApi construction — before that there is nothing to fail.
   useEffect(() => {
-    const host = hostRef.current;
-    if (!host || !engine) return;
-
-    const settings = new engine.Settings();
-    // No settings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
-    // /alphatab/esm/alphaTab.mjs — that is the entire point of self-hosting the ESM.
-    settings.core.fontDirectory = '/alphatab/font/';
-    settings.core.file = SAMPLE_NOTATION;
-    settings.core.tracks = 'all';
-    settings.core.logLevel = resolveLogLevel(engine);
-    // EnabledAutomatic on purpose (2026-09-16): a Guitar Pro file that embeds an audio track plays
-    // that recording, with the notation on screen — that is how leocaseiro plays along to his own
-    // files. AlphaTab resolves EnabledAutomatic to its backing-track player whenever
-    // `score.backingTrack.rawAudioFile` exists, and that player's synthesizer stubs out
-    // channelSetMute, channelSetSolo, channelSetMixVolume and the metronome channel (verified in
-    // 1.8.4). Nothing in v0a drives those, but Plan B's metronome and count-in and Plan C's mixer
-    // rows MUST render disabled, with a tooltip saying the file is playing its own recording
-    // (spec §4). A toggle between the recording and the synth is deferred (NH-298).
-    settings.player.playerMode = engine.PlayerMode.EnabledAutomatic;
-    settings.player.soundFont = '/alphatab/soundfont/sonivox.sf3';
-    settings.player.enableCursor = true;
-    settings.player.scrollMode = engine.ScrollMode.Continuous;
-    settings.player.scrollElement = host;
+    if (!api) return;
 
     // AlphaTab injects its music font as a CSS @font-face named `alphaTab…` during construction. If
     // that download fails, its font checker has no fallback family: it logs "rendering cannot
     // start", never fires renderFinished and raises no api.error — so the Skeleton would stay up
     // forever. The browser reports it at once, as `loadingerror` on document.fonts (verified in
-    // Chromium), so listen before constructing. Text-font checkers have system fallbacks, hence
-    // the family filter.
+    // Chromium). Text-font checkers have system fallbacks, hence the family filter.
     const onFontError = (event: FontFaceSetLoadEvent) => {
       if (event.fontfaces.some((face) => face.family.startsWith('alphaTab'))) {
         setRuntimeError(
@@ -1572,19 +1560,9 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
     };
     document.fonts.addEventListener('loadingerror', onFontError);
 
-    const api = new engine.AlphaTabApi(host, settings);
-    apiRef.current = api;
-
-    // Take focus when this surface replaces the empty state: the control the user just pressed
-    // (Open file, or Load the sample beat) is removed from the page along with it, and the browser
-    // would reset focus to <body> — so a keyboard user would Tab from the top of the page again.
-    // The host is already a named, focusable region (role="region", aria-label="Score"), so focus
-    // lands somewhere announced, and the arrow keys scroll the score straight away.
-    host.focus();
-
     // Backstop for a download that hangs without ever failing: no event arrives, so give up after
     // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
-    const firstRenderTimeout = globalThis.setTimeout(
+    timeoutRef.current = globalThis.setTimeout(
       () =>
         setRuntimeError(
           `Error ${PLAYER_ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
@@ -1592,32 +1570,21 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
       60_000,
     );
 
-    // The SoundFont download failure surfaces through AlphaTab's own error event; the engine
-    // import failure cannot (AlphaTabApi does not exist yet) and arrives via engineError above.
-    api.error.on((cause) =>
-      setRuntimeError(`Error ${PLAYER_ERROR.engineRuntime}: ${String(cause)}`),
-    );
-    api.renderFinished.on(() => {
-      globalThis.clearTimeout(firstRenderTimeout);
-      setRendered(true);
-    });
-
-    // No `if (disposed)` re-check. Everything above is synchronous — no await, no .then — and the
-    // only thing that could set such a flag is the cleanup, returned below, so the
-    // branch is unreachable by construction (a React 19.2 repro took it 0 times in 6 scenarios).
-    // Its bare `return` would also have skipped registering this cleanup. The spike component
-    // needs that guard because it awaits the import INSIDE its effect; here the engine arrives
-    // through context, so there is no suspension point to be disposed across.
-    onApiReady(api);
-
     return () => {
       document.fonts.removeEventListener('loadingerror', onFontError);
-      globalThis.clearTimeout(firstRenderTimeout);
-      apiRef.current = null;
-      onApiReady(null);
-      api?.destroy();
+      globalThis.clearTimeout(timeoutRef.current);
     };
-  }, [engine, onApiReady]);
+  }, [api]);
+
+  // The SoundFont download failure surfaces through AlphaTab's own error event; the engine import
+  // failure cannot (AlphaTabApi does not exist yet) and arrives through engineError below.
+  useAlphaTabEvent(api, 'error', (cause) =>
+    setRuntimeError(`Error ${PLAYER_ERROR.engineRuntime}: ${String(cause)}`),
+  );
+  useAlphaTabEvent(api, 'renderFinished', () => {
+    globalThis.clearTimeout(timeoutRef.current);
+    setRendered(true);
+  });
 
   const failure = engineError
     ? `Error ${PLAYER_ERROR.engineImport}: ${engineError.message}`
@@ -1625,11 +1592,15 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
 
   return (
     <div className="relative min-h-[420px] w-full">
+      {/* The message sits ON TOP of the viewport, never in place of it. Replacing the viewport
+          unmounts the element AlphaTab is bound to while the api is still alive, and the engine
+          then renders into a detached node — with no error anywhere (triage 2026-09-18). Every
+          state of this component keeps both divs below mounted. */}
       {failure ? (
         <p
           data-testid="engine-error"
           role="alert"
-          className="rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-4 text-destructive"
+          className="absolute inset-x-0 top-0 z-10 rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-4 text-destructive"
         >
           The player engine could not start. Reload the page to try again. ({failure})
         </p>
@@ -1646,10 +1617,15 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
           role="status"
         />
       ) : null}
+      {/* TWO divs, not one (F-C2). The outer one is the app's: the scroll box, the landmark and
+          the focus ring. The inner one belongs to AlphaTab, which rewrites its children and sets
+          its own inline styles on it (`position: relative`, verified in alphaTab.core.mjs:41328).
+          Coupling our a11y markup to that element means any AlphaTab styling change lands on our
+          scroll box. The fork splits them the same way (AlphaTabRhythmGame/index.tsx:416-417). */}
       {/* `bg-white`, deliberately NOT a token. AlphaTab draws notation as dark glyphs and this
           plan never sets `model.Color`, so a theme-following surface would make the score
           invisible in dark mode. This is the one place in the player that pins a literal colour;
-          it stops being correct the moment the glyph colour becomes themeable. */}
+          it stops being correct the moment the glyph colour becomes themeable (F-C5, deferred). */}
       {/* A named region a keyboard user can focus. `tabIndex={0}` is required: a score taller than
           420 px makes this box scroll, and axe's scrollable-region-focusable (serious, wcag2a) fails
           a scroll box with nothing focusable inside, whatever its role. `region`, not `img`: the
@@ -1659,13 +1635,15 @@ export function NotationSurface({ onApiReady }: Readonly<NotationSurfaceProps>) 
           ring copies client/'s ScrollArea viewport, which solved the same axe rule. Task 13 audits
           the scrolling state with Punk.gp. */}
       <div
-        ref={hostRef}
+        ref={viewportRef}
         data-testid="notation-surface"
         role="region"
         aria-label="Score"
         tabIndex={0}
         className="h-[420px] w-full overflow-y-auto rounded-md border border-border bg-white outline-none transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
-      />
+      >
+        <div ref={hostRef} />
+      </div>
     </div>
   );
 }
@@ -1678,14 +1656,14 @@ Create `web/app/play/PlayerShell.tsx`:
 ```tsx
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@notation-hero/client';
-import type * as AlphaTab from '@coderline/alphatab';
 
 import {
   AlphaTabEngineProvider,
   useAlphaTabEngine,
 } from '../../lib/alphatab/AlphaTabEngineContext';
+import { useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { NotationSurface } from './NotationSurface';
 
 /** A score held in memory. The bytes never touch disk and never cross a route. */
@@ -1694,46 +1672,69 @@ export interface LoadedNotation {
   bytes: Uint8Array;
 }
 
+/**
+ * The score that ships with the app. The player ALWAYS has a score open (decided 2026-09-18):
+ * this one loads when nothing else is cached, which is why there is no empty state anywhere in
+ * this plan and why the notation box is mounted for the whole life of the page.
+ */
+const SAMPLE_NOTATION = '/notation/1-beat.gp';
+
 function Player() {
-  const apiRef = useRef<AlphaTab.AlphaTabApi | null>(null);
   const { engine } = useAlphaTabEngine();
+  const viewportRef = useRef<HTMLDivElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [soundFontReady, setSoundFontReady] = useState(false);
 
-  const handleApiReady = useCallback(
-    (api: AlphaTab.AlphaTabApi | null) => {
-      apiRef.current = api;
-      if (!api || !engine) {
-        setPlaying(false);
-        setSoundFontReady(false);
-        return;
-      }
-      // Subscribe HERE, never from a []-deps effect. AlphaTabEngineProvider is the PARENT-MOST
-      // component, so its effect runs LAST: loadAlphaTabEngine() has not even been called when
-      // Player's own effects run, the api therefore cannot exist during that commit, and a
-      // []-deps effect reading apiRef.current is pinned to null forever. Measured against React
-      // 19.2 — with the effect form, soundFontLoaded ended with 0 handlers, data-playing never
-      // moved and Play stayed disabled, strict mode on and off, so Task 7's `toBeEnabled` would
-      // time out on a perfectly healthy build.
-      //
-      // Safe against repeats: handleApiReady fires once per CONSTRUCTED api (4 calls under strict
-      // mode plus score changes, never twice for the same instance — each preceded by a cleanup
-      // that destroyed the previous one), so per-api handler counts stay at exactly 1.
-      //
-      // PlayerState is an AlphaTab enum and cannot be imported; read it off the namespace object
-      // instead of comparing against the literal 1, which would rot if the ordering ever changed.
-      api.playerStateChanged.on((args) =>
-        setPlaying(args.state === engine.synth.PlayerState.Playing),
-      );
-      api.soundFontLoaded.on(() => setSoundFontReady(true));
-    },
-    [engine],
-  );
+  // The ONE owner of the api (F-B3). There is no second apiRef and no onApiReady callback: a
+  // callback prop in the hook's dependency list rebuilds the engine on an ordinary state change,
+  // throwing away the loaded score, the downloaded soundfont and both workers.
+  //
+  // `alphaTab` is the namespace object the hook passes in — D5 forbids importing it, so this is
+  // the only way a call site reaches an enum.
+  const [api, hostRef] = useAlphaTab((settings, alphaTab) => {
+    // No settings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
+    // /alphatab/esm/alphaTab.mjs — that is the entire point of self-hosting the ESM.
+    // fontDirectory, logLevel and soundFont are already applied by setAlphaTabDefaults (Task 5).
+    settings.core.file = SAMPLE_NOTATION;
+    settings.core.tracks = 'all';
+    // EnabledAutomatic on purpose (2026-09-16): a Guitar Pro file that embeds an audio track plays
+    // that recording, with the notation on screen — that is how leocaseiro plays along to his own
+    // files. AlphaTab resolves EnabledAutomatic to its backing-track player whenever
+    // `score.backingTrack.rawAudioFile` exists, and that player's synthesizer stubs out
+    // channelSetMute, channelSetSolo, channelSetMixVolume and the metronome channel (verified in
+    // 1.8.4). Nothing in v0a drives those, but Plan B's metronome and count-in and Plan C's mixer
+    // rows MUST render disabled, with a tooltip saying the file is playing its own recording
+    // (spec §4). A toggle between the recording and the synth is deferred (NH-298).
+    //
+    // It also keeps the empty page cheap: with EnabledAutomatic and no score yet, AlphaTab creates
+    // no player at all — no AudioContext, no synth worker, no soundfont fetch
+    // (alphaTab.core.mjs:46680-46685).
+    settings.player.playerMode = alphaTab.PlayerMode.EnabledAutomatic;
+    settings.player.enableCursor = true;
+    settings.player.scrollMode = alphaTab.ScrollMode.Continuous;
+    // The OUTER div scrolls — never AlphaTab's own element (F-C2). This runs inside the hook's
+    // effect, after both divs are committed, so the ref is filled; the `if` is for the type, and
+    // because `@typescript-eslint/no-non-null-assertion` is not worth fighting over one line.
+    if (viewportRef.current) settings.player.scrollElement = viewportRef.current;
+    // Ten pixels of air above the cursor, so it does not sit flush against the top edge. The
+    // fork sets the same (AlphaTabRhythmGame/index.tsx:151).
+    settings.player.scrollOffsetY = -10;
+  });
+
+  // Both subscriptions go through the helper, so each one is removed when this component
+  // unmounts or the api changes (F-B2). No `.on()` by hand anywhere in the app.
+  //
+  // PlayerState is an AlphaTab enum and cannot be imported; read it off the namespace object
+  // instead of comparing against the literal 1, which would rot if the ordering ever changed.
+  useAlphaTabEvent(api, 'playerStateChanged', (args) => {
+    setPlaying(args.state === engine?.synth.PlayerState.Playing);
+  });
+  useAlphaTabEvent(api, 'soundFontLoaded', () => setSoundFontReady(true));
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
       <h1 className="sr-only">Player</h1>
-      <NotationSurface onApiReady={handleApiReady} />
+      <NotationSurface api={api} hostRef={hostRef} viewportRef={viewportRef} />
       <div
         data-testid="player-status"
         data-playing={playing}
@@ -1749,7 +1750,7 @@ function Player() {
           variant="ghost"
           aria-label={playing ? 'Pause' : 'Play'}
           disabled={!soundFontReady}
-          onClick={() => apiRef.current?.playPause()}
+          onClick={() => api?.playPause()}
           className="size-11 rounded-full text-primary"
         >
           <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 34 }}>
@@ -1770,7 +1771,18 @@ export function PlayerShell() {
 }
 ```
 
-> **No placeholder here.** `PlayerState` is an AlphaTab enum and cannot be imported, so `handleApiReady` reads `engine.synth.PlayerState.Playing` off the namespace object — exactly as `NotationSurface` reads `engine.PlayerMode`. Do not reintroduce the numeric literal `1`: it happens to be correct in 1.8.4 and would rot silently the moment the enum's ordering changed.
+> **No placeholder here.** `PlayerState` is an AlphaTab enum and cannot be imported, so the
+> `playerStateChanged` handler reads `engine.synth.PlayerState.Playing` off the namespace object —
+> exactly as `settingsInit` reads `alphaTab.PlayerMode` off the one the hook passes it. Do not
+> reintroduce the numeric literal `1`: it happens to be correct in 1.8.4 and would rot silently the
+> moment the enum's ordering changed.
+
+> **The subscription timing problem this plan used to carry is gone.** An earlier draft subscribed
+> inside an `onApiReady` callback, with a long comment explaining why a `[]`-deps effect would read
+> a null api forever: the provider is the parent-most component, so its effect runs last and the api
+> cannot exist during the first commit. `useAlphaTabEvent` removes the trap by construction — `api`
+> is React state, so its effect re-runs the moment the api arrives. If you find yourself writing
+> `api.something.on(...)` by hand in any task, that is the bug.
 
 - [ ] **Step 6: Write the route segment**
 
@@ -1842,7 +1854,9 @@ With the dev server running (React 19 strict mode double-invokes effects), reloa
 document.querySelectorAll('[data-testid="notation-surface"] .at-surface').length
 ```
 
-Expected: exactly **1**. AlphaTab renders one `<svg>` per system, so counting `svg` varies with the score and gives you no baseline to compare against; `.at-surface` is one per surface. Check it on a single load — strict mode double-invokes within one commit, and a reload tears the tree down anyway, so reloading proves nothing. If it doubles, the cleanup's `api?.destroy()` is not running — check the effect's `[engine, onApiReady]` dependency list and that `handleApiReady` is a stable `useCallback`. That cleanup is what actually prevents the leak: with it in place a React 19.2 repro settled at exactly one live `AlphaTabApi` across four constructions under strict mode.
+Expected: exactly **1**. AlphaTab renders one `<svg>` per system, so counting `svg` varies with the score and gives you no baseline to compare against; `.at-surface` is one per surface. Check it on a single load — strict mode double-invokes within one commit, and a reload tears the tree down anyway, so reloading proves nothing. If it doubles, the hook's cleanup `created.destroy()` is not running — check that `useAlphaTab`'s effect list is exactly `[engine]`, and that nothing has crept back into it. A function prop in that list is the whole failure mode: it changes identity on a render, the effect re-runs, and a second engine is built. That cleanup is what prevents the leak: with it in place a React 19.2 repro settled at exactly one live `AlphaTabApi` across four constructions under strict mode.
+
+Also confirm in the same console that the debug handle is live, since it is now the fastest way to inspect a running player (F-D2): select the notation box in the Elements panel and evaluate `$0.at.score.title` — or from the console, `document.querySelector('[data-testid="notation-surface"] > div').at`.
 
 - [ ] **Step 9: Verify the package is clean**
 
