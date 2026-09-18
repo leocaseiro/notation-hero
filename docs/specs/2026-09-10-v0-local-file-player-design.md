@@ -225,8 +225,10 @@ Sonner ships its own spinner, so this needs no new component; the design system 
 **One hook creates every `AlphaTabApi`** — `useAlphaTab(settingsInit) -> [api, hostRef]`, ported from
 the prototype (D4) and living in `web/lib/alphatab/`. No component calls `new AlphaTabApi` or `.on()`
 by hand; a second hook, `useAlphaTabEvent`, pairs every subscription with its removal. One component
-holds the api and passes it down as a prop, so children need no null checks and no callback carries
-the api back up. A callback prop in the creation effect's dependency list is the failure mode to
+holds the api and passes it down as a prop, so no callback carries the api back up. Children are
+mounted before the api exists, so the prop is `AlphaTabApi | undefined` and each child guards it —
+never a conditional mount of the host. A callback prop in the creation effect's dependency list is
+the failure mode to
 avoid: it changes identity on an ordinary state change, rebuilds the engine, and throws away the
 loaded score, the downloaded sound bank and both workers.
 
@@ -348,7 +350,7 @@ error. The `ScriptProcessor` variant of the line is a different fallback — no 
 an insecure context — and still plays audio, so the two are not halves of a discriminator.
 
 The same lane carries v0's **accessibility check for `web/`** (§7): an axe-core run over `/` and
-`/play` in six states — empty, loaded, loaded with a score long enough to scroll, with each popover
+`/play` in five states — loaded, loaded with a score long enough to scroll, with each popover
 open, when the engine failed to load, and during the first-visit `Skeleton`, which is reachable because the engine import is a real
 request the lane can stall with `page.route` on `/alphatab/esm/alphaTab.mjs`. The scrolling state
 exists because the notation box is a focusable, named region (`role="region"`, `tabIndex={0}`): a
@@ -426,8 +428,8 @@ time), the notation-surface wrapper, the **player header** — the wordmark plus
 title, with the file name in a `Tooltip` behind it, as the mockup draws it at the top left (the score
 title comes from the file's metadata, so the file name has to stay reachable) — the landing **Play**
 button, the player's **Open file** control
-(picker plus drag-and-drop, replacing the loaded score in place) and its secondary **Load the sample
-beat** action, the **Settings** and **Tracks** popovers (below), the soundfont **progress bar** (§4),
+(picker plus drag-and-drop, replacing the loaded score in place), the **Settings** and **Tracks**
+popovers (below), the soundfont **progress bar** (§4),
 the transport row's **Loop**,
 **Metronome** and **Count-In** toggles (AlphaTab's `isLooping`, `metronomeVolume` and
 `countInVolume`, as the prototype does), and the header's **tempo control**
@@ -564,16 +566,17 @@ v0 is done when, on a deployed Vercel URL:
    while render-select changes which tracks are drawn, and the display toggles and both transposition
    sliders change the rendered score. (Tablature is excluded — 1.8.4 cannot render it on a percussion
    staff.)
-8. `/play` opens on the bundled sample beat and plays it, with no file picked and nothing clicked.
+8. `/play` opens on the bundled sample beat with no file picked and nothing clicked, and pressing Play produces its audio (criterion 2, on the score the page opened with).
 9. A score with no percussion staff opens and plays on its first track (`score.tracks[0]`).
-10. Replacing a loaded score prompts for confirmation. **Cancel** keeps the current score playing from
+10. Replacing a score the person opened prompts for confirmation; replacing the bundled beat the page
+    starts on does not. **Cancel** keeps the current score playing from
     where it was, and re-picking the same file prompts again. **Confirm** renders the new score. A
     corrupt replacement leaves the playing score intact.
 
 The criteria are checked in desktop Chrome. iPad and Android get a manual check too; it does not
 block v0. Criterion 2 is called out deliberately — see the open questions. Criteria 5–9 exist because §7
 commits to more than the four things the original criteria covered: without them v0 could be called
-done with the transport toggles, the seek bar, both popovers, the sample-load action, the
+done with the transport toggles, the seek bar, both popovers, the
 no-percussion fallback or the entire replace path broken — and replacing is the only way to open a
 second score. A–B bar-range repeat is deliberately absent — it is AlphaTab's own
 behaviour and desktop-only (§7).
@@ -588,7 +591,7 @@ behaviour and desktop-only (§7).
 | Q4  | Safari, Firefox, iPad, Android — all untested. Safari's `AudioWorklet` and module-worker support is the named risk, and module workers are exactly what D5 depends on.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | after v0 ships (D7)                      |
 | Q5  | **Answered: the pinned 1.8.4 cannot render drum tablature.** `Staff.finish()` forces `showTablature = false` on any percussion staff, `TabBarRendererFactory` sets `hideOnPercussionTrack = true`, and it requires `staff.tuning.length > 0` — verified by parsing `Punk.gp`, whose drum staves report `showTablature=false, tuningLen=0`. So whatever [alphaTab PR #2591](https://github.com/CoderLine/alphaTab/pull/2591) does, it is not in this build. Drum tablature would need a version bump, which touches the vendoring step and the payload budget; §7 scopes the toggle to stringed staves meanwhile.                        | not scheduled (needs a version bump)     |
 | Q6  | **Answered for MusicXML and alphaTex (2026-09-15).** Real MuseScore exports cover plain and compressed MusicXML (`1-beat.musicxml`, `1-beat.mxl`, `Punk.mxl`) and Tabtify exports cover alphaTex (`1-beat.atex`, `Punk.alphatex`), all verified with the pinned 1.8.4 importer. The v0a plan review also corrected the accept list: `.mxml` removed (no standard defines it); `.mxl`, `.atex` and `.alphatex` added. Still open: `.gp3` and `.gp4` need real Guitar Pro 3/4 exports and `.capx` needs Capella — renaming a `.gp5` does not help, because `ScoreLoader` reads the bytes. The legacy trio stays non-blocking, as settled. | `.gp3`/`.gp4`/`.capx`: when scores exist |
-| Q7  | **A percussion-free score is still missing.** The multi-track half is closed: `web/e2e/fixtures/Punk.gp` has drums at indexes `[0, 2]` around a guitar track, so §4's drum-track rule and the Tracks popover's multi-row layout both have something to run against. What remains is a score with no percussion staff at all, which criterion 9 needs — without it the no-drum fallback ships unverified.                                                                                                                                                                                                                                | before v0 ships                          |
+| Q7  | **Answered (2026-09-15): the percussion-free fixture exists.** The multi-track half was already closed by `web/e2e/fixtures/Punk.gp` (drums at indexes `[0, 2]` around a guitar track), and `web/e2e/fixtures/guitar-no-percussion.gp` now covers the no-percussion case: generated from a one-line alphaTex string via `AlphaTexImporter` + `Gp7Exporter` (`tooling/make-percussion-free-fixture.mjs`, output committed) and round-tripping through `ScoreLoader.loadScoreFromBytes` as one track, one staff, `isPercussion = false`. Criterion 9 is verified by running, not by reading.                                              | closed                                   |
 
 ## 10. Roadmap position
 

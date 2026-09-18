@@ -379,7 +379,8 @@ serves it.
 Consequences for the plan:
 
 - **Task 10's empty state disappears.** The notation box is on the page from the first paint.
-- Opening another file stays `api.load(bytes)` / `renderScore` on the **live** engine. The engine is
+- Opening another file stays `ScoreLoader.loadScoreFromBytes` + `renderScore` on the **live** engine,
+  never `api.load(bytes)` (F-A2). The engine is
   never destroyed and rebuilt to show a different score (the cost of that is in the evidence below).
 - The engine-import error message must be rendered **on top of** the box, never in place of it.
 

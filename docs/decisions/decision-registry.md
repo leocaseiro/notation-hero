@@ -34,7 +34,11 @@ Approved by leocaseiro 2026-09-18:
   "build on first open" latch (pointless once every visit opens a score). Rebuilding an engine costs
   a fresh 956 KB soundfont fetch and parse with no cache, two workers re-parsing the ~1 MB core
   module, and a new `AudioContext`; an idle empty box with `PlayerMode.EnabledAutomatic` creates no
-  player at all. Opening another file is `api.load()` on the live engine, never a teardown.
+  player at all. ~~Opening another file is `api.load()` on the live engine, never a teardown.~~
+  [Corrected 2026-09-18: the approved mechanism is the staged parse — `ScoreLoader.loadScoreFromBytes`
+  then `renderScore` on the live engine, still never a teardown. `api.load()` was rejected by the
+  2026-09-16 fork-parity triage (finding F-A2) because it clears the playing score before the new
+  bytes are validated.]
 - **Ported from the fork:** the `useAlphaTab` mount hook (F-B1), the typed `useAlphaTabEvent` helper
   so every `.on()` gets its `.off()` (F-B2), one API owner passed down as a prop instead of two refs
   and an `onApiReady` callback (F-B3), a shared settings-defaults stage (F-C1), and a scroll viewport
