@@ -126,7 +126,7 @@ server/src/
 **ESM-only deps must be bundled, not externalized:** the oRPC packages the server imports (`@orpc/server`, `@orpc/contract`, `@orpc/nest`) are **ESM-only** (`"type":"module"`, no `require` path) — a CJS Lambda cannot `require()` them, so esbuild MUST bundle them into the artifact (never add oRPC to `--external`). `zod`/`drizzle` ship dual-format and are safe either way.
 **`shared/` output strategy:** `shared/` (oRPC contract + Zod = runtime values, not just types) is consumed by both the CJS server and the ESM client — ship it as **TS source compiled by each app's own build** (server→CJS via SWC/esbuild, client→ESM via Vite), so no dual-format package or `exports` map is needed.
 **Node runtime alignment:** the repo currently pins **Node 22** in **four places** (`engines.node >=22.18`, the placeholder esbuild `--target=node22`, infra `runtime` default `nodejs22.x`, **and the infra test assertion** `infra/lambda-with-url.stack.test.ts:62` — `assert.equal(fn.runtime, "nodejs22.x")`, which fails `pnpm test` on the first migration commit if missed); only `.nvmrc` is 24. The Nx-removal migration must bump all four to **Node 24** (`nodejs24.x` is GA in every region incl. `ap-southeast-2` since Nov 2025).
-**Note:** the `@nestjs/swagger` CLI plugin does not run under SWC — **moot** because oRPC (ARCH-CONTRACT-1) emits OpenAPI from the contract; `@nestjs/swagger` is not used.
+**Note (⚠️ CORRECTED 2026-07-16 — this was already false when written):** ~~the `@nestjs/swagger` CLI plugin does not run under SWC — **moot** because oRPC (ARCH-CONTRACT-1) emits OpenAPI from the contract; `@nestjs/swagger` is not used.~~ [`nestjs/swagger#2493`](https://github.com/nestjs/swagger/issues/2493) was closed as **completed 2023-07-11**; SWC is supported via `nest start -b swc --type-check`, or `PluginMetadataGenerator` + `SwaggerModule.loadPluginMetadata()` for a custom bundler pipeline like this one. So `@nestjs/swagger` **is** available under SWC — and since `ARCH-CONTRACT-1` now defers the framework with `@nestjs/swagger` + `nestjs-zod` as the flip-default, it is the assumed future path, not an excluded one.
 
 ### ARCH-EDGE-1 — One CloudFront distribution, two origins
 
@@ -146,9 +146,28 @@ server/src/
 
 > **Frontend libraries — learning note.** Of the three frontend libraries, only **oRPC** is new to the developer; **TanStack and Dexie have been used before**, so the added learning effort is small. **oRPC and TanStack are adopted at v1** because they are simple to configure and the admin CMS requires them. **Full offline support (Dexie) is not built at v1** — it is deferred to M1, with only the placeholders added now so no later rework is needed (ARCH-OFFLINE-1). This frontend work is **not a distraction from the AWS goal**: a recruiter cannot evaluate an API with no interface, so a visible UI is a required part of the portfolio. Priority order: deliver real product features first, and do not let complex configuration delay them.
 
-### ARCH-CONTRACT-1 — oRPC for the typed API contract (not ts-rest); ditch kanel-zod
+### ARCH-CONTRACT-1 — ~~oRPC for the typed API contract~~ (not ts-rest); ditch kanel-zod
 
-**Decision:** use **oRPC** (`@orpc/*`): the contract lives framework-free in `shared/` (`oc.route().input(zod).output(zod)`), `server/` implements it via `@orpc/nest` (`@Implement`), `client/` consumes it via `@orpc/tanstack-query`. **Ditch kanel-zod** — the DB→Zod layer is owned by Drizzle + `drizzle-zod` (derive a base from the DB schema, then `.omit()/.extend()` to curate the API DTO — DB-change awareness without coupling the API to the DB).
+> ⚠️ **SUPERSEDED 2026-07-21 — the oRPC verdict below is NOT the current decision.** `ARCH-CONTRACT-1` was
+> re-decided by leocaseiro after a re-spike and a study pause: **DEFER the framework.** The interim contract is
+> **hand-authored Zod in `shared/` + `z.infer` + `.parse()`**; the flip-default is **`@nestjs/swagger` +
+> `nestjs-zod`**, explicitly **not** oRPC. Nothing was ever installed, so this reversal cost no migration.
+> Full record: the 2026-07-21 change-log entry in [`decision-registry.md`](decision-registry.md) and the
+> re-spike: [the 2026-07-16 typed-contract re-spike](../spikes/2026-07-16-typed-contract-respike.md).
+>
+> **Why it fell:** both load-bearing premises of the "Why" paragraph below were false. (1) "Moots the
+> `@nestjs/swagger`-under-SWC problem" — that problem was already fixed in 2023
+> ([`nestjs/swagger#2493`](https://github.com/nestjs/swagger/issues/2493), closed **completed** 2023-07-11),
+> so it never needed avoiding. (2) "post-1.0" — there is no oRPC `1.0.0`; the 1.x line began 2025-04-15 and
+> the "Dec 2025" date was an InfoQ article's publication date. Also: oRPC + NestJS is **contract-first only**,
+> so the "pure TS inference (no codegen)" benefit sold below **never applied to this stack**.
+>
+> **What still holds:** ts-rest is dead (re-verified); "ditch kanel-zod" survives (Kanel is parked to the CMS,
+> where API shape genuinely is the table); and the API-shape-≠-DB-shape reasoning in "Three type-safety
+> layers" was vindicated — it is exactly why derivation yields only three bare `z.string()`s here. The text is
+> kept whole rather than rewritten, so the June reasoning stays auditable.
+
+**Decision (superseded — see the banner above):** use **oRPC** (`@orpc/*`): the contract lives framework-free in `shared/` (`oc.route().input(zod).output(zod)`), `server/` implements it via `@orpc/nest` (`@Implement`), `client/` consumes it via `@orpc/tanstack-query`. **Ditch kanel-zod** — the DB→Zod layer is owned by Drizzle + `drizzle-zod` (derive a base from the DB schema, then `.omit()/.extend()` to curate the API DTO — DB-change awareness without coupling the API to the DB).
 **Why:** the 🔬 contract spike found **ts-rest is effectively frozen** (0 commits to `main` in 2026; issue #797 "Future of ts-rest" — its own users are migrating to oRPC). oRPC is actively shipping (v1.14.x, weekly releases, post-1.0), has a first-class Nest adapter, pure TS inference (no codegen), shared Zod runtime validation, native OpenAPI (for the future admin CMS / 3rd-parties), and a ~3.4 KB client (good for Capacitor).
 **Three type-safety layers (the mental model):** ① DB↔server = Drizzle; ② server↔client = oRPC; ③ Zod = the shared validation currency. The API shape ≠ the DB shape (the hexagon maps row→entity→DTO), so the contract is hand-authored, not auto-mirrored from the DB.
 **Caveat:** oRPC is primarily one maintainer (same risk class ts-rest had) — mitigated because it emits standard OpenAPI, so the exit ramp (regenerate a client from the spec) is cheap. **Flip:** `@hey-api/openapi-ts` if the OpenAPI spec should be the single source of truth from day one (accepts a codegen step).
@@ -277,7 +296,7 @@ worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
 | ARCH-LAMBDA-1   | One API Lambda now; workers via createApplicationContext | implements north-star                          |
 | ARCH-FMT-1      | Server CJS / client ESM                                  | new                                            |
 | ARCH-EDGE-1     | One CloudFront, two origins (S3 + Lambda)                | new                                            |
-| ARCH-CONTRACT-1 | oRPC contract; ditch kanel-zod                           | new                                            |
+| ARCH-CONTRACT-1 | ~~oRPC contract~~; ditch kanel-zod                       | ⚠️ **superseded 2026-07-21 — DEFER (NH-284)**  |
 | ARCH-ORM-1      | Drizzle                                                  | reaffirms `DS-1`                               |
 | ARCH-FE-1       | Vite + TanStack Router + Query                           | **supersedes 2026-06-16 Next.js ADR (NH-185)** |
 | ARCH-OFFLINE-1  | Plain Dexie + insert-only outbox, sync via API           | new                                            |
