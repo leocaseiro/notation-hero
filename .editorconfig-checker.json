@@ -1,5 +1,5 @@
 {
-  "Exclude": ["docs/decisions/decision-registry\\.md"],
+  "Exclude": ["docs/decisions/decision-registry\\.md", "^resources/", "\\.(gp|gp5|gpx|mid|mxl)$"],
   "Disable": {
     "Charset": false,
     "EndOfLine": false,

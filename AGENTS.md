@@ -121,6 +121,12 @@ One system across packages — see
 - **Run locally**: `pnpm run fix` (auto-fix), `pnpm run check:all` (everything the CI `lint` + `quality` jobs run — not `build`/`a11y`/`vr`/security scans).
 - **Binary tools**: `pnpm run lint:setup` documents the `brew`/`pip` installs
   (shellcheck, yamllint, actionlint). Local hooks skip a missing binary; CI is the hard gate.
+- **`editorconfig-checker` is version-pinned** — `lint:editorconfig` sets `EC_VERSION=v3.11.3`
+  (NH-293). Its npm wrapper downloads a binary from GitHub releases and looks for an asset named
+  `ec-<platform>-<arch>`; upstream renamed every asset to `editorconfig-checker-*` in v4.0.0
+  (2026-09-03), so the default `latest` fails with `The binary 'ec-…' not found` and takes the whole
+  `lint` job down. v3.11.3 is the last release carrying the old names. Drop the pin once the wrapper
+  handles the new ones — check that a bumped wrapper resolves a v4 asset before removing it.
 - **Hooks**: lefthook auto-fixes staged files on commit, runs the full check on push.
 - **CI**: dedicated `lint` job (check-and-block), gated on `code || docs_or_config`.
 
@@ -436,7 +442,24 @@ If a follow-up arrives without a tag AND does not reference your last response, 
 - **Option-label glyphs** — prefer keycap numbers (1️⃣ 2️⃣ 3️⃣ 4️⃣) for readability. Avoid filled enclosed letters (🅰 / 🅐, hard to read); if you need letter labels use `A)` `B)` or outline Ⓐ Ⓑ.
 - **Confirm before saving memories** — propose memory writes via AskUserQuestion (or prose); save only after a yes.
 - **Skills and subagents do NOT suspend these conventions.** As soon as control returns to the orchestrator agent, the next decision MUST use `AskUserQuestion`, never a numbered prose "confirm before I…" list.
-- **Always give the user a window to add context before a picker locks in.** With 1–3 real questions, make one card a follow-up catcher: `[Q-add] Anything to add before I act on these?` → _"Nothing — go ahead" / "Added it in Other" / "Hold — more coming."_ With a full 4 real questions, post a brief FYI notification first (not a question), pause ~10–20s, then send the picker. Never solicit or wait for a prose "go"/"yes" — the picker always fires.
+- **Always give the user a window to add context before a picker locks in.** With 1–3 real questions, make the **LAST** card a follow-up catcher: `[Q-add] Anything else? Any topic — an earlier question, a new one, a suggestion.` → _"Nothing else" / "Yes — in my Other box" / "Hold — still typing."_ It goes **last** because "anything else" only makes sense once the rest has been read — as card 1 it asks the user to respond to questions they have not seen yet. With a full 4 real questions, post a brief FYI notification first (not a question), pause ~10–20s, then send the picker. Never solicit or wait for a prose "go"/"yes" — the picker always fires.
+- **The `[Q-add]` catcher is INERT — it approves NOTHING.** It is the user's _out-of-band_ channel, and it is NOT a duplicate of the "Other" box: **"Other" on card N** carries context about **card N's own question**; the **catcher** carries everything else — an earlier picker's question, a new topic, an unrelated suggestion. Because it decides nothing, its options MUST carry **zero scope and zero action**. Never write work into the "Nothing" option, and never use the authorizing phrase _"go ahead"_ — it is an approval verb on a card that approves nothing, and it invites exactly this (real, observed) violation:
+
+  ```json
+  // NEVER — "Nothing" now silently means "build these four things"
+  {"label":"Nothing — go ahead",
+   "description":"Start drafting: the plugin scaffold, the SessionStart hook, the new skill, the resolver script."}
+
+  // Correct — inert; every option is content-only
+  {"question":"[Q-add] Anything else? Any topic — an earlier question, a new one, a suggestion.",
+   "options":[{"label":"Nothing else","description":"No extra context. This card approves nothing."},
+              {"label":"Yes — in my Other box","description":"I typed it into Other on this card."},
+              {"label":"Hold — still typing","description":"Don't act yet; a message is coming."}]}
+  ```
+
+  **Declining to add context is not consent.** If you need approval for a scope, that is a **real question on its own card**, with the scope stated in the question — never smuggled into the catcher.
+
+- **`[No preference]` means NOT READY — it is NEVER "you pick".** When the user presses the picker's **Skip** button, the harness records the answer as the literal **`[No preference]`**. That is Skip's own wording, not the user's: it means **"not ready to answer this."** It is **not** a delegation and **not** indifference. So: do **not** choose the option for them, do **not** proceed on that decision, and do **not** re-ask it in a loop. Do the parts that don't depend on it, then say plainly which item is parked and what it blocks. If the user ever wants you to choose, they will say so explicitly — assume they do not.
 
 For each question, supply decision-critical context **outside** the picker (it is too cramped for long text): **What's wrong** · **Proposed fix** (examples / code snippets if applicable) · **Why it works**.
 
