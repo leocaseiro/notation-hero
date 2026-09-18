@@ -9,7 +9,7 @@ export type { ButtonProps } from './components/ui/Button/Button';
 // - Toaster/toast carry the unsupported-file, engine-failure and settings-reset messages.
 export { Skeleton, SkeletonTable, SkeletonForm } from './components/ui/Skeleton/Skeleton';
 export { Toaster, toast } from './components/ui/Sonner/Sonner';
-// - Card/CardContent frame the empty state's drop target (Task 10).
+// - Card/CardContent frame the empty state's drop target.
 export { Card, CardContent } from './components/ui/Card/Card';
-// - Tooltip carries the open score's file name behind its title in the player header (Task 11).
+// - Tooltip carries the open score's file name behind its title in the player header.
 export { Tooltip, TooltipTrigger, TooltipContent } from './components/ui/Tooltip/Tooltip';

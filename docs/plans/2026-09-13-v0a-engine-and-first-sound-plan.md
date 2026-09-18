@@ -164,7 +164,7 @@ song cache. Nothing in the tasks below depends on either.
 | `.github/workflows/ci.yml`                             | Add the `web` steps to the `e2e` job and its artifact paths.                                                                                                                                                             |
 | `web/vercel.json`                                      | Add `buildCommand` so the vendor step is unconditional and cannot be overridden invisibly from the dashboard.                                                                                                            |
 | `web/public/charts/` -> `web/public/notation/`         | Renamed with its three files; every `/charts/...` URL becomes `/notation/...`. "chart" is not this project's vocabulary (CONCEPTS.md).                                                                                   |
-| `web/app/globals.css`                                  | The drag-overlay styles (Task 10 Step 6).                                                                                                                                                                                |
+| `web/app/globals.css`                                  | The playback-cursor styles (Task 6 Step 7) and the drag-overlay styles (Task 10 Step 6).                                                                                                                                 |
 | `client/src/components/ui/Sonner/Sonner.stories.tsx`   | A `Loading` story, so the replacement toast is audited where the gates can hold it open (Task 12).                                                                                                                       |
 | `client/src/components/ui/Sonner/Sonner.story-ids.ts`  | The `loading` story id that the a11y and VR suites read (Task 12).                                                                                                                                                       |
 | `tooling/workflow-guards.test.mjs`                     | A case asserting the `e2e` job runs the web lane and uploads its report (Task 8).                                                                                                                                        |
@@ -749,7 +749,7 @@ Create `tooling/alphatab-import-fence.test.sh`:
 ```bash
 #!/usr/bin/env bash
 #
-# AlphaTab import-fence test (v0a plan, Task 3) — proves both lint fences still REJECT a forbidden
+# AlphaTab import-fence test — proves both lint fences still REJECT a forbidden
 # @coderline/alphatab import, so a later config change cannot switch them off unnoticed.
 #
 #   web/     type imports only: a VALUE import must fail @typescript-eslint/no-restricted-imports.
@@ -759,7 +759,7 @@ Create `tooling/alphatab-import-fence.test.sh`:
 #            without the selector a dynamic import bundles a second AlphaTab with lint green.
 #
 # A one-time probe is not enough. In ESLint flat config a later block's options for a rule REPLACE
-# an earlier block's, so a no-restricted-imports block added after Task 3's would drop the AlphaTab
+# an earlier block's, so a no-restricted-imports block added after the AlphaTab one would drop its
 # group while lint stays green. Runs under `pnpm run test:tooling` (every tooling/*.test.sh), a
 # required step of the CI `quality` job. The probe files are ephemeral and never committed.
 #
@@ -900,9 +900,9 @@ export type { ButtonProps } from './components/ui/Button/Button';
 // - Toaster/toast carry the unsupported-file, engine-failure and settings-reset messages.
 export { Skeleton, SkeletonTable, SkeletonForm } from './components/ui/Skeleton/Skeleton';
 export { Toaster, toast } from './components/ui/Sonner/Sonner';
-// - Card/CardContent frame the open-file control (Task 10).
+// - Card/CardContent frame the open-file control.
 export { Card, CardContent } from './components/ui/Card/Card';
-// - Tooltip carries the open score's file name behind its title in the player header (Task 11).
+// - Tooltip carries the open score's file name behind its title in the player header.
 export { Tooltip, TooltipTrigger, TooltipContent } from './components/ui/Tooltip/Tooltip';
 ```
 
@@ -1092,8 +1092,8 @@ let pending: Promise<AlphaTabEngine> | null = null;
  * The memo caches a REJECTION as well as a success: `pending ??=` keeps the first promise whatever
  * it settles to, so one failed import is permanent for the page and a reload is the only recovery —
  * which is exactly what the engine-error message tells the visitor. The `.catch(() => null)` retry
- * in Tasks 10 and 11 therefore cannot succeed after a failure; it only covers the case where the
- * import is still in flight.
+ * in the file-open path therefore cannot succeed after a failure; it only covers the case where
+ * the import is still in flight.
  */
 export function loadAlphaTabEngine(): Promise<AlphaTabEngine> {
   pending ??= (async () => {
@@ -1397,7 +1397,7 @@ Three rules this task establishes, and every later task inherits (triaged 2026-0
 2. **`Player` owns the api; everything else receives it.** `useAlphaTab` is called in exactly one place, and no component constructs an `AlphaTabApi` or calls `.on()` by hand.
 3. **The scroll viewport survives score changes, so reset it.** It is ours, not AlphaTab's (F-C2), and it is never unmounted — so anything that renders a new score sets `scrollTop = 0` first.
 
-**Not here:** `host.focus()`. Taking focus makes sense when _the person opens a score_ — Task 10 does it there — but this task's score loads on page load, and moving focus into a box the visitor did not ask for is a keyboard trap of our own making.
+**Not here:** `host.focus()`, or any other focus move. This task's score loads on page load, and moving focus into a box the visitor did not ask for is a keyboard trap of our own making. Opening a file _is_ different — a score the person chose does move focus, to the **Play** button rather than into the notation box — but that belongs with the file picker, not here.
 
 **Files:**
 
@@ -1409,6 +1409,7 @@ Three rules this task establishes, and every later task inherits (triaged 2026-0
 - Create: `web/lib/player-errors.ts`
 - Create: `web/e2e/player.e2e.ts`
 - Modify: `web/app/page.tsx`
+- Modify: `web/app/globals.css` (the playback-cursor styles, Step 7)
 - Rename: `web/public/charts/` → `web/public/notation/` (Step 1)
 
 **Interfaces:**
@@ -1423,7 +1424,7 @@ Three rules this task establishes, and every later task inherits (triaged 2026-0
 - [ ] **Step 1: Add the Playwright dependencies, then write the failing test**
 
 The install comes FIRST, here and not in Task 7. `web/tsconfig.json` includes `**/*.ts`, so the
-moment `web/e2e/player.e2e.ts` exists, `tsc --noEmit` type-checks it — and Step 9's typecheck
+moment `web/e2e/player.e2e.ts` exists, `tsc --noEmit` type-checks it — and Step 10's typecheck
 would die with `Cannot find module '@playwright/test'` if the package only arrived a task later.
 The ranges must match `client/package.json` character for character or root `syncpack` (a
 `quality` CI gate) fails.
@@ -1632,7 +1633,7 @@ export function NotationSurface({ api, hostRef, viewportRef }: Readonly<Notation
       ) : null}
       {/* The Skeleton covers BOTH the engine import and the music-font fetch, and lifts on the
           first renderFinished: AlphaTab holds that event until its own font checker sees the
-          `alphaTab` face load (Task 5 — there is no font wait in loadAlphaTabEngine). Dismissing
+          `alphaTab` face load (there is no font wait in loadAlphaTabEngine). Dismissing
           it earlier leaves the notation area blank for exactly the window it exists to cover. */}
       {!failure && !rendered ? (
         <Skeleton
@@ -1657,8 +1658,8 @@ export function NotationSurface({ api, hostRef, viewportRef }: Readonly<Notation
           notation takes mouse input (AlphaTab moves the cursor and selects bars on click) and needs
           keyboard control too, and an `img`'s children are presentational. Never `aria-label`
           without a role — on a plain div that fails axe's aria-prohibited-attr (serious). The focus
-          ring copies client/'s ScrollArea viewport, which solved the same axe rule. Task 13 audits
-          the scrolling state with Punk.gp. */}
+          ring copies client/'s ScrollArea viewport, which solved the same axe rule. The
+          accessibility gate audits the scrolling state with Punk.gp. */}
       <div
         ref={viewportRef}
         data-testid="notation-surface"
@@ -1719,7 +1720,7 @@ function Player() {
   const [api, hostRef] = useAlphaTab((settings, alphaTab) => {
     // No settings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
     // /alphatab/esm/alphaTab.mjs — that is the entire point of self-hosting the ESM.
-    // fontDirectory, logLevel and soundFont are already applied by setAlphaTabDefaults (Task 5).
+    // fontDirectory, logLevel and soundFont are already applied by setAlphaTabDefaults().
     settings.core.file = SAMPLE_NOTATION;
     settings.core.tracks = 'all';
     // EnabledAutomatic on purpose (2026-09-16): a Guitar Pro file that embeds an audio track plays
@@ -1771,17 +1772,26 @@ function Player() {
         data-player-ready={playerReady}
         className="flex items-center gap-3"
       >
-        {/* Play stays disabled until the synth is ready (spec §4). size-11 = the 44px minimum hit
-            area; the glyph keeps its drawn size. This is NOT client/'s PlayButton — that one is
-            the catalog row's control and has no pause state (see Task 4). */}
+        {/* Play stays unavailable until the synth is ready (spec §4). size-11 = the 44px minimum
+            hit area; the glyph keeps its drawn size. This is NOT client/'s PlayButton — that one
+            is the catalog row's control and has no pause state. */}
+        {/* `aria-disabled` plus a click guard, NOT the native `disabled` attribute. A natively
+            disabled button cannot receive focus, and opening a file moves focus here — during the
+            seconds the engine is still loading that focus call would be a silent no-op, leaving
+            the person's focus behind on a control they already used. aria-disabled keeps the
+            button in the tab order and announced as unavailable; the guard is what stops it
+            acting. */}
         <Button
           data-testid="transport-play"
           size="icon"
           variant="ghost"
           aria-label={playing ? 'Pause' : 'Play'}
-          disabled={!playerReady}
-          onClick={() => api?.playPause()}
-          className="size-11 rounded-full text-primary"
+          aria-disabled={!playerReady}
+          onClick={() => {
+            if (!playerReady) return;
+            api?.playPause();
+          }}
+          className="size-11 rounded-full text-primary aria-disabled:pointer-events-none aria-disabled:opacity-50"
         >
           <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 34 }}>
             {playing ? 'pause_circle' : 'play_circle'}
@@ -1800,6 +1810,13 @@ export function PlayerShell() {
   );
 }
 ```
+
+> **The Play button depends on NH-304.** Opening a file moves focus here, so this button must stay
+> focusable while it is unavailable — which is why it carries `aria-disabled` and a click guard
+> instead of `disabled`. The design-system fix that makes `Button` do this for every caller is
+> [NH-304](https://leocaseiro.atlassian.net/browse/NH-304): `Button` renders `aria-disabled` rather
+> than `disabled` and blocks its own activation. Until that lands, every unavailable control in this
+> plan is written the long way, by hand.
 
 > **No placeholder here.** `PlayerState` is an AlphaTab enum and cannot be imported, so the
 > `playerStateChanged` handler reads `engine.synth.PlayerState.Playing` off the namespace object —
@@ -1865,7 +1882,43 @@ ending with the same `PLAYER_ERROR.unexpectedCrash` number (import it from `../l
 Do **not** add `global-error.tsx` in v0 — it only earns its place once the root layout does more
 than mount a `<Toaster />`.
 
-- [ ] **Step 7: Run the app and verify by hand**
+- [ ] **Step 7: Style the playback cursor — it paints nothing without this**
+
+`settings.player.enableCursor = true` is set in Step 5, and on its own it renders an **invisible**
+cursor. `@coderline/alphatab` 1.8.4 ships no `.css` file at all: the only stylesheet it injects sets
+`.at-surface *` and `.at-surface-svg text`. It creates `.at-cursor-bar` and `.at-cursor-beat` as
+bare `<div>`s with inline geometry — position and size — and no paint of any kind, so the host app
+supplies the colour. Upstream's own "Styling Player" guide exists for exactly this, and warns that
+the beat cursor needs an explicit width or it may not be visible. All three of this maintainer's
+other AlphaTab apps (alpha-drums, tablatures, the alphaTabWebsite fork) add these rules by hand.
+
+Append to `web/app/globals.css`:
+
+```css
+/* AlphaTab ships no stylesheet: it creates .at-cursor-bar and .at-cursor-beat as bare divs with
+   inline geometry only, so `enableCursor` paints nothing until the host app supplies these rules.
+   The beat cursor needs an explicit width or it may not show at all (upstream's styling guide).
+   Dark mode is not handled here: the notation surface is pinned to bg-white in both themes. */
+.at-cursor-bar {
+  background: color-mix(in oklab, var(--primary) 18%, transparent);
+}
+.at-cursor-beat {
+  background: var(--primary);
+  width: 3px;
+}
+.at-highlight * {
+  fill: var(--primary);
+  stroke: var(--primary);
+}
+```
+
+**`.at-highlight *`, with the descendant selector, is not a typo.** AlphaTab puts that class on the
+SVG **group** for the beat being played, never on the drawn glyphs themselves — a `<g>` has nothing
+of its own to fill, so a bare `.at-highlight { fill: … }` silently does nothing. The `*` reaches the
+children that do the drawing. Both `fill` and `stroke` are needed because different children use one
+or the other: note heads and rests are filled paths, stems and beams are stroked.
+
+- [ ] **Step 8: Run the app and verify by hand**
 
 ```bash
 pnpm --filter @notation-hero/web run dev
@@ -1875,7 +1928,7 @@ Open `http://localhost:3002` — the Play button links to `/play`. On `/play`, e
 
 **Listen to it.** Spec Q1 records that nobody has heard this audio yet — headless Chromium is silent, so this manual listen is the only thing that closes it.
 
-- [ ] **Step 8: Verify the strict-mode lifecycle**
+- [ ] **Step 9: Verify the strict-mode lifecycle**
 
 With the dev server running (React 19 strict mode double-invokes effects), reload `/play` five times and check the DOM never holds two AlphaTab surfaces:
 
@@ -1888,7 +1941,7 @@ Expected: exactly **1**. AlphaTab renders one `<svg>` per system, so counting `s
 
 Also confirm in the same console that the debug handle is live, since it is now the fastest way to inspect a running player (F-D2): select the notation box in the Elements panel and evaluate `$0.at.score.title` — or from the console, `document.querySelector('[data-testid="notation-surface"] > div').at`.
 
-- [ ] **Step 9: Verify the package is clean**
+- [ ] **Step 10: Verify the package is clean**
 
 ```bash
 pnpm --filter @notation-hero/web exec eslint --fix .
@@ -1904,11 +1957,11 @@ kept in canonical order by hand — the order drifts the moment an import change
 cannot repair is already fixed in the snippets above, so after one `--fix` pass the check below is
 expected to be clean, not merely closer.
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
-git add web/app/page.tsx web/app/error.tsx web/app/play web/lib/player-errors.ts \
-  web/e2e/player.e2e.ts web/package.json pnpm-lock.yaml
+git add web/app/page.tsx web/app/error.tsx web/app/play web/app/globals.css \
+  web/lib/player-errors.ts web/e2e/player.e2e.ts web/package.json pnpm-lock.yaml
 git commit -m "feat(web): render and play the sample score on /play (NH-291)"
 ```
 
@@ -1989,6 +2042,11 @@ test('plays through the real audio worklet, not the silent fallback', async ({ p
   //    maintains for the test's benefit (decided 2026-09-18). `data-playing` is fair game: it is
   //    real UI state, the Play/Pause button reads it. `.at-cursor-beat` is AlphaTab's beat cursor;
   //    it only moves when the player is genuinely running, which is exactly the claim under test.
+  //
+  //    A moving bounding box proves MOTION, not VISIBILITY. AlphaTab creates the cursor as a bare
+  //    div with inline geometry and no paint, so an unstyled cursor still has a box that moves and
+  //    still passes here. Whether it can be SEEN is the host app's CSS, and it stays a manual
+  //    check.
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
   const cursor = page.locator('.at-cursor-beat');
   await expect(cursor).toBeVisible({ timeout: 20_000 });
@@ -2432,6 +2490,8 @@ git commit -m "feat(web): select every drum track, with a percussion-free fallba
 - Produces:
   - `OpenFileControl` props: `{ onNotation: (file: LoadedNotation) => void }`, plus an exported `readNotation(file)` the shell's drop handler reuses. **This matches the implementation** — the earlier `hasNotation` / `variant` / `compact` trio was never reachable and is gone: the control has one shape, the compact rail button beside Play.
   - `OpenNotation { name: string; score: AlphaTab.model.Score }` — what the shell holds after parsing; `NotationSurface` takes it as its `notation` prop.
+  - `playRef` — a ref on the Play button, so a successful open can move focus there. Task 11's confirmed replace uses the same one.
+  - `announcement` state plus the shell's visually-hidden `aria-live="polite"` region, which names the file that was opened. Task 11 reuses both.
   - Test hooks: `data-testid="open-file-input"`, `data-testid="open-file-button"`.
 
 **There is no empty state** (decided 2026-09-18). The player always has a score: Task 6 loads the
@@ -2439,7 +2499,13 @@ bundled beat at page load, so this task only ever REPLACES what is already on sc
 the `EmptyState` component, the "Load the sample beat" button, the `pending` state, and the
 question of what the page looks like with nothing open. The open control is permanent — it is in
 the transport row from the first paint, so opening a file never moves or removes the control the
-person just used, and focus stays where they left it.
+person just used.
+
+**A successful open moves focus to Play and announces the file** (decided 2026-09-18). Without it
+the open ends in silence: focus stays on the Open-file button, nothing is announced, and a screen
+reader user has no way to tell that anything happened. Focus goes to **Play** because that is the
+next thing anyone does. It happens on the success path ONLY — never on a cancel, never on a parse
+failure, and never for the bundled score the page loads with, none of which the person asked for.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2495,8 +2561,8 @@ test('a file over 25 MB is refused before it is read', async ({ page }) => {
 // track 0 would silently drop the left-hand staff — which is exactly why this fixture exists.
 // Punk.mxl (MuseScore) and Punk.alphatex (Tabtify) are exports of the same score and parse to the
 // same three tracks, so the promise is checked on Guitar Pro, MusicXML and alphaTex alike.
-// (Moved here from Task 9: it needs the file input this task adds, and Task 9 must not commit
-// a red suite.)
+// (It lives here, with the file input it needs, rather than beside selectDrumTrackIndexes' own
+// unit tests — those must not commit a red suite.)
 for (const fixture of ['Punk.gp', 'Punk.mxl', 'Punk.alphatex']) {
   test(`renders every drum track, not only track 0 — ${fixture}`, async ({ page }) => {
     await page.goto('/play');
@@ -2519,7 +2585,7 @@ test('a score with no percussion staff opens on the first track', async ({ page 
 
 // A failed music-font download used to leave the Skeleton up forever: AlphaTab's font checker has
 // no fallback, fires no renderFinished and raises no api.error. Abort every font request and expect
-// the engine error instead (NotationSurface's loadingerror listener, Task 6).
+// the engine error instead (NotationSurface's loadingerror listener).
 test('a failed music-font download shows the engine error, not an endless Skeleton', async ({
   page,
 }) => {
@@ -2719,20 +2785,25 @@ interface OpenNotation {
 
 const [notation, setNotation] = useState<OpenNotation | null>(null);
 
+// The open succeeded — say so, and put focus where the person goes next. Both live on the shell
+// because the shell is what knows an open finished; the picker only hands over bytes.
+const [announcement, setAnnouncement] = useState('');
+const playRef = useRef<HTMLButtonElement | null>(null);
+
 const requestNotation = useCallback(
   async (file: LoadedNotation) => {
     let at = engine;
     if (!at) {
-      // Opened before the engine arrived — a very fast pick, or Task 13's stalled import. Wait on
+      // Opened before the engine arrived — a very fast pick, or a stalled engine import. Wait on
       // the SAME memoised import the provider is waiting on. No `pending` flag any more: the
-      // sample score is already on screen, so there is nothing to fill and nothing to hide. Task
-      // 12 owns the feedback for a slow parse.
+      // sample score is already on screen, so there is nothing to fill and nothing to hide. The
+      // loading toast owns the feedback for a slow parse.
       at = await loadAlphaTabEngine().catch(() => null);
       // The engine failed; that failure is reported by the engine-error message, not by a toast.
       if (!at) return;
     }
 
-    // Task 11 inserts the replace confirmation HERE — before the parse, per spec §4.
+    // The replace confirmation goes HERE — before the parse, per spec §4.
     let score: AlphaTab.model.Score;
     try {
       score = at.importer.ScoreLoader.loadScoreFromBytes(file.bytes);
@@ -2744,10 +2815,25 @@ const requestNotation = useCallback(
     }
 
     setNotation({ name: file.name, score });
+    // Success only. Neither line runs on the parse failure above, on the read failures the picker
+    // catches, or for the bundled score — nobody asked for that one, so nothing is announced and
+    // nothing is focused at page load.
+    setAnnouncement(`Opened ${file.name}`);
+    playRef.current?.focus();
   },
   [engine],
 );
 ```
+
+The focus call lands on the Play button because that is the next thing anyone does with a score they
+just opened — not on the notation box, which holds no control. It works only because that button is
+`aria-disabled` rather than natively `disabled` (Task 6 Step 5, and NH-304 behind it): a natively
+disabled button cannot take focus, so during the seconds before `playerReady` this would be a silent
+no-op and focus would be left behind on the Open-file button.
+
+One known edge: a live region announces a CHANGE in its text, so re-opening the same file twice in a
+row writes the same string and says nothing the second time. The focus move still happens, which is
+the louder of the two signals, and v0 leaves it there.
 
 **Keep `settings.core.file = SAMPLE_NOTATION` exactly as Task 6 wrote it.** AlphaTab loads the
 bundled beat at construction, and a file the person opens is rendered on top of it through
@@ -2922,7 +3008,9 @@ useEffect(() => {
 }, [endDrag]);
 ```
 
-and the markup, replacing the plain `<main>` body:
+and the markup, replacing the plain `<main>` body. Two additions beyond the drop target: the Play
+button gains `ref={playRef}` — nothing else about it changes — and the live region joins the bottom
+of the section:
 
 ```tsx
 <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
@@ -2958,8 +3046,8 @@ and the markup, replacing the plain `<main>` body:
     }}
   >
     <div className="relative">
-      {/* NotationSurface is ALWAYS mounted — it renders its own engine-error message as an overlay
-          (Task 6). Do not reintroduce a branch that renders something INSTEAD of it: unmounting
+      {/* NotationSurface is ALWAYS mounted — it renders its own engine-error message as an
+          overlay. Do not reintroduce a branch that renders something INSTEAD of it: unmounting
           the box while the api is alive leaves AlphaTab drawing into a detached node, with no
           error raised anywhere. When the engine never loaded, nothing can open or play, and the
           Play button stays where it is, disabled (spec §4). */}
@@ -2991,13 +3079,21 @@ and the markup, replacing the plain `<main>` body:
       data-player-ready={playerReady}
       className="flex items-center gap-3"
     >
-      {/* …the Play button from Task 6… */}
+      {/* …the Play button, which now takes ref={playRef}… */}
       {/* Permanent, never conditional. The control sits beside Play for the whole life of the
-          page: a score is always open, so there is no other place for it to live, Task 11's
-          replace tests always find `open-file-input`, and the person's focus is never moved by a
-          control disappearing out from under them. */}
+          page: a score is always open, so there is no other place for it to live, the replace
+          tests always find `open-file-input`, and the person's focus is never moved by a control
+          disappearing out from under them. */}
       <OpenFileControl onNotation={requestNotation} />
     </div>
+
+    {/* Visually hidden, and polite so it waits for a gap rather than cutting the reader off. It
+        is mounted for the whole life of the page: a live region added to the DOM at the same
+        moment its text appears is not announced at all — the region has to be there first. Empty
+        until the first successful open, and that open is the only thing that writes to it. */}
+    <p aria-live="polite" className="sr-only">
+      {announcement}
+    </p>
   </section>
 </main>
 ```
@@ -3114,9 +3210,9 @@ test('cancelling a replacement keeps the current score playing from where it was
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
 
   // The position comes from AlphaTab itself, through the debug handle the hook parks on the host
-  // element (F-D2). The app keeps no position state — see Task 7 — and this is that decision's
-  // payoff: the test reads the engine's own clock instead of a number mirrored into the DOM for
-  // its benefit.
+  // element (F-D2). The app keeps no position state — test-only instrumentation never ships — and
+  // this is that decision's payoff: the test reads the engine's own clock instead of a number
+  // mirrored into the DOM for its benefit.
   const positionMs = () =>
     page.evaluate(
       () =>
@@ -3244,7 +3340,8 @@ const openFileName = notation?.name ?? SAMPLE_NOTATION.split('/').pop() ?? '';
     <TooltipTrigger
       render={
         // A real <button> so the tooltip is reachable by keyboard, not only by hover. It does
-        // nothing on click; min-h-11/min-w-11 keeps it over the 44 px hit area Task 13 enforces.
+        // nothing on click; min-h-11/min-w-11 keeps it over the 44 px hit area the
+        // accessibility gate enforces.
         <button
           type="button"
           data-testid="loaded-notation-name"
@@ -3274,7 +3371,7 @@ const requestNotation = useCallback(
   async (next: LoadedNotation) => {
     let at = engine;
     if (!at) {
-      // Same as Task 10: opened before the engine arrived. `notation` is still null in that
+      // Opened before the engine arrived, as on a first open. `notation` is still null in that
       // window, so nothing the person opened can be lost and there is nothing to confirm.
       at = await loadAlphaTabEngine().catch(() => null);
       if (!at) return;
@@ -3334,6 +3431,11 @@ const requestNotation = useCallback(
     // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
     if (wasPlaying) api?.pause();
     setNotation({ name: next.name, score });
+    // The replacement succeeded, so it announces and takes focus exactly as a first open does.
+    // Neither line is reachable from the cancel path (it returned above) or the parse failure
+    // (it returned too) — in both of those the person is still with the score they had.
+    setAnnouncement(`Opened ${next.name}`);
+    playRef.current?.focus();
   },
   [engine, notation, playing],
 );
@@ -3390,7 +3492,7 @@ and on a silent first open it is simply the next statement:
 
 ```tsx
 if (notation !== null) {
-  // …the confirm and its cancel path, unchanged from Task 11…
+  // …the confirm and its cancel path, unchanged…
 }
 
 // Sonner ships its own spinner, so this needs no new component — and a Skeleton would hide a
@@ -3420,6 +3522,9 @@ and around `setNotation({ name: next.name, score });`:
 ```tsx
 setNotation({ name: next.name, score });
 toast.success(`${next.name} loaded`, { id: 'notation-load' });
+// The announcement and the focus move stay exactly where they were, after the swap.
+setAnnouncement(`Opened ${next.name}`);
+playRef.current?.focus();
 ```
 
 Unconditional now: every open showed the spinner, so every open resolves it. The notation box is
@@ -3536,7 +3641,7 @@ test('landing page has no axe violations', async ({ page }) => {
   await expectNoViolations(page, 'landing');
 });
 
-// There is no empty state to audit (Task 10): the page opens on the bundled beat, so this is the
+// There is no empty state to audit: the page opens on the bundled beat, so this is the
 // state a first-time visitor actually meets.
 test('player has no axe violations on the score it opens with', async ({ page }) => {
   await page.goto('/play');
@@ -3704,7 +3809,7 @@ Criteria 3, 5, 6 and 7 belong to Plans B and C.
   is deliberately stable for the page's whole life, each construct/destroy cycle leaves another
   listener and observer entry pointing at a destroyed api, which therefore stays reachable with its
   parsed score and renderer. `_isDestroyed` keeps it silent. One api per page visit bounds the cost
-  in v0; the `.at-surface` count in Task 6 Step 8 cannot see it.
+  in v0; the `.at-surface` count in Task 6 Step 9 cannot see it.
 
 ## Pulumi preview
 
@@ -3799,7 +3904,7 @@ imports.
 
 **Verification honesty.** Every "Expected: PASS" in this plan should now be true when you reach it.
 The two that were not: Task 3 Step 6 lint (variant A's value import — the spike surface is deleted
-in Step 6 now) and Task 6 Step 9 typecheck (`@playwright/test` arrived a task too late — the install
+in Step 6 now) and Task 6 Step 10 typecheck (`@playwright/test` arrived a task too late — the install
 moved to Task 6 Step 1). A third, Task 10's three broken earlier tests, no longer exists: the
 auto-load stays, so nothing downstream has to be patched. Task 7's lane could neither pass nor fail honestly: its worklet
 assertion used `page.waitForResponse`, which Chromium never fires for an `AudioWorklet.addModule()`
