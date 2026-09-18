@@ -470,7 +470,38 @@ Steps 1-3 below are **done and pushed** to `spike/alphatab-nextjs-poc` (PR #157)
 3. ✅ **Jira filed under NH-291** — **NH-302** carries the five deferred findings as a Smart
    Checklist (F-C3, F-C5, F-D1, F-D3 and F-C1's font stack), and **NH-303** is the song cache,
    marked "needs a small spec before any code".
-4. ⬜ **Re-dispatch Task 5**, then continue the task loop from Task 6.
+4. ⬜ **Review the rewritten plan** before any code is written against it — leocaseiro asked for
+   this explicitly on 2026-09-18, in a fresh session. The plan changed in nine commits without a
+   review pass of its own.
+5. ⬜ **Re-dispatch Task 5**, then continue the task loop from Task 6.
+
+### Starting the review in a new session
+
+The work to review is the branch `spike/alphatab-nextjs-poc` on PR
+[#157](https://github.com/leocaseiro/notation-hero/pull/157), commits `36f6a899..4c98dcf3` — ten
+commits, documents only, no product code. Worth reading in this order:
+
+```text
+docs/plans/2026-09-16-v0a-fork-parity-triage-handoff.md   ← the decisions and their evidence (this file)
+docs/specs/2026-09-10-v0-local-file-player-design.md       ← D8 + the rewritten §4 and §5
+docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md   ← Tasks 5, 6, 7, 10, 11, 12, 13, 14
+docs/decisions/decision-registry.md                        ← the 2026-09-18 change-log entry
+```
+
+Use the `doc-review-loop` skill on the plan. Things worth an adversarial eye, because they were
+written in one pass and only the first was verified by running anything:
+
+- The `useAlphaTabEvent` mapped type uses `IEventEmitterOfT<never>` because
+  `@typescript-eslint/no-explicit-any` is an error in `web/`, where the fork writes `any`. Nobody has
+  compiled it. Task 5 carries the fallback (`unknown`) and the five event names to check.
+- `useEffectEvent` is exported by the installed React 19.2.7 (verified by running `node -p`), but the
+  hook's exact shape has not been type-checked or linted.
+- `react-hooks/set-state-in-effect` is an error under `--max-warnings 0`. The `useRef`-host shape was
+  linted clean against the real config on 2026-09-18; the final hook as written in Task 5 was not.
+- Task 7's cursor assertion (`.at-cursor-beat` moves after Play) has never been run. If it is flaky
+  in CI, the fallback is a probe component behind a build flag — never an always-on subscription.
+- Task 11's `positionMs` helper reads the DevTools handle through `page.evaluate`. It assumes the
+  host is the first child div of `[data-testid="notation-surface"]`, which is how Task 6 renders it.
 
 > **Before re-dispatching: the task briefs under
 > `.superpowers/sdd/2026-09-13-v0a-engine-and-first-sound-plan/` are STALE.** They were generated
