@@ -14,9 +14,9 @@
   },
   "dependencies": {
     "@pulumi/aws": "^7.34.0",
-    "@pulumi/pulumi": "^3.247.0"
+    "@pulumi/pulumi": "^3.261.0"
   },
   "devDependencies": {
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.11"
   }
 }

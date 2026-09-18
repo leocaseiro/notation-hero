@@ -44,7 +44,7 @@
     "@types/aws-lambda": "^8.10.162",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
-    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/coverage-v8": "^4.1.11",
     "drizzle-kit": "^0.31.10",
     "esbuild": "^0.28.1",
     "eslint": "^9.20.0",
@@ -60,7 +60,7 @@
     "typescript-eslint": "^8.20.0",
     "unplugin-swc": "^1.5.1",
     "vite-tsconfig-paths": "^5.1.0",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.11"
   },
   "engines": {
     "node": ">=24"
