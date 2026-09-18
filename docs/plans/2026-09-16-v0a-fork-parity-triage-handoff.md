@@ -5,7 +5,7 @@ title: 'v0 Plan A — fork-parity triage handoff'
 summary: 'Execution of the v0a plan was paused at Task 5 because the plan never ports the rhythm-game fork useAlphaTab pattern, which spec decision D4 mandates. An audit found 15 confirmed divergences; only 2 are forced by D5. This handoff explains each one so they can be triaged.'
 keywords: ['nh-291', 'v0a', 'plan-a', 'alphatab', 'fork-parity', 'triage', 'handoff']
 cwd: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
-resume_focus: 'Triage the 13 non-forced divergences with the spec-triage-loop triage skill, decide which land in the Task 5/6 rewrite, then re-dispatch Task 5.'
+resume_focus: 'Triage is DONE — see "Triage outcome" (2026-09-18) at the end of this file. Next: one pass over Tasks 5, 6, 7, 10, 11 plus light touches in 3, 13, 14; then the Spec Delta; then the Jira issues; then re-dispatch Task 5.'
 repository: 'leocaseiro/notation-hero'
 branch: 'spike/alphatab-nextjs-poc'
 head: 'f5359efb'
@@ -341,3 +341,125 @@ Suggested starting point, offered as a recommendation and not a decision:
 The ledger at
 `.superpowers/sdd/2026-09-13-v0a-engine-and-first-sound-plan/progress.md` carries the full execution
 record, including every ruling made so far.
+
+---
+
+# Triage outcome — decided 2026-09-18 (NH-291)
+
+Every finding above is now triaged. Two decisions taken during the triage change the plan's shape
+beyond the finding list, so read those first — several findings only make sense in their light.
+
+## The dispositions
+
+| Finding                                  | Disposition                     | Note                                                       |
+| ---------------------------------------- | ------------------------------- | ---------------------------------------------------------- |
+| F-B1 · DIV-1 mount hook                  | **Apply**                       | Decided 2026-09-16, before this triage                     |
+| F-B2 · DIV-2 typed event hook + `.off()` | **Apply**                       | All five subscriptions route through it                    |
+| F-B3 · DIV-3 one API owner, passed down  | **Apply**                       | Both `apiRef`s and `onApiReady` are deleted                |
+| F-B3a mount shape (new question)         | **Upstream's shape**            | Host always mounted; API built once per page visit         |
+| F-C1 · DIV-4 shared defaults stage       | **Apply**                       | Structure only; the 16-line font-family stack → Jira       |
+| F-C2 · DIV-5 separate scroll viewport    | **Apply**                       | Outer viewport owns a11y + scroll; inner div is AlphaTab's |
+| F-C3 · DIV-6 `updateSettings()` funnel   | **Defer → Jira**                | No caller in Plan A; F-B3 removes the retrofit cost        |
+| F-C4 · DIV-7 playback position state     | **Superseded**                  | No playhead state anywhere — see below                     |
+| F-C5 · DIV-8 dark-mode colour path       | **Defer → Jira**                | `web/` has no theme source; v0 renders light only          |
+| F-D1 · DIV-10 `soundFontLoad` progress   | **Defer → Jira**                | The progress bar is Plan B; two lines then                 |
+| F-D2 · DIV-12 debug handle on the host   | **Apply, including production** | leocaseiro wants to inspect a live player in DevTools      |
+| F-D3 · DIV-13 asset-path helper          | **Defer → Jira**                | The new playback test catches a wrong path in CI           |
+| Group A (F-A1 … F-A4)                    | No action                       | Records where the plan was already right                   |
+
+## Two shape changes that came out of the triage
+
+### 1. The player always loads a score — the empty state is gone
+
+leocaseiro: _"We don't have to hide alphaTab at all."_ The product rule is now: **always load
+something.** The bundled beat in the app's own resources when nothing is cached; the last song
+played when there is one; later, the score named by an id on the `/play` route, once the catalog
+serves it.
+
+Consequences for the plan:
+
+- **Task 10's empty state disappears.** The notation box is on the page from the first paint.
+- Opening another file stays `api.load(bytes)` / `renderScore` on the **live** engine. The engine is
+  never destroyed and rebuilt to show a different score (the cost of that is in the evidence below).
+- The engine-import error message must be rendered **on top of** the box, never in place of it.
+
+### 2. "Remember the last song" is its own ticket, with its own spec
+
+Caching the last song writes the person's file bytes into browser storage. Task 6 currently promises
+the opposite — _"A score held in memory. The bytes never touch disk and never cross a route."_ That
+is a real feature with real questions (which store, a size cap, an eviction rule, how someone clears
+it, and what the spec now promises), so it does not ride along inside a plan about first sound. Only
+**"load the bundled beat when nothing is cached"** lands in Plan A, and that removes code.
+
+## Why the always-mounted shape, in evidence
+
+Three parallel investigations were run: the upstream site plus the installed AlphaTab 1.8.4 source,
+the author's earlier `alpha-drums` attempt, and React 19 lifecycle semantics against this repo's own
+lint configuration.
+
+- **Upstream never hides the host.** All 12 components on AlphaTab's own website render it
+  unconditionally; loading states are absolutely-positioned overlays
+  (`AlphaTabRhythmGame/index.tsx:417` and `:376-382`).
+- **AlphaTab is built for a covered container.** `initialRender()` defers the whole first render —
+  including the score fetch — until the container becomes visible, then re-reads the width
+  (`alphaTab.core.mjs:41006-41027`). `display:none` defers everything and renders at zero width, so
+  the box must be covered, never hidden.
+- **An empty box is cheap.** With `PlayerMode.EnabledAutomatic` and no score, no player is created at
+  all — no `AudioContext`, no synth worker, no soundfont (`:46680-46685`). The cost is one layout
+  worker and the music font.
+- **Destroying and rebuilding is not cheap:** a fresh 956 KB soundfont fetch and parse with no cache
+  of any kind (`:49227-49249`), two workers each re-parsing the ~1 MB core module, a new
+  `AudioContext` whose predecessor closes asynchronously, a re-registered `@font-face`, and a full
+  re-layout. On a slow device that is a stall of a second or more with no sound.
+- **Playback itself is identical under every option** — the synthesizer runs in a worker, audio in an
+  audio worklet, and the cursor is moved by AlphaTab's own DOM writes. React renders zero times per
+  frame either way. Every difference is at mount and unmount.
+- **`web/`'s own lint gate rejects the alternative.** `react-hooks/set-state-in-effect` is an error
+  and `web/` runs `eslint . --max-warnings 0`; the callback-ref shape fails it and the always-mounted
+  shape passes (verified by running the repo's resolved config).
+
+Because a score now always loads, the two alternatives — a conditionally-mounted host with a callback
+ref, and an always-mounted host with a "build on first open" latch — lose their only advantage.
+
+### Hazards to carry into the rewrite
+
+- Never let the error state (or anything else) **replace** the host. A swapped host leaves the engine
+  drawing into a detached node, silently: notation vanishes while audio keeps playing.
+- `host.focus()` must fire when a score **opens**, not when the engine is built, or it steals focus
+  on page load.
+- Reset `scrollTop` when a new score loads — the viewport now survives score changes.
+- Wrap the per-call-site `settingsInit` in `useEffectEvent` inside the hook, so it can never enter a
+  dependency list. That is F-B3's foot-gun in another costume. React 19.2.7 exports it (verified).
+- Port the fork's whole-second position throttle **only with a fix**: upstream's is defeated by a
+  stale closure (`player-controls-group.tsx:184-199`, after commit `a614efdb` dropped `handler` from
+  the dependency list), so it fires on every event anyway.
+- `api.destroy()` in 1.8.4 leaves an `IntersectionObserver` connected and a resize subscription
+  registered. Harmless when destroy happens once per page; a leak if anything ever rebuilds in a loop.
+- The lesson from `alpha-drums`: AlphaTab re-fires some events on subscribe
+  (`alphaTab.core.mjs:24721-24727`), so a subscription that re-attaches on every render is a feedback
+  loop, not merely waste. `useAlphaTabEvent` is what prevents it.
+
+## What replaced F-C4
+
+There is **no playhead state in React at all**. AlphaTab moves its own cursor; React is not involved.
+The only reason the plan tracked the position was Task 7's regression test, which exists to catch one
+specific failure: if the self-hosted worker or audio worklet is mis-delivered, **the notation renders
+perfectly and there is simply no sound.**
+
+That test stays — a mocked engine would replace the very thing that breaks — but it now reads
+**AlphaTab's own cursor element** (`.at-cursor-beat` moves after Play, with `data-playing` as the
+first gate) instead of an attribute the app maintains. Nothing test-only ships.
+
+leocaseiro's standing rule, recorded here because it governs future plans too: **test-only
+instrumentation must never ship to production, especially when it can cost performance.** The
+zero-cost debug handle of F-D2 is the deliberate exception he asked for.
+
+## Revised next steps
+
+1. **One pass over eight briefs.** Real edits: Tasks 5, 6, 7, 11. Task 10 **shrinks** (the empty
+   state goes). Light touches: Tasks 3, 13, 14.
+2. **Spec Delta**, covering the hook shape, the always-load rule, the removed empty state, and the
+   test change. The `decision-registry.md` change-log entry lands with this document.
+3. **Jira under epic NH-291:** one issue for the deferred findings (F-C3, F-C5, F-D1, F-D3, plus
+   F-C1's font-family stack), and a separate issue plus small spec for the song cache.
+4. **Re-dispatch Task 5**, then continue the task loop from Task 6.

@@ -12,6 +12,49 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-18 — fork-parity triage closed: the player takes upstream's AlphaTab shape (NH-291)
+
+Execution of the v0 Plan A build was paused at Task 5 because the plan never ported the
+`rhythm-game` fork's `useAlphaTab` pattern, which spec decision D4 mandates. An audit found 15
+confirmed divergences, 2 of them forced by D5. All 13 open ones are now triaged
+(`docs/plans/2026-09-16-v0a-fork-parity-triage-handoff.md`, section "Triage outcome"), backed by
+three parallel investigations: the upstream site plus the installed AlphaTab 1.8.4 source, the
+earlier `alpha-drums` attempt, and React 19 lifecycle semantics against this repo's resolved lint
+config.
+
+Approved by leocaseiro 2026-09-18:
+
+- **The player always loads a score; the empty state is removed.** His decision, not a finding: the
+  bundled beat when nothing is cached, the last song played when there is one, later a catalog id on
+  `/play`. Task 10 loses its empty state, and the notation box is on the page from the first paint.
+- **The AlphaTab host is always mounted and the engine is built once per page visit** — upstream's
+  shape, unchanged. Two alternatives were rejected with evidence: a conditionally-mounted host with a
+  callback ref (fails `react-hooks/set-state-in-effect`, which is an error under
+  `eslint . --max-warnings 0`, and pays a full rebuild per open), and an always-mounted host with a
+  "build on first open" latch (pointless once every visit opens a score). Rebuilding an engine costs
+  a fresh 956 KB soundfont fetch and parse with no cache, two workers re-parsing the ~1 MB core
+  module, and a new `AudioContext`; an idle empty box with `PlayerMode.EnabledAutomatic` creates no
+  player at all. Opening another file is `api.load()` on the live engine, never a teardown.
+- **Ported from the fork:** the `useAlphaTab` mount hook (F-B1), the typed `useAlphaTabEvent` helper
+  so every `.on()` gets its `.off()` (F-B2), one API owner passed down as a prop instead of two refs
+  and an `onApiReady` callback (F-B3), a shared settings-defaults stage (F-C1), and a scroll viewport
+  separate from AlphaTab's own container (F-C2).
+- **Deferred to a new Jira issue under NH-291:** the `updateSettings()` funnel (F-C3, no caller in
+  Plan A), the dark-mode colour path (F-C5, `web/` has no theme source yet), soundfont download
+  progress (F-D1, the bar is Plan B), the asset-path helper (F-D3), and F-C1's font-family stack.
+- **"Remember the last song" becomes its own ticket and spec.** It writes the person's file bytes to
+  browser storage, which contradicts Task 6's "the bytes never touch disk"; storage choice, size cap,
+  eviction and clearing are spec questions, not plan details.
+- **Test-only instrumentation must never ship to production, especially when it can cost
+  performance.** Task 7's silent-no-sound test drops the React playhead state that re-rendered the
+  player subtree ~60 times a second and instead reads AlphaTab's own cursor element. The test itself
+  stays — a mocked engine would hide exactly the failure it exists to catch, a mis-delivered worker
+  or audio worklet, where notation renders and there is no sound. The one deliberate exception, at
+  his request, is F-D2's zero-cost debug handle on the notation box, which ships in production so a
+  live player can be inspected in DevTools.
+- **Rework scope: one pass over eight briefs** — real edits to Tasks 5, 6, 7 and 11, Task 10 shrinks,
+  light touches to Tasks 3, 13 and 14 — rather than re-planning Tasks 5-13 from scratch.
+
 ### 2026-09-16 — v0 Plan A review, lap 2 finished: the last open findings triaged (NH-291)
 
 The findings the 2026-09-15 entry left open were checked against the installed packages before
