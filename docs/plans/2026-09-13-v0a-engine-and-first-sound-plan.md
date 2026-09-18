@@ -3036,73 +3036,20 @@ Add to `web/e2e/player.e2e.ts`:
 // Playwright AUTO-DISMISSES window.confirm() when no listener is attached, which would silently
 // turn every replace test into a cancel test. Each case below registers its handler BEFORE the
 // action that triggers the prompt.
-test('cancelling a replacement keeps the current score playing from where it was', async ({
-  page,
-}) => {
+//
+// Every replace case starts by opening a score the PERSON chose, because that is all the prompt
+// guards: the bundled beat the page starts on is a default, not a choice, so replacing it never
+// asks (decided 2026-09-18). `type Page` joins the import at the top of the file for the helper.
+async function openFirstScore(page: Page, fixture: string) {
   await page.goto('/play');
-  await page.getByTestId('load-sample').click();
-  const play = page.getByTestId('transport-play');
-  await expect(play).toBeEnabled({ timeout: 60_000 });
-  await play.click();
-  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
-
-  // Wait for the position to MOVE, not just for data-playing. AlphaSynth._playInternal sets
-  // PlayerState.Playing and fires stateChanged synchronously, before the worklet has played a
-  // sample; positionChanged only follows later, from updateTimePosition, once the worklet reports
-  // samplesPlayed back. Reading data-position the instant data-playing turns true therefore reads
-  // 0 on a perfectly good build — and the plain expect that used to sit below does not retry.
-  // Task 7's assertion 2 polls the same value for the same reason.
-  await expect
-    .poll(
-      async () =>
-        Number((await page.getByTestId('player-status').getAttribute('data-position')) ?? '0'),
-      { timeout: 20_000 },
-    )
-    .toBeGreaterThan(0);
-
-  // Capture the position BEFORE the prompt — this is the value the resume has to preserve.
-  // `data-playing` is already 'true' and window.confirm blocks the main thread, so
-  // playerStateChanged cannot fire while the dialog is up: re-checking that attribute afterwards
-  // re-reads a value that could not have moved.
-  const before = Number(
-    (await page.getByTestId('player-status').getAttribute('data-position')) ?? '0',
-  );
-
-  // Chain the dismissal onto waitForEvent rather than awaiting the dialog after setInputFiles:
-  // window.confirm blocks the page, so a dismissal that waits for setInputFiles to resolve could
-  // deadlock. This arms the handler first, dismisses as soon as the dialog fires, and still gives
-  // us something to await before asserting.
-  const dialogHandled = page.waitForEvent('dialog').then((dialog) => dialog.dismiss());
-  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
-  await dialogHandled;
-
-  // Still the sample, still playing.
-  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
-  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', '1-beat.gp');
-
-  // Resumed from where it was — NOT restarted. A lone `.toBeGreaterThan(before)` proves nothing
-  // here: a restart from bar 1 climbs past `before` inside the poll window exactly as a resume
-  // does. The discriminator is the FIRST read after the dialog, taken while a restart would still
-  // be near zero — a resume cannot have gone backwards.
-  const after = Number(
-    (await page.getByTestId('player-status').getAttribute('data-position')) ?? '0',
-  );
-  expect(after).toBeGreaterThanOrEqual(before);
-
-  // …and still advancing, not frozen.
-  await expect
-    .poll(async () =>
-      Number((await page.getByTestId('player-status').getAttribute('data-position')) ?? '0'),
-    )
-    .toBeGreaterThan(after);
-});
-
-test('re-picking the same file after a cancel prompts again', async ({ page }) => {
-  await page.goto('/play');
-  await page.getByTestId('load-sample').click();
-  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+  await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', fixture, {
     timeout: 30_000,
   });
+}
+
+test('opening the first file replaces the bundled beat without asking', async ({ page }) => {
+  await page.goto('/play');
 
   let prompts = 0;
   page.on('dialog', (dialog) => {
@@ -3111,17 +3058,89 @@ test('re-picking the same file after a cancel prompts again', async ({ page }) =
   });
 
   await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
-  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+    timeout: 30_000,
+  });
+  expect(prompts).toBe(0);
+});
+
+test('cancelling a replacement keeps the current score playing from where it was', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+
+  // The position comes from AlphaTab itself, through the debug handle the hook parks on the host
+  // element (F-D2). The app keeps no position state — see Task 7 — and this is that decision's
+  // payoff: the test reads the engine's own clock instead of a number mirrored into the DOM for
+  // its benefit.
+  const positionMs = () =>
+    page.evaluate(
+      () =>
+        (
+          document.querySelector('[data-testid="notation-surface"] > div') as {
+            at?: { timePosition: number };
+          } | null
+        )?.at?.timePosition ?? 0,
+    );
+
+  // Wait for the position to MOVE, not just for data-playing. AlphaSynth._playInternal sets
+  // PlayerState.Playing and fires stateChanged synchronously, before the worklet has played a
+  // sample; timePosition only follows later, from updateTimePosition, once the worklet reports
+  // samplesPlayed back. Reading it the instant data-playing turns true therefore reads 0 on a
+  // perfectly good build, and a plain expect would not retry.
+  await expect.poll(positionMs, { timeout: 20_000 }).toBeGreaterThan(0);
+
+  // Capture the position BEFORE the prompt — this is the value the resume has to preserve.
+  // `data-playing` is already 'true' and window.confirm blocks the main thread, so
+  // playerStateChanged cannot fire while the dialog is up: re-checking that attribute afterwards
+  // re-reads a value that could not have moved.
+  const before = await positionMs();
+
+  // Chain the dismissal onto waitForEvent rather than awaiting the dialog after setInputFiles:
+  // window.confirm blocks the page, so a dismissal that waits for setInputFiles to resolve could
+  // deadlock. This arms the handler first, dismisses as soon as the dialog fires, and still gives
+  // us something to await before asserting.
+  const dialogHandled = page.waitForEvent('dialog').then((dialog) => dialog.dismiss());
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.mxl');
+  await dialogHandled;
+
+  // Still the score the person opened, still playing.
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
+
+  // Resumed from where it was — NOT restarted. A lone `.toBeGreaterThan(before)` proves nothing
+  // here: a restart from bar 1 climbs past `before` inside the poll window exactly as a resume
+  // does. The discriminator is the FIRST read after the dialog, taken while a restart would still
+  // be near zero — a resume cannot have gone backwards.
+  const after = await positionMs();
+  expect(after).toBeGreaterThanOrEqual(before);
+
+  // …and still advancing, not frozen.
+  await expect.poll(positionMs).toBeGreaterThan(after);
+});
+
+test('re-picking the same file after a cancel prompts again', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+
+  let prompts = 0;
+  page.on('dialog', (dialog) => {
+    prompts += 1;
+    void dialog.dismiss();
+  });
+
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.mxl');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.mxl');
 
   await expect.poll(() => prompts).toBe(2);
 });
 
 test('confirming a replacement renders the new score', async ({ page }) => {
-  await page.goto('/play');
-  await page.getByTestId('load-sample').click();
-  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
-    timeout: 30_000,
-  });
+  await openFirstScore(page, 'Punk.mxl');
 
   page.on('dialog', (dialog) => dialog.accept());
   await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
@@ -3133,8 +3152,7 @@ test('confirming a replacement renders the new score', async ({ page }) => {
 });
 
 test('a corrupt replacement leaves the playing score intact', async ({ page }) => {
-  await page.goto('/play');
-  await page.getByTestId('load-sample').click();
+  await openFirstScore(page, 'Punk.gp');
   const play = page.getByTestId('transport-play');
   await expect(play).toBeEnabled({ timeout: 60_000 });
   await play.click();
@@ -3148,14 +3166,14 @@ test('a corrupt replacement leaves the playing score intact', async ({ page }) =
   });
 
   await expect(page.getByText(/\(Error E103\)/)).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', '1-beat.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
 });
 ```
 
 - [ ] **Step 2: Run them to verify they fail**
 
-Run: `pnpm --filter @notation-hero/web run test:e2e -g "replacement|same file"`
+Run: `pnpm --filter @notation-hero/web run test:e2e -g "replacement|same file|without asking"`
 Expected: FAIL — no prompt is shown and no `loaded-notation-name` exists.
 
 - [ ] **Step 3: Name the open score in a header**
@@ -3175,33 +3193,38 @@ import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '@notatio
 Then add the header as the first child of `<main>`, above the `<section>`:
 
 ```tsx
+// A score is always on screen, so the header always has a name to show: the file the person
+// opened, or the bundled beat the page starts on. Derived from SAMPLE_NOTATION rather than typed
+// again, so renaming the file cannot leave a stale label behind.
+const openFileName = notation?.name ?? SAMPLE_NOTATION.split('/').pop() ?? '';
+
 <header className="flex items-center gap-3">
   {/* The wordmark stands in for the logo the mockup draws; the real mark is a later visual task. */}
   <span className="text-sm font-semibold">Notation Hero</span>
-  {notation !== null ? (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          // A real <button> so the tooltip is reachable by keyboard, not only by hover. It does
-          // nothing on click; min-h-11/min-w-11 keeps it over the 44 px hit area Task 13 enforces.
-          <button
-            type="button"
-            data-testid="loaded-notation-name"
-            data-file={notation.name}
-            className="min-h-11 min-w-11 truncate px-1 text-left text-sm text-muted-foreground"
-          >
-            {notation.score.title || notation.name}
-          </button>
-        }
-      />
-      <TooltipContent>{notation.name}</TooltipContent>
-    </Tooltip>
-  ) : null}
-</header>
+  <Tooltip>
+    <TooltipTrigger
+      render={
+        // A real <button> so the tooltip is reachable by keyboard, not only by hover. It does
+        // nothing on click; min-h-11/min-w-11 keeps it over the 44 px hit area Task 13 enforces.
+        <button
+          type="button"
+          data-testid="loaded-notation-name"
+          data-file={openFileName}
+          className="min-h-11 min-w-11 truncate px-1 text-left text-sm text-muted-foreground"
+        >
+          {notation?.score.title || openFileName}
+        </button>
+      }
+    />
+    <TooltipContent>{openFileName}</TooltipContent>
+  </Tooltip>
+</header>;
 ```
 
 `score.title` is AlphaTab's own field and is an empty string when the file carries no title — hence
-the fall back to the file name, so the header is never blank while a score is open.
+the fall back to the file name, so the header is never blank. While the bundled beat is showing,
+`notation` is null and the header reads the sample's file name; the title in that state would have
+to come from `api.score`, which changes without a re-render, so it is deliberately not used.
 
 - [ ] **Step 4: Write the replace flow**
 
@@ -3212,21 +3235,27 @@ const requestNotation = useCallback(
   async (next: LoadedNotation) => {
     let at = engine;
     if (!at) {
-      // Same as Task 10: opened before the engine arrived. Nothing can be open yet, so there is
-      // nothing to confirm — keep the file, show the loading surface, and wait for the import.
-      setPending(true);
+      // Same as Task 10: opened before the engine arrived. `notation` is still null in that
+      // window, so nothing the person opened can be lost and there is nothing to confirm.
       at = await loadAlphaTabEngine().catch(() => null);
-      setPending(false);
       if (!at) return;
     }
 
-    const api = apiRef.current;
+    // `api` is the one from useAlphaTab, in scope here — there is no apiRef any more (F-B3).
     // Record the playing state BEFORE the prompt: window.confirm blocks the main thread, so the
     // worklet drains its ~500 ms buffer and zero-fills on its own while the dialog is up, and
     // playerStateChanged cannot fire until the prompt returns.
     const wasPlaying = playing;
 
-    // Spec §4 order: confirm FIRST, then parse, then swap. A first load has nothing to replace.
+    // Spec §4 order: confirm FIRST, then parse, then swap.
+    //
+    // `notation !== null` means "a score the PERSON opened is on screen". It is null while the
+    // bundled beat is showing, because AlphaTab loads that one itself from settings.core.file and
+    // nothing ever calls setNotation for it. That is the whole condition, and it is deliberate
+    // (decided 2026-09-18): the sample is a default, not a choice, so replacing it silently is
+    // right — a dialog asking permission to close a file the person never opened would stand
+    // between every new visitor and their first song. From the second open onward, the prompt
+    // behaves exactly as the spec describes.
     if (notation !== null) {
       // Deliberate v0 shortcut. To be precise about what is and is not missing: the Base UI
       // Dialog PRIMITIVE is already in the repo — Sheet is a shadcn port over
