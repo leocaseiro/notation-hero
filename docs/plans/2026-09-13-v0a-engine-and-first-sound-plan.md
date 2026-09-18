@@ -1955,15 +1955,17 @@ test('plays through the real audio worklet, not the silent fallback', async ({ p
   await expect(play).toBeEnabled({ timeout: 60_000 });
   await play.click();
 
-  // 2. Playback actually advances.
+  // 2. Playback actually advances — read off AlphaTab's OWN cursor, not off anything this app
+  //    maintains for the test's benefit (decided 2026-09-18). `data-playing` is fair game: it is
+  //    real UI state, the Play/Pause button reads it. `.at-cursor-beat` is AlphaTab's beat cursor;
+  //    it only moves when the player is genuinely running, which is exactly the claim under test.
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+  const cursor = page.locator('.at-cursor-beat');
+  await expect(cursor).toBeVisible({ timeout: 20_000 });
+  const startedAt = await cursor.boundingBox();
   await expect
-    .poll(
-      async () =>
-        Number((await page.getByTestId('player-status').getAttribute('data-position')) ?? '0'),
-      { timeout: 20_000 },
-    )
-    .toBeGreaterThan(0);
+    .poll(async () => (await cursor.boundingBox())?.x ?? startedAt?.x, { timeout: 20_000 })
+    .not.toBe(startedAt?.x);
 
   // 3. The worklet module is served as executable JavaScript. A direct request, not a network
   //    event: deterministic, no timing race, and independent of the plumbing described above.
@@ -1981,30 +1983,23 @@ test('plays through the real audio worklet, not the silent fallback', async ({ p
 });
 ```
 
-- [ ] **Step 3: Add the position hook the test reads**
+> **No application code is added for this test.** An earlier draft of this task put the playhead
+> position into React state on `Player`, updated from `playerPositionChanged`, and exposed it as
+> `data-position` for the assertion above. That shipped a test hook to production and re-rendered
+> the entire player subtree roughly sixty times a second during playback — in an app whose whole
+> point is smooth playback on a slow device. The fork measured the same shape and abandoned it
+> ("eliminates ~60 React re-renders/second", `MidiRhythmGame.tsx:72-75`).
+>
+> The standing rule from that decision (2026-09-18): **test-only instrumentation never ships.**
+> Read what the product or the library already does. If a future test truly cannot, put the probe
+> behind a build flag so production strips it — never an always-on subscription.
+>
+> Note also what is NOT being tested: AlphaTab moving its own cursor. That is the library's job and
+> it is not under review here. What is under review is our delivery — the self-hosted module, its
+> worker and its worklet — which is why a mocked AlphaTab would be worthless: it would replace the
+> exact component that breaks.
 
-In `web/app/play/PlayerShell.tsx`, track the playback position and expose it. Inside `Player`, add the state next to the existing two:
-
-```tsx
-const [positionMs, setPositionMs] = useState(0);
-```
-
-and the subscription inside `handleApiReady`, beside the other two — **not** in a `useEffect`. The
-api does not exist during the first commit's effect flush (Task 6 explains why), so an effect-based
-subscription never attaches and `data-position` never moves. The failure would surface here as a
-60-second `toBeEnabled` timeout pointing at the worklet rather than at the wiring:
-
-```tsx
-api.playerPositionChanged.on((args) => setPositionMs(args.currentTime));
-```
-
-then add the attribute to the status element:
-
-```tsx
-        data-position={positionMs}
-```
-
-- [ ] **Step 4: Write the lane config**
+- [ ] **Step 3: Write the lane config**
 
 Create `web/playwright.e2e.config.ts`:
 
@@ -2043,7 +2038,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 5: Add the script**
+- [ ] **Step 4: Add the script**
 
 In `web/package.json`, add (keeping the keys sorted — `sort-package-json --check` is a CI gate):
 
@@ -2054,7 +2049,7 @@ In `web/package.json`, add (keeping the keys sorted — `sort-package-json --che
 
 **It must not be called `test`.** The `quality` job runs `pnpm -r --if-present run test` with no browsers installed, and a `test` script here would fail that job.
 
-- [ ] **Step 6: Ignore the lane's output**
+- [ ] **Step 5: Ignore the lane's output**
 
 Append to `web/.gitignore`:
 
@@ -2064,7 +2059,7 @@ Append to `web/.gitignore`:
 /test-results/
 ```
 
-- [ ] **Step 7: Run the lane to verify it passes**
+- [ ] **Step 6: Run the lane to verify it passes**
 
 ```bash
 pnpm --filter @notation-hero/web run test:e2e
@@ -2072,7 +2067,7 @@ pnpm --filter @notation-hero/web run test:e2e
 
 Expected: PASS — 2 tests. If `Platform: BrowserModule` never appears, check that `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL` reached the **build** (Next.js inlines it at build time, not at start).
 
-- [ ] **Step 8: Prove the test actually discriminates**
+- [ ] **Step 7: Prove the test actually discriminates**
 
 A regression test that passes on a broken build is worse than none. Two drills, because the two
 things that can break are different.
@@ -2092,7 +2087,7 @@ cp web/node_modules/@coderline/alphatab/dist/alphaTab.worklet.min.mjs /tmp/workl
 pnpm --filter @notation-hero/web run test:e2e
 ```
 
-Expected: **FAIL** on assertion 2 — the `data-position` poll — after its 20 s timeout, while the
+Expected: **FAIL** on assertion 2 — the cursor never moves — after its 20 s timeout, while the
 notation test still passes, which is exactly the asymmetry the spec describes.
 
 Assertions 3 and 4 stay **GREEN** on an empty module, so do not read them as a broken drill. An
@@ -2129,11 +2124,11 @@ assertion 1 passes. That case costs payload, not sound, and the Task 3 lint fenc
 `tooling/alphatab-import-fence.test.sh` — is the only guard
 against it until the deferred bundle-count gate lands.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add web/playwright.e2e.config.ts web/e2e/player.e2e.ts web/package.json \
-  web/.gitignore web/app/play/PlayerShell.tsx pnpm-lock.yaml
+  web/.gitignore pnpm-lock.yaml
 git commit -m "test(web): assert the audio worklet path is live, not the silent fallback (NH-291)"
 ```
 
