@@ -888,7 +888,7 @@ export type { ButtonProps } from './components/ui/Button/Button';
 // - Toaster/toast carry the unsupported-file, engine-failure and settings-reset messages.
 export { Skeleton, SkeletonTable, SkeletonForm } from './components/ui/Skeleton/Skeleton';
 export { Toaster, toast } from './components/ui/Sonner/Sonner';
-// - Card/CardContent frame the empty state's drop target (Task 10).
+// - Card/CardContent frame the open-file control (Task 10).
 export { Card, CardContent } from './components/ui/Card/Card';
 // - Tooltip carries the open score's file name behind its title in the player header (Task 11).
 export { Tooltip, TooltipTrigger, TooltipContent } from './components/ui/Tooltip/Tooltip';
@@ -2987,7 +2987,9 @@ both themes:
    it, and the notation underneath is dimmed by the overlay's own background. */
 ```
 
-Measured on this markup: axe reports **0 violations** in all four states (empty/loaded x light/dark),
+Measured on the earlier markup, which had an empty state: axe reported **0 violations** in all four
+states (empty/loaded x light/dark). Only the loaded states survive the 2026-09-18 change, and Task
+13 re-runs the gate over what actually ships,
 and the overlay text clears WCAG **AAA** in every one — worst case 8.52:1 for the small hint line
 against a 4.5:1 AAA bar, sampled from real pixels at the glyph coordinates.
 
@@ -3324,7 +3326,7 @@ git commit -m "feat(web): confirm before replacing a score, and survive a corrup
 
 ### Task 12: Loading feedback while a score parses
 
-A replacement gets a toast: loading, success and failure share one surface, and the score on screen keeps playing — the load is staged, so nothing covers the notation area. A first open has nothing playing, so there the Skeleton covers the parse instead.
+Every open gets a toast: loading, success and failure share one surface, and the score on screen keeps playing — the load is staged, so nothing covers the notation area. There is no separate "first open" case any more (Task 10): a score is always on screen, so there is never an empty area for a Skeleton to fill.
 
 **Files:**
 
@@ -3339,39 +3341,34 @@ A replacement gets a toast: loading, success and failure share one surface, and 
 
 - [ ] **Step 1: Add the loading feedback**
 
-In `PlayerShell.tsx`'s `requestNotation` (Task 11's version), show feedback before the parse — the
-toast on the confirm path, after the dialog returns, and the Skeleton on a first open — and resolve
-it in the same function: it is the one place that knows the file name and whether this is a
-replacement. One `id` makes all three toast states share one toast.
+In `PlayerShell.tsx`'s `requestNotation` (Task 11's version), show feedback before the parse and
+resolve it in the same function: it is the one place that knows the file name. One `id` makes all
+three toast states share one toast.
 
-Give `if (notation !== null)` an `else` branch, and wait for a painted frame after the whole block:
+The toast goes after the confirm block — on the replace path that means after the dialog returns,
+and on a silent first open it is simply the next statement:
 
 ```tsx
 if (notation !== null) {
   // …the confirm and its cancel path, unchanged from Task 11…
-
-  // Sonner ships its own spinner, so this needs no new component — and Skeleton would hide a
-  // score that is still playable.
-  toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
-} else {
-  // A first open has nothing playable to hide, so the Skeleton covers the parse instead. A long,
-  // dense score takes a noticeable time to parse (2,000 bars of 16ths: ~0.4 s on a fast laptop,
-  // longer on a slow one), while file size barely matters. On a fast machine a small file makes
-  // this a brief Skeleton flash — accepted over a frozen empty state.
-  setPending(true);
 }
 
-// loadScoreFromBytes is synchronous: wait for a painted frame first, or the toast or the Skeleton
-// would appear only once the parse had finished.
+// Sonner ships its own spinner, so this needs no new component — and a Skeleton would hide a
+// score that is still on screen and still playable. A long, dense score takes a noticeable time
+// to parse (2,000 bars of 16ths: ~0.4 s on a fast laptop, longer on a slow one), while file size
+// barely matters.
+toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
+
+// loadScoreFromBytes is synchronous: wait for a painted frame first, or the toast would appear
+// only once the parse had finished.
 await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 ```
 
-Clear `pending` on both outcomes of the parse. In the catch, give the parse-failure toast the same
-`id`, so the failure replaces the spinner instead of stacking beside it:
+In the catch, give the parse-failure toast the same `id`, so the failure replaces the spinner
+instead of stacking beside it:
 
 ```tsx
 } catch {
-  setPending(false);
   toast.error(
     `${next.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
     { id: 'notation-load' },
@@ -3381,19 +3378,17 @@ Clear `pending` on both outcomes of the parse. In the catch, give the parse-fail
 and around `setNotation({ name: next.name, score });`:
 
 ```tsx
-setPending(false);
 setNotation({ name: next.name, score });
-// Only a replacement showed the loading toast; a first open's Skeleton lifts on renderFinished.
-if (notation !== null) toast.success(`${next.name} loaded`, { id: 'notation-load' });
+toast.success(`${next.name} loaded`, { id: 'notation-load' });
 ```
 
-`setPending(false)` and `setNotation(…)` batch into one render, so the notation surface stays mounted
-between the parse and the render. On a failed first open, the surface unmounts and the empty state
-returns with the toast.
+Unconditional now: every open showed the spinner, so every open resolves it. The notation box is
+mounted throughout — before, during and after the parse — so nothing to keep mounted, nothing to
+bring back.
 
 - [ ] **Step 2: Write the failing test — a `loading` story that axe and VR can hold open**
 
-`web/`'s lane cannot audit this state: `loadScoreFromBytes` is synchronous, so the only async step on the replace path is the `FileReader` read of a 3-16 KB local file, leaving no request to stall and no event to hold the toast open. It is audited where the check can actually run.
+`web/`'s lane cannot audit this state: `loadScoreFromBytes` is synchronous, so the only async step on the open path is the `FileReader` read of a 3-16 KB local file, leaving no request to stall and no event to hold the toast open. It is audited where the check can actually run.
 
 Add `'loading'` to `client/src/components/ui/Sonner/Sonner.story-ids.ts`:
 
@@ -3501,19 +3496,14 @@ test('landing page has no axe violations', async ({ page }) => {
   await expectNoViolations(page, 'landing');
 });
 
-test('player has no axe violations in its empty state', async ({ page }) => {
+// There is no empty state to audit (Task 10): the page opens on the bundled beat, so this is the
+// state a first-time visitor actually meets.
+test('player has no axe violations on the score it opens with', async ({ page }) => {
   await page.goto('/play');
-  await expect(page.getByTestId('empty-state')).toBeVisible();
-  await expectNoViolations(page, 'play / empty');
-});
-
-test('player has no axe violations with a score loaded', async ({ page }) => {
-  await page.goto('/play');
-  await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
     timeout: 30_000,
   });
-  await expectNoViolations(page, 'play / loaded');
+  await expectNoViolations(page, 'play / bundled beat');
 });
 
 // The sample renders 185 px tall and never scrolls; Punk.gp's two drum tracks render 1,026 px at this
@@ -3541,11 +3531,8 @@ test('player has no axe violations while the first-visit Skeleton is up', async 
   });
 
   await page.goto('/play');
-  // NotationSurface — and therefore notation-skeleton — only mounts once a score is chosen, so a
-  // bare /play shows EmptyState and this case would wait forever. Clicking the sample mounts the
-  // surface while the stalled import keeps `engine` null, which IS the first-visit state this
-  // case exists to audit.
-  await page.getByTestId('load-sample').click();
+  // NotationSurface is mounted from the first paint now, and the stalled import keeps `engine`
+  // null, so the Skeleton is up on a bare /play — no interaction needed to reach this state.
   await expect(page.getByTestId('notation-skeleton')).toBeVisible();
   await expectNoViolations(page, 'play / skeleton');
 });
@@ -3654,9 +3641,9 @@ Plan: `docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`
 - [x] 1 — a drum score opened from local disk renders as standard notation (the lane opens `Punk.gp`, `Punk.mxl`, `Punk.alphatex`, `alphatex-GP5.gp5`, `alphatex-GPX.gpx`, `1-beat.musicxml`, `1-beat.mxl` and `1-beat.atex`)
 - [x] 2 — pressing play produces audible drum audio with a tracking cursor (verified by ear; the CI lane can only verify it by state)
 - [ ] 4 — leocaseiro's own score plays — **MANUAL**: tick only after Step 4 below
-- [x] 8 — Load the sample beat fetches and plays the bundled score
+- [x] 8 — the bundled sample beat loads and plays (it is what `/play` opens with, so every lane case exercises it)
 - [x] 9 — a score with no percussion staff opens on `score.tracks[0]` (the lane opens `guitar-no-percussion.gp`; Q7 closed)
-- [x] 10 — replacing prompts; cancel keeps the score playing from the same position; confirm renders the new one; a corrupt replacement leaves the playing score intact
+- [x] 10 — replacing a score the person opened prompts (the bundled beat it starts on does not); cancel keeps the score playing from the same position; confirm renders the new one; a corrupt replacement leaves the playing score intact
 
 Criteria 3, 5, 6 and 7 belong to Plans B and C.
 
@@ -3738,9 +3725,9 @@ Regenerated 2026-09-14, after a seven-persona review and four spikes. The earlie
 placeholder scan claimed a completeness it did not have, so this one says where each item closes.
 
 **Spec coverage.** §4 data flow → Tasks 9, 10. §4 replace flow → Task 11. §4 failure states →
-Tasks 6 (engine + soundfont), 10 (unsupported file, oversized file, unreadable file, sample fetch,
-empty state). §4 loading affordances → Task 6 (Skeleton, lifted on `renderFinished`), Task 4 (icon
-font), Task 12 (replacement toast, and the Skeleton through a first open's parse); **the soundfont progress bar is Plan B** because §7 files it
+Tasks 6 (engine + soundfont), 10 (unsupported file, oversized file, unreadable file). §4 loading
+affordances → Task 6 (Skeleton, lifted on `renderFinished`), Task 4 (icon
+font), Task 12 (the open toast); **the soundfont progress bar is Plan B** because §7 files it
 under `client/`. §4 mounting → Task 6. §5 all three requirements → Tasks 2, 3, 5. §5 vendoring →
 Task 2 (plus the pinned `buildCommand`). §5 regression test → Task 7. §5 CI step → Task 8. §5 axe
 lane → Task 13. §5 client-side toast audit → Task 12. §7 barrel/`'use client'` prerequisite →
@@ -3757,18 +3744,19 @@ a decompressed-size bound for `.gpx`; iOS.
 rather than inventing an API: the Material Symbols `src` descriptor (Task 4 Step 7). It names the
 exact file and the `grep` that reveals the answer, so it is an instruction to read something that
 exists, not deferred work. **Everything the previous scan missed is now closed in place, not
-deferred:** `apiRefLocal` is gone — `NotationSurface` declares a real `apiRef` in Task 6;
-`<Button asChild>` is gone — the landing page uses Base UI's `render` prop and `OpenFileControl` is a
-real `<button>`, because `asChild` appears nowhere in `client/src`; `args.state === 1` is gone —
-`handleApiReady` reads `engine.synth.PlayerState.Playing`; and the Sonner story instruction now names
-the actual mechanism (`ToastOnMount` + `duration: Infinity`) instead of an `openArgs` helper that
-component's suite never imports.
+deferred:** `apiRefLocal` is gone — and after the 2026-09-18 triage no `apiRef` exists at all, since
+`Player` holds the api as state from `useAlphaTab`; `<Button asChild>` is gone — the landing page
+uses Base UI's `render` prop and `OpenFileControl` is a real `<button>`, because `asChild` appears
+nowhere in `client/src`; `args.state === 1` is gone — the `playerStateChanged` handler reads
+`engine.synth.PlayerState.Playing`; and the Sonner story instruction now names the actual mechanism
+(`ToastOnMount` + `duration: Infinity`) instead of an `openArgs` helper that component's suite never
+imports.
 
 **Verification honesty.** Every "Expected: PASS" in this plan should now be true when you reach it.
-The three that were not: Task 3 Step 6 lint (variant A's value import — the spike surface is deleted
-in Step 6 now), Task 6 Step 9 typecheck (`@playwright/test` arrived a task too late — the install
-moved to Task 6 Step 1), and Task 10 Step 7 (three earlier tests broke when the auto-load went — the
-sample click is inserted in Step 1). Task 7's lane could neither pass nor fail honestly: its worklet
+The two that were not: Task 3 Step 6 lint (variant A's value import — the spike surface is deleted
+in Step 6 now) and Task 6 Step 9 typecheck (`@playwright/test` arrived a task too late — the install
+moved to Task 6 Step 1). A third, Task 10's three broken earlier tests, no longer exists: the
+auto-load stays, so nothing downstream has to be patched. Task 7's lane could neither pass nor fail honestly: its worklet
 assertion used `page.waitForResponse`, which Chromium never fires for an `AudioWorklet.addModule()`
 fetch, and its discrimination drill moved a file that `pnpm build` re-vendors before any test runs.
 Both are fixed, and a second drill now exercises `Platform: BrowserModule` — the assertion that
@@ -3781,9 +3769,10 @@ purpose, because parsing before the state swap is what removes the rollback path
 `selectDrumTrackIndexes` keeps one name and one signature. `loadAlphaTabEngine` / `resolveLogLevel` /
 `useAlphaTabEngine` are spelled identically everywhere. Test ids are declared in the task that
 creates them and reused verbatim: `notation-surface`, `notation-skeleton`, `engine-error`,
-`transport-play`, `player-status` (with `data-playing`, `data-soundfont`, `data-position`),
-`rendered-track-count`, `open-file-input`, `open-file-button`, `load-sample`, `empty-state`,
-`loaded-notation-name`.
+`transport-play`, `player-status` (with `data-playing` and `data-soundfont` — no `data-position`,
+see Task 7), `rendered-track-count`, `open-file-input`, `open-file-button`, `loaded-notation-name`.
+AlphaTab's own `.at-surface` and `.at-cursor-beat` class names are read directly in two places, and
+the debug handle `host.at` in one — all three are the library's, not ours to name.
 
 **Vocabulary.** This plan says `notation` for the opened file, `score` for AlphaTab's parsed object
 and in user-facing copy, and never "chart" (`CONCEPTS.md`). AlphaTab's own API names — `ScoreLoader`,
