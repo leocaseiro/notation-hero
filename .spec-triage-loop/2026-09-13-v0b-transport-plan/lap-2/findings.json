@@ -229,7 +229,7 @@
       "depends_on": null,
       "conflicts": [],
       "bucket": "actionable",
-      "status": "open"
+      "status": "open — presented, paused by the maintainer before deciding"
     },
     {
       "id": "L2-11",
@@ -314,7 +314,7 @@
       "depends_on": null,
       "conflicts": ["L2-29"],
       "bucket": "actionable",
-      "status": "open"
+      "status": "open — presented, paused by the maintainer before deciding"
     },
     {
       "id": "L2-17",
@@ -923,6 +923,118 @@
       }
     ],
     "residual_correction": "Lap 2 reviewers verified AlphaTab claims against 1.8.1 (the fork copy), but this repo pins 1.8.4 — installed at node_modules/.pnpm/@coderline+alphatab@1.8.4. Re-verify AlphaTab claims against 1.8.4 next lap.",
-    "l2_14_correction": "NOT auto-applied despite the test authorization, because the drafted After is wrong on the facts. Its comment says the soundfont is 302 KB (~2.5 s at 120 KB/s); the self-hosted web/public/alphatab soundfont sonivox.sf3 is 954 KB (~8 s). And Network.emulateNetworkConditions throttles the WHOLE page before navigation, so alphaTab.core.mjs (1092 KB), Bravura.woff2 (306 KB) and the app bundle also load at 120 KB/s — roughly 20 s of alphaTab assets alone, against a 30 s default test timeout. Needs a corrected throughput sized to the real bytes, or a throttle applied only after the engine has loaded."
+    "l2_14_correction": "NOT auto-applied despite the test authorization, because the drafted After is wrong on the facts. Its comment says the soundfont is 302 KB (~2.5 s at 120 KB/s); the self-hosted web/public/alphatab soundfont sonivox.sf3 is 954 KB (~8 s). And Network.emulateNetworkConditions throttles the WHOLE page before navigation, so alphaTab.core.mjs (1092 KB), Bravura.woff2 (306 KB) and the app bundle also load at 120 KB/s — roughly 20 s of alphaTab assets alone, against a 30 s default test timeout. Needs a corrected throughput sized to the real bytes, or a throttle applied only after the engine has loaded.",
+    "halted": {
+      "by": "maintainer, 2026-09-17/18",
+      "reason": "Plan A was being rewritten; asked to save all open questions and findings and resume in a new session once Plan A is finished.",
+      "picker_rounds_used": 7,
+      "state": "8 applied, 5 parked, 16 open, 6 FYI"
+    },
+    "open_questions": [
+      {
+        "id": "L2-16",
+        "question": "Which fix for the flooding tempo live region?",
+        "options": [
+          "1 Trailing 500 ms debounce (recommended): announcedBpm follows displayedBpm after 500 ms of quiet — fixes hold, drag AND wheel, and follows a new score; costs a second timer and narrates score-driven tempo changes.",
+          "2 onValueCommitted as drafted: no timer, but @base-ui/react 1.6.0 fires it simultaneously with onValueChange on the mouse wheel, so wheel-scrub still floods, and the region goes stale after a new score loads."
+        ],
+        "status": "presented, undecided"
+      },
+      {
+        "id": "L2-13",
+        "question": "Drop `inputSurfaceClasses` from Task 5 Interfaces Consumes line?",
+        "options": ["Apply (recommended)", "Skip", "Drop"],
+        "status": "presented, undecided"
+      },
+      {
+        "id": "L2-14",
+        "question": "Needs a corrected fix before it is shown again.",
+        "note": "The drafted After assumes a 302 KB soundfont; the vendored sonivox.sf3 is 954 KB. Network.emulateNetworkConditions also throttles the whole page before navigation, so alphaTab.core.mjs (1092 KB) and Bravura.woff2 (306 KB) crawl too — roughly 20 s of alphaTab assets against a 30 s default timeout. Either size the throughput to the real bytes (about 300 KB/s) or apply the throttle only after the engine has loaded.",
+        "status": "held back, not presented"
+      },
+      {
+        "id": "L2-NEW-1",
+        "question": "Record why the plans hand-roll the React wiring?",
+        "status": "OVERTAKEN — the maintainer has since adopted the fork hook into Plan A Task 5 (commit 9d2f75ef). The research stands as the record of WHY it was blocked; the next lap must check how the adopted hook coexists with the Task 4 import fence, since the fork original uses a static value import."
+      },
+      {
+        "id": "L2-NEW-2",
+        "question": "File a fork ticket for the ungated metronome/count-in buttons?",
+        "note": "~/Sites/alphaTabWebsite rhythm-game player-controls-group.tsx has zero mediaType/actualPlayerMode/backingTrack references, so MediaType.Audio leaves both live and silent. NH-297-shaped.",
+        "status": "raised as FYI, never carded"
+      }
+    ],
+    "STALE_WARNING": {
+      "headline": "Every lap-2 finding was verified against Plan A at 1a24a40e. Plan A has since been REWRITTEN through eaa8834c — 17 commits.",
+      "why_it_matters": "Plan A Task 5 now lands the fork hook, its event helper and shared defaults (9d2f75ef); Task 6 was rebuilt around the hook and an always-mounted box (e4d8f8bb); the empty state was dropped because the player always has a score (e0c42a44, dae8e730); a fork-parity triage recorded 15 divergences, 2 forced (38779781, 36f6a899). The vendored web/public/alphatab assets were replaced by web/scripts/vendor-alphatab.mjs.",
+      "must_reverify_before_next_lap": [
+        {
+          "id": "L2-04",
+          "risk": "HIGHEST — APPLIED. It states subscriptions register in handleApiReady and NEVER a useEffect, which was only true because Plan A held the api in a useRef. The adopted useAlphaTabEvent IS a useEffect. This paragraph is probably now wrong and may need reverting."
+        },
+        {
+          "id": "L2-03",
+          "risk": "REVERT-OR-REWRITE — APPLIED. Its edit preserved setPositionMs/setDurationMs, the exact React playhead state Plan A removed on 2026-09-18. Not merely stale."
+        },
+        {
+          "id": "L2-05",
+          "risk": "MEDIUM — APPLIED. Threads applySpeed down from PlayerShell; a hook-owned api may relocate it."
+        },
+        {
+          "id": "L2-08",
+          "risk": "MEDIUM — APPLIED. Derives the title as `notation ? notation.score.title || notation.name : `. Plan A has since dropped the empty state because the player always has a score, so the null branch may be dead."
+        },
+        {
+          "id": "L2-09",
+          "risk": "MEDIUM — OPEN. Cites Plan A Task 4 Step 4 for the barrel; Plan A task numbering and content have moved."
+        },
+        {
+          "id": "L2-12",
+          "risk": "PARKED. Header merge — depends on the rewritten render tree. Still resolves NH-296 in principle."
+        },
+        {
+          "id": "L2-02",
+          "risk": "PARKED. Only the state HOME is open; the signal (api.actualPlayerMode === PlayerMode.EnabledBackingTrack, read on playerReady) is independent of the refactor and still correct."
+        },
+        {
+          "id": "L2-07",
+          "risk": "PARKED. player-errors.ts code allocation."
+        },
+        {
+          "id": "L2-15",
+          "risk": "PARKED. Re-applying transport state to a rebuilt api — the hook may now own this."
+        },
+        {
+          "id": "L2-28",
+          "risk": "PARKED. Depends on L2-12."
+        },
+        {
+          "id": "L2-14",
+          "risk": "OPEN. Its byte sizes were read from web/public/alphatab, which no longer exists in git — it is generated by web/scripts/vendor-alphatab.mjs. The runtime sizes still hold."
+        }
+      ],
+      "unaffected": "L2-06, L2-11, L2-13, L2-16, L2-17, L2-19, L2-22, L2-23, L2-30 are client/-only. The plan rule that nothing in client/ imports alphaTab makes them structurally insulated from the Plan A rewrite. L2-01 and L2-10 are low risk (prop threading and a File Structure row).",
+      "p1_filed_by_v0a_review": {
+        "reported": "2026-09-18, after the lap-2 edits were applied",
+        "source_of_truth": [
+          "docs/decisions/decision-registry.md (2026-09-18 entry)",
+          "docs/plans/2026-09-16-v0a-fork-parity-triage-handoff.md (Triage outcome), on spike/alphatab-nextjs-poc"
+        ],
+        "finding": "Plan B still builds a React playhead position state that Plan A removed. `const [positionMs, setPositionMs] = useState(0)` in the outermost Player, fed by playerPositionChanged, is gone. AlphaTab moves its own cursor through its own DOM writes; React is not involved in playback position at all. Player renders both the notation surface and the transport, so every position event re-rendered the whole subtree — the upstream fork measured this and abandoned it, eliminating ~60 React re-renders/second.",
+        "impact_on_l2_03": "L2-03 is APPLIED and its edit rewrote and PRESERVED the removed handler body (setPositionMs(args.currentTime); setDurationMs(args.endTime);). Treat L2-03 as revert-or-rewrite, not re-verify.",
+        "also_touched": [
+          "L2-04 (applied)",
+          "L2-15 (parked)",
+          "L2-20 (open)",
+          "L2-23 (open)",
+          "L2-24 (open)",
+          "L2-29 (open)"
+        ],
+        "further_constraints": [
+          "Test-only instrumentation must never ship to production. The v0a regression test reads AlphaTab own cursor element (.at-cursor-beat) instead of an app-maintained attribute. The one sanctioned exception is a zero-cost DevTools handle (host.at = api), kept in production on purpose. Plan B renders data-looping, data-metronome, data-countin and data-speed purely for e2e — re-check all four. L2-15 already observed those attributes mirror React state rather than the api, so e2e can pass while the audio disagrees.",
+          "Do not port upstream whole-second position throttle as written: it is defeated by a stale closure (player-controls-group.tsx:184-199, after commit a614efdb dropped handler from its dependency list), so it fires on every event anyway. Port it only with that fixed."
+        ]
+      }
+    }
   }
 }

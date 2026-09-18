@@ -1,3 +1,13 @@
+---
+lap: 2 # 2026-09-14 review+triage = lap 1; 2026-09-16 review + 2026-09-16/18 triage = lap 2
+last_applied: P0 # highest severity applied in lap 2
+# LAP 2 IS HALTED, NOT CLOSED. Paused by leocaseiro on 2026-09-18 while Plan A is rewritten.
+# 8 findings applied, 5 parked, 16 open, 6 FYI — all of them, with a verbatim Before -> After each,
+# in .spec-triage-loop/2026-09-13-v0b-transport-plan/lap-2/findings.json.
+# READ THE HANDOFF FIRST: docs/plans/2026-09-18-v0b-transport-review-lap2-handoff.md — every lap-2
+# finding was verified against Plan A at 1a24a40e, and Plan A has since been rewritten.
+---
+
 # v0 Transport — Implementation Plan B "Playback Control" (2 of 3)
 
 > **🧑 HUMAN GATES.** Four steps in this plan cannot be performed by a machine — they need human ears
