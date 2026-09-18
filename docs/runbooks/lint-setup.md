@@ -19,6 +19,7 @@
 
 - `pnpm run lint:setup` documents the `brew` / `pip` installs (shellcheck, yamllint, actionlint).
 - Local hooks **skip** a missing binary; CI is the hard gate.
+- **`editorconfig-checker` is version-pinned — keep the pin.** `lint:editorconfig` sets `EC_VERSION=v3.11.3` (NH-293). Its npm wrapper downloads a binary from GitHub releases and looks for an asset named `ec-<platform>-<arch>`; upstream renamed every asset to `editorconfig-checker-*` in v4.0.0 (2026-09-03), so the default `latest` fails with `The binary 'ec-…' not found` and takes the whole `lint` job down — it did, on every PR, from 2026-07-16 to 2026-09-16. v3.11.3 is the last release carrying the old names. Drop the pin only once a bumped wrapper resolves a v4 asset name; check that first.
 
 ## Hooks & CI
 

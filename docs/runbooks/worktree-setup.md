@@ -13,7 +13,10 @@ Run `nvm use` (or `fnm use` / `asdf install nodejs`) in the repo root before any
 
 Lefthook hooks (`pre-commit`, `commit-msg`, `pre-push`) are the local-side of the CI gates. They must be **installed once per worktree**.
 
-1. Run `pnpm install` — this fires the `prepare` script which calls `lefthook install`.
+1. Run `pnpm install` — this fires the `prepare` script, which is
+   `lefthook install --reset-hooks-path`. The `--reset-hooks-path` flag clears a stray
+   per-worktree `core.hooksPath` on its own, so step 2 is only for the case where the
+   install itself fails before `prepare` can run.
 2. If `pnpm install` fails on the `prepare` step with `core.hooksPath is set locally`, the worktree has a stale per-worktree hooks path. Recover with:
 
    ```sh

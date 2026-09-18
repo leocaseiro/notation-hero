@@ -27,10 +27,11 @@ Both wrap the Playwright image matching `@playwright/test` (v1.61.1). The anonym
 docker run --rm \
   -v "$PWD":/work \
   -v /work/node_modules -v /work/client/node_modules -v /work/server/node_modules \
-  -v /work/shared/node_modules -v /work/infra/node_modules -v /work/.pnpm-store \
+  -v /work/shared/node_modules -v /work/infra/node_modules -v /work/web/node_modules \
+  -v /work/.pnpm-store \
   -w /work mcr.microsoft.com/playwright:v1.61.1-noble \
   bash -c "corepack enable && pnpm install --frozen-lockfile --ignore-scripts && \
-    pnpm --filter @notation-hero/client exec playwright test --project=chromium --update-snapshots"
+    pnpm --filter @notation-hero/client run test:vr:update"
 ```
 
 The `vr` CI job pins `container: mcr.microsoft.com/playwright:v1.61.1-noble`, so its rendering matches the Docker-generated `-linux` baselines exactly. Bump that image tag in lockstep with `@playwright/test`, and regenerate baselines on the bump.
