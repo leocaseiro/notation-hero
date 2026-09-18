@@ -55,6 +55,427 @@ system, not in each consumer.**
 `disabled (aria-disabled, focusable)` suite) pins the guard, and the `vr` job's
 `button-disabled-{light,dark}-focus` snapshots prove Tab reach in a real browser while the unchanged
 `-resting` snapshots prove the dimmed look. Approved by leocaseiro 2026-09-18 (NH-304).
+### 2026-09-18 — Plan A review lap 4: 26 findings triaged, and Button becomes keyboard-reachable (NH-291)
+
+The rewritten v0 Plan A was reviewed before any code was written against it — six reviewer lenses,
+26 findings surviving verification. Every finding was verified by running the tool it claims about
+(ESLint, `tsc`, Node against the installed AlphaTab 1.8.4), not by reading.
+
+Approved by leocaseiro 2026-09-18:
+
+- **Auto-resolve the mechanical half; ask only about real decisions.** His instruction, recorded
+  because it governs future triage sessions too: findings that break a pipeline or are mechanically
+  wrong are applied without a question. Twenty-three landed that way, across three commits — five
+  build breakers (a spread dependency array that fails `--max-warnings 0`, a `TS2345` on the event
+  helper, a missing import, a fixture generator calling an API 1.8.4 does not expose, and a Play gate
+  racing a one-shot event), twelve plan-versus-reality corrections, and six spec passages left over
+  from the "always has a score open" decision (D8).
+- **The playback cursor gets token-driven CSS.** AlphaTab ships no stylesheet at all, so
+  `enableCursor` was painting nothing. The brand teal, with the explicit beat-cursor width upstream
+  documents as required. Rejected: upstream's own yellow-and-blue defaults, because they ignore the
+  palette.
+- **Opening a file moves focus to Play and announces the file name.** His decision, against the
+  reviewers' proposal of focusing the notation region: the next thing the person wants is to press
+  Play. A polite live region names the file, because focus alone never says _which_ score loaded.
+- **`disabled` buttons must stay keyboard-reachable, and the design system owns that** — not each
+  consumer. A natively disabled button cannot receive focus, so the focus-on-open above would be a
+  silent no-op while the engine loads. Tracked as
+  [NH-304](https://leocaseiro.atlassian.net/browse/NH-304): `Button` renders `aria-disabled` with its
+  own activation guard. Plan B (46 sites) and Plan C (11) inherit it.
+- **Plan-local task numbers never ship inside code comments.** "(Task 10)" means nothing to a reader
+  ten years from now, or to anyone outside this one document. Twenty-two comments now name the thing
+  instead of the task; prose, steps and tables keep their numbers.
+
+Still open, deliberately: whether `Card`/`CardContent` — exported by the shipped design-system barrel
+but rendered by no screen, since the empty state that wanted one was deleted — should lose the
+export. leocaseiro chose "decide later".
+
+### 2026-09-18 — fork-parity triage closed: the player takes upstream's AlphaTab shape (NH-291)
+
+Execution of the v0 Plan A build was paused at Task 5 because the plan never ported the
+`rhythm-game` fork's `useAlphaTab` pattern, which spec decision D4 mandates. An audit found 15
+confirmed divergences, 2 of them forced by D5. All 13 open ones are now triaged
+(`docs/plans/2026-09-16-v0a-fork-parity-triage-handoff.md`, section "Triage outcome"), backed by
+three parallel investigations: the upstream site plus the installed AlphaTab 1.8.4 source, the
+earlier `alpha-drums` attempt, and React 19 lifecycle semantics against this repo's resolved lint
+config.
+
+Approved by leocaseiro 2026-09-18:
+
+- **The player always loads a score; the empty state is removed.** His decision, not a finding: the
+  bundled beat when nothing is cached, the last song played when there is one, later a catalog id on
+  `/play`. Task 10 loses its empty state, and the notation box is on the page from the first paint.
+- **The AlphaTab host is always mounted and the engine is built once per page visit** — upstream's
+  shape, unchanged. Two alternatives were rejected with evidence: a conditionally-mounted host with a
+  callback ref (fails `react-hooks/set-state-in-effect`, which is an error under
+  `eslint . --max-warnings 0`, and pays a full rebuild per open), and an always-mounted host with a
+  "build on first open" latch (pointless once every visit opens a score). Rebuilding an engine costs
+  a fresh 956 KB soundfont fetch and parse with no cache, two workers re-parsing the ~1 MB core
+  module, and a new `AudioContext`; an idle empty box with `PlayerMode.EnabledAutomatic` creates no
+  player at all. ~~Opening another file is `api.load()` on the live engine, never a teardown.~~
+  [Corrected 2026-09-18: the approved mechanism is the staged parse — `ScoreLoader.loadScoreFromBytes`
+  then `renderScore` on the live engine, still never a teardown. `api.load()` was rejected by the
+  2026-09-16 fork-parity triage (finding F-A2) because it clears the playing score before the new
+  bytes are validated.]
+- **Ported from the fork:** the `useAlphaTab` mount hook (F-B1), the typed `useAlphaTabEvent` helper
+  so every `.on()` gets its `.off()` (F-B2), one API owner passed down as a prop instead of two refs
+  and an `onApiReady` callback (F-B3), a shared settings-defaults stage (F-C1), and a scroll viewport
+  separate from AlphaTab's own container (F-C2).
+- **Deferred to a new Jira issue under NH-291:** the `updateSettings()` funnel (F-C3, no caller in
+  Plan A), the dark-mode colour path (F-C5, `web/` has no theme source yet), soundfont download
+  progress (F-D1, the bar is Plan B), the asset-path helper (F-D3), and F-C1's font-family stack.
+- **"Remember the last song" becomes its own ticket and spec.** It writes the person's file bytes to
+  browser storage, which contradicts Task 6's "the bytes never touch disk"; storage choice, size cap,
+  eviction and clearing are spec questions, not plan details.
+- **Test-only instrumentation must never ship to production, especially when it can cost
+  performance.** Task 7's silent-no-sound test drops the React playhead state that re-rendered the
+  player subtree ~60 times a second and instead reads AlphaTab's own cursor element. The test itself
+  stays — a mocked engine would hide exactly the failure it exists to catch, a mis-delivered worker
+  or audio worklet, where notation renders and there is no sound. The one deliberate exception, at
+  his request, is F-D2's zero-cost debug handle on the notation box, which ships in production so a
+  live player can be inspected in DevTools.
+- **Rework scope: one pass over eight briefs** — real edits to Tasks 5, 6, 7 and 11, Task 10 shrinks,
+  light touches to Tasks 3, 13 and 14 — rather than re-planning Tasks 5-13 from scratch.
+
+### 2026-09-16 — v0 Plan A review, lap 2 finished: the last open findings triaged (NH-291)
+
+The findings the 2026-09-15 entry left open were checked against the installed packages before
+triage: lint probes in `web/` and `client/`, axe-core 4.12.1 over the notation-box markup, and parse
+timings with the pinned AlphaTab 1.8.4. Three of the handoff's proposed fixes turned out to fail.
+leocaseiro triaged each from a checked Before → After.
+
+Approved by leocaseiro 2026-09-16:
+
+- **The notation box is a focusable, named region** — `role="region"`, `aria-label="Score"`,
+  `tabIndex={0}` (Task 6) — chosen over `role="img"`, which the agent had recommended, and
+  `role="figure"`. His reason: the notation already takes mouse input and needs keyboard control, and
+  an image's children are presentational. `tabIndex` is needed under every role: a score taller than
+  the 420 px box fails axe's `scrollable-region-focusable` (serious, `wcag2a`) without it, so Task 13
+  gains a case that opens `Punk.gp`, which scrolls. Spec §5 updated.
+- **`web/` code uses `globalThis`, never `window`, and has no `eslint-disable` for `no-alert`.**
+  `unicorn/prefer-global-this` is an error in `web/` — all 8 `window.*` calls in the plan failed it —
+  and `no-alert` is not enabled there, so the directive Task 11 carried was itself a lint failure.
+  Recorded as a Global Constraint.
+- **`client/` gets its own AlphaTab import fence, banning every import, type imports included**
+  (Task 3 Steps 8-9), rather than moving the group into `eslint.config.base.mjs`: in flat config a
+  later block's options replace an earlier block's, so a group defined in the base silently disappears
+  from `web/`. Spec §5 updated.
+- **Both AlphaTab import fences get a committed test,** `tooling/alphatab-import-fence.test.sh`
+  (Task 3 Step 10), run by `pnpm run test:tooling`, instead of Task 3's throwaway probes only. It was
+  run against the real configs: it fails before Task 3, passes with both fences, and fails again when
+  a later block for the same rule follows the fence — the silent loss it exists to catch.
+- **A first open shows the Skeleton through the parse** (Task 12, renamed "Loading feedback while a
+  score parses"), over a toast on every open and over accepting the freeze. Measured with AlphaTab
+  1.8.4: file size barely matters (a 7.35 MB file with an embedded asset parses in 9 ms), score
+  length does (2,000 bars of 16th notes: 382 ms on an Apple M5 Pro, longer on slower machines).
+  leocaseiro accepted the brief Skeleton flash this causes on a fast laptop, preferring it to a
+  frozen empty state. Spec §4 updated.
+- **Three spec passages the plan had disproved are corrected now,** not at PR time: §4's Skeleton
+  lifts on `renderFinished`, not on `document.fonts.load('1em Bravura')`; "AlphaTab's default track"
+  becomes "the score's first track" (three places); §5's Sonner audit holds the toast with the
+  story's own `ToastOnMount` and `duration: Infinity`, not `openArgs`. The plan names the spec as its
+  authority, so a stale spec would steer an implementer back to the font wait Task 5 removed.
+- **A failed open shows one message per reason** — too large (E101), unreadable (E102), not a score
+  (E103) — with the size limit in the message read from the `MAX_NOTATION_MB` constant, so changing
+  the limit updates the copy. Before this, the size check's own message was thrown away and three
+  different wordings reached the user.
+- **Every failure message carries an error number, starting in v0,** over recording the idea for a
+  later plan. leocaseiro asked for numbers so a report names the exact case, and noted they had been
+  missing from the spec. Nine numbers — 1xx opening a file, 2xx the engine and its assets, 9xx an
+  unexpected crash — live in `web/lib/player-errors.ts` (Task 6); spec §4's failure table gains a
+  Number column and the two music-font rows it lacked. The e2e lane pins E101, E103 and E203.
+- **Also raised:** a `TODO` comment fails lint in every package (`sonarjs/todo-tag` is an error in the
+  shared base). leocaseiro asked that lint stop blocking TODO comments, JSDoc `@todo` in particular;
+  that change is handled separately, off `master`.
+
+**Status:** all lap-2 findings are triaged and applied.
+
+### 2026-09-16 — v0 Plan A, lap 3: seven-persona re-review, first decisions applied (NH-291)
+
+Lap 3 ran `ce-doc-review` in headless mode with the same seven personas, primed with every lap-1 and
+lap-2 decision so settled alternatives were not re-raised. No cross-model pass (no second-provider
+CLI on this machine). 18 findings; 2 mechanical fixes applied without a decision — Task 3's commit
+named paths that its own `git rm` had already removed, which stages **nothing** (reproduced), and the
+File Structure tables were missing eight files the tasks touch.
+
+Approved by leocaseiro 2026-09-16:
+
+- **A file that embeds an audio track keeps playing that recording** (`PlayerMode.EnabledAutomatic`
+  stays), over pinning the synthesizer, which the reviewers and the agent had recommended. His
+  reason: he plays along to his own audio-track files and wants the notation on screen while the
+  recording plays. The cost is recorded instead of removed — AlphaTab's backing-track synthesizer
+  ignores mute, solo, track volume, the metronome and the count-in (verified in 1.8.4: those methods
+  are empty), so spec §4 and §7 now require those controls to render **disabled with a tooltip** in
+  Plans B and C rather than looking live and doing nothing. A toggle between the recording and the
+  synthesizer joins the deferred list (NH-298).
+- **Task 14 re-runs `pr-checklist-sync` by hand after rewriting the PR body.** `gh pr edit --body`
+  replaces the whole body, and that workflow runs only on `opened`, `workflow_dispatch` and template
+  pushes to master — so without the manual run the required `pr-checklist` job fails on every item.
+- **The accessibility gate gains a sixth case** covering the engine-error screen, whose destructive
+  tint no check had measured.
+- **Scope note for alpha-v0:** full WCAG AA is not the bar for this release. Basic accessibility yes;
+  anything expensive is skipped, because the release exists to show the app working. The axe gate
+  still runs the AA tag set — revisit only if it blocks a release.
+- **Opening a score moves focus into the notation region** (one line in the mount effect). Without it
+  the control the user pressed is removed with the empty state and the browser resets focus to
+  `<body>`, so a keyboard user Tabs from the top of the page again. Returning focus to the Open file
+  button after a _failed_ open is deliberately left out — too much wiring for this release's bar.
+- **v0a gains the mockup's player header:** the wordmark, then the open score's **title**, with the
+  **file name** in a `Tooltip` behind it (leocaseiro's design call, matching
+  `docs/mockups/player-flatrow-teal.html`). Before this the file name existed only in a screen-reader
+  span, and a sighted user never saw which file was playing. `Tooltip` joins the client barrel; the
+  replace tests read the file name from a `data-file` attribute instead of the element's text. The
+  real logo in place of the wordmark stays a later visual task.
+- **Both AlphaTab import fences also ban a dynamic `import()`**, via a `no-restricted-syntax`
+  `ImportExpression` selector beside each `no-restricted-imports` block (Task 3). leocaseiro asked
+  for a spike before applying; it was run against the real `web/eslint.config.mjs` carrying Task 3's
+  exact block: a value import errored, `await import('@coderline/alphatab')` **exited 0**, and the
+  selector turned it into an error — the import rules match `import`/`export` declarations only, so
+  without it a second bundled AlphaTab returns with lint green. `client/`'s selector is **appended to
+  its existing `no-restricted-syntax` array** (the inline-colour rule), because a second block would
+  replace that array. `loadAlphaTabEngine()`'s own import holds its URL in a `const`, so it carries no
+  `source.value` literal and cannot match — verified. `tooling/alphatab-import-fence.test.sh` gains a
+  dynamic probe per package so the guard cannot be switched off unnoticed.
+- **The `rendered-track-count` test hook reports what AlphaTab drew, not what was requested** —
+  `setRenderedTrackCount(api.tracks.length)` inside the `renderFinished` handler, replacing a count
+  derived from the `drumIndexes` array the effect had just passed to `renderScore` (Task 10).
+  leocaseiro asked whether the drum track was set somewhere else; it is — `renderScore` on the line
+  above does the real work, and the removed line only fed an `sr-only` span the Playwright tests
+  read. As written, the three `Punk` assertions and success criterion 9 would have passed even if
+  AlphaTab drew only track 0, including the Track-objects-instead-of-indexes mistake the plan warns
+  about twice. `api.tracks` is AlphaTab's resolved list, verified in the installed 1.8.4.
+- **The plan's own React snippets are fixed only where `eslint --fix` cannot help**, and both
+  `Expected: PASS` steps now run `eslint --fix` first (Tasks 5 and 6). leocaseiro's call: import
+  ordering is machine work and does not belong in a hand-maintained plan. Measured before deciding —
+  the snippets raised 18 problems, `--fix` cleared 7, and **11 survived** across all three files, so
+  two of the three still failed the check the plan promised would pass. The 11 are fixed in place:
+  `renderedTrackCount` state moves from Task 6 to Task 10 (6 of them), `let api` becomes `const` at
+  its construction site, `useEffect` leaves Task 6's `PlayerShell` import and rejoins it in Task 10
+  where the drag-cancel effect first needs it, the engine `.then` returns, and the provider gains a
+  return type. Re-extracted and re-linted after the edits: zero problems.
+- **Task 11's cancel test polls for movement and can tell a resume from a restart.** It had two
+  defects at once. It could fail on a correct build: `data-playing` flips when `_playInternal` sets
+  `PlayerState.Playing` synchronously, before the worklet has played a sample, so the position read
+  straight after it is 0 — and the assertion was a plain `expect`, which does not retry (Task 7's
+  equivalent already polls). And it could pass on a broken one: a cancel that restarted from bar 1
+  climbs past the captured position just as a resume does. It now polls until the position moves,
+  then asserts the FIRST read after the dialog is not lower than the captured one — which a restart
+  cannot satisfy — before confirming it is still advancing.
+- **`.gpx` is BCFZ, not ZIP** — corrected in three places and in the deferred bound's name. Both
+  `.gpx` fixtures begin with the bytes `BCFZ`; `GpxFileSystem.decompress` reads a length from the
+  4-byte header and expands to it with **no cap**, while the genuine ZIP formats (`.gp`, `.mxl`,
+  `.capx`) go through `ZipReader`, which throws `OverflowError` at three separate checks against
+  `settings.importer.maxDecodingBufferSize`. The deferred NH-298 item is renamed to "a
+  decompressed-size bound (the BCFZ header length, and the ZIP total across entries)", so it targets
+  the unbounded path instead of one AlphaTab already guards.
+- **Task 7's Drill 1 names the assertion that actually fires.** Renamed "the worklet is served but
+  broken", with Expected pointing at assertion 2's position poll rather than assertions 3 and 4.
+  Both of those stay green on an empty module: it is served 200 with a JavaScript type, and
+  `addModule` resolves, so `new AudioWorkletNode` throws inside the success handler of a
+  two-argument `.then(onFulfilled, onRejected)` — which does not route a throw in `onFulfilled` to
+  `onRejected`, so AlphaTab's `Audio Worklet creation failed` never logs.
+
+leocaseiro's standing instruction from this round: findings that only remove ambiguity are applied
+without a picker; anything carrying a choice or a behaviour change still goes to him.
+
+**The review of Plan A is CLOSED at lap 3** (leocaseiro, 2026-09-16). The loop's own rule made lap 4
+due — `last_applied: P1` arms the re-lap trigger, and the cap is lap 5 — and he chose to stop
+anyway, with lap 3's six open findings all decided and applied. The frontmatter keeps the honest
+`last_applied: P1` rather than a value doctored to look finished, and carries a comment saying the
+armed trigger is a decided skip, not an oversight, so a later agent does not auto-run lap 4. Three
+laps produced 21 applied decisions; anything lap 4 would have raised can be raised against the code
+during implementation instead.
+
+### 2026-09-15 — v0 Plan A review, lap 2: 15 decisions triaged and applied, accept list widened (NH-291)
+
+A seven-persona `ce-doc-review` of Plan A ([`docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`](../plans/2026-09-13-v0a-engine-and-first-sound-plan.md))
+applied 7 mechanical fixes and raised 18 findings needing a decision; verifying them during triage surfaced 5 more.
+leocaseiro triaged them one at a time, each shown as a verified Before → After. Everything below is applied and pushed on
+`spike/alphatab-nextjs-poc`. Six items remain to triage — see
+[`docs/plans/2026-09-15-v0a-plan-review-lap2-handoff.md`](../plans/2026-09-15-v0a-plan-review-lap2-handoff.md).
+
+Approved by leocaseiro 2026-09-15:
+
+- **Replace flow follows spec §4 — confirm first, then parse, then swap** (Task 11), over parse-first: the plan names the spec as its authority.
+- **`web/` gets a unit-test runner:** vitest `^4.1.9` with `"test": "vitest run"`; AGENTS.md's "`web/` omits `test` until Phase 2" note is removed when Task 9 lands.
+- **The file picker accepts every extension of a format AlphaTab 1.8.4 reads:** `.gp .gp3 .gp4 .gp5 .gpx .musicxml .mxl .xml .capx .atex .alphatex`. `.mxml` is removed — no standard defines it (W3C MusicXML 4.0 names `.musicxml` and `.mxl`). `.mid` stays out: AlphaTab has no MIDI importer. Spec §4 and Q6 updated.
+- **MusicXML and alphaTex are tested with real exports** — MuseScore (`1-beat.mxl`, `1-beat.musicxml`, `Punk.mxl`) and Tabtify (`1-beat.atex`, `Punk.alphatex`), committed in `web/e2e/fixtures/`. Q6 is closed.
+- **Task 9 is the pure drum-track selector;** the `NotationSurface` render wiring moves to Task 10, beside the end-to-end tests that exercise it.
+- **The generated AlphaTab assets are re-checked on a Vercel preview right after vendoring** (new Task 2 Step 11), not first at Task 14.
+- **D5 wording — we stay on Turbopack.** The webpack recipe is named only inside Task 1's stop condition, as the emergency fallback the 2026-09-14 entry recorded.
+- **A file opened before the engine has loaded is kept,** and the loading surface shows at once (Tasks 10 and 11).
+- **An engine-import failure replaces the empty state;** the player's Play button stays where it is, disabled — in v0a and in the later full player bar. Chosen from a mockup of both placements ([`docs/mockups/player-engine-error-placement.html`](../mockups/player-engine-error-placement.html)). Spec failure table updated.
+- **A failed music-font download is detected with the browser's `loadingerror` event on `document.fonts`,** plus a 60 s first-render backstop for a download that hangs.
+- **The replacement loading toast lives in `requestNotation`,** shares one id with its result, and waits one painted frame before the synchronous parse.
+
+**Status:** Plan A stays in review. Lap 2 has 6 findings left to triage; lap 3, a re-review, is due after them, because P0 and P1 findings were applied this lap.
+
+### 2026-09-14 — D5 re-closed: we stay on Turbopack; the official webpack route becomes D5's written fallback (NH-291, NH-298)
+
+The bundler spike handed off earlier the same day was run end to end, in a scratch Next 16 app **outside the repo** (the worktree was untouched). Full evidence: [`docs/spikes/2026-09-14-alphatab-webpack-vs-turbopack.md`](../spikes/2026-09-14-alphatab-webpack-vs-turbopack.md).
+
+- **The official route works.** `next build --webpack` with `AlphaTabWebPackPlugin` plays: `Environment.webPlatform` is `Browser` (the plugin's webpack-aware branch, not our `BrowserModule` one), 1676 `playerPositionChanged` events with `currentTime` advancing to 4442 ms of 25987 ms, zero errors, zero failed requests, and AlphaTab's own log reads `WebPack: true` / `Will use webworkers for synthesizing and web audio api with worklets for playback`. One library copy at **274 KB gzip**, matching D5 variant B's 273 KB.
+- **All three named blockers passed.** `reactCompiler: true` survives webpack — proved by building the same component with the flag on and off and reading `useMemoCache` plus `react.memo_cache_sentinel` out of the on-build. `transpilePackages` survives, together with the `@/` alias resolving against the app tsconfig and the cross-package Tailwind `@source` scan (the `bg-clip-padding` CI sentinel reaches the built CSS). The build-time cost is ~2.3x — 9.10 s vs 4.00 s cold on the real `web/` app — about five seconds.
+- **Two findings the handoff could not have priced.** The plugin rewrites its 7.0 MB of assets on **every** compile, which puts `next dev --webpack` in an endless reload loop (330 Fast Refresh rebuilds per 20 s against 0 for the control) on every route, not just AlphaTab's; a three-line `watchOptions.ignored` fixes it, and the official sample does not carry it. And `next start --webpack`, which that sample's `package.json` still lists, is rejected outright by Next 16.2.10.
+- **Question 5 came back unchanged:** the `AudioWorklet.addModule()` fetch is invisible to Playwright on the official route too. **Plan A Task 7 keeps its premise and its `page.request.get` mechanism.**
+- **Decision: stay.** leocaseiro weighed the two and kept D5. The route was not rejected as broken — it was rejected on cost of change: Plan A is written and reviewed around D5, and switching would rewrite roughly a third of it to buy a path we do not need. The agent's own recommendation had been to switch, on the handoff's stated rule; the maintainer's call overrides it and is the decision of record.
+
+**Status:** `D5` moves **⏳ pending → 🔒 locked-active · 📄 prose-only**. Plan A Tasks 2, 3, 5 and 7 stand exactly as reviewed. The NH-298 item "a written fallback for D5" is **closed** — the spike doc carries the full webpack recipe, executed and verified, as the route to fall back to. Approved by leocaseiro 2026-09-14.
+
+### 2026-09-14 — v0 Plan A reviewed: 30 findings applied, both "accepted gaps" closed, D5 re-opened (NH-291, NH-298)
+
+leocaseiro reviewed [`docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md`](../plans/2026-09-13-v0a-engine-and-first-sound-plan.md) finding by finding, run as `compound-engineering:ce-doc-review` with **seven** reviewers (coherence, feasibility, design-lens, scope-guardian, security-lens, product-lens, adversarial) and **no cross-model pass** (no second-provider agent CLI on this machine). 51 raw findings merged to 40; the 26 actionable plus 4 raised by spikes were walked one by one and all 30 approved and applied, across commits `77286df5`, `208c91a0`, `de51dea9`, `8b99443d`, `1aa70af9`, `24c2dbc1`, `3a06db6e`.
+
+- **Four empirical spikes settled what reasoning could not**, and three of them changed the answer. A React 19.2 reproduction showed the player could never have worked as written: `AlphaTabEngineProvider` is the parent-most component, so its effect runs **last** and `loadAlphaTabEngine()` has not been called when `Player`'s `[]`-deps effect reads `apiRef.current` — measured 0 subscribed handlers and Play permanently disabled, which would have surfaced as a 60-second timeout blamed on the worklet. A Playwright/Chromium spike found that an `AudioWorklet.addModule()` fetch is visible to **no** Playwright observer, so the regression lane's own worklet assertion timed out identically on healthy, 404 and wrong-MIME builds — zero discriminating power. A focus spike found the approved picker fix was itself a **critical** axe violation until `aria-hidden` joined `tabIndex={-1}`.
+- **Both "accepted gaps" were closed rather than shipped.** **Q6** — a hand-authored MusicXML file parses with the pinned 1.8.4 importer first try (336 bytes bare, 1.8 KB for a percussion variant), and `ScoreLoader` never sees a filename, so one fixture covers `.musicxml`, `.mxml` and `.xml`; the existing `1-beat.xml` turned out to be a Guitar Pro v5.10 binary wearing an `.xml` name. **Q7** — a percussion-free fixture generates from one alphaTex line via `AlphaTexImporter` + `Gp7Exporter` (2,866 bytes, round-trips as one non-percussion track), so success criterion 9 is now verified by running rather than by reading.
+- **Terminology ratified: `notation` for the file, `score` for the parsed object and for UI copy, and never "chart"** — 118 occurrences replaced in Plan A, recorded in `CONCEPTS.md`. Plan B was renamed by a concurrent session; **the spec and Plan C still carry the old word** and are handed to that session.
+- **D5 is re-opened.** The 2026-09-10 spike dropped `@coderline/alphatab-webpack` with the note "no Turbopack plugin exists" — true, but that is the _consequence_ of staying on Turbopack, not a reason to, and staying on Turbopack was never examined as a choice. CoderLine ship an official Next.js 16 sample built on that plugin, whose README says plainly not to use Turbopack; nobody had opened it. The spike doc is corrected (it had also conflated "the 1.8.4 subpath export is a dead shim" with "the webpack route is unavailable"), and the side-by-side comparison is handed off in [`docs/plans/2026-09-14-alphatab-webpack-vs-turbopack-spike-handoff.md`](../plans/2026-09-14-alphatab-webpack-vs-turbopack-spike-handoff.md). If it says switch, Plan A Tasks 2, 3, 5 and 7 largely dissolve.
+- **Also corrected:** Vercel's Next.js preset **does** run the package's `build` script (the review had overstated this as a risk); what survives is an invisible dashboard Build Command Override, now closed by pinning `buildCommand` in `web/vercel.json`. Task 1's go/no-go verified the _committed_ assets that Task 2 then deletes, so Task 14 re-verifies the generated ones on a deployed preview. Seven tracked spike files are deleted — one carried a value import the new lint fence bans, so the package lint could not have passed.
+- **Fourteen items deliberately deferred past v0** are tracked as a Smart Checklist on **NH-298**, and Plan A points at it: a bundle-count CI gate, CSP headers for `web/`, a decompressed-size bound for `.gpx`, a test behind the privacy claim, a `PlayPauseButton` in `client/`, an `AlertDialog` to replace `window.confirm`, an iOS picker branch, Sentry, a written fallback for D5, and five smaller open questions.
+
+**Status:** ✅ decided · 📄 prose-only enforcement — the plan is the contract until it is implemented. Approved by leocaseiro 2026-09-14, finding by finding. **D5 moves ⏳ pending** the bundler spike above; every other decision in the plan stands.
+
+### 2026-09-13 — v0.1 settings panel: first review lap, 16 findings applied (NH-291)
+
+leocaseiro reviewed [`docs/specs/2026-09-11-v01-settings-panel-design.md`](../specs/2026-09-11-v01-settings-panel-design.md) finding by finding — the document's **first** review pass, run as `compound-engineering:ce-doc-review` with six reviewers (coherence, feasibility, product-lens, design-lens, scope-guardian, adversarial) and **no cross-model pass** (no second-provider agent CLI on this machine). 33 raw findings merged to 16 distinct plus 3 FYI; every one of the 16 was approved and applied. The spec was written 2026-09-11, one day before the laps that settled several of the decisions it describes, and stale text was indeed the dominant defect class.
+
+- **Three stale open questions closed.** **S4** (persistence) was already settled — one `localStorage` key with a `version` integer, restored through `Settings.fillFromJson` — and its "IndexedDB is already in the stack for recent files" note was false twice over: no IndexedDB or Dexie dependency exists in any workspace package, and the recent-files list was cut from v0. **S3** (search matching) is now **labels only**, because §3 had already fixed the index to label, section and tab, so answering it wider later rebuilds every entry rather than swapping a matcher. **S1** gains the **two-level mapping** its breadcrumbs need: the `▸` in the settled group names is the tab/section split — tabs are Display, Notation, Player, Stylesheet and Tools, with Display holding the General, Colors, Fonts and Paddings sections.
+- **The v0/v0.1 boundary was wrong in both directions.** §8 excluded tempo from this panel, but lap 4 moved the 12.5–200% slider **into** the Settings popover's Player group, so the exclusion now covers song-scoped persistence only and the slider is named as a Player-group row indexed by search. And §1 called search v0's only gap when v0 also has no tabs (`Dialog`/`Tabs` dropped out of v0), so v0.1 carries **two** additions, not one — which matters for sizing the milestone.
+- **Component inventory corrected.** `RangeSlider` is dual-thumb (`value: [number, number]`) and cannot serve a single-value settings row, so the new `Slider` replaces it in the reusable list. The built `Tabs` is a segment control that never wraps Base UI's `Tabs.Indicator`, so §3's underline needs a new `client/` variant inside the VR + a11y gates rather than a call-site restyle. The `Field` hedge is resolved — `orientation="horizontal"` already gives label-left / control-right, so no new layout piece is needed.
+- **Row grammar gained an action row.** The settled `Tools` group is two command buttons (Export MIDI, Export Guitar Pro), hand-rendered outside the prototype's settings-group schema, so it had no shape in a table that allowed only checkbox, select and number input — and search inherited the gap.
+- **Two safeguards added.** §6's originality rules guarded only against reference products nobody proposed copying, so a fourth rule now names the real exposure: **copy no files or fragments from the MPL-2.0 `rhythm-game` fork** (D4, clean-room). And **S5's accessibility deferral** leaned on a gate that would not fire — the `web/` axe lane checks only the states it enumerates, and the results view is not one of v0's four — so it now requires that state plus an ARIA live region announcing the result count.
+- **Registry correction (F-7).** This entry's own lap-1 PWA bullet is struck in place and marked superseded by lap 2. leocaseiro had dropped a same-shaped finding in lap 3 on the grounds that a newest-first log legitimately supersedes itself; he approved this one because that specific stale line has a **documented** downstream victim (`AGENTS.md`'s READ-FIRST snapshot, recorded in this entry's lap-3 corrections) and the fix annotates rather than rewrites.
+- **Also settled:** a zero-match state for search ("No settings found", search box and clear control stay active); and §3's claim that the index is the one genuinely non-trivial piece — it is a flat projection of the per-row accessor schema v0 already builds, so v0.1's new engineering is the result view and its focus/screen-reader model.
+- **Left as FYI, not applied:** §1's "usable day-to-day" claim is asserted without naming which settings a drummer reaches for mid-practice; the new search-clear control is unchecked against the 44 px hit-area rule; and S2 looks for its answer in reference screenshots when Base UI's `Accordion.Root` already decides it (`multiple` defaults to `false`).
+
+**Status:** ✅ decided · 📄 prose-only enforcement — the spec is the contract. Approved by leocaseiro 2026-09-13. The spec now carries `lap: 1` / `last_applied: P0` in frontmatter; a P0 was applied, so the review loop's re-lap trigger fired — **leocaseiro declined lap 2 and closed the review at lap 1**, on the grounds that this is a design capture rather than a build plan. Re-open it when the design becomes one.
+
+### 2026-09-12 — v0 local-file player: player before catalog, and the v0 spec review (NH-291, NH-292)
+
+leocaseiro ratified the v0 direction, then reviewed the spec finding by finding
+([`docs/specs/2026-09-10-v0-local-file-player-design.md`](../specs/2026-09-10-v0-local-file-player-design.md), doc-review-loop lap 1). D1–D7 were approved on 2026-09-10; the review decisions below on 2026-09-12.
+
+- **Player before catalog.** v0 is a local-file drum player shipped in `web/` (D1, D2). The catalog, the backend (Neon, Cognito) and the Playable schema are **paused, not dropped**; the return point is not set. This reverses the 2026-06-15 build order ("(1) CRUD for catalog … (2) play a song") recorded further down this log.
+- **AlphaTab delivery = self-hosted ESM** from `public/` (D5). The `@coderline/alphatab-webpack` plugin was rejected, and `web/` may import the package only with `import type`, so Turbopack cannot bundle it a second time.
+- **D4 clarified — clean-room.** The `rhythm-game` prototype's patterns are ported with the fork open for reference and **no files copied**, per the 2026-06-18 licensing spike (the fork is MPL-2.0; this repo is proprietary).
+- **Offline is out of v0.** ~~v0 installs as a PWA but needs a network~~ — **superseded by lap 2: no PWA at all in v0.** The service worker and precache become their own later milestone, sized by the spec's payload budget — which now includes the 727 KB Material Symbols font, so the floor is ~1.6 MB, not 870 KB.
+- **v0 builds a player-controls popup** (Base UI `Dialog` + `Tabs` + `Accordion`) with Tempo and Tracks tabs, following the prototype's behaviour. The searchable global settings panel stays v0.1 and reuses those components.
+- **Scope trims:** no recent-files list; no `?id=` handoff (the buffer is held in a client store and a reload on `/play` returns to `/`); no raw `.mid` files. A–B repeat in v0 is AlphaTab's native range selection.
+- **Verification:** desktop Chrome is the v0 gate; iPad and Android get a manual check that does not block v0 (D7 refined). The silent-playback regression test becomes a Playwright lane in `web/` wired into the CI `e2e` job.
+- **Rejected:** designing the offline layer inside v0; reordering the roadmap to put practice before settings; keeping a recent-files list in v0.
+
+- **Lap 2 (same day) trimmed and reshaped v0 again:** **no PWA at all** in v0 — install and offline become one later milestone; the **file picker lives in the player**, `/` is reduced to a landing Play button and no buffer crosses routes; **two popovers, never modals** — Settings on the header gear carrying the prototype's full option set in accordion sections (colors as plain text inputs for now), and Tracks on the transport button. `Popover` already exists, so **`Accordion` is the only new component** and `Dialog`/`Tabs` drop out of v0. Loop, Metronome and Count-In ship through AlphaTab's own `isLooping` / `metronomeVolume` / `countInVolume`; the A–B marker UI and its selection sync are **not** planned. The tempo floor is AlphaTab's documented 12.5%.
+- **Corrections found in lap 2:** the spec had claimed an ESLint value-import guard that does not exist — it is now stated as v0 work on the `@typescript-eslint` extension rule; and the regression test now asserts the audio-worklet file is actually requested, because the previous assertions also passed on the silent ScriptProcessor fallback.
+- **Rejected in lap 2:** a PWA manifest inside v0; extra MusicXML/Capella drum-detection test charts (AlphaTab is trusted here until a real bug appears).
+
+- **Lap 3 (same day) corrected facts and closed gaps, 17 decisions.** **Replacing a file asks
+  first** — a native `window.confirm()` for now (no `Dialog` is built); cancel keeps the current
+  chart, confirm stages the load so a corrupt replacement leaves the playing chart intact. **No drum
+  staff is not an error** — drums are v0's default, not its requirement, so a file with no percussion
+  staff falls back to AlphaTab's default track and a guitar or piano chart plays; this reverses lap
+  2's drum-only rule and drops the "no drum track" failure state. **`Slider` joins `Accordion`** as a
+  new design-system component (`RangeSlider` is dual-thumb only, so it cannot serve the scrubber,
+  tempo, volume or settings rows). **Build items are split by package** — controls to `client/` under
+  the VR + a11y gates, AlphaTab-aware composition to `web/` — and v0 adds an **axe check to the new
+  `web` Playwright lane**, because those two CI jobs only run against `client/` today. **Settings
+  persist** to one `localStorage` key. **Tempo lives in the header**, per the mockup and
+  `player-app-ui.md`, and **Auto-Speed is v0.2** (a practice feature). **Acceptance grows to seven
+  criteria**, covering the transport toggles, the scrubber and both popovers. **A sample chart
+  ships** (`web/public/charts/1-beat.gp`) with test fixtures in `web/e2e/fixtures/` covering 6 of the
+  9 accepted extensions. **v0.1 keeps the prototype's settings groups** exactly, with MIDI arriving
+  as a new tab later — which settles S1 in the v0.1 design.
+- **Corrections found in lap 3.** The regression test's justification was wrong: AlphaTab logs a
+  distinct line per output path (`…with worklets for playback` versus `…with ScriptProcessor for
+playback`), so the fallback was never silent, and the worklet fetch is lazy, so the test must not
+  require it before playback. Q3's "worklet never observed" was an instrumentation gap —
+  `web/spike-probe.mjs` only recorded failed requests. §5's type-only import rule collided with §7's
+  settings dropdowns, resolved by making the awaited namespace the only runtime source of AlphaTab
+  values. A–B **range** repeat is mouse-only in AlphaTab, so it is desktop-only in v0 and supersedes
+  `player-app-ui.md` D‑5. The `soundFontLoad` bar covers 302 KB of a ~1.6 MB first load, not the
+  whole payload. `AGENTS.md`'s READ-FIRST snapshot still claimed v0 installs as a PWA.
+- **Rejected in lap 3:** a styled confirm dialog for v0 (native `window.confirm()` instead); an
+  `Advanced` group for the engine settings; re-grouping v0.1's settings into drum-specific
+  categories. A licensing concern about two charts copied from the MPL-2.0 fork was **withdrawn** —
+  leocaseiro authored them.
+
+- **Lap 4 (same day) found that lap 3's own new text carried real defects, 12 decisions.** The
+  **merge gate was rewritten again**: lap 3 had it assert `…with worklets for playback`, but
+  `createWorkerPlayer` emits that line whenever `isSecureContext && 'AudioWorkletNode' in window &&
+outputMode === WebAudioAudioWorklets`, never reading `Environment.webPlatform` — so it logs in the
+  broken build too, right before `Failed to create worker for synthesizing audio`. The gate now
+  asserts `Platform: BrowserModule` (from `printEnvironmentInfo`) plus the absence of that error.
+  **The package-split table was unbuildable**: it gave `client/` the tempo control, the transport
+  toggles and the settings rows, but `client/` has no `@coderline/alphatab` and a `client/` Storybook
+  story has no engine — so every `client/` item is now presentation-only and the React context is
+  scoped to `web/`. **The native confirm needed three fixes**: pause playback before it (it freezes
+  input, not Web Audio), reset the file input's `value` in every change handler (no `change` event
+  fires when the value is unchanged, so cancel-then-re-pick was dead), and register a
+  `page.on('dialog')` handler or Playwright silently turns every replace test into a cancel test.
+  **The Tracks row takes the prototype's full control set** including render-select, per leocaseiro;
+  drum tablature is implemented upstream (alphaTab PR #2591) so Q5 no longer records a local patch.
+  **Criteria 8 and 9** cover the sample-load action and the no-percussion fallback; **criterion 7**
+  splits render from audible mix. **A third new design-system component** — a determinate progress
+  bar — joins `Accordion` and `Slider`. **Settings restore falls back to defaults** on a corrupt or
+  stale value. **The axe lane** gains two states and `@axe-core/playwright`. **The tempo slider moves
+  to the Settings popover** and hit areas are padded to 44 px, because nothing in the mockup meets
+  that rule. **v0.1 stays non-blocking** — no modal, no `Dialog`, in v0 or v0.1.
+- **Corrections to lap 3's own output, found in lap 4.** Three false statements traced to one unsound
+  `strings` probe: the `.xml` fixture is a Guitar Pro 5 binary, not MusicXML, so copying it to
+  `.musicxml`/`.mxml` covered nothing and real coverage is 3 of 9, not 6; `1-beat.gp` is a single drum
+  track, not multi-track, so §4's required "drums are not track 0" test has no fixture (Q7); and
+  "renaming a `.gp5` will not parse" is backwards, since `ScoreLoader` reads the bytes. A dangling
+  sentence left by the first of those fixes was repaired. The `Skeleton` does not cover the Material
+  Symbols face, which has no loading affordance at all. `ScoreLoader` is `importer.ScoreLoader` and
+  takes a `Uint8Array`.
+- **Also fixed in lap 4:** NH-293 — `lint-editorconfig` blocked every local push because the npm
+  wrapper has no darwin-arm64 binary; the hook now skips that one failure the way `lint-yaml` and
+  `lint-shell` skip a missing binary, with CI unchanged as the hard gate.
+
+- **Lap 5 (the cap) reviewed only the text lap 4 rewrote, 12 decisions — and found lap 4 had defects
+  of its own.** The **pause before `window.confirm()` was reversed**: `confirm()` blocks the main
+  thread where AlphaTab's sample pump runs, so the worklet drains its buffer and zero-fills by itself,
+  and `pause()` only posts to the synth worker whose reply is handled on that blocked thread — so the
+  pause landed _after_ the prompt and stopped a chart the next sentence promised to keep playing. It
+  now runs on the confirm path only, and the handler resumes playback on both the cancel and
+  parse-failure paths. **Criterion 7 was extended** after five of six reviewers independently found it
+  checked three of the Tracks row's eight controls. **The gate gained three fixes**: the log level
+  comes from `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL` (Debug only in the Playwright `webServer.env`, since
+  shipping Debug prints every visitor's user agent), the worklet check asserts a 200 with a JavaScript
+  MIME type rather than only that the request fired, and the console assertions run last because those
+  errors only exist once the player is constructed. **Settings restore goes through
+  `Settings.fillFromJson`** — assignment would have silently broken Colors and Fonts, since
+  `JSON.parse` returns plain objects where `RenderingResources` holds real `model.Color`/`model.Font`
+  instances and a plain object breaks rendering without throwing — plus a `version` integer, a per-key
+  merge against defaults, and a toast when a value is discarded. **The loading toast's accessibility
+  check moved to `client/`**, where `Sonner` is already a component and `openArgs` can hold an overlay
+  open; the `web` axe lane keeps four reachable states. **Criterion 10** covers the replace path.
+  **The icon font** paints its ligature names (`settings`, `play_arrow`) on a cold visit because it
+  ships `font-display: swap` with no fallback, so v0 overrides that one face to `block`. The
+  **Tracks row discloses** its last three controls behind a per-row expand. The **`Skeleton` lifts**
+  only after `document.fonts.load('1em Bravura')` settles, and the **progress bar** clamps to 1 and
+  goes indeterminate when `total` is 0.
+- **Corrections to lap 4's output, found in lap 5.** **Drum tablature is impossible in the pinned
+  1.8.4** — `Staff.finish()` forces `showTablature = false` on any percussion staff,
+  `TabBarRendererFactory` sets `hideOnPercussionTrack = true` and requires `staff.tuning.length > 0`,
+  verified against `Punk.gp` — so alphaTab PR #2591 is not in this build, Q5 is answered rather than
+  open, and the toggle belongs to stringed staves with a tuning (which excludes piano and vocal too).
+  `renderScore` takes `trackIndexes: number[]`, but the data flow passed `drumTracks`, which as `Track`
+  objects would render an **empty** score with no track-0 fallback. The fork has **two** transposition
+  sliders (Transpose Audio and Transpose Full) that lap 4 fused into one, dropping the
+  notation-transposing path. The 44 px paragraph miscounted (ten `w-10 h-10` across header, rail and
+  footer, not eleven in the footer); "18 design-system components are gated" understated 40 of 41;
+  Q2's timing column contradicted its own body; Q6 had made the legacy formats a ship blocker against
+  the settled decision; a lap-4 insertion detached the Open-file parenthetical; the package table had
+  no home for the popovers or the sample action; and an instruction addressed to the author had been
+  left in §4.
+- **Fixtures leocaseiro supplied during the review** now live in `web/e2e/fixtures/`, and
+  `web/public/charts/1-beat.gp` is the shipped sample. `Punk.gp` closes the multi-track half of Q7 —
+  drums at indexes `[0, 2]` around a guitar track, so a regression to rendering only track 0 drops the
+  left-hand staff — and it demonstrates the volume coupling §7 now records, since both drum tracks sit
+  on MIDI channel 9. Q7 narrows to the percussion-free chart criterion 9 needs; Q6 narrows to a real
+  MusicXML export.
+
+**Status:** ✅ decided · 📄 prose-only enforcement so far — the spec is the contract; the machine gate arrives with the v0 build (the Playwright lane in `web/`). Approved by leocaseiro 2026-09-10 (D1–D7) and 2026-09-12 (review decisions).
 
 ### 2026-09-18 — `resources/` is data, not code: excluded from the editorconfig gate (NH-291)
 

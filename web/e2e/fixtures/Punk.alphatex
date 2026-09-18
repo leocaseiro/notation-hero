@@ -1,0 +1,467 @@
+\defaultSystemsLayout 4
+\systemsLayout 4
+\hideDynamics
+\bracketExtendMode nobrackets
+\track ("Drumkit" "drm.") {
+  color "#75C9E3"
+  systemsLayout (3 3 3 3 3 3 3 1)
+  volume 12
+  balance 8
+  instrument percussion
+}
+  \staff {
+    score
+  }
+    \articulation defaults
+    \ts (4 4)
+    \tempo 200
+    \accidentals auto
+    \clef neutral
+    \ottava regular
+    \simile none
+    \ks c
+      ("Kick (hit) 2" "Crash high (hit)").4{dy mf beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (open)").4{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+      ("Hi-Hat (open)" "Kick (hit) 2").8{beam Down}
+      "Kick (hit) 2".8{beam Down}
+      "Hi-Hat (open)".4{beam Down}
+    |
+      ("Crash high (hit)" "Kick (hit) 2").4{beam Down}
+      r.4{beam Down}
+      r.4{beam Down}
+      r.4{beam Down}
+    |
+\track ("Distortion Guitar" "dist.guit.") {
+  color "#EB987D"
+  systemsLayout (3 3 3 3 3 3 3 1)
+  volume 12
+  balance 8
+  instrument distortionguitar
+}
+  \staff {
+    score
+    tabs
+  }
+    \tuning (E4 B3 G3 D3 A2 E2) {
+      label "Guitar Standard Tuning"
+    }
+    \clef g2
+    \ottava regular
+    \simile none
+    \ks c
+      (5.5 7.4 7.3).8{dy mf instrument distortionguitar beam Up}
+      r.8{beam Down}
+      (7.4 7.3 5.5).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+      (5.5 7.4 7.3).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+      (7.4 7.3 5.5).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+      (5.5 7.4 7.3).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+      (7.4 7.3 5.5).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+      (5.5 7.4 7.3).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+      (7.4 7.3 5.5).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+      (5.5 7.4 7.3).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+      (7.4 7.3 5.5).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+      (5.5 7.4 7.3).8{beam Up}
+      (5.5 7.4 7.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+      (5.6 7.5 7.4).8{beam Up}
+      (5.6 7.5 7.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+      (7.5 9.4 9.3).8{beam Up}
+      (7.5 9.4 9.3).8{beam Up}
+      r.8{beam Down}
+    |
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+      (3.6 5.5 5.4).8{beam Up}
+      (3.6 5.5 5.4).8{beam Up}
+      r.8{beam Down}
+    |
+      (7.4 7.3 5.5).1{beam Up}
+    |
+\track ("Drumkit Left" "drm.") {
+  color "#75C9E3"
+  systemsLayout (3 3 3 3 3 3 3 1)
+  volume 12
+  balance 8
+  instrument percussion
+}
+  \staff {
+    score
+  }
+    \articulation defaults
+    \clef neutral
+    \ottava regular
+    \simile none
+    \ks c
+      r.4{dy mf beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+      r.4{beam Down}
+      "Snare (hit) 2".4{beam Down}
+    |
+      r.4{beam Down}
+      r.4{beam Down}
+      r.4{beam Down}
+      r.4{beam Down}
+    |
