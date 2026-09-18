@@ -1,5 +1,10 @@
 {
-  "Exclude": ["docs/decisions/decision-registry\\.md"],
+  "Exclude": [
+    "docs/decisions/decision-registry\\.md",
+    "\\.(gp|gp3|gp4|gp5|gpx|musicxml|mxl|capx)$",
+    "^web/e2e/fixtures/",
+    "^web/public/charts/"
+  ],
   "Disable": {
     "Charset": false,
     "EndOfLine": false,

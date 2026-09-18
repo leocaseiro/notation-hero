@@ -145,6 +145,13 @@ jobs:
       - name: actionlint
         run: pnpm run lint:actions
       - name: editorconfig-checker
+        # The npm wrapper asks GitHub for the `latest` release and expects `ec-*` assets. Upstream
+        # renamed every asset in v4.0.0 (2026-09-03), so `latest` resolves to a release the wrapper
+        # cannot download and the step dies before it checks anything — which is why no PR has gone
+        # green since. Pinning the last release that still carries `ec-*` assets restores it; drop
+        # the pin once the wrapper understands the new names (NH-293).
+        env:
+          EC_VERSION: v3.11.3
         run: pnpm run lint:editorconfig
       - name: sort-package-json (check)
         run: pnpm run lint:sort-pkg
