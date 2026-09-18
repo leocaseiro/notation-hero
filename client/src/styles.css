@@ -2,6 +2,21 @@
 @import '@fontsource-variable/public-sans';
 @import '@fontsource-variable/material-symbols-outlined';
 
+/* The Material Symbols face ships `font-display: swap`, and `.material-symbols-outlined` declares
+   no icon fallback — so during the swap period the browser paints the LIGATURE SOURCE TEXT, and a
+   cold first visit renders the literal words `settings`, `play_arrow` and `folder_open` where the
+   controls should be. `block` gives a brief invisible period and then the real glyphs, which is the
+   standard choice for an icon font precisely because its fallback text is meaningless.
+   Re-declaring the family with the same src overrides the @import's descriptor. */
+@font-face {
+  font-family: 'Material Symbols Outlined Variable';
+  font-display: block;
+  src: url('@fontsource-variable/material-symbols-outlined/files/material-symbols-outlined-latin-wght-normal.woff2')
+    format('woff2-variations');
+  font-weight: 100 700;
+  font-style: normal;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 /* Notation Hero brand tokens (teal scale = Tailwind teal-400/600/700). CSS-first

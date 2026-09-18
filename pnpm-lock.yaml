@@ -365,6 +365,9 @@ importers:
 
   web:
     dependencies:
+      '@coderline/alphatab':
+        specifier: 1.8.4
+        version: 1.8.4
       '@fontsource-variable/material-symbols-outlined':
         specifier: ^5.2.45
         version: 5.2.45
@@ -647,6 +650,10 @@ packages:
   '@codegenie/serverless-express@5.0.0':
     resolution: {integrity: sha512-7+PvSBj4KmPC8PVFDoXZp2cwTr13YIgFsZT55uJhpt7Ml1hJ3IK1Xnw36hr6GYVzLDrEW26oBZt50jamfu6kkw==}
     engines: {node: '>=24'}
+
+  '@coderline/alphatab@1.8.4':
+    resolution: {integrity: sha512-VN5rfTZZWgA63Ny1aDKCp02k3Qm9CHhg4Q9AnK0kHm7G+fNDNZo36TeToPDFoJ6VpB9+AHcCrHwHFUP1tKqdsw==}
+    engines: {node: '>=6.0.0'}
 
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
@@ -9486,6 +9493,8 @@ snapshots:
       keyv: 5.6.0
 
   '@codegenie/serverless-express@5.0.0': {}
+
+  '@coderline/alphatab@1.8.4': {}
 
   '@colors/colors@1.5.0':
     optional: true

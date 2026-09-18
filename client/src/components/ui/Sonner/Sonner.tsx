@@ -1,3 +1,5 @@
+'use client';
+
 import { Toaster as SonnerPrimitive } from 'sonner';
 import type { CSSProperties, ComponentProps } from 'react';
 
