@@ -55,6 +55,7 @@ system, not in each consumer.**
 `disabled (aria-disabled, focusable)` suite) pins the guard, and the `vr` job's
 `button-disabled-{light,dark}-focus` snapshots prove Tab reach in a real browser while the unchanged
 `-resting` snapshots prove the dimmed look. Approved by leocaseiro 2026-09-18 (NH-304).
+
 ### 2026-09-18 — Plan A review lap 4: 26 findings triaged, and Button becomes keyboard-reachable (NH-291)
 
 The rewritten v0 Plan A was reviewed before any code was written against it — six reviewer lenses,
