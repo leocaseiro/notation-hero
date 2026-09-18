@@ -122,9 +122,8 @@ without this plan. Nothing in the tasks below depends on any of them.
 | `web/lib/player-errors.ts`                   | `PLAYER_ERROR` — the error number each failure message ends with (1xx file, 2xx engine, 9xx crash); spec §4 lists the same numbers.                          |
 | `web/app/play/page.tsx`                      | The `/play` route segment.                                                                                                                                   |
 | `web/app/play/PlayerShell.tsx`               | `'use client'` root of the player: owns loaded-score state, the engine provider, toasts.                                                                     |
-| `web/app/play/NotationSurface.tsx`           | Owns the `AlphaTabApi` instance, its lifecycle, the loading `Skeleton` and the error states.                                                                 |
+| `web/app/play/NotationSurface.tsx`           | The notation box: the scroll viewport, AlphaTab's own element, the loading `Skeleton` and the error states. The api is owned by `PlayerShell`.               |
 | `web/app/play/OpenFileControl.tsx`           | File picker + drag-and-drop + the replace-confirmation flow.                                                                                                 |
-| `web/app/play/EmptyState.tsx`                | The no-file-yet surface: big Open file, secondary Load the sample beat.                                                                                      |
 | `web/playwright.e2e.config.ts`               | The `web` browser lane — `next build` then `next start`, with `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL=Debug`.                                                        |
 | `web/e2e/player.e2e.ts`                      | The silent-failure regression test plus the player's behaviour tests.                                                                                        |
 | `web/e2e/a11y.e2e.ts`                        | axe-core over `/` and `/play` in its reachable states, plus the 44 px hit-area gate.                                                                         |
@@ -2382,12 +2381,11 @@ git commit -m "feat(web): select every drum track, with a percussion-free fallba
 
 ---
 
-### Task 10: Open a file — picker, drag-and-drop, empty state, sample beat
+### Task 10: Open a file — picker and drag-and-drop, replacing the sample beat
 
 **Files:**
 
 - Create: `web/app/play/OpenFileControl.tsx`
-- Create: `web/app/play/EmptyState.tsx`
 - Modify: `web/app/play/PlayerShell.tsx`
 - Modify: `web/app/play/NotationSurface.tsx`
 - Modify: `web/e2e/player.e2e.ts`
@@ -2399,34 +2397,30 @@ git commit -m "feat(web): select every drum track, with a percussion-free fallba
 - Produces:
   - `OpenFileControl` props: `{ onNotation: (file: LoadedNotation) => void; compact?: boolean }`, plus an exported `readNotation(file)` the shell's drop handler reuses. **This matches the implementation** — the earlier `hasNotation` / `variant` pair was never implemented and is gone.
   - `OpenNotation { name: string; score: AlphaTab.model.Score }` — what the shell holds after parsing; `NotationSurface` takes it as its `notation` prop.
-  - Test hooks: `data-testid="open-file-input"`, `data-testid="open-file-button"`, `data-testid="load-sample"`, `data-testid="empty-state"`.
+  - Test hooks: `data-testid="open-file-input"`, `data-testid="open-file-button"`.
+
+**There is no empty state** (decided 2026-09-18). The player always has a score: Task 6 loads the
+bundled beat at page load, so this task only ever REPLACES what is already on screen. That removes
+the `EmptyState` component, the "Load the sample beat" button, the `pending` state, and the
+question of what the page looks like with nothing open. The open control is permanent — it is in
+the transport row from the first paint, so opening a file never moves or removes the control the
+person just used, and focus stays where they left it.
 
 - [ ] **Step 1: Write the failing tests**
 
 Add to `web/e2e/player.e2e.ts`:
 
 ```ts
-test('starts empty, with the transport disabled and both open affordances present', async ({
+// The player opens ON a score, so the open control must be reachable while one is already
+// rendered — it is not tucked inside a start screen that disappears.
+test('starts on the bundled sample beat, with the open control always present', async ({
   page,
 }) => {
   await page.goto('/play');
-  await expect(page.getByTestId('empty-state')).toBeVisible();
-  await expect(page.getByTestId('open-file-button')).toBeVisible();
-  await expect(page.getByTestId('load-sample')).toBeVisible();
-  await expect(page.getByTestId('transport-play')).toBeDisabled();
-});
-
-test('Load the sample beat fetches and plays the bundled score', async ({ page }) => {
-  await page.goto('/play');
-  await page.getByTestId('load-sample').click();
-
   await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
     timeout: 30_000,
   });
-  const play = page.getByTestId('transport-play');
-  await expect(play).toBeEnabled({ timeout: 60_000 });
-  await play.click();
-  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+  await expect(page.getByTestId('open-file-button')).toBeVisible();
 });
 
 test('an unsupported file raises a toast and leaves the player usable', async ({ page }) => {
@@ -2441,7 +2435,8 @@ test('an unsupported file raises a toast and leaves the player usable', async ({
   await expect(page.getByText(/not a score format the player reads\. \(Error E103\)/)).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByTestId('empty-state')).toBeVisible();
+  // The sample stays on screen, untouched — the whole point of parsing before swapping state.
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
 });
 
 // The 25 MB gate runs before the file is read, so a zero-filled buffer one byte over the limit is
@@ -2457,7 +2452,7 @@ test('a file over 25 MB is refused before it is read', async ({ page }) => {
   await expect(
     page.getByText(/too large to open\. The limit is 25 MB\. \(Error E101\)/),
   ).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId('empty-state')).toBeVisible();
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
 });
 
 // Punk.gp parses to three tracks: 0:Drumkit (percussion, MIDI channel 9), 1:Distortion Guitar
@@ -2495,7 +2490,6 @@ test('a failed music-font download shows the engine error, not an endless Skelet
 }) => {
   await page.route('**/alphatab/font/**', (route) => route.abort());
   await page.goto('/play');
-  await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('engine-error')).toContainText('Error E203');
   await expect(page.getByTestId('notation-skeleton')).toBeHidden();
@@ -2522,26 +2516,15 @@ for (const fixture of [
 }
 ```
 
-**Then fix the three tests written earlier, which this task breaks.** Task 6's notation case and
-Task 7's worklet case both `goto('/play')` and wait on `notation-surface svg` — but from this task
-on, a bare `/play` shows the empty state, because Step 5 drops `settings.core.file`. Insert the
-sample click after each `goto`:
-
-```ts
-await page.goto('/play');
-await page.getByTestId('load-sample').click(); // this task removed the auto-load
-await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
-  timeout: 30_000,
-});
-```
-
-The sample is still the fixture — only the way it arrives changed — so both tests keep asserting
-exactly what they asserted before.
+**Nothing written earlier breaks.** `/play` still auto-loads the bundled beat, so Task 6's notation
+case and Task 7's worklet case keep passing unchanged — an earlier draft of this task dropped
+`settings.core.file` and had to patch both. Every test this task adds opens a file ON TOP of that
+score, which is what the product actually does.
 
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e`
-Expected: FAIL — no `empty-state`, no `open-file-input`, no `load-sample`.
+Expected: FAIL — no `open-file-input` and no `open-file-button` exist yet.
 
 - [ ] **Step 3: Write the open-file control**
 
@@ -2578,7 +2561,8 @@ const MAX_NOTATION_BYTES = MAX_NOTATION_MB * 1024 * 1024;
 
 interface OpenFileControlProps {
   onNotation: (notation: LoadedNotation) => void;
-  /** Renders the compact rail button once a score is loaded, the large empty-state one before. */
+  /** The compact rail button beside Play. The large variant has no call site in v0a — a score
+   *  is always open — but it stays for a future start screen and its stories. */
   compact?: boolean;
 }
 
@@ -2681,50 +2665,7 @@ export function OpenFileControl({ onNotation, compact = false }: Readonly<OpenFi
 > The drag handlers that used to live on this component's wrapper `<div>` are gone — they belong on
 > the whole player surface (Task 10 Step 5), not on a button-sized box. See that step for why.
 
-- [ ] **Step 4: Write the empty state**
-
-Create `web/app/play/EmptyState.tsx`:
-
-```tsx
-'use client';
-
-import { Button, Card, CardContent } from '@notation-hero/client';
-
-import { OpenFileControl } from './OpenFileControl';
-import type { LoadedNotation } from './PlayerShell';
-
-interface EmptyStateProps {
-  onNotation: (file: LoadedNotation) => void;
-  onLoadSample: () => void;
-}
-
-export function EmptyState({ onNotation, onLoadSample }: Readonly<EmptyStateProps>) {
-  return (
-    // Card, not a hand-rolled bordered div. It is one of the 41 gated components under
-    // client/src/components/ui/, so the empty state inherits its VR and axe baselines and its
-    // token-driven surface instead of re-deriving them by hand. `nh-empty` is the hook the drag
-    // overlay hides against in Step 5.
-    <Card data-testid="empty-state" className="nh-empty min-h-[420px] border-dashed">
-      <CardContent className="flex h-full flex-col items-center justify-center gap-4 text-center">
-        <p className="text-muted-foreground">
-          Drop a score anywhere on this area, or open one from your computer.
-        </p>
-        <OpenFileControl onNotation={onNotation} />
-        <Button
-          data-testid="load-sample"
-          variant="ghost"
-          className="min-h-11"
-          onClick={onLoadSample}
-        >
-          Load the sample beat
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-```
-
-- [ ] **Step 5: Parse in the shell, and hold the open score there**
+- [ ] **Step 4: Parse in the shell, and hold the open score there**
 
 The shell owns the OPEN notation — its name plus the **parsed** score. Parsing happens here,
 before any state change, which is the staged load the spec specifies: a file that does not parse
@@ -2745,20 +2686,16 @@ interface OpenNotation {
 }
 
 const [notation, setNotation] = useState<OpenNotation | null>(null);
-// True while a file waits for the engine: the surface shows its Skeleton instead of the empty state.
-const [pending, setPending] = useState(false);
 
 const requestNotation = useCallback(
   async (file: LoadedNotation) => {
     let at = engine;
     if (!at) {
-      // Opened before the engine arrived — a fast click on the empty state, or Task 13's stalled
-      // import. Keep the file and show the loading surface now, then wait for the SAME memoised
-      // import the provider is waiting on. This is the event path, not an effect, so the
-      // `react-hooks/set-state-in-effect` lint error does not apply.
-      setPending(true);
+      // Opened before the engine arrived — a very fast pick, or Task 13's stalled import. Wait on
+      // the SAME memoised import the provider is waiting on. No `pending` flag any more: the
+      // sample score is already on screen, so there is nothing to fill and nothing to hide. Task
+      // 12 owns the feedback for a slow parse.
       at = await loadAlphaTabEngine().catch(() => null);
-      setPending(false);
       // The engine failed; that failure is reported by the engine-error message, not by a toast.
       if (!at) return;
     }
@@ -2778,25 +2715,17 @@ const requestNotation = useCallback(
   },
   [engine],
 );
-
-const loadSample = useCallback(async () => {
-  try {
-    const response = await fetch('/notation/1-beat.gp');
-    // Without this a 404's HTML body is read as score bytes and fails later, deeper, with a
-    // misleading "not a score format the player reads" message.
-    if (!response.ok) throw new Error(String(response.status));
-    const buffer = await response.arrayBuffer();
-    requestNotation({ name: '1-beat.gp', bytes: new Uint8Array(buffer) });
-  } catch {
-    toast.error(`The sample beat could not be loaded. (Error ${PLAYER_ERROR.sampleUnavailable})`);
-  }
-}, [requestNotation]);
 ```
 
-Drop `settings.core.file = SAMPLE_NOTATION` from `NotationSurface` — the score now always arrives
-through `renderScore` (below), so the mount no longer auto-loads anything. Remove the now-unused
-`SAMPLE_NOTATION` constant. Export `readNotation` and `readFailureMessage` from `OpenFileControl.tsx`
-so the shell's drop handler below can reuse them (same size gate, same failure toasts and numbers).
+**Keep `settings.core.file = SAMPLE_NOTATION` exactly as Task 6 wrote it.** AlphaTab loads the
+bundled beat at construction, and a file the person opens is rendered on top of it through
+`renderScore`. There is no `loadSample` function and no "Load the sample beat" button: the sample
+is not something to fetch, it is what the player already has. `PLAYER_ERROR.sampleUnavailable`
+(E104) stays in the error table for the day a cached or catalog score fails to load, and is unused
+in v0a.
+
+Export `readNotation` and `readFailureMessage` from `OpenFileControl.tsx` so the shell's drop
+handler below can reuse them (same size gate, same failure toasts and numbers).
 
 Then wire the selector into `NotationSurface.tsx`. This is where rendering changes, so it lands in
 the same task as the end-to-end tests that exercise it. Import the selector, add the prop, and take
@@ -2806,13 +2735,20 @@ it in the signature:
 import { selectDrumTrackIndexes } from '../../lib/alphatab/drum-tracks';
 
 interface NotationSurfaceProps {
-  /** Handed the live api as soon as it exists, and null on dispose. */
-  onApiReady: (api: AlphaTab.AlphaTabApi | null) => void;
-  /** The open score, already parsed by the shell; null until one is open. */
+  api: AlphaTab.AlphaTabApi | undefined;
+  hostRef: RefObject<HTMLDivElement | null>;
+  viewportRef: RefObject<HTMLDivElement | null>;
+  /** A score the person opened, already parsed by the shell. Null while the bundled beat —
+   *  loaded by AlphaTab itself from settings.core.file — is the one on screen. */
   notation: OpenNotation | null;
 }
 
-export function NotationSurface({ notation, onApiReady }: Readonly<NotationSurfaceProps>) {
+export function NotationSurface({
+  api,
+  hostRef,
+  viewportRef,
+  notation,
+}: Readonly<NotationSurfaceProps>) {
 ```
 
 Replace the `settings.core.file = SAMPLE_NOTATION;` approach for user scores with an explicit
@@ -2825,7 +2761,6 @@ Replace the `settings.core.file = SAMPLE_NOTATION;` approach for user scores wit
 // nothing is destroyed: the workers and the loaded soundfont are reused, so a rejected
 // replacement leaves the playing score untouched by construction.
 useEffect(() => {
-  const api = apiRef.current;
   if (!api || !notation) return;
 
   const drumIndexes = selectDrumTrackIndexes(notation.score.tracks);
@@ -2834,7 +2769,9 @@ useEffect(() => {
   // here: this branch only runs when no track carries a percussion staff at all, where any
   // track is as good as another.
   api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
-}, [notation]);
+  // `api` is in the list because it is state now: it arrives after the first commit, and a score
+  // opened before it existed must still render once it does.
+}, [api, notation]);
 ```
 
 The count the test reads comes from AlphaTab, **not** from `drumIndexes`. Deriving it from the
@@ -2852,12 +2789,12 @@ const [renderedTrackCount, setRenderedTrackCount] = useState(0);
 ```
 
 ```tsx
-api.renderFinished.on(() => {
-  globalThis.clearTimeout(firstRenderTimeout);
+useAlphaTabEvent(api, 'renderFinished', () => {
+  globalThis.clearTimeout(timeoutRef.current);
   setRendered(true);
   // What AlphaTab actually drew, not what we asked for. The no-percussion branch still reports
   // 1, because renderScore pushes score.tracks[0] when the index list is undefined.
-  setRenderedTrackCount(api.tracks.length);
+  setRenderedTrackCount(api?.tracks.length ?? 0);
 });
 ```
 
@@ -2880,17 +2817,17 @@ interface OpenNotation {
 
 `loadScoreFromBytes` takes a `Uint8Array`, so the `ArrayBuffer` from the file read is wrapped at the read site (`readNotation`), parsed in `requestNotation` above, and only the result reaches this component.
 
-- [ ] **Step 6: Make the whole player surface the drop target**
+- [ ] **Step 5: Make the whole player surface the drop target**
 
 The fork this project references puts `onDragOver`/`onDrop` on its **outermost** player wrapper, so
 a file can be dropped anywhere on the player in either state. Do the same — and add the affordance
 the fork lacks, because its only drag feedback is the OS cursor (`dropEffect = 'link'`), which is
 easy to miss.
 
-First widen `PlayerShell.tsx`'s imports. From this task on the file uses `toast` and
-`loadAlphaTabEngine` and `PLAYER_ERROR` (Step 5's `requestNotation` and `loadSample`),
-`OpenFileControl` (the rail control below) and `readNotation` plus `readFailureMessage` (the drop
-handler below), and Task 6's import list has only `Button`:
+First widen `PlayerShell.tsx`'s imports. From this task on the file uses `toast`,
+`loadAlphaTabEngine` and `PLAYER_ERROR` (Step 4's `requestNotation`), `OpenFileControl` (the rail
+control below) and `readNotation` plus `readFailureMessage` (the drop handler below), where Task
+6's import list has only `Button`:
 
 `useEffect` also rejoins the `react` import — Task 6 left it out because nothing used it there, and
 the drag-cancel cleanup below is its first use:
@@ -2984,25 +2921,12 @@ and the markup, replacing the plain `<main>` body:
     }}
   >
     <div className="relative">
-      {/* Exactly one of these three fills the notation area. When the engine never loaded, nothing
-          can open or play, so the message replaces the empty state — the Play button stays where it
-          is, disabled (spec §4). Flat conditionals, not a nested ternary:
-          sonarjs/no-nested-conditional is an error in web/. */}
-      {engineError ? (
-        <p
-          data-testid="engine-error"
-          role="alert"
-          className="flex min-h-[420px] items-center justify-center rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-6 text-center text-destructive"
-        >
-          {`The player engine could not start. Reload the page to try again. (Error ${PLAYER_ERROR.engineImport}: ${engineError.message})`}
-        </p>
-      ) : null}
-      {!engineError && notation === null && !pending ? (
-        <EmptyState onNotation={requestNotation} onLoadSample={loadSample} />
-      ) : null}
-      {!engineError && (notation !== null || pending) ? (
-        <NotationSurface notation={notation} onApiReady={handleApiReady} />
-      ) : null}
+      {/* NotationSurface is ALWAYS mounted — it renders its own engine-error message as an overlay
+          (Task 6). Do not reintroduce a branch that renders something INSTEAD of it: unmounting
+          the box while the api is alive leaves AlphaTab drawing into a detached node, with no
+          error raised anywhere. When the engine never loaded, nothing can open or play, and the
+          Play button stays where it is, disabled (spec §4). */}
+      <NotationSurface api={api} hostRef={hostRef} viewportRef={viewportRef} notation={notation} />
       {dragging ? (
         /* MUST be a descendant of the drop container AND pointer-events-none. An overlay mounted
            outside the container oscillated forever: every dragleave's relatedTarget was the
@@ -3027,17 +2951,15 @@ and the markup, replacing the plain `<main>` body:
     <div
       data-testid="player-status"
       data-playing={playing}
-      data-position={positionMs}
       data-soundfont={soundFontReady}
       className="flex items-center gap-3"
     >
       {/* …the Play button from Task 6… */}
-      {/* The rail control. Without it OpenFileControl unmounts together with EmptyState the moment
-          a score opens, taking open-file-input out of the DOM: every Task 11 replace test would
-          fail on element-not-found, requestNotation's confirm branch would be unreachable, and a
-          user would have no way to open a second score at all. This is the call site the
-          already-implemented `compact` variant never had. */}
-      {notation !== null ? <OpenFileControl compact onNotation={requestNotation} /> : null}
+      {/* Permanent, never conditional. The control sits beside Play for the whole life of the
+          page: a score is always open, so there is no other place for it to live, Task 11's
+          replace tests always find `open-file-input`, and the person's focus is never moved by a
+          control disappearing out from under them. */}
+      <OpenFileControl compact onNotation={requestNotation} />
     </div>
   </section>
 </main>
@@ -3050,8 +2972,8 @@ both themes:
 .nh-drop-overlay {
   border-radius: var(--radius);
   background: color-mix(in oklab, var(--background) 80%, transparent);
-  /* Without the blur the empty state's own teal Open file button shows through directly behind
-     the hint line. */
+  /* Without the blur the notation's staff lines and the teal Open file button show through
+     directly behind the hint line. */
   backdrop-filter: blur(3px);
 }
 /* The whole surface signals "drop anywhere in here"; only the score area carries the scrim, so
@@ -3061,23 +2983,20 @@ both themes:
   outline-offset: 6px;
   border-radius: var(--radius);
 }
-/* The empty-state prompt is redundant while dragging and collides with the overlay message.
-   `visibility`, not `opacity`, so it leaves the accessibility tree and the tab order too. */
-[data-dragging] .nh-empty {
-  visibility: hidden;
-}
+/* Nothing to hide behind the overlay any more: there is no empty-state prompt to collide with
+   it, and the notation underneath is dimmed by the overlay's own background. */
 ```
 
 Measured on this markup: axe reports **0 violations** in all four states (empty/loaded x light/dark),
 and the overlay text clears WCAG **AAA** in every one — worst case 8.52:1 for the small hint line
 against a 4.5:1 AAA bar, sampled from real pixels at the glyph coordinates.
 
-- [ ] **Step 7: Run the tests to verify they pass**
+- [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e`
 Expected: PASS — the whole lane, including the two earlier cases this task just repaired.
 
-- [ ] **Step 8: Verify by hand, including drag-and-drop**
+- [ ] **Step 7: Verify by hand, including drag-and-drop**
 
 Playwright cannot exercise a real OS drag, so drop a `.gp` file onto `/play` in a browser yourself
 and confirm it loads. Check all four drag states while you are there: the dashed ring appears on the
@@ -3085,11 +3004,11 @@ whole surface, the overlay message appears over the score area only, the overlay
 as you move the pointer across the buttons, and pressing **Esc** mid-drag clears it (that path fires
 no drag event at all, which is what the `pointermove` safety net covers).
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add web/app/play web/app/globals.css web/e2e/player.e2e.ts
-git commit -m "feat(web): open a score by picker or drop, with a sample-beat fallback (NH-291)"
+git commit -m "feat(web): open a score by picker or drop, replacing the bundled beat (NH-291)"
 ```
 
 ---
