@@ -473,7 +473,11 @@ Steps 1-3 below are **done and pushed** to `spike/alphatab-nextjs-poc` (PR #157)
 4. ⬜ **Review the rewritten plan** before any code is written against it — leocaseiro asked for
    this explicitly on 2026-09-18, in a fresh session. The plan changed in nine commits without a
    review pass of its own.
-5. ⬜ **Re-dispatch Task 5**, then continue the task loop from Task 6.
+5. ⬜ **Merge PR #157 once the review passes** — decided by leocaseiro on 2026-09-18. It carries
+   Tasks 1-4 (the vendored AlphaTab assets, the lint fences, the design-system exports) and every
+   document, with no `/play` route, so nothing half-built reaches master. Tasks 5-14 then start on a
+   fresh branch, which keeps each PR small instead of growing this 97-commit one.
+6. ⬜ **Re-dispatch Task 5**, then continue the task loop from Task 6.
 
 ### Starting the review in a new session
 
