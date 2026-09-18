@@ -392,12 +392,17 @@ maintainer.
       contract, filters, pagination) is NH-123" — cited as `:20` when this spike was written, the line
       moved); `client/src/components/About.tsx:4` and `client/e2e/mocks/handlers.ts:4` ("collapse into the
       `shared/` oRPC contract in Phase 2").
-      **Bannered in this PR instead of left silent:**
+      **Bannered in this PR instead of left silent** — two ADRs, both found only by grepping for `oRPC`
+      rather than for `ARCH-CONTRACT-1`, which is the search that misses them:
       [`2026-06-17-architecture-decisions.md`](../decisions/2026-06-17-architecture-decisions.md) — its
       `ARCH-CONTRACT-1` section, the `@nestjs/swagger`-moot note, and the summary-table row. `AGENTS.md`
       names that ADR a source of truth, so an unmarked oRPC verdict there was the same misdirection the
       snapshot fix removed. Its other in-body oRPC mentions (lines 55/126/127/237) are left standing under
       the banner rather than rewritten, so the June reasoning stays readable.
+      [`2026-07-08-fe-nextjs-vercel-aws-bff-adr.md`](../decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md) —
+      the sharper case: it is **later** than the June ADR, still `✅ Accepted`, and asserted "oRPC … kept"
+      three times (Scope, decision 3, Consequences) with no marker. It never names `ARCH-CONTRACT-1`, so a
+      decision-ID grep cannot see it. Its FE and hosting decisions stand; only the oRPC clause is corrected.
       **Not a live site:** `docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md:57` was named
       here originally, but that file exists only in the **unmerged draft PR #140** branch and has never
       been on `master`. Fix it there when #140 is unparked.

@@ -8,6 +8,16 @@
 - **Scope:** FE framework + hosting + the client↔backend topology + caching / search / blob choices. Does **not** reopen the hexagon, the NestJS backend, oRPC, Drizzle, the Neon/DynamoDB data split, or Cognito auth — all kept.
 - **Supersedes:** the FE-framework clause of [`2026-06-17-architecture-decisions.md`](2026-06-17-architecture-decisions.md) (`ARCH-FE-1`: Vite + TanStack SPA), and closes the [`2026-06-16`](2026-06-16-fe-framework-nextjs-adr.md) no-Next.js chain.
 
+> ⚠️ **Partial correction — the oRPC mentions below are superseded (2026-07-21, NH-284).** This ADR's FE
+> and hosting decisions stand unchanged; only its **"oRPC is kept"** claim does not. When it was written,
+> `ARCH-CONTRACT-1` was oRPC, so "does not reopen … oRPC … all kept" was accurate. `ARCH-CONTRACT-1` was
+> then re-decided: **DEFER the framework** — hand-authored Zod in `shared/` + `z.infer` + `.parse()`, no
+> framework now, flip-default `@nestjs/swagger` + `nestjs-zod`, **not** oRPC. So read every "oRPC" here
+> (the Scope line above, decision 3, and the Consequences) as **"the typed contract"**, framework
+> undecided. Nothing was ever installed. Record: the 2026-07-21 change-log entry in
+> [`decision-registry.md`](decision-registry.md) and the
+> [2026-07-16 typed-contract re-spike](../spikes/2026-07-16-typed-contract-respike.md).
+
 ---
 
 ## Context
@@ -25,7 +35,7 @@ Adopt **Next.js (App Router) PWA on Vercel** as the product FE, with a **hybrid 
    - **Vercel as BFF** for render-time / SEO data and server-action mutations — the Next.js server reads Neon (cached) or calls Lambda server-side. Cached, so low compute.
    - **`api.notationhero.com` → CloudFront → Lambda** for high-frequency client-side calls (per-user data, sync). **Origin Access Control** locks the raw Function URL to CloudFront (hidden, not publicly callable); the browser never sees the AWS URL and these calls bypass Vercel compute.
    - **Rule:** server-side / SEO / mutation → Vercel; high-frequency client / per-user → CloudFront-direct. Same NestJS Lambda backend both ways.
-3. **Backend = keep NestJS on Lambda** (Function URL, OAC-locked behind CloudFront); typed **oRPC** contract. An OpenAPI/Swagger spec can be generated from oRPC later if a public or non-TS API is ever needed — not v1.
+3. **Backend = keep NestJS on Lambda** (Function URL, OAC-locked behind CloudFront); ~~typed **oRPC** contract. An OpenAPI/Swagger spec can be generated from oRPC later if a public or non-TS API is ever needed — not v1.~~ → **superseded 2026-07-21 (NH-284):** a typed contract is still kept, but the **framework is deferred** — hand-authored Zod in `shared/`, with `@nestjs/swagger` + `nestjs-zod` as the flip-default if a published OpenAPI spec is ever needed. The "not v1" conclusion is unchanged.
 4. **Data:** **Neon** (catalog, read-heavy, cached) + **DynamoDB** (per-user) + **Cognito** (auth; JWT validated at the Lambda).
 5. **Caching = `"use cache"` + `cacheTag` + on-demand `revalidateTag`** for the read-heavy catalog — keeps Neon under its 100 CU-hours (an uncached, steadily-queried DB can't sleep), and doubles as a cache-control showcase. Public data only in the shared cache; per-user data fetched dynamically.
 6. **Search = Postgres full-text search** (`tsvector` + GIN, `pg_trgm` fuzzy) on Neon; no external search service in v1.
