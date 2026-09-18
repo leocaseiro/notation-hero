@@ -433,6 +433,7 @@ outputMode === WebAudioAudioWorklets`, never reading `Environment.webPlatform` �
   MusicXML export.
 
 **Status:** ✅ decided · 📄 prose-only enforcement so far — the spec is the contract; the machine gate arrives with the v0 build (the Playwright lane in `web/`). Approved by leocaseiro 2026-09-10 (D1–D7) and 2026-09-12 (review decisions).
+
 ### 2026-09-18 — `resources/` is data, not code: excluded from the editorconfig gate (NH-291)
 
 Tracking the source chart files under `resources/charts/` made the `lint` job fail 14 times across 4
