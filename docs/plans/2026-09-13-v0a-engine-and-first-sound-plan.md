@@ -1262,7 +1262,7 @@ export function useAlphaTab(
     const created = new engine.AlphaTabApi(host, settings);
     setApi(created);
     // Shipped in production on purpose (F-D2, approved 2026-09-18): one property assignment at
-    // construction, no cost while running, and it makes a live player inspectable from DevTools.
+    // construction, no cost while running, and it lets you inspect a live player from DevTools.
     // It is the deliberate exception to "no test-only code in production" — this one is for
     // debugging a real deployment, not for a test.
     (host as HostWithApi).at = created;
