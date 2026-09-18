@@ -5,7 +5,13 @@
 > **Google NotebookLM**.
 >
 > **Companion:** [`2026-07-16-typed-contract-respike.md`](2026-07-16-typed-contract-respike.md) — the findings.
-> **Status:** decisions and implementation are **paused**. This is reading material, not a plan.
+>
+> ⚠️ **Status: the decision this list was built for has LANDED.** `ARCH-CONTRACT-1` was decided on
+> **2026-07-21 = DEFER the framework** (hand-authored Zod in `shared/` + `z.infer` + `.parse()`; flip-default
+> `@nestjs/swagger` + `nestjs-zod`, **not** oRPC) — see the [decision registry](../decisions/decision-registry.md)
+> change log. The reading list is **kept, not retired**: it is the material behind that call, and it is what to
+> re-read at a flip condition (~5 endpoints · the CMS write surface · a real external OpenAPI consumer).
+> Read it as background, not as a pending to-do.
 
 ## Method — read this before trusting the list
 

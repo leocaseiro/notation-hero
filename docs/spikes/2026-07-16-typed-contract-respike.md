@@ -18,7 +18,7 @@
 - **Deriving the wire contract from the Drizzle table costs 33 kb of drizzle in the browser and yields three `z.string()`s.** Measured.
 - **oRPC's headline benefit — inferred types, zero codegen — does not apply on NestJS.** It is contract-first only.
 - Every candidate accepts Standard Schema, so **a hand-authored Zod schema is portable to all of them**. Deferring loses nothing structural.
-- **Recommendation (not a decision): defer the framework. Nothing is installed; this is a free choice, not a migration.**
+- **Recommendation — since ADOPTED as the decision (2026-07-21): defer the framework. Nothing is installed; this was a free choice, not a migration.**
 - **Two more candidates were spiked later** (§8): **Kanel** — works, and the live-DB objection is dead via an offline PGlite trick, but it yields three `z.string()`s here; **`nestjs-trpc`** — the client validates NOTHING (5/5 bad payloads pass), so it does not fix the bug.
 - **➡️ The decision checklist with confidence ratings is [§9](#9--decision-checklist).** Start there.
 
@@ -173,7 +173,9 @@ After overwriting those three by hand, derivation contributes `id`, `slug`, `tit
 
 ### The registry line was misread — by this agent, in this session
 
-`decision-registry.md:485` reads:
+The `ARCH-CONTRACT-1` line in [`decision-registry.md`](../decisions/decision-registry.md) read, **before
+this PR flipped it to DEFER** (it was line 485 when this spike was written; the registry is prepend-style, so
+the line drifts — it is line 566 as of 2026-09-18):
 
 ```
 `ARCH-CONTRACT-1` oRPC (ts-rest frozen — #797); ditch kanel-zod (drizzle-zod derive+curate).
@@ -339,7 +341,12 @@ Honest caveats — "lose nothing" is not literally zero:
 3. Deferring costs nothing structural and buys real information: whether oRPC v2 stabilizes, gets a
    migration guide, and gains a second maintainer.
 
-### Recommendation (NOT a decision — leocaseiro decides after study)
+### Recommendation (was NOT a decision — leocaseiro decided after study: this is what he adopted)
+
+> ✅ **Adopted 2026-07-21.** Everything in this subsection became the decision, unchanged: defer the
+> framework, hand-authored Zod + `z.infer` + the drift guard, the same flip conditions, and
+> `@nestjs/swagger` + `nestjs-zod` as the flip default. Recorded in the
+> [decision registry](../decisions/decision-registry.md) change log.
 
 Defer `ARCH-CONTRACT-1`. Do not adopt oRPC in any form yet. If the boundary needs fixing before that,
 the cheapest correct step is the ADR's own recorded fast-follow: hand-authored Zod in `shared/` +
@@ -369,15 +376,24 @@ maintainer.
 
 ## §7 — Follow-ups this spike creates
 
-- [ ] **Correct [`2026-06-17-nestjs-lambda-swc.md:31`](2026-06-17-nestjs-lambda-swc.md)** — the
+- [x] **Correct [`2026-06-17-nestjs-lambda-swc.md:31`](2026-06-17-nestjs-lambda-swc.md)** — the
       "Swagger CLI plugin doesn't run under SWC" claim is factually wrong (issue #2493 closed **completed**
-      2023-07-11). **Wrong on its own terms; fix independently of the contract decision.**
-- [ ] **Banner [`2026-06-17-typed-contract-orpc.md`](2026-06-17-typed-contract-orpc.md)** as under review.
-- [ ] **Registry `ARCH-CONTRACT-1`** — status change is a DECISION; deliberately not made. Pending study.
-- [ ] **Stale forward references to oRPC** now that it is under review:
-      `docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md:57` and
-      `server/src/modules/catalog/catalog.controller.ts:20` both name oRPC as the assumed future
-      ("The real read API (oRPC contract, filters, pagination) is NH-123").
+      2023-07-11). **Wrong on its own terms; fix independently of the contract decision.** Done in this PR.
+- [x] **Banner [`2026-06-17-typed-contract-orpc.md`](2026-06-17-typed-contract-orpc.md)** — done in this PR;
+      the banner now reads **superseded/decided**, not "under review".
+- [x] **Registry `ARCH-CONTRACT-1`** — **DECIDED 2026-07-21** and flipped in this PR
+      (`~~oRPC~~ → DEFER the framework`), with a change-log entry. `AGENTS.md`'s "Current direction" snapshot
+      was reconciled in the same PR, since it loads into every session.
+- [ ] **Stale forward references to oRPC**, now that oRPC is **not** the pick. Verified against `master` at
+      2026-09-18 — five live sites, all prose/comments, none of them code that runs: - `shared/src/index.ts:3,5` — "the typed oRPC contract + Zod schemas … the whole point of oRPC". - `server/src/modules/catalog/catalog.controller.ts:30` — "The real read API (oRPC contract, filters,
+      pagination) is NH-123". _(Was cited as `:20` when this spike was written; the line moved.)_ - `client/src/components/About.tsx:4` and `client/e2e/mocks/handlers.ts:4` — "collapse into the
+      `shared/` oRPC contract in Phase 2". - [`2026-06-17-architecture-decisions.md`](../decisions/2026-06-17-architecture-decisions.md) — the
+      `ARCH-CONTRACT-1` section plus lines 55/126/127/129/237/280. **Bannered as superseded in this PR**
+      (that ADR is named a source of truth by `AGENTS.md`, so a silent oRPC verdict there is the same
+      misdirection the snapshot fix removed); the remaining in-body oRPC mentions are left standing under
+      the banner rather than rewritten, so the June reasoning stays readable. - _Not a live site:_ `docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md:57` was listed
+      above when this spike was written, but that file exists only in the **unmerged draft PR #140**
+      branch, never on `master`. Fix it there when #140 is unparked.
 - [ ] **The `shared/` package has no build** and its `index.ts` re-exports a `.js` specifier that does not
       resolve under Node type-stripping or Turbopack. Latent today because `export type` erases it. Real
       bug, independent of the contract decision.
@@ -534,12 +550,18 @@ only live OpenAPI option (tRPC's is permanently alpha). Deferring loses nothing 
 | Record the PGlite offline-codegen trick                                                                      | Record it                                               | **85%** measured (§8.1)                                     |
 | ESLint ban on `as` casts (user's idea)                                                                       | Own ticket (needs scoping — 4 legit casts in `server/`) | **60%** verified                                            |
 | R-8 — commit `f02f78a` (NH-277) stranded in the #140 branch                                                  | Name NH-277 in PR body, or cherry-pick                  | **70%** verified                                            |
-| Banner the stale bare `'use cache'` in the 2026-07-08 spike                                                  | Banner it                                               | **90%** verified                                            |
+| Banner the stale bare `'use cache'` in the 2026-07-08 spike                                                  | **Done in this PR**                                     | **90%** verified                                            |
 | PR #140 (draft) — unpark once Group 1 lands                                                                  | Unpark later                                            | **80%** reasoned (boundary work endorsed by every reviewer) |
 
 **The one load-bearing 95%:** the Zod `.parse()`. It fixes a live bug, is ~20 lines, and every option leads
 through it. Confidence is inverted from intuition — highest on the small mechanical items, genuinely 50/50 on
 the big architectural one, because that is where this doc's own evidence conflicts.
+
+> ⚠️ **Re-verify the Next.js-version-pinned rows before acting.** Every Next.js claim in this doc was read
+> from the **bundled 16.2.10** docs on 2026-07-16. `master` has since moved to **`next@16.3.4`** (NH-231
+> dependency-CVE refresh, 2026-09-16 — see the registry change log), so the `revalidateTag`-deprecation and
+> Runtime-Cache rows must be re-read against `web/node_modules/next/dist/docs/` at the version actually
+> installed. The Group-2 contract calls do not depend on the Next.js minor.
 
 ## Sources
 
