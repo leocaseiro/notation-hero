@@ -74,7 +74,7 @@ Four subagents completed their research; findings saved in memory:
 
 - `notation_hero_pr_143_docs_cleanup.md` — PR #143 status + full commit list + follow-ups blocked by freeze
 - `notation_hero_sdd_research_in_progress.md` — SDD adoption is IN FLIGHT; constraints; what's decided vs open
-- `notation_hero_strike_dont_delete_reason.md` — why Leo keeps archives (ADHD memory anchor when changing mind); any SDD adoption MUST preserve archive-for-later-review
+- `notation_hero_strike_dont_delete_reason.md` — why archives are kept readable rather than deleted (leocaseiro re-reads them when changing his mind, so they are a memory anchor); any SDD adoption MUST preserve archive-for-later-review
 
 MEMORY.md index also updated + compacted (20.7KB → ~12KB) with these 3 new entries.
 
