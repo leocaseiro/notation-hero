@@ -384,16 +384,23 @@ maintainer.
 - [x] **Registry `ARCH-CONTRACT-1`** — **DECIDED 2026-07-21** and flipped in this PR
       (`~~oRPC~~ → DEFER the framework`), with a change-log entry. `AGENTS.md`'s "Current direction" snapshot
       was reconciled in the same PR, since it loads into every session.
-- [ ] **Stale forward references to oRPC**, now that oRPC is **not** the pick. Verified against `master` at
-      2026-09-18 — five live sites, all prose/comments, none of them code that runs: - `shared/src/index.ts:3,5` — "the typed oRPC contract + Zod schemas … the whole point of oRPC". - `server/src/modules/catalog/catalog.controller.ts:30` — "The real read API (oRPC contract, filters,
-      pagination) is NH-123". _(Was cited as `:20` when this spike was written; the line moved.)_ - `client/src/components/About.tsx:4` and `client/e2e/mocks/handlers.ts:4` — "collapse into the
-      `shared/` oRPC contract in Phase 2". - [`2026-06-17-architecture-decisions.md`](../decisions/2026-06-17-architecture-decisions.md) — the
-      `ARCH-CONTRACT-1` section plus lines 55/126/127/129/237/280. **Bannered as superseded in this PR**
-      (that ADR is named a source of truth by `AGENTS.md`, so a silent oRPC verdict there is the same
-      misdirection the snapshot fix removed); the remaining in-body oRPC mentions are left standing under
-      the banner rather than rewritten, so the June reasoning stays readable. - _Not a live site:_ `docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md:57` was listed
-      above when this spike was written, but that file exists only in the **unmerged draft PR #140**
-      branch, never on `master`. Fix it there when #140 is unparked.
+- [ ] **Stale forward references to oRPC**, now that oRPC is **not** the pick. Re-verified against `master`
+      at 2026-09-18 — the list below replaces the two paths this spike originally named, which were both
+      wrong. All of them are prose or comments; none is code that runs.
+      **Live on `master`:** `shared/src/index.ts:3,5` ("the typed oRPC contract + Zod schemas … the whole
+      point of oRPC"); `server/src/modules/catalog/catalog.controller.ts:30` ("The real read API (oRPC
+      contract, filters, pagination) is NH-123" — cited as `:20` when this spike was written, the line
+      moved); `client/src/components/About.tsx:4` and `client/e2e/mocks/handlers.ts:4` ("collapse into the
+      `shared/` oRPC contract in Phase 2").
+      **Bannered in this PR instead of left silent:**
+      [`2026-06-17-architecture-decisions.md`](../decisions/2026-06-17-architecture-decisions.md) — its
+      `ARCH-CONTRACT-1` section, the `@nestjs/swagger`-moot note, and the summary-table row. `AGENTS.md`
+      names that ADR a source of truth, so an unmarked oRPC verdict there was the same misdirection the
+      snapshot fix removed. Its other in-body oRPC mentions (lines 55/126/127/237) are left standing under
+      the banner rather than rewritten, so the June reasoning stays readable.
+      **Not a live site:** `docs/decisions/2026-07-14-catalog-read-service-boundary-adr.md:57` was named
+      here originally, but that file exists only in the **unmerged draft PR #140** branch and has never
+      been on `master`. Fix it there when #140 is unparked.
 - [ ] **The `shared/` package has no build** and its `index.ts` re-exports a `.js` specifier that does not
       resolve under Node type-stripping or Turbopack. Latent today because `export type` erases it. Real
       bug, independent of the contract decision.
