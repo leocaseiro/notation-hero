@@ -23,15 +23,22 @@
 
 For every non-trivial PR, follow the canonical 15-step workflow in [`docs/runbooks/before-pr.md`](docs/runbooks/before-pr.md) (brainstorming → doc-review → plan → doc-review → execute → code-review → audit → merge). That runbook also lists the escape hatches for the ~5% of trivial changes that skip the full workflow (typos, mechanical renames, dependency bumps, clarifications, extra tests, "clear wins" like `any` → concrete type).
 
-> ⛔ **Ship-mode freeze — ACTIVE (2026-07-15).**
->
-> **NO new spec, plan, or ADR of any kind** until leocaseiro explicitly ends this freeze via a `docs/decisions/decision-registry.md` change-log entry titled "End ship-mode freeze".
->
-> **Why:** forcing function against the start-many-finish-few pattern surfaced during the 2026-07-15 docs-cleanup review. Every pivot leaves ~3 doc artifacts; almost nothing gets deleted. Freeze until the current backlog drains.
->
-> **What's unaffected:** bugfixes, code changes, cleanup PRs (like the one landing this rule), banner updates on already-superseded docs, and PRs that update existing plans/specs to record shipped state.
->
-> **What's frozen:** creating new `docs/plans/*`, `docs/specs/*`, `docs/decisions/*` files. Registry change-log entries for already-decided work are allowed (they document, they don't create new decisions).
+### Ship-mode freeze
+
+A switch leocaseiro can throw. **State today: OFF.**
+
+> ⏸ **NOT in force.** The rule below was drafted on 2026-07-15, and the PR carrying it then sat
+> open for two months. It never took effect: no change-log entry ever turned it on, and the work
+> that landed in the meantime (NH-299, NH-293, NH-231, NH-291 — merged 2026-09-16/18) plus the
+> open NH-284 typed-contract spike all ran without it. Do not read it as a rule you are under.
+
+**To turn it ON:** leocaseiro adds a [`docs/decisions/decision-changelog.md`](docs/decisions/decision-changelog.md) entry titled "Start ship-mode freeze". **To turn it OFF again:** an entry titled "End ship-mode freeze". Only leocaseiro flips it; an agent never may.
+
+**While ON — what's frozen:** creating new `docs/plans/*`, `docs/specs/*`, `docs/decisions/*` files. **NO new spec, plan, or ADR of any kind.**
+
+**While ON — what's unaffected:** bugfixes, code changes, cleanup PRs, banner updates on already-superseded docs, PRs that update existing plans/specs to record shipped state, and change-log entries for already-decided work (they document, they don't create new decisions).
+
+**Why the switch exists:** a forcing function against the start-many-finish-few pattern surfaced during the 2026-07-15 docs-cleanup review — every pivot leaves ~3 doc artifacts, and almost nothing gets deleted.
 
 ## Hexagon layout & boundaries (pnpm workspaces)
 
@@ -69,31 +76,6 @@ Run across all packages from the repo root with `pnpm -r --if-present run <targe
 **Never** chain targets as `pnpm -r lint typecheck` — that runs `lint` with `typecheck`
 as a positional arg, silently skipping the second. Chain root scripts instead:
 `pnpm run lint && pnpm run typecheck`.
-
-### Running the apps locally (dev / debug)
-
-`pnpm dev` opens a tmux session (`nh-dev`) with a pane per app, so the server and web logs stay
-separate and either can be restarted alone.
-
-| Command             | What it runs                                                   |
-| ------------------- | -------------------------------------------------------------- |
-| `pnpm dev`          | both apps in tmux — API on 3001, web on 3002                   |
-| `pnpm dev:debug`    | both apps with Node inspectors (server **9229**, web **9230**) |
-| `pnpm dev:server`   | NestJS only (`nest start --watch`)                             |
-| `pnpm dev:web`      | Next.js only (`next dev --port 3002`)                          |
-| `pnpm debug:server` | NestJS with an inspector on 9229                               |
-| `pnpm debug:web`    | Next.js with an inspector on 9230                              |
-
-`SERVER_PORT=3010 pnpm dev` moves the API when something already holds 3001; the web pane inherits
-`API_BASE_URL` from it, so the two never disagree (Next.js resolves `process.env` ahead of
-`.env.local` — see its bundled `environment-variables.md`, "Environment Variable Load Order"). The
-two inspectors MUST differ: both default to 9229, so `debug:web` pins 9230.
-
-**Debugging gotcha with cached fetches.** Server functions wrapped in `'use cache: remote'` do not
-re-run once the cache is warm; breakpoints in those files and their downstream callers never fire.
-Edit either file to invalidate the dev cache (HMR refresh hash) and force a miss.
-
-> ⚠️ **Provenance:** cherry-picked from the on-hold PR #140 (`claude/neon-data-nextjs-table-416796`) on 2026-07-15. The specific `getCatalog()` / `web/app/catalog/page.tsx` file references from that PR were generalized here since NH-279 implementation is being re-brainstormed.
 
 Root-level checks — each is a named script AND a CI gate, so run any locally:
 
