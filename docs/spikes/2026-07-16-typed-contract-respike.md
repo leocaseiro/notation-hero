@@ -397,9 +397,13 @@ maintainer.
       [`2026-06-17-architecture-decisions.md`](../decisions/2026-06-17-architecture-decisions.md) — its
       `ARCH-CONTRACT-1` section, the `@nestjs/swagger`-moot note, and the summary-table row. `AGENTS.md`
       names that ADR a source of truth, so an unmarked oRPC verdict there was the same misdirection the
-      snapshot fix removed. Its four other oRPC mentions (lines 55/126/127/147 — the directory tree, the
-      ESM-bundling and `shared/`-output notes, and the frontend-learning note) sit **above** that banner and
-      are left standing rather than rewritten, so the June reasoning stays readable.
+      snapshot fix removed. Only those three **decision-bearing** sites are marked. The file mentions oRPC
+      ~22 times in total and the rest are left standing as preserved June reasoning — four **above** the
+      banner (lines 55/126/127/147: the directory tree, the ESM-bundling and `shared/`-output notes, the
+      frontend-learning note) and the remainder below it. ⚠️ Of those, **line 256 is the one most likely to
+      be misread as current** — _"oRPC + Zod validates every API input at the Lambda boundary"_ — because it
+      is a present-tense claim sitting in the **security** section, far from any banner. Worth a marker of
+      its own if this ADR is revisited.
       [`2026-07-08-fe-nextjs-vercel-aws-bff-adr.md`](../decisions/2026-07-08-fe-nextjs-vercel-aws-bff-adr.md) —
       the sharper case: it is **later** than the June ADR, still `✅ Accepted`, and asserted "oRPC … kept"
       three times (Scope, decision 3, Consequences) with no marker. It never names `ARCH-CONTRACT-1`, so a
