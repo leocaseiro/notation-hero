@@ -93,6 +93,16 @@ Browse glyph names at <https://fonts.google.com/icons>.
 
 See `Checkbox/Checkbox.tsx` for a working example.
 
+### Disabled buttons — focusable and announced (NH-304)
+
+Pass `disabled` to `<Button>` as before. Button renders `aria-disabled="true"`, **not** the native `disabled` attribute, so a disabled button stays reachable by Tab and by screen readers (announced as "dimmed" / "unavailable") and accepts `ref.current.focus()`. Button blocks activation itself — click, Enter, Space, form submit, and a Base UI trigger rendered as `render={<Button disabled />}` — so consumers need no guard of their own.
+
+- **`disabled` is the one API that turns the guard on.** `aria-disabled` on its own only styles the button; it does not block activation.
+- **Say why it is unavailable.** Button makes the control discoverable, but it does not give the reason. Point `aria-describedby` at the reason text. A Tooltip alone is not enough: it sets no accessible description, and on a disabled button it opens for keyboard focus only (`pointer-events-none` stops mouse hover). With a Tooltip, put `disabled` on the Button inside `render`, not on `TooltipTrigger` — the trigger's own `disabled` prop turns the tooltip off.
+- **In unit tests, assert the attribute:** `toHaveAttribute('aria-disabled', 'true')`. jest-dom's `toBeDisabled()` reads the native attribute only, so it fails. Playwright's `toBeDisabled()` and `getByRole('button', { disabled: true })` do honour `aria-disabled`.
+- **No opt-out prop.** For a control whose state a user can infer from its neighbour (Previous next to Next), use a native `<button disabled>` with `buttonVariants`, as `Pagination` does — `buttonVariants` styles both `disabled:` and `aria-disabled:`, so it stays dimmed.
+- **Known limits:** a disabled as-link Button (`render={<a href>}`) keeps its `href`, so the context-menu key can still open it, and Space does not scroll the page while it has focus; a handler placed on the `render` element itself (or a capture-phase handler) is not withheld; a Button inside `<fieldset disabled>` stays natively disabled and out of reach; under `opacity-50` the 1px focus border renders at half strength (the ring alpha is doubled to match an enabled Button).
+
 ### Storybook
 
 ```bash
