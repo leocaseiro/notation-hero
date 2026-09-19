@@ -175,3 +175,16 @@ export const StackExpanded: Story = {
   args: { expand: true },
   render: (args) => <StackOnMount {...args} />,
 };
+
+// Loading toast — sonner's own spinner beside the message, held open like every other story
+// here. The player shows this while a chosen score is parsed: loadScoreFromBytes is synchronous,
+// so the app's own browser lane has no request to stall and no event to hold the toast open,
+// which is why the state is audited here instead.
+export const Loading: Story = {
+  render: (args) => (
+    <ToastOnMount
+      {...args}
+      fire={() => toast.loading('Opening Punk.gp…', { duration: Infinity })}
+    />
+  ),
+};

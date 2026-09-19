@@ -147,12 +147,26 @@ function Player() {
         }
       }
 
+      // Sonner ships its own spinner, so this needs no new component — and a Skeleton would hide a
+      // score that is still on screen and still playable. A long, dense score takes a noticeable
+      // time to parse (2,000 bars of 16ths: ~0.4 s on a fast laptop, longer on a slow one), while
+      // file size barely matters. One `id` makes the loading, success and failure states share one
+      // toast instead of stacking three.
+      toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
+
+      // loadScoreFromBytes is synchronous: wait for a painted frame first, or the toast would
+      // appear only once the parse had already finished.
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+
       let score: AlphaTab.model.Score;
       try {
         score = at.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
       } catch {
         toast.error(
           `${next.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
+          { id: 'notation-load' },
         );
         // The open score was never replaced, and playback was never interrupted — the worklet
         // drained its buffer while the dialog was up and the pump refills it. Nothing to restart.
@@ -162,6 +176,7 @@ function Player() {
       // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
       if (wasPlaying) api?.pause();
       setNotation({ name: next.name, score });
+      toast.success(`${next.name} loaded`, { id: 'notation-load' });
       // Success only. None of this is reachable from the cancel path or the parse failure (both
       // returned above), from the read failures the picker catches, or for the bundled score —
       // nobody asked for that one, so nothing is announced and nothing is focused at page load.
