@@ -35,6 +35,14 @@
 
 Every task's requirements implicitly include this section, plus **all of Plan A's Global Constraints**, which still bind.
 
+- **Disabled controls stay keyboard-reachable — the design system owns that, not this plan.** Ratified
+  2026-09-18 ([NH-304](https://leocaseiro.atlassian.net/browse/NH-304), in flight as PR #158): `Button`
+  renders `aria-disabled` with its own activation guard instead of the native `disabled` attribute,
+  because a natively disabled button cannot take focus — which hides it from anyone tabbing through and
+  makes focus-moving behaviour a silent no-op. The registry counts **46 `disabled` sites in this plan**
+  that inherit the change. Do NOT hand-roll per-call-site guards that NH-304 makes redundant. If NH-304
+  has not merged when this plan is dispatched it is a prerequisite, not a follow-up: `TransportToggle`,
+  `TempoControl`'s `±` buttons and the `Scrubber` all ship disabled states here.
 - **The whole transport is gated on `playerReady`, never on `soundFontLoaded`.** Pass
   `disabled={!playerReady}` — Plan A already holds `playerReady` in `Player` and gates Play on it, so
   the transport becomes live at the same moment Play does. Do NOT gate any control on `soundFontLoaded`:
@@ -994,7 +1002,7 @@ Expected: PASS — 3 tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
-`TransportToggle.story-ids.ts`: `['default', 'pressed', 'disabled', 'with-tooltip']`. Stories under `title: 'UI/TransportToggle'`, each passing a Material Symbols glyph as `icon`. In `TransportToggle.a11y.ts` set `iconFontStory: () => true` — every story renders a glyph, and that flag makes the helper assert the icon font actually loaded, so a failed load cannot pass silently — `client/src/styles.css` now sets `font-display: block` on the Material Symbols face, which means a failed load renders **blank** rather than showing the ligature source text, and axe is perfectly happy with a blank control. VR: `states: ['resting', 'focus', 'hover']`, `statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover'])`.
+`TransportToggle.story-ids.ts`: `['default', 'pressed', 'disabled', 'with-tooltip']`. Stories under `title: 'UI/TransportToggle'`, each passing a Material Symbols glyph as `icon`. In `TransportToggle.a11y.ts` set `iconFontStory: () => true` — every story renders a glyph, and that flag makes the helper assert the icon font actually loaded, so a failed load cannot pass silently — `client/src/styles.css` now sets `font-display: block` on the Material Symbols face, which means a failed load renders **blank** rather than showing the ligature source text, and axe is perfectly happy with a blank control. VR: `states: ['resting', 'focus', 'hover']` for every story **including `disabled`** — that per-story override existed only because a natively disabled button cannot be Tab-focused, and under NH-304 it can, so its focus ring is a real state the baseline must guard.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 
