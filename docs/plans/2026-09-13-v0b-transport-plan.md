@@ -1,5 +1,12 @@
 # v0 Transport — Implementation Plan B "Playback Control" (2 of 3)
 
+> **⛔ RE-TRIAGED 2026-09-19 against Plan A's 2026-09-18 rework.** Plan A's Self-Review ordered this:
+> _"Re-triage Plan B against that rule and rewrite it onto `useAlphaTabEvent` before it is dispatched."_
+> That rework removed three things Tasks 6-8 were built on — the `apiRef` handle, hand-written
+> `api.*.on(...)` subscriptions, and the `data-position` test hook — and added a `/play` that auto-loads
+> its score, so the `load-sample` button those tests clicked never existed. All four are corrected here.
+> Tasks 1-5 (the five `client/` components) were never affected: they are presentation-only.
+
 > **🧑 HUMAN GATES.** Four steps in this plan cannot be performed by a machine — they need human ears
 > (Task 6 Step 7, Task 7 Step 6) or a human browser console (Task 8 Step 6, Task 9 Step 3). Each is marked
 > `🧑 HUMAN GATE`. An agentic worker must **stop at each one and hand back**, never self-certify it and
@@ -28,6 +35,25 @@
 
 Every task's requirements implicitly include this section, plus **all of Plan A's Global Constraints**, which still bind.
 
+- **Every AlphaTab subscription goes through `useAlphaTabEvent(api, event, handler)`** — the typed helper
+  Plan A Task 5 lands in `web/lib/alphatab/useAlphaTab.ts`. A bare `api.<event>.on(...)` in a component
+  is a leak: it pairs no `.off()`, and `reactStrictMode: true` (set in `web/next.config.ts`)
+  double-invokes the mount effect in dev, so the second subscription is never removed. AlphaTab also
+  re-fires several of these events at subscribe time, which turns resubscribe churn into a feedback
+  loop rather than mere waste. Ratified 2026-09-18 (Plan A F-B2).
+- **`Player` owns the api, and it is React state, not a ref.** Plan A calls `useAlphaTab` in exactly one
+  place — `const [api, hostRef] = useAlphaTab(...)` — and after the 2026-09-18 triage **no `apiRef`
+  exists at all**. `api` is `AlphaTabApi | undefined` until the engine is built, so every `useCallback`
+  that touches it takes `[api]` as its dependency list; an empty `[]` (correct for a ref) freezes the
+  callback on the `undefined` it held before the engine arrived.
+- **`/play` auto-loads the bundled score; there is no load button.** Plan A sets
+  `settings.core.file = SAMPLE_NOTATION` at construction, and the registry records the decision ("the
+  player always loads a score; the empty state is removed"). The e2e entry point is
+  `await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 })`, never a click.
+  Plan A's test hooks are exactly: `notation-surface`, `notation-skeleton`, `engine-error`,
+  `transport-play`, `player-status` (`data-playing`, `data-player-ready`), `rendered-track-count`,
+  `open-file-input`, `open-file-button`, `loaded-notation-name`. Anything else must be produced by a
+  task in THIS plan.
 - **Every `client/` component here is presentation-only**: `value` in, `onChange` out, option lists as plain arrays, and **no import from `@coderline/alphatab`**. `client/` has no AlphaTab dependency and a Storybook story has no engine instance, so a control that read its options off the library would be gated while rendering fabricated options.
 - **Each new `client/` component needs all six files, co-located in its own folder**: `X.tsx`, `X.stories.tsx`, `X.story-ids.ts`, `X.test.tsx`, `X.a11y.ts`, `X.vr.ts`. Never a `__tests__/` or `stories/` directory — `tooling/check-layout.sh` fails the build on them.
 - **VR baselines are Linux-only.** Generate them with `pnpm test:vr:docker:update` (Docker Desktop running — `open -a Docker`), never natively on macOS. Kill any Storybook already on `:6006` first, or Playwright's `reuseExistingServer` serves desynced stories and the baselines come out wrong.
@@ -1359,8 +1385,8 @@ git commit -m "feat(client): add the header TempoControl on Base UI NumberField 
 
 **Interfaces:**
 
-- Consumes: `Scrubber`, `TransportToggle` (Tasks 3, 4); the `AlphaTabApi` handle from Plan A's `PlayerShell`.
-- Produces: test hooks `data-testid="toggle-loop"`, `"toggle-metronome"`, `"toggle-countin"`, and `data-position` / `data-duration` / `data-looping` / `data-metronome` / `data-countin` on `player-status`.
+- Consumes: `Scrubber`, `TransportToggle` (Tasks 3, 4); the `api` state value and `useAlphaTabEvent` from Plan A's `useAlphaTab` (`web/lib/alphatab/useAlphaTab.ts`).
+- Produces: test hooks `data-testid="toggle-loop"`, `"toggle-metronome"`, `"toggle-countin"`, and `data-duration` / `data-looping` / `data-metronome` / `data-countin` on `player-status`. **NOT `data-position`** — Plan A removed it under the no-test-instrumentation rule; the seek assertion reads AlphaTab's own clock instead.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1369,7 +1395,6 @@ Add to `web/e2e/player.e2e.ts`:
 ```ts
 test('Loop, Metronome and Count-In each flip the engine state', async ({ page }) => {
   await page.goto('/play');
-  await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   const status = page.getByTestId('player-status');
@@ -1389,7 +1414,6 @@ test('Loop, Metronome and Count-In each flip the engine state', async ({ page })
 
 test('the scrubber seeks and the position follows', async ({ page }) => {
   await page.goto('/play');
-  await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   const status = page.getByTestId('player-status');
@@ -1406,9 +1430,21 @@ test('the scrubber seeks and the position follows', async ({ page }) => {
   await seek.press('ArrowRight');
   await seek.press('ArrowRight');
 
-  await expect
-    .poll(async () => Number(await status.getAttribute('data-position')))
-    .toBeGreaterThanOrEqual(4_000);
+  // AlphaTab's own clock, through the debug handle `useAlphaTab` parks on the host element — the
+  // same read Plan A Task 10 uses. Deliberately NOT a data-* attribute: `seek` writes
+  // `setPositionMs(ms)` optimistically, so a mirrored hook would report the requested value even if
+  // the engine refused it, and the assertion would pass on a broken seek.
+  const enginePositionMs = () =>
+    page.evaluate(
+      () =>
+        (
+          document.querySelector('[data-testid="notation-surface"] > div') as {
+            at?: { timePosition: number };
+          } | null
+        )?.at?.timePosition ?? 0,
+    );
+
+  await expect.poll(enginePositionMs, { timeout: 20_000 }).toBeGreaterThanOrEqual(4_000);
 });
 ```
 
@@ -1548,6 +1584,10 @@ export function TransportRow({
 In `web/app/play/PlayerShell.tsx`'s `Player`, add state and accessors:
 
 ```tsx
+// The playhead. This IS product state — the Scrubber is a controlled component over it — which is
+// why it may exist here when Plan A's `data-position` DOM hook may not: the rule Plan A applied bans
+// test-only instrumentation, not UI state.
+const [positionMs, setPositionMs] = useState(0);
 const [durationMs, setDurationMs] = useState(0);
 const [looping, setLooping] = useState(false);
 const [metronome, setMetronome] = useState(false);
@@ -1556,8 +1596,10 @@ const [countIn, setCountIn] = useState(false);
 const [hasRange, setHasRange] = useState(false);
 ```
 
-Extend the `playerPositionChanged` subscription from Plan A. It now carries three jobs — position,
-length and the live tempo — and two guards that are **not** optional:
+Add the position subscription through `useAlphaTabEvent`. Plan A creates none — it subscribes only to
+`error`, `renderFinished`, `playerStateChanged` and `playerReady` — so this is the first one, and it
+must go through the helper rather than a hand-written `.on()` (see Global Constraints). It carries
+three jobs — position, length and the live tempo — and two guards that are **not** optional:
 
 ```tsx
 // Guard 1 — `endTime === 0` is the hardcoded PositionChangedEventArgs(0,0,0,0,false,120,120) stub that
@@ -1572,7 +1614,7 @@ length and the live tempo — and two guards that are **not** optional:
 // the trigger on `isPlayingMain`), and without the bound the UI would latch forever.
 const pendingSeek = useRef<{ target: number; since: number } | null>(null);
 
-api.playerPositionChanged.on((args) => {
+useAlphaTabEvent(api, 'playerPositionChanged', (args) => {
   if (args.endTime === 0) return; // guard 1
 
   if (pendingSeek.current) {
@@ -1589,41 +1631,51 @@ api.playerPositionChanged.on((args) => {
 });
 
 // The correct opening tempo, before a single frame has played. Also replays for late subscribers.
-api.midiLoaded.on((args) => setScoreTempo(args.originalTempo));
+useAlphaTabEvent(api, 'midiLoaded', (args) => setScoreTempo(args.originalTempo));
 
 // F-15: the Loop toggle's label needs to know whether a bar range is selected.
-api.playbackRangeChanged.on((args) => setHasRange(args.playbackRange !== null));
+useAlphaTabEvent(api, 'playbackRangeChanged', (args) => setHasRange(args.playbackRange !== null));
 ```
 
 and add the three accessors, each writing to the api and mirroring into state:
 
 ```tsx
-const applyLooping = useCallback((next: boolean) => {
-  setLooping(next);
-  const api = apiRef.current;
-  if (api) api.isLooping = next;
-}, []);
+// `api` is the state value from Plan A's `useAlphaTab`, already in scope in `Player` — there is no
+// apiRef. Because it is state and not a ref it MUST be in the dependency list (Global Constraints).
+const applyLooping = useCallback(
+  (next: boolean) => {
+    setLooping(next);
+    if (api) api.isLooping = next;
+  },
+  [api],
+);
 
 // Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 is the normal
 // level, so the toggle maps to the two ends rather than calling a method.
-const applyMetronome = useCallback((next: boolean) => {
-  setMetronome(next);
-  const api = apiRef.current;
-  if (api) api.metronomeVolume = next ? 1 : 0;
-}, []);
+const applyMetronome = useCallback(
+  (next: boolean) => {
+    setMetronome(next);
+    if (api) api.metronomeVolume = next ? 1 : 0;
+  },
+  [api],
+);
 
-const applyCountIn = useCallback((next: boolean) => {
-  setCountIn(next);
-  const api = apiRef.current;
-  if (api) api.countInVolume = next ? 1 : 0;
-}, []);
+const applyCountIn = useCallback(
+  (next: boolean) => {
+    setCountIn(next);
+    if (api) api.countInVolume = next ? 1 : 0;
+  },
+  [api],
+);
 
-const seek = useCallback((ms: number) => {
-  const api = apiRef.current;
-  if (api) api.timePosition = ms;
-  setPositionMs(ms); // optimistic; the guard above reconciles on the echo
-  pendingSeek.current = { target: ms, since: performance.now() };
-}, []);
+const seek = useCallback(
+  (ms: number) => {
+    if (api) api.timePosition = ms;
+    setPositionMs(ms); // optimistic; the guard above reconciles on the echo
+    pendingSeek.current = { target: ms, since: performance.now() };
+  },
+  [api],
+);
 ```
 
 Render `<TransportRow … />` below the notation surface, move the existing play/pause `Button` into its `playButton` prop, and add the new attributes to the status element:
@@ -1646,7 +1698,7 @@ Expected: PASS — including Plan A's cases, which must not regress.
 pnpm --filter @notation-hero/web run dev
 ```
 
-On `/play` with the sample loaded: turn Metronome on and confirm you **hear a click**; turn Count-In on, press play, and confirm you hear a count before the music; select a bar range in the notation with the mouse, turn Loop on, and confirm the range repeats. Then, **with the score paused and again while it plays, drag the scrubber to the middle and confirm the notation cursor jumps to the matching bar and continues from there** — nothing in CI observes the cursor, and `seek` writes `setPositionMs(ms)` unconditionally, so `data-position` reports the requested value whether or not AlphaTab accepted it. Headless Chromium is silent, so the CI lane can only prove the state flipped — the sound is yours to confirm.
+On `/play` with the sample loaded: turn Metronome on and confirm you **hear a click**; turn Count-In on, press play, and confirm you hear a count before the music; select a bar range in the notation with the mouse, turn Loop on, and confirm the range repeats. Then, **with the score paused and again while it plays, drag the scrubber to the middle and confirm the notation cursor jumps to the matching bar and continues from there** — nothing in CI observes the cursor, and `seek` writes `setPositionMs(ms)` optimistically, so the Scrubber shows the requested value whether or not AlphaTab accepted it — which is exactly why the CI assertion reads the engine's clock rather than the app's state. Headless Chromium is silent, so the CI lane can only prove the state flipped — the sound is yours to confirm.
 
 A–B range selection is **mouse-only**: AlphaTab builds it from `mousedown`/`mousemove`/`mouseup` and registers no touch or pointer handlers, so on a touch screen a drag across bars scrolls instead of selecting. The Loop toggle itself works everywhere. That is expected, not a bug.
 
@@ -1680,7 +1732,6 @@ Add to `web/e2e/player.e2e.ts`:
 ```ts
 test('the header tempo stepper changes playback speed', async ({ page }) => {
   await page.goto('/play');
-  await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   // The readout is a real input now (Base UI NumberField), so read its value, not its text.
@@ -1789,11 +1840,13 @@ const [scoreTempo, setScoreTempo] = useState(120);
 
 // The ONLY writer of api.playbackSpeed in the app — see Global Constraints. Plan C's Settings
 // Player-group row must call this, not the settings-JSON accessor path.
-const applySpeed = useCallback((next: number) => {
-  setSpeed(next);
-  const api = apiRef.current;
-  if (api) api.playbackSpeed = next;
-}, []);
+const applySpeed = useCallback(
+  (next: number) => {
+    setSpeed(next);
+    if (api) api.playbackSpeed = next;
+  },
+  [api],
+);
 
 // A new score keeps the speed the drummer chose: the BPM readout moves because the score's own
 // tempo changed, not because the multiplier was reset.
@@ -1831,7 +1884,7 @@ This covers the **soundfont only** — 302 KB gzip of the ~1.6 MB first-load pay
 
 **Interfaces:**
 
-- Consumes: `Progress` (Task 2).
+- Consumes: `Progress` (Task 2); `useAlphaTabEvent` (Plan A); `toast` and `PLAYER_ERROR` (Plan A) — this task adds the `soundFontFailed: 'E205'` member to `web/lib/player-errors.ts`.
 - Produces: `onSoundFontProgress: (fraction: number | null) => void` on `NotationSurface`.
 
 - [ ] **Step 1: Write the failing test**
@@ -1849,7 +1902,6 @@ test('shows a soundfont progress bar while the sounds download, then hides it', 
   });
 
   await page.goto('/play');
-  await page.getByTestId('load-sample').click();
 
   const bar = page.getByRole('progressbar', { name: /sound/i });
   await expect(bar).toBeVisible({ timeout: 30_000 });
@@ -1866,7 +1918,15 @@ Expected: FAIL — no progressbar.
 
 - [ ] **Step 3: Subscribe to all three soundfont events**
 
-In `NotationSurface.tsx`'s mount effect, beside the existing `api.error` and `api.renderFinished` subscriptions:
+In `NotationSurface.tsx`, beside its existing `useAlphaTabEvent(api, 'error', …)` and
+`useAlphaTabEvent(api, 'renderFinished', …)` calls — they are top-level hook calls, not `.on()` inside
+an effect, and `NotationSurface` has only one `useEffect` (the music-font `loadingerror` watcher).
+Widen `NotationSurfaceProps` first; Plan A finalised it as `{ api, hostRef, viewportRef, notation }`:
+
+```tsx
+  /** Soundfont download progress: a 0-1 fraction, or null when no fraction can be computed. */
+  onSoundFontProgress: (fraction: number | null) => void;
+```
 
 ```tsx
 // AlphaTab forwards the raw XMLHttpRequest ProgressEvent, so two numeric cases are real:
@@ -1875,23 +1935,34 @@ In `NotationSurface.tsx`'s mount effect, beside the existing `api.error` and `ap
 //   - `total` is the ENCODED length while `loaded` counts DECODED bytes when the CDN
 //     compresses, so the ratio can exceed 1 -> clamp.
 // Vercel's compression of .sf3 is unverified (spec Q2), so BOTH branches are reachable.
-api.soundFontLoad.on((progress) => {
+useAlphaTabEvent(api, 'soundFontLoad', (progress) => {
   onSoundFontProgress(progress.total > 0 ? Math.min(1, progress.loaded / progress.total) : null);
 });
 ```
 
 `soundFontLoad` is progress only. The two terminal events are wired in `PlayerShell` beside the
-`playerPositionChanged` subscription, because the callback above is typed
+`playerPositionChanged` subscription **this plan's Task 6 Step 5 adds** (Plan A creates none), because the callback above is typed
 `(fraction: number | null) => void` and **cannot carry the `undefined` that means "not downloading"**:
 
 ```tsx
-api.soundFontLoaded.on(() => setSoundFontProgress(undefined));
+useAlphaTabEvent(api, 'soundFontLoaded', () => setSoundFontProgress(undefined));
 
 // Without this the bar freezes at whatever fraction it last reported, forever, with nothing on
 // screen saying why — for a failure the spec already handles like the corrupt-file toast.
-api.soundFontLoadFailed.on((error) => {
+//
+// `toast` is Plan A's (already exported from @notation-hero/client). There is NO `showFailureToast`
+// helper — the corrupt-file path is `toast.error(...)` directly, and the engine-IMPORT failure is not
+// a toast at all but NotationSurface's engine-error overlay. Plan A's rule is that every failure
+// message ends with its error number, so this needs a code: `PLAYER_ERROR` has no soundfont member
+// (its 2xx engine block ends at E204), so ADD ONE in `web/lib/player-errors.ts` as part of this step:
+//   /** The instrument soundfont download failed. */
+//   soundFontFailed: 'E205',
+useAlphaTabEvent(api, 'soundFontLoadFailed', (error) => {
   setSoundFontProgress(undefined);
-  showFailureToast(error); // the same path the corrupt-file and engine-import failures use
+  toast.error(
+    `The instrument sounds could not be downloaded. (Error ${PLAYER_ERROR.soundFontFailed})`,
+  );
+  console.error(error);
 });
 ```
 
@@ -1974,7 +2045,6 @@ Plan A's `a11y.e2e.ts` already audits `/play` loaded, but the transport did not 
 ```ts
 test('player has no axe violations with every transport toggle pressed', async ({ page }) => {
   await page.goto('/play');
-  await page.getByTestId('load-sample').click();
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   await page.getByTestId('toggle-loop').click();
