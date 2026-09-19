@@ -277,8 +277,13 @@ function Player() {
           setDragging(depth.current > 0);
         }}
         onDragOver={(event) => {
+          // preventDefault is what makes this a drop target, and it is ALL that belongs here. Do
+          // not set dropEffect: per the HTML spec, a dropEffect outside the SOURCE's effectAllowed
+          // sets the drag operation to "none" and the browser then never fires `drop` at all. The
+          // hard-coded 'link' here did exactly that to every copy-only source — a file dragged
+          // from Photos, a screenshot, a download — silently, with no event and no error to see.
+          // Left alone, the browser picks an operation the source actually offers.
           event.preventDefault();
-          if (event.dataTransfer) event.dataTransfer.dropEffect = 'link';
         }}
         onDrop={(event) => {
           event.preventDefault();

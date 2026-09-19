@@ -33,6 +33,15 @@ that were prose until now are checked by CI on every pull request.
   a real `run:` line, so commenting a step out fails the guard rather than sliding past a
   substring match — plus a fifth: that `e2e` is still listed in `ci-green`'s `needs:`, without
   which the lane would keep running but stop blocking merge.
+- **Drag-and-drop is driven through Chrome's real drag pipeline — new, and it found a bug.**
+  A dropped file did nothing at all. The cause was `dropEffect = 'link'` on `dragover`: per the
+  HTML spec a dropEffect outside the SOURCE's `effectAllowed` sets the drag operation to "none",
+  and the browser then never fires `drop`. Every copy-only source — a photo, a screenshot, a
+  download — was rejected in silence, valid scores included. The line is gone; the browser picks
+  an operation the source offers. Why it shipped is the durable part: the drag tests used a
+  synthetic `dispatchEvent`, which skips that negotiation entirely and went green against the
+  bug. They now drive CDP `Input.dispatchDragEvent` with a COPY_ONLY source, and all three fail
+  against the old line — measured, not assumed.
 - **`web/` is no longer the repo's only ungated UI — new.** `web/e2e/a11y.e2e.ts` runs axe over five
   reachable states on the same WCAG tag set `client/` uses, plus a 44 px hit-area assertion that axe
   cannot make (no rule in `wcag2a/2aa/21a/21aa` covers target size).

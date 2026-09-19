@@ -1,7 +1,7 @@
-import { readFileSync } from 'node:fs';
+import path from 'node:path';
 
 import { expect, test } from '@playwright/test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 
 test('renders the bundled sample score as notation', async ({ page }) => {
   await page.goto('/play');
@@ -196,27 +196,33 @@ for (const fixture of [
 }
 
 // Everything above drives the PICKER. The DROP path is a separate entry point with its own
-// handlers — a dragenter/dragleave depth counter and acceptDropped — and no input element to
-// drive, so these two cases build a real DataTransfer inside the page and dispatch the events.
-async function dropFile(page: Page, fixture: string) {
-  // Base64 crosses evaluateHandle's serialization boundary intact; a Node Buffer does not.
-  const base64 = readFileSync(`e2e/fixtures/${fixture}`).toString('base64');
-  const dataTransfer = await page.evaluateHandle(
-    ([data, name]) => {
-      const bytes = Uint8Array.from(atob(data), (character) => character.codePointAt(0) ?? 0);
-      const transfer = new DataTransfer();
-      transfer.items.add(new File([bytes], name));
-      return transfer;
-    },
-    [base64, fixture] as const,
-  );
+// handlers — a dragenter/dragleave depth counter and acceptDropped — and it is driven here through
+// Chrome's OWN drag pipeline, not a synthetic dispatchEvent. That difference is load-bearing and
+// already cost one bug: the browser fires `drop` only when dragover leaves the operation
+// compatible with the SOURCE's effectAllowed, and dispatchEvent skips that negotiation entirely —
+// so a synthetic test goes green against a player that rejects every real drag on the machine.
+//
+// CDP has no dragLeave type and needs none: Chrome synthesizes leave and enter itself when a
+// dragOver lands on a new element, in the real order (enter the CHILD, then leave the parent),
+// which is the order the depth counter exists for.
+//
+// dragOperationsMask is the source's effectAllowed. COPY_ONLY is deliberate: it is what a photo,
+// a screenshot or a download offers, and it is the case a stray dropEffect silently rejects. A
+// link-capable source would pass even against that bug.
+const COPY_ONLY = 1;
 
-  const zone = page.getByTestId('drop-zone');
-  await zone.dispatchEvent('dragenter', { dataTransfer });
-  // Assert the overlay BEFORE the drop: endDrag() clears it synchronously, so afterwards there is
-  // nothing left to see and the assertion could never fail.
-  await expect(page.getByText('Drop to open')).toBeVisible();
-  await zone.dispatchEvent('drop', { dataTransfer });
+async function fileDrag(page: Page, file: string, operations = COPY_ONLY) {
+  const cdp = await page.context().newCDPSession(page);
+  const data = { items: [], files: [path.resolve(file)], dragOperationsMask: operations };
+  return async (type: 'dragEnter' | 'dragOver' | 'drop', target: Locator) => {
+    const box = (await target.boundingBox())!;
+    await cdp.send('Input.dispatchDragEvent', {
+      type,
+      x: Math.round(box.x + box.width / 2),
+      y: Math.round(box.y + box.height / 2),
+      data,
+    });
+  };
 }
 
 test('dragging a file onto the player opens it', async ({ page }) => {
@@ -225,7 +231,14 @@ test('dragging a file onto the player opens it', async ({ page }) => {
     timeout: 30_000,
   });
 
-  await dropFile(page, 'Punk.gp');
+  const drag = await fileDrag(page, 'e2e/fixtures/Punk.gp');
+  const zone = page.getByTestId('drop-zone');
+  await drag('dragEnter', zone);
+  await drag('dragOver', zone);
+  // Assert the overlay BEFORE the drop: endDrag() clears it synchronously, so afterwards there is
+  // nothing left to see and the assertion could never fail.
+  await expect(page.getByText('Drop to open')).toBeVisible();
+  await drag('drop', zone);
 
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
     timeout: 30_000,
@@ -237,27 +250,59 @@ test('dragging a file onto the player opens it', async ({ page }) => {
   await expect(page.getByText('Drop to open')).toBeHidden();
 });
 
+// The dropped-file failure path. A drop the importer cannot read must SAY so — the silent version
+// of this is indistinguishable, to the person, from a drop the player never received at all.
+// package.json rather than a committed binary: ScoreLoader sniffs content and never sees a name,
+// so any unreadable bytes exercise the same branch.
+test('dragging a file that is not a score reports it instead of failing silently', async ({
+  page,
+}) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  const drag = await fileDrag(page, 'package.json');
+  const zone = page.getByTestId('drop-zone');
+  await drag('dragEnter', zone);
+  await drag('dragOver', zone);
+  await drag('drop', zone);
+
+  await expect(page.getByText(/not a score format the player reads\. \(Error E103\)/)).toBeVisible({
+    timeout: 15_000,
+  });
+  // …and the score already on screen is untouched.
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', '1-beat.gp');
+});
+
 // The COUNTER, not a flag. `dragleave` fires on the container whenever the pointer crosses into a
 // CHILD, so a naive setDragging(false) strobes the overlay off mid-drag — 14 transitions were
-// measured on one pass across the control. The sequence below is that exact crossing, and it is
-// the case a flag cannot survive. No dataTransfer: only dragover and drop read one.
+// measured on one pass across the control. Crossing from the transport row up onto the notation is
+// that exact move, and it is the case a flag cannot survive.
 test('the drop overlay survives the pointer crossing into a child', async ({ page }) => {
   await page.goto('/play');
-  const zone = page.getByTestId('drop-zone');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  const drag = await fileDrag(page, 'e2e/fixtures/Punk.gp');
   const overlay = page.getByText('Drop to open');
+  const transport = page.getByTestId('player-status');
+  const notation = page.getByTestId('notation-surface');
 
-  await zone.dispatchEvent('dragenter');
+  await drag('dragEnter', transport);
+  await drag('dragOver', transport);
   await expect(overlay).toBeVisible();
 
-  // Entering a child bubbles a second dragenter to the container (depth 2) BEFORE the container's
-  // own dragleave arrives (depth 1) — still inside, so the overlay must stay up.
-  await page.getByTestId('notation-surface').dispatchEvent('dragenter');
-  await zone.dispatchEvent('dragleave');
+  // Still inside the drop zone, only over a different child of it — the overlay must stay up.
+  await drag('dragOver', notation);
   await expect(overlay).toBeVisible();
 
-  // The real exit: the last leave unwinds the counter to 0.
-  await zone.dispatchEvent('dragleave');
+  await drag('drop', notation);
   await expect(overlay).toBeHidden();
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+    timeout: 30_000,
+  });
 });
 
 // Playwright AUTO-DISMISSES window.confirm() when no listener is attached, which would silently
