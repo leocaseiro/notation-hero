@@ -17,7 +17,7 @@
 
 **Goal:** Give the player its transport — a seek bar that scrubs, a tempo control in the header, Loop / Metronome / Count-In toggles that audibly change playback, and a determinate progress bar for the soundfont download.
 
-**Architecture:** Five new presentation-only components in `client/` (`Slider`, `Progress`, `Scrubber`, `TransportToggle`, `TempoControl`), each built on a Base UI primitive and each with a Storybook story plus the VR and axe baselines that block merge. The already-built `Tooltip` is exported alongside them. `web/` composes them into the transport row and the header pill and wires each to an `AlphaTabApi` accessor. Nothing in `client/` imports `@coderline/alphatab` — that is what keeps the gate real, because a `client/` story has no engine instance to provide.
+**Architecture:** Five new presentation-only components in `client/` (`Slider`, `Progress`, `Scrubber`, `TransportToggle`, `TempoControl`), each built on a Base UI primitive and each with a Storybook story plus the VR and axe baselines that block merge. The already-built `Tooltip` is already in the barrel (Plan A) and is consumed here, not re-exported. `web/` composes them into the transport row and the header pill and wires each to an `AlphaTabApi` accessor. Nothing in `client/` imports `@coderline/alphatab` — that is what keeps the gate real, because a `client/` story has no engine instance to provide.
 
 **Tech Stack:** `@base-ui/react` 1.6 — `Slider`, `Progress`, `Toggle` and `NumberField` primitives; every new control is built on one of them rather than hand-rolled. Tailwind 4 tokens, Storybook 10, Playwright 1.61.1 + axe.
 
@@ -35,6 +35,13 @@
 
 Every task's requirements implicitly include this section, plus **all of Plan A's Global Constraints**, which still bind.
 
+- **The whole transport is gated on `playerReady`, never on `soundFontLoaded`.** Pass
+  `disabled={!playerReady}` — Plan A already holds `playerReady` in `Player` and gates Play on it, so
+  the transport becomes live at the same moment Play does. Do NOT gate any control on `soundFontLoaded`:
+  it is a bare `IEventEmitter` in 1.8.4 with no replay, so a subscriber attaching after it fires never
+  sees it and the control would latch disabled forever. (That race is exactly why Plan A stopped gating
+  Play on it.) Task 8 may still _listen_ to `soundFontLoaded` to hide the progress bar, because it
+  subscribes in the same effect as `soundFontLoad` — it cannot see the start and miss the end.
 - **Every AlphaTab subscription goes through `useAlphaTabEvent(api, event, handler)`** — the typed helper
   Plan A Task 5 lands in `web/lib/alphatab/useAlphaTab.ts`. A bare `api.<event>.on(...)` in a component
   is a leak: it pairs no `.off()`, and `reactStrictMode: true` (set in `web/next.config.ts`)
@@ -54,7 +61,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
   `transport-play`, `player-status` (`data-playing`, `data-player-ready`), `rendered-track-count`,
   `open-file-input`, `open-file-button`, `loaded-notation-name`. Anything else must be produced by a
   task in THIS plan.
-- **Every `client/` component here is presentation-only**: `value` in, `onChange` out, option lists as plain arrays, and **no import from `@coderline/alphatab`**. `client/` has no AlphaTab dependency and a Storybook story has no engine instance, so a control that read its options off the library would be gated while rendering fabricated options.
+- **Every `client/` component here is presentation-only**: `value` in, `onChange` out, option lists as plain arrays, and **no import from `@coderline/alphatab`**. `client/` has no AlphaTab dependency and a Storybook story has no engine instance, so a control that read its options off the library would be gated while rendering fabricated options. **This is machine-enforced now, not a convention to remember:** `client/eslint.config.js` bans the package outright — type imports included, unlike `web/`'s fence which allows `import type` — and bans `await import()` of it through a `no-restricted-syntax` selector; `tooling/alphatab-import-fence.test.sh` (run by `pnpm run test:tooling`, a required CI step) proves both fences still reject a probe.
 - **Each new `client/` component needs all six files, co-located in its own folder**: `X.tsx`, `X.stories.tsx`, `X.story-ids.ts`, `X.test.tsx`, `X.a11y.ts`, `X.vr.ts`. Never a `__tests__/` or `stories/` directory — `tooling/check-layout.sh` fails the build on them.
 - **VR baselines are Linux-only.** Generate them with `pnpm test:vr:docker:update` (Docker Desktop running — `open -a Docker`), never natively on macOS. Kill any Storybook already on `:6006` first, or Playwright's `reuseExistingServer` serves desynced stories and the baselines come out wrong.
 - **`test:vr:docker:update` re-blesses EVERY baseline in `client/`, not just the new component's.** It passes no filter, so after every regeneration run `git status --short client/src` (package-wide, never folder-scoped) and commit only what you meant to change. Re-running `pnpm test:vr:docker` afterwards compares against the files you just wrote, so it proves the suite is green — it cannot detect drift.
@@ -126,15 +133,15 @@ Each folder holds the six files named in Global Constraints, plus a `X.vr.ts-sna
 
 **Modified**
 
-| File                               | Change                                                                                                            |
-| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `client/src/index.ts`              | Export the five new components.                                                                                   |
-| `web/app/play/PlayerShell.tsx`     | Hold transport and soundfont-progress state; render the transport row, the header and the progress bar.           |
-| `web/app/play/TransportRow.tsx`    | _(new)_ The row layout, wired to the api.                                                                         |
-| `web/app/play/PlayerHeader.tsx`    | _(extracted)_ Plan A Task 11 Step 3's inline `<header>`, moved out of `PlayerShell.tsx` and given the tempo pill. |
-| `web/app/play/NotationSurface.tsx` | Report the parsed score's tempo and the soundfont progress upward.                                                |
-| `web/e2e/player.e2e.ts`            | Cases for criteria 3, 5 and 6.                                                                                    |
-| `web/e2e/a11y.e2e.ts`              | Axe over the loaded state now that the transport exists.                                                          |
+| File                               | Change                                                                                                                                                                                          |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `client/src/index.ts`              | Export the five new components, each with a one-line reason comment (the barrel's convention). `Tooltip` is ALREADY exported — do not re-export it.                                             |
+| `web/app/play/PlayerShell.tsx`     | Hold transport and soundfont-progress state; render the transport row, the header and the progress bar.                                                                                         |
+| `web/app/play/TransportRow.tsx`    | _(new)_ The row layout, wired to the api.                                                                                                                                                       |
+| `web/app/play/PlayerHeader.tsx`    | _(extracted)_ Plan A Task 11 Step 3's inline `<header>`, moved out of `PlayerShell.tsx` and given the tempo pill.                                                                               |
+| `web/app/play/NotationSurface.tsx` | Report the soundfont download progress upward (Task 8). NOT the tempo — `score.tempo` is the INITIAL tempo only; `PlayerShell` reads the live value off `midiLoaded` / `playerPositionChanged`. |
+| `web/e2e/player.e2e.ts`            | Cases for criteria 3, 5 and 6.                                                                                                                                                                  |
+| `web/e2e/a11y.e2e.ts`              | Axe over the loaded state now that the transport exists.                                                                                                                                        |
 
 ---
 
@@ -244,9 +251,14 @@ import { Slider as SliderPrimitive } from '@base-ui/react/slider';
 import { cn } from '@/lib/utils';
 
 // Shared with RangeSlider so the two read as one system and cannot drift apart. Exported from
-// slider-classes.ts and imported by BOTH components; the earlier plan said to keep the thumb
+// ./SliderClasses.ts and imported by BOTH components; the earlier plan said to keep the thumb
 // classes "byte-identical" by hand, which is exactly the duplication that drifts.
-export const SLIDER_CONTROL_CLASS = 'flex h-11 w-full items-center';
+// PascalCase filename, NOT kebab: client/eslint.config.js sets unicorn/filename-case to pascalCase
+// for everything under src/components/**, so `slider-classes.ts` fails `eslint . --max-warnings 0`.
+// Only TRACK and THUMB are genuinely shared. RangeSlider's Control is `flex w-full items-center` with
+// NO h-11 (its Root is h-5), so handing it this 44 px control box would change its geometry and
+// invalidate its committed -linux VR baselines.
+export const SLIDER_CONTROL_CLASS = 'flex h-11 w-full items-center'; // Slider only
 export const SLIDER_TRACK_CLASS = 'relative h-1 grow rounded-full bg-muted';
 export const SLIDER_THUMB_CLASS = cn(
   'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
@@ -516,6 +528,8 @@ Expected: FAIL — `Failed to resolve import "./Progress"`.
 Create `client/src/components/ui/Progress/Progress.tsx`:
 
 ```tsx
+'use client';
+
 import { Progress as ProgressPrimitive } from '@base-ui/react/progress';
 
 import { cn } from '@/lib/utils';
@@ -980,7 +994,7 @@ Expected: PASS — 3 tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
-`TransportToggle.story-ids.ts`: `['default', 'pressed', 'disabled', 'with-tooltip']`. Stories under `title: 'UI/TransportToggle'`, each passing a Material Symbols glyph as `icon`. In `TransportToggle.a11y.ts` set `iconFontStory: () => true` — every story renders a glyph, and that flag makes the helper assert the icon font actually loaded, so a failed load cannot pass silently as ligature fallback text. VR: `states: ['resting', 'focus', 'hover']`, `statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover'])`.
+`TransportToggle.story-ids.ts`: `['default', 'pressed', 'disabled', 'with-tooltip']`. Stories under `title: 'UI/TransportToggle'`, each passing a Material Symbols glyph as `icon`. In `TransportToggle.a11y.ts` set `iconFontStory: () => true` — every story renders a glyph, and that flag makes the helper assert the icon font actually loaded, so a failed load cannot pass silently — `client/src/styles.css` now sets `font-display: block` on the Material Symbols face, which means a failed load renders **blank** rather than showing the ligature source text, and axe is perfectly happy with a blank control. VR: `states: ['resting', 'focus', 'hover']`, `statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover'])`.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 
@@ -1314,11 +1328,19 @@ const TempoControl = ({
 export { TempoControl };
 ```
 
-> Two things to verify while building, rather than assume: that `NumberField.Input` reports
-> `role="textbox"` to Testing Library in the installed version (adjust the queries if it exposes
-> `spinbutton` instead), and that `group-data-[…]` nesting resolves as written under Tailwind 4 — if the
-> doubled `group-*` variant does not compose, hoist the gate to a single `data-percent` attribute
-> computed in TypeScript rather than fighting the variant syntax.
+> Both of these were open questions in the round-1 review and are now **verified against the installed
+> packages** (2026-09-19), so the queries and the classes below stand as written:
+>
+> - `NumberField.Input` renders `<input type="text">` with `aria-roledescription="Number field"` and
+>   **no `role`** in `@base-ui/react` 1.6.0 (the only `role:` values anywhere in `number-field/` are
+>   `group` on `NumberFieldGroup` and `presentation` on the scrub-area parts). `input[type="text"]`
+>   maps to the implicit ARIA role `textbox`, and `aria-roledescription` does not change a computed
+>   role — so `getByRole('textbox', …)` is correct and `spinbutton` would not match.
+> - The doubled `group-data-[…]` variant **composes**, compiled through Tailwind's own API against both
+>   4.3.1 and 4.3.2 with identical output: each `group-*` becomes an independent
+>   `&:is(:where(.group)[data-…] *)` ancestor test, and `NumberField.Root` carries `group`,
+>   `data-off-speed` and `data-linger` at once, so one element satisfies both. No hoist to a computed
+>   `data-percent` attribute is needed.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -1458,25 +1480,28 @@ Expected: FAIL — no `toggle-loop`, no `Seek` slider.
 Append to `client/src/index.ts`:
 
 ```ts
-// The v0 transport (Plan B):
+// Pulled across by the v0 transport:
+// - Slider is the single-value rail the scrubber, the settings rows and per-track volume all use.
+// - Progress is the soundfont download bar.
+// - Scrubber, TransportToggle and TempoControl are the transport itself.
 export { Slider } from './components/ui/Slider/Slider';
 export { Progress } from './components/ui/Progress/Progress';
 export { Scrubber } from './components/ui/Scrubber/Scrubber';
 export { TransportToggle } from './components/ui/TransportToggle/TransportToggle';
 export { TempoControl } from './components/ui/TempoControl/TempoControl';
-// Already built, tested, and carrying committed VR + axe baselines — it was simply never exported.
-// The transport's icon-only toggles and the tempo steppers all use it.
-export {
-  Tooltip,
-  TooltipTrigger,
-  TooltipContent,
-  TooltipProvider,
-} from './components/ui/Tooltip/Tooltip';
 ```
 
-Note the file's own header comment says the Phase 1 surface is "ONLY Button (NH-275 one-component
-proof)" and defers the full barrel to Phase 2. These six exports are a deliberate, scoped widening for
-v0 — update that comment in the same edit rather than leaving it contradicting the file.
+**Do NOT add a `Tooltip` export.** The barrel already carries
+`export { Tooltip, TooltipTrigger, TooltipContent }` (Plan A Task 4 put it there, and it is in the file
+today) — re-exporting the same names from the same module is `TS2300`, a hard typecheck failure, not a
+warning. `TooltipProvider` is the only name not exported, and nothing needs it: `Tooltip` already wraps
+itself in `<TooltipProvider>`, so there is no root provider to mount. Verify before editing with
+`grep -n Tooltip client/src/index.ts`.
+
+The header comment needs no edit either — it already reads "It grows only when a screen pulls a
+component across (spec D3 — the player decides what gets built)", which is exactly what these five
+exports are. Follow the convention the existing entries use: a short comment saying WHY each export was
+pulled across, not just that it was.
 
 - [ ] **Step 4: Write the transport row**
 
@@ -1498,6 +1523,8 @@ interface TransportRowProps {
   onMetronomeChange: (next: boolean) => void;
   countIn: boolean;
   onCountInChange: (next: boolean) => void;
+  /** Whether AlphaTab holds a bar-range selection. Drives the Loop toggle's label and hint only. */
+  hasRange: boolean;
   disabled: boolean;
   /** The play/pause control, owned by the shell because it drives api.playPause(). */
   playButton: ReactNode;
@@ -1524,6 +1551,7 @@ export function TransportRow({
   onMetronomeChange,
   countIn,
   onCountInChange,
+  hasRange,
   disabled,
   playButton,
 }: Readonly<TransportRowProps>) {
@@ -1678,7 +1706,7 @@ const seek = useCallback(
 );
 ```
 
-Render `<TransportRow … />` below the notation surface, move the existing play/pause `Button` into its `playButton` prop, and add the new attributes to the status element:
+Render `<TransportRow … hasRange={hasRange} … />` below the notation surface, move the existing play/pause `Button` into its `playButton` prop, and add the new attributes to the status element:
 
 ```tsx
         data-duration={durationMs}
@@ -1722,7 +1750,7 @@ git commit -m "feat(web): wire the transport row — loop, metronome, count-in a
 
 **Interfaces:**
 
-- Consumes: `TempoControl` (Task 5); the parsed score's `tempo`; the score title and open file name, both already held by `PlayerShell` (Plan A).
+- Consumes: `TempoControl` (Task 5); `scoreTempo`, which `PlayerShell` already holds live from `midiLoaded` + `playerPositionChanged` (Task 6 Step 5) — never `score.tempo`; the score title and open file name, both already held by `PlayerShell` (Plan A).
 - Produces: `data-speed` on `player-status`. No new title path — Plan A Task 11 Step 3 already put the open score's title in `PlayerShell`.
 
 - [ ] **Step 1: Write the failing test**
@@ -2114,7 +2142,7 @@ Plan: `docs/plans/2026-09-13-v0b-transport-plan.md`
 `Slider` (single-value, on Base UI `Slider`), `Progress` (determinate + indeterminate, on Base UI
 `Progress`), `Scrubber`, `TransportToggle` (on Base UI `Toggle`) and `TempoControl` (on Base UI
 `NumberField` — editable, wheel- and drag-scrubbable) — each with a Storybook story plus VR and axe
-baselines that block merge. `Tooltip` was already built, with committed VR and axe baselines; this PR only exports it.
+baselines that block merge. `Tooltip` was already built and already exported by Plan A; this PR only consumes it.
 
 ## Success criteria covered
 
@@ -2152,7 +2180,7 @@ Add a Change-log entry in `docs/decisions/decision-registry.md` and commit it in
 atomically on merge. It must record:
 
 - The design system gained `Slider`, `Progress`, `Scrubber`, `TransportToggle` and `TempoControl`, all
-  gated by VR + axe, and `Tooltip` became part of the public surface.
+  gated by VR + axe. (`Tooltip` was already public — Plan A exported it.)
 - **Every new control is built on a Base UI primitive** (`Slider`, `Progress`, `Toggle`, `NumberField`)
   rather than hand-rolled — the standing convention, ratified again in the 2026-09-13 plan review.
 - The **Spec Delta** on the tempo control: percentage on hover/focus and never at 100 %, `± 1` with
