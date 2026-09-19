@@ -1998,16 +1998,15 @@ useAlphaTabEvent(api, 'soundFontLoaded', () => setSoundFontProgress(undefined));
 // Without this the bar freezes at whatever fraction it last reported, forever, with nothing on
 // screen saying why — for a failure the spec already handles like the corrupt-file toast.
 //
-// `toast` is Plan A's (already exported from @notation-hero/client). There is NO `showFailureToast`
-// helper — the corrupt-file path is `toast.error(...)` directly, and the engine-IMPORT failure is not
-// a toast at all but NotationSurface's engine-error overlay. Plan A's rule is that every failure
-// message ends with its error number, so this needs a code: `PLAYER_ERROR` has no soundfont member
-// (its 2xx engine block ends at E204), so ADD ONE in `web/lib/player-errors.ts` as part of this step:
+// There is NO `showFailureToast` helper, and there is no soundfont-specific event to subscribe to
+// either: `soundFontLoadFailed` belongs to AlphaSynthBase/IAlphaSynth, NOT to AlphaTabApiBase, so
+// `useAlphaTabEvent(api, 'soundFontLoadFailed', …)` is not in `keyof AlphaTabApiEvents` and is a
+// TS2345 compile error. AlphaTabApiBase forwards the failure itself
+// (`player.soundFontLoadFailed.on((e) => { this.onError(e); })`),
 // so it reaches the app as `api.error`, which Plan A ALREADY subscribes to in NotationSurface and
 // reports as PLAYER_ERROR.engineRuntime — whose own doc comment reads "AlphaTab raised its own error
-// event — in practice, the soundfont download". Do NOT add an E205 member and do NOT write
-// `useAlphaTabEvent(api, 'soundFontLoadFailed', …)`: that name is not in `keyof AlphaTabApiEvents`,
-// so it is a TS2345 compile error. Clear the bar from the handler that already exists:
+// event — in practice, the soundfont download". So do NOT add an E205 member to player-errors.ts:
+// the message already exists. Clear the bar from the handler that already exists:
 useAlphaTabEvent(api, 'error', () => setSoundFontProgress(undefined));
 ```
 
