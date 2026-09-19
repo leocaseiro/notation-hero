@@ -29,7 +29,10 @@ that were prose until now are checked by CI on every pull request.
 - **`web/` gained a merge-blocking browser lane — ⏳ → ✅.** The `e2e` CI job runs
   `@notation-hero/web run test:e2e` with its own Chromium install, and uploads both lanes' traces
   from one step (a second step reusing the artifact name would collide).
-  `tooling/workflow-guards.test.mjs` pins all four facts in source.
+  `tooling/workflow-guards.test.mjs` pins those four facts in source — each command anchored to
+  a real `run:` line, so commenting a step out fails the guard rather than sliding past a
+  substring match — plus a fifth: that `e2e` is still listed in `ci-green`'s `needs:`, without
+  which the lane would keep running but stop blocking merge.
 - **`web/` is no longer the repo's only ungated UI — new.** `web/e2e/a11y.e2e.ts` runs axe over five
   reachable states on the same WCAG tag set `client/` uses, plus a 44 px hit-area assertion that axe
   cannot make (no rule in `wcag2a/2aa/21a/21aa` covers target size).

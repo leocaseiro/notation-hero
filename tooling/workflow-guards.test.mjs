@@ -35,13 +35,18 @@ test('seed-catalog.yml gates the owner-url seed on the master ref', () => {
 
 test('the e2e job runs the web Playwright lane, not only the client one', () => {
   const ci = workflow('ci.yml');
-  assert.match(ci, /pnpm --filter @notation-hero\/web run test:e2e/);
+  // ANCHORED to a real `run:` line (the /m flag), never "appears somewhere in the file": the
+  // unanchored form stays green against a ci.yml where the whole step is commented out with `#`.
+  assert.match(ci, /^\s+run: pnpm --filter @notation-hero\/web run test:e2e$/m);
   // The web lane needs its own browser install — the client step only installs for client/.
   assert.match(
     ci,
-    /pnpm --filter @notation-hero\/web exec playwright install --with-deps chromium/,
+    /^\s+run: pnpm --filter @notation-hero\/web exec playwright install --with-deps chromium$/m,
   );
   // Its report and traces must be uploaded, or a CI failure is not replayable.
   assert.match(ci, /web\/playwright-report\//);
   assert.match(ci, /web\/test-results\//);
+  // …and the lane must still BLOCK merge. ci-green's `needs:` list is the single source of truth
+  // for that, so a step that runs inside a job nothing waits on is not a gate.
+  assert.match(ci, /^\s+e2e,$/m);
 });
