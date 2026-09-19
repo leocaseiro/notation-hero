@@ -36,13 +36,17 @@
 Every task's requirements implicitly include this section, plus **all of Plan A's Global Constraints**, which still bind.
 
 - **Disabled controls stay keyboard-reachable — the design system owns that, not this plan.** Ratified
-  2026-09-18 ([NH-304](https://leocaseiro.atlassian.net/browse/NH-304), in flight as PR #158): `Button`
+  2026-09-18 ([NH-304](https://leocaseiro.atlassian.net/browse/NH-304), merged 2026-09-19 as PR #158): `Button`
   renders `aria-disabled` with its own activation guard instead of the native `disabled` attribute,
   because a natively disabled button cannot take focus — which hides it from anyone tabbing through and
-  makes focus-moving behaviour a silent no-op. The registry counts **46 `disabled` sites in this plan**
-  that inherit the change. Do NOT hand-roll per-call-site guards that NH-304 makes redundant. If NH-304
-  has not merged when this plan is dispatched it is a prerequisite, not a follow-up: `TransportToggle`,
-  `TempoControl`'s `±` buttons and the `Scrubber` all ship disabled states here.
+  makes focus-moving behaviour a silent no-op. The registry counts 46 `disabled` sites in this plan —
+  **but the change only reaches a site that renders the `Button` COMPONENT.** A site that merely borrows
+  `buttonVariants(...)` class strings inherits nothing, because class strings carry no behaviour. None of
+  this plan's three disabled-capable controls is a `Button`: `TransportToggle` is Base UI `Toggle`,
+  `TempoControl`'s `±` are `NumberField.Decrement`/`Increment` (Base UI sets the native attribute in
+  `useNumberFieldButton`), and `Scrubber` composes `Slider`. Decide per control whether its disabled
+  state must stay focusable; where it must, that is THIS plan's work, not NH-304's. Only skip a
+  hand-rolled guard where the site really does render `Button`.
 - **The whole transport is gated on `playerReady`, never on `soundFontLoaded`.** Pass
   `disabled={!playerReady}` — Plan A already holds `playerReady` in `Player` and gates Play on it, so
   the transport becomes live at the same moment Play does. Do NOT gate any control on `soundFontLoaded`:
@@ -100,7 +104,10 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
   - `api.midiLoaded` — fires when the score's MIDI is ready, carrying a `PositionChangedEventArgs` built
     at tick 0. This is the clean bootstrap for the tempo readout.
   - `api.soundFontLoad` emits `{ loaded, total }`; `api.soundFontLoaded` is completion (no payload); and
-    `api.soundFontLoadFailed: IEventEmitterOfT<Error>` is the failure path. All three must be handled —
+    the failure path is **`api.error`, NOT `api.soundFontLoadFailed`** — the latter is a member of
+    `AlphaSynthBase`/`IAlphaSynth`, not of `AlphaTabApiBase`, and `AlphaTabApiBase` forwards it itself
+    (`player.soundFontLoadFailed.on((e) => { this.onError(e); })`). Both the progress and completion
+    events must still be handled —
     subscribing only to the first leaves the progress bar on screen forever.
   - `api.playbackRange: PlaybackRange | null` plus
     `api.playbackRangeChanged: IEventEmitterOfT<PlaybackRangeChangedEventArgs>` — how the Loop toggle
@@ -249,7 +256,7 @@ Expected: FAIL — `Failed to resolve import "./Slider"`.
 
 - [ ] **Step 3: Write the component**
 
-Create `client/src/components/ui/Slider/Slider.tsx`. Keep the thumb classes byte-identical to `RangeSlider.tsx`'s so the two read as one system:
+First create `client/src/components/ui/Slider/SliderClasses.ts` holding the shared TRACK and THUMB strings, then import them from BOTH `Slider.tsx` and `RangeSlider.tsx` — add `client/src/components/ui/RangeSlider/RangeSlider.tsx` to the File Structure "Modified" table, since this task now edits it. Its rendered classes must come out byte-identical, so re-run `pnpm test:vr:docker` afterwards and expect the RangeSlider baselines to pass unchanged. Then create `client/src/components/ui/Slider/Slider.tsx`:
 
 ```tsx
 'use client';
@@ -1002,7 +1009,7 @@ Expected: PASS — 3 tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
-`TransportToggle.story-ids.ts`: `['default', 'pressed', 'disabled', 'with-tooltip']`. Stories under `title: 'UI/TransportToggle'`, each passing a Material Symbols glyph as `icon`. In `TransportToggle.a11y.ts` set `iconFontStory: () => true` — every story renders a glyph, and that flag makes the helper assert the icon font actually loaded, so a failed load cannot pass silently — `client/src/styles.css` now sets `font-display: block` on the Material Symbols face, which means a failed load renders **blank** rather than showing the ligature source text, and axe is perfectly happy with a blank control. VR: `states: ['resting', 'focus', 'hover']` for every story **including `disabled`** — that per-story override existed only because a natively disabled button cannot be Tab-focused, and under NH-304 it can, so its focus ring is a real state the baseline must guard.
+`TransportToggle.story-ids.ts`: `['default', 'pressed', 'disabled', 'with-tooltip']`. Stories under `title: 'UI/TransportToggle'`, each passing a Material Symbols glyph as `icon`. In `TransportToggle.a11y.ts` set `iconFontStory: () => true` — every story renders a glyph, and that flag makes the helper assert the icon font actually loaded, so a failed load cannot pass silently — `client/src/styles.css` now sets `font-display: block` on the Material Symbols face, which means a failed load renders **blank** rather than showing the ligature source text, and axe is perfectly happy with a blank control. VR: `states: ['resting', 'focus', 'hover']`, `statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover'])`. **Keep that override.** NH-304 changed the `Button` COMPONENT; `TransportToggle` only borrows `buttonVariants(...)` class strings and renders Base UI's `Toggle`, which is natively disabled and cannot hold focus. `runVrStories` asserts `toBeFocused()` before it snapshots, so capturing a `focus` state on the disabled story fails the `vr` job.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 
@@ -1461,7 +1468,7 @@ test('the scrubber seeks and the position follows', async ({ page }) => {
   await seek.press('ArrowRight');
 
   // AlphaTab's own clock, through the debug handle `useAlphaTab` parks on the host element — the
-  // same read Plan A Task 10 uses. Deliberately NOT a data-* attribute: `seek` writes
+  // same read Plan A Task 11 uses. Deliberately NOT a data-* attribute: `seek` writes
   // `setPositionMs(ms)` optimistically, so a mirrored hook would report the requested value even if
   // the engine refused it, and the assertion would pass on a broken seek.
   const enginePositionMs = () =>
@@ -1630,6 +1637,10 @@ const [metronome, setMetronome] = useState(false);
 const [countIn, setCountIn] = useState(false);
 // Whether AlphaTab currently holds a bar-range selection — drives the Loop toggle's label only.
 const [hasRange, setHasRange] = useState(false);
+// The live score tempo. Declared HERE, not in Task 7, because the position handler below writes it —
+// Task 7 only READS it for the header pill. Task 6 has to commit green on its own, and it cannot if a
+// setter it calls is declared a task later. The 120 is the pre-load placeholder only.
+const [scoreTempo, setScoreTempo] = useState(120);
 ```
 
 Add the position subscription through `useAlphaTabEvent`. Plan A creates none — it subscribes only to
@@ -1795,7 +1806,7 @@ Expected: FAIL — no `Tempo` input.
 
 - [ ] **Step 3: Extract the header**
 
-Plan A Task 11 Step 3 renders this header inline, as the first child of `<main>` in `PlayerShell.tsx`: the wordmark, then the score title with the file name in a tooltip behind it. Move that markup into `web/app/play/PlayerHeader.tsx` unchanged and add the tempo pill beside it. Both `data-testid="loaded-notation-name"` and `data-file` must survive the move — Plan A's e2e tests assert on them, so dropping either turns that lane red.
+Plan A Task 11 Step 3 renders this header inline, as the first child of `<main>` in `PlayerShell.tsx`: the wordmark, then the score title with the file name in a tooltip behind it. Move that markup into `web/app/play/PlayerHeader.tsx`, keeping its STRUCTURE and both `data-` attributes, and add the tempo pill beside it. The classes below are deliberately restyled for a standalone bar — the wordmark takes the brand colour, the title takes `flex-1` so the pill sits right, and the `<header>` gains its own height, border and padding, which the inline version inherited from `<main>`. Where the prose and the code below disagree, the code wins. Both `data-testid="loaded-notation-name"` and `data-file` must survive the move — Plan A's e2e tests assert on them, so dropping either turns that lane red.
 
 ```tsx
 'use client';
@@ -1814,9 +1825,9 @@ interface PlayerHeaderProps {
 // The header bar. Tempo lives here, not in the transport row, so the player has exactly one tempo
 // control (spec §7).
 //
-// The wordmark, the title and its tooltip came from Plan A Task 11 Step 3, which rendered them
-// inline in PlayerShell. They move here unchanged — both data- attributes included, because Plan A's
-// e2e tests read them. The tempo pill is what this task adds.
+// The wordmark, the title and its tooltip came from Plan A Task 11 Step 3, which rendered them inline
+// in PlayerShell. The STRUCTURE and both data- attributes move across unchanged — Plan A's e2e tests
+// read them — while the classes are restyled for a standalone bar. The tempo pill is what this adds.
 //
 // Deliberately absent in v0: the Auto-Speed toggle (a practice feature — it needs the v0.2 scoring
 // work) and the MIDI status icon (no Web MIDI until v0.2). The Settings gear arrives in Plan C.
@@ -1865,9 +1876,8 @@ In `PlayerShell.tsx`'s `Player`:
 
 ```tsx
 const [speed, setSpeed] = useState(1);
-// Seeded from `api.midiLoaded` and kept live by `playerPositionChanged` (Task 6 Step 5), never from
-// `score.tempo`. The 120 here is only the pre-load placeholder.
-const [scoreTempo, setScoreTempo] = useState(120);
+// `scoreTempo` is already declared in Task 6 Step 5 — seeded from `api.midiLoaded` and kept live by
+// `playerPositionChanged`, never from `score.tempo`. This task only reads it. Do not redeclare it.
 
 // The title and the file name are Plan A's — Task 11 Step 3 already declares `openFileName` in this
 // scope and `notation.score.title` is the shell's own state. Do NOT redeclare either: a second
@@ -1888,7 +1898,7 @@ const applySpeed = useCallback(
 // tempo changed, not because the multiplier was reset.
 ```
 
-Replace Plan A's inline `<header>` with `<PlayerHeader scoreTitle={notation?.score.title ?? ''} fileName={openFileName} … />`, and add `data-speed={speed}` to the status element. `NotationSurface` is untouched by this task.
+Replace Plan A's inline `<header>` with `<PlayerHeader scoreTitle={notation?.score.title ?? ''} fileName={openFileName} … />`, and add `data-speed={speed}` to the status element. `NotationSurface` is untouched by this task. Drop `Tooltip`, `TooltipContent` and `TooltipTrigger` from `PlayerShell.tsx`'s `@notation-hero/client` import in the same edit — Plan A Task 11 Step 3 added them for the inline header and nothing else in the file uses them, so leaving them behind fails `eslint . --max-warnings 0` (`@typescript-eslint/no-unused-vars` is an error). `Button` and `toast` stay.
 
 - [ ] **Step 5: Run the lane to verify it passes**
 
@@ -1920,7 +1930,7 @@ This covers the **soundfont only** — 302 KB gzip of the ~1.6 MB first-load pay
 
 **Interfaces:**
 
-- Consumes: `Progress` (Task 2); `useAlphaTabEvent` (Plan A); `toast` and `PLAYER_ERROR` (Plan A) — this task adds the `soundFontFailed: 'E205'` member to `web/lib/player-errors.ts`.
+- Consumes: `Progress` (Task 2); `useAlphaTabEvent` (Plan A). No new error code: a soundfont failure surfaces as `api.error`, which Plan A already handles as `PLAYER_ERROR.engineRuntime`.
 - Produces: `onSoundFontProgress: (fraction: number | null) => void` on `NotationSurface`.
 
 - [ ] **Step 1: Write the failing test**
@@ -1956,7 +1966,8 @@ Expected: FAIL — no progressbar.
 
 In `NotationSurface.tsx`, beside its existing `useAlphaTabEvent(api, 'error', …)` and
 `useAlphaTabEvent(api, 'renderFinished', …)` calls — they are top-level hook calls, not `.on()` inside
-an effect, and `NotationSurface` has only one `useEffect` (the music-font `loadingerror` watcher).
+an effect. (`NotationSurface` has two `useEffect`s by then — the music-font `loadingerror` watcher and
+Plan A Task 11's `renderScore` effect — and the new subscription belongs in neither.)
 Widen `NotationSurfaceProps` first; Plan A finalised it as `{ api, hostRef, viewportRef, notation }`:
 
 ```tsx
@@ -1991,15 +2002,12 @@ useAlphaTabEvent(api, 'soundFontLoaded', () => setSoundFontProgress(undefined));
 // a toast at all but NotationSurface's engine-error overlay. Plan A's rule is that every failure
 // message ends with its error number, so this needs a code: `PLAYER_ERROR` has no soundfont member
 // (its 2xx engine block ends at E204), so ADD ONE in `web/lib/player-errors.ts` as part of this step:
-//   /** The instrument soundfont download failed. */
-//   soundFontFailed: 'E205',
-useAlphaTabEvent(api, 'soundFontLoadFailed', (error) => {
-  setSoundFontProgress(undefined);
-  toast.error(
-    `The instrument sounds could not be downloaded. (Error ${PLAYER_ERROR.soundFontFailed})`,
-  );
-  console.error(error);
-});
+// so it reaches the app as `api.error`, which Plan A ALREADY subscribes to in NotationSurface and
+// reports as PLAYER_ERROR.engineRuntime — whose own doc comment reads "AlphaTab raised its own error
+// event — in practice, the soundfont download". Do NOT add an E205 member and do NOT write
+// `useAlphaTabEvent(api, 'soundFontLoadFailed', …)`: that name is not in `keyof AlphaTabApiEvents`,
+// so it is a TS2345 compile error. Clear the bar from the handler that already exists:
+useAlphaTabEvent(api, 'error', () => setSoundFontProgress(undefined));
 ```
 
 - [ ] **Step 4: Render the bar**
@@ -2205,7 +2213,7 @@ atomically on merge. It must record:
 
 **Base UI first.** Every new control sits on a Base UI primitive rather than a hand-rolled equivalent — `Slider` on `Slider`, `Progress` on `Progress`, `TransportToggle` on `Toggle`, `TempoControl` on `NumberField`. Each choice deletes hand-written ARIA, clamping or interaction code the primitive already owns. `Scrubber` is the one composition (it wraps `Slider`), and `Tooltip` already existed.
 
-**Placeholder scan.** Several Step 5 blocks describe a stories file by its shape rather than transcribing it — each names the exact template file to copy (`RangeSlider.stories.tsx`), the exact story ids, and the exact helper config values, so nothing is left to invent. The metronome glyph is a named, shipped default (`avg_pace`) with a flagged design question, not a TODO. Three conditional fallbacks are named explicitly rather than left open: if Base UI rejects `max === min`, fix `Scrubber` not the test; if `NumberField.Input` reports `spinbutton` rather than `textbox`, adjust the queries; if the doubled `group-data-[…]` variant does not compose under Tailwind 4, hoist the gate to a single computed attribute.
+**Placeholder scan.** Several Step 5 blocks describe a stories file by its shape rather than transcribing it — each names the exact template file to copy (`RangeSlider.stories.tsx`), the exact story ids, and the exact helper config values, so nothing is left to invent. The metronome glyph is a named, shipped default (`avg_pace`) with a flagged design question, not a TODO. One conditional fallback is named explicitly rather than left open: if Base UI rejects `max === min`, fix `Scrubber` not the test. The other two round-1 fallbacks are gone because the questions behind them were settled against the installed packages on 2026-09-19 — `NumberField.Input` does report `textbox`, and the doubled `group-data-[…]` variant does compose. Task 5's note carries both proofs.
 
 **Verified against the installed packages, not assumed.** Every AlphaTab member in Global Constraints resolves in `@coderline/alphatab` 1.8.4's `dist/alphaTab.d.ts`, and the four behaviours marked **observed** were confirmed by running the real synth headless: `score.tempo` reporting the opening tempo for a whole 90→120→60 score, `originalTempo` tracking automations at sub-bar granularity, the `fireOnRegister` 120/120 stub replaying on subscribe, and the post-seek stale-event burst carrying `isSeek: false`. Every `runVrStories` / `runA11yStories` option this plan passes exists in `client/src/vr-helpers.ts` and `a11y-helpers.ts`, and `animate-skeleton-pulse` plus `bg-skeleton` exist in `styles.css` / `Skeleton.tsx`.
 
