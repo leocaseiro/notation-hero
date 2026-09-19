@@ -176,6 +176,41 @@ test('a failed music-font download shows the engine error, not an endless Skelet
   await expect(page.getByTestId('notation-skeleton')).toBeHidden();
 });
 
+// The other half of that backstop. The 60 s timer and the font race each other, and the font can
+// win LATE — the slow link the timeout is explicitly sized for, or a throttled background tab. The
+// banner must then GO AWAY: a finished render proves the font arrived, and "reload the page to try
+// again" is simply wrong over a score that is already drawing. Only the FONT errors clear this
+// way; a SoundFont failure (E202) is not disproved by a render, and persists on purpose.
+test('a music font that arrives after the 60 s backstop clears the error', async ({ page }) => {
+  // Definite-assignment: the executor runs synchronously, so releaseFont is set before any await.
+  let releaseFont!: () => void;
+  const held = new Promise<void>((resolve) => {
+    releaseFont = resolve;
+  });
+  await page.route('**/alphatab/font/**', async (route) => {
+    await held;
+    await route.continue();
+  });
+
+  // Fake time, so 60 s of waiting costs no wall clock. Resumed as soon as the banner is up: left
+  // frozen, AlphaTab's own timers never advance and the render could not finish.
+  await page.clock.install();
+  await page.goto('/play');
+  // RETRY the fast-forward. The backstop is armed in an effect keyed on the api, which does not
+  // exist until the engine module has imported — fast-forwarding before that moment advances past
+  // nothing, and the timer is then armed against the new clock.
+  await expect(async () => {
+    await page.clock.fastForward(61_000);
+    await expect(page.getByTestId('engine-error')).toContainText('Error E204', { timeout: 1000 });
+  }).toPass({ timeout: 20_000 });
+  await page.clock.resume();
+
+  releaseFont();
+  await expect(page.getByTestId('engine-error')).toBeHidden({ timeout: 30_000 });
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
+  await expect(page.getByTestId('notation-skeleton')).toHaveCount(0);
+});
+
 // One fixture per importer path, and the evidence behind criterion 1's `.gp5`. All are already
 // committed — no new content needed. 1-beat.musicxml and 1-beat.mxl are real MuseScore exports
 // (plain and compressed MusicXML take different code paths); 1-beat.atex is a real alphaTex
