@@ -3753,7 +3753,9 @@ test('player has no axe violations with a score long enough to scroll', async ({
 // stall — this is exactly why that state is auditable here and the replacement loading toast is not.
 test('player has no axe violations while the first-visit Skeleton is up', async ({ page }) => {
   await page.route('**/alphatab/esm/alphaTab.mjs', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    // 5000, NOT 5_000: `unicorn/numeric-separators-style` is an error here and only allows a
+    // separator from five digits up, so the underscore fails lint under --max-warnings 0.
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await route.continue();
   });
 
