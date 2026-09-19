@@ -38,6 +38,7 @@ Approved by leocaseiro 2026-09-19:
   bundled version-exact docs, and this repo's own `.claude/rules/nextjs.md` says the same thing —
   belt and braces beats opting out. Also rejected: git-ignoring them, which leaves a fresh clone
   with no pointer to the bundled docs at all.
+
 ### 2026-09-18 — A disabled Button stays focusable: `aria-disabled`, guarded in the component (NH-304)
 
 A native `disabled` button leaves the tab order and cannot take focus. A screen-reader user who moves

@@ -1808,23 +1808,21 @@ function Player() {
         {/* Play stays unavailable until the synth is ready (spec §4). size-11 = the 44px minimum
             hit area; the glyph keeps its drawn size. This is NOT client/'s PlayButton — that one
             is the catalog row's control and has no pause state. */}
-        {/* `aria-disabled` plus a click guard, NOT the native `disabled` attribute. A natively
-            disabled button cannot receive focus, and opening a file moves focus here — during the
-            seconds the engine is still loading that focus call would be a silent no-op, leaving
-            the person's focus behind on a control they already used. aria-disabled keeps the
-            button in the tab order and announced as unavailable; the guard is what stops it
-            acting. */}
+        {/* `disabled` here renders `aria-disabled="true"`, never the native attribute, and the
+            design system blocks activation itself — so no guard belongs at this call site. That
+            matters because a natively disabled button cannot receive focus, and opening a file
+            moves focus to this button: while the engine is still loading, a native `disabled`
+            would make that focus call a silent no-op and strand the person's focus on the control
+            they just used. The dimming and pointer-events rules ship in buttonVariants too, so the
+            className carries only this button's own size and colour. */}
         <Button
           data-testid="transport-play"
           size="icon"
           variant="ghost"
           aria-label={playing ? 'Pause' : 'Play'}
-          aria-disabled={!playerReady}
-          onClick={() => {
-            if (!playerReady) return;
-            api?.playPause();
-          }}
-          className="size-11 rounded-full text-primary aria-disabled:pointer-events-none aria-disabled:opacity-50"
+          disabled={!playerReady}
+          onClick={() => api?.playPause()}
+          className="size-11 rounded-full text-primary"
         >
           <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 34 }}>
             {playing ? 'pause_circle' : 'play_circle'}
@@ -1844,12 +1842,21 @@ export function PlayerShell() {
 }
 ```
 
-> **The Play button depends on NH-304.** Opening a file moves focus here, so this button must stay
-> focusable while it is unavailable — which is why it carries `aria-disabled` and a click guard
-> instead of `disabled`. The design-system fix that makes `Button` do this for every caller is
-> [NH-304](https://leocaseiro.atlassian.net/browse/NH-304): `Button` renders `aria-disabled` rather
-> than `disabled` and blocks its own activation. Until that lands, every unavailable control in this
-> plan is written the long way, by hand.
+> **NH-304 has landed — use `disabled`, and never hand-write the guard.**
+> [NH-304](https://leocaseiro.atlassian.net/browse/NH-304) merged to master on 2026-09-19 (#158),
+> so `Button` already renders `aria-disabled="true"` instead of the native attribute, keeps itself
+> in the tab order, and blocks its own activation through `onClick`/`onKeyDown` plus
+> `pointer-events-none`. Every unavailable control in this plan and in Plans B and C therefore
+> passes `disabled` and nothing else: a call-site guard is dead weight, a hand-written
+> `aria-disabled` competes with the component's own, and repeating
+> `aria-disabled:pointer-events-none aria-disabled:opacity-50` in a `className` duplicates
+> `buttonVariants`. (Earlier drafts of this plan wrote it the long way because NH-304 had not
+> shipped yet.)
+>
+> This still matters for the reason it always did — opening a file moves focus to Play, and a
+> natively disabled button cannot take focus — and the readiness gate survives in the test lane:
+> Playwright's `toBeEnabled()` honours `aria-disabled`, verified 2026-09-19 by pinning the button
+> disabled and watching the assertion time out.
 
 > **No placeholder here.** `PlayerState` is an AlphaTab enum and cannot be imported, so the
 > `playerStateChanged` handler reads `engine.synth.PlayerState.Playing` off the namespace object —

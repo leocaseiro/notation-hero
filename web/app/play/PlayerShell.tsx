@@ -93,23 +93,21 @@ function Player() {
         {/* Play stays unavailable until the synth is ready (spec §4). size-11 = the 44px minimum
             hit area; the glyph keeps its drawn size. This is NOT client/'s PlayButton — that one
             is the catalog row's control and has no pause state. */}
-        {/* `aria-disabled` plus a click guard, NOT the native `disabled` attribute. A natively
-            disabled button cannot receive focus, and opening a file moves focus here — during the
-            seconds the engine is still loading that focus call would be a silent no-op, leaving
-            the person's focus behind on a control they already used. aria-disabled keeps the
-            button in the tab order and announced as unavailable; the guard is what stops it
-            acting. */}
+        {/* `disabled` here renders `aria-disabled="true"`, never the native attribute, and the
+            design system blocks activation itself — so no guard belongs at this call site. That
+            matters because a natively disabled button cannot receive focus, and opening a file
+            moves focus to this button: while the engine is still loading, a native `disabled`
+            would make that focus call a silent no-op and strand the person's focus on the control
+            they just used. The dimming and pointer-events rules ship in buttonVariants too, so the
+            className carries only this button's own size and colour. */}
         <Button
           data-testid="transport-play"
           size="icon"
           variant="ghost"
           aria-label={playing ? 'Pause' : 'Play'}
-          aria-disabled={!playerReady}
-          onClick={() => {
-            if (!playerReady) return;
-            api?.playPause();
-          }}
-          className="size-11 rounded-full text-primary aria-disabled:pointer-events-none aria-disabled:opacity-50"
+          disabled={!playerReady}
+          onClick={() => api?.playPause()}
+          className="size-11 rounded-full text-primary"
         >
           <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 34 }}>
             {playing ? 'pause_circle' : 'play_circle'}
