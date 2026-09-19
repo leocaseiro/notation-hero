@@ -2386,7 +2386,7 @@ pure, so it is fully provable here with plain objects and no browser.
 `infra/` already use — root `syncpack` (a `quality` CI gate) fails on any other:
 
 ```bash
-pnpm --filter @notation-hero/web add -D vitest@^4.1.9
+pnpm --filter @notation-hero/web add -D vitest@^4.1.11
 ```
 
 Then add `"test": "vitest run"` to `web/package.json` — the same script `client/` and `server/` use —
