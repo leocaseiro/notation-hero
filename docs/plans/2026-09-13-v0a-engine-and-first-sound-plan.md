@@ -2951,6 +2951,7 @@ function renderOpenNotation(
 // replacement leaves the playing score untouched by construction.
 useEffect(() => {
   if (!api || !notation) return;
+  wantedRef.current = notation; // BEFORE renderScore — see the guard below
   renderOpenNotation(api, notation, viewportRef.current);
   // `api` is in the list because it is state now: it arrives after the first commit, and a score
   // opened before it existed must still render once it does.
@@ -2967,9 +2968,18 @@ useEffect(() => {
 // This terminates. `_internalRenderTracks` triggers `scoreLoaded` only when the score actually
 // changed (`if (score !== this.score)` in alphaTab.core.mjs), so the re-render below fires the
 // event once more and the identity guard returns immediately.
+// It MUST compare against a ref, never the `notation` closure. renderScore fires `scoreLoaded`
+// SYNCHRONOUSLY, and useAlphaTabEvent refreshes its handler ref in an effect declared after the
+// render effect above — so at that moment the handler still closes over the PREVIOUS render's
+// `notation`. Comparing against that stale value makes this guard "restore" the score the person
+// just replaced: the header updates and the notation silently reverts, on every open after the
+// first, through both the picker and the drop path. Measured 2026-09-19.
+const wantedRef = useRef<OpenNotation | null>(null); // written in the effect above, before renderScore
+
 useAlphaTabEvent(api, 'scoreLoaded', () => {
-  if (!api || !notation || api.score === notation.score) return;
-  renderOpenNotation(api, notation, viewportRef.current);
+  const wanted = wantedRef.current;
+  if (!api || !wanted || api.score === wanted.score) return;
+  renderOpenNotation(api, wanted, viewportRef.current);
 });
 ```
 
@@ -3365,9 +3375,17 @@ test('confirming a replacement renders the new score', async ({ page }) => {
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
     timeout: 30_000,
   });
-  await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1');
 });
+```
 
+> **Pick fixtures whose RENDERED OUTPUT differs.** This case replaced `Punk.mxl` with
+> `Punk.gp` and asserted a count of 2 — but both render two drum tracks, so it passed whether
+> the swap happened or the player silently reverted. It is `Punk.gp` (2) -> `1-beat.mxl` (1)
+> now, and a second case replaces a third time, because the original bug only appeared from
+> the second replacement onward.
+
+```ts
 test('a corrupt replacement leaves the playing score intact', async ({ page }) => {
   await openFirstScore(page, 'Punk.gp');
   const play = page.getByTestId('transport-play');

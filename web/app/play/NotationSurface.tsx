@@ -58,6 +58,14 @@ export function NotationSurface({
   // array, so @types/node is in scope and globalThis.setTimeout resolves to Node's overload,
   // which returns a Timeout object rather than a handle. ReturnType is correct under both.
   const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(undefined);
+  // The score the person last asked for. It is a REF, not the `notation` closure, and it is
+  // written synchronously below BEFORE renderScore — which is the whole point. renderScore fires
+  // `scoreLoaded` synchronously, and useAlphaTabEvent refreshes its handler ref in an effect
+  // declared after the render effect, so at that moment the handler still closes over the
+  // PREVIOUS render's `notation`. Comparing against that stale value made the guard below
+  // "restore" the score the person had just replaced: every open after the first updated the
+  // header and then silently reverted the notation. A ref is correct the instant it is assigned.
+  const wantedRef = useRef<OpenNotation | null>(null);
 
   // The two music-font failures AlphaTab itself never reports. Keyed on [api] because the font
   // face is injected during AlphaTabApi construction — before that there is nothing to fail.
@@ -116,6 +124,7 @@ export function NotationSurface({
   // the playing score untouched by construction.
   useEffect(() => {
     if (!api || !notation) return;
+    wantedRef.current = notation;
     renderOpenNotation(api, notation, viewportRef.current);
     // `api` is in the list because it is state: it arrives after the first commit, and a score
     // opened before it existed must still render once it does.
@@ -130,8 +139,9 @@ export function NotationSurface({
   // terminates: `_internalRenderTracks` triggers `scoreLoaded` only when the score actually
   // changed, so the re-render below fires the event once more and the identity guard returns.
   useAlphaTabEvent(api, 'scoreLoaded', () => {
-    if (!api || !notation || api.score === notation.score) return;
-    renderOpenNotation(api, notation, viewportRef.current);
+    const wanted = wantedRef.current;
+    if (!api || !wanted || api.score === wanted.score) return;
+    renderOpenNotation(api, wanted, viewportRef.current);
   });
 
   const failure = engineError

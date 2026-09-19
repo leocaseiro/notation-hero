@@ -287,12 +287,40 @@ test('re-picking the same file after a cancel prompts again', async ({ page }) =
 });
 
 test('confirming a replacement renders the new score', async ({ page }) => {
-  await openFirstScore(page, 'Punk.mxl');
+  // Punk.gp renders TWO drum tracks and 1-beat.mxl renders ONE, so the count below actually
+  // discriminates. An earlier version of this test replaced Punk.mxl with Punk.gp — both render
+  // two — so it passed whether the swap happened or the player silently reverted.
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
 
   page.on('dialog', (dialog) => dialog.accept());
-  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/1-beat.mxl');
 
-  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
+    'data-file',
+    '1-beat.mxl',
+    { timeout: 30_000 },
+  );
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1');
+});
+
+// The header is React state and the notation is AlphaTab's, so they can disagree — and did: every
+// open after the first updated the name while the engine silently kept the previous score. The
+// count is read from api.tracks, so this fails if the two ever diverge again.
+test('a third score replaces the second — not only the first replacement works', async ({
+  page,
+}) => {
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.goto('/play');
+
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/1-beat.mxl');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1', { timeout: 30_000 });
+
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.mxl');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.mxl', {
     timeout: 30_000,
   });
   await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
@@ -315,4 +343,25 @@ test('a corrupt replacement leaves the playing score intact', async ({ page }) =
   await expect(page.getByText(/\(Error E103\)/)).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+// The guard that makes this pass has no other cover, and breaking it is silent: AlphaTab fetches
+// settings.core.file itself and renders it WHENEVER it arrives, so a score opened during that
+// window gets replaced by the bundled beat with no error anywhere. Delaying the bundled fetch
+// forces the race open every run instead of leaving it to chance.
+test('a score opened before the bundled beat arrives is not replaced by it', async ({ page }) => {
+  await page.route('**/notation/1-beat.gp', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 4000));
+    await route.continue();
+  });
+
+  await page.goto('/play');
+  // Deliberately no wait: open while the bundled fetch is still in flight.
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  // Outlast the delayed bundled load, then prove it did not win.
+  await page.waitForTimeout(6000);
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
 });
