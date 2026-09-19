@@ -1382,6 +1382,7 @@ it**). With the rule above, two of the three triggers are CSS, so the existing s
 states: ['resting', 'focus', 'hover'],
 statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover']),
 focusExpect: 'input',
+focusTabs: 2, // Decrement is the first tabbable child; the second Tab reaches the input.
 ```
 
 The `slowed` story's `hover` and `focus` snapshots are what guard the visible percentage; `resting`
