@@ -34,6 +34,8 @@ export const Destructive: Story = { args: { variant: 'destructive' } };
 export const Link: Story = { args: { variant: 'link' } };
 export const Small: Story = { args: { size: 'sm' } };
 export const Large: Story = { args: { size: 'lg' } };
+// `disabled` renders aria-disabled="true", not the native attribute: the button stays reachable by
+// Tab and by screen readers (announced as unavailable) and cannot be activated.
 export const Disabled: Story = { args: { disabled: true } };
 
 // Icon-only button — Material Symbols glyph. aria-label gives the accessible

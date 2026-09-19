@@ -12,6 +12,50 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-18 — A disabled Button stays focusable: `aria-disabled`, guarded in the component (NH-304)
+
+A native `disabled` button leaves the tab order and cannot take focus. A screen-reader user who moves
+with Tab never meets the control, and code that moves focus onto a control that is unavailable for a
+moment fails without an error — the concrete case is the player's Play button, disabled until the
+audio engine is ready (NH-291).
+
+leocaseiro's call, 2026-09-18, while triaging the v0 Plan A review: **this belongs in the design
+system, not in each consumer.**
+
+- **What.** `<Button disabled>` renders `aria-disabled="true"` and never the native attribute. The
+  component blocks activation itself: it withholds `onClick`, `onKeyDown`, `onKeyUp`, `onMouseDown`
+  and `onPointerDown` while disabled, and prevents the default of a click and of an Enter or Space
+  keydown, so a `type="submit"` Button does not submit and an as-link Button does not navigate.
+- **Handlers are withheld, not guarded by a merged handler.** Base UI `mergeProps` runs the rightmost
+  handler first and the consumer's props are rightmost, so a guard merged beside them runs after the
+  consumer's handler has fired. Props from a Base UI trigger arrive the same way, so
+  `render={<Button disabled />}` blocks the trigger too.
+- **Styling carries both selector sets.** This amends the NH-264 rule "buttons =
+  `disabled:pointer-events-none disabled:opacity-50`"
+  (`docs/handoffs/2026-07-07-nh-264-base-ui-migration.md:57-58`): `buttonVariants` now also carries
+  `aria-disabled:pointer-events-none aria-disabled:opacity-50`. The ticket asked to _move_ the
+  selectors; they were **added** instead, because `Pagination` puts `buttonVariants` on native
+  `<button disabled>` controls and a Button inside `<fieldset disabled>` is still natively disabled.
+  `pointer-events-none` is part of the guard, not only styling: hover-open popups attach native
+  listeners through the ref, which no prop guard can withhold.
+- **The disabled focus ring gets double alpha.** `opacity-50` also dims the ring (about 1.22:1
+  against the light background, 1.29:1 in dark). `aria-disabled:focus-visible:ring-ring`, and a
+  doubled pair for the `destructive` variant, bring the ring back to the strength of an enabled
+  Button. Resting pixels do not change.
+- **Rejected.** Per-consumer guards (every consumer should get this for free). Keeping native
+  `disabled`, with or without tabindex workarounds. Adopting `@base-ui/react/button` with
+  `focusableWhenDisabled`: its docs say it must not render links, and both `nativeButton` values
+  break the tested as-link Button (a dev error, or `role="button"` on the anchor) — consistent with
+  the 2026-07-07 Base UI ADR.
+- **For consumers.** Assert `aria-disabled` in unit tests — jest-dom's `toBeDisabled()` reads the
+  native attribute only. Give the reason a control is unavailable with `aria-describedby`. The
+  contract and its known limits are in `client/README.md` §"Disabled buttons".
+
+**Status:** ✅ decided · 🤖 machine-checked — `client/src/components/ui/Button/Button.test.tsx` (the
+`disabled (aria-disabled, focusable)` suite) pins the guard, and the `vr` job's
+`button-disabled-{light,dark}-focus` snapshots prove Tab reach in a real browser while the unchanged
+`-resting` snapshots prove the dimmed look. Approved by leocaseiro 2026-09-18 (NH-304).
+
 ### 2026-09-18 — Plan A review lap 4: 26 findings triaged, and Button becomes keyboard-reachable (NH-291)
 
 The rewritten v0 Plan A was reviewed before any code was written against it — six reviewer lenses,
