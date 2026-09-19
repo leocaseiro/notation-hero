@@ -13,4 +13,5 @@ export const SONNER_STORY_IDS = [
   'with-action',
   'stack',
   'stack-expanded',
+  'loading',
 ] as const;

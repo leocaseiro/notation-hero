@@ -357,10 +357,13 @@ jobs:
               });
             }
 
-  # End-to-end — Playwright against the built SPA (`vite preview`), with /api/catalog mocked by
-  # MSW. Models the `a11y` job (ubuntu + on-demand Chromium); unlike `vr` it is not pixel-exact,
-  # so no Playwright container. Uploads traces + the HTML report so a CI failure is replayable via
-  # `npx playwright show-trace`. Path-filtered on `code`; blocks merge via ci-green.
+  # End-to-end — two Playwright lanes. client/: the built SPA (`vite preview`) with /api/catalog
+  # mocked by MSW. web/: the built Next.js app (`next build` then `next start`), which is the only
+  # gate over the product's own UI — web/ has no Storybook, so neither `vr` nor `a11y` covers it.
+  # Models the `a11y` job (ubuntu + on-demand Chromium); unlike `vr` it is not pixel-exact, so no
+  # Playwright container. Each package needs its own browser install. Uploads traces + the HTML
+  # report so a CI failure is replayable via `npx playwright show-trace`. Path-filtered on `code`;
+  # blocks merge via ci-green.
   e2e:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -368,12 +371,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
-      - name: Install Playwright Chromium
+      - name: Install Playwright Chromium (client)
         run: pnpm --filter @notation-hero/client exec playwright install --with-deps chromium
       - name: e2e tests (Playwright vs built app)
         run: pnpm --filter @notation-hero/client run test:e2e
+      - name: Install Playwright Chromium (web)
+        run: pnpm --filter @notation-hero/web exec playwright install --with-deps chromium
+      - name: e2e tests (Playwright vs the built Next.js app)
+        run: pnpm --filter @notation-hero/web run test:e2e
       - name: Upload traces + HTML report
         # NOT `if: failure()` — that would drop the trace of a flaky-then-passed run (D5).
+        # ONE upload step for both lanes: a second step reusing the artifact name would collide.
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -381,6 +389,8 @@ jobs:
           path: |
             client/playwright-report/
             client/test-results/
+            web/playwright-report/
+            web/test-results/
           retention-days: 7
           if-no-files-found: ignore
 

@@ -12,6 +12,73 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-19 — v0 Plan A shipped: the engine decisions are now machine-enforced (NH-291)
+
+Plan A (engine and first sound) is implemented — `/play` opens a local score, renders it as
+standard notation and plays it. What changes in this register is **enforcement**: four decisions
+that were prose until now are checked by CI on every pull request.
+
+- **D5 (self-hosted AlphaTab ESM over Turbopack) — 📄 → 🤖.** `web/e2e/player.e2e.ts` asserts
+  AlphaTab logs `Platform: BrowserModule`, the only line that reads `Environment.webPlatform`.
+  Proven to discriminate, not merely to pass: replacing the `turbopackIgnore` dynamic import with a
+  static value import fails exactly that assertion while notation still renders — which is the
+  silent failure the decision exists to prevent. A second drill, stubbing the vendoring source
+  worklet, fails the cursor-motion assertion instead, with the notation case still green.
+- **The type-only `@coderline/alphatab` import — 🤖, and now proven.** The Task 3 fences landed in
+  #157; `tooling/alphatab-import-fence.test.sh` keeps them honest.
+- **`web/` gained a merge-blocking browser lane — ⏳ → ✅.** The `e2e` CI job runs
+  `@notation-hero/web run test:e2e` with its own Chromium install, and uploads both lanes' traces
+  from one step (a second step reusing the artifact name would collide).
+  `tooling/workflow-guards.test.mjs` pins those four facts in source — each command anchored to
+  a real `run:` line, so commenting a step out fails the guard rather than sliding past a
+  substring match — plus a fifth: that `e2e` is still listed in `ci-green`'s `needs:`, without
+  which the lane would keep running but stop blocking merge.
+- **`web/` is no longer the repo's only ungated UI — new.** `web/e2e/a11y.e2e.ts` runs axe over five
+  reachable states on the same WCAG tag set `client/` uses, plus a 44 px hit-area assertion that axe
+  cannot make (no rule in `wcag2a/2aa/21a/21aa` covers target size).
+
+Two decisions recorded because they were taken while building, not while planning:
+
+- **The player re-asserts an opened score when AlphaTab loads a different one.** AlphaTab fetches
+  `settings.core.file` asynchronously and renders it whenever it arrives, so a score opened in that
+  window was silently replaced by the bundled beat — no error, no clue. Measured, then fixed
+  against `scoreLoaded` with an identity guard that terminates by construction.
+- **NH-304's `Button` contract is adopted at every unavailable control.** It merged mid-branch, so
+  the hand-written `aria-disabled` plus click guard the plan specified is deleted; controls pass
+  `disabled` and nothing else. Playwright's `toBeEnabled()` honours `aria-disabled`, verified, so
+  the lane's readiness gate is unaffected.
+
+Still unverified by machine, and deliberately so: success criterion 2 (audible audio) and
+criterion 4 (leocaseiro's own files) have no automated evidence — headless Chromium is silent.
+They are checked by ear on the deployed preview before merge.
+
+### 2026-09-19 — Next.js 16.3 writes its own agent files; we host its block instead (NH-291)
+
+Running Plan A's Task 6 on Next **16.3.4** (the plan was written against 16.2.10) revealed a new
+upstream behaviour: `next dev` writes an `AGENTS.md` **and** a `CLAUDE.md` into the Next project
+directory whenever its managed block is missing, so `web/` collected two untracked files that came
+back after every run.
+
+Approved by leocaseiro 2026-09-19:
+
+- **Merge, rather than commit-as-is, git-ignore, or disable.** His call — he did not object to the
+  files but asked whether they could join the repo's own `AGENTS.md`. They can:
+  `writeAgentFiles()` upserts **only** the text between `<!-- BEGIN:nextjs-agent-rules -->` and
+  `<!-- END:nextjs-agent-rules -->`, and skips `CLAUDE.md` entirely whenever `AGENTS.md` exists and
+  hosts that block. So `web/AGENTS.md` is now ours — a pointer to the root `AGENTS.md` plus this
+  package's own rules (the AlphaTab value-import fence, the generated `public/alphatab/`,
+  `globalThis` over `window`, `test:e2e` over `test`) — with their block pasted at the end byte for
+  byte. No `web/CLAUDE.md` is created, and the repo keeps one agent contract per package.
+- **Verified by running both write paths, not by reading the source**: the file's hash is unchanged
+  across `next build` and `next dev`, and `web/CLAUDE.md` does not come back. Two conditions keep
+  it that way and are written into the plan: the block must stay byte-identical (`hasCurrentAgentRules`
+  compares it exactly), and Prettier must keep its default `proseWrap: 'preserve'` — switching to
+  `'always'` would re-wrap the block and make Next rewrite the file on every run.
+- **Rejected:** `agentRules: false`, because upstream's benchmarks show agents do better reading the
+  bundled version-exact docs, and this repo's own `.claude/rules/nextjs.md` says the same thing —
+  belt and braces beats opting out. Also rejected: git-ignoring them, which leaves a fresh clone
+  with no pointer to the bundled docs at all.
+
 ### 2026-09-18 — A disabled Button stays focusable: `aria-disabled`, guarded in the component (NH-304)
 
 A native `disabled` button leaves the tab order and cannot take focus. A screen-reader user who moves
