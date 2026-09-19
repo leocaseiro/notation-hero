@@ -12,6 +12,33 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-19 — Next.js 16.3 writes its own agent files; we host its block instead (NH-291)
+
+Running Plan A's Task 6 on Next **16.3.4** (the plan was written against 16.2.10) revealed a new
+upstream behaviour: `next dev` writes an `AGENTS.md` **and** a `CLAUDE.md` into the Next project
+directory whenever its managed block is missing, so `web/` collected two untracked files that came
+back after every run.
+
+Approved by leocaseiro 2026-09-19:
+
+- **Merge, rather than commit-as-is, git-ignore, or disable.** His call — he did not object to the
+  files but asked whether they could join the repo's own `AGENTS.md`. They can:
+  `writeAgentFiles()` upserts **only** the text between `<!-- BEGIN:nextjs-agent-rules -->` and
+  `<!-- END:nextjs-agent-rules -->`, and skips `CLAUDE.md` entirely whenever `AGENTS.md` exists and
+  hosts that block. So `web/AGENTS.md` is now ours — a pointer to the root `AGENTS.md` plus this
+  package's own rules (the AlphaTab value-import fence, the generated `public/alphatab/`,
+  `globalThis` over `window`, `test:e2e` over `test`) — with their block pasted at the end byte for
+  byte. No `web/CLAUDE.md` is created, and the repo keeps one agent contract per package.
+- **Verified by running both write paths, not by reading the source**: the file's hash is unchanged
+  across `next build` and `next dev`, and `web/CLAUDE.md` does not come back. Two conditions keep
+  it that way and are written into the plan: the block must stay byte-identical (`hasCurrentAgentRules`
+  compares it exactly), and Prettier must keep its default `proseWrap: 'preserve'` — switching to
+  `'always'` would re-wrap the block and make Next rewrite the file on every run.
+- **Rejected:** `agentRules: false`, because upstream's benchmarks show agents do better reading the
+  bundled version-exact docs, and this repo's own `.claude/rules/nextjs.md` says the same thing —
+  belt and braces beats opting out. Also rejected: git-ignoring them, which leaves a fresh clone
+  with no pointer to the bundled docs at all.
+
 ### 2026-09-18 — Plan A review lap 4: 26 findings triaged, and Button becomes keyboard-reachable (NH-291)
 
 The rewritten v0 Plan A was reviewed before any code was written against it — six reviewer lenses,

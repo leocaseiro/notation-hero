@@ -134,6 +134,7 @@ song cache. Nothing in the tasks below depends on either.
 | `web/lib/alphatab/drum-tracks.ts`            | Pure: a score's track list in, the indexes of percussion tracks out. No AlphaTab import — a structural type.                                                 |
 | `web/lib/player-errors.ts`                   | `PLAYER_ERROR` — the error number each failure message ends with (1xx file, 2xx engine, 9xx crash); spec §4 lists the same numbers.                          |
 | `web/app/play/page.tsx`                      | The `/play` route segment.                                                                                                                                   |
+| `web/AGENTS.md`                              | This package's agent notes, hosting the block Next.js 16.3 auto-writes — which stops it creating a second `web/CLAUDE.md`.                                   |
 | `web/app/play/PlayerShell.tsx`               | `'use client'` root of the player: owns loaded-score state, the engine provider, toasts.                                                                     |
 | `web/app/play/NotationSurface.tsx`           | The notation box: the scroll viewport, AlphaTab's own element, the loading `Skeleton` and the error states. The api is owned by `PlayerShell`.               |
 | `web/app/play/OpenFileControl.tsx`           | File picker + drag-and-drop + the replace-confirmation flow.                                                                                                 |
@@ -1383,7 +1384,9 @@ expected to be clean, not merely closer.
 ```bash
 git add web/lib/alphatab/engine.ts web/lib/alphatab/AlphaTabEngineContext.tsx \
         web/lib/alphatab/defaults.ts web/lib/alphatab/useAlphaTab.ts
-git commit -m "feat(web): load the self-hosted AlphaTab ESM once, share it by context, port the fork's hook (NH-291)"
+git commit -m "feat(web): load the self-hosted AlphaTab ESM once and share it by context (NH-291)"
+# 100-character cap: `header-max-length` is a commitlint error here, and the longer wording that
+# also named the ported hook came to 101. Say the rest in the body.
 ```
 
 ---
@@ -1412,6 +1415,7 @@ Three rules this task establishes, and every later task inherits (triaged 2026-0
 - Modify: `web/app/page.tsx`
 - Modify: `web/app/globals.css` (the playback-cursor styles, Step 7)
 - Rename: `web/public/charts/` → `web/public/notation/` (Step 1)
+- Create: `web/AGENTS.md` (Step 1a)
 
 **Interfaces:**
 
@@ -1421,6 +1425,31 @@ Three rules this task establishes, and every later task inherits (triaged 2026-0
   - `NotationSurface` props: `{ api: AlphaTab.AlphaTabApi | undefined; hostRef; viewportRef }`. It owns no api of its own — `Player` calls `useAlphaTab` and hands the pieces down (F-B3, triaged 2026-09-18). Task 10 Step 5 later adds `notation: OpenNotation | null` — the parsed score, not `LoadedNotation`.
   - `interface LoadedNotation { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
   - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-player-ready`.
+
+- [ ] **Step 1a: Host Next.js's agent-rules block inside our own `web/AGENTS.md`**
+
+Next.js **16.3** (this repo is on 16.3.4; the plan was first written against 16.2.10) writes an
+`AGENTS.md` **and** a `CLAUDE.md` into the Next project directory on every `next dev`, unless a
+current block is already present. Left alone it drops two untracked files into `web/` that come
+back after every run.
+
+`writeAgentFiles()` (`web/node_modules/next/dist/server/lib/generate-agent-files.js`) upserts only
+the text between `<!-- BEGIN:nextjs-agent-rules -->` and `<!-- END:nextjs-agent-rules -->`, and it
+**skips `CLAUDE.md` entirely whenever `AGENTS.md` exists and hosts that block.** So write
+`web/AGENTS.md` ourselves — a short pointer to the root `AGENTS.md` plus this package's own rules —
+and paste their block at the end, byte for byte. Their block stays theirs; everything above it
+stays ours; no `web/CLAUDE.md` is ever created.
+
+Two things to preserve, or the file rewrites itself on every run:
+
+- **Copy the block verbatim.** `hasCurrentAgentRules()` compares it byte for byte, so a single
+  reworded or re-wrapped line makes Next rewrite the file every time.
+- **Prettier must not reflow it.** `prettier.config.mjs` sets no `proseWrap`, so it defaults to
+  `preserve` and leaves the long lines alone. Setting `proseWrap: 'always'` would re-wrap the block
+  and start exactly that loop. `MD013` is already off, so markdownlint does not mind the length.
+
+Verify both write paths leave it alone — hash the file, run `next build` and `next dev`, hash again,
+and confirm no `web/CLAUDE.md` came back. Approved by leocaseiro 2026-09-19.
 
 - [ ] **Step 1: Add the Playwright dependencies, then write the failing test**
 
@@ -1566,7 +1595,10 @@ export function NotationSurface({ api, hostRef, viewportRef }: Readonly<Notation
   const { error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
-  const timeoutRef = useRef<number | undefined>(undefined);
+  // ReturnType<typeof globalThis.setTimeout>, not `number`: web/tsconfig.json sets no `types`
+  // array, so @types/node is in scope and globalThis.setTimeout resolves to Node's overload,
+  // which returns a Timeout object rather than a handle. ReturnType is correct under both.
+  const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(undefined);
 
   // The two music-font failures AlphaTab itself never reports. Keyed on [api] because the font
   // face is injected during AlphaTabApi construction — before that there is nothing to fail.
@@ -1961,7 +1993,7 @@ expected to be clean, not merely closer.
 - [ ] **Step 11: Commit**
 
 ```bash
-git add web/app/page.tsx web/app/error.tsx web/app/play web/app/globals.css \
+git add web/app/page.tsx web/app/error.tsx web/app/play web/app/globals.css web/AGENTS.md \
   web/lib/player-errors.ts web/e2e/player.e2e.ts web/package.json pnpm-lock.yaml
 git commit -m "feat(web): render and play the sample score on /play (NH-291)"
 ```
