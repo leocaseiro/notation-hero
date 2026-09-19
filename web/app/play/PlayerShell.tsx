@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, toast } from '@notation-hero/client';
+import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '@notation-hero/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -99,39 +99,76 @@ function Player() {
   // reports the current value to a late subscriber.
   useAlphaTabEvent(api, 'playerReady', () => setPlayerReady(true));
 
-  // Parse BEFORE any state change — the staged load spec §4 specifies. A file that does not parse
-  // never becomes the open notation, so the score on screen is untouched by construction and
-  // there is no rollback path to build.
+  // Confirm FIRST, then parse, then swap — spec §4's order. A file that does not parse never
+  // becomes the open notation, so the score on screen is untouched by construction and there is
+  // no rollback path to build.
   const requestNotation = useCallback(
-    async (file: LoadedNotation) => {
+    async (next: LoadedNotation) => {
       let at = engine;
       if (!at) {
         // Opened before the engine arrived — a very fast pick, or a stalled engine import. Wait on
-        // the SAME memoised import the provider is waiting on. The sample score is already on
-        // screen, so there is nothing to fill and nothing to hide.
+        // the SAME memoised import the provider is waiting on. `notation` is still null in that
+        // window, so nothing the person opened can be lost and there is nothing to confirm.
         at = await loadAlphaTabEngine().catch(() => null);
         // The engine failed; that failure is reported by the engine-error message, not by a toast.
         if (!at) return;
       }
 
+      // Record the playing state BEFORE the prompt: globalThis.confirm blocks the main thread, so
+      // the worklet drains its ~500 ms buffer and zero-fills on its own while the dialog is up,
+      // and playerStateChanged cannot fire until the prompt returns.
+      const wasPlaying = playing;
+
+      // `notation !== null` means "a score the PERSON opened is on screen". It is null while the
+      // bundled beat is showing, because AlphaTab loads that one itself from settings.core.file
+      // and nothing ever calls setNotation for it. That is the whole condition, and it is
+      // deliberate: the sample is a default, not a choice, so replacing it silently is right — a
+      // dialog asking permission to close a file the person never opened would stand between
+      // every new visitor and their first song. From the second open onward, the prompt behaves
+      // exactly as the spec describes.
+      if (notation !== null) {
+        // Deliberate v0 shortcut. To be precise about what is and is not missing: the Base UI
+        // Dialog PRIMITIVE is already in the repo — Sheet is a shadcn port over
+        // `@base-ui/react/dialog`, with focus trap, scroll lock, overlay and a required title,
+        // carrying VR and axe baselines. What does not exist is an AlertDialog COMPONENT (six
+        // co-located files plus baselines). Building it is later work, and it would be a real
+        // simplification here, not just a prettier dialog: a non-blocking dialog removes the
+        // buffer drain and the `wasPlaying` capture, because playback simply never stops.
+        const confirmed = globalThis.confirm(
+          `Replace ${notation.name} with ${next.name}? The score you have open will be closed.`,
+        );
+
+        if (!confirmed) {
+          // Cancel keeps the current score and discards the new file. Nothing to resume: playback
+          // was never interrupted. globalThis.confirm blocks the main thread, so the player is
+          // still in PlayerState.Playing when the dialog returns — AlphaSynthBase.play() would
+          // return false without acting — and AlphaTab's pump refills the drained buffer itself.
+          return;
+        }
+      }
+
       let score: AlphaTab.model.Score;
       try {
-        score = at.importer.ScoreLoader.loadScoreFromBytes(file.bytes);
+        score = at.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
       } catch {
         toast.error(
-          `${file.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
+          `${next.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
         );
+        // The open score was never replaced, and playback was never interrupted — the worklet
+        // drained its buffer while the dialog was up and the pump refills it. Nothing to restart.
         return;
       }
 
-      setNotation({ name: file.name, score });
-      // Success only. Neither line runs on the parse failure above, on the read failures the
-      // picker catches, or for the bundled score — nobody asked for that one, so nothing is
-      // announced and nothing is focused at page load.
-      setAnnouncement(`Opened ${file.name}`);
+      // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
+      if (wasPlaying) api?.pause();
+      setNotation({ name: next.name, score });
+      // Success only. None of this is reachable from the cancel path or the parse failure (both
+      // returned above), from the read failures the picker catches, or for the bundled score —
+      // nobody asked for that one, so nothing is announced and nothing is focused at page load.
+      setAnnouncement(`Opened ${next.name}`);
       playRef.current?.focus();
     },
-    [engine],
+    [api, engine, notation, playing],
   );
 
   const [dragging, setDragging] = useState(false);
@@ -172,9 +209,38 @@ function Player() {
     };
   }, [endDrag]);
 
+  // A score is always on screen, so the header always has a name to show: the file the person
+  // opened, or the bundled beat the page starts on. Derived from SAMPLE_NOTATION rather than typed
+  // again, so renaming the file cannot leave a stale label behind.
+  const openFileName = notation?.name ?? SAMPLE_NOTATION.split('/').pop() ?? '';
+
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
       <h1 className="sr-only">Player</h1>
+
+      <header className="flex items-center gap-3">
+        {/* The wordmark stands in for the logo the mockup draws; the real mark is a later visual
+            task. */}
+        <span className="text-sm font-semibold">Notation Hero</span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              // A real <button> so the tooltip is reachable by keyboard, not only by hover. It
+              // does nothing on click; min-h-11/min-w-11 keeps it over the 44 px hit area the
+              // accessibility gate enforces.
+              <button
+                type="button"
+                data-testid="loaded-notation-name"
+                data-file={openFileName}
+                className="min-h-11 min-w-11 truncate px-1 text-left text-sm text-muted-foreground"
+              >
+                {notation?.score.title || openFileName}
+              </button>
+            }
+          />
+          <TooltipContent>{openFileName}</TooltipContent>
+        </Tooltip>
+      </header>
 
       {/* A dragenter/dragleave COUNTER, never a bare setDragging(false). `dragleave` also fires on
           the container whenever the pointer crosses into a CHILD, with relatedTarget set to that

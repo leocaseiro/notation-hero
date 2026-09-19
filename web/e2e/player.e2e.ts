@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 test('renders the bundled sample score as notation', async ({ page }) => {
   await page.goto('/play');
@@ -181,3 +182,137 @@ for (const fixture of [
     });
   });
 }
+
+// Playwright AUTO-DISMISSES window.confirm() when no listener is attached, which would silently
+// turn every replace test into a cancel test. Each case below registers its handler BEFORE the
+// action that triggers the prompt.
+//
+// Every replace case starts by opening a score the PERSON chose, because that is all the prompt
+// guards: the bundled beat the page starts on is a default, not a choice, so replacing it never
+// asks.
+async function openFirstScore(page: Page, fixture: string) {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', fixture, {
+    timeout: 30_000,
+  });
+}
+
+test('opening the first file replaces the bundled beat without asking', async ({ page }) => {
+  await page.goto('/play');
+
+  let prompts = 0;
+  page.on('dialog', (dialog) => {
+    prompts += 1;
+    void dialog.dismiss();
+  });
+
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+    timeout: 30_000,
+  });
+  expect(prompts).toBe(0);
+});
+
+test('cancelling a replacement keeps the current score playing from where it was', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+
+  // The position comes from AlphaTab itself, through the debug handle the hook parks on the host
+  // element. The app keeps no position state — test-only instrumentation never ships — and this is
+  // that decision's payoff: the test reads the engine's own clock instead of a number mirrored
+  // into the DOM for its benefit.
+  const positionMs = () =>
+    page.evaluate(
+      () =>
+        (
+          document.querySelector('[data-testid="notation-surface"] > div') as {
+            at?: { timePosition: number };
+          } | null
+        )?.at?.timePosition ?? 0,
+    );
+
+  // Wait for the position to MOVE, not just for data-playing. AlphaSynth._playInternal sets
+  // PlayerState.Playing and fires stateChanged synchronously, before the worklet has played a
+  // sample; timePosition only follows later, once the worklet reports samplesPlayed back. Reading
+  // it the instant data-playing turns true therefore reads 0 on a perfectly good build, and a
+  // plain expect would not retry.
+  await expect.poll(positionMs, { timeout: 20_000 }).toBeGreaterThan(0);
+
+  // Capture the position BEFORE the prompt — this is the value the resume has to preserve.
+  const before = await positionMs();
+
+  // Chain the dismissal onto waitForEvent rather than awaiting the dialog after setInputFiles:
+  // window.confirm blocks the page, so a dismissal that waits for setInputFiles to resolve could
+  // deadlock. This arms the handler first, dismisses as soon as the dialog fires, and still gives
+  // us something to await before asserting.
+  const dialogHandled = page.waitForEvent('dialog').then((dialog) => dialog.dismiss());
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.mxl');
+  await dialogHandled;
+
+  // Still the score the person opened, still playing.
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
+
+  // Never interrupted — NOT restarted. A lone `.toBeGreaterThan(before)` proves nothing here: a
+  // restart from bar 1 climbs past `before` inside the poll window exactly as uninterrupted
+  // playback does. The discriminator is the FIRST read after the dialog, taken while a restart
+  // would still be near zero — playback that never stopped cannot have gone backwards.
+  const after = await positionMs();
+  expect(after).toBeGreaterThanOrEqual(before);
+
+  // …and still advancing, not frozen.
+  await expect.poll(positionMs).toBeGreaterThan(after);
+});
+
+test('re-picking the same file after a cancel prompts again', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+
+  let prompts = 0;
+  page.on('dialog', (dialog) => {
+    prompts += 1;
+    void dialog.dismiss();
+  });
+
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.mxl');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.mxl');
+
+  await expect.poll(() => prompts).toBe(2);
+});
+
+test('confirming a replacement renders the new score', async ({ page }) => {
+  await openFirstScore(page, 'Punk.mxl');
+
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
+});
+
+test('a corrupt replacement leaves the playing score intact', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+
+  page.on('dialog', (dialog) => dialog.accept());
+  await page.getByTestId('open-file-input').setInputFiles({
+    name: 'broken.gp5',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from('not a score'),
+  });
+
+  await expect(page.getByText(/\(Error E103\)/)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
