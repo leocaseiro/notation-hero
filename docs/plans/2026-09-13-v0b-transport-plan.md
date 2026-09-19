@@ -1782,9 +1782,10 @@ const [speed, setSpeed] = useState(1);
 // `score.tempo`. The 120 here is only the pre-load placeholder.
 const [scoreTempo, setScoreTempo] = useState(120);
 
-// The title and the file name are Plan A's — Task 11 Step 3 already derives both for the header it
-// rendered inline, and they are in scope here. Nothing new is stored.
-const openFileName = notation?.name ?? SAMPLE_NOTATION.split('/').pop() ?? '';
+// The title and the file name are Plan A's — Task 11 Step 3 already declares `openFileName` in this
+// scope and `notation.score.title` is the shell's own state. Do NOT redeclare either: a second
+// `const openFileName` is TS2451. The existing bindings just move from the inline <header> into the
+// <PlayerHeader …> props below.
 
 // The ONLY writer of api.playbackSpeed in the app — see Global Constraints. Plan C's Settings
 // Player-group row must call this, not the settings-JSON accessor path.
