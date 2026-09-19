@@ -202,7 +202,8 @@ function Player() {
       try {
         await requestNotation(await readNotation(file));
       } catch {
-        toast.error(readFailureMessage(file));
+        // Same id as requestNotation's loading toast — see OpenFileControl's `accept`.
+        toast.error(readFailureMessage(file), { id: 'notation-load' });
       }
     },
     [requestNotation],
@@ -264,6 +265,7 @@ function Player() {
           stray leave cannot make the next enter a no-op. */}
       <section
         className="relative flex flex-col gap-4"
+        data-testid="drop-zone"
         data-dragging={dragging || undefined}
         onDragEnter={(event) => {
           event.preventDefault();

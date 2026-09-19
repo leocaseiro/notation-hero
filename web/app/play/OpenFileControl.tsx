@@ -27,7 +27,9 @@ const MAX_NOTATION_MB = 25;
 const MAX_NOTATION_BYTES = MAX_NOTATION_MB * 1024 * 1024;
 
 interface OpenFileControlProps {
-  onNotation: (notation: LoadedNotation) => void;
+  /** Really async (PlayerShell's requestNotation). Typed `void` it would be exempt from
+   *  TypeScript's promise-return check, which is how an un-awaited call hid here once. */
+  onNotation: (notation: LoadedNotation) => void | Promise<void>;
 }
 
 export async function readNotation(file: File): Promise<LoadedNotation> {
@@ -62,9 +64,13 @@ export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) 
   const accept = async (file: File | undefined) => {
     if (!file) return;
     try {
-      onNotation(await readNotation(file));
+      // AWAIT it: onNotation is async, so an un-awaited call drops any rejection on the floor —
+      // the same reason the drag-and-drop twin in PlayerShell awaits requestNotation.
+      await onNotation(await readNotation(file));
     } catch {
-      toast.error(readFailureMessage(file));
+      // Same id as requestNotation's loading toast, so a throw mid-open REPLACES the "Opening…"
+      // spinner instead of stacking a second toast beside one that never resolves.
+      toast.error(readFailureMessage(file), { id: 'notation-load' });
     }
   };
 

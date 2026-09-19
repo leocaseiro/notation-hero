@@ -53,6 +53,12 @@ export function NotationSurface({
   const { error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  // The two MUSIC-FONT failures are held apart from AlphaTab's own `error` event on purpose. A
+  // finished render PROVES the font arrived — AlphaTab holds renderFinished until its font checker
+  // sees the alphaTab face — so a font error is stale the moment one lands, and renderFinished
+  // clears it below. It proves nothing about the SoundFont (E202): playback is still dead, so that
+  // one must survive every later render. One shared state could not tell the two apart.
+  const [fontError, setFontError] = useState<string | null>(null);
   const [renderedTrackCount, setRenderedTrackCount] = useState(0);
   // ReturnType<typeof globalThis.setTimeout>, not `number`: web/tsconfig.json sets no `types`
   // array, so @types/node is in scope and globalThis.setTimeout resolves to Node's overload,
@@ -79,7 +85,7 @@ export function NotationSurface({
     // Chromium). Text-font checkers have system fallbacks, hence the family filter.
     const onFontError = (event: FontFaceSetLoadEvent) => {
       if (event.fontfaces.some((face) => face.family.startsWith('alphaTab'))) {
-        setRuntimeError(
+        setFontError(
           `Error ${PLAYER_ERROR.musicFontFailed}: the music font could not be downloaded`,
         );
       }
@@ -90,7 +96,7 @@ export function NotationSurface({
     // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
     timeoutRef.current = globalThis.setTimeout(
       () =>
-        setRuntimeError(
+        setFontError(
           `Error ${PLAYER_ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
         ),
       60_000,
@@ -109,6 +115,10 @@ export function NotationSurface({
   );
   useAlphaTabEvent(api, 'renderFinished', () => {
     globalThis.clearTimeout(timeoutRef.current);
+    // A render finished, so the music font is present: drop any font error the 60 s backstop or
+    // the loadingerror listener left behind, or it would pin a "reload the page" banner over a
+    // score that is drawing and playable. runtimeError is NOT cleared — see its declaration.
+    setFontError(null);
     setRendered(true);
     // What AlphaTab actually drew, not what we asked for. Deriving this from the index array we
     // just passed in would make it echo the request, and the drum-track assertions would pass even
@@ -146,7 +156,7 @@ export function NotationSurface({
 
   const failure = engineError
     ? `Error ${PLAYER_ERROR.engineImport}: ${engineError.message}`
-    : runtimeError;
+    : (runtimeError ?? fontError);
 
   return (
     <div className="relative min-h-[420px] w-full">

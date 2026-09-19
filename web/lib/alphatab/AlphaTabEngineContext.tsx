@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 
 import { loadAlphaTabEngine } from './engine';
 import type { AlphaTabEngine } from './engine';
@@ -45,8 +45,9 @@ export function AlphaTabEngineProvider({ children }: Readonly<{ children: ReactN
     };
   }, []);
 
-  const value = useMemo(() => state, [state]);
-  return <AlphaTabEngineContext value={value}>{children}</AlphaTabEngineContext>;
+  // No useMemo: `state` is one useState value, so it is already reference-stable between
+  // setState calls — memoizing it against itself would hand back the very same object.
+  return <AlphaTabEngineContext value={state}>{children}</AlphaTabEngineContext>;
 }
 
 export function useAlphaTabEngine(): AlphaTabEngineState {
