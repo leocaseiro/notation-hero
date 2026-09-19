@@ -506,6 +506,9 @@
     "toplevel",
     "pathspec",
     "wordmark",
-    "smol"
+    "smol",
+    "keyup",
+    "mouseleave",
+    "focusability"
   ]
 }

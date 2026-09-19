@@ -16,7 +16,8 @@ runVrStories({
   slotSelector: '[data-slot="input-group"]',
   states: ['resting', 'focus'],
   statesForStory: (story) => {
-    // Disabled input + button are both skipped by Tab — resting only.
+    // Resting only. The disabled input is skipped by Tab. The trailing Button is aria-disabled,
+    // so it is a tab stop, but this suite's focus state asserts on the input.
     if (story === 'disabled') return ['resting'];
     if (story === 'with-button') return ['resting', 'hover', 'focus'];
     return ['resting', 'focus'];
