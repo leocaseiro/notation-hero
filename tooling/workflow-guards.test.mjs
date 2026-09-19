@@ -32,3 +32,16 @@ test('seed-catalog.yml gates the owner-url seed on the master ref', () => {
     `seed-catalog.yml (owner-url seed) must carry the in-repo guard: ${GUARD}`,
   );
 });
+
+test('the e2e job runs the web Playwright lane, not only the client one', () => {
+  const ci = workflow('ci.yml');
+  assert.match(ci, /pnpm --filter @notation-hero\/web run test:e2e/);
+  // The web lane needs its own browser install — the client step only installs for client/.
+  assert.match(
+    ci,
+    /pnpm --filter @notation-hero\/web exec playwright install --with-deps chromium/,
+  );
+  // Its report and traces must be uploaded, or a CI failure is not replayable.
+  assert.match(ci, /web\/playwright-report\//);
+  assert.match(ci, /web\/test-results\//);
+});
