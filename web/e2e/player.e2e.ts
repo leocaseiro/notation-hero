@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 
@@ -138,12 +140,23 @@ for (const fixture of ['Punk.gp', 'Punk.mxl', 'Punk.alphatex']) {
   });
 }
 
+// Open a file and PROVE it opened. The data-file assertion is the load-bearing one: the bundled
+// beat is on screen from the first paint, so "an svg is visible" and "one track rendered" are BOTH
+// already true before any file is picked — only the filename tells the two apart. Shared by the
+// open cases here and by every replace case further down.
+async function openFirstScore(page: Page, fixture: string) {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', fixture, {
+    timeout: 30_000,
+  });
+}
+
 // guitar-no-percussion.gp has one track whose only staff is NOT percussion, so
 // selectDrumTrackIndexes returns [], the caller passes undefined, and AlphaTab renders
 // score.tracks[0]. Verified by RUNNING, not by reading.
 test('a score with no percussion staff opens on the first track', async ({ page }) => {
-  await page.goto('/play');
-  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/guitar-no-percussion.gp');
+  await openFirstScore(page, 'guitar-no-percussion.gp');
   await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
     timeout: 30_000,
   });
@@ -175,13 +188,77 @@ for (const fixture of [
   '1-beat.atex',
 ]) {
   test(`opens ${fixture} and renders notation`, async ({ page }) => {
-    await page.goto('/play');
-    await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
+    await openFirstScore(page, fixture);
     await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
       timeout: 30_000,
     });
   });
 }
+
+// Everything above drives the PICKER. The DROP path is a separate entry point with its own
+// handlers — a dragenter/dragleave depth counter and acceptDropped — and no input element to
+// drive, so these two cases build a real DataTransfer inside the page and dispatch the events.
+async function dropFile(page: Page, fixture: string) {
+  // Base64 crosses evaluateHandle's serialization boundary intact; a Node Buffer does not.
+  const base64 = readFileSync(`e2e/fixtures/${fixture}`).toString('base64');
+  const dataTransfer = await page.evaluateHandle(
+    ([data, name]) => {
+      const bytes = Uint8Array.from(atob(data), (character) => character.codePointAt(0) ?? 0);
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([bytes], name));
+      return transfer;
+    },
+    [base64, fixture] as const,
+  );
+
+  const zone = page.getByTestId('drop-zone');
+  await zone.dispatchEvent('dragenter', { dataTransfer });
+  // Assert the overlay BEFORE the drop: endDrag() clears it synchronously, so afterwards there is
+  // nothing left to see and the assertion could never fail.
+  await expect(page.getByText('Drop to open')).toBeVisible();
+  await zone.dispatchEvent('drop', { dataTransfer });
+}
+
+test('dragging a file onto the player opens it', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await dropFile(page, 'Punk.gp');
+
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+    timeout: 30_000,
+  });
+  // Punk.gp renders two drum tracks and the bundled beat renders one, so this cannot pass on a
+  // drop that did nothing.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
+  // The overlay must clear on drop, or it would sit over the score for the rest of the session.
+  await expect(page.getByText('Drop to open')).toBeHidden();
+});
+
+// The COUNTER, not a flag. `dragleave` fires on the container whenever the pointer crosses into a
+// CHILD, so a naive setDragging(false) strobes the overlay off mid-drag — 14 transitions were
+// measured on one pass across the control. The sequence below is that exact crossing, and it is
+// the case a flag cannot survive. No dataTransfer: only dragover and drop read one.
+test('the drop overlay survives the pointer crossing into a child', async ({ page }) => {
+  await page.goto('/play');
+  const zone = page.getByTestId('drop-zone');
+  const overlay = page.getByText('Drop to open');
+
+  await zone.dispatchEvent('dragenter');
+  await expect(overlay).toBeVisible();
+
+  // Entering a child bubbles a second dragenter to the container (depth 2) BEFORE the container's
+  // own dragleave arrives (depth 1) — still inside, so the overlay must stay up.
+  await page.getByTestId('notation-surface').dispatchEvent('dragenter');
+  await zone.dispatchEvent('dragleave');
+  await expect(overlay).toBeVisible();
+
+  // The real exit: the last leave unwinds the counter to 0.
+  await zone.dispatchEvent('dragleave');
+  await expect(overlay).toBeHidden();
+});
 
 // Playwright AUTO-DISMISSES window.confirm() when no listener is attached, which would silently
 // turn every replace test into a cancel test. Each case below registers its handler BEFORE the
@@ -190,14 +267,6 @@ for (const fixture of [
 // Every replace case starts by opening a score the PERSON chose, because that is all the prompt
 // guards: the bundled beat the page starts on is a default, not a choice, so replacing it never
 // asks.
-async function openFirstScore(page: Page, fixture: string) {
-  await page.goto('/play');
-  await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
-  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', fixture, {
-    timeout: 30_000,
-  });
-}
-
 test('opening the first file replaces the bundled beat without asking', async ({ page }) => {
   await page.goto('/play');
 
