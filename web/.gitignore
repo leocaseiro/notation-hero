@@ -11,3 +11,7 @@ next-env.d.ts
 # AlphaTab's prebuilt ESM + soundfont + music font, copied out of node_modules by
 # scripts/vendor-alphatab.mjs before every dev/build. Generated output — never committed.
 /public/alphatab/
+
+# Playwright lane output
+/playwright-report/
+/test-results/

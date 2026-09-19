@@ -2085,7 +2085,15 @@ test('plays through the real audio worklet, not the silent fallback', async ({ p
   await expect(cursor).toBeVisible({ timeout: 20_000 });
   const startedAt = await cursor.boundingBox();
   await expect
-    .poll(async () => (await cursor.boundingBox())?.x ?? startedAt?.x, { timeout: 20_000 })
+    .poll(
+      async () => {
+        // The box is read into a variable first: `(await …)?.x` trips
+        // `unicorn/no-await-expression-member`, an error here under --max-warnings 0.
+        const box = await cursor.boundingBox();
+        return box?.x ?? startedAt?.x;
+      },
+      { timeout: 20_000 },
+    )
     .not.toBe(startedAt?.x);
 
   // 3. The worklet module is served as executable JavaScript. A direct request, not a network

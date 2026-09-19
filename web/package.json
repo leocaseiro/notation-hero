@@ -7,6 +7,8 @@
     "dev": "node scripts/vendor-alphatab.mjs && next dev --port 3002",
     "lint": "eslint . --max-warnings 0",
     "start": "next start",
+    "test:e2e": "playwright test --config=playwright.e2e.config.ts",
+    "test:e2e:ui": "playwright test --config=playwright.e2e.config.ts --ui",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
