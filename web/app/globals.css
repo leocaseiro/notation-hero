@@ -16,3 +16,21 @@
 @source '../../client/src/components/ui/**/*.tsx';
 @source not '../../client/src/**/*.stories.tsx';
 @source not '../../client/src/**/*.test.tsx';
+
+/* AlphaTab ships no stylesheet: it creates .at-cursor-bar and .at-cursor-beat as bare divs with
+   inline geometry only, so `enableCursor` paints nothing until the host app supplies these rules.
+   The beat cursor needs an explicit width or it may not show at all (upstream's styling guide).
+   Dark mode is not handled here: the notation surface is pinned to bg-white in both themes. */
+.at-cursor-bar {
+  background: color-mix(in oklab, var(--primary) 18%, transparent);
+}
+
+.at-cursor-beat {
+  background: var(--primary);
+  width: 3px;
+}
+
+.at-highlight * {
+  fill: var(--primary);
+  stroke: var(--primary);
+}
