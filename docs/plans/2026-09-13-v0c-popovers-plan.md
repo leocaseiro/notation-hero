@@ -1321,6 +1321,22 @@ const applySetting = useCallback((path: string, value: SettingValue, rerender: b
 
 Pass `settings` and `applySetting` to `SettingsPopover`, and render the popover inside `PlayerHeader` beside the tempo control.
 
+`SettingsPopover` takes **four** required props, not two — the Player-group speed row needs `speed` and
+`onSpeedChange` as well (see Task 5: speed cannot be a schema row). `PlayerHeader` already receives both
+from Plan B Task 7, so it forwards them:
+
+```tsx
+<SettingsPopover
+  settings={settings}
+  onSettingChange={onSettingChange}
+  speed={speed}
+  onSpeedChange={onSpeedChange}
+/>
+```
+
+That also means `PlayerHeaderProps` gains `settings` and `onSettingChange` in this task: Plan B declares
+it as `{ scoreTitle, fileName, scoreTempo, speed, onSpeedChange, disabled }` and nothing else.
+
 - [ ] **Step 5: Run the lane to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e`
