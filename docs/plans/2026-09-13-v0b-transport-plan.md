@@ -1,7 +1,7 @@
 # v0 Transport — Implementation Plan B "Playback Control" (2 of 3)
 
 > **🧑 HUMAN GATES.** Four steps in this plan cannot be performed by a machine — they need human ears
-> (Task 6 Step 7, Task 7 Step 7) or a human browser console (Task 8 Step 6, Task 9 Step 3). Each is marked
+> (Task 6 Step 7, Task 7 Step 6) or a human browser console (Task 8 Step 6, Task 9 Step 3). Each is marked
 > `🧑 HUMAN GATE`. An agentic worker must **stop at each one and hand back**, never self-certify it and
 > never tick the checklist item it backs. This repo's `pr-checklist` gate is presence-only — it checks that
 > a box is ticked, not that the claim is true — so a ticked box is the artefact a reviewer trusts.
@@ -100,15 +100,15 @@ Each folder holds the six files named in Global Constraints, plus a `X.vr.ts-sna
 
 **Modified**
 
-| File                               | Change                                                                                                  |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `client/src/index.ts`              | Export the five new components.                                                                         |
-| `web/app/play/PlayerShell.tsx`     | Hold transport and soundfont-progress state; render the transport row, the header and the progress bar. |
-| `web/app/play/TransportRow.tsx`    | _(new)_ The row layout, wired to the api.                                                               |
-| `web/app/play/PlayerHeader.tsx`    | _(new)_ The header bar carrying the tempo pill.                                                         |
-| `web/app/play/NotationSurface.tsx` | Report the parsed score's tempo and the soundfont progress upward.                                      |
-| `web/e2e/player.e2e.ts`            | Cases for criteria 3, 5 and 6.                                                                          |
-| `web/e2e/a11y.e2e.ts`              | Axe over the loaded state now that the transport exists.                                                |
+| File                               | Change                                                                                                            |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `client/src/index.ts`              | Export the five new components.                                                                                   |
+| `web/app/play/PlayerShell.tsx`     | Hold transport and soundfont-progress state; render the transport row, the header and the progress bar.           |
+| `web/app/play/TransportRow.tsx`    | _(new)_ The row layout, wired to the api.                                                                         |
+| `web/app/play/PlayerHeader.tsx`    | _(extracted)_ Plan A Task 11 Step 3's inline `<header>`, moved out of `PlayerShell.tsx` and given the tempo pill. |
+| `web/app/play/NotationSurface.tsx` | Report the parsed score's tempo and the soundfont progress upward.                                                |
+| `web/e2e/player.e2e.ts`            | Cases for criteria 3, 5 and 6.                                                                                    |
+| `web/e2e/a11y.e2e.ts`              | Axe over the loaded state now that the transport exists.                                                          |
 
 ---
 
@@ -1664,15 +1664,14 @@ git commit -m "feat(web): wire the transport row — loop, metronome, count-in a
 
 **Files:**
 
-- Create: `web/app/play/PlayerHeader.tsx`
+- Extract: `web/app/play/PlayerHeader.tsx` — Plan A Task 11 Step 3 already renders this header inline in `PlayerShell.tsx`. Move it out rather than building a second one, preserving `data-testid="loaded-notation-name"` and `data-file` (Plan A's e2e tests assert on both).
 - Modify: `web/app/play/PlayerShell.tsx`
-- Modify: `web/app/play/NotationSurface.tsx`
 - Modify: `web/e2e/player.e2e.ts`
 
 **Interfaces:**
 
-- Consumes: `TempoControl` (Task 5); the parsed score's `tempo`.
-- Produces: `onScoreLoaded: (score: { title: string }) => void` on `NotationSurface`; `data-speed` on `player-status`.
+- Consumes: `TempoControl` (Task 5); the parsed score's `tempo`; the score title and open file name, both already held by `PlayerShell` (Plan A).
+- Produces: `data-speed` on `player-status`. No new title path — Plan A Task 11 Step 3 already put the open score's title in `PlayerShell`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1707,28 +1706,18 @@ test('the header tempo stepper changes playback speed', async ({ page }) => {
 Run: `pnpm --filter @notation-hero/web run test:e2e -g "tempo stepper"`
 Expected: FAIL — no `Tempo` input.
 
-- [ ] **Step 3: Report the score's title upward**
+- [ ] **Step 3: Extract the header**
 
-In `NotationSurface.tsx`, add an `onScoreLoaded` prop and call it from the score effect right after a successful parse, before `renderScore`:
-
-```tsx
-// Title only. The TEMPO deliberately does not travel this path: `score.tempo` is AlphaTab's
-// INITIAL tempo and is wrong from the first tempo automation onward (see Global Constraints).
-// PlayerShell sources the live tempo from `midiLoaded` + `playerPositionChanged` instead.
-onScoreLoaded({ title: score.title });
-```
-
-- [ ] **Step 4: Write the header**
-
-Create `web/app/play/PlayerHeader.tsx`:
+Plan A Task 11 Step 3 renders this header inline, as the first child of `<main>` in `PlayerShell.tsx`: the wordmark, then the score title with the file name in a tooltip behind it. Move that markup into `web/app/play/PlayerHeader.tsx` unchanged and add the tempo pill beside it. Both `data-testid="loaded-notation-name"` and `data-file` must survive the move — Plan A's e2e tests assert on them, so dropping either turns that lane red.
 
 ```tsx
 'use client';
 
-import { TempoControl } from '@notation-hero/client';
+import { TempoControl, Tooltip, TooltipContent, TooltipTrigger } from '@notation-hero/client';
 
 interface PlayerHeaderProps {
   scoreTitle: string;
+  fileName: string;
   scoreTempo: number;
   speed: number;
   onSpeedChange: (next: number) => void;
@@ -1738,10 +1727,15 @@ interface PlayerHeaderProps {
 // The header bar. Tempo lives here, not in the transport row, so the player has exactly one tempo
 // control (spec §7).
 //
+// The wordmark, the title and its tooltip came from Plan A Task 11 Step 3, which rendered them
+// inline in PlayerShell. They move here unchanged — both data- attributes included, because Plan A's
+// e2e tests read them. The tempo pill is what this task adds.
+//
 // Deliberately absent in v0: the Auto-Speed toggle (a practice feature — it needs the v0.2 scoring
 // work) and the MIDI status icon (no Web MIDI until v0.2). The Settings gear arrives in Plan C.
 export function PlayerHeader({
   scoreTitle,
+  fileName,
   scoreTempo,
   speed,
   onSpeedChange,
@@ -1750,7 +1744,23 @@ export function PlayerHeader({
   return (
     <header className="flex h-16 items-center gap-8 border-b border-border px-6">
       <span className="font-bold text-primary">Notation Hero</span>
-      <span className="flex-1 truncate text-muted-foreground">{scoreTitle}</span>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            // A real <button> so the tooltip is reachable by keyboard, not only by hover. It does
+            // nothing on click; min-h-11/min-w-11 keeps it over the 44 px hit area.
+            <button
+              type="button"
+              data-testid="loaded-notation-name"
+              data-file={fileName}
+              className="min-h-11 min-w-11 flex-1 truncate px-1 text-left text-muted-foreground"
+            >
+              {scoreTitle || fileName}
+            </button>
+          }
+        />
+        <TooltipContent>{fileName}</TooltipContent>
+      </Tooltip>
       <TempoControl
         scoreTempo={scoreTempo}
         speed={speed}
@@ -1762,7 +1772,7 @@ export function PlayerHeader({
 }
 ```
 
-- [ ] **Step 5: Wire the shell**
+- [ ] **Step 4: Wire the shell**
 
 In `PlayerShell.tsx`'s `Player`:
 
@@ -1771,7 +1781,10 @@ const [speed, setSpeed] = useState(1);
 // Seeded from `api.midiLoaded` and kept live by `playerPositionChanged` (Task 6 Step 5), never from
 // `score.tempo`. The 120 here is only the pre-load placeholder.
 const [scoreTempo, setScoreTempo] = useState(120);
-const [scoreTitle, setScoreTitle] = useState('');
+
+// The title and the file name are Plan A's — Task 11 Step 3 already derives both for the header it
+// rendered inline, and they are in scope here. Nothing new is stored.
+const openFileName = notation?.name ?? SAMPLE_NOTATION.split('/').pop() ?? '';
 
 // The ONLY writer of api.playbackSpeed in the app — see Global Constraints. Plan C's Settings
 // Player-group row must call this, not the settings-JSON accessor path.
@@ -1781,29 +1794,25 @@ const applySpeed = useCallback((next: number) => {
   if (api) api.playbackSpeed = next;
 }, []);
 
-const handleScoreLoaded = useCallback(({ title }: { title: string }) => {
-  setScoreTitle(title);
-  // A new score keeps the speed the drummer chose — the BPM readout moves because the score's
-  // own tempo changed, not because the multiplier was reset.
-}, []);
+// A new score keeps the speed the drummer chose: the BPM readout moves because the score's own
+// tempo changed, not because the multiplier was reset.
 ```
 
-Render `<PlayerHeader … />` above the notation surface, pass `onScoreLoaded={handleScoreLoaded}` to `NotationSurface`, and add `data-speed={speed}` to the status element.
+Replace Plan A's inline `<header>` with `<PlayerHeader scoreTitle={notation?.score.title ?? ''} fileName={openFileName} … />`, and add `data-speed={speed}` to the status element. `NotationSurface` is untouched by this task.
 
-- [ ] **Step 6: Run the lane to verify it passes**
+- [ ] **Step 5: Run the lane to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e`
 Expected: PASS.
 
-- [ ] **Step 7: 🧑 HUMAN GATE — hand back to the maintainer. Verify by ear**
+- [ ] **Step 6: 🧑 HUMAN GATE — hand back to the maintainer. Verify by ear**
 
 With the sample playing, press `+` several times and confirm the music genuinely speeds up (not just the number). Press `−` past the floor and confirm it stops at 12.5 %.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add web/app/play/PlayerHeader.tsx web/app/play/PlayerShell.tsx \
-  web/app/play/NotationSurface.tsx web/e2e/player.e2e.ts
+git add web/app/play/PlayerHeader.tsx web/app/play/PlayerShell.tsx web/e2e/player.e2e.ts
 git commit -m "feat(web): add the header tempo control and drive playbackSpeed (NH-291)"
 ```
 
@@ -2047,7 +2056,7 @@ baselines that block merge. `Tooltip` was already built, with committed VR and a
 - A–B loop markers are deliberately absent: v0 uses AlphaTab's native bar-range selection plus the Loop toggle. Range selection is mouse-only — AlphaTab registers no touch or pointer handlers — which is why A–B is not in the acceptance set.
 - The metronome glyph is the stock Material Symbols `avg_pace`; Material Symbols ships no metronome icon and the mockup's inline SVG has unestablished provenance. Icon choice tracked as [NH-294](https://leocaseiro.atlassian.net/browse/NH-294).
 - Playback speed does **not** survive a reload: `playbackSpeed` is an `AlphaTabApi` property, not a field in AlphaTab's `Settings` JSON, so it cannot ride the settings persistence the other preferences use. Tracked as [NH-295](https://leocaseiro.atlassian.net/browse/NH-295).
-- Task 7 creates `PlayerHeader.tsx` carrying the app name, the score title and the tempo pill. If Plan A already renders app chrome on `/play`, that becomes a merge rather than a create — tracked as [NH-296](https://leocaseiro.atlassian.net/browse/NH-296).
+- Task 7 **extracts** `PlayerHeader.tsx` rather than creating it: Plan A Task 11 Step 3 already renders the app name and the score title as an inline `<header>` in `PlayerShell.tsx`, so Task 7 moves that markup out and adds the tempo pill. `data-testid="loaded-notation-name"` and `data-file` must survive the move — Plan A's e2e tests assert on them. This resolves [NH-296](https://leocaseiro.atlassian.net/browse/NH-296).
 
 ## Open items tracked outside this plan
 
@@ -2055,7 +2064,7 @@ baselines that block merge. `Tooltip` was already built, with committed VR and a
 | --- | --- |
 | [NH-294](https://leocaseiro.atlassian.net/browse/NH-294) | Decide the Metronome toggle's glyph — `avg_pace` is a flagged placeholder |
 | [NH-295](https://leocaseiro.atlassian.net/browse/NH-295) | Decide whether playback speed survives a reload |
-| [NH-296](https://leocaseiro.atlassian.net/browse/NH-296) | Check Plan A's `/play` chrome does not duplicate Task 7's header |
+| [NH-296](https://leocaseiro.atlassian.net/browse/NH-296) | **Resolved 2026-09-19** — it does duplicate. Task 7 now extracts Plan A's inline `<header>` instead of creating a second one |
 | [NH-297](https://leocaseiro.atlassian.net/browse/NH-297) | `alphaTabWebsite` fork: `score.tempo` mis-times its hit windows (not a notation-hero change) |
 
 ## Pulumi preview
@@ -2095,4 +2104,4 @@ atomically on merge. It must record:
 
 **Type consistency.** `Slider`'s `onChange: (next: number) => void` is the same signature `Scrubber` calls. `Scrubber`'s `onSeek` reports **milliseconds** everywhere — the unit `api.timePosition` takes — while its internal bar works in seconds; that conversion lives in one place. `TempoControl` owns `speed` (a multiplier), never BPM, in both the component and `PlayerShell`, and converts BPM↔speed only at its own boundary — which is what keeps it in sync with Plan C's Player settings group. `Progress`'s `value` is a **fraction 0–1 or null** in the component, its test, and the `soundFontLoad` handler; the `undefined` that means "not downloading" lives only in `PlayerShell`, because `onSoundFontProgress` cannot carry it. `TransportToggle`'s `pressed` / `onPressedChange` pair is spelled identically in the component, its test, and all three call sites.
 
-**Four steps a machine cannot do.** Task 6 Step 7, Task 7 Step 7, Task 8 Step 6 and Task 9 Step 3 need human ears or a human browser console. Each is marked `🧑 HUMAN GATE`; an agentic worker stops and hands back rather than self-certifying, and the PR-body box each one backs is ticked only after a person confirms.
+**Four steps a machine cannot do.** Task 6 Step 7, Task 7 Step 6, Task 8 Step 6 and Task 9 Step 3 need human ears or a human browser console. Each is marked `🧑 HUMAN GATE`; an agentic worker stops and hands back rather than self-certifying, and the PR-body box each one backs is ticked only after a person confirms.
