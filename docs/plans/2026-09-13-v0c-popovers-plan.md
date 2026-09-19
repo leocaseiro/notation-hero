@@ -1194,6 +1194,10 @@ import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 interface SettingsPopoverProps {
   settings: PlayerSettingsJson;
   onSettingChange: (path: string, value: SettingValue, rerender: boolean) => void;
+  /** The playback-speed multiplier. The SAME value Plan B's header TempoControl edits. */
+  speed: number;
+  /** PlayerShell's `applySpeed` — the only writer of api.playbackSpeed (Plan B Global Constraints). */
+  onSpeedChange: (next: number) => void;
 }
 
 // The header gear. A POPOVER, not a modal — it never blocks the player, so a drummer can change a
@@ -1203,7 +1207,24 @@ interface SettingsPopoverProps {
 // The 12.5-200% playback-speed slider lives in this popover's Player group, not in the header pill:
 // neither design source draws a slider there, and "two popovers, not modals" leaves no third
 // surface for one.
-export function SettingsPopover({ settings, onSettingChange }: Readonly<SettingsPopoverProps>) {
+//
+// SPEED IS NOT A SCHEMA ROW — it is the one control in this popover that must NOT go through
+// `onSettingChange`. `playbackSpeed` is an AlphaTabApi PROPERTY, not a key in AlphaTab's
+// PlayerSettingsJson (verified against 1.8.4's alphaTab.d.ts: no such key anywhere in the interface),
+// so a schema row would write a path `fillFromJson` ignores. The slider would move, the % would
+// update, and the audio would not change — a silent failure, not an error. It also cannot BE a schema
+// row: `SettingDescriptor` requires a `path`, and Task 4 Step 6's cross-check demands every path have
+// a matching DEFAULT_PLAYER_SETTINGS entry, which speed cannot have.
+//
+// So it renders outside the schema map and calls `onSpeedChange` — PlayerShell's `applySpeed`, which
+// Plan B's Global Constraints make the SOLE writer of api.playbackSpeed. That is also what keeps this
+// slider and Plan B's header BPM stepper in sync: one `speed` value, one writer, two editors.
+export function SettingsPopover({
+  settings,
+  onSettingChange,
+  speed,
+  onSpeedChange,
+}: Readonly<SettingsPopoverProps>) {
   const { engine } = useAlphaTabEngine();
   // The enum options come off the loaded namespace, so the groups cannot exist before it does.
   const groups = engine ? buildSettingGroups(engine) : [];
@@ -1238,6 +1259,18 @@ export function SettingsPopover({ settings, onSettingChange }: Readonly<Settings
               <AccordionItem key={group.id} value={group.id}>
                 <AccordionTrigger>{group.title}</AccordionTrigger>
                 <AccordionContent>
+                  {/* Outside the schema map, and deliberately first in the Player group: it is the
+                      control a drummer reaches for most. See the note above for why it cannot be a
+                      schema row. */}
+                  {group.id === 'player' ? (
+                    <SettingRow
+                      id="playback-speed"
+                      label="Playback speed"
+                      control={{ kind: 'range', min: 0.125, max: 2, step: 0.125 }}
+                      value={speed}
+                      onChange={(next) => onSpeedChange(Number(next))}
+                    />
+                  ) : null}
                   {group.settings.map((setting) => (
                     <SettingRow
                       key={setting.id}
@@ -1854,7 +1887,7 @@ Then take stock of the v0 acceptance set across all three plans. Criteria 1–8 
 
 ## Self-Review
 
-**Spec coverage.** §7 "Two popovers, not modals" → Tasks 5 and 7, with the non-blocking property asserted in Task 5's own test. §7 Settings groups (Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools) → Task 4, with the real row counts from the reference panel. §7 "Colors are plain text inputs for now" → `SettingRow`'s `text` kind, called out in its comment. §7 Tracks row full control set (render-select, solo, mute, volume, per-staff display toggles, both transposition sliders) → Tasks 3 and 7. §7 volume-as-ratio with a zero guard, and the 0–16 scale → Tasks 3 and 7. §7 channel coupling → stated in Global Constraints, in `TrackRow`'s comment, in Task 7's manual check and in the PR body. §7 tablature only for a tuned stringed staff → Tasks 3 and 7, each with a test. §7 eight-controls disclosure → Task 3. §7 "compose controls that already exist" → `SettingRow` composes `Field`, `Checkbox`, `Input`, `NativeSelect`, `Slider`; none is new. §7 settings persistence, `fillFromJson`, the per-key merge and the reset toast → Task 6. §7 the 12.5–200 % slider in the Player group → Task 5's comment and the schema. §8 criteria 3 and 7 → Tasks 5 and 7. **Deliberately not covered here:** everything in Plans A and B; v0.1's search index and tab chrome; drum tablature (needs a version bump, Q5).
+**Spec coverage.** §7 "Two popovers, not modals" → Tasks 5 and 7, with the non-blocking property asserted in Task 5's own test. §7 Settings groups (Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools) → Task 4, with the real row counts from the reference panel. §7 "Colors are plain text inputs for now" → `SettingRow`'s `text` kind, called out in its comment. §7 Tracks row full control set (render-select, solo, mute, volume, per-staff display toggles, both transposition sliders) → Tasks 3 and 7. §7 volume-as-ratio with a zero guard, and the 0–16 scale → Tasks 3 and 7. §7 channel coupling → stated in Global Constraints, in `TrackRow`'s comment, in Task 7's manual check and in the PR body. §7 tablature only for a tuned stringed staff → Tasks 3 and 7, each with a test. §7 eight-controls disclosure → Task 3. §7 "compose controls that already exist" → `SettingRow` composes `Field`, `Checkbox`, `Input`, `NativeSelect`, `Slider`; none is new. §7 settings persistence, `fillFromJson`, the per-key merge and the reset toast → Task 6. §7 the 12.5–200 % slider in the Player group → Task 5, rendered OUTSIDE the schema and wired to `PlayerShell`'s `applySpeed` rather than to `onSettingChange` (Plan B's single-writer constraint — `playbackSpeed` is an API property, not a settings-JSON key). §8 criteria 3 and 7 → Tasks 5 and 7. **Deliberately not covered here:** everything in Plans A and B; v0.1's search index and tab chrome; drum tablature (needs a version bump, Q5).
 
 **Placeholder scan.** Two tasks describe rather than transcribe, and both name the exact source of the answer: Task 3's component body is specified as a requirement list plus the one comment that must appear (the test file above it is complete and is the real specification), and Task 4's schema shows two rows as the pattern with an explicit instruction that a group left as a comment is an unfinished task, not a deferral. Three steps say "check the installed API before running" — Base UI's accordion open-state attribute and `openMultiple` (Task 1), `Checkbox`'s callback name (Task 2), and `PopoverTrigger`'s composition prop (Task 5) — each naming the file or the working in-repo precedent to copy. None is deferred work.
 
