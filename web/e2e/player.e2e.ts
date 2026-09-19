@@ -79,3 +79,105 @@ test('plays through the real audio worklet, not the silent fallback', async ({ p
   ).toEqual([]);
   expect(logs.filter((line) => line.includes('Audio Worklet creation failed'))).toEqual([]);
 });
+
+// The player opens ON a score, so the open control must be reachable while one is already
+// rendered — it is not tucked inside a start screen that disappears.
+test('starts on the bundled sample beat, with the open control always present', async ({
+  page,
+}) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId('open-file-button')).toBeVisible();
+});
+
+test('an unsupported file raises a toast and leaves the player usable', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles({
+    name: 'not-a-score.gp5',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from('this is not a guitar pro file'),
+  });
+
+  // The number, not only the wording: it is the contract spec §4's failure table documents.
+  await expect(page.getByText(/not a score format the player reads\. \(Error E103\)/)).toBeVisible({
+    timeout: 15_000,
+  });
+  // The sample stays on screen, untouched — the whole point of parsing before swapping state.
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
+});
+
+// The 25 MB gate runs before the file is read, so a zero-filled buffer one byte over the limit is
+// enough — its content never reaches the parser.
+test('a file over 25 MB is refused before it is read', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles({
+    name: 'too-big.gp',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.alloc(25 * 1024 * 1024 + 1),
+  });
+
+  await expect(
+    page.getByText(/too large to open\. The limit is 25 MB\. \(Error E101\)/),
+  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
+});
+
+// Punk.gp parses to three tracks: 0:Drumkit (percussion, MIDI channel 9), 1:Distortion Guitar
+// (not percussion) and 2:Drumkit Left (percussion, channel 9). A regression that rendered only
+// track 0 would silently drop the left-hand staff — which is exactly why this fixture exists.
+// Punk.mxl (MuseScore) and Punk.alphatex (Tabtify) are exports of the same score and parse to the
+// same three tracks, so the promise is checked on Guitar Pro, MusicXML and alphaTex alike.
+for (const fixture of ['Punk.gp', 'Punk.mxl', 'Punk.alphatex']) {
+  test(`renders every drum track, not only track 0 — ${fixture}`, async ({ page }) => {
+    await page.goto('/play');
+    await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
+    await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  });
+}
+
+// guitar-no-percussion.gp has one track whose only staff is NOT percussion, so
+// selectDrumTrackIndexes returns [], the caller passes undefined, and AlphaTab renders
+// score.tracks[0]. Verified by RUNNING, not by reading.
+test('a score with no percussion staff opens on the first track', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/guitar-no-percussion.gp');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1');
+});
+
+// A failed music-font download used to leave the Skeleton up forever: AlphaTab's font checker has
+// no fallback, fires no renderFinished and raises no api.error. Abort every font request and expect
+// the engine error instead (NotationSurface's loadingerror listener).
+test('a failed music-font download shows the engine error, not an endless Skeleton', async ({
+  page,
+}) => {
+  await page.route('**/alphatab/font/**', (route) => route.abort());
+  await page.goto('/play');
+  await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('engine-error')).toContainText('Error E203');
+  await expect(page.getByTestId('notation-skeleton')).toBeHidden();
+});
+
+// One fixture per importer path, and the evidence behind criterion 1's `.gp5`. All are already
+// committed — no new content needed. 1-beat.musicxml and 1-beat.mxl are real MuseScore exports
+// (plain and compressed MusicXML take different code paths); 1-beat.atex is a real alphaTex
+// export. ScoreLoader never sees a filename, so one fixture per path is enough.
+for (const fixture of [
+  'alphatex-GP5.gp5',
+  'alphatex-GPX.gpx',
+  '1-beat.musicxml',
+  '1-beat.mxl',
+  '1-beat.atex',
+]) {
+  test(`opens ${fixture} and renders notation`, async ({ page }) => {
+    await page.goto('/play');
+    await page.getByTestId('open-file-input').setInputFiles(`e2e/fixtures/${fixture}`);
+    await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+}

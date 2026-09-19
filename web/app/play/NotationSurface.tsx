@@ -4,8 +4,10 @@ import { Skeleton } from '@notation-hero/client';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
+import { selectDrumTrackIndexes } from '../../lib/alphatab/drum-tracks';
 import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { PLAYER_ERROR } from '../../lib/player-errors';
+import type { OpenNotation } from './PlayerShell';
 import type * as AlphaTab from '@coderline/alphatab';
 import type { RefObject } from 'react';
 
@@ -16,12 +18,42 @@ interface NotationSurfaceProps {
   hostRef: RefObject<HTMLDivElement | null>;
   /** The scroll box: ours. The landmark, the focus ring, the overflow, `player.scrollElement`. */
   viewportRef: RefObject<HTMLDivElement | null>;
+  /** A score the person opened, already parsed by the shell. Null while the bundled beat —
+   *  loaded by AlphaTab itself from settings.core.file — is the one on screen. */
+  notation: OpenNotation | null;
 }
 
-export function NotationSurface({ api, hostRef, viewportRef }: Readonly<NotationSurfaceProps>) {
+/**
+ * Renders an opened score onto the live api. Shared by the score effect and the re-assert guard
+ * below, so both paths pick the same tracks and reset the viewport identically.
+ */
+function renderOpenNotation(
+  api: AlphaTab.AlphaTabApi,
+  notation: OpenNotation,
+  viewport: HTMLDivElement | null,
+): void {
+  // Back to the top before the new score paints. The viewport survives score changes — it is ours,
+  // not AlphaTab's — so without this, opening a short score after scrolling deep into a long one
+  // leaves the person looking at blank space below the last system.
+  if (viewport) viewport.scrollTop = 0;
+
+  const drumIndexes = selectDrumTrackIndexes(notation.score.tracks);
+  // INDEXES, not Track objects. Passing undefined makes AlphaTab render score.tracks[0] — its
+  // FIRST track, not a "default" or preferred one. Fine here: that branch only runs when no track
+  // carries a percussion staff at all, where any track is as good as another.
+  api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
+}
+
+export function NotationSurface({
+  api,
+  hostRef,
+  viewportRef,
+  notation,
+}: Readonly<NotationSurfaceProps>) {
   const { error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  const [renderedTrackCount, setRenderedTrackCount] = useState(0);
   // ReturnType<typeof globalThis.setTimeout>, not `number`: web/tsconfig.json sets no `types`
   // array, so @types/node is in scope and globalThis.setTimeout resolves to Node's overload,
   // which returns a Timeout object rather than a handle. ReturnType is correct under both.
@@ -70,6 +102,36 @@ export function NotationSurface({ api, hostRef, viewportRef }: Readonly<Notation
   useAlphaTabEvent(api, 'renderFinished', () => {
     globalThis.clearTimeout(timeoutRef.current);
     setRendered(true);
+    // What AlphaTab actually drew, not what we asked for. Deriving this from the index array we
+    // just passed in would make it echo the request, and the drum-track assertions would pass even
+    // if only track 0 were drawn. The no-percussion branch still reports 1, because renderScore
+    // pushes score.tracks[0] when the index list is undefined.
+    setRenderedTrackCount(api?.tracks.length ?? 0);
+  });
+
+  // The score arrives ALREADY PARSED. PlayerShell parses inside requestNotation, before it swaps
+  // state, so a file that does not parse never becomes the open notation — there is no rollback
+  // path to build because there is nothing to roll back. This effect only renders, and nothing is
+  // destroyed: the workers and the loaded soundfont are reused, so a rejected replacement leaves
+  // the playing score untouched by construction.
+  useEffect(() => {
+    if (!api || !notation) return;
+    renderOpenNotation(api, notation, viewportRef.current);
+    // `api` is in the list because it is state: it arrives after the first commit, and a score
+    // opened before it existed must still render once it does.
+  }, [api, notation, viewportRef]);
+
+  // AlphaTab fetches `settings.core.file` asynchronously and renders it WHENEVER it arrives. A
+  // score the person opened during that window was therefore replaced, without a word, by the
+  // bundled beat — they pressed Open, watched their file appear, and got the sample back. Verified
+  // by opening Punk.gp immediately after load: the api held the bundled track eight seconds later.
+  //
+  // Re-assert ours whenever AlphaTab loads a score that is not the one the person opened. This
+  // terminates: `_internalRenderTracks` triggers `scoreLoaded` only when the score actually
+  // changed, so the re-render below fires the event once more and the identity guard returns.
+  useAlphaTabEvent(api, 'scoreLoaded', () => {
+    if (!api || !notation || api.score === notation.score) return;
+    renderOpenNotation(api, notation, viewportRef.current);
   });
 
   const failure = engineError
@@ -130,6 +192,9 @@ export function NotationSurface({ api, hostRef, viewportRef }: Readonly<Notation
       >
         <div ref={hostRef} />
       </div>
+      <span data-testid="rendered-track-count" className="sr-only">
+        {renderedTrackCount}
+      </span>
     </div>
   );
 }

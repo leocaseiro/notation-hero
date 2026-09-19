@@ -34,3 +34,21 @@
   fill: var(--primary);
   stroke: var(--primary);
 }
+
+/* The drag-and-drop affordance. No hardcoded white or black, so it reads in both themes. */
+.nh-drop-overlay {
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--background) 80%, transparent);
+
+  /* Without the blur the notation's staff lines and the teal Open file button show through
+     directly behind the hint line. */
+  backdrop-filter: blur(3px);
+}
+
+/* The whole surface signals "drop anywhere in here"; only the score area carries the scrim, so
+   the transport stays legible rather than reading as a broken player. */
+[data-dragging] {
+  outline: 2px dashed var(--primary);
+  outline-offset: 6px;
+  border-radius: var(--radius);
+}

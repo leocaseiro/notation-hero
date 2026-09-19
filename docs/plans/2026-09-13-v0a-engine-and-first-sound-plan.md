@@ -1732,9 +1732,12 @@ export interface LoadedNotation {
 }
 
 /**
- * The score that ships with the app. The player ALWAYS has a score open (decided 2026-09-18):
- * this one loads when nothing else is cached, which is why there is no empty state anywhere in
- * this plan and why the notation box is mounted for the whole life of the page.
+ * The score that ships with the app. The player ALWAYS has a score open (decided 2026-09-18),
+ * which is why there is no empty state anywhere in this plan and why the notation box is mounted
+ * for the whole life of the page.
+ *
+ * Today this one ALWAYS loads: remembering the last score played is its own ticket (NH-303), so
+ * there is no cache to consult and no branch here to choose between them.
  */
 const SAMPLE_NOTATION = '/notation/1-beat.gp';
 
@@ -2921,18 +2924,17 @@ Replace the `settings.core.file = SAMPLE_NOTATION;` approach for user scores wit
 `renderScore` — add this effect beside the mount effect:
 
 ```tsx
-// The score arrives ALREADY PARSED. PlayerShell parses inside requestNotation, before it swaps
-// state (above), so a file that does not parse never becomes the open notation — there is no
-// rollback path to build because there is nothing to roll back. This effect only renders, and
-// nothing is destroyed: the workers and the loaded soundfont are reused, so a rejected
-// replacement leaves the playing score untouched by construction.
-useEffect(() => {
-  if (!api || !notation) return;
-
-  // Back to the top before the new score paints. The viewport survives score changes now (F-C2 —
-  // it is ours, not AlphaTab's), so without this, opening a short score after scrolling deep into
-  // a long one leaves the person looking at blank space below the last system.
-  if (viewportRef.current) viewportRef.current.scrollTop = 0;
+// Shared by the effect and the re-assert guard below, so both paths pick the same tracks and
+// reset the viewport identically.
+function renderOpenNotation(
+  api: AlphaTab.AlphaTabApi,
+  notation: OpenNotation,
+  viewport: HTMLDivElement | null,
+): void {
+  // Back to the top before the new score paints. The viewport survives score changes now (it is
+  // ours, not AlphaTab's), so without this, opening a short score after scrolling deep into a
+  // long one leaves the person looking at blank space below the last system.
+  if (viewport) viewport.scrollTop = 0;
 
   const drumIndexes = selectDrumTrackIndexes(notation.score.tracks);
   // INDEXES, not Track objects. Passing undefined makes AlphaTab render score.tracks[0] — its
@@ -2940,9 +2942,35 @@ useEffect(() => {
   // here: this branch only runs when no track carries a percussion staff at all, where any
   // track is as good as another.
   api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
+}
+
+// The score arrives ALREADY PARSED. PlayerShell parses inside requestNotation, before it swaps
+// state (above), so a file that does not parse never becomes the open notation — there is no
+// rollback path to build because there is nothing to roll back. This effect only renders, and
+// nothing is destroyed: the workers and the loaded soundfont are reused, so a rejected
+// replacement leaves the playing score untouched by construction.
+useEffect(() => {
+  if (!api || !notation) return;
+  renderOpenNotation(api, notation, viewportRef.current);
   // `api` is in the list because it is state now: it arrives after the first commit, and a score
   // opened before it existed must still render once it does.
-}, [api, notation]);
+}, [api, notation, viewportRef]);
+
+// REQUIRED, not belt-and-braces. AlphaTab fetches `settings.core.file` asynchronously and renders
+// it WHENEVER it arrives, so a score the person opened during that window is silently replaced by
+// the bundled beat: they press Open, watch their file appear, and get the sample back with no
+// error anywhere. Measured 2026-09-19 — opening Punk.gp immediately after load left the api
+// holding the bundled track eight seconds later, and the three Punk assertions failed with
+// `rendered-track-count` stuck at 1. (The no-percussion case passed THROUGH the bug, because the
+// bundled beat also renders one track: a false green.)
+//
+// This terminates. `_internalRenderTracks` triggers `scoreLoaded` only when the score actually
+// changed (`if (score !== this.score)` in alphaTab.core.mjs), so the re-render below fires the
+// event once more and the identity guard returns immediately.
+useAlphaTabEvent(api, 'scoreLoaded', () => {
+  if (!api || !notation || api.score === notation.score) return;
+  renderOpenNotation(api, notation, viewportRef.current);
+});
 ```
 
 The count the test reads comes from AlphaTab, **not** from `drumIndexes`. Deriving it from the
@@ -2969,13 +2997,17 @@ useAlphaTabEvent(api, 'renderFinished', () => {
 });
 ```
 
-and expose the count for the test:
+and expose the count for the test — as a **sibling of the host div, outside the scroll viewport**:
 
 ```tsx
 <span data-testid="rendered-track-count" className="sr-only">
   {renderedTrackCount}
 </span>
 ```
+
+Placing it INSIDE the `hostRef` div instead would make every drum-track assertion fail for no
+visible reason: that element belongs to AlphaTab, whose renderer owns its children and whose
+`destroy()` does `element.innerHTML = ""`.
 
 `NotationSurface`'s prop is therefore the parsed shape, not the bytes:
 
@@ -3031,7 +3063,9 @@ const acceptDropped = useCallback(
   async (file: File | undefined) => {
     if (!file) return;
     try {
-      requestNotation(await readNotation(file));
+      // AWAIT it: requestNotation is async, so an un-awaited call both trips
+      // no-floating-promises and drops any rejection on the floor.
+      await requestNotation(await readNotation(file));
     } catch {
       toast.error(readFailureMessage(file));
     }
