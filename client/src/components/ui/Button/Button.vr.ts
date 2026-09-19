@@ -14,7 +14,7 @@ runVrStories({
   states: ['resting', 'hover', 'focus'],
   // A disabled button has pointer-events-none, so hover is a no-op and is skipped. It renders
   // aria-disabled (not the native attribute), so it DOES take keyboard focus: the focus state
-  // presses Tab and asserts toBeFocused(), which proves Tab reach in a real browser (NH-304).
+  // presses Tab and asserts toBeFocused(), which proves Tab reach in a real browser.
   statesForStory: (story) =>
     story === 'disabled' ? ['resting', 'focus'] : ['resting', 'hover', 'focus'],
   iconFontStory: (story) => story.includes('icon'),

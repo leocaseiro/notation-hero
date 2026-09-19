@@ -17,7 +17,7 @@ runVrStories({
   states: ['resting', 'focus'],
   statesForStory: (story) => {
     // Resting only. The disabled input is skipped by Tab. The trailing Button is aria-disabled,
-    // so it is a tab stop (NH-304), but this suite's focus state asserts on the input.
+    // so it is a tab stop, but this suite's focus state asserts on the input.
     if (story === 'disabled') return ['resting'];
     if (story === 'with-button') return ['resting', 'hover', 'focus'];
     return ['resting', 'focus'];

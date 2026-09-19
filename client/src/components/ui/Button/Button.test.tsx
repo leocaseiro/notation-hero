@@ -43,7 +43,7 @@ test('calls onClick when clicked', () => {
   expect(onClick).toHaveBeenCalledTimes(1);
 });
 
-// NH-304: `disabled` renders aria-disabled instead of the native attribute, so the button stays
+// `disabled` renders aria-disabled instead of the native attribute, so the button stays
 // reachable by Tab, screen readers and ref.focus(); the component itself blocks activation.
 // jest-dom's toBeDisabled() reads the native attribute only, so these assert aria-disabled.
 describe('disabled (aria-disabled, focusable)', () => {
@@ -224,7 +224,7 @@ describe('disabled (aria-disabled, focusable)', () => {
     expect(button).toHaveFocus();
   });
 
-  // The mirror case, and the NH-291 one: Play has focus while disabled and becomes enabled with
+  // The mirror case, and the player's one: Play has focus while disabled and becomes enabled with
   // Space still held. The keydown was default-prevented, so the release must not activate it.
   test('does not activate on a press that starts disabled and ends enabled', async () => {
     const user = userEvent.setup();

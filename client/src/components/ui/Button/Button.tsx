@@ -56,7 +56,7 @@ const buttonVariants = cva(
 
 export type ButtonProps = useRender.ComponentProps<'button'> & VariantProps<typeof buttonVariants>;
 
-// NH-304: `disabled` renders `aria-disabled="true"`, never the native attribute, so the button
+// `disabled` renders `aria-disabled="true"`, never the native attribute, so the button
 // stays in the tab order, keeps its accessible name, and accepts `ref.current.focus()`. The
 // component blocks activation itself, so no consumer needs a guard.
 //
