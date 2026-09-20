@@ -16,9 +16,9 @@ interface TempoControlProps {
   /** Lowest speed. The default, 12.5 %, is the floor of the player engine this was built for. */
   minSpeed?: number;
   /**
-   * Highest speed. The default is 400 %: practising a short beat well above its written tempo is
-   * a real use, and the engine itself allows up to 800 %. A ceiling is still required — the number
-   * field needs a `max` to clamp a typed value against.
+   * Highest speed. The default, 800 %, is the ceiling of the player engine this was built for — the
+   * design system adds no limit of its own. The number field still needs a `max` to clamp a typed
+   * value against, so it mirrors the engine's.
    */
   maxSpeed?: number;
   disabled?: boolean;
@@ -52,7 +52,7 @@ const TempoControl = ({
   speed,
   onSpeedChange,
   minSpeed = 0.125,
-  maxSpeed = 4,
+  maxSpeed = 8,
   disabled = false,
   className,
 }: Readonly<TempoControlProps>) => {
