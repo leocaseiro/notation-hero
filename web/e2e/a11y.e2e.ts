@@ -32,7 +32,15 @@ async function expectNoViolations(page: Page, label: string): Promise<void> {
 // control cannot quietly shrink below it.
 async function expectHitAreas(page: Page, label: string): Promise<void> {
   const tooSmall = await page.evaluate(() =>
-    [...document.querySelectorAll('button, a[href], label[for], [role="button"]')]
+    [
+      // The last selector is the seek rail. A Base UI slider's 44 px pointer target is neither a
+      // button nor a link: the nested input[type="range"] is sized to its 16 px thumb by design
+      // and can never pass, while the element that actually takes the click is the slider's
+      // Control, which carries h-11.
+      ...document.querySelectorAll(
+        'button, a[href], label[for], [role="button"], [data-slot="slider"] [class*="h-11"]',
+      ),
+    ]
       .filter((el) => {
         const r = el.getBoundingClientRect();
         // Skip controls that are not rendered at all; a hidden element has no hit area to fail.
@@ -124,4 +132,28 @@ test('player has no axe violations when the engine fails to load', async ({ page
   await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
   await expectNoViolations(page, 'play / engine error');
   await expectHitAreas(page, 'play / engine error');
+});
+
+// A toggle's pressed styling is where contrast usually breaks, and the transport did not exist
+// when the cases above were written.
+test('player has no axe violations with every transport toggle pressed', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('toggle-loop').click();
+  await page.getByTestId('toggle-metronome').click();
+  await page.getByTestId('toggle-countin').click();
+  await page.getByRole('button', { name: 'Increase tempo' }).click();
+
+  // The same trap settleToasts() exists for: the percentage FADES in, and axe folds partial
+  // opacity into its contrast maths — measured 1.28:1 (#d2e7e6 on white) from a teal that passes
+  // at rest. Wait for the fade to finish so the gate measures the rendered UI, not a tween.
+  await expect
+    .poll(() =>
+      page.getByTestId('tempo-percent').evaluate((el) => globalThis.getComputedStyle(el).opacity),
+    )
+    .toBe('1');
+
+  await expectNoViolations(page, 'play / transport pressed');
+  await expectHitAreas(page, 'play / transport pressed');
 });
