@@ -972,6 +972,103 @@ test('a mouse seek past a selected bar range, then Play, plays on from there', a
   expect(await engineTick(page)).toBeGreaterThan(seekTick);
 });
 
+/** Clicks the seek rail at a fraction of its width with a real mouse. */
+async function clickSeekRail(page: Page, fraction: number): Promise<void> {
+  const rail = await page
+    .locator('[data-slot="scrubber"] [data-index]')
+    .locator('..')
+    .boundingBox();
+  if (!rail) throw new Error('the seek bar is not laid out');
+  await page.mouse.click(rail.x + rail.width * fraction, rail.y + rail.height / 2);
+}
+
+const hasBarRange = (page: Page) =>
+  page.evaluate(
+    () =>
+      (
+        document.querySelector<HTMLElement>(
+          '[data-testid="notation-surface"] > div',
+        ) as BeatBoundsHost
+      ).at.playbackRange !== null,
+  );
+
+// The other half of the rule: you selected bars to practise, and you scrub back to an earlier
+// spot INSIDE them. That must not throw the selection away — only a seek that lands outside it
+// does. Inside or outside is decided from AlphaTab's own reply to the seek, in ticks.
+test('a seek that lands inside the selected bars keeps the selection', async ({ page }) => {
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await expect
+    .poll(async () => Number(await page.getByTestId('player-status').getAttribute('data-duration')))
+    .toBeGreaterThan(0);
+
+  // Bars 1-2 of three: the first four seconds of six.
+  await selectBars(page, 0, 1);
+  await expect(page.getByRole('button', { name: 'Loop selection' })).toBeVisible();
+
+  // A quarter of the way along — about 00:01.5, well inside bars 1-2.
+  await clickSeekRail(page, 0.25);
+  await expect.poll(() => engineTick(page)).toBeGreaterThan(960);
+
+  // Give the (absent) clearing every chance to happen, then look.
+  await page.waitForTimeout(600);
+  expect(await hasBarRange(page)).toBe(true);
+  await expect(page.getByRole('button', { name: 'Loop selection' })).toBeVisible();
+
+  // And it still plays from there.
+  const from = await engineTick(page);
+  await play.click();
+  await expect.poll(() => engineTick(page), { timeout: 10_000 }).toBeGreaterThan(from + 480);
+});
+
+// While PLAYING, AlphaTab stops the player at once when a seek lands outside the active range.
+// Leaving the selection must not cost the person their playback.
+test('a seek outside the selected bars while playing keeps playing', async ({ page }) => {
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  const status = page.getByTestId('player-status');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await expect
+    .poll(async () => Number(await status.getAttribute('data-duration')))
+    .toBeGreaterThan(0);
+
+  await selectBars(page, 0, 0);
+  await page.getByTestId('toggle-loop').click();
+  await play.click();
+  await expect(status).toHaveAttribute('data-playing', 'true');
+
+  // Just past the middle: bar 2 of three, outside the selected bar 1.
+  await clickSeekRail(page, 0.55);
+
+  await expect(page.getByRole('button', { name: 'Loop score' })).toBeVisible();
+  await expect(status).toHaveAttribute('data-playing', 'true');
+  // It really plays on from the new place: past the end of bar 1 (3840 ticks) and still moving.
+  await expect.poll(() => engineTick(page), { timeout: 10_000 }).toBeGreaterThan(6000);
+});
+
+// During a count-in AlphaTab is not playing the score yet and sends NO reply to a seek, so inside
+// or outside cannot be told. The safe answer is to let the selection go: the worst case is
+// selecting the bars again — never a frozen player.
+test('a seek during the count-in lets the selection go rather than guess', async ({ page }) => {
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await expect
+    .poll(async () => Number(await page.getByTestId('player-status').getAttribute('data-duration')))
+    .toBeGreaterThan(0);
+
+  await selectBars(page, 0, 0);
+  await page.getByTestId('toggle-countin').click();
+  await play.click();
+  // The count-in is one bar, about two seconds: seek inside that window.
+  await page.waitForTimeout(500);
+  await clickSeekRail(page, 0.55);
+
+  await expect.poll(() => hasBarRange(page), { timeout: 5000 }).toBe(false);
+  await expect(page.getByRole('button', { name: 'Loop score' })).toBeVisible();
+});
+
 // No seek needed for this one: AlphaTab keeps the main-thread playbackRange across a score change
 // while the new sequencer has none. Select bars, open another file, press Play — the cursor froze
 // at the old range's end and Pause jumped back, with the toggle still reading "Loop selection".

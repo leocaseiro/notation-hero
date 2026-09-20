@@ -164,6 +164,11 @@ function Player() {
 
   // Guard 2's bookkeeping — see the position handler below.
   const pendingSeek = useRef<{ target: number; since: number } | null>(null);
+  // A seek made while bars are selected waits for AlphaTab's reply to learn whether it landed
+  // inside them; this is the timer for the one case where no reply ever comes (see `seek`).
+  const rangeCheck = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Whether the score was playing when that seek was made — see `leaveRange`.
+  const resumeAfterSeek = useRef(false);
 
   // The worklet posts one samplesPlayed message per 128-frame audio quantum, and each one triggers
   // a positionChanged — about 345 events per second at 44.1 kHz. Writing state on every one of them
@@ -177,8 +182,34 @@ function Player() {
   useEffect(
     () => () => {
       if (positionFrame.current !== null) cancelAnimationFrame(positionFrame.current);
+      clearTimeout(rangeCheck.current);
     },
     [],
+  );
+
+  // The seek landed OUTSIDE the selected bars (or nobody can tell): let the selection go and seek
+  // again. It is not optional. In AlphaTab 1.8.4 a seek outside an active playback range leaves
+  // the sequencer clamped to the range's end while the reported time is the requested one: Play
+  // then renders empty buffers, the engine's finish check never runs, and the player latches in
+  // Playing with nothing moving; Pause falls back to the last beat the cursor had resolved. With
+  // the range gone, the same seek positions the sequencer properly. The range goes FIRST: both
+  // writes are messages to the same worker, handled in order.
+  //
+  // If the score was PLAYING, AlphaTab stopped it the moment the first seek left the range, so
+  // playback is started again — leaving a selection must not cost the person their playback.
+  const leaveRange = useCallback(
+    (ms: number) => {
+      if (!api) return;
+      clearTimeout(rangeCheck.current);
+      setAlphaTabValue(api, 'playbackRange', null);
+      setAlphaTabValue(api, 'timePosition', ms);
+      pendingSeek.current = { target: ms, since: performance.now() };
+      if (resumeAfterSeek.current) {
+        resumeAfterSeek.current = false;
+        api.play();
+      }
+    },
+    [api],
   );
 
   // Guard 1 — `endTime === 0` is the hardcoded PositionChangedEventArgs(0,0,0,0,false,120,120) stub
@@ -198,10 +229,25 @@ function Player() {
 
     if (pendingSeek.current) {
       // guard 2
-      const expected = Math.min(pendingSeek.current.target, args.endTime);
+      const { target } = pendingSeek.current;
+      const expected = Math.min(target, args.endTime);
       const matched = args.isSeek && Math.abs(args.currentTime - expected) < 1;
       if (!matched && performance.now() - pendingSeek.current.since < 250) return;
       pendingSeek.current = null;
+
+      // The reply to a seek is also the only place that can say whether it landed inside the
+      // selected bars: the selection is kept in TICKS, the seek bar works in milliseconds, and the
+      // main thread cannot convert one into the other. Inside: the selection stays. Outside: it
+      // goes, and the seek is made again without it.
+      if (matched) {
+        clearTimeout(rangeCheck.current);
+        const range = api?.playbackRange;
+        if (range && (args.currentTick < range.startTick || args.currentTick > range.endTick)) {
+          leaveRange(target);
+          return;
+        }
+        resumeAfterSeek.current = false;
+      }
     }
 
     latestPosition.current = args;
@@ -297,20 +343,22 @@ function Player() {
   const seek = useCallback(
     (ms: number) => {
       if (api) {
-        // The seek bar covers the WHOLE score, so using it drops a bar-range selection first — the
-        // same thing AlphaTab does itself for a plain click on a beat. It is not optional: in
-        // 1.8.4 a seek outside an active range leaves the sequencer clamped to the range's end
-        // while the reported time is the requested one. Play then produces empty buffers, the
-        // engine's finish check never runs, and the player latches in Playing with nothing moving;
-        // Pause falls back to the last beat the cursor had resolved. The range goes FIRST: both
-        // writes are messages to the same worker, handled in order.
-        if (api.playbackRange) setAlphaTabValue(api, 'playbackRange', null);
         setAlphaTabValue(api, 'timePosition', ms);
+        // Bars are selected: whether this seek landed inside them is read off AlphaTab's reply (see
+        // the position handler). ONE case gets no reply at all — a seek made during a count-in,
+        // when the score is not playing yet — so a short timer stands in for it and lets the
+        // selection go. Guessing "inside" there would risk the frozen player `leaveRange` exists
+        // to prevent; guessing "outside" only costs selecting the bars again.
+        clearTimeout(rangeCheck.current);
+        if (api.playbackRange) {
+          resumeAfterSeek.current = playing;
+          rangeCheck.current = setTimeout(() => leaveRange(ms), 250);
+        }
       }
       setPositionMs(ms); // optimistic; guard 2 above reconciles on the echo
       pendingSeek.current = { target: ms, since: performance.now() };
     },
-    [api],
+    [api, leaveRange, playing],
   );
 
   // Confirm FIRST, then parse, then swap — spec §4's order. A file that does not parse never

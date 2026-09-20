@@ -19,16 +19,22 @@ browser before it was touched; the two runtime bugs were each attacked by a seco
 investigation before the fix was trusted. What follows is what CHANGED a decision or what is
 enforced — the plain bug fixes are in the commits.
 
-- **Using the seek bar drops the bar-range selection — new.** Scenario: bars are selected for Loop,
-  the person drags the seek bar beyond them and presses Play. The button turned into Pause, nothing
-  moved, and Pause fell back to the old position. In AlphaTab 1.8.4 a seek outside an active
-  playback range leaves the sequencer clamped to the range's end while the reported time is the
-  requested one; Play renders empty buffers and the finish check never runs. The seek bar covers
-  the whole score, so it clears the range first — what AlphaTab does itself for a click on a beat.
-  **Trade-off accepted:** a scrub INSIDE the selected bars drops the selection too. Keeping it
-  needs the seek's echo (the main thread cannot convert milliseconds to ticks), and a count-in
-  emits no echo. Opening a file clears the range as well: AlphaTab kept the old score's range on
-  the main thread while the new sequencer had none. 🤖 two e2e cases, real mouse.
+- **A seek that lands outside the selected bars lets the selection go; one that lands inside keeps
+  it — new.** Scenario: bars are selected for Loop, the person drags the seek bar beyond them and
+  presses Play. The button turned into Pause, nothing moved, and Pause fell back to the old
+  position. In AlphaTab 1.8.4 a seek outside an active playback range leaves the sequencer clamped
+  to the range's end while the reported time is the requested one; Play renders empty buffers and
+  the finish check never runs. The first fix cleared the selection on EVERY scrub. The maintainer
+  chose the finer rule (_"I would prefer your option 2"_): practising bars 5–8 and scrubbing back
+  to bar 6 must not throw the selection away. Inside or outside is read off AlphaTab's own reply
+  to the seek — the selection is kept in ticks, the seek bar works in milliseconds, and the main
+  thread cannot convert one into the other. Outside: the range is cleared and the seek made
+  again, and playback is restarted if it was running (AlphaTab stops the player the moment a seek
+  leaves the range). **One case gets no reply at all — a seek during a count-in, when the score is
+  not playing yet — so after 250 ms without one the selection is let go:** guessing "inside" there
+  risks the frozen player, guessing "outside" only costs selecting the bars again. Opening a file
+  clears the range too: AlphaTab kept the old score's range on the main thread while the new
+  sequencer had none. 🤖 five e2e cases, real mouse.
 - **The loading bar means "the player is not ready yet" — superseding the spec's "soundfont only"
   bar (§4) and the plan's delay-then-hold.** It used to wait 300 ms for soundfont progress before
   showing. On a warm cache AlphaTab reports the whole file in two events a millisecond apart, at
