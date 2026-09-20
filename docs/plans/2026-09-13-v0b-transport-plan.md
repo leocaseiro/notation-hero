@@ -7,8 +7,8 @@
 > its score, so the `load-sample` button those tests clicked never existed. All four are corrected here.
 > Tasks 1-5 (the five `client/` components) were never affected: they are presentation-only.
 
-> **🧑 HUMAN GATES.** Four steps in this plan cannot be performed by a machine — they need human ears
-> (Task 6 Step 7, Task 7 Step 6) or a human browser console (Task 8 Step 6, Task 9 Step 3). Each is marked
+> **🧑 HUMAN GATES.** Three steps in this plan cannot be performed by a machine — they need human ears
+> (Task 6 Step 7, Task 7 Step 6) or a human browser console (Task 8 Step 6). Each is marked
 > `🧑 HUMAN GATE`. An agentic worker must **stop at each one and hand back**, never self-certify it and
 > never tick the checklist item it backs. This repo's `pr-checklist` gate is presence-only — it checks that
 > a box is ticked, not that the claim is true — so a ticked box is the artefact a reviewer trusts.
@@ -2179,30 +2179,35 @@ test('player has no axe violations with every transport toggle pressed', async (
 Run: `pnpm --filter @notation-hero/web run test:e2e a11y`
 Expected: PASS. Fix any violation in the markup, never by loosening the assertion.
 
-- [ ] **Step 3: 🧑 HUMAN GATE — hand back to the maintainer. Measure every new control's hit area**
+- [ ] **Step 3: Widen the automated 44 px gate to cover the seek rail**
 
-```bash
-pnpm --filter @notation-hero/web run dev
-```
+This is pure DOM measurement — `querySelectorAll` plus `getBoundingClientRect` — so it belongs in the
+lane, not in a human's console: a one-time hand check cannot stop a later control shrinking. Plan A
+already ships `expectHitAreas(page, label)` in `web/e2e/a11y.e2e.ts`, but its selector only matches
+buttons and links. A Base UI slider's 44 px pointer target is neither: the nested `input[type="range"]`
+is sized to its 16 px thumb by design and can never pass, while the element that actually receives the
+click is the slider's `Control`, which carries `h-11`. Widen the selector so the transport's seek rail is
+measured too:
 
-In the browser console on a loaded `/play`. Measure the **pointer target**, not the hidden input — a Base UI
-slider's `input[type="range"]` is sized to its 16 px thumb by design and can never pass a 44 px test; the
-element that receives the click is the slider's `Control`, which carries `h-11`:
-
-```js
+```ts
+// in web/e2e/a11y.e2e.ts, inside expectHitAreas — add the slider Control to the selector:
 [
   ...document.querySelectorAll(
     'button, a[href], label[for], [role="button"], [data-slot="slider"] [class*="h-11"]',
   ),
-]
-  .map((el) => ({
-    label: el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 20),
-    ...el.getBoundingClientRect().toJSON(),
-  }))
-  .filter((r) => r.width < 44 || r.height < 44);
+];
 ```
 
-Expected: an **empty array**.
+Then add the transport-pressed case to the list of pages `expectHitAreas` is called from, beside
+`expectNoViolations`:
+
+```ts
+await expectHitAreas(page, 'play / transport pressed');
+```
+
+Run: `pnpm --filter @notation-hero/web run test:e2e a11y`
+Expected: PASS — the undersized list is empty. Any entry is a control under the 44 px minimum: pad its
+hit area (keep the glyph at its drawn size) until the list is empty. Never loosen the assertion.
 
 - [ ] **Step 4: Run every gate**
 
@@ -2236,9 +2241,16 @@ baselines that block merge. `Tooltip` was already built and already exported by 
 
 ## Success criteria covered
 
-- [x] 3 (tempo half) — the header stepper changes playback speed; per-track mute/solo is Plan C
-- [x] 5 — Loop, Metronome and Count-In each audibly change playback (verified by ear; CI verifies the state)
-- [x] 6 — the scrubber seeks and the cursor follows (cursor confirmed by eye; CI verifies only the reported position)
+> The maintainer ticks each box below after signing off the human gate behind it. They are
+> shipped unticked on purpose: this repo's `pr-checklist` CI job is presence-only — it checks
+> that a box is ticked, not that the claim is true — so a box ticked by the agent that wrote
+> the code carries no information. Criteria 5 and 6 cannot be observed by CI at all (headless
+> Chromium is silent, and nothing in CI watches the notation cursor). The gate reads only the
+> canonical items from `.github/pull_request_template.md`, so these three do not fail it.
+
+- [ ] 3 (tempo half) — the header stepper changes playback speed; per-track mute/solo is Plan C
+- [ ] 5 — Loop, Metronome and Count-In each audibly change playback — tick after Task 6 Step 7 (verify by ear); CI verifies only that the state flipped
+- [ ] 6 — the scrubber seeks and the cursor follows — tick after Task 6 Step 7 (confirm the cursor by eye); CI verifies only the engine's reported position
 
 ## Notes
 
@@ -2278,6 +2290,14 @@ atomically on merge. It must record:
   `docs/specs/2026-09-10-v0-local-file-player-design.md` §7.
 - The vocabulary decision: a piece of music is a **`score`**, a **`notation`** is the score file, and
   "chart" is not used.
+- **`applySpeed` in `PlayerShell` is the single writer of `api.playbackSpeed`.** v0 ships two controls
+  over one speed value — this plan's header BPM stepper and Plan C's 12.5-200 % slider in the Settings
+  popover's Player group — and both must route through `applySpeed`. This supersedes the settings-row
+  example in `docs/specs/2026-09-10-v0-local-file-player-design.md` §7: Plan C's Player-group row must
+  call `applySpeed`, NOT the settings-JSON accessor path the neighbouring rows use. `playbackSpeed` is
+  an `AlphaTabApi` property, not a field in AlphaTab's `Settings` JSON, so a row wired like its
+  neighbours writes a value the engine never sees — the slider moves, the `%` updates, the audio does
+  not.
 
 ---
 
@@ -2293,4 +2313,4 @@ atomically on merge. It must record:
 
 **Type consistency.** `Slider`'s `onChange: (next: number) => void` is the same signature `Scrubber` calls. `Scrubber`'s `onSeek` reports **milliseconds** everywhere — the unit `api.timePosition` takes — while its internal bar works in seconds; that conversion lives in one place. `TempoControl` owns `speed` (a multiplier), never BPM, in both the component and `PlayerShell`, and converts BPM↔speed only at its own boundary — which is what keeps it in sync with Plan C's Player settings group. `Progress`'s `value` is a **fraction 0–1 or null** in the component, its test, and the `soundFontLoad` handler; the `undefined` that means "not downloading" lives only in `PlayerShell`, because `onSoundFontProgress` cannot carry it. `TransportToggle`'s `pressed` / `onPressedChange` pair is spelled identically in the component, its test, and all three call sites.
 
-**Four steps a machine cannot do.** Task 6 Step 7, Task 7 Step 6, Task 8 Step 6 and Task 9 Step 3 need human ears or a human browser console. Each is marked `🧑 HUMAN GATE`; an agentic worker stops and hands back rather than self-certifying, and the PR-body box each one backs is ticked only after a person confirms.
+**Three steps a machine cannot do.** Task 6 Step 7, Task 7 Step 6 and Task 8 Step 6 need human ears or a human browser console. Each is marked `🧑 HUMAN GATE`; an agentic worker stops and hands back rather than self-certifying, and the PR-body box each one backs is ticked only after a person confirms.
