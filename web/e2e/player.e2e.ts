@@ -688,6 +688,8 @@ test('the header tempo stepper changes playback speed', async ({ page }) => {
 
 /** One animation frame of the loading bar, recorded by the test-side sampler below. */
 interface BarSample {
+  /** The animation frame it was taken on. A number MISSING from the trace is a frame with no bar. */
+  frame: number;
   value: string | null;
   opacity: number;
 }
@@ -695,12 +697,17 @@ interface BarSample {
 /** Records the loading bar on every animation frame — TEST-side only, injected before the page. */
 async function traceLoadingBar(page: Page): Promise<() => Promise<BarSample[]>> {
   await page.addInitScript(() => {
-    const trace: { value: string | null; opacity: number }[] = [];
+    const trace: { frame: number; value: string | null; opacity: number }[] = [];
     (globalThis as unknown as { barTrace: typeof trace }).barTrace = trace;
+    // Counted on every frame, recorded only on the frames the bar is really there, so a bar that
+    // blinks out leaves a HOLE in the numbering rather than no trace at all.
+    let frame = 0;
     const sample = () => {
+      frame += 1;
       const bar = document.querySelector('[role="progressbar"]');
       if (bar) {
         trace.push({
+          frame,
           value: bar.getAttribute('aria-valuenow'),
           opacity: Number(globalThis.getComputedStyle(bar).opacity),
         });
@@ -792,6 +799,69 @@ test('the loading bar shows on a warm cache, where no download progress is ever 
 
   await expect(play).toBeEnabled({ timeout: 90_000 });
   await expect(bar).toHaveCount(0, { timeout: 10_000 });
+});
+
+// Opening a second file while the first bar is still LEAVING must keep one continuous bar: the
+// phase re-arms in the same render, the half-faded bar snaps back to full opacity and runs its
+// whole life again — 100 %, held, faded. The hook's own unit test reads a phase string, so none of
+// this is visible to it: a bar that blinks out for a frame between the two loads, one that goes on
+// fading through the second load, and one that vanishes at the end instead of leaving all pass it.
+test('a file opened while the bar is fading keeps one continuous bar, not two', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  const readTrace = await traceLoadingBar(page);
+
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  const bar = page.getByRole('progressbar', { name: 'Loading the player' });
+  await expect(play).toBeEnabled({ timeout: 90_000 });
+
+  // Pick the file mid-fade — INSIDE the 700 ms the finished bar is held at 100 % and faded over.
+  // The wait runs in the page on animation frames, not on Playwright's 100 ms poll, so it spends
+  // as little of that window as it can: measured ~17 ms of the ~280 ms left once the fade starts.
+  await page.waitForFunction(
+    () => {
+      const painted = document.querySelector('[role="progressbar"]');
+      return painted !== null && Number(getComputedStyle(painted).opacity) < 1;
+    },
+    null,
+    { polling: 'raf', timeout: 60_000 },
+  );
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+    timeout: 30_000,
+  });
+  await expect(bar).toHaveCount(0, { timeout: 10_000 });
+
+  const trace = await readTrace();
+  // The file really was picked MID-FADE, and not after the bar had gone: the first load's bar
+  // reached 100 %, was on screen at PART opacity, and only then went back to the indeterminate
+  // style the open runs under. Miss that window and this fails rather than quietly proving less.
+  const finished = trace.findIndex((sample) => sample.value === '100');
+  expect(finished).toBeGreaterThan(-1);
+  const reopened = trace.findIndex((sample, index) => index > finished && sample.value === null);
+  expect(reopened).toBeGreaterThan(-1);
+  expect(trace.slice(finished, reopened).some((sample) => sample.opacity < 1)).toBe(true);
+
+  // ONE bar, not two. The sampler counts every frame and records only the frames the bar is really
+  // there, so a number missing from the trace is a frame it was NOT painted — the blink between
+  // the two loads that a bar re-armed one commit late would leave.
+  const blinks = trace.filter(
+    (sample, index) => index > 0 && sample.frame - trace[index - 1]!.frame !== 1,
+  );
+  expect(blinks).toEqual([]);
+  // Re-armed at FULL opacity: the first load's leave animation is dropped, not carried on into the
+  // second load — a bar that went on fading would reach zero while the file was still opening.
+  expect(trace[reopened]?.opacity).toBe(1);
+
+  // And the second load leaves the way the first one was going to: 100 %, held opaque, then faded
+  // out — never a bar that simply disappears the moment the file is ready.
+  expect(trace.at(-1)?.value).toBe('100');
+  const leaving = trace.slice(reopened);
+  expect(leaving.some((sample) => sample.value === '100' && sample.opacity === 1)).toBe(true);
+  expect(leaving.some((sample) => sample.opacity > 0 && sample.opacity < 1)).toBe(true);
 });
 
 /** The slice of AlphaTab's bounds lookup the helpers below read through the `at` debug handle. */
