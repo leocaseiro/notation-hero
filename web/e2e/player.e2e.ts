@@ -1021,11 +1021,17 @@ test('every transport icon button has a tooltip that tells its state', async ({ 
   const metronome = page.getByTestId('toggle-metronome');
   await metronome.hover();
   await expect(openTooltip(page)).toHaveText('Metronome: off');
+  // A toggle's tooltip stays open across the press and says the NEW state at once — the pointer
+  // does not have to leave and come back.
   await metronome.click();
-  // A click closes the tooltip; leave and come back to read the new state.
-  await page.getByTestId('notation-surface').hover();
-  await metronome.hover();
   await expect(openTooltip(page)).toHaveText('Metronome: on');
+
+  const play = page.getByTestId('transport-play');
+  await play.hover();
+  await play.click();
+  await expect(openTooltip(page)).toHaveText('Pause');
+  await play.click();
+  await expect(openTooltip(page)).toHaveText('Play');
 });
 
 // A disabled control is exactly the one that owes an explanation. A disabled Button is

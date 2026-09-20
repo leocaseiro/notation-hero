@@ -129,6 +129,33 @@ test('the tooltip trigger wraps the button, so a disabled toggle can still be ho
   expect(toggle.parentElement).toHaveAttribute('data-slot', 'tooltip-trigger');
 });
 
+// A tooltip closes on click by default — right for a button that does something once, wrong for a
+// toggle: the person presses Metronome, the button changes, and the tooltip that would say
+// "Metronome: on" has gone until they move the pointer away and back.
+test('the tooltip stays open across a press and shows the new state', async () => {
+  const user = userEvent.setup();
+  const Stateful = () => {
+    const [pressed, setPressed] = useState(false);
+    return (
+      <TransportToggle
+        pressed={pressed}
+        onPressedChange={setPressed}
+        label="Metronome"
+        icon={<Icon />}
+        tooltip={pressed ? 'Metronome: on' : 'Metronome: off'}
+      />
+    );
+  };
+  render(<Stateful />);
+  const toggle = screen.getByRole('button', { name: 'Metronome' });
+
+  await user.hover(toggle);
+  expect(await screen.findByText('Metronome: off')).toBeInTheDocument();
+
+  await user.click(toggle);
+  expect(await screen.findByText('Metronome: on')).toBeInTheDocument();
+});
+
 test('passes button attributes such as data-testid through to the button', () => {
   render(
     <TransportToggle

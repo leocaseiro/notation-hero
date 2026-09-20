@@ -89,8 +89,15 @@ const TransportToggle = ({
   // bubble, so focus on the button still opens it.
   return tooltip ? (
     <Tooltip>
-      <TooltipTrigger render={<span className="inline-flex" />}>{toggle}</TooltipTrigger>
-      <TooltipContent>{tooltip}</TooltipContent>
+      {/* closeOnClick off: a tooltip closes on click by default, which is right for a button that
+          does something once and wrong for a toggle — the press changes the state, and the
+          tooltip that would now SAY the new state had gone until the pointer left and came back. */}
+      <TooltipTrigger closeOnClick={false} render={<span className="inline-flex" />}>
+        {toggle}
+      </TooltipTrigger>
+      {/* Lifted 8 px: the arrow is half outside the popup, so at the default offset of 0 it lies ON
+          the button — and on a pressed toggle that is a teal arrow over solid teal, invisible. */}
+      <TooltipContent sideOffset={8}>{tooltip}</TooltipContent>
     </Tooltip>
   ) : (
     toggle

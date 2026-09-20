@@ -130,7 +130,7 @@ export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) 
             </Button>
           }
         />
-        <TooltipContent>Open a file</TooltipContent>
+        <TooltipContent sideOffset={8}>Open a file</TooltipContent>
       </Tooltip>
     </>
   );

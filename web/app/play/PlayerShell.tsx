@@ -595,6 +595,9 @@ function Player() {
                  person's focus on the control they just used. */
               <Tooltip>
                 <TooltipTrigger
+                  // Play/Pause is a toggle: keep the tooltip open across the press, so it says the new
+                  // state at once instead of vanishing until the pointer leaves and returns.
+                  closeOnClick={false}
                   render={
                     <Button
                       ref={playRef}
@@ -616,7 +619,8 @@ function Player() {
                     </Button>
                   }
                 />
-                <TooltipContent>{playing ? 'Pause' : 'Play'}</TooltipContent>
+                {/* Lifted 8 px, or the teal arrow lies on the solid teal button and cannot be seen. */}
+                <TooltipContent sideOffset={8}>{playing ? 'Pause' : 'Play'}</TooltipContent>
               </Tooltip>
             }
             leading={
