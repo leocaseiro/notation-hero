@@ -304,6 +304,12 @@ interface SliderProps {
   value: number;
   /** Fires with the new value whenever the thumb moves. */
   onChange: (next: number) => void;
+  /**
+   * Fires once when the interaction ENDS — pointer release, or a keystroke's settled value.
+   * Use it for work too expensive to run on every pointer move (a seek, a network write) while
+   * `onChange` keeps the thumb tracking the pointer.
+   */
+  onCommit?: (next: number) => void;
   min?: number;
   max?: number;
   /** Increment per keystroke / drag tick. */
@@ -331,6 +337,7 @@ interface SliderProps {
 const Slider = ({
   value,
   onChange,
+  onCommit,
   min = 0,
   max = 100,
   step = 1,
@@ -353,6 +360,7 @@ const Slider = ({
       <SliderPrimitive.Root
         value={value}
         onValueChange={(next) => onChange(typeof next === 'number' ? next : next[0])}
+        onValueCommitted={(next) => onCommit?.(typeof next === 'number' ? next : next[0])}
         min={min}
         max={max}
         step={step}
@@ -743,6 +751,8 @@ Create `client/src/components/ui/Scrubber/Scrubber.tsx`:
 ```tsx
 'use client';
 
+import { useState } from 'react';
+
 import { Slider } from '../Slider/Slider';
 
 import { cn } from '@/lib/utils';
@@ -767,8 +777,11 @@ const formatClock = (ms: number): string => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 };
 
-// Elapsed time, a seek bar, total time. Presentation-only: it knows nothing about the player —
-// milliseconds in, a requested position in milliseconds out.
+// Elapsed time, a seek bar, total time. It knows nothing about the player — milliseconds in, a
+// requested position in milliseconds out. Its one piece of state is the in-flight drag value: the
+// thumb and the elapsed clock must follow the pointer continuously, but only the RELEASE may seek.
+// Seeking on every pointer move would post one worker message and one audio-buffer flush per
+// move, and would re-arm PlayerShell's post-seek stale-event guard on each one.
 //
 // The bar works in SECONDS internally so one arrow-key press is a one-second step, which is the
 // granularity a drummer wants; milliseconds would need a step of 1000 and would report a
@@ -783,18 +796,27 @@ const Scrubber = ({
   disabled = false,
   className,
 }: Readonly<ScrubberProps>) => {
+  const [draggingSeconds, setDraggingSeconds] = useState<number | null>(null);
   const durationSeconds = Math.max(0, Math.floor(durationMs / 1000));
   const positionSeconds = Math.min(durationSeconds, Math.max(0, Math.floor(positionMs / 1000)));
 
   return (
     <div data-slot="scrubber" className={cn('flex w-full items-center gap-4', className)}>
       <span className="shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
-        {formatClock(positionMs)}
+        {formatClock(draggingSeconds !== null ? draggingSeconds * 1000 : positionMs)}
       </span>
+      {/* onChange keeps the thumb (and the elapsed clock) under the pointer; onCommit is the only
+          thing that seeks. One drag then costs one engine seek instead of one per pointer move.
+          Keyboard seeking still works — Base UI fires onValueCommitted for a settled keystroke
+          too, which is the path the e2e test's five ArrowRight presses take. */}
       <Slider
         className="flex-1"
-        value={positionSeconds}
-        onChange={(seconds) => onSeek(seconds * 1000)}
+        value={draggingSeconds ?? positionSeconds}
+        onChange={setDraggingSeconds}
+        onCommit={(seconds) => {
+          setDraggingSeconds(null);
+          onSeek(seconds * 1000);
+        }}
         min={0}
         max={durationSeconds}
         step={1}
