@@ -67,6 +67,17 @@ All approved by leocaseiro on 2026-09-10.
 > AlphaTab's own cursor, so nothing test-only ships), §7 (no "Load the sample beat" control) and
 > §8 criterion 8.
 
+> **Spec deltas — 2026-09-20 (Plan C re-triage, decided by leocaseiro).** The Settings popover
+> ships **every** row of the prototype's panel — 92, inventoried by AlphaTab key in
+> [`docs/plans/2026-09-13-v0c-popovers-plan.md`](../plans/2026-09-13-v0c-popovers-plan.md), Task 4.
+> That includes the **player-mode row**, which switches between a file's own recording and the
+> synthesizer: §4's "out of v0" line is superseded. While the synthesizer plays such a file, the
+> metronome, the count-in and the mixer work; "is the recording playing?" is read from
+> `api.actualPlayerMode`, not from the score. The Player group's speed row uses the engine's
+> 12.5–800 % range, not §7's 12.5–200 % (registry, 2026-09-20). §7's "solo, mute and volume render
+> disabled" list gains **Transpose audio**, and its volume coupling note covers **solo and mute**
+> too — 1.8.4 applies all three per MIDI channel.
+
 > **On D5:** option A (the `@coderline/alphatab-webpack` plugin, as the prototype used) was
 > considered and rejected. Note that the prototype's exact import path is dead in 1.8.4 regardless —
 > the `@coderline/alphatab/webpack` subpath still appears in the `exports` map but `dist/webpack`
@@ -210,8 +221,10 @@ hands any score whose file carries embedded audio to its backing-track player, a
 deliberately: the notation is on screen and the drummer plays along to the real recording. In that
 mode AlphaTab's synthesizer ignores **mute, solo, track volume, the metronome and the count-in** — so
 those controls (§7, built in Plans B and C) must render **disabled, with a tooltip** saying the file
-is playing its own recording. They must never look live and do nothing. A toggle between the
-recording and the synthesizer is out of v0.
+is playing its own recording. They must never look live and do nothing. ~~A toggle between the
+recording and the synthesizer is out of v0.~~ [Superseded 2026-09-20: the Settings popover ships
+every row of the prototype's panel, and its player-mode row is that toggle — see the spec delta
+below D8 and Plan C, Task 8.]
 
 **While a replacement score parses:** the score on screen keeps playing (the load is staged, §4
 above), so nothing covers the notation area. Instead a `toast.loading()` through the built `Sonner`

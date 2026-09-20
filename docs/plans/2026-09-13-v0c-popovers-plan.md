@@ -28,18 +28,27 @@
 > - **The 44 px checks are automated** (`expectHitAreas`, from Plan A), and `Input`, `NativeSelect`
 >   and `Checkbox` are all under 44 px as built, so the rows pad them.
 >
-> **Two decisions are still open and are marked `🟥 OPEN DECISION` where they bite** — which of the
-> five API-property rows ship (Task 4), and whether the `player.playerMode` row ships (Task 4).
+> **Decided by the maintainer on 2026-09-20, after this re-triage: the Settings popover is the same
+> as the fork — every row, no exceptions.** His words: _"we should be able to change every single
+> setting from alphatab, including enable synth or backing track. 100% do this now. I use this all
+> the time!"_ So all five api-property rows ship, and so does the **player-mode row** — which
+> supersedes the spec's "a toggle between the recording and the synthesizer is out of v0" (§4) and
+> gets its own task (Task 8). He then asked whether the plan really had every fork row. It did not:
+> it carried row COUNTS, and a full inventory by setting key (Task 4 Step 1) found that the
+> **Stylesheet group is not settings at all** (it lives on the score model, and `fillFromJson`
+> ignores it), that **fourteen Player rows only take effect after the MIDI is regenerated**, that
+> **`display.padding` is an array** the dot-path helpers could not address, that one count was
+> wrong (Display ▸ General is 9, not 8), and that **two fork rows are bound to the wrong key**.
 
 > **🧑 HUMAN GATES.** Two checks in this plan need a person: the mix **by ear**, and a walk through
-> every settings group **by eye**. They are collected in Task 9 and handed back **once, at the end** —
+> every settings group **by eye**. They are collected in Task 10 and handed back **once, at the end** —
 > the maintainer's choice for Plan B (registry, 2026-09-20), carried over. An agentic worker never
 > self-certifies them and never ticks the success-criteria box they back: this repo's `pr-checklist`
 > gate checks that a box is ticked, not that the claim is true.
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give the player its two popovers — Settings (the header gear: eight accordion sections of rows that change the rendered score, and that survive a reload) and Tracks (the transport's mixer: one row per track in the score, with solo, mute, volume, render-select, the per-staff display toggles and both transposition sliders).
+**Goal:** Give the player its two popovers — Settings (the header gear: eight accordion sections holding **every** row of the reference panel — 92 of them, the switch between a file's own recording and the synthesizer included — which change the rendered score and the sound, and survive a reload) and Tracks (the transport's mixer: one row per track in the score, with solo, mute, volume, render-select, the per-staff display toggles and both transposition sliders).
 
 **Architecture:** Two new presentation-only components in `client/` (`Accordion` and `SettingRow`) plus a `TrackRow`, each gated by a Storybook story with VR and axe baselines. `web/` owns the schema of groups with an accessor per row, one module that holds every write to the live engine's settings, and both popover compositions. Neither popover blocks the player: a drummer can change a setting while the score plays.
 
@@ -73,10 +82,10 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Every `client/` component here is presentation-only**: `value` in, `onChange` out, option lists as plain arrays, and **no import from `@coderline/alphatab`**. A `client/` Storybook story has no engine instance, so a row that read its options off the library would be gated while rendering fabricated options. The schema of accessors and the context carrying the namespace live in `web/`.
 - **Each new `client/` component needs all six co-located files** (`X.tsx`, `X.stories.tsx`, `X.story-ids.ts`, `X.test.tsx`, `X.a11y.ts`, `X.vr.ts`) in its own folder. Never `__tests__/` or `stories/`.
 - **VR baselines are Linux-only** — `pnpm test:vr:docker:update` with Docker Desktop running (`open -a Docker`), never natively on macOS. Kill any `:6006` Storybook first.
-- **Every control's hit area is at least 44 px, and the lane measures it.** Plan A's `expectHitAreas` (`web/e2e/a11y.e2e.ts`) runs with each popover open (Task 8); nothing is checked by eye. Three primitives these rows compose are **under** 44 px as built — `Input` and `NativeSelect` are `h-9` (36 px), `Checkbox` is `size-4` (16 px) — so `SettingRow` and `TrackRow` pass `h-11` to the first two and put each checkbox inside a label that is at least 44 × 44.
+- **Every control's hit area is at least 44 px, and the lane measures it.** Plan A's `expectHitAreas` (`web/e2e/a11y.e2e.ts`) runs with each popover open (Task 9); nothing is checked by eye. Three primitives these rows compose are **under** 44 px as built — `Input` and `NativeSelect` are `h-9` (36 px), `Checkbox` is `size-4` (16 px) — so `SettingRow` and `TrackRow` pass `h-11` to the first two and put each checkbox inside a label that is at least 44 × 44.
 - **Every icon-only button has a tooltip that tells its state, always present** (registry, 2026-09-20). That covers the Settings gear, the Tracks trigger, and `TrackRow`'s solo, mute and expand controls. Never render the tooltip conditionally: swapping the wrapped and the bare element remounts the button and drops its focus.
 - **A disabled control is `aria-disabled`, never natively disabled** — the design system's `Button` (NH-304) and `TransportToggle` already do this. A natively disabled button takes no focus and no hover, so the tooltip saying _why_ it is unavailable could never open. Tests assert `aria-disabled="true"`, not `toBeDisabled()`.
-- **A file that plays its own recording disables the mixer** (spec §4 and §7). `PlayerShell` already holds `hasBackingTrack` (`Boolean(score.backingTrack?.rawAudioFile)` — AlphaTab's own condition for choosing its backing-track player). While it is true, every row's **solo, mute, volume and Transpose audio** render disabled with a tooltip saying the file is playing its own recording. Transpose audio is not in the spec's list; it is here because 1.8.4's `BackingTrackAudioSynthesizer` stubs `setChannelTranspositionPitch` and `applyTranspositionPitches` exactly as it stubs `channelSetMute`, `channelSetSolo` and `channelSetMixVolume` (`alphaTab.core.mjs:40427-40432`), and the spec's rule is that a control must never look live and do nothing. Render-select, the display toggles and Transpose full stay enabled: they change the drawn score, which still works.
+- **A file that plays its own recording disables the mixer** (spec §4 and §7). `PlayerShell` already holds `hasBackingTrack`; Task 8 changes where it comes from (AlphaTab's `actualPlayerMode`, because the player-mode row lets the synthesizer play such a file). While it is true, every row's **solo, mute, volume and Transpose audio** render disabled with a tooltip saying the file is playing its own recording. Transpose audio is not in the spec's list; it is here because 1.8.4's `BackingTrackAudioSynthesizer` stubs `setChannelTranspositionPitch` and `applyTranspositionPitches` exactly as it stubs `channelSetMute`, `channelSetSolo` and `channelSetMixVolume` (`alphaTab.core.mjs:40427-40432`), and the spec's rule is that a control must never look live and do nothing. Render-select, the display toggles and Transpose full stay enabled: they change the drawn score, which still works.
 - **Solo is not exclusive**, as in AlphaTab and the fork. Soloing a second track does not un-solo the first.
 - **Volume is applied as a RATIO, not an absolute**: `api.changeTrackVolume([track], next / track.playbackInfo.volume)`, and the ratio must guard a zero denominator. `next` uses `playbackInfo.volume`'s own **0–16** scale. The ratio is against the level **the file gives the track**, and it is not cumulative: in 1.8.4 `changeTrackVolume` only forwards a mix volume to the synth and never writes `playbackInfo.volume`, so the denominator stays the file's value for the life of the score.
 - **Accepted coupling — volume, solo AND mute:** `changeTrackVolume`, `changeTrackSolo` and `changeTrackMute` each act on the track's primary **and secondary** MIDI **channel**, not on the track (`alphaTab.core.mjs:46789-46871`), so tracks sharing a channel move together. `Punk.gp`'s two drum tracks are both on channel 9: muting Drumkit silences Drumkit Left as well, soloing one solos both, and their volume sliders are **not** independent — while each row's own button still shows only what was clicked on it. That is expected v0 behaviour — do not "fix" it, and do not write a test that asserts independence. A test that needs two independent tracks uses Drumkit (row 0) and Distortion Guitar (row 1).
@@ -86,10 +95,18 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Transpose Audio and Transpose Full are two separate controls and must stay separate.** Fusing them drops the notation-transposing path entirely.
 - **`Settings` has `fillFromJson` but no `toJson`.** There is no way to ask AlphaTab for its current settings as JSON, so the app holds its own `SettingsJson`-shaped object as the edit state and pushes it into the live settings. That object is both the UI state and the persisted value.
 - **Restore through `Settings.fillFromJson(parsed)`, never by assignment.** `JSON.parse` returns plain objects, but `RenderingResources` holds real `model.Color` and `model.Font` instances — a plain object assigned into the settings tree breaks rendering **without throwing**, so a `try`/`catch` would never fire and the Colors and Fonts groups would silently stop working. `fillFromJson` is public and `@target web` in 1.8.4 and rebuilds both through their `fromJson` helpers.
-- **Some Player-group rows are `AlphaTabApi` properties, not settings — and `fillFromJson` ignores them without a word.** The fork's Player group binds five rows to the api instead of to `api.settings`: `masterVolume`, `metronomeVolume`, `countInVolume`, `playbackSpeed` and `isLooping`. None is a key in AlphaTab's `SettingsJson`, so a row that wrote `player.playbackSpeed` into the JSON would move its slider, update its number, and change nothing audible. The schema therefore gives every row a `source` (Task 4): a `settings` row goes through the JSON and the funnel; an `api` row is bound to state `PlayerShell` already owns, and is written by the shell's **single writer** for that value (`applySpeed`, `applyLooping`, `applyMetronome`, `applyCountIn` — Plan B). That is what keeps two editors of one value in sync: the header's BPM stepper and the Player group's speed row are one `speed`, one writer.
+- **Four kinds of row, and only one of them is a setting.** The fork's panel reads like one list, but its rows write to four different places, and AlphaTab accepts a write to the wrong one **without a word** — the control moves, the number updates, nothing changes. The schema therefore gives every row a `source` (Task 4):
+  - `settings` — a key in AlphaTab's settings JSON. Goes through the app's JSON and the funnel. 73 rows.
+  - `api` — an `AlphaTabApi` **property**: `masterVolume`, `metronomeVolume`, `countInVolume`, `playbackSpeed`, `isLooping`. None is a key in `SettingsJson`, so `fillFromJson` ignores it. Each is bound to state `PlayerShell` owns and written by the shell's **single writer** for that value — which is what keeps two editors of one value in sync: the header's BPM stepper and the Player group's speed row are one `speed`, one writer; the transport's Metronome button and the Player group's metronome-volume row are one `metronomeVolume`, one writer. **All five ship** (maintainer, 2026-09-20).
+  - `stylesheet` — a property of **`api.score.stylesheet`**, on the score MODEL. The whole Stylesheet group (12 rows) is this. It is not in the settings JSON, it belongs to the score that is open, a new score brings its own, and it is never stored. Written directly, then `api.render()`.
+  - `action` — a command. The Tools group's two exports.
+- **A `settings` row says how it takes effect, and there are three ways, not two.** `render` — push the settings and redraw (most rows). `settings` — push only; the player-side rows that change nothing drawn (the cursor toggles, the scroll rows, the player mode). **`midi`** — the fourteen rows that shape the GENERATED MIDI (`player.songBook*`, `player.vibrato.*`, `player.slide.*`, `player.playTripletFeel`) change nothing until `api.loadMidiForScore()` regenerates it; `updateSettings()` and `render()` do not. A boolean `rerender` flag cannot say that, and a row that gets it wrong is another silent no-op.
+- **`display.padding` is an ARRAY** — `[horizontal, vertical]`, two rows. The dot-path helpers address it as `display.padding.0` and `display.padding.1`, a write must leave it an array (`{ ...array }` makes an object, and `fillFromJson` then reads no padding at all), and the storage merge must check it element by element.
+- **Do not port the fork's two mis-bound rows.** Its "simple slide duration ratio" row is bound to `player.slide.simpleSlidePitchOffset` — the row above it — when the key is `player.slide.simpleSlideDurationRatio` (`alphaTab.d.ts:15408`). And its Stylesheet group has a thirteenth row bound to `otherSystemsTrackNameOrientation` a second time; the real multi-bar-rest row follows it. Reading the fork for its row set is the brief; copying its bugs is not.
 - **The speed range is the engine's own: 12.5 %–800 %** — `SynthConstants` clamps `playbackSpeed` to `0.125`–`8` (registry, 2026-09-20, superseding the spec's 12.5–200 %). The Player group's speed row uses the same range as the header's `TempoControl`.
 - **API-property rows are not persisted in v0.** The stored value is AlphaTab's settings JSON and nothing else (spec §7). Whether the playback speed should survive a reload is [NH-295](https://leocaseiro.atlassian.net/browse/NH-295); do not answer it here by widening the stored shape.
-- **Keys the shell owns per instance are not rows.** `PlayerShell`'s `settingsInit` and `setAlphaTabDefaults` set `core.file`, `core.tracks`, `core.fontDirectory`, `core.logLevel`, `player.soundFont` and `player.scrollElement`. A row over any of them lets a stored value break the page on the next visit (a stale `core.file`, a missing sound bank). Where the fork has such a row, leave it out and say so in the PR. For the keys that **are** rows and that the shell also sets — `player.enableCursor` (true), `player.scrollMode` (Continuous) and `player.scrollOffsetY` (-10) — the shipped default in Task 4 must equal what the shell sets, because the first edit pushes the **whole** JSON through `fillFromJson`.
+- **Keys the shell owns per instance are not rows — and the fork has none of them, so nothing is lost.** `PlayerShell`'s `settingsInit` and `setAlphaTabDefaults` set `core.file`, `core.tracks`, `core.fontDirectory`, `core.logLevel`, `player.soundFont` and `player.scrollElement`. A row over any of them would let a stored value break the page on the next visit (a stale `core.file`, a missing sound bank). The fork's panel has no row for any of the six; this is a guard for later rows, not an exception to "same as the fork". For the keys that **are** rows and that the shell also sets — `player.playerMode` (EnabledAutomatic), `player.enableCursor` (true), `player.scrollMode` (Continuous) and `player.scrollOffsetY` (-10) — the shipped default in Task 4 must equal what the shell sets, because the first edit pushes the **whole** JSON through `fillFromJson`.
+- **"Is the file's own recording playing?" is asked of AlphaTab, not worked out from the score.** With the player-mode row, a score that embeds a recording can be played by the synthesizer, so `Boolean(score.backingTrack?.rawAudioFile)` stops being the answer. `api.actualPlayerMode` (`alphaTab.d.ts:377`) is the player AlphaTab really built; the mixer, Metronome and Count-In are unavailable exactly when it is `PlayerMode.EnabledBackingTrack` (Task 8).
 - **`web/` has a unit-test runner.** Vitest, `pnpm --filter @notation-hero/web run test`, tests co-located as `X.test.ts` beside `X.ts` and importing `describe` / `expect` / `it` from `'vitest'` explicitly — `web/lib/alphatab/drum-tracks.test.ts` is the pattern.
 - `@coderline/alphatab` 1.8.4 facts this plan relies on, each checked against the installed package: `api.settings: Settings`, `api.updateSettings()`, `api.render()`, `api.renderTracks(tracks: Track[])`, `api.tracks` (what is drawn now), `api.changeTrackMute(tracks, mute)`, `api.changeTrackSolo(tracks, solo)`, `api.changeTrackVolume(tracks, ratio)`, `api.changeTrackTranspositionPitch(tracks, semitones)`, `api.player?.resetChannelStates()`, `api.downloadMidi()`, `exporter.Gp7Exporter#export(score, settings): Uint8Array` (on the namespace object), `settings.notation.transpositionPitches: number[]` (indexed by track), `track.playbackInfo.volume` (0–16), `staff.showStandardNotation | showSlash | showNumbered | showTablature`, `staff.tuning: number[]`. `fillFromJson` reads an enum from its **name**, case-insensitively, as well as from its number (`JsonHelper.parseEnum`, `alphaTab.core.mjs:25045`).
 - `@base-ui/react` 1.6.0 facts, checked against the installed types: the accordion root's prop is **`multiple`** (`AccordionRoot.d.ts:84`; `openMultiple` was the pre-1.0 name and does not exist), and the trigger's open-state attribute is **`data-panel-open`**.
@@ -113,7 +130,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 | `web/lib/alphatab/settings-paths.ts`   | Dot-path read and immutable write over the settings JSON. Co-located `settings-paths.test.ts`.                                 |
 | `web/lib/alphatab/settings-schema.ts`  | The eight groups and their rows. Each row names its `source`: a settings path, an api value, or an action. No JSX.             |
 | `web/lib/alphatab/settings-storage.ts` | Read, merge, validate and write the persisted settings JSON. Co-located `settings-storage.test.ts`.                            |
-| `web/lib/alphatab/live-settings.ts`    | Every write to the LIVE engine's settings, tracks and staves — the one `updateSettings()` funnel. No React.                    |
+| `web/lib/alphatab/live-settings.ts`    | Every write to the LIVE engine's settings, score stylesheet, tracks and staves — the one `updateSettings()` funnel. No React.  |
 | `web/app/play/SettingsPopover.tsx`     | The gear popover: accordion sections of `SettingRow`s, driven by the schema.                                                   |
 | `web/app/play/TracksPopover.tsx`       | The mixer popover: one `TrackRow` per track in the score. Owns the mixer's React state and rebuilds it on every `scoreLoaded`. |
 
@@ -519,7 +536,7 @@ test('a range row reports a keyboard step once, as a committed value', async () 
 });
 ```
 
-> jsdom has no layout, so the 44 px rule cannot be unit-tested here. It is enforced where it can be measured: `expectHitAreas` in the `web` lane, with the popover open (Task 8).
+> jsdom has no layout, so the 44 px rule cannot be unit-tested here. It is enforced where it can be measured: `expectHitAreas` in the `web` lane, with the popover open (Task 9).
 
 - [ ] **Step 2: Run the test to verify it fails**
 
@@ -942,8 +959,11 @@ test('while the file plays its own recording, the mix controls are disabled and 
   await user.click(solo);
   expect(onSoloChange).not.toHaveBeenCalled();
 
-  // Focus, not hover: jsdom has no pointer geometry. The mouse path is covered in the web lane.
-  solo.focus();
+  // Keyboard focus, not hover: jsdom has no pointer geometry, and the tooltip opens for a
+  // keyboard focus, not a scripted one. Tab once to the render-select box, once more to Solo.
+  await user.tab();
+  await user.tab();
+  expect(solo).toHaveFocus();
   expect(await screen.findByText(new RegExp(RECORDING, 'i'))).toBeInTheDocument();
 });
 
@@ -981,7 +1001,7 @@ Requirements the tests encode, all of which must be visible in the code:
 - Each `Checkbox` sits **inside** its `<label>`, and that label is at least 44 × 44 (`min-h-11 min-w-11`): the box is 16 px and is never the hit target on its own. That is the same construction `SettingRow`'s toggle kind uses.
 - The disclosure renders per staff: a `Checkbox` for `showStandardNotation`, one for `showSlash`, one for `showNumbered`, and one for `showTablature` **only when `staff.tablatureAvailable`**.
 - Below the staff toggles, two `Slider`s with distinct names — "Transpose audio" and "Transpose full" — each `min={-12} max={12} step={1}`, wired to their own callbacks. They are separate controls in the fork and must stay separate; fusing them drops the notation-transposing path entirely.
-- Every control's hit area is at least 44 px. Task 8 measures it in the browser.
+- Every control's hit area is at least 44 px. Task 9 measures it in the browser.
 
 Add this comment above the volume slider, because it is the behaviour a future reader will otherwise file as a bug:
 
@@ -1031,15 +1051,16 @@ git commit -m "feat(client): add the TrackRow with its disclosure (NH-291)"
 
 The schema is what keeps a value edited in two places — the header tempo control and the Player group, say — in sync. It lives in `web/` because that is where the AlphaTab namespace exists.
 
-Every row names its **`source`**, because the fork's panel holds three kinds of row and only one of them is a setting:
+Every row names its **`source`**, because the fork's panel holds four kinds of row and only one of them is a setting:
 
-| `source`   | What it is                                                     | How it is written                                                                                                     |
-| ---------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `settings` | A key in AlphaTab's settings JSON — almost every row           | Into the app's JSON, then through the funnel: `fillFromJson`, `updateSettings()`, `render()` when the row asks for it |
-| `api`      | An `AlphaTabApi` property — `playbackSpeed` and its neighbours | By `PlayerShell`'s single writer for that value. Never through the JSON: `fillFromJson` ignores it without a word     |
-| `action`   | A command — the Tools group's two exports                      | It runs; there is no value                                                                                            |
+| `source`     | What it is                                                        | How it is written                                                                                                     |
+| ------------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `settings`   | A key in AlphaTab's settings JSON — almost every row              | Into the app's JSON, then through the funnel: `fillFromJson`, `updateSettings()`, `render()` when the row asks for it |
+| `api`        | An `AlphaTabApi` property — `playbackSpeed` and its neighbours    | By `PlayerShell`'s single writer for that value. Never through the JSON: `fillFromJson` ignores it without a word     |
+| `stylesheet` | A property of `api.score.stylesheet` — the whole Stylesheet group | Onto the open score's model, then `api.render()`. Belongs to the score, re-read on `scoreLoaded`, never stored        |
+| `action`     | A command — the Tools group's two exports                         | It runs; there is no value                                                                                            |
 
-An `api` or `action` row is still a **schema row**, not a special case in the popover's JSX. v0.1's search is "a flat projection of the per-row accessor schema v0 already builds" and indexes the speed row "like every other row" (v0.1 spec §3 and §8), so a row that lived outside the schema would be a row search could never find.
+An `api`, `stylesheet` or `action` row is still a **schema row**, not a special case in the popover's JSX. v0.1's search is "a flat projection of the per-row accessor schema v0 already builds" and indexes the speed row "like every other row" (v0.1 spec §3 and §8), so a row that lived outside the schema would be a row search could never find.
 
 **Files:**
 
@@ -1067,6 +1088,28 @@ export type ApiValueKey =
 
 export type SettingAction = 'export-midi' | 'export-guitar-pro';
 
+/**
+ * How a settings row takes effect. 'render' pushes the settings and redraws. 'settings' pushes
+ * only — the player-side rows that change nothing drawn. 'midi' regenerates the MIDI, which is the
+ * ONLY thing that makes the vibrato, slide, song-book and triplet-feel rows audible.
+ */
+export type SettingApply = 'render' | 'settings' | 'midi';
+
+/** The score-stylesheet properties the Stylesheet group edits. 'multiBarRests' is the one composite. */
+export type StylesheetKey =
+  | 'hideDynamics'
+  | 'bracketExtendMode'
+  | 'useSystemSignSeparator'
+  | 'globalDisplayTuning'
+  | 'globalDisplayChordDiagramsOnTop'
+  | 'singleTrackTrackNamePolicy'
+  | 'multiTrackTrackNamePolicy'
+  | 'firstSystemTrackNameMode'
+  | 'firstSystemTrackNameOrientation'
+  | 'otherSystemsTrackNameMode'
+  | 'otherSystemsTrackNameOrientation'
+  | 'multiBarRests';
+
 interface SettingRowBase {
   /** Unique across ALL eight groups — it becomes a DOM id. */
   id: string;
@@ -1077,12 +1120,12 @@ interface SettingRowBase {
 export type SettingDescriptor =
   | (SettingRowBase & {
       source: 'settings';
-      /** Dot path into the settings JSON, e.g. 'display.scale'. */
+      /** Dot path into the settings JSON, e.g. 'display.scale' — or 'display.padding.0' for an array. */
       path: string;
-      /** Re-render the score after this changes. False for player-only settings. */
-      rerender: boolean;
+      apply: SettingApply;
     })
   | (SettingRowBase & { source: 'api'; key: ApiValueKey })
+  | (SettingRowBase & { source: 'stylesheet'; key: StylesheetKey })
   | (SettingRowBase & { source: 'action'; action: SettingAction });
 
 export interface SettingGroup {
@@ -1104,7 +1147,16 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettingsJson;
 export function applySettingsJson(
   api: AlphaTabApi,
   json: PlayerSettingsJson,
-  rerender: boolean,
+  apply: SettingApply,
+): void;
+export function readStylesheetValues(
+  score: Score,
+  enumName: (key: StylesheetKey, value: number) => string,
+): Record<StylesheetKey, SettingValue>;
+export function setStylesheetValue(
+  api: AlphaTabApi,
+  key: StylesheetKey,
+  value: boolean | number,
 ): void;
 export function setTrackTransposition(
   api: AlphaTabApi,
@@ -1128,38 +1180,39 @@ export function setStaffDisplay(
 
 Tasks 5, 6 and 7 consume all of it.
 
-- [ ] **Step 1: Read the fork and list the rows**
+- [ ] **Step 1: Read the fork, with the row inventory beside you**
 
 Open the reference panel and work through it:
 
 ```bash
-sed -n '266,700p' /Users/leocaseiro/Sites/alphaTabWebsite/src/components/AlphaTabRhythmGame/playground-settings.tsx
+sed -n '266,760p' /Users/leocaseiro/Sites/alphaTabWebsite/src/components/AlphaTabRhythmGame/playground-settings.tsx
 ```
 
-It defines seven groups plus a separate Tools block, ~90 rows in total:
+It defines seven groups plus a separate Tools block. **The Settings popover ships every row of it** — the maintainer's decision (2026-09-20): _"we should be able to change every single setting from alphatab."_ The inventory below is the complete list, taken from the fork on 2026-09-20 and keyed by **AlphaTab's own setting names** — which are facts about the library's API, not the fork's expression, so listing them copies nothing. A row missing from the build is a defect, not a deferral. **The labels are yours to write**: do not reuse the fork's strings, and do not borrow strings from any reference product.
 
-| Group              | Rows                                                                |
-| ------------------ | ------------------------------------------------------------------- |
-| Display ▸ General  | 8                                                                   |
-| Display ▸ Colors   | 6                                                                   |
-| Display ▸ Fonts    | 14                                                                  |
-| Display ▸ Paddings | 15                                                                  |
-| Notation           | 7                                                                   |
-| Player             | 27                                                                  |
-| Stylesheet         | 13                                                                  |
-| Tools              | two action buttons, not settings: Export MIDI and Export Guitar Pro |
+| Group              | Rows | `source`     | Keys                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------ | ---- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Display ▸ General  | 9    | `settings`   | `core.engine` (`svg` / `html5` — a two-option select), `display.scale`, `display.stretchForce`, `display.layoutMode`, `display.barsPerRow` (−1 = automatic), `display.startBar`, `display.barCount` (−1 = all), `display.justifyLastSystem`, `display.systemsLayoutMode`                                                                                                                                                                                                   |
+| Display ▸ Colors   | 6    | `settings`   | `display.resources.` + `staffLineColor`, `barSeparatorColor`, `barNumberColor`, `mainGlyphColor`, `secondaryGlyphColor`, `scoreInfoColor` — `text` rows                                                                                                                                                                                                                                                                                                                    |
+| Display ▸ Fonts    | 14   | `settings`   | `display.resources.` + `copyrightFont`, `titleFont`, `subTitleFont`, `wordsFont`, `effectFont`, `timerFont`, `directionsFont`, `fretboardNumberFont`, `numberedNotationFont`, `tablatureFont`, `graceFont`, `barNumberFont`, `inlineFingeringFont`, `markerFont` — `text` rows holding a CSS font string (`bold 12px Georgia`), which `Font.fromJson` parses                                                                                                               |
+| Display ▸ Paddings | 15   | `settings`   | `display.padding.0` (horizontal) and `display.padding.1` (vertical) — **an array**; then `display.` + `firstSystemPaddingTop`, `systemPaddingTop`, `lastSystemPaddingBottom`, `systemPaddingBottom`, `systemLabelPaddingLeft`, `systemLabelPaddingRight`, `accoladeBarPaddingRight`, `notationStaffPaddingTop`, `notationStaffPaddingBottom`, `effectStaffPaddingTop`, `effectStaffPaddingBottom`, `firstStaffPaddingLeft`, `staffPaddingLeft`                             |
+| Notation           | 7    | `settings`   | `notation.` + `fingeringMode`, `rhythmMode`, `rhythmHeight`, `smallGraceTabNotes`, `extendBendArrowsOnTiedNotes`, `extendLineEffectsToBeatEnd`, `slurHeight`                                                                                                                                                                                                                                                                                                               |
+| Player             | 5    | `api`        | `masterVolume`, `metronomeVolume`, `countInVolume`, `playbackSpeed`, `isLooping`                                                                                                                                                                                                                                                                                                                                                                                           |
+| Player             | 8    | `settings`   | apply `settings` (nothing is redrawn): `player.playerMode` (Task 8), `player.enableCursor`, `player.enableAnimatedBeatCursor`, `player.enableElementHighlighting`, `player.enableUserInteraction`, `player.scrollOffsetX`, `player.scrollOffsetY`, `player.scrollMode`                                                                                                                                                                                                     |
+| Player             | 14   | `settings`   | apply **`midi`**: `player.songBookBendDuration`, `player.songBookDipDuration`; `player.vibrato.` + `noteWideLength`, `noteWideAmplitude`, `noteSlightLength`, `noteSlightAmplitude`, `beatWideLength`, `beatWideAmplitude`, `beatSlightLength`, `beatSlightAmplitude`; `player.slide.` + `simpleSlidePitchOffset`, **`simpleSlideDurationRatio`**, `shiftSlideDurationRatio`; `player.playTripletFeel`                                                                     |
+| Stylesheet         | 12   | `stylesheet` | `hideDynamics`, `bracketExtendMode`, `useSystemSignSeparator`, `globalDisplayTuning`, `globalDisplayChordDiagramsOnTop`, `singleTrackTrackNamePolicy`, `multiTrackTrackNamePolicy`, `firstSystemTrackNameMode`, `firstSystemTrackNameOrientation`, `otherSystemsTrackNameMode`, `otherSystemsTrackNameOrientation`, and the multi-bar-rest toggle (`multiTrackMultiBarRest`, which also sets `perTrackMultiBarRest` to every track's index when on and to `null` when off) |
+| Tools              | 2    | `action`     | Export MIDI (`api.downloadMidi()`), Export Guitar Pro (the namespace's `exporter.Gp7Exporter`)                                                                                                                                                                                                                                                                                                                                                                             |
 
-**The groups stay exactly these** — v0.1 is search plus tabs over rows that already exist, not a re-grouping. Write down each row's `source`, its setting path or api key, and its control kind as you read. **Write original label copy** — do not reuse the fork's strings, and do not borrow strings from any reference product.
+**92 rows: 73 `settings`, 5 `api`, 12 `stylesheet`, 2 `action`.** The fork shows 93, because its Stylesheet group binds `otherSystemsTrackNameOrientation` twice — a copy-and-paste slip, with the real multi-bar-rest row straight after it. Its "simple slide duration ratio" row has the same kind of slip: it is bound to `simpleSlidePitchOffset`, the row above it. The inventory carries the right key, `player.slide.simpleSlideDurationRatio` (`alphaTab.d.ts:15408`). The fork also regenerates the MIDI for twelve of the fourteen `midi` rows and forgets `beatWideLength` and `simpleSlidePitchOffset`; all fourteen shape the generated MIDI, so all fourteen regenerate it here.
 
-Three things the fork's panel does that a careless port would copy wrong — each checked by reading it:
+**The groups stay exactly these** — v0.1 is search plus tabs over rows that already exist, not a re-grouping.
 
-1. **Five of the Player group's 27 rows are `AlphaTabApi` properties, not settings.** The fork binds `masterVolume`, `metronomeVolume`, `countInVolume`, `playbackSpeed` and `isLooping` to the api object rather than to `api.settings`. They are `source: 'api'` rows. Give one a `path` instead and its slider moves, its number updates, and nothing audible changes.
-2. **The Tools block is two commands**, not settings: Export MIDI (`api.downloadMidi()`) and Export Guitar Pro (the namespace's `exporter.Gp7Exporter`). The v0.1 spec's row grammar already names them as its two "Action" rows (§4). They are `source: 'action'` rows in a `tools` group.
-3. **Some rows edit a key this app's shell owns** (Global Constraints). Leave those out.
+Four things the fork's panel does that a careless port gets wrong — each checked by reading it:
 
-> **🟥 OPEN DECISION — which `api` rows ship.** `playbackSpeed` ships: the spec puts the speed slider in this group. `masterVolume` has no other home in the player. The other three — `metronomeVolume`, `countInVolume`, `isLooping` — are **also** on Plan B's transport row, as three on/off toggles, where the fork has two 0-1 volume sliders and a checkbox. Shipping them here too means `PlayerShell`'s `metronome` and `countIn` state becomes a **volume** (a number) with the toggle reading `> 0`, so the toggle and the slider stay one value with one writer. The maintainer has not chosen yet. Until he does, build `playbackSpeed` and `masterVolume`, and leave the other three keys in `ApiValueKey` with no row.
->
-> **🟥 OPEN DECISION — the `player.playerMode` row.** The fork's Player group has a dropdown over `player.playerMode`. In this app that row **is** the switch between a file's own recording and the synthesizer, which the spec puts out of v0 (§4) and the registry records as built by no plan (2026-09-20, the maintainer's question 16) — while also measuring that it works at runtime in about 100 ms. One of its values is `Disabled`, which removes the player. The maintainer has not chosen yet. Until he does, **leave the row out**: the spec's text is the standing decision.
+1. **Five of the Player group's 27 rows are `AlphaTabApi` properties, not settings.** They are `source: 'api'` rows. Give one a `path` instead and its slider moves, its number updates, and nothing audible changes. Three of them — metronome volume, count-in volume, loop — are **also** on Plan B's transport row as on/off buttons. Same value, second editor: `PlayerShell`'s `metronome` and `countIn` state becomes a **volume** (a number, 0-1), the transport button reads `> 0` and writes `1` or `0`, and the row writes any level between (Task 5).
+2. **The whole Stylesheet group writes to `api.score.stylesheet`, not to the settings.** `source: 'stylesheet'`. Its values belong to the open score: they are re-read on every `scoreLoaded`, and they are never stored.
+3. **Fourteen Player rows do nothing until the MIDI is regenerated** — `apply: 'midi'`.
+4. **The Tools block is two commands**, not settings. The v0.1 spec's row grammar already names them as its two "Action" rows (§4).
 
 - [ ] **Step 2: Write the failing test for the path helpers**
 
@@ -1200,6 +1253,17 @@ describe('writeSettingValue', () => {
     const after = writeSettingValue({ display: { scale: 1, stretchForce: 1 } }, 'display.scale', 2);
     expect(readSettingValue(after, 'display.stretchForce')).toBe(1);
   });
+
+  // display.padding is [horizontal, vertical]. Spreading an array into an object literal yields
+  // { 0: …, 1: … }, which fillFromJson does not read as a padding at all.
+  it('reads and writes an array element, and the array stays an array', () => {
+    const before = { display: { padding: [35, 35] } };
+    expect(readSettingValue(before, 'display.padding.1')).toBe(35);
+
+    const after = writeSettingValue(before, 'display.padding.1', 10);
+    expect((after.display as { padding: unknown }).padding).toEqual([35, 10]);
+    expect(before.display.padding).toEqual([35, 35]);
+  });
 });
 ```
 
@@ -1217,22 +1281,38 @@ import type { SettingValue } from '@notation-hero/client';
 
 export type PlayerSettingsJson = Record<string, unknown>;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  value !== null && typeof value === 'object' && !Array.isArray(value);
+/** A plain object OR an array: both are walked by key, and an array's keys are its indexes. */
+const isContainer = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object';
 
 /**
  * Dot-path read over the settings JSON. Returns undefined for a path that is not there, and for
- * one that lands on an object rather than a value.
+ * one that lands on a container rather than a value. An array element is addressed by its index:
+ * 'display.padding.0'.
  */
 export function readSettingValue(json: PlayerSettingsJson, path: string): SettingValue | undefined {
   let current: unknown = json;
   for (const part of path.split('.')) {
-    if (!isRecord(current) || !(part in current)) return undefined;
+    if (!isContainer(current) || !(part in current)) return undefined;
     current = current[part];
   }
   return typeof current === 'string' || typeof current === 'number' || typeof current === 'boolean'
     ? current
     : undefined;
+}
+
+function writeInto(container: unknown, parts: readonly string[], value: SettingValue): unknown {
+  const [head, ...rest] = parts;
+  if (head === undefined) return value;
+  // An array must STAY an array: spreading it into an object literal would turn [35, 35] into
+  // { 0: 35, 1: 35 }, which AlphaTab does not read as a padding at all.
+  if (Array.isArray(container)) {
+    const copy = [...(container as unknown[])];
+    copy[Number(head)] = writeInto(copy[Number(head)], rest, value);
+    return copy;
+  }
+  const base = isContainer(container) ? container : {};
+  return { ...base, [head]: writeInto(base[head], rest, value) };
 }
 
 /**
@@ -1244,21 +1324,14 @@ export function writeSettingValue(
   path: string,
   value: SettingValue,
 ): PlayerSettingsJson {
-  const [head, ...rest] = path.split('.');
-  if (head === undefined) return json;
-  if (rest.length === 0) return { ...json, [head]: value };
-  const child = json[head];
-  return {
-    ...json,
-    [head]: writeSettingValue(isRecord(child) ? child : {}, rest.join('.'), value),
-  };
+  return writeInto(json, path.split('.'), value) as PlayerSettingsJson;
 }
 ```
 
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web exec vitest run lib/alphatab/settings-paths`
-Expected: PASS — 5 tests.
+Expected: PASS — 6 tests.
 
 - [ ] **Step 6: Write the schema**
 
@@ -1283,6 +1356,28 @@ export type ApiValueKey =
 
 export type SettingAction = 'export-midi' | 'export-guitar-pro';
 
+/**
+ * How a settings row takes effect. 'render' pushes the settings and redraws. 'settings' pushes
+ * only — the player-side rows that change nothing drawn. 'midi' regenerates the MIDI, which is the
+ * ONLY thing that makes the vibrato, slide, song-book and triplet-feel rows audible.
+ */
+export type SettingApply = 'render' | 'settings' | 'midi';
+
+/** The score-stylesheet properties the Stylesheet group edits. 'multiBarRests' is the one composite. */
+export type StylesheetKey =
+  | 'hideDynamics'
+  | 'bracketExtendMode'
+  | 'useSystemSignSeparator'
+  | 'globalDisplayTuning'
+  | 'globalDisplayChordDiagramsOnTop'
+  | 'singleTrackTrackNamePolicy'
+  | 'multiTrackTrackNamePolicy'
+  | 'firstSystemTrackNameMode'
+  | 'firstSystemTrackNameOrientation'
+  | 'otherSystemsTrackNameMode'
+  | 'otherSystemsTrackNameOrientation'
+  | 'multiBarRests';
+
 interface SettingRowBase {
   /** Unique across ALL eight groups — it becomes a DOM id, and axe fails a duplicate. */
   id: string;
@@ -1293,14 +1388,16 @@ interface SettingRowBase {
 export type SettingDescriptor =
   | (SettingRowBase & {
       source: 'settings';
-      /** Dot path into the settings JSON, e.g. 'display.scale'. */
+      /** Dot path into the settings JSON, e.g. 'display.scale' — or 'display.padding.0' for an array. */
       path: string;
-      /** Re-render the score after this changes. Player-only settings set this false. */
-      rerender: boolean;
+      apply: SettingApply;
     })
   // An AlphaTabApi PROPERTY, not a settings key. It must never get a `path`: fillFromJson ignores
   // a key it does not know, so the row would move and nothing would change.
   | (SettingRowBase & { source: 'api'; key: ApiValueKey })
+  // A property of the OPEN SCORE's stylesheet, on the score model. Not in the settings JSON
+  // either, and never stored: a new score brings its own.
+  | (SettingRowBase & { source: 'stylesheet'; key: StylesheetKey })
   | (SettingRowBase & { source: 'action'; action: SettingAction });
 
 export interface SettingGroup {
@@ -1348,7 +1445,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           label: 'Zoom',
           path: 'display.scale',
           control: { kind: 'range', min: 0.25, max: 3, step: 0.05 },
-          rerender: true,
+          apply: 'render',
         },
         {
           id: 'display-layout-mode',
@@ -1356,9 +1453,9 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           label: 'Layout',
           path: 'display.layoutMode',
           control: { kind: 'select', options: enumOptions(engine.LayoutMode) },
-          rerender: true,
+          apply: 'render',
         },
-        // …the remaining six rows of this group.
+        // …the remaining seven rows of this group — nine in all.
       ],
     },
     // …Display: colours, Display: fonts, Display: paddings, Notation.
@@ -1390,12 +1487,56 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           label: 'Show the playback cursor',
           path: 'player.enableCursor',
           control: { kind: 'toggle' },
-          rerender: false,
+          // Nothing is redrawn: the cursor is the player's, not the score's.
+          apply: 'settings',
         },
-        // …the remaining Player rows.
+        {
+          id: 'player-metronome-volume',
+          source: 'api',
+          key: 'metronomeVolume',
+          label: 'Metronome volume',
+          control: { kind: 'range', min: 0, max: 1, step: 0.05 },
+        },
+        {
+          id: 'player-loop',
+          source: 'api',
+          key: 'isLooping',
+          label: 'Loop',
+          control: { kind: 'toggle' },
+        },
+        {
+          id: 'player-vibrato-note-wide-length',
+          source: 'settings',
+          label: 'Wide note vibrato: length',
+          path: 'player.vibrato.noteWideLength',
+          control: { kind: 'number', min: 0 },
+          // Read when the MIDI is BUILT, and only then. 'render' here would be a silent no-op.
+          apply: 'midi',
+        },
+        // …the remaining Player rows — twenty-seven in all. `player.playerMode` has its own task.
       ],
     },
-    // …Stylesheet.
+    {
+      id: 'stylesheet',
+      title: 'Stylesheet',
+      settings: [
+        {
+          id: 'stylesheet-hide-dynamics',
+          source: 'stylesheet',
+          key: 'hideDynamics',
+          label: 'Hide dynamics',
+          control: { kind: 'toggle' },
+        },
+        {
+          id: 'stylesheet-bracket-extend',
+          source: 'stylesheet',
+          key: 'bracketExtendMode',
+          label: 'Brackets and braces',
+          control: { kind: 'select', options: enumOptions(engine.model.BracketExtendMode) },
+        },
+        // …the remaining ten Stylesheet rows — twelve in all.
+      ],
+    },
     {
       id: 'tools',
       title: 'Tools',
@@ -1428,9 +1569,12 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
  * Enums are written by NAME — see enumOptions.
  */
 export const DEFAULT_PLAYER_SETTINGS: PlayerSettingsJson = {
-  display: { scale: 1, layoutMode: 'Page' },
+  core: { engine: 'svg' },
+  // padding is an ARRAY — [horizontal, vertical] — and must stay one.
+  display: { scale: 1, layoutMode: 'Page', padding: [35, 35] },
   player: {
-    // These three are set by the player at construction, so they are not AlphaTab's defaults.
+    // These four are set by the player at construction, so they are not AlphaTab's defaults.
+    playerMode: 'EnabledAutomatic',
     enableCursor: true,
     scrollMode: 'Continuous',
     scrollOffsetY: -10,
@@ -1439,7 +1583,7 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettingsJson = {
 };
 ```
 
-**Fill in every row before moving on.** The rows shown are the pattern; the list comes from Step 1's reading, and a group left as a comment is an unfinished task, not a deferral. Cross-check as you go: every `source: 'settings'` row's `path` must have a matching entry in `DEFAULT_PLAYER_SETTINGS`, every entry there must correspond to a row, and no `api` or `action` row has an entry at all.
+**Fill in every row before moving on.** The rows shown are the pattern; the list comes from Step 1's reading, and a group left as a comment is an unfinished task, not a deferral. Cross-check as you go: every `source: 'settings'` row's `path` must have a matching entry in `DEFAULT_PLAYER_SETTINGS`, every entry there must correspond to a row, and no `api`, `stylesheet` or `action` row has an entry at all. Count the rows against Step 1's inventory when you finish: 73, 5, 12 and 2.
 
 **Get each default from the engine, not from memory.** `new engine.Settings()` in the browser console (`$0.at.settings` on the notation box is the live one) shows AlphaTab's value for every key; a wrong default here silently changes the score on the first edit of an unrelated row, because the whole JSON is pushed each time.
 
@@ -1449,7 +1593,9 @@ Create `web/lib/alphatab/live-settings.ts`. Every write to a live engine object 
 
 ```ts
 import type { PlayerSettingsJson } from './settings-paths';
+import type { SettingApply, StylesheetKey } from './settings-schema';
 import type * as AlphaTab from '@coderline/alphatab';
+import type { SettingValue } from '@notation-hero/client';
 
 /**
  * The ONE place the live engine's settings change: write, push to the workers, redraw when asked.
@@ -1458,9 +1604,16 @@ import type * as AlphaTab from '@coderline/alphatab';
  * components through useState, and the compiler lint treats anything reached through a hook as
  * immutable. It is right about React data and wrong about a handle to an engine outside React.
  */
-function pushSettings(api: AlphaTab.AlphaTabApi, rerender: boolean): void {
+function pushSettings(api: AlphaTab.AlphaTabApi, apply: SettingApply): void {
+  // The rows that shape the GENERATED MIDI — vibrato, slides, song-book timings, triplet feel —
+  // are read when the MIDI is built, and only then. Pushing the settings or redrawing the score
+  // changes nothing audible; regenerating the MIDI does.
+  if (apply === 'midi') {
+    api.loadMidiForScore();
+    return;
+  }
   api.updateSettings();
-  if (rerender) api.render();
+  if (apply === 'render') api.render();
 }
 
 /**
@@ -1471,10 +1624,10 @@ function pushSettings(api: AlphaTab.AlphaTabApi, rerender: boolean): void {
 export function applySettingsJson(
   api: AlphaTab.AlphaTabApi,
   json: PlayerSettingsJson,
-  rerender: boolean,
+  apply: SettingApply,
 ): void {
   api.settings.fillFromJson(json as AlphaTab.json.SettingsJson);
-  pushSettings(api, rerender);
+  pushSettings(api, apply);
 }
 
 /** Notation AND audio for one track. The other transposition — audio only — is an api method. */
@@ -1486,7 +1639,7 @@ export function setTrackTransposition(
   const pitches = [...api.settings.notation.transpositionPitches];
   pitches[trackIndex] = semitones;
   api.settings.notation.transpositionPitches = pitches;
-  pushSettings(api, true);
+  pushSettings(api, 'render');
 }
 
 /**
@@ -1497,7 +1650,74 @@ export function setTrackTransposition(
 export function clearTrackTranspositions(api: AlphaTab.AlphaTabApi): void {
   if (api.settings.notation.transpositionPitches.length === 0) return;
   api.settings.notation.transpositionPitches = [];
-  pushSettings(api, false);
+  pushSettings(api, 'settings');
+}
+
+/**
+ * The Stylesheet group. These live on the SCORE's own stylesheet, not in the settings: a new score
+ * brings its own, so the popover re-reads them on every scoreLoaded and nothing here is stored.
+ * Enums are reported by NAME, like every other enum row.
+ */
+export function readStylesheetValues(
+  score: AlphaTab.model.Score,
+  enumName: (key: StylesheetKey, value: number) => string,
+): Record<StylesheetKey, SettingValue> {
+  const sheet = score.stylesheet;
+  return {
+    hideDynamics: sheet.hideDynamics,
+    bracketExtendMode: enumName('bracketExtendMode', sheet.bracketExtendMode),
+    useSystemSignSeparator: sheet.useSystemSignSeparator,
+    globalDisplayTuning: sheet.globalDisplayTuning,
+    globalDisplayChordDiagramsOnTop: sheet.globalDisplayChordDiagramsOnTop,
+    singleTrackTrackNamePolicy: enumName(
+      'singleTrackTrackNamePolicy',
+      sheet.singleTrackTrackNamePolicy,
+    ),
+    multiTrackTrackNamePolicy: enumName(
+      'multiTrackTrackNamePolicy',
+      sheet.multiTrackTrackNamePolicy,
+    ),
+    firstSystemTrackNameMode: enumName('firstSystemTrackNameMode', sheet.firstSystemTrackNameMode),
+    firstSystemTrackNameOrientation: enumName(
+      'firstSystemTrackNameOrientation',
+      sheet.firstSystemTrackNameOrientation,
+    ),
+    otherSystemsTrackNameMode: enumName(
+      'otherSystemsTrackNameMode',
+      sheet.otherSystemsTrackNameMode,
+    ),
+    otherSystemsTrackNameOrientation: enumName(
+      'otherSystemsTrackNameOrientation',
+      sheet.otherSystemsTrackNameOrientation,
+    ),
+    multiBarRests: sheet.multiTrackMultiBarRest,
+  };
+}
+
+/**
+ * `value` arrives already converted: a boolean, or the enum's NUMBER (the caller holds the
+ * namespace and turns the row's name back into it — this file has no runtime AlphaTab).
+ */
+export function setStylesheetValue(
+  api: AlphaTab.AlphaTabApi,
+  key: StylesheetKey,
+  value: boolean | number,
+): void {
+  const score = api.score;
+  if (!score) return;
+  if (key === 'multiBarRests') {
+    // The one composite row: the flag alone draws nothing. AlphaTab also wants the set of tracks
+    // it applies to — every track when on, none when off.
+    const on = Boolean(value);
+    score.stylesheet.multiTrackMultiBarRest = on;
+    score.stylesheet.perTrackMultiBarRest = on
+      ? new Set(score.tracks.map((track) => track.index))
+      : null;
+  } else {
+    // One assignment for eleven keys: the row's control kind already guarantees the type.
+    (score.stylesheet as unknown as Record<string, boolean | number>)[key] = value;
+  }
+  api.render();
 }
 
 export type StaffDisplayKey =
@@ -1611,11 +1831,57 @@ const engineState = (page: Page) =>
   page.evaluate(() => {
     const at = (
       document.querySelector('[data-testid="notation-surface"] > div') as {
-        at?: { playbackSpeed: number; settings: { display: { scale: number } } };
+        at?: {
+          playbackSpeed: number;
+          metronomeVolume: number;
+          settings: { display: { scale: number } };
+          score: { stylesheet: { hideDynamics: boolean } } | null;
+        };
       } | null
     )?.at;
-    return at ? { speed: at.playbackSpeed, scale: at.settings.display.scale } : null;
+    return at
+      ? {
+          speed: at.playbackSpeed,
+          metronomeVolume: at.metronomeVolume,
+          scale: at.settings.display.scale,
+          hideDynamics: at.score?.stylesheet.hideDynamics ?? null,
+        }
+      : null;
   });
+
+// Record every call the page makes to one AlphaTabApi method. The synth keeps solo, mute and
+// volume in its WORKER, so nothing on the main thread can be read back afterwards — and the row's
+// aria-pressed mirrors React state, so it flips even when the call never reached the engine
+// (exactly what a callback frozen on the pre-engine `undefined` api does). Wrapping the method
+// through the debug handle is test-side only: nothing ships for it.
+async function recordApiCalls(page: Page, method: string): Promise<() => Promise<unknown[][]>> {
+  await page.evaluate((name) => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: Record<string, (...args: unknown[]) => unknown>;
+      } | null
+    )?.at;
+    if (!at) throw new Error('no engine');
+    const original = at[name].bind(at);
+    const calls: unknown[][] = [];
+    const store = ((globalThis as { nhCalls?: Record<string, unknown[][]> }).nhCalls ??= {});
+    store[name] = calls;
+    at[name] = (...args: unknown[]) => {
+      // Tracks are live objects; keep what identifies them.
+      calls.push(
+        args.map((arg) =>
+          Array.isArray(arg) ? arg.map((track) => (track as { index: number }).index) : arg,
+        ),
+      );
+      return original(...args);
+    };
+  }, method);
+  return () =>
+    page.evaluate(
+      (name) => (globalThis as { nhCalls?: Record<string, unknown[][]> }).nhCalls?.[name] ?? [],
+      method,
+    );
+}
 
 test('a settings row changes the rendered score without stopping playback', async ({ page }) => {
   await page.goto('/play');
@@ -1661,6 +1927,53 @@ test('the Player group speed row and the header tempo control are one value', as
   await expect.poll(async () => (await engineState(page))?.speed).toBe(0.5);
 });
 
+// The same rule for the metronome: the transport's button and this row are one volume.
+test('the metronome volume row and the transport button are one value', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('toggle-metronome').click();
+  await expect.poll(async () => (await engineState(page))?.metronomeVolume).toBe(1);
+
+  await page.getByTestId('settings-trigger').click();
+  await page.getByRole('button', { name: 'Player' }).click();
+  await page.getByRole('spinbutton', { name: 'Metronome volume' }).fill('0.4');
+  await expect.poll(async () => (await engineState(page))?.metronomeVolume).toBe(0.4);
+  // Still on: the button reads "volume > 0".
+  await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('spinbutton', { name: 'Metronome volume' }).fill('0');
+  await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'false');
+});
+
+// The Stylesheet group is NOT settings: it lives on the open score's model. A row wired like its
+// neighbours would write a JSON key AlphaTab ignores — for the whole group, in silence.
+test('a Stylesheet row changes the open score, not the settings', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  const before = (await engineState(page))?.hideDynamics;
+
+  await page.getByTestId('settings-trigger').click();
+  await page.getByRole('button', { name: 'Stylesheet' }).click();
+  await page.getByRole('checkbox', { name: 'Hide dynamics' }).click();
+
+  await expect.poll(async () => (await engineState(page))?.hideDynamics).toBe(!before);
+});
+
+// Vibrato, slides, song-book timings and triplet feel are read when the MIDI is BUILT. Pushing
+// the settings or redrawing changes nothing audible, so the row must regenerate the MIDI.
+test('a playback-shaping row regenerates the MIDI', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  const midiLoads = await recordApiCalls(page, 'loadMidiForScore');
+
+  await page.getByTestId('settings-trigger').click();
+  await page.getByRole('button', { name: 'Player' }).click();
+  await page.getByRole('checkbox', { name: /triplet feel/i }).click();
+
+  await expect.poll(async () => (await midiLoads()).length).toBe(1);
+});
+
 test('the Settings icon trigger has a tooltip', async ({ page }) => {
   await page.goto('/play');
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
@@ -1674,7 +1987,7 @@ test('the Settings icon trigger has a tooltip', async ({ page }) => {
 
 - [ ] **Step 2: Run them to verify they fail**
 
-Run: `pnpm --filter @notation-hero/web run test:e2e -g "settings row|one value|icon trigger"`
+Run: `pnpm --filter @notation-hero/web run test:e2e -g "settings row|one value|Stylesheet row|regenerates the MIDI|icon trigger"`
 Expected: FAIL — no `settings-trigger`.
 
 - [ ] **Step 3: Write the popover**
@@ -1701,18 +2014,28 @@ import {
 } from '@notation-hero/client';
 import type { SettingValue } from '@notation-hero/client';
 
+import { useState } from 'react';
+
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
+import { readStylesheetValues, setStylesheetValue } from '../../lib/alphatab/live-settings';
 import { buildSettingGroups, readSettingValue } from '../../lib/alphatab/settings-schema';
+import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import type {
   ApiValueKey,
   PlayerSettingsJson,
   SettingAction,
+  SettingApply,
   SettingDescriptor,
+  StylesheetKey,
 } from '../../lib/alphatab/settings-schema';
+import type * as AlphaTab from '@coderline/alphatab';
 
 interface SettingsPopoverProps {
+  /** The live api, or undefined until the engine has loaded. The Stylesheet group reads the open
+   *  score through it. */
+  api: AlphaTab.AlphaTabApi | undefined;
   settings: PlayerSettingsJson;
-  onSettingChange: (path: string, value: SettingValue, rerender: boolean) => void;
+  onSettingChange: (path: string, value: SettingValue, apply: SettingApply) => void;
   /**
    * The AlphaTabApi properties the Player group edits, in the unit each row shows. The shell owns
    * every one of them, because each has a second editor elsewhere in the player — the speed is
@@ -1731,13 +2054,16 @@ interface SettingsPopoverProps {
 // The playback-speed slider lives in this popover's Player group, not in the header pill: neither
 // design source draws a slider there, and "two popovers, not modals" leaves no third surface.
 //
-// THREE KINDS OF ROW, ONE LOOP. A row's `source` decides where its value comes from and where a
-// change goes. It matters most for the `api` rows: `playbackSpeed` and its neighbours are
+// FOUR KINDS OF ROW, ONE LOOP. A row's `source` decides where its value comes from and where a
+// change goes — a settings key, an api property, the open score's stylesheet, or a command. The
+// panel reads like one list, but AlphaTab takes a write to the wrong place without a word. It
+// matters most for the `api` rows: `playbackSpeed` and its neighbours are
 // AlphaTabApi PROPERTIES, not keys in AlphaTab's settings JSON, so a row that wrote one into the
 // JSON would move, show its new number, and change nothing audible — a silent failure, not an
 // error. They go to the shell's single writer for that value instead, which is also what keeps
 // this slider and the header's tempo control showing the same speed.
 export function SettingsPopover({
+  api,
   settings,
   onSettingChange,
   apiValues,
@@ -1748,15 +2074,36 @@ export function SettingsPopover({
   // The enum options come off the loaded namespace, so the groups cannot exist before it does.
   const groups = engine ? buildSettingGroups(engine) : [];
 
+  // The Stylesheet group belongs to the OPEN SCORE, not to the app: every score brings its own
+  // stylesheet, so the values are re-read each time one loads, and they are never stored.
+  // STYLESHEET_ENUMS maps each enum-valued key to its AlphaTab enum, so a value can cross the
+  // boundary by NAME like every other enum row (see the note under this block).
+  const [stylesheet, setStylesheet] = useState<Partial<Record<StylesheetKey, SettingValue>>>({});
+  useAlphaTabEvent(api, 'scoreLoaded', (score) => {
+    if (!engine) return;
+    setStylesheet(
+      readStylesheetValues(score, (key, value) => STYLESHEET_ENUMS(engine)[key]?.[value] ?? ''),
+    );
+  });
+
   const valueOf = (setting: SettingDescriptor): SettingValue => {
     if (setting.source === 'settings') return readSettingValue(settings, setting.path) ?? '';
     if (setting.source === 'api') return apiValues[setting.key] ?? '';
+    if (setting.source === 'stylesheet') return stylesheet[setting.key] ?? '';
     return ''; // an action row has no value
   };
 
   const change = (setting: SettingDescriptor, next: SettingValue) => {
-    if (setting.source === 'settings') onSettingChange(setting.path, next, setting.rerender);
+    if (setting.source === 'settings') onSettingChange(setting.path, next, setting.apply);
     else if (setting.source === 'api') onApiValueChange(setting.key, next);
+    else if (setting.source === 'stylesheet' && api && engine) {
+      // A select row reports the enum's NAME; the score model wants its number.
+      const enumObject = STYLESHEET_ENUMS(engine)[setting.key];
+      const raw = enumObject && typeof next === 'string' ? enumObject[next] : next;
+      if (typeof raw !== 'boolean' && typeof raw !== 'number') return;
+      setStylesheetValue(api, setting.key, raw);
+      setStylesheet((current) => ({ ...current, [setting.key]: next }));
+    }
   };
 
   return (
@@ -1823,6 +2170,8 @@ export function SettingsPopover({
 }
 ```
 
+> `STYLESHEET_ENUMS(engine)` is a small function in this file returning `Partial<Record<StylesheetKey, Record<string | number, string | number>>>` — `bracketExtendMode → engine.model.BracketExtendMode`, the two `…TrackNamePolicy` keys `→ engine.model.TrackNamePolicy`, the two `…TrackNameMode` keys `→ engine.model.TrackNameMode`, the two `…TrackNameOrientation` keys `→ engine.model.TrackNameOrientation`. A TypeScript numeric enum maps both ways, so one object turns a number into its name and a name into its number. A function, not a module constant: every enum is a runtime value off the loaded namespace. Check each enum's real name against `alphaTab.d.ts` (`RenderStylesheet`, line 14731 onward) as you write it — the fork binds its orientation rows to the `TrackNameMode` enum, which is one more slip not to copy.
+>
 > `render={…}` is Base UI's composition prop, and `TooltipTrigger render={<Button … />}` is the working precedent in this repo — `PlayerShell`'s Play button. What is **new** here is stacking two triggers on one button. Verify it in the browser before moving on: hover opens the tooltip, a click opens the popover, Tab reaches the button once, and `Escape` closes the popover and leaves focus on the gear. If the two triggers fight, fall back to the shape `TransportToggle` uses — the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the `PopoverTrigger` — and keep the tooltip permanent either way.
 
 - [ ] **Step 4: Apply a changed setting to the live engine**
@@ -1833,12 +2182,12 @@ In `PlayerShell.tsx`, inside `Player`. `api` is **state**, so it is in every dep
 const [settings, setSettings] = useState<PlayerSettingsJson>(DEFAULT_PLAYER_SETTINGS);
 
 const applySetting = useCallback(
-  (path: string, value: SettingValue, rerender: boolean) => {
+  (path: string, value: SettingValue, apply: SettingApply) => {
     // Compute, set, THEN call the engine — never call the engine inside the setState updater.
     // React may run an updater twice, which would push the settings and redraw the score twice.
     const next = writeSettingValue(settings, path, value);
     setSettings(next);
-    if (api) applySettingsJson(api, next, rerender);
+    if (api) applySettingsJson(api, next, apply);
   },
   [api, settings],
 );
@@ -1856,16 +2205,25 @@ const applyMasterVolume = useCallback(
 // The Player group's api rows, in the unit each row shows. The speed is a multiplier everywhere
 // else in the player; the row shows a percentage, rounded to one decimal, because the header's BPM
 // stepper leaves the multiplier at values like 0.8916….
-const apiValues = { playbackSpeed: Math.round(speed * 1000) / 10, masterVolume };
+const apiValues = {
+  playbackSpeed: Math.round(speed * 1000) / 10,
+  masterVolume,
+  metronomeVolume,
+  countInVolume,
+  isLooping: looping,
+};
 
 const applyApiValue = useCallback(
   (key: ApiValueKey, value: SettingValue) => {
-    // applySpeed stays the ONLY writer of api.playbackSpeed: this row and the header's tempo
-    // control are two editors of one value.
+    // Every branch goes to the value's ONE writer. The speed row and the header's tempo control
+    // are two editors of one value; so are the metronome row and the transport's Metronome button.
     if (key === 'playbackSpeed') applySpeed(Number(value) / 100);
     else if (key === 'masterVolume') applyMasterVolume(Number(value));
+    else if (key === 'metronomeVolume') applyMetronomeVolume(Number(value));
+    else if (key === 'countInVolume') applyCountInVolume(Number(value));
+    else applyLooping(Boolean(value));
   },
-  [applySpeed, applyMasterVolume],
+  [applySpeed, applyMasterVolume, applyMetronomeVolume, applyCountInVolume, applyLooping],
 );
 
 const runAction = useCallback(
@@ -1891,6 +2249,31 @@ const runAction = useCallback(
 
 Add `'masterVolume'` to `AlphaTabApiValue` in `web/lib/alphatab/useAlphaTab.ts` — that union is what `setAlphaTabValue` accepts, and it lists the transport's values only.
 
+**Metronome and Count-In become volumes.** Plan B holds them as booleans (`metronome`, `countIn`) and writes `1` or `0`. AlphaTab's values are volumes, the fork's rows are 0-1 sliders, and one value must have one writer — so the state becomes the number, and the transport button is derived from it:
+
+```diff
+- const [metronome, setMetronome] = useState(false);
++ const [metronomeVolume, setMetronomeVolume] = useState(0);
+
+- const applyMetronome = useCallback(
+-   (next: boolean) => {
+-     setMetronome(next);
+-     if (api) setAlphaTabValue(api, 'metronomeVolume', next ? 1 : 0);
+-   },
+-   [api],
+- );
++ // The ONE writer of api.metronomeVolume. The transport button and the Settings row both call it.
++ const applyMetronomeVolume = useCallback(
++   (next: number) => {
++     setMetronomeVolume(next);
++     if (api) setAlphaTabValue(api, 'metronomeVolume', next);
++   },
++   [api],
++ );
+```
+
+and on `<TransportRow>`: `metronome={metronomeVolume > 0}` and `onMetronomeChange={(on) => applyMetronomeVolume(on ? 1 : 0)}`. Count-In is the same change. `data-metronome={metronomeVolume > 0}` and `data-countin={countInVolume > 0}` keep the `player-status` attributes the booleans they were, so Plan B's cases stay green untouched — run them to prove it. The Loop row needs no state change: it is `looping` / `applyLooping` as they are.
+
 `PlayerHeader` stays free of settings knowledge, the same way `TransportRow` holds no AlphaTab knowledge: it gains **one** slot for the right column Plan B left empty (`<div />` today), and the shell fills it.
 
 ```tsx
@@ -1912,6 +2295,7 @@ actions?: ReactNode;
   disabled={!playerReady}
   actions={
     <SettingsPopover
+      api={api}
       settings={settings}
       onSettingChange={applySetting}
       apiValues={apiValues}
@@ -1969,7 +2353,7 @@ test('every settings row names a key the engine really has', async ({ page }) =>
 
 For it to find the rows, `SettingsPopover` passes `data-setting-path={setting.path}` on each `source: 'settings'` row, and `SettingRow` spreads `...rest` onto its root the way `TrackRow` does (widen its props to `Omit<ComponentProps<'div'>, 'onChange' | 'children' | 'id'>` when you add it). It is a static attribute with no runtime cost — the same kind of hook as the `data-testid`s this player already ships, not a state mirror.
 
-What this cannot tell is whether a row should have set `rerender` and did not, or whether the change looks right. That needs eyes, and it is one of the two checks handed back in Task 9.
+What this cannot tell is whether a row chose the wrong `apply` (the value changes, and the score or the sound does not), or whether the change looks right. That needs eyes, and it is one of the two checks handed back in Task 10.
 
 - [ ] **Step 7: Commit**
 
@@ -2057,6 +2441,19 @@ describe('loadStoredSettings', () => {
     expect(settings).not.toHaveProperty('bogus');
   });
 
+  // display.padding is an array. It must come back as one, element by element, and a stored
+  // array of the wrong length or with a non-number in it is dropped whole.
+  it('merges an array element by element, and drops a malformed one', () => {
+    const defaults = { display: { padding: [35, 35] } };
+    const good = JSON.stringify({ version: 1, settings: { display: { padding: [10, 20] } } });
+    expect(loadStoredSettings(good, defaults).settings).toEqual({ display: { padding: [10, 20] } });
+
+    for (const bad of [[10], [10, 'wide'], { 0: 10, 1: 20 }, null]) {
+      const stored = JSON.stringify({ version: 1, settings: { display: { padding: bad } } });
+      expect(loadStoredSettings(stored, defaults).settings).toEqual(defaults);
+    }
+  });
+
   // A stored value of the wrong TYPE would reach fillFromJson as-is. A string where a number
   // belongs breaks the layout without throwing, so the default wins.
   it('drops a stored value whose type differs from the default', () => {
@@ -2099,6 +2496,14 @@ function mergeAgainstDefaults(
     const value = stored[key];
     if (isPlainObject(fallback)) {
       merged[key] = mergeAgainstDefaults(isPlainObject(value) ? value : {}, fallback);
+    } else if (Array.isArray(fallback)) {
+      // `typeof` calls an array, an object and null all 'object', so an array gets its own check:
+      // the same length, and every element the same type as the default's.
+      const sameShape =
+        Array.isArray(value) &&
+        value.length === fallback.length &&
+        value.every((item, index) => typeof item === typeof fallback[index]);
+      merged[key] = sameShape ? value : fallback;
     } else {
       merged[key] = typeof value === typeof fallback ? value : fallback;
     }
@@ -2147,7 +2552,7 @@ export function loadStoredSettings(
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web exec vitest run lib/alphatab/settings-storage`
-Expected: PASS — 7 tests.
+Expected: PASS — 8 tests.
 
 - [ ] **Step 5: Write the failing e2e cases**
 
@@ -2286,39 +2691,7 @@ One row for **every track in the score**, not only the rendered drum staves — 
 Add to `web/e2e/player.e2e.ts`. Each opens the fixture with `openFirstScore` — the helper this file already has, which proves the file really opened by its `data-file` attribute; the bundled beat is on screen from the first paint, so "a track rendered" is true before anything is picked.
 
 ```ts
-// Record every call the page makes to one AlphaTabApi method. The synth keeps solo, mute and
-// volume in its WORKER, so nothing on the main thread can be read back afterwards — and the row's
-// aria-pressed mirrors React state, so it flips even when the call never reached the engine
-// (exactly what a callback frozen on the pre-engine `undefined` api does). Wrapping the method
-// through the debug handle is test-side only: nothing ships for it.
-async function recordApiCalls(page: Page, method: string): Promise<() => Promise<unknown[][]>> {
-  await page.evaluate((name) => {
-    const at = (
-      document.querySelector('[data-testid="notation-surface"] > div') as {
-        at?: Record<string, (...args: unknown[]) => unknown>;
-      } | null
-    )?.at;
-    if (!at) throw new Error('no engine');
-    const original = at[name].bind(at);
-    const calls: unknown[][] = [];
-    const store = ((globalThis as { nhCalls?: Record<string, unknown[][]> }).nhCalls ??= {});
-    store[name] = calls;
-    at[name] = (...args: unknown[]) => {
-      // Tracks are live objects; keep what identifies them.
-      calls.push(
-        args.map((arg) =>
-          Array.isArray(arg) ? arg.map((track) => (track as { index: number }).index) : arg,
-        ),
-      );
-      return original(...args);
-    };
-  }, method);
-  return () =>
-    page.evaluate(
-      (name) => (globalThis as { nhCalls?: Record<string, unknown[][]> }).nhCalls?.[name] ?? [],
-      method,
-    );
-}
+// `recordApiCalls` is the helper the Settings cases added to this file.
 
 // Punk.gp parses to three tracks — 0:Drumkit (percussion), 1:Distortion Guitar, 2:Drumkit Left
 // (percussion) — so the popover has three rows to audit, not one, even though only two render.
@@ -2464,7 +2837,7 @@ test('only a stringed staff with a tuning offers the tablature toggle', async ({
 });
 ```
 
-> The "clean mix" case cannot read the synth worker's channel map — nothing can, from the page. What it pins is the visible half (the rebuilt row reads un-muted, and the old score's rows are gone); the audible half is on the by-ear list in Task 9. `api.player` is a separate object from the api, so to also assert the reset call, wrap `at.player.resetChannelStates` the same way.
+> The "clean mix" case cannot read the synth worker's channel map — nothing can, from the page. What it pins is the visible half (the rebuilt row reads un-muted, and the old score's rows are gone); the audible half is on the by-ear list in Task 10. `api.player` is a separate object from the api, so to also assert the reset call, wrap `at.player.resetChannelStates` the same way.
 >
 > No fixture carries an embedded recording, so the disabled-mixer state is covered by `TrackRow`'s own test, story and baselines (Task 3), and the wiring here is one prop. If a small Guitar Pro file with an audio track turns up, add the case then — do not fabricate one.
 
@@ -2720,11 +3093,190 @@ git add web/app/play/TracksPopover.tsx web/app/play/PlayerShell.tsx web/e2e/play
 git commit -m "feat(web): add the Tracks popover with the full mixer row (NH-291)"
 ```
 
-The mix **by ear** — that mute silences, that solo isolates, that the channel coupling behaves as recorded — is on the hand-back list in Task 9. Do not self-certify it.
+The mix **by ear** — that mute silences, that solo isolates, that the channel coupling behaves as recorded — is on the hand-back list in Task 10. Do not self-certify it.
 
 ---
 
-### Task 8: Extend the axe gate and open the PR
+### Task 8: The player-mode row — the file's recording, or the synthesizer
+
+**Decided by the maintainer on 2026-09-20:** _"we should be able to change every single setting from alphatab, including enable synth or backing track. 100% do this now. I use this all the time!"_ This supersedes the spec's "a toggle between the recording and the synthesizer is out of v0" (§4), and it is the switch the registry recorded on the same day as built by no plan.
+
+**The scenario.** A Guitar Pro file carries the real song as an embedded recording. The player plays that recording — and while it does, AlphaTab ignores the metronome, the count-in, and every track's solo, mute, volume and audio transposition, so those controls are disabled. The drummer opens Settings, sets the Player group's mode to the synthesizer, and all of them come alive: the score now plays from the sound bank, and the click can be heard. Set it back, and the recording returns.
+
+It is a row like any other — `player.playerMode`, `source: 'settings'`, `apply: 'settings'`, a select over AlphaTab's `PlayerMode` enum, stored with the rest — and the registry measured the swap itself at about 100 ms (`settings.player.playerMode = …` plus `api.updateSettings()`). What needs a task is everything that **assumed the mode never changes**.
+
+**Files:**
+
+- Modify: `web/lib/alphatab/settings-schema.ts` (the row)
+- Modify: `web/app/play/PlayerShell.tsx`
+- Modify: `web/e2e/player.e2e.ts`
+
+**Interfaces:**
+
+- Consumes: `api.actualPlayerMode` and `api.isReadyForPlayback` (1.8.4, `alphaTab.d.ts:377` and `:1054`); `engine.PlayerMode`; `applySetting` (Task 5).
+- Produces: `hasBackingTrack` keeps its name and every consumer — `TransportRow`, `TracksPopover` — but changes its source. `playerReady` stops latching.
+
+- [ ] **Step 1: Add the row**
+
+In `buildSettingGroups`, the Player group, after the five api rows:
+
+```ts
+{
+  id: 'player-mode',
+  source: 'settings',
+  label: 'Play from',
+  path: 'player.playerMode',
+  // The whole enum, as the reference panel offers it. Original labels, written for a drummer:
+  // what each mode DOES, not AlphaTab's identifier.
+  control: {
+    kind: 'select',
+    options: [
+      { value: 'EnabledAutomatic', label: "The file's own recording, when it has one" },
+      { value: 'EnabledSynthesizer', label: 'The synthesizer, always' },
+      { value: 'EnabledBackingTrack', label: "The file's own recording, always" },
+      { value: 'EnabledExternalMedia', label: 'An external media player' },
+      { value: 'Disabled', label: 'No playback' },
+    ],
+  },
+  // Nothing is redrawn. updateSettings() is what makes AlphaTab build the other player.
+  apply: 'settings',
+},
+```
+
+`DEFAULT_PLAYER_SETTINGS.player.playerMode` is already `'EnabledAutomatic'` (Task 4) — what the shell sets, so a first edit of any other row does not change the mode.
+
+- [ ] **Step 2: Write the failing tests**
+
+No fixture embeds a recording, so the cases drive the mode on the bundled beat and read what AlphaTab built. Add to `web/e2e/player.e2e.ts`:
+
+```ts
+const playerModes = (page: Page) =>
+  page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: { actualPlayerMode: number; isReadyForPlayback: boolean; player: unknown };
+      } | null
+    )?.at;
+    return at
+      ? { actual: at.actualPlayerMode, ready: at.isReadyForPlayback, hasPlayer: at.player !== null }
+      : null;
+  });
+
+const setPlayerMode = async (page: Page, label: string) => {
+  await page.getByTestId('settings-trigger').click();
+  await page.getByRole('button', { name: 'Player' }).click();
+  await page.getByRole('combobox', { name: 'Play from' }).selectOption({ label });
+  await page.keyboard.press('Escape');
+};
+
+// PlayerMode.EnabledSynthesizer is 2 and Disabled is 0 in 1.8.4's enum (alphaTab.d.ts). The page
+// cannot reach the enum object, so the numbers are written here, beside their source.
+test('the player-mode row makes AlphaTab build the other player, and Play still works', async ({
+  page,
+}) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await setPlayerMode(page, 'The synthesizer, always');
+  await expect.poll(async () => (await playerModes(page))?.actual).toBe(2);
+
+  // Play must not be pressable before the new player is ready, and must work once it is.
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  expect((await playerModes(page))?.ready).toBe(true);
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+// "No playback" is a real choice, and it is STORED — so the next visit starts with no player.
+// The page must say so and stay usable, not pulse a loading bar forever beside a dead Play button.
+test('with playback turned off, the page settles and says why', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await setPlayerMode(page, 'No playback');
+
+  await page.reload();
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  const play = page.getByTestId('transport-play');
+  await expect(play).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0);
+
+  // The way back is never disabled with the rest.
+  await expect(page.getByTestId('settings-trigger')).toBeEnabled();
+  // page.mouse, not hover(): a disabled Button takes no pointer events, so hover() would wait
+  // forever. The pointer goes where a person's would — the same move the disabled-toggle case uses.
+  const box = await play.boundingBox();
+  if (!box) throw new Error('the Play button has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(openTooltip(page)).toContainText('Playback is turned off in Settings');
+});
+```
+
+Run: `pnpm --filter @notation-hero/web run test:e2e -g "player-mode row|playback turned off"`
+Expected: FAIL.
+
+- [ ] **Step 3: Ask AlphaTab which player is playing**
+
+In `PlayerShell.tsx`, `hasBackingTrack` is set from the score today:
+
+```diff
+- useAlphaTabEvent(api, 'scoreLoaded', (score) =>
+-   setHasBackingTrack(Boolean(score.backingTrack?.rawAudioFile)),
+- );
++ // Which player AlphaTab REALLY built — not what the score would suggest. A score that embeds a
++ // recording plays from the synthesizer when the person chose that, and then the metronome, the
++ // count-in and the mixer all work. `actualPlayerMode` is AlphaTab's own answer; the enum comes
++ // off the loaded namespace because it cannot be imported.
++ const readPlayer = useCallback(() => {
++   if (!api || !engine) return;
++   setHasBackingTrack(api.actualPlayerMode === engine.PlayerMode.EnabledBackingTrack);
++   setPlaybackOff(api.actualPlayerMode === engine.PlayerMode.Disabled);
++   setPlayerReady(api.isReadyForPlayback);
++ }, [api, engine]);
++ useAlphaTabEvent(api, 'scoreLoaded', readPlayer);
++ useAlphaTabEvent(api, 'playerReady', readPlayer);
+```
+
+and in `applySetting`, after the engine call: `if (path === 'player.playerMode') readPlayer();` — `updateSettings()` builds the other player synchronously, so the new mode is readable straight away, while its readiness arrives later through `playerReady`.
+
+`setPlayerReady(api.isReadyForPlayback)` replaces Plan B's `() => setPlayerReady(true)`. That closes a hazard the registry recorded on 2026-09-20 and left open: _"`playerReady` latches true, so Play stays enabled while a soundfont reloads after a recording file is replaced by a synth file."_ The same thing happens on a mode switch — the synthesizer's sound bank was never fetched while the recording played — so the latch has to go for this task to be safe.
+
+> **Verify by running, before building on it:** that `actualPlayerMode` changes synchronously inside `updateSettings()`, and that `playerReady` fires again after a swap. Both are read from 1.8.4's source, not measured. If `playerReady` does not re-fire, call `readPlayer` from the events that do arrive after a swap (`soundFontLoaded`, `playerStateChanged`) — but do **not** subscribe to `midiLoaded`: it overflows the stack in 1.8.4, and `useAlphaTabEvent` refuses to compile it.
+
+- [ ] **Step 4: Make "No playback" a settled state, not an endless load**
+
+`playbackOff` is new state beside `hasBackingTrack`. Three places read it:
+
+```diff
+- const loadingPlayer = !failed && (!playerReady || opening);
++ // "Not ready YET" — with playback turned off there is nothing to wait for.
++ const loadingPlayer = !failed && !playbackOff && (!playerReady || opening);
+```
+
+- The Play button's tooltip: `playbackOff ? 'Playback is turned off in Settings' : playing ? 'Pause' : 'Play'`. The button is already `aria-disabled` while `!playerReady` and stays focusable — but a disabled `Button` is `pointer-events: none`, so as its own tooltip trigger it never sees the mouse. Give it the shape `TransportToggle` got for the same reason (registry, 2026-09-20): the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the button. The span takes the hover; focus still opens it, because focus events bubble. Keep `ref={playRef}` on the `Button` — opening a file still moves focus there.
+- The Settings trigger is **never** disabled by `playerReady` — it is the only way back. It is disabled only while the engine itself has not loaded (`!engine`, Task 5), which is unchanged.
+
+`EnabledExternalMedia` needs an external media handler this app does not provide, so it builds a player with no output. It ships because the maintainer asked for every setting; it needs no code of its own — the transport simply stays not-ready — but say in the PR that it is inert.
+
+- [ ] **Step 5: Run the lane to verify it passes**
+
+Run: `pnpm --filter @notation-hero/web run lint && pnpm --filter @notation-hero/web run test:e2e`
+Expected: PASS — including every Plan A and Plan B case. `hasBackingTrack` and `playerReady` both changed their source here, and Plan B's transport cases are what prove nothing else moved.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add web/lib/alphatab/settings-schema.ts web/app/play/PlayerShell.tsx web/e2e/player.e2e.ts
+git commit -m "feat(web): switch between a file's recording and the synthesizer (NH-291)"
+```
+
+The switch **by ear**, on one of the maintainer's own files that embeds a recording, is on the hand-back list in Task 10.
+
+---
+
+### Task 9: Extend the axe gate and open the PR
 
 **Files:**
 
@@ -2833,7 +3385,9 @@ Expected: all PASS.
 - **Spec Delta:** Transpose audio is disabled with solo, mute and volume while a file plays its own recording. The spec's §7 lists three; 1.8.4's backing-track synthesizer stubs a fourth.
 - **Spec Delta:** the accepted channel coupling covers solo and mute, not only volume (§7 records volume alone).
 - **New:** a score change resets the synth's channel states and the transposition pitches — AlphaTab keeps both across scores.
-- Whatever the maintainer decided on the two open decisions in Task 4.
+- **Spec Delta, by the maintainer's decision (2026-09-20):** the Settings popover ships every row of the reference panel, including the player-mode row — superseding the spec's "a toggle between the recording and the synthesizer is out of v0" (§4). `hasBackingTrack` now comes from `api.actualPlayerMode`, and `playerReady` no longer latches — which closes the hazard the 2026-09-20 hands-on entry recorded and left open.
+- **New:** a settings row names how it takes effect — `render`, `settings` or `midi` — and the Stylesheet group writes to the open score's model, not to the settings. Both are enforced by e2e cases that read the engine.
+- Metronome and Count-In are volumes with one writer each; the transport buttons read `> 0`.
 - The 44 px gate now measures fields and selects; `Input` and `NativeSelect` stay `h-9` in the design system and are raised to `h-11` per call site — a design-system default of 44 px is a separate question, not answered here.
 
 - [ ] **Step 6: Commit, push, open the PR**
@@ -2855,7 +3409,7 @@ Plan: `docs/plans/2026-09-13-v0c-popovers-plan.md`
 ## Success criteria covered
 
 - [ ] 3 (per-track mute/solo half) — solo, mute and volume change the audible mix. **Needs ears — handed back, not self-certified.**
-- [ ] 7 — the Settings rows change the rendered score; the Tracks popover lists every track and its rows work in both directions (solo/mute/volume for the mix, render-select for what is drawn, display toggles and both transposition sliders for the rendered score). **The rows reaching the engine is machine-checked; that each one LOOKS right needs eyes — handed back.**
+- [ ] 7 — the Settings rows change the rendered score (and the sound, for the rows that shape it); the Tracks popover lists every track and its rows work in both directions (solo/mute/volume for the mix, render-select for what is drawn, display toggles and both transposition sliders for the rendered score). **The rows reaching the engine is machine-checked; that each one LOOKS right needs eyes — handed back.**
 
 Tablature is excluded from criterion 7 by the spec: 1.8.4 cannot render it on a percussion staff.
 
@@ -2865,7 +3419,8 @@ Tablature is excluded from criterion 7 by the spec: 1.8.4 cannot render it on a 
 - **Accepted coupling:** AlphaTab applies volume, solo and mute to a track's primary AND secondary MIDI channels, so tracks sharing a channel move together. `Punk.gp`'s two drum tracks are both on channel 9, so muting, soloing or turning down one does the same to the other. Expected v0 behaviour, not a defect.
 - **A file that plays its own recording** disables solo, mute, volume and Transpose audio, with the reason in a tooltip and in a line above the rows: AlphaTab's backing-track player ignores all four.
 - Settings persist under one `localStorage` key with a version integer, restored through `Settings.fillFromJson` before the engine is built, and merged per key against the shipped defaults. A corrupt value falls back and raises a toast rather than reverting silently. The playback speed and master volume are not persisted (NH-295).
-- Rows left out on purpose, because the player's shell owns the key: list them here.
+- **Every row of the reference panel ships — 92**, by the maintainer's decision: 73 settings, 5 api properties, 12 score-stylesheet properties and 2 actions. That includes the **player-mode row**, which switches between a file's own recording and the synthesizer and supersedes the spec's v0 boundary. Two of the reference panel's rows are bound to the wrong key there; this build uses the right ones.
+- `EnabledExternalMedia` is offered because every mode is, but this app provides no external media handler, so it plays nothing.
 
 ## Pulumi preview
 
@@ -2878,7 +3433,7 @@ The `pr-checklist-sync` workflow appends the merge checklist to the body when th
 
 ---
 
-### Task 9: 🧑 Hand back the two human gates, and close out v0
+### Task 10: 🧑 Hand back the two human gates, and close out v0
 
 Nothing in this task is done by an agent. It is the hand-back: one message to the maintainer, once, when the PR is open and green.
 
@@ -2892,10 +3447,12 @@ On the PR's preview deployment, with `Punk.gp` open and playing:
 4. Set **Transpose audio** on the guitar to +2 — its pitch rises and the notation does not move. Set **Transpose full** to +2 — the notation moves too.
 5. The accepted coupling: mute **Drumkit** — **Drumkit Left** goes silent as well, while its own Mute button stays un-pressed. Both tracks are on MIDI channel 9. That is the recorded behaviour, not a bug.
 6. With something muted, open another score — nothing in it is muted.
+7. **The player mode, on one of your own files that embeds a recording.** It opens playing the recording, with Metronome, Count-In and the mixer disabled. Set **Play from** to the synthesizer: the sound changes to the sound bank, and all of those controls come alive and work. Set it back: the recording returns. Reload the page in each mode — the choice survived.
+8. In the Player group, change a vibrato or slide row on a guitar score and play — the sound changes without reopening the file.
 
 - [ ] **Step 2: 🧑 HUMAN GATE — every settings group, by eye** (criterion 7's drawn half)
 
-Open each of the eight sections and change at least one row in each, watching the score. The lane already proves every row names a real AlphaTab key; what it cannot see is a row that needed `rerender: true` and did not get it (the value changes, the score does not redraw until something else redraws it), or a change that draws wrong. Press both Tools buttons and open the two files they download.
+Open each of the eight sections and change at least one row in each, watching the score. The lane already proves every row names a real AlphaTab key; what it cannot see is a row with the wrong `apply` (the value changes, and the score does not redraw or the sound does not change until something else forces it), or a change that draws wrong. Press both Tools buttons and open the two files they download.
 
 - [ ] **Step 3: Take stock of the v0 acceptance set across all three plans**
 
@@ -2905,10 +3462,10 @@ Criteria 1, 3, 5, 6, 7, 8, 9 and 10 should now be met. **Criterion 9 is verified
 
 ## Self-Review
 
-**Spec coverage.** §7 "Two popovers, not modals" → Tasks 5 and 7, with the non-blocking property asserted in Task 5's own test. §7 Settings groups (Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools) → Task 4, with the real row counts from the reference panel; the Tools group is the v0.1 spec's two Action rows (its §4). §7 "Colors are plain text inputs for now" → `SettingRow`'s `text` kind, called out in its comment. §7 Tracks row full control set (render-select, solo, mute, volume, per-staff display toggles, both transposition sliders) → Tasks 3 and 7. §7 volume-as-ratio with a zero guard, and the 0–16 scale → Tasks 3 and 7. §7 channel coupling → stated in Global Constraints, in `TrackRow`'s comment, in Task 9's by-ear list and in the PR body — and widened to solo and mute, which the spec does not record. §4 and §7 "a file that plays its own recording disables solo, mute and volume, with a tooltip" → Tasks 3 and 7, plus Transpose audio (a Spec Delta, with the source line that justifies it). §7 tablature only for a tuned stringed staff → Tasks 3 and 7, each with a test. §7 eight-controls disclosure → Task 3. §7 "compose controls that already exist" → `SettingRow` composes `Field`, `Checkbox`, `Input`, `NativeSelect`, `Slider`, `Button`; none is new. §7 settings persistence, `fillFromJson`, the per-key merge and the reset toast → Task 6, with both the reload and the corrupt-value paths as e2e cases. §7 the speed slider in the Player group → Task 4's `source: 'api'` row, written by `PlayerShell`'s `applySpeed` (Plan B's single-writer rule), over the engine's 12.5–800 % range (registry, 2026-09-20, superseding the spec's 200 %). §4's 44 px rule → `expectHitAreas` with each popover open, Task 8. §8 criteria 3 and 7 → Tasks 5, 7 and 9. **Deliberately not covered here:** everything in Plans A and B; v0.1's search index and tab chrome; drum tablature (needs a version bump, Q5); persisting the speed (NH-295); a switch between a file's recording and the synthesizer (NH-298, and the second open decision in Task 4).
+**Spec coverage.** §7 "Two popovers, not modals" → Tasks 5 and 7, with the non-blocking property asserted in Task 5's own test. §7 Settings groups (Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools) → Task 4, with a full row inventory by AlphaTab key rather than counts; the Tools group is the v0.1 spec's two Action rows (its §4); the player-mode row → Task 8. §7 "Colors are plain text inputs for now" → `SettingRow`'s `text` kind, called out in its comment. §7 Tracks row full control set (render-select, solo, mute, volume, per-staff display toggles, both transposition sliders) → Tasks 3 and 7. §7 volume-as-ratio with a zero guard, and the 0–16 scale → Tasks 3 and 7. §7 channel coupling → stated in Global Constraints, in `TrackRow`'s comment, in Task 9's by-ear list and in the PR body — and widened to solo and mute, which the spec does not record. §4 and §7 "a file that plays its own recording disables solo, mute and volume, with a tooltip" → Tasks 3 and 7, plus Transpose audio (a Spec Delta, with the source line that justifies it). §7 tablature only for a tuned stringed staff → Tasks 3 and 7, each with a test. §7 eight-controls disclosure → Task 3. §7 "compose controls that already exist" → `SettingRow` composes `Field`, `Checkbox`, `Input`, `NativeSelect`, `Slider`, `Button`; none is new. §7 settings persistence, `fillFromJson`, the per-key merge and the reset toast → Task 6, with both the reload and the corrupt-value paths as e2e cases. §7 the speed slider in the Player group → Task 4's `source: 'api'` row, written by `PlayerShell`'s `applySpeed` (Plan B's single-writer rule), over the engine's 12.5–800 % range (registry, 2026-09-20, superseding the spec's 200 %). §4's 44 px rule → `expectHitAreas` with each popover open, Task 8. §8 criteria 3 and 7 → Tasks 5, 7 and 9. **Deliberately not covered here:** everything in Plans A and B; v0.1's search index and tab chrome; drum tablature (needs a version bump, Q5); persisting the speed (NH-295).
 
-**Open decisions.** Two, both in Task 4 Step 1 and both marked `🟥 OPEN DECISION`, each with the default the plan builds until the maintainer chooses: which of the fork's five api-property rows ship, and whether the `player.playerMode` row ships. Neither blocks Tasks 1-3.
+**Decisions taken after the re-triage (maintainer, 2026-09-20).** The Settings popover is the same as the reference panel — every row. All five api-property rows ship, and the player-mode row ships with its own task (Task 8), superseding the spec's §4 boundary. Asked to confirm the plan had every row, the re-triage replaced the plan's row COUNTS with a full inventory by AlphaTab key (Task 4 Step 1): 92 rows, four sources, three ways a settings row takes effect.
 
 **Placeholder scan.** Two tasks describe rather than transcribe, and both name the exact source of the answer: Task 3's component body is specified as a requirement list plus the one comment that must appear (the test file above it is complete and is the real specification), and Task 4's schema shows the pattern rows with an explicit instruction that a group left as a comment is an unfinished task, not a deferral. Two things are flagged as **read, not run**: that a score change needs `resetChannelStates()` (Global Constraints — Task 7's case and Task 9's by-ear item 6 are what prove it), and that a `TooltipTrigger` and a `PopoverTrigger` can render through one `Button` (Task 5 names the fallback). Every other library fact in the plan was checked against the installed package, with the file and line beside it.
 
-**Type consistency.** `SettingControl` and `SettingValue` are declared once in `SettingRow.tsx`, re-exported from the barrel, and imported by `settings-paths.ts` and `settings-schema.ts`. `PlayerSettingsJson` is declared once in `settings-paths.ts` and is the same type in the schema, the storage module, `live-settings.ts` and `PlayerShell`. `readSettingValue` / `writeSettingValue` keep one name and one signature in the module, the schema's re-export and the test. `SettingDescriptor` is a union discriminated on `source`, and `SettingsPopover` narrows on it before it touches `path`, `key` or `action`. `ApiValueKey` is spelled identically in the schema, `SettingsPopover`'s props and `PlayerShell`'s `applyApiValue`; `'masterVolume'` is added to `useAlphaTab.ts`'s `AlphaTabApiValue` in the same task that first writes it. `TrackStaffState.tablatureAvailable` is spelled identically in `TrackRow`'s props, its tests, and `toMixerTrack`. `StaffDisplayKey` is declared in `live-settings.ts` and used by `TracksPopover`. The `data-testid` values are declared in the task that creates them and reused verbatim: `settings-trigger`, `settings-popover`, `tracks-trigger`, `tracks-popover`, `track-row-<index>`; the expand control's accessible name is `More controls for <track>` in `TrackRow`, its tests and both e2e files.
+**Type consistency.** `SettingControl` and `SettingValue` are declared once in `SettingRow.tsx`, re-exported from the barrel, and imported by `settings-paths.ts` and `settings-schema.ts`. `PlayerSettingsJson` is declared once in `settings-paths.ts` and is the same type in the schema, the storage module, `live-settings.ts` and `PlayerShell`. `readSettingValue` / `writeSettingValue` keep one name and one signature in the module, the schema's re-export and the test. `SettingDescriptor` is a union discriminated on `source` (four members), and `SettingsPopover` narrows on it before it touches `path`, `key` or `action`. `SettingApply` is declared in the schema and is the third parameter of `onSettingChange`, `applySetting` and `applySettingsJson` alike — no `rerender` boolean survives anywhere. `ApiValueKey` is spelled identically in the schema, `SettingsPopover`'s props and `PlayerShell`'s `applyApiValue`; `'masterVolume'` is added to `useAlphaTab.ts`'s `AlphaTabApiValue` in the same task that first writes it. `TrackStaffState.tablatureAvailable` is spelled identically in `TrackRow`'s props, its tests, and `toMixerTrack`. `StaffDisplayKey` is declared in `live-settings.ts` and used by `TracksPopover`. The `data-testid` values are declared in the task that creates them and reused verbatim: `settings-trigger`, `settings-popover`, `tracks-trigger`, `tracks-popover`, `track-row-<index>`; the expand control's accessible name is `More controls for <track>` in `TrackRow`, its tests and both e2e files.
