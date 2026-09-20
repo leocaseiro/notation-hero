@@ -3,6 +3,11 @@
 # `last_applied` is the highest severity applied on that lap.
 lap: 2
 last_applied: P1
+# The loop's rule 7b would re-lap here (a P1 landed on lap 2). The maintainer declined lap 3 on
+# 2026-09-20 — a deliberate override, not an oversight. Do NOT auto-start lap 3 from this state.
+# What lap 3 would have checked first: whether Plan B's reference to `useAlphaTab` in
+# web/lib/alphatab/useAlphaTab.ts still holds after PR #159 merged AlphaTabEngineContext.tsx.
+loop_status: halted-at-lap-2-by-maintainer
 ---
 
 # v0 Transport — Implementation Plan B "Playback Control" (2 of 3)

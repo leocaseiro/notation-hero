@@ -292,5 +292,11 @@
   ],
   "triaged": true,
   "triaged_at": "2026-09-20",
-  "triage_summary": "All 14 walked. 13 applied, 1 partially applied (L2-F8, the disputed one: the review's proposal rejected, only its clarifying sentence kept). 0 dropped, 0 deferred. Round 1 was a picker on L2-F1 and L2-F4 (both Apply); at round 2 the person chose 'Auto-resolve the rest', so the remaining 11 were applied per recommendation and reported back rather than asked."
+  "triage_summary": "All 14 walked. 13 applied, 1 partially applied (L2-F8, the disputed one: the review's proposal rejected, only its clarifying sentence kept). 0 dropped, 0 deferred. Round 1 was a picker on L2-F1 and L2-F4 (both Apply); at round 2 the person chose 'Auto-resolve the rest', so the remaining 11 were applied per recommendation and reported back rather than asked.",
+  "loop_halted": {
+    "at_lap": 2,
+    "date": "2026-09-20",
+    "by": "maintainer decision",
+    "note": "Rule 7b (re-lap after a P1 is applied) was deliberately overridden. Lap 3's first job would have been the drift check: PR #159 merged web/lib/alphatab/AlphaTabEngineContext.tsx and rewrote PlayerShell.tsx, NotationSurface.tsx and both e2e files, while Plan B is written against useAlphaTab in web/lib/alphatab/useAlphaTab.ts. That check was NOT performed and this PR does not claim it."
+  }
 }
