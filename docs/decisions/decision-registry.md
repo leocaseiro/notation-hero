@@ -87,11 +87,16 @@ synthesiser**, and NH-298, which the docs name for it, does not list it. AlphaTa
 the switch at runtime: `settings.player.playerMode = EnabledSynthesizer` plus `api.updateSettings()`
 swapped the player in about 100 ms, measured, and the metronome then played.
 
-**Found on the way, not fixed here:** a close button on toasts is not trivial (Sonner's is 20 px,
-under the 44 px gate, and unreadable in dark mode); pausing INSIDE a count-in and pressing Play
-again hangs the player (upstream: `_onSamplesPlayed` returns on a zero count before its finish
-check); and `playerReady` latches true, so Play stays enabled while a soundfont reloads after a
-recording file is replaced by a synth file.
+**Found on the way, not fixed here — each has a ticket:** a close button on toasts is not trivial
+(Sonner's is 20 px, under the 44 px gate, and unreadable in dark mode) —
+[NH-311](https://leocaseiro.atlassian.net/browse/NH-311); pausing INSIDE a count-in and pressing
+Play again hangs the player (upstream: `_onSamplesPlayed` returns on a zero count before its
+finish check) — [NH-312](https://leocaseiro.atlassian.net/browse/NH-312); and `playerReady`
+latches true, so Play stays enabled while a soundfont reloads after a recording file is replaced
+by a synth file — [NH-313](https://leocaseiro.atlassian.net/browse/NH-313). The maintainer also
+asked for a hover preview on the seek bar (a lighter fill up to the pointer and the time under
+it) and chose to build it as its own PR — [NH-310](https://leocaseiro.atlassian.net/browse/NH-310).
+The recording-versus-synthesiser switch is being added to Plan C by the maintainer.
 
 ### 2026-09-20 — v0 Plan B shipped: the transport, and six decisions made while building it (NH-291)
 
