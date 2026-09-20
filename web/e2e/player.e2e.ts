@@ -111,6 +111,46 @@ test('an unsupported file raises a toast and leaves the player usable', async ({
   await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
 });
 
+// The loading toast has to be PAINTED before loadScoreFromBytes takes the main thread. Sonner
+// enters over 400 ms and a blocked thread freezes that fade wherever it got to, so a toast still
+// at opacity 0 when the freeze begins is never seen at all — measured peak opacity 0.00 while the
+// text said "Opening …", on every file, throttled or not. It works only because client/'s Toaster
+// gives loading toasts `transition-none`. The CPU throttle widens the parse so the window is
+// unmissable, and the assertion is on painted OPACITY on purpose: Playwright counts a fully
+// transparent element as visible, so toBeVisible() would pass against the bug.
+test('the "Opening…" toast is painted, not merely present', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.evaluate(() => {
+    const samples: number[] = [];
+    (globalThis as unknown as { __opening: number[] }).__opening = samples;
+    const tick = () => {
+      const toast = document.querySelector('[data-sonner-toast]');
+      if (toast?.textContent?.includes('Opening')) {
+        samples.push(Number(getComputedStyle(toast).opacity));
+      }
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  });
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 20 });
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+    timeout: 60_000,
+  });
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
+
+  const opacities = await page.evaluate(
+    () => (globalThis as unknown as { __opening: number[] }).__opening,
+  );
+  expect(Math.max(0, ...opacities)).toBeGreaterThan(0.9);
+});
+
 // The 25 MB gate runs before the file is read, so a zero-filled buffer one byte over the limit is
 // enough — its content never reaches the parser.
 test('a file over 25 MB is refused before it is read', async ({ page }) => {

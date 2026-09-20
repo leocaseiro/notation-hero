@@ -33,6 +33,16 @@ that were prose until now are checked by CI on every pull request.
   a real `run:` line, so commenting a step out fails the guard rather than sliding past a
   substring match — plus a fifth: that `e2e` is still listed in `ci-green`'s `needs:`, without
   which the lane would keep running but stop blocking merge.
+- **Loading toasts appear instantly, and the player's "Opening …" is proven painted — new.**
+  The toast announcing a file open was never visible, on any file: sonner enters over 400 ms and
+  `loadScoreFromBytes` takes the main thread about 30 ms in, freezing that fade where it stands.
+  Measured peak opacity while the text read "Opening …": 0.00, throttled or not. Loading toasts
+  now carry `transition-none`, so the toast is fully painted before the freeze and the painted
+  pixels stay on screen for its whole duration. The guard asserts painted OPACITY rather than
+  presence, on purpose: Playwright counts a fully transparent element as visible, so
+  `toBeVisible()` passes against this bug. Verified 10/10 serial and 10/10 under worker
+  contention, and failing at opacity 0 the moment the fix is removed.
+
 - **Drag-and-drop is driven through Chrome's real drag pipeline — new, and it found a bug.**
   A dropped file did nothing at all. The cause was `dropEffect = 'link'` on `dragover`: per the
   HTML spec a dropEffect outside the SOURCE's `effectAllowed` sets the drag operation to "none",
