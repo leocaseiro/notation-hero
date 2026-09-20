@@ -128,6 +128,20 @@ jobs:
           curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VER}/actionlint_${ACTIONLINT_VER}_linux_amd64.tar.gz" -o /tmp/actionlint.tgz
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tgz" | sha256sum -c -
           sudo tar -xzf /tmp/actionlint.tgz -C /usr/local/bin actionlint
+          # editorconfig-checker: its npm wrapper fetches the binary through the GitHub REST API on
+          # every run, and with no token it shares the runner IP's 60-requests-per-hour anonymous
+          # budget — a 403 there takes the whole lint job down (NH-309). Seed the wrapper's cache
+          # from the release DOWNLOAD url instead: that is a CDN redirect with no API limit. The
+          # wrapper's isReady() only stats this directory, so finding it populated makes it skip the
+          # API entirely and just run the binary — same version, same invocation, one code path.
+          # Keep EC_VERSION and the SHA in lockstep with the root lint:editorconfig script; the
+          # v3.11.3 pin is NH-293 (v4.0.0 renamed every release asset, which the wrapper cannot find).
+          EC_VERSION=v3.11.3
+          EC_DIR="$(node -e "console.log(require('path').dirname(require.resolve('editorconfig-checker/package.json')))")/bin/${EC_VERSION}"
+          curl -fsSL --retry 3 --retry-delay 5 --max-time 120 "https://github.com/editorconfig-checker/editorconfig-checker/releases/download/${EC_VERSION}/ec-linux-amd64.tar.gz" -o /tmp/ec.tgz
+          echo "6a73858f8906e466910fb3b3b525c206b27dacdad138910b0b0513f021ab32c4  /tmp/ec.tgz" | sha256sum -c -
+          mkdir -p "$EC_DIR"
+          tar -xzf /tmp/ec.tgz -C "$EC_DIR"
       - name: Prettier (format check)
         run: pnpm run format:check
       - name: ESLint
