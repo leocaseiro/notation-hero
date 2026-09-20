@@ -54,6 +54,14 @@ loop_status: halted-at-lap-2-by-maintainer
 > - **Task 9** — the pressed-state axe case waits for the tempo percentage to finish fading in; axe
 >   folds partial opacity into its contrast maths.
 > - **Human gates** — handed back once, at the end, by the maintainer's choice; none self-certified.
+>
+> **After the first hands-on round (same day):** `Scrubber` works in MILLISECONDS, not whole seconds
+> (Task 3), with `Slider` gaining `keyStep` / `largeStep` / `valueText`; `TempoControl` has NO
+> `ScrubArea` (Task 5 — it made the number impossible to select); `TransportToggle`'s tooltip trigger is a
+> span around the button; the seek bar and a file open both clear AlphaTab's bar range (Task 6);
+> the row has a `leading` slot for Open file, the mockup's Play and metronome glyphs, and tooltips
+> on every icon button; the header is three columns (Task 7); and Task 8's delay-then-hold bar is
+> replaced by a bar that shows from the first frame and fades (`useLoadingBarPhase`).
 
 **Goal:** Give the player its transport — a seek bar that scrubs, a tempo control in the header, Loop / Metronome / Count-In toggles that audibly change playback, and a determinate progress bar for the soundfont download.
 

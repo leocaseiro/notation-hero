@@ -12,6 +12,81 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-20 — Plan B, first hands-on round: sixteen findings, and what they changed (NH-291)
+
+The maintainer tested PR #162 by hand and raised sixteen items. Each was reproduced in a real
+browser before it was touched; the two runtime bugs were each attacked by a second, independent
+investigation before the fix was trusted. What follows is what CHANGED a decision or what is
+enforced — the plain bug fixes are in the commits.
+
+- **Using the seek bar drops the bar-range selection — new.** Scenario: bars are selected for Loop,
+  the person drags the seek bar beyond them and presses Play. The button turned into Pause, nothing
+  moved, and Pause fell back to the old position. In AlphaTab 1.8.4 a seek outside an active
+  playback range leaves the sequencer clamped to the range's end while the reported time is the
+  requested one; Play renders empty buffers and the finish check never runs. The seek bar covers
+  the whole score, so it clears the range first — what AlphaTab does itself for a click on a beat.
+  **Trade-off accepted:** a scrub INSIDE the selected bars drops the selection too. Keeping it
+  needs the seek's echo (the main thread cannot convert milliseconds to ticks), and a count-in
+  emits no echo. Opening a file clears the range as well: AlphaTab kept the old score's range on
+  the main thread while the new sequencer had none. 🤖 two e2e cases, real mouse.
+- **The loading bar means "the player is not ready yet" — superseding the spec's "soundfont only"
+  bar (§4) and the plan's delay-then-hold.** It used to wait 300 ms for soundfont progress before
+  showing. On a warm cache AlphaTab reports the whole file in two events a millisecond apart, at
+  the END of the wait, so that timer could never finish: a 20-second load on a slow connection
+  showed no bar at all. Maintainer: _"I would like to show always on 0ms if possible. I would
+  prefer a flash, or a timeout to fade-out the progress bar."_ It is now in the server HTML,
+  indeterminate until bytes flow, a real fraction (still the soundfont's — the engine files report
+  none) while they do, held at 100 % for 400 ms and faded over 300 ms. It shows nothing on a
+  failure, and it also covers opening a file, committed with `flushSync` so it is painted before
+  the synchronous parse. 🤖 two e2e cases, one on a warm cache; the fade is asserted from a
+  per-frame opacity trace, because Playwright's `toBeVisible()` passes at opacity 0.
+- **The seek bar works in milliseconds — superseding the plan's whole-second Scrubber.** The plan
+  argued one second "is the granularity a drummer wants". In the hand it was two faults: the thumb
+  jumped once a second during playback, and it could not be put in the middle of a bar. Base UI
+  has ONE step for pointer and keyboard, so `Slider` gained `keyStep` (arrow keys: one second),
+  `largeStep` (Shift+Arrow, PageUp/PageDown: ten) and `valueText` (a listener hears "01:42 of
+  04:20", not a millisecond count). Pixel-identical; no baseline changed.
+- **The tempo field has no drag-to-change gesture — superseding the plan's "drag-scrubbable".**
+  Base UI's `ScrubArea` wrapped the input; it cancels pointerdown and sets `user-select: none`
+  inside it, so the number could not be selected with the mouse. Maintainer: _"Shouldn't we only
+  change up/down like the native input number?"_ The wheel, the arrow keys, the `±` buttons with
+  hold-to-repeat and typing all stay.
+- **The Metronome glyph is decided — NH-294 resolved.** The mockup's inline SVG, whose provenance
+  the plan called unestablished, is byte-identical to `metronome` from Material Design Icons
+  (Pictogrammers), Apache-2.0. It replaces the `avg_pace` placeholder.
+- **The transport follows the mockup's shapes.** Open file is FIRST in the row (the mockup keeps it
+  bottom-left; v0 has no rail) as a borderless 48 px icon, and `trailing` is free again for Plan
+  C's Tracks trigger. Play is a solid teal circle with solid glyphs — inline paths, because the
+  self-hosted Material Symbols face carries the weight axis only and ignores `FILL 1`. The header
+  is the mockup's three columns with the tempo pill centred in a bordered pill; the right column
+  waits for Plan C's Settings gear. **No plan owns "match the mockup" as a goal** — each plan owns
+  the elements it adds; the page chrome (dark shell, left rail, pinned footer) belongs to no plan
+  yet. Plan C's Task 7 refers to an "existing `Separator`" in the row that does not exist.
+- **Every icon button has a tooltip that tells its state, always present.** A tooltip that came
+  and went swapped the wrapped and the bare element, which remounted the button and dropped its
+  focus. A disabled toggle's tooltip now opens under the mouse too: its trigger is a span AROUND
+  the button, because a disabled `Button` is `pointer-events: none` and never saw the hover — the
+  hint saying why Metronome and Count-In are unavailable opened on keyboard focus only.
+- **The drop zone's dashed outline is scoped to its own class.** Base UI's Slider marks its
+  elements `data-dragging` while a thumb is held, and a bare `[data-dragging]` rule drew the drop
+  zone's outline around the seek bar on every scrub.
+- **The "Opening…" toast waits for Sonner to mount it, bounded — superseding the fixed two
+  frames.** Exactly enough on an idle page, not on a slow one: under a 20x CPU throttle the toast
+  reached the screen only after the parse had finished.
+
+**Answered, not built (the maintainer's question 16).** A score with an embedded recording plays
+through AlphaTab's backing-track player, whose synthesiser stubs out the metronome — so Metronome
+and Count-In are disabled there, by design. **No plan (A, B or C) builds a switch to the
+synthesiser**, and NH-298, which the docs name for it, does not list it. AlphaTab 1.8.4 does allow
+the switch at runtime: `settings.player.playerMode = EnabledSynthesizer` plus `api.updateSettings()`
+swapped the player in about 100 ms, measured, and the metronome then played.
+
+**Found on the way, not fixed here:** a close button on toasts is not trivial (Sonner's is 20 px,
+under the 44 px gate, and unreadable in dark mode); pausing INSIDE a count-in and pressing Play
+again hangs the player (upstream: `_onSamplesPlayed` returns on a zero count before its finish
+check); and `playerReady` latches true, so Play stays enabled while a soundfont reloads after a
+recording file is replaced by a synth file.
+
 ### 2026-09-20 — v0 Plan B shipped: the transport, and six decisions made while building it (NH-291)
 
 Plan B (playback control) is implemented: a seek bar that scrubs, a tempo control in the header,
