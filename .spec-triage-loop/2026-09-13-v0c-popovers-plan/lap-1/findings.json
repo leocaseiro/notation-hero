@@ -1,0 +1,318 @@
+{
+  "artifact": "docs/plans/2026-09-13-v0c-popovers-plan.md",
+  "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/admiring-northcutt-763a69",
+  "branch": "claude/plan-c-review-updates-fcd111",
+  "commit": "dc34d297",
+  "lap": 1,
+  "review_skill": "compound-engineering:ce-doc-review",
+  "review_mode": "mode:headless",
+  "finding_count_triaged_this_lap": 8,
+  "finding_count_deferred_to_lap_2": 14,
+  "dropped_count": 5,
+  "note": "Verification was dispatched to 5 targeted agents that RAN tools (grep/node/live fillFromJson probes/a rendered Base UI sandbox/git against the unmerged Plan B branch) plus ce-doc-review headless. Every finding below cites a file:line that was actually read or executed.",
+  "id_glossary": {
+    "Plan A": "v0a engine-and-first-sound plan, MERGED as PR #159, on master",
+    "Plan B": "v0b transport plan, NOT merged - PR #162, branch claude/plan-b-transport-nh291-f3e25e",
+    "Task 4": "the settings schema and its accessors - the 92-row inventory and the four row sources",
+    "Task 5": "the Settings popover (the header gear)",
+    "Task 6": "persist the settings to localStorage",
+    "Task 7": "the Tracks popover (the mixer)",
+    "Task 8": "the player-mode row - the file's recording vs the synthesizer",
+    "Task 9": "extend the axe gate and open the PR",
+    "Task 10": "hand back the two human gates and close out v0",
+    "P0": "the feature ships silently broken",
+    "P1": "wrong but recoverable",
+    "P2": "cosmetic or wording",
+    "the reference / the fork": "READ-ONLY MPL-2.0 clean-room reference at /Users/leocaseiro/Sites/alphaTabWebsite branch rhythm-game, src/components/AlphaTabRhythmGame/playground-settings.tsx"
+  },
+  "triaged_this_lap": [
+    {
+      "id": "F-1",
+      "severity": "P0",
+      "area": "Task 4 - the settings schema",
+      "title": "Eleven of the fourteen Fonts rows are silent no-ops through fillFromJson",
+      "whats_wrong": "The plan routes every settings row through api.settings.fillFromJson(json). AlphaTab 1.8.4's resources deserializer (RenderingResourcesSerializer.setProperty, alphaTab.core.mjs:29464-29508) has NO case for nine of the fourteen font names - they are deprecated getter/setter aliases over elementFonts - and effectFont + inlineFingeringFont are @json_ignore dead fields (alphaTab.d.ts:14617-14690). The reference gets away with it by assigning the live object directly, which hits the alias setter. The plan's architecture cannot.",
+      "evidence": "Ran against a real new Settings(): 'display.resources.titleFont NO-OP wrote bold 33px Georgia, still 32px' ... 62 applied, 11 silent no-ops. Dead: copyrightFont, titleFont, subTitleFont, wordsFont, effectFont, timerFont, directionsFont, fretboardNumberFont, barNumberFont, inlineFingeringFont, markerFont. Working: numberedNotationFont, tablatureFont, graceFont.",
+      "before": "| Display > Fonts | 14 | settings | display.resources. + copyrightFont, titleFont, ... markerFont |",
+      "after": "Re-key the nine alias rows onto display.resources.elementFonts.<EnumName>: copyrightFont->ScoreCopyright, titleFont->ScoreTitle, subTitleFont->ScoreSubTitle, wordsFont->ScoreWords, timerFont->EffectBeatTimer, directionsFont->EffectDirections, fretboardNumberFont->ChordDiagramFretboardNumbers, markerFont->EffectMarker, barNumberFont->BarNumber. effectFont and inlineFingeringFont have no elementFonts target AND are unread by the renderer.",
+      "proposed_fix": "Re-key nine rows to elementFonts; drop the two dead rows (group becomes 12, total 90) or ship them explicitly labelled inert.",
+      "why_it_works": "elementFonts is the only font route the 1.8.4 JSON serializer implements; verified fillFromJson({display:{resources:{elementFonts:{ScoreTitle:'bold 33px Georgia'}}}}) makes titleFont 33px.",
+      "conflicts_with_decision": "The maintainer decided every reference row ships. Dropping two rows touches that decision, so it is a real question, not a mechanical fix."
+    },
+    {
+      "id": "F-2",
+      "severity": "P1",
+      "area": "Task 4 - the settings schema",
+      "title": "A THIRD mis-bound reference row the plan does not flag: the wrong enum on the orientation row",
+      "whats_wrong": "The plan's Global Constraints say 'Do not port the fork's TWO mis-bound rows'. There are three. playground-settings.tsx:723-729 binds otherSystemsTrackNameOrientation but hands the dropdown the TrackNameMode enum (FullName|ShortName) instead of TrackNameOrientation (Horizontal|Vertical). The sibling row at :708-714 uses the correct enum, which is what makes it a slip. A porter told there are only two will mirror this one.",
+      "evidence": "sed -n '708,740p' on the reference shows enumType: alphaTab.model.TrackNameMode on the orientation row. Probed the live namespace: TrackNameOrientation = Horizontal|Vertical, TrackNameMode = FullName|ShortName - disjoint sets. A TrackNameMode name parses to undefined via JsonHelper.parseEnum.",
+      "before": "Do not port the fork's two mis-bound rows.",
+      "after": "Do not port the fork's three mis-bound rows. ... And its otherSystemsTrackNameOrientation row is offered with the TrackNameMode enum (FullName / ShortName) instead of TrackNameOrientation (Horizontal / Vertical); the row above it, firstSystemTrackNameOrientation, gets the right one.",
+      "proposed_fix": "Change 'two' to 'three', name the third, and annotate both orientation rows in the Step 1 inventory with model.TrackNameOrientation.",
+      "why_it_works": "Names the slip the plan's own count would otherwise hide, and pins the enum at the row so it cannot be guessed."
+    },
+    {
+      "id": "F-3",
+      "severity": "P0",
+      "area": "Task 7 - the mixer's clean-mix contract",
+      "title": "The mix reset does not fire on the first score, does not cover volume, and is undone by playerReady",
+      "whats_wrong": "Three independent defects in one handler. (1) api.player is NULL on the first scoreLoaded: _onScoreLoaded triggers the event and only THEN builds the player (alphaTab.core.mjs:48025-48029); with EnabledAutomatic the constructor creates nothing while there is no score (:46684). So api.player?.resetChannelStates() silently no-ops on load one, and on a mode-changing load it reaches a player destroyed milliseconds later (:46690). (2) resetChannelStates() does NOT clear volume - it clears mute, solo and live transposition only (:38911-38917); mixVolume is initialised once per channel in _channelInit (:39222) and survives. (3) playerReady re-asserts every RENDERED track's channel volume to playbackInfo.volume/16 (:45587) with no fired-once latch, and each of the fourteen midi rows calls loadMidiForScore() -> midiLoaded -> readyForPlayback, so the sliders desync from the synth.",
+      "evidence": "alphaTab.core.mjs:48025, 46684, 46690, 38911, 39222, 45587, 33796, 33766.",
+      "before": "useAlphaTabEvent(api, 'scoreLoaded', (score) => { api?.player?.resetChannelStates(); if (api) clearTrackTranspositions(api); setTracks(score.tracks.map(toMixerTrack)); });",
+      "after": "Rebuild rows on scoreLoaded; do the ENGINE reset on playerReady (which fires after the player exists and re-fires on every swap and midi load), and re-assert each track's volume there too.",
+      "proposed_fix": "Move resetChannelStates() to a playerReady handler, and in the same handler push every row's current volume back through changeTrackVolume so AlphaTab's /16 re-assert cannot win.",
+      "why_it_works": "playerReady is the only event guaranteed to run after the player instance exists, and it is also the exact event that clobbers the volumes - so reacting there fixes the null-player hole and the desync with one handler."
+    },
+    {
+      "id": "F-4",
+      "severity": "P0",
+      "area": "Task 7 - the mixer's clean-mix contract",
+      "title": "clearTrackTranspositions() cannot undo the carry-over it exists to fix",
+      "whats_wrong": "ModelUtils.applyPitchOffsets runs at the TOP of _internalRenderTracks (alphaTab.core.mjs:45837), i.e. BEFORE scoreLoaded fires, and stamps the stale transpositionPitches into the new score's staves. The plan then sets settings.notation.transpositionPitches = [] and calls updateSettings(), which re-runs applyPitchOffsets (:45686) - but with an empty array the loop body is never entered, so nothing is un-stamped. MidiFileGenerator then falls back to the staff value (:43020), so the next score is both DRAWN and PLAYED transposed by the previous score's offset.",
+      "evidence": "alphaTab.core.mjs:3691 (applyPitchOffsets loop is guarded by i < transpositionPitches.length), :45837, :45686, :43020.",
+      "before": "export function clearTrackTranspositions(api: AlphaTabApi): void;  // sets transpositionPitches = []",
+      "after": "Write a zero-filled array at least as long as the previous one - new Array(previousLength).fill(0) - so applyPitchOffsets actually re-stamps zero; or zero each staff.transpositionPitch directly.",
+      "proposed_fix": "Zero-fill rather than empty, and keep the previous length so every previously-transposed track is reached.",
+      "why_it_works": "applyPitchOffsets only touches track i when i < transpositionPitches.length; an empty array reaches no track, a zero-filled one reaches every track that was transposed."
+    },
+    {
+      "id": "F-5",
+      "severity": "P1",
+      "area": "Task 7 - the mixer's clean-mix contract",
+      "title": "The e2e case the plan calls its proof of the reset cannot observe the reset",
+      "whats_wrong": "Global Constraints say of the reset: 'Established by reading the source, not by running - Task 7's e2e case is what proves it.' That case ('opening another score starts from a clean mix') asserts expect(await mutesAfterOpen()).toEqual([]) - the ABSENCE of replayed mutes, never the presence of a reset. And recordApiCalls wraps at[name] where at is the api itself; resetChannelStates lives on api.player, so the helper structurally cannot record it. The plan's only claimed proof of its own read-not-run item does not exist.",
+      "before": "expect(await mutesAfterOpen()).toEqual([]);  // + recordApiCalls(page, method) wrapping at[name]",
+      "after": "Teach recordApiCalls a dotted path ('player.resetChannelStates') so it can wrap a nested object, then assert the reset was called at least once after the new score is ready - and assert the audible consequence too (the previously muted channel is no longer muted).",
+      "proposed_fix": "Extend recordApiCalls to resolve a dotted path, and add a positive assertion on the reset.",
+      "why_it_works": "Turns the plan's stated proof into a real one, and it is the same helper both popovers already use."
+    },
+    {
+      "id": "F-6",
+      "severity": "P1",
+      "area": "Task 7 - the mixer",
+      "title": "The volume ratio is an absolute mix volume, so the slider at its own starting value is LOUDER than untouched",
+      "whats_wrong": "changeTrackVolume does not multiply anything: setChannelVolume assigns straight to the channel (alphaTab.core.mjs:40085 -> :38900 c.mixVolume = volume). AlphaTab's own baseline for that same slot is playbackInfo.volume/16 (:45590). So for a track the file sets to 12, the untouched mix volume is 0.75, but moving the slider to 12 - its own starting position - sends 12/12 = 1.0 and the track jumps LOUDER. The plan and the spec both call this 'a ratio against the level the file gives the track', which is not what the synth does.",
+      "before": "api.changeTrackVolume([track], row.fileVolume > 0 ? next / row.fileVolume : 0);",
+      "after": "api.changeTrackVolume([track], row.fileVolume > 0 ? next / 16 : 0);  // OR keep the formula and record the jump as accepted v0 behaviour",
+      "proposed_fix": "Either divide by 16 to match AlphaTab's own baseline so the slider starts neutral, or keep fork parity and state the jump explicitly in Notes and on the by-ear gate list.",
+      "why_it_works": "next/16 makes slider-at-file-volume reproduce exactly what AlphaTab set itself, so first touch is silent rather than a step up.",
+      "note": "The spec locks the ratio formula, so changing it is a Spec Delta - a real decision, not a mechanical fix."
+    },
+    {
+      "id": "F-7",
+      "severity": "P1",
+      "area": "Tasks 5 and 7 - tooltips",
+      "title": "The state-telling tooltip decision does not land: bare names on both triggers, and no screen reader ever hears the state",
+      "whats_wrong": "Two halves. (1) The Global Constraint says 'The tooltip says the STATE, not just the name: Solo: on, not Solo' and lists the Settings gear and the Tracks trigger among the controls it covers - but Task 5's case asserts toHaveText('Settings') and Task 7's asserts toHaveText('Tracks'). (2) Base UI 1.6.0's Tooltip sets NO aria-describedby at all - there is no useRole anywhere in @base-ui/react/tooltip/, verified by rendering it (aria-describedby = null both nested and plain). So EVERY state-telling tooltip in this plan - Solo: on, Mute: off, Shown in the score - is invisible to a screen reader, and axe cannot flag it.",
+      "before": "await expect(openTooltip(page)).toHaveText('Settings');   // and the bare <Button aria-label=\"Settings\">",
+      "after": "Either exempt a trigger whose state is already carried by aria-expanded (and say so in the constraint), or give it a state ('Settings - closed'/'Settings - open'). And for every state-telling tooltip, carry the state in an announced attribute too: aria-pressed for Solo/Mute, or a stateful aria-label for the render-select box.",
+      "proposed_fix": "Add a Global Constraint sentence: a tooltip is decoration to assistive tech, so the state must ALSO ride on aria-pressed / aria-expanded / a stateful aria-label; and settle whether the two popover triggers are exempt from the state rule.",
+      "why_it_works": "Makes the maintainer's decision real for every user rather than only sighted mouse users, and removes the contradiction between the constraint and both tasks."
+    },
+    {
+      "id": "F-8",
+      "severity": "P1",
+      "area": "Task 8 - the player-mode row",
+      "title": "EnabledExternalMedia is persisted and strands the transport with a misleading tooltip and an endless loading bar",
+      "whats_wrong": "player.playerMode ships all five PlayerMode options and is stored. Task 8 Step 4 builds a settled state for Disabled (playbackOff suppresses loadingPlayer and the Play tooltip reads 'Playback is turned off in Settings'). EnabledExternalMedia gets nothing: 'it needs no code of its own - the transport simply stays not-ready - but say in the PR that it is inert.' After a reload the drummer meets a permanently aria-disabled Play button whose tooltip still reads 'Play', with loadingPlayer true forever because only playbackOff suppresses it - the exact state Step 4 exists to prevent.",
+      "before": "const loadingPlayer = !failed && !playbackOff && (!playerReady || opening);   // + tooltip: playbackOff ? 'Playback is turned off in Settings' : playing ? 'Pause' : 'Play'",
+      "after": "Treat external media the same way as Disabled: a third settled state with its own tooltip ('This mode needs an external media player, which this app does not provide'), suppressing the loading bar; OR drop EnabledExternalMedia from the row's options.",
+      "proposed_fix": "Give external media a settled state and its own tooltip, or remove the option.",
+      "why_it_works": "Either way a persisted choice can never leave the player looking permanently broken with no explanation - which is the rule Step 4 already applies to Disabled.",
+      "conflicts_with_decision": "Dropping the option touches the maintainer's 'every setting ships' decision, so it is a real question."
+    }
+  ],
+  "deferred_to_lap_2": [
+    {
+      "id": "D-1",
+      "severity": "P1",
+      "title": "scoreLoaded fires ON SUBSCRIBE (EventEmitterOfT._fireOnRegister, alphaTab.core.mjs:24722 + :45531), so the mixer's reset/clear/rebuild runs on every subscribe including React Strict Mode's dev double-mount. useAlphaTab.ts already documents this behaviour for a different reason."
+    },
+    {
+      "id": "D-2",
+      "severity": "P1",
+      "title": "_setupOrDestroyPlayer() ALWAYS returns false (alphaTab.core.mjs:46705-46713) despite its JSDoc, so _onScoreLoaded's guard always fires loadMidiForScore() and _internalRenderTracks calls it again at :45847 - TWO MIDI generations per score load. Any assertion counting loadMidiForScore must expect two."
+    },
+    {
+      "id": "D-3",
+      "severity": "P2",
+      "title": "The two disabled popover triggers need the span wrapper the repo already mandates. buttonVariants carries aria-disabled:pointer-events-none (Button.tsx:20) and the Plan B registry records the rule; Plan C applies it only to Task 8's Play button, not to settings-trigger (disabled={!engine}) or tracks-trigger (disabled={!playerReady}, now reachable mid-session because Task 8 un-latches playerReady)."
+    },
+    {
+      "id": "D-4",
+      "severity": "P2",
+      "title": "DEFAULT_PLAYER_SETTINGS.core.engine = 'svg' is not AlphaTab's default ('default', alphaTab.core.mjs:65505), violating the plan's own rule that every shipped default equals AlphaTab's or the shell's. Benign - 'default' aliases to svg (:64879) - but unexplained."
+    },
+    {
+      "id": "D-5",
+      "severity": "P2",
+      "title": "The reference's display.barsPerRow control carries a +1 slider offset the inventory does not mention; a porter mirroring its numbers ships an off-by-one."
+    },
+    {
+      "id": "D-6",
+      "severity": "P2",
+      "title": "AlphaTab has 21 RenderStylesheet properties; the reference exposes 12. Nine are absent (perTrackDisplayTuning, perTrackChordDiagramsOnTop, globalDisplayChordDiagramsInScore, perTrackMultiBarRest, extendBarLines, hideEmptyStaves, hideEmptyStavesInFirstSystem, showSingleStaffBrackets, barNumberDisplay). Fork parity is the brief, but 'every single setting from alphatab' is not what 12 rows delivers - worth one honest sentence."
+    },
+    {
+      "id": "D-7",
+      "severity": "P2",
+      "title": "Task 1's accordion test renders two items with no `multiple` prop; AccordionRoot.js:71 collapses to single-open without it. Also AccordionRoot is NOT a forwardRef component (AccordionRoot.d.ts:11-13) unlike its four siblings, so a ref-forwarding wrapper has nowhere to send the ref."
+    },
+    {
+      "id": "D-8",
+      "severity": "P2",
+      "title": "Accordion state attribute is data-panel-open on the TRIGGER but data-open on item/header/panel - four parts, two names. Panel also exposes --accordion-panel-height/width CSS vars."
+    },
+    {
+      "id": "D-9",
+      "severity": "P2",
+      "title": "SETTINGS_VERSION is exported by Task 6 and the spec says 'merge per key using the stored version', but loadStoredSettings never reads a version."
+    },
+    {
+      "id": "D-10",
+      "severity": "P2",
+      "title": "tooling/check-layout.sh Rule 3 (repo-wide, runs on pre-commit) requires every X.test.* to have a TRACKED X.ts sibling. The plan's TDD shape (write test -> watch fail -> write source) trips it if anyone commits between steps. Say: each task's Steps 1-4 land in one commit."
+    },
+    {
+      "id": "D-11",
+      "severity": "P2",
+      "title": "web/ has no vitest config, so tests run in the NODE environment with no DOM and no globals. settings-storage.test.ts must inject or stub its storage."
+    },
+    {
+      "id": "D-12",
+      "severity": "P2",
+      "title": "data-popup-open is emitted by BOTH the tooltip trigger and the popover trigger (utils/popupStateMapping.js:45), so it cannot tell them apart on a stacked trigger - the discriminator is aria-expanded. Belongs in Global Constraints so nobody adds a data-[popup-open]: class to the gear."
+    },
+    {
+      "id": "D-13",
+      "severity": "P2",
+      "title": "PlayerHeader.tsx imports nothing from react today; the new actions?: ReactNode slot needs an import type { ReactNode } from 'react'."
+    },
+    {
+      "id": "D-14",
+      "severity": "P2",
+      "title": "The PR body omits three template sections: ## What & why, a ## Jira line with the full clickable URL (the repo is on GitHub Free so a bare NH-291 does not auto-link), and ## How to test pointing at Task 10's two by-hand walks."
+    }
+  ],
+  "mechanical_applied_without_asking": [
+    {
+      "id": "M-1",
+      "what": "Self-Review: '44 px rule -> expectHitAreas with each popover open, Task 8' -> 'Task 9'. The axe-gate widening and both popover-open cases are Task 9 Step 1 and Step 2."
+    },
+    {
+      "id": "M-2",
+      "what": "resetChannelStates has SIX sites, not four: add alphaTab.core.mjs:40431 (a BackingTrackAudioSynthesizer no-op stub) and :50000 (worker-side message dispatch). Drop the phrase 'appears only on the public surface'."
+    },
+    {
+      "id": "M-3",
+      "what": "resetChannelStates() clears mute, solo and live transposition pitches only - NOT volume (alphaTab.core.mjs:38911-38917)."
+    },
+    {
+      "id": "M-4",
+      "what": "A spread {...array} over display.padding does not 'read as no padding' - fillFromJson assigns it through unvalidated (:29586) and the layout then calls padding.map() on it (:57636), throwing a TypeError and aborting the render, unguarded."
+    },
+    {
+      "id": "M-5",
+      "what": "BackingTrackAudioSynthesizer stubs SIX methods (:40427-40432), including resetChannelStates itself. masterVolume does NOT stub - it is a live field forwarded by BackingTrackPlayer.updateMasterVolume (:40458). Count-in is silent but NOT inert: play() still issues a real seekTo via updateTimePosition(0, true) (:39955-39958)."
+    },
+    {
+      "id": "M-6",
+      "what": "expectHitAreas' slider clause is Plan B's addition, not Plan A's; and both expectNoViolations and expectHitAreas are module-local unexported functions in web/e2e/a11y.e2e.ts, not shared lane helpers."
+    },
+    {
+      "id": "M-7",
+      "what": "setAlphaTabValue is exported from web/lib/alphatab/useAlphaTab.ts, not its own module - 'beside it' should read 'a sibling module in the same directory'."
+    },
+    {
+      "id": "M-8",
+      "what": "File Structure Modified table: add web/lib/alphatab/useAlphaTab.ts (Task 5 adds 'masterVolume' to the AlphaTabApiValue union)."
+    },
+    {
+      "id": "M-9",
+      "what": "PR body: '## Pulumi preview / safe - no infra/ changes' -> 'n/a - this PR touches no infra/ files'. 'safe' is one of three classification words the template reserves for an actual local pulumi preview result; the gate is inert here because PR_INFRA_CHANGED is false."
+    },
+    {
+      "id": "M-10",
+      "what": "react-hooks/immutability and react-hooks/set-state-in-effect are errors in BOTH web/ and client/ (verified via eslint --print-config on both). The plan says 'in web/' twice, which misleads whoever writes Tasks 1-3."
+    },
+    {
+      "id": "M-11",
+      "what": "Global Constraints 44 px bullet: every Button size is under 44 px too - default/icon are 36 px and even icon-lg is 40 px (Button.tsx:37-47) - so every Button needs an explicit size-11 / min-h-11 min-w-11, as PlayerShell already does."
+    },
+    {
+      "id": "M-12",
+      "what": "Add the spec-triage-loop YAML frontmatter (lap / last_applied) that Plans A and B both carry and this plan lacks."
+    },
+    {
+      "id": "M-13",
+      "what": "Gp7Exporter#export is inherited from the abstract ScoreExporter (alphaTab.d.ts:15003) and its settings parameter is optional and nullable; staff.tuning is a read-only getter (:15590) - read it, never assign it."
+    },
+    {
+      "id": "M-14",
+      "what": "Task 9 Step 4 misses two required CI jobs: pnpm run build (the build job plus the bg-clip-padding @source sentinel over web/.next/static/) and pnpm --filter @notation-hero/client run test:e2e (the e2e job runs BOTH lanes, and this plan edits client/src/index.ts and two client components)."
+    },
+    {
+      "id": "M-15",
+      "what": "Add: registry merge=union can join two entries with no blank line, failing markdownlint MD022 on pre-push - re-run pnpm run lint:md after any rebase of master (Task 9 Step 5)."
+    },
+    {
+      "id": "M-16",
+      "what": "Add: the RenderStylesheet type is not exported, so the hand-written StylesheetKey union is required - nobody should reach for AlphaTab.model.Stylesheet."
+    },
+    {
+      "id": "M-17",
+      "what": "Resolve the internal inconsistency between the StylesheetKey union's 'multiBarRests' and the inventory table's multiTrackMultiBarRest / perTrackMultiBarRest."
+    }
+  ],
+  "dropped_after_verification": [
+    {
+      "claim": "The plan cites 2026-09-20 registry entries that do not exist.",
+      "why_dropped": "They DO exist, on the unmerged Plan B branch (origin/claude/plan-b-transport-nh291-f3e25e:docs/decisions/decision-registry.md lines 15 and 101) and arrive via merge=union. Citation is correct."
+    },
+    {
+      "claim": "core.engine / display.layoutMode rows are silent no-ops because ScoreRenderer.updateSettings() only does this.settings = settings.",
+      "why_dropped": "render() calls _recreateCanvas() (:40734) and _recreateLayout() (:40751). They take effect."
+    },
+    {
+      "claim": "Switching core.engine leaves a worker renderer that cannot do html5.",
+      "why_dropped": "updateSettings() calls _updateRenderer() (:45692) which swaps the renderer on supportsWorkers."
+    },
+    {
+      "claim": "updateSettings() calls _setupOrDestroyPlayer() on every push, so a settings edit interrupts playback.",
+      "why_dropped": "When the resolved mode is unchanged it returns early after _updateCursors() (:46705). The plan's 'the popover never blocks the player' assertion holds."
+    },
+    {
+      "claim": "Task 9's widened expectHitAreas will trip over Base UI FocusGuard spans with role=button.",
+      "why_dropped": "FocusGuard.js:24 sets role='button' only when platform.screenReader.voiceOver && platform.engine.webkit. CI is Chromium, so the guards stay aria-hidden spans the selector never matches."
+    }
+  ],
+  "confirmed_correct_no_action": [
+    "The 92-row inventory is COMPLETE: zero rows missing, zero invented. Per-group counts all exact, including the 'Display > General is 9, not 8' correction. The reference renders 93 rows; minus its one shadowed duplicate = 92.",
+    "Both documented reference bugs are real (playground-settings.tsx:628-635 binds the duration-ratio row to simpleSlidePitchOffset; :730-737 binds otherSystemsTrackNameOrientation twice), and both replacement keys exist and apply.",
+    "The effect-mode split is exact: all fourteen midi keys are read ONLY inside MidiFileGenerator (17 sites, alphaTab.core.mjs:43296-43945), zero renderer consumption; the 8 apply:'settings' rows match the reference's 8 no-rerender sites; no row is misclassified in either direction.",
+    "All five api rows are AlphaTabApi accessors and none is a settings key (probed both directions).",
+    "changeTrackSolo / changeTrackMute / changeTrackVolume / changeTrackTranspositionPitch all act on primary AND secondary MIDI channel, identically (alphaTab.core.mjs:46789-46871 - the plan's range is exact). changeTrackVolume never writes playbackInfo.volume. None is readable on the main thread.",
+    "actualPlayerMode changes synchronously inside updateSettings() (:45689 -> :46710) and playerReady re-fires after a player swap (the wrapper's emitter is stable and re-bridges each instance at :45014). PlayerMode: Disabled=0, EnabledAutomatic=1, EnabledSynthesizer=2, EnabledBackingTrack=3, EnabledExternalMedia=4 - so Task 8's hardcoded 2 and 0 are right.",
+    "A TooltipTrigger and a PopoverTrigger DO render through one Button - verified by rendering it with the real repo Button: one <button>, one tab stop, hover opens the tooltip, click opens the popover and auto-closes the tooltip, Escape closes the popover and returns focus to the gear. Props, handlers and refs all compose; no ARIA is lost. The plan's span fallback is not needed.",
+    "Base UI 1.6.0's accordion prop IS `multiple` (AccordionRoot.d.ts:84); openMultiple was renamed pre-1.0. The trigger's attribute IS data-panel-open.",
+    "Staff.finish() forces showTablature=false on any percussion staff and on any staff with an empty tuning (alphaTab.core.mjs:12464); TabBarRendererFactory sets hideOnPercussionTrack=true and requires tuning.length>0 (:64629). Both verbatim.",
+    "Every Plan B symbol Plan C imports exists on the unmerged branch. PR #162 is OPEN/MERGEABLE/CLEAN with CI Green and zero review comments. Plan B already clamps speed to 12.5-800 percent, so no Plan B file needs changing for the speed range.",
+    "Settings has fillFromJson and no toJson; JsonHelper.parseEnum reads enums by name case-insensitively at :25045 exactly; SynthConstants clamps playbackSpeed to 0.125-8; track.playbackInfo.volume is documented 0-16; the four overlapping shell defaults match DEFAULT_PLAYER_SETTINGS.",
+    "cspell passes on every new identifier the plan introduces (0 issues). The plan obeys the no-task-numbers-in-code-comments rule - zero hits across every fenced block. The registry update travels in the same PR (Task 9 Step 5)."
+  ],
+  "exit_signal": "NOT CLEAN \u2014 ce-doc-review headless returned a Proposed fixes section (21 items) plus 5 FYI observations. Per the loop's step 7b a re-lap is indicated, as a NEW invocation.",
+  "status": "TRIAGED \u2014 lap 1 complete",
+  "decisions": {
+    "F-1": "APPLIED \u2014 re-key 9 font rows onto elementFonts, DROP effectFont + inlineFingeringFont. 92 -> 90 rows, 73 -> 71 settings.",
+    "F-2": "APPLIED \u2014 'two mis-bound rows' -> three; the third is the wrong ENUM on otherSystemsTrackNameOrientation.",
+    "F-3": "APPLIED \u2014 reset moves to playerReady and re-asserts volume, mute, solo AND audio transposition. Spiked in a real browser.",
+    "F-4": "APPLIED \u2014 clear transpositionPitches BEFORE the score reaches the engine (open-file path, ahead of renderScore). Spiked in Node against a real MidiFileGenerator.",
+    "F-5": "APPLIED \u2014 colour rows become a `color` control; text rows commit on blur/Enter through the library parser in try/catch. Spiked against a real headless render.",
+    "F-6": "APPLIED \u2014 track volume is an ABSOLUTE channel level, next/16, not a ratio. Spec Delta. Measured in a browser.",
+    "F-7": "APPLIED \u2014 the state must also ride on an announced attribute (Base UI tooltips set no aria-describedby, verified by rendering); popover triggers exempt from the state half; render-select KEEPS its tooltip (maintainer, this lap).",
+    "F-8": "APPLIED \u2014 external media settles like No playback with an honest tooltip; the Tracks trigger gates on the engine, not player readiness."
+  },
+  "deferred_resolved": "ALL 14 APPLIED this lap at the maintainer's request, plus the prototype-chain hole in the settings-row machine gate (the check that let the dead font rows through).",
+  "commits": ["2e05df06", "50fdcd85", "34d8cdfc"],
+  "lap_decision": "RE-LAP indicated: a P0 was applied this lap AND the exit signal is not clean. Start lap 2 as a fresh invocation of doc-review-loop. Lap cap is 5; this was lap 1."
+}
