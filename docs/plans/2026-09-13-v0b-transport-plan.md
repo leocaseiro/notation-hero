@@ -1,3 +1,10 @@
+---
+# spec-triage-loop state. `lap` is the review lap this document has been through;
+# `last_applied` is the highest severity applied on that lap.
+lap: 2
+last_applied: P1
+---
+
 # v0 Transport — Implementation Plan B "Playback Control" (2 of 3)
 
 > **⛔ RE-TRIAGED 2026-09-19 against Plan A's 2026-09-18 rework.** Plan A's Self-Review ordered this:
