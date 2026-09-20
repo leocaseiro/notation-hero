@@ -81,9 +81,15 @@ const TransportToggle = ({
 
   // The accessible name comes from aria-label, so the tooltip is a redundant hint rather than the
   // control's name — safe to omit per-instance.
+  //
+  // The trigger is a span AROUND the button, never the button itself. A disabled Button is
+  // `pointer-events: none`, so as its own trigger it never receives the hover that opens the
+  // tooltip — the hint explaining WHY a control is unavailable then shows on keyboard focus only,
+  // and a mouse user gets a dimmed button and no reason. The span takes the hover; focus events
+  // bubble, so focus on the button still opens it.
   return tooltip ? (
     <Tooltip>
-      <TooltipTrigger render={toggle} />
+      <TooltipTrigger render={<span className="inline-flex" />}>{toggle}</TooltipTrigger>
       <TooltipContent>{tooltip}</TooltipContent>
     </Tooltip>
   ) : (

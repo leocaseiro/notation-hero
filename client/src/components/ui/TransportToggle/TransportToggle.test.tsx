@@ -109,6 +109,26 @@ test('a disabled toggle still opens its tooltip on keyboard focus', async () => 
   ).toBeInTheDocument();
 });
 
+// A disabled Button is `pointer-events: none`, so it never receives the hover that opens a
+// tooltip — measured in a real browser: the hint opened on keyboard focus and never on the mouse.
+// The tooltip's trigger is therefore a wrapper AROUND the button: the wrapper takes the hover, and
+// focus still reaches it because focus events bubble.
+test('the tooltip trigger wraps the button, so a disabled toggle can still be hovered', () => {
+  render(
+    <TransportToggle
+      pressed={false}
+      onPressedChange={() => {}}
+      label="Metronome"
+      icon={<Icon />}
+      tooltip="Not available while the file plays its own recording"
+      disabled
+    />,
+  );
+  const toggle = screen.getByRole('button', { name: 'Metronome' });
+  expect(toggle).not.toHaveAttribute('data-slot', 'tooltip-trigger');
+  expect(toggle.parentElement).toHaveAttribute('data-slot', 'tooltip-trigger');
+});
+
 test('passes button attributes such as data-testid through to the button', () => {
   render(
     <TransportToggle
