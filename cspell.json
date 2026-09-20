@@ -509,6 +509,8 @@
     "smol",
     "keyup",
     "mouseleave",
-    "focusability"
+    "focusability",
+    "Pictogrammers",
+    "valuenow"
   ]
 }
