@@ -699,3 +699,130 @@ test('shows a soundfont progress bar while the sounds download, then hides it', 
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
   await expect(bar).toHaveCount(0);
 });
+
+/** The slice of AlphaTab's bounds lookup the helpers below read through the `at` debug handle. */
+interface BeatBoundsHost extends HTMLElement {
+  at: {
+    playbackRange: unknown;
+    renderer: {
+      boundsLookup: {
+        staffSystems: {
+          bars: {
+            index: number;
+            bars: { beats: { realBounds: { x: number; y: number; w: number; h: number } }[] }[];
+          }[];
+        }[];
+      };
+    };
+  };
+}
+
+/**
+ * Selects a bar range the way a person does: a REAL mouse drag across the notation, from the first
+ * beat of one bar to the last beat of another. Coordinates come from AlphaTab's own bounds lookup,
+ * so the helper follows the notation wherever the layout puts it.
+ */
+async function selectBars(page: Page, fromBar: number, toBar: number): Promise<void> {
+  const beatPoint = (barIndex: number, pick: 'first' | 'last') =>
+    page.evaluate(
+      ([index, which]) => {
+        const host = document.querySelector<HTMLElement>(
+          '[data-testid="notation-surface"] > div',
+        ) as BeatBoundsHost;
+        const masterBar = host.at.renderer.boundsLookup.staffSystems
+          .flatMap((system) => system.bars)
+          .find((bar) => bar.index === index);
+        if (!masterBar) throw new Error(`bar ${index} is not rendered`);
+        const beats = masterBar.bars[0].beats;
+        const beat = which === 'first' ? beats[0] : beats.at(-1);
+        const surface = host.querySelector('.at-surface');
+        if (!beat || !surface) throw new Error('no beat bounds to aim at');
+        const origin = surface.getBoundingClientRect();
+        return {
+          x: origin.x + beat.realBounds.x + beat.realBounds.w / 2,
+          y: origin.y + beat.realBounds.y + beat.realBounds.h / 2,
+        };
+      },
+      [barIndex, pick] as const,
+    );
+
+  const from = await beatPoint(fromBar, 'first');
+  const to = await beatPoint(toBar, 'last');
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  // Several moves: AlphaTab extends the selection on mousemove, and a single jump can miss it.
+  await page.mouse.move((from.x + to.x) / 2, (from.y + to.y) / 2, { steps: 6 });
+  await page.mouse.move(to.x, to.y, { steps: 6 });
+  await page.mouse.up();
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            document.querySelector<HTMLElement>(
+              '[data-testid="notation-surface"] > div',
+            ) as BeatBoundsHost
+          ).at.playbackRange !== null,
+      ),
+    )
+    .toBe(true);
+}
+
+// A selection that exists but is not PAINTED is the bug this guards: AlphaTab gives the blocks a
+// box and no colour, so `toBeVisible()` and a bounding-box check both pass against an invisible
+// selection. The alpha is read by painting the computed colour onto a canvas, because the computed
+// value is `oklab(… / 0.12)`, not an rgba() string a regex could be trusted with.
+test('a dragged bar range is painted, not merely present', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await selectBars(page, 0, 1);
+
+  const blocks = await page.evaluate(() => {
+    const context = document.createElement('canvas').getContext('2d');
+    if (!context) throw new Error('no 2d context');
+    return [...document.querySelectorAll('.at-selection > div')].map((block) => {
+      context.clearRect(0, 0, 1, 1);
+      context.fillStyle = globalThis.getComputedStyle(block).backgroundColor;
+      context.fillRect(0, 0, 1, 1);
+      const box = block.getBoundingClientRect();
+      return {
+        alpha: context.getImageData(0, 0, 1, 1).data[3],
+        width: box.width,
+        height: box.height,
+      };
+    });
+  });
+  expect(blocks.length).toBeGreaterThan(0);
+  for (const block of blocks) {
+    expect(block.alpha).toBeGreaterThan(0);
+    expect(block.width).toBeGreaterThan(50);
+    expect(block.height).toBeGreaterThan(20);
+  }
+});
+
+// Base UI's Slider marks its own elements `data-dragging` while a thumb is held — the same
+// attribute the file drop zone uses. A bare `[data-dragging]` rule therefore drew the drop zone's
+// dashed outline around the seek bar on every scrub.
+test('holding the seek thumb does not borrow the drop zone outline', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  const thumb = page.locator('[data-slot="scrubber"] [data-index]');
+  const box = await thumb.boundingBox();
+  if (!box) throw new Error('the seek thumb has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + 60, box.y + box.height / 2, { steps: 4 });
+
+  const held = page.locator('[data-slot="scrubber"] [data-dragging]');
+  await expect(held.first()).toBeAttached();
+  const outlines = await held.evaluateAll((elements) =>
+    elements.map((element) => globalThis.getComputedStyle(element).outlineStyle),
+  );
+  await page.mouse.up();
+
+  expect(outlines.length).toBeGreaterThan(0);
+  expect(outlines).not.toContain('dashed');
+});

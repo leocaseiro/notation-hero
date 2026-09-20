@@ -423,7 +423,7 @@ function Player() {
           14 state transitions on one drag across the control, a visible strobe. Clamped at 0 so a
           stray leave cannot make the next enter a no-op. */}
       <section
-        className="relative flex flex-col gap-4"
+        className="nh-drop-zone relative flex flex-col gap-4"
         data-testid="drop-zone"
         data-dragging={dragging || undefined}
         onDragEnter={(event) => {

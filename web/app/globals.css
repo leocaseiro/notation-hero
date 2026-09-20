@@ -45,6 +45,17 @@
   stroke: var(--primary);
 }
 
+/* The bar-range selection — drag across bars in the notation, and that range is what Loop repeats.
+   AlphaTab appends one bare, class-less div per staff system inside .at-selection and sizes each
+   with a scale() transform on a 100 x 100 px box. So the descendant selector is the only hook, and
+   `background` the only safe property: a border, a radius or a shadow would be stretched by that
+   same transform. Lighter than the bar cursor (18%), so "selected" and "playing now" stay distinct
+   where they overlap. Without this rule the range is real but invisible, which hides the one
+   thing that explains why playback keeps returning to the same bars. */
+.at-selection div {
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+}
+
 /* The drag-and-drop affordance. No hardcoded white or black, so it reads in both themes. */
 .nh-drop-overlay {
   border-radius: var(--radius);
@@ -56,8 +67,11 @@
 }
 
 /* The whole surface signals "drop anywhere in here"; only the score area carries the scrim, so
-   the transport stays legible rather than reading as a broken player. */
-[data-dragging] {
+   the transport stays legible rather than reading as a broken player.
+   Scoped to the drop zone's own class, never the bare attribute: Base UI's Slider puts
+   `data-dragging` on its own elements while a thumb is held, and the bare selector drew this
+   dashed outline around the seek bar on every scrub. */
+.nh-drop-zone[data-dragging] {
   outline: 2px dashed var(--primary);
   outline-offset: 6px;
   border-radius: var(--radius);
