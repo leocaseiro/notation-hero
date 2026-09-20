@@ -59,7 +59,7 @@ export function PlayerHeader({
         speed={speed}
         onSpeedChange={onSpeedChange}
         disabled={disabled}
-        className="rounded-xl border border-border bg-card p-1 shadow-sm"
+        className="rounded-xl border border-border bg-card p-1 shadow-sm dark:border-input"
       />
       <div />
     </header>
