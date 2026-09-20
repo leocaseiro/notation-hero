@@ -116,7 +116,9 @@ const Slider = ({
         {/* 44 px pointer target lives on CONTROL, not Root: Base UI puts the click/drag handling
             on Control, so height on Root alone leaves the touchable area at the rail's 4 px. The
             rail stays h-1 and is centred inside it — invisible padding, full-size target. */}
-        <SliderPrimitive.Control className={SLIDER_CONTROL_CLASS}>
+        {/* data-slot, so the e2e hit-area gate can find the measured box without depending on
+            the very class whose effect it measures. */}
+        <SliderPrimitive.Control data-slot="slider-control" className={SLIDER_CONTROL_CLASS}>
           <SliderPrimitive.Track className={SLIDER_TRACK_CLASS}>
             <SliderPrimitive.Indicator className="absolute h-full rounded-full bg-primary" />
             {/* Thumb: grab cursor + teal fill while dragging (:active); disabled keys off Base

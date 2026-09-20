@@ -666,9 +666,23 @@ test('the header tempo stepper changes playback speed', async ({ page }) => {
   await expect(page.getByTestId('tempo-control')).toHaveAttribute('data-off-speed', 'true');
   await expect(page.getByTestId('tempo-percent')).toBeVisible();
 
-  // And the engine actually took it.
+  // And the write really reached the api — not just the React state the readout mirrors.
+  // `data-speed` is the same `speed` the stepper already set, so polling it only re-asserts the
+  // readout above. Read AlphaTabApi.playbackSpeed through the debug handle `useAlphaTab` parks on
+  // the host element, the way the Loop/Metronome/Count-In case does. It is AlphaTab's own
+  // main-thread mirror — the worker api stores `_playbackSpeed` before posting to the worker — so
+  // it proves the engine write RAN; no main-thread read can prove the worker applied it.
   await expect
-    .poll(async () => Number(await page.getByTestId('player-status').getAttribute('data-speed')))
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (
+            document.querySelector('[data-testid="notation-surface"] > div') as {
+              at?: { playbackSpeed: number };
+            } | null
+          )?.at?.playbackSpeed ?? 0,
+      ),
+    )
     .toBeGreaterThan(1);
 });
 

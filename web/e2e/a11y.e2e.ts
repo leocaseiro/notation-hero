@@ -36,9 +36,12 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
       // The last selector is the seek rail. A Base UI slider's 44 px pointer target is neither a
       // button nor a link: the nested input[type="range"] is sized to its 16 px thumb by design
       // and can never pass, while the element that actually takes the click is the slider's
-      // Control, which carries h-11.
+      // Control. Found by its own data-slot, NOT by `[class*="h-11"]`: keying the gate to the
+      // Tailwind class it is measuring means rewriting that class in any equivalent way
+      // (min-h-11, h-[44px], padding) makes the selector match nothing and the gate pass
+      // silently over whatever the rail became.
       ...document.querySelectorAll(
-        'button, a[href], label[for], [role="button"], [data-slot="slider"] [class*="h-11"]',
+        'button, a[href], label[for], [role="button"], [data-slot="slider-control"]',
       ),
     ]
       .filter((el) => {
