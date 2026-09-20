@@ -90,7 +90,13 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Each new `client/` component needs all six co-located files** (`X.tsx`, `X.stories.tsx`, `X.story-ids.ts`, `X.test.tsx`, `X.a11y.ts`, `X.vr.ts`) in its own folder. Never `__tests__/` or `stories/`.
 - **VR baselines are Linux-only** — `pnpm test:vr:docker:update` with Docker Desktop running (`open -a Docker`), never natively on macOS. Kill any `:6006` Storybook first.
 - **Every control's hit area is at least 44 px, and the lane measures it.** Plan A's `expectHitAreas` (`web/e2e/a11y.e2e.ts`) runs with each popover open (Task 9); nothing is checked by eye. Three primitives these rows compose are **under** 44 px as built — `Input` and `NativeSelect` are `h-9` (36 px), `Checkbox` is `size-4` (16 px) — **and so is every `Button` size**: `default` and `icon` are 36 px and even `icon-lg` is only 40 px (`Button.tsx:37-47`). So `SettingRow` and `TrackRow` pass `h-11` to the first two, put each checkbox inside a label that is at least 44 × 44, and give every `Button` an explicit `size-11` / `min-h-11 min-w-11`, as `PlayerShell` already does.
-- **Every control with no visible text has a tooltip that tells its state, always present** (registry, 2026-09-20 — and the maintainer again on this plan: _"make sure every button toggle has tooltip, including the tracks ones, such as solo/mute/etc"_). That is: the Settings gear, the Tracks trigger, and in **every** `TrackRow` the render-select box, Solo, Mute and the "more controls" button. A control that already shows its own words — an accordion header, a settings row, a display toggle inside the disclosure, the two export buttons — needs none. The tooltip says the **state**, not just the name: `Solo: on`, not `Solo`. Never render it conditionally: swapping the wrapped and the bare element remounts the button and drops its focus. **It is enforced, not trusted**: a unit case in `TrackRow` (Task 3) and an e2e case over the open mixer (Task 7) read every one of them.
+- **Every control with no visible text has a tooltip that tells its state, always present** (registry, 2026-09-20 — and the maintainer again on this plan: _"make sure every button toggle has tooltip, including the tracks ones, such as solo/mute/etc"_). That is: the Settings gear, the Tracks trigger, and in **every** `TrackRow` the render-select box, Solo, Mute and the "more controls" button. A control that already shows its own words — an accordion header, a settings row, a display toggle inside the disclosure, the two export buttons — needs none. The tooltip says the **state**, not just the name: `Solo: on`, not `Solo`.
+
+  **Two qualifications, both from verification.**
+
+  - **A tooltip is invisible to a screen reader, so the state must ALSO ride on an announced attribute.** Base UI 1.6.0's `Tooltip` sets **no `aria-describedby`** — there is no `useRole` anywhere in `@base-ui/react/tooltip/`, and the rendered attribute is `null` both plain and nested. So `Solo: on` is announced as just "Solo, button". Solo and Mute carry `aria-pressed`, the render-select box carries `aria-checked`, and the "more controls" button carries `aria-expanded`; those are what a screen reader actually hears, and the unit case in Task 3 asserts them alongside the tooltip text. Axe cannot catch this, which is why it is written down.
+  - **The two popover triggers are exempt from the STATE half, not from the tooltip.** Their only state is open or closed, and `aria-expanded` already announces it, so `Settings` and `Tracks` are the right tooltip text — repeating the open state in words would be two more strings to keep in sync with nothing to gain. Every other control in the list still says its state. Never render it conditionally: swapping the wrapped and the bare element remounts the button and drops its focus. **It is enforced, not trusted**: a unit case in `TrackRow` (Task 3) and an e2e case over the open mixer (Task 7) read every one of them.
+
 - **A disabled control is `aria-disabled`, never natively disabled** — the design system's `Button` (NH-304) and `TransportToggle` already do this. A natively disabled button takes no focus and no hover, so the tooltip saying _why_ it is unavailable could never open. Tests assert `aria-disabled="true"`, not `toBeDisabled()`.
 - **A file that plays its own recording disables the mixer** (spec §4 and §7). `PlayerShell` already holds `hasBackingTrack`; Task 8 changes where it comes from (AlphaTab's `actualPlayerMode`, because the player-mode row lets the synthesizer play such a file). While it is true, every row's **solo, mute, volume and Transpose audio** render disabled with a tooltip saying the file is playing its own recording. Transpose audio is not in the spec's list; it is here because 1.8.4's `BackingTrackAudioSynthesizer` stubs **six** methods to no-ops (`alphaTab.core.mjs:40427-40432`) — `applyTranspositionPitches`, `setChannelTranspositionPitch`, `channelSetMute`, `channelSetSolo`, `channelSetMixVolume` and `resetChannelStates` itself. `masterVolume` is **not** stubbed (`:40395`, forwarded by `BackingTrackPlayer.updateMasterVolume` at `:40458`), so it keeps working in this mode; and count-in is silent but **not inert** — `play()` still issues a real `seekTo` through `updateTimePosition(0, true)` (`:39955-39958`), which is the stronger reason to disable it, and the spec's rule is that a control must never look live and do nothing. Render-select, the display toggles and Transpose full stay enabled: they change the drawn score, which still works.
 - **Solo is not exclusive**, as in AlphaTab and the fork. Soloing a second track does not un-solo the first.
@@ -123,6 +129,18 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **"Is the file's own recording playing?" is asked of AlphaTab, not worked out from the score.** With the player-mode row, a score that embeds a recording can be played by the synthesizer, so `Boolean(score.backingTrack?.rawAudioFile)` stops being the answer. `api.actualPlayerMode` (`alphaTab.d.ts:377`) is the player AlphaTab really built; the mixer, Metronome and Count-In are unavailable exactly when it is `PlayerMode.EnabledBackingTrack` (Task 8).
 - **`web/` has a unit-test runner.** Vitest, `pnpm --filter @notation-hero/web run test`, tests co-located as `X.test.ts` beside `X.ts` and importing `describe` / `expect` / `it` from `'vitest'` explicitly — `web/lib/alphatab/drum-tracks.test.ts` is the pattern. **There is no Vitest config file in `web/`**, so it runs on defaults: `globals: false` (hence the explicit import) and the **node** environment with no DOM. `settings-storage.test.ts` must therefore inject or stub its storage rather than reach for a real `localStorage`.
 - `@coderline/alphatab` 1.8.4 facts this plan relies on, each checked against the installed package: `api.settings: Settings`, `api.updateSettings()`, `api.render()`, `api.renderTracks(tracks: Track[])`, `api.tracks` (what is drawn now), `api.changeTrackMute(tracks, mute)`, `api.changeTrackSolo(tracks, solo)`, `api.changeTrackVolume(tracks, absoluteChannelVolume)`, `api.changeTrackTranspositionPitch(tracks, semitones)`, `api.player?.resetChannelStates()`, `api.downloadMidi()`, `exporter.Gp7Exporter#export(score, settings): Uint8Array` (on the namespace object — `export` is inherited from the abstract `ScoreExporter`, `alphaTab.d.ts:15003`, and its `settings` parameter is optional and nullable), `settings.notation.transpositionPitches: number[]` (indexed by track), `track.playbackInfo.volume` (0–16), `staff.showStandardNotation | showSlash | showNumbered | showTablature`, `staff.tuning: number[]` (a **read-only getter**, `alphaTab.d.ts:15590` — read it, never assign to it), `staff.isPercussion` (`:12818`). `fillFromJson` reads an enum from its **name**, case-insensitively, as well as from its number (`JsonHelper.parseEnum`, `alphaTab.core.mjs:25045`).
+- **`scoreLoaded` fires ON SUBSCRIBE.** Its emitter carries a fire-on-register producer (`alphaTab.core.mjs:24722` + `:45531`), so a handler runs immediately against the score already open — including React Strict Mode's development double-mount. Everything in the mixer's `scoreLoaded` handler must therefore be idempotent; it rebuilds rows from the score, which is.
+- **Two MIDI generations per score load, not one.** `_setupOrDestroyPlayer()` always returns `false` (`alphaTab.core.mjs:46705-46713`) despite its own JSDoc, so `_onScoreLoaded`'s guard always calls `loadMidiForScore()` and `_internalRenderTracks` calls it again at `:45847`. Any assertion that counts MIDI regenerations on a score change must expect **two**. A settings row that regenerates deliberately still counts one.
+- **`playerReady` is not once per score.** Measured: twice per `loadMidiForScore()`, four times per `renderScore`, five on one `api.load()`. Only idempotent channel-state re-assertion belongs on it — never a toast, a focus move or anything a person would see repeated.
+- **A disabled `Button` is `pointer-events: none`, so its own tooltip cannot open on hover.** `buttonVariants` carries `aria-disabled:pointer-events-none` (`Button.tsx:20`), which is part of the NH-304 guard, not only styling. Any control that is disabled **and** must explain why wraps its `TooltipTrigger` around a `<span className="inline-flex" />` instead of rendering through the `Button` — the shape `TransportToggle` already ships. That covers the Settings gear while the engine loads and the Tracks trigger while no player is coming.
+- **`data-popup-open` cannot tell a tooltip from a popover.** Both triggers map their open state to the same attribute (`utils/popupStateMapping.js:45`), so on the stacked trigger it is present on hover as well as when the popover is open. The discriminator is `aria-expanded`; never key a style or an assertion on `data-popup-open` for either trigger.
+- **The accordion's state attribute differs by part**: `data-panel-open` on the trigger, `data-open` on item, header and panel. `Accordion.Root` is also **not** a `forwardRef` component (`AccordionRoot.d.ts:11-13`) unlike its four siblings, so the Task 1 wrapper has nowhere to forward a ref to the root.
+- **`DEFAULT_PLAYER_SETTINGS.core.engine` is `'svg'`, while AlphaTab's own default is `'default'`** (`alphaTab.core.mjs:65505`) — benign, because `'default'` is registered as an alias of `'svg'` (`:64879`), but it is the one shipped default that does not equal AlphaTab's, so it carries this note rather than looking like an oversight.
+- **Do not port the reference's bars-per-row slider offset.** Its control adds one to any non-negative value, so its lowest stop writes 1. Write the value as typed; `-1` still means automatic.
+- **The shipped scope is every row of the reference panel — which is a SUBSET of AlphaTab's settings.** The score stylesheet alone has 21 properties and the panel reaches 12; the importer and exporter groups have no row at all. That is the agreed scope, not an oversight — but say it plainly in the PR body and the registry entry so the by-eye gate is walked with the right expectation.
+- **Never commit a red test on its own.** `tooling/check-layout.sh` enforces repo-wide that every `X.test.*` has a **tracked** `X.ts`/`X.tsx` sibling, and it runs on `pre-commit`. Each task's Steps 1-4 land as one commit.
+- **`PlayerHeader.tsx` imports nothing from `react` today**, so the new `actions?: ReactNode` slot needs `import type { ReactNode } from 'react'` added with it.
+- **After any rebase onto `master`, re-run `pnpm run lint:md` before pushing.** `docs/decisions/decision-registry.md` is `merge=union`, so two new entries can be joined with no blank line between them, which fails markdownlint MD022 on the `pre-push` hook after the commit is already made.
 - `@base-ui/react` 1.6.0 facts, checked against the installed types: the accordion root's prop is **`multiple`** (`AccordionRoot.d.ts:84`; `openMultiple` was the pre-1.0 name and does not exist), and the trigger's open-state attribute is **`data-panel-open`**.
 
 ---
@@ -184,7 +202,9 @@ import userEvent from '@testing-library/user-event';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './Accordion';
 
 const Sample = () => (
-  <Accordion defaultValue={['notation']}>
+  {/* `multiple`: without it Base UI's Accordion.Root collapses to single-open
+      (AccordionRoot.js:71), so a two-item test proves nothing about multi-open. */}
+  <Accordion multiple defaultValue={['notation']}>
     <AccordionItem value="notation">
       <AccordionTrigger>Notation</AccordionTrigger>
       <AccordionContent>notation rows</AccordionContent>
@@ -2477,7 +2497,15 @@ test('every settings row names a key the engine really has', async ({ page }) =>
       .filter((path) => {
         let current: unknown = at.settings;
         for (const part of path.split('.')) {
-          if (current === null || typeof current !== 'object' || !(part in current)) return true;
+          // NOT `part in current`: `in` walks the PROTOTYPE CHAIN, so a deprecated getter such as
+          // the old font aliases satisfies it while fillFromJson ignores the key entirely — which
+          // is exactly how eleven dead font rows passed this gate. Own properties only.
+          if (
+            current === null ||
+            typeof current !== 'object' ||
+            !Object.prototype.hasOwnProperty.call(current, part)
+          )
+            return true;
           current = (current as Record<string, unknown>)[part];
         }
         return false;
@@ -2613,6 +2641,9 @@ Create `web/lib/alphatab/settings-storage.ts`:
 import type { PlayerSettingsJson } from './settings-paths';
 
 export const SETTINGS_STORAGE_KEY = 'notation-hero.player-settings';
+// Stored beside the settings so a future shape change can migrate rather than discard. v0 writes
+// it and does not branch on it: the per-key merge against the shipped defaults already handles the
+// only change v0.1 makes (new keys appearing). The first migration that needs it reads it here.
 export const SETTINGS_VERSION = 1;
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -3482,14 +3513,20 @@ and in `applySetting`, after the engine call: `if (path === 'player.playerMode')
 
 ```diff
 - const loadingPlayer = !failed && (!playerReady || opening);
++ // Any mode that will NEVER become ready is a settled state, not a pending one. Two qualify:
++ // Disabled, and EnabledExternalMedia — the latter drives playback from an audio or video
++ // element the app supplies, and v0 supplies none, so its player has nothing to drive it.
++ const noPlayerComing = playbackOff || externalMedia;
 + // "Not ready YET" — with playback turned off there is nothing to wait for.
-+ const loadingPlayer = !failed && !playbackOff && (!playerReady || opening);
++ const loadingPlayer = !failed && !noPlayerComing && (!playerReady || opening);
 ```
 
 - The Play button's tooltip: `playbackOff ? 'Playback is turned off in Settings' : playing ? 'Pause' : 'Play'`. The button is already `aria-disabled` while `!playerReady` and stays focusable — but a disabled `Button` is `pointer-events: none`, so as its own tooltip trigger it never sees the mouse. Give it the shape `TransportToggle` got for the same reason (registry, 2026-09-20): the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the button. The span takes the hover; focus still opens it, because focus events bubble. Keep `ref={playRef}` on the `Button` — opening a file still moves focus there.
 - The Settings trigger is **never** disabled by `playerReady` — it is the only way back. It is disabled only while the engine itself has not loaded (`!engine`, Task 5), which is unchanged.
 
-`EnabledExternalMedia` needs an external media handler this app does not provide, so it builds a player with no output. It ships because the maintainer asked for every setting; it needs no code of its own — the transport simply stays not-ready — but say in the PR that it is inert.
+**`EnabledExternalMedia` ships, and it must SETTLE like "No playback" does.** The mode drives playback from an audio or video element the app supplies — the reference fork uses it to follow a YouTube video or an audio file with the cursor, setting the mode **in code** when it has media and handing AlphaTab an `IExternalMediaHandler` at the same moment. v0 has no media source and no handler, so the player it builds has nothing to drive it and `isReadyForPlayback` never turns true. Left alone it would pulse the loading bar forever behind a dead Play button whose tooltip still read "Play" — and because the mode is stored, on every later visit too. So it joins `playbackOff` in `noPlayerComing`, and the Play tooltip reads: _"This mode plays along to an audio or video file, which this version does not provide yet."_ Following a YouTube video or an audio file is a real feature worth its own ticket; this plan only makes the choice honest.
+
+**The mixer's trigger gates on the ENGINE, not on player readiness.** `disabled={!playerReady}` would lock the Tracks popover away entirely once no player is coming — but render-select, the per-staff display toggles and Transpose full change the **drawn score** and need no player at all. Gate the trigger on `!engine` and let the rows disable their own mix controls through `mixUnavailable`, exactly as a backing-track file already does.
 
 - [ ] **Step 5: Run the lane to verify it passes**
 
@@ -3629,6 +3666,21 @@ git add web/e2e/a11y.e2e.ts docs/decisions/decision-registry.md
 git commit -m "test(web): axe and hit areas over both open popovers (NH-291)"
 git push
 gh pr create --title "feat: v0 settings and tracks popovers (NH-291)" --body "$(cat <<'EOF'
+## What & why
+
+The player gets its two popovers: the header gear opens every AlphaTab setting the reference panel
+exposes, and the transport's mixer gets one row per track. Together they close v0 success criteria
+3 and 7. Neither popover blocks playback — that is the whole reason v0 chose a popover over a modal.
+
+## Jira
+
+- Closes [NH-291](https://leocaseiro.atlassian.net/browse/NH-291)
+
+## How to test
+
+Open the preview, then walk the two by-hand checks in Task 10 of
+`docs/plans/2026-09-13-v0c-popovers-plan.md`: the mix by ear, and every settings group by eye.
+
 Implements Plan C of the v0 local-file drum player.
 
 Spec: `docs/specs/2026-09-10-v0-local-file-player-design.md`
