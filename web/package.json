@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "node scripts/vendor-alphatab.mjs && next build",
-    "dev": "node scripts/vendor-alphatab.mjs && next dev --port 3002",
+    "dev": "node scripts/vendor-alphatab.mjs && node scripts/dev.mjs",
     "lint": "eslint . --max-warnings 0",
     "start": "next start",
     "test": "vitest run",
