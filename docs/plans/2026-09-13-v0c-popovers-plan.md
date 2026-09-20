@@ -83,7 +83,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Each new `client/` component needs all six co-located files** (`X.tsx`, `X.stories.tsx`, `X.story-ids.ts`, `X.test.tsx`, `X.a11y.ts`, `X.vr.ts`) in its own folder. Never `__tests__/` or `stories/`.
 - **VR baselines are Linux-only** — `pnpm test:vr:docker:update` with Docker Desktop running (`open -a Docker`), never natively on macOS. Kill any `:6006` Storybook first.
 - **Every control's hit area is at least 44 px, and the lane measures it.** Plan A's `expectHitAreas` (`web/e2e/a11y.e2e.ts`) runs with each popover open (Task 9); nothing is checked by eye. Three primitives these rows compose are **under** 44 px as built — `Input` and `NativeSelect` are `h-9` (36 px), `Checkbox` is `size-4` (16 px) — so `SettingRow` and `TrackRow` pass `h-11` to the first two and put each checkbox inside a label that is at least 44 × 44.
-- **Every icon-only button has a tooltip that tells its state, always present** (registry, 2026-09-20). That covers the Settings gear, the Tracks trigger, and `TrackRow`'s solo, mute and expand controls. Never render the tooltip conditionally: swapping the wrapped and the bare element remounts the button and drops its focus.
+- **Every control with no visible text has a tooltip that tells its state, always present** (registry, 2026-09-20 — and the maintainer again on this plan: _"make sure every button toggle has tooltip, including the tracks ones, such as solo/mute/etc"_). That is: the Settings gear, the Tracks trigger, and in **every** `TrackRow` the render-select box, Solo, Mute and the "more controls" button. A control that already shows its own words — an accordion header, a settings row, a display toggle inside the disclosure, the two export buttons — needs none. The tooltip says the **state**, not just the name: `Solo: on`, not `Solo`. Never render it conditionally: swapping the wrapped and the bare element remounts the button and drops its focus. **It is enforced, not trusted**: a unit case in `TrackRow` (Task 3) and an e2e case over the open mixer (Task 7) read every one of them.
 - **A disabled control is `aria-disabled`, never natively disabled** — the design system's `Button` (NH-304) and `TransportToggle` already do this. A natively disabled button takes no focus and no hover, so the tooltip saying _why_ it is unavailable could never open. Tests assert `aria-disabled="true"`, not `toBeDisabled()`.
 - **A file that plays its own recording disables the mixer** (spec §4 and §7). `PlayerShell` already holds `hasBackingTrack`; Task 8 changes where it comes from (AlphaTab's `actualPlayerMode`, because the player-mode row lets the synthesizer play such a file). While it is true, every row's **solo, mute, volume and Transpose audio** render disabled with a tooltip saying the file is playing its own recording. Transpose audio is not in the spec's list; it is here because 1.8.4's `BackingTrackAudioSynthesizer` stubs `setChannelTranspositionPitch` and `applyTranspositionPitches` exactly as it stubs `channelSetMute`, `channelSetSolo` and `channelSetMixVolume` (`alphaTab.core.mjs:40427-40432`), and the spec's rule is that a control must never look live and do nothing. Render-select, the display toggles and Transpose full stay enabled: they change the drawn score, which still works.
 - **Solo is not exclusive**, as in AlphaTab and the fork. Soloing a second track does not un-solo the first.
@@ -938,6 +938,47 @@ test('solo is not exclusive — an already-soloed row still reports a toggle OFF
   expect(onSoloChange).toHaveBeenCalledWith(false);
 });
 
+// Four controls on the row show no words: the render-select box, Solo, Mute and "more controls".
+// An icon alone says neither what it is nor what STATE it is in, and the pressed colour means
+// nothing to someone meeting the control for the first time. Keyboard focus, as the design
+// system's own toggle test does it: jsdom has no pointer geometry.
+test('every control without visible text has a tooltip that tells its state', async () => {
+  const user = userEvent.setup();
+  render(<TrackRow {...baseProps} />);
+
+  await user.tab();
+  expect(screen.getByRole('checkbox', { name: /render/i })).toHaveFocus();
+  expect(await screen.findByText('Shown in the score')).toBeInTheDocument();
+
+  await user.tab();
+  expect(screen.getByRole('button', { name: /solo/i })).toHaveFocus();
+  expect(await screen.findByText('Solo: off')).toBeInTheDocument();
+
+  await user.tab();
+  expect(screen.getByRole('button', { name: /mute/i })).toHaveFocus();
+  expect(await screen.findByText('Mute: off')).toBeInTheDocument();
+
+  await user.tab(); // the volume slider — it carries no tooltip
+  await user.tab();
+  expect(screen.getByRole('button', { name: /more controls/i })).toHaveFocus();
+  expect(await screen.findByText('Show more controls')).toBeInTheDocument();
+});
+
+test('each tooltip follows the state it describes', async () => {
+  const user = userEvent.setup();
+  render(<TrackRow {...baseProps} rendered={false} solo mute expanded />);
+
+  await user.tab();
+  expect(await screen.findByText('Hidden from the score')).toBeInTheDocument();
+  await user.tab();
+  expect(await screen.findByText('Solo: on')).toBeInTheDocument();
+  await user.tab();
+  expect(await screen.findByText('Mute: on')).toBeInTheDocument();
+  await user.tab();
+  await user.tab();
+  expect(await screen.findByText('Hide more controls')).toBeInTheDocument();
+});
+
 // A file that plays its own recording: the engine ignores solo, mute, volume and the audio
 // transposition, so they must not look live. `aria-disabled`, never toBeDisabled() — the design
 // system keeps a disabled button focusable so the tooltip saying WHY can still open.
@@ -997,6 +1038,7 @@ Requirements the tests encode, all of which must be visible in the code:
 - Solo and mute are Plan B's `TransportToggle` — `pressed`, `onPressedChange`, `label` (`Solo ${name}`, `Mute ${name}`), `icon`, `tooltip`, `disabled`. Base UI's `Toggle` reports the NEXT state, which is what makes solo non-exclusive: the row never looks at any other row. Each `tooltip` tells the control's **state**, and is always present: `Solo: on` / `Solo: off`, `Mute: on` / `Mute: off`, or the `mixUnavailable` text when that is set.
 - `mixUnavailable` disables solo, mute, the volume `Slider` and the "Transpose audio" `Slider`, and nothing else. `disabled={Boolean(mixUnavailable)}` on each — `TransportToggle` turns that into `aria-disabled` by itself.
 - The volume `Slider` reports through **`onCommit`**, and tracks the pointer in local state while it is dragged — the same shape `SettingRow`'s range kind uses. One message to the synth worker per gesture is enough. Both transposition sliders do the same; Transpose full re-lays-out the whole score.
+- The render-select box shows no words on the row — there is no room for them — so it gets a tooltip too, telling its state: `Shown in the score` / `Hidden from the score`. Its `<label>` is the tooltip's trigger (`TooltipTrigger render={<label … />}`): the label is the 44 px hit target, and focus on the box inside it bubbles, so keyboard focus opens it as well. The label still carries the accessible name in visually hidden text (`<span className="sr-only">Render {name}</span>`).
 - The expand control is an icon `Button` (`size="icon"`, `size-11`) with `aria-expanded={expanded}`, `aria-controls` pointing at the disclosure panel's id, an `aria-label` of `More controls for ${name}`, and its own always-present tooltip (`Show more controls` / `Hide more controls`) — `TooltipTrigger render={<Button … />}`, the shape `PlayerShell`'s Play button already uses.
 - Each `Checkbox` sits **inside** its `<label>`, and that label is at least 44 × 44 (`min-h-11 min-w-11`): the box is 16 px and is never the hit target on its own. That is the same construction `SettingRow`'s toggle kind uses.
 - The disclosure renders per staff: a `Checkbox` for `showStandardNotation`, one for `showSlash`, one for `showNumbered`, and one for `showTablature` **only when `staff.tablatureAvailable`**.
@@ -1020,7 +1062,7 @@ Add this comment above the volume slider, because it is the behaviour a future r
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow`
-Expected: PASS — 10 tests.
+Expected: PASS — 12 tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
@@ -2733,6 +2775,47 @@ test('render-select changes which tracks are drawn', async ({ page }) => {
   await expect(page.getByTestId('rendered-track-count')).toHaveText('3', { timeout: 30_000 });
 });
 
+// The mixer's version of the transport's tooltip case: every control on a row that shows no
+// words says what it is AND what state it is in — on hover, where a person's pointer goes. EVERY
+// row is walked, not one checked by hand: a row is built in a loop, but a tooltip that depends on
+// a track's own state (drawn or not) is exactly what goes wrong on one row and not the next.
+test('every mixer control without visible text has a tooltip that tells its state', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('tracks-trigger').click();
+
+  // Punk.gp draws its two drum tracks (rows 0 and 2) and not the guitar (row 1).
+  const drawn = ['Shown in the score', 'Hidden from the score', 'Shown in the score'];
+  for (const [index, renderTip] of drawn.entries()) {
+    const row = page.getByTestId(`track-row-${index}`);
+    // The box itself is 16 px; the label around it is the target, so hover the label.
+    await row.locator('label', { has: page.getByRole('checkbox', { name: /render/i }) }).hover();
+    await expect(openTooltip(page)).toHaveText(renderTip);
+    await row.getByRole('button', { name: /solo/i }).hover();
+    await expect(openTooltip(page)).toHaveText('Solo: off');
+    await row.getByRole('button', { name: /mute/i }).hover();
+    await expect(openTooltip(page)).toHaveText('Mute: off');
+    await row.getByRole('button', { name: /more controls/i }).hover();
+    await expect(openTooltip(page)).toHaveText('Show more controls');
+  }
+
+  // And each one follows its state. A click closes the tooltip; leave and come back to read it.
+  const guitar = page.getByTestId('track-row-1');
+  for (const [name, after] of [
+    [/solo/i, 'Solo: on'],
+    [/mute/i, 'Mute: on'],
+    [/more controls/i, 'Hide more controls'],
+  ] as const) {
+    const control = guitar.getByRole('button', { name });
+    await control.click();
+    await page.getByTestId('notation-surface').hover();
+    await control.hover();
+    await expect(openTooltip(page)).toHaveText(after);
+  }
+});
+
 // Rows 0 and 1, NOT 0 and 2. AlphaTab solos a MIDI CHANNEL, and Punk.gp's two drum tracks share
 // channel 9 — soloing both would be one channel soloed twice and would prove nothing.
 test('solo is not exclusive — two tracks can be soloed at once', async ({ page }) => {
@@ -2843,7 +2926,7 @@ test('only a stringed staff with a tuning offers the tablature toggle', async ({
 
 - [ ] **Step 2: Run them to verify they fail**
 
-Run: `pnpm --filter @notation-hero/web run test:e2e -g "Tracks popover|render-select|solo is not exclusive|mute and volume|clean mix|tablature toggle"`
+Run: `pnpm --filter @notation-hero/web run test:e2e -g "Tracks popover|render-select|mixer control|solo is not exclusive|mute and volume|clean mix|tablature toggle"`
 Expected: FAIL — no `tracks-trigger`.
 
 - [ ] **Step 3: Write the popover**
@@ -3462,7 +3545,7 @@ Criteria 1, 3, 5, 6, 7, 8, 9 and 10 should now be met. **Criterion 9 is verified
 
 ## Self-Review
 
-**Spec coverage.** §7 "Two popovers, not modals" → Tasks 5 and 7, with the non-blocking property asserted in Task 5's own test. §7 Settings groups (Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools) → Task 4, with a full row inventory by AlphaTab key rather than counts; the Tools group is the v0.1 spec's two Action rows (its §4); the player-mode row → Task 8. §7 "Colors are plain text inputs for now" → `SettingRow`'s `text` kind, called out in its comment. §7 Tracks row full control set (render-select, solo, mute, volume, per-staff display toggles, both transposition sliders) → Tasks 3 and 7. §7 volume-as-ratio with a zero guard, and the 0–16 scale → Tasks 3 and 7. §7 channel coupling → stated in Global Constraints, in `TrackRow`'s comment, in Task 9's by-ear list and in the PR body — and widened to solo and mute, which the spec does not record. §4 and §7 "a file that plays its own recording disables solo, mute and volume, with a tooltip" → Tasks 3 and 7, plus Transpose audio (a Spec Delta, with the source line that justifies it). §7 tablature only for a tuned stringed staff → Tasks 3 and 7, each with a test. §7 eight-controls disclosure → Task 3. §7 "compose controls that already exist" → `SettingRow` composes `Field`, `Checkbox`, `Input`, `NativeSelect`, `Slider`, `Button`; none is new. §7 settings persistence, `fillFromJson`, the per-key merge and the reset toast → Task 6, with both the reload and the corrupt-value paths as e2e cases. §7 the speed slider in the Player group → Task 4's `source: 'api'` row, written by `PlayerShell`'s `applySpeed` (Plan B's single-writer rule), over the engine's 12.5–800 % range (registry, 2026-09-20, superseding the spec's 200 %). §4's 44 px rule → `expectHitAreas` with each popover open, Task 8. §8 criteria 3 and 7 → Tasks 5, 7 and 9. **Deliberately not covered here:** everything in Plans A and B; v0.1's search index and tab chrome; drum tablature (needs a version bump, Q5); persisting the speed (NH-295).
+**Spec coverage.** §7 "Two popovers, not modals" → Tasks 5 and 7, with the non-blocking property asserted in Task 5's own test. §7 Settings groups (Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools) → Task 4, with a full row inventory by AlphaTab key rather than counts; the Tools group is the v0.1 spec's two Action rows (its §4); the player-mode row → Task 8. §7 "Colors are plain text inputs for now" → `SettingRow`'s `text` kind, called out in its comment. §7 Tracks row full control set (render-select, solo, mute, volume, per-staff display toggles, both transposition sliders) → Tasks 3 and 7. §7 volume-as-ratio with a zero guard, and the 0–16 scale → Tasks 3 and 7. §7 channel coupling → stated in Global Constraints, in `TrackRow`'s comment, in Task 9's by-ear list and in the PR body — and widened to solo and mute, which the spec does not record. §4 and §7 "a file that plays its own recording disables solo, mute and volume, with a tooltip" → Tasks 3 and 7, plus Transpose audio (a Spec Delta, with the source line that justifies it). §7 tablature only for a tuned stringed staff → Tasks 3 and 7, each with a test. §7 eight-controls disclosure → Task 3. §7 "compose controls that already exist" → `SettingRow` composes `Field`, `Checkbox`, `Input`, `NativeSelect`, `Slider`, `Button`; none is new. §7 settings persistence, `fillFromJson`, the per-key merge and the reset toast → Task 6, with both the reload and the corrupt-value paths as e2e cases. §7 the speed slider in the Player group → Task 4's `source: 'api'` row, written by `PlayerShell`'s `applySpeed` (Plan B's single-writer rule), over the engine's 12.5–800 % range (registry, 2026-09-20, superseding the spec's 200 %). The always-present, state-telling tooltip on every control without visible text (registry 2026-09-20, and the maintainer on this plan) → Global Constraints, a unit case in Task 3 and an e2e case in Task 7 that walks every row of the open mixer, then re-reads each tooltip after its state changed. §4's 44 px rule → `expectHitAreas` with each popover open, Task 8. §8 criteria 3 and 7 → Tasks 5, 7 and 9. **Deliberately not covered here:** everything in Plans A and B; v0.1's search index and tab chrome; drum tablature (needs a version bump, Q5); persisting the speed (NH-295).
 
 **Decisions taken after the re-triage (maintainer, 2026-09-20).** The Settings popover is the same as the reference panel — every row. All five api-property rows ship, and the player-mode row ships with its own task (Task 8), superseding the spec's §4 boundary. Asked to confirm the plan had every row, the re-triage replaced the plan's row COUNTS with a full inventory by AlphaTab key (Task 4 Step 1): 92 rows, four sources, three ways a settings row takes effect.
 

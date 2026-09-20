@@ -41,6 +41,14 @@ Approved by leocaseiro 2026-09-20:
   **`display.padding` is an array** the dot-path helpers could not address. Two rows of the
   reference panel are bound to the wrong key, and the plan carries the right ones.
 
+- **Every mixer control without visible text gets a state-telling tooltip, and a test reads each
+  one.** His instruction: _"Make sure every button toggle has tooltip, including the tracks ones,
+  such as solo/mute/etc."_ The plan already required it for Solo, Mute and the "more controls"
+  button but enforced none of it; it now also covers the render-select box (a bare 16 px box on
+  the row), with a unit case in `TrackRow` and an e2e case that walks every row of the open mixer
+  and re-reads each tooltip after its state changes. Controls that show their own words — settings
+  rows, display toggles, accordion headers, the export buttons — need none.
+
 Carried over from earlier decisions rather than re-asked: the two checks only a person can do are
 handed back once, at the end (as chosen for Plan B, 2026-09-20), and the mechanical
 plan-versus-reality corrections were applied without a question (the lap-4 rule, 2026-09-18).
