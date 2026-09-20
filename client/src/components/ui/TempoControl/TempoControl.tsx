@@ -91,7 +91,7 @@ const TempoControl = ({
   );
 
   // An edit ends when the changes stop (no new value for EDIT_SETTLE_MS) or on blur — one rule for
-  // a held button, a held arrow key, the wheel, a drag scrub and typed digits alike.
+  // a held button, a held arrow key, the wheel and typed digits alike.
   const endEdit = () => {
     clearTimeout(settleRef.current);
     setEditBase(null);
@@ -140,8 +140,12 @@ const TempoControl = ({
           </span>
         </NumberField.Decrement>
 
-        {/* ScrubArea wraps the readout: dragging sideways over the BPM changes it, the DAW gesture. */}
-        <NumberField.ScrubArea className="flex cursor-ew-resize flex-col items-center px-2">
+        {/* A plain wrapper, NOT NumberField.ScrubArea. ScrubArea (drag sideways to change the value)
+            cancels pointerdown and sets `user-select: none` on everything inside it, so with the
+            input in there the number could not be selected with the mouse — no drag, no
+            double-click. The field behaves like a native number input instead: the mouse selects,
+            and the value moves by the arrow keys, the wheel, the +/- buttons and typing. */}
+        <div className="flex flex-col items-center px-2">
           <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
             BPM
           </span>
@@ -167,8 +171,7 @@ const TempoControl = ({
           >
             {percent}%
           </span>
-          <NumberField.ScrubAreaCursor />
-        </NumberField.ScrubArea>
+        </div>
 
         <NumberField.Increment
           aria-label="Increase tempo"

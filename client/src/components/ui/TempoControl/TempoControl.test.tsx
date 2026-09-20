@@ -3,8 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { TempoControl } from './TempoControl';
 
-// Base UI's NumberField uses pointer capture on its ScrubArea and ResizeObserver internally;
-// both are polyfilled globally in vitest.setup.ts. These tests drive it by keyboard and clicks.
+// Base UI's NumberField uses ResizeObserver internally, which jsdom lacks; it is polyfilled
+// globally in vitest.setup.ts. These tests drive the field by keyboard and clicks.
 
 const Harness = ({
   scoreTempo = 120,
@@ -189,6 +189,18 @@ test('the live announcement carries the percentage when off written speed', asyn
   await user.click(screen.getByRole('button', { name: 'Increase tempo' }));
   // 121/120 is off written speed, so the spoken line says so; the visible % is aria-hidden.
   expect(screen.getByRole('status')).toHaveTextContent('121 BPM, 101% of written speed');
+});
+
+// The field must behave like a native number input for the mouse: click to place the caret, drag
+// or double-click to select. Base UI's ScrubArea (its drag-sideways-to-change gesture) once wrapped
+// this input; it cancels pointerdown and sets `user-select: none` on everything inside it, so the
+// number could not be selected with the mouse at all.
+test('nothing around the input switches text selection off', () => {
+  render(<TempoControl scoreTempo={120} speed={1} onSpeedChange={() => {}} />);
+  const input = screen.getByRole('textbox', { name: 'Tempo' });
+  for (let node = input.parentElement; node; node = node.parentElement) {
+    expect(node.style.userSelect).not.toBe('none');
+  }
 });
 
 test('disabled blocks both steppers and the input', () => {
