@@ -447,6 +447,12 @@ function Player() {
       // went on reading "Loop selection", the cursor froze at the old range's end, and Pause
       // jumped back — with no seek involved.
       if (api?.playbackRange) setAlphaTabValue(api, 'playbackRange', null);
+      // Nor may the in-flight seek bookkeeping. `api` survives a file open — it is destroyed only
+      // on unmount — so an armed `rangeCheck` would run `leaveRange` against the NEW score,
+      // writing an old position into it and, if the old score was playing, starting it.
+      clearTimeout(rangeCheck.current);
+      pendingSeek.current = null;
+      resumeAfterSeek.current = false;
       setNotation({ name: next.name, score });
       setOpening(false);
       toast.success(`${next.name} loaded`, { id: 'notation-load' });
@@ -642,31 +648,43 @@ function Player() {
                  native `disabled` would make that focus call a silent no-op and strand the
                  person's focus on the control they just used. */
               <Tooltip>
+                {/* The trigger is a span AROUND the button, never the button itself — the fix
+                    TransportToggle already carries. A disabled Button is `pointer-events: none`,
+                    so as its own trigger it never receives the hover that opens the tooltip, and
+                    Play is disabled for the whole engine + soundfont load. Focus events bubble,
+                    so focus still opens it, and `playRef` stays on the Button. */}
                 <TooltipTrigger
                   // Play/Pause is a toggle: keep the tooltip open across the press, so it says the new
                   // state at once instead of vanishing until the pointer leaves and returns.
                   closeOnClick={false}
-                  render={
-                    <Button
-                      ref={playRef}
-                      data-testid="transport-play"
-                      size="icon"
-                      aria-label={playing ? 'Pause' : 'Play'}
-                      disabled={!playerReady}
-                      onClick={() => api?.playPause()}
-                      className="size-12 rounded-full shadow-lg shadow-primary/20"
+                  render={<span className="inline-flex shrink-0" />}
+                >
+                  <Button
+                    ref={playRef}
+                    data-testid="transport-play"
+                    size="icon"
+                    aria-label={playing ? 'Pause' : 'Play'}
+                    disabled={!playerReady}
+                    onClick={() => {
+                      // An explicit pause cancels a seek's pending auto-resume. This CANNOT
+                      // live in `playerStateChanged`: that also fires when AlphaTab stops
+                      // playback as a side effect of leaving the range — the very stop
+                      // `resumeAfterSeek` exists to undo.
+                      if (playing) resumeAfterSeek.current = false;
+                      api?.playPause();
+                    }}
+                    className="size-12 rounded-full shadow-lg shadow-primary/20"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="size-6"
+                      fill="currentColor"
+                      aria-hidden="true"
                     >
-                      <svg
-                        viewBox="0 0 24 24"
-                        className="size-6"
-                        fill="currentColor"
-                        aria-hidden="true"
-                      >
-                        <path d={playing ? 'M6 19h4V5H6v14zm8-14v14h4V5h-4z' : 'M8 5v14l11-7z'} />
-                      </svg>
-                    </Button>
-                  }
-                />
+                      <path d={playing ? 'M6 19h4V5H6v14zm8-14v14h4V5h-4z' : 'M8 5v14l11-7z'} />
+                    </svg>
+                  </Button>
+                </TooltipTrigger>
                 {/* Lifted 8 px, or the teal arrow lies on the solid teal button and cannot be seen. */}
                 <TooltipContent sideOffset={8}>{playing ? 'Pause' : 'Play'}</TooltipContent>
               </Tooltip>
