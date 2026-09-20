@@ -650,3 +650,24 @@ test('the scrubber seeks and the position follows', async ({ page }) => {
   // tempo and MIDI division — so assert it moved off the start at all.
   await expect.poll(engineTickPosition, { timeout: 20_000 }).toBeGreaterThan(0);
 });
+
+test('the header tempo stepper changes playback speed', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  // The readout is a real input now (Base UI NumberField), so read its value, not its text.
+  const value = page.getByRole('textbox', { name: 'Tempo' });
+  const shown = Number(await value.inputValue());
+  expect(shown).toBeGreaterThan(0);
+
+  await page.getByRole('button', { name: 'Increase tempo' }).click();
+  await expect(value).toHaveValue(String(shown + 1));
+  // Off written speed now, and the button still holds focus, so the percentage is visible.
+  await expect(page.getByTestId('tempo-control')).toHaveAttribute('data-off-speed', 'true');
+  await expect(page.getByTestId('tempo-percent')).toBeVisible();
+
+  // And the engine actually took it.
+  await expect
+    .poll(async () => Number(await page.getByTestId('player-status').getAttribute('data-speed')))
+    .toBeGreaterThan(1);
+});

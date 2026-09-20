@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '@notation-hero/client';
+import { Button, toast } from '@notation-hero/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -12,6 +12,7 @@ import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alpha
 import { PLAYER_ERROR } from '../../lib/player-errors';
 import { NotationSurface } from './NotationSurface';
 import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
+import { PlayerHeader } from './PlayerHeader';
 import { TransportRow } from './TransportRow';
 import type * as AlphaTab from '@coderline/alphatab';
 
@@ -63,7 +64,11 @@ function Player() {
   const [hasBackingTrack, setHasBackingTrack] = useState(false);
   // The live score tempo, for the header's tempo control. The position handler below is what keeps
   // it current; the 120 is the pre-load placeholder only.
-  const [, setScoreTempo] = useState(120);
+  const [scoreTempo, setScoreTempo] = useState(120);
+  // The playback speed multiplier; 1 is the score's own tempo. A new score keeps the speed the
+  // drummer chose: the BPM readout moves because the score's own tempo changed, not because the
+  // multiplier was reset.
+  const [speed, setSpeed] = useState(1);
 
   // The ONE owner of the api. There is no second apiRef and no onApiReady callback: a callback
   // prop in the hook's dependency list rebuilds the engine on an ordinary state change, throwing
@@ -214,6 +219,18 @@ function Player() {
     [api],
   );
 
+  // The ONLY writer of api.playbackSpeed in the app. v0 ships two controls over this one value —
+  // the header BPM stepper and the Settings popover's speed slider — and both must call this.
+  // `playbackSpeed` is an AlphaTabApi property, not a field in AlphaTab's Settings JSON, so a
+  // settings row wired like its neighbours would write a value that never reaches the engine.
+  const applySpeed = useCallback(
+    (next: number) => {
+      setSpeed(next);
+      if (api) setAlphaTabValue(api, 'playbackSpeed', next);
+    },
+    [api],
+  );
+
   const seek = useCallback(
     (ms: number) => {
       if (api) setAlphaTabValue(api, 'timePosition', ms);
@@ -358,29 +375,14 @@ function Player() {
     <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
       <h1 className="sr-only">Player</h1>
 
-      <header className="flex items-center gap-3">
-        {/* The wordmark stands in for the logo the mockup draws; the real mark is a later visual
-            task. */}
-        <span className="text-sm font-semibold">Notation Hero</span>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              // A real <button> so the tooltip is reachable by keyboard, not only by hover. It
-              // does nothing on click; min-h-11/min-w-11 keeps it over the 44 px hit area the
-              // accessibility gate enforces.
-              <button
-                type="button"
-                data-testid="loaded-notation-name"
-                data-file={openFileName}
-                className="min-h-11 min-w-11 truncate px-1 text-left text-sm text-muted-foreground"
-              >
-                {notation?.score.title || openFileName}
-              </button>
-            }
-          />
-          <TooltipContent>{openFileName}</TooltipContent>
-        </Tooltip>
-      </header>
+      <PlayerHeader
+        scoreTitle={notation?.score.title ?? ''}
+        fileName={openFileName}
+        scoreTempo={scoreTempo}
+        speed={speed}
+        onSpeedChange={applySpeed}
+        disabled={!playerReady}
+      />
 
       {/* A dragenter/dragleave COUNTER, never a bare setDragging(false). `dragleave` also fires on
           the container whenever the pointer crosses into a CHILD, with relatedTarget set to that
@@ -458,6 +460,7 @@ function Player() {
           data-looping={looping}
           data-metronome={metronome}
           data-countin={countIn}
+          data-speed={speed}
         >
           {/* The whole transport is gated on `playerReady`, never on `soundFontLoaded`: that one is
               a bare emitter with no replay, so a late subscriber would latch the row disabled
