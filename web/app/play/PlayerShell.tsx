@@ -203,6 +203,9 @@ function Player() {
       clearTimeout(rangeCheck.current);
       setAlphaTabValue(api, 'playbackRange', null);
       setAlphaTabValue(api, 'timePosition', ms);
+      // Same reason as in `seek`: this re-arms pendingSeek, so a frame still holding a pre-seek
+      // sample would write it and guard 2 would then drop events until the second echo.
+      latestPosition.current = null;
       pendingSeek.current = { target: ms, since: performance.now() };
       if (resumeAfterSeek.current) {
         resumeAfterSeek.current = false;
@@ -355,6 +358,12 @@ function Player() {
           rangeCheck.current = setTimeout(() => leaveRange(ms), 250);
         }
       }
+      // Drop the pre-seek sample the position handler has parked. During playback a frame is almost
+      // always already scheduled, and it would fire a few milliseconds from now and write the OLD
+      // currentTime over the optimistic value below — after which guard 2 drops every real event
+      // until the echo, so the stale position is what stays on screen for the whole round trip.
+      // The scheduled frame still clears `positionFrame` and then returns at its `if (!next)`.
+      latestPosition.current = null;
       setPositionMs(ms); // optimistic; guard 2 above reconciles on the echo
       pendingSeek.current = { target: ms, since: performance.now() };
     },
