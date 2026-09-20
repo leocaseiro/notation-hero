@@ -62,14 +62,15 @@ test('clamps to the 12.5% floor', async () => {
   expect(input).toHaveValue('15');
 });
 
-test('clamps to the 200% ceiling', async () => {
+test('clamps to the 400% ceiling', async () => {
   const user = userEvent.setup();
   render(<Harness />);
   const input = screen.getByRole('textbox', { name: 'Tempo' });
   await user.clear(input);
   await user.type(input, '900');
   await user.tab();
-  expect(input).toHaveValue('240');
+  // 400% of 120 BPM.
+  expect(input).toHaveValue('480');
 });
 
 // A score whose parts are written at different tempos (a verse at 90, a chorus at 120) moves

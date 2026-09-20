@@ -13,8 +13,13 @@ interface TempoControlProps {
   /** Playback speed multiplier; 1 is the score's own tempo. */
   speed: number;
   onSpeedChange: (next: number) => void;
-  /** AlphaTab's documented playbackSpeed floor. */
+  /** Lowest speed. The default, 12.5 %, is the floor of the player engine this was built for. */
   minSpeed?: number;
+  /**
+   * Highest speed. The default is 400 %: practising a short beat well above its written tempo is
+   * a real use, and the engine itself allows up to 800 %. A ceiling is still required — the number
+   * field needs a `max` to clamp a typed value against.
+   */
   maxSpeed?: number;
   disabled?: boolean;
   className?: string;
@@ -47,7 +52,7 @@ const TempoControl = ({
   speed,
   onSpeedChange,
   minSpeed = 0.125,
-  maxSpeed = 2,
+  maxSpeed = 4,
   disabled = false,
   className,
 }: Readonly<TempoControlProps>) => {
