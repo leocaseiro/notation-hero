@@ -61,11 +61,54 @@ export function useAlphaTab(
   return [api, hostRef];
 }
 
+/** The AlphaTabApi members the transport writes: plain values, not methods. */
+type AlphaTabApiValue =
+  | 'isLooping'
+  | 'metronomeVolume'
+  | 'countInVolume'
+  | 'playbackSpeed'
+  | 'timePosition';
+
+/**
+ * Writes one of AlphaTab's transport values.
+ *
+ * Plain property assignment IS AlphaTab's documented interface for these (`api.metronomeVolume =
+ * 0.5`); none of them has a method form, and `api.updateSettings()` is not involved. The write
+ * lives here, not in a component, because the api reaches components through `useState`: React's
+ * compiler lint (`react-hooks/immutability`) treats a value returned from a hook as immutable and
+ * rejects an assignment to it inside a component or a `useCallback`. That rule is right about
+ * React data and wrong about this object — the api is a handle to an engine outside React, and
+ * writing to it from an event handler is the same kind of effect as `api.playPause()`.
+ */
+export function setAlphaTabValue<K extends AlphaTabApiValue>(
+  api: AlphaTab.AlphaTabApi,
+  key: K,
+  value: AlphaTab.AlphaTabApi[K],
+): void {
+  api[key] = value;
+}
+
+/**
+ * Emitters that must NOT be subscribed to, so the type below leaves them out and
+ * `useAlphaTabEvent(api, 'midiLoaded', …)` does not compile.
+ *
+ * `midiLoaded`: subscribing replays `player.loadedMidiInfo` to the new listener, and in 1.8.4 the
+ * worker-backed synth — the one every browser uses — defines that getter as
+ * `get loadedMidiInfo() { return this.loadedMidiInfo; }`, which calls itself until the stack
+ * overflows (alphaTab.core.mjs:33572; the no-worker class returns `this._loadedMidiInfo`, which is
+ * why a headless run never sees it). It only throws once the player instance exists, so it is a
+ * race: measured 3 crashed page loads in 18, each landing on the error boundary. Everything
+ * `midiLoaded` carries also arrives on `playerPositionChanged`. Drop the entry once a release fixes
+ * the getter.
+ */
+type UnsafeAlphaTabApiEvents = 'midiLoaded';
+
 /** The AlphaTabApi members that are event emitters — the only valid `event` names below. */
 export type AlphaTabApiEvents = {
-  [K in keyof AlphaTab.AlphaTabApi as AlphaTab.AlphaTabApi[K] extends
-    | AlphaTab.IEventEmitter
-    | AlphaTab.IEventEmitterOfT<never>
+  [K in Exclude<
+    keyof AlphaTab.AlphaTabApi,
+    UnsafeAlphaTabApiEvents
+  > as AlphaTab.AlphaTabApi[K] extends AlphaTab.IEventEmitter | AlphaTab.IEventEmitterOfT<never>
     ? K
     : never]: AlphaTab.AlphaTabApi[K];
 };

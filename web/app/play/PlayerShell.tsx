@@ -8,10 +8,11 @@ import {
   useAlphaTabEngine,
 } from '../../lib/alphatab/AlphaTabEngineContext';
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
-import { useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
+import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { PLAYER_ERROR } from '../../lib/player-errors';
 import { NotationSurface } from './NotationSurface';
 import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
+import { TransportRow } from './TransportRow';
 import type * as AlphaTab from '@coderline/alphatab';
 
 /** What the picker produces: a file read into memory, not yet parsed. */
@@ -47,6 +48,22 @@ function Player() {
   // because the shell is what knows an open finished; the picker only hands over bytes.
   const [announcement, setAnnouncement] = useState('');
   const playRef = useRef<HTMLButtonElement | null>(null);
+
+  // The playhead. This IS product state — the Scrubber is a controlled component over it — which is
+  // why it may live here when a `data-position` DOM hook may not: the rule bans test-only
+  // instrumentation, not UI state.
+  const [positionMs, setPositionMs] = useState(0);
+  const [durationMs, setDurationMs] = useState(0);
+  const [looping, setLooping] = useState(false);
+  const [metronome, setMetronome] = useState(false);
+  const [countIn, setCountIn] = useState(false);
+  // Whether AlphaTab currently holds a bar-range selection — drives the Loop toggle's label only.
+  const [hasRange, setHasRange] = useState(false);
+  // Whether the open score plays its own embedded recording. Metronome and Count-In are inert then.
+  const [hasBackingTrack, setHasBackingTrack] = useState(false);
+  // The live score tempo, for the header's tempo control. The position handler below is what keeps
+  // it current; the 120 is the pre-load placeholder only.
+  const [, setScoreTempo] = useState(120);
 
   // The ONE owner of the api. There is no second apiRef and no onApiReady callback: a callback
   // prop in the hook's dependency list rebuilds the engine on an ordinary state change, throwing
@@ -98,6 +115,113 @@ function Player() {
   // wrapper's `readyForPlayback`, built as `new EventEmitter(() => this.isReadyForPlayback)`, which
   // reports the current value to a late subscriber.
   useAlphaTabEvent(api, 'playerReady', () => setPlayerReady(true));
+
+  // Guard 2's bookkeeping — see the position handler below.
+  const pendingSeek = useRef<{ target: number; since: number } | null>(null);
+
+  // The worklet posts one samplesPlayed message per 128-frame audio quantum, and each one triggers
+  // a positionChanged — about 345 events per second at 44.1 kHz. Writing state on every one of them
+  // commits React ~345 times a second for a clock that only shows whole seconds. Coalesce to one
+  // commit per animation frame: stash the latest args in a ref, schedule a single frame, and let
+  // the frame do the writing. The guards still run on EVERY event — dropping a stale post-seek
+  // event is about correctness, not rate — so only the state write is throttled.
+  const latestPosition = useRef<AlphaTab.synth.PositionChangedEventArgs | null>(null);
+  const positionFrame = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (positionFrame.current !== null) cancelAnimationFrame(positionFrame.current);
+    },
+    [],
+  );
+
+  // Guard 1 — `endTime === 0` is the hardcoded PositionChangedEventArgs(0,0,0,0,false,120,120) stub
+  // that AlphaTab replays synchronously at subscribe time. Without this the header flashes 120 BPM
+  // on a 90 BPM score. It happens in a real browser too: the replay lives on the player facade the
+  // api exposes, not on the worker-backed synth whose own emitters are bare.
+  //
+  // Guard 2 — after a seek, AlphaTab delivers a burst of STALE position events before the seek's
+  // own echo. They carry `isSeek: false`, identical to every ordinary tick, so the flag cannot
+  // filter them. What does: the echo carries `isSeek: true` AND exactly the requested time (clamped
+  // to endTime), and MessagePort delivery is FIFO, so drop everything until that pair matches. The
+  // 250 ms timeout is mandatory, not decoration — a seek issued during a count-in emits NO event at
+  // all (AlphaTab gates the trigger on `isPlayingMain`), and without the bound the UI would latch
+  // forever.
+  useAlphaTabEvent(api, 'playerPositionChanged', (args) => {
+    if (args.endTime === 0) return; // guard 1
+
+    if (pendingSeek.current) {
+      // guard 2
+      const expected = Math.min(pendingSeek.current.target, args.endTime);
+      const matched = args.isSeek && Math.abs(args.currentTime - expected) < 1;
+      if (!matched && performance.now() - pendingSeek.current.since < 250) return;
+      pendingSeek.current = null;
+    }
+
+    latestPosition.current = args;
+    if (positionFrame.current !== null) return; // a frame is already scheduled
+    positionFrame.current = requestAnimationFrame(() => {
+      positionFrame.current = null;
+      const next = latestPosition.current;
+      if (!next) return;
+      setPositionMs(next.currentTime);
+      setDurationMs(next.endTime);
+      setScoreTempo(next.originalTempo); // live; score.tempo is the INITIAL tempo only
+    });
+  });
+
+  // No `midiLoaded` subscription, on purpose. The handler above already delivers the opening tempo
+  // before a single frame has played: AlphaTab sets `tickPosition = 0` straight after every MIDI
+  // load, which fires a position event carrying the real length and the tempo at tick 0 — and a
+  // subscriber that arrives later than that is replayed the player's real current position. And
+  // `midiLoaded` cannot be subscribed to safely in 1.8.4 at all; see `AlphaTabApiEvents`.
+
+  // The Loop toggle's label needs to know whether a bar range is selected.
+  useAlphaTabEvent(api, 'playbackRangeChanged', (args) => setHasRange(args.playbackRange !== null));
+
+  // The SAME condition AlphaTab uses to pick its backing-track player (alphaTab.core.mjs:46685,
+  // `score?.backingTrack?.rawAudioFile`). `backingTrack` alone is not enough: a score can carry the
+  // sync metadata without the audio, and AlphaTab then plays the synth, where both toggles work.
+  useAlphaTabEvent(api, 'scoreLoaded', (score) =>
+    setHasBackingTrack(Boolean(score.backingTrack?.rawAudioFile)),
+  );
+
+  // `api` is state, not a ref, so it MUST be in each dependency list: an empty list would freeze
+  // the callback on the `undefined` it held before the engine arrived.
+  const applyLooping = useCallback(
+    (next: boolean) => {
+      setLooping(next);
+      if (api) setAlphaTabValue(api, 'isLooping', next);
+    },
+    [api],
+  );
+
+  // Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 is the normal
+  // level, so the toggle maps to the two ends rather than calling a method.
+  const applyMetronome = useCallback(
+    (next: boolean) => {
+      setMetronome(next);
+      if (api) setAlphaTabValue(api, 'metronomeVolume', next ? 1 : 0);
+    },
+    [api],
+  );
+
+  const applyCountIn = useCallback(
+    (next: boolean) => {
+      setCountIn(next);
+      if (api) setAlphaTabValue(api, 'countInVolume', next ? 1 : 0);
+    },
+    [api],
+  );
+
+  const seek = useCallback(
+    (ms: number) => {
+      if (api) setAlphaTabValue(api, 'timePosition', ms);
+      setPositionMs(ms); // optimistic; guard 2 above reconciles on the echo
+      pendingSeek.current = { target: ms, since: performance.now() };
+    },
+    [api],
+  );
 
   // Confirm FIRST, then parse, then swap — spec §4's order. A file that does not parse never
   // becomes the open notation, so the score on screen is untouched by construction and there is
@@ -330,37 +454,67 @@ function Player() {
           data-testid="player-status"
           data-playing={playing}
           data-player-ready={playerReady}
-          className="flex items-center gap-3"
+          data-duration={durationMs}
+          data-looping={looping}
+          data-metronome={metronome}
+          data-countin={countIn}
         >
-          {/* Play stays unavailable until the synth is ready (spec §4). size-11 = the 44px minimum
-              hit area; the glyph keeps its drawn size. This is NOT client/'s PlayButton — that one
-              is the catalog row's control and has no pause state. */}
-          {/* `disabled` here renders `aria-disabled="true"`, never the native attribute, and the
-              design system blocks activation itself — so no guard belongs at this call site. That
-              matters because a natively disabled button cannot receive focus, and opening a file
-              moves focus to this button: while the engine is still loading, a native `disabled`
-              would make that focus call a silent no-op and strand the person's focus on the control
-              they just used. The dimming and pointer-events rules ship in buttonVariants too, so
-              the className carries only this button's own size and colour. */}
-          <Button
-            ref={playRef}
-            data-testid="transport-play"
-            size="icon"
-            variant="ghost"
-            aria-label={playing ? 'Pause' : 'Play'}
+          {/* The whole transport is gated on `playerReady`, never on `soundFontLoaded`: that one is
+              a bare emitter with no replay, so a late subscriber would latch the row disabled
+              forever. */}
+          <TransportRow
+            positionMs={positionMs}
+            durationMs={durationMs}
+            onSeek={seek}
+            looping={looping}
+            onLoopingChange={applyLooping}
+            metronome={metronome}
+            onMetronomeChange={applyMetronome}
+            countIn={countIn}
+            onCountInChange={applyCountIn}
+            hasRange={hasRange}
+            hasBackingTrack={hasBackingTrack}
             disabled={!playerReady}
-            onClick={() => api?.playPause()}
-            className="size-11 rounded-full text-primary"
-          >
-            <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 34 }}>
-              {playing ? 'pause_circle' : 'play_circle'}
-            </span>
-          </Button>
-          {/* Permanent, never conditional. The control sits beside Play for the whole life of the
-              page: a score is always open, so there is no other place for it to live, the replace
-              tests always find `open-file-input`, and the person's focus is never moved by a
-              control disappearing out from under them. */}
-          <OpenFileControl onNotation={requestNotation} />
+            playButton={
+              /* Play stays unavailable until the synth is ready (spec §4). size-11 = the 44px
+                 minimum hit area; the glyph keeps its drawn size. This is NOT client/'s PlayButton
+                 — that one is the catalog row's control and has no pause state.
+
+                 `disabled` here renders `aria-disabled="true"`, never the native attribute, and
+                 the design system blocks activation itself — so no guard belongs at this call
+                 site. That matters because a natively disabled button cannot receive focus, and
+                 opening a file moves focus to this button: while the engine is still loading, a
+                 native `disabled` would make that focus call a silent no-op and strand the
+                 person's focus on the control they just used. The dimming and pointer-events
+                 rules ship in buttonVariants too, so the className carries only this button's own
+                 size and colour. */
+              <Button
+                ref={playRef}
+                data-testid="transport-play"
+                size="icon"
+                variant="ghost"
+                aria-label={playing ? 'Pause' : 'Play'}
+                disabled={!playerReady}
+                onClick={() => api?.playPause()}
+                className="size-11 rounded-full text-primary"
+              >
+                <span
+                  className="material-symbols-outlined"
+                  aria-hidden="true"
+                  style={{ fontSize: 34 }}
+                >
+                  {playing ? 'pause_circle' : 'play_circle'}
+                </span>
+              </Button>
+            }
+            trailing={
+              /* Permanent, never conditional. The control sits in the row for the whole life of
+                 the page: a score is always open, so there is no other place for it to live, the
+                 replace tests always find `open-file-input`, and the person's focus is never
+                 moved by a control disappearing out from under them. */
+              <OpenFileControl onNotation={requestNotation} />
+            }
+          />
         </div>
 
         {/* Visually hidden, and polite so it waits for a gap rather than cutting the reader off. It

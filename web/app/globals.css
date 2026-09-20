@@ -12,10 +12,20 @@
    import-aware, so a component we don't import still ships its CSS. We accept that bounded,
    cached over-generation in exchange for never hand-maintaining a per-component @source list
    (decision: docs/decisions/2026-07-12-design-system-distribution-adr.md, NH-275). The @source
-   not lines drop co-located stories/tests so their dev-only classes never leak into app CSS. */
+   not lines drop co-located stories/tests so their dev-only classes never leak into app CSS.
+   `.ts` is scanned as well as `.tsx`: a component may keep its class strings in a plain module so
+   two components can share them (Slider/SliderClasses.ts feeds Slider AND RangeSlider). With a
+   `.tsx`-only scan those utilities were never generated here — the seek rail rendered 0 px wide
+   and 4 px tall in this app while Storybook, which scans client/ itself, looked perfect. The
+   extra `not` lines keep the co-located test harnesses out. */
 @source '../../client/src/components/ui/**/*.tsx';
+@source '../../client/src/components/ui/**/*.ts';
 @source not '../../client/src/**/*.stories.tsx';
 @source not '../../client/src/**/*.test.tsx';
+@source not '../../client/src/**/*.test.ts';
+@source not '../../client/src/**/*.a11y.ts';
+@source not '../../client/src/**/*.vr.ts';
+@source not '../../client/src/**/*.story-ids.ts';
 
 /* AlphaTab ships no stylesheet: it creates .at-cursor-bar and .at-cursor-beat as bare divs with
    inline geometry only, so `enableCursor` paints nothing until the host app supplies these rules.

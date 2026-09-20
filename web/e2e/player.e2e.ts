@@ -554,3 +554,99 @@ test('a score opened before the bundled beat arrives is not replaced by it', asy
   await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
 });
+
+test('Loop, Metronome and Count-In each flip the engine state', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  const status = page.getByTestId('player-status');
+  await expect(status).toHaveAttribute('data-looping', 'false');
+  await expect(status).toHaveAttribute('data-metronome', 'false');
+  await expect(status).toHaveAttribute('data-countin', 'false');
+
+  await page.getByTestId('toggle-loop').click();
+  await page.getByTestId('toggle-metronome').click();
+  await page.getByTestId('toggle-countin').click();
+
+  await expect(status).toHaveAttribute('data-looping', 'true');
+  await expect(status).toHaveAttribute('data-metronome', 'true');
+  await expect(status).toHaveAttribute('data-countin', 'true');
+  await expect(page.getByRole('button', { name: 'Loop' })).toHaveAttribute('aria-pressed', 'true');
+
+  // The attributes above mirror the app's own state, so they would flip even if the write never
+  // reached AlphaTab — a callback that closed over the `undefined` api from before the engine
+  // arrived does exactly that. Read the engine itself, through the debug handle `useAlphaTab`
+  // parks on the host element.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const at = (
+          document.querySelector('[data-testid="notation-surface"] > div') as {
+            at?: { isLooping: boolean; metronomeVolume: number; countInVolume: number };
+          } | null
+        )?.at;
+        return at ? [at.isLooping, at.metronomeVolume, at.countInVolume] : null;
+      }),
+    )
+    .toEqual([true, 1, 1]);
+});
+
+test('the scrubber seeks and the position follows', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  const status = page.getByTestId('player-status');
+  await expect
+    .poll(async () => Number(await status.getAttribute('data-duration')))
+    .toBeGreaterThan(0);
+
+  // The rail must really be painted. Its class strings live in a plain `.ts` module shared with
+  // RangeSlider, and this app generates design-system CSS by scanning client/ source files — so a
+  // scan that misses that module leaves the rail 0 px wide with nothing failing anywhere else:
+  // the slider role, its value and keyboard seeking all still work on an invisible control.
+  const rail = page
+    .locator('[data-slot="scrubber"] [data-slot="slider"] [data-index]')
+    .locator('..');
+  await expect
+    .poll(async () => {
+      const box = await rail.boundingBox();
+      return box?.width ?? 0;
+    })
+    .toBeGreaterThan(100);
+
+  const seek = page.getByRole('slider', { name: 'Seek' });
+  await seek.focus();
+  // Five one-second steps.
+  await seek.press('ArrowRight');
+  await seek.press('ArrowRight');
+  await seek.press('ArrowRight');
+  await seek.press('ArrowRight');
+  await seek.press('ArrowRight');
+
+  // AlphaTab's own clock, through the debug handle `useAlphaTab` parks on the host element — the
+  // same read Plan A Task 11 uses. Deliberately NOT a data-* attribute: `seek` writes
+  // `setPositionMs(ms)` optimistically, so a mirrored hook would report the requested value even if
+  // the engine refused it, and the assertion would pass on a broken seek.
+  //
+  // Read the TICK, not the time. With the audio worker enabled (the browser default),
+  // `api.timePosition` is served by AlphaSynthWebWorkerApi, whose setter stores the requested value
+  // into its local `_currentPosition` BEFORE posting `alphaSynth.setTimePosition` to the worker, and
+  // whose getter returns that stored value — so the time position echoes the request whether or not
+  // the worker acted on it. That same setter copies `currentTick` through unchanged, so
+  // `api.tickPosition` moves only when a real position update arrives back from the worker. The tick
+  // is therefore the only one of the two that a refused seek leaves at zero.
+  const engineTickPosition = () =>
+    page.evaluate(
+      () =>
+        (
+          document.querySelector('[data-testid="notation-surface"] > div') as {
+            at?: { tickPosition: number };
+          } | null
+        )?.at?.tickPosition ?? 0,
+    );
+
+  // The score is paused, so the tick only leaves 0 if the worker accepted the five one-second
+  // seeks. A tick threshold cannot be a fixed millisecond number — ticks depend on the score's
+  // tempo and MIDI division — so assert it moved off the start at all.
+  await expect.poll(engineTickPosition, { timeout: 20_000 }).toBeGreaterThan(0);
+});
