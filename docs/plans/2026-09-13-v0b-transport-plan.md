@@ -1059,7 +1059,7 @@ with hold-to-repeat, and the percentage appears **on hover or focus** (see the v
 **Interfaces:**
 
 - Consumes: `@base-ui/react/number-field`, `buttonVariants`, `inputSurfaceClasses`, `cn`.
-- Produces: `<TempoControl scoreTempo={number} speed={number} onSpeedChange={(next: number) => void} minSpeed? maxSpeed? showPercent? disabled? />`, `data-slot="tempo-control"`. Task 7 consumes it. Plan C's Player settings group edits the same `speed` value, which is why it is the single source of truth rather than a BPM number.
+- Produces: `<TempoControl scoreTempo={number} speed={number} onSpeedChange={(next: number) => void} minSpeed? maxSpeed? disabled? />`, `data-slot="tempo-control"`. Task 7 consumes it. Plan C's Player settings group edits the same `speed` value, which is why it is the single source of truth rather than a BPM number.
 
 > **Use Base UI's `NumberField`, do not hand-roll a stepper.** `@base-ui/react/number-field` ships
 > `Root · Group · Input · Increment · Decrement · ScrubArea · ScrubAreaCursor` and supplies, out of the
@@ -1172,6 +1172,25 @@ test('clamps to the 200% ceiling', async () => {
   expect(input).toHaveValue('240');
 });
 
+// The score tempo moves under the component as the playhead crosses a tempo automation. A value
+// the user set mid-edit must not follow it.
+test('a mid-edit score-tempo change does not move the result', async () => {
+  const user = userEvent.setup();
+  const onSpeedChange = vi.fn();
+  const { rerender } = render(
+    <TempoControl scoreTempo={90} speed={1} onSpeedChange={onSpeedChange} />,
+  );
+  const input = screen.getByRole('textbox', { name: 'Tempo' });
+  await user.click(input);
+  // The playhead crosses a 90 -> 120 automation while the input is focused.
+  rerender(<TempoControl scoreTempo={120} speed={1} onSpeedChange={onSpeedChange} />);
+  await user.clear(input);
+  await user.type(input, '100');
+  await user.tab();
+  // Converted against the 90 the edit began at, not the 120 that arrived mid-edit.
+  expect(onSpeedChange).toHaveBeenLastCalledWith(100 / 90);
+});
+
 // F-22 rule 4: at written speed there is nothing to report, so the percentage is never rendered
 // visible — not on hover, not on focus.
 test('renders no percentage at exactly 100%', () => {
@@ -1192,6 +1211,14 @@ test('announces the new tempo in a live region', async () => {
   render(<Harness />);
   await user.click(screen.getByRole('button', { name: 'Increase tempo' }));
   expect(screen.getByRole('status')).toHaveTextContent('121 BPM');
+});
+
+test('the live announcement carries the percentage when off written speed', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  await user.click(screen.getByRole('button', { name: 'Increase tempo' }));
+  // 121/120 is off written speed, so the spoken line says so; the visible % is aria-hidden.
+  expect(screen.getByRole('status')).toHaveTextContent('121 BPM, 101% of written speed');
 });
 
 test('disabled blocks both steppers and the input', () => {
@@ -1230,8 +1257,6 @@ interface TempoControlProps {
   /** AlphaTab's documented playbackSpeed floor. */
   minSpeed?: number;
   maxSpeed?: number;
-  /** Force the percentage visible. For stories and VR only; leave undefined in the app. */
-  showPercent?: boolean;
   disabled?: boolean;
   className?: string;
 }
@@ -1247,13 +1272,16 @@ const PERCENT_LINGER_MS = 3000;
 // Base UI's NumberField owns the interaction model: the editable input, wheel scrubbing, the
 // min/max clamp, and hold-to-repeat on the buttons. This wrapper converts BPM <-> speed at the
 // boundary, paints the pill, and implements the percentage-visibility rule.
+//
+// The READOUT intentionally tracks the playhead: on a score whose tempo changes, the header shows
+// the tempo where playback currently is, multiplied by the chosen speed. Only the conversion back
+// to a speed is pinned to a snapshot — the displayed number is meant to move.
 const TempoControl = ({
   scoreTempo,
   speed,
   onSpeedChange,
   minSpeed = 0.125,
   maxSpeed = 2,
-  showPercent,
   disabled = false,
   className,
 }: Readonly<TempoControlProps>) => {
@@ -1266,9 +1294,27 @@ const TempoControl = ({
 
   useEffect(() => () => clearTimeout(timerRef.current), []);
 
+  // Convert against a SNAPSHOT of the score tempo, not the live prop. `scoreTempo` is rewritten
+  // continuously from playerPositionChanged, so on a score with a tempo automation (90 -> 120)
+  // the denominator can change mid-interaction: type 100 at 90 BPM and you get speed 1.111, then
+  // the playhead crosses into the 120 section and the same speed redisplays as 133. The number
+  // the user set would move by itself. Hold-to-repeat makes it worse — the buttons tick every
+  // 60 ms, so one held press can straddle the boundary and divide by a different number each tick.
+  // The snapshot is taken when an interaction begins and cleared when it ends, so one gesture
+  // always converts against one denominator.
+  const editBaseRef = useRef<number | null>(null);
+
+  const beginEdit = () => {
+    if (editBaseRef.current === null && scoreTempo > 0) editBaseRef.current = scoreTempo;
+  };
+  const endEdit = () => {
+    editBaseRef.current = null;
+  };
+
   const handleBpm = (nextBpm: number | null) => {
-    if (nextBpm === null || scoreTempo <= 0) return; // a score with no tempo would divide by zero
-    const next = Math.min(maxSpeed, Math.max(minSpeed, nextBpm / scoreTempo));
+    const base = editBaseRef.current ?? scoreTempo;
+    if (nextBpm === null || base <= 0) return; // a score with no tempo would divide by zero
+    const next = Math.min(maxSpeed, Math.max(minSpeed, nextBpm / base));
     onSpeedChange(next);
     setLingering(true);
     clearTimeout(timerRef.current);
@@ -1290,7 +1336,13 @@ const TempoControl = ({
       // The visibility rule lives in these two attributes plus the CSS below. data-off-speed=false
       // means "at written speed", and rule 4 says the percentage is then never shown at all.
       data-off-speed={offSpeed}
-      data-linger={showPercent ?? lingering}
+      data-linger={lingering}
+      // The snapshot's lifetime. If Base UI's Root does not forward these to its rendered element,
+      // move them to NumberField.Group below — confirm once that beginEdit actually fires.
+      onPointerDown={beginEdit}
+      onPointerUp={endEdit}
+      onFocus={beginEdit}
+      onBlur={endEdit}
       className={cn('group flex items-center gap-0.5', className)}
     >
       <NumberField.Group className="flex items-center gap-0.5">
@@ -1343,11 +1395,18 @@ const TempoControl = ({
         </NumberField.Increment>
       </NumberField.Group>
 
-      {/* F-13: Base UI's Input is a text input carrying aria-roledescription, not role="spinbutton",
+      {/* Base UI's Input is a text input carrying aria-roledescription, not role="spinbutton",
           so a value change driven by the +/- buttons is not announced. This is the same visually
-          hidden live region DataTable.tsx uses for the same shape of problem. */}
+          hidden live region DataTable.tsx uses for the same shape of problem.
+
+          The percentage rides in the SAME announcement rather than in a node of its own. The
+          visible `%` is aria-hidden (it would otherwise be read as a stray number), and it is the
+          only thing that says whether the score is playing at its written speed — so a bare
+          "90 BPM" leaves a screen-reader user unable to tell "written at 90" from "written at 120,
+          playing at 75%". Off written speed it is spoken; at exactly 100% it is omitted, which
+          matches visibility rule 4 (at written speed there is nothing to report). */}
       <span role="status" aria-live="polite" className="sr-only">
-        {displayedBpm} BPM
+        {offSpeed ? `${displayedBpm} BPM, ${percent}% of written speed` : `${displayedBpm} BPM`}
       </span>
     </NumberField.Root>
   );
@@ -1373,7 +1432,7 @@ export { TempoControl };
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TempoControl`
-Expected: PASS — 11 tests.
+Expected: PASS — 13 tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
@@ -1399,9 +1458,10 @@ focusTabs: 2, // Decrement is the first tabbable child; the second Tab reaches t
 ```
 
 The `slowed` story's `hover` and `focus` snapshots are what guard the visible percentage; `resting`
-guards its absence. The linger needs no snapshot of its own — but if you want one, drive it with the
-controlled `showPercent` prop through `openArgs: 'showPercent:!true'` plus the `open` state, the
-mechanism `HoverCard.a11y.ts` and five other components already use. **Do not** add a `play()` click.
+guards its absence. The 3 s linger needs no snapshot of its own: it is the same painted state the
+`hover` and `focus` snapshots already capture, reached by a different trigger. **Do not** add a
+`play()` click, and do not add a prop to force it — a prop that exists only for stories is test
+instrumentation in shipped API surface.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 
