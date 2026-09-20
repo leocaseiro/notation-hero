@@ -27,6 +27,34 @@ loop_status: halted-at-lap-2-by-maintainer
 >
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **✅ IMPLEMENTED 2026-09-20 — read this before trusting a code block below.** The plan text is kept
+> as written, as the record of what was reviewed. Where the shipped code differs, the code and the
+> 2026-09-20 entry in [`docs/decisions/decision-registry.md`](../decisions/decision-registry.md) win:
+>
+> - **Task 4 (`TransportToggle`)** — renders Base UI's `Toggle` THROUGH the design system's `Button`
+>   (`render` prop), so disabled is `aria-disabled`, not the native attribute. The plan's natively
+>   disabled `Toggle` made the "why is this unavailable" tooltip unreachable. The disabled story
+>   therefore DOES take a VR `focus` state. `value` is omitted from the props (Base UI types it as a
+>   `ToggleGroup` string).
+> - **Task 5 (`TempoControl`)** — the score-tempo snapshot froze only the conversion while the
+>   display stayed live; a held `+` across a change of score tempo ran `101 → 181 → 240`, and the
+>   plan's own mid-edit test failed against the plan's own code. An edit now freezes BOTH, from the
+>   first change until one second after the last one, or blur. The speed ceiling is the engine's
+>   800 %, not 200 %. Base UI's steppers carry `tabindex="-1"` and `aria-disabled` (not the native
+>   attribute), so VR needs one Tab, not two, and the disabled test asserts `aria-disabled`.
+> - **Task 6** — `api.midiLoaded` is NOT subscribed to: AlphaTab 1.8.4's worker-backed synth has a
+>   self-recursive `loadedMidiInfo` getter that overflows the stack on subscribe (a race; 3 crashes
+>   in 18 loads). `playerPositionChanged` already carries the opening tempo. `api.*` values are
+>   written through `setAlphaTabValue` (React's compiler lint rejects the bare assignment).
+>   `hasBackingTrack` is `Boolean(score.backingTrack?.rawAudioFile)` — AlphaTab's own condition.
+>   `OpenFileControl` rides the row's `trailing` slot. `web/app/globals.css` now scans `.ts` as well
+>   as `.tsx`: `SliderClasses.ts` was invisible to it, and the seek rail rendered 0 px wide.
+> - **Task 8** — the bar sits on the header's bottom edge, out of the layout flow, so the notation
+>   does not jump when it appears and goes.
+> - **Task 9** — the pressed-state axe case waits for the tempo percentage to finish fading in; axe
+>   folds partial opacity into its contrast maths.
+> - **Human gates** — handed back once, at the end, by the maintainer's choice; none self-certified.
+
 **Goal:** Give the player its transport — a seek bar that scrubs, a tempo control in the header, Loop / Metronome / Count-In toggles that audibly change playback, and a determinate progress bar for the soundfont download.
 
 **Architecture:** Five new presentation-only components in `client/` (`Slider`, `Progress`, `Scrubber`, `TransportToggle`, `TempoControl`), each built on a Base UI primitive and each with a Storybook story plus the VR and axe baselines that block merge. The already-built `Tooltip` is already in the barrel (Plan A) and is consumed here, not re-exported. `web/` composes them into the transport row and the header pill and wires each to an `AlphaTabApi` accessor. Nothing in `client/` imports `@coderline/alphatab` — that is what keeps the gate real, because a `client/` story has no engine instance to provide.

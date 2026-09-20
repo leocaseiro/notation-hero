@@ -12,6 +12,93 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-20 — v0 Plan B shipped: the transport, and six decisions made while building it (NH-291)
+
+Plan B (playback control) is implemented: a seek bar that scrubs, a tempo control in the header,
+Loop / Metronome / Count-In toggles, and a progress bar for the soundfont download.
+
+**What the plan already carried, now shipped**
+
+- **The design system gained `Slider`, `Progress`, `Scrubber`, `TransportToggle` and
+  `TempoControl` — ✅, all gated by VR + axe.** (`Tooltip` was already public — Plan A exported it.)
+- **Every new control is built on a Base UI primitive** (`Slider`, `Progress`, `Toggle`,
+  `NumberField`) rather than hand-rolled — the standing convention, ratified again in the
+  2026-09-13 plan review.
+- **Spec Delta on the tempo control.** The percentage shows on hover or focus and never at 100 %,
+  the step is `± 1` with hold-to-repeat instead of `± 5`, and the linger is 3 s — superseding the
+  "only while adjusting, ±5" line in `docs/specs/2026-09-10-v0-local-file-player-design.md` §7.
+- **Vocabulary.** A piece of music is a **`score`**; a **`notation`** is the score file; "chart"
+  is not used.
+- **`applySpeed` in `PlayerShell` is the single writer of `api.playbackSpeed`.** v0 ships two
+  controls over one speed value — the header BPM stepper and Plan C's speed slider in the Settings
+  popover's Player group — and both must route through `applySpeed`. This supersedes the
+  settings-row example in the spec's §7: `playbackSpeed` is an `AlphaTabApi` property, not a field
+  in AlphaTab's `Settings` JSON, so a row wired like its neighbours writes a value the engine never
+  sees — the slider moves, the `%` updates, the audio does not.
+
+**Decided by the maintainer on 2026-09-20, while it was being built**
+
+- **`TransportToggle` renders through the design system's `Button` — superseding the plan's
+  natively disabled `Toggle`.** The plan rendered Metronome and Count-In `disabled` with a tooltip
+  saying why (the file is playing its own recording), on Base UI's `Toggle`, which sets the native
+  attribute. A natively disabled button takes no focus and no hover, so that tooltip could never
+  open, for anyone. Base UI's `Toggle` now owns only the pressed state and renders THROUGH `Button`
+  (`render` prop — one `<button>`, no nesting); `Button` owns the look and the disabled state, so
+  disabled is `aria-disabled`, the control stays in the tab order, and the tooltip opens on focus.
+  Reasoning given: _"Use our `<Button />` component which should handle that for you, making a11y
+  working when disabled."_ All three disabled-capable button kinds now agree: `Button` (NH-304),
+  `TransportToggle`, and Base UI's own `NumberField` steppers, which keep `aria-disabled` by
+  themselves (the plan's claim that they set the native attribute was wrong for 1.6.0).
+- **An edit of the tempo keeps the part it began in.** On a score whose parts are written at
+  different tempos (a verse at 90, a chorus at 120), `scoreTempo` changes under the control as the
+  playhead moves. The plan froze the score tempo for the CONVERSION back to a speed only, while the
+  DISPLAY stayed live; Base UI steps from the displayed value, so the two disagreed and compounded
+  on every 60 ms tick of a held button — measured `101 → 181 → 240`, double speed in two ticks, and
+  the plan's own mid-edit test failed against the plan's own code. The rule now, in the
+  maintainer's words: _"if I start to change in part B, it should keep in part B unless I stopped
+  holding up/down, mouse/etc, or on blur. We can defer to a few ms to detect (stop changing)."_
+  The first change freezes the tempo for BOTH the display and the conversion; the edit ends one
+  second after the last change, or on blur. One second, because it must outlast Base UI's own
+  400 ms pause between a held button's first step and its auto-repeat. The speed is a percentage,
+  so it carries into the next part unchanged (90 → 80 is 89 %, so the chorus reads 107).
+- **The speed range is the engine's own, 12.5 %–800 % — superseding the spec's 12.5–200 %.**
+  200 % was the spec's number, not AlphaTab's: `SynthConstants` clamps `playbackSpeed` to
+  `0.125`–`8`. Reasoning given: _"if Alphatab allow 800%, we should keep it, No need to limit
+  IMO"_ — practising a short beat far above its written tempo is a real use. The number field
+  still needs a `max` to clamp a typed value, so it mirrors the engine's. **Plan C's Settings speed
+  slider must use the same range.**
+- **The three human gates are handed back once, at the end, not one at a time.** The plan told an
+  agentic worker to stop at each of the three checks only a person can do (by ear ×2, a browser
+  console ×1). The maintainer chose to batch them: the work ran through to an open PR whose three
+  success-criteria boxes ship unticked, and nothing was self-certified.
+
+**Found by running the real thing — each is now machine-enforced**
+
+- **`api.midiLoaded` must not be subscribed to in AlphaTab 1.8.4 — 🤖.** Subscribing replays
+  `player.loadedMidiInfo`, and the worker-backed synth every browser uses defines that getter as
+  `get loadedMidiInfo() { return this.loadedMidiInfo; }` — it calls itself until the stack
+  overflows. It only throws once the player instance exists, so it is a race: 3 crashed page loads
+  in 18, each landing on the error boundary. The plan verified `midiLoaded` on the no-worker path,
+  where the getter is correct. `playerPositionChanged` already delivers the opening tempo (AlphaTab
+  sets `tickPosition = 0` straight after every MIDI load), so the subscription is gone, and
+  `'midiLoaded'` is excluded from `AlphaTabApiEvents`, so `useAlphaTabEvent(api, 'midiLoaded', …)`
+  does not compile. Drop the exclusion once a release fixes the getter.
+- **`web/` generates design-system CSS from `.ts` files too — 🤖.** The scan was `.tsx`-only, so
+  the class strings `Slider` and `RangeSlider` share in `SliderClasses.ts` never reached the app:
+  the seek rail rendered 0 px wide and 4 px tall, while Storybook (which scans `client/` itself)
+  and every VR baseline looked perfect. The seek e2e case now asserts the rail is really painted,
+  and the 44 px gate measures the slider's `Control`. The same gap still exists for
+  `client/src/lib/utils.ts` (`inputSurfaceClasses`) — not reached by any `web/` screen yet; tracked
+  separately.
+- **AlphaTab's plain-value members are written through `setAlphaTabValue` — 🤖.** React's compiler
+  lint (`react-hooks/immutability`) rejects `api.isLooping = next` inside a component, because the
+  api reaches components through `useState`. The rule is right about React data and wrong about a
+  handle to an engine outside React, so the write lives beside the hook that builds the api.
+- **The toggle e2e case reads the engine, not only the app.** `data-looping` and its siblings
+  mirror React state and would flip even if the write never reached AlphaTab — exactly what a
+  callback frozen on the pre-engine `undefined` api does. The case also reads `isLooping`,
+  `metronomeVolume` and `countInVolume` off the live api.
+
 ### 2026-09-19 — v0 Plan A shipped: the engine decisions are now machine-enforced (NH-291)
 
 Plan A (engine and first sound) is implemented — `/play` opens a local score, renders it as
