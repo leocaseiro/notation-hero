@@ -132,6 +132,12 @@ plays its own recording'`), rather than letting a user press a lit button that m
     and `on()` invokes synchronously at registration with
     `PositionChangedEventArgs(0, 0, 0, 0, false, 120, 120)`. A naive mount subscription therefore flashes
     **120 BPM on a 90 BPM score** (**observed**). Guard the first callback on `endTime > 0`.
+    The provider lives on `AlphaSynthWrapper` — the facade `AlphaTabApiBase` exposes as
+    `api.playerPositionChanged` — not on the synth instance, so it is present on BOTH the
+    worker-backed browser path and the direct no-worker path. `AlphaSynthWebWorkerApi`'s own
+    emitters ARE bare, which is what makes this look wrong at a glance; a 2026-09-19 review read
+    that class, concluded the replay never happens in a browser, and proposed downgrading this
+    guard. It does happen. Do not remove the guard on the assumption that a real browser skips it.
   - **A seek is followed by a burst of stale position events.** They carry `isSeek: false` — the same value
     every ordinary playback tick carries — so the flag alone cannot filter them (**observed**: blocking the
     main thread 25 ms produced 8 stale events; 60 ms produced 18). The echo of the seek itself carries
@@ -2049,6 +2055,7 @@ This covers the **soundfont only** — 302 KB gzip of the ~1.6 MB first-load pay
 
 **Files:**
 
+- Create: `web/app/play/useDelayedVisibility.ts`
 - Modify: `web/app/play/NotationSurface.tsx`
 - Modify: `web/app/play/PlayerShell.tsx`
 - Modify: `web/e2e/player.e2e.ts`
@@ -2169,8 +2176,55 @@ const visible = useDelayedVisibility(soundFontProgress !== undefined, {
 }
 ```
 
-Keep `useDelayedVisibility` local to `web/app/play/` — it is one small hook over two timers, not a
-design-system concern, and `client/` has no other consumer for it.
+`useDelayedVisibility` does not exist yet. Create it at `web/app/play/useDelayedVisibility.ts` — keep
+it local to `web/app/play/`: it is one small hook over two timers, not a design-system concern, and
+`client/` has no other consumer for it. Step 7's commit already stages the whole directory
+(`git add web/app/play`), so the new file is covered.
+
+```ts
+import { useEffect, useRef, useState } from 'react';
+
+interface DelayedVisibilityOptions {
+  /** Stay hidden until `active` has held for this long. Kills the strobe on a fast connection. */
+  appearAfterMs: number;
+  /** Once shown, stay visible at least this long after `active` clears. Kills the flash-and-gone. */
+  holdForMs: number;
+}
+
+// Two timers, one boolean out. `active` going true starts the appear timer; if `active` clears
+// before it fires, nothing was ever shown. `active` clearing starts the hold timer instead of
+// hiding at once, so a bar that did appear is not yanked away mid-blink (if it never appeared the
+// same timer just re-confirms hidden, which is a no-op). Both timers are cleared on every change
+// and on unmount — a surviving timer would call setState on an unmounted component.
+//
+// React 19 requires an argument to useRef, hence the explicit `undefined`.
+export function useDelayedVisibility(
+  active: boolean,
+  { appearAfterMs, holdForMs }: DelayedVisibilityOptions,
+): boolean {
+  const [visible, setVisible] = useState(false);
+  const appearTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    clearTimeout(appearTimer.current);
+    clearTimeout(holdTimer.current);
+
+    if (active) {
+      appearTimer.current = setTimeout(() => setVisible(true), appearAfterMs);
+    } else {
+      holdTimer.current = setTimeout(() => setVisible(false), holdForMs);
+    }
+
+    return () => {
+      clearTimeout(appearTimer.current);
+      clearTimeout(holdTimer.current);
+    };
+  }, [active, appearAfterMs, holdForMs]);
+
+  return visible;
+}
+```
 
 - [ ] **Step 5: Run the lane to verify it passes**
 
