@@ -1093,7 +1093,9 @@ with hold-to-repeat, and the percentage appears **on hover or focus** (see the v
 
 **Interfaces:**
 
-- Consumes: `@base-ui/react/number-field`, `buttonVariants`, `inputSurfaceClasses`, `cn`.
+- Consumes: `@base-ui/react/number-field`, `buttonVariants`, `cn`. NOT `inputSurfaceClasses` — the pill
+  styles its input with bespoke transparent classes (Step 3) rather than the shared input surface, so
+  listing the helper here would misstate the dependency.
 - Produces: `<TempoControl scoreTempo={number} speed={number} onSpeedChange={(next: number) => void} minSpeed? maxSpeed? disabled? />`, `data-slot="tempo-control"`. Task 7 consumes it. Plan C's Player settings group edits the same `speed` value, which is why it is the single source of truth rather than a BPM number.
 
 > **Use Base UI's `NumberField`, do not hand-roll a stepper.** `@base-ui/react/number-field` ships
@@ -1321,7 +1323,9 @@ const TempoControl = ({
   className,
 }: Readonly<TempoControlProps>) => {
   const [lingering, setLingering] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  // React 19 (web/ runs 19.2.7, @types/react 19.2.0) removed the zero-argument useRef overload,
+  // so the initial value is explicit. `useRef<ReturnType<typeof setTimeout>>()` is TS2554.
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const displayedBpm = Math.round(scoreTempo * speed);
   const percent = Math.round(speed * 100);
@@ -1662,6 +1666,11 @@ interface TransportRowProps {
   hasRange: boolean;
   /** Whether the loaded score plays an embedded recording. Metronome and Count-In are inert then. */
   hasBackingTrack: boolean;
+  /**
+   * Rendered last in the row. Exists so Plan C can drop its mixer/settings trigger in without
+   * reopening this interface or this layout. Plan B passes nothing.
+   */
+  trailing?: ReactNode;
   disabled: boolean;
   /** The play/pause control, owned by the shell because it drives api.playPause(). */
   playButton: ReactNode;
@@ -1692,6 +1701,7 @@ export function TransportRow({
   hasBackingTrack,
   disabled,
   playButton,
+  trailing,
 }: Readonly<TransportRowProps>) {
   return (
     <div className="flex w-full items-center gap-4 border-t border-border px-6 py-3">
@@ -1742,6 +1752,7 @@ export function TransportRow({
         icon={<Glyph name="timer" />}
         disabled={disabled || hasBackingTrack}
       />
+      {trailing}
     </div>
   );
 }
@@ -2399,7 +2410,7 @@ baselines that block merge. `Tooltip` was already built and already exported by 
 
 - A–B loop markers are deliberately absent: v0 uses AlphaTab's native bar-range selection plus the Loop toggle. Range selection is mouse-only — AlphaTab registers no touch or pointer handlers — which is why A–B is not in the acceptance set.
 - The metronome glyph is the stock Material Symbols `avg_pace`; Material Symbols ships no metronome icon and the mockup's inline SVG has unestablished provenance. Icon choice tracked as [NH-294](https://leocaseiro.atlassian.net/browse/NH-294).
-- Playback speed does **not** survive a reload: `playbackSpeed` is an `AlphaTabApi` property, not a field in AlphaTab's `Settings` JSON, so it cannot ride the settings persistence the other preferences use. Tracked as [NH-295](https://leocaseiro.atlassian.net/browse/NH-295).
+- None of the transport's four values survives a reload — playback speed, Loop, Metronome and Count-In alike. All four are `AlphaTabApi` properties (`playbackSpeed`, `isLooping`, `metronomeVolume`, `countInVolume`), not fields in AlphaTab's `Settings` JSON, and they are held in plain React state, so none can ride the settings persistence the other preferences use. Tracked as [NH-295](https://leocaseiro.atlassian.net/browse/NH-295) — widen that ticket from "playback speed" to the four transport values.
 - Task 7 **extracts** `PlayerHeader.tsx` rather than creating it: Plan A Task 11 Step 3 already renders the app name and the score title as an inline `<header>` in `PlayerShell.tsx`, so Task 7 moves that markup out and adds the tempo pill. `data-testid="loaded-notation-name"` and `data-file` must survive the move — Plan A's e2e tests assert on them. This resolves [NH-296](https://leocaseiro.atlassian.net/browse/NH-296).
 
 ## Open items tracked outside this plan
