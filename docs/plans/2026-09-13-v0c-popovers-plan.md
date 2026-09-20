@@ -94,10 +94,17 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **A disabled control is `aria-disabled`, never natively disabled** — the design system's `Button` (NH-304) and `TransportToggle` already do this. A natively disabled button takes no focus and no hover, so the tooltip saying _why_ it is unavailable could never open. Tests assert `aria-disabled="true"`, not `toBeDisabled()`.
 - **A file that plays its own recording disables the mixer** (spec §4 and §7). `PlayerShell` already holds `hasBackingTrack`; Task 8 changes where it comes from (AlphaTab's `actualPlayerMode`, because the player-mode row lets the synthesizer play such a file). While it is true, every row's **solo, mute, volume and Transpose audio** render disabled with a tooltip saying the file is playing its own recording. Transpose audio is not in the spec's list; it is here because 1.8.4's `BackingTrackAudioSynthesizer` stubs **six** methods to no-ops (`alphaTab.core.mjs:40427-40432`) — `applyTranspositionPitches`, `setChannelTranspositionPitch`, `channelSetMute`, `channelSetSolo`, `channelSetMixVolume` and `resetChannelStates` itself. `masterVolume` is **not** stubbed (`:40395`, forwarded by `BackingTrackPlayer.updateMasterVolume` at `:40458`), so it keeps working in this mode; and count-in is silent but **not inert** — `play()` still issues a real `seekTo` through `updateTimePosition(0, true)` (`:39955-39958`), which is the stronger reason to disable it, and the spec's rule is that a control must never look live and do nothing. Render-select, the display toggles and Transpose full stay enabled: they change the drawn score, which still works.
 - **Solo is not exclusive**, as in AlphaTab and the fork. Soloing a second track does not un-solo the first.
-- **Volume is applied as a RATIO, not an absolute**: `api.changeTrackVolume([track], next / track.playbackInfo.volume)`, and the ratio must guard a zero denominator. `next` uses `playbackInfo.volume`'s own **0–16** scale. The ratio is against the level **the file gives the track**, and it is not cumulative: in 1.8.4 `changeTrackVolume` only forwards a mix volume to the synth and never writes `playbackInfo.volume`, so the denominator stays the file's value for the life of the score.
-- **Accepted coupling — volume, solo AND mute:** `changeTrackVolume`, `changeTrackSolo` and `changeTrackMute` each act on the track's primary **and secondary** MIDI **channel**, not on the track (`alphaTab.core.mjs:46789-46871`), so tracks sharing a channel move together. `Punk.gp`'s two drum tracks are both on channel 9: muting Drumkit silences Drumkit Left as well, soloing one solos both, and their volume sliders are **not** independent — while each row's own button still shows only what was clicked on it. That is expected v0 behaviour — do not "fix" it, and do not write a test that asserts independence. A test that needs two independent tracks uses Drumkit (row 0) and Distortion Guitar (row 1).
+- **Volume is an ABSOLUTE channel level on AlphaTab's own scale — `next / 16`, NOT a ratio against the file's level.** _Spec Delta: this supersedes §7's `changeTrackVolume([track], next / track.playbackInfo.volume)`, which the spec inherited from the reference panel._ Measured in a browser: `changeTrackVolume([track], 0.25)` produces `setChannelVolume(9, 0.25)` verbatim, and there is no scaling anywhere downstream (`alphaTab.core.mjs:46789-46794` → `:40085-40088`). AlphaTab's own resting level for a channel is `track.playbackInfo.volume / 16` (`:45590`), so the ratio form sends `1.0` where the engine sits at `0.75` for a track the file records at 12 — about **33 % hot before the person touches the slider**, and it would fight AlphaTab's own re-assert on every MIDI reload. The row's `next` is still on `playbackInfo.volume`'s **0–16** scale; the writer divides by the constant **16**. No zero-denominator guard is needed — the denominator is a constant. `changeTrackVolume` never writes `playbackInfo.volume`, so the file's level stays available as the row's starting value.
+- **Accepted coupling — volume, solo AND mute:** `changeTrackVolume`, `changeTrackSolo` and `changeTrackMute` each act on the track's primary **and secondary** MIDI **channel**, not on the track (`alphaTab.core.mjs:46789-46871`), so tracks sharing a channel move together. `Punk.gp`'s two drum tracks are both on channel 9: muting Drumkit silences Drumkit Left as well, soloing one solos both, and their volume sliders are **not** independent — while each row's own button still shows only what was clicked on it. That is expected v0 behaviour — do not "fix" it, and do not write a test that asserts independence. A test that needs two independent tracks uses Drumkit (row 0) and Distortion Guitar (row 1). **The same collision makes `Punk.gp` useless for a transposition test**: both drum tracks map to channel 9, so the second track's 0 overwrites the first track's offset in the generated MIDI and a leak assertion on that fixture **passes while the bug is present** (measured). Assert on `staff.transpositionPitch`, or use a single-track fixture.
 - **None of `changeTrackSolo` / `changeTrackMute` / `changeTrackVolume` writes anything readable on the main thread** — the state lives in the synth worker. So the mixer's React state is the only record of what is soloed or muted, it is rebuilt from the score on every `scoreLoaded`, and an e2e case proves a click reached the engine by wrapping the api method through the debug handle and recording its arguments (Task 7).
-- **A new score must start with a clean mix, and AlphaTab does not do that by itself.** The synth keeps its muted and soloed **channels** — and each channel's mix **volume** — until someone acts. `resetChannelStates()` clears mute, solo and the live transposition pitches **only; it does not clear volume** (`alphaTab.core.mjs:38911-38917`, and `mixVolume` is initialised once per channel at `:39222`). Nothing inside 1.8.4 calls the reset on a score change: the identifier has **six** sites — `alphaTab.core.mjs:33711`, `38911`, `40079`, `40431` (a `BackingTrackAudioSynthesizer` no-op stub), `45179`, `50000` (worker-side dispatch) — and none is reached from a score-load path. Drums are channel 9 in every General MIDI file, so without a reset a drummer who muted the drums in one score opens the next one to silent drums beside a row that reads un-muted. `settings.notation.transpositionPitches` has the same shape of problem: it is indexed by track and lives on the api, so a Transpose full of +2 on track 1 would carry into the next score's track 1. On every `scoreLoaded` the mixer therefore calls `api.player?.resetChannelStates()`, clears the transposition pitches through the funnel, and rebuilds its rows. _Established by reading the source, not by running — Task 7's e2e case is what proves it._
+- **A new score must start with a clean mix, and AlphaTab does not do that by itself.** The synth keeps its muted and soloed **channels** — and each channel's mix **volume** — until someone acts. `resetChannelStates()` clears mute, solo and the live transposition pitches **only; it does not clear volume** (`alphaTab.core.mjs:38911-38917`, and `mixVolume` is initialised once per channel at `:39222`). Nothing inside 1.8.4 calls the reset on a score change: the identifier has **six** sites — `alphaTab.core.mjs:33711`, `38911`, `40079`, `40431` (a `BackingTrackAudioSynthesizer` no-op stub), `45179`, `50000` (worker-side dispatch) — and none is reached from a score-load path. Drums are channel 9 in every General MIDI file, so without a reset a drummer who muted the drums in one score opens the next one to silent drums beside a row that reads un-muted. `settings.notation.transpositionPitches` has the same shape of problem: it is indexed by track and lives on the api, so a Transpose full of +2 on track 1 would carry into the next score's track 1. Two separate fixes, each **measured in a real browser**, not reasoned about:
+
+  - **The engine reset belongs on `playerReady`, never on `scoreLoaded`.** `_onScoreLoaded` fires the event and only THEN builds the player (`alphaTab.core.mjs:48025-48030`), so on the first score `api.player` is **`null`** and `api.player?.resetChannelStates()` silently does nothing — measured on the app's own api across three page loads, counting calls that actually reached the synth wrapper: **zero**. The same hole reopens on every player swap, which a file with an embedded recording causes on purpose. `playerReady` fires only once the player exists, it re-fires on every swap and every MIDI (re)load with no latch (`:33796-33798`), and its emitter lives on the wrapper (`:48313-48315`) so one subscription survives every swap.
+  - **The same handler must re-assert volume, mute, solo AND audio transposition.** AlphaTab re-seeds every DRAWN track's channel volume to `playbackInfo.volume / 16` on each `playerReady` (`:45587-45594`) and restores **none** of the other three — measured after a swap: no mute, solo or transposition calls at all. Without the re-assert a MIDI reload puts a track the person turned down back to **101 % of the default level** (measured by ear through the AudioContext: asked 0.05, got 1.01× baseline; with the re-assert, 0.071×). Ordering is verified, not assumed: AlphaTab registers its listener at construction, so its loop runs first and ours lands last.
+  - **The transposition pitches are cleared BEFORE the new score reaches the engine**, in the open-file path ahead of `renderScore` — never after. `applyPitchOffsets` runs at the TOP of `_internalRenderTracks` (`:45837`), so by the time `scoreLoaded` fires the stale pitches are already stamped onto the new score's staves; and clearing to `[]` afterwards un-stamps nothing, because the write is guarded by `i < transpositionPitches.length`. Reproduced end to end: a real `MidiFileGenerator.generate()` emitted `ch0=2 ch1=2` for the following score, and a fret-3 note drew as fret 5. Clearing first means the new score is never stamped, and a file's **own** transposition (GP files carry one, `:17154`) survives — which both after-the-fact scrubs would silently flatten.
+
+  _Every claim in this bullet was measured, not read._
+
 - **The tablature toggle appears only for a stringed staff that has a tuning.** The pinned 1.8.4 cannot render percussion tablature at all: `Staff.finish()` forces `showTablature = false` on any percussion staff, and `TabBarRendererFactory` sets `hideOnPercussionTrack = true` and requires `staff.tuning.length > 0`. `Punk.gp` confirms it — its two drum staves report `showTablature=false, tuningLen=0` while its guitar staff reports `true, 6`. Piano and vocal staves carry no tuning either, so they are ruled out too.
 - **Transpose Audio and Transpose Full are two separate controls and must stay separate.** Fusing them drops the notation-transposing path entirely.
 - **`Settings` has `fillFromJson` but no `toJson`.** There is no way to ask AlphaTab for its current settings as JSON, so the app holds its own `SettingsJson`-shaped object as the edit state and pushes it into the live settings. That object is both the UI state and the persisted value.
@@ -115,7 +122,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Keys the shell owns per instance are not rows — and the fork has none of them, so nothing is lost.** `PlayerShell`'s `settingsInit` and `setAlphaTabDefaults` set `core.file`, `core.tracks`, `core.fontDirectory`, `core.logLevel`, `player.soundFont` and `player.scrollElement`. A row over any of them would let a stored value break the page on the next visit (a stale `core.file`, a missing sound bank). The fork's panel has no row for any of the six; this is a guard for later rows, not an exception to "same as the fork". For the keys that **are** rows and that the shell also sets — `player.playerMode` (EnabledAutomatic), `player.enableCursor` (true), `player.scrollMode` (Continuous) and `player.scrollOffsetY` (-10) — the shipped default in Task 4 must equal what the shell sets, because the first edit pushes the **whole** JSON through `fillFromJson`.
 - **"Is the file's own recording playing?" is asked of AlphaTab, not worked out from the score.** With the player-mode row, a score that embeds a recording can be played by the synthesizer, so `Boolean(score.backingTrack?.rawAudioFile)` stops being the answer. `api.actualPlayerMode` (`alphaTab.d.ts:377`) is the player AlphaTab really built; the mixer, Metronome and Count-In are unavailable exactly when it is `PlayerMode.EnabledBackingTrack` (Task 8).
 - **`web/` has a unit-test runner.** Vitest, `pnpm --filter @notation-hero/web run test`, tests co-located as `X.test.ts` beside `X.ts` and importing `describe` / `expect` / `it` from `'vitest'` explicitly — `web/lib/alphatab/drum-tracks.test.ts` is the pattern. **There is no Vitest config file in `web/`**, so it runs on defaults: `globals: false` (hence the explicit import) and the **node** environment with no DOM. `settings-storage.test.ts` must therefore inject or stub its storage rather than reach for a real `localStorage`.
-- `@coderline/alphatab` 1.8.4 facts this plan relies on, each checked against the installed package: `api.settings: Settings`, `api.updateSettings()`, `api.render()`, `api.renderTracks(tracks: Track[])`, `api.tracks` (what is drawn now), `api.changeTrackMute(tracks, mute)`, `api.changeTrackSolo(tracks, solo)`, `api.changeTrackVolume(tracks, ratio)`, `api.changeTrackTranspositionPitch(tracks, semitones)`, `api.player?.resetChannelStates()`, `api.downloadMidi()`, `exporter.Gp7Exporter#export(score, settings): Uint8Array` (on the namespace object — `export` is inherited from the abstract `ScoreExporter`, `alphaTab.d.ts:15003`, and its `settings` parameter is optional and nullable), `settings.notation.transpositionPitches: number[]` (indexed by track), `track.playbackInfo.volume` (0–16), `staff.showStandardNotation | showSlash | showNumbered | showTablature`, `staff.tuning: number[]` (a **read-only getter**, `alphaTab.d.ts:15590` — read it, never assign to it), `staff.isPercussion` (`:12818`). `fillFromJson` reads an enum from its **name**, case-insensitively, as well as from its number (`JsonHelper.parseEnum`, `alphaTab.core.mjs:25045`).
+- `@coderline/alphatab` 1.8.4 facts this plan relies on, each checked against the installed package: `api.settings: Settings`, `api.updateSettings()`, `api.render()`, `api.renderTracks(tracks: Track[])`, `api.tracks` (what is drawn now), `api.changeTrackMute(tracks, mute)`, `api.changeTrackSolo(tracks, solo)`, `api.changeTrackVolume(tracks, absoluteChannelVolume)`, `api.changeTrackTranspositionPitch(tracks, semitones)`, `api.player?.resetChannelStates()`, `api.downloadMidi()`, `exporter.Gp7Exporter#export(score, settings): Uint8Array` (on the namespace object — `export` is inherited from the abstract `ScoreExporter`, `alphaTab.d.ts:15003`, and its `settings` parameter is optional and nullable), `settings.notation.transpositionPitches: number[]` (indexed by track), `track.playbackInfo.volume` (0–16), `staff.showStandardNotation | showSlash | showNumbered | showTablature`, `staff.tuning: number[]` (a **read-only getter**, `alphaTab.d.ts:15590` — read it, never assign to it), `staff.isPercussion` (`:12818`). `fillFromJson` reads an enum from its **name**, case-insensitively, as well as from its number (`JsonHelper.parseEnum`, `alphaTab.core.mjs:25045`).
 - `@base-ui/react` 1.6.0 facts, checked against the installed types: the accordion root's prop is **`multiple`** (`AccordionRoot.d.ts:84`; `openMultiple` was the pre-1.0 name and does not exist), and the trigger's open-state attribute is **`data-panel-open`**.
 
 ---
@@ -358,7 +365,11 @@ type SettingControl =
   | { kind: 'toggle' }
   | { kind: 'number'; min?: number; max?: number; step?: number }
   | { kind: 'range'; min: number; max: number; step?: number }
-  | { kind: 'text' }
+  // Free text, committed on blur or Enter — never per keystroke. See the `color` note below.
+  | { kind: 'text'; validate?: (draft: string) => boolean }
+  // A real colour control. The six colour rows use this, not `text`: AlphaTab's parser returns a
+  // null Color for a half-typed hex and the renderer then throws on it.
+  | { kind: 'color' }
   | { kind: 'select'; options: readonly { value: string; label: string }[] }
   // A button that runs a command instead of editing a value — the v0.1 spec's "Action" row (§4).
   | { kind: 'action'; actionLabel: string };
@@ -573,7 +584,8 @@ export type SettingControl =
   | { kind: 'toggle' }
   | { kind: 'number'; min?: number; max?: number; step?: number }
   | { kind: 'range'; min: number; max: number; step?: number }
-  | { kind: 'text' }
+  | { kind: 'text'; validate?: (draft: string) => boolean }
+  | { kind: 'color' }
   | { kind: 'select'; options: readonly { value: string; label: string }[] }
   | { kind: 'action'; actionLabel: string };
 
@@ -598,7 +610,11 @@ interface SettingRowProps {
 // every control kind with honest data and keeps the VR and axe baselines meaningful. The caller
 // (in web/) turns an enum into { value, label } pairs before it gets here.
 //
-// Colours are plain text inputs for now; a colour-picker row can replace them in a later release.
+// Colours use the `color` kind, NOT `text`. This supersedes the spec's "Colors are plain text
+// inputs for now" (§7): AlphaTab's Color.fromJson returns null for a half-typed hex and the canvas
+// then throws on `.rgba`, so a text field breaks the score while someone types into it. The
+// reference panel uses a swatch picker for the same reason. Text rows (the fonts) commit on blur
+// or Enter and validate before reporting.
 const SettingRow = ({
   id,
   label,
@@ -621,6 +637,22 @@ const SettingRow = ({
   const reportNumber = (raw: string) => {
     const parsed = Number(raw);
     if (raw.trim() !== '' && !Number.isNaN(parsed)) onChange(parsed);
+  };
+
+  // A text row's in-progress string. null = not being edited, so the row shows `value`. Nothing
+  // reaches the caller until blur or Enter, and then only if the caller's `validate` accepts it —
+  // the engine's parsers throw or return null on almost every partial string, and the settings
+  // funnel has no try/catch on the edit path.
+  const [textDraft, setTextDraft] = useState<string | null>(null);
+
+  const commitText = () => {
+    if (textDraft === null) return;
+    const accepted =
+      control.kind === 'text' && control.validate ? control.validate(textDraft) : true;
+    if (accepted) onChange(textDraft);
+    // Rejected or accepted, stop editing: the row falls back to showing `value`, so a bad draft
+    // visibly reverts instead of sitting there looking applied.
+    setTextDraft(null);
   };
 
   return (
@@ -668,14 +700,41 @@ const SettingRow = ({
         />
       ) : null}
 
+      {/* A text row NEVER reports per keystroke. AlphaTab's parsers are hostile to a partial
+          value: a half-typed hex gives a null Color and the canvas then throws on `.rgba`, an
+          `rgb` prefix throws out of the parser itself, and EVERY partial font string throws — ten
+          of the seventeen keystrokes in "bold 12px Georgia". Each of those is also written to
+          storage on the same keystroke, so the broken value survives a reload. The draft is held
+          locally and reported only on blur or Enter, and only if `validate` accepts it. A
+          validator alone is not enough: "#2DD" is legitimate CSS shorthand, so nothing can tell a
+          half-typed "#2DD4BF" from a deliberate "#2DD" — deferring the commit is what removes the
+          intermediate states. */}
       {control.kind === 'text' ? (
         <Input
           id={id}
           type="text"
+          value={textDraft ?? String(value)}
+          onChange={(event) => setTextDraft(event.target.value)}
+          onBlur={commitText}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') commitText();
+          }}
+          disabled={disabled}
+          className="h-11 w-40"
+        />
+      ) : null}
+
+      {/* The colour rows. A native colour control cannot produce a value the engine rejects, which
+          is how the reference panel avoids this entirely — it uses a swatch picker and never a
+          text field. */}
+      {control.kind === 'color' ? (
+        <Input
+          id={id}
+          type="color"
           value={String(value)}
           onChange={(event) => onChange(event.target.value)}
           disabled={disabled}
-          className="h-11 w-40"
+          className="h-11 w-40 p-1"
         />
       ) : null}
 
@@ -758,7 +817,7 @@ Expected: PASS — 8 tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
-`SettingRow.story-ids.ts`: `['toggle', 'number', 'range', 'text', 'select', 'action', 'disabled']` — one story per control kind, so every branch carries a VR and axe baseline. `storyPrefix: 'ui-settingrow'`, `snapshotSlug: 'settingrow'`, `slotSelector: '[data-slot="setting-row"]'`, a `w-96` decorator.
+`SettingRow.story-ids.ts`: `['toggle', 'number', 'range', 'text', 'color', 'select', 'action', 'disabled']` — one story per control kind, so every branch carries a VR and axe baseline. `storyPrefix: 'ui-settingrow'`, `snapshotSlug: 'settingrow'`, `slotSelector: '[data-slot="setting-row"]'`, a `w-96` decorator.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 
@@ -1057,8 +1116,9 @@ Add this comment above the volume slider, because it is the behaviour a future r
 
 ```tsx
 {
-  /* 0-16 is playbackInfo.volume's own scale. The caller converts this to the RATIO
-            changeTrackVolume takes. Note the coupling v0 accepts: AlphaTab applies volume, solo
+  /* 0-16 is playbackInfo.volume's own scale. The caller divides by 16, because
+            changeTrackVolume takes an ABSOLUTE channel level on that same scale — not a ratio
+            against the file's level, which would sit about a third hot from the start. Note the coupling v0 accepts: AlphaTab applies volume, solo
             AND mute to the track's primary and secondary MIDI CHANNELS, not to the track, so
             tracks sharing a channel move together. Punk.gp's two drum tracks are both on channel
             9: their volume sliders are not independent, and muting or soloing one does the same
@@ -1248,7 +1308,7 @@ It defines seven groups plus a separate Tools block. **The Settings popover ship
 | Group              | Rows | `source`     | Keys                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | ------------------ | ---- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Display ▸ General  | 9    | `settings`   | `core.engine` (`svg` / `html5` — a two-option select), `display.scale`, `display.stretchForce`, `display.layoutMode`, `display.barsPerRow` (−1 = automatic), `display.startBar`, `display.barCount` (−1 = all), `display.justifyLastSystem`, `display.systemsLayoutMode`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Display ▸ Colors   | 6    | `settings`   | `display.resources.` + `staffLineColor`, `barSeparatorColor`, `barNumberColor`, `mainGlyphColor`, `secondaryGlyphColor`, `scoreInfoColor` — `text` rows                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| Display ▸ Colors   | 6    | `settings`   | `display.resources.` + `staffLineColor`, `barSeparatorColor`, `barNumberColor`, `mainGlyphColor`, `secondaryGlyphColor`, `scoreInfoColor` — **`color` rows, not `text`** (a half-typed hex parses to a null `Color` that the renderer throws on; the reference panel uses a swatch picker for the same reason)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Display ▸ Fonts    | 12   | `settings`   | `display.resources.elementFonts.` + `ScoreCopyright`, `ScoreTitle`, `ScoreSubTitle`, `ScoreWords`, `EffectBeatTimer`, `EffectDirections`, `ChordDiagramFretboardNumbers`, `EffectMarker`, `BarNumber`; then `display.resources.` + `numberedNotationFont`, `tablatureFont`, `graceFont` — `text` rows holding a CSS font string (`bold 12px Georgia`), which `Font.fromJson` parses. **Not the fork's property names.** Nine of the fork's font rows write to deprecated aliases (`titleFont`, `markerFont`, …) that have **no case** in 1.8.4's `RenderingResourcesSerializer` (`alphaTab.core.mjs:29464-29508`), so a row bound to one moves and changes nothing — verified by running `fillFromJson` against a real `Settings()`: 11 of 14 were silent no-ops. `elementFonts` is the only font route the JSON serializer implements. `effectFont` and `inlineFingeringFont` are **dropped**: they are `@json_ignore` and unread by the renderer, so no write path makes them do anything |
 | Display ▸ Paddings | 15   | `settings`   | `display.padding.0` (horizontal) and `display.padding.1` (vertical) — **an array**; then `display.` + `firstSystemPaddingTop`, `systemPaddingTop`, `lastSystemPaddingBottom`, `systemPaddingBottom`, `systemLabelPaddingLeft`, `systemLabelPaddingRight`, `accoladeBarPaddingRight`, `notationStaffPaddingTop`, `notationStaffPaddingBottom`, `effectStaffPaddingTop`, `effectStaffPaddingBottom`, `firstStaffPaddingLeft`, `staffPaddingLeft`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | Notation           | 7    | `settings`   | `notation.` + `fingeringMode`, `rhythmMode`, `rhythmHeight`, `smallGraceTabNotes`, `extendBendArrowsOnTiedNotes`, `extendLineEffectsToBeatEnd`, `slurHeight`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -1703,9 +1763,14 @@ export function setTrackTransposition(
 }
 
 /**
- * For a score change. The pitches are indexed by track and live on the api, so without this a +2
- * on one score's second track would transpose the next score's second track. No redraw: a new
- * score is about to be drawn anyway.
+ * Call this BEFORE the new score reaches the engine — in the open-file path, ahead of
+ * renderScore. The pitches are indexed by track and live on the api, so a +2 on one score's second
+ * track would otherwise transpose the next score's second track. Clearing AFTER the load does not
+ * work: applyPitchOffsets runs at the top of the engine's render path and has already stamped the
+ * new score's staves, and its write is guarded by `i < transpositionPitches.length`, so an empty
+ * array reaches no track and un-stamps nothing. Clearing first means the new score is never
+ * stamped, which also preserves a transposition the FILE itself carries. No redraw: a new score is
+ * about to be drawn anyway.
  */
 export function clearTrackTranspositions(api: AlphaTab.AlphaTabApi): void {
   if (api.settings.notation.transpositionPitches.length === 0) return;
@@ -1914,19 +1979,30 @@ const engineState = (page: Page) =>
 // aria-pressed mirrors React state, so it flips even when the call never reached the engine
 // (exactly what a callback frozen on the pre-engine `undefined` api does). Wrapping the method
 // through the debug handle is test-side only: nothing ships for it.
+// `method` may be a dotted path: 'changeTrackVolume' is on the api itself, but
+// 'player.resetChannelStates' is on the synth wrapper. Without the path form the mixer's reset
+// could not be observed at all, and a test would be asserting the absence of something instead of
+// the presence of the call.
 async function recordApiCalls(page: Page, method: string): Promise<() => Promise<unknown[][]>> {
   await page.evaluate((name) => {
-    const at = (
+    const root = (
       document.querySelector('[data-testid="notation-surface"] > div') as {
-        at?: Record<string, (...args: unknown[]) => unknown>;
+        at?: Record<string, unknown>;
       } | null
     )?.at;
-    if (!at) throw new Error('no engine');
-    const original = at[name].bind(at);
+    if (!root) throw new Error('no engine');
+    const parts = name.split('.');
+    const leaf = parts.pop() as string;
+    let at = root;
+    for (const part of parts) {
+      at = (at as Record<string, Record<string, unknown>>)[part];
+      if (!at) throw new Error(`no ${part}`);
+    }
+    const original = (at[leaf] as (...args: unknown[]) => unknown).bind(at);
     const calls: unknown[][] = [];
     const store = ((globalThis as { nhCalls?: Record<string, unknown[][]> }).nhCalls ??= {});
     store[name] = calls;
-    at[name] = (...args: unknown[]) => {
+    at[leaf] = (...args: unknown[]) => {
       // Tracks are live objects; keep what identifies them.
       calls.push(
         args.map((arg) =>
@@ -2877,15 +2953,23 @@ test('mute and volume reach the engine, the volume as a ratio of the level the f
   await volume.focus();
   await volume.press('ArrowLeft');
 
-  // One step down on the 0-16 scale, sent as next / the file's own level — never as an absolute.
-  const [[tracks, ratio]] = (await volumeCalls()) as [[number[], number]];
+  // One step down on the 0-16 scale, sent on AlphaTab's OWN scale as next / 16 — the engine takes
+  // an absolute channel level, not a ratio against the file's (measured: :46789-46794 forwards it
+  // unscaled, and the engine's own resting level is playbackInfo.volume / 16 at :45590).
+  const [[tracks, level]] = (await volumeCalls()) as [[number[], number]];
   expect(tracks).toEqual([1]);
-  expect(ratio).toBeCloseTo((before - 1) / before, 5);
+  expect(level).toBeCloseTo((before - 1) / 16, 5);
 });
 
 // AlphaTab keeps its muted and soloed CHANNELS across a score change, and drums are channel 9 in
 // every file — so without a reset, muting the drums in one score silences them in the next, beside
 // a row that reads un-muted.
+//
+// This case asserts the reset POSITIVELY — that the call reached the synth — not merely that no
+// stale mute was replayed. The distinction is the whole point: measured in a browser, the reset
+// placed on `scoreLoaded` reached the synth ZERO times, because api.player is still null there,
+// and an "expect no replayed mutes" assertion passes happily against that. `player.resetChannelStates`
+// is a DOTTED path because it lives on the synth wrapper, not on the api.
 test('opening another score starts from a clean mix', async ({ page }) => {
   await openFirstScore(page, 'Punk.gp');
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
@@ -2894,6 +2978,7 @@ test('opening another score starts from a clean mix', async ({ page }) => {
   await page.keyboard.press('Escape');
 
   const mutesAfterOpen = await recordApiCalls(page, 'changeTrackMute');
+  const resetCalls = await recordApiCalls(page, 'player.resetChannelStates');
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/guitar-no-percussion.gp');
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
@@ -2907,7 +2992,10 @@ test('opening another score starts from a clean mix', async ({ page }) => {
   await expect(
     page.getByTestId('track-row-0').getByRole('button', { name: /mute/i }),
   ).toHaveAttribute('aria-pressed', 'false');
-  // The mixer clears the synth's channel state; it does not replay the old score's mutes.
+  // The reset REACHED the synth. This is the assertion that fails if the handler is moved back to
+  // scoreLoaded, where api.player is null.
+  await expect.poll(async () => (await resetCalls()).length).toBeGreaterThan(0);
+  // …and the mixer does not replay the old score's mutes on top of it.
   expect(await mutesAfterOpen()).toEqual([]);
 });
 
@@ -2957,7 +3045,9 @@ The score arrives through the api's own events — there is no callback from the
 interface MixerTrack {
   index: number;
   name: string;
-  /** The level the FILE gives this track, 0-16. It is the ratio's denominator and never changes. */
+  /** The level the FILE gives this track, 0-16 — the row's starting value. AlphaTab never writes
+   *  playbackInfo.volume, so this stays the file's own level for the life of the score. It is NOT
+   *  a denominator: the writer divides by the constant 16 (AlphaTab's own channel scale). */
   fileVolume: number;
   volume: number;
   solo: boolean;
@@ -2998,10 +3088,30 @@ const [renderedIndexes, setRenderedIndexes] = useState<number[]>([]);
 // its muted and soloed CHANNELS until told otherwise, and drums are channel 9 in every file, so a
 // drummer who muted the drums would open the next score to silent drums beside an un-muted row.
 // The transposition pitches have the same problem: indexed by track, held on the api.
+// Rows are rebuilt from the score. No engine call here: api.player is null at this point on the
+// first score and after every player swap, so a reset placed here provably never runs.
 useAlphaTabEvent(api, 'scoreLoaded', (score) => {
-  api?.player?.resetChannelStates();
-  if (api) clearTrackTranspositions(api);
   setTracks(score.tracks.map(toMixerTrack));
+});
+
+// NOTE — the transposition clear does NOT live here. It runs in PlayerShell's open-file handler,
+// immediately before api.renderScore(...), because the engine stamps the pitches onto the new
+// score's staves at the top of its own render path. See Task 7 Step 3b.
+
+// The ENGINE side. playerReady is the first moment the player exists, and it re-fires on every
+// MIDI reload and every player swap — which is exactly when AlphaTab re-seeds each drawn track's
+// channel volume to playbackInfo.volume / 16 and restores nothing else. So this handler both
+// clears the synth's stale mute/solo and re-asserts every row, and it must stay idempotent:
+// playerReady is NOT once per score (measured: twice per loadMidiForScore, four times per
+// renderScore). AlphaTab's own listener registers at construction, so ours runs after it.
+useAlphaTabEvent(api, 'playerReady', () => {
+  api?.player?.resetChannelStates();
+  for (const row of tracks) {
+    applyVolume(row.index, row.volume);
+    if (row.mute) applyMute(row.index, true);
+    if (row.solo) applySolo(row.index, true);
+    if (row.transposeAudio) applyTransposeAudio(row.index, row.transposeAudio);
+  }
 });
 
 // What AlphaTab actually DREW, not what was asked for — the same rule the rendered-track count
@@ -3057,11 +3167,13 @@ const applyVolume = (index: number, next: number) => {
   const track = trackAt(index);
   const row = tracks.find((t) => t.index === index);
   if (!api || !track || !row) return;
-  // A RATIO against the level the FILE gives the track, not an absolute and not cumulative —
-  // that is what changeTrackVolume takes, and AlphaTab never writes the new level back to
-  // playbackInfo. `next` is on the same 0-16 scale. Guard the zero denominator: a track the file
-  // sets to 0 would divide by zero and push Infinity into the synth.
-  api.changeTrackVolume([track], row.fileVolume > 0 ? next / row.fileVolume : 0);
+  // An ABSOLUTE channel level on AlphaTab's own scale, not a ratio against the file's level:
+  // changeTrackVolume forwards its argument unscaled, and the engine's own resting level for a
+  // channel is playbackInfo.volume / 16. Dividing by the file's level instead would sit about a
+  // third hot before anyone touches the slider, and would fight the engine's re-assert on every
+  // MIDI reload. `next` is on playbackInfo.volume's own 0-16 scale; 16 is a constant, so there is
+  // no denominator to guard.
+  api.changeTrackVolume([track], next / 16);
   patch(index, { volume: next });
 };
 
@@ -3171,6 +3283,24 @@ const RECORDING = 'Not available while the file plays its own recording';
 ```
 
 `text-muted-foreground` and the 24 px glyph match the transport row's other controls (`RESTING_INK` and `Glyph` in `TransportRow.tsx`), so the trigger reads as part of that row. `side="top"`: the trigger sits at the bottom of the page.
+
+- [ ] **Step 3b: Clear the transposition pitches BEFORE the new score reaches the engine**
+
+In `PlayerShell.tsx`, in the handler that opens or replaces a file, on the line above the existing
+`api.renderScore(...)`:
+
+```tsx
+// The pitches are indexed by track and live on the api, so the previous score's +2 on track 1
+// would transpose this score's track 1 — drawn AND played. It has to happen BEFORE the score
+// reaches the engine: applyPitchOffsets runs at the top of the render path, and clearing to []
+// afterwards un-stamps nothing, because the write only reaches a track whose index is inside the
+// array. Clearing first also leaves a transposition the FILE itself carries intact.
+clearTrackTranspositions(api);
+api.renderScore(parsed, trackIndexes);
+```
+
+Add `web/app/play/PlayerShell.tsx`'s open-file handler to this task's file list. The mixer's own
+rows already start at 0 for a new score, because `toMixerTrack` builds them from the score.
 
 - [ ] **Step 4: Put the trigger in the transport row's free slot**
 
