@@ -45,9 +45,14 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
       ),
     ]
       .filter((el) => {
+        // Skip controls that are not rendered at all: `display:none` generates no box, so
+        // getClientRects() is empty. A control that IS laid out but collapsed to 0 px in either
+        // dimension is NOT skipped — a seek rail painted 0 px wide cannot be clicked at all, and
+        // the old `r.width > 0 && r.height > 0` guard let exactly that worst case through while
+        // still failing a milder 1 px one.
+        if (el.getClientRects().length === 0) return false;
         const r = el.getBoundingClientRect();
-        // Skip controls that are not rendered at all; a hidden element has no hit area to fail.
-        return r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44);
+        return r.width < 44 || r.height < 44;
       })
       .map((el) => ({
         id: (el as HTMLElement).dataset.testid ?? el.textContent?.trim().slice(0, 24) ?? '?',
