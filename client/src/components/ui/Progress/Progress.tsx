@@ -39,6 +39,10 @@ const Progress = ({ value, label, className }: Readonly<ProgressProps>) => (
   >
     <ProgressPrimitive.Track className="h-full w-full overflow-hidden rounded-full bg-muted">
       <ProgressPrimitive.Indicator
+        // A fresh element when the bar turns from indeterminate to determinate (and back). Without
+        // it `transition-[width]` tweens the full-width indeterminate fill DOWN to the first real
+        // fraction — a full bar shrinking to 1 % reads as progress running backwards.
+        key={value === null ? 'indeterminate' : 'determinate'}
         className={cn(
           'h-full rounded-full bg-primary transition-[width] duration-150',
           'data-[indeterminate]:animate-skeleton-pulse data-[indeterminate]:bg-skeleton data-[indeterminate]:w-full',
