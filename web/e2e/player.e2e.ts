@@ -672,38 +672,119 @@ test('the header tempo stepper changes playback speed', async ({ page }) => {
     .toBeGreaterThan(1);
 });
 
-test('shows a soundfont progress bar while the sounds download, then hides it', async ({
+/** One animation frame of the loading bar, recorded by the test-side sampler below. */
+interface BarSample {
+  value: string | null;
+  opacity: number;
+}
+
+/** Records the loading bar on every animation frame — TEST-side only, injected before the page. */
+async function traceLoadingBar(page: Page): Promise<() => Promise<BarSample[]>> {
+  await page.addInitScript(() => {
+    const trace: { value: string | null; opacity: number }[] = [];
+    (globalThis as unknown as { barTrace: typeof trace }).barTrace = trace;
+    const sample = () => {
+      const bar = document.querySelector('[role="progressbar"]');
+      if (bar) {
+        trace.push({
+          value: bar.getAttribute('aria-valuenow'),
+          opacity: Number(globalThis.getComputedStyle(bar).opacity),
+        });
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  return () => page.evaluate(() => (globalThis as unknown as { barTrace: BarSample[] }).barTrace);
+}
+
+// The bar means "the player is not ready yet". It is on screen from the FIRST frame (indeterminate:
+// the engine files report no progress), turns into a real fraction while the soundfont downloads,
+// holds at 100 % and FADES out. Playwright's toBeVisible() counts opacity 0 as visible, so the
+// fade is asserted from a per-frame trace, never from visibility.
+test('the loading bar is there from the first frame, fills with the sounds, then fades', async ({
   page,
 }) => {
-  // Stretch the soundfont TRANSFER so the bar is observable — it is otherwise a sub-second
-  // window, and Task 8 Step 4 only mounts the bar once progress has run past a 300 ms delay.
-  // Delaying the START of the request (page.route + setTimeout + route.continue) does not help:
-  // it shifts the same sub-second transfer later, and AlphaTab's soundFontLoad events only fire
-  // while bytes arrive. Throttle the network at the browser level instead, BEFORE navigating.
+  test.setTimeout(120_000);
+  const readTrace = await traceLoadingBar(page);
+
+  // Throttle at the browser level BEFORE navigating: the soundfont is 977 KB, so ~400 KB/s keeps
+  // the download long enough to watch. Delaying only the START of the request would not — the
+  // progress events fire while bytes arrive.
   const cdp = await page.context().newCDPSession(page);
   await cdp.send('Network.enable');
   await cdp.send('Network.emulateNetworkConditions', {
     offline: false,
     latency: 100,
-    // ~150 KB/s: the ~302 KB soundfont then takes roughly two seconds to arrive, which is
-    // comfortably past the 300 ms appear-delay and well inside the 30 s visibility timeout.
-    downloadThroughput: 150 * 1024,
-    uploadThroughput: 150 * 1024,
+    downloadThroughput: 400 * 1024,
+    uploadThroughput: 400 * 1024,
   });
 
   await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  const bar = page.getByRole('progressbar', { name: 'Loading the player' });
 
-  const bar = page.getByRole('progressbar', { name: /sound/i });
-  await expect(bar).toBeVisible({ timeout: 30_000 });
+  // There at once, while Play is still unavailable.
+  await expect(bar).toBeAttached();
+  await expect(play).toHaveAttribute('aria-disabled', 'true');
 
-  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
-  await expect(bar).toHaveCount(0);
+  // A real fraction once soundfont bytes flow.
+  await expect
+    .poll(async () => Number(await bar.getAttribute('aria-valuenow')), { timeout: 90_000 })
+    .toBeGreaterThan(0);
+
+  await expect(play).toBeEnabled({ timeout: 90_000 });
+  await expect(bar).toHaveCount(0, { timeout: 10_000 });
+
+  const trace = await readTrace();
+  // Indeterminate first: no fraction exists before the first soundfont byte.
+  expect(trace[0]?.value).toBeNull();
+  // Never BACK to indeterminate once a fraction was shown — that was a grey blink at the end of
+  // every load, in the gap between the download finishing and the player being ready.
+  const firstFraction = trace.findIndex((sample) => sample.value !== null);
+  expect(firstFraction).toBeGreaterThan(-1);
+  expect(trace.slice(firstFraction).every((sample) => sample.value !== null)).toBe(true);
+  // It finishes at 100 %, is shown fully opaque there, and then fades rather than vanishing.
+  expect(trace.at(-1)?.value).toBe('100');
+  expect(trace.some((sample) => sample.value === '100' && sample.opacity === 1)).toBe(true);
+  expect(trace.some((sample) => sample.opacity > 0 && sample.opacity < 1)).toBe(true);
+});
+
+// The scenario that showed NO bar at all: a second visit on a slow connection. The soundfont is in
+// the browser cache, so the request is a tiny revalidation, and AlphaTab reports the whole file in
+// two progress events a millisecond apart at the very end of the wait. A bar driven only by those
+// events can never show; one that means "not ready yet" does.
+test('the loading bar shows on a warm cache, where no download progress is ever reported', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Network.enable');
+  await cdp.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: 1000,
+    downloadThroughput: -1,
+    uploadThroughput: -1,
+  });
+  await page.reload();
+
+  const bar = page.getByRole('progressbar', { name: 'Loading the player' });
+  await expect(bar).toBeAttached();
+  await expect(play).toHaveAttribute('aria-disabled', 'true');
+
+  await expect(play).toBeEnabled({ timeout: 90_000 });
+  await expect(bar).toHaveCount(0, { timeout: 10_000 });
 });
 
 /** The slice of AlphaTab's bounds lookup the helpers below read through the `at` debug handle. */
 interface BeatBoundsHost extends HTMLElement {
   at: {
     playbackRange: unknown;
+    tickPosition: number;
     renderer: {
       boundsLookup: {
         staffSystems: {
@@ -825,4 +906,187 @@ test('holding the seek thumb does not borrow the drop zone outline', async ({ pa
 
   expect(outlines.length).toBeGreaterThan(0);
   expect(outlines).not.toContain('dashed');
+});
+
+// The ENGINE's tick through the debug handle, never the app's mirror: `seek` writes its position
+// optimistically, so only the engine's own tick proves that audio is really being rendered.
+const engineTick = (page: Page) =>
+  page.evaluate(
+    () =>
+      (
+        document.querySelector<HTMLElement>(
+          '[data-testid="notation-surface"] > div',
+        ) as BeatBoundsHost
+      ).at.tickPosition,
+  );
+
+// The scenario, as it was reported: select a few bars to loop, play a little, pause. Drag the seek
+// bar to a place PAST those bars and press Play: the button turns into Pause and nothing moves;
+// press Pause and the bar falls back to where it was. In AlphaTab 1.8.4 a seek outside an active
+// playback range leaves the sequencer clamped to the range's end while the reported time is the
+// requested one, so Play produces empty buffers and its finish check never runs. The seek bar
+// covers the WHOLE score, so using it drops the selection first — what AlphaTab itself does for a
+// plain click on a beat.
+test('a mouse seek past a selected bar range, then Play, plays on from there', async ({ page }) => {
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  const status = page.getByTestId('player-status');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await expect
+    .poll(async () => Number(await status.getAttribute('data-duration')))
+    .toBeGreaterThan(0);
+
+  // Bar 1 of the bundled beat: the first two seconds of six.
+  await selectBars(page, 0, 0);
+  await expect(page.getByRole('button', { name: 'Loop selection' })).toBeVisible();
+
+  // Play a little inside the range, then pause.
+  await play.click();
+  await expect.poll(() => engineTick(page)).toBeGreaterThan(480);
+  await play.click();
+  await expect(status).toHaveAttribute('data-playing', 'false');
+
+  // Drag the THUMB to the middle of the rail with a real mouse — about 00:03, well past bar 1.
+  const thumb = page.locator('[data-slot="scrubber"] [data-index]');
+  const rail = await thumb.locator('..').boundingBox();
+  const grip = await thumb.boundingBox();
+  if (!rail || !grip) throw new Error('the seek bar is not laid out');
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + grip.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(rail.x + rail.width / 2, rail.y + rail.height / 2, { steps: 10 });
+  await page.mouse.up();
+  // 3840 ticks is the end of bar 1; the middle of the score is well past it.
+  await expect.poll(() => engineTick(page)).toBeGreaterThan(4800);
+  const seekTick = await engineTick(page);
+  // Using the seek bar dropped the selection, and the Loop toggle says so.
+  await expect(page.getByRole('button', { name: 'Loop score' })).toBeVisible();
+
+  // Play. The engine must really advance — a full beat past the target, so the seek's own echo
+  // cannot satisfy it.
+  await play.click();
+  await expect.poll(() => engineTick(page), { timeout: 10_000 }).toBeGreaterThan(seekTick + 960);
+
+  // Pause stays where playback got to; it does not fall back to the old position.
+  await play.click();
+  await expect(status).toHaveAttribute('data-playing', 'false');
+  expect(await engineTick(page)).toBeGreaterThan(seekTick);
+});
+
+// No seek needed for this one: AlphaTab keeps the main-thread playbackRange across a score change
+// while the new sequencer has none. Select bars, open another file, press Play — the cursor froze
+// at the old range's end and Pause jumped back, with the toggle still reading "Loop selection".
+test('opening a file drops the bar range selected in the previous score', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await selectBars(page, 0, 0);
+  await expect(page.getByRole('button', { name: 'Loop selection' })).toBeVisible();
+
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await expect(page.getByRole('button', { name: 'Loop score' })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (
+          document.querySelector<HTMLElement>(
+            '[data-testid="notation-surface"] > div',
+          ) as BeatBoundsHost
+        ).at.playbackRange,
+    ),
+  ).toBeNull();
+});
+
+/** The one OPEN tooltip. A closing popup can stay in the DOM for a frame, hence `[data-open]`. */
+const openTooltip = (page: Page) => page.locator('[data-slot="tooltip-content"][data-open]');
+
+// An icon alone says neither what a control is nor what state it is in.
+test('every transport icon button has a tooltip that tells its state', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('transport-play').hover();
+  await expect(openTooltip(page)).toHaveText('Play');
+
+  await page.getByTestId('open-file-button').hover();
+  await expect(openTooltip(page)).toHaveText('Open a file');
+
+  await page.getByTestId('toggle-loop').hover();
+  await expect(openTooltip(page)).toContainText('Loop: off');
+
+  await page.getByTestId('toggle-countin').hover();
+  await expect(openTooltip(page)).toHaveText('Count-in: off');
+
+  const metronome = page.getByTestId('toggle-metronome');
+  await metronome.hover();
+  await expect(openTooltip(page)).toHaveText('Metronome: off');
+  await metronome.click();
+  // A click closes the tooltip; leave and come back to read the new state.
+  await page.getByTestId('notation-surface').hover();
+  await metronome.hover();
+  await expect(openTooltip(page)).toHaveText('Metronome: on');
+});
+
+// A disabled control is exactly the one that owes an explanation. A disabled Button is
+// `pointer-events: none`, so as its own tooltip trigger it never saw the hover: the hint opened on
+// keyboard focus only, and a mouse user got a dimmed button and no reason.
+test('a disabled transport toggle still opens its tooltip under the mouse', async ({ page }) => {
+  // Stall the engine so the whole transport stays disabled.
+  await page.route('**/alphatab/esm/alphaTab.mjs', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 8000));
+    await route.continue();
+  });
+  await page.goto('/play');
+
+  const loop = page.getByTestId('toggle-loop');
+  await expect(loop).toHaveAttribute('aria-disabled', 'true');
+  // page.mouse, not locator.hover(): hover() waits for the target to receive pointer events, and
+  // the disabled button never does — which is the whole point. The pointer goes where a person's
+  // would.
+  const box = await loop.boundingBox();
+  if (!box) throw new Error('the Loop toggle has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+
+  await expect(openTooltip(page)).toContainText('Loop: off');
+});
+
+// The tooltip centres on its trigger's box. A title button stretched across the header (flex-1)
+// therefore put the file name's tooltip far to the right of the text it explains.
+test('the file name tooltip opens under the name, not across the header', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  const name = page.getByTestId('loaded-notation-name');
+  await name.hover();
+  await expect(openTooltip(page)).toBeVisible();
+
+  const trigger = await name.boundingBox();
+  const tip = await openTooltip(page).boundingBox();
+  if (!trigger || !tip) throw new Error('nothing to measure');
+  // The button hugs its text …
+  expect(trigger.width).toBeLessThan(400);
+  // … and the tooltip's centre sits inside the button's own width.
+  const tipCentre = tip.x + tip.width / 2;
+  expect(tipCentre).toBeGreaterThan(trigger.x);
+  expect(tipCentre).toBeLessThan(trigger.x + trigger.width);
+});
+
+// The tempo field behaves like a native number input for the mouse. A drag-to-change gesture once
+// wrapped it and cancelled every pointerdown inside, so the number could not be selected at all.
+test('the tempo number can be selected with the mouse and typed over', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  const tempo = page.getByRole('textbox', { name: 'Tempo' });
+  const before = await tempo.inputValue();
+  await tempo.dblclick();
+  const selected = await tempo.evaluate((input: HTMLInputElement) =>
+    input.value.slice(input.selectionStart ?? 0, input.selectionEnd ?? 0),
+  );
+  expect(selected).toBe(before);
+
+  await page.keyboard.type('90');
+  await page.keyboard.press('Tab');
+  await expect(tempo).toHaveValue('90');
 });

@@ -66,6 +66,7 @@ type AlphaTabApiValue =
   | 'isLooping'
   | 'metronomeVolume'
   | 'countInVolume'
+  | 'playbackRange'
   | 'playbackSpeed'
   | 'timePosition';
 

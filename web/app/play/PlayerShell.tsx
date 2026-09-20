@@ -1,7 +1,15 @@
 'use client';
 
-import { Button, Progress, toast } from '@notation-hero/client';
+import {
+  Button,
+  Progress,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  toast,
+} from '@notation-hero/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 import {
   AlphaTabEngineProvider,
@@ -14,7 +22,7 @@ import { NotationSurface } from './NotationSurface';
 import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
 import { PlayerHeader } from './PlayerHeader';
 import { TransportRow } from './TransportRow';
-import { useDelayedVisibility } from './useDelayedVisibility';
+import { useLoadingBarPhase } from './useLoadingBarPhase';
 import type * as AlphaTab from '@coderline/alphatab';
 
 /** What the picker produces: a file read into memory, not yet parsed. */
@@ -39,8 +47,30 @@ export interface OpenNotation {
  */
 const SAMPLE_NOTATION = '/notation/1-beat.gp';
 
+const nextFrame = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+
+/**
+ * Resolves once the loading toast has been painted. Sonner inserts a toast asynchronously and
+ * shows it only after a second pass sets `data-mounted="true"`, so how many frames that takes
+ * depends on how busy the main thread is. A fixed two-frame wait was exactly enough on an idle
+ * page and not enough on a slow one: under a 20x CPU throttle the toast reached the screen only
+ * after the parse had finished. Bounded, so a toast that never mounts cannot hang a file open.
+ */
+async function loadingToastPainted(): Promise<void> {
+  for (let frame = 0; frame < 30; frame += 1) {
+    await nextFrame();
+    if (document.querySelector('[data-sonner-toast][data-mounted="true"]')) break;
+  }
+  // Mounted is a DOM fact; these two frames are what put it on the glass.
+  await nextFrame();
+  await nextFrame();
+}
+
 function Player() {
-  const { engine } = useAlphaTabEngine();
+  const { engine, error: engineError } = useAlphaTabEngine();
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
@@ -71,9 +101,15 @@ function Player() {
   // multiplier was reset.
   const [speed, setSpeed] = useState(1);
   // The soundfont download: a 0-1 fraction, null when no fraction can be computed, and undefined
-  // when nothing is downloading. It covers the soundfont ONLY — it cannot even start until the
-  // engine itself has arrived.
+  // before any byte has been reported. The FRACTION measures the soundfont only — the engine
+  // files arrive through a plain dynamic import, which reports no progress at all.
   const [soundFontProgress, setSoundFontProgress] = useState<number | null | undefined>();
+  // AlphaTab raised an error before the player was ready: Play never enables on this page load,
+  // so the bar must stop rather than pulse forever beside the error message.
+  const [loadFailed, setLoadFailed] = useState(false);
+  // A file is being opened. The parse is synchronous and can hold the main thread for seconds on a
+  // slow machine, so this is committed and PAINTED before the parse starts.
+  const [opening, setOpening] = useState(false);
 
   // The ONE owner of the api. There is no second apiRef and no onApiReady callback: a callback
   // prop in the hook's dependency list rebuilds the engine on an ordinary state change, throwing
@@ -186,22 +222,27 @@ function Player() {
   // subscriber that arrives later than that is replayed the player's real current position. And
   // `midiLoaded` cannot be subscribed to safely in 1.8.4 at all; see `AlphaTabApiEvents`.
 
-  // The two events that END the download. `soundFontLoaded` is a bare emitter with no replay, which
-  // is why nothing is GATED on it — but listening is safe here: this subscribes in the same commit
-  // as NotationSurface's `soundFontLoad`, so it cannot see the start and miss the end.
-  useAlphaTabEvent(api, 'soundFontLoaded', () => setSoundFontProgress(undefined));
+  // The download finished: hold the fraction at 100 %. NOT back to undefined — the worker still
+  // decodes the presets for some tens of milliseconds before `playerReady`, and an undefined
+  // fraction there flipped the nearly full bar to the grey indeterminate style for a few frames.
+  useAlphaTabEvent(api, 'soundFontLoaded', () => setSoundFontProgress(1));
   // A failed download reaches the app as `api.error` (AlphaTab forwards the synth's
   // soundFontLoadFailed itself), which NotationSurface already reports as the engine-runtime
-  // error. Without this the bar would freeze at whatever fraction it last showed, forever.
-  useAlphaTabEvent(api, 'error', () => setSoundFontProgress(undefined));
+  // error.
+  useAlphaTabEvent(api, 'error', () => setLoadFailed(true));
 
-  // Delay-then-hold, not immediate: on a normal connection the download is a sub-second window, so
-  // showing the bar the instant progress starts is a strobe at exactly the moment the person is
-  // first orienting. A fast connection never shows it at all.
-  const soundFontBarVisible = useDelayedVisibility(soundFontProgress !== undefined, {
-    appearAfterMs: 300,
-    holdForMs: 500,
-  });
+  // The bar means "the player is not ready yet", from the first frame: it is in the server HTML,
+  // indeterminate until soundfont bytes flow, then a real fraction. It also covers opening a file.
+  // A failure shows NO bar — never a "finished" one beside an error message.
+  const failed = engineError !== null || loadFailed;
+  const loadingPlayer = !failed && (!playerReady || opening);
+  // 700 = the 400 ms hold at 100 % plus the 300 ms fade in LOADING_BAR_LEAVING below.
+  const barPhase = useLoadingBarPhase(loadingPlayer, 700);
+  // Held at 100 % while it fades. Opening a file has no fraction to show, and neither has the wait
+  // before the first soundfont byte: both are the indeterminate style (null).
+  let barValue: number | null = soundFontProgress ?? null;
+  if (barPhase === 'done') barValue = 1;
+  else if (opening) barValue = null;
 
   // The Loop toggle's label needs to know whether a bar range is selected.
   useAlphaTabEvent(api, 'playbackRangeChanged', (args) => setHasRange(args.playbackRange !== null));
@@ -255,7 +296,17 @@ function Player() {
 
   const seek = useCallback(
     (ms: number) => {
-      if (api) setAlphaTabValue(api, 'timePosition', ms);
+      if (api) {
+        // The seek bar covers the WHOLE score, so using it drops a bar-range selection first — the
+        // same thing AlphaTab does itself for a plain click on a beat. It is not optional: in
+        // 1.8.4 a seek outside an active range leaves the sequencer clamped to the range's end
+        // while the reported time is the requested one. Play then produces empty buffers, the
+        // engine's finish check never runs, and the player latches in Playing with nothing moving;
+        // Pause falls back to the last beat the cursor had resolved. The range goes FIRST: both
+        // writes are messages to the same worker, handled in order.
+        if (api.playbackRange) setAlphaTabValue(api, 'playbackRange', null);
+        setAlphaTabValue(api, 'timePosition', ms);
+      }
       setPositionMs(ms); // optimistic; guard 2 above reconciles on the echo
       pendingSeek.current = { target: ms, since: performance.now() };
     },
@@ -315,18 +366,23 @@ function Player() {
       // time to parse (2,000 bars of 16ths: ~0.4 s on a fast laptop, longer on a slow one), while
       // file size barely matters. One `id` makes the loading, success and failure states share one
       // toast instead of stacking three.
+      // The loading bar FIRST, committed synchronously. Sonner inserts its toast element
+      // asynchronously, so on a slow machine the painted frame the wait below buys did not yet
+      // contain the toast: measured under a 20x CPU throttle, the toast reached the DOM 188 ms
+      // after the pick and was first PAINTED at 3.9 s, when the parse had already finished. The
+      // bar is our own React state, so flushSync puts it in the DOM before that frame is painted.
+      flushSync(() => setOpening(true));
       toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
 
-      // loadScoreFromBytes is synchronous: wait for a painted frame first, or the toast would
-      // appear only once the parse had already finished.
-      await new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-      });
+      // loadScoreFromBytes is synchronous: wait until the toast is really ON SCREEN first, or it
+      // would appear only once the parse had already finished.
+      await loadingToastPainted();
 
       let score: AlphaTab.model.Score;
       try {
         score = at.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
       } catch {
+        setOpening(false);
         toast.error(
           `${next.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
           { id: 'notation-load' },
@@ -338,7 +394,13 @@ function Player() {
 
       // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
       if (wasPlaying) api?.pause();
+      // A bar range selected in the OLD score must not outlive it. AlphaTab keeps the main-thread
+      // playbackRange across a score change while the new sequencer has none: the Loop toggle
+      // went on reading "Loop selection", the cursor froze at the old range's end, and Pause
+      // jumped back — with no seek involved.
+      if (api?.playbackRange) setAlphaTabValue(api, 'playbackRange', null);
       setNotation({ name: next.name, score });
+      setOpening(false);
       toast.success(`${next.name} loaded`, { id: 'notation-load' });
       // Success only. None of this is reachable from the cancel path or the parse failure (both
       // returned above), from the read failures the picker catches, or for the bundled score —
@@ -408,13 +470,17 @@ function Player() {
           onSpeedChange={applySpeed}
           disabled={!playerReady}
         />
-        {soundFontBarVisible ? (
+        {failed || barPhase === 'gone' ? null : (
           <Progress
-            value={soundFontProgress ?? null}
-            label="Loading sounds"
-            className="absolute inset-x-0 bottom-0"
+            value={barValue}
+            label="Loading the player"
+            className={
+              barPhase === 'done'
+                ? 'absolute inset-x-0 bottom-0 opacity-0 transition-opacity delay-[400ms] duration-300'
+                : 'absolute inset-x-0 bottom-0'
+            }
           />
-        ) : null}
+        )}
       </div>
 
       {/* A dragenter/dragleave COUNTER, never a bare setDragging(false). `dragleave` also fires on
@@ -513,42 +579,53 @@ function Player() {
             hasBackingTrack={hasBackingTrack}
             disabled={!playerReady}
             playButton={
-              /* Play stays unavailable until the synth is ready (spec §4). size-11 = the 44px
-                 minimum hit area; the glyph keeps its drawn size. This is NOT client/'s PlayButton
-                 — that one is the catalog row's control and has no pause state.
+              /* The mockup's Play: a SOLID teal circle, 48 px, with a solid glyph and a soft teal
+                 shadow — Button's own `default` variant, which is bg-primary with the hover
+                 darken. The two glyphs are inline SVG paths (Material's play_arrow and pause):
+                 the self-hosted Material Symbols face carries the weight axis only, so
+                 `FILL 1` does nothing and the font can only draw them as outlines. `size-6` is
+                 required, or Button sizes a bare svg to 16 px. This is NOT client/'s PlayButton —
+                 that one is the catalog row's control and has no pause state.
 
                  `disabled` here renders `aria-disabled="true"`, never the native attribute, and
                  the design system blocks activation itself — so no guard belongs at this call
                  site. That matters because a natively disabled button cannot receive focus, and
                  opening a file moves focus to this button: while the engine is still loading, a
                  native `disabled` would make that focus call a silent no-op and strand the
-                 person's focus on the control they just used. The dimming and pointer-events
-                 rules ship in buttonVariants too, so the className carries only this button's own
-                 size and colour. */
-              <Button
-                ref={playRef}
-                data-testid="transport-play"
-                size="icon"
-                variant="ghost"
-                aria-label={playing ? 'Pause' : 'Play'}
-                disabled={!playerReady}
-                onClick={() => api?.playPause()}
-                className="size-11 rounded-full text-primary"
-              >
-                <span
-                  className="material-symbols-outlined"
-                  aria-hidden="true"
-                  style={{ fontSize: 34 }}
-                >
-                  {playing ? 'pause_circle' : 'play_circle'}
-                </span>
-              </Button>
+                 person's focus on the control they just used. */
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      ref={playRef}
+                      data-testid="transport-play"
+                      size="icon"
+                      aria-label={playing ? 'Pause' : 'Play'}
+                      disabled={!playerReady}
+                      onClick={() => api?.playPause()}
+                      className="size-12 rounded-full shadow-lg shadow-primary/20"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="size-6"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d={playing ? 'M6 19h4V5H6v14zm8-14v14h4V5h-4z' : 'M8 5v14l11-7z'} />
+                      </svg>
+                    </Button>
+                  }
+                />
+                <TooltipContent>{playing ? 'Pause' : 'Play'}</TooltipContent>
+              </Tooltip>
             }
-            trailing={
+            leading={
               /* Permanent, never conditional. The control sits in the row for the whole life of
                  the page: a score is always open, so there is no other place for it to live, the
                  replace tests always find `open-file-input`, and the person's focus is never
-                 moved by a control disappearing out from under them. */
+                 moved by a control disappearing out from under them. It is FIRST in the row — the
+                 mockup keeps Open file at the bottom-left — and `trailing` stays free for the
+                 Tracks trigger Plan C adds. */
               <OpenFileControl onNotation={requestNotation} />
             }
           />
