@@ -110,7 +110,13 @@ const Slider = ({
         disabled={disabled}
         className={cn(
           'relative flex w-full touch-none items-center select-none',
-          disabled && 'cursor-not-allowed opacity-50',
+          // 70, not the 50 the rest of the system dims a disabled control to. A disabled button
+          // sits among enabled ones and borrows their contrast; the seek bar with nothing loaded
+          // is alone on the screen, and the thumb is the only thing that says a seek bar is even
+          // there. Opacity multiplies the whole subtree, so at 50 the teal ring composites to
+          // 2.2:1 on white — below the 3:1 floor the tokens are built around. 70 lands at 3.1:1
+          // and still reads as plainly dimmed.
+          disabled && 'cursor-not-allowed opacity-70',
         )}
       >
         {/* 44 px pointer target lives on CONTROL, not Root: Base UI puts the click/drag handling

@@ -8,7 +8,14 @@ import { cn } from '@/lib/utils';
 // PascalCase filename, NOT kebab: client/eslint.config.js sets unicorn/filename-case to pascalCase
 // for everything under src/components/**.
 export const SLIDER_CONTROL_CLASS = 'flex h-11 w-full items-center'; // Slider only
-export const SLIDER_TRACK_CLASS = 'relative h-1 grow rounded-full bg-muted';
+// The track's unfilled part is what tells a person how much song is LEFT, so it has to be
+// visible on its own. `bg-muted` is only 1.11:1 against the page in light and 1.33:1 in dark —
+// present in the DOM, invisible on screen. A tint of muted-foreground reads as a real bar while
+// staying quieter than the teal Indicator that covers the played part. The two themes need
+// different alphas: the same value that looks right on white is far too strong on the near-black
+// page, where a lighter foreground is tinting a darker ground.
+export const SLIDER_TRACK_CLASS =
+  'relative h-1 grow rounded-full bg-muted-foreground/50 dark:bg-muted-foreground/40';
 export const SLIDER_THUMB_CLASS = cn(
   'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
   'hover:ring-4 hover:ring-ring/30',
