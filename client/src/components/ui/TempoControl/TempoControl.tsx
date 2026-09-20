@@ -127,7 +127,14 @@ const TempoControl = ({
       // means "at written speed", and rule 4 says the percentage is then never shown at all.
       data-off-speed={offSpeed}
       data-linger={lingering}
-      onBlur={endEdit}
+      // React's onBlur is `focusout`, which BUBBLES, and Base UI moves focus between the steppers
+      // and the input as they are pressed. Ending the edit on one of those would re-base the next
+      // conversion on the live `scoreTempo` mid-correction — the exact compounding the freeze
+      // exists to stop. Only focus leaving the pill ends it; the settle timer covers a person who
+      // simply stops.
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) endEdit();
+      }}
       className={cn('group flex items-center gap-0.5', className)}
     >
       <NumberField.Group className="flex items-center gap-0.5">
