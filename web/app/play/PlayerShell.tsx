@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, toast } from '@notation-hero/client';
+import { Button, Progress, toast } from '@notation-hero/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -14,6 +14,7 @@ import { NotationSurface } from './NotationSurface';
 import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
 import { PlayerHeader } from './PlayerHeader';
 import { TransportRow } from './TransportRow';
+import { useDelayedVisibility } from './useDelayedVisibility';
 import type * as AlphaTab from '@coderline/alphatab';
 
 /** What the picker produces: a file read into memory, not yet parsed. */
@@ -69,6 +70,10 @@ function Player() {
   // drummer chose: the BPM readout moves because the score's own tempo changed, not because the
   // multiplier was reset.
   const [speed, setSpeed] = useState(1);
+  // The soundfont download: a 0-1 fraction, null when no fraction can be computed, and undefined
+  // when nothing is downloading. It covers the soundfont ONLY — it cannot even start until the
+  // engine itself has arrived.
+  const [soundFontProgress, setSoundFontProgress] = useState<number | null | undefined>();
 
   // The ONE owner of the api. There is no second apiRef and no onApiReady callback: a callback
   // prop in the hook's dependency list rebuilds the engine on an ordinary state change, throwing
@@ -180,6 +185,23 @@ function Player() {
   // load, which fires a position event carrying the real length and the tempo at tick 0 — and a
   // subscriber that arrives later than that is replayed the player's real current position. And
   // `midiLoaded` cannot be subscribed to safely in 1.8.4 at all; see `AlphaTabApiEvents`.
+
+  // The two events that END the download. `soundFontLoaded` is a bare emitter with no replay, which
+  // is why nothing is GATED on it — but listening is safe here: this subscribes in the same commit
+  // as NotationSurface's `soundFontLoad`, so it cannot see the start and miss the end.
+  useAlphaTabEvent(api, 'soundFontLoaded', () => setSoundFontProgress(undefined));
+  // A failed download reaches the app as `api.error` (AlphaTab forwards the synth's
+  // soundFontLoadFailed itself), which NotationSurface already reports as the engine-runtime
+  // error. Without this the bar would freeze at whatever fraction it last showed, forever.
+  useAlphaTabEvent(api, 'error', () => setSoundFontProgress(undefined));
+
+  // Delay-then-hold, not immediate: on a normal connection the download is a sub-second window, so
+  // showing the bar the instant progress starts is a strobe at exactly the moment the person is
+  // first orienting. A fast connection never shows it at all.
+  const soundFontBarVisible = useDelayedVisibility(soundFontProgress !== undefined, {
+    appearAfterMs: 300,
+    holdForMs: 500,
+  });
 
   // The Loop toggle's label needs to know whether a bar range is selected.
   useAlphaTabEvent(api, 'playbackRangeChanged', (args) => setHasRange(args.playbackRange !== null));
@@ -375,14 +397,25 @@ function Player() {
     <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
       <h1 className="sr-only">Player</h1>
 
-      <PlayerHeader
-        scoreTitle={notation?.score.title ?? ''}
-        fileName={openFileName}
-        scoreTempo={scoreTempo}
-        speed={speed}
-        onSpeedChange={applySpeed}
-        disabled={!playerReady}
-      />
+      {/* The bar rides the header's bottom edge, out of the layout flow, so the notation below
+          does not jump when it appears and again when it goes. */}
+      <div className="relative">
+        <PlayerHeader
+          scoreTitle={notation?.score.title ?? ''}
+          fileName={openFileName}
+          scoreTempo={scoreTempo}
+          speed={speed}
+          onSpeedChange={applySpeed}
+          disabled={!playerReady}
+        />
+        {soundFontBarVisible ? (
+          <Progress
+            value={soundFontProgress ?? null}
+            label="Loading sounds"
+            className="absolute inset-x-0 bottom-0"
+          />
+        ) : null}
+      </div>
 
       {/* A dragenter/dragleave COUNTER, never a bare setDragging(false). `dragleave` also fires on
           the container whenever the pointer crosses into a CHILD, with relatedTarget set to that
@@ -430,6 +463,7 @@ function Player() {
             hostRef={hostRef}
             viewportRef={viewportRef}
             notation={notation}
+            onSoundFontProgress={setSoundFontProgress}
           />
           {dragging ? (
             /* MUST be a descendant of the drop container AND pointer-events-none. An overlay

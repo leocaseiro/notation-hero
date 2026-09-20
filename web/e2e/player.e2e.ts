@@ -671,3 +671,31 @@ test('the header tempo stepper changes playback speed', async ({ page }) => {
     .poll(async () => Number(await page.getByTestId('player-status').getAttribute('data-speed')))
     .toBeGreaterThan(1);
 });
+
+test('shows a soundfont progress bar while the sounds download, then hides it', async ({
+  page,
+}) => {
+  // Stretch the soundfont TRANSFER so the bar is observable — it is otherwise a sub-second
+  // window, and Task 8 Step 4 only mounts the bar once progress has run past a 300 ms delay.
+  // Delaying the START of the request (page.route + setTimeout + route.continue) does not help:
+  // it shifts the same sub-second transfer later, and AlphaTab's soundFontLoad events only fire
+  // while bytes arrive. Throttle the network at the browser level instead, BEFORE navigating.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Network.enable');
+  await cdp.send('Network.emulateNetworkConditions', {
+    offline: false,
+    latency: 100,
+    // ~150 KB/s: the ~302 KB soundfont then takes roughly two seconds to arrive, which is
+    // comfortably past the 300 ms appear-delay and well inside the 30 s visibility timeout.
+    downloadThroughput: 150 * 1024,
+    uploadThroughput: 150 * 1024,
+  });
+
+  await page.goto('/play');
+
+  const bar = page.getByRole('progressbar', { name: /sound/i });
+  await expect(bar).toBeVisible({ timeout: 30_000 });
+
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await expect(bar).toHaveCount(0);
+});
