@@ -114,3 +114,13 @@ test('valueText is what a screen reader hears instead of the raw number', () => 
     '01:42 of 04:20',
   );
 });
+
+// web/e2e/a11y.e2e.ts finds the 44 px pointer target by this data-slot — the Control, not the
+// Root, because Base UI puts the click handling there. That gate used to select the Tailwind
+// class it was measuring, so renaming the class emptied the match and a merge-blocking assertion
+// passed on nothing. Assert the hook in the package that owns it: removing it now fails here,
+// rather than silently over in web/.
+test('the Control carries the data-slot the hit-area gate selects', () => {
+  render(<Slider value={0} onChange={() => {}} min={0} max={100} label="Seek" />);
+  expect(document.querySelector('[data-slot="slider-control"]')).toBeInTheDocument();
+});
