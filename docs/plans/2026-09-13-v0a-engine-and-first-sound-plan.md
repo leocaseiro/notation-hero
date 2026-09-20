@@ -134,6 +134,7 @@ song cache. Nothing in the tasks below depends on either.
 | `web/lib/alphatab/drum-tracks.ts`            | Pure: a score's track list in, the indexes of percussion tracks out. No AlphaTab import — a structural type.                                                 |
 | `web/lib/player-errors.ts`                   | `PLAYER_ERROR` — the error number each failure message ends with (1xx file, 2xx engine, 9xx crash); spec §4 lists the same numbers.                          |
 | `web/app/play/page.tsx`                      | The `/play` route segment.                                                                                                                                   |
+| `web/AGENTS.md`                              | This package's agent notes, hosting the block Next.js 16.3 auto-writes — which stops it creating a second `web/CLAUDE.md`.                                   |
 | `web/app/play/PlayerShell.tsx`               | `'use client'` root of the player: owns loaded-score state, the engine provider, toasts.                                                                     |
 | `web/app/play/NotationSurface.tsx`           | The notation box: the scroll viewport, AlphaTab's own element, the loading `Skeleton` and the error states. The api is owned by `PlayerShell`.               |
 | `web/app/play/OpenFileControl.tsx`           | File picker + drag-and-drop + the replace-confirmation flow.                                                                                                 |
@@ -1383,7 +1384,9 @@ expected to be clean, not merely closer.
 ```bash
 git add web/lib/alphatab/engine.ts web/lib/alphatab/AlphaTabEngineContext.tsx \
         web/lib/alphatab/defaults.ts web/lib/alphatab/useAlphaTab.ts
-git commit -m "feat(web): load the self-hosted AlphaTab ESM once, share it by context, port the fork's hook (NH-291)"
+git commit -m "feat(web): load the self-hosted AlphaTab ESM once and share it by context (NH-291)"
+# 100-character cap: `header-max-length` is a commitlint error here, and the longer wording that
+# also named the ported hook came to 101. Say the rest in the body.
 ```
 
 ---
@@ -1412,6 +1415,7 @@ Three rules this task establishes, and every later task inherits (triaged 2026-0
 - Modify: `web/app/page.tsx`
 - Modify: `web/app/globals.css` (the playback-cursor styles, Step 7)
 - Rename: `web/public/charts/` → `web/public/notation/` (Step 1)
+- Create: `web/AGENTS.md` (Step 1a)
 
 **Interfaces:**
 
@@ -1421,6 +1425,31 @@ Three rules this task establishes, and every later task inherits (triaged 2026-0
   - `NotationSurface` props: `{ api: AlphaTab.AlphaTabApi | undefined; hostRef; viewportRef }`. It owns no api of its own — `Player` calls `useAlphaTab` and hands the pieces down (F-B3, triaged 2026-09-18). Task 10 Step 5 later adds `notation: OpenNotation | null` — the parsed score, not `LoadedNotation`.
   - `interface LoadedNotation { name: string; bytes: Uint8Array }` — exported from `web/app/play/PlayerShell.tsx` and consumed by Tasks 10 and 11.
   - DOM test hooks used by Tasks 7 and 13: `data-testid="notation-surface"`, `data-testid="notation-skeleton"`, `data-testid="engine-error"`, `data-testid="transport-play"`, `data-testid="player-status"` carrying `data-playing` and `data-player-ready`.
+
+- [ ] **Step 1a: Host Next.js's agent-rules block inside our own `web/AGENTS.md`**
+
+Next.js **16.3** (this repo is on 16.3.4; the plan was first written against 16.2.10) writes an
+`AGENTS.md` **and** a `CLAUDE.md` into the Next project directory on every `next dev`, unless a
+current block is already present. Left alone it drops two untracked files into `web/` that come
+back after every run.
+
+`writeAgentFiles()` (`web/node_modules/next/dist/server/lib/generate-agent-files.js`) upserts only
+the text between `<!-- BEGIN:nextjs-agent-rules -->` and `<!-- END:nextjs-agent-rules -->`, and it
+**skips `CLAUDE.md` entirely whenever `AGENTS.md` exists and hosts that block.** So write
+`web/AGENTS.md` ourselves — a short pointer to the root `AGENTS.md` plus this package's own rules —
+and paste their block at the end, byte for byte. Their block stays theirs; everything above it
+stays ours; no `web/CLAUDE.md` is ever created.
+
+Two things to preserve, or the file rewrites itself on every run:
+
+- **Copy the block verbatim.** `hasCurrentAgentRules()` compares it byte for byte, so a single
+  reworded or re-wrapped line makes Next rewrite the file every time.
+- **Prettier must not reflow it.** `prettier.config.mjs` sets no `proseWrap`, so it defaults to
+  `preserve` and leaves the long lines alone. Setting `proseWrap: 'always'` would re-wrap the block
+  and start exactly that loop. `MD013` is already off, so markdownlint does not mind the length.
+
+Verify both write paths leave it alone — hash the file, run `next build` and `next dev`, hash again,
+and confirm no `web/CLAUDE.md` came back. Approved by leocaseiro 2026-09-19.
 
 - [ ] **Step 1: Add the Playwright dependencies, then write the failing test**
 
@@ -1566,7 +1595,10 @@ export function NotationSurface({ api, hostRef, viewportRef }: Readonly<Notation
   const { error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
-  const timeoutRef = useRef<number | undefined>(undefined);
+  // ReturnType<typeof globalThis.setTimeout>, not `number`: web/tsconfig.json sets no `types`
+  // array, so @types/node is in scope and globalThis.setTimeout resolves to Node's overload,
+  // which returns a Timeout object rather than a handle. ReturnType is correct under both.
+  const timeoutRef = useRef<ReturnType<typeof globalThis.setTimeout> | undefined>(undefined);
 
   // The two music-font failures AlphaTab itself never reports. Keyed on [api] because the font
   // face is injected during AlphaTabApi construction — before that there is nothing to fail.
@@ -1700,9 +1732,12 @@ export interface LoadedNotation {
 }
 
 /**
- * The score that ships with the app. The player ALWAYS has a score open (decided 2026-09-18):
- * this one loads when nothing else is cached, which is why there is no empty state anywhere in
- * this plan and why the notation box is mounted for the whole life of the page.
+ * The score that ships with the app. The player ALWAYS has a score open (decided 2026-09-18),
+ * which is why there is no empty state anywhere in this plan and why the notation box is mounted
+ * for the whole life of the page.
+ *
+ * Today this one ALWAYS loads: remembering the last score played is its own ticket (NH-303), so
+ * there is no cache to consult and no branch here to choose between them.
  */
 const SAMPLE_NOTATION = '/notation/1-beat.gp';
 
@@ -1776,23 +1811,21 @@ function Player() {
         {/* Play stays unavailable until the synth is ready (spec §4). size-11 = the 44px minimum
             hit area; the glyph keeps its drawn size. This is NOT client/'s PlayButton — that one
             is the catalog row's control and has no pause state. */}
-        {/* `aria-disabled` plus a click guard, NOT the native `disabled` attribute. A natively
-            disabled button cannot receive focus, and opening a file moves focus here — during the
-            seconds the engine is still loading that focus call would be a silent no-op, leaving
-            the person's focus behind on a control they already used. aria-disabled keeps the
-            button in the tab order and announced as unavailable; the guard is what stops it
-            acting. */}
+        {/* `disabled` here renders `aria-disabled="true"`, never the native attribute, and the
+            design system blocks activation itself — so no guard belongs at this call site. That
+            matters because a natively disabled button cannot receive focus, and opening a file
+            moves focus to this button: while the engine is still loading, a native `disabled`
+            would make that focus call a silent no-op and strand the person's focus on the control
+            they just used. The dimming and pointer-events rules ship in buttonVariants too, so the
+            className carries only this button's own size and colour. */}
         <Button
           data-testid="transport-play"
           size="icon"
           variant="ghost"
           aria-label={playing ? 'Pause' : 'Play'}
-          aria-disabled={!playerReady}
-          onClick={() => {
-            if (!playerReady) return;
-            api?.playPause();
-          }}
-          className="size-11 rounded-full text-primary aria-disabled:pointer-events-none aria-disabled:opacity-50"
+          disabled={!playerReady}
+          onClick={() => api?.playPause()}
+          className="size-11 rounded-full text-primary"
         >
           <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 34 }}>
             {playing ? 'pause_circle' : 'play_circle'}
@@ -1812,12 +1845,21 @@ export function PlayerShell() {
 }
 ```
 
-> **The Play button depends on NH-304.** Opening a file moves focus here, so this button must stay
-> focusable while it is unavailable — which is why it carries `aria-disabled` and a click guard
-> instead of `disabled`. The design-system fix that makes `Button` do this for every caller is
-> [NH-304](https://leocaseiro.atlassian.net/browse/NH-304): `Button` renders `aria-disabled` rather
-> than `disabled` and blocks its own activation. Until that lands, every unavailable control in this
-> plan is written the long way, by hand.
+> **NH-304 has landed — use `disabled`, and never hand-write the guard.**
+> [NH-304](https://leocaseiro.atlassian.net/browse/NH-304) merged to master on 2026-09-19 (#158),
+> so `Button` already renders `aria-disabled="true"` instead of the native attribute, keeps itself
+> in the tab order, and blocks its own activation through `onClick`/`onKeyDown` plus
+> `pointer-events-none`. Every unavailable control in this plan and in Plans B and C therefore
+> passes `disabled` and nothing else: a call-site guard is dead weight, a hand-written
+> `aria-disabled` competes with the component's own, and repeating
+> `aria-disabled:pointer-events-none aria-disabled:opacity-50` in a `className` duplicates
+> `buttonVariants`. (Earlier drafts of this plan wrote it the long way because NH-304 had not
+> shipped yet.)
+>
+> This still matters for the reason it always did — opening a file moves focus to Play, and a
+> natively disabled button cannot take focus — and the readiness gate survives in the test lane:
+> Playwright's `toBeEnabled()` honours `aria-disabled`, verified 2026-09-19 by pinning the button
+> disabled and watching the assertion time out.
 
 > **No placeholder here.** `PlayerState` is an AlphaTab enum and cannot be imported, so the
 > `playerStateChanged` handler reads `engine.synth.PlayerState.Playing` off the namespace object —
@@ -1961,7 +2003,7 @@ expected to be clean, not merely closer.
 - [ ] **Step 11: Commit**
 
 ```bash
-git add web/app/page.tsx web/app/error.tsx web/app/play web/app/globals.css \
+git add web/app/page.tsx web/app/error.tsx web/app/play web/app/globals.css web/AGENTS.md \
   web/lib/player-errors.ts web/e2e/player.e2e.ts web/package.json pnpm-lock.yaml
 git commit -m "feat(web): render and play the sample score on /play (NH-291)"
 ```
@@ -2053,7 +2095,15 @@ test('plays through the real audio worklet, not the silent fallback', async ({ p
   await expect(cursor).toBeVisible({ timeout: 20_000 });
   const startedAt = await cursor.boundingBox();
   await expect
-    .poll(async () => (await cursor.boundingBox())?.x ?? startedAt?.x, { timeout: 20_000 })
+    .poll(
+      async () => {
+        // The box is read into a variable first: `(await …)?.x` trips
+        // `unicorn/no-await-expression-member`, an error here under --max-warnings 0.
+        const box = await cursor.boundingBox();
+        return box?.x ?? startedAt?.x;
+      },
+      { timeout: 20_000 },
+    )
     .not.toBe(startedAt?.x);
 
   // 3. The worklet module is served as executable JavaScript. A direct request, not a network
@@ -2346,7 +2396,7 @@ pure, so it is fully provable here with plain objects and no browser.
 `infra/` already use — root `syncpack` (a `quality` CI gate) fails on any other:
 
 ```bash
-pnpm --filter @notation-hero/web add -D vitest@^4.1.9
+pnpm --filter @notation-hero/web add -D vitest@^4.1.11
 ```
 
 Then add `"test": "vitest run"` to `web/package.json` — the same script `client/` and `server/` use —
@@ -2874,18 +2924,17 @@ Replace the `settings.core.file = SAMPLE_NOTATION;` approach for user scores wit
 `renderScore` — add this effect beside the mount effect:
 
 ```tsx
-// The score arrives ALREADY PARSED. PlayerShell parses inside requestNotation, before it swaps
-// state (above), so a file that does not parse never becomes the open notation — there is no
-// rollback path to build because there is nothing to roll back. This effect only renders, and
-// nothing is destroyed: the workers and the loaded soundfont are reused, so a rejected
-// replacement leaves the playing score untouched by construction.
-useEffect(() => {
-  if (!api || !notation) return;
-
-  // Back to the top before the new score paints. The viewport survives score changes now (F-C2 —
-  // it is ours, not AlphaTab's), so without this, opening a short score after scrolling deep into
-  // a long one leaves the person looking at blank space below the last system.
-  if (viewportRef.current) viewportRef.current.scrollTop = 0;
+// Shared by the effect and the re-assert guard below, so both paths pick the same tracks and
+// reset the viewport identically.
+function renderOpenNotation(
+  api: AlphaTab.AlphaTabApi,
+  notation: OpenNotation,
+  viewport: HTMLDivElement | null,
+): void {
+  // Back to the top before the new score paints. The viewport survives score changes now (it is
+  // ours, not AlphaTab's), so without this, opening a short score after scrolling deep into a
+  // long one leaves the person looking at blank space below the last system.
+  if (viewport) viewport.scrollTop = 0;
 
   const drumIndexes = selectDrumTrackIndexes(notation.score.tracks);
   // INDEXES, not Track objects. Passing undefined makes AlphaTab render score.tracks[0] — its
@@ -2893,9 +2942,45 @@ useEffect(() => {
   // here: this branch only runs when no track carries a percussion staff at all, where any
   // track is as good as another.
   api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
+}
+
+// The score arrives ALREADY PARSED. PlayerShell parses inside requestNotation, before it swaps
+// state (above), so a file that does not parse never becomes the open notation — there is no
+// rollback path to build because there is nothing to roll back. This effect only renders, and
+// nothing is destroyed: the workers and the loaded soundfont are reused, so a rejected
+// replacement leaves the playing score untouched by construction.
+useEffect(() => {
+  if (!api || !notation) return;
+  wantedRef.current = notation; // BEFORE renderScore — see the guard below
+  renderOpenNotation(api, notation, viewportRef.current);
   // `api` is in the list because it is state now: it arrives after the first commit, and a score
   // opened before it existed must still render once it does.
-}, [api, notation]);
+}, [api, notation, viewportRef]);
+
+// REQUIRED, not belt-and-braces. AlphaTab fetches `settings.core.file` asynchronously and renders
+// it WHENEVER it arrives, so a score the person opened during that window is silently replaced by
+// the bundled beat: they press Open, watch their file appear, and get the sample back with no
+// error anywhere. Measured 2026-09-19 — opening Punk.gp immediately after load left the api
+// holding the bundled track eight seconds later, and the three Punk assertions failed with
+// `rendered-track-count` stuck at 1. (The no-percussion case passed THROUGH the bug, because the
+// bundled beat also renders one track: a false green.)
+//
+// This terminates. `_internalRenderTracks` triggers `scoreLoaded` only when the score actually
+// changed (`if (score !== this.score)` in alphaTab.core.mjs), so the re-render below fires the
+// event once more and the identity guard returns immediately.
+// It MUST compare against a ref, never the `notation` closure. renderScore fires `scoreLoaded`
+// SYNCHRONOUSLY, and useAlphaTabEvent refreshes its handler ref in an effect declared after the
+// render effect above — so at that moment the handler still closes over the PREVIOUS render's
+// `notation`. Comparing against that stale value makes this guard "restore" the score the person
+// just replaced: the header updates and the notation silently reverts, on every open after the
+// first, through both the picker and the drop path. Measured 2026-09-19.
+const wantedRef = useRef<OpenNotation | null>(null); // written in the effect above, before renderScore
+
+useAlphaTabEvent(api, 'scoreLoaded', () => {
+  const wanted = wantedRef.current;
+  if (!api || !wanted || api.score === wanted.score) return;
+  renderOpenNotation(api, wanted, viewportRef.current);
+});
 ```
 
 The count the test reads comes from AlphaTab, **not** from `drumIndexes`. Deriving it from the
@@ -2922,13 +3007,17 @@ useAlphaTabEvent(api, 'renderFinished', () => {
 });
 ```
 
-and expose the count for the test:
+and expose the count for the test — as a **sibling of the host div, outside the scroll viewport**:
 
 ```tsx
 <span data-testid="rendered-track-count" className="sr-only">
   {renderedTrackCount}
 </span>
 ```
+
+Placing it INSIDE the `hostRef` div instead would make every drum-track assertion fail for no
+visible reason: that element belongs to AlphaTab, whose renderer owns its children and whose
+`destroy()` does `element.innerHTML = ""`.
 
 `NotationSurface`'s prop is therefore the parsed shape, not the bytes:
 
@@ -2984,7 +3073,9 @@ const acceptDropped = useCallback(
   async (file: File | undefined) => {
     if (!file) return;
     try {
-      requestNotation(await readNotation(file));
+      // AWAIT it: requestNotation is async, so an un-awaited call both trips
+      // no-floating-promises and drops any rejection on the floor.
+      await requestNotation(await readNotation(file));
     } catch {
       toast.error(readFailureMessage(file));
     }
@@ -3284,9 +3375,17 @@ test('confirming a replacement renders the new score', async ({ page }) => {
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
     timeout: 30_000,
   });
-  await expect(page.getByTestId('rendered-track-count')).toHaveText('2');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1');
 });
+```
 
+> **Pick fixtures whose RENDERED OUTPUT differs.** This case replaced `Punk.mxl` with
+> `Punk.gp` and asserted a count of 2 — but both render two drum tracks, so it passed whether
+> the swap happened or the player silently reverted. It is `Punk.gp` (2) -> `1-beat.mxl` (1)
+> now, and a second case replaces a third time, because the original bug only appeared from
+> the second replacement onward.
+
+```ts
 test('a corrupt replacement leaves the playing score intact', async ({ page }) => {
   await openFirstScore(page, 'Punk.gp');
   const play = page.getByTestId('transport-play');
@@ -3672,7 +3771,9 @@ test('player has no axe violations with a score long enough to scroll', async ({
 // stall — this is exactly why that state is auditable here and the replacement loading toast is not.
 test('player has no axe violations while the first-visit Skeleton is up', async ({ page }) => {
   await page.route('**/alphatab/esm/alphaTab.mjs', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    // 5000, NOT 5_000: `unicorn/numeric-separators-style` is an error here and only allows a
+    // separator from five digits up, so the underscore fails lint under --max-warnings 0.
+    await new Promise((resolve) => setTimeout(resolve, 5000));
     await route.continue();
   });
 
