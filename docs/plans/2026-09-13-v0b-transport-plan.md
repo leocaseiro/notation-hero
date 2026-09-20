@@ -54,6 +54,14 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
   sees it and the control would latch disabled forever. (That race is exactly why Plan A stopped gating
   Play on it.) Task 8 may still _listen_ to `soundFontLoaded` to hide the progress bar, because it
   subscribes in the same effect as `soundFontLoad` — it cannot see the start and miss the end.
+- **Metronome and Count-In are inert on a score with a backing track — disable them, do not hide
+  them.** When the loaded score carries an embedded audio recording, AlphaTab plays that recording
+  through `BackingTrackPlayer`, whose synthesiser (`BackingTrackAudioSynthesizer`) implements
+  `setupMetronomeChannel` as an empty method and discards metronome events in its synthesis loop.
+  `api.metronomeVolume = 1` and `api.countInVolume = 1` then store a number that reaches nothing
+  audible. Render both toggles `disabled` with a tooltip saying why (`'Not available while the file
+plays its own recording'`), rather than letting a user press a lit button that makes no sound.
+  Loop and the scrubber are unaffected — they work on both playback paths.
 - **Every AlphaTab subscription goes through `useAlphaTabEvent(api, event, handler)`** — the typed helper
   Plan A Task 5 lands in `web/lib/alphatab/useAlphaTab.ts`. A bare `api.<event>.on(...)` in a component
   is a leak: it pairs no `.off()`, and `reactStrictMode: true` (set in `web/next.config.ts`)
@@ -1477,17 +1485,28 @@ test('the scrubber seeks and the position follows', async ({ page }) => {
   // same read Plan A Task 11 uses. Deliberately NOT a data-* attribute: `seek` writes
   // `setPositionMs(ms)` optimistically, so a mirrored hook would report the requested value even if
   // the engine refused it, and the assertion would pass on a broken seek.
-  const enginePositionMs = () =>
+  //
+  // Read the TICK, not the time. With the audio worker enabled (the browser default),
+  // `api.timePosition` is served by AlphaSynthWebWorkerApi, whose setter stores the requested value
+  // into its local `_currentPosition` BEFORE posting `alphaSynth.setTimePosition` to the worker, and
+  // whose getter returns that stored value — so the time position echoes the request whether or not
+  // the worker acted on it. That same setter copies `currentTick` through unchanged, so
+  // `api.tickPosition` moves only when a real position update arrives back from the worker. The tick
+  // is therefore the only one of the two that a refused seek leaves at zero.
+  const engineTickPosition = () =>
     page.evaluate(
       () =>
         (
           document.querySelector('[data-testid="notation-surface"] > div') as {
-            at?: { timePosition: number };
+            at?: { tickPosition: number };
           } | null
-        )?.at?.timePosition ?? 0,
+        )?.at?.tickPosition ?? 0,
     );
 
-  await expect.poll(enginePositionMs, { timeout: 20_000 }).toBeGreaterThanOrEqual(4_000);
+  // The score is paused, so the tick only leaves 0 if the worker accepted the five one-second
+  // seeks. A tick threshold cannot be a fixed millisecond number — ticks depend on the score's
+  // tempo and MIDI division — so assert it moved off the start at all.
+  await expect.poll(engineTickPosition, { timeout: 20_000 }).toBeGreaterThan(0);
 });
 ```
 
@@ -1546,6 +1565,8 @@ interface TransportRowProps {
   onCountInChange: (next: boolean) => void;
   /** Whether AlphaTab holds a bar-range selection. Drives the Loop toggle's label and hint only. */
   hasRange: boolean;
+  /** Whether the loaded score plays an embedded recording. Metronome and Count-In are inert then. */
+  hasBackingTrack: boolean;
   disabled: boolean;
   /** The play/pause control, owned by the shell because it drives api.playPause(). */
   playButton: ReactNode;
@@ -1573,6 +1594,7 @@ export function TransportRow({
   countIn,
   onCountInChange,
   hasRange,
+  hasBackingTrack,
   disabled,
   playButton,
 }: Readonly<TransportRowProps>) {
@@ -1608,16 +1630,22 @@ export function TransportRow({
         pressed={metronome}
         onPressedChange={onMetronomeChange}
         label="Metronome"
+        tooltip={
+          hasBackingTrack ? 'Not available while the file plays its own recording' : undefined
+        }
         icon={<Glyph name="avg_pace" />}
-        disabled={disabled}
+        disabled={disabled || hasBackingTrack}
       />
       <TransportToggle
         data-testid="toggle-countin"
         pressed={countIn}
         onPressedChange={onCountInChange}
         label="Count-In"
+        tooltip={
+          hasBackingTrack ? 'Not available while the file plays its own recording' : undefined
+        }
         icon={<Glyph name="timer" />}
-        disabled={disabled}
+        disabled={disabled || hasBackingTrack}
       />
     </div>
   );
@@ -1667,6 +1695,25 @@ three jobs — position, length and the live tempo — and two guards that are *
 // the trigger on `isPlayingMain`), and without the bound the UI would latch forever.
 const pendingSeek = useRef<{ target: number; since: number } | null>(null);
 
+// The worklet posts one samplesPlayed message per 128-frame audio quantum, and each one triggers
+// a positionChanged — about 345 events per second at 44.1 kHz. Writing state on every one of them
+// commits React ~345 times a second for a clock that only shows whole seconds. Coalesce to one
+// commit per animation frame: stash the latest args in a ref, schedule a single frame, and let the
+// frame do the writing. The guards still run on EVERY event — dropping a stale post-seek event is
+// about correctness, not rate — so only the state write is throttled.
+// (`PositionChangedEventArgs` needs `import type { PositionChangedEventArgs } from
+// '@coderline/alphatab'` if it is not already imported — `web/`'s import fence allows type-only
+// imports of the package, unlike `client/`'s.)
+const latestPosition = useRef<PositionChangedEventArgs | null>(null);
+const positionFrame = useRef<number | null>(null);
+
+useEffect(
+  () => () => {
+    if (positionFrame.current !== null) cancelAnimationFrame(positionFrame.current);
+  },
+  [],
+);
+
 useAlphaTabEvent(api, 'playerPositionChanged', (args) => {
   if (args.endTime === 0) return; // guard 1
 
@@ -1678,9 +1725,16 @@ useAlphaTabEvent(api, 'playerPositionChanged', (args) => {
     pendingSeek.current = null;
   }
 
-  setPositionMs(args.currentTime);
-  setDurationMs(args.endTime);
-  setScoreTempo(args.originalTempo); // live; score.tempo is the INITIAL tempo only
+  latestPosition.current = args;
+  if (positionFrame.current !== null) return; // a frame is already scheduled
+  positionFrame.current = requestAnimationFrame(() => {
+    positionFrame.current = null;
+    const next = latestPosition.current;
+    if (!next) return;
+    setPositionMs(next.currentTime);
+    setDurationMs(next.endTime);
+    setScoreTempo(next.originalTempo); // live; score.tempo is the INITIAL tempo only
+  });
 });
 
 // The correct opening tempo, before a single frame has played. Also replays for late subscribers.
@@ -1731,7 +1785,12 @@ const seek = useCallback(
 );
 ```
 
-Render `<TransportRow … hasRange={hasRange} … />` below the notation surface, move the existing play/pause `Button` into its `playButton` prop, and add the new attributes to the status element:
+Render `<TransportRow … hasRange={hasRange} hasBackingTrack={hasBackingTrack} … />` below the notation
+surface, move the existing play/pause `Button` into its `playButton` prop, and add the new attributes to
+the status element. Derive `hasBackingTrack` from the loaded score — `api.score?.backingTrack != null` is
+the expected source; confirm on the bundled sample (which has none) and on a Guitar Pro 8 file with an
+embedded recording that the property is non-null only when a recording really is present, before
+trusting it to gate the two toggles:
 
 ```tsx
         data-duration={durationMs}
@@ -2224,7 +2283,7 @@ atomically on merge. It must record:
 
 ## Self-Review
 
-**Spec coverage.** §7 `client/` list → Tasks 1-5 (playback scrubber, tempo control, Loop/Metronome/Count-In toggles, soundfont progress bar, `Slider`). §7 `web/` "transport row layout" → Task 6. §7 tempo-in-the-header rule → Task 7. §7 "12.5–200 % slider lives in the Settings popover" → explicitly deferred to Plan C in Global Constraints. §7 "Deferred: A/B loop markers" → stated in Global Constraints and in `Scrubber`'s own comment. §4 soundfont progress, both numeric edge cases → Tasks 2 and 8. §8 criteria 3, 5, 6 → Tasks 6, 7. **One Spec Delta**, recorded in Task 5 and in the registry step: the tempo control's percentage rule and step size supersede §7's "only while adjusting, ±5". **Deliberately not covered here:** `Accordion`, the settings and tracks rows, the two popovers and settings persistence (Plan C); the engine, file opening and the test lane (Plan A).
+**Spec coverage.** §7 `client/` list → Tasks 1-5 (playback scrubber, tempo control, Loop/Metronome/Count-In toggles, soundfont progress bar, `Slider`). §7 `web/` "transport row layout" → Task 6. §7 tempo-in-the-header rule → Task 7. §7 "12.5–200 % slider lives in the Settings popover" → explicitly deferred to Plan C in Global Constraints. §7 "Deferred: A/B loop markers" → stated in Global Constraints and in `Scrubber`'s own comment. §4 soundfont progress, both numeric edge cases → Tasks 2 and 8. §8 criteria 3, 5, 6 → Tasks 6, 7. **One documented exception to criterion 5:** on a score that carries an embedded recording AlphaTab's backing-track player discards metronome events, so Metronome and Count-In render disabled with an explanatory tooltip rather than silently doing nothing (Global Constraints). **One Spec Delta**, recorded in Task 5 and in the registry step: the tempo control's percentage rule and step size supersede §7's "only while adjusting, ±5". **Deliberately not covered here:** `Accordion`, the settings and tracks rows, the two popovers and settings persistence (Plan C); the engine, file opening and the test lane (Plan A).
 
 **Base UI first.** Every new control sits on a Base UI primitive rather than a hand-rolled equivalent — `Slider` on `Slider`, `Progress` on `Progress`, `TransportToggle` on `Toggle`, `TempoControl` on `NumberField`. Each choice deletes hand-written ARIA, clamping or interaction code the primitive already owns. `Scrubber` is the one composition (it wraps `Slider`), and `Tooltip` already existed.
 
