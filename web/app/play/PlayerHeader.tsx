@@ -61,6 +61,9 @@ export function PlayerHeader({
         disabled={disabled}
         className="rounded-xl border border-border bg-card p-1 shadow-sm dark:border-input"
       />
+      {/* Reserved for the Settings gear. This is an EMPTY GRID CELL, not a spacer: the header's
+          `1fr auto 1fr` template reserves the third column whether or not a node sits in it, so
+          removing this would not move the tempo pill. It marks where the gear goes. */}
       <div />
     </header>
   );
