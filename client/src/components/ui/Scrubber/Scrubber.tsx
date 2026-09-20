@@ -31,9 +31,12 @@ const formatClock = (ms: number): string => {
 // thumb and the elapsed clock must follow the pointer continuously, but only the RELEASE may seek.
 // Seeking on every pointer move would cost the caller one engine seek per move.
 //
-// The bar works in SECONDS internally so one arrow-key press is a one-second step, which is the
-// granularity a drummer wants; milliseconds would need a step of 1000 and would report a
-// misleading max of 260000.
+// The bar works in MILLISECONDS. An earlier version worked in whole seconds, and both of its
+// faults were plain to anyone who used it: during playback the thumb jumped once a second instead
+// of gliding, and the pointer snapped to whole seconds, so it could not be put in the middle of a
+// bar. The keyboard keeps its useful amounts through Slider's `keyStep` — an arrow key is one
+// second, Shift+Arrow / PageUp / PageDown ten — and a listener hears the clock, not a raw
+// millisecond count, through `valueText`.
 //
 // A–B loop markers are deliberately absent: v0 uses the notation's native bar-range selection plus
 // the Loop toggle, so there is no marker UI and no marker/selection sync to keep.
@@ -44,31 +47,36 @@ const Scrubber = ({
   disabled = false,
   className,
 }: Readonly<ScrubberProps>) => {
-  const [draggingSeconds, setDraggingSeconds] = useState<number | null>(null);
-  const durationSeconds = Math.max(0, Math.floor(durationMs / 1000));
-  const positionSeconds = Math.min(durationSeconds, Math.max(0, Math.floor(positionMs / 1000)));
+  const [draggingMs, setDraggingMs] = useState<number | null>(null);
+  // Whole milliseconds: a player reports lengths like 6000.000000000001, and End must not ask for
+  // a position past the end.
+  const maxMs = Math.max(0, Math.floor(durationMs));
+  const shownMs = draggingMs ?? Math.min(maxMs, Math.max(0, Math.round(positionMs)));
 
   return (
     <div data-slot="scrubber" className={cn('flex w-full items-center gap-4', className)}>
       <span className="shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
-        {formatClock(draggingSeconds === null ? positionMs : draggingSeconds * 1000)}
+        {formatClock(shownMs)}
       </span>
       {/* onChange keeps the thumb (and the elapsed clock) under the pointer; onCommit is the only
           thing that seeks. One drag then costs one seek instead of one per pointer move. Keyboard
-          seeking still works — Base UI fires onValueCommitted for a settled keystroke too. */}
+          seeking still works — a settled keystroke commits too. */}
       <Slider
         className="flex-1"
-        value={draggingSeconds ?? positionSeconds}
-        onChange={setDraggingSeconds}
-        onCommit={(seconds) => {
-          setDraggingSeconds(null);
-          onSeek(seconds * 1000);
+        value={shownMs}
+        onChange={setDraggingMs}
+        onCommit={(ms) => {
+          setDraggingMs(null);
+          onSeek(ms);
         }}
         min={0}
-        max={durationSeconds}
+        max={maxMs}
         step={1}
+        keyStep={1000}
+        largeStep={10_000}
+        valueText={`${formatClock(shownMs)} of ${formatClock(maxMs)}`}
         label="Seek"
-        disabled={disabled || durationSeconds === 0}
+        disabled={disabled || maxMs === 0}
       />
       <span className="shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
         {formatClock(durationMs)}

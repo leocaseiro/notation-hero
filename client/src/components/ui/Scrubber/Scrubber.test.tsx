@@ -23,15 +23,62 @@ test('pads seconds below ten', () => {
   expect(screen.getByText('01:05')).toBeInTheDocument();
 });
 
-test('the seek bar is a named slider over the song length in seconds', () => {
-  render(<Scrubber positionMs={0} durationMs={260_000} onSeek={() => {}} />);
+test('the seek bar is a named slider over the song length, spoken as a clock', () => {
+  render(<Scrubber positionMs={102_000} durationMs={260_000} onSeek={() => {}} />);
   const bar = screen.getByRole('slider', { name: 'Seek' });
-  // Native min/max, not aria-valuemin/max — see the note in Slider.test.tsx.
+  // Native min/max, not aria-valuemin/max — see the note in Slider.test.tsx. The bar works in
+  // milliseconds, so the raw numbers mean nothing to a listener: aria-valuetext carries the clock.
   expect(bar).toHaveAttribute('min', '0');
-  expect(bar).toHaveAttribute('max', '260');
+  expect(bar).toHaveAttribute('max', '260000');
+  expect(bar).toHaveAttribute('aria-valuetext', '01:42 of 04:20');
 });
 
-test('arrow keys seek and report milliseconds to the caller', async () => {
+// The bug this guards: the bar used to floor to whole seconds, so during playback the thumb
+// jumped once a second, and a person could not put it in the middle of a bar.
+test('follows the position between whole seconds', () => {
+  render(<Scrubber positionMs={1500} durationMs={6000} onSeek={() => {}} />);
+  expect(screen.getByRole('slider', { name: 'Seek' })).toHaveAttribute('aria-valuenow', '1500');
+  // The clock still reads whole seconds.
+  expect(screen.getByText('00:01')).toBeInTheDocument();
+});
+
+test('an arrow key seeks one second, reported in milliseconds', async () => {
+  const user = userEvent.setup();
+  const onSeek = vi.fn();
+  render(<Scrubber positionMs={1500} durationMs={260_000} onSeek={onSeek} />);
+  const bar = screen.getByRole('slider', { name: 'Seek' });
+
+  await user.click(bar);
+  await user.keyboard('{ArrowRight}');
+
+  // One second on from wherever it was — not snapped to a whole second first.
+  expect(onSeek).toHaveBeenLastCalledWith(2500);
+});
+
+test('PageUp seeks ten seconds', async () => {
+  const user = userEvent.setup();
+  const onSeek = vi.fn();
+  render(<Scrubber positionMs={0} durationMs={260_000} onSeek={onSeek} />);
+
+  await user.click(screen.getByRole('slider', { name: 'Seek' }));
+  await user.keyboard('{PageUp}');
+
+  expect(onSeek).toHaveBeenLastCalledWith(10_000);
+});
+
+// AlphaTab reports lengths like 6000.000000000001; End must not ask for a position past the end.
+test('End seeks to a whole-millisecond end', async () => {
+  const user = userEvent.setup();
+  const onSeek = vi.fn();
+  render(<Scrubber positionMs={0} durationMs={6000.000_000_000_001} onSeek={onSeek} />);
+
+  await user.click(screen.getByRole('slider', { name: 'Seek' }));
+  await user.keyboard('{End}');
+
+  expect(onSeek).toHaveBeenLastCalledWith(6000);
+});
+
+test('arrow keys move the clock through the controlled parent', async () => {
   const user = userEvent.setup();
   render(<Harness />);
   const bar = screen.getByRole('slider', { name: 'Seek' });
@@ -39,7 +86,6 @@ test('arrow keys seek and report milliseconds to the caller', async () => {
   await user.click(bar);
   await user.keyboard('{ArrowRight}');
 
-  // One second step, reported back in ms — the unit the api's timePosition setter takes.
   expect(screen.getByText('00:01')).toBeInTheDocument();
 });
 

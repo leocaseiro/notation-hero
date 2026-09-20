@@ -64,3 +64,53 @@ test('disabled marks the thumb disabled', () => {
   render(<Slider value={50} onChange={() => {}} label="Volume" disabled />);
   expect(screen.getByRole('slider', { name: 'Volume' })).toBeDisabled();
 });
+
+// Base UI has ONE `step` for the pointer and the keyboard. A fine pointer step (1 ms on a seek bar)
+// would make an arrow key useless, so `keyStep` gives the arrow keys their own amount.
+test('keyStep moves an arrow key by its own amount and commits it', async () => {
+  const user = userEvent.setup();
+  const onCommit = vi.fn();
+  render(
+    <Harness initial={1500} min={0} max={10_000} step={1} keyStep={1000} onCommit={onCommit} />,
+  );
+  const thumb = screen.getByRole('slider', { name: 'Value' });
+
+  await user.click(thumb);
+  await user.keyboard('{ArrowRight}');
+  expect(thumb).toHaveAttribute('aria-valuenow', '2500');
+  expect(onCommit).toHaveBeenLastCalledWith(2500);
+
+  await user.keyboard('{ArrowLeft}{ArrowLeft}');
+  expect(thumb).toHaveAttribute('aria-valuenow', '500');
+  expect(onCommit).toHaveBeenLastCalledWith(500);
+});
+
+test('keyStep stops at the ends instead of overshooting', async () => {
+  const user = userEvent.setup();
+  render(<Harness initial={9600} min={0} max={10_000} step={1} keyStep={1000} />);
+  const thumb = screen.getByRole('slider', { name: 'Value' });
+
+  await user.click(thumb);
+  await user.keyboard('{ArrowRight}');
+  expect(thumb).toHaveAttribute('aria-valuenow', '10000');
+});
+
+test('largeStep is what Shift+Arrow and PageUp move by', async () => {
+  const user = userEvent.setup();
+  render(<Harness initial={0} min={0} max={60_000} step={1} keyStep={1000} largeStep={10_000} />);
+  const thumb = screen.getByRole('slider', { name: 'Value' });
+
+  await user.click(thumb);
+  await user.keyboard('{PageUp}');
+  expect(thumb).toHaveAttribute('aria-valuenow', '10000');
+  await user.keyboard('{Shift>}{ArrowRight}{/Shift}');
+  expect(thumb).toHaveAttribute('aria-valuenow', '20000');
+});
+
+test('valueText is what a screen reader hears instead of the raw number', () => {
+  render(<Slider value={102_000} onChange={() => {}} max={260_000} valueText="01:42 of 04:20" />);
+  expect(screen.getByRole('slider', { name: 'Value' })).toHaveAttribute(
+    'aria-valuetext',
+    '01:42 of 04:20',
+  );
+});
