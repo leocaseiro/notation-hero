@@ -89,7 +89,9 @@ test('arrow keys move the clock through the controlled parent', async () => {
   expect(screen.getByText('00:01')).toBeInTheDocument();
 });
 
-// A score that has not loaded yet has no length; the bar must not render NaN or a 1-second song.
+// A score that has not loaded yet has no length; the bar must not render NaN, and must stay
+// disabled. It is given max=1 (one millisecond, not one second) so Base UI has a non-degenerate
+// range to divide by — both clocks still read 00:00 and the thumb cannot be moved.
 test('renders a disabled zero-length bar when there is no duration', () => {
   render(<Scrubber positionMs={0} durationMs={0} onSeek={() => {}} />);
   expect(screen.getByRole('slider', { name: 'Seek' })).toBeDisabled();

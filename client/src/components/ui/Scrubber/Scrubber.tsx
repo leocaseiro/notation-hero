@@ -70,7 +70,12 @@ const Scrubber = ({
           onSeek(ms);
         }}
         min={0}
-        max={maxMs}
+        // 1, not 0, while nothing is loaded. `min === max` makes Base UI's valueToPercent return
+        // (0-0)/(0-0) = NaN, SliderIndicator emits `width: "NaN%"`, the browser drops the invalid
+        // declaration and the rail paints FULL — a finished-looking bar for the whole load — and
+        // Base UI warns ``Slider `max` must be greater than `min`.`` on every page load. The bar
+        // stays disabled and both clocks still read 00:00, so nothing else changes.
+        max={maxMs || 1}
         step={1}
         keyStep={1000}
         largeStep={10_000}
