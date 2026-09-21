@@ -65,10 +65,16 @@ export function PlayerHeader({
     // The mockup's three columns: Back, brand and title on the left, the tempo pill in the centre,
     // and the right one kept for the Settings gear that Plan C adds. `1fr auto 1fr` keeps the pill
     // centred on the PAGE, whatever the title's length.
-    // `shadow-sm` as well as the border, which is how the mockup separates the header from the
-    // score (player-flatrow-teal.html:179). A hairline alone reads as a drawn divider; the shadow
-    // is what makes the bar sit ABOVE the notation rather than beside it.
-    <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-6 border-b border-border px-4 shadow-sm">
+    // A shadow as well as the border, which is how the mockup separates the header from the score
+    // (player-flatrow-teal.html:179). A hairline alone reads as a drawn divider; the shadow is what
+    // makes the bar sit ABOVE the notation rather than beside it.
+    //
+    // `shadow-md`, one step deeper than the mockup's `shadow-sm`, at the maintainer's request. The
+    // mockup can afford the lighter one: its header floats over a scrolling body, so content moves
+    // under it and sells the depth by itself. This header sits in a flex column with nothing
+    // passing beneath, so the shadow is the only thing doing that work.
+    // It needs the z-10 on the wrapper in PlayerShell to be seen at all — see the note there.
+    <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-6 border-b border-border px-4 shadow-md">
       <div className="flex min-w-0 items-center gap-2">
         {/* Back RETRACES a step — it is not a second way home; the logo beside it is the way home.
             So the browser's own history, not a link to `/`: wherever the person came from is where
