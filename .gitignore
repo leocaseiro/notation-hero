@@ -35,3 +35,8 @@ docs/.private/
 
 # Compound Engineering local config
 .compound-engineering/*.local.yaml
+
+# Machine-local agent reference map (NH-318). Contains absolute paths to a contributor's
+# local clones of prior-art repositories, so it is never committed - this repo is public.
+# Each contributor writes their own; see docs/.private/ above for the same pattern.
+.claude/local-references.md
