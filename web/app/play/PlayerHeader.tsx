@@ -1,6 +1,9 @@
 'use client';
 
 import { TempoControl, Tooltip, TooltipContent, TooltipTrigger } from '@notation-hero/client';
+import Link from 'next/link';
+
+import { APP_VERSION } from '../../lib/app-version';
 
 interface PlayerHeaderProps {
   scoreTitle: string;
@@ -33,7 +36,31 @@ export function PlayerHeader({
     // centred on the PAGE, whatever the title's length.
     <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-8 border-b border-border px-6">
       <div className="flex min-w-0 items-center gap-8">
-        <span className="text-2xl font-bold text-primary">Notation Hero</span>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              // The wordmark goes home, and carries the build version as its tooltip. A real link
+              // rather than a button: it does something, and it is focusable, so the version is
+              // reachable by keyboard and not by hover alone.
+              //
+              // `/` is correct even if this app is ever served under a sub-path — next/link
+              // applies `basePath` itself, so the href never has to be rewritten. (next/image is
+              // the exception to that rule: its `src` needs the prefix spelled out.)
+              //
+              // min-h-11 is not decoration: the a11y lane fails any a[href] under 44 px, and the
+              // wordmark's own line box is 32. inline-flex + items-center grows the hit area
+              // around the text without moving the text, so the header looks unchanged.
+              <Link
+                href="/"
+                data-testid="app-wordmark"
+                className="inline-flex min-h-11 min-w-11 items-center rounded-sm text-2xl font-bold text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                Notation Hero
+              </Link>
+            }
+          />
+          <TooltipContent data-testid="app-version">{APP_VERSION}</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={
