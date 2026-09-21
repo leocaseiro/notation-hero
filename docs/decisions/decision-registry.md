@@ -98,6 +98,37 @@ there was no way to answer it. Decisions below, each approved by the maintainer 
   bundled in the installed package mark that key `version: legacy` and point at the environment
   instead, where `next build` inlines it.
 
+### 2026-09-21 — `web/` gets a visual-regression gate, and where it runs (NH-320)
+
+`web/` is the only UI surface in the repo with no pixel gate: the `a11y` and `vr` CI jobs both run
+`pnpm --filter @notation-hero/client`. That was never a decision — a screenshot lane for `web/`
+appears in no spec, plan, handoff, registry entry or pull request. The v0 spec-review lap-3 finding
+named both the accessibility and the VR gap; only the accessibility half was closed. Meanwhile the
+bug class shipped twice: the PR #162 seek rail painted 0 px wide with all 52 browser tests green,
+and NH-315 served production unstyled. `client/` VR cannot see either, because `web/` compiles its
+own Tailwind CSS by scanning `client/` source — a component can be right in Storybook and broken in
+the app.
+
+- **Page screenshots against the real `next build` app, in `web/e2e`.** Approved over two
+  alternatives. Storybook inside `web/` was rejected: it reopens the locked NH-275 decision, needs a
+  fake AlphaTab engine (the v0 spec's own "gated while rendering fabricated options"), and never
+  runs `next build`. Moving presentational pieces into `client/` (NH-298) stays worth doing but
+  cannot replace this — it never sees the composed page or the CSS the app builds. ⏳ pending.
+- **Sequencing: v0 Plan C (the Settings and Tracks popovers) ships first**, the gate lands after.
+- **`web/`'s whole browser lane moves into the Playwright container — one `next build` serves
+  end-to-end, axe and VR.** Bolting VR onto the existing `vr` job, or adding a separate `web-vr`
+  job, would each take `web` from one build per CI run to two. This keeps it at one and makes web's
+  axe and web's VR render identically. ⏳ pending.
+- **Blocking from day one**, via `ci-green`, as `client/` VR already is. There is no flake budget to
+  earn first: sixty runs of `/play` in the pinned Playwright container were measured before the
+  design was fixed, at `threshold: 0` and `maxDiffPixels: 0`, and the full-page shot was byte-
+  identical 19 times out of 19. AlphaTab's notation render is pixel-deterministic — the only drift
+  found was the anti-aliased rounded corner of an element-_clipped_ shot, five to nine bytes each
+  off by one in a single channel, which is why the design takes page-level shots and puts no mask
+  over the score. ⏳ pending.
+
+Spec: `docs/specs/2026-09-21-web-visual-regression-gate.md`.
+
 ### 2026-09-21 — The web build must not trust a restored cache (NH-315)
 
 Production served the v0 seek rail with no width and no colour, while the SAME commit's preview

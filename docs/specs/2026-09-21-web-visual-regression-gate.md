@@ -1,0 +1,299 @@
+# Visual-regression gate for `web/` — NH-320
+
+Date: 2026-09-21
+Status: Designed — not implemented. Lands **after** v0 Plan C (the Settings and Tracks popovers).
+Ticket: [NH-320](https://leocaseiro.atlassian.net/browse/NH-320)
+
+## Goal
+
+Give the product's own screens — `/` and `/play` — pixel screenshots that block merge, the way the
+41 components under `client/src/components/ui/` already have them.
+
+## Non-goals
+
+- **Not a replacement for the targeted paint assertions.** Screenshots catch still-image faults. The
+  loading-bar fade race of PR #164 is a timing bug and keeps its own test.
+- **No Storybook inside `web/`.** The locked NH-275 decision stands (see "Approaches weighed").
+- **No dark-mode baselines.** Dark mode is unreachable in `web/` today — see "Light only".
+- **No mobile-width baselines in v1.** One viewport; a second doubles the baseline count for a
+  breakpoint no bug has yet been found at.
+
+## Why this exists
+
+`web/` is the only UI surface in the repo with no pixel gate. The `a11y` and `vr` CI jobs both run
+`pnpm --filter @notation-hero/client`, so only `client/` is covered.
+
+This is an **omission, not a decision**. A screenshot lane for `web/` appears in no spec, plan,
+handoff, registry entry, pull request or session record — it was never weighed and never rejected.
+The v0 spec-review lap-3 finding _"New player components have no package home or a11y/VR gate"_
+named both halves of the gap; the applied fix closed only the accessibility half.
+
+The bug class has already shipped twice:
+
+- **PR #162** — the seek rail rendered 0 px wide. All 52 `web/` browser tests passed, axe included:
+  a slider keeps its role, its value and its keyboard seeking whether or not a single pixel of it is
+  painted. Only an ad-hoc screenshot caught it.
+- **NH-315 / PR #167** — production served the design system unstyled while the same commit's
+  preview deployment was perfect.
+
+`client/` VR cannot see this class **by construction**. `web/` compiles its own Tailwind CSS by
+scanning `client/` _source_ (the `@source` globs in `web/app/globals.css`), so a component can be
+correct in Storybook and broken in the app. PR #162 was exactly that: the rail was perfect in
+Storybook, because Storybook scans `client/` itself.
+
+## Approaches weighed
+
+| Option                                  | Sees the app's own compiled CSS  | Verdict                             |
+| --------------------------------------- | -------------------------------- | ----------------------------------- |
+| Page screenshots in `web/e2e`           | yes — runs the real `next build` | **chosen**                          |
+| Storybook inside `web/`                 | partly                           | rejected                            |
+| Move presentational pieces to `client/` | no                               | complement, not substitute — NH-298 |
+
+**Storybook inside `web/`** was rejected on three counts: it reopens the locked NH-275 decision that
+the app hosts no Storybook (`docs/specs/2026-07-09-nextjs-web-client-design.md` lines 40, 43, 61 and
+the ADR `docs/decisions/2026-07-12-design-system-distribution-adr.md` line 56); a `PlayerShell`
+story needs a **fake AlphaTab engine**, which the v0 spec itself names as the thing to avoid
+("gated while rendering fabricated options") and which the project's standing rule forbids; and it
+never runs `next build`, so the NH-315 class stays invisible. In fairness, a `web/` Storybook
+importing `web/app/globals.css` would inherit its `@source` globs and probably _would_ have caught
+the 0 px rail — but the other two objections stand on their own.
+
+**Moving pieces into `client/`** (NH-298) is worth doing and is tracked separately. It cannot
+replace this gate: it never sees the composed page at a real width, with the real CSS build.
+
+## The pixel-stability measurement
+
+The one unknown was whether `/play` is reproducible at all: AlphaTab renders in a worker, its music
+font loads late, and the player owns a fading loading bar.
+
+Sixty runs in `mcr.microsoft.com/playwright:v1.61.1-noble`, three shots × twenty repeats, at
+`threshold: 0` and `maxDiffPixels: 0` — the harshest comparison Playwright allows, where a single
+byte of difference in a single channel fails:
+
+| Shot                                    | Identical runs |
+| --------------------------------------- | -------------- |
+| Full page (contains the rendered score) | **19 / 19**    |
+| Page with the notation masked out       | **19 / 19**    |
+| Notation box only (element-clipped)     | 3 / 19         |
+
+**AlphaTab's notation render is pixel-deterministic.** The full-page shot contains the drawn score
+and never moved.
+
+The only drift is in the **element-clipped** shot, and every one of the sixteen drifting runs
+differs in the same five to nine bytes, all at the box's top corners:
+
+```text
+(0,5)    expected [239,242,243]  actual [240,242,243]   +1 red
+(1,6)    expected [247,248,248]  actual [247,248,249]   +1 blue
+(975,6)  expected [235,237,238]  actual [235,238,238]   +1 green
+```
+
+x = 0, 1 and x = 974, 975 at rows 5 to 7 is the anti-aliased arc of `rounded-md border border-border`
+on `notation-surface`, drawn one step differently depending on where the element clip lands. **Zero
+differing pixels in the staff, the notes, the cursor or the glyphs.**
+
+Three design consequences, all evidence-backed rather than guessed:
+
+1. **Page-level shots only** — no `toHaveScreenshot` on a clipped element.
+2. **No mask over the notation.** The score is shot as it is drawn.
+3. **The tolerance is a free choice**, because even the worst observed drift is ±1/255 in one
+   channel. See "Open question 1".
+
+Cost: Playwright reported **41 passed (2.2 m) for 60 runs** — about 2.2 s per shot, so a six-shot
+lane is well under a minute of test time. The dominant cost is the `next build`, not the
+screenshots.
+
+> The baseline image behind these numbers predates NH-317 (the build version on the wordmark). That
+> commit does not touch AlphaTab, so the determinism finding is unaffected; the baselines themselves
+> are throwaway and are not committed.
+
+## Design
+
+### Light only
+
+Dark mode cannot be reached in `web/` today. The variant is class-based —
+`@custom-variant dark (&:is(.dark *))` at `client/src/styles.css:20` — and `web/app/layout.tsx`
+renders a bare `<html lang="en">` with no theme toggle and no `next-themes`. Shooting a dark
+baseline would mean injecting `.dark` from the test: a state no visitor can reach, and test-only
+instrumentation of exactly the kind this project bans. Dark baselines become available the day
+`web/` grows a real theme control, and not before.
+
+### One config, two projects
+
+`web/playwright.e2e.config.ts` gains a `projects` array. Both projects share the single `webServer`,
+so **one `next build` serves both lanes** — this is what makes the CI decision below possible. It
+mirrors `client/playwright.config.ts`, which already splits one Storybook server into a `chromium`
+(VR) project and an `a11y` project.
+
+```ts
+projects: [
+  { name: 'e2e', testMatch: '**/*.e2e.ts', use: { ...devices['Desktop Chrome'] } },
+  // Named `chromium` so baselines read `*-chromium-linux.png`, the same shape as client/'s.
+  {
+    name: 'chromium',
+    testMatch: '**/*.vr.ts',
+    use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
+  },
+],
+```
+
+The viewport is pinned explicitly rather than inherited from the device definition, so a Playwright
+upgrade that adjusts `Desktop Chrome` cannot silently invalidate every baseline.
+
+### The shots
+
+Six, reusing the navigation `web/e2e/a11y.e2e.ts` has already proved works. Keeping the count small
+is deliberate: every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.
+
+| Shot                      | How it is reached                                    | What only this shot covers                          |
+| ------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
+| Landing                   | `/`                                                  | the Play button, the one screen that is not `/play` |
+| Player, bundled beat      | `/play`                                              | the default screen: header, score, transport row    |
+| Player, long score        | `/play` + `Punk.gp` via `open-file-input`            | the scrolling notation box, a real filename         |
+| First-visit Skeleton      | stall `**/alphatab/esm/alphaTab.mjs`                 | the loading state                                   |
+| Engine error              | abort `**/alphatab/esm/alphaTab.mjs`                 | the `color-mix(in oklab, …)` destructive tint       |
+| Transport toggles pressed | click loop, metronome, count-in, then increase tempo | pressed-state styling and the tempo percentage      |
+
+Candidates deliberately **not** in v1, each recorded so the omission is a decision rather than an
+oversight:
+
+- **The drag-over state** (`.nh-drop-zone[data-dragging]` plus `.nh-drop-overlay` — a dashed outline,
+  a `backdrop-filter: blur(3px)` and a `color-mix` scrim) and **the bar-range selection**
+  (`.at-selection div`). Both are bespoke CSS rules that no gate measures. Both need a real drag,
+  and synthetic drag events do not reproduce the browser's own negotiation — they need Chrome
+  DevTools Protocol input. Worth adding once one of them breaks or once the CDP helper exists.
+- **A mobile-width pass.** One viewport in v1.
+
+### Readiness, and why each wait is there
+
+Every shot settles on explicit signals — no bare sleeps except a final short one:
+
+```ts
+await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
+await expect(page.getByTestId('transport-play')).toBeEnabled(); // engine + soundfont ready
+await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0);
+await page.evaluate(async () => {
+  await document.fonts.ready;
+});
+await page.waitForTimeout(500);
+```
+
+The progress-bar wait is for **unmount**, not opacity: the bar fades with `delay-[400ms]
+duration-300` and is only removed once `useLoadingBarPhase` reaches `gone`. A bar caught mid-fade is
+precisely the kind of drift this lane must not bless. `animations: 'disabled'` covers the
+`Skeleton`'s `animate-skeleton-pulse`, which Playwright fast-forwards to its end state.
+
+### Baselines
+
+Linux-only, exactly as `client/` does it: `*-chromium-linux.png` committed, darwin shots ignored.
+`web/.gitignore` gains the line `client/.gitignore` already carries:
+
+```diff
++ # VR baselines are Linux-only. A local update on a Mac writes darwin shots for quick
++ # iteration — they must never be committed (regenerate through the container).
++ *-chromium-darwin.png
+```
+
+### CI — `web/`'s whole browser lane moves into the container
+
+Today the `e2e` job runs both browser lanes on plain ubuntu and builds `web/` **once**. Bolting a VR
+step onto the existing `vr` job, or adding a separate `web-vr` job, would each make that **two**
+`web` builds per run. Moving the whole `web/` lane into one container job keeps it at one.
+
+|                                       | today | add a step to `vr` | new `web-vr` job | **move the lane (chosen)** |
+| ------------------------------------- | ----- | ------------------ | ---------------- | -------------------------- |
+| `web` builds per CI run               | 1     | 2                  | 2                | **1**                      |
+| web axe and web VR render identically | n/a   | no                 | no               | **yes**                    |
+
+```text
+Before                                  After
+  a11y    ubuntu   client axe             a11y    ubuntu      client axe
+  vr      container client VR             vr      container   client VR
+  e2e     ubuntu    client e2e            e2e     ubuntu      client e2e
+                  + web e2e (+axe)        web     container   web e2e (+axe) + web VR
+```
+
+The new `web` job follows the `vr` job's container recipe, not the `setup-js` composite: `corepack
+enable && pnpm install --frozen-lockfile --ignore-scripts`, and no `playwright install` because the
+browsers are baked into the image. It uploads `web/playwright-report/` and `web/test-results/`.
+
+One comment in `ci.yml` needs correcting rather than deleting — the `e2e` job says the container is
+unnecessary because the lane "is not pixel-exact". That was true and is the reason it never had one;
+after this change the `web` half _is_ pixel-exact and the client half still is not.
+
+**Blocking from day one.** `web` joins `ci-green`'s `needs:` list alongside `a11y`, `vr` and `e2e`.
+`client/` VR already blocks, and the measurement found no flake to earn a grace period against: a
+visual gate nobody has to obey is one people learn to scroll past.
+
+The image tag stays pinned in lockstep with `@playwright/test` (v1.61.1 today), and baselines are
+regenerated on the bump — the same policy `client/` already runs under.
+
+### Local commands
+
+Two new root scripts, mirroring `test:vr:docker`:
+
+```text
+pnpm test:web:docker          compare web/ against the committed Linux baselines
+pnpm test:web:docker:update   regenerate them after an intended visual change, then commit
+```
+
+Both need two anonymous volumes the existing script does not have. This was measured, not guessed:
+`next build` writes `web/.next`, and `scripts/vendor-alphatab.mjs` writes `web/public/alphatab/`.
+Without these, a container run writes both onto the host bind mount and clobbers the developer's
+local dev build. Both paths are git-ignored, so nothing can reach a commit — this is about not
+wrecking the working tree.
+
+```diff
+  -v /work/web/node_modules \
++ -v /work/web/.next \
++ -v /work/web/public/alphatab \
+```
+
+`web/test-results/` and the snapshot folders are deliberately **not** shadowed — those are the
+results a developer needs to read afterwards.
+
+With these two scripts the repo would carry four near-identical docker invocations of roughly 700
+characters each, inline in `package.json`. See "Open question 3".
+
+## Risks and caveats
+
+- **Baseline churn.** Every `client/` visual change and every AlphaTab upgrade moves these
+  baselines too. Six shots is the mitigation; adding a seventh should have to justify itself.
+- **Parallel workers are unmeasured.** The measurement ran `--workers=1`. The waits are on explicit
+  signals rather than on timing, so parallel execution should hold, but if it proves flaky the VR
+  project takes `workers: 1` — at about 2.2 s a shot that costs almost nothing.
+- **Moving the 52 existing `web/` browser tests into the container may change their timing.** This
+  is the one real risk in the CI decision. If it materializes, fall back to a separate `web-vr`
+  container job and accept the second build.
+- **The app-version tooltip is a landmine for any future shot that opens it.** NH-317 renders
+  `NEXT_PUBLIC_APP_VERSION` inside a closed `TooltipContent`, so it is not painted at rest. In CI
+  `VERCEL_ENV` is unset and the value is the constant `local`. A future hovered-wordmark shot must
+  therefore never run with `VERCEL_ENV` set, or the baseline would carry a build timestamp and a
+  commit hash and break on every commit.
+- **The PR template needs no edit.** Item _"If this PR changed UI, I added or updated the VR tests
+  for it"_ already reads correctly; it simply starts applying to `web/` changes once this lands.
+
+## Open questions for review
+
+1. **Tolerance: Playwright's defaults, or exact zero?** The measurement supports either — the worst
+   observed drift is ±1/255 in one channel, far under the default `threshold: 0.2`, and page-level
+   shots showed no drift at all. **Recommendation: use the defaults, the same as `client/`**, so the
+   repo has one comparison policy rather than two. Exact zero buys nothing the evidence can point
+   at, and being stricter than `client/` on a much larger surface invites flakes.
+2. **Should a failing `web` VR publish its report to gh-pages?** Today `vr-report` is `needs: vr`
+   and serves `client/` only (`docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md`). Without an
+   equivalent, a red `web` VR means downloading a zip to see the diff — a real usability step
+   backwards from the client lane. Extending `vr-report` to `needs: [vr, web]` is more work than the
+   gate itself. Follow-up ticket, or in scope?
+3. **Extract the docker invocation into `tooling/docker-playwright.sh`?** Four call sites of the
+   same 700-character command is the point at which inlining stops paying. Optional, and easy to
+   defer.
+
+## Process changes this carries
+
+- `AGENTS.md` — the "VR & a11y testing" section is scoped to `client/`; it gains the `web/` lane and
+  the two new commands.
+- `docs/decisions/decision-registry.md` — a change-log entry, because this changes what is enforced.
+- `web/.gitignore` — the darwin-baseline line.
+- `.github/workflows/ci.yml` — the new `web` job, the trimmed `e2e` job, the corrected comment, and
+  `ci-green`'s `needs:`.
