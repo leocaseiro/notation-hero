@@ -79,6 +79,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 
 - **The api is React state, never a ref.** `PlayerShell`'s `Player` owns it — `const [api, hostRef] = useAlphaTab(settingsInit)` — and passes it **down as a prop**, typed `AlphaTabApi | undefined`. There is no `apiRef`, no `onApiReady`, no `onScoreLoaded`. Because `api` is state, it **must** be in every `useCallback` dependency list: an empty list freezes the callback on the `undefined` it held before the engine arrived, and the control then flips its own React state while the engine never hears about it.
 - **Every subscription goes through `useAlphaTabEvent(api, 'eventName', handler)`.** No `.on()` by hand. Both popovers mount and unmount while the api stays alive, which is exactly the case that helper exists for.
+- **Every edit pushes the WHOLE settings document, not just the key that changed — and that is measured, not inherited.** `applySettingsJson` hands the entire `PlayerSettingsJson` to `fillFromJson` on every row change (Task 4 Step 7). The alternative was available and is **rejected**: the deserializer walks only the keys present in the object it is given, so `fillFromJson({ display: { scale: 1.2 } })` would set that one leaf and touch nothing else. It buys no speed. `api.updateSettings()` does the same fixed work whatever it is handed — backwards-compatibility, the pitch offsets (a loop over TRACKS, not over settings), one assignment into the renderer, and a player rebuild that early-returns unless `player.playerMode` itself changed (`AlphaTabApiBase.ts:549-563` and `:1670-1708`) — and it never redraws. Writing 71 leaves instead of one is microseconds. Meanwhile the same funnel restores the stored document at boot, where the whole document has to go in anyway, so a per-key push would mean two shapes over one engine call. **The cost that IS real is `api.render()`, and every redraw this plan asks for goes through `queueRender` — one per frame, however many reports arrive inside it.** The three guards that exist because of the whole-document push — the engine-sourced defaults test (Task 4), `dropUnknownOptions` (Task 6), and the rule that the four shell-set keys' shipped defaults equal what the shell sets — are its correctness price, and each protects the boot path as well. Read them as that price, not as three unrelated hazards.
 - **Every write to an engine object lives in `web/lib/alphatab/`, never in a component or a hook body.** The api reaches components through `useState`, so React's compiler lint (`react-hooks/immutability`, an error under `eslint . --max-warnings 0` in **both `web/` and `client/`** — it arrives from `eslint-plugin-react-hooks` 7.1.1 and is named in neither `eslint.config.base.mjs` nor the package configs, so `eslint --print-config` is the only way to see it) rejects `api.settings.notation.transpositionPitches = …` or `staff.showSlash = …` inside one. Plan B's `setAlphaTabValue` — exported from `web/lib/alphatab/useAlphaTab.ts`, where the only property assignment to an engine object in the app lives — is the precedent; Task 4 adds `live-settings.ts` as a sibling module in the same directory. That module is also the **one `updateSettings()` funnel** — mutate, push, redraw when asked — that the fork-parity triage deferred to its first caller (finding F-C3, tracked in NH-302). Nothing else in the app calls `api.updateSettings()`.
 - **Never run an engine side effect inside a `setState` updater.** React may invoke an updater twice (it does in Strict Mode), which would push the settings and redraw the score twice. Compute the next value, call `setState(next)`, then call the engine.
 - **Never call `setState` synchronously inside a `useEffect`.** `react-hooks/set-state-in-effect` is an error in `web/`. The stored settings are read in a lazy `useState` initialiser instead (Task 6).
@@ -119,7 +120,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Four kinds of row, and only one of them is a setting.** The fork's panel reads like one list, but its rows write to four different places, and AlphaTab accepts a write to the wrong one **without a word** — the control moves, the number updates, nothing changes. The schema therefore gives every row a `source` (Task 4):
   - `settings` — a key in AlphaTab's settings JSON. Goes through the app's JSON and the funnel. 71 rows.
   - `api` — an `AlphaTabApi` **property**: `masterVolume`, `metronomeVolume`, `countInVolume`, `playbackSpeed`, `isLooping`. None is a key in `SettingsJson`, so `fillFromJson` ignores it. Each is bound to state `PlayerShell` owns and written by the shell's **single writer** for that value — which is what keeps two editors of one value in sync: the header's BPM stepper and the Player group's speed row are one `speed`, one writer; the transport's Metronome button and the Player group's metronome-volume row are one `metronomeVolume`, one writer. **All five ship** (maintainer, 2026-09-20).
-  - `stylesheet` — a property of **`api.score.stylesheet`**, on the score MODEL. The whole Stylesheet group (12 rows) is this. It is not in the settings JSON, it belongs to the score that is open, a new score brings its own, and it is never stored. Written directly, then `api.render()`.
+  - `stylesheet` — a property of **`api.score.stylesheet`**, on the score MODEL. The whole Stylesheet group (12 rows) is this. It is not in the settings JSON, it belongs to the score that is open, a new score brings its own, and it is never stored. Written directly, then redrawn through `queueRender`.
   - `action` — a command. The Export group's two exports.
 - **A `settings` row says how it takes effect, and there are three ways, not two.** `render` — push the settings and redraw (most rows). `settings` — push only; the player-side rows that change nothing drawn (the cursor toggles, the scroll rows, the player mode). **`midi`** — the fourteen rows that shape the GENERATED MIDI (`player.songBook*`, `player.vibrato.*`, `player.slide.*`, `player.playTripletFeel`) change nothing until `api.loadMidiForScore()` regenerates it; `updateSettings()` and `render()` do not. Regenerating **stops playback and rewinds to the start** (see the non-blocking exception above) — the only apply mode that does. A boolean `rerender` flag cannot say that, and a row that gets it wrong is another silent no-op.
 - **`display.padding` is an ARRAY** — `[horizontal, vertical]`, two rows. The dot-path helpers address it as `display.padding.0` and `display.padding.1`, a write must leave it an array — `fillFromJson` assigns the value through **unvalidated** (`alphaTab.core.mjs:29586`) and the layout then calls `padding.map(…)` on it (`:57636`), so a spread `{ ...array }` **throws a TypeError and aborts the render**; it does not degrade to no padding, and the storage merge must check it element by element.
@@ -1363,12 +1364,12 @@ The schema is what keeps a value edited in two places — the header tempo contr
 
 Every row names its **`source`**, because the fork's panel holds four kinds of row and only one of them is a setting:
 
-| `source`     | What it is                                                        | How it is written                                                                                                     |
-| ------------ | ----------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `settings`   | A key in AlphaTab's settings JSON — almost every row              | Into the app's JSON, then through the funnel: `fillFromJson`, `updateSettings()`, `render()` when the row asks for it |
-| `api`        | An `AlphaTabApi` property — `playbackSpeed` and its neighbours    | By `PlayerShell`'s single writer for that value. Never through the JSON: `fillFromJson` ignores it without a word     |
-| `stylesheet` | A property of `api.score.stylesheet` — the whole Stylesheet group | Onto the open score's model, then `api.render()`. Belongs to the score, re-read on `scoreLoaded`, never stored        |
-| `action`     | A command — the Export group's two exports                        | It runs; there is no value                                                                                            |
+| `source`     | What it is                                                        | How it is written                                                                                                             |
+| ------------ | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `settings`   | A key in AlphaTab's settings JSON — almost every row              | Into the app's JSON, then through the funnel: `fillFromJson`, `updateSettings()`, `render()` when the row asks for it         |
+| `api`        | An `AlphaTabApi` property — `playbackSpeed` and its neighbours    | By `PlayerShell`'s single writer for that value. Never through the JSON: `fillFromJson` ignores it without a word             |
+| `stylesheet` | A property of `api.score.stylesheet` — the whole Stylesheet group | Onto the open score's model, then redrawn through `queueRender`. Belongs to the score, re-read on `scoreLoaded`, never stored |
+| `action`     | A command — the Export group's two exports                        | It runs; there is no value                                                                                                    |
 
 An `api`, `stylesheet` or `action` row is still a **schema row**, not a special case in the popover's JSX. v0.1's search is "a flat projection of the per-row accessor schema v0 already builds" and indexes the speed row "like every other row" (v0.1 spec §3 and §8), so a row that lived outside the schema would be a row search could never find.
 
@@ -2023,7 +2024,26 @@ function pushSettings(api: AlphaTab.AlphaTabApi, apply: SettingApply): void {
     return;
   }
   api.updateSettings();
-  if (apply === 'render') api.render();
+  if (apply === 'render') queueRender(api);
+}
+
+// ONE redraw per frame, not one per keystroke. A number row reports on every keystroke
+// (`SettingRow`'s `onChange`), so typing "100" into Zoom asks for three full relayouts — and a
+// relayout is the most expensive thing on this page, felt as a stutter while the player runs.
+//
+// It is render() that is worth coalescing, and ONLY render(). updateSettings() does the same fixed
+// work whatever it is handed: backwards-compatibility, the pitch offsets (a loop over TRACKS, not
+// over settings), one assignment into the renderer, and a player rebuild that early-returns unless
+// `player.playerMode` itself changed — and it never redraws, because there is no render() inside it
+// (AlphaTabApiBase.ts:549-563 and :1670-1708).
+let renderQueued = false;
+function queueRender(api: AlphaTab.AlphaTabApi): void {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    api.render();
+  });
 }
 
 /**
@@ -2132,7 +2152,7 @@ export function setStylesheetValue(
     // One assignment for eleven keys: the row's control kind already guarantees the type.
     (score.stylesheet as unknown as Record<string, boolean | number>)[key] = value;
   }
-  api.render();
+  queueRender(api);
 }
 
 export type StaffDisplayKey =
@@ -2152,7 +2172,7 @@ export function setStaffDisplay(
   const staff = api.score?.tracks[trackIndex]?.staves[staffIndex];
   if (!staff) return;
   staff[key] = next;
-  api.render();
+  queueRender(api);
 }
 ```
 
@@ -2335,12 +2355,18 @@ test('a settings row changes the rendered score without stopping playback', asyn
   await expect(page.getByTestId('settings-popover')).toBeVisible();
 
   // Change the zoom — a setting whose effect is measurable in the DOM. Through the NUMBER field:
-  // it shares the slider's name, and typing a value is one report. The popover opens with every
-  // group EXPANDED, so a bare click would CLOSE the group and unmount the row: open only if shut.
+  // it shares the slider's name. The popover opens with every group EXPANDED, so a bare click
+  // would CLOSE the group and unmount the row: open only if shut.
+  //
+  // pressSequentially, not fill(): the row reports on EVERY keystroke, so this is also the case
+  // that proves the redraw is coalesced. Three characters, three settings pushes, ONE render —
+  // without the coalescer this is three full relayouts while the player runs.
+  const renders = await recordApiCalls(page, 'render');
   await openGroup(page, 'Display: general');
-  await page.getByRole('spinbutton', { name: 'Zoom' }).fill('2');
+  await page.getByRole('spinbutton', { name: 'Zoom' }).pressSequentially('2.5');
 
-  await expect.poll(async () => (await engineState(page))?.scale).toBe(2);
+  await expect.poll(async () => (await engineState(page))?.scale).toBe(2.5);
+  expect((await renders()).length).toBe(1);
   await expect
     .poll(async () => (await surface.locator('svg').first().boundingBox())?.width ?? 0, {
       timeout: 20_000,
