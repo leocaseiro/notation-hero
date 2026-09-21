@@ -1,6 +1,31 @@
 'use client';
 
-import { TempoControl, Tooltip, TooltipContent, TooltipTrigger } from '@notation-hero/client';
+import {
+  Button,
+  TempoControl,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@notation-hero/client';
+import Link from 'next/link';
+
+// The brand mark, as the wireframe draws it beside the wordmark (docs/wireframe/index.html,
+// `MARK_SVG`): a ring with a play triangle on its right and a single eighth note inside. Inline
+// rather than an <img>, so it takes `currentColor` and follows the teal in both themes; an SVG
+// file would need a second copy for dark. The inner <svg> keeps Material's own -960 viewBox —
+// nesting is what lets the note path stay verbatim instead of being re-projected by hand.
+//
+// Decorative: `aria-hidden`, no title. The wordmark right next to it already says "Notation Hero",
+// and a mark that repeats its neighbour makes a screen reader read the name twice.
+const BrandMark = () => (
+  <svg viewBox="0 0 44 40" fill="none" className="h-7 w-8 shrink-0" aria-hidden="true">
+    <circle cx="19" cy="20" r="12.6" stroke="currentColor" strokeWidth="3.6" />
+    <path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor" />
+    <svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor">
+      <path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z" />
+    </svg>
+  </svg>
+);
 
 interface PlayerHeaderProps {
   scoreTitle: string;
@@ -17,6 +42,10 @@ interface PlayerHeaderProps {
 // The wordmark, the title and its tooltip were first rendered inline in PlayerShell. Both data-
 // attributes moved across unchanged — the e2e tests read them. The tempo pill is what this adds.
 //
+// The Back link and the brand mark follow the wireframe's top bar
+// (`docs/wireframe/index.html` — `.backlink` and `.logo`), which is where the player borrows its
+// "mark + name, with a way out" arrangement from.
+//
 // Deliberately absent in v0: the Auto-Speed toggle (a practice feature — it needs the v0.2 scoring
 // work) and the MIDI status icon (no Web MIDI until v0.2). The Settings gear arrives in Plan C.
 export function PlayerHeader({
@@ -28,12 +57,47 @@ export function PlayerHeader({
   disabled,
 }: Readonly<PlayerHeaderProps>) {
   return (
-    // The mockup's three columns: brand and title on the left, the tempo pill in the centre, and
-    // the right one kept for the Settings gear that Plan C adds. `1fr auto 1fr` keeps the pill
+    // The mockup's three columns: Back, brand and title on the left, the tempo pill in the centre,
+    // and the right one kept for the Settings gear that Plan C adds. `1fr auto 1fr` keeps the pill
     // centred on the PAGE, whatever the title's length.
-    <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-8 border-b border-border px-6">
-      <div className="flex min-w-0 items-center gap-8">
-        <span className="text-2xl font-bold text-primary">Notation Hero</span>
+    <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-6 border-b border-border px-4">
+      <div className="flex min-w-0 items-center gap-2">
+        {/* Back to the landing page. A Link, not router.back(): v0 has two routes, so "back" is
+            always home, and history.back() from a directly-opened /play leaves the tab where it
+            was. `render`, NOT `asChild` — that prop was dropped in the Base UI migration and would
+            land as a stray DOM attribute with the Link never rendering (web/app/page.tsx does the
+            same). min-h-11 keeps it over the 44 px hit area the a11y lane enforces; the label is
+            hidden below `sm` so the arrow alone carries it on a phone, and the tooltip says the
+            rest. */}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="ghost"
+                data-testid="back-home"
+                render={<Link href="/" />}
+                className="min-h-11 shrink-0 gap-1 px-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                  arrow_back
+                </span>
+                <span className="max-sm:sr-only">Back</span>
+              </Button>
+            }
+          />
+          <TooltipContent>Back to home</TooltipContent>
+        </Tooltip>
+        {/* The mark and the wordmark are ONE unit — the logo. Not a link: the Back button beside it
+            already goes home, and a second control to the same place is one more tab stop that
+            says nothing new. */}
+        <span className="flex shrink-0 items-center gap-2 text-primary">
+          <BrandMark />
+          {/* `sr-only` below `lg`, never `hidden`: the name still reaches a screen reader, and the
+              mark alone carries the brand. Back + mark + the full wordmark do not fit beside a
+              centred tempo pill on a tablet in portrait, and the first thing to lose is the word
+              the mark already stands for — not the score's own title. */}
+          <span className="text-xl font-bold max-lg:sr-only">Notation Hero</span>
+        </span>
         <Tooltip>
           <TooltipTrigger
             render={

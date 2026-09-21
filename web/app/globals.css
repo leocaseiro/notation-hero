@@ -79,6 +79,9 @@
    dashed outline around the seek bar on every scrub. */
 .nh-drop-zone[data-dragging] {
   outline: 2px dashed var(--primary);
-  outline-offset: 6px;
-  border-radius: var(--radius);
+
+  /* INSET, not the 6px outset it used to be. The drop zone runs to the window edges now, so an
+     outset outline is drawn outside the viewport on the left and right and clipped away by the
+     shell's overflow-hidden — the one affordance that says "let go here" was invisible. */
+  outline-offset: -6px;
 }

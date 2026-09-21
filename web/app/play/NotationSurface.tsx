@@ -173,7 +173,9 @@ export function NotationSurface({
     : (runtimeError ?? fontError);
 
   return (
-    <div className="relative min-h-[420px] w-full">
+    // Fills whatever the shell gives it — the shell owns the height now, not this component. It
+    // used to pin its own 420 px, which is exactly what stopped the player being full-height.
+    <div className="relative h-full w-full">
       {/* The message sits ON TOP of the viewport, never in place of it. Replacing the viewport
           unmounts the element AlphaTab is bound to while the api is still alive, and the engine
           then renders into a detached node — with no error anywhere. Every state of this
@@ -209,12 +211,14 @@ export function NotationSurface({
           invisible in dark mode. This is the one place in the player that pins a literal colour;
           it stops being correct the moment the glyph colour becomes themeable (NH-302). */}
       {/* A named region a keyboard user can focus. `tabIndex={0}` is required: a score taller than
-          420 px makes this box scroll, and axe's scrollable-region-focusable (serious, wcag2a) fails
-          a scroll box with nothing focusable inside, whatever its role. `region`, not `img`: the
-          notation takes mouse input (AlphaTab moves the cursor and selects bars on click) and needs
-          keyboard control too, and an `img`'s children are presentational. Never `aria-label`
+          the window makes this box scroll, and axe's scrollable-region-focusable (serious, wcag2a)
+          fails a scroll box with nothing focusable inside, whatever its role. `region`, not `img`:
+          the notation takes mouse input (AlphaTab moves the cursor and selects bars on click) and
+          needs keyboard control too, and an `img`'s children are presentational. Never `aria-label`
           without a role — on a plain div that fails axe's aria-prohibited-attr (serious). The focus
-          ring copies client/'s ScrollArea viewport, which solved the same axe rule. The
+          ring copies client/'s ScrollArea viewport, which solved the same axe rule, but INSET: this
+          box is flush against the window edges now, so an outward ring is clipped away by the
+          shell's `overflow-hidden` on three sides and there is nothing left to see. The
           accessibility gate audits the scrolling state with Punk.gp. */}
       <div
         ref={viewportRef}
@@ -222,7 +226,7 @@ export function NotationSurface({
         role="region"
         aria-label="Score"
         tabIndex={0}
-        className="h-[420px] w-full overflow-y-auto rounded-md border border-border bg-white outline-none transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1"
+        className="h-full w-full overflow-y-auto bg-white outline-none transition-[color,box-shadow] focus-visible:inset-ring-[3px] focus-visible:inset-ring-ring/50 focus-visible:-outline-offset-1 focus-visible:outline-1"
       >
         <div ref={hostRef} />
       </div>

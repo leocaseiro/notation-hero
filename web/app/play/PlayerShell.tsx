@@ -519,12 +519,17 @@ function Player() {
   const openFileName = notation?.name ?? SAMPLE_NOTATION.split('/').pop() ?? '';
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+    // The player fills the window and never scrolls as a page: the notation is the only thing that
+    // scrolls, and it does so inside its own box. `h-dvh`, not `h-screen` — on a phone or tablet
+    // browser `100vh` is the height WITHOUT the retracting address bar, so the transport row sat
+    // below the fold until the bar hid itself. Three rows: header, notation (the one that grows),
+    // transport.
+    <main className="flex h-dvh flex-col overflow-hidden">
       <h1 className="sr-only">Player</h1>
 
       {/* The bar rides the header's bottom edge, out of the layout flow, so the notation below
           does not jump when it appears and again when it goes. */}
-      <div className="relative">
+      <div className="relative shrink-0">
         <PlayerHeader
           scoreTitle={notation?.score.title ?? ''}
           fileName={openFileName}
@@ -552,7 +557,7 @@ function Player() {
           14 state transitions on one drag across the control, a visible strobe. Clamped at 0 so a
           stray leave cannot make the next enter a no-op. */}
       <section
-        className="nh-drop-zone relative flex flex-col gap-4"
+        className="nh-drop-zone relative flex min-h-0 flex-1 flex-col"
         data-testid="drop-zone"
         data-dragging={dragging || undefined}
         onDragEnter={(event) => {
@@ -581,7 +586,10 @@ function Player() {
           void acceptDropped(event.dataTransfer.files[0]);
         }}
       >
-        <div className="relative">
+        {/* `min-h-0` is what makes the notation SHRINK to the window instead of growing past it: a
+            flex item's default `min-height: auto` refuses to go below its content, so a long score
+            would push the transport row off the bottom of the screen. */}
+        <div className="relative min-h-0 flex-1">
           {/* NotationSurface is ALWAYS mounted — it renders its own engine-error message as an
               overlay. Do not reintroduce a branch that renders something INSTEAD of it: unmounting
               the box while the api is alive leaves AlphaTab drawing into a detached node, with no
@@ -616,6 +624,7 @@ function Player() {
         </div>
 
         <div
+          className="shrink-0"
           data-testid="player-status"
           data-playing={playing}
           data-player-ready={playerReady}
