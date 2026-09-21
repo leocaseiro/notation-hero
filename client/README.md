@@ -126,6 +126,12 @@ The comment shows the commit SHA and the time it was built (Sydney local time, A
 
 > **One-time setup:** enable Pages at **Settings → Pages → Deploy from a branch → `gh-pages` / root**. Until then the workflow still runs and creates the `gh-pages` branch, but the URLs 404.
 
+> **Why `web/vercel.json` names this branch:** Vercel deploys every push on every branch by default,
+> and the `web` project's Root Directory is `web/` — which `gh-pages` (compiled Storybook only) does
+> not have. Every publish therefore produced a red `Vercel` status on the new `gh-pages` commit. The
+> `git.deploymentEnabled` entry in `web/vercel.json` tells Vercel to skip the branch. The red gated
+> nothing, but it read as an outage (NH-314).
+
 ### Unit tests (Vitest)
 
 ```bash
