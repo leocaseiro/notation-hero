@@ -12,6 +12,51 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-21 — The player fills the window, and the design system finally wears D3 (NH-291)
+
+The player was a 1024 px column centred in a page of white space, with the notation letterboxed in
+a fixed 420 px box, and it did not look like the mockup it was built from. Decisions below, each
+approved by the maintainer in conversation while looking at the running app.
+
+- **Typography D3 is SHIPPED, not merely locked.** Hanken Grotesk for UI, Bricolage Grotesque for
+  display, Geist Mono for figures — the trio every mockup and the wireframe are drawn in, and which
+  the 2026-06-13 design brief already called locked. It had never been carried into
+  `client/src/styles.css`, so Public Sans had been standing in for all three since PR #23. This is
+  the single largest reason the built product did not look like its own mockups. 🤖 692 VR
+  baselines, of which 550 move on this change alone.
+- **The player is a full-window shell, and the notation is the only thing that scrolls.** Three
+  rows — header, notation, transport — with the score running edge to edge between a left rail and
+  a footer. `h-dvh`, never `h-screen`: on a tablet `100vh` measures the window WITHOUT the
+  retracting address bar, which put the transport below the fold.
+- **Three surface tokens the system was missing, carrying the mockup's own sRGB values rather than
+  an oklch round trip.** `--rail` (recessed: the left rail), `--panel` (raised: the transport
+  footer and the tempo pill) and `--elevate` (the raised step a control shows under the pointer).
+  The first two had been painted with one token, which flattened the frame the score sits in; the
+  maintainer caught it against the mockup. Hex rather than oklch because they were asked for
+  exactly, and converting moves them a unit or two.
+- **A ghost button's hover is `--elevate`, not `--muted`.** A ghost button has no chrome until you
+  point at it, so its hover IS the affordance — and `--muted` lands within 2 % of every surface
+  this app paints, measured at a 1.085 step against the tempo pill. Fixing it per-control was
+  whack-a-mole across the steppers, the transport toggles, Open file and Back, so it moved into the
+  variant. Tuned against the Button `secondary` story, whose own hover is a 1.133 step: this is
+  1.18. 🤖 VR captures every ghost hover in light and dark.
+- **`--muted-foreground` is 52 %, not 56 %.** At 56 % it cleared AA on pure white by 0.11 and
+  failed on every tinted surface underneath it — 4.44:1 on `--rail`, 4.19:1 on `--secondary` — and
+  the a11y lane went red on the seek rail's clock the moment the footer was tinted. Asked whether
+  to go further, the maintainer chose to hold at 52 %. 🤖 the `a11y` job.
+- **Back retraces a step; the LOGO goes home.** Two different jobs, deliberately not merged: Back
+  is the browser's own history (falling back to the landing page on a tab opened straight onto
+  `/play`, where `back()` is a dead control), while the mark and wordmark are one link home
+  carrying NH-317's build version.
+- **Dark mode stays unreachable for now.** Nothing sets `.dark`, so every visitor gets light. The
+  tokens are all theme-aware and the work was written that way throughout, but turning it on today
+  gives a dark frame around a full-window WHITE slab: the notation is pinned to `bg-white` because
+  AlphaTab draws dark glyphs and this player never sets `model.Color`. Deferred behind **NH-302**,
+  which is smaller than it looked — AlphaTab 1.8.4 exposes `display.resources.mainGlyphColor`,
+  `staffLineColor` and `barSeparatorColor` directly.
+- **The scoring HUD, the A-B markers and the practice/game toggle stay out**, per spec §2: all
+  three need the v0.2 scoring work that does not exist yet.
+
 ### 2026-09-21 — The running build names itself, in the wordmark (NH-317)
 
 Nothing on screen said which build you were looking at. When production and a preview disagree —
