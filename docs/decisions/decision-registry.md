@@ -12,6 +12,32 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-21 — The running build names itself, in the wordmark (NH-317)
+
+Nothing on screen said which build you were looking at. When production and a preview disagree —
+as they did the same day, with production serving stale CSS — that is the first question asked, and
+there was no way to answer it. Four decisions, each approved by the maintainer in conversation.
+
+- **The version reads `v26.09.21-1223.4d6d7ea` — `v`, a two-digit date, the 24-hour time, the short
+  commit.** The maintainer gave a format string and a bash snippet that disagreed (two-digit versus
+  four-digit year, a dot versus a dash before the commit); asked which won, he chose the format
+  string, which his own example had already agreed with.
+- **The stamp is BUILD time, not commit time.** The commit already identifies the code, so the
+  useful second fact is when this deploy was made — rebuilding one commit gives a new stamp.
+- **Always `Australia/Sydney`, and the ZONE is named rather than an offset hard-coded.** Vercel
+  builds in UTC, which reads as the wrong day for most of the evening here. Naming the zone is what
+  makes AEDT and AEST resolve themselves by date, with no switch to maintain twice a year. 🤖
+  `tooling/app-version.test.mjs` pins both, plus the date rolling over and midnight as `0000`.
+- **The wordmark is a LINK home, not a button.** It was inert text; a tooltip needs a focusable
+  trigger, and the maintainer chose a link — so the wordmark gains a purpose and the version is
+  reachable by keyboard rather than hover alone. `href="/"` survives a sub-path deploy untouched
+  because `next/link` applies `basePath` itself (`next/image` is the exception — its `src` needs the
+  prefix spelled out). `min-h-11` is load-bearing, not decoration: the a11y lane fails any `a[href]`
+  under 44 px and the wordmark's line box is 32.
+- **The value travels through the ENVIRONMENT, not next.config's `env` key.** The Next 16 docs
+  bundled in the installed package mark that key `version: legacy` and point at the environment
+  instead, where `next build` inlines it.
+
 ### 2026-09-20 — Plan B, first hands-on round: sixteen findings, and what they changed (NH-291)
 
 The maintainer tested PR #162 by hand and raised sixteen items. Each was reproduced in a real
