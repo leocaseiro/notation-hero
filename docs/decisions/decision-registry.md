@@ -58,6 +58,7 @@ Found while re-triaging, from AlphaTab 1.8.4's source — **read, not yet run**,
 so the accepted coupling covers all three; the backing-track synthesizer stubs the audio
 transposition as well as mute, solo and volume; and the synth keeps its muted and soloed channels
 across a score change, so the mixer must reset them.
+
 ### 2026-09-21 — The running build names itself, in the wordmark (NH-317)
 
 Nothing on screen said which build you were looking at. When production and a preview disagree —
