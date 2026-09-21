@@ -126,6 +126,15 @@ The comment shows the commit SHA and the time it was built (Sydney local time, A
 
 > **One-time setup:** enable Pages at **Settings → Pages → Deploy from a branch → `gh-pages` / root**. Until then the workflow still runs and creates the `gh-pages` branch, but the URLs 404.
 
+> **Why the publish job writes a `web/vercel.json` into `gh-pages`:** Vercel deploys every push on
+> every branch by default, and the `web` project's Root Directory is `web/` — which `gh-pages`
+> (compiled Storybook only) does not have. Every publish therefore produced a failed Vercel
+> deployment on the new `gh-pages` commit: a red status plus a failure email, gating nothing but
+> drowning real alerts. Vercel reads `vercel.json` from the **pushed branch's** Root Directory, so
+> the matching entry in `web/vercel.json` on `master` cannot reach `gh-pages` — this was measured,
+> not assumed. The publish job therefore writes the opt-out onto `gh-pages` itself, where Vercel
+> does read it; `keep_files` carries it across every later commit on that branch (NH-314).
+
 ### Unit tests (Vitest)
 
 ```bash
