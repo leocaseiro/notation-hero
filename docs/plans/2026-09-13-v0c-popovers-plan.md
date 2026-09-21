@@ -890,6 +890,12 @@ interface TrackRowProps {
   name: string;
   rendered: boolean;
   onRenderedChange: (next: boolean) => void;
+  /**
+   * Set on the LAST drawn track: the reason, as tooltip text. Its render-select then renders
+   * disabled. A separate prop from `mixUnavailable` on purpose — render-select stays live while
+   * the file plays its own recording, and `mixUnavailable` does not, so the two never coincide.
+   */
+  renderLockReason?: string;
   solo: boolean;
   onSoloChange: (next: boolean) => void;
   mute: boolean;
@@ -2462,18 +2468,30 @@ const runAction = useCallback(
   (action: SettingAction) => {
     if (!api?.score || !engine) return;
     if (action === 'export-midi') {
-      api.downloadMidi();
+      try {
+        api.downloadMidi();
+      } catch {
+        toast.error('That file could not be exported.');
+      }
       return;
     }
     // Guitar Pro 7 bytes from AlphaTab's own exporter, handed to the browser as a download. The
     // exporter is a runtime value, so it comes off the loaded namespace, never an import.
-    const bytes = new engine.exporter.Gp7Exporter().export(api.score, api.settings);
-    const url = URL.createObjectURL(new Blob([bytes as BlobPart]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${api.score.title || 'score'}.gp`;
-    link.click();
-    URL.revokeObjectURL(url);
+    //
+    // The SUCCESS path needs no signal — the browser's own download is the signal. A failure has
+    // none at all, and every step here can throw: the export itself, the Blob, the object URL.
+    // Same surface the corrupt-stored-settings path uses (Task 6).
+    try {
+      const bytes = new engine.exporter.Gp7Exporter().export(api.score, api.settings);
+      const url = URL.createObjectURL(new Blob([bytes as BlobPart]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${api.score.title || 'score'}.gp`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('That file could not be exported.');
+    }
   },
   [api, engine],
 );
@@ -3290,7 +3308,9 @@ const applyRendered = (index: number, next: boolean) => {
     ? [...renderedIndexes, index].sort((a, b) => a - b)
     : renderedIndexes.filter((i) => i !== index);
   // AlphaTab cannot draw nothing: an empty list falls back to the first track, and the box the
-  // person just cleared would untick itself a moment later. Keep the last one ticked instead.
+  // person just cleared would untick itself a moment later. Keep the last one ticked instead —
+  // but the row DISABLES that control rather than swallowing the click (renderLockReason below).
+  // Reaching here at all would be a bug: no state is set, so the box would not move by a frame.
   if (chosen.length === 0) return;
   // renderTracks takes Track OBJECTS (unlike renderScore, which takes indexes). No state is set
   // here: renderFinished reports what was really drawn.
@@ -3423,6 +3443,11 @@ const RECORDING = 'Not available while the file plays its own recording';
           name={track.name}
           rendered={renderedIndexes.includes(track.index)}
           onRenderedChange={(next) => applyRendered(track.index, next)}
+          renderLockReason={
+            renderedIndexes.length === 1 && renderedIndexes.includes(track.index)
+              ? 'At least one track must stay shown'
+              : undefined
+          }
           mixUnavailable={hasBackingTrack ? RECORDING : undefined}
           // …the rest of TrackRow's props, each wired to the handler above with track.index.
         />
