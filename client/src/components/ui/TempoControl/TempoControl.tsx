@@ -4,6 +4,7 @@ import { NumberField } from '@base-ui/react/number-field';
 import { useEffect, useRef, useState } from 'react';
 
 import { buttonVariants } from '../Button/Button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip/Tooltip';
 
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,12 @@ interface TempoControlProps {
   disabled?: boolean;
   className?: string;
 }
+
+// Ghost, but with a hover you can actually SEE. Ghost's own `hover:bg-muted` lands within 2 % of
+// every surface this pill is painted on — the mockup's panel, --secondary, --card — so pointing at
+// + or - changed nothing. `--elevate` is the raised step the mockup uses for exactly this, and it
+// matches the strength of the Button `secondary` story's hover.
+const STEPPER = `${buttonVariants({ variant: 'ghost', size: 'icon' })} hover:bg-elevate`;
 
 /** How long the percentage stays visible after a change that carried no focus. */
 const PERCENT_LINGER_MS = 3000;
@@ -111,6 +118,10 @@ const TempoControl = ({
     timerRef.current = setTimeout(() => setLingering(false), PERCENT_LINGER_MS);
   };
 
+  const tempoTip = offSpeed
+    ? `${displayedBpm} BPM — ${percent}% of the score's written tempo`
+    : `${displayedBpm} BPM — the score's written tempo`;
+
   return (
     <NumberField.Root
       value={displayedBpm}
@@ -140,7 +151,7 @@ const TempoControl = ({
       <NumberField.Group className="flex items-center gap-0.5">
         <NumberField.Decrement
           aria-label="Decrease tempo"
-          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11 rounded-lg')}
+          className={cn(STEPPER, 'size-11 rounded-lg')}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
             remove
@@ -152,37 +163,47 @@ const TempoControl = ({
             input in there the number could not be selected with the mouse — no drag, no
             double-click. The field behaves like a native number input instead: the mouse selects,
             and the value moves by the arrow keys, the wheel, the +/- buttons and typing. */}
-        <div className="flex flex-col items-center px-2">
-          <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-            BPM
-          </span>
-          <NumberField.Input
-            aria-label="Tempo"
-            className={cn(
-              'w-12 border-0 bg-transparent p-0 text-center font-mono text-sm leading-none font-bold tabular-nums',
-              'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-            )}
-          />
-          {/* Rule 1-4, entirely in CSS: hover or focus reveals it, blur hides it (focus-within does
+        {/* The readout says what the number IS — a tempo in BPM — and the tooltip says what it is
+            RELATIVE TO, which the bare number cannot: 120 means nothing until you know whether the
+            score is written at 120 or at 150 and running slow. The inline percentage below shows
+            the same figure but only while the tempo is being adjusted (the visibility rule), so
+            without this there is no way to ask "what speed am I at?" after the fact.
+            The trigger wraps the column rather than the whole pill: a tooltip anchored to the pill
+            would open from its centre, under the pointer that is on a stepper. */}
+        <Tooltip>
+          <TooltipTrigger render={<div className="flex flex-col items-center px-2" />}>
+            <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
+              BPM
+            </span>
+            <NumberField.Input
+              aria-label="Tempo"
+              className={cn(
+                'w-12 border-0 bg-transparent p-0 text-center font-mono text-sm leading-none font-bold tabular-nums',
+                'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+              )}
+            />
+            {/* Rule 1-4, entirely in CSS: hover or focus reveals it, blur hides it (focus-within does
               that for free), data-linger covers a change that carries no focus, and the whole thing is gated
               on data-off-speed so 100% never shows anything. */}
-          <span
-            data-testid="tempo-percent"
-            aria-hidden="true"
-            className={cn(
-              'font-mono text-[10px] text-primary tabular-nums opacity-0 transition-opacity',
-              'group-data-[off-speed=true]:group-hover:opacity-100',
-              'group-data-[off-speed=true]:group-focus-within:opacity-100',
-              'group-data-[off-speed=true]:group-data-[linger=true]:opacity-100',
-            )}
-          >
-            {percent}%
-          </span>
-        </div>
+            <span
+              data-testid="tempo-percent"
+              aria-hidden="true"
+              className={cn(
+                'font-mono text-[10px] text-primary tabular-nums opacity-0 transition-opacity',
+                'group-data-[off-speed=true]:group-hover:opacity-100',
+                'group-data-[off-speed=true]:group-focus-within:opacity-100',
+                'group-data-[off-speed=true]:group-data-[linger=true]:opacity-100',
+              )}
+            >
+              {percent}%
+            </span>
+          </TooltipTrigger>
+          <TooltipContent data-testid="tempo-tooltip">{tempoTip}</TooltipContent>
+        </Tooltip>
 
         <NumberField.Increment
           aria-label="Increase tempo"
-          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11 rounded-lg')}
+          className={cn(STEPPER, 'size-11 rounded-lg')}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
             add

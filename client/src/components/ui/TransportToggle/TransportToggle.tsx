@@ -66,6 +66,10 @@ const TransportToggle = ({
           disabled={disabled}
           className={cn(
             'size-11 rounded-lg',
+            // Ghost's own `hover:bg-muted` is within 2 % of the transport surfaces this sits on,
+            // so the hover was invisible. `--elevate` is the mockup's raised step, the same one
+            // the tempo steppers use.
+            'hover:bg-elevate',
             // Pressed = SOLID brand teal, matching every other selected/active control in the
             // system: ToggleChipGroup, Tabs and Sidebar's active item. A gray fill with a teal
             // glyph is NOT an existing pattern here.

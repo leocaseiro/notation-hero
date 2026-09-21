@@ -107,6 +107,7 @@ body,
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
+  --color-elevate: var(--elevate);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
@@ -149,6 +150,16 @@ body,
   --muted-foreground: oklch(52% 0.021 213.5deg);
   --accent: oklch(96.3% 0.002 197.1deg);
   --accent-foreground: oklch(21.8% 0.008 223.9deg);
+
+  /* The RAISED surface a control shows under the pointer — the mockup's own `--elevate`
+     (player-flatrow-teal.html), which it paints on every hovered header, rail and transport
+     button. The design system had no token at this step, so ghost hover fell back to --muted,
+     which sits within 2 % of the surfaces it has to be seen against: pointing at the tempo
+     steppers changed nothing you could see. Tuned against the Button `secondary` story, whose own
+     hover is a 1.133 step off its resting fill: this is 1.18 off the tempo pill and 1.17 off the
+     transport footer, so it reads at least as clearly as the reference the design system already
+     ships. */
+  --elevate: oklch(93.5% 0.006 240.4deg);
   --destructive: oklch(50.5% 0.21 27.5deg);
 
   /* Success/warning: Okabe-Ito green #009e73 / amber #e69f00 (the score hues),
@@ -200,6 +211,7 @@ body,
   --muted: oklch(27.5% 0.011 216.9deg);
   --muted-foreground: oklch(72.3% 0.014 214.4deg);
   --accent: oklch(27.5% 0.011 216.9deg);
+  --elevate: oklch(31% 0.016 249.4deg);
   --accent-foreground: oklch(98.7% 0.002 197.1deg);
   --destructive: oklch(70.4% 0.191 22.216deg);
 

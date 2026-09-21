@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from '@notation-hero/client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { APP_VERSION } from '../../lib/app-version';
 
@@ -58,6 +59,8 @@ export function PlayerHeader({
   onSpeedChange,
   disabled,
 }: Readonly<PlayerHeaderProps>) {
+  const router = useRouter();
+
   return (
     // The mockup's three columns: Back, brand and title on the left, the tempo pill in the centre,
     // and the right one kept for the Settings gear that Plan C adds. `1fr auto 1fr` keeps the pill
@@ -70,10 +73,10 @@ export function PlayerHeader({
             bookmark, a shared link), where `history.length` is 1 and `back()` would silently do
             nothing — a dead control. The landing page is the fallback there, so the button always
             does something.
-            `globalThis.history`, not next/navigation's `useRouter`: the hook throws outside an app
-            router, which would make this component untestable in jsdom for the sake of one call
-            the platform already provides. The fallback costs a full page load, on a path that is a
-            different page anyway.
+            `history.length` is only READ — the navigating is the router's, because a bare
+            `location.assign('/')` is a full page reload of a route Next can serve on the client,
+            which its own lint rule rejects. The hook is why this component's test mocks
+            next/navigation: `useRouter` throws outside an app router.
             Icon only, so the header's left column spends its width on the score's name rather than
             on a word the arrow already says. `size-11` is the 44 px the a11y lane enforces and the
             size the tempo steppers beside it already use; the sr-only text is the accessible name —
@@ -86,8 +89,8 @@ export function PlayerHeader({
                 variant="ghost"
                 data-testid="back-home"
                 onClick={() => {
-                  if (globalThis.history.length > 1) globalThis.history.back();
-                  else globalThis.location.assign('/');
+                  if (globalThis.history.length > 1) router.back();
+                  else router.push('/');
                 }}
                 className="size-11 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
               >
@@ -142,7 +145,7 @@ export function PlayerHeader({
                 type="button"
                 data-testid="loaded-notation-name"
                 data-file={fileName}
-                className="min-h-11 max-w-full min-w-11 truncate px-1 text-left font-medium text-foreground"
+                className="min-h-11 max-w-full min-w-11 truncate rounded-lg px-1 text-left font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 {scoreTitle || fileName}
               </button>

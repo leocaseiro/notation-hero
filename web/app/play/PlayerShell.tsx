@@ -596,10 +596,14 @@ function Player() {
           </div>
         </aside>
 
-        <div className="flex min-h-0 flex-1 flex-col">
-          {/* `min-h-0` is what makes the notation SHRINK to the window instead of growing past it:
-              a flex item's default `min-height: auto` refuses to go below its content, so a long
-              score would push the transport row off the bottom of the screen. */}
+        {/* `min-w-0` AND `min-h-0` — both axes, for one reason. A flex item defaults to
+            `min-width`/`min-height: auto`, which refuses to shrink below its own content. Without
+            `min-h-0` a long score pushes the transport row off the bottom; without `min-w-0` the
+            transport row keeps its full intrinsic width in a narrow window and the shell's
+            `overflow-hidden` simply cuts the right-hand controls away — measured 928 px of row in
+            a 700 px window, with the metronome and count-in buttons gone. Raising the browser's
+            text size does the same thing, because every size here is rem-based. */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           <div className="relative min-h-0 flex-1">
             {/* NotationSurface is ALWAYS mounted — it renders its own engine-error message as an
               overlay. Do not reintroduce a branch that renders something INSTEAD of it: unmounting

@@ -218,3 +218,28 @@ test('disabled blocks both steppers and the input', () => {
   );
   expect(screen.getByRole('textbox', { name: 'Tempo' })).toBeDisabled();
 });
+
+// The number alone cannot say what it is relative to: 120 means nothing until you know whether the
+// score is written at 120, or at 150 and running slow. The inline percentage answers that only
+// while the tempo is being adjusted, so the tooltip is the only way to ask after the fact.
+test('the readout carries a tooltip naming the percentage of written speed', async () => {
+  const user = userEvent.setup();
+  render(<TempoControl scoreTempo={120} speed={0.75} onSpeedChange={() => {}} />);
+
+  await user.hover(screen.getByRole('textbox', { name: 'Tempo' }));
+
+  expect(await screen.findByTestId('tempo-tooltip')).toHaveTextContent(
+    "90 BPM — 75% of the score's written tempo",
+  );
+});
+
+test('at written speed the tooltip says so rather than reading 100%', async () => {
+  const user = userEvent.setup();
+  render(<TempoControl scoreTempo={120} speed={1} onSpeedChange={() => {}} />);
+
+  await user.hover(screen.getByRole('textbox', { name: 'Tempo' }));
+
+  expect(await screen.findByTestId('tempo-tooltip')).toHaveTextContent(
+    "120 BPM — the score's written tempo",
+  );
+});
