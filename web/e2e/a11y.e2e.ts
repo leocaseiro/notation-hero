@@ -32,11 +32,27 @@ async function expectNoViolations(page: Page, label: string): Promise<void> {
 // control cannot quietly shrink below it.
 async function expectHitAreas(page: Page, label: string): Promise<void> {
   const tooSmall = await page.evaluate(() =>
-    [...document.querySelectorAll('button, a[href], label[for], [role="button"]')]
+    [
+      // The last selector is the seek rail. A Base UI slider's 44 px pointer target is neither a
+      // button nor a link: the nested input[type="range"] is sized to its 16 px thumb by design
+      // and can never pass, while the element that actually takes the click is the slider's
+      // Control. Found by its own data-slot, NOT by `[class*="h-11"]`: keying the gate to the
+      // Tailwind class it is measuring means rewriting that class in any equivalent way
+      // (min-h-11, h-[44px], padding) makes the selector match nothing and the gate pass
+      // silently over whatever the rail became.
+      ...document.querySelectorAll(
+        'button, a[href], label[for], [role="button"], [data-slot="slider-control"]',
+      ),
+    ]
       .filter((el) => {
+        // Skip controls that are not rendered at all: `display:none` generates no box, so
+        // getClientRects() is empty. A control that IS laid out but collapsed to 0 px in either
+        // dimension is NOT skipped — a seek rail painted 0 px wide cannot be clicked at all, and
+        // the old `r.width > 0 && r.height > 0` guard let exactly that worst case through while
+        // still failing a milder 1 px one.
+        if (el.getClientRects().length === 0) return false;
         const r = el.getBoundingClientRect();
-        // Skip controls that are not rendered at all; a hidden element has no hit area to fail.
-        return r.width > 0 && r.height > 0 && (r.width < 44 || r.height < 44);
+        return r.width < 44 || r.height < 44;
       })
       .map((el) => ({
         id: (el as HTMLElement).dataset.testid ?? el.textContent?.trim().slice(0, 24) ?? '?',
@@ -124,4 +140,28 @@ test('player has no axe violations when the engine fails to load', async ({ page
   await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
   await expectNoViolations(page, 'play / engine error');
   await expectHitAreas(page, 'play / engine error');
+});
+
+// A toggle's pressed styling is where contrast usually breaks, and the transport did not exist
+// when the cases above were written.
+test('player has no axe violations with every transport toggle pressed', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('toggle-loop').click();
+  await page.getByTestId('toggle-metronome').click();
+  await page.getByTestId('toggle-countin').click();
+  await page.getByRole('button', { name: 'Increase tempo' }).click();
+
+  // The same trap settleToasts() exists for: the percentage FADES in, and axe folds partial
+  // opacity into its contrast maths — measured 1.28:1 (#d2e7e6 on white) from a teal that passes
+  // at rest. Wait for the fade to finish so the gate measures the rendered UI, not a tween.
+  await expect
+    .poll(() =>
+      page.getByTestId('tempo-percent').evaluate((el) => globalThis.getComputedStyle(el).opacity),
+    )
+    .toBe('1');
+
+  await expectNoViolations(page, 'play / transport pressed');
+  await expectHitAreas(page, 'play / transport pressed');
 });

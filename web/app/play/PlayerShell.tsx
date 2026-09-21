@@ -1,17 +1,28 @@
 'use client';
 
-import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '@notation-hero/client';
+import {
+  Button,
+  Progress,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  toast,
+} from '@notation-hero/client';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 import {
   AlphaTabEngineProvider,
   useAlphaTabEngine,
 } from '../../lib/alphatab/AlphaTabEngineContext';
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
-import { useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
+import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { PLAYER_ERROR } from '../../lib/player-errors';
 import { NotationSurface } from './NotationSurface';
 import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
+import { PlayerHeader } from './PlayerHeader';
+import { TransportRow } from './TransportRow';
+import { useLoadingBarPhase } from './useLoadingBarPhase';
 import type * as AlphaTab from '@coderline/alphatab';
 
 /** What the picker produces: a file read into memory, not yet parsed. */
@@ -36,8 +47,30 @@ export interface OpenNotation {
  */
 const SAMPLE_NOTATION = '/notation/1-beat.gp';
 
+const nextFrame = () =>
+  new Promise<void>((resolve) => {
+    requestAnimationFrame(() => resolve());
+  });
+
+/**
+ * Resolves once the loading toast has been painted. Sonner inserts a toast asynchronously and
+ * shows it only after a second pass sets `data-mounted="true"`, so how many frames that takes
+ * depends on how busy the main thread is. A fixed two-frame wait was exactly enough on an idle
+ * page and not enough on a slow one: under a 20x CPU throttle the toast reached the screen only
+ * after the parse had finished. Bounded, so a toast that never mounts cannot hang a file open.
+ */
+async function loadingToastPainted(): Promise<void> {
+  for (let frame = 0; frame < 30; frame += 1) {
+    await nextFrame();
+    if (document.querySelector('[data-sonner-toast][data-mounted="true"]')) break;
+  }
+  // Mounted is a DOM fact; these two frames are what put it on the glass.
+  await nextFrame();
+  await nextFrame();
+}
+
 function Player() {
-  const { engine } = useAlphaTabEngine();
+  const { engine, error: engineError } = useAlphaTabEngine();
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [playerReady, setPlayerReady] = useState(false);
@@ -47,6 +80,36 @@ function Player() {
   // because the shell is what knows an open finished; the picker only hands over bytes.
   const [announcement, setAnnouncement] = useState('');
   const playRef = useRef<HTMLButtonElement | null>(null);
+
+  // The playhead. This IS product state — the Scrubber is a controlled component over it — which is
+  // why it may live here when a `data-position` DOM hook may not: the rule bans test-only
+  // instrumentation, not UI state.
+  const [positionMs, setPositionMs] = useState(0);
+  const [durationMs, setDurationMs] = useState(0);
+  const [looping, setLooping] = useState(false);
+  const [metronome, setMetronome] = useState(false);
+  const [countIn, setCountIn] = useState(false);
+  // Whether AlphaTab currently holds a bar-range selection — drives the Loop toggle's label only.
+  const [hasRange, setHasRange] = useState(false);
+  // Whether the open score plays its own embedded recording. Metronome and Count-In are inert then.
+  const [hasBackingTrack, setHasBackingTrack] = useState(false);
+  // The live score tempo, for the header's tempo control. The position handler below is what keeps
+  // it current; the 120 is the pre-load placeholder only.
+  const [scoreTempo, setScoreTempo] = useState(120);
+  // The playback speed multiplier; 1 is the score's own tempo. A new score keeps the speed the
+  // drummer chose: the BPM readout moves because the score's own tempo changed, not because the
+  // multiplier was reset.
+  const [speed, setSpeed] = useState(1);
+  // The soundfont download: a 0-1 fraction, null when no fraction can be computed, and undefined
+  // before any byte has been reported. The FRACTION measures the soundfont only — the engine
+  // files arrive through a plain dynamic import, which reports no progress at all.
+  const [soundFontProgress, setSoundFontProgress] = useState<number | null | undefined>();
+  // AlphaTab raised an error before the player was ready: Play never enables on this page load,
+  // so the bar must stop rather than pulse forever beside the error message.
+  const [loadFailed, setLoadFailed] = useState(false);
+  // A file is being opened. The parse is synchronous and can hold the main thread for seconds on a
+  // slow machine, so this is committed and PAINTED before the parse starts.
+  const [opening, setOpening] = useState(false);
 
   // The ONE owner of the api. There is no second apiRef and no onApiReady callback: a callback
   // prop in the hook's dependency list rebuilds the engine on an ordinary state change, throwing
@@ -98,6 +161,214 @@ function Player() {
   // wrapper's `readyForPlayback`, built as `new EventEmitter(() => this.isReadyForPlayback)`, which
   // reports the current value to a late subscriber.
   useAlphaTabEvent(api, 'playerReady', () => setPlayerReady(true));
+
+  // Guard 2's bookkeeping — see the position handler below.
+  const pendingSeek = useRef<{ target: number; since: number } | null>(null);
+  // A seek made while bars are selected waits for AlphaTab's reply to learn whether it landed
+  // inside them; this is the timer for the one case where no reply ever comes (see `seek`).
+  const rangeCheck = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  // Whether the score was playing when that seek was made — see `leaveRange`.
+  const resumeAfterSeek = useRef(false);
+
+  // The worklet posts one samplesPlayed message per 128-frame audio quantum, and each one triggers
+  // a positionChanged — about 345 events per second at 44.1 kHz. Writing state on every one of them
+  // commits React ~345 times a second for a clock that only shows whole seconds. Coalesce to one
+  // commit per animation frame: stash the latest args in a ref, schedule a single frame, and let
+  // the frame do the writing. The guards still run on EVERY event — dropping a stale post-seek
+  // event is about correctness, not rate — so only the state write is throttled.
+  const latestPosition = useRef<AlphaTab.synth.PositionChangedEventArgs | null>(null);
+  const positionFrame = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (positionFrame.current !== null) cancelAnimationFrame(positionFrame.current);
+      clearTimeout(rangeCheck.current);
+    },
+    [],
+  );
+
+  // The seek landed OUTSIDE the selected bars (or nobody can tell): let the selection go and seek
+  // again. It is not optional. In AlphaTab 1.8.4 a seek outside an active playback range leaves
+  // the sequencer clamped to the range's end while the reported time is the requested one: Play
+  // then renders empty buffers, the engine's finish check never runs, and the player latches in
+  // Playing with nothing moving; Pause falls back to the last beat the cursor had resolved. With
+  // the range gone, the same seek positions the sequencer properly. The range goes FIRST: both
+  // writes are messages to the same worker, handled in order.
+  //
+  // If the score was PLAYING, AlphaTab stopped it the moment the first seek left the range, so
+  // playback is started again — leaving a selection must not cost the person their playback.
+  const leaveRange = useCallback(
+    (ms: number) => {
+      if (!api) return;
+      clearTimeout(rangeCheck.current);
+      setAlphaTabValue(api, 'playbackRange', null);
+      setAlphaTabValue(api, 'timePosition', ms);
+      // Same reason as in `seek`: this re-arms pendingSeek, so a frame still holding a pre-seek
+      // sample would write it and guard 2 would then drop events until the second echo.
+      latestPosition.current = null;
+      pendingSeek.current = { target: ms, since: performance.now() };
+      if (resumeAfterSeek.current) {
+        resumeAfterSeek.current = false;
+        api.play();
+      }
+    },
+    [api],
+  );
+
+  // Guard 1 — `endTime === 0` is the hardcoded PositionChangedEventArgs(0,0,0,0,false,120,120) stub
+  // that AlphaTab replays synchronously at subscribe time. Without this the header flashes 120 BPM
+  // on a 90 BPM score. It happens in a real browser too: the replay lives on the player facade the
+  // api exposes, not on the worker-backed synth whose own emitters are bare.
+  //
+  // Guard 2 — after a seek, AlphaTab delivers a burst of STALE position events before the seek's
+  // own echo. They carry `isSeek: false`, identical to every ordinary tick, so the flag cannot
+  // filter them. What does: the echo carries `isSeek: true` AND exactly the requested time (clamped
+  // to endTime), and MessagePort delivery is FIFO, so drop everything until that pair matches. The
+  // 250 ms timeout is mandatory, not decoration — a seek issued during a count-in emits NO event at
+  // all (AlphaTab gates the trigger on `isPlayingMain`), and without the bound the UI would latch
+  // forever.
+  useAlphaTabEvent(api, 'playerPositionChanged', (args) => {
+    if (args.endTime === 0) return; // guard 1
+
+    if (pendingSeek.current) {
+      // guard 2
+      const { target } = pendingSeek.current;
+      const expected = Math.min(target, args.endTime);
+      const matched = args.isSeek && Math.abs(args.currentTime - expected) < 1;
+      if (!matched && performance.now() - pendingSeek.current.since < 250) return;
+      pendingSeek.current = null;
+
+      // The reply to a seek is also the only place that can say whether it landed inside the
+      // selected bars: the selection is kept in TICKS, the seek bar works in milliseconds, and the
+      // main thread cannot convert one into the other. Inside: the selection stays. Outside: it
+      // goes, and the seek is made again without it.
+      if (matched) {
+        clearTimeout(rangeCheck.current);
+        const range = api?.playbackRange;
+        if (range && (args.currentTick < range.startTick || args.currentTick > range.endTick)) {
+          leaveRange(target);
+          return;
+        }
+        resumeAfterSeek.current = false;
+      }
+    }
+
+    latestPosition.current = args;
+    if (positionFrame.current !== null) return; // a frame is already scheduled
+    positionFrame.current = requestAnimationFrame(() => {
+      positionFrame.current = null;
+      const next = latestPosition.current;
+      if (!next) return;
+      setPositionMs(next.currentTime);
+      setDurationMs(next.endTime);
+      setScoreTempo(next.originalTempo); // live; score.tempo is the INITIAL tempo only
+    });
+  });
+
+  // No `midiLoaded` subscription, on purpose. The handler above already delivers the opening tempo
+  // before a single frame has played: AlphaTab sets `tickPosition = 0` straight after every MIDI
+  // load, which fires a position event carrying the real length and the tempo at tick 0 — and a
+  // subscriber that arrives later than that is replayed the player's real current position. And
+  // `midiLoaded` cannot be subscribed to safely in 1.8.4 at all; see `AlphaTabApiEvents`.
+
+  // The download finished: hold the fraction at 100 %. NOT back to undefined — the worker still
+  // decodes the presets for some tens of milliseconds before `playerReady`, and an undefined
+  // fraction there flipped the nearly full bar to the grey indeterminate style for a few frames.
+  useAlphaTabEvent(api, 'soundFontLoaded', () => setSoundFontProgress(1));
+  // A failed download reaches the app as `api.error` (AlphaTab forwards the synth's
+  // soundFontLoadFailed itself), which NotationSurface already reports as the engine-runtime
+  // error.
+  useAlphaTabEvent(api, 'error', () => setLoadFailed(true));
+
+  // The bar means "the player is not ready yet", from the first frame: it is in the server HTML,
+  // indeterminate until soundfont bytes flow, then a real fraction. It also covers opening a file.
+  // A failure shows NO bar — never a "finished" one beside an error message.
+  const failed = engineError !== null || loadFailed;
+  const loadingPlayer = !failed && (!playerReady || opening);
+  // 700 = the 400 ms hold at 100 % plus the 300 ms fade in LOADING_BAR_LEAVING below.
+  const barPhase = useLoadingBarPhase(loadingPlayer, 700);
+  // Held at 100 % while it fades. Opening a file has no fraction to show, and neither has the wait
+  // before the first soundfont byte: both are the indeterminate style (null).
+  let barValue: number | null = soundFontProgress ?? null;
+  if (barPhase === 'done') barValue = 1;
+  else if (opening) barValue = null;
+
+  // The Loop toggle's label needs to know whether a bar range is selected.
+  useAlphaTabEvent(api, 'playbackRangeChanged', (args) => setHasRange(args.playbackRange !== null));
+
+  // The SAME condition AlphaTab uses to pick its backing-track player (alphaTab.core.mjs:46685,
+  // `score?.backingTrack?.rawAudioFile`). `backingTrack` alone is not enough: a score can carry the
+  // sync metadata without the audio, and AlphaTab then plays the synth, where both toggles work.
+  useAlphaTabEvent(api, 'scoreLoaded', (score) =>
+    setHasBackingTrack(Boolean(score.backingTrack?.rawAudioFile)),
+  );
+
+  // `api` is state, not a ref, so it MUST be in each dependency list: an empty list would freeze
+  // the callback on the `undefined` it held before the engine arrived.
+  const applyLooping = useCallback(
+    (next: boolean) => {
+      setLooping(next);
+      if (api) setAlphaTabValue(api, 'isLooping', next);
+    },
+    [api],
+  );
+
+  // Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 is the normal
+  // level, so the toggle maps to the two ends rather than calling a method.
+  const applyMetronome = useCallback(
+    (next: boolean) => {
+      setMetronome(next);
+      if (api) setAlphaTabValue(api, 'metronomeVolume', next ? 1 : 0);
+    },
+    [api],
+  );
+
+  const applyCountIn = useCallback(
+    (next: boolean) => {
+      setCountIn(next);
+      if (api) setAlphaTabValue(api, 'countInVolume', next ? 1 : 0);
+    },
+    [api],
+  );
+
+  // The ONLY writer of api.playbackSpeed in the app. v0 ships two controls over this one value —
+  // the header BPM stepper and the Settings popover's speed slider — and both must call this.
+  // `playbackSpeed` is an AlphaTabApi property, not a field in AlphaTab's Settings JSON, so a
+  // settings row wired like its neighbours would write a value that never reaches the engine.
+  const applySpeed = useCallback(
+    (next: number) => {
+      setSpeed(next);
+      if (api) setAlphaTabValue(api, 'playbackSpeed', next);
+    },
+    [api],
+  );
+
+  const seek = useCallback(
+    (ms: number) => {
+      if (api) {
+        setAlphaTabValue(api, 'timePosition', ms);
+        // Bars are selected: whether this seek landed inside them is read off AlphaTab's reply (see
+        // the position handler). ONE case gets no reply at all — a seek made during a count-in,
+        // when the score is not playing yet — so a short timer stands in for it and lets the
+        // selection go. Guessing "inside" there would risk the frozen player `leaveRange` exists
+        // to prevent; guessing "outside" only costs selecting the bars again.
+        clearTimeout(rangeCheck.current);
+        if (api.playbackRange) {
+          resumeAfterSeek.current = playing;
+          rangeCheck.current = setTimeout(() => leaveRange(ms), 250);
+        }
+      }
+      // Drop the pre-seek sample the position handler has parked. During playback a frame is almost
+      // always already scheduled, and it would fire a few milliseconds from now and write the OLD
+      // currentTime over the optimistic value below — after which guard 2 drops every real event
+      // until the echo, so the stale position is what stays on screen for the whole round trip.
+      // The scheduled frame still clears `positionFrame` and then returns at its `if (!next)`.
+      latestPosition.current = null;
+      setPositionMs(ms); // optimistic; guard 2 above reconciles on the echo
+      pendingSeek.current = { target: ms, since: performance.now() };
+    },
+    [api, leaveRange, playing],
+  );
 
   // Confirm FIRST, then parse, then swap — spec §4's order. A file that does not parse never
   // becomes the open notation, so the score on screen is untouched by construction and there is
@@ -152,18 +423,23 @@ function Player() {
       // time to parse (2,000 bars of 16ths: ~0.4 s on a fast laptop, longer on a slow one), while
       // file size barely matters. One `id` makes the loading, success and failure states share one
       // toast instead of stacking three.
+      // The loading bar FIRST, committed synchronously. Sonner inserts its toast element
+      // asynchronously, so on a slow machine the painted frame the wait below buys did not yet
+      // contain the toast: measured under a 20x CPU throttle, the toast reached the DOM 188 ms
+      // after the pick and was first PAINTED at 3.9 s, when the parse had already finished. The
+      // bar is our own React state, so flushSync puts it in the DOM before that frame is painted.
+      flushSync(() => setOpening(true));
       toast.loading(`Opening ${next.name}…`, { id: 'notation-load' });
 
-      // loadScoreFromBytes is synchronous: wait for a painted frame first, or the toast would
-      // appear only once the parse had already finished.
-      await new Promise((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(resolve));
-      });
+      // loadScoreFromBytes is synchronous: wait until the toast is really ON SCREEN first, or it
+      // would appear only once the parse had already finished.
+      await loadingToastPainted();
 
       let score: AlphaTab.model.Score;
       try {
         score = at.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
       } catch {
+        setOpening(false);
         toast.error(
           `${next.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
           { id: 'notation-load' },
@@ -175,7 +451,19 @@ function Player() {
 
       // Pause only on the confirm path, to stop the synth before renderScore swaps the score.
       if (wasPlaying) api?.pause();
+      // A bar range selected in the OLD score must not outlive it. AlphaTab keeps the main-thread
+      // playbackRange across a score change while the new sequencer has none: the Loop toggle
+      // went on reading "Loop selection", the cursor froze at the old range's end, and Pause
+      // jumped back — with no seek involved.
+      if (api?.playbackRange) setAlphaTabValue(api, 'playbackRange', null);
+      // Nor may the in-flight seek bookkeeping. `api` survives a file open — it is destroyed only
+      // on unmount — so an armed `rangeCheck` would run `leaveRange` against the NEW score,
+      // writing an old position into it and, if the old score was playing, starting it.
+      clearTimeout(rangeCheck.current);
+      pendingSeek.current = null;
+      resumeAfterSeek.current = false;
       setNotation({ name: next.name, score });
+      setOpening(false);
       toast.success(`${next.name} loaded`, { id: 'notation-load' });
       // Success only. None of this is reachable from the cancel path or the parse failure (both
       // returned above), from the read failures the picker catches, or for the bundled score —
@@ -234,29 +522,29 @@ function Player() {
     <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
       <h1 className="sr-only">Player</h1>
 
-      <header className="flex items-center gap-3">
-        {/* The wordmark stands in for the logo the mockup draws; the real mark is a later visual
-            task. */}
-        <span className="text-sm font-semibold">Notation Hero</span>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              // A real <button> so the tooltip is reachable by keyboard, not only by hover. It
-              // does nothing on click; min-h-11/min-w-11 keeps it over the 44 px hit area the
-              // accessibility gate enforces.
-              <button
-                type="button"
-                data-testid="loaded-notation-name"
-                data-file={openFileName}
-                className="min-h-11 min-w-11 truncate px-1 text-left text-sm text-muted-foreground"
-              >
-                {notation?.score.title || openFileName}
-              </button>
+      {/* The bar rides the header's bottom edge, out of the layout flow, so the notation below
+          does not jump when it appears and again when it goes. */}
+      <div className="relative">
+        <PlayerHeader
+          scoreTitle={notation?.score.title ?? ''}
+          fileName={openFileName}
+          scoreTempo={scoreTempo}
+          speed={speed}
+          onSpeedChange={applySpeed}
+          disabled={!playerReady}
+        />
+        {failed || barPhase === 'gone' ? null : (
+          <Progress
+            value={barValue}
+            label="Loading the player"
+            className={
+              barPhase === 'done'
+                ? 'absolute inset-x-0 bottom-0 opacity-0 transition-opacity delay-[400ms] duration-300'
+                : 'absolute inset-x-0 bottom-0'
             }
           />
-          <TooltipContent>{openFileName}</TooltipContent>
-        </Tooltip>
-      </header>
+        )}
+      </div>
 
       {/* A dragenter/dragleave COUNTER, never a bare setDragging(false). `dragleave` also fires on
           the container whenever the pointer crosses into a CHILD, with relatedTarget set to that
@@ -264,7 +552,7 @@ function Player() {
           14 state transitions on one drag across the control, a visible strobe. Clamped at 0 so a
           stray leave cannot make the next enter a no-op. */}
       <section
-        className="relative flex flex-col gap-4"
+        className="nh-drop-zone relative flex flex-col gap-4"
         data-testid="drop-zone"
         data-dragging={dragging || undefined}
         onDragEnter={(event) => {
@@ -304,6 +592,7 @@ function Player() {
             hostRef={hostRef}
             viewportRef={viewportRef}
             notation={notation}
+            onSoundFontProgress={setSoundFontProgress}
           />
           {dragging ? (
             /* MUST be a descendant of the drop container AND pointer-events-none. An overlay
@@ -330,37 +619,95 @@ function Player() {
           data-testid="player-status"
           data-playing={playing}
           data-player-ready={playerReady}
-          className="flex items-center gap-3"
+          data-duration={durationMs}
+          data-looping={looping}
+          data-metronome={metronome}
+          data-countin={countIn}
+          data-speed={speed}
         >
-          {/* Play stays unavailable until the synth is ready (spec §4). size-11 = the 44px minimum
-              hit area; the glyph keeps its drawn size. This is NOT client/'s PlayButton — that one
-              is the catalog row's control and has no pause state. */}
-          {/* `disabled` here renders `aria-disabled="true"`, never the native attribute, and the
-              design system blocks activation itself — so no guard belongs at this call site. That
-              matters because a natively disabled button cannot receive focus, and opening a file
-              moves focus to this button: while the engine is still loading, a native `disabled`
-              would make that focus call a silent no-op and strand the person's focus on the control
-              they just used. The dimming and pointer-events rules ship in buttonVariants too, so
-              the className carries only this button's own size and colour. */}
-          <Button
-            ref={playRef}
-            data-testid="transport-play"
-            size="icon"
-            variant="ghost"
-            aria-label={playing ? 'Pause' : 'Play'}
+          {/* The whole transport is gated on `playerReady`, never on `soundFontLoaded`: that one is
+              a bare emitter with no replay, so a late subscriber would latch the row disabled
+              forever. */}
+          <TransportRow
+            positionMs={positionMs}
+            durationMs={durationMs}
+            onSeek={seek}
+            looping={looping}
+            onLoopingChange={applyLooping}
+            metronome={metronome}
+            onMetronomeChange={applyMetronome}
+            countIn={countIn}
+            onCountInChange={applyCountIn}
+            hasRange={hasRange}
+            hasBackingTrack={hasBackingTrack}
             disabled={!playerReady}
-            onClick={() => api?.playPause()}
-            className="size-11 rounded-full text-primary"
-          >
-            <span className="material-symbols-outlined" aria-hidden="true" style={{ fontSize: 34 }}>
-              {playing ? 'pause_circle' : 'play_circle'}
-            </span>
-          </Button>
-          {/* Permanent, never conditional. The control sits beside Play for the whole life of the
-              page: a score is always open, so there is no other place for it to live, the replace
-              tests always find `open-file-input`, and the person's focus is never moved by a
-              control disappearing out from under them. */}
-          <OpenFileControl onNotation={requestNotation} />
+            playButton={
+              /* The mockup's Play: a SOLID teal circle, 48 px, with a solid glyph and a soft teal
+                 shadow — Button's own `default` variant, which is bg-primary with the hover
+                 darken. The two glyphs are inline SVG paths (Material's play_arrow and pause):
+                 the self-hosted Material Symbols face carries the weight axis only, so
+                 `FILL 1` does nothing and the font can only draw them as outlines. `size-6` is
+                 required, or Button sizes a bare svg to 16 px. This is NOT client/'s PlayButton —
+                 that one is the catalog row's control and has no pause state.
+
+                 `disabled` here renders `aria-disabled="true"`, never the native attribute, and
+                 the design system blocks activation itself — so no guard belongs at this call
+                 site. That matters because a natively disabled button cannot receive focus, and
+                 opening a file moves focus to this button: while the engine is still loading, a
+                 native `disabled` would make that focus call a silent no-op and strand the
+                 person's focus on the control they just used. */
+              <Tooltip>
+                {/* The trigger is a span AROUND the button, never the button itself — the fix
+                    TransportToggle already carries. A disabled Button is `pointer-events: none`,
+                    so as its own trigger it never receives the hover that opens the tooltip, and
+                    Play is disabled for the whole engine + soundfont load. Focus events bubble,
+                    so focus still opens it, and `playRef` stays on the Button. */}
+                <TooltipTrigger
+                  // Play/Pause is a toggle: keep the tooltip open across the press, so it says the new
+                  // state at once instead of vanishing until the pointer leaves and returns.
+                  closeOnClick={false}
+                  render={<span className="inline-flex shrink-0" />}
+                >
+                  <Button
+                    ref={playRef}
+                    data-testid="transport-play"
+                    size="icon"
+                    aria-label={playing ? 'Pause' : 'Play'}
+                    disabled={!playerReady}
+                    onClick={() => {
+                      // An explicit pause cancels a seek's pending auto-resume. This CANNOT
+                      // live in `playerStateChanged`: that also fires when AlphaTab stops
+                      // playback as a side effect of leaving the range — the very stop
+                      // `resumeAfterSeek` exists to undo.
+                      if (playing) resumeAfterSeek.current = false;
+                      api?.playPause();
+                    }}
+                    className="size-12 rounded-full shadow-lg shadow-primary/20"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="size-6"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d={playing ? 'M6 19h4V5H6v14zm8-14v14h4V5h-4z' : 'M8 5v14l11-7z'} />
+                    </svg>
+                  </Button>
+                </TooltipTrigger>
+                {/* Lifted 8 px, or the teal arrow lies on the solid teal button and cannot be seen. */}
+                <TooltipContent sideOffset={8}>{playing ? 'Pause' : 'Play'}</TooltipContent>
+              </Tooltip>
+            }
+            leading={
+              /* Permanent, never conditional. The control sits in the row for the whole life of
+                 the page: a score is always open, so there is no other place for it to live, the
+                 replace tests always find `open-file-input`, and the person's focus is never
+                 moved by a control disappearing out from under them. It is FIRST in the row — the
+                 mockup keeps Open file at the bottom-left — and `trailing` stays free for the
+                 Tracks trigger Plan C adds. */
+              <OpenFileControl onNotation={requestNotation} />
+            }
+          />
         </div>
 
         {/* Visually hidden, and polite so it waits for a gap rather than cutting the reader off. It

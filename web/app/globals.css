@@ -12,10 +12,20 @@
    import-aware, so a component we don't import still ships its CSS. We accept that bounded,
    cached over-generation in exchange for never hand-maintaining a per-component @source list
    (decision: docs/decisions/2026-07-12-design-system-distribution-adr.md, NH-275). The @source
-   not lines drop co-located stories/tests so their dev-only classes never leak into app CSS. */
+   not lines drop co-located stories/tests so their dev-only classes never leak into app CSS.
+   `.ts` is scanned as well as `.tsx`: a component may keep its class strings in a plain module so
+   two components can share them (Slider/SliderClasses.ts feeds Slider AND RangeSlider). With a
+   `.tsx`-only scan those utilities were never generated here — the seek rail rendered 0 px wide
+   and 4 px tall in this app while Storybook, which scans client/ itself, looked perfect. The
+   extra `not` lines keep the co-located test harnesses out. */
 @source '../../client/src/components/ui/**/*.tsx';
+@source '../../client/src/components/ui/**/*.ts';
 @source not '../../client/src/**/*.stories.tsx';
 @source not '../../client/src/**/*.test.tsx';
+@source not '../../client/src/**/*.test.ts';
+@source not '../../client/src/**/*.a11y.ts';
+@source not '../../client/src/**/*.vr.ts';
+@source not '../../client/src/**/*.story-ids.ts';
 
 /* AlphaTab ships no stylesheet: it creates .at-cursor-bar and .at-cursor-beat as bare divs with
    inline geometry only, so `enableCursor` paints nothing until the host app supplies these rules.
@@ -35,6 +45,17 @@
   stroke: var(--primary);
 }
 
+/* The bar-range selection — drag across bars in the notation, and that range is what Loop repeats.
+   AlphaTab appends one bare, class-less div per staff system inside .at-selection and sizes each
+   with a scale() transform on a 100 x 100 px box. So the descendant selector is the only hook, and
+   `background` the only safe property: a border, a radius or a shadow would be stretched by that
+   same transform. Lighter than the bar cursor (18%), so "selected" and "playing now" stay distinct
+   where they overlap. Without this rule the range is real but invisible, which hides the one
+   thing that explains why playback keeps returning to the same bars. */
+.at-selection div {
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+}
+
 /* The drag-and-drop affordance. No hardcoded white or black, so it reads in both themes. */
 .nh-drop-overlay {
   border-radius: var(--radius);
@@ -46,8 +67,11 @@
 }
 
 /* The whole surface signals "drop anywhere in here"; only the score area carries the scrim, so
-   the transport stays legible rather than reading as a broken player. */
-[data-dragging] {
+   the transport stays legible rather than reading as a broken player.
+   Scoped to the drop zone's own class, never the bare attribute: Base UI's Slider puts
+   `data-dragging` on its own elements while a thumb is held, and the bare selector drew this
+   dashed outline around the seek bar on every scrub. */
+.nh-drop-zone[data-dragging] {
   outline: 2px dashed var(--primary);
   outline-offset: 6px;
   border-radius: var(--radius);

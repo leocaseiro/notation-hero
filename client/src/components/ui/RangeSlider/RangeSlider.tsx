@@ -1,5 +1,7 @@
 import { Slider } from '@base-ui/react/slider';
 
+import { SLIDER_THUMB_CLASS, SLIDER_TRACK_CLASS } from '../Slider/SliderClasses';
+
 import { cn } from '@/lib/utils';
 
 interface RangeSliderProps {
@@ -68,40 +70,12 @@ const RangeSlider = ({
         )}
       >
         <Slider.Control className="flex w-full items-center">
-          <Slider.Track className="relative h-1 grow rounded-full bg-muted">
+          <Slider.Track className={SLIDER_TRACK_CLASS}>
             <Slider.Indicator className="absolute h-full rounded-full bg-primary" />
             {/* Thumbs: grab cursor + teal fill while dragging (:active); disabled keys off Base UI's
                 data-disabled (a <span> can't match :disabled), which also suppresses the hover ring. */}
-            <Slider.Thumb
-              index={0}
-              aria-label={minLabel}
-              className={cn(
-                'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
-                'hover:ring-4 hover:ring-ring/30',
-                // Base UI's thumb is a styled div wrapping a real (visually-hidden) native
-                // `<input type="range">` — the input receives focus, not this div, so a plain
-                // `focus-visible:` utility here would never match; `has-focus-visible:` reads the
-                // nested input's focus state instead.
-                'has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-focus-visible:outline-none',
-                'active:cursor-grabbing active:bg-primary',
-                'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed',
-              )}
-            />
-            <Slider.Thumb
-              index={1}
-              aria-label={maxLabel}
-              className={cn(
-                'block size-4 cursor-grab rounded-full border-2 border-primary bg-background transition-[box-shadow,background-color]',
-                'hover:ring-4 hover:ring-ring/30',
-                // Base UI's thumb is a styled div wrapping a real (visually-hidden) native
-                // `<input type="range">` — the input receives focus, not this div, so a plain
-                // `focus-visible:` utility here would never match; `has-focus-visible:` reads the
-                // nested input's focus state instead.
-                'has-focus-visible:ring-3 has-focus-visible:ring-ring/50 has-focus-visible:outline-none',
-                'active:cursor-grabbing active:bg-primary',
-                'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed',
-              )}
-            />
+            <Slider.Thumb index={0} aria-label={minLabel} className={SLIDER_THUMB_CLASS} />
+            <Slider.Thumb index={1} aria-label={maxLabel} className={SLIDER_THUMB_CLASS} />
           </Slider.Track>
         </Slider.Control>
       </Slider.Root>

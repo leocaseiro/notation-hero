@@ -21,6 +21,8 @@ interface NotationSurfaceProps {
   /** A score the person opened, already parsed by the shell. Null while the bundled beat —
    *  loaded by AlphaTab itself from settings.core.file — is the one on screen. */
   notation: OpenNotation | null;
+  /** Soundfont download progress: a 0-1 fraction, or null when no fraction can be computed. */
+  onSoundFontProgress: (fraction: number | null) => void;
 }
 
 /**
@@ -49,6 +51,7 @@ export function NotationSurface({
   hostRef,
   viewportRef,
   notation,
+  onSoundFontProgress,
 }: Readonly<NotationSurfaceProps>) {
   const { error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
@@ -113,6 +116,17 @@ export function NotationSurface({
   useAlphaTabEvent(api, 'error', (cause) =>
     setRuntimeError(`Error ${PLAYER_ERROR.engineRuntime}: ${String(cause)}`),
   );
+  // AlphaTab forwards the raw XMLHttpRequest ProgressEvent, so two numeric cases are real:
+  //   - `total` is 0 when the response carries no Content-Length -> no fraction exists, so report
+  //     null and let the bar render its indeterminate style.
+  //   - `total` is the ENCODED length while `loaded` counts DECODED bytes when the CDN compresses,
+  //     so the ratio can exceed 1 -> clamp.
+  // Whether the host compresses .sf3 is unverified, so BOTH branches are reachable. This is
+  // progress only; the two events that END the download are handled by the shell, because this
+  // callback cannot carry the `undefined` that means "not downloading".
+  useAlphaTabEvent(api, 'soundFontLoad', (progress) => {
+    onSoundFontProgress(progress.total > 0 ? Math.min(1, progress.loaded / progress.total) : null);
+  });
   useAlphaTabEvent(api, 'renderFinished', () => {
     globalThis.clearTimeout(timeoutRef.current);
     // A render finished, so the music font is present: drop any font error the 60 s backstop or

@@ -12,6 +12,179 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-20 — Plan B, first hands-on round: sixteen findings, and what they changed (NH-291)
+
+The maintainer tested PR #162 by hand and raised sixteen items. Each was reproduced in a real
+browser before it was touched; the two runtime bugs were each attacked by a second, independent
+investigation before the fix was trusted. What follows is what CHANGED a decision or what is
+enforced — the plain bug fixes are in the commits.
+
+- **A seek that lands outside the selected bars lets the selection go; one that lands inside keeps
+  it — new.** Scenario: bars are selected for Loop, the person drags the seek bar beyond them and
+  presses Play. The button turned into Pause, nothing moved, and Pause fell back to the old
+  position. In AlphaTab 1.8.4 a seek outside an active playback range leaves the sequencer clamped
+  to the range's end while the reported time is the requested one; Play renders empty buffers and
+  the finish check never runs. The first fix cleared the selection on EVERY scrub. The maintainer
+  chose the finer rule (_"I would prefer your option 2"_): practising bars 5–8 and scrubbing back
+  to bar 6 must not throw the selection away. Inside or outside is read off AlphaTab's own reply
+  to the seek — the selection is kept in ticks, the seek bar works in milliseconds, and the main
+  thread cannot convert one into the other. Outside: the range is cleared and the seek made
+  again, and playback is restarted if it was running (AlphaTab stops the player the moment a seek
+  leaves the range). **One case gets no reply at all — a seek during a count-in, when the score is
+  not playing yet — so after 250 ms without one the selection is let go:** guessing "inside" there
+  risks the frozen player, guessing "outside" only costs selecting the bars again. Opening a file
+  clears the range too: AlphaTab kept the old score's range on the main thread while the new
+  sequencer had none. 🤖 five e2e cases, real mouse.
+- **The loading bar means "the player is not ready yet" — superseding the spec's "soundfont only"
+  bar (§4) and the plan's delay-then-hold.** It used to wait 300 ms for soundfont progress before
+  showing. On a warm cache AlphaTab reports the whole file in two events a millisecond apart, at
+  the END of the wait, so that timer could never finish: a 20-second load on a slow connection
+  showed no bar at all. Maintainer: _"I would like to show always on 0ms if possible. I would
+  prefer a flash, or a timeout to fade-out the progress bar."_ It is now in the server HTML,
+  indeterminate until bytes flow, a real fraction (still the soundfont's — the engine files report
+  none) while they do, held at 100 % for 400 ms and faded over 300 ms. It shows nothing on a
+  failure, and it also covers opening a file, committed with `flushSync` so it is painted before
+  the synchronous parse. 🤖 two e2e cases, one on a warm cache; the fade is asserted from a
+  per-frame opacity trace, because Playwright's `toBeVisible()` passes at opacity 0.
+- **The seek bar works in milliseconds — superseding the plan's whole-second Scrubber.** The plan
+  argued one second "is the granularity a drummer wants". In the hand it was two faults: the thumb
+  jumped once a second during playback, and it could not be put in the middle of a bar. Base UI
+  has ONE step for pointer and keyboard, so `Slider` gained `keyStep` (arrow keys: one second),
+  `largeStep` (Shift+Arrow, PageUp/PageDown: ten) and `valueText` (a listener hears "01:42 of
+  04:20", not a millisecond count). Pixel-identical; no baseline changed.
+- **The tempo field has no drag-to-change gesture — superseding the plan's "drag-scrubbable".**
+  Base UI's `ScrubArea` wrapped the input; it cancels pointerdown and sets `user-select: none`
+  inside it, so the number could not be selected with the mouse. Maintainer: _"Shouldn't we only
+  change up/down like the native input number?"_ The wheel, the arrow keys, the `±` buttons with
+  hold-to-repeat and typing all stay.
+- **The Metronome glyph is decided — NH-294 resolved.** The mockup's inline SVG, whose provenance
+  the plan called unestablished, is byte-identical to `metronome` from Material Design Icons
+  (Pictogrammers), Apache-2.0. It replaces the `avg_pace` placeholder.
+- **The transport follows the mockup's shapes.** Open file is FIRST in the row (the mockup keeps it
+  bottom-left; v0 has no rail) as a borderless 48 px icon, and `trailing` is free again for Plan
+  C's Tracks trigger. Play is a solid teal circle with solid glyphs — inline paths, because the
+  self-hosted Material Symbols face carries the weight axis only and ignores `FILL 1`. The header
+  is the mockup's three columns with the tempo pill centred in a bordered pill; the right column
+  waits for Plan C's Settings gear. **No plan owns "match the mockup" as a goal** — each plan owns
+  the elements it adds; the page chrome (dark shell, left rail, pinned footer) belongs to no plan
+  yet. Plan C's Task 7 refers to an "existing `Separator`" in the row that does not exist.
+- **Every icon button has a tooltip that tells its state, always present.** A tooltip that came
+  and went swapped the wrapped and the bare element, which remounted the button and dropped its
+  focus. A disabled toggle's tooltip now opens under the mouse too: its trigger is a span AROUND
+  the button, because a disabled `Button` is `pointer-events: none` and never saw the hover — the
+  hint saying why Metronome and Count-In are unavailable opened on keyboard focus only.
+- **The drop zone's dashed outline is scoped to its own class.** Base UI's Slider marks its
+  elements `data-dragging` while a thumb is held, and a bare `[data-dragging]` rule drew the drop
+  zone's outline around the seek bar on every scrub.
+- **The "Opening…" toast waits for Sonner to mount it, bounded — superseding the fixed two
+  frames.** Exactly enough on an idle page, not on a slow one: under a 20x CPU throttle the toast
+  reached the screen only after the parse had finished.
+
+**Answered, not built (the maintainer's question 16).** A score with an embedded recording plays
+through AlphaTab's backing-track player, whose synthesiser stubs out the metronome — so Metronome
+and Count-In are disabled there, by design. **No plan (A, B or C) builds a switch to the
+synthesiser**, and NH-298, which the docs name for it, does not list it. AlphaTab 1.8.4 does allow
+the switch at runtime: `settings.player.playerMode = EnabledSynthesizer` plus `api.updateSettings()`
+swapped the player in about 100 ms, measured, and the metronome then played.
+
+**Found on the way, not fixed here — each has a ticket:** a close button on toasts is not trivial
+(Sonner's is 20 px, under the 44 px gate, and unreadable in dark mode) —
+[NH-311](https://leocaseiro.atlassian.net/browse/NH-311); pausing INSIDE a count-in and pressing
+Play again hangs the player (upstream: `_onSamplesPlayed` returns on a zero count before its
+finish check) — [NH-312](https://leocaseiro.atlassian.net/browse/NH-312); and `playerReady`
+latches true, so Play stays enabled while a soundfont reloads after a recording file is replaced
+by a synth file — [NH-313](https://leocaseiro.atlassian.net/browse/NH-313). The maintainer also
+asked for a hover preview on the seek bar (a lighter fill up to the pointer and the time under
+it) and chose to build it as its own PR — [NH-310](https://leocaseiro.atlassian.net/browse/NH-310).
+The recording-versus-synthesiser switch is being added to Plan C by the maintainer.
+
+### 2026-09-20 — v0 Plan B shipped: the transport, and six decisions made while building it (NH-291)
+
+Plan B (playback control) is implemented: a seek bar that scrubs, a tempo control in the header,
+Loop / Metronome / Count-In toggles, and a progress bar for the soundfont download.
+
+**What the plan already carried, now shipped**
+
+- **The design system gained `Slider`, `Progress`, `Scrubber`, `TransportToggle` and
+  `TempoControl` — ✅, all gated by VR + axe.** (`Tooltip` was already public — Plan A exported it.)
+- **Every new control is built on a Base UI primitive** (`Slider`, `Progress`, `Toggle`,
+  `NumberField`) rather than hand-rolled — the standing convention, ratified again in the
+  2026-09-13 plan review.
+- **Spec Delta on the tempo control.** The percentage shows on hover or focus and never at 100 %,
+  the step is `± 1` with hold-to-repeat instead of `± 5`, and the linger is 3 s — superseding the
+  "only while adjusting, ±5" line in `docs/specs/2026-09-10-v0-local-file-player-design.md` §7.
+- **Vocabulary.** A piece of music is a **`score`**; a **`notation`** is the score file; "chart"
+  is not used.
+- **`applySpeed` in `PlayerShell` is the single writer of `api.playbackSpeed`.** v0 ships two
+  controls over one speed value — the header BPM stepper and Plan C's speed slider in the Settings
+  popover's Player group — and both must route through `applySpeed`. This supersedes the
+  settings-row example in the spec's §7: `playbackSpeed` is an `AlphaTabApi` property, not a field
+  in AlphaTab's `Settings` JSON, so a row wired like its neighbours writes a value the engine never
+  sees — the slider moves, the `%` updates, the audio does not.
+
+**Decided by the maintainer on 2026-09-20, while it was being built**
+
+- **`TransportToggle` renders through the design system's `Button` — superseding the plan's
+  natively disabled `Toggle`.** The plan rendered Metronome and Count-In `disabled` with a tooltip
+  saying why (the file is playing its own recording), on Base UI's `Toggle`, which sets the native
+  attribute. A natively disabled button takes no focus and no hover, so that tooltip could never
+  open, for anyone. Base UI's `Toggle` now owns only the pressed state and renders THROUGH `Button`
+  (`render` prop — one `<button>`, no nesting); `Button` owns the look and the disabled state, so
+  disabled is `aria-disabled`, the control stays in the tab order, and the tooltip opens on focus.
+  Reasoning given: _"Use our `<Button />` component which should handle that for you, making a11y
+  working when disabled."_ All three disabled-capable button kinds now agree: `Button` (NH-304),
+  `TransportToggle`, and Base UI's own `NumberField` steppers, which keep `aria-disabled` by
+  themselves (the plan's claim that they set the native attribute was wrong for 1.6.0).
+- **An edit of the tempo keeps the part it began in.** On a score whose parts are written at
+  different tempos (a verse at 90, a chorus at 120), `scoreTempo` changes under the control as the
+  playhead moves. The plan froze the score tempo for the CONVERSION back to a speed only, while the
+  DISPLAY stayed live; Base UI steps from the displayed value, so the two disagreed and compounded
+  on every 60 ms tick of a held button — measured `101 → 181 → 240`, double speed in two ticks, and
+  the plan's own mid-edit test failed against the plan's own code. The rule now, in the
+  maintainer's words: _"if I start to change in part B, it should keep in part B unless I stopped
+  holding up/down, mouse/etc, or on blur. We can defer to a few ms to detect (stop changing)."_
+  The first change freezes the tempo for BOTH the display and the conversion; the edit ends one
+  second after the last change, or on blur. One second, because it must outlast Base UI's own
+  400 ms pause between a held button's first step and its auto-repeat. The speed is a percentage,
+  so it carries into the next part unchanged (90 → 80 is 89 %, so the chorus reads 107).
+- **The speed range is the engine's own, 12.5 %–800 % — superseding the spec's 12.5–200 %.**
+  200 % was the spec's number, not AlphaTab's: `SynthConstants` clamps `playbackSpeed` to
+  `0.125`–`8`. Reasoning given: _"if Alphatab allow 800%, we should keep it, No need to limit
+  IMO"_ — practising a short beat far above its written tempo is a real use. The number field
+  still needs a `max` to clamp a typed value, so it mirrors the engine's. **Plan C's Settings speed
+  slider must use the same range.**
+- **The three human gates are handed back once, at the end, not one at a time.** The plan told an
+  agentic worker to stop at each of the three checks only a person can do (by ear ×2, a browser
+  console ×1). The maintainer chose to batch them: the work ran through to an open PR whose three
+  success-criteria boxes ship unticked, and nothing was self-certified.
+
+**Found by running the real thing — each is now machine-enforced**
+
+- **`api.midiLoaded` must not be subscribed to in AlphaTab 1.8.4 — 🤖.** Subscribing replays
+  `player.loadedMidiInfo`, and the worker-backed synth every browser uses defines that getter as
+  `get loadedMidiInfo() { return this.loadedMidiInfo; }` — it calls itself until the stack
+  overflows. It only throws once the player instance exists, so it is a race: 3 crashed page loads
+  in 18, each landing on the error boundary. The plan verified `midiLoaded` on the no-worker path,
+  where the getter is correct. `playerPositionChanged` already delivers the opening tempo (AlphaTab
+  sets `tickPosition = 0` straight after every MIDI load), so the subscription is gone, and
+  `'midiLoaded'` is excluded from `AlphaTabApiEvents`, so `useAlphaTabEvent(api, 'midiLoaded', …)`
+  does not compile. Drop the exclusion once a release fixes the getter.
+- **`web/` generates design-system CSS from `.ts` files too — 🤖.** The scan was `.tsx`-only, so
+  the class strings `Slider` and `RangeSlider` share in `SliderClasses.ts` never reached the app:
+  the seek rail rendered 0 px wide and 4 px tall, while Storybook (which scans `client/` itself)
+  and every VR baseline looked perfect. The seek e2e case now asserts the rail is really painted,
+  and the 44 px gate measures the slider's `Control`. The same gap still exists for
+  `client/src/lib/utils.ts` (`inputSurfaceClasses`) — not reached by any `web/` screen yet; tracked
+  separately.
+- **AlphaTab's plain-value members are written through `setAlphaTabValue` — 🤖.** React's compiler
+  lint (`react-hooks/immutability`) rejects `api.isLooping = next` inside a component, because the
+  api reaches components through `useState`. The rule is right about React data and wrong about a
+  handle to an engine outside React, so the write lives beside the hook that builds the api.
+- **The toggle e2e case reads the engine, not only the app.** `data-looping` and its siblings
+  mirror React state and would flip even if the write never reached AlphaTab — exactly what a
+  callback frozen on the pre-engine `undefined` api does. The case also reads `isLooping`,
+  `metronomeVolume` and `countInVolume` off the live api.
+
 ### 2026-09-19 — v0 Plan A shipped: the engine decisions are now machine-enforced (NH-291)
 
 Plan A (engine and first sound) is implemented — `/play` opens a local score, renders it as
