@@ -16,12 +16,25 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 Nothing on screen said which build you were looking at. When production and a preview disagree —
 as they did the same day, with production serving stale CSS — that is the first question asked, and
-there was no way to answer it. Four decisions, each approved by the maintainer in conversation.
+there was no way to answer it. Decisions below, each approved by the maintainer in conversation.
 
-- **The version reads `v26.09.21-1223.4d6d7ea` — `v`, a two-digit date, the 24-hour time, the short
-  commit.** The maintainer gave a format string and a bash snippet that disagreed (two-digit versus
-  four-digit year, a dot versus a dash before the commit); asked which won, he chose the format
-  string, which his own example had already agreed with.
+- **The version names its CHANNEL first, so a preview can never read as production.** Three shapes:
+  `local` on a developer machine, `pr-168.26.09.21-1143.5f027f6` on a Vercel preview, and
+  `v0.26.09.21-1143.5f027f6` in production — a channel, a two-digit Sydney date, the 24-hour build
+  time, then the short commit. The first draft stamped every build `v26.09.21-…` alike; the
+  maintainer asked for the three to be separated, because a preview wearing the production name
+  answers "which build is this?" wrongly, which is the one job the string has. `v0` is the release
+  line and the only part a person chooses — it is a named constant, to be bumped as the product
+  versions. A local build carries no stamp at all: on your own machine you know what you built.
+  🤖 `tooling/app-version.test.mjs`, including a case asserting that a preview and a production
+  build of the SAME commit never read alike.
+- **A branch pushed before its pull request exists reads `preview.…`, not `pr-.…`.** Vercel
+  documents `VERCEL_GIT_PULL_REQUEST_ID` as an empty string in that window, and any `VERCEL_ENV`
+  that is not exactly `production` — a custom environment included — is treated as a preview, so
+  nothing but production can wear the release prefix.
+- **The date format follows the maintainer's format string, not his bash snippet.** The two
+  disagreed (two-digit versus four-digit year, a dot versus a dash before the commit); asked which
+  won, he chose the format string, which his own worked example had already agreed with.
 - **The stamp is BUILD time, not commit time.** The commit already identifies the code, so the
   useful second fact is when this deploy was made — rebuilding one commit gives a new stamp.
 - **Always `Australia/Sydney`, and the ZONE is named rather than an offset hard-coded.** Vercel
@@ -37,6 +50,34 @@ there was no way to answer it. Four decisions, each approved by the maintainer i
 - **The value travels through the ENVIRONMENT, not next.config's `env` key.** The Next 16 docs
   bundled in the installed package mark that key `version: legacy` and point at the environment
   instead, where `next build` inlines it.
+
+### 2026-09-21 — The web build must not trust a restored cache (NH-315)
+
+Production served the v0 seek rail with no width and no colour, while the SAME commit's preview
+deployment was correct. The markup was right; the emitted CSS was 13 selectors short, and every one
+of them came from a plain `.ts` class module — `Slider/SliderClasses.ts`, `DataTable/ColumnMeta.ts`
+— reachable only through the `@source '../../client/src/components/ui/**/*.ts'` line that landed in
+that very commit.
+
+- **Vercel's build cache is keyed on the branch, never on source content, so `master`'s cache
+  outlived a change to what Tailwind scans.** The key is account/team, project, framework preset,
+  root directory, Node version, package manager and git branch. A new branch gets a fresh cache
+  seeded from the last production deployment — which is precisely why the PR preview was right and
+  production was wrong, and why a preview is not on its own evidence that production will render.
+  The web build now removes `.next/cache` before every build. The whole folder goes, not just its
+  `turbopack/` subfolder, so an upgrade that moves where the scan is remembered cannot quietly undo
+  it; `node_modules` stays cached and the measured cost is about three seconds. 🤖 `web/vercel.json`.
+- **A build that emits the design system unstyled now FAILS — new.** Nothing caught this class of
+  bug before: the slider keeps its role, its value and its keyboard seeking whether or not a single
+  pixel of it is painted, so the unit tests, the e2e lane against a clean build, and a person
+  reviewing a screenshot all passed. `web/scripts/assert-design-system-css.mjs` reads the emitted
+  CSS for the selectors that reach it only through the `.ts` scan, and exits 1 naming each missing
+  one and what it breaks on screen. It runs locally, in CI and on Vercel. 🤖 wired into `web build`.
+- **`scripts/` is excluded from Tailwind's automatic source detection, or the guard blinds
+  itself.** Naming a utility inside the guard is enough for Tailwind to GENERATE it: with
+  `scripts/` scanned the guard reported 1 of 5 missing instead of 5 of 5. Verified both ways — with
+  the `.ts` scan lost the build exits 1 on all five; with it present the CSS is byte-identical to a
+  known-good build.
 
 ### 2026-09-20 — Plan B, first hands-on round: sixteen findings, and what they changed (NH-291)
 

@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "build": "node scripts/vendor-alphatab.mjs && NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) next build",
+    "build": "node scripts/vendor-alphatab.mjs && NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) next build && node scripts/assert-design-system-css.mjs",
     "dev": "node scripts/vendor-alphatab.mjs && node scripts/dev.mjs",
     "lint": "eslint . --max-warnings 0",
     "start": "next start",

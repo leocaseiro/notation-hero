@@ -27,6 +27,12 @@
 @source not '../../client/src/**/*.vr.ts';
 @source not '../../client/src/**/*.story-ids.ts';
 
+/* Tailwind also auto-detects sources under web/, which would include scripts/. Keep it out, or
+   the build guard defeats itself: scripts/assert-design-system-css.mjs names the very utilities
+   it checks for, so scanning it makes Tailwind GENERATE them and the guard can never see them
+   go missing. Verified — without this line the guard reports 1 of 5 missing instead of 5 of 5. */
+@source not '../scripts/**';
+
 /* AlphaTab ships no stylesheet: it creates .at-cursor-bar and .at-cursor-beat as bare divs with
    inline geometry only, so `enableCursor` paints nothing until the host app supplies these rules.
    The beat cursor needs an explicit width or it may not show at all (upstream's styling guide).
