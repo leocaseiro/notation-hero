@@ -90,7 +90,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Every `client/` component here is presentation-only**: `value` in, `onChange` out, option lists as plain arrays, and **no import from `@coderline/alphatab`**. A `client/` Storybook story has no engine instance, so a row that read its options off the library would be gated while rendering fabricated options. The schema of accessors and the context carrying the namespace live in `web/`.
 - **Each new `client/` component needs all six co-located files** (`X.tsx`, `X.stories.tsx`, `X.story-ids.ts`, `X.test.tsx`, `X.a11y.ts`, `X.vr.ts`) in its own folder. Never `__tests__/` or `stories/`.
 - **VR baselines are Linux-only** — `pnpm test:vr:docker:update` with Docker Desktop running (`open -a Docker`), never natively on macOS. Kill any `:6006` Storybook first.
-- **Every control's hit area is at least 44 px, and the lane measures it.** Plan A's `expectHitAreas` (`web/e2e/a11y.e2e.ts`) runs with each popover open (Task 9); nothing is checked by eye. Three primitives these rows compose are **under** 44 px as built — `Input` and `NativeSelect` are `h-9` (36 px), `Checkbox` is `size-4` (16 px) — **and so is every `Button` size**: `default` and `icon` are 36 px and even `icon-lg` is only 40 px (`Button.tsx:37-47`). So `SettingRow` and `TrackRow` pass `h-11` to the first two, put each checkbox inside a label that is at least 44 × 44, and give every `Button` an explicit `size-11` / `min-h-11 min-w-11`, as `PlayerShell` already does.
+- **Every control's hit area is at least 44 px, and the lane measures it.** Plan A's `expectHitAreas` (`web/e2e/a11y.e2e.ts`) runs with each popover open (Task 9); nothing is checked by eye. Three primitives these rows compose are **under** 44 px as built — `Input` and `NativeSelect` are `h-9` (36 px), `Checkbox` is `size-4` (16 px) — **and so is every `Button` size**: `default` and `icon` are 36 px and even `icon-lg` is only 40 px (`Button.tsx:37-47`). So `SettingRow` passes `h-11` to the first two and puts its checkbox inside a label that is at least 44 × 44; `TrackRow` and `MasterRow` reach every toggle through `TransportToggle` at `size-11`; and every `Button` gets an explicit `size-11` / `min-h-11 min-w-11`, as `PlayerShell` already does.
 - **Every control with no visible text has a tooltip that tells its state, always present** (registry, 2026-09-20 — and the maintainer again on this plan: _"make sure every button toggle has tooltip, including the tracks ones, such as solo/mute/etc"_). That is: the Settings gear, the Tracks trigger, and in **every** `TrackRow` the render-select eye toggle, Solo, Mute, **the four per-staff display toggles** and the "more controls" button. The display toggles are on that list because they are now compact icon buttons on the primary row (M-7): icon-only, so nothing tells their state but the tooltip. A control that already shows its own words — an accordion header, a settings row, the two export buttons — needs none. The tooltip says the **state**, not just the name: `Solo: on`, not `Solo`.
 
   **Two qualifications, both from verification.**
@@ -155,6 +155,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 | `Accordion/`  | Collapsible sections. The third and last of the spec's three new design-system components, and the one v0.1's settings search builds on.                                   |
 | `SettingRow/` | One settings row: label left, control right. Renders a toggle, a number input, a number-with-slider, a text input, a dropdown or an action button from a plain descriptor. |
 | `TrackRow/`   | One mixer row: an always-visible primary cluster plus a disclosure holding the display toggles and both transposition sliders.                                             |
+| `MasterRow/`  | The mixer's foot row: master volume, solo-all, mute-all. Composes the same primitives `TrackRow` does; its volume is controlled by `PlayerShell`, never its own state.     |
 
 **Created — `web/`**
 
@@ -178,7 +179,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 | `web/lib/alphatab/useAlphaTab.ts`                     | Add `'masterVolume'` to the `AlphaTabApiValue` union — the one api value the transport does not already write (Task 5).                                     |
 | `web/e2e/player.e2e.ts`, `web/e2e/a11y.e2e.ts`        | Cases for criteria 3 and 7, axe with each popover open, and `expectHitAreas` widened to the new control kinds.                                              |
 
-`web/app/play/TransportRow.tsx` and `web/app/play/NotationSurface.tsx` are **not** modified. The row already has a `trailing` slot, left free for this plan's Tracks trigger, and the mixer learns the score's tracks from `scoreLoaded` and what is drawn from `renderFinished` — it needs nothing from the notation surface.
+`web/app/play/TransportRow.tsx` is **not** modified — the row already has a `trailing` slot, left free for this plan's Tracks trigger. `web/app/play/NotationSurface.tsx` gains exactly one line: the transposition clear, above its `api.renderScore(...)` (Task 7, Step 3b). The mixer itself needs nothing from the surface — it learns the score's tracks from `scoreLoaded` and what is drawn from `renderFinished`.
 
 ---
 
@@ -875,7 +876,7 @@ Eight controls do not fit on one line, so the row discloses. An always-visible p
 
 **Interfaces:**
 
-- Consumes: `Accordion` is _not_ used here — the disclosure is a single collapsible, so use `@base-ui/react/collapsible` directly or a plain conditional; `Checkbox`, `Slider`, `Button`, `Field`, `Tooltip*`, and Plan B's `TransportToggle` for solo and mute. It is an icon-only `aria-pressed` toggle at 44 px that forwards `data-testid`, renders `aria-disabled` rather than the native attribute, and already wraps itself in a tooltip that opens under the mouse even while disabled — every property the two buttons need, so do not rebuild it.
+- Consumes: `Accordion` is _not_ used here — the disclosure is a single collapsible, so use `@base-ui/react/collapsible` directly or a plain conditional; `Slider`, `Button`, `Field`, `Tooltip*`, and Plan B's `TransportToggle` for render-select, solo, mute and each per-staff display toggle (no `Checkbox` — they are all `aria-pressed` buttons now). It is an icon-only `aria-pressed` toggle at 44 px that forwards `data-testid`, renders `aria-disabled` rather than the native attribute, and already wraps itself in a tooltip that opens under the mouse even while disabled — every property the two buttons need, so do not rebuild it.
 - Produces:
 
 ```ts
@@ -941,6 +942,25 @@ interface TrackRowProps {
 
 `data-slot="track-row"`; the root also spreads `...rest`, so a caller's `data-testid` lands on it. Task 7 consumes it.
 
+```ts
+interface MasterRowProps {
+  /** The mixer's own master volume, 0-16 — `playbackInfo.volume`'s scale, the same as a track's. */
+  volume: number;
+  onVolumeChange: (next: number) => void;
+  onSoloAll: () => void;
+  onMuteAll: () => void;
+  /**
+   * Set while the file plays its own recording: the reason, as tooltip text. Solo-all and
+   * mute-all then render disabled — the engine ignores per-track solo and mute in that mode.
+   * Master volume stays LIVE: `masterVolume` is not stubbed for a backing track
+   * (`alphaTab.core.mjs:40395`), which is why this flag is not called `mixUnavailable`.
+   */
+  soloMuteUnavailable?: string;
+}
+```
+
+`data-slot="master-row"`; this root spreads `...rest` too. Task 7 consumes it and owns the volume value — the row holds no state of its own.
+
 - [ ] **Step 1: Write the failing test**
 
 Create `client/src/components/ui/TrackRow/TrackRow.test.tsx`. Write a `baseProps` object once and spread it, so each test states only what it exercises:
@@ -983,7 +1003,7 @@ const baseProps = {
 test('the primary cluster shows the name, render-select, solo, mute and volume', () => {
   render(<TrackRow {...baseProps} />);
   expect(screen.getByText('Drumkit')).toBeInTheDocument();
-  expect(screen.getByRole('checkbox', { name: /render/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /render/i })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.getByRole('button', { name: /solo/i })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /mute/i })).toBeInTheDocument();
   expect(screen.getByRole('slider', { name: /volume/i })).toBeInTheDocument();
@@ -1009,9 +1029,11 @@ test('expanding reveals both transposition sliders as SEPARATE controls', () => 
 });
 
 test('a percussion staff offers no tablature toggle', () => {
-  render(<TrackRow {...baseProps} expanded />);
-  expect(screen.getByRole('checkbox', { name: /standard notation/i })).toBeInTheDocument();
-  expect(screen.queryByRole('checkbox', { name: /tablature/i })).not.toBeInTheDocument();
+  // No `expanded`: the four display toggles are on the always-visible primary row, not behind
+  // the disclosure (maintainer, 2026-09-21).
+  render(<TrackRow {...baseProps} />);
+  expect(screen.getByRole('button', { name: /standard notation/i })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /tablature/i })).not.toBeInTheDocument();
 });
 
 test('a stringed staff with a tuning does offer the tablature toggle', () => {
@@ -1019,11 +1041,10 @@ test('a stringed staff with a tuning does offer the tablature toggle', () => {
     <TrackRow
       {...baseProps}
       name="Distortion Guitar"
-      expanded
       staves={[{ ...drumStaff, id: 'staff-1', showTablature: true, tablatureAvailable: true }]}
     />,
   );
-  expect(screen.getByRole('checkbox', { name: /tablature/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /tablature/i })).toBeInTheDocument();
 });
 
 test('solo and mute report through their callbacks', async () => {
@@ -1047,7 +1068,7 @@ test('solo is not exclusive — an already-soloed row still reports a toggle OFF
   expect(onSoloChange).toHaveBeenCalledWith(false);
 });
 
-// Four controls on the row show no words: the render-select box, Solo, Mute and "more controls".
+// Four controls on the row show no words: the render-select toggle, Solo, Mute and "more controls".
 // An icon alone says neither what it is nor what STATE it is in, and the pressed colour means
 // nothing to someone meeting the control for the first time. Keyboard focus, as the design
 // system's own toggle test does it: jsdom has no pointer geometry.
@@ -1056,7 +1077,7 @@ test('every control without visible text has a tooltip that tells its state', as
   render(<TrackRow {...baseProps} />);
 
   await user.tab();
-  expect(screen.getByRole('checkbox', { name: /render/i })).toHaveFocus();
+  expect(screen.getByRole('button', { name: /render/i })).toHaveFocus();
   expect(await screen.findByText('Shown in the score')).toBeInTheDocument();
 
   await user.tab();
@@ -1110,7 +1131,7 @@ test('while the file plays its own recording, the mix controls are disabled and 
   expect(onSoloChange).not.toHaveBeenCalled();
 
   // Keyboard focus, not hover: jsdom has no pointer geometry, and the tooltip opens for a
-  // keyboard focus, not a scripted one. Tab once to the render-select box, once more to Solo.
+  // keyboard focus, not a scripted one. Tab once to the render-select toggle, once more to Solo.
   await user.tab();
   await user.tab();
   expect(solo).toHaveFocus();
@@ -1119,11 +1140,15 @@ test('while the file plays its own recording, the mix controls are disabled and 
 
 test('the controls that change the DRAWN score stay live while a recording plays', () => {
   render(<TrackRow {...baseProps} expanded mixUnavailable={RECORDING} />);
-  // `data-disabled`, not toBeDisabled(): the design system's Checkbox renders a <span>, and
-  // toBeDisabled() only understands native form elements — on a span it passes whatever happens.
-  expect(screen.getByRole('checkbox', { name: /render/i })).not.toHaveAttribute('data-disabled');
-  expect(screen.getByRole('checkbox', { name: /standard notation/i })).not.toHaveAttribute(
-    'data-disabled',
+  // `aria-disabled`, not toBeDisabled(): `TransportToggle` renders the ARIA attribute and never
+  // the native one, so the button keeps its focus — and toBeDisabled() would pass whatever happens.
+  expect(screen.getByRole('button', { name: /render/i })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(screen.getByRole('button', { name: /standard notation/i })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
   );
   expect(screen.getByRole('slider', { name: /transpose full/i })).not.toBeDisabled();
 });
@@ -1131,10 +1156,66 @@ test('the controls that change the DRAWN score stay live while a recording plays
 
 > The two slider assertions use `toBeDisabled()` on purpose: Base UI's slider thumb is a real `<input type="range">`, and a disabled slider has no tooltip to keep reachable — the reason is carried by the solo and mute buttons beside it, and by the note Task 7 puts at the top of the popover.
 
-- [ ] **Step 2: Run the test to verify it fails**
+Create `client/src/components/ui/MasterRow/MasterRow.test.tsx` beside it — same shape, four tests:
 
-Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow`
-Expected: FAIL — module not found.
+```tsx
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MasterRow } from './MasterRow';
+
+const baseProps = {
+  volume: 8,
+  onVolumeChange: () => {},
+  onSoloAll: () => {},
+  onMuteAll: () => {},
+};
+
+const RECORDING = 'Not available while the file plays its own recording';
+
+test('the foot row shows master volume, solo all and mute all', () => {
+  render(<MasterRow {...baseProps} />);
+  expect(screen.getByRole('slider', { name: /master volume/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /solo all/i })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /mute all/i })).toBeInTheDocument();
+});
+
+test('each master command reports once per click', async () => {
+  const onSoloAll = vi.fn();
+  const onMuteAll = vi.fn();
+  render(<MasterRow {...baseProps} onSoloAll={onSoloAll} onMuteAll={onMuteAll} />);
+  await userEvent.click(screen.getByRole('button', { name: /solo all/i }));
+  await userEvent.click(screen.getByRole('button', { name: /mute all/i }));
+  expect(onSoloAll).toHaveBeenCalledTimes(1);
+  expect(onMuteAll).toHaveBeenCalledTimes(1);
+});
+
+test('soloMuteUnavailable disables both master commands', () => {
+  render(<MasterRow {...baseProps} soloMuteUnavailable={RECORDING} />);
+  // `TransportToggle` renders aria-disabled, never the native attribute, so the button keeps its
+  // focus and its tooltip can still open to say why.
+  expect(screen.getByRole('button', { name: /solo all/i })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(screen.getByRole('button', { name: /mute all/i })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+});
+
+test('master volume stays live while the file plays its own recording', () => {
+  render(<MasterRow {...baseProps} soloMuteUnavailable={RECORDING} />);
+  expect(screen.getByRole('slider', { name: /master volume/i })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+});
+```
+
+- [ ] **Step 2: Run the tests to verify they fail**
+
+Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow src/components/ui/MasterRow`
+Expected: FAIL — module not found, both of them.
 
 - [ ] **Step 3: Write the component**
 
@@ -1147,10 +1228,10 @@ Requirements the tests encode, all of which must be visible in the code:
 - Solo and mute are Plan B's `TransportToggle` — `pressed`, `onPressedChange`, `label` (`Solo ${name}`, `Mute ${name}`), `icon`, `tooltip`, `disabled`. Base UI's `Toggle` reports the NEXT state, which is what makes solo non-exclusive: the row never looks at any other row. Each `tooltip` tells the control's **state**, and is always present: `Solo: on` / `Solo: off`, `Mute: on` / `Mute: off`, or the `mixUnavailable` text when that is set.
 - `mixUnavailable` disables solo, mute, the volume `Slider` and the "Transpose audio" `Slider`, and nothing else. `disabled={Boolean(mixUnavailable)}` on each — `TransportToggle` turns that into `aria-disabled` by itself.
 - The volume `Slider` reports through **`onCommit`**, and tracks the pointer in local state while it is dragged — the same shape `SettingRow`'s range kind uses. One message to the synth worker per gesture is enough. Both transposition sliders do the same; Transpose full re-lays-out the whole score.
-- The render-select box shows no words on the row — there is no room for them — so it gets a tooltip too, telling its state: `Shown in the score` / `Hidden from the score`. Its `<label>` is the tooltip's trigger (`TooltipTrigger render={<label … />}`): the label is the 44 px hit target, and focus on the box inside it bubbles, so keyboard focus opens it as well. The label still carries the accessible name in visually hidden text (`<span className="sr-only">Render {name}</span>`).
+- The render-select toggle shows no words on the row — there is no room for them — so it gets a tooltip too, telling its state: `Shown in the score` / `Hidden from the score`. It is a `TransportToggle` like solo and mute, so the 44 px button IS the tooltip trigger and it already opens on hover and on focus; its accessible name is `Render {name}`.
 - The expand control is an icon `Button` (`size="icon"`, `size-11`) with `aria-expanded={expanded}`, `aria-controls` pointing at the disclosure panel's id, an `aria-label` of `More controls for ${name}`, and its own always-present tooltip (`Show more controls` / `Hide more controls`) — `TooltipTrigger render={<Button … />}`, the shape `PlayerShell`'s Play button already uses.
-- Each `Checkbox` sits **inside** its `<label>`, and that label is at least 44 × 44 (`min-h-11 min-w-11`): the box is 16 px and is never the hit target on its own. That is the same construction `SettingRow`'s toggle kind uses.
-- The disclosure renders per staff: a `Checkbox` for `showStandardNotation`, one for `showSlash`, one for `showNumbered`, and one for `showTablature` **only when `staff.tablatureAvailable`**.
+- Each per-staff display toggle is a `TransportToggle` at `size-11`, on the always-visible primary row — not a `Checkbox`, and not behind the disclosure. `aria-pressed` carries the state and the always-present tooltip names the staff and the state.
+- The primary row renders per staff: a toggle for `showStandardNotation`, one for `showSlash`, one for `showNumbered`, and one for `showTablature` **only when `staff.tablatureAvailable`**.
 - Below the staff toggles, two `Slider`s with distinct names — "Transpose audio" and "Transpose full" — each `min={-12} max={12} step={1}`, wired to their own callbacks. They are separate controls in the fork and must stay separate; fusing them drops the notation-transposing path entirely.
 - Every control's hit area is at least 44 px. Task 9 measures it in the browser.
 
@@ -1169,32 +1250,42 @@ Add this comment above the volume slider, because it is the behaviour a future r
 }
 ```
 
-- [ ] **Step 4: Run the test to verify it passes**
+Then create `client/src/components/ui/MasterRow/MasterRow.tsx`. It adds no primitive `TrackRow` does not already use:
 
-Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow`
-Expected: PASS — 12 tests.
+- The props extend `Omit<ComponentProps<'div'>, 'children'>` and the root spreads `...rest`, so Task 7's `data-testid` lands on it. `data-slot="master-row"`.
+- One flex line: a label reading **Master**, a `Slider` named `Master volume` with `min={0} max={16} step={1}` reporting through **`onCommit`** (the same drag-then-commit shape the track volume uses), then a solo-all and a mute-all `TransportToggle` at `size-11`.
+- The two master commands are **actions, not states**: they fire `onSoloAll` / `onMuteAll` and carry no `aria-pressed`, because the mixer owns every row's solo and mute and this row cannot know whether all of them are already set.
+- `soloMuteUnavailable` sets `disabled` on those two and becomes their tooltip text. It never touches the volume `Slider` — master volume is live during a recording, which is the whole reason the flag is not called `mixUnavailable`.
+- Every hit area is at least 44 px, same as `TrackRow`. Task 9 measures it in the browser.
+
+- [ ] **Step 4: Run the tests to verify they pass**
+
+Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow src/components/ui/MasterRow`
+Expected: PASS — 12 `TrackRow` tests and 4 `MasterRow` tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
 `TrackRow.story-ids.ts`: `['collapsed', 'expanded', 'stringed-expanded', 'muted', 'soloed', 'recording']`. The `stringed-expanded` story is what proves the tablature toggle renders for a tuned staff, so it earns its own baseline; `recording` is the expanded row with `mixUnavailable` set, so the disabled look of all four controls has a baseline in both themes (VR `statesForStory`: `['resting', 'focus']` — a disabled toggle still takes focus, and that is the state its tooltip opens in). `storyPrefix: 'ui-trackrow'`, `snapshotSlug: 'trackrow'`, `slotSelector: '[data-slot="track-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
 
+`MasterRow.story-ids.ts`: `['resting', 'recording']` — `recording` is the row with `soloMuteUnavailable` set, so the disabled look of solo-all and mute-all has a baseline in both themes. `storyPrefix: 'ui-masterrow'`, `snapshotSlug: 'masterrow'`, `slotSelector: '[data-slot="master-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
+
 - [ ] **Step 6: Run the gates and generate baselines**
 
 ```bash
 pkill -f "storybook.*6006" || true
-pnpm --filter @notation-hero/client run test:a11y -g "TrackRow"
+pnpm --filter @notation-hero/client run test:a11y -g "TrackRow|MasterRow"
 open -a Docker
 pnpm test:vr:docker:update
 pnpm test:vr:docker
 ```
 
-Expected: a11y PASS; only new `trackrow-*-linux.png`; the second run clean.
+Expected: a11y PASS; only new `trackrow-*-linux.png` and `masterrow-*-linux.png`; the second run clean.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add client/src/components/ui/TrackRow
-git commit -m "feat(client): add the TrackRow with its disclosure (NH-291)"
+git add client/src/components/ui/TrackRow client/src/components/ui/MasterRow
+git commit -m "feat(client): add the TrackRow with its disclosure and the MasterRow (NH-291)"
 ```
 
 ---
@@ -1970,6 +2061,7 @@ export { SettingRow } from './components/ui/SettingRow/SettingRow';
 export type { SettingControl, SettingValue } from './components/ui/SettingRow/SettingRow';
 export { TrackRow } from './components/ui/TrackRow/TrackRow';
 export type { TrackStaffState } from './components/ui/TrackRow/TrackRow';
+export { MasterRow } from './components/ui/MasterRow/MasterRow';
 export {
   Popover,
   PopoverTrigger,
@@ -2104,6 +2196,14 @@ async function recordApiCalls(page: Page, method: string): Promise<() => Promise
     );
 }
 
+// Every settings group starts expanded (SettingsPopover's defaultValue lists them all), and Base
+// UI's Accordion.Panel does not keepMounted — so clicking an open header removes its rows from the
+// DOM and the next fill() times out. Same idiom as a11y.e2e.ts's "open every group" loop.
+const openGroup = async (page: Page, name: string) => {
+  const header = page.getByRole('button', { name });
+  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click();
+};
+
 test('a settings row changes the rendered score without stopping playback', async ({ page }) => {
   await page.goto('/play');
   const play = page.getByTestId('transport-play');
@@ -2117,9 +2217,10 @@ test('a settings row changes the rendered score without stopping playback', asyn
   await page.getByTestId('settings-trigger').click();
   await expect(page.getByTestId('settings-popover')).toBeVisible();
 
-  // Open the first group and change the zoom — a setting whose effect is measurable in the DOM.
-  // Through the NUMBER field: it shares the slider's name, and typing a value is one report.
-  await page.getByRole('button', { name: 'Display: general' }).click();
+  // Change the zoom — a setting whose effect is measurable in the DOM. Through the NUMBER field:
+  // it shares the slider's name, and typing a value is one report. The popover opens with every
+  // group EXPANDED, so a bare click would CLOSE the group and unmount the row: open only if shut.
+  await openGroup(page, 'Display: general');
   await page.getByRole('spinbutton', { name: 'Zoom' }).fill('2');
 
   await expect.poll(async () => (await engineState(page))?.scale).toBe(2);
@@ -2149,7 +2250,7 @@ test('a sound-rebuilding row stops the player and rewinds it', async ({ page }) 
   await expect.poll(async () => (await engineState(page))?.tick ?? 0).toBeGreaterThan(0);
 
   await page.getByTestId('settings-trigger').click();
-  await page.getByRole('button', { name: 'Player' }).click();
+  await openGroup(page, 'Player');
   await page.getByRole('spinbutton', { name: 'Wide note vibrato: length' }).fill('5');
 
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'false');
@@ -2164,7 +2265,7 @@ test('the Player group speed row and the header tempo control are one value', as
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   await page.getByTestId('settings-trigger').click();
-  await page.getByRole('button', { name: 'Player' }).click();
+  await openGroup(page, 'Player');
   await page.getByRole('spinbutton', { name: 'Playback speed (%)' }).fill('50');
 
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-speed', '0.5');
@@ -2180,7 +2281,7 @@ test('the metronome volume row and the transport button are one value', async ({
   await expect.poll(async () => (await engineState(page))?.metronomeVolume).toBe(1);
 
   await page.getByTestId('settings-trigger').click();
-  await page.getByRole('button', { name: 'Player' }).click();
+  await openGroup(page, 'Player');
   await page.getByRole('spinbutton', { name: 'Metronome volume' }).fill('0.4');
   await expect.poll(async () => (await engineState(page))?.metronomeVolume).toBe(0.4);
   // Still on: the button reads "volume > 0".
@@ -2198,7 +2299,7 @@ test('a Stylesheet row changes the open score, not the settings', async ({ page 
   const before = (await engineState(page))?.hideDynamics;
 
   await page.getByTestId('settings-trigger').click();
-  await page.getByRole('button', { name: 'Stylesheet' }).click();
+  await openGroup(page, 'Stylesheet');
   await page.getByRole('checkbox', { name: 'Hide dynamics' }).click();
 
   await expect.poll(async () => (await engineState(page))?.hideDynamics).toBe(!before);
@@ -2212,7 +2313,7 @@ test('a playback-shaping row regenerates the MIDI', async ({ page }) => {
   const midiLoads = await recordApiCalls(page, 'loadMidiForScore');
 
   await page.getByTestId('settings-trigger').click();
-  await page.getByRole('button', { name: 'Player' }).click();
+  await openGroup(page, 'Player');
   await page.getByRole('checkbox', { name: /triplet feel/i }).click();
 
   await expect.poll(async () => (await midiLoads()).length).toBe(1);
@@ -2227,7 +2328,7 @@ test('the Settings icon trigger has a tooltip', async ({ page }) => {
 });
 ```
 
-`openTooltip` is the helper Plan B's tooltip cases already use in this file. The Tracks trigger's tooltip is asserted in Task 7's first case.
+`openTooltip` is the helper Plan B's tooltip cases already use in this file. The Tracks trigger's tooltip is asserted in Task 7's first case. `openGroup` is new here and every later case reuses it — including Task 6's reload case and Task 8's `setPlayerMode`.
 
 - [ ] **Step 2: Run them to verify they fail**
 
@@ -2322,6 +2423,7 @@ export function SettingsPopover({
   apiValues,
   onApiValueChange,
   onAction,
+  mixUnavailable,
 }: Readonly<SettingsPopoverProps>) {
   const { engine } = useAlphaTabEngine();
   // The enum options come off the loaded namespace, so the groups cannot exist before it does.
@@ -2362,29 +2464,30 @@ export function SettingsPopover({
   return (
     <Popover>
       {/* The tooltip is ALWAYS present, never conditional: swapping the wrapped and the bare
-          element remounts the button and drops its focus. Both triggers render through the same
-          Button — one <button>, no nesting. */}
+          element remounts the button and drops its focus. The TooltipTrigger renders a SPAN
+          around the PopoverTrigger — the shape TransportToggle ships — because the gear is
+          disabled while the engine loads, and a disabled Button is pointer-events:none, so as
+          its own tooltip trigger it would never see the mouse (Global Constraints). The span
+          takes the hover; focus still opens it, because focus events bubble. Still one <button>. */}
       <Tooltip>
-        <TooltipTrigger
-          render={
-            <PopoverTrigger
-              render={
-                <Button
-                  data-testid="settings-trigger"
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Settings"
-                  disabled={!engine}
-                  className="size-11 rounded-xl"
-                >
-                  <span className="material-symbols-outlined" aria-hidden="true">
-                    settings
-                  </span>
-                </Button>
-              }
-            />
-          }
-        />
+        <TooltipTrigger render={<span className="inline-flex" />}>
+          <PopoverTrigger
+            render={
+              <Button
+                data-testid="settings-trigger"
+                variant="ghost"
+                size="icon"
+                aria-label="Settings"
+                disabled={!engine}
+                className="size-11 rounded-xl"
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  settings
+                </span>
+              </Button>
+            }
+          />
+        </TooltipTrigger>
         <TooltipContent>Settings</TooltipContent>
       </Tooltip>
       <PopoverContent
@@ -2415,6 +2518,13 @@ export function SettingsPopover({
                       onAction={
                         setting.source === 'action' ? () => onAction(setting.action) : undefined
                       }
+                      // The only two rows the backing-track synthesizer ignores. A control must
+                      // never look live and do nothing (Global Constraints).
+                      disabled={
+                        Boolean(mixUnavailable) &&
+                        (setting.id === 'player-metronome-volume' ||
+                          setting.id === 'player-count-in-volume')
+                      }
                     />
                   ))}
                 </AccordionContent>
@@ -2430,7 +2540,7 @@ export function SettingsPopover({
 
 > `STYLESHEET_ENUMS(engine)` is a small function in this file returning `Partial<Record<StylesheetKey, Record<string | number, string | number>>>` — `bracketExtendMode → engine.model.BracketExtendMode`, the two `…TrackNamePolicy` keys `→ engine.model.TrackNamePolicy`, the two `…TrackNameMode` keys `→ engine.model.TrackNameMode`, the two `…TrackNameOrientation` keys `→ engine.model.TrackNameOrientation`. A TypeScript numeric enum maps both ways, so one object turns a number into its name and a name into its number. A function, not a module constant: every enum is a runtime value off the loaded namespace. Check each enum's real name against `alphaTab.d.ts` (`RenderStylesheet`, line 14731 onward) as you write it — the fork binds its orientation rows to the `TrackNameMode` enum, which is one more slip not to copy.
 >
-> `render={…}` is Base UI's composition prop, and `TooltipTrigger render={<Button … />}` is the working precedent in this repo — `PlayerShell`'s Play button. What is **new** here is stacking two triggers on one button. Verify it in the browser before moving on: hover opens the tooltip, a click opens the popover, Tab reaches the button once, and `Escape` closes the popover and leaves focus on the gear. If the two triggers fight, fall back to the shape `TransportToggle` uses — the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the `PopoverTrigger` — and keep the tooltip permanent either way.
+> `render={…}` is Base UI's composition prop, and `TooltipTrigger render={<Button … />}` is the working precedent in this repo — `PlayerShell`'s Play button. Here the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the `PopoverTrigger` — the shape `TransportToggle` already ships — chosen, not a fallback, because the gear is disabled while the engine loads and a disabled `Button` is `pointer-events: none`, so as its own tooltip trigger it would never see the mouse. The span takes the hover; focus still opens the tooltip, because focus events bubble up from the button inside, and it is still one `<button>`. Verify in the browser before moving on: hover opens the tooltip **while the gear is still disabled**, a click opens the popover once it is enabled, Tab reaches the button once, and `Escape` closes the popover and leaves focus on the gear.
 
 - [ ] **Step 4: Apply a changed setting to the live engine**
 
@@ -2556,6 +2666,10 @@ actions?: ReactNode;
 
 ```tsx
 // PlayerShell.tsx
+// The one reason string both popovers and TrackRow show. Export it from a shared module rather
+// than re-declaring it here, in TracksPopover.tsx and in TrackRow.test.tsx.
+const RECORDING = 'Not available while the file plays its own recording';
+
 <PlayerHeader
   scoreTitle={notation?.score.title ?? ''}
   fileName={openFileName}
@@ -2574,7 +2688,7 @@ actions?: ReactNode;
       mixUnavailable={hasBackingTrack ? RECORDING : undefined}
     />
   }
-/>
+/>;
 ```
 
 - [ ] **Step 5: Run the lane to verify it passes**
@@ -2886,7 +3000,7 @@ test('a changed setting survives a reload', async ({ page }) => {
   await page.goto('/play');
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
   await page.getByTestId('settings-trigger').click();
-  await page.getByRole('button', { name: 'Display: general' }).click();
+  await openGroup(page, 'Display: general');
   await page.getByRole('spinbutton', { name: 'Zoom' }).fill('2');
   await expect.poll(async () => (await engineState(page))?.scale).toBe(2);
 
@@ -3001,9 +3115,10 @@ One row for **every track in the score**, not only the rendered drum staves — 
 
 - Create: `web/app/play/TracksPopover.tsx`
 - Modify: `web/app/play/PlayerShell.tsx`
+- Modify: `web/app/play/NotationSurface.tsx` (one line: the transposition clear, Step 3b)
 - Modify: `web/e2e/player.e2e.ts`
 
-`TransportRow.tsx` and `NotationSurface.tsx` are not touched: the row's `trailing` slot is already there and free, and the mixer reads the score from the api's own events.
+`TransportRow.tsx` is not touched: the row's `trailing` slot is already there and free, and the mixer reads the score from the api's own events.
 
 **Interfaces:**
 
@@ -3035,12 +3150,12 @@ test('the Tracks popover lists every track in the score, not only the rendered o
   await expect(page.getByTestId('track-row-1')).toBeVisible();
   await expect(page.getByTestId('track-row-2')).toBeVisible();
 
-  // The two drum tracks are drawn, so their render-select boxes start ticked; the guitar's does not.
+  // The two drum tracks are drawn, so their render-select toggles start pressed; the guitar's does not.
   const drawn = (row: number) =>
-    page.getByTestId(`track-row-${row}`).getByRole('checkbox', { name: /render/i });
-  await expect(drawn(0)).toHaveAttribute('aria-checked', 'true');
-  await expect(drawn(1)).toHaveAttribute('aria-checked', 'false');
-  await expect(drawn(2)).toHaveAttribute('aria-checked', 'true');
+    page.getByTestId(`track-row-${row}`).getByRole('button', { name: /render/i });
+  await expect(drawn(0)).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawn(1)).toHaveAttribute('aria-pressed', 'false');
+  await expect(drawn(2)).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('render-select changes which tracks are drawn', async ({ page }) => {
@@ -3052,7 +3167,7 @@ test('render-select changes which tracks are drawn', async ({ page }) => {
   // an echo of the request.
   await page
     .getByTestId('track-row-1')
-    .getByRole('checkbox', { name: /render/i })
+    .getByRole('button', { name: /render/i })
     .click();
 
   await expect(page.getByTestId('rendered-track-count')).toHaveText('3', { timeout: 30_000 });
@@ -3073,8 +3188,8 @@ test('every mixer control without visible text has a tooltip that tells its stat
   const drawn = ['Shown in the score', 'Hidden from the score', 'Shown in the score'];
   for (const [index, renderTip] of drawn.entries()) {
     const row = page.getByTestId(`track-row-${index}`);
-    // The box itself is 16 px; the label around it is the target, so hover the label.
-    await row.locator('label', { has: page.getByRole('checkbox', { name: /render/i }) }).hover();
+    // The toggle is the 44 px target itself now — no label wrapper to aim at.
+    await row.getByRole('button', { name: /render/i }).hover();
     await expect(openTooltip(page)).toHaveText(renderTip);
     await row.getByRole('button', { name: /solo/i }).hover();
     await expect(openTooltip(page)).toHaveText('Solo: off');
@@ -3194,23 +3309,16 @@ test('only a stringed staff with a tuning offers the tablature toggle', async ({
 
   await page.getByTestId('tracks-trigger').click();
 
-  // The guitar staff reports tuningLen=6, so its row has the toggle.
-  await page
-    .getByTestId('track-row-1')
-    .getByRole('button', { name: /more controls/i })
-    .click();
+  // The guitar staff reports tuningLen=6, so its row has the toggle. No disclosure to open:
+  // the display toggles sit on the always-visible primary row.
   await expect(
-    page.getByTestId('track-row-1').getByRole('checkbox', { name: /tablature/i }),
+    page.getByTestId('track-row-1').getByRole('button', { name: /tablature/i }),
   ).toBeVisible();
 
   // Both drum staves report showTablature=false, tuningLen=0 — 1.8.4 cannot render percussion
   // tablature at all, so the toggle must be absent rather than present-and-broken.
-  await page
-    .getByTestId('track-row-0')
-    .getByRole('button', { name: /more controls/i })
-    .click();
   await expect(
-    page.getByTestId('track-row-0').getByRole('checkbox', { name: /tablature/i }),
+    page.getByTestId('track-row-0').getByRole('button', { name: /tablature/i }),
   ).toHaveCount(0);
 });
 ```
@@ -3408,25 +3516,26 @@ const applyStaffDisplay = (
 };
 ```
 
-The shell of the component — the trigger carries an always-present tooltip, the same stacked-trigger shape the Settings gear uses (Task 5), and the same fallback if the two triggers fight:
+The shell of the component — the trigger carries an always-present tooltip in the same shape the Settings gear uses (Task 5): the `TooltipTrigger` renders a span **around** the `PopoverTrigger`, because this button is disabled while no player is coming:
 
 ```tsx
 const RECORDING = 'Not available while the file plays its own recording';
 
 <Popover>
   <Tooltip>
-    <TooltipTrigger
-      render={
-        <PopoverTrigger
-          render={
-            <Button
-              data-testid="tracks-trigger"
-              variant="ghost"
-              size="icon"
-              aria-label="Tracks"
-              disabled={disabled}
-              className="size-11 rounded-lg text-muted-foreground"
-            >
+    {/* The span-wrap, not a bare stacked trigger: this button is disabled while the engine
+        loads, and a disabled Button is pointer-events:none (Global Constraints). */}
+    <TooltipTrigger render={<span className="inline-flex" />}>
+      <PopoverTrigger
+        render={
+          <Button
+            data-testid="tracks-trigger"
+            variant="ghost"
+            size="icon"
+            aria-label="Tracks"
+            disabled={disabled}
+            className="size-11 rounded-lg text-muted-foreground"
+          >
               <span
                 className="material-symbols-outlined"
                 aria-hidden="true"
@@ -3498,8 +3607,10 @@ const RECORDING = 'Not available while the file plays its own recording';
 
 - [ ] **Step 3b: Clear the transposition pitches BEFORE the new score reaches the engine**
 
-In `PlayerShell.tsx`, in the handler that opens or replaces a file, on the line above the existing
-`api.renderScore(...)`:
+In `web/app/play/NotationSurface.tsx`, inside `renderOpenNotation`, on the line above the existing
+`api.renderScore(...)` — that function is the app's only `renderScore` call site, and both render
+paths go through it (the score effect and the `scoreLoaded` re-assert guard), so one insertion
+covers both:
 
 ```tsx
 // The pitches are indexed by track and live on the api, so the previous score's +2 on track 1
@@ -3508,7 +3619,7 @@ In `PlayerShell.tsx`, in the handler that opens or replaces a file, on the line 
 // afterwards un-stamps nothing, because the write only reaches a track whose index is inside the
 // array. Clearing first also leaves a transposition the FILE itself carries intact.
 clearTrackTranspositions(api);
-api.renderScore(parsed, trackIndexes);
+api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
 ```
 
 Add `web/app/play/PlayerShell.tsx`'s open-file handler to this task's file list. The mixer's own
@@ -3539,7 +3650,8 @@ Expected: PASS.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add web/app/play/TracksPopover.tsx web/app/play/PlayerShell.tsx web/e2e/player.e2e.ts
+git add web/app/play/TracksPopover.tsx web/app/play/PlayerShell.tsx \
+  web/app/play/NotationSurface.tsx web/e2e/player.e2e.ts
 git commit -m "feat(web): add the Tracks popover with the full mixer row (NH-291)"
 ```
 
@@ -3614,7 +3726,7 @@ const playerModes = (page: Page) =>
 
 const setPlayerMode = async (page: Page, label: string) => {
   await page.getByTestId('settings-trigger').click();
-  await page.getByRole('button', { name: 'Player' }).click();
+  await openGroup(page, 'Player');
   await page.getByRole('combobox', { name: 'Play from' }).selectOption({ label });
   await page.keyboard.press('Escape');
 };
@@ -3662,9 +3774,26 @@ test('with playback turned off, the page settles and says why', async ({ page })
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await expect(openTooltip(page)).toContainText('Playback is turned off in Settings');
 });
+
+// The same settled state WITHOUT a reload. The case above reloads before it asserts, so it would
+// pass even if a mid-session switch left the bar spinning behind a dead Play button — which is
+// what happens when the mode change re-reads only the flags that come from the built player.
+// `playerReady` never fires for a mode that builds no player, so the SETTINGS read has to run on
+// the mode change too (Step 3's `readChosenMode`, called from `readPlayer`). No reload here.
+test('switching to a mode with no player settles without a reload', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await setPlayerMode(page, 'No playback');
+
+  const play = page.getByTestId('transport-play');
+  await expect(play).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0);
+  await expect(page.getByTestId('settings-trigger')).toBeEnabled();
+});
 ```
 
-Run: `pnpm --filter @notation-hero/web run test:e2e -g "player-mode row|playback turned off"`
+Run: `pnpm --filter @notation-hero/web run test:e2e -g "player-mode row|playback turned off|settles without a reload"`
 Expected: FAIL.
 
 - [ ] **Step 3: Ask AlphaTab which player is playing**
@@ -3675,6 +3804,13 @@ In `PlayerShell.tsx`, `hasBackingTrack` is set from the score today:
 - useAlphaTabEvent(api, 'scoreLoaded', (score) =>
 -   setHasBackingTrack(Boolean(score.backingTrack?.rawAudioFile)),
 - );
++ // The two modes that will never produce a player, read from the SETTINGS — the person's choice,
++ // not what AlphaTab built. Both are needed by `noPlayerComing` in Step 4.
++ const readChosenMode = useCallback(() => {
++   const mode = api?.settings.player.playerMode;
++   setPlaybackOff(mode === engine?.PlayerMode.Disabled);
++   setExternalMedia(mode === engine?.PlayerMode.EnabledExternalMedia);
++ }, [api, engine]);
 + // Which player AlphaTab REALLY built — not what the score would suggest. A score that embeds a
 + // recording plays from the synthesizer when the person chose that, and then the metronome, the
 + // count-in and the mixer all work. `actualPlayerMode` is AlphaTab's own answer; the enum comes
@@ -3683,16 +3819,17 @@ In `PlayerShell.tsx`, `hasBackingTrack` is set from the score today:
 +   if (!api || !engine) return;
 +   setHasBackingTrack(api.actualPlayerMode === engine.PlayerMode.EnabledBackingTrack);
 +   setPlayerReady(api.isReadyForPlayback);
-+ }, [api, engine]);
++   // A mid-session switch settles without a reload: playerReady never fires for either of the
++   // two dead modes, so the settings read has to happen here as well as at scoreLoaded.
++   readChosenMode();
++ }, [api, engine, readChosenMode]);
 + // TWO reads, because they have two different sources of truth.
 + //
 + // "Playback is off" is the PERSON'S choice, and it is in the settings the moment the score
 + // loads. It must NOT come from actualPlayerMode: with playback off AlphaTab builds no player,
 + // so `playerReady` NEVER fires, and a reload with that mode stored would leave the flag false —
 + // Play enabled, the loading bar spinning, and Step 2's stored-"No playback" case failing.
-+ useAlphaTabEvent(api, 'scoreLoaded', () =>
-+   setPlaybackOff(api?.settings.player.playerMode === engine?.PlayerMode.Disabled),
-+ );
++ useAlphaTabEvent(api, 'scoreLoaded', readChosenMode);
 + // hasBackingTrack and isReadyForPlayback need the REAL player, which does not exist yet at
 + // scoreLoaded: _onScoreLoaded fires BEFORE _setupOrDestroyPlayer (alphaTab.core.mjs:48025-48030),
 + // and that method is actualPlayerMode's only writer and returns early with no score
@@ -3709,7 +3846,7 @@ and in `applySetting`, after the engine call: `if (path === 'player.playerMode')
 
 - [ ] **Step 4: Make "No playback" a settled state, not an endless load**
 
-`playbackOff` is new state beside `hasBackingTrack`. Three places read it:
+`playbackOff` and `externalMedia` are new state beside `hasBackingTrack`, both written by `readChosenMode` in Step 3. Three places read them:
 
 ```diff
 - const loadingPlayer = !failed && (!playerReady || opening);
@@ -3721,7 +3858,7 @@ and in `applySetting`, after the engine call: `if (path === 'player.playerMode')
 + const loadingPlayer = !failed && !noPlayerComing && (!playerReady || opening);
 ```
 
-- The Play button's tooltip: `playbackOff ? 'Playback is turned off in Settings' : playing ? 'Pause' : 'Play'`. The button is already `aria-disabled` while `!playerReady` and stays focusable — but a disabled `Button` is `pointer-events: none`, so as its own tooltip trigger it never sees the mouse. Give it the shape `TransportToggle` got for the same reason (registry, 2026-09-20): the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the button. The span takes the hover; focus still opens it, because focus events bubble. Keep `ref={playRef}` on the `Button` — opening a file still moves focus there.
+- The Play button's tooltip has THREE branches, one per dead mode, so a disabled Play button never says "Play": `playbackOff ? 'Playback is turned off in Settings' : externalMedia ? 'This mode plays along to an audio or video file, which this version does not provide yet.' : playing ? 'Pause' : 'Play'`. The button is already `aria-disabled` while `!playerReady` and stays focusable — but a disabled `Button` is `pointer-events: none`, so as its own tooltip trigger it never sees the mouse. Give it the shape `TransportToggle` got for the same reason (registry, 2026-09-20): the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the button. The span takes the hover; focus still opens it, because focus events bubble. Keep `ref={playRef}` on the `Button` — opening a file still moves focus there.
 - The Settings trigger is **never** disabled by `playerReady` — it is the only way back. It is disabled only while the engine itself has not loaded (`!engine`, Task 5), which is unchanged.
 
 **`EnabledExternalMedia` ships, and it must SETTLE like "No playback" does.** The mode drives playback from an audio or video element the app supplies — the reference fork uses it to follow a YouTube video or an audio file with the cursor, setting the mode **in code** when it has media and handing AlphaTab an `IExternalMediaHandler` at the same moment. v0 has no media source and no handler, so the player it builds has nothing to drive it and `isReadyForPlayback` never turns true. Left alone it would pulse the loading bar forever behind a dead Play button whose tooltip still read "Play" — and because the mode is stored, on every later visit too. So it joins `playbackOff` in `noPlayerComing`, and the Play tooltip reads: _"This mode plays along to an audio or video file, which this version does not provide yet."_ Following a YouTube video or an audio file is a real feature worth its own ticket; this plan only makes the choice honest.
@@ -3957,6 +4094,6 @@ Criteria 1, 3, 5, 6, 7, 8, 9 and 10 should now be met. **Criterion 9 is verified
 
 **Decisions taken after the re-triage (maintainer, 2026-09-20).** The Settings popover is the same as the reference panel — every row. All five api-property rows ship, and the player-mode row ships with its own task (Task 8), superseding the spec's §4 boundary. Asked to confirm the plan had every row, the re-triage replaced the plan's row COUNTS with a full inventory by AlphaTab key (Task 4 Step 1): 90 rows, four sources, three ways a settings row takes effect.
 
-**Placeholder scan.** Two tasks describe rather than transcribe, and both name the exact source of the answer: Task 3's component body is specified as a requirement list plus the one comment that must appear (the test file above it is complete and is the real specification), and Task 4's schema shows the pattern rows with an explicit instruction that a group left as a comment is an unfinished task, not a deferral. Two things are flagged as **read, not run**: that a score change needs `resetChannelStates()` (Global Constraints — Task 7's case and Task 10's by-ear item 6 are what prove it), and that a `TooltipTrigger` and a `PopoverTrigger` can render through one `Button` (Task 5 names the fallback). Every other library fact in the plan was checked against the installed package, with the file and line beside it.
+**Placeholder scan.** Two tasks describe rather than transcribe, and both name the exact source of the answer: Task 3's component body is specified as a requirement list plus the one comment that must appear (the test file above it is complete and is the real specification), and Task 4's schema shows the pattern rows with an explicit instruction that a group left as a comment is an unfinished task, not a deferral. Two things are flagged as **read, not run**: that a score change needs `resetChannelStates()` (Global Constraints — Task 7's case and Task 10's by-ear item 6 are what prove it), and that a `TooltipTrigger` rendering a span **around** a `PopoverTrigger` opens on hover and on focus (the shape `TransportToggle` already ships; Task 5 verifies it in the browser while the gear is still disabled). Every other library fact in the plan was checked against the installed package, with the file and line beside it.
 
 **Type consistency.** `SettingControl` and `SettingValue` are declared once in `SettingRow.tsx`, re-exported from the barrel, and imported by `settings-paths.ts` and `settings-schema.ts`. `PlayerSettingsJson` is declared once in `settings-paths.ts` and is the same type in the schema, the storage module, `live-settings.ts` and `PlayerShell`. `readSettingValue` / `writeSettingValue` keep one name and one signature in the module, the schema's re-export and the test. `SettingDescriptor` is a union discriminated on `source` (four members), and `SettingsPopover` narrows on it before it touches `path`, `key` or `action`. `SettingApply` is declared in the schema and is the third parameter of `onSettingChange`, `applySetting` and `applySettingsJson` alike — no `rerender` boolean survives anywhere. `ApiValueKey` is spelled identically in the schema, `SettingsPopover`'s props and `PlayerShell`'s `applyApiValue`; `'masterVolume'` is added to `useAlphaTab.ts`'s `AlphaTabApiValue` in the same task that first writes it. `TrackStaffState.tablatureAvailable` is spelled identically in `TrackRow`'s props, its tests, and `toMixerTrack`. `StaffDisplayKey` is declared in `live-settings.ts` and used by `TracksPopover`. The `data-testid` values are declared in the task that creates them and reused verbatim: `settings-trigger`, `settings-popover`, `tracks-trigger`, `tracks-popover`, `track-row-<index>`; the expand control's accessible name is `More controls for <track>` in `TrackRow`, its tests and both e2e files.

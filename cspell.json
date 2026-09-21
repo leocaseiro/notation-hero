@@ -491,6 +491,7 @@
     "pointerdown",
     "countin",
     "pkill",
+    "masterrow",
     "settingrow",
     "tempocontrol",
     "trackrow",
