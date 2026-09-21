@@ -186,7 +186,12 @@ const TempoControl = ({
             would open from its centre, under the pointer that is on a stepper. */}
         <Tooltip>
           <TooltipTrigger
-            render={<div className="flex flex-col items-center justify-center gap-0.5 px-2" />}
+            render={
+              <div
+                data-slot="tempo-readout"
+                className="flex flex-col items-center justify-center gap-0.5 px-2"
+              />
+            }
           >
             <span className="text-[10px] leading-none font-bold tracking-widest text-muted-foreground uppercase">
               BPM
