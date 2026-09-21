@@ -502,15 +502,15 @@ test('a range row renders both a number input and a named slider', () => {
   render(
     <SettingRow
       id="speed"
-      label="Playback speed"
-      control={{ kind: 'range', min: 0.125, max: 2, step: 0.125 }}
-      value={1}
+      label="Playback speed (%)"
+      control={{ kind: 'range', min: 12.5, max: 800, step: 0.5 }}
+      value={100}
       onChange={() => {}}
     />,
   );
 
-  expect(screen.getByRole('spinbutton', { name: 'Playback speed' })).toBeInTheDocument();
-  expect(screen.getByRole('slider', { name: 'Playback speed' })).toBeInTheDocument();
+  expect(screen.getByRole('spinbutton', { name: 'Playback speed (%)' })).toBeInTheDocument();
+  expect(screen.getByRole('slider', { name: 'Playback speed (%)' })).toBeInTheDocument();
 });
 
 test('a text row reports the raw string', async () => {
@@ -1636,6 +1636,9 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           key: 'metronomeVolume',
           label: 'Metronome volume',
           control: { kind: 'range', min: 0, max: 1, step: 0.05 },
+          // This row and the count-in-volume row beside it disable on `mixUnavailable` while the
+          // file plays its own recording — the same rule, and the same reason string, as the
+          // transport's Metronome and Count-In buttons. They are the only two Player rows that do.
         },
         {
           id: 'player-loop',
@@ -1723,7 +1726,7 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettingsJson = {
 };
 ```
 
-**Fill in every row before moving on.** The rows shown are the pattern; the list comes from Step 1's reading, and a group left as a comment is an unfinished task, not a deferral. Cross-check as you go: every `source: 'settings'` row's `path` must have a matching entry in `DEFAULT_PLAYER_SETTINGS`, every entry there must correspond to a row, and no `api`, `stylesheet` or `action` row has an entry at all. Count the rows against Step 1's inventory when you finish: 73, 5, 12 and 2.
+**Fill in every row before moving on.** The rows shown are the pattern; the list comes from Step 1's reading, and a group left as a comment is an unfinished task, not a deferral. Cross-check as you go: every `source: 'settings'` row's `path` must have a matching entry in `DEFAULT_PLAYER_SETTINGS`, every entry there must correspond to a row, and no `api`, `stylesheet` or `action` row has an entry at all. Count the rows against Step 1's inventory when you finish: 71, 5, 12 and 2.
 
 **Get each default from the engine, not from memory.** `new engine.Settings()` in the browser console (`$0.at.settings` on the notation box is the live one) shows AlphaTab's value for every key; a wrong default here silently changes the score on the first edit of an unrelated row, because the whole JSON is pushed each time.
 
@@ -2201,6 +2204,14 @@ interface SettingsPopoverProps {
   /** Routed by the shell to its single writer for that value. Never to the settings JSON. */
   onApiValueChange: (key: ApiValueKey, value: SettingValue) => void;
   onAction: (action: SettingAction) => void;
+  /**
+   * Set while the file plays its own recording: the reason, as tooltip text. The Player group's
+   * metronome-volume and count-in-volume rows then render disabled — the backing-track
+   * synthesizer ignores both, exactly as the transport's two buttons already know (Global
+   * Constraints, and `TransportRow`'s `disabled={disabled || hasBackingTrack}`). Every other
+   * Player row stays live: master volume is not stubbed, and speed and loop are the sequencer's.
+   */
+  mixUnavailable?: string;
 }
 
 // The header gear. A POPOVER, not a modal — it never blocks the player, so a drummer can change a
@@ -2457,6 +2468,7 @@ actions?: ReactNode;
       apiValues={apiValues}
       onApiValueChange={applyApiValue}
       onAction={runAction}
+      mixUnavailable={hasBackingTrack ? RECORDING : undefined}
     />
   }
 />
@@ -2851,7 +2863,7 @@ One row for **every track in the score**, not only the rendered drum staves — 
 **Interfaces:**
 
 - Consumes: `TrackRow`, `TrackStaffState` (Task 3); `Popover*`, `ScrollArea`, `Button`, `Tooltip*`; `setTrackTransposition`, `clearTrackTranspositions`, `setStaffDisplay` (Task 4); `useAlphaTabEvent` and the `api` state (Plan A); `hasBackingTrack` (Plan B).
-- Produces: `<TracksPopover api={api} hasBackingTrack={hasBackingTrack} disabled={!playerReady} />`; test hooks `data-testid="tracks-trigger"`, `data-testid="tracks-popover"`, and `data-testid="track-row-<index>"` per row.
+- Produces: `<TracksPopover api={api} hasBackingTrack={hasBackingTrack} disabled={!engine} />`; test hooks `data-testid="tracks-trigger"`, `data-testid="tracks-popover"`, and `data-testid="track-row-<index>"` per row.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2966,7 +2978,7 @@ test('solo is not exclusive — two tracks can be soloed at once', async ({ page
   ]);
 });
 
-test('mute and volume reach the engine, the volume as a ratio of the level the file gives', async ({
+test('mute and volume reach the engine, the volume as an absolute channel level', async ({
   page,
 }) => {
   await openFirstScore(page, 'Punk.gp');
@@ -3339,7 +3351,7 @@ In `PlayerShell.tsx`, on the existing `<TransportRow … />`. The slot already e
 
 ```tsx
 trailing={
-  <TracksPopover api={api} hasBackingTrack={hasBackingTrack} disabled={!playerReady} />
+  <TracksPopover api={api} hasBackingTrack={hasBackingTrack} disabled={!engine} />
 }
 ```
 
@@ -3526,7 +3538,7 @@ and in `applySetting`, after the engine call: `if (path === 'player.playerMode')
 
 **`EnabledExternalMedia` ships, and it must SETTLE like "No playback" does.** The mode drives playback from an audio or video element the app supplies — the reference fork uses it to follow a YouTube video or an audio file with the cursor, setting the mode **in code** when it has media and handing AlphaTab an `IExternalMediaHandler` at the same moment. v0 has no media source and no handler, so the player it builds has nothing to drive it and `isReadyForPlayback` never turns true. Left alone it would pulse the loading bar forever behind a dead Play button whose tooltip still read "Play" — and because the mode is stored, on every later visit too. So it joins `playbackOff` in `noPlayerComing`, and the Play tooltip reads: _"This mode plays along to an audio or video file, which this version does not provide yet."_ Following a YouTube video or an audio file is a real feature worth its own ticket; this plan only makes the choice honest.
 
-**The mixer's trigger gates on the ENGINE, not on player readiness.** `disabled={!playerReady}` would lock the Tracks popover away entirely once no player is coming — but render-select, the per-staff display toggles and Transpose full change the **drawn score** and need no player at all. Gate the trigger on `!engine` and let the rows disable their own mix controls through `mixUnavailable`, exactly as a backing-track file already does.
+**The mixer's trigger gates on the ENGINE, not on player readiness.** `disabled={!playerReady}` would lock the Tracks popover away entirely once no player is coming — but render-select, the per-staff display toggles and Transpose full change the **drawn score** and need no player at all. Gate the trigger on `!engine` and let the rows disable their own mix controls through `mixUnavailable`, exactly as a backing-track file already does. Task 7 already ships the trigger as `disabled={!engine}` — nothing changes here, and `TracksPopover.tsx` is deliberately absent from this task's file list.
 
 - [ ] **Step 5: Run the lane to verify it passes**
 
@@ -3746,10 +3758,10 @@ Criteria 1, 3, 5, 6, 7, 8, 9 and 10 should now be met. **Criterion 9 is verified
 
 ## Self-Review
 
-**Spec coverage.** §7 "Two popovers, not modals" → Tasks 5 and 7, with the non-blocking property asserted in Task 5's own test. §7 Settings groups (Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools) → Task 4, with a full row inventory by AlphaTab key rather than counts; the Tools group is the v0.1 spec's two Action rows (its §4); the player-mode row → Task 8. §7 "Colors are plain text inputs for now" → `SettingRow`'s `text` kind, called out in its comment. §7 Tracks row full control set (render-select, solo, mute, volume, per-staff display toggles, both transposition sliders) → Tasks 3 and 7. §7 volume-as-ratio with a zero guard, and the 0–16 scale → Tasks 3 and 7. §7 channel coupling → stated in Global Constraints, in `TrackRow`'s comment, in Task 9's by-ear list and in the PR body — and widened to solo and mute, which the spec does not record. §4 and §7 "a file that plays its own recording disables solo, mute and volume, with a tooltip" → Tasks 3 and 7, plus Transpose audio (a Spec Delta, with the source line that justifies it). §7 tablature only for a tuned stringed staff → Tasks 3 and 7, each with a test. §7 eight-controls disclosure → Task 3. §7 "compose controls that already exist" → `SettingRow` composes `Field`, `Checkbox`, `Input`, `NativeSelect`, `Slider`, `Button`; none is new. §7 settings persistence, `fillFromJson`, the per-key merge and the reset toast → Task 6, with both the reload and the corrupt-value paths as e2e cases. §7 the speed slider in the Player group → Task 4's `source: 'api'` row, written by `PlayerShell`'s `applySpeed` (Plan B's single-writer rule), over the engine's 12.5–800 % range (registry, 2026-09-20, superseding the spec's 200 %). The always-present, state-telling tooltip on every control without visible text (registry 2026-09-20, and the maintainer on this plan) → Global Constraints, a unit case in Task 3 and an e2e case in Task 7 that walks every row of the open mixer, then re-reads each tooltip after its state changed. §4's 44 px rule → `expectHitAreas` with each popover open, Task 9. §8 criteria 3 and 7 → Tasks 5, 7 and 9. **Deliberately not covered here:** everything in Plans A and B; v0.1's search index and tab chrome; drum tablature (needs a version bump, Q5); persisting the speed (NH-295).
+**Spec coverage.** §7 "Two popovers, not modals" → Tasks 5 and 7, with the non-blocking property asserted in Task 5's own test. §7 Settings groups (Display ▸ General, Colors, Fonts, Paddings, Notation, Player, Stylesheet, Tools) → Task 4, with a full row inventory by AlphaTab key rather than counts; the Tools group is the v0.1 spec's two Action rows (its §4); the player-mode row → Task 8. §7 "Colors are plain text inputs for now" → **Spec Delta**: the six colour rows use `SettingRow`'s `color` kind, not `text`, because a half-typed hex parses to a null `Color` the renderer throws on; the `text` kind holds the font rows and commits on blur or Enter. Called out in its comment. §7 Tracks row full control set (render-select, solo, mute, volume, per-staff display toggles, both transposition sliders) → Tasks 3 and 7. §7's volume-as-ratio with a zero guard → **Spec Delta** (Global Constraints): the engine takes an ABSOLUTE channel level, so the writer sends `next / 16` and no zero guard is needed; the 0–16 scale is unchanged → Tasks 3 and 7. §7 channel coupling → stated in Global Constraints, in `TrackRow`'s comment, in Task 10's by-ear list and in the PR body — and widened to solo and mute, which the spec does not record. §4 and §7 "a file that plays its own recording disables solo, mute and volume, with a tooltip" → Tasks 3 and 7, plus Transpose audio (a Spec Delta, with the source line that justifies it). §7 tablature only for a tuned stringed staff → Tasks 3 and 7, each with a test. §7 eight-controls disclosure → Task 3. §7 "compose controls that already exist" → `SettingRow` composes `Field`, `Checkbox`, `Input`, `NativeSelect`, `Slider`, `Button`; none is new. §7 settings persistence, `fillFromJson`, the per-key merge and the reset toast → Task 6, with both the reload and the corrupt-value paths as e2e cases. §7 the speed slider in the Player group → Task 4's `source: 'api'` row, written by `PlayerShell`'s `applySpeed` (Plan B's single-writer rule), over the engine's 12.5–800 % range (registry, 2026-09-20, superseding the spec's 200 %). The always-present, state-telling tooltip on every control without visible text (registry 2026-09-20, and the maintainer on this plan) → Global Constraints, a unit case in Task 3 and an e2e case in Task 7 that walks every row of the open mixer, then re-reads each tooltip after its state changed. §4's 44 px rule → `expectHitAreas` with each popover open, Task 9. §8 criteria 3 and 7 → Tasks 5, 7 and 9. **Deliberately not covered here:** everything in Plans A and B; v0.1's search index and tab chrome; drum tablature (needs a version bump, Q5); persisting the speed (NH-295).
 
 **Decisions taken after the re-triage (maintainer, 2026-09-20).** The Settings popover is the same as the reference panel — every row. All five api-property rows ship, and the player-mode row ships with its own task (Task 8), superseding the spec's §4 boundary. Asked to confirm the plan had every row, the re-triage replaced the plan's row COUNTS with a full inventory by AlphaTab key (Task 4 Step 1): 90 rows, four sources, three ways a settings row takes effect.
 
-**Placeholder scan.** Two tasks describe rather than transcribe, and both name the exact source of the answer: Task 3's component body is specified as a requirement list plus the one comment that must appear (the test file above it is complete and is the real specification), and Task 4's schema shows the pattern rows with an explicit instruction that a group left as a comment is an unfinished task, not a deferral. Two things are flagged as **read, not run**: that a score change needs `resetChannelStates()` (Global Constraints — Task 7's case and Task 9's by-ear item 6 are what prove it), and that a `TooltipTrigger` and a `PopoverTrigger` can render through one `Button` (Task 5 names the fallback). Every other library fact in the plan was checked against the installed package, with the file and line beside it.
+**Placeholder scan.** Two tasks describe rather than transcribe, and both name the exact source of the answer: Task 3's component body is specified as a requirement list plus the one comment that must appear (the test file above it is complete and is the real specification), and Task 4's schema shows the pattern rows with an explicit instruction that a group left as a comment is an unfinished task, not a deferral. Two things are flagged as **read, not run**: that a score change needs `resetChannelStates()` (Global Constraints — Task 7's case and Task 10's by-ear item 6 are what prove it), and that a `TooltipTrigger` and a `PopoverTrigger` can render through one `Button` (Task 5 names the fallback). Every other library fact in the plan was checked against the installed package, with the file and line beside it.
 
 **Type consistency.** `SettingControl` and `SettingValue` are declared once in `SettingRow.tsx`, re-exported from the barrel, and imported by `settings-paths.ts` and `settings-schema.ts`. `PlayerSettingsJson` is declared once in `settings-paths.ts` and is the same type in the schema, the storage module, `live-settings.ts` and `PlayerShell`. `readSettingValue` / `writeSettingValue` keep one name and one signature in the module, the schema's re-export and the test. `SettingDescriptor` is a union discriminated on `source` (four members), and `SettingsPopover` narrows on it before it touches `path`, `key` or `action`. `SettingApply` is declared in the schema and is the third parameter of `onSettingChange`, `applySetting` and `applySettingsJson` alike — no `rerender` boolean survives anywhere. `ApiValueKey` is spelled identically in the schema, `SettingsPopover`'s props and `PlayerShell`'s `applyApiValue`; `'masterVolume'` is added to `useAlphaTab.ts`'s `AlphaTabApiValue` in the same task that first writes it. `TrackStaffState.tablatureAvailable` is spelled identically in `TrackRow`'s props, its tests, and `toMixerTrack`. `StaffDisplayKey` is declared in `live-settings.ts` and used by `TracksPopover`. The `data-testid` values are declared in the task that creates them and reused verbatim: `settings-trigger`, `settings-popover`, `tracks-trigger`, `tracks-popover`, `track-row-<index>`; the expand control's accessible name is `More controls for <track>` in `TrackRow`, its tests and both e2e files.
