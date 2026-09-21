@@ -228,9 +228,7 @@ test('the readout carries a tooltip naming the percentage of written speed', asy
 
   await user.hover(screen.getByRole('textbox', { name: 'Tempo' }));
 
-  expect(await screen.findByTestId('tempo-tooltip')).toHaveTextContent(
-    "90 BPM — 75% of the score's written tempo",
-  );
+  expect(await screen.findByTestId('tempo-tooltip')).toHaveTextContent('90 BPM (75%)');
 });
 
 test('at written speed the tooltip says so rather than reading 100%', async () => {
@@ -239,7 +237,5 @@ test('at written speed the tooltip says so rather than reading 100%', async () =
 
   await user.hover(screen.getByRole('textbox', { name: 'Tempo' }));
 
-  expect(await screen.findByTestId('tempo-tooltip')).toHaveTextContent(
-    "120 BPM — the score's written tempo",
-  );
+  expect(await screen.findByTestId('tempo-tooltip')).toHaveTextContent('120 BPM');
 });

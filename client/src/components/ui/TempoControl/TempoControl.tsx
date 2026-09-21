@@ -121,9 +121,7 @@ const TempoControl = ({
     timerRef.current = setTimeout(() => setLingering(false), PERCENT_LINGER_MS);
   };
 
-  const tempoTip = offSpeed
-    ? `${displayedBpm} BPM — ${percent}% of the score's written tempo`
-    : `${displayedBpm} BPM — the score's written tempo`;
+  const tempoTip = offSpeed ? `${displayedBpm} BPM (${percent}%)` : `${displayedBpm} BPM`;
 
   return (
     <NumberField.Root
