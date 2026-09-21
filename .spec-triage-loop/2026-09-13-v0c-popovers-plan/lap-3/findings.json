@@ -1160,5 +1160,40 @@
     "before_blocks_not_found": 0,
     "meaning": "A `before` reading '(nothing - ...)' marks an edit that ADDS new text where none exists, so it has no Before to quote. Everything else is present in the document character-for-character."
   },
-  "status": "REVIEW HALF COMPLETE - awaiting triage in a separate session. Nothing applied; the document is untouched."
+  "status": "TRIAGED 2026-09-22 — all 20 findings dispositioned in one triage session; 4 commits on claude/plan-c-review-updates-fcd111.",
+  "triage": {
+    "date": "2026-09-22",
+    "sessions": 1,
+    "standing_rule": "The maintainer authorised applying anything that only removes ambiguity or an internal contradiction WITHOUT a picker; only new scope or a real choice was put to them.",
+    "applied_as_written": [
+      "F-1",
+      "F-2",
+      "F-3",
+      "F-4",
+      "F-5",
+      "F-6",
+      "F-7",
+      "F-8",
+      "F-9",
+      "F-10",
+      "F-12",
+      "F-13",
+      "F-14",
+      "F-15",
+      "F-17",
+      "F-18",
+      "F-20"
+    ],
+    "decided_by_maintainer": {
+      "F-11": "KEEP the label. The maintainer corrected the framing: the mp3 embedded in a Guitar Pro file is the BACKING TRACK and plays today; only the outside-player case (YouTube) is missing from v0. No label edit. A wording bug this exposed in the already-applied F-9 tooltip ('an audio or video file, which this version does not provide yet' — reads as 'no mp3') was corrected, plus a clarifying line in Task 8's paragraph.",
+      "F-16": "APPLIED IN REVISED FORM. The reviewer's 'Clear solos' rename was rejected: the maintainer wants select-all CHECKBOXES with an indeterminate state, standard browser behaviour, no bespoke direction rule. Solo-all and mute-all are now Checkbox with checked + indeterminate; the caller computes the aggregate and writes the reported value through the per-row handler. Props, five tests, story ids (resting/mixed/ticked/recording), wiring, the hit-area note and a by-ear item all updated.",
+      "F-19": "APPLIED IN REVISED FORM, after the spike the maintainer asked for. Both push shapes perform identically (updateSettings does fixed work and never redraws; AlphaTabApiBase.ts:549-563 and :1670-1708), so the whole-document push stays and a Global Constraints bullet records it with the measured reason. The spike relocated the real cost to api.render(), which a number row asks for on every keystroke: every redraw now goes through one queueRender (one per frame), and the zoom e2e case types character by character and asserts exactly one render."
+    },
+    "open": [],
+    "next": "Lap 4 as a NEW invocation, starting with a fresh review half. A P0 was applied, so a re-lap is indicated.",
+    "carry_forward_for_lap_4": [
+      "Global Constraints line 137 still explains data-popup-open in terms of 'the stacked trigger', a shape F-10 retired in favour of the span-wrap. The ADVICE (discriminate on aria-expanded, never key on data-popup-open) stays sound; the mechanism sentence describes a construction the plan no longer uses. Left unrewritten on purpose — it is a library-behaviour claim, and the next review half should measure it rather than have it reworded blind.",
+      "live-settings.ts has no unit test file in the plan, so queueRender's coalescing is proved only by the zoom end-to-end case."
+    ]
+  }
 }

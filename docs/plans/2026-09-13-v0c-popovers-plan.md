@@ -1,8 +1,8 @@
 ---
 # spec-triage-loop state. `lap` is the review lap this document has been through;
 # `last_applied` is the highest severity applied on that lap.
-lap: 2
-last_applied: P1
+lap: 3
+last_applied: P0
 ---
 
 # v0 Plan C — Settings and Tracks Popovers — Implementation Plan
