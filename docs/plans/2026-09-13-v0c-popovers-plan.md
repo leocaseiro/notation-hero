@@ -90,7 +90,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Every `client/` component here is presentation-only**: `value` in, `onChange` out, option lists as plain arrays, and **no import from `@coderline/alphatab`**. A `client/` Storybook story has no engine instance, so a row that read its options off the library would be gated while rendering fabricated options. The schema of accessors and the context carrying the namespace live in `web/`.
 - **Each new `client/` component needs all six co-located files** (`X.tsx`, `X.stories.tsx`, `X.story-ids.ts`, `X.test.tsx`, `X.a11y.ts`, `X.vr.ts`) in its own folder. Never `__tests__/` or `stories/`.
 - **VR baselines are Linux-only** — `pnpm test:vr:docker:update` with Docker Desktop running (`open -a Docker`), never natively on macOS. Kill any `:6006` Storybook first.
-- **Every control's hit area is at least 44 px, and the lane measures it.** Plan A's `expectHitAreas` (`web/e2e/a11y.e2e.ts`) runs with each popover open (Task 9); nothing is checked by eye. Three primitives these rows compose are **under** 44 px as built — `Input` and `NativeSelect` are `h-9` (36 px), `Checkbox` is `size-4` (16 px) — **and so is every `Button` size**: `default` and `icon` are 36 px and even `icon-lg` is only 40 px (`Button.tsx:37-47`). So `SettingRow` passes `h-11` to the first two and puts its checkbox inside a label that is at least 44 × 44; `TrackRow` and `MasterRow` reach every toggle through `TransportToggle` at `size-11`; and every `Button` gets an explicit `size-11` / `min-h-11 min-w-11`, as `PlayerShell` already does.
+- **Every control's hit area is at least 44 px, and the lane measures it.** Plan A's `expectHitAreas` (`web/e2e/a11y.e2e.ts`) runs with each popover open (Task 9); nothing is checked by eye. Three primitives these rows compose are **under** 44 px as built — `Input` and `NativeSelect` are `h-9` (36 px), `Checkbox` is `size-4` (16 px) — **and so is every `Button` size**: `default` and `icon` are 36 px and even `icon-lg` is only 40 px (`Button.tsx:37-47`). So `SettingRow` passes `h-11` to the first two and puts its checkbox inside a label that is at least 44 × 44; `TrackRow` reaches every toggle through `TransportToggle` at `size-11`, and `MasterRow` puts its two select-all checkboxes inside 44 × 44 labels the same way `SettingRow` does; and every `Button` gets an explicit `size-11` / `min-h-11 min-w-11`, as `PlayerShell` already does.
 - **Every control with no visible text has a tooltip that tells its state, always present** (registry, 2026-09-20 — and the maintainer again on this plan: _"make sure every button toggle has tooltip, including the tracks ones, such as solo/mute/etc"_). That is: the Settings gear, the Tracks trigger, and in **every** `TrackRow` the render-select eye toggle, Solo, Mute, **the four per-staff display toggles** and the "more controls" button. The display toggles are on that list because they are now compact icon buttons on the primary row (M-7): icon-only, so nothing tells their state but the tooltip. A control that already shows its own words — an accordion header, a settings row, the two export buttons — needs none. The tooltip says the **state**, not just the name: `Solo: on`, not `Solo`.
 
   **Two qualifications, both from verification.**
@@ -150,12 +150,12 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 
 **Created — `client/src/components/ui/`**
 
-| Folder        | Responsibility                                                                                                                                                             |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Accordion/`  | Collapsible sections. The third and last of the spec's three new design-system components, and the one v0.1's settings search builds on.                                   |
-| `SettingRow/` | One settings row: label left, control right. Renders a toggle, a number input, a number-with-slider, a text input, a dropdown or an action button from a plain descriptor. |
-| `TrackRow/`   | One mixer row: an always-visible primary cluster plus a disclosure holding the display toggles and both transposition sliders.                                             |
-| `MasterRow/`  | The mixer's foot row: master volume, solo-all, mute-all. Composes the same primitives `TrackRow` does; its volume is controlled by `PlayerShell`, never its own state.     |
+| Folder        | Responsibility                                                                                                                                                                                                          |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Accordion/`  | Collapsible sections. The third and last of the spec's three new design-system components, and the one v0.1's settings search builds on.                                                                                |
+| `SettingRow/` | One settings row: label left, control right. Renders a toggle, a number input, a number-with-slider, a text input, a dropdown or an action button from a plain descriptor.                                              |
+| `TrackRow/`   | One mixer row: an always-visible primary cluster plus a disclosure holding the display toggles and both transposition sliders.                                                                                          |
+| `MasterRow/`  | The mixer's foot row: master volume plus solo-all and mute-all as "select all" checkboxes over the rows. Composes the same primitives `TrackRow` does; every value is controlled by `PlayerShell`, never its own state. |
 
 **Created — `web/`**
 
@@ -887,9 +887,11 @@ Eight controls do not fit on one line, so the row discloses. An always-visible p
 
 - Create: `client/src/components/ui/TrackRow/` (six files)
 - Create: `client/src/components/ui/MasterRow/` (six files) — the mixer's foot row: master volume,
-  solo-all, mute-all. It composes the same primitives `TrackRow` does and adds none; its volume is
-  a controlled value with no state of its own, because `PlayerShell` owns that value and the
-  Settings ▸ Player row is its other editor (Task 7's Interfaces says why).
+  plus solo-all and mute-all as "select all" checkboxes over the rows — ticked when every track is,
+  mixed when only some are, and reversible because a ticked box un-ticks every row. It composes the
+  same primitives `TrackRow` does and adds none; its volume is a controlled value with no state of
+  its own, because `PlayerShell` owns that value and the Settings ▸ Player row is its other editor
+  (Task 7's Interfaces says why).
 
 **Interfaces:**
 
@@ -964,11 +966,23 @@ interface MasterRowProps {
   /** The mixer's own master volume, 0-16 — `playbackInfo.volume`'s scale, the same as a track's. */
   volume: number;
   onVolumeChange: (next: number) => void;
-  onSoloAll: () => void;
-  onMuteAll: () => void;
   /**
-   * Set while the file plays its own recording: the reason, as tooltip text. Solo-all and
-   * mute-all then render disabled — the engine ignores per-track solo and mute in that mode.
+   * Solo-all and mute-all are "select all" CHECKBOXES over the rows, not one-way commands: ticked
+   * when every track is, `indeterminate` when only some are — Base UI renders that as
+   * `aria-checked="mixed"`. A click on a mixed or unticked box reports `true` and on a ticked box
+   * `false`, which is the browser's own select-all behaviour; the row adds NO rule of its own
+   * (maintainer, 2026-09-22). The caller writes the reported value onto every track through the
+   * same per-row handler a row click uses, so each value keeps exactly one writer.
+   */
+  soloAll: boolean;
+  soloAllIndeterminate: boolean;
+  onSoloAllChange: (next: boolean) => void;
+  muteAll: boolean;
+  muteAllIndeterminate: boolean;
+  onMuteAllChange: (next: boolean) => void;
+  /**
+   * Set while the file plays its own recording: the reason, as tooltip text. Both master
+   * checkboxes then render disabled — the engine ignores per-track solo and mute in that mode.
    * Master volume stays LIVE: `masterVolume` is not stubbed for a backing track
    * (`alphaTab.core.mjs:40395`), which is why this flag is not called `mixUnavailable`.
    */
@@ -1203,7 +1217,7 @@ test('the last drawn track cannot be hidden, and the row says why', async () => 
 
 > The two slider assertions use `toBeDisabled()` on purpose: Base UI's slider thumb is a real `<input type="range">`, and a disabled slider has no tooltip to keep reachable — the reason is carried by the solo and mute buttons beside it, and by the note Task 7 puts at the top of the popover.
 
-Create `client/src/components/ui/MasterRow/MasterRow.test.tsx` beside it — same shape, four tests:
+Create `client/src/components/ui/MasterRow/MasterRow.test.tsx` beside it — same shape, five tests:
 
 ```tsx
 import { render, screen } from '@testing-library/react';
@@ -1213,8 +1227,12 @@ import { MasterRow } from './MasterRow';
 const baseProps = {
   volume: 8,
   onVolumeChange: () => {},
-  onSoloAll: () => {},
-  onMuteAll: () => {},
+  soloAll: false,
+  soloAllIndeterminate: false,
+  onSoloAllChange: () => {},
+  muteAll: false,
+  muteAllIndeterminate: false,
+  onMuteAllChange: () => {},
 };
 
 const RECORDING = 'Not available while the file plays its own recording';
@@ -1222,40 +1240,39 @@ const RECORDING = 'Not available while the file plays its own recording';
 test('the foot row shows master volume, solo all and mute all', () => {
   render(<MasterRow {...baseProps} />);
   expect(screen.getByRole('slider', { name: /master volume/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /solo all/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /mute all/i })).toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: /solo all/i })).toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: /mute all/i })).toBeInTheDocument();
 });
 
-test('each master command reports once per click', async () => {
-  const onSoloAll = vi.fn();
-  const onMuteAll = vi.fn();
-  render(<MasterRow {...baseProps} onSoloAll={onSoloAll} onMuteAll={onMuteAll} />);
-  await userEvent.click(screen.getByRole('button', { name: /solo all/i }));
-  await userEvent.click(screen.getByRole('button', { name: /mute all/i }));
-  expect(onSoloAll).toHaveBeenCalledTimes(1);
-  expect(onMuteAll).toHaveBeenCalledTimes(1);
+test('some tracks muted reads as mixed, not as unticked', () => {
+  render(<MasterRow {...baseProps} muteAllIndeterminate />);
+  expect(screen.getByRole('checkbox', { name: /mute all/i })).toHaveAttribute(
+    'aria-checked',
+    'mixed',
+  );
 });
 
-test('soloMuteUnavailable disables both master commands', () => {
+test('a mixed box reports true, so one press takes every row with it', async () => {
+  const onMuteAllChange = vi.fn();
+  render(<MasterRow {...baseProps} muteAllIndeterminate onMuteAllChange={onMuteAllChange} />);
+  await userEvent.click(screen.getByRole('checkbox', { name: /mute all/i }));
+  expect(onMuteAllChange).toHaveBeenCalledWith(true);
+});
+
+test('a ticked box reports false, so the same press is the way back out', async () => {
+  const onMuteAllChange = vi.fn();
+  render(<MasterRow {...baseProps} muteAll onMuteAllChange={onMuteAllChange} />);
+  await userEvent.click(screen.getByRole('checkbox', { name: /mute all/i }));
+  expect(onMuteAllChange).toHaveBeenCalledWith(false);
+});
+
+test('a recording disables both master boxes and leaves the volume live', () => {
   render(<MasterRow {...baseProps} soloMuteUnavailable={RECORDING} />);
-  // `TransportToggle` renders aria-disabled, never the native attribute, so the button keeps its
-  // focus and its tooltip can still open to say why.
-  expect(screen.getByRole('button', { name: /solo all/i })).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
-  expect(screen.getByRole('button', { name: /mute all/i })).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
-});
-
-test('master volume stays live while the file plays its own recording', () => {
-  render(<MasterRow {...baseProps} soloMuteUnavailable={RECORDING} />);
-  expect(screen.getByRole('slider', { name: /master volume/i })).not.toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
+  // `data-disabled`, not toBeDisabled(): the design system's Checkbox renders a <span>, and
+  // toBeDisabled() only understands native form elements — on a span it passes whatever happens.
+  expect(screen.getByRole('checkbox', { name: /solo all/i })).toHaveAttribute('data-disabled');
+  expect(screen.getByRole('checkbox', { name: /mute all/i })).toHaveAttribute('data-disabled');
+  expect(screen.getByRole('slider', { name: /master volume/i })).not.toBeDisabled();
 });
 ```
 
@@ -1301,21 +1318,23 @@ Add this comment above the volume slider, because it is the behaviour a future r
 Then create `client/src/components/ui/MasterRow/MasterRow.tsx`. It adds no primitive `TrackRow` does not already use:
 
 - The props extend `Omit<ComponentProps<'div'>, 'children'>` and the root spreads `...rest`, so Task 7's `data-testid` lands on it. `data-slot="master-row"`.
-- One flex line: a label reading **Master**, a `Slider` named `Master volume` with `min={0} max={16} step={1}` reporting through **`onCommit`** (the same drag-then-commit shape the track volume uses), then a solo-all and a mute-all `TransportToggle` at `size-11`.
-- The two master commands are **actions, not states**: they fire `onSoloAll` / `onMuteAll` and carry no `aria-pressed`, because the mixer owns every row's solo and mute and this row cannot know whether all of them are already set.
-- `soloMuteUnavailable` sets `disabled` on those two and becomes their tooltip text. It never touches the volume `Slider` — master volume is live during a recording, which is the whole reason the flag is not called `mixUnavailable`.
+- One flex line: a label reading **Master**, a `Slider` named `Master volume` with `min={0} max={16} step={1}` reporting through **`onCommit`** (the same drag-then-commit shape the track volume uses), then the two select-all `Checkbox`es named `Solo all` and `Mute all`.
+- Each master box is a plain `Checkbox` with `checked` and `indeterminate` passed straight through, reporting through `onCheckedChange`. **Add no direction rule of your own**: Base UI puts `aria-checked="mixed"` on an indeterminate box and reports the hidden input's value after the click, so a mixed or unticked box already reports `true` and a ticked box `false` — the browser's own select-all behaviour, and the only behaviour this row has (maintainer, 2026-09-22).
+- The row never inspects the tracks and holds no state: `soloAll` / `muteAll` and their `…Indeterminate` twins are computed by the caller, which also writes the reported value onto every track through its own per-row handler. A master box is a shortcut for pressing every row's button, never a second owner of the value.
+- Each `Checkbox` sits **inside** its `<label>`, and that label is at least 44 × 44 (`min-h-11 min-w-11`): the box is 16 px and is never the hit target on its own — the same construction `SettingRow`'s toggle kind uses.
+- `soloMuteUnavailable` sets `disabled` on both boxes and becomes their tooltip text. It never touches the volume `Slider` — master volume is live during a recording, which is the whole reason the flag is not called `mixUnavailable`.
 - Every hit area is at least 44 px, same as `TrackRow`. Task 9 measures it in the browser.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow src/components/ui/MasterRow`
-Expected: PASS — 13 `TrackRow` tests and 4 `MasterRow` tests.
+Expected: PASS — 13 `TrackRow` tests and 5 `MasterRow` tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
 `TrackRow.story-ids.ts`: `['collapsed', 'expanded', 'stringed-expanded', 'muted', 'soloed', 'recording']`. The `stringed-expanded` story is what proves the tablature toggle renders for a tuned staff, so it earns its own baseline; `recording` is the expanded row with `mixUnavailable` set, so the disabled look of all four controls has a baseline in both themes (VR `statesForStory`: `['resting', 'focus']` — a disabled toggle still takes focus, and that is the state its tooltip opens in). `storyPrefix: 'ui-trackrow'`, `snapshotSlug: 'trackrow'`, `slotSelector: '[data-slot="track-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
 
-`MasterRow.story-ids.ts`: `['resting', 'recording']` — `recording` is the row with `soloMuteUnavailable` set, so the disabled look of solo-all and mute-all has a baseline in both themes. `storyPrefix: 'ui-masterrow'`, `snapshotSlug: 'masterrow'`, `slotSelector: '[data-slot="master-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
+`MasterRow.story-ids.ts`: `['resting', 'mixed', 'ticked', 'recording']` — `mixed` is the row with both `…Indeterminate` flags set, because the indeterminate dash is the one master state that is easy to draw wrong and impossible to catch in a unit test; `ticked` is both boxes checked; `recording` is the row with `soloMuteUnavailable` set, so the disabled look of solo-all and mute-all has a baseline in both themes. `storyPrefix: 'ui-masterrow'`, `snapshotSlug: 'masterrow'`, `slotSelector: '[data-slot="master-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 
@@ -3687,14 +3706,26 @@ const RECORDING = 'Not available while the file plays its own recording';
           editors for one value — the exact shape of the metronome bug, and what Plan B's
           single-writer rule exists to prevent. Solo-all and mute-all DO belong to the mixer: they
           set every row's own solo / mute, so they go through the same handlers a row click does.
+          Note what soloing EVERY track sounds like: nothing. AlphaTab silences a channel only
+          when some channel is soloed and this one is not (TinySoundFont.ts:204-208), so an
+          all-soloed mix is identical to an un-soloed one — which is exactly why these are
+          select-all checkboxes with a way back, not one-way commands.
           masterVolume is not stubbed for a backing track (alphaTab.core.mjs:40395), so this row
           stays live while a recording plays — unlike every per-track mix control. */}
       <MasterRow
         data-testid="master-row"
         volume={masterVolume}
         onVolumeChange={onMasterVolumeChange}
-        onSoloAll={() => tracks.forEach((t) => applySolo(t.index, true))}
-        onMuteAll={() => tracks.forEach((t) => applyMute(t.index, true))}
+        // "Select all" over the rows. The aggregate is computed HERE, because the row holds no
+        // state and never looks at the tracks; the row just reports the value the browser's own
+        // select-all rule produces, and this writes it onto every track through applySolo /
+        // applyMute — the same handlers a row click goes through, so each value keeps one writer.
+        soloAll={tracks.length > 0 && tracks.every((t) => t.solo)}
+        soloAllIndeterminate={tracks.some((t) => t.solo) && tracks.some((t) => !t.solo)}
+        onSoloAllChange={(next) => tracks.forEach((t) => applySolo(t.index, next))}
+        muteAll={tracks.length > 0 && tracks.every((t) => t.mute)}
+        muteAllIndeterminate={tracks.some((t) => t.mute) && tracks.some((t) => !t.mute)}
+        onMuteAllChange={(next) => tracks.forEach((t) => applyMute(t.index, next))}
         soloMuteUnavailable={hasBackingTrack ? RECORDING : undefined}
       />
     </ScrollArea>
@@ -3957,10 +3988,10 @@ and in `applySetting`, after the engine call: `if (path === 'player.playerMode')
 + const loadingPlayer = !failed && !noPlayerComing && (!playerReady || opening);
 ```
 
-- The Play button's tooltip has THREE branches, one per dead mode, so a disabled Play button never says "Play": `playbackOff ? 'Playback is turned off in Settings' : externalMedia ? 'This mode plays along to an audio or video file, which this version does not provide yet.' : playing ? 'Pause' : 'Play'`. The button is already `aria-disabled` while `!playerReady` and stays focusable — but a disabled `Button` is `pointer-events: none`, so as its own tooltip trigger it never sees the mouse. Give it the shape `TransportToggle` got for the same reason (registry, 2026-09-20): the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the button. The span takes the hover; focus still opens it, because focus events bubble. Keep `ref={playRef}` on the `Button` — opening a file still moves focus there.
+- The Play button's tooltip has THREE branches, one per dead mode, so a disabled Play button never says "Play": `playbackOff ? 'Playback is turned off in Settings' : externalMedia ? "This mode follows an outside video or audio player, such as a YouTube video, which this version does not provide yet. A recording inside the file plays fine on the other modes." : playing ? 'Pause' : 'Play'`. The button is already `aria-disabled` while `!playerReady` and stays focusable — but a disabled `Button` is `pointer-events: none`, so as its own tooltip trigger it never sees the mouse. Give it the shape `TransportToggle` got for the same reason (registry, 2026-09-20): the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the button. The span takes the hover; focus still opens it, because focus events bubble. Keep `ref={playRef}` on the `Button` — opening a file still moves focus there.
 - The Settings trigger is **never** disabled by `playerReady` — it is the only way back. It is disabled only while the engine itself has not loaded (`!engine`, Task 5), which is unchanged.
 
-**`EnabledExternalMedia` ships, and it must SETTLE like "No playback" does.** The mode drives playback from an audio or video element the app supplies — the reference fork uses it to follow a YouTube video or an audio file with the cursor, setting the mode **in code** when it has media and handing AlphaTab an `IExternalMediaHandler` at the same moment. v0 has no media source and no handler, so the player it builds has nothing to drive it and `isReadyForPlayback` never turns true. Left alone it would pulse the loading bar forever behind a dead Play button whose tooltip still read "Play" — and because the mode is stored, on every later visit too. So it joins `playbackOff` in `noPlayerComing`, and the Play tooltip reads: _"This mode plays along to an audio or video file, which this version does not provide yet."_ Following a YouTube video or an audio file is a real feature worth its own ticket; this plan only makes the choice honest.
+**`EnabledExternalMedia` ships, and it must SETTLE like "No playback" does.** The mode drives playback from an audio or video element the app supplies — the reference fork uses it to follow a YouTube video or an audio file with the cursor, setting the mode **in code** when it has media and handing AlphaTab an `IExternalMediaHandler` at the same moment. This is **not** the file's own embedded recording — that is `EnabledBackingTrack` / `EnabledAutomatic`, which ships today and is what the row's two recording options select. Only the OUTSIDE-player case is absent: v0 has no media source and no handler, so the player it builds has nothing to drive it and `isReadyForPlayback` never turns true. Left alone it would pulse the loading bar forever behind a dead Play button whose tooltip still read "Play" — and because the mode is stored, on every later visit too. So it joins `playbackOff` in `noPlayerComing`, and the Play tooltip reads: _"This mode plays along to an audio or video file, which this version does not provide yet."_ Following a YouTube video or an audio file is a real feature worth its own ticket; this plan only makes the choice honest.
 
 **The mixer's trigger gates on the ENGINE, not on player readiness.** `disabled={!playerReady}` would lock the Tracks popover away entirely once no player is coming — but render-select, the per-staff display toggles and Transpose full change the **drawn score** and need no player at all. Gate the trigger on `!engine` and let the rows disable their own mix controls through `mixUnavailable`, exactly as a backing-track file already does. Task 7 already ships the trigger as `disabled={!engine}` — nothing changes here, and `TracksPopover.tsx` is deliberately absent from this task's file list.
 
@@ -4174,15 +4205,16 @@ On the PR's preview deployment, with `Punk.gp` open and playing:
 3. Move **Distortion Guitar**'s volume — its level changes.
 4. Set **Transpose audio** on the guitar to +2 — its pitch rises and the notation does not move. Set **Transpose full** to +2 — the notation moves too.
 5. The accepted coupling: mute **Drumkit** — **Drumkit Left** goes silent as well, while its own Mute button stays un-pressed. Both tracks are on MIDI channel 9. That is the recorded behaviour, not a bug.
-6. With something muted, open another score — nothing in it is muted.
-7. **The player mode, on one of your own files that embeds a recording.** It opens playing the recording, with Metronome, Count-In and the mixer disabled. Set **Play from** to the synthesizer: the sound changes to the sound bank, and all of those controls come alive and work. Set it back: the recording returns. Reload the page in each mode — the choice survived.
-8. In the Player group, change a vibrato or slide row on a guitar score and play — the sound changes without reopening the file.
+6. **The two master boxes, and the way back out of each.** With two rows soloed, **Solo all** shows the mixed dash; press it — every row solos, which sounds like the full mix (that is the engine's rule, not a bug); press it again — every row un-solos. Same for **Mute all**: press it from the mixed dash to silence everything, then un-tick ONE row to hear just that track. Neither box may leave the mixer in a state only a row-by-row click can undo.
+7. With something muted, open another score — nothing in it is muted.
+8. **The player mode, on one of your own files that embeds a recording.** It opens playing the recording, with Metronome, Count-In and the mixer disabled. Set **Play from** to the synthesizer: the sound changes to the sound bank, and all of those controls come alive and work. Set it back: the recording returns. Reload the page in each mode — the choice survived.
+9. In the Player group, change a vibrato or slide row on a guitar score and play — the sound changes without reopening the file.
 
 - [ ] **Step 2: 🧑 HUMAN GATE — every settings group, by eye** (criterion 7's drawn half)
 
 The lane already proves every row names a real AlphaTab key. What it cannot see is a value edited in two places that drift apart, a row with the wrong `apply` (the value changes, and the score does not redraw or the sound does not change until something else forces it), or a change that simply draws wrong. Walk it in this order — most consequential first:
 
-1. **Every value with a SECOND EDITOR.** These are the ones that can disagree, and disagreement is silent: speed (the header stepper ↔ the Player row), master volume (Settings ▸ Player ↔ the mixer's Master row), metronome volume and count-in volume (the transport buttons ↔ their Player rows), loop (the transport ↔ its Player row), and each track's solo and mute (the row's own buttons ↔ the Master row's commands). Move each in ONE place; confirm the other editor follows and that the sound actually changed. A track's own volume is not on this list — it has one editor, and Step 1 item 3 is what checks it.
+1. **Every value with a SECOND EDITOR.** These are the ones that can disagree, and disagreement is silent: speed (the header stepper ↔ the Player row), master volume (Settings ▸ Player ↔ the mixer's Master row), metronome volume and count-in volume (the transport buttons ↔ their Player rows), loop (the transport ↔ its Player row), and each track's solo and mute (the row's own buttons ↔ the Master row's select-all boxes). Move each in ONE place; confirm the other editor follows and that the sound actually changed. A track's own volume is not on this list — it has one editor, and Step 1 item 3 is what checks it.
 2. **One row of each WAY OF TAKING EFFECT** — four checks, and the only ones that can catch a wrong `apply`. AlphaTab applies faithfully whatever it receives; `apply` is our choice about when to hand it over, so a row marked `render` that needs `midi` never reaches the engine at all. Change one row that redraws, one that is pushed without a redraw, one that rebuilds the sound (expect the player to stop and rewind — that is correct, see Global Constraints), and one stylesheet row.
 3. **One row in each of the eight sections** — Player, Display ▸ General, Colors, Fonts, Paddings, Notation, Stylesheet, Export — watching the score.
 4. **Press both Export buttons** and open the two files they download.
