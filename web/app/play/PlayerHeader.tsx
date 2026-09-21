@@ -66,9 +66,11 @@ export function PlayerHeader({
             always home, and history.back() from a directly-opened /play leaves the tab where it
             was. `render`, NOT `asChild` — that prop was dropped in the Base UI migration and would
             land as a stray DOM attribute with the Link never rendering (web/app/page.tsx does the
-            same). min-h-11 keeps it over the 44 px hit area the a11y lane enforces; the label is
-            hidden below `sm` so the arrow alone carries it on a phone, and the tooltip says the
-            rest. */}
+            same).
+            Icon only, so the header's left column spends its width on the score's name rather than
+            on a word the arrow already says. `size-11` is the 44 px the a11y lane enforces and the
+            size the tempo steppers beside it already use; the sr-only text is the accessible name —
+            a tooltip is not one, and an icon button without it is unnamed to a screen reader. */}
         <Tooltip>
           <TooltipTrigger
             render={
@@ -76,12 +78,12 @@ export function PlayerHeader({
                 variant="ghost"
                 data-testid="back-home"
                 render={<Link href="/" />}
-                className="min-h-11 shrink-0 gap-1 px-2.5 text-muted-foreground hover:text-foreground"
+                className="size-11 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
               >
-                <span className="material-symbols-outlined text-xl" aria-hidden="true">
+                <span className="material-symbols-outlined" aria-hidden="true">
                   arrow_back
                 </span>
-                <span className="max-sm:sr-only">Back</span>
+                <span className="sr-only">Back to home</span>
               </Button>
             }
           />
@@ -92,11 +94,11 @@ export function PlayerHeader({
             says nothing new. */}
         <span className="flex shrink-0 items-center gap-2 text-primary">
           <BrandMark />
-          {/* `sr-only` below `lg`, never `hidden`: the name still reaches a screen reader, and the
-              mark alone carries the brand. Back + mark + the full wordmark do not fit beside a
-              centred tempo pill on a tablet in portrait, and the first thing to lose is the word
-              the mark already stands for — not the score's own title. */}
-          <span className="text-xl font-bold max-lg:sr-only">Notation Hero</span>
+          {/* `sr-only` below `md`, never `hidden`: the name still reaches a screen reader, and the
+              mark alone carries the brand. Below a tablet, Back + mark + the full wordmark stop
+              fitting beside a centred tempo pill, and the first thing to lose is the word the mark
+              already stands for — not the score's own title. */}
+          <span className="font-heading text-xl font-bold max-md:sr-only">Notation Hero</span>
         </span>
         <Tooltip>
           <TooltipTrigger
@@ -123,7 +125,11 @@ export function PlayerHeader({
         speed={speed}
         onSpeedChange={onSpeedChange}
         disabled={disabled}
-        className="rounded-xl border border-border bg-card p-1 shadow-sm dark:border-input"
+        // `h-12` and no padding: the pill is exactly as tall as the transport's Play button. Left
+        // to itself it grew to 57 px — the BPM label, the number and the percentage stack to 47 px
+        // inside 8 px of padding — which read as a taller object than anything else in the player.
+        // The 44 px steppers still fit, so the hit area is untouched.
+        className="h-12 rounded-xl border border-border bg-secondary dark:border-input"
       />
       {/* Reserved for the Settings gear. This is an EMPTY GRID CELL, not a spacer: the header's
           `1fr auto 1fr` template reserves the third column whether or not a node sits in it, so

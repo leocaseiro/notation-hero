@@ -159,7 +159,7 @@ const TempoControl = ({
           <NumberField.Input
             aria-label="Tempo"
             className={cn(
-              'w-12 border-0 bg-transparent p-0 text-center text-sm leading-none font-bold tabular-nums',
+              'w-12 border-0 bg-transparent p-0 text-center font-mono text-sm leading-none font-bold tabular-nums',
               'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
             )}
           />
@@ -170,7 +170,7 @@ const TempoControl = ({
             data-testid="tempo-percent"
             aria-hidden="true"
             className={cn(
-              'text-[10px] text-primary tabular-nums opacity-0 transition-opacity',
+              'font-mono text-[10px] text-primary tabular-nums opacity-0 transition-opacity',
               'group-data-[off-speed=true]:group-hover:opacity-100',
               'group-data-[off-speed=true]:group-focus-within:opacity-100',
               'group-data-[off-speed=true]:group-data-[linger=true]:opacity-100',
