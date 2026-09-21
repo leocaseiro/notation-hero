@@ -288,6 +288,15 @@ If you skip this, commits land **without** the layout / coverage-ignore /
 gitleaks / semgrep checks — CI will still catch them on push,
 but local feedback time is gone. Never use `git commit/push --no-verify`.
 
+### Local prior art (`.claude/local-references.md`, NH-318)
+
+Prior-art repositories already cloned on the machine are mapped in
+`.claude/local-references.md` — **git-ignored and machine-local**, so it may not exist in your
+checkout. When it does, **read it before cloning a reference repository or guessing at an
+alphaTab API**: the source is already on disk. Git-ignored files do not travel to worktrees, so
+from inside one, read it from the main checkout by absolute path. Never copy its paths into a
+tracked file — this repo is public.
+
 ## Storybook PR previews (GitHub Pages)
 
 `.github/workflows/storybook-preview.yml` publishes the built Storybook to the
