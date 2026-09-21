@@ -13,3 +13,13 @@ export { Toaster, toast } from './components/ui/Sonner/Sonner';
 export { Card, CardContent } from './components/ui/Card/Card';
 // - Tooltip carries the open score's file name behind its title in the player header.
 export { Tooltip, TooltipTrigger, TooltipContent } from './components/ui/Tooltip/Tooltip';
+
+// Pulled across by the v0 transport:
+// - Slider is the single-value rail the scrubber, the settings rows and per-track volume all use.
+// - Progress is the soundfont download bar.
+// - Scrubber, TransportToggle and TempoControl are the transport itself.
+export { Slider } from './components/ui/Slider/Slider';
+export { Progress } from './components/ui/Progress/Progress';
+export { Scrubber } from './components/ui/Scrubber/Scrubber';
+export { TransportToggle } from './components/ui/TransportToggle/TransportToggle';
+export { TempoControl } from './components/ui/TempoControl/TempoControl';

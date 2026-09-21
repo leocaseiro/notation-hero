@@ -54,6 +54,14 @@ export interface VrStoriesConfig {
    * `states` when omitted.
    */
   statesForStory?: (story: string) => readonly VrState[];
+  /**
+   * Per-story selector to wait for AFTER the `hover`/`focus` interaction — a portalled panel that
+   * hovering or keyboard-focusing the slot opens (e.g. a tooltip). `paddedClip` reads the DOM once
+   * and skips selectors that are absent, so without this wait the clip can be measured before the
+   * portal is committed: the panel is silently dropped and the baseline is blessed cropped to the
+   * trigger. Return undefined for stories that reveal nothing. Defaults to none.
+   */
+  revealWaitSelectorForStory?: (story: string) => string | undefined;
   /** Element to hover for the `hover` state; defaults to the slot's first match. */
   hoverSelector?: string;
   /**
@@ -143,6 +151,7 @@ export function runVrStories({
   slotSelector,
   states = ['resting'],
   statesForStory,
+  revealWaitSelectorForStory,
   captureSelectors,
   captureSelectorsForStory,
   hoverSelector,
@@ -161,6 +170,7 @@ export function runVrStories({
         captureSelectors ?? [slotSelector];
       const openWait = openWaitSelector ?? regionSelectors.at(-1) ?? slotSelector;
       const resolvedStates = statesForStory ? statesForStory(story) : states;
+      const revealWait = revealWaitSelectorForStory?.(story);
       if (resolvedStates.length === 0) {
         // Fail loudly at collection time: an empty return would register ZERO tests for this
         // story and pass silently (unguarded pixels, false-green). Remove it from storyIds instead.
@@ -205,6 +215,9 @@ export function runVrStories({
                 .locator(hoverSelector ?? slotSelector)
                 .first()
                 .hover();
+              // Wait for the panel the hover reveals, so the clip below frames it instead of
+              // racing the portal and cropping to the trigger.
+              if (revealWait) await page.locator(revealWait).first().waitFor();
 
               break;
             }
@@ -216,6 +229,8 @@ export function runVrStories({
               // Fail loudly if focus landed on the wrong element (tab-order drift) rather than
               // silently blessing a wrong-element ring when baselines are regenerated.
               await expect(page.locator(focusExpect ?? slotSelector).first()).toBeFocused();
+              // Same reveal wait as `hover`: keyboard focus opens a tooltip too.
+              if (revealWait) await page.locator(revealWait).first().waitFor();
 
               break;
             }

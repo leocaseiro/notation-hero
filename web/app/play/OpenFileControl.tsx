@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, toast } from '@notation-hero/client';
+import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '@notation-hero/client';
 import { useId, useRef } from 'react';
 
 import { PLAYER_ERROR } from '../../lib/player-errors';
@@ -108,18 +108,30 @@ export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) 
           filter is unaffected (file-chooser verified firing on both the click and Space paths).
           Do NOT "fix" the old form by making the label focusable: a label has no native keyboard
           activation, so Enter and Space produced no file chooser at all. */}
-      <Button
-        type="button"
-        data-testid="open-file-button"
-        variant="outline"
-        className="min-h-11 min-w-11"
-        onClick={() => inputRef.current?.click()}
-      >
-        <span className="material-symbols-outlined" aria-hidden="true">
-          folder_open
-        </span>
-        <span className="sr-only">Open file</span>
-      </Button>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            // The mockup's shape: a borderless grey icon, 48 px, rounded-xl — not a bordered box.
+            <Button
+              type="button"
+              data-testid="open-file-button"
+              variant="ghost"
+              className="size-12 rounded-xl text-muted-foreground"
+              onClick={() => inputRef.current?.click()}
+            >
+              <span
+                className="material-symbols-outlined"
+                aria-hidden="true"
+                style={{ fontSize: 24 }}
+              >
+                folder_open
+              </span>
+              <span className="sr-only">Open file</span>
+            </Button>
+          }
+        />
+        <TooltipContent sideOffset={8}>Open a file</TooltipContent>
+      </Tooltip>
     </>
   );
 }

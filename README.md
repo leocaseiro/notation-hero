@@ -74,10 +74,11 @@ Open the URL Vite prints (defaults to <http://localhost:3000>; Vite picks the ne
 directly with `curl http://localhost:3001/api/catalog`.
 
 The **`web/` Next.js app** (the product PWA) is a separate dev server on **port 3002** (3000 and
-3001 are the client SPA and the API):
+3001 are the client SPA and the API). If 3002 is busy — usually a dev server still running in
+another worktree — it takes the next free port by itself and prints the address it chose:
 
 ```bash
-# terminal 3 — Next.js web app (port 3002)
+# terminal 3 — Next.js web app (port 3002, or the next free one)
 pnpm --filter @notation-hero/web run dev
 ```
 
