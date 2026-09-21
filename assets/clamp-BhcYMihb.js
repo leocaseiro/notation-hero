@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-ATQIgOUJ.js";function t(e,t=-(2**53-1),n=2**53-1){return Math.max(t,Math.min(e,n))}var n=e((()=>{}));export{n,t};
