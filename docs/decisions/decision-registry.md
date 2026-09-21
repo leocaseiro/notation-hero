@@ -12,6 +12,34 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-21 — The web build must not trust a restored cache (NH-315)
+
+Production served the v0 seek rail with no width and no colour, while the SAME commit's preview
+deployment was correct. The markup was right; the emitted CSS was 13 selectors short, and every one
+of them came from a plain `.ts` class module — `Slider/SliderClasses.ts`, `DataTable/ColumnMeta.ts`
+— reachable only through the `@source '../../client/src/components/ui/**/*.ts'` line that landed in
+that very commit.
+
+- **Vercel's build cache is keyed on the branch, never on source content, so `master`'s cache
+  outlived a change to what Tailwind scans.** The key is account/team, project, framework preset,
+  root directory, Node version, package manager and git branch. A new branch gets a fresh cache
+  seeded from the last production deployment — which is precisely why the PR preview was right and
+  production was wrong, and why a preview is not on its own evidence that production will render.
+  The web build now removes `.next/cache` before every build. The whole folder goes, not just its
+  `turbopack/` subfolder, so an upgrade that moves where the scan is remembered cannot quietly undo
+  it; `node_modules` stays cached and the measured cost is about three seconds. 🤖 `web/vercel.json`.
+- **A build that emits the design system unstyled now FAILS — new.** Nothing caught this class of
+  bug before: the slider keeps its role, its value and its keyboard seeking whether or not a single
+  pixel of it is painted, so the unit tests, the e2e lane against a clean build, and a person
+  reviewing a screenshot all passed. `web/scripts/assert-design-system-css.mjs` reads the emitted
+  CSS for the selectors that reach it only through the `.ts` scan, and exits 1 naming each missing
+  one and what it breaks on screen. It runs locally, in CI and on Vercel. 🤖 wired into `web build`.
+- **`scripts/` is excluded from Tailwind's automatic source detection, or the guard blinds
+  itself.** Naming a utility inside the guard is enough for Tailwind to GENERATE it: with
+  `scripts/` scanned the guard reported 1 of 5 missing instead of 5 of 5. Verified both ways — with
+  the `.ts` scan lost the build exits 1 on all five; with it present the CSS is byte-identical to a
+  known-good build.
+
 ### 2026-09-20 — Plan B, first hands-on round: sixteen findings, and what they changed (NH-291)
 
 The maintainer tested PR #162 by hand and raised sixteen items. Each was reproduced in a real

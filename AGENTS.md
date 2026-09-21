@@ -71,6 +71,27 @@ Root-level checks — each is a named script AND a CI gate, so run any locally:
   bump silently un-matches them and re-trips pnpm's `no-downgrade` / 7-day `minimumReleaseAge` gate,
   re-breaking installs (NH-259).
 
+**A preview deployment is NOT evidence that production will render (NH-315).** `web/` generates the
+design system's utilities by SCANNING `client/` source — the `@source` globs in
+`web/app/globals.css`, not a compiled stylesheet — and Vercel keys its build cache on the **git
+branch**, never on source content. A restored cache can therefore predate a change to what gets
+scanned, and previews and `master` sit on different cache lineages. It has bitten once: production
+served the seek rail 0 px wide and fully transparent while the same commit's preview was perfect,
+and nothing failed, because a slider keeps its role, its value and its keyboard seeking whether or
+not a pixel of it is painted. Two things hold it shut, and both must stay:
+
+- `web/vercel.json` removes `.next/cache` before every build. The whole folder, not just its
+  `turbopack/` subfolder — an upgrade that moves where the scan is remembered must not quietly undo
+  this. `node_modules` stays cached; it costs about three seconds.
+- `web/scripts/assert-design-system-css.mjs` runs at the end of `web build` and fails when a
+  utility that reaches the bundle only through the `**/*.ts` scan is missing from the emitted CSS.
+  If you add a shared class module under `client/src/components/ui/`, add its distinctive utilities
+  to `REQUIRED_SELECTORS`. Covered by `tooling/assert-design-system-css.test.mjs`.
+
+`web/app/globals.css` also keeps `web/scripts/**` out of Tailwind's automatic source detection. Do
+not remove that line: the guard names the utilities it checks for, so scanning it makes Tailwind
+generate them and the guard silently passes on a broken build.
+
 **Supply-chain release-age gate (NH-259):** `pnpm-workspace.yaml` sets `minimumReleaseAge` (7 days), so
 pnpm holds back versions published < 7 days ago — a plain `pnpm add <pkg>@latest` may resolve an older
 version or wait (intentional: it dodges compromised fresh releases). To pull a security patch inside the
