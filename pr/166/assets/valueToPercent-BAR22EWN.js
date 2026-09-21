@@ -1,1 +1,0 @@
-import{i as e}from"./preload-helper-3LBUfCYH.js";function t(e,t,n){return(e-t)*100/(n-t)}var n=e((()=>{}));export{t as n,n as t};
