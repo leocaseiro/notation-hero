@@ -13,6 +13,8 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+import { appVersion } from './app-version.mjs';
+
 const PREFERRED_PORT = 3002;
 
 /**
@@ -70,6 +72,10 @@ if (
   const nextBin = createRequire(import.meta.url).resolve('next/dist/bin/next');
   const next = spawn(process.execPath, [nextBin, 'dev', '--port', String(port)], {
     stdio: 'inherit',
+    // The same version the build inlines, so the wordmark's tooltip reads the same here as it
+    // does in production instead of falling back to a placeholder. An outer value wins, which is
+    // what lets a test pin it.
+    env: { NEXT_PUBLIC_APP_VERSION: appVersion(), ...process.env },
   });
   // Ctrl-C reaches the whole foreground process group, so Next receives it by itself. Forwarding
   // covers a signal sent to THIS process only (a supervisor's `kill`), which would otherwise
