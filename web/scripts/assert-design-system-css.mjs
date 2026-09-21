@@ -27,12 +27,13 @@
 // would be present no matter what the design-system scan did.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
-const OUTPUT_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.next', 'static');
+const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** [selector exactly as Tailwind emits it, what breaks on screen when it is absent]. */
-const REQUIRED = [
+export const REQUIRED_SELECTORS = [
   ['.grow', 'the seek rail collapses to 0 px wide'],
   [String.raw`.bg-muted-foreground\/50`, 'the seek rail paints transparent'],
   ['.border-primary', 'the seek thumb is white on white'],
@@ -47,32 +48,50 @@ const cssFiles = (dir) =>
     return entry.name.endsWith('.css') ? [full] : [];
   });
 
-let files;
-try {
-  files = cssFiles(OUTPUT_DIR);
-} catch {
-  throw new Error(`assert-design-system-css: no build output at ${OUTPUT_DIR} — build first.`);
+/**
+ * Throws unless every REQUIRED_SELECTORS entry appears in the stylesheets under outputDir.
+ *
+ * @param {{ outputDir: string }} options
+ * @returns {string[]} the stylesheet paths that were read
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types -- plain .mjs script runs unmodified under node; TS annotation syntax isn't valid here, JSDoc above documents the shape
+export function assertDesignSystemCss({ outputDir }) {
+  let files;
+  try {
+    files = cssFiles(outputDir);
+  } catch {
+    throw new Error(`assert-design-system-css: no build output at ${outputDir} — build first.`);
+  }
+
+  if (files.length === 0) {
+    throw new Error('assert-design-system-css: the build emitted no stylesheet at all.');
+  }
+
+  const css = files.map((file) => readFileSync(file, 'utf8')).join('\n');
+  const missing = REQUIRED_SELECTORS.filter(([selector]) => !css.includes(selector));
+
+  if (missing.length > 0) {
+    throw new Error(
+      [
+        `assert-design-system-css: ${missing.length} of ${REQUIRED_SELECTORS.length} required`,
+        `selectors are missing from the ${files.length} emitted stylesheet(s). Tailwind did not`,
+        'scan the design system as expected — on Vercel that means a stale build cache, so',
+        'redeploy with "Use existing Build Cache" unchecked.',
+        ...missing.map(([selector, consequence]) => `\n  ${selector} — ${consequence}`),
+      ].join(' '),
+    );
+  }
+
+  return files;
 }
 
-if (files.length === 0) {
-  throw new Error('assert-design-system-css: the build emitted no stylesheet at all.');
-}
-
-const css = files.map((file) => readFileSync(file, 'utf8')).join('\n');
-const missing = REQUIRED.filter(([selector]) => !css.includes(selector));
-
-if (missing.length > 0) {
-  throw new Error(
-    [
-      `assert-design-system-css: ${missing.length} of ${REQUIRED.length} required selectors are`,
-      `missing from the ${files.length} emitted stylesheet(s). Tailwind did not scan the design`,
-      'system as expected — on Vercel that means a stale build cache, so redeploy with',
-      '"Use existing Build Cache" unchecked.',
-      ...missing.map(([selector, consequence]) => `\n  ${selector} — ${consequence}`),
-    ].join(' '),
+// Only check when invoked directly, so the test can import the function without side effects.
+if (
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))
+) {
+  const checked = assertDesignSystemCss({ outputDir: path.resolve(HERE, '../.next/static') });
+  console.log(
+    `assert-design-system-css: all ${REQUIRED_SELECTORS.length} selectors present in ${checked.length} stylesheet(s).`,
   );
 }
-
-console.log(
-  `assert-design-system-css: all ${REQUIRED.length} selectors present in ${files.length} stylesheet(s).`,
-);
