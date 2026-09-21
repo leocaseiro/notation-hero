@@ -1,8 +1,8 @@
 ---
 # spec-triage-loop state. `lap` is the review lap this document has been through;
 # `last_applied` is the highest severity applied on that lap.
-lap: 1
-last_applied: P0
+lap: 2
+last_applied: P1
 ---
 
 # v0 Plan C — Settings and Tracks Popovers — Implementation Plan
@@ -868,6 +868,10 @@ Eight controls do not fit on one line, so the row discloses. An always-visible p
 **Files:**
 
 - Create: `client/src/components/ui/TrackRow/` (six files)
+- Create: `client/src/components/ui/MasterRow/` (six files) — the mixer's foot row: master volume,
+  solo-all, mute-all. It composes the same primitives `TrackRow` does and adds none; its volume is
+  a controlled value with no state of its own, because `PlayerShell` owns that value and the
+  Settings ▸ Player row is its other editor (Task 7's Interfaces says why).
 
 **Interfaces:**
 
@@ -3003,8 +3007,9 @@ One row for **every track in the score**, not only the rendered drum staves — 
 
 **Interfaces:**
 
-- Consumes: `TrackRow`, `TrackStaffState` (Task 3); `Popover*`, `ScrollArea`, `Button`, `Tooltip*`; `setTrackTransposition`, `clearTrackTranspositions`, `setStaffDisplay` (Task 4); `useAlphaTabEvent` and the `api` state (Plan A); `hasBackingTrack` (Plan B).
-- Produces: `<TracksPopover api={api} hasBackingTrack={hasBackingTrack} disabled={!engine} />`; test hooks `data-testid="tracks-trigger"`, `data-testid="tracks-popover"`, and `data-testid="track-row-<index>"` per row.
+- Consumes: `TrackRow`, `MasterRow`, `TrackStaffState` (Task 3); `Popover*`, `ScrollArea`, `Button`, `Tooltip*`; `setTrackTransposition`, `clearTrackTranspositions`, `setStaffDisplay` (Task 4); `useAlphaTabEvent` and the `api` state (Plan A); `hasBackingTrack` (Plan B).
+- Produces: `<TracksPopover api={api} hasBackingTrack={hasBackingTrack} disabled={!engine} masterVolume={apiValues.masterVolume} onMasterVolumeChange={applyMasterVolume} />`; test hooks `data-testid="tracks-trigger"`, `data-testid="tracks-popover"`, `data-testid="track-row-<index>"` per row, and `data-testid="master-row"`.
+- **Master volume has ONE owner and ONE writer, and they are already built.** `PlayerShell` holds the state; `applyMasterVolume` is the writer; the Settings ▸ Player `masterVolume` row is its first editor. The mixer's Master row is its **second editor**, so it takes the value and that writer as props — never its own `useState`, and no React context (both popovers are rendered by `PlayerShell` one level down, so props reach them without drilling; context would buy nothing for two shallow consumers). An e2e case moves the Settings row and reads the Master row, then the reverse.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -3468,6 +3473,22 @@ const RECORDING = 'Not available while the file plays its own recording';
           // …the rest of TrackRow's props, each wired to the handler above with track.index.
         />
       ))}
+      {/* The Master row (maintainer, 2026-09-21). Its volume is NOT the mixer's own state: it is
+          the SAME masterVolume PlayerShell owns and the Settings ▸ Player row edits, handed down
+          as a value and its existing single writer. A second piece of state here would be two
+          editors for one value — the exact shape of the metronome bug, and what Plan B's
+          single-writer rule exists to prevent. Solo-all and mute-all DO belong to the mixer: they
+          set every row's own solo / mute, so they go through the same handlers a row click does.
+          masterVolume is not stubbed for a backing track (alphaTab.core.mjs:40395), so this row
+          stays live while a recording plays — unlike every per-track mix control. */}
+      <MasterRow
+        data-testid="master-row"
+        volume={masterVolume}
+        onVolumeChange={onMasterVolumeChange}
+        onSoloAll={() => tracks.forEach((t) => applySolo(t.index, true))}
+        onMuteAll={() => tracks.forEach((t) => applyMute(t.index, true))}
+        soloMuteUnavailable={hasBackingTrack ? RECORDING : undefined}
+      />
     </ScrollArea>
   </PopoverContent>
 </Popover>;
@@ -3499,7 +3520,14 @@ In `PlayerShell.tsx`, on the existing `<TransportRow … />`. The slot already e
 
 ```tsx
 trailing={
-  <TracksPopover api={api} hasBackingTrack={hasBackingTrack} disabled={!engine} />
+  <TracksPopover
+    api={api}
+    hasBackingTrack={hasBackingTrack}
+    disabled={!engine}
+    // The SAME value and writer the Settings ▸ Player row uses. Two editors, one writer.
+    masterVolume={apiValues.masterVolume}
+    onMasterVolumeChange={applyMasterVolume}
+  />
 }
 ```
 
@@ -3910,7 +3938,12 @@ On the PR's preview deployment, with `Punk.gp` open and playing:
 
 - [ ] **Step 2: 🧑 HUMAN GATE — every settings group, by eye** (criterion 7's drawn half)
 
-Open each of the eight sections and change at least one row in each, watching the score. The lane already proves every row names a real AlphaTab key; what it cannot see is a row with the wrong `apply` (the value changes, and the score does not redraw or the sound does not change until something else forces it), or a change that draws wrong. Press both Export buttons and open the two files they download.
+The lane already proves every row names a real AlphaTab key. What it cannot see is a value edited in two places that drift apart, a row with the wrong `apply` (the value changes, and the score does not redraw or the sound does not change until something else forces it), or a change that simply draws wrong. Walk it in this order — most consequential first:
+
+1. **Every value with a SECOND EDITOR.** These are the ones that can disagree, and disagreement is silent: speed (the header stepper ↔ the Player row), master volume (Settings ▸ Player ↔ the mixer's Master row), metronome volume and count-in volume (the transport buttons ↔ their Player rows), loop (the transport ↔ its Player row), and each track's volume, solo and mute. Move each in ONE place; confirm the other editor follows and that the sound actually changed.
+2. **One row of each WAY OF TAKING EFFECT** — four checks, and the only ones that can catch a wrong `apply`. AlphaTab applies faithfully whatever it receives; `apply` is our choice about when to hand it over, so a row marked `render` that needs `midi` never reaches the engine at all. Change one row that redraws, one that is pushed without a redraw, one that rebuilds the sound (expect the player to stop and rewind — that is correct, see Global Constraints), and one stylesheet row.
+3. **One row in each of the eight sections** — Player, Display ▸ General, Colors, Fonts, Paddings, Notation, Stylesheet, Export — watching the score.
+4. **Press both Export buttons** and open the two files they download.
 
 - [ ] **Step 3: Take stock of the v0 acceptance set across all three plans**
 
