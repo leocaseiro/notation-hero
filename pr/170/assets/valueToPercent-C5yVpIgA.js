@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-DaGmMsXg.js";function t(e,t,n){return(e-t)*100/(n-t)}var n=e((()=>{}));export{t as n,n as t};
