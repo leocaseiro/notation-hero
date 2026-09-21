@@ -108,6 +108,8 @@ body,
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-elevate: var(--elevate);
+  --color-rail: var(--rail);
+  --color-panel: var(--panel);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
@@ -160,6 +162,14 @@ body,
      transport footer, so it reads at least as clearly as the reference the design system already
      ships. */
   --elevate: oklch(93.5% 0.006 240.4deg);
+
+  /* The player frames the score between two surfaces, and the mockup gives them DIFFERENT values:
+     --rail is recessed (the left rail), --panel is raised (the transport footer and the tempo
+     pill). Painting both with one token flattened the frame.
+     sRGB hex, not oklch, unlike their neighbours: these are the mockup's own values and were asked
+     for exactly, and a round trip through oklch moves them a unit or two. */
+  --rail: #f4f6f9;
+  --panel: #fbfcfe;
   --destructive: oklch(50.5% 0.21 27.5deg);
 
   /* Success/warning: Okabe-Ito green #009e73 / amber #e69f00 (the score hues),
@@ -212,6 +222,8 @@ body,
   --muted-foreground: oklch(72.3% 0.014 214.4deg);
   --accent: oklch(27.5% 0.011 216.9deg);
   --elevate: oklch(31% 0.016 249.4deg);
+  --rail: #090d12;
+  --panel: #121821;
   --accent-foreground: oklch(98.7% 0.002 197.1deg);
   --destructive: oklch(70.4% 0.191 22.216deg);
 

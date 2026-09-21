@@ -164,17 +164,11 @@ export function PlayerHeader({
         // inside 8 px of padding — which read as a taller object than anything else in the player.
         // The 44 px steppers still fit, so the hit area is untouched.
         //
-        // The two literal colours are the mockup's own `--panel`, which is what it paints this pill
-        // with (`bg-surface-container`, player-flatrow-teal.html:193): rgb(251 252 254) light and
-        // rgb(18 24 33) dark. Named by hand because no token carries that value — `--card` is pure
-        // white in light — and requested exactly, so a near-miss token would be the wrong answer.
-        // They are the second and third literal colours in the player, after the notation's own
-        // `bg-white`; everything else stays on tokens.
-        //
-        // It also restores the steppers' hover. Ghost hover is `bg-muted`, which sat at almost
-        // exactly the lightness of the `bg-secondary` this replaces, so pointing at + or - changed
-        // nothing visible. Against `--panel` it is a clear step down.
-        className="h-12 rounded-xl border border-border bg-[#fbfcfe] dark:border-input dark:bg-[#121821]"
+        // `bg-panel` is the mockup's raised surface (`bg-surface-container`,
+        // player-flatrow-teal.html:193) — the SAME one the transport footer uses, because the
+        // mockup treats the pill and the footer as one material. It also restores the steppers'
+        // hover, which was invisible against the --secondary this replaces.
+        className="h-12 rounded-xl border border-border bg-panel dark:border-input"
       />
       {/* Reserved for the Settings gear. This is an EMPTY GRID CELL, not a spacer: the header's
           `1fr auto 1fr` template reserves the third column whether or not a node sits in it, so

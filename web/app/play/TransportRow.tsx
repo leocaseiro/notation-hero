@@ -92,13 +92,14 @@ export function TransportRow({
     // its own surface rather than as more notation. `h-20` rather than padding, because that
     // height is the mockup's and must not drift with the tallest control inside it.
     //
-    // `bg-sidebar`, the SAME token the left rail uses — the two are one frame around the score,
-    // and the mockup tints them alike. Solid, and no backdrop blur: the mockup needs both because
-    // its footer floats over the staff, and this one is a flex row that nothing scrolls under, so
-    // an alpha over a white page would simply paint nothing.
+    // `bg-panel`, the RAISED surface — deliberately not the rail's. The mockup gives the two
+    // different values (`--panel` here, `--rail` on the aside), and painting both with one token
+    // flattened the frame the score sits in. The tempo pill shares this one.
+    // Solid, and no backdrop blur: the mockup needs both because its footer floats over the staff,
+    // and this one is a flex row that nothing scrolls under, so an alpha would paint nothing.
     // The gaps and the side padding tighten before any control has to go: 24 px of gap and 32 px
     // of padding is 160 px of the row on a phone, which is most of what the seek rail needs.
-    <div className="flex h-20 w-full shrink-0 items-center gap-3 border-t border-border bg-sidebar px-4 sm:gap-6 sm:px-8">
+    <div className="flex h-20 w-full shrink-0 items-center gap-3 border-t border-border bg-panel px-4 sm:gap-6 sm:px-8">
       {playButton}
       {/* The LABEL names what will repeat too, for a screen reader: the button looks identical
           either way. No marker UI, so the out-of-scope constraint holds. */}

@@ -590,7 +590,9 @@ function Player() {
             it, and it is why the transport row no longer takes a `leading` slot. The rail's other
             occupant in the mockup, the practice/game toggle, needs scoring and is not built (spec
             §2), so the rail holds exactly one control and `mt-auto` is what pins it down there. */}
-        <aside className="flex w-20 shrink-0 flex-col items-center border-r border-border bg-sidebar py-6 lg:w-24">
+        {/* `bg-rail` is a step DOWN from the page, where the footer's `bg-panel` is a step up —
+            the mockup's own two values. One token for both read as a single flat band. */}
+        <aside className="flex w-20 shrink-0 flex-col items-center border-r border-border bg-rail py-6 lg:w-24">
           <div className="mt-auto">
             <OpenFileControl onNotation={requestNotation} />
           </div>

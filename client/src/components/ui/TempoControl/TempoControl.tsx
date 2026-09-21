@@ -26,12 +26,6 @@ interface TempoControlProps {
   className?: string;
 }
 
-// Ghost, but with a hover you can actually SEE. Ghost's own `hover:bg-muted` lands within 2 % of
-// every surface this pill is painted on — the mockup's panel, --secondary, --card — so pointing at
-// + or - changed nothing. `--elevate` is the raised step the mockup uses for exactly this, and it
-// matches the strength of the Button `secondary` story's hover.
-const STEPPER = `${buttonVariants({ variant: 'ghost', size: 'icon' })} hover:bg-elevate`;
-
 /** How long the percentage stays visible after a change that carried no focus. */
 const PERCENT_LINGER_MS = 3000;
 
@@ -151,7 +145,7 @@ const TempoControl = ({
       <NumberField.Group className="flex items-center gap-0.5">
         <NumberField.Decrement
           aria-label="Decrease tempo"
-          className={cn(STEPPER, 'size-11 rounded-lg')}
+          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11 rounded-lg')}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
             remove
@@ -203,7 +197,7 @@ const TempoControl = ({
 
         <NumberField.Increment
           aria-label="Increase tempo"
-          className={cn(STEPPER, 'size-11 rounded-lg')}
+          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11 rounded-lg')}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
             add
