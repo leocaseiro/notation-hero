@@ -13,3 +13,5 @@ ignores:
   - '.specstory/**'
   - pnpm-lock.yaml
   - '**/.next/**'
+  # Machine-local, git-ignored, never committed — see .prettierignore (NH-318).
+  - '.claude/local-references.md'

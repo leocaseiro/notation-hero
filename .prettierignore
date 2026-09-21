@@ -35,3 +35,8 @@ web/public/alphatab/
 
 # Playwright spike-probe output (screenshots + JSON reports); gitignored, never hand-format.
 web/spike-out/
+
+# Machine-local agent reference map (NH-318). Git-ignored, but prettier and markdownlint walk the
+# FILESYSTEM, not the index, so without this every push on a machine that has one fails the
+# format and markdown gates on a file that is never committed.
+.claude/local-references.md
