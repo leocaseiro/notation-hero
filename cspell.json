@@ -490,6 +490,8 @@
     "touchstart",
     "pointerdown",
     "countin",
+    "playermode",
+    "scrolloffsety",
     "pkill",
     "masterrow",
     "settingrow",

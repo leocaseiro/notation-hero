@@ -656,9 +656,22 @@ const SettingRow = ({
 
   // A half-typed or cleared number field yields NaN; pushing that into the settings tree breaks
   // rendering WITHOUT throwing, so drop it and keep the last good value.
-  const reportNumber = (raw: string) => {
+  //
+  // The declared min/max are NOT enforced per keystroke. They reach the DOM as native attributes,
+  // which constrain the stepper and nothing else, so a typed 0 in a row declared min 0.25 is
+  // reported, pushed to the engine and persisted — and the next visit restores it before the api
+  // exists. But clamping on every keystroke is worse: the field is controlled, so typing "0.5"
+  // into that row would rewrite itself to "0.25" at the first character, and "100" into the speed
+  // row (min 12.5) would rewrite to "12.5". So the clamp waits for the commit — blur or Enter —
+  // the same boundary the text rows already use, and only for rows that declare a bound.
+  const clampToControl = (n: number) => {
+    const { min, max } = control as { min?: number; max?: number };
+    return Math.min(max ?? n, Math.max(min ?? n, n));
+  };
+  const reportNumber = (raw: string, commit = false) => {
     const parsed = Number(raw);
-    if (raw.trim() !== '' && !Number.isNaN(parsed)) onChange(parsed);
+    if (raw.trim() === '' || Number.isNaN(parsed)) return;
+    onChange(commit ? clampToControl(parsed) : parsed);
   };
 
   // A text row's in-progress string. null = not being edited, so the row shows `value`. Nothing
@@ -716,6 +729,10 @@ const SettingRow = ({
           step={control.step}
           value={String(value)}
           onChange={(event) => reportNumber(event.target.value)}
+          onBlur={(event) => reportNumber(event.target.value, true)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') reportNumber(event.currentTarget.value, true);
+          }}
           disabled={disabled}
           // h-11, not Input's own h-9: 36px is under the 44px minimum.
           className="h-11 w-28"
@@ -1012,8 +1029,12 @@ test('the primary cluster shows the name, render-select, solo, mute and volume',
 test("the volume slider spans AlphaTab's own 0-16 scale", () => {
   render(<TrackRow {...baseProps} />);
   const volume = screen.getByRole('slider', { name: /volume/i });
-  expect(volume).toHaveAttribute('aria-valuemin', '0');
-  expect(volume).toHaveAttribute('aria-valuemax', '16');
+  // Base UI renders the thumb as a visually-hidden <input type="range"> carrying ONLY
+  // aria-valuenow; the bounds live on the native min/max attributes. Slider.test.tsx and
+  // RangeSlider.test.tsx assert them this way, and forbid adding redundant aria-* to the
+  // thumb to satisfy a test.
+  expect(volume).toHaveAttribute('min', '0');
+  expect(volume).toHaveAttribute('max', '16');
   expect(volume).toHaveAttribute('aria-valuenow', '8');
 });
 
@@ -1152,6 +1173,32 @@ test('the controls that change the DRAWN score stay live while a recording plays
   );
   expect(screen.getByRole('slider', { name: /transpose full/i })).not.toBeDisabled();
 });
+
+// The LAST drawn track: AlphaTab cannot draw nothing, so the caller refuses to un-draw it. The
+// row must say so instead of swallowing the click — the reason replaces the state text in the
+// tooltip, because "Shown in the score" would be true and useless here.
+const LOCKED = 'At least one track must stay shown';
+
+test('the last drawn track cannot be hidden, and the row says why', async () => {
+  const user = userEvent.setup();
+  const onRenderedChange = vi.fn();
+  render(<TrackRow {...baseProps} renderLockReason={LOCKED} onRenderedChange={onRenderedChange} />);
+
+  const render_ = screen.getByRole('button', { name: /render/i });
+  expect(render_).toHaveAttribute('aria-disabled', 'true');
+  await user.click(render_);
+  expect(onRenderedChange).not.toHaveBeenCalled();
+
+  // Solo, mute and volume are untouched: this lock is about what is DRAWN, not about the mix.
+  expect(screen.getByRole('button', { name: /solo/i })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(screen.getByRole('slider', { name: /volume/i })).not.toBeDisabled();
+
+  await user.tab();
+  expect(await screen.findByText(LOCKED)).toBeInTheDocument();
+});
 ```
 
 > The two slider assertions use `toBeDisabled()` on purpose: Base UI's slider thumb is a real `<input type="range">`, and a disabled slider has no tooltip to keep reachable — the reason is carried by the solo and mute buttons beside it, and by the note Task 7 puts at the top of the popover.
@@ -1227,6 +1274,7 @@ Requirements the tests encode, all of which must be visible in the code:
 - The primary cluster is one flex line: name, a render-select **eye toggle** (eye when shown, eye-with-slash when hidden; `aria-pressed={rendered}`, tooltip `Shown` / `Hidden`), a solo toggle, a mute toggle, a `Slider` for volume with `min={0} max={16} step={1}` and an accessible name that includes the track (`label={`${name} volume`}`), **the four per-staff display toggles as compact icon buttons**, and the expand control.
 - Solo and mute are Plan B's `TransportToggle` — `pressed`, `onPressedChange`, `label` (`Solo ${name}`, `Mute ${name}`), `icon`, `tooltip`, `disabled`. Base UI's `Toggle` reports the NEXT state, which is what makes solo non-exclusive: the row never looks at any other row. Each `tooltip` tells the control's **state**, and is always present: `Solo: on` / `Solo: off`, `Mute: on` / `Mute: off`, or the `mixUnavailable` text when that is set.
 - `mixUnavailable` disables solo, mute, the volume `Slider` and the "Transpose audio" `Slider`, and nothing else. `disabled={Boolean(mixUnavailable)}` on each — `TransportToggle` turns that into `aria-disabled` by itself.
+- `renderLockReason` disables the render-select toggle and nothing else, and its text REPLACES the normal state text in that control's tooltip — the row is the only place the rule "at least one track must stay shown" is ever explained. Without it the caller's guard swallows the click in silence: `applyRendered` returns early on an empty list (Task 7), so the control would look live and do nothing, which Global Constraints forbid. `mixUnavailable` and `renderLockReason` never coincide — render-select stays live while a recording plays.
 - The volume `Slider` reports through **`onCommit`**, and tracks the pointer in local state while it is dragged — the same shape `SettingRow`'s range kind uses. One message to the synth worker per gesture is enough. Both transposition sliders do the same; Transpose full re-lays-out the whole score.
 - The render-select toggle shows no words on the row — there is no room for them — so it gets a tooltip too, telling its state: `Shown in the score` / `Hidden from the score`. It is a `TransportToggle` like solo and mute, so the 44 px button IS the tooltip trigger and it already opens on hover and on focus; its accessible name is `Render {name}`.
 - The expand control is an icon `Button` (`size="icon"`, `size-11`) with `aria-expanded={expanded}`, `aria-controls` pointing at the disclosure panel's id, an `aria-label` of `More controls for ${name}`, and its own always-present tooltip (`Show more controls` / `Hide more controls`) — `TooltipTrigger render={<Button … />}`, the shape `PlayerShell`'s Play button already uses.
@@ -1261,7 +1309,7 @@ Then create `client/src/components/ui/MasterRow/MasterRow.tsx`. It adds no primi
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow src/components/ui/MasterRow`
-Expected: PASS — 12 `TrackRow` tests and 4 `MasterRow` tests.
+Expected: PASS — 13 `TrackRow` tests and 4 `MasterRow` tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
@@ -1363,6 +1411,9 @@ interface SettingRowBase {
   id: string;
   label: string;
   control: SettingControl;
+  /** Rendered under the label by `SettingRow`'s `FieldDescription`. Every `stylesheet` row carries
+   *  one, because those twelve are the exception to the panel's "survives a reload" promise. */
+  description?: string;
 }
 
 export type SettingDescriptor =
@@ -1391,9 +1442,16 @@ export function writeSettingValue(
 ): PlayerSettingsJson;
 export const DEFAULT_PLAYER_SETTINGS: PlayerSettingsJson;
 /**
- * Every option-bearing row's allowed VALUES, by dot-path — built from the same descriptors as the
- * rows, so a row and its option list can never drift apart. Task 6 gates the stored document on it
+ * Every option-bearing row's allowed VALUES, by dot-path. Task 6 gates the stored document on it
  * before the restore push: an enum name AlphaTab does not know does not fail, it WIPES the key.
+ *
+ * A PLAIN module constant of enum NAMES as string literals — it cannot be built from
+ * buildSettingGroups(engine), because PlayerShell reads it in a lazy useState initialiser on its
+ * FIRST render, when the engine context is still { engine: null } (it resolves the dynamic import
+ * inside an effect). Names are strings, so this touches no runtime AlphaTab value and stays inside
+ * the type-imports-only fence. Drift is caught by a case in settings-defaults.test.ts, not by
+ * sharing the descriptors: it asserts this map equals every option list buildSettingGroups(engine)
+ * produces, so a row and its option list still cannot separate.
  */
 export const SETTING_OPTION_VALUES: Readonly<Record<string, readonly string[]>>;
 
@@ -1642,6 +1700,9 @@ interface SettingRowBase {
   id: string;
   label: string;
   control: SettingControl;
+  /** Rendered under the label by `SettingRow`'s `FieldDescription`. Every `stylesheet` row carries
+   *  one, because those twelve are the exception to the panel's "survives a reload" promise. */
+  description?: string;
 }
 
 export type SettingDescriptor =
@@ -1664,6 +1725,10 @@ export interface SettingGroup {
   title: string;
   settings: SettingDescriptor[];
 }
+
+/** The twelve Stylesheet rows are the open score's own values, not settings — say so on each row. */
+const STYLESHEET_NOTE =
+  'Belongs to the score that is open. Another score brings its own, and this is never saved.';
 
 /**
  * Turns an AlphaTab enum object into the plain option array a client/ row takes.
@@ -1782,11 +1847,16 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
       id: 'stylesheet',
       title: 'Stylesheet',
       settings: [
+        // Every row in this group is exempt from the panel's "survives a reload" promise, and the
+        // exemption has to be ON SCREEN: someone who turns one on and opens the next chart finds it
+        // back off, with nothing to distinguish that from a bug. One sentence, the same on all
+        // twelve — they are all the open score's own value.
         {
           id: 'stylesheet-hide-dynamics',
           source: 'stylesheet',
           key: 'hideDynamics',
           label: 'Hide dynamics',
+          description: STYLESHEET_NOTE,
           control: { kind: 'toggle' },
         },
         {
@@ -1794,6 +1864,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'stylesheet',
           key: 'bracketExtendMode',
           label: 'Brackets and braces',
+          description: STYLESHEET_NOTE,
           control: { kind: 'select', options: enumOptions(engine.model.BracketExtendMode) },
         },
         // …the remaining ten Stylesheet rows — twelve in all.
@@ -1835,7 +1906,10 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettingsJson = {
   // padding is an ARRAY — [horizontal, vertical] — and must stay one.
   display: { scale: 1, layoutMode: 'Page', padding: [35, 35] },
   player: {
-    // These four are set by the player at construction, so they are not AlphaTab's defaults.
+    // All four are set by the player at construction. Only TWO of them differ from a fresh
+    // Settings() — playerMode (engine default Disabled) and scrollOffsetY (engine default 0); those
+    // two are the ones settings-defaults.test.ts skips. enableCursor (true) and scrollMode
+    // (Continuous) happen to equal the engine's own defaults and stay under the guard.
     playerMode: 'EnabledAutomatic',
     enableCursor: true,
     scrollMode: 'Continuous',
@@ -1853,18 +1927,42 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettingsJson = {
 import * as engine from '@coderline/alphatab';
 import { expect, it } from 'vitest';
 
-import { DEFAULT_PLAYER_SETTINGS } from './settings-schema';
+import { DEFAULT_PLAYER_SETTINGS, SETTING_ENUMS } from './settings-schema';
 import { readSettingValue } from './settings-paths';
 
-// The engine is the source of truth for every default. Colours come back from the converter as
-// PACKED SIGNED INTEGERS (-16777216), not '#000000', so a colour row is read through `.rgba` on
-// the live Settings instead. The converter is on `model`; the `json` namespace is empty at runtime.
+// The engine is the source of truth for every default, but the serializer does not hand back the
+// shape `readSettingValue` walks. THREE conversions stand between them:
+//  1. settingsToJsObject returns nested Maps (SettingsSerializer.toJson), and `part in current` —
+//     how readSettingValue steps a path — never sees a Map entry, so every path would miss on its
+//     first segment. Convert the Map tree to plain objects first.
+//  2. Every key comes back LOWERCASED ('scrolloffsety', 'playermode'), so lowercase each segment.
+//  3. Enums come back as NUMBERS; the shipped table stores their NAMES. Resolve the name.
+// Colours come back as PACKED SIGNED INTEGERS (-16777216), not '#000000', so a colour row is read
+// through `.rgba` on the live Settings instead. The converter is on `model`; the `json` namespace
+// is empty at runtime.
+const plain = (value: unknown): unknown =>
+  value instanceof Map ? Object.fromEntries([...value].map(([k, v]) => [k, plain(v)])) : value;
+
+// Set by the player at construction or by this app's own choice, so they are NOT what a fresh
+// Settings() reports and never can be. Every OTHER key stays under the guard — including
+// player.enableCursor (engine default true) and player.scrollMode (engine default Continuous),
+// which DO match and would be silently un-checked if this list were widened to all four.
+const NOT_ALPHATAB_DEFAULTS = new Set([
+  'core.engine', // engine default 'default'; this app ships the SVG renderer
+  'player.playerMode', // engine default Disabled; PlayerShell sets EnabledAutomatic
+  'player.scrollOffsetY', // engine default 0; PlayerShell sets -10
+]);
+
 it('every shipped default is what a fresh Settings() reports', () => {
   const fresh = new engine.Settings();
-  const serialised = engine.model.JsonConverter.settingsToJsObject(fresh);
+  const serialised = plain(engine.model.JsonConverter.settingsToJsObject(fresh));
 
   for (const [path, shipped] of eachLeaf(DEFAULT_PLAYER_SETTINGS)) {
-    expect(readSettingValue(serialised, path), path).toEqual(shipped);
+    if (NOT_ALPHATAB_DEFAULTS.has(path)) continue;
+    const actual = readSettingValue(serialised, path.toLowerCase());
+    // An enum row ships its NAME; the serializer reports the number.
+    const expected = SETTING_ENUMS[path]?.[shipped as string] ?? shipped;
+    expect(actual, path).toEqual(expected);
   }
 });
 ```
@@ -2513,6 +2611,7 @@ export function SettingsPopover({
                       id={setting.id}
                       label={setting.label}
                       control={setting.control}
+                      description={setting.description}
                       value={valueOf(setting)}
                       onChange={(next) => change(setting, next)}
                       onAction={
@@ -3868,7 +3967,7 @@ and in `applySetting`, after the engine call: `if (path === 'player.playerMode')
 - [ ] **Step 5: Run the lane to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web run lint && pnpm --filter @notation-hero/web run test:e2e`
-Expected: PASS — including every Plan A and Plan B case. `hasBackingTrack` and `playerReady` both changed their source here, and Plan B's transport cases are what prove nothing else moved.
+Expected: PASS — including every Plan A and Plan B case. `hasBackingTrack` and `playerReady` both changed their source here, and Plan B's transport cases are what prove the FALSE branch is unchanged: no fixture embeds a recording (the largest is 25 KB), so every case in the lane runs with `hasBackingTrack` false, and Step 2's two new cases drive only the synthesizer and No playback. **Nothing in the lane ever puts AlphaTab into `EnabledBackingTrack`, so nothing here checks the new derivation's true branch.** What the flag FEEDS is covered at the prop level — `TrackRow`'s own test, story and baselines (Task 3) and `TransportRow.test.tsx`'s two `hasBackingTrack` cases — but that the flag still becomes true against a real recording is proved only by Task 10 Step 1's by-ear step. A green lane is not evidence for that half.
 
 - [ ] **Step 6: Commit**
 
@@ -3898,18 +3997,24 @@ The switch **by ear**, on one of the maintainer's own files that embeds a record
           'a[href]',
           'label[for]',
           '[role="button"]',
-          '[data-slot="slider"] [class*="h-11"]',
-          // The popovers' fields. NOT [role="checkbox"]: the design system's checkbox is a 16 px
-          // box by design, and its hit target is the <label for> around it — measured above.
+          '[data-slot="slider-control"]',
+          // The popovers' fields, and ONLY the popovers': scoped to the popover content so the
+          // header's BPM field stays out. That field is Base UI's NumberField.Input — a text input
+          // about 14 px tall — and it is deliberately out of scope for this PR; widening the gate
+          // over it would turn five /play cases red in files this plan does not otherwise touch.
+          // NOT [role="checkbox"]: the design system's checkbox is a 16 px box by design, and its
+          // hit target is the <label for> around it — measured above.
           // NOT the hidden inputs either: the file picker's, the range input Base UI sizes to its
           // 16 px thumb, and the checkbox's own hidden input are none of them what a finger hits.
-          'select',
-          'input:not([type="range"]):not([type="file"]):not([type="checkbox"])',
+          '[data-slot="popover-content"] select',
+          '[data-slot="popover-content"] input:not([type="range"]):not([type="file"]):not([type="checkbox"])',
         ].join(', '),
       ),
 ```
 
-Keep the comment already above the selector about the seek rail; it still applies.
+Keep the seek-rail selector and the comment above it exactly as the file ships them: the rail is
+found by `[data-slot="slider-control"]`, NOT by the Tailwind class it is measuring. Only the two
+field selectors below it are new.
 
 - [ ] **Step 2: Add the two popover-open cases**
 
@@ -3994,7 +4099,7 @@ Expected: all PASS.
 - **Spec Delta, by the maintainer's decision (2026-09-20):** the Settings popover ships every row of the reference panel, including the player-mode row — superseding the spec's "a toggle between the recording and the synthesizer is out of v0" (§4). `hasBackingTrack` now comes from `api.actualPlayerMode`, and `playerReady` no longer latches — which closes the hazard the 2026-09-20 hands-on entry recorded and left open.
 - **New:** a settings row names how it takes effect — `render`, `settings` or `midi` — and the Stylesheet group writes to the open score's model, not to the settings. Both are enforced by e2e cases that read the engine.
 - Metronome and Count-In are volumes with one writer each; the transport buttons read `> 0`.
-- The 44 px gate now measures fields and selects; `Input` and `NativeSelect` stay `h-9` in the design system and are raised to `h-11` per call site — a design-system default of 44 px is a separate question, not answered here.
+- The 44 px gate now measures the popovers' fields and selects; `Input` and `NativeSelect` stay `h-9` in the design system and are raised to `h-11` per call site — a design-system default of 44 px is a separate question, not answered here, and neither is the header's BPM field, which stays under 44 px and outside the gate's scope.
 
 - [ ] **Step 6: Commit, push, open the PR**
 
@@ -4077,7 +4182,7 @@ On the PR's preview deployment, with `Punk.gp` open and playing:
 
 The lane already proves every row names a real AlphaTab key. What it cannot see is a value edited in two places that drift apart, a row with the wrong `apply` (the value changes, and the score does not redraw or the sound does not change until something else forces it), or a change that simply draws wrong. Walk it in this order — most consequential first:
 
-1. **Every value with a SECOND EDITOR.** These are the ones that can disagree, and disagreement is silent: speed (the header stepper ↔ the Player row), master volume (Settings ▸ Player ↔ the mixer's Master row), metronome volume and count-in volume (the transport buttons ↔ their Player rows), loop (the transport ↔ its Player row), and each track's volume, solo and mute. Move each in ONE place; confirm the other editor follows and that the sound actually changed.
+1. **Every value with a SECOND EDITOR.** These are the ones that can disagree, and disagreement is silent: speed (the header stepper ↔ the Player row), master volume (Settings ▸ Player ↔ the mixer's Master row), metronome volume and count-in volume (the transport buttons ↔ their Player rows), loop (the transport ↔ its Player row), and each track's solo and mute (the row's own buttons ↔ the Master row's commands). Move each in ONE place; confirm the other editor follows and that the sound actually changed. A track's own volume is not on this list — it has one editor, and Step 1 item 3 is what checks it.
 2. **One row of each WAY OF TAKING EFFECT** — four checks, and the only ones that can catch a wrong `apply`. AlphaTab applies faithfully whatever it receives; `apply` is our choice about when to hand it over, so a row marked `render` that needs `midi` never reaches the engine at all. Change one row that redraws, one that is pushed without a redraw, one that rebuilds the sound (expect the player to stop and rewind — that is correct, see Global Constraints), and one stylesheet row.
 3. **One row in each of the eight sections** — Player, Display ▸ General, Colors, Fonts, Paddings, Notation, Stylesheet, Export — watching the score.
 4. **Press both Export buttons** and open the two files they download.
