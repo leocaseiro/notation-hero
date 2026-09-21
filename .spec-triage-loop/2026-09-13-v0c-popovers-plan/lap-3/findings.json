@@ -1,0 +1,1164 @@
+{
+  "artifact": "docs/plans/2026-09-13-v0c-popovers-plan.md",
+  "artifact_abs": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/admiring-northcutt-763a69/docs/plans/2026-09-13-v0c-popovers-plan.md",
+  "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/admiring-northcutt-763a69",
+  "branch": "claude/plan-c-review-updates-fcd111",
+  "commit_reviewed": "cb03c7d5",
+  "pr": "https://github.com/leocaseiro/notation-hero/pull/163",
+  "lap": 3,
+  "half": "review (steps 1-3 of the shared loop). Triage is a separate session.",
+  "review_skill": "compound-engineering:ce-doc-review",
+  "review_mode": "mode:headless",
+  "review_engine_rerun": "YES. Lap 2 reused lap 1's queued list and never re-ran the engine, so it produced no exit signal. Lap 3 ran the engine from scratch with a round-1 primer (no carried decisions), which is what the engine's own contract specifies for a new invocation and what makes this exit signal independent.",
+  "finding_count_total": 20,
+  "finding_count_needing_a_decision": 19,
+  "finding_count_fyi": 1,
+  "dropped_count": 0,
+  "narrowed_count": 4,
+  "triage_cap_note": "The shared loop caps a triage half at 8 findings or 5 picker rounds. 19 findings need a decision, so expect roughly three triage sessions. Suggested split by theme, highest severity first: session 1 = F-1, F-2, F-3, F-4, F-7, F-9, F-10 (the seven that break the build or a lane); session 2 = F-5, F-6, F-8, F-11, F-12, F-13, F-14 (guards, gates and the engine-contract findings); session 3 = F-15, F-16, F-17, F-18, F-19 + the FYI F-20.",
+  "silent_edits_applied_this_lap": [],
+  "silent_edits_note": "NONE — the document is byte-identical to commit cb03c7d5 and the worktree is clean. The engine's headless mode normally writes anchor-100 `safe_auto` fixes into the document before the caller sees them (shared loop step 2b). Three findings arrived classed `safe_auto`, and none survived routing to a silent apply: F-20 sits at anchor 50, which routes to FYI and never auto-applies; F-8 merged with a `gated_auto` twin; and F-14 was re-routed to `gated_auto` under the engine's own rule that a factually-incorrect-behaviour fix is `gated_auto`, not `safe_auto`, because the author should sign off on a behaviour change even when the correct behaviour is derivable. So step 2b has nothing to carry forward, and the triage half starts on a clean tree.",
+  "exit_signal": "NOT CLEAN — measured, not inherited. The headless envelope carries an 18-item `Proposed fixes` section and a 1-item `Decisions` section; the loop's exit condition requires BOTH to be absent. Two P0s (F-1, F-2) and ten P1s are in the actionable tier. Per the shared loop's step 7b a re-lap is indicated after triage, as a NEW invocation.",
+  "lap_bound_check": "The loop's default lap cap is 5 and this is lap 3, so the bound is not reached. The no-progress test cannot be evaluated against lap 2, because lap 2 never re-measured — this is the first engine-measured finding set since lap 1, and it is what lap 4 will be compared against.",
+  "how_verified": "Every finding was checked by a dispatched verifier against the document and, where it claimed something about the codebase, against the repo. Three checks per finding: (1) the cited section exists; (2) every evidence quote is verbatim, confirmed with exact-string `grep -nF`, never by eye; (3) the fix contradicts no other section. A fourth check ran on every finding whose fix deletes, narrows, disables or replaces a guard, gate, subscription, option, selector or checklist item: the verifier searched the plan's test scenarios, `## How to test`, `## Success criteria covered` and the repo's real specs for anything depending on the behaviour, and reported what it searched for. Result: 53 evidence quotes checked, 53 verbatim, 0 not-found. 16 findings PASS unchanged, 4 were NARROWED, 0 dropped.",
+  "lap_2_lessons_applied": {
+    "verbatim_before_blocks": "Every `before` block below was copied out of the file by a verifier and carries its line numbers. None was retyped from a reviewer's paraphrase. Lap 2 shipped one Before block that was not in the document; that cannot recur through this path.",
+    "removal_findings_rechecked": "Seven findings proposed removing or narrowing something and each got the dependant check. It caught two real problems. F-11 proposed dropping an option from a live control and was marked verified-but-wrong: it reverses a decision the document argues at length AND the maintainer's own recorded instruction, and the guard it promised to keep would be unreachable dead code. F-6 proposed excluding four keys from a test guard; two of those four actually match the engine and would have been silently un-guarded. Both are downgraded to NARROW with a smaller fix. This is the same shape as lap 2's verified-but-wrong subscription deletion."
+  },
+  "coverage": {
+    "personas_dispatched": 6,
+    "personas_returned": 6,
+    "malformed_returns": 0,
+    "team": [
+      {
+        "reviewer": "coherence",
+        "model": "sonnet",
+        "findings": 4,
+        "why": "always-on"
+      },
+      {
+        "reviewer": "feasibility",
+        "model": "inherited (opus)",
+        "findings": 9,
+        "why": "always-on"
+      },
+      {
+        "reviewer": "design-lens",
+        "model": "sonnet",
+        "findings": 3,
+        "why": "the plan is entirely UI — two popovers, three new components, interaction and axe gates"
+      },
+      {
+        "reviewer": "scope-guardian",
+        "model": "sonnet",
+        "findings": 1,
+        "why": "ten implementation tasks, a v0 scope boundary, a human-gated close-out"
+      },
+      {
+        "reviewer": "product-lens",
+        "model": "inherited (opus)",
+        "findings": 3,
+        "why": "the plan stakes solution-selection claims a stakeholder could challenge"
+      },
+      {
+        "reviewer": "adversarial",
+        "model": "inherited (opus)",
+        "findings": 6,
+        "why": "no validated upstream Product Contract — `origin:` and `product_contract_source:` are both absent"
+      }
+    ],
+    "cross_model_peer_pass": "NOT RUN. The engine offers an additive peer pass through a second model provider. It is gated on an egress allowlist and an installed peer CLI: `CROSS_MODEL_PEERS` is unset, no `cross_model_peer:` key exists in `.compound-engineering/`, and none of `codex` / `cursor-agent` / `grok` is installed. No document content left the host. Lost coverage: no different-model corroboration on the adversarial and product-lens lenses, so no finding in this set carries a cross-model agreement promotion.",
+    "footnotes": {
+      "dropped": "0 (no finding came in below the anchor-50 floor)",
+      "chains": "0 roots (the one `manual` finding is P2, below the P0/P1 bar for a premise-dependency root)",
+      "restated": "11 residual/deferred items suppressed as duplicates of actionable findings"
+    }
+  },
+  "id_glossary": {
+    "Task 1": "builds the Accordion component in the design system — the collapsible group wrapper the Settings popover is made of",
+    "Task 2": "builds SettingRow — one settings row: label on the left, control on the right, driven by a plain descriptor",
+    "Task 3": "builds TrackRow — one mixer row. Its file list also names MasterRow, the mixer's foot row, but no step builds it (that is F-1)",
+    "Task 4": "the settings schema and its accessors — the 90-row descriptor table, the dot-path read/write helpers, and the funnel that pushes edits into the engine",
+    "Task 5": "builds the Settings popover in web/ — the panel itself",
+    "Task 6": "persists the settings to browser storage and restores them on load",
+    "Task 7": "builds the Tracks popover — the mixer",
+    "Task 8": "adds the player-mode row: play the file's own recording, or the synthesizer, or nothing",
+    "Task 9": "extends the accessibility hit-area gate over the new controls and opens the PR",
+    "Task 10": "hands the two human gates back to the maintainer (a by-ear pass and a by-eye pass) and closes out v0",
+    "Plan A": "the already-merged plan this one builds on (PR #159) — it established the api-as-React-state shape and useAlphaTabEvent",
+    "Plan B": "the already-built transport plan (PR #162) — the play/loop/metronome/count-in row and its e2e cases",
+    "P0": "ships broken — the build or a required lane fails",
+    "P1": "will hit a competent implementer in practice and change what gets built",
+    "P2": "worth fixing; the plan still works without it",
+    "P3": "low signal",
+    "anchor 100": "the evidence directly confirms it and it will happen frequently",
+    "anchor 75": "double-checked and it will be hit in practice",
+    "anchor 50": "verified real but advisory — surfaces as an observation, not a decision",
+    "PASS": "the verifier confirmed the finding and its fix unchanged",
+    "NARROW": "the problem is real but the reviewer's proposed fix was wrong or too broad; a smaller fix is given, and the reviewer's original is recorded as rejected",
+    "spec D3": "the spec decision that web/ imports the design system only through its barrel file, never by deep path",
+    "spec D8": "the spec decision that /play always has a score open — there is no empty state",
+    "NH-291": "the Jira issue this whole v0 player work sits under",
+    "NH-315": "the already-fixed bug where a stale build cache shipped the design system unstyled, and a 0-px-wide seek rail passed every gate — the reason F-8 matters"
+  },
+  "findings": [
+    {
+      "id": "F-1",
+      "tier": "proposed_fix",
+      "severity": "P0",
+      "anchor": 100,
+      "reviewers": ["coherence", "design-lens", "feasibility", "scope-guardian"],
+      "agreement": "Four of the six reviewers raised this independently, and the adversarial reviewer named it in its residual risks as well. It is the single strongest signal in the set.",
+      "verdict": "PASS",
+      "section": "Task 3 (builds TrackRow) and Task 7 (the Tracks popover), plus the File Structure table",
+      "title": "MasterRow is named in four places and built in none",
+      "whats_wrong": "Task 7's Tracks popover renders <MasterRow> — the mixer's foot row with master volume, solo-all and mute-all — and lists it under what the task consumes. Task 3's file list says to create it. But no step anywhere builds it: Task 3's seven steps write only TrackRow, its commit stages only the TrackRow folder, the design system's barrel file exports TrackRow 'and nothing else', and there are no MasterRow story, accessibility or visual-regression entries. web/ imports MasterRow from the design system package, so the build breaks at Task 7 — and even an improvised component would ship without the six co-located files and the baselines this plan's own Global Constraints require.",
+      "proposed_fix": "Build MasterRow in Task 3 the same way TrackRow is built: a MasterRowProps interface matching Task 7's call site (volume, onVolumeChange, onSoloAll, onMuteAll, soloMuteUnavailable), a failing test, the component, story/accessibility/visual baselines, and the folder in the commit. Add it to the File Structure table and to the barrel export.",
+      "why_it_works": "It closes the gap at the place the plan already reserves for it — Task 3 is where the file list promises the component — so Task 7 needs no change at all, and the component inherits the same six-file, baseline-backed treatment every other new design-system component in this plan gets.",
+      "evidence": [
+        {
+          "quote": "Create: `client/src/components/ui/MasterRow/` (six files) — the mixer's foot row: master volume,",
+          "line": 871,
+          "verbatim": true
+        },
+        {
+          "quote": "git add client/src/components/ui/TrackRow",
+          "line": 1196,
+          "verbatim": true
+        },
+        {
+          "quote": "Export `Accordion*`, `SettingRow`, `TrackRow`, `Popover*` and `ScrollArea` — what a `web/` screen imports, and nothing else (spec D3).",
+          "line": 174,
+          "verbatim": true
+        },
+        {
+          "quote": "Consumes: `TrackRow`, `MasterRow`, `TrackStaffState` (Task 3)",
+          "line": 3010,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "File Structure table, lines 155-157",
+          "before": "| `Accordion/`  | Collapsible sections. The third and last of the spec's three new design-system components, and the one v0.1's settings search builds on.                                   |\n| `SettingRow/` | One settings row: label left, control right. Renders a toggle, a number input, a number-with-slider, a text input, a dropdown or an action button from a plain descriptor. |\n| `TrackRow/`   | One mixer row: an always-visible primary cluster plus a disclosure holding the display toggles and both transposition sliders.                                             |",
+          "after": "| `Accordion/`  | Collapsible sections. The third and last of the spec's three new design-system components, and the one v0.1's settings search builds on.                                   |\n| `SettingRow/` | One settings row: label left, control right. Renders a toggle, a number input, a number-with-slider, a text input, a dropdown or an action button from a plain descriptor. |\n| `TrackRow/`   | One mixer row: an always-visible primary cluster plus a disclosure holding the display toggles and both transposition sliders.                                             |\n| `MasterRow/`  | The mixer's foot row: master volume, solo-all, mute-all. Composes the same primitives `TrackRow` does; its volume is controlled by `PlayerShell`, never its own state.     |"
+        },
+        {
+          "site": "Task 3 Step 7 (the commit), lines 1193-1198",
+          "before": "- [ ] **Step 7: Commit**\n\n```bash\ngit add client/src/components/ui/TrackRow\ngit commit -m \"feat(client): add the TrackRow with its disclosure (NH-291)\"\n```",
+          "after": "- [ ] **Step 7: Commit**\n\n```bash\ngit add client/src/components/ui/TrackRow client/src/components/ui/MasterRow\ngit commit -m \"feat(client): add the TrackRow with its disclosure and the MasterRow (NH-291)\"\n```"
+        },
+        {
+          "site": "the barrel export, lines 1971-1972",
+          "before": "export { TrackRow } from './components/ui/TrackRow/TrackRow';\nexport type { TrackStaffState } from './components/ui/TrackRow/TrackRow';",
+          "after": "export { TrackRow } from './components/ui/TrackRow/TrackRow';\nexport type { TrackStaffState } from './components/ui/TrackRow/TrackRow';\nexport { MasterRow } from './components/ui/MasterRow/MasterRow';"
+        },
+        {
+          "site": "Task 3 Step 5 (story ids), after line 1179",
+          "before": "`TrackRow.story-ids.ts`: `['collapsed', 'expanded', 'stringed-expanded', 'muted', 'soloed', 'recording']`.",
+          "after": "`TrackRow.story-ids.ts`: `['collapsed', 'expanded', 'stringed-expanded', 'muted', 'soloed', 'recording']`.\n\n`MasterRow.story-ids.ts`: `['resting', 'recording']` — `recording` is the row with `soloMuteUnavailable` set, so the disabled look of solo-all and mute-all has a baseline in both themes. `storyPrefix: 'ui-masterrow'`, `snapshotSlug: 'masterrow'`, `slotSelector: '[data-slot=\"master-row\"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator."
+        }
+      ],
+      "additional_new_prose": "Task 3 Steps 1 and 3 also need MasterRow counterparts — a MasterRowProps interface matching the call site at lines 3484-3491, a failing MasterRow.test.tsx, then the component. Those are new prose with no existing text to show as a Before.",
+      "verifier_note": "All four quotes verbatim. One loose pointer worth correcting while applying: the 'and nothing else' quote sits in the File Structure table at line 174, not inside Task 4 Step 8 as the finding's prose says — though Step 8's own closing sentence at line 1982 makes the same claim.",
+      "interacts_with": [
+        "F-16 — MasterRow has no props interface at all yet, so if F-16 is also applied, the solo-all/mute-all rename lands in the interface this finding creates."
+      ]
+    },
+    {
+      "id": "F-2",
+      "tier": "proposed_fix",
+      "severity": "P0",
+      "anchor": 100,
+      "reviewers": ["coherence"],
+      "verdict": "PASS",
+      "section": "Task 3 (TrackRow's tests) and Task 7 (its end-to-end cases)",
+      "title": "Render-select ships as a button, but six tests still query it as a checkbox",
+      "whats_wrong": "A dated maintainer decision (2026-09-21) changed the render-select control — the eye toggle that says whether a track is drawn — from a checkbox to a button carrying aria-pressed. The decision landed in the props documentation and in the Global Constraints, but not in the tests: six queries still ask for a checkbox role, three in Task 3 and three in Task 7's end-to-end cases, including inside the very test that correctly queries Solo and Mute as buttons. A checkbox-role query cannot match a button. An implementer who builds the documented button either fails these tests or 'fixes' them by silently reverting the maintainer's decision. The same half-landed edit hits the four per-staff display toggles: the task's opening paragraph says they ship as always-visible icon buttons, while the requirements list still puts checkboxes behind the disclosure.",
+      "proposed_fix": "Change every checkbox-role query for render-select to a button-role query with aria-pressed, matching how Solo and Mute are already queried. Rewrite the two requirement bullets that still describe checkboxes behind the disclosure to describe icon buttons on the always-visible primary row, and drop `expanded` from the per-staff-toggle tests.",
+      "why_it_works": "It finishes the edit the maintainer already made, in the one place it did not reach. The tests then assert the control the plan actually specifies, so an implementer can satisfy the tests and the props documentation at the same time — which today is impossible.",
+      "evidence": [
+        {
+          "quote": "expect(screen.getByRole('checkbox', { name: /render/i })).toBeInTheDocument();",
+          "line": 986,
+          "verbatim": true
+        },
+        {
+          "quote": "expect(screen.getByRole('button', { name: /solo/i })).toBeInTheDocument();",
+          "line": 987,
+          "verbatim": true
+        },
+        {
+          "quote": "The disclosure renders per staff: a `Checkbox` for `showStandardNotation`, one for `showSlash`, one for `showNumbered`, and one for `showTablature` **only when `staff.tablatureAvailable`**.",
+          "line": 1153,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 3, the primary-cluster test, lines 983-990",
+          "before": "test('the primary cluster shows the name, render-select, solo, mute and volume', () => {\n  render(<TrackRow {...baseProps} />);\n  expect(screen.getByText('Drumkit')).toBeInTheDocument();\n  expect(screen.getByRole('checkbox', { name: /render/i })).toBeInTheDocument();\n  expect(screen.getByRole('button', { name: /solo/i })).toBeInTheDocument();\n  expect(screen.getByRole('button', { name: /mute/i })).toBeInTheDocument();\n  expect(screen.getByRole('slider', { name: /volume/i })).toBeInTheDocument();\n});",
+          "after": "test('the primary cluster shows the name, render-select, solo, mute and volume', () => {\n  render(<TrackRow {...baseProps} />);\n  expect(screen.getByText('Drumkit')).toBeInTheDocument();\n  expect(screen.getByRole('button', { name: /render/i })).toHaveAttribute('aria-pressed', 'true');\n  expect(screen.getByRole('button', { name: /solo/i })).toBeInTheDocument();\n  expect(screen.getByRole('button', { name: /mute/i })).toBeInTheDocument();\n  expect(screen.getByRole('slider', { name: /volume/i })).toBeInTheDocument();\n});"
+        },
+        {
+          "site": "Task 3, the requirements bullets, lines 1152-1153",
+          "before": "- Each `Checkbox` sits **inside** its `<label>`, and that label is at least 44 × 44 (`min-h-11 min-w-11`): the box is 16 px and is never the hit target on its own. That is the same construction `SettingRow`'s toggle kind uses.\n- The disclosure renders per staff: a `Checkbox` for `showStandardNotation`, one for `showSlash`, one for `showNumbered`, and one for `showTablature` **only when `staff.tablatureAvailable`**.",
+          "after": "- Each per-staff display toggle is a `TransportToggle` at `size-11`, on the always-visible primary row — not a `Checkbox`, and not behind the disclosure. `aria-pressed` carries the state and the always-present tooltip names the staff and the state.\n- The primary row renders per staff: a toggle for `showStandardNotation`, one for `showSlash`, one for `showNumbered`, and one for `showTablature` **only when `staff.tablatureAvailable`**."
+        },
+        {
+          "site": "Task 7, the drawn-state end-to-end case, lines 3038-3043",
+          "before": "  // The two drum tracks are drawn, so their render-select boxes start ticked; the guitar's does not.\n  const drawn = (row: number) =>\n    page.getByTestId(`track-row-${row}`).getByRole('checkbox', { name: /render/i });\n  await expect(drawn(0)).toHaveAttribute('aria-checked', 'true');\n  await expect(drawn(1)).toHaveAttribute('aria-checked', 'false');\n  await expect(drawn(2)).toHaveAttribute('aria-checked', 'true');",
+          "after": "  // The two drum tracks are drawn, so their render-select toggles start pressed; the guitar's does not.\n  const drawn = (row: number) =>\n    page.getByTestId(`track-row-${row}`).getByRole('button', { name: /render/i });\n  await expect(drawn(0)).toHaveAttribute('aria-pressed', 'true');\n  await expect(drawn(1)).toHaveAttribute('aria-pressed', 'false');\n  await expect(drawn(2)).toHaveAttribute('aria-pressed', 'true');"
+        }
+      ],
+      "additional_edit_sites": [
+        "line 1059 — `getByRole('checkbox', {name: /render/i})).toHaveFocus()` becomes the button role.",
+        "lines 1120-1129 — the recording-stays-live test: drop `expanded`, swap both checkbox queries to buttons, and assert `aria-disabled` rather than `data-disabled` (the span-rendered Checkbox comment no longer applies to a button).",
+        "lines 3053-3056 — the click that toggles row 1 becomes a button query.",
+        "lines 3076-3077 — hovering the label wrapper becomes hovering the toggle itself; there is no label wrapper any more.",
+        "lines 3197-3214 — the tablature cases open the disclosure to reach the toggle and query it as a checkbox; under the always-visible design both halves are wrong — drop the disclosure clicks and query buttons.",
+        "line 1150 — still describes render-select as a `<label>` wrapping a box with an sr-only span; it must move with the rest or the new tests will not match what gets built."
+      ],
+      "verifier_note": "All three quotes verbatim. Exactly six `getByRole('checkbox', { name: /render/i })` occurrences exist — lines 986, 1059, 1124, 3040, 3055, 3077 — so the count in the title is right. The Global Constraints at line 98 already say 'all five are toggle BUTTONS now, not checkboxes, so `aria-pressed` is the announced attribute'."
+    },
+    {
+      "id": "F-3",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 100,
+      "reviewers": ["coherence"],
+      "verdict": "PASS",
+      "section": "Task 5 (the Settings popover), Step 3",
+      "title": "The Settings popover never reads mixUnavailable, so metronome and count-in stay live during a recording",
+      "whats_wrong": "When a file plays its own embedded recording, AlphaTab ignores the metronome and count-in volumes. The schema comment promises both rows disable in that state, and the popover's props declare the flag that carries it — but the component never destructures the flag and never passes `disabled` to any row. Both rows stay adjustable while doing nothing, which is exactly what the Global Constraints forbid. Nothing catches it: an unused optional prop is not a type error or a lint error, and no end-to-end case covers it. Separately, the call site in PlayerShell passes a RECORDING constant that is declared in two other files but never in PlayerShell itself, so that snippet does not compile either.",
+      "proposed_fix": "Destructure mixUnavailable in the popover and pass `disabled` to the two rows the schema comment names — metronome volume and count-in volume. Declare the reason string in PlayerShell before the JSX that uses it, or better, export one shared literal so the mixer row, the Tracks popover and PlayerShell all show the same words.",
+      "why_it_works": "The row component already accepts a `disabled` prop, so nothing new is needed below; the fix is to actually pass it, scoped to the two ids the schema already singles out. The plan's own prop documentation says every other Player row stays live, so scoping to those two ids matches the stated intent exactly.",
+      "evidence": [
+        {
+          "quote": "This row and the count-in-volume row beside it disable on `mixUnavailable` while the",
+          "line": 1643,
+          "verbatim": true
+        },
+        {
+          "quote": "mixUnavailable={hasBackingTrack ? RECORDING : undefined}",
+          "line": 2574,
+          "verbatim": true,
+          "note": "also at line 3472"
+        },
+        {
+          "quote": "the spec's rule is that a control must never look live and do nothing",
+          "line": 102,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 5 Step 3, the component signature, lines 2318-2325",
+          "before": "export function SettingsPopover({\n  api,\n  settings,\n  onSettingChange,\n  apiValues,\n  onApiValueChange,\n  onAction,\n}: Readonly<SettingsPopoverProps>) {",
+          "after": "export function SettingsPopover({\n  api,\n  settings,\n  onSettingChange,\n  apiValues,\n  onApiValueChange,\n  onAction,\n  mixUnavailable,\n}: Readonly<SettingsPopoverProps>) {"
+        },
+        {
+          "site": "Task 5 Step 3, the row render, lines 2406-2420",
+          "before": "                <AccordionContent>\n                  {group.settings.map((setting) => (\n                    <SettingRow\n                      key={setting.id}\n                      id={setting.id}\n                      label={setting.label}\n                      control={setting.control}\n                      value={valueOf(setting)}\n                      onChange={(next) => change(setting, next)}\n                      onAction={\n                        setting.source === 'action' ? () => onAction(setting.action) : undefined\n                      }\n                    />\n                  ))}\n                </AccordionContent>",
+          "after": "                <AccordionContent>\n                  {group.settings.map((setting) => (\n                    <SettingRow\n                      key={setting.id}\n                      id={setting.id}\n                      label={setting.label}\n                      control={setting.control}\n                      value={valueOf(setting)}\n                      onChange={(next) => change(setting, next)}\n                      onAction={\n                        setting.source === 'action' ? () => onAction(setting.action) : undefined\n                      }\n                      // The only two rows the backing-track synthesizer ignores. A control must\n                      // never look live and do nothing (Global Constraints).\n                      disabled={\n                        Boolean(mixUnavailable) &&\n                        (setting.id === 'player-metronome-volume' ||\n                          setting.id === 'player-count-in-volume')\n                      }\n                    />\n                  ))}\n                </AccordionContent>"
+        },
+        {
+          "site": "the PlayerShell call site, lines 2557-2559",
+          "before": "```tsx\n// PlayerShell.tsx\n<PlayerHeader",
+          "after": "```tsx\n// PlayerShell.tsx\n// The one reason string both popovers and TrackRow show. Export it from a shared module rather\n// than re-declaring it here, in TracksPopover.tsx and in TrackRow.test.tsx.\nconst RECORDING = 'Not available while the file plays its own recording';\n\n<PlayerHeader"
+        }
+      ],
+      "verifier_note": "All three quotes verbatim. The row component already carries `disabled?: boolean` at lines 408 and 626, so the fix needs no new prop. RECORDING is declared at line 1094 (inside a test file) and line 3414 (inside the Tracks popover) but never in PlayerShell, where line 2574 uses it. The nearest thing in the real repo is a lower-case `UNAVAILABLE` constant in the transport row."
+    },
+    {
+      "id": "F-4",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 100,
+      "reviewers": ["feasibility"],
+      "verdict": "PASS",
+      "section": "Task 7 (the Tracks popover), Step 3b",
+      "title": "The transposition clear targets a line, two variables and a file that do not exist",
+      "whats_wrong": "Step 3b tells the implementer to put the transposition clear in PlayerShell, on the line above an existing renderScore call. There is no renderScore anywhere in PlayerShell; the app's only call site is in the notation surface — the one file the plan's File Structure section explicitly promises is NOT modified. The two local variables the snippet names do not exist in the shell either. The step cannot be transcribed as written.",
+      "proposed_fix": "Move the clear into the notation surface's render function, immediately above its renderScore call, and change the three places that say the surface is untouched — the File Structure line, Task 7's own Files block, and Task 7's commit command.",
+      "why_it_works": "The clear has to run before the new score reaches the engine, and the surface's render function is the single choke point both render paths go through — the score effect and the re-assert guard — so one insertion covers both. Putting it in the shell would miss the second path even if the shell had a renderScore to sit above.",
+      "evidence": [
+        {
+          "quote": "api.renderScore(parsed, trackIndexes);",
+          "line": 3511,
+          "verbatim": true
+        },
+        {
+          "quote": "`web/app/play/TransportRow.tsx` and `web/app/play/NotationSurface.tsx` are **not** modified.",
+          "line": 181,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 7 Step 3b, lines 3499-3512",
+          "before": "- [ ] **Step 3b: Clear the transposition pitches BEFORE the new score reaches the engine**\n\nIn `PlayerShell.tsx`, in the handler that opens or replaces a file, on the line above the existing\n`api.renderScore(...)`:\n\n```tsx\n// The pitches are indexed by track and live on the api, so the previous score's +2 on track 1\n// would transpose this score's track 1 — drawn AND played. It has to happen BEFORE the score\n// reaches the engine: applyPitchOffsets runs at the top of the render path, and clearing to []\n// afterwards un-stamps nothing, because the write only reaches a track whose index is inside the\n// array. Clearing first also leaves a transposition the FILE itself carries intact.\nclearTrackTranspositions(api);\napi.renderScore(parsed, trackIndexes);\n```",
+          "after": "- [ ] **Step 3b: Clear the transposition pitches BEFORE the new score reaches the engine**\n\nIn `web/app/play/NotationSurface.tsx`, inside `renderOpenNotation`, on the line above the existing\n`api.renderScore(...)` — that function is the app's only `renderScore` call site, and both render\npaths go through it (the score effect and the `scoreLoaded` re-assert guard), so one insertion\ncovers both:\n\n```tsx\n// The pitches are indexed by track and live on the api, so the previous score's +2 on track 1\n// would transpose this score's track 1 — drawn AND played. It has to happen BEFORE the score\n// reaches the engine: applyPitchOffsets runs at the top of the render path, and clearing to []\n// afterwards un-stamps nothing, because the write only reaches a track whose index is inside the\n// array. Clearing first also leaves a transposition the FILE itself carries intact.\nclearTrackTranspositions(api);\napi.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);\n```"
+        },
+        {
+          "site": "File Structure, line 181",
+          "before": "`web/app/play/TransportRow.tsx` and `web/app/play/NotationSurface.tsx` are **not** modified. The row already has a `trailing` slot, left free for this plan's Tracks trigger, and the mixer learns the score's tracks from `scoreLoaded` and what is drawn from `renderFinished` — it needs nothing from the notation surface.",
+          "after": "`web/app/play/TransportRow.tsx` is **not** modified — the row already has a `trailing` slot, left free for this plan's Tracks trigger. `web/app/play/NotationSurface.tsx` gains exactly one line: the transposition clear, above its `api.renderScore(...)` (Task 7, Step 3b). The mixer itself needs nothing from the surface — it learns the score's tracks from `scoreLoaded` and what is drawn from `renderFinished`."
+        },
+        {
+          "site": "Task 7's Files block, lines 3002-3006",
+          "before": "- Create: `web/app/play/TracksPopover.tsx`\n- Modify: `web/app/play/PlayerShell.tsx`\n- Modify: `web/e2e/player.e2e.ts`\n\n`TransportRow.tsx` and `NotationSurface.tsx` are not touched: the row's `trailing` slot is already there and free, and the mixer reads the score from the api's own events.",
+          "after": "- Create: `web/app/play/TracksPopover.tsx`\n- Modify: `web/app/play/PlayerShell.tsx`\n- Modify: `web/app/play/NotationSurface.tsx` (one line: the transposition clear, Step 3b)\n- Modify: `web/e2e/player.e2e.ts`\n\n`TransportRow.tsx` is not touched: the row's `trailing` slot is already there and free, and the mixer reads the score from the api's own events."
+        },
+        {
+          "site": "Task 7's commit, line 3542",
+          "before": "git add web/app/play/TracksPopover.tsx web/app/play/PlayerShell.tsx web/e2e/player.e2e.ts",
+          "after": "git add web/app/play/TracksPopover.tsx web/app/play/PlayerShell.tsx \\\n  web/app/play/NotationSurface.tsx web/e2e/player.e2e.ts"
+        }
+      ],
+      "verifier_note": "Both quotes verbatim. Confirmed against the repo: renderScore exists exactly once in the whole app, in the notation surface's renderOpenNotation, which is called from both the score effect and the re-assert guard. PlayerShell has no renderScore and no `parsed` or `trackIndexes` local. The finding named only the File Structure line; the verifier found two more places that say the surface is untouched, both included above.",
+      "follow_on": "Lines 3514-3515 ('Add web/app/play/PlayerShell.tsx's open-file handler to this task's file list') should name the notation surface instead."
+    },
+    {
+      "id": "F-5",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 100,
+      "reviewers": ["feasibility"],
+      "verdict": "PASS",
+      "removal_flag": true,
+      "section": "Task 9 (extend the accessibility gate), Step 1",
+      "title": "The widened hit-area gate turns five existing accessibility cases red",
+      "whats_wrong": "Step 1 widens the 44-pixel hit-area gate to cover every select and text input on the page. The header's tempo field is a text input about 14 pixels tall, so the gate immediately reports it as too small and the five /play accessibility cases that Plan A and Plan B already ship go red — in files this plan does not otherwise touch. The exclusion comment lists three hidden inputs it deliberately skips and never mentions the tempo field, so an implementer meets an unexplained failure with no stated intent, and the obvious 'fix' is to resize a control this plan never meant to touch (which would also regenerate the header's committed visual baselines).",
+      "proposed_fix": "Scope the two new selectors to the popovers, and add one sentence saying the header's tempo field stays under 44 pixels and is deliberately out of scope for this PR. Also update Task 9's registry entry, which claims the gate now measures fields and selects generally.",
+      "why_it_works": "The two new selectors exist to cover the controls this plan adds, and every one of those lives inside a popover. Scoping them keeps the intended coverage, costs nothing that exists today, and turns a silent failure into a written decision the next reader can see.",
+      "evidence": [
+        {
+          "quote": "'input:not([type=\"range\"]):not([type=\"file\"]):not([type=\"checkbox\"])',",
+          "line": 3770,
+          "verbatim": true
+        },
+        {
+          "quote": "// NOT the hidden inputs either: the file picker's, the range input Base UI sizes to its",
+          "line": 3767,
+          "verbatim": true
+        }
+      ],
+      "dependant_check": "PASS — nothing depends on the wider scope, because the wider scope does not exist yet. The gate that ships today measures buttons, links, labels, elements with a button role, and the slider control; it contains no select and no input entry, so both new selectors are introduced by this plan. All six existing call sites were checked and none asserts on a select or a non-range/file/checkbox input. The only native inputs reachable on /play outside the popovers are the file picker (already excluded by type) and the tempo field. The scoping anchor is real: the popover content carries the data-slot the scoped selector uses, and both popovers render through it, so the selector matches rather than silently matching nothing.",
+      "edits": [
+        {
+          "site": "Task 9 Step 1, the selector array, lines 3757-3772",
+          "before": "```ts\n      ...document.querySelectorAll(\n        [\n          'button',\n          'a[href]',\n          'label[for]',\n          '[role=\"button\"]',\n          '[data-slot=\"slider\"] [class*=\"h-11\"]',\n          // The popovers' fields. NOT [role=\"checkbox\"]: the design system's checkbox is a 16 px\n          // box by design, and its hit target is the <label for> around it — measured above.\n          // NOT the hidden inputs either: the file picker's, the range input Base UI sizes to its\n          // 16 px thumb, and the checkbox's own hidden input are none of them what a finger hits.\n          'select',\n          'input:not([type=\"range\"]):not([type=\"file\"]):not([type=\"checkbox\"])',\n        ].join(', '),\n      ),\n```",
+          "after": "```ts\n      ...document.querySelectorAll(\n        [\n          'button',\n          'a[href]',\n          'label[for]',\n          '[role=\"button\"]',\n          '[data-slot=\"slider-control\"]',\n          // The popovers' fields, and ONLY the popovers': scoped to the popover content so the\n          // header's BPM field stays out. That field is Base UI's NumberField.Input — a text input\n          // about 14 px tall — and it is deliberately out of scope for this PR; widening the gate\n          // over it would turn five /play cases red in files this plan does not otherwise touch.\n          // NOT [role=\"checkbox\"]: the design system's checkbox is a 16 px box by design, and its\n          // hit target is the <label for> around it — measured above.\n          // NOT the hidden inputs either: the file picker's, the range input Base UI sizes to its\n          // 16 px thumb, and the checkbox's own hidden input are none of them what a finger hits.\n          '[data-slot=\"popover-content\"] select',\n          '[data-slot=\"popover-content\"] input:not([type=\"range\"]):not([type=\"file\"]):not([type=\"checkbox\"])',\n        ].join(', '),\n      ),\n```",
+          "note": "This After block also carries F-8's one-line change (the slider selector), because the two findings edit the same array. Apply them together, or take this block only if both are approved."
+        },
+        {
+          "site": "Task 9 Step 5, the registry entry, line 3860",
+          "before": "- The 44 px gate now measures fields and selects; `Input` and `NativeSelect` stay `h-9` in the design system and are raised to `h-11` per call site — a design-system default of 44 px is a separate question, not answered here.",
+          "after": "- The 44 px gate now measures the popovers' fields and selects; `Input` and `NativeSelect` stay `h-9` in the design system and are raised to `h-11` per call site — a design-system default of 44 px is a separate question, not answered here, and neither is the header's BPM field, which stays under 44 px and outside the gate's scope."
+        }
+      ],
+      "verifier_note": "Both quotes verbatim. The claim was confirmed against the installed library: the tempo field renders as type text and carries no height class, so the proposed selector matches it, and the header renders unconditionally on /play so all five cases would report it.",
+      "open_question_for_you": "Raising the tempo field to a 44-pixel box is the other way out. It regenerates the tempo control's and the header's committed visual baselines, which is why the fix above defers it. See the deferred questions at the end."
+    },
+    {
+      "id": "F-6",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 100,
+      "reviewers": ["feasibility", "adversarial"],
+      "agreement": "Raised independently by two reviewers.",
+      "verdict": "NARROW",
+      "removal_flag": true,
+      "section": "Task 4 (the settings schema), Step 6",
+      "title": "The shipped-defaults test cannot read what the serializer returns",
+      "whats_wrong": "This test is the only automated guard over 71 hand-written default values, and it fails on its very first comparison — for three separate reasons the plan does not anticipate. The engine's serializer hands back nested Maps, not plain objects, and the plan's path-walking helper steps a path with an operator that never sees a Map entry. The serializer also lowercases every key, while the shipped table uses mixed-case paths. And it reports enum values as numbers, while the shipped table stores their names. The step then tells the implementer to believe the failure and take the engine's value — so correct shipped defaults get rewritten to nothing. The plan anticipates only a fourth trap, about packed colour integers.",
+      "proposed_fix_narrowed": "Rewrite the test to match the serializer's real output: convert the returned Map tree to plain objects, lowercase each path segment before reading, and resolve an enum row's stored name to the number the serializer reports. Then exclude ONLY the three keys that genuinely cannot match a fresh engine instance — the player mode, the scroll offset, and the rendering engine — each with a one-line reason.",
+      "why_it_works": "The three conversions are what stand between the serializer's output and the plan's reader, so handling them is what lets the guard run at all. Keeping the exclusion list to three named keys means the guard still watches everything else, which is the point of having it.",
+      "reviewers_original_fix_REJECTED": "Both reviewers proposed excluding all four `player.*` keys the schema table marks as set by the player at construction. The verifier checked each against a fresh engine instance: the player mode and the scroll offset genuinely differ, but `enableCursor` and `scrollMode` actually MATCH the engine's own defaults once the enum-name conversion lands. Excluding those two would remove them from the guard for no reason and blind it to exactly the drift it exists to catch. The reviewers also missed a fifth key that DOES drift — the core rendering engine ships as 'svg' while the engine defaults to 'default' — so a corrected reader would report it and the implementer would hit an unexplained failure on the first run.",
+      "why_narrowed": "This is the second of the two verified-but-wrong shapes this lap caught: a fix that narrows a guard, where the reviewer's dependant reasoning was plausible but not checked key by key.",
+      "evidence": [
+        {
+          "quote": "const serialised = engine.model.JsonConverter.settingsToJsObject(fresh);",
+          "line": 1773,
+          "verbatim": true
+        },
+        {
+          "quote": "expect(readSettingValue(serialised, path), path).toEqual(shipped);",
+          "line": 1776,
+          "verbatim": true
+        },
+        {
+          "quote": "the engine's defaults having moved, not the test being wrong: take the engine's value.",
+          "line": 1785,
+          "verbatim": true
+        },
+        {
+          "quote": "// These four are set by the player at construction, so they are not AlphaTab's defaults.",
+          "line": 1747,
+          "verbatim": true
+        }
+      ],
+      "dependant_check": "The guard has no external dependants — the test file is referenced only at plan lines 1220, 1759 and 1783, no end-to-end case or success criterion reads it, and the file does not exist in the repo yet. The risk was entirely internal: which keys the exclusion blinds. That is what the verifier checked key by key, and it is what changed the fix.",
+      "edits": [
+        {
+          "site": "Task 4 Step 6, the test, lines 1761-1778",
+          "before": "```ts\nimport * as engine from '@coderline/alphatab';\nimport { expect, it } from 'vitest';\n\nimport { DEFAULT_PLAYER_SETTINGS } from './settings-schema';\nimport { readSettingValue } from './settings-paths';\n\n// The engine is the source of truth for every default. Colours come back from the converter as\n// PACKED SIGNED INTEGERS (-16777216), not '#000000', so a colour row is read through `.rgba` on\n// the live Settings instead. The converter is on `model`; the `json` namespace is empty at runtime.\nit('every shipped default is what a fresh Settings() reports', () => {\n  const fresh = new engine.Settings();\n  const serialised = engine.model.JsonConverter.settingsToJsObject(fresh);\n\n  for (const [path, shipped] of eachLeaf(DEFAULT_PLAYER_SETTINGS)) {\n    expect(readSettingValue(serialised, path), path).toEqual(shipped);\n  }\n});\n```",
+          "after": "```ts\nimport * as engine from '@coderline/alphatab';\nimport { expect, it } from 'vitest';\n\nimport { DEFAULT_PLAYER_SETTINGS, SETTING_ENUMS } from './settings-schema';\nimport { readSettingValue } from './settings-paths';\n\n// The engine is the source of truth for every default, but the serializer does not hand back the\n// shape `readSettingValue` walks. THREE conversions stand between them:\n//  1. settingsToJsObject returns nested Maps (SettingsSerializer.toJson), and `part in current` —\n//     how readSettingValue steps a path — never sees a Map entry, so every path would miss on its\n//     first segment. Convert the Map tree to plain objects first.\n//  2. Every key comes back LOWERCASED ('scrolloffsety', 'playermode'), so lowercase each segment.\n//  3. Enums come back as NUMBERS; the shipped table stores their NAMES. Resolve the name.\n// Colours come back as PACKED SIGNED INTEGERS (-16777216), not '#000000', so a colour row is read\n// through `.rgba` on the live Settings instead. The converter is on `model`; the `json` namespace\n// is empty at runtime.\nconst plain = (value: unknown): unknown =>\n  value instanceof Map ? Object.fromEntries([...value].map(([k, v]) => [k, plain(v)])) : value;\n\n// Set by the player at construction or by this app's own choice, so they are NOT what a fresh\n// Settings() reports and never can be. Every OTHER key stays under the guard — including\n// player.enableCursor (engine default true) and player.scrollMode (engine default Continuous),\n// which DO match and would be silently un-checked if this list were widened to all four.\nconst NOT_ALPHATAB_DEFAULTS = new Set([\n  'core.engine', // engine default 'default'; this app ships the SVG renderer\n  'player.playerMode', // engine default Disabled; PlayerShell sets EnabledAutomatic\n  'player.scrollOffsetY', // engine default 0; PlayerShell sets -10\n]);\n\nit('every shipped default is what a fresh Settings() reports', () => {\n  const fresh = new engine.Settings();\n  const serialised = plain(engine.model.JsonConverter.settingsToJsObject(fresh));\n\n  for (const [path, shipped] of eachLeaf(DEFAULT_PLAYER_SETTINGS)) {\n    if (NOT_ALPHATAB_DEFAULTS.has(path)) continue;\n    const actual = readSettingValue(serialised, path.toLowerCase());\n    // An enum row ships its NAME; the serializer reports the number.\n    const expected = SETTING_ENUMS[path]?.[shipped as string] ?? shipped;\n    expect(actual, path).toEqual(expected);\n  }\n});\n```"
+        },
+        {
+          "site": "Task 4, the shipped-defaults table comment, lines 1746-1752",
+          "before": "  player: {\n    // These four are set by the player at construction, so they are not AlphaTab's defaults.\n    playerMode: 'EnabledAutomatic',\n    enableCursor: true,\n    scrollMode: 'Continuous',\n    scrollOffsetY: -10,\n  },",
+          "after": "  player: {\n    // All four are set by the player at construction. Only TWO of them differ from a fresh\n    // Settings() — playerMode (engine default Disabled) and scrollOffsetY (engine default 0); those\n    // two are the ones settings-defaults.test.ts skips. enableCursor (true) and scrollMode\n    // (Continuous) happen to equal the engine's own defaults and stay under the guard.\n    playerMode: 'EnabledAutomatic',\n    enableCursor: true,\n    scrollMode: 'Continuous',\n    scrollOffsetY: -10,\n  },"
+        }
+      ],
+      "verifier_note": "All four quotes verbatim. Every mechanism claim was confirmed against the installed library: the serializer builds nested Maps, lowercases keys, and writes enums as numbers; the plan's reader uses an operator that inspects properties, never Map entries, so every path misses on its first segment.",
+      "also_spotted": "The test calls a helper `eachLeaf` at line 1775 that is defined nowhere in the plan."
+    },
+    {
+      "id": "F-7",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 100,
+      "reviewers": ["feasibility"],
+      "verdict": "PASS",
+      "section": "Task 5 Step 1, plus Task 6 and Task 8",
+      "title": "Eight end-to-end cases close the settings group they mean to open",
+      "whats_wrong": "The Settings popover opens with every group already expanded. Eight end-to-end cases then click a group's header to 'open' it — which collapses it — and the library removes a collapsed panel's contents from the page entirely, so the next line times out on a control that is no longer there. It hits six cases in Task 5, one in Task 6, and the shared helper Task 8 uses. These are the first cases the plan writes and expects to go green.",
+      "proposed_fix": "Replace each bare header click with the conditional form the plan already uses twice elsewhere: read the header's expanded state and click only when it is not already open. Add the helper once, beside the existing tooltip helper.",
+      "why_it_works": "The plan already solved this — Task 5 Step 6 and Task 9 Step 2 both guard the click on the expanded state. Reusing that idiom makes each case work whether the group starts open or closed, so it survives a later change to which groups open by default.",
+      "evidence": [
+        {
+          "quote": "<Accordion className=\"px-3 py-2\" defaultValue={groups.map((group) => group.id)}>",
+          "line": 2400,
+          "verbatim": true
+        },
+        {
+          "quote": "await page.getByRole('button', { name: 'Display: general' }).click();",
+          "line": 2122,
+          "verbatim": true,
+          "note": "also at 2889"
+        },
+        {
+          "quote": "await page.getByRole('button', { name: 'Player' }).click();",
+          "line": 2152,
+          "verbatim": true,
+          "note": "also at 2167, 2183, 2215, 3617"
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 5 Step 1, the zoom case, lines 2120-2123",
+          "before": "  // Open the first group and change the zoom — a setting whose effect is measurable in the DOM.\n  // Through the NUMBER field: it shares the slider's name, and typing a value is one report.\n  await page.getByRole('button', { name: 'Display: general' }).click();\n  await page.getByRole('spinbutton', { name: 'Zoom' }).fill('2');",
+          "after": "  // Change the zoom — a setting whose effect is measurable in the DOM. Through the NUMBER field:\n  // it shares the slider's name, and typing a value is one report. The popover opens with every\n  // group EXPANDED, so a bare click would CLOSE the group and unmount the row: open only if shut.\n  await openGroup(page, 'Display: general');\n  await page.getByRole('spinbutton', { name: 'Zoom' }).fill('2');"
+        },
+        {
+          "site": "the new helper, beside the existing openTooltip helper in the end-to-end file",
+          "before": "(nothing — this helper does not exist yet)",
+          "after": "// Every settings group starts expanded (SettingsPopover's defaultValue lists them all), and Base\n// UI's Accordion.Panel does not keepMounted — so clicking an open header removes its rows from the\n// DOM and the next fill() times out. Same idiom as a11y.e2e.ts's \"open every group\" loop.\nconst openGroup = async (page: Page, name: string) => {\n  const header = page.getByRole('button', { name });\n  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click();\n};"
+        },
+        {
+          "site": "Task 8's shared helper, lines 3615-3620",
+          "before": "const setPlayerMode = async (page: Page, label: string) => {\n  await page.getByTestId('settings-trigger').click();\n  await page.getByRole('button', { name: 'Player' }).click();\n  await page.getByRole('combobox', { name: 'Play from' }).selectOption({ label });\n  await page.keyboard.press('Escape');\n};",
+          "after": "const setPlayerMode = async (page: Page, label: string) => {\n  await page.getByTestId('settings-trigger').click();\n  await openGroup(page, 'Player');\n  await page.getByRole('combobox', { name: 'Play from' }).selectOption({ label });\n  await page.keyboard.press('Escape');\n};"
+        }
+      ],
+      "additional_edit_sites": [
+        "The same one-line swap applies at lines 2152, 2167, 2183, 2201 ('Stylesheet'), 2215 and 2889 — eight bare clicks in total, matching the count in the title."
+      ],
+      "verifier_note": "All three quotes verbatim, and the count checked: exactly eight bare header clicks. The library behaviour was confirmed against the installed version — neither the accordion root nor its panel defaults to keeping a closed panel mounted, so its contents leave the page. The plan already carries the correct guard at lines 2600 and 3793."
+    },
+    {
+      "id": "F-8",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 100,
+      "reviewers": ["feasibility", "adversarial"],
+      "agreement": "Raised independently by two reviewers; adversarial rated it P1, feasibility P2, so it carries the higher severity.",
+      "verdict": "PASS",
+      "removal_flag": true,
+      "section": "Task 9 (extend the accessibility gate), Step 1",
+      "title": "The gate rewrite drops the seek rail out of the 44-pixel check",
+      "whats_wrong": "The accessibility gate that ships today finds the seek rail by a stable data attribute, and both the file's own comment and the slider component say that attribute exists precisely so the gate is not keyed to the styling class it measures. Step 1's code block replaces it with a class-based selector and then tells the implementer to keep the comment — leaving a file whose comment forbids the code beside it. Any later restyle of the rail makes the selector match nothing, and the gate passes silently over whatever the rail became. That is the NH-315 failure class this repo has already been bitten by: production served the seek rail 0 pixels wide and fully transparent, and nothing failed.",
+      "proposed_fix": "Restore the data-attribute selector in Step 1's block, leaving the two field selectors as the only additions, and rewrite the retained sentence so it explains the rail is found by the attribute and not by its class.",
+      "why_it_works": "It puts back what the repo already ships and what a design-system unit test actively protects, so the gate keeps measuring the rail through a hook that survives restyling. Nothing is lost: the two selectors match the identical element today.",
+      "evidence": [
+        {
+          "quote": "'[data-slot=\"slider\"] [class*=\"h-11\"]',",
+          "line": 3764,
+          "verbatim": true
+        },
+        {
+          "quote": "Keep the comment already above the selector about the seek rail; it still applies.",
+          "line": 3775,
+          "verbatim": true
+        }
+      ],
+      "dependant_check": "PASS, and the replacement restores coverage rather than removing it. The shipped gate uses the data attribute; the styling class and the attribute sit on the same element, so the two selectors match the identical element set today and the data-attribute form does not over-match (the range slider uses a different attribute and carries no slider-control). A design-system unit test exists whose whole purpose is to fail if the attribute hook is removed. A repo-wide search for the class-based form found it only in the two plan documents. The verifier also corrected the finding's own count: there are six existing hit-area call sites, not three, plus the two new popover ones — all eight keep seek-rail coverage under the fix, and all eight lose it under the plan as written the moment the rail is restyled.",
+      "edits": [
+        {
+          "site": "Task 9 Step 1, the selector array and the sentence below it, lines 3757-3775",
+          "before": "          '[data-slot=\"slider\"] [class*=\"h-11\"]',",
+          "after": "          '[data-slot=\"slider-control\"]',",
+          "note": "One line inside the array shown in F-5's Before/After block — the two findings edit the same block, so apply them together."
+        },
+        {
+          "site": "the sentence below the block, line 3775",
+          "before": "Keep the comment already above the selector about the seek rail; it still applies.",
+          "after": "Keep the seek-rail selector and the comment above it exactly as the file ships them: the rail is\nfound by `[data-slot=\"slider-control\"]`, NOT by the Tailwind class it is measuring. Only the three\nfield selectors below it are new."
+        }
+      ],
+      "verifier_note": "Both quotes verbatim. The stale block appears to have been copied from the earlier transport plan, which predates the shipped file. Lines 68 and 3755 of this plan already describe the gate in its shipped data-attribute form, so only the code block is stale."
+    },
+    {
+      "id": "F-9",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 100,
+      "reviewers": ["feasibility", "adversarial"],
+      "agreement": "Raised independently by two reviewers — one from the mid-session angle, one from the never-declared angle.",
+      "verdict": "PASS",
+      "section": "Task 8 (the player-mode row), Steps 3 and 4",
+      "title": "The flag that settles the loading bar has no source, so the settle path never fires",
+      "whats_wrong": "Task 8 adds a guard meaning 'no player is ever coming', built from two flags. One of them is set properly. The other is never declared, never set and never read anywhere else in the plan — it exists in exactly one line, the guard itself. So someone who picks the external-media mode gets a permanently pulsing loading bar behind a dead Play button whose tooltip still reads 'Play', and because the mode is stored, on every later visit too. That is exactly the outcome the paragraph above it says it prevents. Separately, switching to 'No playback' mid-session without reloading leaves the same dead state, because the mode-change hook re-reads only two other flags. Task 8's own end-to-end case reloads the page between the switch and the assertion, so it passes against this gap.",
+      "proposed_fix": "Declare the missing flag beside its twin; set both from the settings in the score-loaded handler, and set both again in the player read so a mid-session switch settles without a reload. Give the Play tooltip its third branch for the external-media case, and add an end-to-end case that switches the mode and asserts the settled state without reloading.",
+      "why_it_works": "It gives the guard a real source, using the same settings read the plan already argues for — the person's choice, not what the engine built, because with playback off the engine never reports readiness. Keeping the existing score-loaded subscription is what preserves the stored-'No playback' reload case, and the extra read in the player path is what closes the no-reload gap. The tooltip string it adds is already written in the plan at line 3727; it just has nowhere to be shown from.",
+      "evidence": [
+        {
+          "quote": "const noPlayerComing = playbackOff || externalMedia;",
+          "line": 3719,
+          "verbatim": true
+        },
+        {
+          "quote": "setPlaybackOff(api?.settings.player.playerMode === engine?.PlayerMode.Disabled),",
+          "line": 3694,
+          "verbatim": true
+        },
+        {
+          "quote": "and in `applySetting`, after the engine call: `if (path === 'player.playerMode') readPlayer();`",
+          "line": 3704,
+          "verbatim": true
+        }
+      ],
+      "guard_safety_note": "This fix ADDS a source and keeps every existing subscription. It does not remove the score-loaded subscription — that is the one lap 2 wrongly proposed deleting, and deleting it would break the stored-'No playback' reload case. The verifier confirmed the fix preserves it.",
+      "edits": [
+        {
+          "site": "Task 8 Step 3, the reads, lines 3682-3704",
+          "before": "+ const readPlayer = useCallback(() => {\n+   if (!api || !engine) return;\n+   setHasBackingTrack(api.actualPlayerMode === engine.PlayerMode.EnabledBackingTrack);\n+   setPlayerReady(api.isReadyForPlayback);\n+ }, [api, engine]);\n+ // TWO reads, because they have two different sources of truth.\n+ //\n+ // \"Playback is off\" is the PERSON'S choice, and it is in the settings the moment the score\n+ // loads. It must NOT come from actualPlayerMode: with playback off AlphaTab builds no player,\n+ // so `playerReady` NEVER fires, and a reload with that mode stored would leave the flag false —\n+ // Play enabled, the loading bar spinning, and Step 2's stored-\"No playback\" case failing.\n+ useAlphaTabEvent(api, 'scoreLoaded', () =>\n+   setPlaybackOff(api?.settings.player.playerMode === engine?.PlayerMode.Disabled),\n+ );",
+          "after": "+ // The two modes that will never produce a player, read from the SETTINGS — the person's choice,\n+ // not what AlphaTab built. Both are needed by `noPlayerComing` in Step 4.\n+ const readChosenMode = useCallback(() => {\n+   const mode = api?.settings.player.playerMode;\n+   setPlaybackOff(mode === engine?.PlayerMode.Disabled);\n+   setExternalMedia(mode === engine?.PlayerMode.EnabledExternalMedia);\n+ }, [api, engine]);\n+ const readPlayer = useCallback(() => {\n+   if (!api || !engine) return;\n+   setHasBackingTrack(api.actualPlayerMode === engine.PlayerMode.EnabledBackingTrack);\n+   setPlayerReady(api.isReadyForPlayback);\n+   // A mid-session switch settles without a reload: playerReady never fires for either of the\n+   // two dead modes, so the settings read has to happen here as well as at scoreLoaded.\n+   readChosenMode();\n+ }, [api, engine, readChosenMode]);\n+ // TWO reads, because they have two different sources of truth.\n+ //\n+ // \"Playback is off\" is the PERSON'S choice, and it is in the settings the moment the score\n+ // loads. It must NOT come from actualPlayerMode: with playback off AlphaTab builds no player,\n+ // so `playerReady` NEVER fires, and a reload with that mode stored would leave the flag false —\n+ // Play enabled, the loading bar spinning, and Step 2's stored-\"No playback\" case failing.\n+ useAlphaTabEvent(api, 'scoreLoaded', readChosenMode);"
+        },
+        {
+          "site": "Task 8 Step 4, the Play tooltip, line 3724",
+          "before": "- The Play button's tooltip: `playbackOff ? 'Playback is turned off in Settings' : playing ? 'Pause' : 'Play'`.",
+          "after": "- The Play button's tooltip has THREE branches, one per dead mode, so a disabled Play button never says \"Play\": `playbackOff ? 'Playback is turned off in Settings' : externalMedia ? 'This mode plays along to an audio or video file, which this version does not provide yet.' : playing ? 'Pause' : 'Play'`."
+        },
+        {
+          "site": "Task 8 Step 4, the opening sentence, line 3712",
+          "before": "`playbackOff` is new state beside `hasBackingTrack`. Three places read it:",
+          "after": "`playbackOff` and `externalMedia` are new state beside `hasBackingTrack`, both written by `readChosenMode` in Step 3. Three places read them:"
+        }
+      ],
+      "verifier_note": "All three quotes verbatim. The missing flag occurs exactly once in the whole document — no declaration, no setter, no other reader. The mid-session claim was confirmed: Task 8's second case reloads at line 3648 before every assertion, and the player read writes only two other flags.",
+      "interacts_with": [
+        "F-11 — if the external-media option is withheld from the row, this fix is still needed for values already in storage. Apply F-9 regardless of what F-11 decides."
+      ]
+    },
+    {
+      "id": "F-10",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 100,
+      "reviewers": ["design-lens"],
+      "verdict": "PASS",
+      "section": "Global Constraints, Task 5 and Task 7",
+      "title": "The disabled Settings and Tracks triggers cannot open their own tooltip",
+      "whats_wrong": "The Global Constraints state the rule and the reason: a disabled button takes no pointer events, so as its own tooltip trigger it never sees the mouse, and the tooltip must be wrapped in a span instead. They even name the two cases — the Settings gear while the engine loads, and the Tracks trigger before a player exists. But Task 5 and Task 7 both put the disabled state directly on the button inside an unwrapped tooltip trigger, which is the exact setup the constraint says fails. Someone hovering either control while it is disabled gets no explanation at all. Task 8 Step 4 already applies the correct shape to the Play button for the same reason.",
+      "proposed_fix": "In both popovers, have the tooltip trigger render a span around the popover trigger — the shape the transport toggle already ships — instead of relying on the button itself to receive the hover.",
+      "why_it_works": "The span is not disabled, so it receives the hover and opens the tooltip; focus still opens it too, because focus events bubble up from the button inside. The repo already ships this exact construction in the transport toggle, so it is a known-working pattern rather than a new one.",
+      "evidence": [
+        {
+          "quote": "That covers the Settings gear while the engine loads and the Tracks trigger while no player is coming.",
+          "line": 136,
+          "verbatim": true
+        },
+        {
+          "quote": "A disabled `Button` is `pointer-events: none`, so its own tooltip cannot open on hover.",
+          "line": 136,
+          "verbatim": true
+        },
+        {
+          "quote": "the `TooltipTrigger` renders a `<span className=\"inline-flex\" />` **around** the button",
+          "line": 3724,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 5, the Settings trigger, lines 2362-2389",
+          "before": "  return (\n    <Popover>\n      {/* The tooltip is ALWAYS present, never conditional: swapping the wrapped and the bare\n          element remounts the button and drops its focus. Both triggers render through the same\n          Button — one <button>, no nesting. */}\n      <Tooltip>\n        <TooltipTrigger\n          render={\n            <PopoverTrigger\n              render={\n                <Button\n                  data-testid=\"settings-trigger\"\n                  variant=\"ghost\"\n                  size=\"icon\"\n                  aria-label=\"Settings\"\n                  disabled={!engine}\n                  className=\"size-11 rounded-xl\"\n                >\n                  <span className=\"material-symbols-outlined\" aria-hidden=\"true\">\n                    settings\n                  </span>\n                </Button>\n              }\n            />\n          }\n        />\n        <TooltipContent>Settings</TooltipContent>\n      </Tooltip>",
+          "after": "  return (\n    <Popover>\n      {/* The tooltip is ALWAYS present, never conditional: swapping the wrapped and the bare\n          element remounts the button and drops its focus. The TooltipTrigger renders a SPAN\n          around the PopoverTrigger — the shape TransportToggle ships — because the gear is\n          disabled while the engine loads, and a disabled Button is pointer-events:none, so as\n          its own tooltip trigger it would never see the mouse (Global Constraints). The span\n          takes the hover; focus still opens it, because focus events bubble. Still one <button>. */}\n      <Tooltip>\n        <TooltipTrigger render={<span className=\"inline-flex\" />}>\n          <PopoverTrigger\n            render={\n              <Button\n                data-testid=\"settings-trigger\"\n                variant=\"ghost\"\n                size=\"icon\"\n                aria-label=\"Settings\"\n                disabled={!engine}\n                className=\"size-11 rounded-xl\"\n              >\n                <span className=\"material-symbols-outlined\" aria-hidden=\"true\">\n                  settings\n                </span>\n              </Button>\n            }\n          />\n        </TooltipTrigger>\n        <TooltipContent>Settings</TooltipContent>\n      </Tooltip>"
+        },
+        {
+          "site": "Task 7, the Tracks trigger, lines 3416-3442",
+          "before": "  <Tooltip>\n    <TooltipTrigger\n      render={\n        <PopoverTrigger\n          render={\n            <Button\n              data-testid=\"tracks-trigger\"\n              variant=\"ghost\"\n              size=\"icon\"\n              aria-label=\"Tracks\"\n              disabled={disabled}\n              className=\"size-11 rounded-lg text-muted-foreground\"\n            >",
+          "after": "  <Tooltip>\n    {/* The span-wrap, not a bare stacked trigger: this button is disabled while the engine\n        loads, and a disabled Button is pointer-events:none (Global Constraints). */}\n    <TooltipTrigger render={<span className=\"inline-flex\" />}>\n      <PopoverTrigger\n        render={\n          <Button\n            data-testid=\"tracks-trigger\"\n            variant=\"ghost\"\n            size=\"icon\"\n            aria-label=\"Tracks\"\n            disabled={disabled}\n            className=\"size-11 rounded-lg text-muted-foreground\"\n          >"
+        },
+        {
+          "site": "Task 5, the verify-in-the-browser note, line 2433",
+          "before": "If the two triggers fight, fall back to the shape `TransportToggle` uses — the `TooltipTrigger` renders a `<span className=\"inline-flex\" />` **around** the `PopoverTrigger` — and keep the tooltip permanent either way.",
+          "after": "`TooltipTrigger render={<span … />}` wrapping a `PopoverTrigger` is the shape `TransportToggle` already ships — chosen here, not as a fallback, because the gear is disabled while the engine loads and a disabled `Button` takes no pointer events. Verify in the browser before moving on: hover opens the tooltip **while the gear is still disabled**, a click opens the popover once it is enabled, Tab reaches the button once, and `Escape` closes the popover and leaves focus on the gear."
+        }
+      ],
+      "verifier_note": "All three quotes verbatim, and the mechanism confirmed in the repo: the design-system button applies pointer-events-none on the disabled ARIA state, and the transport toggle ships the working span shape. Two companion edits the finding did not name are included above — the comment at line 2364 that says 'both triggers render through the same Button', and line 2433 which currently frames the span-wrap as a fallback. Promoting it to the default also retires the unverified stacked-trigger risk the plan's own self-review flags as 'read, not run'.",
+      "also_spotted": "Line 136 says the Tracks trigger is disabled 'while no player is coming', but Task 8 line 3729 settles it as disabled while the engine loads. The disabled state is real either way; only the stated reason in the constraint is stale."
+    },
+    {
+      "id": "F-11",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 75,
+      "reviewers": ["product-lens"],
+      "verdict": "NARROW",
+      "removal_flag": true,
+      "verification_headline": "THE REVIEWER'S FIX WAS VERIFIED-BUT-WRONG. Do not apply the removal. This is the same shape as lap 2's bad finding, and it is the reason you asked for this check.",
+      "section": "Task 8 (the player-mode row), Step 1",
+      "title": "The player-mode row offers a mode that cannot play anything",
+      "whats_wrong": "The row lets someone choose 'An external media player', but this app supplies no handler for external media, so choosing it loses playback outright — and because the mode is stored, every later visit opens with a dead Play button, recoverable only by finding that one row again inside a ninety-row panel. The concern is real and the plan's own rule says a control must never look live and do nothing.",
+      "proposed_fix_narrowed": "Keep the option. Change its label so it says what this version cannot do — 'An audio or video file (none in this version)' — so the choice is honest BEFORE it is made, not only explained afterwards. The real repair of the dead state is F-9, which supplies the missing flag and the third tooltip branch.",
+      "why_it_works": "It answers the actual complaint — that the control does not disclose its own limitation — at the only moment that matters, the moment of choosing. It contradicts nothing, it costs one string, and no end-to-end case selects that label (the two cases that drive this row select 'The synthesizer, always' and 'No playback').",
+      "reviewers_original_fix_REJECTED": "Drop the external-media option from the row entirely, and keep the flag inside the no-player guard for values already in storage.",
+      "why_the_original_fix_was_rejected": [
+        "It reverses a decision the document argues at length. Line 3727 is a whole paragraph headed with the claim that this mode ships and must settle like 'No playback' does — it states the exact hazard this finding raises, in nearly the same words, and then answers it: the mode joins the no-player guard, the Play tooltip explains itself, and 'this plan only makes the choice honest.' The fix would delete that decision without engaging its argument.",
+        "It reverses your own recorded instruction. Line 3552 quotes you directly: 'we should be able to change every single setting from alphatab, including enable synth or backing track. 100% do this now. I use this all the time!' — and line 3579 turns that into a rule for this row: 'The whole enum, as the reference panel offers it.'",
+        "The rationale would condemn a feature you deliberately ship and test. 'No playback' has every property the finding objects to: it is persisted, it leaves a dead Play button on every later visit, and it is recovered only through the same row. It is tested at lines 3641-3664.",
+        "The guard it promised to keep would be unreachable dead code. The stored-value cleaner runs in a lazy initialiser BEFORE the engine is built, so a stored external-media value is reset to the default before the engine ever sees it — the guard could never fire.",
+        "It would report the app's own option to you as corruption. The cleaner's return value drives a warning toast reading 'Your player settings could not be read, so they were reset to the defaults'. Someone who had chosen the option would be told their settings were broken."
+      ],
+      "dependant_check": "MIXED — and that mix is what changed the verdict. The reviewer's first claim held: no end-to-end case, test or gate selects that label; a repo-wide search found nothing. But its second claim — 'no other row or gate reads it' — is FALSE: the no-player guard and its comment name the mode explicitly, and line 3727 prescribes its tooltip string. Removing the option would make all three unreachable. The third claim held but had an unstated consequence (the corruption toast above), and the fourth was wrong (the retained guard is dead code).",
+      "evidence": [
+        {
+          "quote": "`EnabledExternalMedia` is offered because every mode is, but this app provides no external media handler, so it plays nothing.",
+          "line": 3909,
+          "verbatim": true
+        },
+        {
+          "quote": "are **dropped**: they are `@json_ignore` and unread by the renderer, so no write path makes them do anything",
+          "line": 1363,
+          "verbatim": true
+        },
+        {
+          "quote": "the spec's rule is that a control must never look live and do nothing",
+          "line": 102,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 8 Step 1, the option list, lines 3579-3593",
+          "before": "  // The whole enum, as the reference panel offers it. Original labels, written for a drummer:\n  // what each mode DOES, not AlphaTab's identifier.\n  control: {\n    kind: 'select',\n    options: [\n      { value: 'EnabledAutomatic', label: \"The file's own recording, when it has one\" },\n      { value: 'EnabledSynthesizer', label: 'The synthesizer, always' },\n      { value: 'EnabledBackingTrack', label: \"The file's own recording, always\" },\n      { value: 'EnabledExternalMedia', label: 'An external media player' },\n      { value: 'Disabled', label: 'No playback' },\n    ],\n  },",
+          "after": "  // The whole enum, as the reference panel offers it. Original labels, written for a drummer:\n  // what each mode DOES, not AlphaTab's identifier. The external-media label says what this\n  // version cannot do, so the choice is honest BEFORE it is made — Step 4 also settles the mode\n  // and explains it in the Play tooltip afterwards.\n  control: {\n    kind: 'select',\n    options: [\n      { value: 'EnabledAutomatic', label: \"The file's own recording, when it has one\" },\n      { value: 'EnabledSynthesizer', label: 'The synthesizer, always' },\n      { value: 'EnabledBackingTrack', label: \"The file's own recording, always\" },\n      { value: 'EnabledExternalMedia', label: 'An audio or video file (none in this version)' },\n      { value: 'Disabled', label: 'No playback' },\n    ],\n  },",
+          "note": "The mode-setting helper selects by label, and it only ever selects 'The synthesizer, always' and 'No playback', so this label change touches no test."
+        }
+      ],
+      "your_call": "Three ways to go. (1) Take the narrowed label change. (2) Take nothing here and rely on F-9 alone, since F-9 is what actually repairs the dead state. (3) Override the verification and drop the option anyway — it is your plan and your recorded instruction, so you are entitled to change it; just know it reverses line 3727 and line 3552, and F-9's tooltip branch would then need rewording."
+    },
+    {
+      "id": "F-12",
+      "tier": "proposed_fix",
+      "severity": "P1",
+      "anchor": 75,
+      "reviewers": ["adversarial"],
+      "verdict": "NARROW",
+      "section": "Task 2 (SettingRow) Step 3, and Task 6 (persistence) Step 3",
+      "title": "A number row never clamps, so an out-of-range value is written, pushed and stored",
+      "whats_wrong": "Typing 0 into the Zoom row — whose descriptor declares a minimum of 0.25 — is accepted, written to state, pushed to the engine and persisted on the same keystroke. The next visit restores it before the engine is even built, so the player opens on an unreadable score with no error and no message. The reporting helper rejects only a blank field and a non-number; the stored-value merge only compares types; and the value cleaner covers dropdown rows alone. The plan built a dedicated guard for the dropdown form of this hazard and left the numeric form reaching about seventy rows with nothing. Only the speed row is bounded, and by the engine's own clamp rather than the app's.",
+      "proposed_fix_narrowed": "Clamp at the COMMIT boundary — on blur and on Enter — not on every keystroke, and only for rows that declare a bound. Add a test asserting that typing 0 into a row declared with a minimum of 0.25 reports 0 while typing and 0.25 once committed.",
+      "why_it_works": "It closes the same hole without breaking typing, and it reuses the commit boundary this very component already uses for the text rows' identical hazard — so there is one idiom in the file rather than two.",
+      "reviewers_original_fix_REJECTED": "Clamp inside the reporting helper, so every keystroke is clamped, and test that typing 0 into a row with a minimum of 0.25 reports 0.25.",
+      "why_the_original_fix_was_rejected": "The fields are controlled and the helper fires on every keystroke, so clamping there makes a leading digit below the minimum impossible to type. In the Zoom row (minimum 0.25), typing '0.5' would rewrite itself to '0.25' at the first character. In the speed row (minimum 12.5), typing '100' would rewrite to '12.5' at the first character. The reviewer's own proposed test asserts exactly the behaviour that destroys those entries.",
+      "evidence": [
+        {
+          "quote": "if (raw.trim() !== '' && !Number.isNaN(parsed)) onChange(parsed);",
+          "line": 660,
+          "verbatim": true
+        },
+        {
+          "quote": "control: { kind: 'range', min: 0.25, max: 3, step: 0.05 },",
+          "line": 1675,
+          "verbatim": true
+        },
+        {
+          "quote": "merged[key] = typeof value === typeof fallback ? value : fallback;",
+          "line": 2811,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 2 Step 3, the reporting helper, lines 656-661",
+          "before": "  // A half-typed or cleared number field yields NaN; pushing that into the settings tree breaks\n  // rendering WITHOUT throwing, so drop it and keep the last good value.\n  const reportNumber = (raw: string) => {\n    const parsed = Number(raw);\n    if (raw.trim() !== '' && !Number.isNaN(parsed)) onChange(parsed);\n  };",
+          "after": "  // A half-typed or cleared number field yields NaN; pushing that into the settings tree breaks\n  // rendering WITHOUT throwing, so drop it and keep the last good value.\n  //\n  // The declared min/max are NOT enforced per keystroke. They reach the DOM as native attributes,\n  // which constrain the stepper and nothing else, so a typed 0 in a row declared min 0.25 is\n  // reported, pushed to the engine and persisted — and the next visit restores it before the api\n  // exists. But clamping on every keystroke is worse: the field is controlled, so typing \"0.5\"\n  // into that row would rewrite itself to \"0.25\" at the first character, and \"100\" into the speed\n  // row (min 12.5) would rewrite to \"12.5\". So the clamp waits for the commit — blur or Enter —\n  // the same boundary the text rows already use, and only for rows that declare a bound.\n  const clampToControl = (n: number) => {\n    const { min, max } = control as { min?: number; max?: number };\n    return Math.min(max ?? n, Math.max(min ?? n, n));\n  };\n  const reportNumber = (raw: string, commit = false) => {\n    const parsed = Number(raw);\n    if (raw.trim() === '' || Number.isNaN(parsed)) return;\n    onChange(commit ? clampToControl(parsed) : parsed);\n  };"
+        },
+        {
+          "site": "Task 2 Step 3, the number row's call site, lines 709-722",
+          "before": "          value={String(value)}\n          onChange={(event) => reportNumber(event.target.value)}\n          disabled={disabled}",
+          "after": "          value={String(value)}\n          onChange={(event) => reportNumber(event.target.value)}\n          onBlur={(event) => reportNumber(event.target.value, true)}\n          onKeyDown={(event) => {\n            if (event.key === 'Enter') reportNumber(event.currentTarget.value, true);\n          }}\n          disabled={disabled}"
+        }
+      ],
+      "additional_edit_sites": [
+        "The range row's number input at lines 795-807 takes the same two handlers; its slider needs none, because the library already clamps to the bounds it is given.",
+        "Two rows carry a sentinel value that a clamp would eat: bars-per-row and bar-count both use -1 to mean automatic / all. When those rows are written they must declare a minimum of -1."
+      ],
+      "verifier_note": "All three quotes verbatim. No section claims numbers are clamped today; the bounds reach the page only as native attributes, which constrain the stepper and the invalid styling but never a typed value.",
+      "open_question_for_you": "Clamp on commit, or reject an out-of-range entry the way a non-number is rejected and keep the last good value showing? Both are defensible and the plan says neither. The fix above takes clamping; see the deferred questions."
+    },
+    {
+      "id": "F-13",
+      "tier": "proposed_fix",
+      "severity": "P2",
+      "anchor": 75,
+      "reviewers": ["feasibility"],
+      "verdict": "PASS",
+      "section": "Task 6 (persistence) Step 6, and Task 4's interface block",
+      "title": "The option-values map is needed on the first render, before the engine that builds it exists",
+      "whats_wrong": "The gate that protects the restore path from a poisoned dropdown value cannot be wired as specified. The shell reads the option-values map in a lazy initialiser, which runs on the component's very first render — when the engine context still reports nothing, because it resolves its import inside an effect. The schema declares the map as a module constant built from the same descriptors as the rows, but those descriptors come from a function that takes the engine, and the schema's own comment forbids a module-scope constant from touching a runtime engine value. Left unresolved, the implementer ships an empty map, which silently reinstates the value-wiping corruption the gate exists to catch.",
+      "proposed_fix": "Declare the map as a plain module constant of enum NAMES as string literals — names are strings and need no runtime engine — and add a test asserting it matches every option list the descriptor builder produces, so the two cannot drift apart.",
+      "why_it_works": "It satisfies both constraints at once: the map exists at module scope for the first render, and it touches no runtime engine value, so it stays inside the project's type-imports-only fence. Drift is then caught by a test rather than by sharing the descriptors, which is what made the map need the engine in the first place.",
+      "evidence": [
+        {
+          "quote": "export const SETTING_OPTION_VALUES: Readonly<Record<string, readonly string[]>>;",
+          "line": 1307,
+          "verbatim": true
+        },
+        {
+          "quote": "const [restored] = useState(() =>",
+          "line": 2929,
+          "verbatim": true
+        },
+        {
+          "quote": "Built from the engine rather than as a module constant, because every enum here is a RUNTIME",
+          "line": 1600,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 4's interface block, lines 1301-1307",
+          "before": "/**\n * Every option-bearing row's allowed VALUES, by dot-path — built from the same descriptors as the\n * rows, so a row and its option list can never drift apart. Task 6 gates the stored document on it\n * before the restore push: an enum name AlphaTab does not know does not fail, it WIPES the key.\n */\nexport const SETTING_OPTION_VALUES: Readonly<Record<string, readonly string[]>>;",
+          "after": "/**\n * Every option-bearing row's allowed VALUES, by dot-path. Task 6 gates the stored document on it\n * before the restore push: an enum name AlphaTab does not know does not fail, it WIPES the key.\n *\n * A PLAIN module constant of enum NAMES as string literals — it cannot be built from\n * buildSettingGroups(engine), because PlayerShell reads it in a lazy useState initialiser on its\n * FIRST render, when the engine context is still { engine: null } (it resolves the dynamic import\n * inside an effect). Names are strings, so this touches no runtime AlphaTab value and stays inside\n * the type-imports-only fence. Drift is caught by a case in settings-defaults.test.ts, not by\n * sharing the descriptors: it asserts this map equals every option list buildSettingGroups(engine)\n * produces, so a row and its option list still cannot separate.\n */\nexport const SETTING_OPTION_VALUES: Readonly<Record<string, readonly string[]>>;"
+        }
+      ],
+      "additional_edit_sites": [
+        "Add to Task 4's step list: the defaults test also asserts the map matches every option list the descriptor builder produces, path by path."
+      ],
+      "verifier_note": "All three quotes verbatim. Confirmed in the repo: the engine context initialises to nothing and only sets the engine inside an effect, so it is null on the first render; and the lint config forbids both a value import and a dynamic import of the engine package, which the names-only constant does not need. The shell's own code at lines 2925-2937 is unchanged by this fix — it works as written once the map is a true module constant."
+    },
+    {
+      "id": "F-14",
+      "tier": "proposed_fix",
+      "severity": "P2",
+      "anchor": 100,
+      "reviewers": ["feasibility"],
+      "verdict": "PASS",
+      "section": "Task 3 (TrackRow) Step 1",
+      "title": "Two slider assertions can never pass, so a promised green run cannot happen",
+      "whats_wrong": "Task 3 Step 4 promises twelve passing tests, but the case that checks the volume slider's 0-to-16 scale can never be one of them. The library renders the slider thumb as a visually hidden range input carrying only the current value; the bounds live on the native minimum and maximum attributes, not on the ARIA ones the test asserts. The repo's own slider test says this explicitly and forbids adding redundant ARIA attributes to the thumb to satisfy a test, so correcting the assertion is the only route — and an implementer who does not know that loses a cycle chasing a component that is behaving correctly.",
+      "proposed_fix": "Assert the native minimum and maximum attributes in place of the ARIA ones, keeping the current-value assertion as it is.",
+      "why_it_works": "It asserts the attributes the library actually renders, which is the same pattern the design system's own slider and range-slider tests already use — so the case tests the real contract instead of one the component is forbidden from satisfying.",
+      "evidence": [
+        {
+          "quote": "expect(volume).toHaveAttribute('aria-valuemin', '0');",
+          "line": 995,
+          "verbatim": true
+        },
+        {
+          "quote": "expect(volume).toHaveAttribute('aria-valuemax', '16');",
+          "line": 996,
+          "verbatim": true
+        },
+        {
+          "quote": "Expected: PASS — 12 tests.",
+          "line": 1175,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 3 Step 1, the scale case, lines 992-998",
+          "before": "test(\"the volume slider spans AlphaTab's own 0-16 scale\", () => {\n  render(<TrackRow {...baseProps} />);\n  const volume = screen.getByRole('slider', { name: /volume/i });\n  expect(volume).toHaveAttribute('aria-valuemin', '0');\n  expect(volume).toHaveAttribute('aria-valuemax', '16');\n  expect(volume).toHaveAttribute('aria-valuenow', '8');\n});",
+          "after": "test(\"the volume slider spans AlphaTab's own 0-16 scale\", () => {\n  render(<TrackRow {...baseProps} />);\n  const volume = screen.getByRole('slider', { name: /volume/i });\n  // Base UI renders the thumb as a visually-hidden <input type=\"range\"> carrying ONLY\n  // aria-valuenow; the bounds live on the native min/max attributes. Slider.test.tsx and\n  // RangeSlider.test.tsx assert them this way, and forbid adding redundant aria-* to the\n  // thumb to satisfy a test.\n  expect(volume).toHaveAttribute('min', '0');\n  expect(volume).toHaveAttribute('max', '16');\n  expect(volume).toHaveAttribute('aria-valuenow', '8');\n});"
+        }
+      ],
+      "verifier_note": "All three quotes verbatim. The test count is unaffected — the Task 3 block holds exactly twelve test blocks and the fix swaps two assertions inside one of them.",
+      "synthesis_note": "The reviewer classed this as a silent auto-apply at full confidence, which would have edited the document before you saw it. It was re-routed to a proposed fix under the engine's own rule that a factually-incorrect-behaviour fix needs the author's sign-off even when the correct behaviour is derivable. Nothing was auto-applied this lap."
+    },
+    {
+      "id": "F-15",
+      "tier": "proposed_fix",
+      "severity": "P2",
+      "anchor": 75,
+      "reviewers": ["design-lens"],
+      "verdict": "PASS",
+      "section": "Task 3 (TrackRow), Step 3's requirements and Step 1's tests",
+      "title": "The render-lock state has no requirement and no test, so the last drawn track clicks silently",
+      "whats_wrong": "AlphaTab cannot draw nothing, so the Tracks popover refuses to un-draw the last remaining track — with an early return that swallows the click in silence. The row has a prop whose documented job is to disable that control and say why, and the popover does pass it. But Task 3, where the component is actually built, never mentions it: not in the requirements list, not in any of the twelve tests. Its twin, the recording-disables-the-mix flag, has both. So nothing forces an implementer to build it, and the control ends up looking live and doing nothing — which the Global Constraints forbid.",
+      "proposed_fix": "Add a requirements bullet next to the recording-flag bullet saying the render-lock reason disables the render-select control and replaces the normal state text in its tooltip, and add a matching test. Bump Step 4's expected count from twelve to thirteen.",
+      "why_it_works": "It gives the prop the same two anchors its twin already has — a stated requirement and a test — so the behaviour cannot be skipped. No new story is needed, so no visual baseline moves.",
+      "evidence": [
+        {
+          "quote": "Set on the LAST drawn track: the reason, as tooltip text. Its render-select then renders",
+          "line": 904,
+          "verbatim": true
+        },
+        {
+          "quote": "`mixUnavailable` disables solo, mute, the volume `Slider` and the \"Transpose audio\" `Slider`, and nothing else.",
+          "line": 1148,
+          "verbatim": true
+        },
+        {
+          "quote": "if (chosen.length === 0) return;",
+          "line": 3335,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Task 3 Step 3, the requirements list, after line 1148",
+          "before": "- `mixUnavailable` disables solo, mute, the volume `Slider` and the \"Transpose audio\" `Slider`, and nothing else. `disabled={Boolean(mixUnavailable)}` on each — `TransportToggle` turns that into `aria-disabled` by itself.",
+          "after": "- `mixUnavailable` disables solo, mute, the volume `Slider` and the \"Transpose audio\" `Slider`, and nothing else. `disabled={Boolean(mixUnavailable)}` on each — `TransportToggle` turns that into `aria-disabled` by itself.\n- `renderLockReason` disables the render-select toggle and nothing else, and its text REPLACES the normal state text in that control's tooltip — the row is the only place the rule \"at least one track must stay shown\" is ever explained. Without it the caller's guard swallows the click in silence: `applyRendered` returns early on an empty list (Task 7), so the control would look live and do nothing, which Global Constraints forbid. `mixUnavailable` and `renderLockReason` never coincide — render-select stays live while a recording plays."
+        },
+        {
+          "site": "Task 3 Step 4, the expected count, line 1175",
+          "before": "Expected: PASS — 12 tests.",
+          "after": "Expected: PASS — 13 tests."
+        },
+        {
+          "site": "Task 3 Step 1, a new test after the recording-stays-live case (line 1130)",
+          "before": "(nothing — this test does not exist yet)",
+          "after": "// The LAST drawn track: AlphaTab cannot draw nothing, so the caller refuses to un-draw it. The\n// row must say so instead of swallowing the click — the reason replaces the state text in the\n// tooltip, because \"Shown in the score\" would be true and useless here.\nconst LOCKED = 'At least one track must stay shown';\n\ntest('the last drawn track cannot be hidden, and the row says why', async () => {\n  const user = userEvent.setup();\n  const onRenderedChange = vi.fn();\n  render(\n    <TrackRow {...baseProps} renderLockReason={LOCKED} onRenderedChange={onRenderedChange} />,\n  );\n\n  const render_ = screen.getByRole('button', { name: /render/i });\n  expect(render_).toHaveAttribute('aria-disabled', 'true');\n  await user.click(render_);\n  expect(onRenderedChange).not.toHaveBeenCalled();\n\n  // Solo, mute and volume are untouched: this lock is about what is DRAWN, not about the mix.\n  expect(screen.getByRole('button', { name: /solo/i })).not.toHaveAttribute(\n    'aria-disabled',\n    'true',\n  );\n  expect(screen.getByRole('slider', { name: /volume/i })).not.toBeDisabled();\n\n  await user.tab();\n  expect(await screen.findByText(LOCKED)).toBeInTheDocument();\n});",
+          "note": "Written with the button role and aria-disabled, which assumes F-2 is also applied. If F-2 is skipped, this test must use the checkbox role and data-disabled instead."
+        }
+      ],
+      "verifier_note": "All three quotes verbatim. The prop appears only three times in the whole plan — its declaration, a comment pointing at it, and the caller — and never in Task 3's requirements or its twelve tests, while its twin has both. The caller does wire it, at lines 3467-3470, which strengthens the finding: Task 3 is where it must be built."
+    },
+    {
+      "id": "F-16",
+      "tier": "proposed_fix",
+      "severity": "P2",
+      "anchor": 75,
+      "reviewers": ["product-lens"],
+      "verdict": "PASS",
+      "removal_flag": true,
+      "section": "Task 7 (the Tracks popover), the Master row",
+      "title": "Solo all changes nothing audible, and neither master command can be undone",
+      "whats_wrong": "The mixing engine silences a channel only when some channel is soloed and this one is not — so soloing every track sounds exactly like soloing none. 'Solo all' is inaudible. 'Mute all' is the opposite trap: both handlers only ever set the value to true, so the only way out of an all-soloed or all-muted mixer is clicking every row's own button one at a time. This breaks the plan's own 'never look live and do nothing' rule on the mixer's own foot row, and nothing would catch it: no unit test, no end-to-end case, and the by-eye gate covers only the Master row's volume.",
+      "proposed_fix": "Make both commands clearing and two-state. Replace 'Solo all' with 'Clear solos', which un-solos every row. Make 'Mute all' a toggle: mute everything while anything is still audible, otherwise un-mute everything. Add both to the by-ear checklist so the new capability has an acceptance check.",
+      "why_it_works": "'Clear solos' is the command that actually does something audible, and a two-state mute means neither command can strand the mixer in a state only a row-by-row click can undo. Both still go through the same per-row handlers a row click uses, so the single-writer rule the plan relies on is untouched.",
+      "evidence": [
+        {
+          "quote": "onSoloAll={() => tracks.forEach((t) => applySolo(t.index, true))}",
+          "line": 3488,
+          "verbatim": true
+        },
+        {
+          "quote": "onMuteAll={() => tracks.forEach((t) => applyMute(t.index, true))}",
+          "line": 3489,
+          "verbatim": true
+        },
+        {
+          "quote": "the spec's rule is that a control must never look live and do nothing",
+          "line": 102,
+          "verbatim": true
+        }
+      ],
+      "dependant_check": "PASS — nothing depends on the current meaning. The verifier searched every spelling of both commands across the whole plan and the whole repo. In the plan they occur at exactly five places: Task 3's file list, Task 7's consumes line, the wiring itself, and the by-eye item, which names only the Master row's VOLUME. In the repo: zero hits anywhere. Task 7's seven end-to-end cases never touch the master row, Task 8's two never do, the by-ear list never does, and the success-criteria section never does. The defect itself was confirmed against the engine source: with every channel soloed, the solo rule silences nothing.",
+      "edits": [
+        {
+          "site": "Task 7 Step 3, the wiring, lines 3484-3490",
+          "before": "      <MasterRow\n        data-testid=\"master-row\"\n        volume={masterVolume}\n        onVolumeChange={onMasterVolumeChange}\n        onSoloAll={() => tracks.forEach((t) => applySolo(t.index, true))}\n        onMuteAll={() => tracks.forEach((t) => applyMute(t.index, true))}\n        soloMuteUnavailable={hasBackingTrack ? RECORDING : undefined}",
+          "after": "      <MasterRow\n        data-testid=\"master-row\"\n        volume={masterVolume}\n        onVolumeChange={onMasterVolumeChange}\n        // Both commands CLEAR, because neither could be undone otherwise: the only way out of an\n        // all-soloed or all-muted mixer would be clicking every row's own button one at a time.\n        // \"Solo all\" was also inaudible — AlphaTab silences a channel only when SOME channel is\n        // soloed and this one is not, so soloing every track sounds exactly like soloing none.\n        // Clearing the solos is the command that does something.\n        onClearSolos={() => tracks.forEach((t) => applySolo(t.index, false))}\n        // Mute all is a TOGGLE: mute everything while anything is still audible, otherwise\n        // un-mute everything. `muted` is the pressed state the row shows.\n        muted={tracks.length > 0 && tracks.every((t) => t.mute)}\n        onMuteAll={() => {\n          const next = tracks.some((t) => !t.mute);\n          tracks.forEach((t) => applyMute(t.index, next));\n        }}\n        soloMuteUnavailable={hasBackingTrack ? RECORDING : undefined}"
+        },
+        {
+          "site": "Task 3's file list, lines 871-874",
+          "before": "- Create: `client/src/components/ui/MasterRow/` (six files) — the mixer's foot row: master volume,\n  solo-all, mute-all. It composes the same primitives `TrackRow` does and adds none; its volume is\n  a controlled value with no state of its own, because `PlayerShell` owns that value and the\n  Settings ▸ Player row is its other editor (Task 7's Interfaces says why).",
+          "after": "- Create: `client/src/components/ui/MasterRow/` (six files) — the mixer's foot row: master volume,\n  clear-solos, mute-all. It composes the same primitives `TrackRow` does and adds none; its volume is\n  a controlled value with no state of its own, because `PlayerShell` owns that value and the\n  Settings ▸ Player row is its other editor (Task 7's Interfaces says why). Both commands can be\n  undone: clear-solos un-solos every row, and mute-all is a two-state toggle over every row's mute."
+        },
+        {
+          "site": "Task 7's wiring comment, lines 3479-3481",
+          "before": "          editors for one value — the exact shape of the metronome bug, and what Plan B's\n          single-writer rule exists to prevent. Solo-all and mute-all DO belong to the mixer: they\n          set every row's own solo / mute, so they go through the same handlers a row click does.",
+          "after": "          editors for one value — the exact shape of the metronome bug, and what Plan B's\n          single-writer rule exists to prevent. Clear-solos and mute-all DO belong to the mixer: they\n          set every row's own solo / mute, so they go through the same handlers a row click does."
+        },
+        {
+          "site": "Task 10 Step 1, the by-ear list, a new item after line 3935",
+          "before": "(nothing — this item does not exist yet; items 6-8 shift down by one)",
+          "after": "6. **The Master row's two commands, and the way back out of each.** With two rows soloed, press **Clear solos** — every row un-solos and the full mix returns. Press **Mute all** — everything goes silent and every row reads muted; press it again — everything comes back. Neither command may leave the mixer in a state only a row-by-row click can undo."
+        }
+      ],
+      "verifier_note": "All three quotes verbatim. The verifier found two naming sites the finding did not name — the file-list entry and the wiring comment — both included above, because leaving them would make the plan describe a command that no longer exists.",
+      "interacts_with": [
+        "F-1 — MasterRow has no props interface anywhere yet, so this rename lands in the interface F-1 creates. If F-1 is applied first, write the interface with onClearSolos rather than onSoloAll."
+      ]
+    },
+    {
+      "id": "F-17",
+      "tier": "proposed_fix",
+      "severity": "P2",
+      "anchor": 75,
+      "reviewers": ["product-lens"],
+      "verdict": "PASS",
+      "section": "Global Constraints and Task 4 (the Stylesheet group)",
+      "title": "Twelve rows reset on every new score with nothing on screen saying so",
+      "whats_wrong": "Someone who turns on 'Hide dynamics' and opens the next chart finds it back off, with nothing to distinguish that from a bug. The twelve Stylesheet rows belong to the open score and are re-read whenever a score loads, while the seventy-one ordinary settings rows beside them in the same panel persist. The Goal makes the persistence promise for the panel as a whole, and no row carries any text marking the exception. The plan already accepted this principle once — it raises a message when settings are reset, so a silent revert is never mistaken for a bug — and the same reasoning applies here.",
+      "proposed_fix": "Add an optional description field to the row descriptor, pass it through in the popover, and give every Stylesheet row the same one-sentence description saying the value belongs to the score that is open.",
+      "why_it_works": "The row component already renders a description; only the descriptor type and the popover's pass-through are missing. One shared sentence on all twelve marks the exception where a person actually meets it, at the row itself.",
+      "evidence": [
+        {
+          "quote": "which change the rendered score and the sound, and survive a reload",
+          "line": 58,
+          "verbatim": true,
+          "note": "this is the Goal"
+        },
+        {
+          "quote": "it belongs to the score that is open, a new score brings its own, and it is never stored",
+          "line": 122,
+          "verbatim": true
+        },
+        {
+          "quote": "Its values belong to the open score: they are re-read on every `scoreLoaded`, and they are never stored.",
+          "line": 1376,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "the row descriptor type — BOTH declarations, lines 1270-1275 and 1549-1554",
+          "before": "interface SettingRowBase {\n  /** Unique across ALL eight groups — it becomes a DOM id. */\n  id: string;\n  label: string;\n  control: SettingControl;\n}",
+          "after": "interface SettingRowBase {\n  /** Unique across ALL eight groups — it becomes a DOM id. */\n  id: string;\n  label: string;\n  control: SettingControl;\n  /** Rendered under the label by `SettingRow`'s `FieldDescription`. Every `stylesheet` row carries\n   *  one, because those twelve are the exception to the panel's \"survives a reload\" promise. */\n  description?: string;\n}",
+          "note": "The type is declared TWICE — at line 1270 in Task 4's interface block and again at line 1549 in Step 6's schema. Both need the field, or the two declarations disagree. The second copy's comment differs slightly ('and axe fails a duplicate'); keep that wording and add only the new field."
+        },
+        {
+          "site": "Task 5, the popover's row render, lines 2408-2418",
+          "before": "                      label={setting.label}\n                      control={setting.control}\n                      value={valueOf(setting)}",
+          "after": "                      label={setting.label}\n                      control={setting.control}\n                      description={setting.description}\n                      value={valueOf(setting)}"
+        },
+        {
+          "site": "Task 4, the Stylesheet group rows, lines 1693-1709",
+          "before": "      settings: [\n        {\n          id: 'stylesheet-hide-dynamics',\n          source: 'stylesheet',\n          key: 'hideDynamics',\n          label: 'Hide dynamics',\n          control: { kind: 'toggle' },\n        },",
+          "after": "      settings: [\n        // Every row in this group is exempt from the panel's \"survives a reload\" promise, and the\n        // exemption has to be ON SCREEN: someone who turns one on and opens the next chart finds it\n        // back off, with nothing to distinguish that from a bug. One sentence, the same on all\n        // twelve — they are all the open score's own value.\n        {\n          id: 'stylesheet-hide-dynamics',\n          source: 'stylesheet',\n          key: 'hideDynamics',\n          label: 'Hide dynamics',\n          description: STYLESHEET_NOTE,\n          control: { kind: 'toggle' },\n        },"
+        },
+        {
+          "site": "Task 4, beside the other module constants in that file",
+          "before": "(nothing — this constant does not exist yet)",
+          "after": "/** The twelve Stylesheet rows are the open score's own values, not settings — say so on each row. */\nconst STYLESHEET_NOTE = 'Belongs to the score that is open. Another score brings its own, and this is never saved.';"
+        }
+      ],
+      "verifier_note": "All three quotes verbatim. The row component already carries the description prop and renders it, so nothing changes below. One correction to the finding's own prose: it says seventy-eight rows beside them persist — it is seventy-one. Of the other seventy-eight, five are live-engine rows that are deliberately not persisted and two are action buttons holding no value. The exception is still real and still unmarked; only the contrast number was wrong.",
+      "note_on_gates": "Task 5 lives in web/, which has no visual or accessibility baselines, and no end-to-end case asserts the absence of row descriptions — so this change regenerates nothing."
+    },
+    {
+      "id": "F-18",
+      "tier": "proposed_fix",
+      "severity": "P2",
+      "anchor": 75,
+      "reviewers": ["adversarial"],
+      "verdict": "NARROW",
+      "removal_flag": true,
+      "section": "Task 8 (the player-mode row), Step 5",
+      "title": "Step 5 claims machine evidence for a branch no lane ever reaches",
+      "whats_wrong": "Step 5 says the existing transport cases are what prove nothing else moved. But this step changes where the backing-track flag comes from, and no case in the lane ever puts the engine into backing-track mode: the repo carries no fixture with an embedded recording (the largest is 25 KB), every existing case runs with the flag false, and Task 8's own two new cases drive only the synthesizer and 'No playback'. Everything gated on that flag — the mixer's four disabled controls, the audio transposition, the metronome and count-in rows — would fail open with no lane noticing. A green run is being offered as evidence for something it cannot see.",
+      "proposed_fix_narrowed": "Rewrite Step 5's expectation to say what the lane actually proves: the transport cases prove the FALSE branch is unchanged, because no fixture embeds a recording; nothing in the lane ever puts the engine into backing-track mode, so nothing checks the new derivation's true branch; what the flag FEEDS is covered at the prop level by existing unit tests; and that the flag still becomes true against a real recording is proved only by the by-ear step in Task 10.",
+      "why_it_works": "It keeps the real point — the claim over-promises — while staying true about what IS covered, so nobody later removes the prop-level tests believing they were never there.",
+      "reviewers_original_fix_REJECTED": "State that no automated case exercises backing-track mode and that the true branch rests ENTIRELY on the by-ear step.",
+      "why_the_original_fix_was_rejected": "The claim 'no automated case has ever seen the flag true' is false. The transport row's own test file renders it true in two tests and asserts the disabled metronome and count-in plus their tooltips; that file's comment already draws the exact distinction the finding was reaching for. So 'entirely' would falsify both that test and line 3220 of the plan, which says the disabled-mixer state is covered by the row's own test, story and baselines. The over-promise is real; the replacement just has to be precise about which half is uncovered — the derivation, not the consumers.",
+      "evidence": [
+        {
+          "quote": "Expected: PASS — including every Plan A and Plan B case. `hasBackingTrack` and `playerReady` both changed their source here, and Plan B's transport cases are what prove nothing else moved.",
+          "line": 3734,
+          "verbatim": true
+        },
+        {
+          "quote": "No fixture carries an embedded recording, so the disabled-mixer state is covered by `TrackRow`'s own test, story and baselines (Task 3), and the wiring here is one prop.",
+          "line": 3220,
+          "verbatim": true
+        }
+      ],
+      "dependant_check": "Both halves of the replacement claim were checked and hold. The existing transport cases really do all run with the flag false — every fixture is between 976 bytes and 25 KB, so an embedded recording is physically impossible. And Task 10 really does carry a by-ear step for the recording case, twice over: the by-ear item itself, and line 3743, which already says so directly.",
+      "edits": [
+        {
+          "site": "Task 8 Step 5, lines 3731-3734",
+          "before": "- [ ] **Step 5: Run the lane to verify it passes**\n\nRun: `pnpm --filter @notation-hero/web run lint && pnpm --filter @notation-hero/web run test:e2e`\nExpected: PASS — including every Plan A and Plan B case. `hasBackingTrack` and `playerReady` both changed their source here, and Plan B's transport cases are what prove nothing else moved.",
+          "after": "- [ ] **Step 5: Run the lane to verify it passes**\n\nRun: `pnpm --filter @notation-hero/web run lint && pnpm --filter @notation-hero/web run test:e2e`\nExpected: PASS — including every Plan A and Plan B case. `hasBackingTrack` and `playerReady` both changed their source here, and Plan B's transport cases are what prove the FALSE branch is unchanged: no fixture embeds a recording (the largest is 25 KB), so every case in the lane runs with `hasBackingTrack` false, and Step 2's two new cases drive only the synthesizer and No playback. **Nothing in the lane ever puts AlphaTab into `EnabledBackingTrack`, so nothing here checks the new derivation's true branch.** What the flag FEEDS is covered at the prop level — `TrackRow`'s own test, story and baselines (Task 3) and `TransportRow.test.tsx`'s two `hasBackingTrack` cases — but that the flag still becomes true against a real recording is proved only by Task 10 Step 1's by-ear step. A green lane is not evidence for that half."
+        }
+      ],
+      "verifier_note": "Both quotes verbatim."
+    },
+    {
+      "id": "F-19",
+      "tier": "decision",
+      "severity": "P2",
+      "anchor": 75,
+      "reviewers": ["adversarial"],
+      "verdict": "PASS",
+      "section": "Global Constraints and Task 4 Step 7",
+      "title": "Every edit pushes the whole settings document, and the alternative is never named",
+      "whats_wrong": "Three of the plan's named hazards exist only because every row edit re-pushes all seventy-one settings: a wrong entry in the hand-written defaults table changes the score on an unrelated row's first edit; one bad stored dropdown value re-applies for the rest of the session; and four shell-set keys must be kept equal to the shipped defaults. Each is answered with extra machinery — a defaults test, a value cleaner, a matching rule — and none of the three would arise if the funnel pushed only the edited key's subtree, which the library supports. The alternative is never named anywhere, so a reader cannot tell whether the whole-document push was chosen or inherited, and the defaults table stays load-bearing even though Task 4's guard is meant to retire it.",
+      "proposed_fix": "Add a Global Constraints bullet stating that every edit pushes the whole settings document rather than the edited key's subtree, naming the rejected subtree alternative and the reason the whole-document push was kept — so the defaults test, the value cleaner and the shell-key matching rule read as its deliberate cost rather than three unrelated hazards.",
+      "why_it_works": "It is additive prose that falsifies nothing and changes no behaviour. It converts three scattered mitigations into one legible decision with a stated price, which is what a reader needs to judge whether the price is still worth paying.",
+      "why_this_is_a_decision_not_a_fix": "This is the one finding classed as needing your judgment rather than a concrete fix, because it asks you to record WHY you chose the whole-document push. The wording below is a draft of that reasoning, not a fact the document already contains — if the real reason is different, the bullet should say the real one.",
+      "evidence": [
+        {
+          "quote": "because the first edit pushes the **whole** JSON through `fillFromJson`.",
+          "line": 129,
+          "verbatim": true
+        },
+        {
+          "quote": "A wrong default here silently changes the score on the first edit of an unrelated row, because the whole JSON is pushed each time.",
+          "line": 1759,
+          "verbatim": true
+        },
+        {
+          "quote": "Because the whole document is pushed on every edit, one bad key then re-applies for the rest of the session.",
+          "line": 2860,
+          "verbatim": true
+        }
+      ],
+      "edits": [
+        {
+          "site": "Global Constraints, a new bullet after line 118",
+          "before": "(nothing — this bullet does not exist yet; it goes after the 'Restore through fillFromJson, never by assignment' bullet)",
+          "after": "- **Every edit pushes the WHOLE settings document, not the edited key's subtree — deliberately, and three of this plan's guards exist to pay for it.** `applySettingsJson` hands the entire `PlayerSettingsJson` to `fillFromJson` on every row change (Task 4 Step 7). **The alternative was available and is rejected:** the serializer walks only the keys present in the object it is given, so `fillFromJson({ display: { scale: 1.2 } })` would set that one leaf and touch nothing else. Pushing subtrees would make a wrong entry in the hand-written defaults table inert until its own row is edited, stop a bad stored enum name re-applying for the rest of the session, and make the four shell-set keys' defaults irrelevant. It is rejected because the SAME funnel restores the stored document at boot, where the whole document must go in anyway, and a second push shape would mean two code paths and two sets of failure modes over one engine call. The cost is carried instead by three guards that also protect the boot path: the engine-sourced defaults test (Task 4), `dropUnknownOptions` (Task 6), and the rule that the four shell-set keys' shipped defaults equal what the shell sets. Read those three as the price of this bullet, not as three unrelated hazards."
+        }
+      ],
+      "verifier_note": "All three quotes verbatim. The word 'subtree' appears nowhere in the document, and no bullet claims the whole-document push was a considered choice — so the finding's premise holds. Both mechanism claims were confirmed independently: the funnel really does push the entire document, and the library's deserializer really does walk only the keys it is given, so a subtree push would work. The 'four shell-set keys' count is correct."
+    },
+    {
+      "id": "F-20",
+      "tier": "fyi",
+      "severity": "P3",
+      "anchor": 50,
+      "reviewers": ["coherence"],
+      "verdict": "PASS",
+      "removal_flag": true,
+      "section": "Task 10 (close out v0), Step 2, item 1",
+      "title": "The by-eye checklist lists track volume as having a second editor, and it has none",
+      "whats_wrong": "Item 1 asks you to move 'each track's volume, solo and mute' in one place and confirm the other editor follows. But nothing else in the plan edits a single track's own volume — the Master row's volume is a separate, independently tracked value, a global output level, not a proxy for any one track. Solo and mute do have a genuine second editor. Every other entry in the same list names its editor pair in parentheses; this is the only one that does not, so it sends you looking for a control that does not exist.",
+      "proposed_fix": "Drop 'volume' from that item, leaving 'each track's solo and mute', and name their editor pair the way every sibling entry does. Add a half-sentence saying a track's own volume has one editor and is checked by ear in Step 1 instead.",
+      "why_it_works": "The item exists to catch two editors drifting apart. For track volume there is no second editor to drift from, so the check is genuinely vacuous there — and it is non-vacuous in Step 1, which already moves a named track's volume and listens for the level to change.",
+      "why_only_an_observation": "It sits at the advisory anchor: nothing breaks if it stays. It costs you one confused minute during the human gate, which is why it is worth a line but not a decision.",
+      "evidence": [
+        {
+          "quote": "and each track's volume, solo and mute. Move each in ONE place; confirm the other editor follows and that the sound actually changed.",
+          "line": 3943,
+          "verbatim": true
+        }
+      ],
+      "dependant_check": "PASS — track volume genuinely has no second editor. In the plan, the only writer of a per-track level is reached from exactly one control, the row's own volume slider; the ninety-row inventory contains no per-track volume row. In the repo, no per-track volume control exists outside this plan. Nothing is lost by the removal: per-track volume is still checked by ear in the very same task, at Step 1 item 3, which is also what backs the success-criteria bullet for that criterion.",
+      "edits": [
+        {
+          "site": "Task 10 Step 2, item 1, line 3943",
+          "before": "1. **Every value with a SECOND EDITOR.** These are the ones that can disagree, and disagreement is silent: speed (the header stepper ↔ the Player row), master volume (Settings ▸ Player ↔ the mixer's Master row), metronome volume and count-in volume (the transport buttons ↔ their Player rows), loop (the transport ↔ its Player row), and each track's volume, solo and mute. Move each in ONE place; confirm the other editor follows and that the sound actually changed.",
+          "after": "1. **Every value with a SECOND EDITOR.** These are the ones that can disagree, and disagreement is silent: speed (the header stepper ↔ the Player row), master volume (Settings ▸ Player ↔ the mixer's Master row), metronome volume and count-in volume (the transport buttons ↔ their Player rows), loop (the transport ↔ its Player row), and each track's solo and mute (the row's own buttons ↔ the Master row's commands). Move each in ONE place; confirm the other editor follows and that the sound actually changed. A track's own volume is not on this list — it has one editor, and Step 1 item 3 is what checks it."
+        }
+      ],
+      "verifier_note": "Quote verbatim. Compatible with F-16: if the master commands become 'Clear solos' and a two-state 'Mute all', 'each track's solo and mute' still has a real second editor, so the trimmed item stays correct either way."
+    }
+  ],
+  "headless_envelope_raw": "Document review complete (headless mode).\n\nProposed fixes (concrete fix, requires user confirmation):\n\n[P0] Task 3 / Task 7 — MasterRow is named in four places and built in none (coherence, design-lens, feasibility, scope-guardian, confidence 100)\n[P0] Task 3 — Render-select ships as a button, but six tests still query it as a checkbox (coherence, confidence 100)\n[P1] Task 5 — The Settings popover never reads its recording flag, so metronome and count-in stay live (coherence, confidence 100)\n[P1] Task 7 Step 3b — The transposition clear targets a line, two variables and a file that do not exist (feasibility, confidence 100)\n[P1] Task 9 Step 1 — The widened hit-area gate turns five existing accessibility cases red (feasibility, confidence 100)\n[P1] Task 4 Step 6 — The shipped-defaults test cannot read what the serializer returns (feasibility, adversarial, confidence 100) [NARROWED]\n[P1] Task 5 Step 1 — Eight end-to-end cases close the settings group they mean to open (feasibility, confidence 100)\n[P1] Task 9 Step 1 — The gate rewrite drops the seek rail out of the 44-pixel check (feasibility, adversarial, confidence 100)\n[P1] Task 8 Steps 3-4 — The flag that settles the loading bar has no source (feasibility, adversarial, confidence 100)\n[P1] Global Constraints / Task 5 / Task 7 — The disabled triggers cannot open their own tooltip (design-lens, confidence 100)\n[P1] Task 8 Step 1 — The player-mode row offers a mode that cannot play anything (product-lens, confidence 75) [NARROWED]\n[P1] Task 2 / Task 6 — A number row never clamps, so an out-of-range value is stored (adversarial, confidence 75) [NARROWED]\n[P2] Task 6 Step 6 — The option-values map is needed before the engine that builds it (feasibility, confidence 75)\n[P2] Task 3 Step 1 — Two slider assertions can never pass (feasibility, confidence 100)\n[P2] Task 3 — The render-lock state has no requirement and no test (design-lens, confidence 75)\n[P2] Task 7 — Solo all changes nothing audible, and neither master command can be undone (product-lens, confidence 75)\n[P2] Global Constraints / Task 4 — Twelve rows reset per score with nothing saying so (product-lens, confidence 75)\n[P2] Task 8 Step 5 — Step 5 claims machine evidence for a branch no lane reaches (adversarial, confidence 75) [NARROWED]\n\nDecisions (requires user judgment):\n\n[P2] Global Constraints / Task 4 Step 7 — Every edit pushes the whole settings document, and the alternative is never named (adversarial, confidence 75)\n\nFYI observations (anchor 50, no decision required): 1\n- Task 10's by-eye checklist lists track volume as having a second editor, and it has none.\n\nResidual concerns: 11\nDeferred questions: 5\n\nRestated: 11 (residual/deferred items suppressed as duplicates of actionable findings)\n\nReview complete",
+  "residual_concerns": [
+    {
+      "concern": "The twelve Fonts rows rest on an optional validation callback, but no row in the schema supplies one and the edit path has no error handling — so a committed partial font string reaches the engine's font parser. The plan states the risk in prose without wiring a validator.",
+      "source": "feasibility"
+    },
+    {
+      "concern": "About seventy-six of the ninety rows get no acceptance check beyond 'the path exists on the live settings object', which the plan itself says cannot catch a wrong apply. The by-eye gate samples one row per group plus one per apply mode. This is the most likely route by which the 'every row does something' success criterion gets ticked while some rows quietly do nothing.",
+      "source": "product-lens"
+    },
+    {
+      "concern": "Task 1's Sample component puts a JSX comment before the root element inside an arrow function's concise body, which does not parse. The implementer meets it at Step 2 and the fix is obvious.",
+      "source": "feasibility"
+    },
+    {
+      "concern": "Task 8 Step 4 tells the implementer to give the Play button the span-wrapped tooltip shape, but PlayerShell already ships exactly that. The instruction is a no-op rather than a defect, but it reads as pending work.",
+      "source": "feasibility"
+    },
+    {
+      "concern": "Task 3's tooltip tests tab five times to reach the 'more controls' button, while the same task puts four per-staff display toggles on the primary row between the volume slider and that button. The tab counts will not line up once the toggles exist. Related to F-2 but a separate correction.",
+      "source": "feasibility"
+    },
+    {
+      "concern": "The Global Constraints tooltip bullet says 'all five are toggle BUTTONS now' but the items it names count to four categories, not five. Part of the same half-landed 2026-09-21 edit as F-2.",
+      "source": "coherence"
+    },
+    {
+      "concern": "Task 5's Files list omits the hook file even though Step 4 modifies it and the Step 7 commit includes it; Task 4's Step 10 commit omits the defaults test even though Step 6 creates it. Both read as mechanical cross-reference slips.",
+      "source": "scope-guardian"
+    },
+    {
+      "concern": "The Tracks popover's props are never given a formal interface the way the Settings popover's are — Task 7 shows only a usage example and the component body. Probably harmless since the body is written out in full, but it is an asymmetry between the two siblings.",
+      "source": "coherence"
+    },
+    {
+      "concern": "The plan's own settings-JSON type name collides with a type the engine already exports under the same name but meaning something narrower. A module importing both could confuse them.",
+      "source": "feasibility"
+    },
+    {
+      "concern": "The Tracks popover's player-ready handler re-asserts volume, mute and solo from React state on every fire, and the plan records that event firing two to five times per score load. The resulting render churn could not be sized from the document.",
+      "source": "feasibility, adversarial"
+    },
+    {
+      "concern": "The text rows silently revert a rejected edit to the last good value with no message explaining why. The plan reasons through this choice explicitly so it reads as deliberate, but it is the only control kind with zero feedback on a rejected change.",
+      "source": "design-lens"
+    }
+  ],
+  "verified_correct_not_findings": [
+    "A long list of engine API claims the plan makes were checked against the installed package and all hold — the actual player mode, the readiness flag, the settings fill, the slide-duration ratio, the read-only tuning getter, the percussion flag, the nullable player, the track mute/solo/volume/transposition calls, the render and MIDI calls, the exporter, the accordion's multiple-open prop and its open-state attribute, both primitives missing the client directive, and the design system's input, select, checkbox and button sizes.",
+    "The engine registers its own channel-volume re-seed at construction, before any listener the app adds later, so the plan's ordering claim holds.",
+    "Updating settings builds the other player synchronously, so the new mode is readable straight after the push, as Task 8 Step 3 assumes.",
+    "The deserializer walks only the keys it is given, so the shell's file, font-directory and sound-font settings survive the whole-document push.",
+    "The unticked success-criteria boxes in the PR body do not deadlock the checklist gate, which blocks only on the canonical items read from the PR template."
+  ],
+  "deferred_questions": [
+    {
+      "question": "Should the header's tempo field be raised to a 44-pixel box — which regenerates the tempo control's and the header's committed visual baselines — or stay a documented exemption from the widened hit-area gate? F-5 takes the exemption.",
+      "source": "feasibility",
+      "relates_to": "F-5"
+    },
+    {
+      "question": "Should an out-of-range number typed into a settings row be clamped to the row's bounds, or rejected the way a non-number is, leaving the last good value showing? Both are defensible and the plan says neither. F-12 takes clamping, on commit.",
+      "source": "adversarial",
+      "relates_to": "F-12"
+    },
+    {
+      "question": "Is there a Guitar Pro file with an embedded recording that could be committed as a test fixture? Without one, the backing-track half of Task 8, the mixer's disabled state and the audio-transposition delta have no machine evidence in any lane, now or later.",
+      "source": "adversarial",
+      "relates_to": "F-18"
+    },
+    {
+      "question": "The user-interaction setting ships as a persisted row. Turning it off removes click-to-seek and element highlighting from the notation surface and survives a reload. Is that a choice v0 wants to offer, or a second trap of the same family as the external-media mode?",
+      "source": "product-lens"
+    },
+    {
+      "question": "If the external-media option is ever withheld, which ticket carries 'play along to an audio or video file'? Task 8 calls it a real feature worth its own ticket but names no issue key, so the deferral has nowhere to land.",
+      "source": "product-lens",
+      "relates_to": "F-11"
+    }
+  ],
+  "next_step": {
+    "what_happens_next": "This is the review half. Nothing has been applied and the document is untouched. The triage half is a separate session and must read THIS FILE and nothing else — never reopen the plan to compose a chunk, because every finding's verbatim Before and its After are inline here for exactly that reason.",
+    "resume_command": "Skill(\"spec-triage-loop:doc-review-loop\", \"triage half — lap 3, .spec-triage-loop/2026-09-13-v0c-popovers-plan/lap-3/findings.json\")",
+    "after_triage": "Write `last_applied` (the highest severity applied) and `lap: 3` to the plan's YAML frontmatter, mark this file triaged, then evaluate the lap decision. A P0 or P1 applied means lap 4 as a NEW invocation, starting with a fresh review half.",
+    "four_narrowed_findings_need_your_eye": "F-6, F-11, F-12 and F-18 each carry the reviewer's original fix as REJECTED plus the narrower fix and the reason. F-11 is the one that matters most: its removal must not be applied, for five separate reasons, and one of them is your own recorded instruction at line 3552."
+  },
+  "verbatim_gate": {
+    "ran": "After assembly, a script re-checked every evidence quote and every Before block against the document itself, independently of the verifier subagents.",
+    "evidence_quotes_checked": 56,
+    "evidence_quotes_not_found": 0,
+    "edit_sites": 48,
+    "before_blocks_verbatim": 43,
+    "before_blocks_new_content_placeholders": 5,
+    "before_blocks_line_verbatim_not_contiguous": 0,
+    "before_blocks_not_found": 0,
+    "meaning": "A `before` reading '(nothing - ...)' marks an edit that ADDS new text where none exists, so it has no Before to quote. Everything else is present in the document character-for-character."
+  },
+  "status": "REVIEW HALF COMPLETE - awaiting triage in a separate session. Nothing applied; the document is untouched."
+}
