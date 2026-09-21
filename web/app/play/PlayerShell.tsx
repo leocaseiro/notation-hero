@@ -528,8 +528,13 @@ function Player() {
       <h1 className="sr-only">Player</h1>
 
       {/* The bar rides the header's bottom edge, out of the layout flow, so the notation below
-          does not jump when it appears and again when it goes. */}
-      <div className="relative shrink-0">
+          does not jump when it appears and again when it goes.
+          `z-10` is what makes the header's elevation shadow VISIBLE: without it the header is an
+          ordinary flex item, so the rail and the notation below — both opaque — paint straight
+          over the shadow it casts, and the edge reads as a bare hairline. The class belongs here
+          rather than on the <header>: the loading bar is its SIBLING inside this wrapper, sitting
+          on the header's bottom edge, so lifting the header alone would hide the bar behind it. */}
+      <div className="relative z-10 shrink-0">
         <PlayerHeader
           scoreTitle={notation?.score.title ?? ''}
           fileName={openFileName}
