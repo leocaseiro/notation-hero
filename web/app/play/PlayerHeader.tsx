@@ -8,7 +8,8 @@ import {
   TooltipTrigger,
 } from '@notation-hero/client';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+
+import { APP_VERSION } from '../../lib/app-version';
 
 // The brand mark, as the wireframe draws it beside the wordmark (docs/wireframe/index.html,
 // `MARK_SVG`): a ring with a play triangle on its right and a single eighth note inside. Inline
@@ -57,8 +58,6 @@ export function PlayerHeader({
   onSpeedChange,
   disabled,
 }: Readonly<PlayerHeaderProps>) {
-  const router = useRouter();
-
   return (
     // The mockup's three columns: Back, brand and title on the left, the tempo pill in the centre,
     // and the right one kept for the Settings gear that Plan C adds. `1fr auto 1fr` keeps the pill
@@ -66,11 +65,15 @@ export function PlayerHeader({
     <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-6 border-b border-border px-4">
       <div className="flex min-w-0 items-center gap-2">
         {/* Back RETRACES a step — it is not a second way home; the logo beside it is the way home.
-            So `router.back()`, not a link to `/`: wherever the person came from is where they go.
-            The one place history cannot answer is a tab opened straight onto /play (a bookmark, a
-            shared link), where `history.length` is 1 and `back()` would silently do nothing — a
-            dead control. The landing page is the fallback there, so the button always does
-            something.
+            So the browser's own history, not a link to `/`: wherever the person came from is where
+            they go. The one place history cannot answer is a tab opened straight onto /play (a
+            bookmark, a shared link), where `history.length` is 1 and `back()` would silently do
+            nothing — a dead control. The landing page is the fallback there, so the button always
+            does something.
+            `globalThis.history`, not next/navigation's `useRouter`: the hook throws outside an app
+            router, which would make this component untestable in jsdom for the sake of one call
+            the platform already provides. The fallback costs a full page load, on a path that is a
+            different page anyway.
             Icon only, so the header's left column spends its width on the score's name rather than
             on a word the arrow already says. `size-11` is the 44 px the a11y lane enforces and the
             size the tempo steppers beside it already use; the sr-only text is the accessible name —
@@ -83,8 +86,8 @@ export function PlayerHeader({
                 variant="ghost"
                 data-testid="back-home"
                 onClick={() => {
-                  if (globalThis.history.length > 1) router.back();
-                  else router.push('/');
+                  if (globalThis.history.length > 1) globalThis.history.back();
+                  else globalThis.location.assign('/');
                 }}
                 className="size-11 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
               >
@@ -98,25 +101,36 @@ export function PlayerHeader({
           <TooltipContent>Back</TooltipContent>
         </Tooltip>
         {/* The mark and the wordmark are ONE unit — the logo — and the logo goes home, which is the
-            convention everywhere else on the web and is NOT what Back does. `render`, NOT `asChild`
-            — that prop was dropped in the Base UI migration and would land as a stray DOM attribute
-            with the Link never rendering (web/app/page.tsx does the same). min-h-11 is not
-            decoration: the a11y lane fails any a[href] under 44 px and this line box is 28.
-            The build-version tooltip belongs ON this link and arrives with NH-317 (PR #168); the
-            shape here is the one that PR expects, so it wraps this element rather than replacing
-            it. */}
-        <Link
-          href="/"
-          data-testid="app-wordmark"
-          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-1 text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-        >
-          <BrandMark />
-          {/* `sr-only` below `md`, never `hidden`: the name still reaches a screen reader, and the
-              mark alone carries the brand. Below a tablet, Back + mark + the full wordmark stop
-              fitting beside a centred tempo pill, and the first thing to lose is the word the mark
-              already stands for — not the score's own title. */}
-          <span className="font-heading text-xl font-bold max-md:sr-only">Notation Hero</span>
-        </Link>
+            convention everywhere else on the web and is NOT what Back does: Back retraces, this
+            arrives. It carries the build version as its tooltip (NH-317), which is why it is a real
+            link and not a span — focusable, so the version is reachable by keyboard and not by
+            hover alone. The MARK is inside the link too, so the whole logo is the target.
+
+            `/` is correct even if this app is ever served under a sub-path — next/link applies
+            `basePath` itself, so the href never has to be rewritten. (next/image is the exception:
+            its `src` needs the prefix spelled out.)
+
+            min-h-11 is not decoration: the a11y lane fails any a[href] under 44 px, and this line
+            box is 28. */}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Link
+                href="/"
+                data-testid="app-wordmark"
+                className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-1 text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                <BrandMark />
+                {/* `sr-only` below `md`, never `hidden`: the name still reaches a screen reader,
+                    and the mark alone carries the brand. Below a tablet, Back + mark + the full
+                    wordmark stop fitting beside a centred tempo pill, and the first thing to lose
+                    is the word the mark already stands for — not the score's own title. */}
+                <span className="font-heading text-xl font-bold max-md:sr-only">Notation Hero</span>
+              </Link>
+            }
+          />
+          <TooltipContent data-testid="app-version">{APP_VERSION}</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger
             render={
@@ -146,7 +160,18 @@ export function PlayerHeader({
         // to itself it grew to 57 px — the BPM label, the number and the percentage stack to 47 px
         // inside 8 px of padding — which read as a taller object than anything else in the player.
         // The 44 px steppers still fit, so the hit area is untouched.
-        className="h-12 rounded-xl border border-border bg-secondary dark:border-input"
+        //
+        // The two literal colours are the mockup's own `--panel`, which is what it paints this pill
+        // with (`bg-surface-container`, player-flatrow-teal.html:193): rgb(251 252 254) light and
+        // rgb(18 24 33) dark. Named by hand because no token carries that value — `--card` is pure
+        // white in light — and requested exactly, so a near-miss token would be the wrong answer.
+        // They are the second and third literal colours in the player, after the notation's own
+        // `bg-white`; everything else stays on tokens.
+        //
+        // It also restores the steppers' hover. Ghost hover is `bg-muted`, which sat at almost
+        // exactly the lightness of the `bg-secondary` this replaces, so pointing at + or - changed
+        // nothing visible. Against `--panel` it is a clear step down.
+        className="h-12 rounded-xl border border-border bg-[#fbfcfe] dark:border-input dark:bg-[#121821]"
       />
       {/* Reserved for the Settings gear. This is an EMPTY GRID CELL, not a spacer: the header's
           `1fr auto 1fr` template reserves the third column whether or not a node sits in it, so

@@ -12,6 +12,45 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-21 — The running build names itself, in the wordmark (NH-317)
+
+Nothing on screen said which build you were looking at. When production and a preview disagree —
+as they did the same day, with production serving stale CSS — that is the first question asked, and
+there was no way to answer it. Decisions below, each approved by the maintainer in conversation.
+
+- **The version names its CHANNEL first, so a preview can never read as production.** Three shapes:
+  `local` on a developer machine, `pr-168.26.09.21-1143.5f027f6` on a Vercel preview, and
+  `v0.26.09.21-1143.5f027f6` in production — a channel, a two-digit Sydney date, the 24-hour build
+  time, then the short commit. The first draft stamped every build `v26.09.21-…` alike; the
+  maintainer asked for the three to be separated, because a preview wearing the production name
+  answers "which build is this?" wrongly, which is the one job the string has. `v0` is the release
+  line and the only part a person chooses — it is a named constant, to be bumped as the product
+  versions. A local build carries no stamp at all: on your own machine you know what you built.
+  🤖 `tooling/app-version.test.mjs`, including a case asserting that a preview and a production
+  build of the SAME commit never read alike.
+- **A branch pushed before its pull request exists reads `preview.…`, not `pr-.…`.** Vercel
+  documents `VERCEL_GIT_PULL_REQUEST_ID` as an empty string in that window, and any `VERCEL_ENV`
+  that is not exactly `production` — a custom environment included — is treated as a preview, so
+  nothing but production can wear the release prefix.
+- **The date format follows the maintainer's format string, not his bash snippet.** The two
+  disagreed (two-digit versus four-digit year, a dot versus a dash before the commit); asked which
+  won, he chose the format string, which his own worked example had already agreed with.
+- **The stamp is BUILD time, not commit time.** The commit already identifies the code, so the
+  useful second fact is when this deploy was made — rebuilding one commit gives a new stamp.
+- **Always `Australia/Sydney`, and the ZONE is named rather than an offset hard-coded.** Vercel
+  builds in UTC, which reads as the wrong day for most of the evening here. Naming the zone is what
+  makes AEDT and AEST resolve themselves by date, with no switch to maintain twice a year. 🤖
+  `tooling/app-version.test.mjs` pins both, plus the date rolling over and midnight as `0000`.
+- **The wordmark is a LINK home, not a button.** It was inert text; a tooltip needs a focusable
+  trigger, and the maintainer chose a link — so the wordmark gains a purpose and the version is
+  reachable by keyboard rather than hover alone. `href="/"` survives a sub-path deploy untouched
+  because `next/link` applies `basePath` itself (`next/image` is the exception — its `src` needs the
+  prefix spelled out). `min-h-11` is load-bearing, not decoration: the a11y lane fails any `a[href]`
+  under 44 px and the wordmark's line box is 32.
+- **The value travels through the ENVIRONMENT, not next.config's `env` key.** The Next 16 docs
+  bundled in the installed package mark that key `version: legacy` and point at the environment
+  instead, where `next build` inlines it.
+
 ### 2026-09-21 — The web build must not trust a restored cache (NH-315)
 
 Production served the v0 seek rail with no width and no colour, while the SAME commit's preview
