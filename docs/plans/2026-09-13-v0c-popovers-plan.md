@@ -57,7 +57,7 @@ last_applied: P0
 
 **Goal:** Give the player its two popovers — Settings (the header gear: eight accordion sections holding **every** row of the reference panel — 90 of them, the switch between a file's own recording and the synthesizer included — which change the rendered score and the sound, and survive a reload) and Tracks (the transport's mixer: one row per track in the score, with solo, mute, volume, render-select, the per-staff display toggles and both transposition sliders).
 
-**Architecture:** Two new presentation-only components in `client/` (`Accordion` and `SettingRow`) plus a `TrackRow`, each gated by a Storybook story with VR and axe baselines. `web/` owns the schema of groups with an accessor per row, one module that holds every write to the live engine's settings, and both popover compositions. Neither popover blocks the player: a drummer can change a setting while the score plays.
+**Architecture:** Two new presentation-only components in `client/` (`Accordion` and `SettingRow`) plus a `TrackRow`, each gated by a Storybook story with VR and axe baselines. `web/` owns the schema of groups with an accessor per row, one module that holds every write to the live engine's settings, and both popover compositions. Neither popover blocks the player: a drummer can change a setting while the score plays — with one measured exception, the fourteen sound-rebuilding rows (Global Constraints).
 
 **Tech Stack:** `@base-ui/react` 1.6 (`accordion`, `popover`, `slider`), Tailwind 4 tokens, Storybook 10, Playwright 1.61.1 + axe.
 
@@ -86,6 +86,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - **Code comments name the thing, never a plan-local number.** "(Task 4)" or "Plan B's Global Constraints" means nothing to a reader outside this document (registry, 2026-09-18). Prose, steps and tables keep their numbers; the code blocks below do not carry them.
 - **Clean-room port.** Read the fork to learn the group list, the row set and the accessor pattern; write everything yourself. No copied code, no copied label strings. If you cannot restate a row's purpose in your own words, you do not understand it well enough to port it.
 - **Both popovers, never modals.** Neither blocks the player — that is the single reason v0 chose a popover, and v0.1 keeps it. `Dialog` is not built and is not needed.
+- **The non-blocking promise holds on the `render` and `settings` paths. The fourteen `midi` rows are the measured exception.** `api.loadMidiForScore()` calls `AlphaSynth.loadMidiFile()`, whose first act is `stop()` (`alphaTab.core.mjs:40054-40055`) — and `stop()` does not pause in place: it stops the sequencer, sends note-off to every channel, and sets `tickPosition` back to the **start of the song, or of the loop** (`:39987-39995`). Measured on a headless synth with a stub output: `play()` → Playing at tick 1921; one more `loadMidiFile` → **Paused at tick 1**. So changing a vibrato, slide, song-book or triplet-feel row **stops the music and rewinds it** — not something to do mid-take. Say so on those rows; do not widen the promise to cover them.
 - **Every `client/` component here is presentation-only**: `value` in, `onChange` out, option lists as plain arrays, and **no import from `@coderline/alphatab`**. A `client/` Storybook story has no engine instance, so a row that read its options off the library would be gated while rendering fabricated options. The schema of accessors and the context carrying the namespace live in `web/`.
 - **Each new `client/` component needs all six co-located files** (`X.tsx`, `X.stories.tsx`, `X.story-ids.ts`, `X.test.tsx`, `X.a11y.ts`, `X.vr.ts`) in its own folder. Never `__tests__/` or `stories/`.
 - **VR baselines are Linux-only** — `pnpm test:vr:docker:update` with Docker Desktop running (`open -a Docker`), never natively on macOS. Kill any `:6006` Storybook first.
@@ -113,14 +114,14 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 
 - **The tablature toggle appears only for a stringed staff that has a tuning.** The pinned 1.8.4 cannot render percussion tablature at all: `Staff.finish()` forces `showTablature = false` on any percussion staff, and `TabBarRendererFactory` sets `hideOnPercussionTrack = true` and requires `staff.tuning.length > 0`. `Punk.gp` confirms it — its two drum staves report `showTablature=false, tuningLen=0` while its guitar staff reports `true, 6`. Piano and vocal staves carry no tuning either, so they are ruled out too.
 - **Transpose Audio and Transpose Full are two separate controls and must stay separate.** Fusing them drops the notation-transposing path entirely.
-- **`Settings` has `fillFromJson` but no `toJson`.** There is no way to ask AlphaTab for its current settings as JSON, so the app holds its own `SettingsJson`-shaped object as the edit state and pushes it into the live settings. That object is both the UI state and the persisted value.
+- **`Settings` has `fillFromJson` but no INSTANCE `toJson`.** There is no way to ask a live `Settings` for _itself_ as JSON, so the app holds its own `SettingsJson`-shaped object as the edit state and pushes it into the live settings. That object is both the UI state and the persisted value. **There IS a serializer, and Task 4 uses it:** `alphaTab.model.JsonConverter.settingsToJsObject(new Settings())` returns the whole tree — 1817 leaves, ~31 KB, measured against the installed 1.8.4. It is not the edit state (it reports every leaf, not the 90 rows), but it is how the shipped defaults are checked. Two traps: the converter lives under **`model`**, not the `json` namespace, which is **empty at runtime**; and colours come back as packed signed integers (`-16777216`), not `#000000` strings, so a colour assertion reads `settings.display.resources.<key>.rgba` instead.
 - **Restore through `Settings.fillFromJson(parsed)`, never by assignment.** `JSON.parse` returns plain objects, but `RenderingResources` holds real `model.Color` and `model.Font` instances — a plain object assigned into the settings tree breaks rendering **without throwing**, so a `try`/`catch` would never fire and the Colors and Fonts groups would silently stop working. `fillFromJson` is public and `@target web` in 1.8.4 and rebuilds both through their `fromJson` helpers.
 - **Four kinds of row, and only one of them is a setting.** The fork's panel reads like one list, but its rows write to four different places, and AlphaTab accepts a write to the wrong one **without a word** — the control moves, the number updates, nothing changes. The schema therefore gives every row a `source` (Task 4):
   - `settings` — a key in AlphaTab's settings JSON. Goes through the app's JSON and the funnel. 71 rows.
   - `api` — an `AlphaTabApi` **property**: `masterVolume`, `metronomeVolume`, `countInVolume`, `playbackSpeed`, `isLooping`. None is a key in `SettingsJson`, so `fillFromJson` ignores it. Each is bound to state `PlayerShell` owns and written by the shell's **single writer** for that value — which is what keeps two editors of one value in sync: the header's BPM stepper and the Player group's speed row are one `speed`, one writer; the transport's Metronome button and the Player group's metronome-volume row are one `metronomeVolume`, one writer. **All five ship** (maintainer, 2026-09-20).
   - `stylesheet` — a property of **`api.score.stylesheet`**, on the score MODEL. The whole Stylesheet group (12 rows) is this. It is not in the settings JSON, it belongs to the score that is open, a new score brings its own, and it is never stored. Written directly, then `api.render()`.
   - `action` — a command. The Tools group's two exports.
-- **A `settings` row says how it takes effect, and there are three ways, not two.** `render` — push the settings and redraw (most rows). `settings` — push only; the player-side rows that change nothing drawn (the cursor toggles, the scroll rows, the player mode). **`midi`** — the fourteen rows that shape the GENERATED MIDI (`player.songBook*`, `player.vibrato.*`, `player.slide.*`, `player.playTripletFeel`) change nothing until `api.loadMidiForScore()` regenerates it; `updateSettings()` and `render()` do not. A boolean `rerender` flag cannot say that, and a row that gets it wrong is another silent no-op.
+- **A `settings` row says how it takes effect, and there are three ways, not two.** `render` — push the settings and redraw (most rows). `settings` — push only; the player-side rows that change nothing drawn (the cursor toggles, the scroll rows, the player mode). **`midi`** — the fourteen rows that shape the GENERATED MIDI (`player.songBook*`, `player.vibrato.*`, `player.slide.*`, `player.playTripletFeel`) change nothing until `api.loadMidiForScore()` regenerates it; `updateSettings()` and `render()` do not. Regenerating **stops playback and rewinds to the start** (see the non-blocking exception above) — the only apply mode that does. A boolean `rerender` flag cannot say that, and a row that gets it wrong is another silent no-op.
 - **`display.padding` is an ARRAY** — `[horizontal, vertical]`, two rows. The dot-path helpers address it as `display.padding.0` and `display.padding.1`, a write must leave it an array — `fillFromJson` assigns the value through **unvalidated** (`alphaTab.core.mjs:29586`) and the layout then calls `padding.map(…)` on it (`:57636`), so a spread `{ ...array }` **throws a TypeError and aborts the render**; it does not degrade to no padding, and the storage merge must check it element by element.
 - **Do not port the fork's three mis-bound rows.** Its "simple slide duration ratio" row is bound to `player.slide.simpleSlidePitchOffset` — the row above it — when the key is `player.slide.simpleSlideDurationRatio` (`alphaTab.d.ts:15408`). Its Stylesheet group has a thirteenth row bound to `otherSystemsTrackNameOrientation` a second time; the real multi-bar-rest row follows it. And its `otherSystemsTrackNameOrientation` row is offered with the **`TrackNameMode`** enum (`FullName` / `ShortName`) instead of **`TrackNameOrientation`** (`Horizontal` / `Vertical`) — the row above it, `firstSystemTrackNameOrientation`, gets the right one, which is what makes this a slip rather than a convention. The two enums are disjoint, so a `TrackNameMode` name parses to `undefined` and the dropdown changes nothing. Reading the fork for its row set is the brief; copying its bugs is not.
 - **The speed range is the engine's own: 12.5 %–800 %** — `SynthConstants` clamps `playbackSpeed` to `0.125`–`8` (registry, 2026-09-20, superseding the spec's 12.5–200 %). The Player group's speed row uses the same range as the header's `TempoControl`.
@@ -1195,7 +1196,7 @@ An `api`, `stylesheet` or `action` row is still a **schema row**, not a special 
 **Files:**
 
 - Create: `web/lib/alphatab/settings-paths.ts`, `web/lib/alphatab/settings-paths.test.ts`
-- Create: `web/lib/alphatab/settings-schema.ts`
+- Create: `web/lib/alphatab/settings-schema.ts`, `web/lib/alphatab/settings-defaults.test.ts`
 - Create: `web/lib/alphatab/live-settings.ts`
 - Modify: `client/src/index.ts`, `client/src/components/ui/Popover/Popover.tsx`, `client/src/components/ui/ScrollArea/ScrollArea.tsx`
 
@@ -1277,6 +1278,12 @@ export function writeSettingValue(
   value: SettingValue,
 ): PlayerSettingsJson;
 export const DEFAULT_PLAYER_SETTINGS: PlayerSettingsJson;
+/**
+ * Every option-bearing row's allowed VALUES, by dot-path — built from the same descriptors as the
+ * rows, so a row and its option list can never drift apart. Task 6 gates the stored document on it
+ * before the restore push: an enum name AlphaTab does not know does not fail, it WIPES the key.
+ */
+export const SETTING_OPTION_VALUES: Readonly<Record<string, readonly string[]>>;
 
 // live-settings.ts — every write to the live engine's settings, tracks and staves.
 export function applySettingsJson(
@@ -1728,7 +1735,33 @@ export const DEFAULT_PLAYER_SETTINGS: PlayerSettingsJson = {
 
 **Fill in every row before moving on.** The rows shown are the pattern; the list comes from Step 1's reading, and a group left as a comment is an unfinished task, not a deferral. Cross-check as you go: every `source: 'settings'` row's `path` must have a matching entry in `DEFAULT_PLAYER_SETTINGS`, every entry there must correspond to a row, and no `api`, `stylesheet` or `action` row has an entry at all. Count the rows against Step 1's inventory when you finish: 71, 5, 12 and 2.
 
-**Get each default from the engine, not from memory.** `new engine.Settings()` in the browser console (`$0.at.settings` on the notation box is the live one) shows AlphaTab's value for every key; a wrong default here silently changes the score on the first edit of an unrelated row, because the whole JSON is pushed each time.
+**Get each default from the engine, not from memory — and do not transcribe them by hand.** A wrong default here silently changes the score on the first edit of an unrelated row, because the whole JSON is pushed each time. Ship the values, then assert them in a co-located `settings-defaults.test.ts` against the engine's own serializer, so the table fails the day AlphaTab's defaults move under a version bump rather than drifting unnoticed:
+
+```ts
+import * as engine from '@coderline/alphatab';
+import { expect, it } from 'vitest';
+
+import { DEFAULT_PLAYER_SETTINGS } from './settings-schema';
+import { readSettingValue } from './settings-paths';
+
+// The engine is the source of truth for every default. Colours come back from the converter as
+// PACKED SIGNED INTEGERS (-16777216), not '#000000', so a colour row is read through `.rgba` on
+// the live Settings instead. The converter is on `model`; the `json` namespace is empty at runtime.
+it('every shipped default is what a fresh Settings() reports', () => {
+  const fresh = new engine.Settings();
+  const serialised = engine.model.JsonConverter.settingsToJsObject(fresh);
+
+  for (const [path, shipped] of eachLeaf(DEFAULT_PLAYER_SETTINGS)) {
+    expect(readSettingValue(serialised, path), path).toEqual(shipped);
+  }
+});
+```
+
+`new engine.Settings()` in the browser console (`$0.at.settings` on the notation box is the live one) is still the quick way to eyeball a single key while writing the table.
+
+Run: `pnpm --filter @notation-hero/web exec vitest run lib/alphatab/settings-defaults`
+Expected: PASS — every shipped default equals what a fresh `Settings()` reports. A failure here is
+the engine's defaults having moved, not the test being wrong: take the engine's value.
 
 - [ ] **Step 7: Write the live-settings funnel**
 
@@ -1751,6 +1784,11 @@ function pushSettings(api: AlphaTab.AlphaTabApi, apply: SettingApply): void {
   // The rows that shape the GENERATED MIDI — vibrato, slides, song-book timings, triplet feel —
   // are read when the MIDI is built, and only then. Pushing the settings or redrawing the score
   // changes nothing audible; regenerating the MIDI does.
+  //
+  // This is the ONE path that interrupts the player: loadMidiForScore -> loadMidiFile -> stop(),
+  // which pauses AND rewinds tickPosition to the start of the song or loop. It is deliberate and
+  // unavoidable in 1.8.4 — do not try to restore the playhead here, and do not widen the "neither
+  // popover blocks the player" promise to cover it.
   if (apply === 'midi') {
     api.loadMidiForScore();
     return;
@@ -1982,6 +2020,8 @@ const engineState = (page: Page) =>
         at?: {
           playbackSpeed: number;
           metronomeVolume: number;
+          // The playhead, in MIDI ticks. Read to prove the sound-rebuilding rows rewind it.
+          tickPosition: number;
           settings: { display: { scale: number } };
           score: { stylesheet: { hideDynamics: boolean } } | null;
         };
@@ -1991,6 +2031,7 @@ const engineState = (page: Page) =>
       ? {
           speed: at.playbackSpeed,
           metronomeVolume: at.metronomeVolume,
+          tick: at.tickPosition,
           scale: at.settings.display.scale,
           hideDynamics: at.score?.stylesheet.hideDynamics ?? null,
         }
@@ -2067,8 +2108,31 @@ test('a settings row changes the rendered score without stopping playback', asyn
     })
     .toBeGreaterThan(widthBefore);
 
-  // The popover never blocks the player: that is the whole reason v0 chose a popover.
+  // The popover never blocks the player: that is the whole reason v0 chose a popover. This case
+  // uses a `render` row (zoom); the `midi` rows are the measured exception, pinned by the case
+  // below so the difference is a decision on record rather than a bug someone later "fixes".
   await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+// The ONE exception to the promise above, and the only path that reaches it. loadMidiForScore ->
+// loadMidiFile -> stop() pauses AND rewinds (alphaTab.core.mjs:40054 and :39987-39995), so a
+// sound-rebuilding row is not something to change mid-take. The case above cannot catch this: zoom
+// takes the redraw path and never regenerates the MIDI.
+test('a sound-rebuilding row stops the player and rewinds it', async ({ page }) => {
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+  // Let the playhead actually leave the start, or the rewind assertion proves nothing.
+  await expect.poll(async () => (await engineState(page))?.tick ?? 0).toBeGreaterThan(0);
+
+  await page.getByTestId('settings-trigger').click();
+  await page.getByRole('button', { name: 'Player' }).click();
+  await page.getByRole('spinbutton', { name: 'Wide note vibrato: length' }).fill('5');
+
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'false');
+  await expect.poll(async () => (await engineState(page))?.tick ?? -1).toBeLessThanOrEqual(1);
 });
 
 // Two editors, one value, one writer. The header's stepper and this row must never disagree, and
@@ -2215,7 +2279,8 @@ interface SettingsPopoverProps {
 }
 
 // The header gear. A POPOVER, not a modal — it never blocks the player, so a drummer can change a
-// setting while the score plays. That is the single reason v0 chose this shape, and the settings
+// setting while the score plays. (The fourteen sound-rebuilding rows are the exception: applying
+// one stops playback and rewinds. Global Constraints says why, and an e2e case pins it.) That is the single reason v0 chose this shape, and the settings
 // search that comes later is layered over these same rows.
 //
 // The playback-speed slider lives in this popover's Player group, not in the header pill: neither
@@ -2554,8 +2619,8 @@ One `localStorage` key holding AlphaTab's own settings JSON alongside a `version
 
 **Interfaces:**
 
-- Consumes: `DEFAULT_PLAYER_SETTINGS`, `PlayerSettingsJson` (Task 4).
-- Produces: `loadStoredSettings(raw: string | null, defaults: PlayerSettingsJson): { settings: PlayerSettingsJson; reset: boolean }` and `serializeSettings(settings: PlayerSettingsJson): string`, plus `SETTINGS_STORAGE_KEY` and `SETTINGS_VERSION`.
+- Consumes: `DEFAULT_PLAYER_SETTINGS`, `PlayerSettingsJson`, `SETTING_OPTION_VALUES` (Task 4).
+- Produces: `loadStoredSettings(raw: string | null, defaults: PlayerSettingsJson, optionValues: Readonly<Record<string, readonly string[]>>): { settings: PlayerSettingsJson; reset: boolean }` and `serializeSettings(settings: PlayerSettingsJson): string`, plus `SETTINGS_STORAGE_KEY` and `SETTINGS_VERSION`.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2567,18 +2632,20 @@ import { describe, expect, it } from 'vitest';
 import { loadStoredSettings, serializeSettings } from './settings-storage';
 
 const DEFAULTS = { display: { scale: 1 }, player: { enableCursor: true } };
+// Every option-bearing row's allowed VALUES, by dot-path — what the schema offers (Task 4).
+const OPTIONS = { 'display.layoutMode': ['Page', 'Horizontal'] } as const;
 
 describe('loadStoredSettings', () => {
   it('round-trips every stored value', () => {
     const stored = serializeSettings({ display: { scale: 1.4 }, player: { enableCursor: false } });
-    const { settings, reset } = loadStoredSettings(stored, DEFAULTS);
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS);
 
     expect(settings).toEqual({ display: { scale: 1.4 }, player: { enableCursor: false } });
     expect(reset).toBe(false);
   });
 
   it('yields the defaults for a first visit, and does NOT call that a reset', () => {
-    const { settings, reset } = loadStoredSettings(null, DEFAULTS);
+    const { settings, reset } = loadStoredSettings(null, DEFAULTS, OPTIONS);
     expect(settings).toEqual(DEFAULTS);
     // A first visit is not a corruption.
     expect(reset).toBe(false);
@@ -2586,13 +2653,13 @@ describe('loadStoredSettings', () => {
 
   // A bad stored value must never break the player, and must not vanish quietly.
   it('falls back to the defaults and reports a reset on unparseable JSON', () => {
-    const { settings, reset } = loadStoredSettings('{not json', DEFAULTS);
+    const { settings, reset } = loadStoredSettings('{not json', DEFAULTS, OPTIONS);
     expect(settings).toEqual(DEFAULTS);
     expect(reset).toBe(true);
   });
 
   it('falls back and reports a reset on a wrong-shaped value', () => {
-    const { settings, reset } = loadStoredSettings('"a string"', DEFAULTS);
+    const { settings, reset } = loadStoredSettings('"a string"', DEFAULTS, OPTIONS);
     expect(settings).toEqual(DEFAULTS);
     expect(reset).toBe(true);
   });
@@ -2601,11 +2668,28 @@ describe('loadStoredSettings', () => {
   // these same settings, so the stored shape changes soon after v0 ships.
   it('keeps the keys an older version has and fills the rest from the defaults', () => {
     const stored = JSON.stringify({ version: 0, settings: { display: { scale: 1.4 } } });
-    const { settings, reset } = loadStoredSettings(stored, DEFAULTS);
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS);
 
     expect(settings).toEqual({ display: { scale: 1.4 }, player: { enableCursor: true } });
     // A partial merge is not a reset.
     expect(reset).toBe(false);
+  });
+
+  // A stored enum NAME the engine does not know is not inert: fillFromJson assigns parseEnum's
+  // `undefined` straight through and reports success, so the good value is gone and stays gone for
+  // the session. The same-type check cannot see it: a name the engine knows and one it does not
+  // are both strings. The measured case was `Horizontal` with a letter dropped.
+  it('drops an option value the row does not offer, back to its default', () => {
+    const defaults = { display: { layoutMode: 'Page' } };
+    const stored = JSON.stringify({
+      version: 1,
+      settings: { display: { layoutMode: 'NotAMode' } },
+    });
+    const { settings, reset } = loadStoredSettings(stored, defaults, OPTIONS);
+
+    expect(settings).toEqual({ display: { layoutMode: 'Page' } });
+    // A typo in storage is a corruption the person should be told about.
+    expect(reset).toBe(true);
   });
 
   it('drops a key the defaults do not declare', () => {
@@ -2613,7 +2697,7 @@ describe('loadStoredSettings', () => {
       version: 1,
       settings: { display: { scale: 1.4 }, bogus: { nope: 1 } },
     });
-    const { settings } = loadStoredSettings(stored, DEFAULTS);
+    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS);
     expect(settings).not.toHaveProperty('bogus');
   });
 
@@ -2622,11 +2706,13 @@ describe('loadStoredSettings', () => {
   it('merges an array element by element, and drops a malformed one', () => {
     const defaults = { display: { padding: [35, 35] } };
     const good = JSON.stringify({ version: 1, settings: { display: { padding: [10, 20] } } });
-    expect(loadStoredSettings(good, defaults).settings).toEqual({ display: { padding: [10, 20] } });
+    expect(loadStoredSettings(good, defaults, OPTIONS).settings).toEqual({
+      display: { padding: [10, 20] },
+    });
 
     for (const bad of [[10], [10, 'wide'], { 0: 10, 1: 20 }, null]) {
       const stored = JSON.stringify({ version: 1, settings: { display: { padding: bad } } });
-      expect(loadStoredSettings(stored, defaults).settings).toEqual(defaults);
+      expect(loadStoredSettings(stored, defaults, OPTIONS).settings).toEqual(defaults);
     }
   });
 
@@ -2634,7 +2720,7 @@ describe('loadStoredSettings', () => {
   // belongs breaks the layout without throwing, so the default wins.
   it('drops a stored value whose type differs from the default', () => {
     const stored = JSON.stringify({ version: 1, settings: { display: { scale: 'huge' } } });
-    const { settings } = loadStoredSettings(stored, DEFAULTS);
+    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS);
     expect(settings).toEqual(DEFAULTS);
   });
 });
@@ -2697,7 +2783,8 @@ export function serializeSettings(settings: PlayerSettingsJson): string {
 /**
  * Read the stored settings, merging per key against the shipped defaults.
  *
- * `reset` is true only when something was actually WRONG — unparseable, or the wrong shape. A
+ * `reset` is true only when something was actually WRONG — unparseable, the wrong shape, or a
+ * value its row does not offer. A
  * first visit (null) and an older version that merges cleanly are both normal, and raising a
  * "settings were reset" toast for either would cry wolf.
  *
@@ -2708,6 +2795,9 @@ export function serializeSettings(settings: PlayerSettingsJson): string {
 export function loadStoredSettings(
   raw: string | null,
   defaults: PlayerSettingsJson,
+  // Every option-bearing row's allowed VALUES, by dot-path (Task 4). The same-type check below
+  // cannot see a bad enum name: the good one and the typo are both strings.
+  optionValues: Readonly<Record<string, readonly string[]>>,
 ): { settings: PlayerSettingsJson; reset: boolean } {
   if (raw === null) return { settings: defaults, reset: false };
 
@@ -2722,16 +2812,32 @@ export function loadStoredSettings(
     return { settings: defaults, reset: true };
   }
 
-  return { settings: mergeAgainstDefaults(parsed.settings, defaults), reset: false };
+  const merged = mergeAgainstDefaults(parsed.settings, defaults);
+  // A value no row offers is a corruption, not an older shape: say so, so the toast fires.
+  const { settings, dropped } = dropUnknownOptions(merged, defaults, optionValues);
+  return { settings, reset: dropped };
 }
 ```
 
-> An enum is stored by **name** (Task 4), so its default is a string and a stored name passes the same-type check. A stored name AlphaTab does not know parses to `undefined` inside `fillFromJson` and leaves that key at its current value — harmless.
+> An enum is stored by **name** (Task 4), so its default is a string and a stored name passes the same-type check — which is exactly why the type check alone is not enough. **A stored name AlphaTab does not know is NOT harmless: it WIPES the key.** `JsonHelper.parseEnum` returns `undefined` for an unrecognised name (`alphaTab.core.mjs:25045-25055`) and the serializer assigns that straight through, **returning `true` as though it had handled it** (`:29566`). Measured against a real `Settings`: `display.layoutMode` went from `0` (Page) to `undefined` when the stored name was `Horizontal` with one letter missing — `fillFromJson` threw nothing, logged nothing, kept nothing, and the `undefined` survived a `settingsToJsObject` / `jsObjectToSettings` round-trip. Because the whole document is pushed on every edit, one bad key then re-applies for the rest of the session. Neither existing guard catches it: the merge compares string to string, and the row gate walks names, not values. So the stored **document** is gated on the option lists before it is ever pushed:
+
+```ts
+/**
+ * Drop any stored value its row does not offer, back to the shipped default. Runs ONCE on the
+ * whole stored document, before the restore push — not per edit, which sees a single key and
+ * cannot tell a poisoned session from a fresh one.
+ */
+function dropUnknownOptions(
+  merged: PlayerSettingsJson,
+  defaults: PlayerSettingsJson,
+  optionValues: Readonly<Record<string, readonly string[]>>,
+): { settings: PlayerSettingsJson; dropped: boolean };
+```
 
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web exec vitest run lib/alphatab/settings-storage`
-Expected: PASS — 8 tests.
+Expected: PASS — 9 tests.
 
 - [ ] **Step 5: Write the failing e2e cases**
 
@@ -2788,6 +2894,7 @@ const [restored] = useState(() =>
     : loadStoredSettings(
         window.localStorage.getItem(SETTINGS_STORAGE_KEY),
         DEFAULT_PLAYER_SETTINGS,
+        SETTING_OPTION_VALUES,
       ),
 );
 const [settings, setSettings] = useState<PlayerSettingsJson>(restored.settings);
@@ -3682,7 +3789,9 @@ gh pr create --title "feat: v0 settings and tracks popovers (NH-291)" --body "$(
 
 The player gets its two popovers: the header gear opens every AlphaTab setting the reference panel
 exposes, and the transport's mixer gets one row per track. Together they close v0 success criteria
-3 and 7. Neither popover blocks playback — that is the whole reason v0 chose a popover over a modal.
+3 and 7. Neither popover blocks playback — that is the whole reason v0 chose a popover over a modal. The
+fourteen sound-rebuilding rows are the one measured exception: regenerating the MIDI stops and
+rewinds the player, and an e2e case pins that behaviour rather than letting it look like a bug.
 
 ## Jira
 
