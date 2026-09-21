@@ -65,7 +65,10 @@ export function PlayerHeader({
     // The mockup's three columns: Back, brand and title on the left, the tempo pill in the centre,
     // and the right one kept for the Settings gear that Plan C adds. `1fr auto 1fr` keeps the pill
     // centred on the PAGE, whatever the title's length.
-    <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-6 border-b border-border px-4">
+    // `shadow-sm` as well as the border, which is how the mockup separates the header from the
+    // score (player-flatrow-teal.html:179). A hairline alone reads as a drawn divider; the shadow
+    // is what makes the bar sit ABOVE the notation rather than beside it.
+    <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-6 border-b border-border px-4 shadow-sm">
       <div className="flex min-w-0 items-center gap-2">
         {/* Back RETRACES a step — it is not a second way home; the logo beside it is the way home.
             So the browser's own history, not a link to `/`: wherever the person came from is where
@@ -168,7 +171,7 @@ export function PlayerHeader({
         // player-flatrow-teal.html:193) — the SAME one the transport footer uses, because the
         // mockup treats the pill and the footer as one material. It also restores the steppers'
         // hover, which was invisible against the --secondary this replaces.
-        className="h-12 rounded-xl border border-border bg-panel dark:border-input"
+        className="h-12 rounded-xl border border-border bg-panel shadow-sm dark:border-input"
       />
       {/* Reserved for the Settings gear. This is an EMPTY GRID CELL, not a spacer: the header's
           `1fr auto 1fr` template reserves the third column whether or not a node sits in it, so
