@@ -1218,12 +1218,18 @@ test('the last drawn track cannot be hidden, and the row says why', async () => 
 
 > The two slider assertions use `toBeDisabled()` on purpose: Base UI's slider thumb is a real `<input type="range">`, and a disabled slider has no tooltip to keep reachable — the reason is carried by the solo and mute buttons beside it, and by the note Task 7 puts at the top of the popover.
 
-Create `client/src/components/ui/MasterRow/MasterRow.test.tsx` beside it — same shape, five tests:
+Create `client/src/components/ui/MasterRow/MasterRow.test.tsx` beside it — same shape, six tests:
 
 ```tsx
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MasterRow } from './MasterRow';
+
+// The tooltip names the NEXT PRESS, so it is the one string that moves with state. Read through
+// the tooltip container rather than by text: `Solo all` is ALSO the box's accessible name, and
+// findByText would match both. Same selector `web/e2e`'s `openTooltip` already uses.
+const openTooltip = () =>
+  document.querySelector('[data-slot="tooltip-content"][data-open]')?.textContent;
 
 const baseProps = {
   volume: 8,
@@ -1265,6 +1271,25 @@ test('a ticked box reports false, so the same press is the way back out', async 
   render(<MasterRow {...baseProps} muteAll onMuteAllChange={onMuteAllChange} />);
   await userEvent.click(screen.getByRole('checkbox', { name: /mute all/i }));
   expect(onMuteAllChange).toHaveBeenCalledWith(false);
+});
+
+test('each master box says what the next press will do', async () => {
+  const user = userEvent.setup();
+  const { rerender } = render(<MasterRow {...baseProps} />);
+
+  // Keyboard focus, the way TrackRow's tooltip case does it: jsdom has no pointer geometry.
+  await user.tab(); // the volume slider
+  await user.tab();
+  expect(screen.getByRole('checkbox', { name: /solo all/i })).toHaveFocus();
+  await waitFor(() => expect(openTooltip()).toBe('Solo all'));
+
+  // Everything soloed: the same box is now the way back out.
+  rerender(<MasterRow {...baseProps} soloAll />);
+  await waitFor(() => expect(openTooltip()).toBe('Clear solos'));
+
+  // Mixed reuses the "all" wording — the dash already says some are set.
+  rerender(<MasterRow {...baseProps} soloAllIndeterminate />);
+  await waitFor(() => expect(openTooltip()).toBe('Solo all'));
 });
 
 test('a recording disables both master boxes and leaves the volume live', () => {
@@ -1323,19 +1348,29 @@ Then create `client/src/components/ui/MasterRow/MasterRow.tsx`. It adds no primi
 - Each master box is a plain `Checkbox` with `checked` and `indeterminate` passed straight through, reporting through `onCheckedChange`. **Add no direction rule of your own**: Base UI puts `aria-checked="mixed"` on an indeterminate box and reports the hidden input's value after the click, so a mixed or unticked box already reports `true` and a ticked box `false` — the browser's own select-all behaviour, and the only behaviour this row has (maintainer, 2026-09-22).
 - The row never inspects the tracks and holds no state: `soloAll` / `muteAll` and their `…Indeterminate` twins are computed by the caller, which also writes the reported value onto every track through its own per-row handler. A master box is a shortcut for pressing every row's button, never a second owner of the value.
 - Each `Checkbox` sits **inside** its `<label>`, and that label is at least 44 × 44 (`min-h-11 min-w-11`): the box is 16 px and is never the hit target on its own — the same construction `SettingRow`'s toggle kind uses.
-- `soloMuteUnavailable` sets `disabled` on both boxes and becomes their tooltip text. It never touches the volume `Slider` — master volume is live during a recording, which is the whole reason the flag is not called `mixUnavailable`.
+- Each box carries an **always-present** tooltip (never conditional — swapping a wrapped and a bare element remounts it and drops focus) naming **what the next press will do**, not what the box currently is. These two are the one place in this plan where the tooltip may carry the action instead of the state, and the reason is `aria-checked`: a checkbox announces `true` / `false` / `mixed` by itself, so the state already reaches a screen reader without the tooltip (Global Constraints). The accessible NAME stays `Solo all` / `Mute all` in every state; only the tooltip moves:
+
+  | Box state          | Solo all      | Mute all     |
+  | ------------------ | ------------- | ------------ |
+  | nothing set        | `Solo all`    | `Mute all`   |
+  | some set (`mixed`) | `Solo all`    | `Mute all`   |
+  | everything set     | `Clear solos` | `Unmute all` |
+
+  The mixed state reuses the "all" wording deliberately (maintainer, 2026-09-22): the dash already says some are set, and the press takes everything to on either way. `Clear solos` rather than "unsolo all" because _unmute_ is ordinary English and _unsolo_ is not.
+
+- `soloMuteUnavailable` sets `disabled` on both boxes and REPLACES the action text above as their tooltip — a disabled box explains why it cannot be pressed, not what pressing would have done. It never touches the volume `Slider` — master volume is live during a recording, which is the whole reason the flag is not called `mixUnavailable`.
 - Every hit area is at least 44 px, same as `TrackRow`. Task 9 measures it in the browser.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow src/components/ui/MasterRow`
-Expected: PASS — 13 `TrackRow` tests and 5 `MasterRow` tests.
+Expected: PASS — 13 `TrackRow` tests and 6 `MasterRow` tests.
 
 - [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
 
 `TrackRow.story-ids.ts`: `['collapsed', 'expanded', 'stringed-expanded', 'muted', 'soloed', 'recording']`. The `stringed-expanded` story is what proves the tablature toggle renders for a tuned staff, so it earns its own baseline; `recording` is the expanded row with `mixUnavailable` set, so the disabled look of all four controls has a baseline in both themes (VR `statesForStory`: `['resting', 'focus']` — a disabled toggle still takes focus, and that is the state its tooltip opens in). `storyPrefix: 'ui-trackrow'`, `snapshotSlug: 'trackrow'`, `slotSelector: '[data-slot="track-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
 
-`MasterRow.story-ids.ts`: `['resting', 'mixed', 'ticked', 'recording']` — `mixed` is the row with both `…Indeterminate` flags set, because the indeterminate dash is the one master state that is easy to draw wrong and impossible to catch in a unit test; `ticked` is both boxes checked; `recording` is the row with `soloMuteUnavailable` set, so the disabled look of solo-all and mute-all has a baseline in both themes. `storyPrefix: 'ui-masterrow'`, `snapshotSlug: 'masterrow'`, `slotSelector: '[data-slot="master-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
+`MasterRow.story-ids.ts`: `['resting', 'mixed', 'ticked', 'recording']` — `mixed` is the row with both `…Indeterminate` flags set, because the indeterminate dash is the one master state that is easy to draw wrong and impossible to catch in a unit test; `ticked` is both boxes checked; `recording` is the row with `soloMuteUnavailable` set, so the disabled look of solo-all and mute-all has a baseline in both themes. VR `statesForStory`: `['resting', 'focus']` — the tooltip opens on focus, and it is the tooltip that changes with state (`Solo all` vs `Clear solos`), so `ticked` and `recording` are where that copy gets a baseline. `storyPrefix: 'ui-masterrow'`, `snapshotSlug: 'masterrow'`, `slotSelector: '[data-slot="master-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
 
 - [ ] **Step 6: Run the gates and generate baselines**
 

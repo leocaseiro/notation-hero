@@ -490,6 +490,8 @@
     "touchstart",
     "pointerdown",
     "countin",
+    "unmute",
+    "unsolo",
     "playermode",
     "scrolloffsety",
     "pkill",
