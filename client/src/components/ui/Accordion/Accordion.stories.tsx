@@ -18,7 +18,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-// Three settings-popover-shaped sections, Notation open — the shape Task 5's Settings popover
+// Three settings-popover-shaped sections, Notation open — the shape the Settings popover
 // composes this into.
 export const Default: Story = {
   render: () => (
