@@ -9,6 +9,9 @@ ignores:
   - '**/playwright-report/**'
   - '**/test-results/**'
   - '.claude/worktrees/**'
+  # Machine-local, git-ignored (see .gitignore, NH-318) — but markdownlint-cli2 does not
+  # read .gitignore, so without this the file lints in every checkout that has one.
+  - '.claude/local-references.md'
   - '.superpowers/**'
   - '.specstory/**'
   - pnpm-lock.yaml
