@@ -1,0 +1,55 @@
+# NH-200 spike — smart structure detection (marker-less songs)
+
+> ## ⚠️ ARCHIVED — recovered from a branch on 2026-09-22
+>
+> Original path `docs/spikes/2026-06-20-smart-structure/README.md`, carried on `worktree-nh-200-smart-structure-spike`. It never reached `master`: it was one of eight
+> documents flagged as orphan-risk on 2026-06-20 and still absent three months later.
+>
+> **Lowest value of the eight: run instructions only.**
+>
+> The `.mjs` scripts and `demo.html` it tells you to run were **not** archived and are not on `master` — they remain on the branch above. Read `FINDINGS.md` and `RESEARCH-algorithmic-roadmap.md` beside it instead; this file is kept only so the set is complete.
+
+Throwaway spike. Infers a **key-change (modulation) timeline** and **approximate
+section boundaries** for Guitar Pro files that carry **no section markers**.
+Builds on the NH-196 gp-tonal spike (reuses its Krumhansl key detector).
+
+**Read [FINDINGS.md](./FINDINGS.md) for the accuracy read and the rule-based-vs-ML recommendation.**
+
+## Run
+
+```bash
+npm install                                  # @coderline/alphatab + tonal (node_modules gitignored)
+
+node keychanges.mjs "<path to .gp>"          # windowed key-change timeline → keyChanges[]
+node sections.mjs   "<path to .gp>"          # 3 rule-based methods + vote-merge + structural labels
+node validate.mjs                            # accuracy vs ground-truth markers + key-change checks
+```
+
+`keychanges.mjs` takes optional `[windowBars] [minSegBars]` args (defaults 8, 4).
+
+## Browser demo (visual)
+
+`demo.html` is a standalone served page (same approach as the NH-137 play-parts demo): AlphaTab from CDN, drop a `.gp`/`.xml`/`.mxl`, and it renders the score **plus** the detected key-span timeline and inferred section boundaries overlaid. The detection logic is the same as the `.mjs` core, ported inline.
+
+```bash
+python3 -m http.server 8201 --directory .   # then open http://localhost:8201/demo.html
+```
+
+Drop any file to analyse it; tune `window`/`minSeg` and press Re-run. Optionally place a `sample.gp` next to `demo.html` (gitignored) to auto-load it on open.
+
+## Files
+
+| File             | What                                                                                                                                                                                                                                                             |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lib.mjs`        | shared core: score loading, per-bar pitch-class histograms, `detectKey` (Krumhansl-Schmuckler, from NH-196), structure readers (markers / time-sig / tempo / repeats)                                                                                            |
+| `keychanges.mjs` | R1 — sliding-window key detection + hysteresis collapse → `keyChanges[]`                                                                                                                                                                                         |
+| `sections.mjs`   | R2 — boundaries from 5 voters (GP repeats · detected-chord change-pts · explicit-chord change-pts · Foote novelty · time-lag structure features) + vote-merge; energy/texture + position-prior role naming (intro/verse/chorus/bridge/outro, ~60–86% vs markers) |
+| `validate.mjs`   | R3 — precision/recall/F1 vs file markers (±1/±2 bars) + key-change timeline checks                                                                                                                                                                               |
+| `demo.html`      | browser demo — AlphaTab renders the score + detected key-span timeline + section boundaries overlay                                                                                                                                                              |
+| `FINDINGS.md`    | R3/R4 — measured numbers, failure modes, recommendation                                                                                                                                                                                                          |
+
+## Corpus
+
+External (not committed): `/Users/leocaseiro/Music/AlphaTab-RhythmGame/`. Ground
+truth = files with real markers (I'm Yours, Yellow); targets = marker-less
+(Africa, Bohemian Rhapsody, Happiness is a Warm Gun).
