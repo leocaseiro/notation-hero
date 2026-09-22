@@ -209,11 +209,14 @@ uncommitted working-tree changes. Make baby commits at every green step so
 progress is visible and any step is one `git revert` away. Never pass
 `git commit/push --no-verify`.
 
-**NEVER delete a remote branch.** After a PR merges, do **not** delete its remote
-branch — no `git push origin --delete`, no `gh pr merge --delete-branch`, no deletion
-via the GitHub UI/API. The user keeps merged branches on GitHub for history. **Local
-cleanup is fine and expected:** remove the merged worktree (`git worktree remove`) and
-delete the **local** branch (`git branch -d`/`-D`); only `origin/<branch>` must survive.
+**NEVER delete a branch — remote or local.** After a PR merges, do **not** delete its
+remote branch — no `git push origin --delete`, no `gh pr merge --delete-branch`, no deletion
+via the GitHub UI/API. The user keeps merged branches on GitHub for history. **Do not delete
+the local branch either** (`git branch -d`/`-D`). Restoring one is only possible when a remote
+counterpart exists, and several local branches here have none — deleting those destroys them.
+**Worktree cleanup IS expected:** remove the merged worktree with `git worktree remove` and
+leave the branch alone. If `worktree remove` reports "Directory not empty", the checkout has
+untracked files (often `node_modules`); leave the directory and ask, rather than forcing.
 
 ## PR checklist (CI-gated)
 
