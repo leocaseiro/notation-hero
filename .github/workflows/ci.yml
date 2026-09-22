@@ -4,19 +4,14 @@ on:
   push:
     branches: [master]
   pull_request:
-    # `edited` ensures pr-title re-validates when the title (or body/label) is
-    # changed. Without it, a user could open with a conventional title (pass),
-    # then edit to non-conventional after merge approval → squash bypass.
-    # Path-filtered jobs (quality/build/sast/deps-cve) still skip on metadata-
-    # only edits via the `changes` paths-filter, so cost is ~30-60s per edit.
+    # `edited` re-validates pr-title when the title/body/label changes (squash uses
+    # the PR title as the master subject). Path-filtered jobs still skip on
+    # metadata-only edits via the `changes` filter, so cost stays low.
     types: [opened, edited, synchronize, reopened]
-  # merge_group fires when GitHub's merge queue creates a synthetic merge commit
-  # between queued PRs and runs CI on the combined state. Two independently-green
-  # PRs that interact badly (different agents touching the same hot file) get
-  # caught HERE before they hit master. Free tier on public repos supports this.
-  # pr-title is gated to pull_request only (PR title already validated at PR time
-  # — no new title in the merge queue), so it skips here; ci-green treats skipped
-  # as OK. Closes registry L7-merge-queue.
+  # merge_group fires when GitHub's merge queue builds the combined state of queued
+  # PRs and runs CI on it — catches two independently-green PRs that interact badly.
+  # Free on public repos. pr-title/pr-checklist are pull_request-only (skip here;
+  # ci-green treats skipped as OK).
   merge_group:
 
 # Cancel superseded runs on the same ref (saves minutes, avoids stale results).
@@ -28,130 +23,413 @@ permissions:
   contents: read
 
 jobs:
-  # Path filter so docs-only PRs skip the build jobs entirely (and the single
-  # required "CI Green" check still passes — no skipped-required-check deadlock).
-  # `code` = anything that can affect lint/typecheck/depcheck/test.
-  # `apps`  = apps + their deps (core/adapters) — what a build needs.
+  # Path filter so docs-only PRs skip the build/quality jobs (the single required
+  # "CI Green" check still passes — no skipped-required-check deadlock).
+  # ADD new root config files here or quality/build silently skip on changes to them.
   changes:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
-      apps: ${{ steps.filter.outputs.apps }}
+      infra: ${{ steps.filter.outputs.infra }}
+      docs_or_config: ${{ steps.filter.outputs.docs_or_config }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: dorny/paths-filter@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
         id: filter
         with:
-          # ADD new root config files (eslint.config.*, lefthook.yml, dangerfile.ts, etc.)
-          # here or quality/build will silently skip on changes to them. The ci-green
-          # gate treats "skipped" as OK, so an unlisted file → no CI → false-green.
-          # See DACI L7 (Sequencing Step 3 — CI cost/safety) + F-4/F-10 from PR #1 review.
           filters: |
             code:
-              - 'core/**'
-              - 'adapters/**'
-              - 'apps/**'
+              - 'client/**'
+              - 'web/**'
+              - 'server/**'
+              - 'shared/**'
               - 'infra/**'
               - 'tooling/**'
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'tsconfig*.json'
-              - '.eslintrc.cjs'
               - '.dependency-cruiser.cjs'
               - 'knip.json'
               - '.syncpackrc.json'
               - '.semgrepignore'
               - 'lefthook.yml'
               - 'commitlint.config.*'
-              - 'nx.json'
               - '.github/workflows/ci.yml'
-            apps:
-              - 'apps/**'
-              - 'core/**'
-              - 'adapters/**'
-              - 'package.json'
-              - 'pnpm-lock.yaml'
-              - 'pnpm-workspace.yaml'
-              - 'tsconfig*.json'
-              - 'nx.json'
-              - '.github/workflows/ci.yml'
+            infra:
+              - 'infra/**'
+            docs_or_config:
+              - '**/*.md'
+              - '**/*.yml'
+              - '**/*.yaml'
+              - '**/*.css'
+              - '**/*.sh'
+              - '.editorconfig'
+              - '.github/**'
+              - '.markdownlint*'
+              - '.stylelintrc*'
+              - '.yamllint'
+              - 'cspell.json'
+              # Root lint/format configs only the `lint` job consumes — without these a
+              # PR touching just one would skip BOTH quality and lint (CI Green still green).
+              - 'eslint.config.*'
+              - 'prettier.config.*'
+              - '.editorconfig-checker.json'
+              - '.prettierignore'
+              - '.stylelintignore'
 
-  # Lint + typecheck + Hexagonal layer-boundary check (dependency-cruiser) + test.
+  # Lint + typecheck + hexagon layer-boundary check (dependency-cruiser) +
+  # version consistency (syncpack) + tests, across every workspace via `pnpm -r`.
   quality:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          # nx-set-shas needs history to find the last successful run's SHA on master.
-          fetch-depth: 0
-      # Sets NX_BASE / NX_HEAD env vars so `nx affected` knows the right base for
-      # pull_request, push:master, AND merge_group events. Without this, affected
-      # is silently the full graph on PRs (wasteful) or empty on merge_group
-      # (misses work). Required by L7-set-shas. Pinned to v4.
-      - uses: nrwl/nx-set-shas@v4
-        with:
-          main-branch-name: master
-      - name: Layout guard (co-located tests — no __tests__/ or stories/)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Layout guard (role suffixes; no __tests__/ or stories/ dirs)
         run: bash tooling/check-layout.sh
       - name: Coverage-ignore guard (no istanbul/c8/v8 ignore)
         run: bash tooling/check-no-coverage-ignore.sh
       - uses: ./.github/actions/setup-js
-      - name: Lint
-        run: pnpm run lint
       - name: Typecheck
         run: pnpm run typecheck
-      - name: Dependency boundaries (Hexagonal layers)
+      - name: Dependency boundaries (hexagon)
         run: pnpm run depcheck
-      - name: Dependency versions (Syncpack)
+      - name: Core-purity canary (proves the hexagon fence rejects core -> framework)
+        run: pnpm run check:core-purity
+      - name: Dependency versions (syncpack)
         run: pnpm run syncpack
       - name: Test
         run: pnpm run test
+      - name: Tooling unit tests (node --test + shell)
+        run: pnpm run test:tooling
 
-  # Per-deploy-target build. Runs every workspace's build via pnpm -r;
-  # split into a per-app matrix if/when build time warrants.
-  build:
+  # Full lint/format suite — one named step per tool for per-tool failure attribution.
+  # Gated on `code || docs_or_config` (NOT widening `code`): a docs/config-only PR runs
+  # lint but still SKIPS the six heavy `code`-gated jobs (quality/build/a11y/vr/sast/deps-cve).
+  # TODO(NH-243): inline file:line annotations for eslint/markdownlint/shellcheck (problem
+  # matchers) — deferred (not a ci-green gate); actionlint already annotates natively.
+  lint:
     needs: changes
-    if: ${{ needs.changes.outputs.apps == 'true' }}
+    if: ${{ needs.changes.outputs.code == 'true' || needs.changes.outputs.docs_or_config == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-      - uses: nrwl/nx-set-shas@v4
-        with:
-          main-branch-name: master
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+      - name: Install pinned lint binaries
+        run: |
+          # ubuntu-latest ships shellcheck preinstalled; apt ensures presence.
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends shellcheck
+          python3 -m pip install --user yamllint==1.38.0
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # actionlint: pinned binary + SHA256 (the marketplace action's release-fetch is flaky).
+          ACTIONLINT_VER=1.7.12
+          curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VER}/actionlint_${ACTIONLINT_VER}_linux_amd64.tar.gz" -o /tmp/actionlint.tgz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tgz" | sha256sum -c -
+          sudo tar -xzf /tmp/actionlint.tgz -C /usr/local/bin actionlint
+          # editorconfig-checker: its npm wrapper fetches the binary through the GitHub REST API on
+          # every run, and with no token it shares the runner IP's 60-requests-per-hour anonymous
+          # budget — a 403 there takes the whole lint job down (NH-309). Seed the wrapper's cache
+          # from the release DOWNLOAD url instead: that is a CDN redirect with no API limit. The
+          # wrapper's isReady() only stats this directory, so finding it populated makes it skip the
+          # API entirely and just run the binary — same version, same invocation, one code path.
+          # Keep EC_VERSION and the SHA in lockstep with the root lint:editorconfig script; the
+          # v3.11.3 pin is NH-293 (v4.0.0 renamed every release asset, which the wrapper cannot find).
+          EC_VERSION=v3.11.3
+          EC_DIR="$(node -e "console.log(require('path').dirname(require.resolve('editorconfig-checker/package.json')))")/bin/${EC_VERSION}"
+          curl -fsSL --retry 3 --retry-delay 5 --max-time 120 "https://github.com/editorconfig-checker/editorconfig-checker/releases/download/${EC_VERSION}/ec-linux-amd64.tar.gz" -o /tmp/ec.tgz
+          echo "6a73858f8906e466910fb3b3b525c206b27dacdad138910b0b0513f021ab32c4  /tmp/ec.tgz" | sha256sum -c -
+          mkdir -p "$EC_DIR"
+          tar -xzf /tmp/ec.tgz -C "$EC_DIR"
+      - name: Prettier (format check)
+        run: pnpm run format:check
+      - name: ESLint
+        run: pnpm -r --if-present run lint
+      - name: Stylelint
+        run: pnpm run lint:css
+      - name: Markdownlint
+        run: pnpm run lint:md
+      - name: yamllint
+        run: pnpm run lint:yaml
+      - name: cspell
+        run: pnpm run lint:spell
+      - name: shellcheck
+        run: pnpm run lint:shell
+      - name: actionlint
+        run: pnpm run lint:actions
+      - name: editorconfig-checker
+        run: pnpm run lint:editorconfig
+      - name: sort-package-json (check)
+        run: pnpm run lint:sort-pkg
+      - name: supply-chain pins in sync with lockfile (NH-259)
+        run: pnpm run check:supply-chain-pins
+
+  # Per-package build via `pnpm -r run build`.
+  build:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
       - run: pnpm run build
+      # Guard the cross-package Tailwind `@source` scan (web/app/globals.css -> client/src): a
+      # successful `next build` does NOT fail when the scan silently generates zero design-system
+      # utilities, so assert the Button utilities actually landed in the built CSS (NH-275).
+      # Sentinel = `bg-clip-padding`, a client-only class in client Button.tsx's cva base
+      # (a mirrored note there points back here). If a Button restyle drops it, update this.
+      - name: web design-system CSS generated (@source scan guard)
+        run: |
+          grep -rlq --include='*.css' 'bg-clip-padding' web/.next/static/ \
+            || { echo "::error file=web/app/globals.css::missing the bg-clip-padding sentinel - the @source scan into client/src generated nothing (or Button dropped that class; see client Button.tsx)."; exit 1; }
 
-  # Secret scanning — gitleaks over the diff/history. Runs on EVERY change (NOT
-  # path-filtered) — a secret can land in any file. Free on personal/public repos;
-  # an org repo would need GITLEAKS_LICENSE. (decision-registry E-gitleaks)
+  # Accessibility — axe-core (WCAG 2 A+AA) over the Storybook stories via Playwright,
+  # in light + dark. Deterministic (no pixel baselines, unlike VR), so it's a real
+  # required gate. Path-filtered on `code`. Violations print in the job log with the
+  # rule + measured contrast ratio + the two colors.
+  a11y:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+      - name: Install Playwright Chromium
+        run: pnpm --filter @notation-hero/client exec playwright install --with-deps chromium
+      - name: Accessibility tests (axe + Storybook)
+        run: pnpm --filter @notation-hero/client run test:a11y
+
+  # Visual regression — Playwright toHaveScreenshot over the Storybook stories. Runs IN
+  # the official Playwright container so rendering matches the committed *-linux.png
+  # baselines exactly (those are generated locally via the same image — see AGENTS.md
+  # "VR baselines"). Path-filtered on `code`; blocks merge alongside a11y.
+  vr:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/playwright:v1.61.1-noble
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # NOT the setup-js composite: inside the Playwright container, use the image's Node
+      # + corepack (pnpm@11.5.2 from packageManager) and --ignore-scripts. pnpm/action-setup
+      # conflicts with the image's pnpm layout, and the lefthook `prepare` can't run here
+      # (no git hooks needed in CI). Browsers are baked into the image — no `playwright install`.
+      - name: Install deps
+        run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts
+      - name: Visual regression (vs committed Linux baselines)
+        run: pnpm --filter @notation-hero/client run test:vr
+      - name: Upload VR report + traces
+        # NOT `if: failure()` — keep the trace of a flaky-then-passed retry (matches e2e, D5).
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-vr-report
+          path: |
+            client/playwright-report/
+            client/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Publish the Playwright VR report to gh-pages on a VR failure, and post a sticky PR comment
+  # linking it — the image-diff Slider + the trace timeline, one-click, no zip download. Mirrors
+  # storybook-preview.yml's trust model: the write token lives in THIS job only (the vr job that
+  # runs PR/Storybook code stays read-only and just uploads the artifact); it shares the
+  # gh-pages-deploy concurrency group so it never non-fast-forward-races the Storybook publish, and
+  # publishes OUTSIDE pr/<n>/ (Storybook scoped-deletes that path) at vr-report/pr/<n>/. Same-repo
+  # PRs only — a fork's read-only token can't publish/comment. NOT a ci-green gate (absent from its
+  # needs:) and only acts after vr already failed. Spec:
+  # docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md (NH-273).
+  vr-report:
+    needs: vr
+    if: ${{ !cancelled() && needs.vr.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    concurrency:
+      group: gh-pages-deploy
+      cancel-in-progress: false
+    steps:
+      # continue-on-error + the presence gate below: a vr failure BEFORE Playwright writes the
+      # report (e.g. an install/setup crash) uploads no artifact, so download-artifact would
+      # hard-fail this job. Instead we no-op cleanly — there is no report to link anyway.
+      - name: Download VR report artifact
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: playwright-vr-report
+          path: vr-artifact
+      - name: Check report present
+        id: report
+        run: |
+          if [ -f ./vr-artifact/playwright-report/index.html ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No report artifact (vr failed before Playwright wrote one); nothing to publish."
+          fi
+      # keep_files defaults to false, scoping deletion to vr-report/pr/<n> — refreshes only this
+      # PR's report, never other PRs' reports or the Storybook tree.
+      - name: Publish VR report to gh-pages
+        if: steps.report.outputs.present == 'true'
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./vr-artifact/playwright-report
+          destination_dir: vr-report/pr/${{ github.event.pull_request.number }}
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
+      # Timestamp is Sydney time via Intl (AEST in winter, AEDT in summer — label follows); SHA is
+      # the PR head commit, shortened. Untrusted values reach the script only via env.
+      - name: Comment VR report link
+        if: steps.report.outputs.present == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          URL: https://leocaseiro.github.io/notation-hero/vr-report/pr/${{ github.event.pull_request.number }}/
+        with:
+          script: |
+            const marker = '<!-- vr-report-preview -->';
+            const pr = Number(process.env.PR);
+            const url = process.env.URL;
+            const sha = (process.env.HEAD_SHA || '').substring(0, 7);
+            const when = new Intl.DateTimeFormat('en-AU', {
+              timeZone: 'Australia/Sydney',
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true,
+              timeZoneName: 'short',
+            }).format(new Date());
+            const body = [
+              marker,
+              `🎭 **VR report** (image-diff **Slider** + trace **timeline**): ${url}`,
+              '',
+              `\`${sha}\` · ${when} — from the latest **failing** VR run; refreshes on every commit while VR fails.`,
+            ].join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr,
+                body,
+              });
+            }
+
+  # When VR PASSES, resolve any existing VR-report comment to a ✅ line (never CREATE one on a green
+  # PR). Its own job so the green path needs only pull-requests:write and NOT the gh-pages-deploy
+  # concurrency slot — a comment-only op shouldn't add eviction pressure to real publishes on every
+  # green PR. Same gating (PR + same-repo). NOT a ci-green gate.
+  vr-report-resolve:
+    needs: vr
+    if: ${{ !cancelled() && needs.vr.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Resolve VR report comment
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        with:
+          script: |
+            const marker = '<!-- vr-report-preview -->';
+            const pr = Number(process.env.PR);
+            const sha = (process.env.HEAD_SHA || '').substring(0, 7);
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: `${marker}\n✅ VR passing on \`${sha}\` — no visual diffs to review.`,
+              });
+            }
+
+  # End-to-end — two Playwright lanes. client/: the built SPA (`vite preview`) with /api/catalog
+  # mocked by MSW. web/: the built Next.js app (`next build` then `next start`), which is the only
+  # gate over the product's own UI — web/ has no Storybook, so neither `vr` nor `a11y` covers it.
+  # Models the `a11y` job (ubuntu + on-demand Chromium); unlike `vr` it is not pixel-exact, so no
+  # Playwright container. Each package needs its own browser install. Uploads traces + the HTML
+  # report so a CI failure is replayable via `npx playwright show-trace`. Path-filtered on `code`;
+  # blocks merge via ci-green.
+  e2e:
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+      - name: Install Playwright Chromium (client)
+        run: pnpm --filter @notation-hero/client exec playwright install --with-deps chromium
+      - name: e2e tests (Playwright vs built app)
+        run: pnpm --filter @notation-hero/client run test:e2e
+      - name: Install Playwright Chromium (web)
+        run: pnpm --filter @notation-hero/web exec playwright install --with-deps chromium
+      - name: e2e tests (Playwright vs the built Next.js app)
+        run: pnpm --filter @notation-hero/web run test:e2e
+      - name: Upload traces + HTML report
+        # NOT `if: failure()` — that would drop the trace of a flaky-then-passed run (D5).
+        # ONE upload step for both lanes: a second step reusing the artifact name would collide.
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-e2e-report
+          path: |
+            client/playwright-report/
+            client/test-results/
+            web/playwright-report/
+            web/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Secret scanning — gitleaks over the full history. Runs on EVERY change (a
+  # secret can land in any file). Free on public/personal repos.
   secret-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v3
+      - uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3
         env:
-          # gitleaks-action v2 requires the token to scan PR commits (read-only is enough).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_ENABLE_COMMENTS: "false"
-          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_COMMENTS: 'false'
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: 'false'
 
-  # SAST — Semgrep over source. Path-filtered on `code` (no source change → skipped,
-  # which the gate treats as OK). Free community rulesets via `--config auto`, no token.
-  # (decision-registry E-semgrep)
+  # SAST — Semgrep over source. Path-filtered on `code`. Free community rulesets.
   sast:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
       - name: Install Semgrep
@@ -159,60 +437,104 @@ jobs:
       - name: Semgrep SAST
         run: semgrep scan --config auto --error
 
-  # Dependency CVE gate — osv-scanner recursive scan over the repo tree (picks up
-  # pnpm-lock.yaml). Path-filtered on `code`; fails the build on any known CVE (free
-  # SCA). Pinned to an exact tag — the action warns it can change in a minor patch.
-  # (decision-registry E-osv-scanner)
+  # Dependency CVE gate — osv-scanner over the lockfile. Path-filtered on `code`.
   deps-cve:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
-      - uses: google/osv-scanner-action/osv-scanner-action@v2.3.8
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: google/osv-scanner-action/osv-scanner-action@6e4298ebc4db23e847df9b2e2de2939d6f066c67 # v2.5.1
         with:
           scan-args: |-
             --recursive
             ./
 
-  # PR-title commitlint — validates the PR title against commitlint.config.cjs.
-  # Why: GitHub squash-merge uses the PR title as master subject when a PR has
-  # 2+ commits (repo's squash_merge_commit_title = COMMIT_OR_PR_TITLE). The
-  # Lefthook commit-msg hook only validates LOCAL commits — without this gate
-  # a multi-commit PR with a non-conventional title produces a non-conventional
-  # master commit, breaking `nx release` SemVer detection. Same commitlint
-  # config is the single source of truth. PR-event only. (decision-registry L6-4)
+  # PR-title commitlint — GitHub squash uses the PR title as the master subject
+  # for multi-commit PRs; the local commit-msg hook only covers local commits.
+  # Bot-exempt (like pr-checklist): dependabot titles ("Bump …") aren't conventional and
+  # we can't change them — the cost is their squash subject isn't commitlint-checked.
   pr-title:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
       - name: Validate PR title with commitlint
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint
 
+  # Agent PR merge checklist (NH-16) — Jira-key presence + no-blank-boxes over the PR-template
+  # items, plus the diff-aware infra-preview gate (NH-206 review #3): `needs: changes` brings the
+  # `infra` paths-filter signal, so an infra/ PR must record its local pulumi-preview
+  # classification. Always runs (PR-event only, bot-exempt). Pure Node.
+  pr-checklist:
+    needs: changes
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.type != 'Bot'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Dependency-free Node script — no `pnpm install` needed, so use setup-node + .nvmrc
+      # directly instead of the ./.github/actions/setup-js composite (AGENTS.md "Exception").
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version-file: .nvmrc
+      - name: PR checklist gate
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_BRANCH: ${{ github.head_ref }}
+          PR_AUTHOR_TYPE: ${{ github.event.pull_request.user.type }}
+          PR_INFRA_CHANGED: ${{ needs.changes.outputs.infra }}
+        run: node tooling/pr-checklist.mjs
+
   # Single REQUIRED status check for branch protection. Always runs, so a
-  # path-filtered skip never deadlocks the merge. Fails only on a real
-  # failure/cancellation (skipped is OK).
+  # path-filtered skip never deadlocks the merge (skipped is OK).
   ci-green:
     name: CI Green
     if: always()
-    needs: [quality, build, secret-scan, sast, deps-cve, pr-title]
+    needs:
+      [
+        changes,
+        quality,
+        lint,
+        build,
+        a11y,
+        vr,
+        e2e,
+        secret-scan,
+        sast,
+        deps-cve,
+        pr-title,
+        pr-checklist,
+      ]
     runs-on: ubuntu-latest
     steps:
       - name: Verify required jobs passed
+        env:
+          # `toJSON(needs)` reflects the `needs:` array above automatically, so the
+          # `needs:` list is the SINGLE source of truth — adding a gate is a one-line
+          # `needs:` edit and this step never changes (NH-22). Injected via env (not
+          # inline in run) to avoid any script-injection surface.
+          NEEDS: ${{ toJSON(needs) }}
         run: |
-          q="${{ needs.quality.result }}"
-          b="${{ needs.build.result }}"
-          s="${{ needs.secret-scan.result }}"
-          a="${{ needs.sast.result }}"
-          d="${{ needs.deps-cve.result }}"
-          p="${{ needs.pr-title.result }}"
-          echo "quality=$q  build=$b  secret-scan=$s  sast=$a  deps-cve=$d  pr-title=$p"
-          if [[ "$q" == "failure" || "$q" == "cancelled" || "$b" == "failure" || "$b" == "cancelled" || "$s" == "failure" || "$s" == "cancelled" || "$a" == "failure" || "$a" == "cancelled" || "$d" == "failure" || "$d" == "cancelled" || "$p" == "failure" || "$p" == "cancelled" ]]; then
-            echo "::error::A required CI job did not pass"
-            exit 1
+          jq -r 'to_entries[] | "\(.key)=\(.value.result)"' <<<"$NEEDS"
+          # Gatekeeper: `changes` must SUCCEED. If it fails or skips, the path-gated
+          # jobs (quality/build/sast/deps-cve) silently skip — which must not read as
+          # green. Quoted key so a future hyphenated gatekeeper name still resolves;
+          # evaluated on its own line so a jq error trips `set -e` instead of being
+          # swallowed inside `[[ … ]]`.
+          changes_result="$(jq -r '.["changes"].result' <<<"$NEEDS")"
+          if [[ "$changes_result" != "success" ]]; then
+            echo "::error::Gatekeeper job 'changes' did not succeed (result=$changes_result); path-gated jobs may have silently skipped"; exit 1
+          fi
+          # Allow-list (fail closed): every other required job must be `success` or
+          # `skipped` (path filters legitimately skip). ANY other result — failure,
+          # cancelled, or an unknown future value — fails the gate (ARCH-GUARD-1/CR-1:
+          # prefer an allow-list over a deny-list for fences).
+          bad="$(jq -r 'to_entries[] | select(.value.result != "success" and .value.result != "skipped") | "\(.key)=\(.value.result)"' <<<"$NEEDS")"
+          if [[ -n "$bad" ]]; then
+            echo "::error::Required CI job(s) did not pass: $(tr '\n' ' ' <<<"$bad")"; exit 1
           fi
           echo "All required jobs passed (skipped is OK)."

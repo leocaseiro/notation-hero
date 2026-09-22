@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <!--
   Notation Hero — Player (flat HUD row), reskinned to the locked design-system palette + typography.
   Source mockup: notation-hero-resources/src/index-hud-flatrow.html (Gemini/Stitch).
@@ -13,240 +13,546 @@
   NOTE: the notation staff + playhead are placeholders for the AlphaTab render.
 -->
 <html data-theme="dark" lang="en">
-<head>
-<meta charset="utf-8">
-<meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>Notation Hero — Player (teal · D3 type · light + dark)</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;700&family=Geist:wght@400;500;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
-<style>
-  :root, [data-theme="dark"] {
-    --bg: 12 17 23;       --rail: 9 13 18;     --panel: 18 24 33;    --panel2: 24 32 43;
-    --elevate: 28 37 48;  --ink: 232 237 243;  --muted: 154 166 180; --faint: 108 120 137;
-    --line: 34 44 57;     --accent: 45 212 191; --accenthi: 94 234 212; --onaccent: 6 35 31;
-    --time: 47 109 246;   --error: 255 107 107; --staffline: 42 51 64;
-  }
-  [data-theme="light"] {
-    --bg: 255 255 255;    --rail: 244 246 249; --panel: 251 252 254; --panel2: 241 244 248;
-    --elevate: 236 240 245; --ink: 15 21 28;   --muted: 90 100 114;  --faint: 154 163 177;
-    --line: 226 232 240;  --accent: 15 118 110; --accenthi: 13 148 136; --onaccent: 255 255 255;
-    --time: 47 109 246;   --error: 220 38 38;  --staffline: 201 210 221;
-  }
-  :root { --font-display: 'Bricolage Grotesque'; --font-ui: 'Hanken Grotesk'; --font-num: 'Geist Mono'; }
-  [data-type="d1"] { --font-display: 'Geist'; --font-ui: 'Geist'; }
-  .num { font-family: var(--font-num), monospace; font-variant-numeric: tabular-nums; }
-  body { transition: background-color .25s ease, color .25s ease; }
-  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-  .staff-container {
-    background-image: linear-gradient(to bottom,
-      transparent 19%, rgb(var(--staffline)) 20%, rgb(var(--staffline)) 21%, transparent 22%,
-      transparent 39%, rgb(var(--staffline)) 40%, rgb(var(--staffline)) 41%, transparent 42%,
-      transparent 59%, rgb(var(--staffline)) 60%, rgb(var(--staffline)) 61%, transparent 62%,
-      transparent 79%, rgb(var(--staffline)) 80%, rgb(var(--staffline)) 81%, transparent 82%);
-    background-size: 100% 100px;
-  }
-  ::-webkit-scrollbar { width: 4px; height: 4px; }
-  ::-webkit-scrollbar-track { background: rgb(var(--rail)); }
-  ::-webkit-scrollbar-thumb { background: rgb(var(--panel2)); border-radius: 2px; }
-</style>
-<script id="tailwind-config">
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          "background": "rgb(var(--bg) / <alpha-value>)",
-          "surface": "rgb(var(--bg) / <alpha-value>)",
-          "surface-dim": "rgb(var(--bg) / <alpha-value>)",
-          "surface-container-lowest": "rgb(var(--rail) / <alpha-value>)",
-          "surface-container-low": "rgb(var(--panel) / <alpha-value>)",
-          "surface-container": "rgb(var(--panel) / <alpha-value>)",
-          "surface-container-high": "rgb(var(--panel2) / <alpha-value>)",
-          "surface-container-highest": "rgb(var(--elevate) / <alpha-value>)",
-          "surface-bright": "rgb(var(--panel2) / <alpha-value>)",
-          "surface-variant": "rgb(var(--panel2) / <alpha-value>)",
-          "elevate": "rgb(var(--elevate) / <alpha-value>)",
-          "line": "rgb(var(--line) / <alpha-value>)",
-          "on-background": "rgb(var(--ink) / <alpha-value>)",
-          "on-surface": "rgb(var(--ink) / <alpha-value>)",
-          "on-surface-variant": "rgb(var(--muted) / <alpha-value>)",
-          "faint": "rgb(var(--faint) / <alpha-value>)",
-          "outline": "rgb(var(--muted) / <alpha-value>)",
-          "outline-variant": "rgb(var(--line) / <alpha-value>)",
-          "primary": "rgb(var(--accent) / <alpha-value>)",
-          "primary-container": "rgb(var(--accent) / <alpha-value>)",
-          "primary-fixed": "rgb(var(--accenthi) / <alpha-value>)",
-          "primary-fixed-dim": "rgb(var(--accent) / <alpha-value>)",
-          "surface-tint": "rgb(var(--accent) / <alpha-value>)",
-          "on-primary": "rgb(var(--onaccent) / <alpha-value>)",
-          "on-primary-container": "rgb(var(--onaccent) / <alpha-value>)",
-          "secondary-container": "rgb(var(--time) / <alpha-value>)",
-          "error": "rgb(var(--error) / <alpha-value>)"
-        },
-        borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "pill": "0.75rem", "full": "9999px" },
-        fontFamily: {
-          "sans": ["var(--font-ui)", "system-ui", "sans-serif"],
-          "mono": ["var(--font-num)", "monospace"],
-          "display": ["var(--font-display)", "system-ui", "sans-serif"]
-        },
-        fontSize: {
-          "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
-          "label-mono": ["14px", { "lineHeight": "20px", "fontWeight": "500" }]
-        }
+  <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Notation Hero — Player (teal · D3 type · light + dark)</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;700&family=Geist:wght@400;500;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+    />
+    <style>
+      :root,
+      [data-theme='dark'] {
+        --bg: 12 17 23;
+        --rail: 9 13 18;
+        --panel: 18 24 33;
+        --panel2: 24 32 43;
+        --elevate: 28 37 48;
+        --ink: 232 237 243;
+        --muted: 154 166 180;
+        --faint: 108 120 137;
+        --line: 34 44 57;
+        --accent: 45 212 191;
+        --accenthi: 94 234 212;
+        --onaccent: 6 35 31;
+        --time: 47 109 246;
+        --error: 255 107 107;
+        --staffline: 42 51 64;
       }
-    }
-  }
-</script>
-</head>
-<body class="bg-background text-on-background font-sans selection:bg-primary-container selection:text-on-primary-container overflow-hidden">
-
-<!-- Top App Bar -->
-<header class="fixed top-0 left-0 w-full z-50 flex items-center px-8 h-16 bg-surface/70 backdrop-blur-xl border-b border-line shadow-sm">
-  <div class="flex items-center gap-8 w-1/3">
-    <span class="font-display text-headline-md font-bold text-primary">Notation Hero</span>
-    <nav class="hidden md:flex gap-6">
-      <a class="font-display text-on-surface font-medium transition-colors hover:text-primary" href="#">My Song name here</a>
-    </nav>
-  </div>
-  <div class="flex items-center justify-center w-1/3">
-    <div class="flex items-center bg-surface-container rounded-pill p-1 border border-line shadow-sm">
-      <button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-elevate text-primary transition-colors" title="Toggle Auto-Speed">
-        <span class="material-symbols-outlined text-sm" style="font-variation-settings:'FILL' 1;">bolt</span>
-      </button>
-      <div class="flex items-center px-4 gap-3 border-line border-l">
-        <button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-sm">remove</span></button>
-        <div class="flex flex-col items-center min-w-[40px]">
-          <span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">BPM</span>
-          <span class="num text-on-surface font-bold text-sm leading-none">120</span>
-        </div>
-        <button class="text-on-surface-variant hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-sm">add</span></button>
+      [data-theme='light'] {
+        --bg: 255 255 255;
+        --rail: 244 246 249;
+        --panel: 251 252 254;
+        --panel2: 241 244 248;
+        --elevate: 236 240 245;
+        --ink: 15 21 28;
+        --muted: 90 100 114;
+        --faint: 154 163 177;
+        --line: 226 232 240;
+        --accent: 15 118 110;
+        --accenthi: 13 148 136;
+        --onaccent: 255 255 255;
+        --time: 47 109 246;
+        --error: 220 38 38;
+        --staffline: 201 210 221;
+      }
+      :root {
+        --font-display: 'Bricolage Grotesque';
+        --font-ui: 'Hanken Grotesk';
+        --font-num: 'Geist Mono';
+      }
+      [data-type='d1'] {
+        --font-display: 'Geist';
+        --font-ui: 'Geist';
+      }
+      .num {
+        font-family: var(--font-num), monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      body {
+        transition:
+          background-color 0.25s ease,
+          color 0.25s ease;
+      }
+      .material-symbols-outlined {
+        font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24;
+      }
+      .staff-container {
+        background-image: linear-gradient(
+          to bottom,
+          transparent 19%,
+          rgb(var(--staffline)) 20%,
+          rgb(var(--staffline)) 21%,
+          transparent 22%,
+          transparent 39%,
+          rgb(var(--staffline)) 40%,
+          rgb(var(--staffline)) 41%,
+          transparent 42%,
+          transparent 59%,
+          rgb(var(--staffline)) 60%,
+          rgb(var(--staffline)) 61%,
+          transparent 62%,
+          transparent 79%,
+          rgb(var(--staffline)) 80%,
+          rgb(var(--staffline)) 81%,
+          transparent 82%
+        );
+        background-size: 100% 100px;
+      }
+      ::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgb(var(--rail));
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgb(var(--panel2));
+        border-radius: 2px;
+      }
+    </style>
+    <script id="tailwind-config">
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              background: 'rgb(var(--bg) / <alpha-value>)',
+              surface: 'rgb(var(--bg) / <alpha-value>)',
+              'surface-dim': 'rgb(var(--bg) / <alpha-value>)',
+              'surface-container-lowest': 'rgb(var(--rail) / <alpha-value>)',
+              'surface-container-low': 'rgb(var(--panel) / <alpha-value>)',
+              'surface-container': 'rgb(var(--panel) / <alpha-value>)',
+              'surface-container-high': 'rgb(var(--panel2) / <alpha-value>)',
+              'surface-container-highest': 'rgb(var(--elevate) / <alpha-value>)',
+              'surface-bright': 'rgb(var(--panel2) / <alpha-value>)',
+              'surface-variant': 'rgb(var(--panel2) / <alpha-value>)',
+              elevate: 'rgb(var(--elevate) / <alpha-value>)',
+              line: 'rgb(var(--line) / <alpha-value>)',
+              'on-background': 'rgb(var(--ink) / <alpha-value>)',
+              'on-surface': 'rgb(var(--ink) / <alpha-value>)',
+              'on-surface-variant': 'rgb(var(--muted) / <alpha-value>)',
+              faint: 'rgb(var(--faint) / <alpha-value>)',
+              outline: 'rgb(var(--muted) / <alpha-value>)',
+              'outline-variant': 'rgb(var(--line) / <alpha-value>)',
+              primary: 'rgb(var(--accent) / <alpha-value>)',
+              'primary-container': 'rgb(var(--accent) / <alpha-value>)',
+              'primary-fixed': 'rgb(var(--accenthi) / <alpha-value>)',
+              'primary-fixed-dim': 'rgb(var(--accent) / <alpha-value>)',
+              'surface-tint': 'rgb(var(--accent) / <alpha-value>)',
+              'on-primary': 'rgb(var(--onaccent) / <alpha-value>)',
+              'on-primary-container': 'rgb(var(--onaccent) / <alpha-value>)',
+              'secondary-container': 'rgb(var(--time) / <alpha-value>)',
+              error: 'rgb(var(--error) / <alpha-value>)',
+            },
+            borderRadius: {
+              DEFAULT: '0.125rem',
+              lg: '0.25rem',
+              xl: '0.5rem',
+              pill: '0.75rem',
+              full: '9999px',
+            },
+            fontFamily: {
+              sans: ['var(--font-ui)', 'system-ui', 'sans-serif'],
+              mono: ['var(--font-num)', 'monospace'],
+              display: ['var(--font-display)', 'system-ui', 'sans-serif'],
+            },
+            fontSize: {
+              'headline-md': ['24px', { lineHeight: '32px', fontWeight: '600' }],
+              'label-mono': ['14px', { lineHeight: '20px', fontWeight: '500' }],
+            },
+          },
+        },
+      };
+    </script>
+  </head>
+  <body
+    class="bg-background text-on-background font-sans selection:bg-primary-container selection:text-on-primary-container overflow-hidden"
+  >
+    <!-- Top App Bar -->
+    <header
+      class="fixed top-0 left-0 w-full z-50 flex items-center px-8 h-16 bg-surface/70 backdrop-blur-xl border-b border-line shadow-sm"
+    >
+      <div class="flex items-center gap-8 w-1/3">
+        <span class="font-display text-headline-md font-bold text-primary">Notation Hero</span>
+        <nav class="hidden md:flex gap-6">
+          <a
+            class="font-display text-on-surface font-medium transition-colors hover:text-primary"
+            href="#"
+            >My Song name here</a
+          >
+        </nav>
       </div>
+      <div class="flex items-center justify-center w-1/3">
+        <div
+          class="flex items-center bg-surface-container rounded-pill p-1 border border-line shadow-sm"
+        >
+          <button
+            class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-elevate text-primary transition-colors"
+            title="Toggle Auto-Speed"
+          >
+            <span
+              class="material-symbols-outlined text-sm"
+              style="font-variation-settings: 'FILL' 1"
+              >bolt</span
+            >
+          </button>
+          <div class="flex items-center px-4 gap-3 border-line border-l">
+            <button class="text-on-surface-variant hover:text-on-surface transition-colors">
+              <span class="material-symbols-outlined text-sm">remove</span>
+            </button>
+            <div class="flex flex-col items-center min-w-[40px]">
+              <span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold"
+                >BPM</span
+              >
+              <span class="num text-on-surface font-bold text-sm leading-none">120</span>
+            </div>
+            <button class="text-on-surface-variant hover:text-on-surface transition-colors">
+              <span class="material-symbols-outlined text-sm">add</span>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center justify-end w-1/3 gap-2">
+        <button
+          id="typeToggle"
+          class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+          title="Toggle typography (D3 Bricolage / D1 Geist)"
+        >
+          <span class="material-symbols-outlined">text_fields</span>
+        </button>
+        <button
+          id="themeToggle"
+          class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+          title="Toggle light / dark"
+        >
+          <span class="material-symbols-outlined" data-theme-icon>dark_mode</span>
+        </button>
+        <button
+          class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface transition-colors"
+          title="MIDI: connected — listening"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            class="w-[22px] h-[22px] fill-current"
+          >
+            <title>midi-port</title>
+            <path
+              d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M20.18,12C20.18,8.18 17.55,4.96 14,4.07V6H10V4.07C6.45,4.96 3.82,8.18 3.82,12A8.18,8.18 0 0,0 12,20.18A8.18,8.18 0 0,0 20.18,12M7,10.64A1.36,1.36 0 0,1 8.36,12A1.36,1.36 0 0,1 7,13.36C6.25,13.36 5.64,12.75 5.64,12C5.64,11.25 6.25,10.64 7,10.64M17,10.64A1.36,1.36 0 0,1 18.36,12A1.36,1.36 0 0,1 17,13.36A1.36,1.36 0 0,1 15.64,12A1.36,1.36 0 0,1 17,10.64M8.36,14.27A1.37,1.37 0 0,1 9.73,15.64C9.73,16.39 9.12,17 8.36,17A1.36,1.36 0 0,1 7,15.64C7,14.88 7.61,14.27 8.36,14.27M15.64,14.27C16.39,14.27 17,14.88 17,15.64A1.36,1.36 0 0,1 15.64,17C14.88,17 14.27,16.39 14.27,15.64A1.37,1.37 0 0,1 15.64,14.27M12,15.64A1.36,1.36 0 0,1 13.36,17A1.36,1.36 0 0,1 12,18.36A1.36,1.36 0 0,1 10.64,17A1.36,1.36 0 0,1 12,15.64Z"
+            />
+          </svg>
+        </button>
+        <button
+          class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+          title="Settings"
+        >
+          <span class="material-symbols-outlined">settings</span>
+        </button>
+      </div>
+    </header>
+
+    <div class="flex h-screen pt-16">
+      <!-- Left Rail -->
+      <aside
+        class="w-20 lg:w-24 flex flex-col items-center py-6 border-r border-line bg-surface-container-lowest z-40"
+      >
+        <div class="flex flex-col gap-8 w-full items-center h-full">
+          <div
+            class="flex flex-col items-center gap-3 bg-surface-container rounded-pill p-1 border border-line mt-4"
+          >
+            <button
+              class="w-10 h-10 rounded-pill bg-primary text-on-primary flex items-center justify-center shadow-lg"
+              title="Practice Mode"
+            >
+              <span class="material-symbols-outlined">school</span>
+            </button>
+            <button
+              class="w-10 h-10 rounded-pill hover:bg-surface-container-highest text-on-surface-variant flex items-center justify-center"
+              title="Game Mode"
+            >
+              <span class="material-symbols-outlined">sports_esports</span>
+            </button>
+          </div>
+          <div class="mt-auto flex flex-col gap-4 items-center">
+            <button
+              class="w-12 h-12 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-all"
+              title="Open file"
+            >
+              <span class="material-symbols-outlined">folder_open</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center: Notation -->
+      <main class="flex-1 relative bg-surface-dim overflow-hidden flex flex-col">
+        <!-- Score HUD strip -->
+        <div
+          class="flex items-center justify-center gap-5 px-8 h-12 border-b border-line bg-surface-dim flex-shrink-0 z-20"
+        >
+          <div class="flex gap-5 text-[10px] font-bold tracking-wider">
+            <div class="flex flex-col items-center gap-0.5">
+              <span class="flex items-center gap-px" style="color: #009e73"
+                ><span
+                  class="material-symbols-outlined"
+                  style="font-size: 13px; font-variation-settings: 'wght' 600"
+                  >check</span
+                >PERFECT</span
+              ><span class="num text-on-surface font-medium text-[11px]">142</span>
+            </div>
+            <div class="flex flex-col items-center gap-0.5">
+              <span class="flex items-center gap-px" style="color: #56b4e9"
+                ><span
+                  class="material-symbols-outlined"
+                  style="font-size: 13px; font-variation-settings: 'wght' 600"
+                  >chevron_left</span
+                >EARLY</span
+              ><span class="num text-on-surface font-medium text-[11px]">12</span>
+            </div>
+            <div class="flex flex-col items-center gap-0.5">
+              <span class="flex items-center gap-px" style="color: #cc79a7"
+                ><span
+                  class="material-symbols-outlined"
+                  style="font-size: 13px; font-variation-settings: 'wght' 600"
+                  >chevron_right</span
+                >LATE</span
+              ><span class="num text-on-surface font-medium text-[11px]">8</span>
+            </div>
+            <div class="flex flex-col items-center gap-0.5">
+              <span class="flex items-center gap-px" style="color: #9aa0a6"
+                ><span class="material-symbols-outlined" style="font-size: 13px"
+                  >radio_button_unchecked</span
+                >MISS</span
+              ><span class="num text-on-surface font-medium text-[11px]">3</span>
+            </div>
+            <div class="flex flex-col items-center gap-0.5">
+              <span class="flex items-center gap-px" style="color: #d55e00"
+                ><span
+                  class="material-symbols-outlined"
+                  style="font-size: 13px; font-variation-settings: 'wght' 600"
+                  >close</span
+                >ERROR</span
+              ><span class="num text-on-surface font-medium text-[11px]">1</span>
+            </div>
+          </div>
+          <div class="w-px h-6 bg-line"></div>
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold"
+              >Streak</span
+            ><span class="num text-primary font-bold text-sm leading-none mt-0.5">25</span>
+          </div>
+          <div class="w-px h-6 bg-line"></div>
+          <div class="flex flex-col items-center">
+            <span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold"
+              >Accuracy</span
+            ><span class="mt-0.5 flex items-baseline gap-0.5"
+              ><span class="num text-primary font-bold text-sm leading-none">94</span
+              ><span class="num text-primary text-[10px] opacity-60">%</span></span
+            >
+          </div>
+        </div>
+
+        <!-- Staff Area (AlphaTab render goes here in the real app) -->
+        <div class="flex-1 staff-container flex items-center justify-center relative">
+          <div
+            class="absolute inset-0 bg-gradient-to-r from-surface-dim via-transparent to-surface-dim pointer-events-none z-10"
+          ></div>
+          <!-- Playhead = time/transport blue -->
+          <div
+            class="absolute left-[40%] top-0 bottom-0 w-[2px] bg-secondary-container z-20"
+            style="box-shadow: 0 0 14px rgba(47, 109, 246, 0.55)"
+          >
+            <div class="absolute -top-1 -left-1 w-3 h-3 bg-secondary-container rotate-45"></div>
+          </div>
+          <!-- Feedback notes: colour + shape + position (redundant-coded) -->
+          <div class="relative w-full h-[100px] flex items-center gap-16 px-40">
+            <div class="relative" title="Perfect">
+              <div class="w-6 h-6 rounded-full relative" style="background: #009e73">
+                <div
+                  class="absolute w-[2px] h-16 bottom-0 right-0"
+                  style="background: #009e73"
+                ></div>
+              </div>
+              <div
+                class="absolute -inset-1.5 rounded-full pointer-events-none"
+                style="border: 2px solid #009e73; opacity: 0.45"
+              ></div>
+            </div>
+            <div class="relative" title="Early">
+              <div class="w-6 h-6 rounded-full relative" style="background: #56b4e9">
+                <div
+                  class="absolute w-[2px] h-16 bottom-0 right-0"
+                  style="background: #56b4e9"
+                ></div>
+              </div>
+              <span
+                class="material-symbols-outlined absolute top-1/2 -translate-y-1/2 -left-5"
+                style="color: #56b4e9; font-size: 22px; font-variation-settings: 'wght' 700"
+                >chevron_left</span
+              >
+            </div>
+            <div class="relative" title="Late">
+              <div class="w-6 h-6 rounded-full relative" style="background: #cc79a7">
+                <div
+                  class="absolute w-[2px] h-16 bottom-0 right-0"
+                  style="background: #cc79a7"
+                ></div>
+              </div>
+              <span
+                class="material-symbols-outlined absolute top-1/2 -translate-y-1/2 -right-5"
+                style="color: #cc79a7; font-size: 22px; font-variation-settings: 'wght' 700"
+                >chevron_right</span
+              >
+            </div>
+            <div class="relative" title="Missed">
+              <div
+                class="w-6 h-6 rounded-full relative"
+                style="border: 2px solid #9aa0a6; opacity: 0.8"
+              >
+                <div
+                  class="absolute w-[2px] h-16 bottom-0 right-0"
+                  style="background: #9aa0a6; opacity: 0.5"
+                ></div>
+              </div>
+            </div>
+            <div class="relative" title="Error">
+              <div class="w-6 h-6 rounded-full relative" style="background: #d55e00">
+                <div
+                  class="absolute w-[2px] h-16 bottom-0 right-0"
+                  style="background: #d55e00"
+                ></div>
+              </div>
+              <span
+                class="material-symbols-outlined absolute -top-5 left-1/2 -translate-x-1/2"
+                style="color: #d55e00; font-size: 20px; font-variation-settings: 'wght' 700"
+                >close</span
+              >
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom: Timeline Scrubber -->
+        <footer
+          class="h-20 bg-surface-container-low/85 backdrop-blur-lg border-t border-line flex z-30 relative gap-4"
+        >
+          <div class="flex items-center w-full px-8 gap-6">
+            <button
+              class="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-primary text-on-primary shadow-lg shadow-primary/20 active:scale-90 transition-transform"
+              title="Play / Pause"
+            >
+              <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1"
+                >play_arrow</span
+              >
+            </button>
+            <button
+              class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+              title="Loop Toggle"
+            >
+              <span class="material-symbols-outlined">repeat</span>
+            </button>
+            <span class="num font-mono text-on-surface-variant text-sm flex-shrink-0">01:42</span>
+            <div
+              class="flex-1 h-2 bg-surface-container-highest relative group cursor-pointer rounded-full"
+            >
+              <div class="absolute top-0 left-0 h-full w-[40%] bg-primary rounded-l-full"></div>
+              <div class="absolute top-0 left-[40%] right-[20%] h-full bg-primary/30 z-10"></div>
+              <div
+                class="absolute left-[40%] right-[20%] z-10 border-t border-b border-primary/50"
+                style="top: -12px; height: 32px; background: rgb(var(--accent) / 0.12)"
+              ></div>
+              <div
+                class="num absolute top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-on-primary font-bold text-sm z-20 shadow-lg"
+                style="left: calc(40% - 16px)"
+              >
+                A
+              </div>
+              <div
+                class="num absolute top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-on-primary font-bold text-sm z-20 shadow-lg"
+                style="left: calc(80% - 16px)"
+              >
+                B
+              </div>
+            </div>
+            <span class="num font-mono text-on-surface-variant text-sm flex-shrink-0">04:20</span>
+            <div class="flex items-center gap-2">
+              <button
+                class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+                title="Metronome"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  class="w-6 h-6 fill-current"
+                >
+                  <title>metronome</title>
+                  <path
+                    d="M12,1.75L8.57,2.67L4.06,19.53C4.03,19.68 4,19.84 4,20C4,21.11 4.89,22 6,22H18C19.11,22 20,21.11 20,20C20,19.84 19.97,19.68 19.94,19.53L18.58,14.42L17,16L17.2,17H13.41L16.25,14.16L14.84,12.75L10.59,17H6.8L10.29,4H13.71L15.17,9.43L16.8,7.79L15.43,2.67L12,1.75M11.25,5V14.75L12.75,13.25V5H11.25M19.79,7.8L16.96,10.63L16.25,9.92L14.84,11.34L17.66,14.16L19.08,12.75L18.37,12.04L21.2,9.21L19.79,7.8Z"
+                  />
+                </svg>
+              </button>
+              <button
+                class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+                title="Count-In"
+              >
+                <span class="material-symbols-outlined">timer</span>
+              </button>
+              <div class="w-px h-6 bg-line mx-2"></div>
+              <button
+                class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+                title="Tracks / mixer"
+              >
+                <span class="material-symbols-outlined">instant_mix</span>
+              </button>
+            </div>
+          </div>
+        </footer>
+      </main>
     </div>
-  </div>
-  <div class="flex items-center justify-end w-1/3 gap-2">
-    <button id="typeToggle" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Toggle typography (D3 Bricolage / D1 Geist)">
-      <span class="material-symbols-outlined">text_fields</span>
-    </button>
-    <button id="themeToggle" class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Toggle light / dark">
-      <span class="material-symbols-outlined" data-theme-icon>dark_mode</span>
-    </button>
-    <button class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface transition-colors" title="MIDI: connected — listening">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-[22px] h-[22px] fill-current"><title>midi-port</title><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M20.18,12C20.18,8.18 17.55,4.96 14,4.07V6H10V4.07C6.45,4.96 3.82,8.18 3.82,12A8.18,8.18 0 0,0 12,20.18A8.18,8.18 0 0,0 20.18,12M7,10.64A1.36,1.36 0 0,1 8.36,12A1.36,1.36 0 0,1 7,13.36C6.25,13.36 5.64,12.75 5.64,12C5.64,11.25 6.25,10.64 7,10.64M17,10.64A1.36,1.36 0 0,1 18.36,12A1.36,1.36 0 0,1 17,13.36A1.36,1.36 0 0,1 15.64,12A1.36,1.36 0 0,1 17,10.64M8.36,14.27A1.37,1.37 0 0,1 9.73,15.64C9.73,16.39 9.12,17 8.36,17A1.36,1.36 0 0,1 7,15.64C7,14.88 7.61,14.27 8.36,14.27M15.64,14.27C16.39,14.27 17,14.88 17,15.64A1.36,1.36 0 0,1 15.64,17C14.88,17 14.27,16.39 14.27,15.64A1.37,1.37 0 0,1 15.64,14.27M12,15.64A1.36,1.36 0 0,1 13.36,17A1.36,1.36 0 0,1 12,18.36A1.36,1.36 0 0,1 10.64,17A1.36,1.36 0 0,1 12,15.64Z"/></svg>
-    </button>
-    <button class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Settings"><span class="material-symbols-outlined">settings</span></button>
-  </div>
-</header>
 
-<div class="flex h-screen pt-16">
-  <!-- Left Rail -->
-  <aside class="w-20 lg:w-24 flex flex-col items-center py-6 border-r border-line bg-surface-container-lowest z-40">
-    <div class="flex flex-col gap-8 w-full items-center h-full">
-      <div class="flex flex-col items-center gap-3 bg-surface-container rounded-pill p-1 border border-line mt-4">
-        <button class="w-10 h-10 rounded-pill bg-primary text-on-primary flex items-center justify-center shadow-lg" title="Practice Mode"><span class="material-symbols-outlined">school</span></button>
-        <button class="w-10 h-10 rounded-pill hover:bg-surface-container-highest text-on-surface-variant flex items-center justify-center" title="Game Mode"><span class="material-symbols-outlined">sports_esports</span></button>
-      </div>
-      <div class="mt-auto flex flex-col gap-4 items-center">
-        <button class="w-12 h-12 flex items-center justify-center rounded-xl hover:bg-surface-container-highest text-on-surface-variant transition-all" title="Open file"><span class="material-symbols-outlined">folder_open</span></button>
-      </div>
-    </div>
-  </aside>
-
-  <!-- Center: Notation -->
-  <main class="flex-1 relative bg-surface-dim overflow-hidden flex flex-col">
-    <!-- Score HUD strip -->
-    <div class="flex items-center justify-center gap-5 px-8 h-12 border-b border-line bg-surface-dim flex-shrink-0 z-20">
-      <div class="flex gap-5 text-[10px] font-bold tracking-wider">
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#009E73"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">check</span>PERFECT</span><span class="num text-on-surface font-medium text-[11px]">142</span></div>
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#56B4E9"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">chevron_left</span>EARLY</span><span class="num text-on-surface font-medium text-[11px]">12</span></div>
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#CC79A7"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">chevron_right</span>LATE</span><span class="num text-on-surface font-medium text-[11px]">8</span></div>
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#9AA0A6"><span class="material-symbols-outlined" style="font-size:13px">radio_button_unchecked</span>MISS</span><span class="num text-on-surface font-medium text-[11px]">3</span></div>
-        <div class="flex flex-col items-center gap-0.5"><span class="flex items-center gap-px" style="color:#D55E00"><span class="material-symbols-outlined" style="font-size:13px;font-variation-settings:'wght' 600">close</span>ERROR</span><span class="num text-on-surface font-medium text-[11px]">1</span></div>
-      </div>
-      <div class="w-px h-6 bg-line"></div>
-      <div class="flex flex-col items-center"><span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Streak</span><span class="num text-primary font-bold text-sm leading-none mt-0.5">25</span></div>
-      <div class="w-px h-6 bg-line"></div>
-      <div class="flex flex-col items-center"><span class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Accuracy</span><span class="mt-0.5 flex items-baseline gap-0.5"><span class="num text-primary font-bold text-sm leading-none">94</span><span class="num text-primary text-[10px] opacity-60">%</span></span></div>
-    </div>
-
-    <!-- Staff Area (AlphaTab render goes here in the real app) -->
-    <div class="flex-1 staff-container flex items-center justify-center relative">
-      <div class="absolute inset-0 bg-gradient-to-r from-surface-dim via-transparent to-surface-dim pointer-events-none z-10"></div>
-      <!-- Playhead = time/transport blue -->
-      <div class="absolute left-[40%] top-0 bottom-0 w-[2px] bg-secondary-container z-20" style="box-shadow:0 0 14px rgba(47,109,246,.55)">
-        <div class="absolute -top-1 -left-1 w-3 h-3 bg-secondary-container rotate-45"></div>
-      </div>
-      <!-- Feedback notes: colour + shape + position (redundant-coded) -->
-      <div class="relative w-full h-[100px] flex items-center gap-16 px-40">
-        <div class="relative" title="Perfect">
-          <div class="w-6 h-6 rounded-full relative" style="background:#009E73"><div class="absolute w-[2px] h-16 bottom-0 right-0" style="background:#009E73"></div></div>
-          <div class="absolute -inset-1.5 rounded-full pointer-events-none" style="border:2px solid #009E73;opacity:.45"></div>
-        </div>
-        <div class="relative" title="Early">
-          <div class="w-6 h-6 rounded-full relative" style="background:#56B4E9"><div class="absolute w-[2px] h-16 bottom-0 right-0" style="background:#56B4E9"></div></div>
-          <span class="material-symbols-outlined absolute top-1/2 -translate-y-1/2 -left-5" style="color:#56B4E9;font-size:22px;font-variation-settings:'wght' 700">chevron_left</span>
-        </div>
-        <div class="relative" title="Late">
-          <div class="w-6 h-6 rounded-full relative" style="background:#CC79A7"><div class="absolute w-[2px] h-16 bottom-0 right-0" style="background:#CC79A7"></div></div>
-          <span class="material-symbols-outlined absolute top-1/2 -translate-y-1/2 -right-5" style="color:#CC79A7;font-size:22px;font-variation-settings:'wght' 700">chevron_right</span>
-        </div>
-        <div class="relative" title="Missed">
-          <div class="w-6 h-6 rounded-full relative" style="border:2px solid #9AA0A6;opacity:.8"><div class="absolute w-[2px] h-16 bottom-0 right-0" style="background:#9AA0A6;opacity:.5"></div></div>
-        </div>
-        <div class="relative" title="Error">
-          <div class="w-6 h-6 rounded-full relative" style="background:#D55E00"><div class="absolute w-[2px] h-16 bottom-0 right-0" style="background:#D55E00"></div></div>
-          <span class="material-symbols-outlined absolute -top-5 left-1/2 -translate-x-1/2" style="color:#D55E00;font-size:20px;font-variation-settings:'wght' 700">close</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Bottom: Timeline Scrubber -->
-    <footer class="h-20 bg-surface-container-low/85 backdrop-blur-lg border-t border-line flex z-30 relative gap-4">
-      <div class="flex items-center w-full px-8 gap-6">
-        <button class="w-12 h-12 flex-shrink-0 flex items-center justify-center rounded-full bg-primary text-on-primary shadow-lg shadow-primary/20 active:scale-90 transition-transform" title="Play / Pause"><span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1;">play_arrow</span></button>
-        <button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Loop Toggle"><span class="material-symbols-outlined">repeat</span></button>
-        <span class="num font-mono text-on-surface-variant text-sm flex-shrink-0">01:42</span>
-        <div class="flex-1 h-2 bg-surface-container-highest relative group cursor-pointer rounded-full">
-          <div class="absolute top-0 left-0 h-full w-[40%] bg-primary rounded-l-full"></div>
-          <div class="absolute top-0 left-[40%] right-[20%] h-full bg-primary/30 z-10"></div>
-          <div class="absolute left-[40%] right-[20%] z-10 border-t border-b border-primary/50" style="top:-12px;height:32px;background:rgb(var(--accent)/.12)"></div>
-          <div class="num absolute top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-on-primary font-bold text-sm z-20 shadow-lg" style="left:calc(40% - 16px)">A</div>
-          <div class="num absolute top-1/2 -translate-y-1/2 w-8 h-8 bg-primary rounded-full flex items-center justify-center text-on-primary font-bold text-sm z-20 shadow-lg" style="left:calc(80% - 16px)">B</div>
-        </div>
-        <span class="num font-mono text-on-surface-variant text-sm flex-shrink-0">04:20</span>
-        <div class="flex items-center gap-2">
-          <button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Metronome"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" class="w-6 h-6 fill-current"><title>metronome</title><path d="M12,1.75L8.57,2.67L4.06,19.53C4.03,19.68 4,19.84 4,20C4,21.11 4.89,22 6,22H18C19.11,22 20,21.11 20,20C20,19.84 19.97,19.68 19.94,19.53L18.58,14.42L17,16L17.2,17H13.41L16.25,14.16L14.84,12.75L10.59,17H6.8L10.29,4H13.71L15.17,9.43L16.8,7.79L15.43,2.67L12,1.75M11.25,5V14.75L12.75,13.25V5H11.25M19.79,7.8L16.96,10.63L16.25,9.92L14.84,11.34L17.66,14.16L19.08,12.75L18.37,12.04L21.2,9.21L19.79,7.8Z"/></svg></button>
-          <button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Count-In"><span class="material-symbols-outlined">timer</span></button>
-          <div class="w-px h-6 bg-line mx-2"></div>
-          <button class="w-10 h-10 flex items-center justify-center rounded-lg hover:bg-surface-container-highest text-on-surface-variant transition-colors" title="Tracks / mixer"><span class="material-symbols-outlined">instant_mix</span></button>
-        </div>
-      </div>
-    </footer>
-  </main>
-</div>
-
-<script>
-  (function () {
-    var root = document.documentElement;
-    var p = new URLSearchParams(location.search);
-    var qTheme = p.get('theme'); if (qTheme === 'light' || qTheme === 'dark') root.setAttribute('data-theme', qTheme);
-    var qType = p.get('type'); if (qType === 'd1') root.setAttribute('data-type', 'd1');
-    function syncIcon() {
-      var i = document.querySelector('[data-theme-icon]');
-      if (i) i.textContent = root.getAttribute('data-theme') !== 'light' ? 'dark_mode' : 'light_mode';
-    }
-    syncIcon();
-    var tBtn = document.getElementById('themeToggle');
-    if (tBtn) tBtn.addEventListener('click', function () {
-      root.setAttribute('data-theme', root.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); syncIcon();
-    });
-    var fBtn = document.getElementById('typeToggle');
-    if (fBtn) fBtn.addEventListener('click', function () {
-      root.setAttribute('data-type', root.getAttribute('data-type') === 'd1' ? 'd3' : 'd1');
-    });
-    var play = document.querySelector('.active\\:scale-90');
-    if (play) play.addEventListener('click', function () {
-      play.classList.add('scale-110'); setTimeout(function () { play.classList.remove('scale-110'); }, 180);
-    });
-  })();
-</script>
-</body>
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var p = new URLSearchParams(location.search);
+        var qTheme = p.get('theme');
+        if (qTheme === 'light' || qTheme === 'dark') root.setAttribute('data-theme', qTheme);
+        var qType = p.get('type');
+        if (qType === 'd1') root.setAttribute('data-type', 'd1');
+        function syncIcon() {
+          var i = document.querySelector('[data-theme-icon]');
+          if (i)
+            i.textContent =
+              root.getAttribute('data-theme') !== 'light' ? 'dark_mode' : 'light_mode';
+        }
+        syncIcon();
+        var tBtn = document.getElementById('themeToggle');
+        if (tBtn)
+          tBtn.addEventListener('click', function () {
+            root.setAttribute(
+              'data-theme',
+              root.getAttribute('data-theme') === 'light' ? 'dark' : 'light',
+            );
+            syncIcon();
+          });
+        var fBtn = document.getElementById('typeToggle');
+        if (fBtn)
+          fBtn.addEventListener('click', function () {
+            root.setAttribute('data-type', root.getAttribute('data-type') === 'd1' ? 'd3' : 'd1');
+          });
+        var play = document.querySelector('.active\\:scale-90');
+        if (play)
+          play.addEventListener('click', function () {
+            play.classList.add('scale-110');
+            setTimeout(function () {
+              play.classList.remove('scale-110');
+            }, 180);
+          });
+      })();
+    </script>
+  </body>
 </html>

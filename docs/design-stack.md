@@ -1,32 +1,34 @@
 # NotationHero — Tech Stack
 
+> ⛔ **Also superseded (2026-06-17 ADR):** **Nx was DROPPED** → pnpm workspaces + folders-in-one-app (single NestJS app; FE = Vite SPA). The **admin-gate auth is Cognito + Google federation + RBAC + `can()` in v1** — NOT CloudFront Basic-Auth, NOT "Cognito at M1". Source of truth: `decisions/2026-06-17-architecture-decisions.md` + `decisions/decision-registry.md`.
+
 > [!WARNING]
 > ⛔ **SUPERSEDED / PARTIALLY STALE.** This doc predates the **2026-06-09 decision cliff**
-> (pnpm + Nx replaced Bun; the song/lesson catalogue moved to **Neon Postgres + JSONB**,
+> (pnpm + Nx replaced Bun; the song/lesson catalog moved to **Neon Postgres + JSONB**,
 > DynamoDB is per-user data only) and/or the 2026-06-10 schema lock. **Do not build from the
 > struck lines below.**
 >
 > **Authoritative now →** `docs/decisions/decision-registry.md` (every decision + status),
-> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalogue-store-postgres-neon.md`,
-> `docs/specs/2026-06-10-catalogue-schema.md`, `AGENTS.md`.
+> `docs/decisions/2026-06-09-tooling-stack-daci.md`, `docs/decisions/2026-06-09-catalog-store-postgres-neon.md`,
+> `docs/specs/2026-06-10-catalog-schema.md`, `AGENTS.md`.
 >
 > _Kept for history (per "strike, don't delete"). Stale lines are ~~struck~~ with a reason._
 
 This file holds the **implementation-only** picks. Strategic positioning, competitive analysis, the "why this product" thesis, and any internal reference materials live in private storage:
 
-- Linear Document (canonical) under the [Notation Hero project](https://linear.app/leocaseiro/project/notation-hero-db465058e201)
-- Local agent context: `docs/.private/design-stack-strategic.md` (gitignored; mirrors the Linear doc)
+- ~~Linear Document (canonical) under the [Notation Hero project](https://linear.app/leocaseiro/project/notation-hero-db465058e201)~~ — _Linear retired 2026-06-11; the canonical reference is now **Jira (NH)** — see [`decisions/2026-06-11-tracker-linear-to-jira.md`](decisions/2026-06-11-tracker-linear-to-jira.md), board <https://leocaseiro.atlassian.net/jira/software/c/projects/NH/boards/2>._
+- Local agent context: `docs/.private/design-stack-strategic.md` (gitignored; mirrors the canonical strategic doc)
 
 ## Stack picks
 
-| Layer | Choice |
-|---|---|
-| Notation rendering | [AlphaTab](https://www.alphatab.net/) — TypeScript, MusicXML + Guitar Pro support; no MIDI yet (track upstream) |
-| Cross-platform shell | [Capacitor](https://capacitorjs.com/) — single JS/TS codebase ships as iOS app, Android app, and web PWA |
-| Web target | PWA (browser-installable, offline-capable) |
-| App-store distribution | iOS App Store + Google Play via Capacitor builds; PWA on the open web |
-| Backend | ~~AWS (Lambda + DynamoDB + Cognito + S3 + CloudFront) — see [`aws-learning-map.md`](./aws-learning-map.md)~~ <!-- SUPERSEDED: omits catalogue store; catalogue = Neon Postgres + JSONB, DynamoDB is per-user data ONLY (catalogue-store-postgres-neon DACI 2026-06-09) --> |
-| Monorepo + tooling | pnpm + Nx; full stack in [`docs/decisions/2026-06-09-tooling-stack-daci.md`](./decisions/2026-06-09-tooling-stack-daci.md) |
+| Layer                  | Choice                                                                                                                                                                                                                                                               |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Notation rendering     | [AlphaTab](https://www.alphatab.net/) — TypeScript, MusicXML + Guitar Pro support; no MIDI yet (track upstream)                                                                                                                                                      |
+| Cross-platform shell   | [Capacitor](https://capacitorjs.com/) — single JS/TS codebase ships as iOS app, Android app, and web PWA                                                                                                                                                             |
+| Web target             | PWA (browser-installable, offline-capable)                                                                                                                                                                                                                           |
+| App-store distribution | iOS App Store + Google Play via Capacitor builds; PWA on the open web                                                                                                                                                                                                |
+| Backend                | ~~AWS (Lambda + DynamoDB + Cognito + S3 + CloudFront) — see [`aws-learning-map.md`](./aws-learning-map.md)~~ <!-- SUPERSEDED: omits catalog store; catalog = Neon Postgres + JSONB, DynamoDB is per-user data ONLY (catalog-store-postgres-neon DACI 2026-06-09) --> |
+| Monorepo + tooling     | pnpm + Nx; full stack in [`docs/decisions/2026-06-09-tooling-stack-daci.md`](./decisions/2026-06-09-tooling-stack-daci.md)                                                                                                                                           |
 
 ## Cross-references
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <!--
   Notation Hero — Design System: core components × interaction states (LIVE).
   States are real: hover / focus-visible / active animate via the motion tokens.
@@ -6,316 +6,994 @@
   Real components get built with the features that use them; this is the visual + interaction spec.
 -->
 <html data-theme="dark" lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notation Hero — Components & States (live)</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap">
-<style>
-  :root, [data-theme="dark"] {
-    --bg:#0C1117; --panel:#121821; --panel2:#18202B; --elevate:#1C2530;
-    --ink:#E8EDF3; --muted:#9AA6B4; --faint:#818B9A; --line:#222C39;
-    --accent:#2DD4BF; --accenthi:#5EEAD4; --onaccent:#06231F;
-    --time:#2F6DF6; --danger:#FF6B6B; --on-danger:#2A0808; --learn-text:#7FA9FF; --hover:rgba(255,255,255,.06); --glow:color-mix(in srgb, var(--accent) 42%, transparent);
-  }
-  [data-theme="light"] {
-    --bg:#FFFFFF; --panel:#FBFCFE; --panel2:#F1F4F8; --elevate:#ECF0F5;
-    --ink:#0F151C; --muted:#5A6472; --faint:#6B7480; --line:#E2E8F0;
-    --accent:#0F766E; --accenthi:#0D9488; --onaccent:#FFFFFF;
-    --time:#2F6DF6; --danger:#DC2626; --on-danger:#FFFFFF; --learn-text:#1D4ED8; --hover:rgba(15,21,28,.05); --glow:color-mix(in srgb, var(--accent) 30%, transparent);
-  }
-  :root { --dur-micro:90ms; --dur-fast:150ms; --dur:220ms; --ease:cubic-bezier(.2,.6,.2,1); --ease-in:cubic-bezier(.4,0,1,1); }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font-family:'Hanken Grotesk',system-ui,sans-serif;
-    transition:background-color var(--dur) var(--ease),color var(--dur) var(--ease); -webkit-font-smoothing:antialiased; }
-  .num { font-family:'Geist Mono',monospace; font-variant-numeric:tabular-nums; }
-  .wrap { max-width:980px; margin:0 auto; padding:28px 32px 90px; }
-  header { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; gap:16px; }
-  h1 { font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:25px; margin:0; letter-spacing:-.01em; }
-  .sub { color:var(--muted); font-size:14px; margin:0 0 8px; }
-  .hint { display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--accent);
-    background:color-mix(in srgb, var(--accent) 12%, transparent); padding:7px 13px; border-radius:999px; margin:0 0 24px; }
-  h2 { font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:17px; margin:30px 0 4px; }
-  h2 small { color:var(--faint); font-weight:400; font-size:13px; }
-  .note { color:var(--faint); font-size:12.5px; margin:0 0 16px; }
-  .panel { background:var(--panel); border:.5px solid var(--line); border-radius:14px; padding:20px 22px; }
-  .row { display:flex; flex-wrap:wrap; gap:22px 26px; align-items:flex-end; }
-  .cell { display:flex; flex-direction:column; gap:9px; align-items:flex-start; }
-  .lbl { font-size:11px; color:var(--faint); text-transform:uppercase; letter-spacing:.07em; font-weight:600; }
-  .toggle-btn { width:38px; height:38px; border-radius:10px; border:.5px solid var(--line); background:transparent;
-    color:var(--muted); display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background-color var(--dur-fast) var(--ease); }
-  .toggle-btn:hover { background:var(--hover); }
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notation Hero — Components & States (live)</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600;700&family=Geist+Mono:wght@500;700&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
+    />
+    <style>
+      :root,
+      [data-theme='dark'] {
+        --bg: #0c1117;
+        --panel: #121821;
+        --panel2: #18202b;
+        --elevate: #1c2530;
+        --ink: #e8edf3;
+        --muted: #9aa6b4;
+        --faint: #818b9a;
+        --line: #222c39;
+        --accent: #2dd4bf;
+        --accenthi: #5eead4;
+        --onaccent: #06231f;
+        --time: #2f6df6;
+        --danger: #ff6b6b;
+        --on-danger: #2a0808;
+        --learn-text: #7fa9ff;
+        --hover: rgba(255, 255, 255, 0.06);
+        --glow: color-mix(in srgb, var(--accent) 42%, transparent);
+      }
+      [data-theme='light'] {
+        --bg: #ffffff;
+        --panel: #fbfcfe;
+        --panel2: #f1f4f8;
+        --elevate: #ecf0f5;
+        --ink: #0f151c;
+        --muted: #5a6472;
+        --faint: #6b7480;
+        --line: #e2e8f0;
+        --accent: #0f766e;
+        --accenthi: #0d9488;
+        --onaccent: #ffffff;
+        --time: #2f6df6;
+        --danger: #dc2626;
+        --on-danger: #ffffff;
+        --learn-text: #1d4ed8;
+        --hover: rgba(15, 21, 28, 0.05);
+        --glow: color-mix(in srgb, var(--accent) 30%, transparent);
+      }
+      :root {
+        --dur-micro: 90ms;
+        --dur-fast: 150ms;
+        --dur: 220ms;
+        --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+        --ease-in: cubic-bezier(0.4, 0, 1, 1);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: 'Hanken Grotesk', system-ui, sans-serif;
+        transition:
+          background-color var(--dur) var(--ease),
+          color var(--dur) var(--ease);
+        -webkit-font-smoothing: antialiased;
+      }
+      .num {
+        font-family: 'Geist Mono', monospace;
+        font-variant-numeric: tabular-nums;
+      }
+      .wrap {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 28px 32px 90px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+        gap: 16px;
+      }
+      h1 {
+        font-family: 'Bricolage Grotesque', sans-serif;
+        font-weight: 700;
+        font-size: 25px;
+        margin: 0;
+        letter-spacing: -0.01em;
+      }
+      .sub {
+        color: var(--muted);
+        font-size: 14px;
+        margin: 0 0 8px;
+      }
+      .hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-size: 13px;
+        color: var(--accent);
+        background: color-mix(in srgb, var(--accent) 12%, transparent);
+        padding: 7px 13px;
+        border-radius: 999px;
+        margin: 0 0 24px;
+      }
+      h2 {
+        font-family: 'Bricolage Grotesque', sans-serif;
+        font-weight: 600;
+        font-size: 17px;
+        margin: 30px 0 4px;
+      }
+      h2 small {
+        color: var(--faint);
+        font-weight: 400;
+        font-size: 13px;
+      }
+      .note {
+        color: var(--faint);
+        font-size: 12.5px;
+        margin: 0 0 16px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 0.5px solid var(--line);
+        border-radius: 14px;
+        padding: 20px 22px;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 22px 26px;
+        align-items: flex-end;
+      }
+      .cell {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        align-items: flex-start;
+      }
+      .lbl {
+        font-size: 11px;
+        color: var(--faint);
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        font-weight: 600;
+      }
+      .toggle-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+        border: 0.5px solid var(--line);
+        background: transparent;
+        color: var(--muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background-color var(--dur-fast) var(--ease);
+      }
+      .toggle-btn:hover {
+        background: var(--hover);
+      }
 
-  /* ---- Buttons (LIVE) ---- */
-  .btn { font-family:'Hanken Grotesk'; font-weight:600; font-size:14px; line-height:1; padding:10px 16px;
-    border-radius:10px; border:.5px solid transparent; cursor:pointer; display:inline-flex; align-items:center; gap:7px;
-    transition:background-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease), transform var(--dur-micro) var(--ease); }
-  .btn .material-symbols-outlined { font-size:18px; }
-  .btn:focus-visible { outline:none; box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
-  .btn:active { transform:scale(.96); filter:brightness(.93); }
-  .btn:disabled { opacity:.38; cursor:not-allowed; transform:none; filter:none; box-shadow:none; }
-  .btn-primary { background:var(--accent); color:var(--onaccent); }
-  .btn-primary:hover:not(:disabled) { background:var(--accenthi); box-shadow:0 3px 12px var(--glow); }
-  .btn-secondary { background:var(--panel2); color:var(--ink); border-color:var(--line); }
-  .btn-secondary:hover:not(:disabled) { background:var(--elevate); }
-  .btn-ghost { background:transparent; color:var(--muted); }
-  .btn-ghost:hover:not(:disabled) { background:var(--hover); color:var(--ink); }
-  .btn-danger { background:var(--danger); color:var(--on-danger); }
-  .btn-danger:hover:not(:disabled) { filter:brightness(1.06); box-shadow:0 3px 12px color-mix(in srgb, var(--danger) 38%, transparent); }
-  .btn-danger:focus-visible { box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--danger); }
+      /* ---- Buttons (LIVE) ---- */
+      .btn {
+        font-family: 'Hanken Grotesk';
+        font-weight: 600;
+        font-size: 14px;
+        line-height: 1;
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: 0.5px solid transparent;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        transition:
+          background-color var(--dur-fast) var(--ease),
+          box-shadow var(--dur-fast) var(--ease),
+          transform var(--dur-micro) var(--ease);
+      }
+      .btn .material-symbols-outlined {
+        font-size: 18px;
+      }
+      .btn:focus-visible {
+        outline: none;
+        box-shadow:
+          0 0 0 2px var(--bg),
+          0 0 0 4px var(--accent);
+      }
+      .btn:active {
+        transform: scale(0.96);
+        filter: brightness(0.93);
+      }
+      .btn:disabled {
+        opacity: 0.38;
+        cursor: not-allowed;
+        transform: none;
+        filter: none;
+        box-shadow: none;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: var(--onaccent);
+      }
+      .btn-primary:hover:not(:disabled) {
+        background: var(--accenthi);
+        box-shadow: 0 3px 12px var(--glow);
+      }
+      .btn-secondary {
+        background: var(--panel2);
+        color: var(--ink);
+        border-color: var(--line);
+      }
+      .btn-secondary:hover:not(:disabled) {
+        background: var(--elevate);
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--muted);
+      }
+      .btn-ghost:hover:not(:disabled) {
+        background: var(--hover);
+        color: var(--ink);
+      }
+      .btn-danger {
+        background: var(--danger);
+        color: var(--on-danger);
+      }
+      .btn-danger:hover:not(:disabled) {
+        filter: brightness(1.06);
+        box-shadow: 0 3px 12px color-mix(in srgb, var(--danger) 38%, transparent);
+      }
+      .btn-danger:focus-visible {
+        box-shadow:
+          0 0 0 2px var(--bg),
+          0 0 0 4px var(--danger);
+      }
 
-  .ibtn { width:40px; height:40px; border-radius:10px; border:.5px solid transparent; background:transparent;
-    color:var(--muted); display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
-    transition:background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
-  .ibtn:hover { background:var(--hover); color:var(--ink); }
-  .ibtn:focus-visible { outline:none; box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
-  .ibtn.on { color:var(--accent); }            /* transport toggle ON = colour, no fill */
-  .ibtn.on:hover { color:var(--accenthi); background:var(--hover); }
+      .ibtn {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        border: 0.5px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition:
+          background-color var(--dur-fast) var(--ease),
+          color var(--dur-fast) var(--ease),
+          box-shadow var(--dur-fast) var(--ease);
+      }
+      .ibtn:hover {
+        background: var(--hover);
+        color: var(--ink);
+      }
+      .ibtn:focus-visible {
+        outline: none;
+        box-shadow:
+          0 0 0 2px var(--bg),
+          0 0 0 4px var(--accent);
+      }
+      .ibtn.on {
+        color: var(--accent);
+      } /* transport toggle ON = colour, no fill */
+      .ibtn.on:hover {
+        color: var(--accenthi);
+        background: var(--hover);
+      }
 
-  /* ---- Segmented mode toggle (practice / learn) ---- */
-  .seg { display:inline-flex; background:var(--panel2); border:.5px solid var(--line); border-radius:12px; padding:3px; gap:2px; }
-  .seg button { font-family:'Hanken Grotesk'; font-weight:600; font-size:13px; display:inline-flex; align-items:center; gap:6px;
-    padding:8px 14px; border:none; background:transparent; color:var(--muted); border-radius:9px; cursor:pointer;
-    transition:background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
-  .seg button .material-symbols-outlined { font-size:18px; }
-  .seg button:hover:not(.sel) { color:var(--ink); }
-  .seg button.sel { background:var(--accent); color:var(--onaccent); }
-  .seg button:focus-visible { outline:none; box-shadow:0 0 0 2px var(--panel2), 0 0 0 4px var(--accent); }
-  .seg-v { flex-direction:column; }
-  .seg-v button { padding:9px; justify-content:center; }
+      /* ---- Segmented mode toggle (practice / learn) ---- */
+      .seg {
+        display: inline-flex;
+        background: var(--panel2);
+        border: 0.5px solid var(--line);
+        border-radius: 12px;
+        padding: 3px;
+        gap: 2px;
+      }
+      .seg button {
+        font-family: 'Hanken Grotesk';
+        font-weight: 600;
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border: none;
+        background: transparent;
+        color: var(--muted);
+        border-radius: 9px;
+        cursor: pointer;
+        transition:
+          background-color var(--dur-fast) var(--ease),
+          color var(--dur-fast) var(--ease);
+      }
+      .seg button .material-symbols-outlined {
+        font-size: 18px;
+      }
+      .seg button:hover:not(.sel) {
+        color: var(--ink);
+      }
+      .seg button.sel {
+        background: var(--accent);
+        color: var(--onaccent);
+      }
+      .seg button:focus-visible {
+        outline: none;
+        box-shadow:
+          0 0 0 2px var(--panel2),
+          0 0 0 4px var(--accent);
+      }
+      .seg-v {
+        flex-direction: column;
+      }
+      .seg-v button {
+        padding: 9px;
+        justify-content: center;
+      }
 
-  /* ---- MIDI state machine ---- */
-  .midi { width:40px; height:40px; border-radius:10px; display:inline-flex; align-items:center; justify-content:center;
-    color:var(--muted); position:relative; }
-  .midi svg { width:22px; height:22px; fill:currentColor; }
-  .midi.idle { color:var(--ink); }
-  .midi.listening { color:var(--accent); }
-  .midi.listening::after { content:''; position:absolute; top:7px; right:7px; width:7px; height:7px; border-radius:50%;
-    background:var(--accent); box-shadow:0 0 0 2px var(--panel); animation:pulse 1.4s var(--ease) infinite; }
-  .midi.disconnected { opacity:.5; }
-  .midi.disconnected::after { content:''; position:absolute; left:50%; top:50%; width:24px; height:2px; border-radius:2px;
-    background:var(--muted); transform:translate(-50%,-50%) rotate(-45deg); }
-  .midi.disabled { opacity:.38; }
-  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.72)} }
+      /* ---- MIDI state machine ---- */
+      .midi {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--muted);
+        position: relative;
+      }
+      .midi svg {
+        width: 22px;
+        height: 22px;
+        fill: currentColor;
+      }
+      .midi.idle {
+        color: var(--ink);
+      }
+      .midi.listening {
+        color: var(--accent);
+      }
+      .midi.listening::after {
+        content: '';
+        position: absolute;
+        top: 7px;
+        right: 7px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 2px var(--panel);
+        animation: pulse 1.4s var(--ease) infinite;
+      }
+      .midi.disconnected {
+        opacity: 0.5;
+      }
+      .midi.disconnected::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 24px;
+        height: 2px;
+        border-radius: 2px;
+        background: var(--muted);
+        transform: translate(-50%, -50%) rotate(-45deg);
+      }
+      .midi.disabled {
+        opacity: 0.38;
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.4;
+          transform: scale(0.72);
+        }
+      }
 
-  /* ---- Switch ---- */
-  .sw { width:44px; height:26px; border-radius:999px; background:var(--panel2); border:.5px solid var(--line);
-    position:relative; cursor:pointer; transition:background-color var(--dur-fast) var(--ease); }
-  .sw::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%;
-    background:var(--ink); transition:left var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease); }
-  .sw.on { background:var(--accent); border-color:transparent; }
-  .sw.on::after { left:20px; background:var(--onaccent); }
-  .sw:focus-visible { outline:none; box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
-  .sw[aria-disabled="true"] { opacity:.38; pointer-events:none; }
+      /* ---- Switch ---- */
+      .sw {
+        width: 44px;
+        height: 26px;
+        border-radius: 999px;
+        background: var(--panel2);
+        border: 0.5px solid var(--line);
+        position: relative;
+        cursor: pointer;
+        transition: background-color var(--dur-fast) var(--ease);
+      }
+      .sw::after {
+        content: '';
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--ink);
+        transition:
+          left var(--dur-fast) var(--ease),
+          background-color var(--dur-fast) var(--ease);
+      }
+      .sw.on {
+        background: var(--accent);
+        border-color: transparent;
+      }
+      .sw.on::after {
+        left: 20px;
+        background: var(--onaccent);
+      }
+      .sw:focus-visible {
+        outline: none;
+        box-shadow:
+          0 0 0 2px var(--bg),
+          0 0 0 4px var(--accent);
+      }
+      .sw[aria-disabled='true'] {
+        opacity: 0.38;
+        pointer-events: none;
+      }
 
-  /* ---- Chips ---- */
-  .chip { font-family:'Hanken Grotesk'; font-weight:500; font-size:13px; padding:6px 13px; border-radius:999px;
-    border:.5px solid var(--line); background:transparent; color:var(--muted); cursor:pointer;
-    transition:background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
-  .chip:hover:not(.on) { background:var(--hover); color:var(--ink); }
-  .chip.on { background:var(--accent); color:var(--onaccent); border-color:transparent; }
-  .chip:focus-visible { outline:none; box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--accent); }
+      /* ---- Chips ---- */
+      .chip {
+        font-family: 'Hanken Grotesk';
+        font-weight: 500;
+        font-size: 13px;
+        padding: 6px 13px;
+        border-radius: 999px;
+        border: 0.5px solid var(--line);
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        transition:
+          background-color var(--dur-fast) var(--ease),
+          color var(--dur-fast) var(--ease),
+          box-shadow var(--dur-fast) var(--ease);
+      }
+      .chip:hover:not(.on) {
+        background: var(--hover);
+        color: var(--ink);
+      }
+      .chip.on {
+        background: var(--accent);
+        color: var(--onaccent);
+        border-color: transparent;
+      }
+      .chip:focus-visible {
+        outline: none;
+        box-shadow:
+          0 0 0 2px var(--bg),
+          0 0 0 4px var(--accent);
+      }
 
-  /* ---- Inputs / sliders ---- */
-  .inp { font-family:'Hanken Grotesk'; font-size:14px; color:var(--ink); background:var(--bg); border:.5px solid var(--line);
-    border-radius:10px; padding:10px 12px; width:200px; outline:none; transition:border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
-  .inp::placeholder { color:var(--faint); }
-  .inp:focus { border-color:var(--accent); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
-  .inp.invalid { border-color:var(--danger); box-shadow:0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent); }
-  .inp:disabled { opacity:.5; background:var(--panel2); cursor:not-allowed; }
-  .err { color:var(--danger); font-size:12px; }
-  input[type=range] { width:200px; accent-color:var(--accent); cursor:pointer; }
+      /* ---- Inputs / sliders ---- */
+      .inp {
+        font-family: 'Hanken Grotesk';
+        font-size: 14px;
+        color: var(--ink);
+        background: var(--bg);
+        border: 0.5px solid var(--line);
+        border-radius: 10px;
+        padding: 10px 12px;
+        width: 200px;
+        outline: none;
+        transition:
+          border-color var(--dur-fast) var(--ease),
+          box-shadow var(--dur-fast) var(--ease);
+      }
+      .inp::placeholder {
+        color: var(--faint);
+      }
+      .inp:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+      }
+      .inp.invalid {
+        border-color: var(--danger);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent);
+      }
+      .inp:disabled {
+        opacity: 0.5;
+        background: var(--panel2);
+        cursor: not-allowed;
+      }
+      .err {
+        color: var(--danger);
+        font-size: 12px;
+      }
+      input[type='range'] {
+        width: 200px;
+        accent-color: var(--accent);
+        cursor: pointer;
+      }
 
-  /* ---- Timeline + A/B ---- */
-  .tl { width:340px; height:6px; border-radius:999px; background:var(--panel2); position:relative; cursor:pointer; }
-  .tl .fill { position:absolute; left:0; top:0; height:6px; width:38%; border-radius:999px 0 0 999px; background:var(--accent); }
-  .tl .loop { position:absolute; top:0; left:38%; right:24%; height:6px; background:color-mix(in srgb, var(--accent) 30%, transparent); }
-  .tl .hd { position:absolute; top:-7px; width:20px; height:20px; border-radius:50%; background:var(--accent); color:var(--onaccent);
-    font-family:'Geist Mono'; font-weight:700; font-size:10px; display:flex; align-items:center; justify-content:center;
-    transform:translateX(-50%); cursor:ew-resize; transition:box-shadow var(--dur-fast) var(--ease), transform var(--dur-micro) var(--ease); }
-  .tl .hd:hover { box-shadow:0 0 0 4px var(--glow); }
-  .tl .hd:active { transform:translateX(-50%) scale(1.12); }
-  .tl .hd.a { left:38%; } .tl .hd.b { left:76%; }
-  .tl.disabled { opacity:.4; pointer-events:none; }
-  .clearab { font-family:'Hanken Grotesk'; font-weight:600; font-size:12px; color:var(--muted); background:transparent;
-    border:.5px solid var(--line); border-radius:999px; padding:4px 11px; display:inline-flex; align-items:center; gap:5px; cursor:pointer;
-    transition:background-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease); }
-  .clearab:hover { background:var(--hover); color:var(--ink); }
-  .clearab .material-symbols-outlined { font-size:15px; }
+      /* ---- Timeline + A/B ---- */
+      .tl {
+        width: 340px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--panel2);
+        position: relative;
+        cursor: pointer;
+      }
+      .tl .fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 6px;
+        width: 38%;
+        border-radius: 999px 0 0 999px;
+        background: var(--accent);
+      }
+      .tl .loop {
+        position: absolute;
+        top: 0;
+        left: 38%;
+        right: 24%;
+        height: 6px;
+        background: color-mix(in srgb, var(--accent) 30%, transparent);
+      }
+      .tl .hd {
+        position: absolute;
+        top: -7px;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: var(--onaccent);
+        font-family: 'Geist Mono';
+        font-weight: 700;
+        font-size: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: translateX(-50%);
+        cursor: ew-resize;
+        transition:
+          box-shadow var(--dur-fast) var(--ease),
+          transform var(--dur-micro) var(--ease);
+      }
+      .tl .hd:hover {
+        box-shadow: 0 0 0 4px var(--glow);
+      }
+      .tl .hd:active {
+        transform: translateX(-50%) scale(1.12);
+      }
+      .tl .hd.a {
+        left: 38%;
+      }
+      .tl .hd.b {
+        left: 76%;
+      }
+      .tl.disabled {
+        opacity: 0.4;
+        pointer-events: none;
+      }
+      .clearab {
+        font-family: 'Hanken Grotesk';
+        font-weight: 600;
+        font-size: 12px;
+        color: var(--muted);
+        background: transparent;
+        border: 0.5px solid var(--line);
+        border-radius: 999px;
+        padding: 4px 11px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        transition:
+          background-color var(--dur-fast) var(--ease),
+          color var(--dur-fast) var(--ease);
+      }
+      .clearab:hover {
+        background: var(--hover);
+        color: var(--ink);
+      }
+      .clearab .material-symbols-outlined {
+        font-size: 15px;
+      }
 
-  /* ---- Status pills ---- */
-  .pill { font-family:'Hanken Grotesk'; font-weight:600; font-size:11px; letter-spacing:.04em; text-transform:uppercase;
-    padding:4px 10px; border-radius:999px; display:inline-flex; align-items:center; gap:5px; }
-  .pill .material-symbols-outlined { font-size:14px; }
-  .pill-new { background:var(--panel2); color:var(--muted); }
-  .pill-learning { background:color-mix(in srgb, var(--time) 16%, transparent); color:var(--learn-text); }
-  .pill-mastered { background:color-mix(in srgb, var(--accent) 18%, transparent); color:var(--accent); }
+      /* ---- Status pills ---- */
+      .pill {
+        font-family: 'Hanken Grotesk';
+        font-weight: 600;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        padding: 4px 10px;
+        border-radius: 999px;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .pill .material-symbols-outlined {
+        font-size: 14px;
+      }
+      .pill-new {
+        background: var(--panel2);
+        color: var(--muted);
+      }
+      .pill-learning {
+        background: color-mix(in srgb, var(--time) 16%, transparent);
+        color: var(--learn-text);
+      }
+      .pill-mastered {
+        background: color-mix(in srgb, var(--accent) 18%, transparent);
+        color: var(--accent);
+      }
 
-  /* ---- Motion + overlays docs ---- */
-  .tok { display:flex; gap:26px; flex-wrap:wrap; }
-  .tok div { font-size:13px; color:var(--muted); }
-  .tok b { color:var(--ink); font-weight:600; } .tok .num { color:var(--accent); }
-  .tbd { border:1px dashed var(--line); border-radius:14px; padding:18px 22px; color:var(--faint); font-size:13.5px; }
-  .legend { display:flex; gap:18px; flex-wrap:wrap; color:var(--muted); font-size:12.5px; margin:0 0 14px; }
-  .legend b { color:var(--ink); font-weight:600; }
-  code { font-family:'Geist Mono',monospace; font-size:12px; color:var(--accent); }
-</style>
-</head>
-<body>
-<div class="wrap">
-  <header>
-    <h1>Notation Hero — components &amp; states</h1>
-    <button id="themeToggle" class="toggle-btn" title="Toggle light / dark"><span class="material-symbols-outlined" data-theme-icon>dark_mode</span></button>
-  </header>
-  <p class="sub">Locked tokens · D3 type · brand teal · Okabe feedback.</p>
-  <p class="hint"><span class="material-symbols-outlined" style="font-size:18px">touch_app</span> States are live — <b>hover</b> and <b>Tab</b> through everything to feel hover / focus / active.</p>
+      /* ---- Motion + overlays docs ---- */
+      .tok {
+        display: flex;
+        gap: 26px;
+        flex-wrap: wrap;
+      }
+      .tok div {
+        font-size: 13px;
+        color: var(--muted);
+      }
+      .tok b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .tok .num {
+        color: var(--accent);
+      }
+      .tbd {
+        border: 1px dashed var(--line);
+        border-radius: 14px;
+        padding: 18px 22px;
+        color: var(--faint);
+        font-size: 13.5px;
+      }
+      .legend {
+        display: flex;
+        gap: 18px;
+        flex-wrap: wrap;
+        color: var(--muted);
+        font-size: 12.5px;
+        margin: 0 0 14px;
+      }
+      .legend b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      code {
+        font-family: 'Geist Mono', monospace;
+        font-size: 12px;
+        color: var(--accent);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>Notation Hero — components &amp; states</h1>
+        <button id="themeToggle" class="toggle-btn" title="Toggle light / dark">
+          <span class="material-symbols-outlined" data-theme-icon>dark_mode</span>
+        </button>
+      </header>
+      <p class="sub">Locked tokens · D3 type · brand teal · Okabe feedback.</p>
+      <p class="hint">
+        <span class="material-symbols-outlined" style="font-size: 18px">touch_app</span> States are
+        live — <b>hover</b> and <b>Tab</b> through everything to feel hover / focus / active.
+      </p>
 
-  <div class="legend">
-    <span><b>Hover</b> surface lifts / brand brightens + glow</span>
-    <span><b>Focus</b> 2px teal ring</span>
-    <span><b>Active</b> press (scale .96)</span>
-    <span><b>Disabled</b> 38%</span>
-    <span><b>Selected</b> filled teal + on-accent</span>
-  </div>
-
-  <h2>Buttons</h2>
-  <p class="note">Primary = filled teal + <code>--on-accent</code>. Secondary = tonal. Ghost = transparent. Danger = error. Transport toggles colour the <em>icon</em> teal when on — no fill.</p>
-  <div class="panel">
-    <div class="row" style="margin-bottom:20px">
-      <div class="cell"><span class="lbl">Primary</span><button class="btn btn-primary">Resume</button></div>
-      <div class="cell"><span class="lbl">Icon + text</span><button class="btn btn-primary"><span class="material-symbols-outlined">upload</span>Upload</button></div>
-      <div class="cell"><span class="lbl">Secondary</span><button class="btn btn-secondary"><span class="material-symbols-outlined">folder_open</span>Open file</button></div>
-      <div class="cell"><span class="lbl">Ghost</span><button class="btn btn-ghost">Cancel</button></div>
-      <div class="cell"><span class="lbl">Danger</span><button class="btn btn-danger">Delete</button></div>
-      <div class="cell"><span class="lbl">Disabled</span><button class="btn btn-primary" disabled>Resume</button></div>
-    </div>
-    <div class="row">
-      <div class="cell"><span class="lbl">Icon</span><button class="ibtn"><span class="material-symbols-outlined">settings</span></button></div>
-      <div class="cell"><span class="lbl">Toggle · off</span><button class="ibtn"><span class="material-symbols-outlined">repeat</span></button></div>
-      <div class="cell"><span class="lbl">Toggle · on</span><button class="ibtn on"><span class="material-symbols-outlined">repeat</span></button></div>
-      <div class="cell"><span class="lbl">Metronome · on</span><button class="ibtn on"><span class="material-symbols-outlined">av_timer</span></button></div>
-    </div>
-  </div>
-
-  <h2>Mode toggle <small>— practice / learn (special)</small></h2>
-  <p class="note">Vertical, icon-only (lives in the left rail). Single-select; active mode is filled teal. Click to switch.</p>
-  <div class="panel">
-    <div class="seg seg-v" id="modeSeg">
-      <button class="sel" title="Practice"><span class="material-symbols-outlined">school</span></button>
-      <button title="Game"><span class="material-symbols-outlined">sports_esports</span></button>
-    </div>
-  </div>
-
-  <h2>MIDI <small>— state machine</small></h2>
-  <p class="note">Disconnected = dim + strike · connected·idle = neutral · listening = teal + live dot · disabled = 38%.</p>
-  <div class="panel">
-    <div class="row">
-      <div class="cell"><span class="lbl">Disconnected</span><span class="midi disconnected" data-midi></span></div>
-      <div class="cell"><span class="lbl">Connected · idle</span><span class="midi idle" data-midi></span></div>
-      <div class="cell"><span class="lbl">Listening</span><span class="midi listening" data-midi></span></div>
-      <div class="cell"><span class="lbl">Disabled</span><span class="midi disabled" data-midi></span></div>
-    </div>
-  </div>
-
-  <h2>Switch &amp; chips</h2>
-  <p class="note">iOS-style switch. Notation chips are <em>multi-select</em> (more than one on). Click to toggle.</p>
-  <div class="panel">
-    <div class="row" style="margin-bottom:20px">
-      <div class="cell"><span class="lbl">Switch (click)</span><div class="sw" tabindex="0" role="switch" data-switch></div></div>
-      <div class="cell"><span class="lbl">Switch · on</span><div class="sw on" tabindex="0" role="switch" data-switch></div></div>
-      <div class="cell"><span class="lbl">Switch · disabled</span><div class="sw" aria-disabled="true"></div></div>
-    </div>
-    <div class="row">
-      <div class="cell"><span class="lbl">Notation chips (multi · click)</span>
-        <div style="display:flex; gap:7px"><span class="chip on" tabindex="0" data-chip>Standard</span><span class="chip on" tabindex="0" data-chip>Tab</span><span class="chip" tabindex="0" data-chip>Slash</span><span class="chip" tabindex="0" data-chip>#</span></div>
+      <div class="legend">
+        <span><b>Hover</b> surface lifts / brand brightens + glow</span>
+        <span><b>Focus</b> 2px teal ring</span>
+        <span><b>Active</b> press (scale .96)</span>
+        <span><b>Disabled</b> 38%</span>
+        <span><b>Selected</b> filled teal + on-accent</span>
       </div>
-      <div class="cell"><span class="lbl">Filter chips</span>
-        <div style="display:flex; gap:7px"><span class="chip on" tabindex="0" data-chip>Rock</span><span class="chip" tabindex="0" data-chip>Pop</span><span class="chip" tabindex="0" data-chip>Funk</span></div>
+
+      <h2>Buttons</h2>
+      <p class="note">
+        Primary = filled teal + <code>--on-accent</code>. Secondary = tonal. Ghost = transparent.
+        Danger = error. Transport toggles colour the <em>icon</em> teal when on — no fill.
+      </p>
+      <div class="panel">
+        <div class="row" style="margin-bottom: 20px">
+          <div class="cell">
+            <span class="lbl">Primary</span><button class="btn btn-primary">Resume</button>
+          </div>
+          <div class="cell">
+            <span class="lbl">Icon + text</span
+            ><button class="btn btn-primary">
+              <span class="material-symbols-outlined">upload</span>Upload
+            </button>
+          </div>
+          <div class="cell">
+            <span class="lbl">Secondary</span
+            ><button class="btn btn-secondary">
+              <span class="material-symbols-outlined">folder_open</span>Open file
+            </button>
+          </div>
+          <div class="cell">
+            <span class="lbl">Ghost</span><button class="btn btn-ghost">Cancel</button>
+          </div>
+          <div class="cell">
+            <span class="lbl">Danger</span><button class="btn btn-danger">Delete</button>
+          </div>
+          <div class="cell">
+            <span class="lbl">Disabled</span
+            ><button class="btn btn-primary" disabled>Resume</button>
+          </div>
+        </div>
+        <div class="row">
+          <div class="cell">
+            <span class="lbl">Icon</span
+            ><button class="ibtn"><span class="material-symbols-outlined">settings</span></button>
+          </div>
+          <div class="cell">
+            <span class="lbl">Toggle · off</span
+            ><button class="ibtn"><span class="material-symbols-outlined">repeat</span></button>
+          </div>
+          <div class="cell">
+            <span class="lbl">Toggle · on</span
+            ><button class="ibtn on"><span class="material-symbols-outlined">repeat</span></button>
+          </div>
+          <div class="cell">
+            <span class="lbl">Metronome · on</span
+            ><button class="ibtn on">
+              <span class="material-symbols-outlined">av_timer</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <h2>Mode toggle <small>— practice / learn (special)</small></h2>
+      <p class="note">
+        Vertical, icon-only (lives in the left rail). Single-select; active mode is filled teal.
+        Click to switch.
+      </p>
+      <div class="panel">
+        <div class="seg seg-v" id="modeSeg">
+          <button class="sel" title="Practice">
+            <span class="material-symbols-outlined">school</span>
+          </button>
+          <button title="Game">
+            <span class="material-symbols-outlined">sports_esports</span>
+          </button>
+        </div>
+      </div>
+
+      <h2>MIDI <small>— state machine</small></h2>
+      <p class="note">
+        Disconnected = dim + strike · connected·idle = neutral · listening = teal + live dot ·
+        disabled = 38%.
+      </p>
+      <div class="panel">
+        <div class="row">
+          <div class="cell">
+            <span class="lbl">Disconnected</span><span class="midi disconnected" data-midi></span>
+          </div>
+          <div class="cell">
+            <span class="lbl">Connected · idle</span><span class="midi idle" data-midi></span>
+          </div>
+          <div class="cell">
+            <span class="lbl">Listening</span><span class="midi listening" data-midi></span>
+          </div>
+          <div class="cell">
+            <span class="lbl">Disabled</span><span class="midi disabled" data-midi></span>
+          </div>
+        </div>
+      </div>
+
+      <h2>Switch &amp; chips</h2>
+      <p class="note">
+        iOS-style switch. Notation chips are <em>multi-select</em> (more than one on). Click to
+        toggle.
+      </p>
+      <div class="panel">
+        <div class="row" style="margin-bottom: 20px">
+          <div class="cell">
+            <span class="lbl">Switch (click)</span>
+            <div class="sw" tabindex="0" role="switch" data-switch></div>
+          </div>
+          <div class="cell">
+            <span class="lbl">Switch · on</span>
+            <div class="sw on" tabindex="0" role="switch" data-switch></div>
+          </div>
+          <div class="cell">
+            <span class="lbl">Switch · disabled</span>
+            <div class="sw" aria-disabled="true"></div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="cell">
+            <span class="lbl">Notation chips (multi · click)</span>
+            <div style="display: flex; gap: 7px">
+              <span class="chip on" tabindex="0" data-chip>Standard</span
+              ><span class="chip on" tabindex="0" data-chip>Tab</span
+              ><span class="chip" tabindex="0" data-chip>Slash</span
+              ><span class="chip" tabindex="0" data-chip>#</span>
+            </div>
+          </div>
+          <div class="cell">
+            <span class="lbl">Filter chips</span>
+            <div style="display: flex; gap: 7px">
+              <span class="chip on" tabindex="0" data-chip>Rock</span
+              ><span class="chip" tabindex="0" data-chip>Pop</span
+              ><span class="chip" tabindex="0" data-chip>Funk</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Inputs &amp; sliders</h2>
+      <div class="panel">
+        <div class="row" style="margin-bottom: 24px">
+          <div class="cell">
+            <span class="lbl">Input (click / tab)</span
+            ><input class="inp" placeholder="Search songs…" />
+          </div>
+          <div class="cell">
+            <span class="lbl">Invalid</span><input class="inp invalid" value="bad@" /><span
+              class="err"
+              >Enter a valid value</span
+            >
+          </div>
+          <div class="cell">
+            <span class="lbl">Disabled</span><input class="inp" value="Locked" disabled />
+          </div>
+        </div>
+        <div class="row">
+          <div class="cell">
+            <span class="lbl">Slider · volume (drag)</span
+            ><input type="range" min="0" max="100" value="64" />
+          </div>
+          <div class="cell">
+            <span class="lbl">Slider · disabled</span
+            ><input type="range" min="0" max="100" value="40" disabled />
+          </div>
+        </div>
+      </div>
+
+      <h2>Timeline &amp; A/B loop <small>— special</small></h2>
+      <p class="note">
+        Track hover = seek (<code>cursor:pointer</code>). A/B handles drag horizontally
+        (<code>cursor:ew-resize</code>) — hover them for the glow. <b>Clear A–B</b> appears only
+        while a loop is set.
+      </p>
+      <div class="panel">
+        <div class="row" style="align-items: center; gap: 18px">
+          <div class="cell" style="gap: 14px">
+            <span class="lbl">Active loop</span>
+            <div class="tl">
+              <div class="fill"></div>
+              <div class="loop"></div>
+              <div class="hd a">A</div>
+              <div class="hd b">B</div>
+            </div>
+          </div>
+          <div class="cell">
+            <span class="lbl">Clear</span
+            ><button class="clearab">
+              <span class="material-symbols-outlined">close</span>Clear A–B
+            </button>
+          </div>
+        </div>
+        <div class="row" style="margin-top: 22px; align-items: center">
+          <div class="cell" style="gap: 14px">
+            <span class="lbl">Disabled (no song loaded)</span>
+            <div class="tl disabled"><div class="fill" style="width: 0"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <h2>Status pills <small>— catalog preview (felt-progress)</small></h2>
+      <p class="note">
+        Songs move New → Learning → Mastered. Used in the library to make progress visible.
+      </p>
+      <div class="panel">
+        <div class="row">
+          <div class="cell"><span class="lbl">New</span><span class="pill pill-new">New</span></div>
+          <div class="cell">
+            <span class="lbl">Learning</span
+            ><span class="pill pill-learning"
+              ><span class="material-symbols-outlined">trending_up</span>Learning</span
+            >
+          </div>
+          <div class="cell">
+            <span class="lbl">Mastered</span
+            ><span class="pill pill-mastered"
+              ><span class="material-symbols-outlined">check_circle</span>Mastered</span
+            >
+          </div>
+          <div class="cell">
+            <span class="lbl">Best</span
+            ><span class="num" style="color: var(--accent); font-weight: 700; font-size: 15px"
+              >94%</span
+            >
+          </div>
+        </div>
+      </div>
+
+      <h2>Motion tokens</h2>
+      <p class="note">
+        State changes above use these. Easing <code>cubic-bezier(.2,.6,.2,1)</code> (ease-out).
+      </p>
+      <div class="panel">
+        <div class="tok">
+          <div><b>micro</b> <span class="num">90ms</span> — press / active</div>
+          <div><b>fast</b> <span class="num">150ms</span> — hover, focus, toggle</div>
+          <div><b>base</b> <span class="num">220ms</span> — theme + panel transitions</div>
+          <div>
+            <b>HUD values</b> — roll / count on change
+            <span style="color: var(--faint)">(spec now, build with the HUD)</span>
+          </div>
+        </div>
+      </div>
+
+      <h2>Overlays <small>— TBD, after catalog</small></h2>
+      <div class="tbd">
+        Modal (Settings) and the Tracks / Score <b>sidebars</b> aren't designed yet. We agreed:
+        catalog first, then these overlay surfaces. Placeholder so we don't lose it.
       </div>
     </div>
-  </div>
 
-  <h2>Inputs &amp; sliders</h2>
-  <div class="panel">
-    <div class="row" style="margin-bottom:24px">
-      <div class="cell"><span class="lbl">Input (click / tab)</span><input class="inp" placeholder="Search songs…"></div>
-      <div class="cell"><span class="lbl">Invalid</span><input class="inp invalid" value="bad@"><span class="err">Enter a valid value</span></div>
-      <div class="cell"><span class="lbl">Disabled</span><input class="inp" value="Locked" disabled></div>
-    </div>
-    <div class="row">
-      <div class="cell"><span class="lbl">Slider · volume (drag)</span><input type="range" min="0" max="100" value="64"></div>
-      <div class="cell"><span class="lbl">Slider · disabled</span><input type="range" min="0" max="100" value="40" disabled></div>
-    </div>
-  </div>
-
-  <h2>Timeline &amp; A/B loop <small>— special</small></h2>
-  <p class="note">Track hover = seek (<code>cursor:pointer</code>). A/B handles drag horizontally (<code>cursor:ew-resize</code>) — hover them for the glow. <b>Clear A–B</b> appears only while a loop is set.</p>
-  <div class="panel">
-    <div class="row" style="align-items:center; gap:18px">
-      <div class="cell" style="gap:14px">
-        <span class="lbl">Active loop</span>
-        <div class="tl"><div class="fill"></div><div class="loop"></div><div class="hd a">A</div><div class="hd b">B</div></div>
-      </div>
-      <div class="cell"><span class="lbl">Clear</span><button class="clearab"><span class="material-symbols-outlined">close</span>Clear A–B</button></div>
-    </div>
-    <div class="row" style="margin-top:22px; align-items:center">
-      <div class="cell" style="gap:14px"><span class="lbl">Disabled (no song loaded)</span>
-        <div class="tl disabled"><div class="fill" style="width:0"></div></div>
-      </div>
-    </div>
-  </div>
-
-  <h2>Status pills <small>— catalog preview (felt-progress)</small></h2>
-  <p class="note">Songs move New → Learning → Mastered. Used in the library to make progress visible.</p>
-  <div class="panel">
-    <div class="row">
-      <div class="cell"><span class="lbl">New</span><span class="pill pill-new">New</span></div>
-      <div class="cell"><span class="lbl">Learning</span><span class="pill pill-learning"><span class="material-symbols-outlined">trending_up</span>Learning</span></div>
-      <div class="cell"><span class="lbl">Mastered</span><span class="pill pill-mastered"><span class="material-symbols-outlined">check_circle</span>Mastered</span></div>
-      <div class="cell"><span class="lbl">Best</span><span class="num" style="color:var(--accent);font-weight:700;font-size:15px">94%</span></div>
-    </div>
-  </div>
-
-  <h2>Motion tokens</h2>
-  <p class="note">State changes above use these. Easing <code>cubic-bezier(.2,.6,.2,1)</code> (ease-out).</p>
-  <div class="panel">
-    <div class="tok">
-      <div><b>micro</b> <span class="num">90ms</span> — press / active</div>
-      <div><b>fast</b> <span class="num">150ms</span> — hover, focus, toggle</div>
-      <div><b>base</b> <span class="num">220ms</span> — theme + panel transitions</div>
-      <div><b>HUD values</b> — roll / count on change <span style="color:var(--faint)">(spec now, build with the HUD)</span></div>
-    </div>
-  </div>
-
-  <h2>Overlays <small>— TBD, after catalog</small></h2>
-  <div class="tbd">Modal (Settings) and the Tracks / Score <b>sidebars</b> aren't designed yet. We agreed: catalog first, then these overlay surfaces. Placeholder so we don't lose it.</div>
-</div>
-
-<script>
-  (function () {
-    var root = document.documentElement;
-    var q = new URLSearchParams(location.search).get('theme');
-    if (q === 'light' || q === 'dark') root.setAttribute('data-theme', q);
-    function sync(){ var i=document.querySelector('[data-theme-icon]'); if(i) i.textContent = root.getAttribute('data-theme')!=='light'?'dark_mode':'light_mode'; }
-    sync();
-    document.getElementById('themeToggle').addEventListener('click', function(){
-      root.setAttribute('data-theme', root.getAttribute('data-theme')==='light'?'dark':'light'); sync();
-    });
-    var MIDI = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M20.18,12C20.18,8.18 17.55,4.96 14,4.07V6H10V4.07C6.45,4.96 3.82,8.18 3.82,12A8.18,8.18 0 0,0 12,20.18A8.18,8.18 0 0,0 20.18,12M7,10.64A1.36,1.36 0 0,1 8.36,12A1.36,1.36 0 0,1 7,13.36C6.25,13.36 5.64,12.75 5.64,12C5.64,11.25 6.25,10.64 7,10.64M17,10.64A1.36,1.36 0 0,1 18.36,12A1.36,1.36 0 0,1 17,13.36A1.36,1.36 0 0,1 15.64,12A1.36,1.36 0 0,1 17,10.64M8.36,14.27A1.37,1.37 0 0,1 9.73,15.64C9.73,16.39 9.12,17 8.36,17A1.36,1.36 0 0,1 7,15.64C7,14.88 7.61,14.27 8.36,14.27M15.64,14.27C16.39,14.27 17,14.88 17,15.64A1.36,1.36 0 0,1 15.64,17C14.88,17 14.27,16.39 14.27,15.64A1.37,1.37 0 0,1 15.64,14.27M12,15.64A1.36,1.36 0 0,1 13.36,17A1.36,1.36 0 0,1 12,18.36A1.36,1.36 0 0,1 10.64,17A1.36,1.36 0 0,1 12,15.64Z"/></svg>';
-    document.querySelectorAll('[data-midi]').forEach(function(m){ m.innerHTML = MIDI; });
-    document.querySelectorAll('[data-switch]').forEach(function(s){
-      s.addEventListener('click', function(){ s.classList.toggle('on'); });
-      s.addEventListener('keydown', function(e){ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); s.classList.toggle('on'); } });
-    });
-    document.querySelectorAll('[data-chip]').forEach(function(c){
-      c.addEventListener('click', function(){ c.classList.toggle('on'); });
-      c.addEventListener('keydown', function(e){ if(e.key===' '||e.key==='Enter'){ e.preventDefault(); c.classList.toggle('on'); } });
-    });
-    var seg = document.getElementById('modeSeg');
-    if (seg) seg.querySelectorAll('button').forEach(function(b){
-      b.addEventListener('click', function(){ seg.querySelectorAll('button').forEach(function(x){x.classList.remove('sel');}); b.classList.add('sel'); });
-    });
-  })();
-</script>
-</body>
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var q = new URLSearchParams(location.search).get('theme');
+        if (q === 'light' || q === 'dark') root.setAttribute('data-theme', q);
+        function sync() {
+          var i = document.querySelector('[data-theme-icon]');
+          if (i)
+            i.textContent =
+              root.getAttribute('data-theme') !== 'light' ? 'dark_mode' : 'light_mode';
+        }
+        sync();
+        document.getElementById('themeToggle').addEventListener('click', function () {
+          root.setAttribute(
+            'data-theme',
+            root.getAttribute('data-theme') === 'light' ? 'dark' : 'light',
+          );
+          sync();
+        });
+        var MIDI =
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M20.18,12C20.18,8.18 17.55,4.96 14,4.07V6H10V4.07C6.45,4.96 3.82,8.18 3.82,12A8.18,8.18 0 0,0 12,20.18A8.18,8.18 0 0,0 20.18,12M7,10.64A1.36,1.36 0 0,1 8.36,12A1.36,1.36 0 0,1 7,13.36C6.25,13.36 5.64,12.75 5.64,12C5.64,11.25 6.25,10.64 7,10.64M17,10.64A1.36,1.36 0 0,1 18.36,12A1.36,1.36 0 0,1 17,13.36A1.36,1.36 0 0,1 15.64,12A1.36,1.36 0 0,1 17,10.64M8.36,14.27A1.37,1.37 0 0,1 9.73,15.64C9.73,16.39 9.12,17 8.36,17A1.36,1.36 0 0,1 7,15.64C7,14.88 7.61,14.27 8.36,14.27M15.64,14.27C16.39,14.27 17,14.88 17,15.64A1.36,1.36 0 0,1 15.64,17C14.88,17 14.27,16.39 14.27,15.64A1.37,1.37 0 0,1 15.64,14.27M12,15.64A1.36,1.36 0 0,1 13.36,17A1.36,1.36 0 0,1 12,18.36A1.36,1.36 0 0,1 10.64,17A1.36,1.36 0 0,1 12,15.64Z"/></svg>';
+        document.querySelectorAll('[data-midi]').forEach(function (m) {
+          m.innerHTML = MIDI;
+        });
+        document.querySelectorAll('[data-switch]').forEach(function (s) {
+          s.addEventListener('click', function () {
+            s.classList.toggle('on');
+          });
+          s.addEventListener('keydown', function (e) {
+            if (e.key === ' ' || e.key === 'Enter') {
+              e.preventDefault();
+              s.classList.toggle('on');
+            }
+          });
+        });
+        document.querySelectorAll('[data-chip]').forEach(function (c) {
+          c.addEventListener('click', function () {
+            c.classList.toggle('on');
+          });
+          c.addEventListener('keydown', function (e) {
+            if (e.key === ' ' || e.key === 'Enter') {
+              e.preventDefault();
+              c.classList.toggle('on');
+            }
+          });
+        });
+        var seg = document.getElementById('modeSeg');
+        if (seg)
+          seg.querySelectorAll('button').forEach(function (b) {
+            b.addEventListener('click', function () {
+              seg.querySelectorAll('button').forEach(function (x) {
+                x.classList.remove('sel');
+              });
+              b.classList.add('sel');
+            });
+          });
+      })();
+    </script>
+  </body>
 </html>

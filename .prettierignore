@@ -1,0 +1,37 @@
+# Hand-maintained low-fi wireframe sims and design mockups (single large HTML files, not app source).
+# Prettier would reflow the whole file on every edit — hundreds of noise lines per change.
+# Prettier stays scoped to real source (root prettier.config.mjs governs all packages now).
+docs/wireframe/*.html
+docs/mockups/*.html
+
+# Generated — must match the generator, never hand-format.
+**/routeTree.gen.ts
+
+# Lockfile + build output + reports (also gitignored; listed for local check parity).
+pnpm-lock.yaml
+dist/
+storybook-static/
+playwright-report/
+test-results/
+
+# Local vector-index artifacts (LanceDB / skills index) — generated, gitignored, never hand-format.
+vectors/
+
+# Agent scratch (SDD briefs/reports/ledger; not committed source).
+.superpowers/
+
+# SpecStory editor-extension chat logs (gitignored local scratch, which markdownlint/Prettier don't read .gitignore for).
+.specstory/
+
+# Local vector-index artifact (skills/memstack index; ignored in the global gitignore, which Prettier doesn't read).
+vectors/
+
+# Next.js build output (web/) — Prettier doesn't read .gitignore.
+.next/
+next-env.d.ts
+
+# Vendored third-party dist self-hosted for AlphaTab's worker (spike NH alphatab-in-nextjs).
+web/public/alphatab/
+
+# Playwright spike-probe output (screenshots + JSON reports); gitignored, never hand-format.
+web/spike-out/

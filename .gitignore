@@ -3,9 +3,12 @@
 
 # Dependencies
 node_modules/
+# pnpm store left in the repo root by the Dockerized VR-baseline run (see AGENTS.md)
+.pnpm-store/
 
 # Build output
 dist/
+dist-lambda/
 *.tsbuildinfo
 
 # pnpm-lock.yaml is COMMITTED (text lockfile) — see docs/cicd-pipeline.md
@@ -17,6 +20,8 @@ dist/
 # Env / secrets — never commit AWS creds
 .env
 .env.*
+*.env
+jira.env
 !.env.example
 
 # Private strategic context (the reference tutor north-star / positioning-wedge / handoff content).
@@ -28,7 +33,10 @@ docs/.private/
 .DS_Store
 *.log
 
+# Compound Engineering local config
+.compound-engineering/*.local.yaml
 
-
-.nx/cache
-.nx/workspace-data
+# Machine-local agent reference map (NH-318). Contains absolute paths to a contributor's
+# local clones of prior-art repositories, so it is never committed - this repo is public.
+# Each contributor writes their own; see docs/.private/ above for the same pattern.
+.claude/local-references.md

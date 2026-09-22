@@ -1,0 +1,18 @@
+# markdownlint-cli2 top-level config — controls file discovery & ignores.
+# Rules live in .markdownlint.yaml (also read by markdownlint-cli2).
+# Note: .markdownlintignore is NOT supported by markdownlint-cli2 (only by the
+# older markdownlint-cli v1); ignores must be declared here.
+ignores:
+  - '**/node_modules/**'
+  - '**/dist/**'
+  - '**/storybook-static/**'
+  - '**/playwright-report/**'
+  - '**/test-results/**'
+  - '.claude/worktrees/**'
+  # Machine-local, git-ignored (see .gitignore, NH-318) — but markdownlint-cli2 does not
+  # read .gitignore, so without this the file lints in every checkout that has one.
+  - '.claude/local-references.md'
+  - '.superpowers/**'
+  - '.specstory/**'
+  - pnpm-lock.yaml
+  - '**/.next/**'

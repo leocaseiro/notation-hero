@@ -1,0 +1,20 @@
+# osv-scanner.toml — accepted-risk ignores for the CI `deps-cve` gate (NH-191, NH-231).
+#
+# The `deps-cve` job (google/osv-scanner-action, `--recursive ./`) auto-loads this file.
+#
+# THERE ARE CURRENTLY NO IGNORES. Every advisory in the tree is fixed for real — by moving
+# the carrier package, or by a same-major `overrides` pin in `pnpm-workspace.yaml` where the
+# parent holds its copy below the patch. An empty ignore list is the intended steady state.
+#
+# NH-231 (2026-09-16) removed the one entry this file used to carry:
+#
+#   [[IgnoredVulns]] GHSA-8988-4f7v-96qf — @opentelemetry/core 1.30.1, transitive via
+#   @pulumi/pulumi's OTLP exporters. It was deferred because the only fix looked like a major
+#   otel v1 -> v2 bump we could not verify. It expired at 2026-09-16T00:00:00Z and was NOT
+#   renewed: @pulumi/pulumi 3.255.0 moved to otel v2 upstream, so bumping Pulumi to 3.261.0
+#   closes the advisory outright. The stated reason is obsolete, so the block is gone.
+#
+# If you ever need a new ignore, it is a CONSCIOUS, time-boxed deferral: a reason + an
+# `ignoreUntil` review date. Prefer a real version fix; reach for an ignore only when no
+# patched version exists. An expired ignore must be re-argued, never rubber-stamped —
+# osv-scanner reports a stale entry as an "unused ignores" warning.

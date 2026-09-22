@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F-8 — where the engine-failure message goes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: oklch(100% 0 0deg);
+    --foreground: oklch(14.8% 0.004 228.8deg);
+    --primary: oklch(51.1% 0.096 186.391deg);
+    --primary-foreground: oklch(98.4% 0.014 180.72deg);
+    --muted-foreground: oklch(56% 0.021 213.5deg);
+    --border: oklch(92.5% 0.005 214.3deg);
+    --destructive: oklch(50.5% 0.21 27.5deg);
+    --page: oklch(97.5% 0.003 230deg);
+    --radius: 0.625rem;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--foreground);
+    font: 15px/1.5 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  .wrap { max-width: 1760px; margin: 0 auto; padding: 28px 28px 60px; }
+  h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .lede { margin: 0 0 4px; color: var(--muted-foreground); max-width: 900px; }
+  .scenario {
+    display: inline-flex; gap: 8px; align-items: center; margin: 14px 0 26px;
+    background: var(--background); border: 1px solid var(--border); border-radius: 999px;
+    padding: 6px 14px 6px 8px; font-size: 14px;
+  }
+  .scenario b { background: var(--foreground); color: #fff; border-radius: 999px; padding: 2px 10px; font-size: 12px; letter-spacing: .04em; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted-foreground); margin: 34px 0 12px; }
+  .row { display: grid; gap: 22px; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); }
+  .frame { background: var(--background); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px oklch(0% 0 0 / 4%), 0 8px 24px oklch(0% 0 0 / 5%); }
+  .frame-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .tag { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 2px 8px; }
+  .tag.ref { background: oklch(96% 0.01 230deg); color: var(--muted-foreground); }
+  .tag.o1 { background: color-mix(in oklab, var(--primary) 14%, white); color: var(--primary); }
+  .tag.o2 { background: oklch(95% 0.02 280deg); color: oklch(42% 0.09 280deg); }
+  .frame-head strong { font-size: 16px; }
+  .frame-body { padding: 18px; }
+  .notes { margin: 0; padding: 12px 18px 16px 34px; border-top: 1px dashed var(--border); font-size: 14px; color: var(--foreground); }
+  .notes li { margin: 4px 0; }
+  .good::marker { content: '✓  '; color: var(--primary); font-weight: 700; }
+  .bad::marker { content: '✗  '; color: var(--destructive); font-weight: 700; }
+
+  /* ---------- v0a player (Task 6 + Task 10 layout) ---------- */
+  .v0 { display: flex; flex-direction: column; gap: 14px; }
+  .card-empty {
+    min-height: 250px; border: 1.5px dashed var(--border); border-radius: var(--radius);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; text-align: center; padding: 18px;
+  }
+  .card-empty p { margin: 0; color: var(--muted-foreground); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; border-radius: 8px; font: inherit; font-weight: 600; border: 0; }
+  .btn-primary { background: var(--primary); color: var(--primary-foreground); padding: 0 30px; font-size: 16px; }
+  .btn-ghost { background: transparent; color: var(--foreground); padding: 0 14px; }
+  .btn svg { width: 20px; height: 20px; }
+  .transport { display: flex; align-items: center; gap: 12px; min-height: 44px; }
+  .play-ghost { width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; color: var(--primary); }
+  .play-ghost svg { width: 34px; height: 34px; }
+  .disabled { opacity: .45; }
+  .alert {
+    border: 1px solid color-mix(in oklab, var(--destructive) 25%, transparent);
+    background: color-mix(in oklab, var(--destructive) 10%, white);
+    color: var(--destructive); border-radius: var(--radius); padding: 14px 16px; font-size: 14.5px;
+  }
+  .alert .tech { opacity: .85; }
+  .alert-big { min-height: 250px; display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; text-align: center; padding: 24px 32px; font-size: 15.5px; }
+  .alert-big.ptr::after { top: auto; bottom: 10px; right: 10px; transform: none; }
+  .ptr { position: relative; }
+  .ptr::after {
+    content: attr(data-ptr); position: absolute; right: -4px; top: -12px; transform: translateY(-100%);
+    font-size: 12px; font-weight: 700; color: #fff; background: var(--foreground); border-radius: 6px; padding: 3px 8px; white-space: nowrap;
+  }
+  .caption { font-size: 12px; color: var(--muted-foreground); margin-top: -4px; }
+
+  /* ---------- future full player bar (Plan B) ---------- */
+  .full { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .full-top { display: flex; align-items: center; gap: 18px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .brand { font-weight: 700; color: var(--primary); font-size: 17px; }
+  .song { color: var(--muted-foreground); font-size: 14px; }
+  .full-mid { height: 190px; display: grid; place-items: center; padding: 16px; background:
+      repeating-linear-gradient(to bottom, transparent 0 24px, oklch(94% 0.004 230deg) 24px 25px); }
+  .full-mid .card-empty { min-height: 150px; width: 82%; background: var(--background); }
+  .full-mid .alert-big { min-height: 150px; width: 82%; }
+  .bar { display: flex; align-items: center; gap: 14px; padding: 12px 16px; background: oklch(98.5% 0.002 230deg); border-top: 1px solid var(--border); color: var(--muted-foreground); font-size: 13px; }
+  .play-solid { width: 46px; height: 46px; border-radius: 999px; background: var(--primary); display: grid; place-items: center; flex: none; }
+  .play-solid svg { width: 20px; height: 20px; color: #fff; }
+  .scrub { flex: 1; height: 5px; border-radius: 99px; background: oklch(92% 0.005 230deg); }
+  .ico { width: 20px; height: 20px; flex: none; }
+  .chip { flex: none; max-width: 190px; font-size: 12.5px; line-height: 1.3; padding: 7px 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>F-8 — Where does the “engine could not start” message go?</h1>
+  <p class="lede">This is the <b>Play button inside the player</b> on <code>/play</code> — not the home screen. Light theme, real design-system colours and copy from the plan.</p>
+  <div class="scenario"><b>SCENARIO</b> First visit to <code>/play</code>, nothing opened yet, and the AlphaTab engine failed to download (for example, a network error).</div>
+
+  <h2>1 · In v0a — what this plan builds</h2>
+  <div class="row">
+
+    <section class="frame">
+      <div class="frame-head"><span class="tag ref">REFERENCE</span><strong>Normal: engine loaded, nothing open</strong></div>
+      <div class="frame-body v0">
+        <div class="card-empty">
+          <p>Drop a score anywhere on this area, or open one from your computer.</p>
+          <span class="btn btn-primary"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 20q-.8 0-1.4-.6T2 18V6q0-.8.6-1.4T4 4h6l2 2h8q.8 0 1.4.6T22 8H11.2l-2-2H4v12l2.4-8h17.1l-2.6 8.6q-.2.65-.73 1.03T20 20Z"/></svg>Open file</span>
+          <span class="btn btn-ghost">Load the sample beat</span>
+        </div>
+        <div class="transport">
+          <span class="play-ghost disabled" title="Play — disabled until the synth is ready"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m9.5 16.5 7-4.5-7-4.5ZM12 22q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9 2 12t.788-3.9 2.137-3.175T8.1 2.788 12 2t3.9.788 3.175 2.137T21.213 8.1 22 12t-.788 3.9-2.137 3.175-3.175 2.137T12 22m0-2q3.35 0 5.675-2.325T20 12t-2.325-5.675T12 4 6.325 6.325 4 12t2.325 5.675T12 20"/></svg></span>
+          <span class="caption" style="margin:0">Play is disabled until a score and the synth are ready.</span>
+        </div>
+      </div>
+      <ul class="notes"><li>Today's empty state, for comparison.</li></ul>
+    </section>
+
+    <section class="frame">
+      <div class="frame-head"><span class="tag o1">OPTION 1</span><strong>Message replaces the Play button</strong><span class="caption">spec §4 placement</span></div>
+      <div class="frame-body v0">
+        <div class="card-empty">
+          <p>Drop a score anywhere on this area, or open one from your computer.</p>
+          <span class="btn btn-primary"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 20q-.8 0-1.4-.6T2 18V6q0-.8.6-1.4T4 4h6l2 2h8q.8 0 1.4.6T22 8H11.2l-2-2H4v12l2.4-8h17.1l-2.6 8.6q-.2.65-.73 1.03T20 20Z"/></svg>Open file</span>
+          <span class="btn btn-ghost">Load the sample beat</span>
+        </div>
+        <div class="alert ptr" data-ptr="where Play was">The player engine could not start. Reload the page to try again. <span class="tech">(Failed to fetch dynamically imported module)</span></div>
+      </div>
+      <ul class="notes">
+        <li class="good">Matches the spec's failure table.</li>
+        <li class="good">One place, visible whether or not a score is open.</li>
+        <li class="bad"><b>Open file</b> and <b>Load the sample beat</b> still show — pressing them shows loading, then nothing opens.</li>
+      </ul>
+    </section>
+
+    <section class="frame">
+      <div class="frame-head"><span class="tag o2">OPTION 2</span><strong>Message replaces the empty state</strong><span class="caption">reviewer's fix</span></div>
+      <div class="frame-body v0">
+        <div class="alert alert-big ptr" data-ptr="where the empty state was"><span>The player engine could not start. Reload the page to try again.</span><span class="tech">(Failed to fetch dynamically imported module)</span></div>
+        <div class="transport">
+          <span class="play-ghost disabled"><svg viewBox="0 0 24 24" fill="currentColor"><path d="m9.5 16.5 7-4.5-7-4.5ZM12 22q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9 2 12t.788-3.9 2.137-3.175T8.1 2.788 12 2t3.9.788 3.175 2.137T21.213 8.1 22 12t-.788 3.9-2.137 3.175-3.175 2.137T12 22m0-2q3.35 0 5.675-2.325T20 12t-2.325-5.675T12 4 6.325 6.325 4 12t2.325 5.675T12 20"/></svg></span>
+          <span class="caption" style="margin:0">Play stays exactly as it is — disabled.</span>
+        </div>
+      </div>
+      <ul class="notes">
+        <li class="good">No dead buttons: nothing on screen pretends to work.</li>
+        <li class="good">The player's Play button is not touched.</li>
+        <li class="bad">Differs from the spec's placement, so the spec's failure table would be updated to match.</li>
+      </ul>
+    </section>
+  </div>
+
+  <h2>2 · Later — the same two options inside the full player bar (Plan B)</h2>
+  <div class="row">
+    <section class="frame">
+      <div class="frame-head"><span class="tag o1">OPTION 1</span><strong>In the bar, the message takes Play's slot</strong></div>
+      <div class="frame-body">
+        <div class="full">
+          <div class="full-top"><span class="brand">Notation Hero</span><span class="song">No score open</span></div>
+          <div class="full-mid">
+            <div class="card-empty">
+              <p>Drop a score anywhere on this area, or open one from your computer.</p>
+              <span class="btn btn-primary" style="font-size:14px;padding:0 20px;min-height:38px">Open file</span>
+            </div>
+          </div>
+          <div class="bar">
+            <div class="alert chip ptr" data-ptr="Play's slot">Engine could not start. Reload the page.</div>
+            <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="m7 22-4-4 4-4 1.4 1.45L6.85 17H17v-4h2v6H6.85l1.55 1.55Zm-2-11V5h12.15L15.6 3.45 17 2l4 4-4 4-1.4-1.45L17.15 7H7v4Z"/></svg>
+            <span>00:00</span><div class="scrub"></div><span>00:00</span>
+            <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17v-2h6v2Zm0-4v-2h10v2Zm0-4V7h14v2Zm12 12v-4h-2v-2h6v2h-2v4Z"/></svg>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li class="bad">The full sentence does not fit beside the scrubber, so the bar needs a shorter message (shown).</li>
+      </ul>
+    </section>
+
+    <section class="frame">
+      <div class="frame-head"><span class="tag o2">OPTION 2</span><strong>In the bar, Play stays; the message fills the score area</strong></div>
+      <div class="frame-body">
+        <div class="full">
+          <div class="full-top"><span class="brand">Notation Hero</span><span class="song">No score open</span></div>
+          <div class="full-mid">
+            <div class="alert alert-big">The player engine could not start. Reload the page to try again.</div>
+          </div>
+          <div class="bar">
+            <span class="play-solid disabled"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 19V5l11 7Z"/></svg></span>
+            <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="m7 22-4-4 4-4 1.4 1.45L6.85 17H17v-4h2v6H6.85l1.55 1.55Zm-2-11V5h12.15L15.6 3.45 17 2l4 4-4 4-1.4-1.45L17.15 7H7v4Z"/></svg>
+            <span>00:00</span><div class="scrub"></div><span>00:00</span>
+            <svg class="ico" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17v-2h6v2Zm0-4v-2h10v2Zm0-4V7h14v2Zm12 12v-4h-2v-2h6v2h-2v4Z"/></svg>
+          </div>
+        </div>
+      </div>
+      <ul class="notes">
+        <li class="good">Carries over to Plan B unchanged — the bar layout is untouched.</li>
+      </ul>
+    </section>
+  </div>
+</div>
+</body>
+</html>

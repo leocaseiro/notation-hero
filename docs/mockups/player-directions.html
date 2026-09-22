@@ -1,144 +1,648 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NotationHero — Player directions (brainstorm)</title>
-<style>
-  :root{
-    --bg:#eceff4;--ink:#0f151c;--muted:#5d6675;--line:#e4e9f0;--accent:#10b6a6;--accent2:#2f6df6;
-    --perfect:#009E73;--early:#E69F00;--late:#CC79A7;--extra:#D55E00;
-    --shadow:0 1px 2px rgba(16,21,28,.05),0 14px 40px rgba(16,21,28,.12);
-  }
-  *{box-sizing:border-box}
-  body{margin:0;font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased}
-  .wrap{max-width:1140px;margin:0 auto;padding:0 24px 60px}
-  header.top{background:#141a23;color:#eef2f7;padding:22px 24px;border-bottom:3px solid var(--accent)}
-  header.top h1{margin:0;font-size:19px;font-weight:650}
-  header.top p{margin:5px 0 0;color:#9fb0c2;font-size:13px;max-width:840px}
-  .pill{display:inline-block;background:rgba(16,182,166,.16);color:#5ff0e0;border:1px solid rgba(16,182,166,.4);font-size:11px;font-weight:600;padding:2px 9px;border-radius:999px;margin-bottom:9px}
-  .dirhead{display:flex;align-items:baseline;gap:12px;margin:30px 0 4px}
-  .dirhead h2{font-size:17px;margin:0;font-weight:680}
-  .dirhead .vibe{color:var(--muted);font-size:13px}
-  .callouts{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
-  .callouts span{font-size:11px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:999px;padding:3px 9px}
-  .callouts b{color:var(--accent)}
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>NotationHero — Player directions (brainstorm)</title>
+    <style>
+      :root {
+        --bg: #eceff4;
+        --ink: #0f151c;
+        --muted: #5d6675;
+        --line: #e4e9f0;
+        --accent: #10b6a6;
+        --accent2: #2f6df6;
+        --perfect: #009e73;
+        --early: #e69f00;
+        --late: #cc79a7;
+        --extra: #d55e00;
+        --shadow: 0 1px 2px rgba(16, 21, 28, 0.05), 0 14px 40px rgba(16, 21, 28, 0.12);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font:
+          14px/1.5 -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Inter,
+          Roboto,
+          sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+      }
+      .wrap {
+        max-width: 1140px;
+        margin: 0 auto;
+        padding: 0 24px 60px;
+      }
+      header.top {
+        background: #141a23;
+        color: #eef2f7;
+        padding: 22px 24px;
+        border-bottom: 3px solid var(--accent);
+      }
+      header.top h1 {
+        margin: 0;
+        font-size: 19px;
+        font-weight: 650;
+      }
+      header.top p {
+        margin: 5px 0 0;
+        color: #9fb0c2;
+        font-size: 13px;
+        max-width: 840px;
+      }
+      .pill {
+        display: inline-block;
+        background: rgba(16, 182, 166, 0.16);
+        color: #5ff0e0;
+        border: 1px solid rgba(16, 182, 166, 0.4);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 9px;
+        border-radius: 999px;
+        margin-bottom: 9px;
+      }
+      .dirhead {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin: 30px 0 4px;
+      }
+      .dirhead h2 {
+        font-size: 17px;
+        margin: 0;
+        font-weight: 680;
+      }
+      .dirhead .vibe {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .callouts {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 8px 0 12px;
+      }
+      .callouts span {
+        font-size: 11px;
+        color: var(--muted);
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 3px 9px;
+      }
+      .callouts b {
+        color: var(--accent);
+      }
 
-  .device{border-radius:20px;box-shadow:var(--shadow);overflow:hidden;position:relative;height:360px;background:#fff;border:1px solid #d9dfe7}
-  .device.dark{background:#0c1118;border-color:#1d2531}
-  .stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 18px}
-  svg{display:block}
+      .device {
+        border-radius: 20px;
+        box-shadow: var(--shadow);
+        overflow: hidden;
+        position: relative;
+        height: 360px;
+        background: #fff;
+        border: 1px solid #d9dfe7;
+      }
+      .device.dark {
+        background: #0c1118;
+        border-color: #1d2531;
+      }
+      .stage {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 18px;
+      }
+      svg {
+        display: block;
+      }
 
-  /* flat controls shared */
-  .ico{color:#586273;font-size:19px;display:grid;place-items:center;width:40px;height:40px;cursor:default;user-select:none}
-  .dark .ico{color:#aeb9c8}
-  .ico.sm{font-size:16px;width:34px;height:34px}
-  .fab{width:54px;height:54px;border-radius:50%;background:var(--accent);color:#042320;display:grid;place-items:center;font-size:22px;box-shadow:0 6px 18px rgba(16,182,166,.45)}
-  .scorechip{display:flex;align-items:center;gap:9px;font-variant-numeric:tabular-nums}
-  .scorechip .pct{font-weight:700;font-size:16px}
-  .scorechip .combo{font-size:12px;color:var(--perfect);font-weight:650}
-  .scorechip.glass{background:rgba(20,26,35,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#eaf0f7;border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:6px 13px}
+      /* flat controls shared */
+      .ico {
+        color: #586273;
+        font-size: 19px;
+        display: grid;
+        place-items: center;
+        width: 40px;
+        height: 40px;
+        cursor: default;
+        user-select: none;
+      }
+      .dark .ico {
+        color: #aeb9c8;
+      }
+      .ico.sm {
+        font-size: 16px;
+        width: 34px;
+        height: 34px;
+      }
+      .fab {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: var(--accent);
+        color: #042320;
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+        box-shadow: 0 6px 18px rgba(16, 182, 166, 0.45);
+      }
+      .scorechip {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-variant-numeric: tabular-nums;
+      }
+      .scorechip .pct {
+        font-weight: 700;
+        font-size: 16px;
+      }
+      .scorechip .combo {
+        font-size: 12px;
+        color: var(--perfect);
+        font-weight: 650;
+      }
+      .scorechip.glass {
+        background: rgba(20, 26, 35, 0.55);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        color: #eaf0f7;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 999px;
+        padding: 6px 13px;
+      }
 
-  /* scrubber (always-on timeline) */
-  .scrub{display:flex;flex-direction:column;gap:6px;flex:1}
-  .track{position:relative;height:6px;border-radius:999px;background:rgba(0,0,0,.10)}
-  .dark .track{background:rgba(255,255,255,.14)}
-  .track .fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:var(--accent)}
-  .track .ab{position:absolute;top:-3px;bottom:-3px;background:rgba(16,182,166,.18);border-left:2px solid var(--accent);border-right:2px solid var(--accent);border-radius:3px}
-  .track .knob{position:absolute;top:50%;transform:translate(-50%,-50%);width:15px;height:15px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:0 1px 4px rgba(0,0,0,.25)}
-  .track .tick{position:absolute;top:-2px;width:1px;height:10px;background:rgba(0,0,0,.13)}
-  .dark .track .tick{background:rgba(255,255,255,.16)}
-  .scrub-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+      /* scrubber (always-on timeline) */
+      .scrub {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        flex: 1;
+      }
+      .track {
+        position: relative;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.1);
+      }
+      .dark .track {
+        background: rgba(255, 255, 255, 0.14);
+      }
+      .track .fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        border-radius: 999px;
+        background: var(--accent);
+      }
+      .track .ab {
+        position: absolute;
+        top: -3px;
+        bottom: -3px;
+        background: rgba(16, 182, 166, 0.18);
+        border-left: 2px solid var(--accent);
+        border-right: 2px solid var(--accent);
+        border-radius: 3px;
+      }
+      .track .knob {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        background: #fff;
+        border: 3px solid var(--accent);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+      }
+      .track .tick {
+        position: absolute;
+        top: -2px;
+        width: 1px;
+        height: 10px;
+        background: rgba(0, 0, 0, 0.13);
+      }
+      .dark .track .tick {
+        background: rgba(255, 255, 255, 0.16);
+      }
+      .scrub-meta {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+      }
 
-  /* D1 streaming bar */
-  .pbar{position:absolute;left:0;right:0;bottom:0;padding:12px 18px 14px;background:linear-gradient(180deg,rgba(255,255,255,.0),#fff 22%);}
-  .pbar .row{display:flex;align-items:center;gap:14px}
-  .nowplaying{display:flex;align-items:center;gap:11px;width:210px}
-  .art{width:42px;height:42px;border-radius:10px;background:linear-gradient(135deg,#10b6a6,#2f6df6);display:grid;place-items:center;color:#fff;font-size:18px}
-  .np-t{font-weight:650;font-size:14px;line-height:1.15}.np-s{color:var(--muted);font-size:12px}
-  .ctr{display:flex;align-items:center;gap:6px;margin:0 auto}
-  .rightctl{display:flex;align-items:center;gap:6px;width:210px;justify-content:flex-end;color:var(--muted);font-size:12px}
-  .toptiny{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:10px;padding:10px 16px;color:var(--muted)}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;font-size:12px}
-  .seg span{padding:4px 10px;color:var(--muted)}.seg span.on{background:var(--accent);color:#04201d;font-weight:650}
-  .dark .seg{border-color:#2a3340}
+      /* D1 streaming bar */
+      .pbar {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: 12px 18px 14px;
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0), #fff 22%);
+      }
+      .pbar .row {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .nowplaying {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        width: 210px;
+      }
+      .art {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #10b6a6, #2f6df6);
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 18px;
+      }
+      .np-t {
+        font-weight: 650;
+        font-size: 14px;
+        line-height: 1.15;
+      }
+      .np-s {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .ctr {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0 auto;
+      }
+      .rightctl {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        width: 210px;
+        justify-content: flex-end;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .toptiny {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 16px;
+        color: var(--muted);
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        overflow: hidden;
+        font-size: 12px;
+      }
+      .seg span {
+        padding: 4px 10px;
+        color: var(--muted);
+      }
+      .seg span.on {
+        background: var(--accent);
+        color: #04201d;
+        font-weight: 650;
+      }
+      .dark .seg {
+        border-color: #2a3340;
+      }
 
-  /* D2 floating glass */
-  .glasspill{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;
-    background:rgba(18,24,33,.5);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.14);border-radius:999px;padding:8px 14px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
-  .glasspill .ico{color:#d6deea}
-  .edgeline{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(255,255,255,.12)}
-  .edgeline .fill{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
-  .edgeline .ab{position:absolute;top:0;bottom:0;background:rgba(16,182,166,.3);border-left:2px solid var(--accent);border-right:2px solid var(--accent)}
-  .floatback{position:absolute;top:14px;left:16px;color:rgba(230,238,247,.8);font-size:18px}
-  .floatscore{position:absolute;top:13px;right:16px}
-  .floatview{position:absolute;top:13px;left:50%;transform:translateX(-50%)}
+      /* D2 floating glass */
+      .glasspill {
+        position: absolute;
+        left: 50%;
+        bottom: 26px;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: rgba(18, 24, 33, 0.5);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 999px;
+        padding: 8px 14px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      }
+      .glasspill .ico {
+        color: #d6deea;
+      }
+      .edgeline {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .edgeline .fill {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        background: var(--accent);
+      }
+      .edgeline .ab {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        background: rgba(16, 182, 166, 0.3);
+        border-left: 2px solid var(--accent);
+        border-right: 2px solid var(--accent);
+      }
+      .floatback {
+        position: absolute;
+        top: 14px;
+        left: 16px;
+        color: rgba(230, 238, 247, 0.8);
+        font-size: 18px;
+      }
+      .floatscore {
+        position: absolute;
+        top: 13px;
+        right: 16px;
+      }
+      .floatview {
+        position: absolute;
+        top: 13px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
 
-  /* D3 practice rail */
-  .topstrip{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;gap:14px;padding:11px 16px;border-bottom:1px solid var(--line);background:#fbfcfe}
-  .topstrip .ttl{font-weight:650;font-size:14px}.topstrip .ttl s{color:var(--muted);text-decoration:none;font-weight:500;margin-left:5px}
-  .ticker{margin:0 auto;display:flex;align-items:center;gap:16px;font-size:12px;color:var(--muted)}
-  .ticker b{color:var(--ink);font-size:15px;font-variant-numeric:tabular-nums}
-  .rail{position:absolute;right:0;top:44px;bottom:64px;width:54px;border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:8px;background:#fbfcfe}
-  .rail .ri{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;color:var(--muted);font-size:15px}
-  .rail .ri small{font-size:8px}
-  .rail .ri.on{background:rgba(16,182,166,.12);color:#0b7f74}
-  .botstrip{position:absolute;left:0;right:0;bottom:0;display:flex;align-items:center;gap:14px;padding:10px 16px;border-top:1px solid var(--line);background:#fbfcfe}
+      /* D3 practice rail */
+      .topstrip {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 11px 16px;
+        border-bottom: 1px solid var(--line);
+        background: #fbfcfe;
+      }
+      .topstrip .ttl {
+        font-weight: 650;
+        font-size: 14px;
+      }
+      .topstrip .ttl s {
+        color: var(--muted);
+        text-decoration: none;
+        font-weight: 500;
+        margin-left: 5px;
+      }
+      .ticker {
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .ticker b {
+        color: var(--ink);
+        font-size: 15px;
+        font-variant-numeric: tabular-nums;
+      }
+      .rail {
+        position: absolute;
+        right: 0;
+        top: 44px;
+        bottom: 64px;
+        width: 54px;
+        border-left: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding-top: 8px;
+        background: #fbfcfe;
+      }
+      .rail .ri {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        font-size: 15px;
+      }
+      .rail .ri small {
+        font-size: 8px;
+      }
+      .rail .ri.on {
+        background: rgba(16, 182, 166, 0.12);
+        color: #0b7f74;
+      }
+      .botstrip {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 10px 16px;
+        border-top: 1px solid var(--line);
+        background: #fbfcfe;
+      }
 
-  .cap{font-size:11.5px;color:var(--muted);margin:8px 2px 0}
-  .foot{margin-top:26px;color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:13px}
-</style>
-</head>
-<body>
-<header class="top"><div class="wrap" style="max-width:1140px">
-  <span class="pill">PLAYER BRAINSTORM · 3 directions · sleek controls, timeline always-on, glanceable score</span>
-  <h1>NotationHero — Player, reimagined as a player</h1>
-  <p>Less control-panel, more media player. The notation is the "now playing"; controls are flat and quiet. All three keep the timeline visible at all times and the score glanceable. Pick a direction (or blend) and I'll develop it.</p>
-</div></header>
+      .cap {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin: 8px 2px 0;
+      }
+      .foot {
+        margin-top: 26px;
+        color: var(--muted);
+        font-size: 12px;
+        border-top: 1px solid var(--line);
+        padding-top: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap" style="max-width: 1140px">
+        <span class="pill"
+          >PLAYER BRAINSTORM · 3 directions · sleek controls, timeline always-on, glanceable
+          score</span
+        >
+        <h1>NotationHero — Player, reimagined as a player</h1>
+        <p>
+          Less control-panel, more media player. The notation is the "now playing"; controls are
+          flat and quiet. All three keep the timeline visible at all times and the score glanceable.
+          Pick a direction (or blend) and I'll develop it.
+        </p>
+      </div>
+    </header>
 
-<div class="wrap">
+    <div class="wrap">
+      <div class="dirhead">
+        <h2>① Streaming</h2>
+        <span class="vibe">Apple Music / Spotify feel — a clean bottom player bar</span>
+      </div>
+      <div class="callouts">
+        <span><b>timeline</b> integrated in the bar</span
+        ><span><b>score</b> top-right + now-playing left</span><span>flat icons, one teal play</span
+        ><span>panels = slide-up sheets</span>
+      </div>
+      <div id="d1" class="device"></div>
+      <p class="cap">
+        The whole bottom bar reads like a music player: now-playing (left), flat transport + round
+        play (center), tempo/extras (right), with the scrubber + A–B as the top line of the bar.
+        Notation breathes above it.
+      </p>
 
-  <div class="dirhead"><h2>① Streaming</h2><span class="vibe">Apple Music / Spotify feel — a clean bottom player bar</span></div>
-  <div class="callouts"><span><b>timeline</b> integrated in the bar</span><span><b>score</b> top-right + now-playing left</span><span>flat icons, one teal play</span><span>panels = slide-up sheets</span></div>
-  <div id="d1" class="device"></div>
-  <p class="cap">The whole bottom bar reads like a music player: now-playing (left), flat transport + round play (center), tempo/extras (right), with the scrubber + A–B as the top line of the bar. Notation breathes above it.</p>
+      <div class="dirhead">
+        <h2>② Floating glass</h2>
+        <span class="vibe"
+          >Immersive / video-player — translucent controls over full-bleed notation</span
+        >
+      </div>
+      <div class="callouts">
+        <span><b>timeline</b> = thin line on the bottom edge</span
+        ><span><b>score</b> floating glass chip</span><span>controls in a glass pill, auto-dim</span
+        ><span>dark, cinematic</span>
+      </div>
+      <div id="d2" class="device dark"></div>
+      <p class="cap">
+        Maximum focus on the notation. Controls float in a frosted pill and fade while you play; tap
+        to bring them back. Timeline is a hairline at the very bottom. Great for the
+        dark/Friendly-adjacent feel.
+      </p>
 
-  <div class="dirhead"><h2>② Floating glass</h2><span class="vibe">Immersive / video-player — translucent controls over full-bleed notation</span></div>
-  <div class="callouts"><span><b>timeline</b> = thin line on the bottom edge</span><span><b>score</b> floating glass chip</span><span>controls in a glass pill, auto-dim</span><span>dark, cinematic</span></div>
-  <div id="d2" class="device dark"></div>
-  <p class="cap">Maximum focus on the notation. Controls float in a frosted pill and fade while you play; tap to bring them back. Timeline is a hairline at the very bottom. Great for the dark/Friendly-adjacent feel.</p>
+      <div class="dirhead">
+        <h2>③ Practice rail</h2>
+        <span class="vibe">Clean pro tool — quiet top ticker + side rail for panels</span>
+      </div>
+      <div class="callouts">
+        <span><b>timeline</b> pinned bottom strip</span
+        ><span><b>score</b> live in the top ticker</span
+        ><span>panels dock from a slim right rail</span><span>structured but de-cluttered</span>
+      </div>
+      <div id="d3" class="device"></div>
+      <p class="cap">
+        Keeps a little structure (top ticker shows live score/combo; right rail holds
+        Kit/Mixer/Focus/Memory as quiet icons that open panels on demand) without the classic-tutor
+        wall. Everything has a home, nothing shouts.
+      </p>
 
-  <div class="dirhead"><h2>③ Practice rail</h2><span class="vibe">Clean pro tool — quiet top ticker + side rail for panels</span></div>
-  <div class="callouts"><span><b>timeline</b> pinned bottom strip</span><span><b>score</b> live in the top ticker</span><span>panels dock from a slim right rail</span><span>structured but de-cluttered</span></div>
-  <div id="d3" class="device"></div>
-  <p class="cap">Keeps a little structure (top ticker shows live score/combo; right rail holds Kit/Mixer/Focus/Memory as quiet icons that open panels on demand) without the classic-tutor wall. Everything has a home, nothing shouts.</p>
+      <div class="foot">
+        NotationHero · player brainstorm · feedback marks in the locked Okabe-Ito palette · all
+        three honor: timeline always-on, glanceable score, flat controls. Not detailed yet — these
+        are directions to choose between.
+      </div>
+    </div>
 
-  <div class="foot">NotationHero · player brainstorm · feedback marks in the locked Okabe-Ito palette · all three honor: timeline always-on, glanceable score, flat controls. Not detailed yet — these are directions to choose between.</div>
-</div>
+    <script>
+      const PAL = { perfect: '#009E73', early: '#E69F00', late: '#CC79A7', extra: '#D55E00' };
+      function staff(x0, x1, c) {
+        let s = '';
+        [0, 9, 18, 27, 36].forEach(
+          (y) =>
+            (s += `<line x1="${x0}" y1="${26 + y}" x2="${x1}" y2="${26 + y}" stroke="${c}" stroke-width="1"/>`),
+        );
+        return s;
+      }
+      function head(cx, cy, f, t) {
+        if (t === 'cym')
+          return `<g stroke="${f}" stroke-width="2.3" stroke-linecap="round"><line x1="${cx - 4.8}" y1="${cy - 4.4}" x2="${cx + 4.8}" y2="${cy + 4.4}"/><line x1="${cx - 4.8}" y1="${cy + 4.4}" x2="${cx + 4.8}" y2="${cy - 4.4}"/></g>`;
+        return `<ellipse cx="${cx}" cy="${cy}" rx="6.4" ry="4.9" fill="${f}" transform="rotate(-18 ${cx} ${cy})"/>`;
+      }
+      function ring(cx, cy, c) {
+        return `<circle cx="${cx}" cy="${cy}" r="11" fill="none" stroke="${c}" stroke-width="2.4"/>`;
+      }
+      function chev(cx, cy, c, d) {
+        const s = d === 'left' ? -1 : 1,
+          b = cx + s * 11;
+        return `<path d="M ${b} ${cy - 4.4} L ${b + s * 6} ${cy} L ${b} ${cy + 4.4} Z" fill="${c}"/>`;
+      }
+      function cross(cx, cy, c) {
+        return `<g stroke="${c}" stroke-width="2.9" stroke-linecap="round"><line x1="${cx - 6}" y1="${cy - 6}" x2="${cx + 6}" y2="${cy + 6}"/><line x1="${cx - 6}" y1="${cy + 6}" x2="${cx + 6}" y2="${cy - 6}"/></g>`;
+      }
+      const NOTES = [
+        { l: 1, t: 'cym' },
+        { l: 3, t: 'drum', fb: 'perfect' },
+        { l: 1, t: 'cym' },
+        { l: 4, t: 'drum' },
+        { l: 1, t: 'cym', fb: 'early' },
+        { l: 3, t: 'drum', fb: 'late' },
+        { l: 1, t: 'cym' },
+        { l: 4, t: 'drum' },
+        { l: 2, t: 'drum' },
+        { l: 3, t: 'drum', fb: 'extra' },
+        { l: 1, t: 'cym' },
+        { l: 4, t: 'drum' },
+        { l: 1, t: 'cym' },
+        { l: 3, t: 'drum' },
+        { l: 1, t: 'cym' },
+        { l: 4, t: 'drum' },
+      ];
+      function notation(theme, w) {
+        const baseF = theme === 'dark' ? '#e9edf2' : '#15191f',
+          sc = theme === 'dark' ? '#39455472' : '#c9d0d9',
+          beam = theme === 'dark' ? '#9aa6b4' : '#222';
+        const yL = [26, 35, 44, 53, 62],
+          x0 = 8,
+          step = (w - 30) / NOTES.length;
+        let g = staff(x0, w - 10, sc);
+        g += `<line x1="${x0 + 18}" y1="16" x2="${x0 + 18 + step * (NOTES.length - 1)}" y2="16" stroke="${beam}" stroke-width="2.6"/>`;
+        NOTES.forEach((n, i) => {
+          const cx = x0 + 18 + i * step,
+            cy = yL[n.l];
+          g += `<line x1="${cx + 5}" y1="${cy}" x2="${cx + 5}" y2="16" stroke="${beam}" stroke-width="1.4"/>`;
+          if (!n.fb) {
+            g += head(cx, cy, baseF, n.t);
+            return;
+          }
+          if (n.fb === 'extra') {
+            g += head(cx, cy, baseF, n.t);
+            g += cross(cx, yL[0] - 3, PAL.extra);
+            return;
+          }
+          g += head(cx, cy, baseF, n.t);
+          g += ring(cx, cy, PAL[n.fb]);
+          if (n.fb === 'early') g += chev(cx, cy, PAL.early, 'left');
+          if (n.fb === 'late') g += chev(cx, cy, PAL.late, 'right');
+        });
+        return `<svg width="${w}" height="78" viewBox="0 0 ${w} 78">${g}</svg>`;
+      }
+      function ticks(n) {
+        let s = '';
+        for (let i = 1; i < n; i++) s += `<div class="tick" style="left:${(i * 100) / n}%"></div>`;
+        return s;
+      }
+      function scrub() {
+        return `<div class="scrub"><div class="track"><div class="ab" style="left:30%;width:24%"></div><div class="fill" style="width:42%"></div>${ticks(8)}<div class="knob" style="left:42%"></div></div><div class="scrub-meta"><span>m. 3 / 30</span><span>1:04 / 3:48</span></div></div>`;
+      }
 
-<script>
-const PAL={perfect:'#009E73',early:'#E69F00',late:'#CC79A7',extra:'#D55E00'};
-function staff(x0,x1,c){let s='';[0,9,18,27,36].forEach(y=>s+=`<line x1="${x0}" y1="${26+y}" x2="${x1}" y2="${26+y}" stroke="${c}" stroke-width="1"/>`);return s;}
-function head(cx,cy,f,t){if(t==='cym')return `<g stroke="${f}" stroke-width="2.3" stroke-linecap="round"><line x1="${cx-4.8}" y1="${cy-4.4}" x2="${cx+4.8}" y2="${cy+4.4}"/><line x1="${cx-4.8}" y1="${cy+4.4}" x2="${cx+4.8}" y2="${cy-4.4}"/></g>`;return `<ellipse cx="${cx}" cy="${cy}" rx="6.4" ry="4.9" fill="${f}" transform="rotate(-18 ${cx} ${cy})"/>`;}
-function ring(cx,cy,c){return `<circle cx="${cx}" cy="${cy}" r="11" fill="none" stroke="${c}" stroke-width="2.4"/>`;}
-function chev(cx,cy,c,d){const s=d==='left'?-1:1,b=cx+s*11;return `<path d="M ${b} ${cy-4.4} L ${b+s*6} ${cy} L ${b} ${cy+4.4} Z" fill="${c}"/>`;}
-function cross(cx,cy,c){return `<g stroke="${c}" stroke-width="2.9" stroke-linecap="round"><line x1="${cx-6}" y1="${cy-6}" x2="${cx+6}" y2="${cy+6}"/><line x1="${cx-6}" y1="${cy+6}" x2="${cx+6}" y2="${cy-6}"/></g>`;}
-const NOTES=[{l:1,t:'cym'},{l:3,t:'drum',fb:'perfect'},{l:1,t:'cym'},{l:4,t:'drum'},{l:1,t:'cym',fb:'early'},{l:3,t:'drum',fb:'late'},{l:1,t:'cym'},{l:4,t:'drum'},{l:2,t:'drum'},{l:3,t:'drum',fb:'extra'},{l:1,t:'cym'},{l:4,t:'drum'},{l:1,t:'cym'},{l:3,t:'drum'},{l:1,t:'cym'},{l:4,t:'drum'}];
-function notation(theme,w){const baseF=theme==='dark'?'#e9edf2':'#15191f',sc=theme==='dark'?'#39455472':'#c9d0d9',beam=theme==='dark'?'#9aa6b4':'#222';
-  const yL=[26,35,44,53,62],x0=8,step=(w-30)/NOTES.length;let g=staff(x0,w-10,sc);
-  g+=`<line x1="${x0+18}" y1="16" x2="${x0+18+step*(NOTES.length-1)}" y2="16" stroke="${beam}" stroke-width="2.6"/>`;
-  NOTES.forEach((n,i)=>{const cx=x0+18+i*step,cy=yL[n.l];g+=`<line x1="${cx+5}" y1="${cy}" x2="${cx+5}" y2="16" stroke="${beam}" stroke-width="1.4"/>`;
-    if(!n.fb){g+=head(cx,cy,baseF,n.t);return;} if(n.fb==='extra'){g+=head(cx,cy,baseF,n.t);g+=cross(cx,yL[0]-3,PAL.extra);return;}
-    g+=head(cx,cy,baseF,n.t);g+=ring(cx,cy,PAL[n.fb]);if(n.fb==='early')g+=chev(cx,cy,PAL.early,'left');if(n.fb==='late')g+=chev(cx,cy,PAL.late,'right');});
-  return `<svg width="${w}" height="78" viewBox="0 0 ${w} 78">${g}</svg>`;}
-function ticks(n){let s='';for(let i=1;i<n;i++)s+=`<div class="tick" style="left:${i*100/n}%"></div>`;return s;}
-function scrub(){return `<div class="scrub"><div class="track"><div class="ab" style="left:30%;width:24%"></div><div class="fill" style="width:42%"></div>${ticks(8)}<div class="knob" style="left:42%"></div></div><div class="scrub-meta"><span>m. 3 / 30</span><span>1:04 / 3:48</span></div></div>`;}
-
-// D1 streaming
-document.getElementById('d1').innerHTML=`
+      // D1 streaming
+      document.getElementById('d1').innerHTML = `
  <div class="toptiny"><span class="ico sm">‹</span><div class="seg" style="margin-left:auto"><span class="on">♪ Notation</span><span>▦ Friendly</span></div>
    <div class="scorechip" style="margin-left:auto"><span class="pct">82%</span><span class="combo">×12</span></div><span class="ico sm">⚙</span></div>
- <div class="stage" style="padding-top:30px;padding-bottom:96px">${notation('light',880)}</div>
+ <div class="stage" style="padding-top:30px;padding-bottom:96px">${notation('light', 880)}</div>
  <div class="pbar">
    <div class="row" style="margin-bottom:9px">${scrub()}</div>
    <div class="row">
@@ -147,21 +651,21 @@ document.getElementById('d1').innerHTML=`
      <div class="rightctl"><span class="ico sm">🎵</span><span>120 BPM</span><span class="ico sm">⋯</span></div>
    </div></div>`;
 
-// D2 floating glass (dark)
-document.getElementById('d2').innerHTML=`
- <div class="stage">${notation('dark',900)}</div>
+      // D2 floating glass (dark)
+      document.getElementById('d2').innerHTML = `
+ <div class="stage">${notation('dark', 900)}</div>
  <div class="floatback">‹</div>
  <div class="floatview"><div class="seg"><span class="on">♪</span><span>▦</span></div></div>
  <div class="floatscore"><div class="scorechip glass"><span class="pct">82%</span><span class="combo">×12</span></div></div>
  <div class="glasspill"><span class="ico">⏮</span><span class="ico">⏪</span><span class="fab" style="width:46px;height:46px;font-size:19px">▶</span><span class="ico">⏩</span><span class="ico">🔁</span><span class="ico" style="opacity:.5">|</span><span class="ico sm">🎵</span><span class="ico sm">⚙</span></div>
  <div class="edgeline"><div class="ab" style="left:30%;width:24%"></div><div class="fill" style="width:42%"></div></div>`;
 
-// D3 practice rail
-document.getElementById('d3').innerHTML=`
+      // D3 practice rail
+      document.getElementById('d3').innerHTML = `
  <div class="topstrip"><span class="ico sm">‹</span><div class="ttl">Light Pop<s>Easy</s></div>
    <div class="ticker"><span>SCORE <b>82%</b></span><span>COMBO <b style="color:var(--perfect)">×12</b></span><span>m. <b>3/30</b></span></div>
    <div class="seg"><span class="on">♪ Notation</span><span>▦ Friendly</span></div></div>
- <div class="stage" style="left:0;right:54px;top:44px;bottom:64px">${notation('light',820)}</div>
+ <div class="stage" style="left:0;right:54px;top:44px;bottom:64px">${notation('light', 820)}</div>
  <div class="rail">
    <div class="ri on"><div style="text-align:center">🥁<small>Kit</small></div></div>
    <div class="ri"><div style="text-align:center">🎚<small>Mix</small></div></div>
@@ -172,6 +676,6 @@ document.getElementById('d3').innerHTML=`
    <span class="ico">⏮</span><span class="fab" style="width:46px;height:46px;font-size:19px">▶</span><span class="ico">🔁</span><span class="ico sm">🎵</span>
    ${scrub()}
    <span class="ico sm">⋯</span></div>`;
-</script>
-</body>
+    </script>
+  </body>
 </html>

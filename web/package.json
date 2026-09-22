@@ -1,0 +1,43 @@
+{
+  "name": "@notation-hero/web",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "build": "node scripts/vendor-alphatab.mjs && NEXT_PUBLIC_APP_VERSION=$(node scripts/app-version.mjs) next build && node scripts/assert-design-system-css.mjs",
+    "dev": "node scripts/vendor-alphatab.mjs && node scripts/dev.mjs",
+    "lint": "eslint . --max-warnings 0",
+    "start": "next start",
+    "test": "vitest run",
+    "test:e2e": "playwright test --config=playwright.e2e.config.ts",
+    "test:e2e:ui": "playwright test --config=playwright.e2e.config.ts --ui",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@coderline/alphatab": "1.8.4",
+    "@fontsource-variable/material-symbols-outlined": "^5.2.45",
+    "@fontsource-variable/public-sans": "^5.2.7",
+    "@notation-hero/client": "workspace:*",
+    "next": "16.3.4",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.61.1",
+    "@tailwindcss/postcss": "^4.3.1",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "eslint": "^9.20.0",
+    "eslint-config-next": "16.3.4",
+    "jsdom": "^29.1.1",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.11"
+  }
+}

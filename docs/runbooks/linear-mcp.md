@@ -1,7 +1,7 @@
 # Linear MCP — Token Hygiene Runbook
 
 > [!WARNING]
-> ⛔ **SUPERSEDED — Linear is retired.** The issue tracker is now **Jira** (project **KAN**)
+> ⛔ **SUPERSEDED — Linear is retired.** The issue tracker is now **Jira** (project **NH**)
 > as of 2026-06-11. See `docs/decisions/2026-06-11-tracker-linear-to-jira.md`.
 > Kept for history; do not act on it. Any fallback/runbook pattern here still applies but targets Jira now.
 
@@ -13,14 +13,14 @@ The Linear MCP server lets AI agents create + update Linear issues directly (it 
 
 ## Workspace identity
 
-| Field | Value |
-|---|---|
-| Team name | `Leocaseiro` |
-| Team key | `LEO` |
-| Team ID | `ed9131a1-9fa2-4662-bac8-12735692f59a` |
-| Project name | `Notation Hero` |
-| Project ID | `75dc3e7c-0157-482a-9fc9-caf032b7d117` |
-| Project URL | <https://linear.app/leocaseiro/project/notation-hero-db465058e201> |
+| Field        | Value                                                              |
+| ------------ | ------------------------------------------------------------------ |
+| Team name    | `Leocaseiro`                                                       |
+| Team key     | `LEO`                                                              |
+| Team ID      | `ed9131a1-9fa2-4662-bac8-12735692f59a`                             |
+| Project name | `Notation Hero`                                                    |
+| Project ID   | `75dc3e7c-0157-482a-9fc9-caf032b7d117`                             |
+| Project URL  | <https://linear.app/leocaseiro/project/notation-hero-db465058e201> |
 
 Branch naming convention (used once L10b Linear GitHub App is wired): `LEO-<issue-number>-<slug>`.
 

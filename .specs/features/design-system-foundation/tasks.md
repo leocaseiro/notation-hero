@@ -1,0 +1,25 @@
+# Tasks — Design System Foundation
+
+Atomic tasks. Each ends green + commits (baby commits). `→ verify` is the gate.
+Status: ☐ todo · ◐ in progress · ☒ done.
+
+| #       | Task                                                                                                                                                                                                                                                                 | Verify (gate)                                                                                | Status |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------ |
+| **T1**  | Verify CLIs: `shadcn@latest` init/apply/add; `storybook`; `playwright`. Capture flags.                                                                                                                                                                               | Commands exist; flags confirmed (no guessing).                                               | ☒      |
+| **T2**  | **Decode preset** `b5claE9qM` (read-only) → show palette/fonts/icons to user → confirm vs teal/no-purple (GA-3 hard gate).                                                                                                                                           | User confirmed full theme + Public Sans; **icons swapped to Material Symbols** (not Remix).  | ☒      |
+| **T3**  | `shadcn init` (Vite, no template/defaults). `components.json`: `tailwind.css=src/styles.css`, aliases `#/`.                                                                                                                                                          | `components.json` present; no `next` dep; build + typecheck pass.                            | ☒      |
+| **T4**  | `shadcn apply --preset b5claE9qM --only theme,font`. Teal tokens + Public Sans land in `src/styles.css`.                                                                                                                                                             | styles.css has preset tokens; build + typecheck pass; matches decode.                        | ☒      |
+| **T5**  | Button → `components/ui/Button/Button.tsx` (folder-per-component, PascalCase); fix `#/` imports.                                                                                                                                                                     | Button renders both themes; typecheck + lint pass; layout-guard ok.                          | ☒      |
+| **T6**  | `Button.test.tsx` (Vitest + Testing Library): render, variants, sizes, disabled, onClick, asChild.                                                                                                                                                                   | `pnpm --filter client test` green (5 tests).                                                 | ☒      |
+| **T7**  | Storybook v10 + `@storybook/tanstack-react`; Tailwind v4 wiring (viteFinal + preview imports styles.css); no `src/stories/`; `Button.stories.tsx`.                                                                                                                   | `storybook` serves; `build-storybook` ok; tokens visible; layout-guard ok.                   | ☒      |
+| **T8**  | Playwright + config (`testMatch **/*.vr.{ts,tsx}`, webServer = storybook dev); `Button.vr.ts` (toHaveScreenshot per story); generate + commit baselines.                                                                                                             | `pnpm --filter client test:vr` green vs committed baselines.                                 | ☒      |
+| **T9**  | Wire client scripts (`storybook`, `build-storybook`, `test:vr`, `test:vr:update`); run all root gates; eslint ignores for build output.                                                                                                                              | `pnpm lint && typecheck && test && build` all green; `check-layout.sh` ok.                   | ☒      |
+| **T10** | **Material Symbols icon buttons** (round-4/5 ask): font via Google Fonts CDN + `.material-symbols-outlined` class (index.html + preview-head.html); `Icon` (icon-only, aria-label) + `WithIcon` (icon+text) stories + VR baselines; VR waits `document.fonts.ready`. | typecheck + lint + build + VR (11 stories) all green; glyphs render (not ligature fallback). | ☒      |
+
+## Notes
+
+- T3–T5, T7, T8, T10 each touch deps/config — committed per green step so any one is
+  one `git revert` away (see branch log).
+- VR baselines: committed local (darwin) now; CI/Docker Linux baselines are a deferred
+  follow-up (design.md §D, spec §3).
+- Before PR: link/create an `NH-NN` Jira issue (CI gate needs a key in the PR).

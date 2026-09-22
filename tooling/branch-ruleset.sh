@@ -13,7 +13,7 @@
 # queued PRs get a synthetic merge commit, CI re-runs on the combined head
 # (via the merge_group: trigger in ci.yml), and master only updates on green.
 # Closes the "two independently-green PRs combine into a broken master" gap
-# that motivated KAN-140 / registry L7-merge-queue.
+# that motivated NH-172 / registry L7-merge-queue.
 #
 # Usage:
 #   tooling/branch-ruleset.sh           # DRY-RUN: print the payload + show what changes

@@ -1,0 +1,118 @@
+name: Deploy
+
+# CD for the ARCH-EDGE-1 AWS slice (NH-206). Auth = GitHub -> AWS OIDC (no stored keys);
+# Pulumi state = self-managed S3 backend (pinned in infra/Pulumi.yaml). Runs `pulumi up` only,
+# and ONLY after the CI workflow succeeds on master (gate deploy on green CI — a
+# compilable-but-test-failing commit must never reach `up`). `pulumi preview` is LOCAL-ONLY
+# (NH-206 review #3): a PR-triggered preview ran arbitrary infra/*.ts under the full deploy role,
+# so PRs now carry NO AWS credentials. Run `pulumi preview` locally before merging infra changes
+# — see docs/specs/2026-06-24-nh-206-oidc-deploy-hardening.md.
+on:
+  # Trigger after the "CI" workflow completes on master; the `up` job runs only if that CI run
+  # succeeded (gated below). A direct `push: master` trigger would race CI and could deploy a red
+  # commit.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  # Manual redeploy (no commit) — used for secret rotation (§9) and recovery.
+  workflow_dispatch:
+
+# id-token: assume the AWS role via OIDC. No `pull-requests` perm — no PR job touches AWS now.
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  up:
+    name: Pulumi up
+    # Deploy only a commit whose CI run went green (workflow_run carries the triggering CI
+    # conclusion); combined with the master-branch trigger filter, a red or non-master commit
+    # never reaches `up`. The workflow_dispatch path is ALSO pinned to refs/heads/master in-repo
+    # (defence-in-depth behind the production environment's deployment-branch policy) so a manual
+    # rotation deploy can't run prod migrate/up from a feature branch (review F-D / NH-79).
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master') || github.event.workflow_run.conclusion == 'success' }}
+    # The master-restricted `production` environment is the SECOND gate alongside the OIDC trust:
+    # the deploy role trusts ONLY `...:environment:production`, a subject GitHub mints solely for a
+    # job that references this environment — and the environment is limited to the master branch.
+    environment: production
+    runs-on: ubuntu-latest
+    # First CloudFront create can take ~15-20 min; this timeout is a hung-job backstop. NOTE: a
+    # hard-killed `pulumi up` does NOT release the S3-backend lock — it strands it (the next run
+    # needs `pulumi cancel`). The timeout frees the concurrency group, not the lock.
+    timeout-minutes: 60
+    # Never cancel an in-flight `up` — a half-applied deploy can corrupt stack state.
+    concurrency:
+      group: deploy-up-dev
+      cancel-in-progress: false
+    steps:
+      # No `ref:` — checkout defaults to the master tip. Deploy is workflow_run-gated to
+      # `branches: [master]`, so it only ever runs for a master commit (never PR code), and
+      # deploying the latest master is correct. (Pinning ref to workflow_run.head_sha would trip
+      # the SAST "workflow-run-target-code-checkout" rule for the pwn-request pattern.)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup-js
+      # Migrate Neon BEFORE building/deploying (§5). Needs only Node + the GitHub secret (no AWS),
+      # so it runs before any credential is assumed; a failure aborts before `pulumi up`. Idempotent
+      # (drizzle-kit records applied migrations). DATABASE_URL here is the OWNER url (DDL-capable) —
+      # never the nh_app url, which has no DDL rights.
+      - name: Migrate Neon (before deploy)
+        # Per-step timeout (NH-79 review F11): a hung drizzle-kit migrate must not hold the
+        # deploy-up-dev concurrency group for the job's full 60-min budget.
+        timeout-minutes: 5
+        run: pnpm --filter @notation-hero/server run db:migrate
+        env:
+          DATABASE_URL: ${{ secrets.NEON_MIGRATION_URL }}
+      - name: Build Lambda + SPA (pulumi reads server/dist-lambda + client/dist)
+        run: |
+          pnpm --filter @notation-hero/server run build:lambda
+          pnpm --filter @notation-hero/client run build
+      - uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          # Pin the OIDC token audience to AWS STS (defence-in-depth; the role trust also
+          # enforces aud = sts.amazonaws.com). NH-206 review #3, H2.
+          audience: sts.amazonaws.com
+          mask-aws-account-id: true
+      - id: pulumi-up
+        uses: pulumi/actions@8e5e406f4007fca908480587cb9893c07090f58d # v7.0.0
+        with:
+          command: up
+          stack-name: dev
+          work-dir: infra
+          cloud-url: s3://${{ vars.PULUMI_STATE_BUCKET }}
+        env:
+          PULUMI_CONFIG_PASSPHRASE: ${{ secrets.PULUMI_CONFIG_PASSPHRASE }}
+          # The nh_app url infra/index.ts reads (process.env.NEON_DATABASE_URL) and injects as the
+          # Lambda DATABASE_URL. Owner url stays out of this step entirely.
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+      # Post-deploy smoke check (NH-79 review F3): fail the deploy if GET /api/catalog is not 200.
+      # The most likely cause of a non-200 on the first deploy is the Phase-2 nh_app GRANTs not being
+      # applied — without this gate that surfaces only as silent 503s in prod (the owner-url seed
+      # succeeds regardless, masking the gap). cloudfrontUrl is a non-secret stack output of `up`.
+      - name: Smoke-check the public catalog read
+        env:
+          CLOUDFRONT_URL: ${{ steps.pulumi-up.outputs.cloudfrontUrl }}
+        run: |
+          [ -n "$CLOUDFRONT_URL" ] || { echo "::error::cloudfrontUrl output missing from pulumi up"; exit 1; }
+          url="$CLOUDFRONT_URL/api/catalog"
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 30 --retry 5 --retry-delay 10 --retry-all-errors "$url")"
+          echo "GET $url -> HTTP $code"
+          [ "$code" = "200" ] || { echo "::error::catalog read returned $code (expected 200) — likely the Phase-2 nh_app GRANTs are not applied (NH-79 review F3)"; exit 1; }
+      # Only a HARD-killed `up` (job timeout / cancellation) strands the S3-backend lock (no
+      # DynamoDB auto-release) — a normal `failure` exits cleanly and releases it. So fire ONLY on
+      # `cancelled`, surfacing the recovery command instead of leaving an operator to find the wedge
+      # later (NH-206 review: stranded-lock recovery).
+      - name: Surface stranded-lock recovery if up was cancelled (hard-killed)
+        if: ${{ always() && steps.pulumi-up.outcome == 'cancelled' }}
+        run: |
+          {
+            echo "### Pulumi up did not complete — the S3 state lock may be stranded"
+            echo
+            echo "The next deploy will fail with a 'stack is currently locked' error until the lock"
+            echo "is cleared. Clear it (admin, with the S3 backend + passphrase configured):"
+            echo
+            echo "    pulumi login s3://\$PULUMI_STATE_BUCKET"
+            echo "    cd infra && pulumi cancel --stack dev"
+          } >> "$GITHUB_STEP_SUMMARY"

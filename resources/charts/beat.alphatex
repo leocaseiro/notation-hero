@@ -1,0 +1,37 @@
+\defaultSystemsLayout 4
+\systemsLayout 3
+\hideDynamics
+\bracketExtendMode nobrackets
+\firstSystemTrackNameOrientation horizontal
+\track ("Drums" "drm.") {
+  color "#75C9E3"
+  systemsLayout 3
+  volume 12
+  balance 8
+  instrument percussion
+}
+  \staff {
+    score
+  }
+    \articulation defaults
+    \ts (4 4)
+    \tempo 120
+    \accidentals auto
+    \clef neutral
+    \ottava regular
+    \simile none
+    \ks c
+      ("Hi-Hat (closed)" "Kick (hit) 2").4{dy mf beam Down}
+      "Hi-Hat (closed)".4{beam Down}
+      ("Snare (hit) 2" "Hi-Hat (closed)").4{beam Down}
+      "Hi-Hat (closed)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (closed)").4{beam Down}
+      "Hi-Hat (closed)".4{beam Down}
+      ("Snare (hit) 2" "Hi-Hat (closed)").4{beam Down}
+      "Hi-Hat (closed)".4{beam Down}
+    |
+      ("Kick (hit) 2" "Hi-Hat (closed)").4{beam Down}
+      "Hi-Hat (closed)".4{beam Down}
+      ("Snare (hit) 2" "Hi-Hat (closed)").4{beam Down}
+      "Hi-Hat (closed)".4{beam Down}
