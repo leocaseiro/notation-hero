@@ -161,7 +161,7 @@ const TempoControl = ({
           aria-label="Decrease tempo"
           className={cn(
             buttonVariants({ variant: 'ghost', size: 'icon' }),
-            'h-auto w-11',
+            'h-auto min-h-11 w-11',
             STEPPER_RADIUS,
           )}
         >
@@ -224,7 +224,7 @@ const TempoControl = ({
           aria-label="Increase tempo"
           className={cn(
             buttonVariants({ variant: 'ghost', size: 'icon' }),
-            'h-auto w-11',
+            'h-auto min-h-11 w-11',
             STEPPER_RADIUS,
           )}
         >
