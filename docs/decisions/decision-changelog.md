@@ -55,6 +55,10 @@ branch still present on `origin`.
 **Status:** ✅ decided (the archiving) · ⚠️ unverified (the five recovered decisions) · 📄 prose-only.
 Approved by leocaseiro 2026-09-22.
 
+### 2026-09-22 — merge=union is scoped to the changelog; the registry conflicts normally (NH-322)
+
+The #143 split moved the dated change log out of `decision-registry.md` into this file, leaving `registry.md` as the topic-by-topic STATE view — but `.gitattributes` still applied `merge=union` to both. On a state file, union silently keeps BOTH sides of a real edit (two PRs flipping the same decision's status) with no conflict to review, and PR #170 already hit the append-side of it (a union merge duplicated the whole change log back into the registry). So union is now scoped to `decision-changelog.md` only; `decision-registry.md` conflicts normally, surfacing real state-edit collisions for manual resolution. Approved by the maintainer 2026-09-22.
+
 ### 2026-09-21 — The player fills the window, and the design system finally wears D3 (NH-291)
 
 The player was a 1024 px column centred in a page of white space, with the notation letterboxed in
