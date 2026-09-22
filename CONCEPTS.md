@@ -13,6 +13,27 @@
 
 ---
 
+## Notation, score — and never "chart"
+
+**Notation** — the **file**: a Guitar Pro, MusicXML or Capella document, and the bytes it holds. This
+is the sense the schema already uses (`notation`, `notation_key`, `notation_tex`). Use it for
+anything that stores, reads or moves the file — `LoadedNotation`, `readNotation`, `/notation/…`.
+
+**Score** — the **parsed object** a notation file becomes once an importer has read it (AlphaTab's
+own `model.Score`), **and the word a person sees on screen**. "Score" is the musician's term, so UI
+copy uses it: _"Open a score from your own computer."_
+
+**"Chart" is not this project's vocabulary.** It is ambiguous (a chart is also a graph), it appears
+nowhere in the schema, and it drifted into the v0 planning documents where `notation` and `score`
+already had the job. Do not use it in specs, plans, code identifiers, test ids, file paths or UI
+copy. Ratified 2026-09-14 — see the registry Change log for that date.
+
+Keeping the two words distinct is what avoids the unreadable
+`const score = loadScoreFromBytes(score.bytes)`. AlphaTab's own API names — `ScoreLoader`,
+`loadScoreFromBytes`, `renderScore`, `model.Score` — are library surface and stay verbatim.
+
+---
+
 ## The catalog
 
 **Catalog** — the "find a piece to play" surface: a searchable, browsable library of **Songs** and **Lessons**. It's discovery, not a progress dashboard; score/mastery is a per-row _garnish_.

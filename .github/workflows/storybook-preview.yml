@@ -181,6 +181,20 @@ jobs:
           destination_dir: ${{ needs.build.outputs.dest }}
           user_name: github-actions[bot]
           user_email: github-actions[bot]@users.noreply.github.com
+      # Vercel deploys every push on EVERY branch, and reads vercel.json from the pushed
+      # branch's Root Directory (web/). gh-pages is an orphan branch of compiled Storybook, so
+      # that directory is absent and Vercel reported a failed deployment on every publish -- a
+      # red status and a failure email that gated nothing. A config on master cannot reach this
+      # branch (measured), so ship the opt-out ON the branch Vercel actually reads it from.
+      # Written on the root publish only; keep_files below then carries it across every later
+      # gh-pages commit, PR previews and cleanups included (NH-314).
+      - name: Mark gh-pages as not-deployable by Vercel
+        if: needs.build.outputs.dest == ''
+        run: |
+          set -euo pipefail
+          mkdir -p storybook-static/web
+          printf '{ "git": { "deploymentEnabled": false } }\n' > storybook-static/web/vercel.json
+
       # push:master -> publish to the site root, keep_files:true so the /pr/* subtree (other
       # previews) is never swept by a root rebuild.
       - name: Publish master to root

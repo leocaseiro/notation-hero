@@ -1,3 +1,5 @@
+'use client';
+
 import { Toaster as SonnerPrimitive } from 'sonner';
 import type { CSSProperties, ComponentProps } from 'react';
 
@@ -30,6 +32,13 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
     toastOptions={{
       classNames: {
         toast: 'group/toast',
+        // A loading toast says "this is happening NOW", so it must NOT fade in over 400 ms the
+        // way the others do. It matters most when the work it announces BLOCKS the main thread:
+        // the fade then freezes wherever it had got to, and anything short of fully painted is
+        // never seen. Measured in the player, whose parse is synchronous — the "Opening …" toast
+        // was replaced by its success text at 43 ms with opacity still 0.02, so the loading state
+        // was never once visible, on any file, throttled or not.
+        loading: 'transition-none!',
         description:
           'text-secondary-foreground! group-data-[type=success]/toast:text-success! group-data-[type=warning]/toast:text-warning! group-data-[type=error]/toast:text-destructive!',
         success:

@@ -5,15 +5,16 @@
 > Wave 1 hand-authored stub. The L8 lane replaces this with a generated-from-config
 > AGENTS.md + a CI drift-check (DACI L8). Until then this file is the agent contract.
 
-## Current direction — READ FIRST (snapshot, 2026-06-27)
+## Current direction — READ FIRST (snapshot, 2026-09-12)
 
 > 30-second version so you don't act on a superseded doc. **Source of truth:** [`docs/decisions/decision-registry.md`](docs/decisions/decision-registry.md) (newest-first change-log) + the ADR [`docs/decisions/2026-06-17-architecture-decisions.md`](docs/decisions/2026-06-17-architecture-decisions.md). **If any doc conflicts with this snapshot or the registry, the registry wins.**
 
+- **Now building (v0, NH-291)** — a **local-file drum player** in `web/`: open a chart from disk, see drum notation, press play. The **catalog**, the backend (Neon, Cognito) and the Playable schema are **paused, not dropped** (2026-09-12 registry entry). **No PWA in v0** — no install, no offline; both are one later milestone.
 - **Foundation** — plain **pnpm workspaces** + folders-in-one-app (Nx DROPPED 2026-06-17). One **NestJS** app (hexagon inside); FE = **Next.js 16 App Router on Vercel** (re-adopted, ADR 2026-07-08 — supersedes the 2026-06-18 Vite-SPA decision), consuming the `client/` design system.
 - **Data** — **Neon Postgres** (catalog) + **DynamoDB** (per-user, M1). **Drizzle** ORM over the `@neondatabase/serverless` HTTP driver. Schema = the 8-table **Playable** model (notation · playable · track · step · playable_link · media · tonal_profile · drum_profile); profiles **per-track**. Schema design is DONE (draft DDL `docs/wireframe/2026-06-21-per-track-profiles-and-seed-draft.sql`); **not yet applied to a live DB**.
 - **Auth (admin gate, v1)** — **Cognito + Google federation + RBAC via `cognito:groups` (`admin` group) + a framework-free `can(user, item, action)` policy**. NOT CloudFront Basic-Auth, NOT a shared password, NOT deferred to M1. Only **end-user** sign-up + cross-device sync are M1.
 - **CMS** — the admin is the **same catalog UI with admin-gated actions**; NO separate React-Admin SPA.
-- **API contract** — **oRPC** (ts-rest rejected). **Lint/format** — ESLint + Prettier (Biome rejected).
+- **API contract** — **DEFERRED** (NH-284, 2026-07-21): hand-authored Zod contract in `shared/` + `z.infer` + `.parse()`, no framework now; flip-default `@nestjs/swagger` + `nestjs-zod` (**not** oRPC). ts-rest rejected; nestjs-trpc/drizzle-zod rejected; Kanel → CMS. **Lint/format** — ESLint + Prettier (Biome rejected).
 - **Infra** — **Pulumi** (TS); deploy = **push-to-master only** via GitHub OIDC (no AWS creds on PRs); least-privilege role. **Neon is NOT Pulumi-provisioned** (off-AWS); connection string = **Pulumi-secret → Lambda `DATABASE_URL` env var** (not SSM); migrations in an operator runbook.
 - **Tracker** — Jira project **NH** (NH-NN). Linear dead; KAN drained.
 
@@ -70,8 +71,7 @@ catalog lives in Neon Postgres + JSONB (future `server/src/adapters/neon-postgre
 
 ## Targets & how to run them
 
-Each package exposes `lint`, `typecheck`, `test`, `build` as `package.json` scripts
-(`web/` omits `test` until Phase 2 — `pnpm -r --if-present` skips it safely).
+Each package exposes `lint`, `typecheck`, `test`, `build` as `package.json` scripts.
 Run across all packages from the repo root with `pnpm -r --if-present run <target>`.
 **Never** chain targets as `pnpm -r lint typecheck` — that runs `lint` with `typecheck`
 as a positional arg, silently skipping the second. Chain root scripts instead:
@@ -91,6 +91,27 @@ Root-level checks — each is a named script AND a CI gate, so run any locally:
   `minimumReleaseAgeExclude` pins in `pnpm-workspace.yaml` still resolve in `pnpm-lock.yaml`; a lockfile
   bump silently un-matches them and re-trips pnpm's `no-downgrade` / 7-day `minimumReleaseAge` gate,
   re-breaking installs (NH-259).
+
+**A preview deployment is NOT evidence that production will render (NH-315).** `web/` generates the
+design system's utilities by SCANNING `client/` source — the `@source` globs in
+`web/app/globals.css`, not a compiled stylesheet — and Vercel keys its build cache on the **git
+branch**, never on source content. A restored cache can therefore predate a change to what gets
+scanned, and previews and `master` sit on different cache lineages. It has bitten once: production
+served the seek rail 0 px wide and fully transparent while the same commit's preview was perfect,
+and nothing failed, because a slider keeps its role, its value and its keyboard seeking whether or
+not a pixel of it is painted. Two things hold it shut, and both must stay:
+
+- `web/vercel.json` removes `.next/cache` before every build. The whole folder, not just its
+  `turbopack/` subfolder — an upgrade that moves where the scan is remembered must not quietly undo
+  this. `node_modules` stays cached; it costs about three seconds.
+- `web/scripts/assert-design-system-css.mjs` runs at the end of `web build` and fails when a
+  utility that reaches the bundle only through the `**/*.ts` scan is missing from the emitted CSS.
+  If you add a shared class module under `client/src/components/ui/`, add its distinctive utilities
+  to `REQUIRED_SELECTORS`. Covered by `tooling/assert-design-system-css.test.mjs`.
+
+`web/app/globals.css` also keeps `web/scripts/**` out of Tailwind's automatic source detection. Do
+not remove that line: the guard names the utilities it checks for, so scanning it makes Tailwind
+generate them and the guard silently passes on a broken build.
 
 **Supply-chain release-age gate (NH-259):** `pnpm-workspace.yaml` sets `minimumReleaseAge` (7 days), so
 pnpm holds back versions published < 7 days ago — a plain `pnpm add <pkg>@latest` may resolve an older
@@ -166,6 +187,15 @@ Four test layers in `client/`: **Unit** (Vitest, `quality` job), **a11y** (axe-c
 `nvm use` in the repo root (Node 24 pinned via `.nvmrc`; matches CI). Then `pnpm install` — its `prepare` script installs lefthook git hooks (`pre-commit`, `commit-msg`, `pre-push`) that mirror the CI gates. **Full runbook** (asdf/Volta quirks, `core.hooksPath is set locally` recovery, verification): [`docs/runbooks/worktree-setup.md`](docs/runbooks/worktree-setup.md).
 
 **Never** use `git commit/push --no-verify`.
+
+### Local prior art (`.claude/local-references.md`, NH-318)
+
+Prior-art repositories already cloned on the machine are mapped in
+`.claude/local-references.md` — **git-ignored and machine-local**, so it may not exist in your
+checkout. When it does, **read it before cloning a reference repository or guessing at an
+alphaTab API**: the source is already on disk. Git-ignored files do not travel to worktrees, so
+from inside one, read it from the main checkout by absolute path. Never copy its paths into a
+tracked file — this repo is public.
 
 ## Storybook PR previews (GitHub Pages)
 

@@ -128,6 +128,20 @@ jobs:
           curl -fsSL --retry 3 --retry-delay 5 --max-time 60 "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VER}/actionlint_${ACTIONLINT_VER}_linux_amd64.tar.gz" -o /tmp/actionlint.tgz
           echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  /tmp/actionlint.tgz" | sha256sum -c -
           sudo tar -xzf /tmp/actionlint.tgz -C /usr/local/bin actionlint
+          # editorconfig-checker: its npm wrapper fetches the binary through the GitHub REST API on
+          # every run, and with no token it shares the runner IP's 60-requests-per-hour anonymous
+          # budget — a 403 there takes the whole lint job down (NH-309). Seed the wrapper's cache
+          # from the release DOWNLOAD url instead: that is a CDN redirect with no API limit. The
+          # wrapper's isReady() only stats this directory, so finding it populated makes it skip the
+          # API entirely and just run the binary — same version, same invocation, one code path.
+          # Keep EC_VERSION and the SHA in lockstep with the root lint:editorconfig script; the
+          # v3.11.3 pin is NH-293 (v4.0.0 renamed every release asset, which the wrapper cannot find).
+          EC_VERSION=v3.11.3
+          EC_DIR="$(node -e "console.log(require('path').dirname(require.resolve('editorconfig-checker/package.json')))")/bin/${EC_VERSION}"
+          curl -fsSL --retry 3 --retry-delay 5 --max-time 120 "https://github.com/editorconfig-checker/editorconfig-checker/releases/download/${EC_VERSION}/ec-linux-amd64.tar.gz" -o /tmp/ec.tgz
+          echo "6a73858f8906e466910fb3b3b525c206b27dacdad138910b0b0513f021ab32c4  /tmp/ec.tgz" | sha256sum -c -
+          mkdir -p "$EC_DIR"
+          tar -xzf /tmp/ec.tgz -C "$EC_DIR"
       - name: Prettier (format check)
         run: pnpm run format:check
       - name: ESLint
@@ -357,10 +371,13 @@ jobs:
               });
             }
 
-  # End-to-end — Playwright against the built SPA (`vite preview`), with /api/catalog mocked by
-  # MSW. Models the `a11y` job (ubuntu + on-demand Chromium); unlike `vr` it is not pixel-exact,
-  # so no Playwright container. Uploads traces + the HTML report so a CI failure is replayable via
-  # `npx playwright show-trace`. Path-filtered on `code`; blocks merge via ci-green.
+  # End-to-end — two Playwright lanes. client/: the built SPA (`vite preview`) with /api/catalog
+  # mocked by MSW. web/: the built Next.js app (`next build` then `next start`), which is the only
+  # gate over the product's own UI — web/ has no Storybook, so neither `vr` nor `a11y` covers it.
+  # Models the `a11y` job (ubuntu + on-demand Chromium); unlike `vr` it is not pixel-exact, so no
+  # Playwright container. Each package needs its own browser install. Uploads traces + the HTML
+  # report so a CI failure is replayable via `npx playwright show-trace`. Path-filtered on `code`;
+  # blocks merge via ci-green.
   e2e:
     needs: changes
     if: ${{ needs.changes.outputs.code == 'true' }}
@@ -368,12 +385,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/setup-js
-      - name: Install Playwright Chromium
+      - name: Install Playwright Chromium (client)
         run: pnpm --filter @notation-hero/client exec playwright install --with-deps chromium
       - name: e2e tests (Playwright vs built app)
         run: pnpm --filter @notation-hero/client run test:e2e
+      - name: Install Playwright Chromium (web)
+        run: pnpm --filter @notation-hero/web exec playwright install --with-deps chromium
+      - name: e2e tests (Playwright vs the built Next.js app)
+        run: pnpm --filter @notation-hero/web run test:e2e
       - name: Upload traces + HTML report
         # NOT `if: failure()` — that would drop the trace of a flaky-then-passed run (D5).
+        # ONE upload step for both lanes: a second step reusing the artifact name would collide.
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -381,6 +403,8 @@ jobs:
           path: |
             client/playwright-report/
             client/test-results/
+            web/playwright-report/
+            web/test-results/
           retention-days: 7
           if-no-files-found: ignore
 

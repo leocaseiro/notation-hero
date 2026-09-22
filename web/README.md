@@ -3,15 +3,22 @@
 The Notation Hero **product PWA** — Next.js 16 (App Router, Turbopack, React Compiler). It consumes
 the `client/` design system across the package boundary.
 
+**`/play`** is the v0 player: open a score from disk — with the file picker, or by dropping one
+onto the player — see it as drum notation, and press play. AlphaTab is self-hosted, vendored into
+`public/alphatab/` by `scripts/vendor-alphatab.mjs`, which runs from both `dev` and `build`.
+
 ## Scripts
 
-| Script                                           | What                                                                     |
-| ------------------------------------------------ | ------------------------------------------------------------------------ |
-| `pnpm --filter @notation-hero/web run dev`       | Dev server on **:3002** (:3000 and :3001 are the client SPA and the API) |
-| `pnpm --filter @notation-hero/web run build`     | Production build (Turbopack)                                             |
-| `pnpm --filter @notation-hero/web run start`     | Serve the production build                                               |
-| `pnpm --filter @notation-hero/web run lint`      | ESLint — the shared base (`eslint.config.base.mjs`) + Next config        |
-| `pnpm --filter @notation-hero/web run typecheck` | `tsc --noEmit`                                                           |
+| Script                                             | What                                                                                                          |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `pnpm --filter @notation-hero/web run dev`         | Dev server on **:3002**, or the next free port if it is busy (:3000 and :3001 are the client SPA and the API) |
+| `pnpm --filter @notation-hero/web run build`       | Production build (Turbopack)                                                                                  |
+| `pnpm --filter @notation-hero/web run start`       | Serve the production build                                                                                    |
+| `pnpm --filter @notation-hero/web run lint`        | ESLint — the shared base (`eslint.config.base.mjs`) + Next config                                             |
+| `pnpm --filter @notation-hero/web run typecheck`   | `tsc --noEmit`                                                                                                |
+| `pnpm --filter @notation-hero/web run test`        | Vitest unit tests                                                                                             |
+| `pnpm --filter @notation-hero/web run test:e2e`    | Playwright against the built app — what the `e2e` CI lane runs                                                |
+| `pnpm --filter @notation-hero/web run test:e2e:ui` | The same suite in Playwright's interactive UI mode                                                            |
 
 Root orchestration (`pnpm -r`) picks these up automatically; `pnpm run check:all` covers lint +
 typecheck across every package.

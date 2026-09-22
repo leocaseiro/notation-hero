@@ -1,49 +1,24 @@
 import { Button } from '@notation-hero/client';
-
-const swatches = [
-  ['--color-brand-400', 'bg-brand-400'],
-  ['--color-brand-600', 'bg-brand-600'],
-  ['--color-brand-700', 'bg-brand-700'],
-  ['--primary', 'bg-primary'],
-  ['--secondary', 'bg-secondary'],
-] as const;
-
-function ProofSection({ heading }: Readonly<{ heading: string }>) {
-  return (
-    <section className="rounded-lg border border-border bg-background p-6 text-foreground">
-      <h2 className="mb-4 text-lg font-semibold">{heading}</h2>
-      <div className="mb-6 flex flex-wrap gap-2">
-        <Button>Default</Button>
-        <Button variant="secondary">Secondary</Button>
-        <Button variant="outline">Outline</Button>
-        <Button variant="ghost">Ghost</Button>
-        <Button variant="destructive">Destructive</Button>
-        <Button variant="link">Link</Button>
-      </div>
-      <div className="flex flex-wrap gap-3">
-        {swatches.map(([token, cls]) => (
-          <figure key={token} className="text-center">
-            <div className={`size-12 rounded-md border border-border ${cls}`} />
-            <figcaption className="mt-1 font-mono text-xs">{token}</figcaption>
-          </figure>
-        ))}
-      </div>
-    </section>
-  );
-}
+import Link from 'next/link';
 
 export default function Home() {
   return (
-    <main className="mx-auto max-w-3xl space-y-6 p-8">
-      <h1 className="text-2xl font-bold">Notation Hero — design-system proof</h1>
-      <p className="text-muted-foreground">
-        A Server Component rendering the client-boundary Button from the design system with brand
-        tokens, in light and dark.
+    <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center gap-6 p-8 text-center">
+      <h1 className="text-3xl font-bold">Notation Hero</h1>
+      <p className="max-w-prose text-muted-foreground">
+        Open a score from your own computer, read it as standard notation, and play along. Nothing
+        you open leaves this device.
       </p>
-      <ProofSection heading="Light" />
-      <div className="dark">
-        <ProofSection heading="Dark" />
-      </div>
+      {/* min-h-11 = 44px, the minimum touch target (spec §4). The glyph keeps its drawn size;
+          only the hit area is padded. */}
+      {/* `render`, NOT `asChild`. client/src/components/ui/Button/Button.tsx types its props as
+          useRender.ComponentProps<'button'> & VariantProps<typeof buttonVariants> — `asChild`
+          appears nowhere in client/src, it was dropped in the Radix -> Base UI migration. The
+          precedent is Button.test.tsx:52 and the AsLink story. Passing `asChild` would land as a
+          stray DOM attribute and the Link would never render. */}
+      <Button render={<Link href="/play" />} className="min-h-11 px-8 text-base">
+        Play
+      </Button>
     </main>
   );
 }

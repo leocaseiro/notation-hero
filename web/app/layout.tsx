@@ -1,3 +1,4 @@
+import { Toaster } from '@notation-hero/client';
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
@@ -11,7 +12,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* One Toaster for the whole app: the unsupported-file, engine-failure and
+            settings-reset messages all land here. */}
+        <Toaster />
+      </body>
     </html>
   );
 }
