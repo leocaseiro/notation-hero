@@ -78,10 +78,12 @@ export function PlayerHeader({
       <div className="flex min-w-0 items-center gap-2">
         {/* Back RETRACES a step — it is not a second way home; the logo beside it is the way home.
             So the browser's own history, not a link to `/`: wherever the person came from is where
-            they go. The one place history cannot answer is a tab opened straight onto /play (a
-            bookmark, a shared link), where `history.length` is 1 and `back()` would silently do
-            nothing — a dead control. The landing page is the fallback there, so the button always
-            does something.
+            they go. But `history.length` counts forward entries too, so it cannot say whether an
+            entry sits BEHIND this one: it is 1 on a tab opened straight onto /play (a bookmark, a
+            shared link) and 2 after a browser-Back returns here with a forward entry — and `back()`
+            is a silent no-op in both. `navigation.canGoBack` answers that directly where it exists
+            (Chromium); the length check is the cross-browser fallback and the landing page the
+            floor, so the button always does something.
             `history.length` is only READ — the navigating is the router's, because a bare
             `location.assign('/')` is a full page reload of a route Next can serve on the client,
             which its own lint rule rejects. The hook is why this component's test mocks
@@ -98,7 +100,10 @@ export function PlayerHeader({
                 variant="ghost"
                 data-testid="back-home"
                 onClick={() => {
-                  if (globalThis.history.length > 1) router.back();
+                  const canGoBack =
+                    (globalThis as { navigation?: { canGoBack?: boolean } }).navigation
+                      ?.canGoBack ?? globalThis.history.length > 1;
+                  if (canGoBack) router.back();
                   else router.push('/');
                 }}
                 className="size-11 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
