@@ -237,5 +237,5 @@ test('at written speed the tooltip says so rather than reading 100%', async () =
 
   await user.hover(screen.getByRole('textbox', { name: 'Tempo' }));
 
-  expect(await screen.findByTestId('tempo-tooltip')).toHaveTextContent('120 BPM');
+  expect(await screen.findByTestId('tempo-tooltip')).toHaveTextContent(/^120 BPM$/);
 });
