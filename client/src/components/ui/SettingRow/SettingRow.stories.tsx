@@ -114,3 +114,17 @@ export const Disabled: Story = {
     disabled: true,
   },
 };
+
+// A row with a description — the fourteen MIDI-apply rows in the real settings popover carry a
+// full sentence here. It renders on its own line beneath the label-and-control pair, never as a
+// third flex item competing with the control for horizontal space (that crushed the label into a
+// narrow column and ran the sentence off the popover's edge).
+export const WithDescription: Story = {
+  args: {
+    id: 'vibrato-length',
+    label: 'Wide note vibrato: length',
+    control: { kind: 'number', min: 0 },
+    value: 240,
+    description: 'Rebuilds the MIDI to take effect — this stops playback and rewinds to the start.',
+  },
+};

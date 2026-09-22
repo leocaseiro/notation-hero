@@ -10,4 +10,5 @@ export const SETTING_ROW_STORY_IDS = [
   'select',
   'action',
   'disabled',
+  'with-description',
 ] as const;
