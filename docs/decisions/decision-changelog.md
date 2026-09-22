@@ -11,6 +11,32 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-22 — Two June status snapshots archived, and eight documents still off master (NH-25)
+
+leocaseiro reviewed the last two documentation PRs still open from June and chose to **archive rather
+than close** both, so they stay re-readable: `docs/research/2026-06-20-documentation-worktree-status.md`
+(PR #57) and `docs/ops/2026-06-15-worktree-cleanup-plan.md` (PR #34) move to `docs/archive/2026-09/`
+under the tree PR #143 established.
+
+- **Archive, not delete.** Both documents are stale in their per-row data but were verified against
+  today's master before being retired, and that verification is written into each banner. Closing the
+  PRs would have thrown away a finding that turned out to still be live.
+- **The finding: eight documents flagged as orphan-risk on 2026-06-20 are still absent from master**,
+  three months later. Of the 45 paths PR #57 inventoried, 34 have since landed; three apparent gaps
+  were renames or archive moves (the `catalogue` → `catalog` spelling rule, and the tonal-schema
+  handoff moving to `docs/archive/2026-07/`); the remaining **eight are exactly the eight the report
+  warned about**.
+- **None of the eight is lost**, and the reason is a rule rather than luck: every one sits on a branch
+  that still exists on `origin`, preserved by the never-delete-a-remote-branch rule.
+  `nh-clean-slate-spike`'s worktree is already gone and its document survived only because the branch
+  did. Their triage — which are superseded, which still carry unique value — is tracked separately.
+- **PR #34's decisions were not adopted.** It is a decision-request artifact with eight unanswered
+  questions about 47 worktrees; the worktree set has changed since, so it is archived as a June
+  snapshot and its Bucket A–E classification model is what remains reusable.
+
+**Status:** ✅ decided · 📄 prose-only — archiving is a documentation action, not an enforced rule.
+Approved by leocaseiro 2026-09-22.
+
 ### 2026-09-21 — The running build names itself, in the wordmark (NH-317)
 
 Nothing on screen said which build you were looking at. When production and a preview disagree —
