@@ -61,9 +61,10 @@ export function useAlphaTab(
   return [api, hostRef];
 }
 
-/** The AlphaTabApi members the transport writes: plain values, not methods. */
+/** The AlphaTabApi members the transport and the Settings popover write: plain values, not methods. */
 type AlphaTabApiValue =
   | 'isLooping'
+  | 'masterVolume'
   | 'metronomeVolume'
   | 'countInVolume'
   | 'playbackRange'

@@ -1277,3 +1277,336 @@ test('the tempo number can be selected with the mouse and typed over', async ({ 
   await page.keyboard.press('Tab');
   await expect(tempo).toHaveValue('90');
 });
+
+// What AlphaTab itself holds, through the debug handle `useAlphaTab` parks on the host element.
+// The popover's own number field mirrors React state and would show 2 even if the write never
+// reached the engine.
+const engineState = (page: Page) =>
+  page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: {
+          playbackSpeed: number;
+          metronomeVolume: number;
+          // The playhead, in MIDI ticks. Read to prove the sound-rebuilding rows rewind it.
+          tickPosition: number;
+          settings: { display: { scale: number } };
+          score: { stylesheet: { hideDynamics: boolean } } | null;
+        };
+      } | null
+    )?.at;
+    return at
+      ? {
+          speed: at.playbackSpeed,
+          metronomeVolume: at.metronomeVolume,
+          tick: at.tickPosition,
+          scale: at.settings.display.scale,
+          hideDynamics: at.score?.stylesheet.hideDynamics ?? null,
+        }
+      : null;
+  });
+
+// Record every call the page makes to one AlphaTabApi method. The synth keeps solo, mute and
+// volume in its WORKER, so nothing on the main thread can be read back afterwards — and the row's
+// aria-pressed mirrors React state, so it flips even when the call never reached the engine
+// (exactly what a callback frozen on the pre-engine `undefined` api does). Wrapping the method
+// through the debug handle is test-side only: nothing ships for it.
+// `method` may be a dotted path: 'changeTrackVolume' is on the api itself, but
+// 'player.resetChannelStates' is on the synth wrapper. Without the path form the mixer's reset
+// could not be observed at all, and a test would be asserting the absence of something instead of
+// the presence of the call.
+async function recordApiCalls(page: Page, method: string): Promise<() => Promise<unknown[][]>> {
+  await page.evaluate((name) => {
+    const root = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: Record<string, unknown>;
+      } | null
+    )?.at;
+    if (!root) throw new Error('no engine');
+    const parts = name.split('.');
+    const leaf = parts.pop() as string;
+    let at = root;
+    for (const part of parts) {
+      // Object.hasOwn guard, same reasoning as settings-paths.ts: only an OWN key is ever
+      // indexed, never something resolved off the prototype chain — a false positive for the
+      // loop shape alone.
+      if (!Object.prototype.hasOwnProperty.call(at, part)) throw new Error(`no ${part}`);
+      at = (at as Record<string, Record<string, unknown>>)[part]; // nosemgrep: prototype-pollution-loop
+    }
+    const original = (at[leaf] as (...args: unknown[]) => unknown).bind(at);
+    const calls: unknown[][] = [];
+    const store = ((globalThis as { nhCalls?: Record<string, unknown[][]> }).nhCalls ??= {});
+    store[name] = calls;
+    at[leaf] = (...args: unknown[]) => {
+      // Tracks are live objects; keep only what identifies them. Plain loops, not nested
+      // array-method callbacks, so this stays readable at the depth a page.evaluate closure
+      // allows.
+      const summarized: unknown[] = [];
+      for (const arg of args) {
+        if (Array.isArray(arg)) {
+          const indices: number[] = [];
+          for (const track of arg) indices.push((track as { index: number }).index);
+          summarized.push(indices);
+        } else {
+          summarized.push(arg);
+        }
+      }
+      calls.push(summarized);
+      return original(...args);
+    };
+  }, method);
+  return () =>
+    page.evaluate(
+      (name) => (globalThis as { nhCalls?: Record<string, unknown[][]> }).nhCalls?.[name] ?? [],
+      method,
+    );
+}
+
+// Every settings group starts expanded (SettingsPopover's defaultValue lists them all), and Base
+// UI's Accordion.Panel does not keepMounted — so clicking an open header removes its rows from the
+// DOM and the next fill() times out. Same idiom as a11y.e2e.ts's "open every group" loop.
+const openGroup = async (page: Page, name: string) => {
+  const header = page.getByRole('button', { name });
+  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click();
+};
+
+test('a settings row changes the rendered score without stopping playback', async ({ page }) => {
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+
+  const surface = page.getByTestId('notation-surface');
+  const boxBefore = await surface.locator('svg').first().boundingBox();
+  const widthBefore = boxBefore?.width ?? 0;
+
+  await page.getByTestId('settings-trigger').click();
+  await expect(page.getByTestId('settings-popover')).toBeVisible();
+
+  // Change the zoom — a setting whose effect is measurable in the DOM. Through the NUMBER field:
+  // it shares the slider's name. The popover opens with every group EXPANDED, so a bare click
+  // would CLOSE the group and unmount the row: open only if shut.
+  //
+  // The field is already showing '1', and pressSequentially APPENDS rather than replacing, so
+  // typing '2.5' straight in would yield '12.5'. Select the existing text first.
+  //
+  // pressSequentially, not fill(): the row reports on EVERY keystroke, so this is also the case
+  // that proves the redraw is coalesced. Four characters, four settings pushes, no more than TWO
+  // renders — without the coalescer this is four full relayouts while the player runs. Not pinned
+  // at exactly one: each keystroke is a separate round trip to the page and can straddle an
+  // animation frame boundary, so two adjacent keystrokes occasionally land in different frames.
+  // The exact-one guarantee for a single batch of edits is pinned in live-settings.test.ts instead.
+  const renders = await recordApiCalls(page, 'render');
+  await openGroup(page, 'Display: general');
+  const zoom = page.getByRole('spinbutton', { name: 'Zoom' });
+  await zoom.selectText();
+  await zoom.pressSequentially('2.5');
+
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(2.5);
+  const renderCalls = await renders();
+  expect(renderCalls.length).toBeLessThanOrEqual(2);
+  await expect
+    .poll(
+      async () => {
+        const box = await surface.locator('svg').first().boundingBox();
+        return box?.width ?? 0;
+      },
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(widthBefore);
+
+  // The popover never blocks the player: that is the whole reason v0 chose a popover. This case
+  // uses a `render` row (zoom); the `midi` rows are the measured exception, pinned by the case
+  // below so the difference is a decision on record rather than a bug someone later "fixes".
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+// The ONE exception to the promise above, and the only path that reaches it. loadMidiForScore ->
+// loadMidiFile -> stop() pauses AND rewinds (alphaTab.core.mjs:40054 and :39987-39995), so a
+// sound-rebuilding row is not something to change mid-take. The case above cannot catch this: zoom
+// takes the redraw path and never regenerates the MIDI.
+test('a sound-rebuilding row stops the player and rewinds it', async ({ page }) => {
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+  // Let the playhead actually leave the start, or the rewind assertion proves nothing.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.tick ?? 0;
+    })
+    .toBeGreaterThan(0);
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('spinbutton', { name: 'Wide note vibrato: length' }).fill('5');
+
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'false');
+  // The playhead leaves the start at tick 0, and the score before this reads well into the
+  // thousands (asserted above). A few ticks of residual drift are expected here — the stop
+  // message is a worker round trip, and a few more audio quanta land before it is processed —
+  // so this checks "back near the start", not the literal tick 1 a synthetic, single-worker
+  // measurement (no other CPU contention) produced.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.tick ?? -1;
+    })
+    .toBeLessThanOrEqual(50);
+});
+
+// Two editors, one value, one writer. The header's stepper and this row must never disagree, and
+// the ENGINE must hear about it — a row that wrote the speed into the settings JSON would move,
+// show its new number, and change nothing.
+test('the Player group speed row and the header tempo control are one value', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('spinbutton', { name: 'Playback speed (%)' }).fill('50');
+
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-speed', '0.5');
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.speed;
+    })
+    .toBe(0.5);
+});
+
+// The same rule for the metronome: the transport's button and this row are one volume.
+test('the metronome volume row and the transport button are one value', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('toggle-metronome').click();
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.metronomeVolume;
+    })
+    .toBe(1);
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('spinbutton', { name: 'Metronome volume' }).fill('0.4');
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.metronomeVolume;
+    })
+    .toBe(0.4);
+  // Still on: the button reads "volume > 0".
+  await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('spinbutton', { name: 'Metronome volume' }).fill('0');
+  await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'false');
+});
+
+// The Stylesheet group is NOT settings: it lives on the open score's model. A row wired like its
+// neighbours would write a JSON key AlphaTab ignores — for the whole group, in silence.
+test('a Stylesheet row changes the open score, not the settings', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  const beforeState = await engineState(page);
+  const before = beforeState?.hideDynamics;
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Stylesheet');
+  await page.getByRole('checkbox', { name: 'Hide dynamics' }).click();
+
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.hideDynamics;
+    })
+    .toBe(!before);
+});
+
+// Vibrato, slides, song-book timings and triplet feel are read when the MIDI is BUILT. Pushing
+// the settings or redrawing changes nothing audible, so the row must regenerate the MIDI.
+test('a playback-shaping row regenerates the MIDI', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  const midiLoads = await recordApiCalls(page, 'loadMidiForScore');
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('checkbox', { name: /triplet feel/i }).click();
+
+  await expect
+    .poll(async () => {
+      const calls = await midiLoads();
+      return calls.length;
+    })
+    .toBe(1);
+});
+
+test('the Settings icon trigger has a tooltip', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('settings-trigger').hover();
+  await expect(openTooltip(page)).toHaveText('Settings');
+});
+
+// Every path the schema names must exist on the LIVE settings object. fillFromJson ignores a key
+// it does not know, so a misspelled path is a row that moves and changes nothing, in silence.
+test('every settings row names a key the engine really has', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('settings-trigger').click();
+
+  // Open every group, so every row is in the DOM.
+  const headers = page.getByTestId('settings-popover').locator('[data-slot="accordion-trigger"]');
+  for (const header of await headers.all()) {
+    if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click();
+  }
+
+  const missing = await page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: { settings: Record<string, unknown> };
+      } | null
+    )?.at;
+    if (!at) return ['no engine'];
+    return [...document.querySelectorAll<HTMLElement>('[data-setting-path]')]
+      .map((row) => row.dataset.settingPath ?? '')
+      .filter((path) => {
+        let current: unknown = at.settings;
+        for (const part of path.split('.')) {
+          // elementFonts is a real AlphaTab Map<NotationElement, Font>, keyed by a NUMBER this
+          // dot-path's string segment cannot address — so a lookup by name stops here. Whether
+          // the row's own enum name is real is proven elsewhere, against the loaded engine's own
+          // NotationElement enum; here it is enough that the container itself is real and
+          // populated, not empty or missing.
+          if (current instanceof Map) return current.size === 0;
+          // NOT `part in current`: `in` walks the PROTOTYPE CHAIN, so a deprecated getter such as
+          // the old font aliases satisfies it while fillFromJson ignores the key entirely — which
+          // is exactly how eleven dead font rows passed this gate. Own properties only.
+          if (
+            current === null ||
+            typeof current !== 'object' ||
+            !Object.prototype.hasOwnProperty.call(current, part)
+          )
+            return true;
+          // The hasOwnProperty guard above already rules out '__proto__'/'constructor'/
+          // 'prototype' and every other inherited key before this line runs, so only the
+          // engine's own settings tree is ever indexed — a false positive for the loop shape
+          // alone.
+          current = (current as Record<string, unknown>)[part]; // nosemgrep: prototype-pollution-loop
+        }
+        return false;
+      });
+  });
+  expect(missing, 'settings rows whose path is not a real AlphaTab key').toEqual([]);
+});

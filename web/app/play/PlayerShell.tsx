@@ -3,6 +3,7 @@
 import {
   Button,
   Progress,
+  RECORDING,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -16,14 +17,24 @@ import {
   useAlphaTabEngine,
 } from '../../lib/alphatab/AlphaTabEngineContext';
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
+import { applySettingsJson } from '../../lib/alphatab/live-settings';
+import { DEFAULT_PLAYER_SETTINGS, writeSettingValue } from '../../lib/alphatab/settings-schema';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { PLAYER_ERROR } from '../../lib/player-errors';
 import { NotationSurface } from './NotationSurface';
 import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
 import { PlayerHeader } from './PlayerHeader';
+import { SettingsPopover } from './SettingsPopover';
 import { TransportRow } from './TransportRow';
 import { useLoadingBarPhase } from './useLoadingBarPhase';
+import type {
+  ApiValueKey,
+  PlayerSettingsJson,
+  SettingAction,
+  SettingApply,
+} from '../../lib/alphatab/settings-schema';
 import type * as AlphaTab from '@coderline/alphatab';
+import type { SettingValue } from '@notation-hero/client';
 
 /** What the picker produces: a file read into memory, not yet parsed. */
 export interface LoadedNotation {
@@ -87,8 +98,11 @@ function Player() {
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
   const [looping, setLooping] = useState(false);
-  const [metronome, setMetronome] = useState(false);
-  const [countIn, setCountIn] = useState(false);
+  // Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 is the normal
+  // level. The transport's two buttons derive their pressed state from "volume > 0", and the
+  // Settings popover's two matching rows share these same values — one writer each.
+  const [metronomeVolume, setMetronomeVolume] = useState(0);
+  const [countInVolume, setCountInVolume] = useState(0);
   // Whether AlphaTab currently holds a bar-range selection — drives the Loop toggle's label only.
   const [hasRange, setHasRange] = useState(false);
   // Whether the open score plays its own embedded recording. Metronome and Count-In are inert then.
@@ -110,6 +124,10 @@ function Player() {
   // A file is being opened. The parse is synchronous and can hold the main thread for seconds on a
   // slow machine, so this is committed and PAINTED before the parse starts.
   const [opening, setOpening] = useState(false);
+  // The Settings popover's edit state: the whole document the shell pushes into the live engine on
+  // every change (see applySetting below). Declared here, above useAlphaTab, so a lazily
+  // initialised read of the stored value can reach it without closing over a const declared later.
+  const [settings, setSettings] = useState<PlayerSettingsJson>(DEFAULT_PLAYER_SETTINGS);
 
   // The ONE owner of the api. There is no second apiRef and no onApiReady callback: a callback
   // prop in the hook's dependency list rebuilds the engine on an ordinary state change, throwing
@@ -313,20 +331,21 @@ function Player() {
     [api],
   );
 
-  // Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 is the normal
-  // level, so the toggle maps to the two ends rather than calling a method.
-  const applyMetronome = useCallback(
-    (next: boolean) => {
-      setMetronome(next);
-      if (api) setAlphaTabValue(api, 'metronomeVolume', next ? 1 : 0);
+  // The ONE writer of api.metronomeVolume. The transport's Metronome button and the Settings
+  // popover's metronome-volume row both call it.
+  const applyMetronomeVolume = useCallback(
+    (next: number) => {
+      setMetronomeVolume(next);
+      if (api) setAlphaTabValue(api, 'metronomeVolume', next);
     },
     [api],
   );
 
-  const applyCountIn = useCallback(
-    (next: boolean) => {
-      setCountIn(next);
-      if (api) setAlphaTabValue(api, 'countInVolume', next ? 1 : 0);
+  // The ONE writer of api.countInVolume, same shape as the metronome above.
+  const applyCountInVolume = useCallback(
+    (next: number) => {
+      setCountInVolume(next);
+      if (api) setAlphaTabValue(api, 'countInVolume', next);
     },
     [api],
   );
@@ -341,6 +360,101 @@ function Player() {
       if (api) setAlphaTabValue(api, 'playbackSpeed', next);
     },
     [api],
+  );
+
+  // The one api value the transport does not already own.
+  const [masterVolume, setMasterVolume] = useState(1);
+  const applyMasterVolume = useCallback(
+    (next: number) => {
+      setMasterVolume(next);
+      if (api) setAlphaTabValue(api, 'masterVolume', next);
+    },
+    [api],
+  );
+
+  // The Settings popover's Player group api rows, in the unit each row shows. The speed is a
+  // multiplier everywhere else in the player; the row shows a percentage, rounded to one decimal,
+  // because the header's BPM stepper leaves the multiplier at values like 0.8916….
+  const apiValues: Partial<Record<ApiValueKey, SettingValue>> = {
+    playbackSpeed: Math.round(speed * 1000) / 10,
+    masterVolume,
+    metronomeVolume,
+    countInVolume,
+    isLooping: looping,
+  };
+
+  const applyApiValue = useCallback(
+    (key: ApiValueKey, value: SettingValue) => {
+      // Every branch goes to the value's ONE writer. The speed row and the header's tempo control
+      // are two editors of one value; so are the metronome row and the transport's Metronome
+      // button.
+      switch (key) {
+        case 'playbackSpeed': {
+          applySpeed(Number(value) / 100);
+          break;
+        }
+        case 'masterVolume': {
+          applyMasterVolume(Number(value));
+          break;
+        }
+        case 'metronomeVolume': {
+          applyMetronomeVolume(Number(value));
+          break;
+        }
+        case 'countInVolume': {
+          applyCountInVolume(Number(value));
+          break;
+        }
+        default: {
+          applyLooping(Boolean(value));
+        }
+      }
+    },
+    [applySpeed, applyMasterVolume, applyMetronomeVolume, applyCountInVolume, applyLooping],
+  );
+
+  // The Settings popover's single funnel: every `settings`-sourced row pushes through here,
+  // whatever `apply` mode it declares.
+  const applySetting = useCallback(
+    (path: string, value: SettingValue, apply: SettingApply) => {
+      // Compute, set, THEN call the engine — never call the engine inside the setState updater.
+      // React may run an updater twice, which would push the settings and redraw the score twice.
+      const next = writeSettingValue(settings, path, value);
+      setSettings(next);
+      if (api) applySettingsJson(api, next, apply);
+    },
+    [api, settings],
+  );
+
+  const runAction = useCallback(
+    (action: SettingAction) => {
+      if (!api?.score || !engine) return;
+      if (action === 'export-midi') {
+        try {
+          api.downloadMidi();
+        } catch {
+          toast.error('That file could not be exported.');
+        }
+        return;
+      }
+      // Guitar Pro 7 bytes from AlphaTab's own exporter, handed to the browser as a download. The
+      // exporter is a runtime value, so it comes off the loaded namespace, never an import.
+      //
+      // The SUCCESS path needs no signal — the browser's own download is the signal. A failure has
+      // none at all, and every step here can throw: the export itself, the Blob, the object URL.
+      try {
+        const bytes = new engine.exporter.Gp7Exporter().export(api.score, api.settings);
+        const url = URL.createObjectURL(new Blob([bytes as BlobPart]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${api.score.title || 'score'}.gp`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        toast.error('That file could not be exported.');
+      }
+    },
+    [api, engine],
   );
 
   const seek = useCallback(
@@ -542,6 +656,17 @@ function Player() {
           speed={speed}
           onSpeedChange={applySpeed}
           disabled={!playerReady}
+          actions={
+            <SettingsPopover
+              api={api}
+              settings={settings}
+              onSettingChange={applySetting}
+              apiValues={apiValues}
+              onApiValueChange={applyApiValue}
+              onAction={runAction}
+              mixUnavailable={hasBackingTrack ? RECORDING : undefined}
+            />
+          }
         />
         {failed || barPhase === 'gone' ? null : (
           <Progress
@@ -652,8 +777,8 @@ function Player() {
             data-player-ready={playerReady}
             data-duration={durationMs}
             data-looping={looping}
-            data-metronome={metronome}
-            data-countin={countIn}
+            data-metronome={metronomeVolume > 0}
+            data-countin={countInVolume > 0}
             data-speed={speed}
           >
             {/* The whole transport is gated on `playerReady`, never on `soundFontLoaded`: that one is
@@ -665,10 +790,10 @@ function Player() {
               onSeek={seek}
               looping={looping}
               onLoopingChange={applyLooping}
-              metronome={metronome}
-              onMetronomeChange={applyMetronome}
-              countIn={countIn}
-              onCountInChange={applyCountIn}
+              metronome={metronomeVolume > 0}
+              onMetronomeChange={(on) => applyMetronomeVolume(on ? 1 : 0)}
+              countIn={countInVolume > 0}
+              onCountInChange={(on) => applyCountInVolume(on ? 1 : 0)}
               hasRange={hasRange}
               hasBackingTrack={hasBackingTrack}
               disabled={!playerReady}

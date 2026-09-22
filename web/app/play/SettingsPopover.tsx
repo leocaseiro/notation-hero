@@ -1,0 +1,207 @@
+'use client';
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+  Button,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  ScrollArea,
+  SettingRow,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@notation-hero/client';
+import { useState } from 'react';
+
+import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
+import { readStylesheetValues, setStylesheetValue } from '../../lib/alphatab/live-settings';
+import {
+  buildSettingGroups,
+  readSettingValue,
+  STYLESHEET_ENUMS,
+} from '../../lib/alphatab/settings-schema';
+import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
+import type {
+  ApiValueKey,
+  PlayerSettingsJson,
+  SettingAction,
+  SettingApply,
+  SettingDescriptor,
+  StylesheetKey,
+} from '../../lib/alphatab/settings-schema';
+import type * as AlphaTab from '@coderline/alphatab';
+import type { SettingValue } from '@notation-hero/client';
+
+interface SettingsPopoverProps {
+  /** The live api, or undefined until the engine has loaded. The Stylesheet group reads the open
+   *  score through it. */
+  api: AlphaTab.AlphaTabApi | undefined;
+  settings: PlayerSettingsJson;
+  onSettingChange: (path: string, value: SettingValue, apply: SettingApply) => void;
+  /**
+   * The AlphaTabApi properties the Player group edits, in the unit each row shows. The shell owns
+   * every one of them, because each has a second editor elsewhere in the player — the speed is
+   * also the header's tempo control.
+   */
+  apiValues: Readonly<Partial<Record<ApiValueKey, SettingValue>>>;
+  /** Routed by the shell to its single writer for that value. Never to the settings JSON. */
+  onApiValueChange: (key: ApiValueKey, value: SettingValue) => void;
+  onAction: (action: SettingAction) => void;
+  /**
+   * Set while the file plays its own recording: the reason the two rows below are unavailable.
+   * Consumed only as a boolean — `Boolean(mixUnavailable)` — to decide `disabled` on the
+   * metronome-volume and count-in-volume rows; the row's own label is what tells a person why, the
+   * same way the transport's two buttons already work.
+   */
+  mixUnavailable?: string;
+}
+
+// The header gear. A POPOVER, not a modal — it never blocks the player, so a drummer can change a
+// setting while the score plays. (The fourteen sound-rebuilding rows are the exception: applying
+// one stops playback and rewinds — an e2e case pins it.) That is the single reason v0 chose this
+// shape, and the settings search that comes later is layered over these same rows.
+//
+// The playback-speed slider lives in this popover's Player group, not in the header pill: neither
+// design source draws a slider there, and "two popovers, not modals" leaves no third surface.
+//
+// FOUR KINDS OF ROW, ONE LOOP. A row's `source` decides where its value comes from and where a
+// change goes — a settings key, an api property, the open score's stylesheet, or a command. The
+// panel reads like one list, but AlphaTab takes a write to the wrong place without a word. It
+// matters most for the `api` rows: `playbackSpeed` and its neighbours are
+// AlphaTabApi PROPERTIES, not keys in AlphaTab's settings JSON, so a row that wrote one into the
+// JSON would move, show its new number, and change nothing audible — a silent failure, not an
+// error. They go to the shell's single writer for that value instead, which is also what keeps
+// this slider and the header's tempo control showing the same speed.
+export function SettingsPopover({
+  api,
+  settings,
+  onSettingChange,
+  apiValues,
+  onApiValueChange,
+  onAction,
+  mixUnavailable,
+}: Readonly<SettingsPopoverProps>) {
+  const { engine } = useAlphaTabEngine();
+  // The enum options come off the loaded namespace, so the groups cannot exist before it does.
+  const groups = engine ? buildSettingGroups(engine) : [];
+
+  // The Stylesheet group belongs to the OPEN SCORE, not to the app: every score brings its own
+  // stylesheet, so the values are re-read each time one loads, and they are never stored.
+  const [stylesheet, setStylesheet] = useState<Partial<Record<StylesheetKey, SettingValue>>>({});
+  useAlphaTabEvent(api, 'scoreLoaded', (score) => {
+    if (!engine) return;
+    setStylesheet(
+      readStylesheetValues(score, (key, value) =>
+        String(STYLESHEET_ENUMS(engine)[key]?.[value] ?? ''),
+      ),
+    );
+  });
+
+  // eslint-disable-next-line sonarjs/function-return-type -- intentional SettingValue union (string | number | boolean), matching every row's own value type
+  const valueOf = (setting: SettingDescriptor): SettingValue => {
+    if (setting.source === 'settings') return readSettingValue(settings, setting.path) ?? '';
+    if (setting.source === 'api') return apiValues[setting.key] ?? '';
+    if (setting.source === 'stylesheet') return stylesheet[setting.key] ?? '';
+    return ''; // an action row has no value
+  };
+
+  const change = (setting: SettingDescriptor, next: SettingValue) => {
+    if (setting.source === 'settings') onSettingChange(setting.path, next, setting.apply);
+    else if (setting.source === 'api') onApiValueChange(setting.key, next);
+    else if (setting.source === 'stylesheet' && api && engine) {
+      // A select row reports the enum's NAME; the score model wants its number. The reverse
+      // lookup STYLESHEET_ENUMS returns is number -> name; a TypeScript numeric enum is
+      // bidirectional at runtime, so the same object also answers name -> number.
+      const enumObject = STYLESHEET_ENUMS(engine)[setting.key] as
+        | Record<string, number>
+        | undefined;
+      const raw = enumObject && typeof next === 'string' ? enumObject[next] : next;
+      if (typeof raw !== 'boolean' && typeof raw !== 'number') return;
+      setStylesheetValue(api, setting.key, raw);
+      setStylesheet((current) => ({ ...current, [setting.key]: next }));
+    }
+  };
+
+  return (
+    <Popover>
+      {/* The tooltip is ALWAYS present, never conditional: swapping the wrapped and the bare
+          element remounts the button and drops its focus. The TooltipTrigger renders a SPAN
+          around the PopoverTrigger — the shape TransportToggle ships — because the gear is
+          disabled while the engine loads, and a disabled Button is pointer-events:none, so as
+          its own tooltip trigger it would never see the mouse. The span takes the hover; focus
+          still opens it, because focus events bubble. Still one <button>. */}
+      <Tooltip>
+        <TooltipTrigger render={<span className="inline-flex" />}>
+          <PopoverTrigger
+            render={
+              <Button
+                data-testid="settings-trigger"
+                variant="ghost"
+                size="icon"
+                aria-label="Settings"
+                disabled={!engine}
+                className="size-11 rounded-xl"
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  settings
+                </span>
+              </Button>
+            }
+          />
+        </TooltipTrigger>
+        <TooltipContent>Settings</TooltipContent>
+      </Tooltip>
+      <PopoverContent
+        data-testid="settings-popover"
+        align="end"
+        className="w-96 p-0"
+        aria-label="Settings"
+      >
+        <ScrollArea viewportClassName="max-h-[70vh]">
+          {/* Every group OPEN by default (maintainer, 2026-09-21): browsing is the only way to
+              find a row until search lands, and a panel that opens closed hides all 90 of them.
+              The trigger is sticky so the group a row belongs to stays readable while it scrolls. */}
+          <Accordion className="px-3 py-2" defaultValue={groups.map((group) => group.id)}>
+            {groups.map((group) => (
+              <AccordionItem key={group.id} value={group.id}>
+                <AccordionTrigger className="sticky top-0 z-10 bg-popover">
+                  {group.title}
+                </AccordionTrigger>
+                <AccordionContent>
+                  {group.settings.map((setting) => (
+                    <SettingRow
+                      key={setting.id}
+                      id={setting.id}
+                      label={setting.label}
+                      control={setting.control}
+                      description={setting.description}
+                      value={valueOf(setting)}
+                      onChange={(next) => change(setting, next)}
+                      onAction={
+                        setting.source === 'action' ? () => onAction(setting.action) : undefined
+                      }
+                      // The path a live e2e case checks against the real AlphaTab settings object
+                      // — a static attribute, present only on the rows it can check.
+                      data-setting-path={setting.source === 'settings' ? setting.path : undefined}
+                      // The only two rows the backing-track synthesizer ignores. A control must
+                      // never look live and do nothing.
+                      disabled={
+                        Boolean(mixUnavailable) &&
+                        setting.source === 'api' &&
+                        (setting.key === 'metronomeVolume' || setting.key === 'countInVolume')
+                      }
+                    />
+                  ))}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
