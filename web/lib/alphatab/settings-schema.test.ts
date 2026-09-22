@@ -1,0 +1,173 @@
+// eslint-disable-next-line @typescript-eslint/no-restricted-imports -- Vitest files are never bundled by Next, so the double-bundle reason for this fence does not apply
+import * as engine from '@coderline/alphatab';
+import { expect, it } from 'vitest';
+
+import { readSettingValue } from './settings-paths';
+import {
+  buildSettingGroups,
+  DEFAULT_PLAYER_SETTINGS,
+  SETTING_OPTION_VALUES,
+} from './settings-schema';
+import type { PlayerSettingsJson } from './settings-paths';
+import type { SettingValue } from '@notation-hero/client';
+
+// The engine is the source of truth for every default, but the serializer does not hand back the
+// shape `readSettingValue` walks. THREE conversions stand between them:
+//  1. settingsToJsObject returns nested Maps (SettingsSerializer.toJson), and `part in current` —
+//     how readSettingValue steps a path — never sees a Map entry, so every path would miss on its
+//     first segment. Convert the Map tree to plain objects first.
+//  2. Every key comes back LOWERCASED ('scrolloffsety', 'playermode'), so lowercase each segment.
+//  3. Enums come back as NUMBERS; the shipped table stores their NAMES. Resolve the name.
+// Colours come back as PACKED SIGNED INTEGERS (-16777216), not '#000000', so a colour row is read
+// through `.rgba` on the live Settings instead. The converter is on `model`; the `json` namespace
+// is empty at runtime. Fonts come back as an object (families/size/style/weight), which
+// `readSettingValue` cannot see either — a font row is compared on those fields directly, and
+// `elementFonts` is a Map keyed by NUMBER, so a lowercased dot-path can never reach it at all.
+const plain = (value: unknown): unknown =>
+  value instanceof Map ? Object.fromEntries([...value].map(([k, v]) => [k, plain(v)])) : value;
+
+// Walks DEFAULT_PLAYER_SETTINGS to every primitive leaf, yielding its dot path and value. Recurses
+// into arrays too, using the index as the path segment — that is what makes `display.padding.0`
+// and `display.padding.1` show up as their own leaves instead of the array being treated as one.
+function* eachLeaf(value: unknown, prefix = ''): Generator<[path: string, value: SettingValue]> {
+  if (Array.isArray(value)) {
+    for (const [index, item] of value.entries()) {
+      yield* eachLeaf(item, prefix ? `${prefix}.${index}` : String(index));
+    }
+    return;
+  }
+  if (value !== null && typeof value === 'object') {
+    for (const [key, item] of Object.entries(value)) {
+      yield* eachLeaf(item, prefix ? `${prefix}.${key}` : key);
+    }
+    return;
+  }
+  yield [prefix, value as SettingValue];
+}
+
+// Set by the player at construction or by this app's own choice, so they are NOT what a fresh
+// Settings() reports and never can be. Every OTHER key stays under the guard — including
+// player.enableCursor (engine default true) and player.scrollMode (engine default Continuous),
+// which DO match and would be silently un-checked if this list were widened to all four.
+const NOT_ALPHATAB_DEFAULTS = new Set([
+  'core.engine', // engine default 'default'; this app ships the SVG renderer
+  'player.playerMode', // engine default Disabled; PlayerShell sets EnabledAutomatic
+  'player.scrollOffsetY', // engine default 0; PlayerShell sets -10
+]);
+
+// The six colour rows: compared against `fresh.display.resources[key].rgba`, the CSS string the
+// live Color reports — NOT the serializer's packed signed integer.
+const COLOR_PATHS = new Set([
+  'display.resources.staffLineColor',
+  'display.resources.barSeparatorColor',
+  'display.resources.barNumberColor',
+  'display.resources.mainGlyphColor',
+  'display.resources.secondaryGlyphColor',
+  'display.resources.scoreInfoColor',
+]);
+
+// The three plain font rows: a direct property of RenderingResources, not the elementFonts map.
+const PLAIN_FONT_PATHS = new Set([
+  'display.resources.numberedNotationFont',
+  'display.resources.tablatureFont',
+  'display.resources.graceFont',
+]);
+
+const ELEMENT_FONT_PREFIX = 'display.resources.elementFonts.';
+
+// Every select-kind settings row backed by a real AlphaTab enum, mapped to an accessor for that
+// enum's runtime object — resolved against the passed-in engine namespace, never hand-copied.
+// core.engine (a plain string, not an enum) and player.playerMode are absent on purpose: both are
+// in NOT_ALPHATAB_DEFAULTS already, so their shipped value is never looked up here.
+const ENUM_BY_PATH: Record<string, (e: typeof engine) => Record<string, string | number>> = {
+  'display.layoutMode': (e) => e.LayoutMode,
+  'display.systemsLayoutMode': (e) => e.SystemsLayoutMode,
+  'notation.fingeringMode': (e) => e.FingeringMode,
+  'notation.rhythmMode': (e) => e.TabRhythmMode,
+  'player.scrollMode': (e) => e.ScrollMode,
+};
+
+type ParsedFont = { families: string[]; size: number; style: number; weight: number };
+
+/** The four comparable fields of a parsed CSS font string, in the shape both sides can produce. */
+const fontShape = (font: ParsedFont) => [font.families, font.size, font.style, font.weight];
+
+/** A colour row: shipped hex/rgba string against `Color#rgba`'s own CSS string. */
+function expectColorDefault(resources: unknown, path: string, shipped: SettingValue): void {
+  const key = path.slice('display.resources.'.length);
+  const live = (resources as Record<string, { rgba: string }>)[key];
+  expect(shipped, path).toBe(live.rgba);
+}
+
+/** One of the nine `elementFonts` rows — the map is keyed by NUMBER, so `.get` needs the enum. */
+function expectElementFontDefault(
+  resources: { elementFonts: Map<number, ParsedFont> },
+  path: string,
+  shipped: SettingValue,
+): void {
+  const name = path.slice(ELEMENT_FONT_PREFIX.length) as keyof typeof engine.NotationElement;
+  const live = resources.elementFonts.get(engine.NotationElement[name]);
+  const parsedShipped = engine.model.Font.fromJson(shipped);
+  expect(live, path).toBeDefined();
+  expect(parsedShipped, path).toBeDefined();
+  if (live && parsedShipped) expect(fontShape(parsedShipped), path).toEqual(fontShape(live));
+}
+
+/** One of the three plain font properties (numberedNotationFont, tablatureFont, graceFont). */
+function expectPlainFontDefault(resources: unknown, path: string, shipped: SettingValue): void {
+  const key = path.slice('display.resources.'.length);
+  const live = (resources as Record<string, ParsedFont>)[key];
+  const parsedShipped = engine.model.Font.fromJson(shipped);
+  expect(parsedShipped, path).toBeDefined();
+  if (parsedShipped) expect(fontShape(parsedShipped), path).toEqual(fontShape(live));
+}
+
+/** Everything else: read off the lowercased, Map-flattened serializer output. */
+function expectSerializedDefault(
+  serialised: PlayerSettingsJson,
+  path: string,
+  shipped: SettingValue,
+): void {
+  const actual = readSettingValue(serialised, path.toLowerCase());
+  // An enum row ships its NAME; the serializer reports the number.
+  const expected = ENUM_BY_PATH[path]?.(engine)[shipped as string] ?? shipped;
+  expect(actual, path).toEqual(expected);
+}
+
+it('every shipped default is what a fresh Settings() reports', () => {
+  const fresh = new engine.Settings();
+  const serialised = plain(
+    engine.model.JsonConverter.settingsToJsObject(fresh),
+  ) as PlayerSettingsJson;
+  const resources = fresh.display.resources;
+
+  for (const [path, shipped] of eachLeaf(DEFAULT_PLAYER_SETTINGS)) {
+    if (NOT_ALPHATAB_DEFAULTS.has(path)) continue;
+
+    if (COLOR_PATHS.has(path)) {
+      expectColorDefault(resources, path, shipped);
+    } else if (path.startsWith(ELEMENT_FONT_PREFIX)) {
+      expectElementFontDefault(resources, path, shipped);
+    } else if (PLAIN_FONT_PATHS.has(path)) {
+      expectPlainFontDefault(resources, path, shipped);
+    } else {
+      expectSerializedDefault(serialised, path, shipped);
+    }
+  }
+});
+
+it('SETTING_OPTION_VALUES still matches every settings-row option list', () => {
+  // The stored document is gated on SETTING_OPTION_VALUES by the settings-storage restore path: if
+  // it drifts from the real option lists, dropUnknownOptions wipes valid stored enum values and
+  // fires a false "settings were reset" toast. The constant is hand-maintained (PlayerShell reads
+  // it before the engine exists), so this is the case the SETTING_OPTION_VALUES comment promises —
+  // never actually written until now — that keeps it honest.
+  for (const group of buildSettingGroups(engine)) {
+    for (const row of group.settings) {
+      if (row.source !== 'settings' || row.control.kind !== 'select') continue;
+      expect(SETTING_OPTION_VALUES[row.path], row.path).toEqual(
+        row.control.options.map((option) => option.value),
+      );
+    }
+  }
+});
