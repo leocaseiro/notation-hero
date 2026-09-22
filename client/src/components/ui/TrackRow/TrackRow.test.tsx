@@ -68,6 +68,20 @@ test('expanding reveals both transposition sliders as SEPARATE controls', () => 
   expect(screen.getByRole('slider', { name: /transpose full/i })).toBeInTheDocument();
 });
 
+// Semitones are exact targets people aim for — "up a whole step" is +2 — so the readout must
+// never drop the sign: a bare "2" could mean up OR down. Zero has no direction to lose, so it
+// reads bare.
+test('the transposition readouts are signed, so the direction is never ambiguous', () => {
+  const { rerender } = render(
+    <TrackRow {...baseProps} expanded transposeAudio={2} transposeFull={-3} />,
+  );
+  expect(screen.getByText('+2')).toBeInTheDocument();
+  expect(screen.getByText('-3')).toBeInTheDocument();
+
+  rerender(<TrackRow {...baseProps} expanded transposeAudio={0} transposeFull={0} />);
+  expect(screen.getAllByText('0')).toHaveLength(2);
+});
+
 test('a percussion staff offers no tablature toggle', () => {
   // No `expanded`: the four display toggles are on the always-visible primary row, not behind
   // the disclosure.

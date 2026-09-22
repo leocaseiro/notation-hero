@@ -171,7 +171,11 @@ const TrackRow = ({
       {...rest}
     >
       <div className="flex w-full flex-wrap items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
+        {/* min-w-36 (9rem/144px) is a floor, not a fit: long enough to keep a realistic name like
+            "Distortion Guitar" mostly legible at the popover's real width (32rem), while `truncate`
+            still catches anything longer. Below that floor `flex-wrap` on the row above pushes the
+            controls that no longer fit onto a second line — the name never loses the floor. */}
+        <span className="min-w-36 flex-1 truncate text-sm font-medium">{name}</span>
 
         <TransportToggle
           pressed={rendered}
@@ -282,6 +286,10 @@ const TrackRow = ({
               max={12}
               step={1}
               label={`${name} Transpose audio`}
+              // Semitones are exact targets ("up a whole step" is +2) — the sign must never be
+              // ambiguous, so a positive offset reads with an explicit `+`; zero reads bare.
+              showReadout
+              formatValue={(v) => (v > 0 ? `+${v}` : `${v}`)}
               disabled={mixDisabled}
             />
           </div>
@@ -298,6 +306,8 @@ const TrackRow = ({
               max={12}
               step={1}
               label={`${name} Transpose full`}
+              showReadout
+              formatValue={(v) => (v > 0 ? `+${v}` : `${v}`)}
             />
           </div>
         </div>
