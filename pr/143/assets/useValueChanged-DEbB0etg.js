@@ -1,0 +1,1 @@
+import{i as e,s as t}from"./preload-helper-FPWZkWV6.js";import{t as n}from"./react-9ZeVnuTE.js";import{c as r,s as i}from"./owner-Dbx55Cjh.js";import{n as a,t as o}from"./useIsoLayoutEffect-PuSXrZrb.js";function s(e,t){let n=c.useRef(e),i=r(t);a(()=>{n.current!==e&&i(n.current)},[e,i]),a(()=>{n.current=e},[e])}var c,l=e((()=>{c=t(n(),1),o(),i()}));export{s as n,l as t};
