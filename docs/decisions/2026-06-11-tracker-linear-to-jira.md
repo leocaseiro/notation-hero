@@ -19,14 +19,14 @@ The project's issue tracker is **Jira Cloud**, project key **KAN**
 
 ## What changes
 
-| Was (Linear) | Now (Jira) |
-|---|---|
-| Linear workspace `leocaseiro`, team `LEO`, project `notation-hero-db465058e201` | Jira Cloud, project key **KAN** |
-| Ticket ids `LEO-<n>` | **`KAN-<n>`** (old `LEO-<n>` ids are historical only) |
-| Branch naming `LEO-<n>-<slug>` (DACI L10b) | **`KAN-<n>-<slug>`** |
-| Linear MCP, `write:issues` token in keychain (DACI L10a) | Jira integration — see Follow-ups |
-| Linear GitHub App, deferred (DACI L10b) | Jira ↔ GitHub (Smart Commits / GitHub for Jira) |
-| MCP-downtime fallback `tooling/linear-pending.md` | Same fallback pattern, retargeted to Jira |
+| Was (Linear)                                                                    | Now (Jira)                                            |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Linear workspace `leocaseiro`, team `LEO`, project `notation-hero-db465058e201` | Jira Cloud, project key **KAN**                       |
+| Ticket ids `LEO-<n>`                                                            | **`KAN-<n>`** (old `LEO-<n>` ids are historical only) |
+| Branch naming `LEO-<n>-<slug>` (DACI L10b)                                      | **`KAN-<n>-<slug>`**                                  |
+| Linear MCP, `write:issues` token in keychain (DACI L10a)                        | Jira integration — see Follow-ups                     |
+| Linear GitHub App, deferred (DACI L10b)                                         | Jira ↔ GitHub (Smart Commits / GitHub for Jira)       |
+| MCP-downtime fallback `tooling/linear-pending.md`                               | Same fallback pattern, retargeted to Jira             |
 
 ## Why
 

@@ -1,14 +1,14 @@
-import * as aws from "@pulumi/aws";
-import * as pulumi from "@pulumi/pulumi";
+import * as aws from '@pulumi/aws';
+import * as pulumi from '@pulumi/pulumi';
 
 /**
  * Reusable Pulumi component (NH-150): a Node Lambda fronted by a public
  * Function URL, with a managed CloudWatch LogGroup (explicit retention).
  *
  * Lives in `infra/` (type:infra) because it is deploy-time IaC importing
- * `@pulumi/*` — the live depcruise H9 forbids `infra → adapters` source, and
- * `.stack` is the approved role suffix for a stack building block. The handler
- * runtime code lives in `apps/` and is packaged via FileArchive(dist) (H1–H4).
+ * `@pulumi/*`. `.stack` is the approved role suffix for a stack building block.
+ * The handler runtime code is the NestJS bundle from `server/` (`pnpm run build:lambda`
+ * -> server/dist-lambda), passed in via the `code` FileArchive.
  */
 export interface LambdaWithUrlArgs {
   /**
@@ -17,14 +17,36 @@ export interface LambdaWithUrlArgs {
    * Lambda lazily auto-creates an unmanaged, never-expire group).
    */
   functionName: pulumi.Input<string>;
-  /** Archive of the handler's esbuild build output (apps/handler-hello/dist). */
+  /** Archive of the handler bundle (server `build:lambda` -> server/dist-lambda). */
   code: pulumi.Input<pulumi.asset.Archive>;
   /** Lambda handler string, e.g. "index.handler". */
   handler: pulumi.Input<string>;
-  /** Defaults to "nodejs22.x" (AWS Lambda's newest Node runtime). */
+  /** Defaults to "nodejs24.x" (AWS Lambda's newest Node runtime). */
   runtime?: pulumi.Input<string>;
   /** CloudWatch log retention; defaults to 14 days. */
   logRetentionDays?: pulumi.Input<number>;
+  /**
+   * Function URL auth: "NONE" (public, curl-able) or "AWS_IAM" (only a SigV4 caller —
+   * e.g. CloudFront via OAC — can invoke). Defaults to "NONE".
+   */
+  authorizationType?: pulumi.Input<'NONE' | 'AWS_IAM'>;
+  /** Function URL CORS. Omit when fronted same-origin by CloudFront. */
+  cors?: pulumi.Input<aws.types.input.lambda.FunctionUrlCors>;
+  /** Lambda timeout in seconds; defaults to 10 (low, to bound free-tier compute). */
+  timeoutSeconds?: pulumi.Input<number>;
+  /** Lambda memory in MB; defaults to 512. */
+  memorySize?: pulumi.Input<number>;
+  /**
+   * IAM permissions-boundary ARN for the Lambda execution role. The CI deploy policy REQUIRES a
+   * boundary on every role it creates (privesc guard), so the composition passes it; the boundary
+   * caps the role to its logging ceiling even if a broader policy is ever attached to it.
+   */
+  permissionsBoundaryArn?: pulumi.Input<string>;
+  /**
+   * Environment variables for the Lambda (e.g. the Neon `DATABASE_URL`). Wrap secret values with
+   * `pulumi.secret(...)` at the call site so they are masked in state + the `pulumi up` log.
+   */
+  environment?: pulumi.Input<Record<string, pulumi.Input<string>>>;
 }
 
 export class LambdaWithUrl extends pulumi.ComponentResource {
@@ -33,22 +55,32 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
   public readonly logGroupName: pulumi.Output<string>;
 
   constructor(name: string, args: LambdaWithUrlArgs, opts?: pulumi.ComponentResourceOptions) {
-    super("nh:aws:LambdaWithUrl", name, args, opts);
+    super('nh:aws:LambdaWithUrl', name, args, opts);
 
     const assumeRole = aws.iam.getPolicyDocumentOutput({
       statements: [
         {
-          actions: ["sts:AssumeRole"],
-          principals: [{ type: "Service", identifiers: ["lambda.amazonaws.com"] }],
+          actions: ['sts:AssumeRole'],
+          principals: [{ type: 'Service', identifiers: ['lambda.amazonaws.com'] }],
         },
       ],
     });
 
-    const role = new aws.iam.Role(`${name}-role`, { assumeRolePolicy: assumeRole.json }, { parent: this });
+    const role = new aws.iam.Role(
+      `${name}-role`,
+      {
+        assumeRolePolicy: assumeRole.json,
+        permissionsBoundary: args.permissionsBoundaryArn,
+      },
+      { parent: this },
+    );
 
     new aws.iam.RolePolicyAttachment(
       `${name}-basic-exec`,
-      { role: role.name, policyArn: aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole },
+      {
+        role: role.name,
+        policyArn: aws.iam.ManagedPolicy.AWSLambdaBasicExecutionRole,
+      },
       { parent: this },
     );
 
@@ -69,12 +101,15 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
         name: args.functionName,
         role: role.arn,
         handler: args.handler,
-        runtime: args.runtime ?? "nodejs22.x",
-        architectures: ["arm64"],
+        runtime: args.runtime ?? 'nodejs24.x',
+        architectures: ['arm64'],
+        timeout: args.timeoutSeconds ?? 10,
+        memorySize: args.memorySize ?? 512,
         code: args.code,
         // loggingConfig.logGroup (not bare dependsOn) is what redirects logging
         // to the managed group; dependsOn makes the ordering explicit.
-        loggingConfig: { logFormat: "JSON", logGroup: logGroup.name },
+        loggingConfig: { logFormat: 'JSON', logGroup: logGroup.name },
+        environment: args.environment ? { variables: args.environment } : undefined,
       },
       { parent: this, dependsOn: [logGroup] },
     );
@@ -83,11 +118,11 @@ export class LambdaWithUrl extends pulumi.ComponentResource {
       `${name}-url`,
       {
         functionName: this.function.name,
-        // Public endpoint (no SigV4) so it is curl-able — throwaway hello-world,
-        // no data/secrets. AWS auto-attaches the public-access policy; no
-        // aws.lambda.Permission resource is required.
-        authorizationType: "NONE",
-        cors: { allowOrigins: ["*"], allowMethods: ["GET"] },
+        // Default "NONE" is public/curl-able; pass "AWS_IAM" to lock the URL so only a
+        // SigV4 signer (CloudFront via OAC) can invoke it. CORS is omitted by default —
+        // when CloudFront fronts the URL the browser request is same-origin.
+        authorizationType: args.authorizationType ?? 'NONE',
+        cors: args.cors,
       },
       { parent: this },
     );

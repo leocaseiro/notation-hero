@@ -1,0 +1,272 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/public-sans';
+@import '@fontsource-variable/material-symbols-outlined';
+
+/* The Material Symbols face ships `font-display: swap`, and `.material-symbols-outlined` declares
+   no icon fallback — so during the swap period the browser paints the LIGATURE SOURCE TEXT, and a
+   cold first visit renders the literal words `settings`, `play_arrow` and `folder_open` where the
+   controls should be. `block` gives a brief invisible period and then the real glyphs, which is the
+   standard choice for an icon font precisely because its fallback text is meaningless.
+   Re-declaring the family with the same src overrides the @import's descriptor. */
+@font-face {
+  font-family: 'Material Symbols Outlined Variable';
+  font-display: block;
+  src: url('@fontsource-variable/material-symbols-outlined/files/material-symbols-outlined-latin-wght-normal.woff2')
+    format('woff2-variations');
+  font-weight: 100 700;
+  font-style: normal;
+}
+
+@custom-variant dark (&:is(.dark *));
+
+/* Notation Hero brand tokens (teal scale = Tailwind teal-400/600/700). CSS-first
+   @theme — Tailwind v4. Brand is teal; purple is NOT a brand color. Roles:
+     brand-400 (#2dd4bf) — vivid teal, light accents / large surfaces.
+     brand-600 (#0d9488) — dark-mode link/accent TEXT (passes AA on dark bg; only
+                           ~2.6:1 on white, so dark-mode only — do not use on light).
+     brand-700 (#0f766e) — deep teal, accessible as text on white. */
+@theme {
+  --color-brand-400: #2dd4bf;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+
+  /* Skeleton pulse (NH-262): cycles background-color between the --skeleton (peak) and
+     --skeleton-pulse (trough) tokens instead of Tailwind's opacity-based animate-pulse, whose
+     0.5-opacity trough dropped any token below the 3:1 non-text contrast floor. Same 2s
+     timing as animate-pulse. */
+  --animate-skeleton-pulse: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+
+  @keyframes skeleton-pulse {
+    0%,
+    100% {
+      background-color: var(--skeleton);
+    }
+
+    50% {
+      background-color: var(--skeleton-pulse);
+    }
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+@theme inline {
+  --font-heading: var(--font-sans);
+  --font-sans: 'Public Sans Variable', sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-score-low: var(--score-low);
+  --color-score-developing: var(--score-developing);
+  --color-score-climbing: var(--score-climbing);
+  --color-score-high: var(--score-high);
+  --color-score-mastered: var(--score-mastered);
+  --color-score-mastered-foreground: var(--score-mastered-foreground);
+  --color-level-debut: var(--level-debut);
+  --color-kind-fill: var(--kind-fill);
+  --color-skeleton: var(--skeleton);
+  --color-skeleton-pulse: var(--skeleton-pulse);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  --background: oklch(100% 0 0deg);
+  --foreground: oklch(14.8% 0.004 228.8deg);
+  --card: oklch(100% 0 0deg);
+  --card-foreground: oklch(14.8% 0.004 228.8deg);
+  --popover: oklch(100% 0 0deg);
+  --popover-foreground: oklch(14.8% 0.004 228.8deg);
+  --primary: oklch(51.1% 0.096 186.391deg);
+  --primary-foreground: oklch(98.4% 0.014 180.72deg);
+  --secondary: oklch(96.7% 0.001 286.375deg);
+  --secondary-foreground: oklch(21% 0.006 285.885deg);
+  --muted: oklch(96.3% 0.002 197.1deg);
+  --muted-foreground: oklch(56% 0.021 213.5deg);
+  --accent: oklch(96.3% 0.002 197.1deg);
+  --accent-foreground: oklch(21.8% 0.008 223.9deg);
+  --destructive: oklch(50.5% 0.21 27.5deg);
+
+  /* Success/warning: Okabe-Ito green #009e73 / amber #e69f00 (the score hues),
+     AA-darkened for light-theme text on white (same precedent as --kind-fill). */
+  --success: oklch(51.5% 0.1 165.5deg); /* #18795a — 5.3:1 on white */
+  --success-foreground: oklch(98.4% 0.014 165.5deg); /* mint-white — 5.1:1 on the fill */
+  --warning: oklch(53% 0.105 76.8deg); /* #8e6211 — 5.4:1 on white */
+  --warning-foreground: oklch(98.2% 0.018 84deg); /* cream — 5.1:1 on the fill */
+  --border: oklch(92.5% 0.005 214.3deg);
+  --input: oklch(92.5% 0.005 214.3deg);
+  --ring: oklch(72.3% 0.014 214.4deg);
+  --score-low: oklch(67.9% 0.118 346.3deg); /* #cc79a7 reddish-purple */
+  --score-developing: oklch(75.3% 0.158 76.8deg); /* #e69f00 orange */
+  --score-climbing: oklch(53.2% 0.131 244deg); /* #0072b2 azure */
+  --score-high: oklch(62% 0.13 165.5deg); /* #009e73 green */
+  --score-mastered: oklch(65.2% 0.132 81.6deg); /* #b8860b gold */
+  --score-mastered-foreground: oklch(97.4% 0.034 90.5deg); /* #fff6dd cream */
+  --level-debut: oklch(42% 0.1 186.391deg); /* brand teal as TEXT — AA on --muted */
+  --kind-fill: oklch(56% 0.143 35.6deg); /* #b94f34 — AA-darkened from #D2664A (4.97:1 on white) */
+  --skeleton: oklch(62.7% 0 0deg); /* #888 — pulse peak (Leo-picked, NH-262) */
+  --skeleton-pulse: oklch(51% 0 0deg); /* #666 — pulse trough */
+  --chart-1: oklch(85.5% 0.138 181.071deg);
+  --chart-2: oklch(70.4% 0.14 182.503deg);
+  --chart-3: oklch(60% 0.118 184.704deg);
+  --chart-4: oklch(51.1% 0.096 186.391deg);
+  --chart-5: oklch(43.7% 0.078 188.216deg);
+  --radius: 0.625rem;
+  --sidebar: oklch(98.7% 0.002 197.1deg);
+  --sidebar-foreground: oklch(14.8% 0.004 228.8deg);
+  --sidebar-primary: oklch(60% 0.118 184.704deg);
+  --sidebar-primary-foreground: oklch(98.4% 0.014 180.72deg);
+  --sidebar-accent: oklch(96.3% 0.002 197.1deg);
+  --sidebar-accent-foreground: oklch(21.8% 0.008 223.9deg);
+  --sidebar-border: oklch(92.5% 0.005 214.3deg);
+  --sidebar-ring: oklch(72.3% 0.014 214.4deg);
+}
+
+.dark {
+  --background: oklch(14.8% 0.004 228.8deg);
+  --foreground: oklch(98.7% 0.002 197.1deg);
+  --card: oklch(21.8% 0.008 223.9deg);
+  --card-foreground: oklch(98.7% 0.002 197.1deg);
+  --popover: oklch(21.8% 0.008 223.9deg);
+  --popover-foreground: oklch(98.7% 0.002 197.1deg);
+  --primary: oklch(78.5% 0.133 181.912deg); /* brand teal #2dd4bf — bright accent, AA on dark bg */
+  --primary-foreground: oklch(27.7% 0.046 192.524deg); /* dark teal — 7.8:1 AA on the fill */
+  --secondary: oklch(27.4% 0.006 286.033deg);
+  --secondary-foreground: oklch(98.5% 0 0deg);
+  --muted: oklch(27.5% 0.011 216.9deg);
+  --muted-foreground: oklch(72.3% 0.014 214.4deg);
+  --accent: oklch(27.5% 0.011 216.9deg);
+  --accent-foreground: oklch(98.7% 0.002 197.1deg);
+  --destructive: oklch(70.4% 0.191 22.216deg);
+
+  /* Same values as --score-high / --score-developing (kept as literals so the
+     semantic tokens stay independent of the score palette). */
+  --success: oklch(71.6% 0.143 166.2deg); /* #1fbf8f — 7.4:1 on --popover */
+  --success-foreground: oklch(27% 0.05 166.2deg); /* deep green — 6.3:1 on the fill */
+  --warning: oklch(78.4% 0.152 75.6deg); /* #f0a92e — 8.6:1 on --popover */
+  --warning-foreground: oklch(28% 0.06 76deg); /* deep amber-brown — 7.3:1 on the fill */
+  --border: oklch(100% 0 0deg / 10%);
+  --input: oklch(100% 0 0deg / 15%);
+  --ring: oklch(56% 0.021 213.5deg);
+  --score-low: oklch(77.3% 0.098 344.4deg); /* #e29cc4 */
+  --score-developing: oklch(78.4% 0.152 75.6deg); /* #f0a92e */
+  --score-climbing: oklch(73.5% 0.117 236.2deg); /* #56b4e9 */
+  --score-high: oklch(71.6% 0.143 166.2deg); /* #1fbf8f */
+  --score-mastered: oklch(88% 0.155 90.1deg); /* #ffd24a */
+  --score-mastered-foreground: oklch(24.8% 0.051 91.8deg); /* #2a2000 */
+  --level-debut: oklch(78% 0.11 186.391deg); /* brand teal as TEXT — AA on --muted (dark) */
+  --kind-fill: oklch(68.8% 0.133 35.8deg); /* #e07a5f */
+  --skeleton: oklch(56.9% 0 0deg); /* #777 — pulse peak (Leo-picked, NH-262) */
+  --skeleton-pulse: oklch(45% 0 0deg); /* #555 — pulse trough */
+  --chart-1: oklch(85.5% 0.138 181.071deg);
+  --chart-2: oklch(70.4% 0.14 182.503deg);
+  --chart-3: oklch(60% 0.118 184.704deg);
+  --chart-4: oklch(51.1% 0.096 186.391deg);
+  --chart-5: oklch(43.7% 0.078 188.216deg);
+  --sidebar: oklch(21.8% 0.008 223.9deg);
+  --sidebar-foreground: oklch(98.7% 0.002 197.1deg);
+  --sidebar-primary: oklch(70.4% 0.14 182.503deg);
+  --sidebar-primary-foreground: oklch(27.7% 0.046 192.524deg);
+  --sidebar-accent: oklch(27.5% 0.011 216.9deg);
+  --sidebar-accent-foreground: oklch(98.7% 0.002 197.1deg);
+  --sidebar-border: oklch(
+    100% 0 0deg / 15%
+  ); /* matches dark --input, the Button outline border (NH-262 review) */
+
+  --sidebar-ring: oklch(56% 0.021 213.5deg);
+}
+
+@layer base {
+  html {
+    @apply font-sans;
+  }
+
+  /* Default text + surface follow the theme tokens, so elements that only
+     inherit their color (e.g. the ghost button) are readable in both themes
+     instead of falling back to browser-black. */
+  body {
+    @apply bg-background text-foreground;
+
+    margin: 0;
+  }
+
+  /* Tailwind v4 (and the browser UA stylesheet) default interactive controls to
+     cursor: default. Restore the pointer cursor app-wide for genuinely clickable
+     elements. Links are pointer natively; text inputs keep their text cursor;
+     disabled controls are excluded. */
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']),
+  label,
+  select:not(:disabled),
+  summary,
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+/* Material Symbols — self-hosted via @fontsource-variable/material-symbols-outlined
+   (@import above; bundled by Vite, CSP-clean + offline/Capacitor-safe). This class turns
+   a ligature span into an icon: <span class="material-symbols-outlined">play_arrow</span>.
+   Sized at 1.25rem to sit well inside buttons. */
+.material-symbols-outlined {
+  /* stylelint-disable-next-line font-family-no-missing-generic-family-keyword -- icon font; no text fallback applies */
+  font-family: 'Material Symbols Outlined Variable';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 1.25rem;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}

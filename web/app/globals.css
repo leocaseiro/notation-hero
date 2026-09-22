@@ -1,0 +1,84 @@
+/* The design system's styles.css is the single token source of truth: it already includes
+   Tailwind v4 itself, the @fontsource-variable font imports (Public Sans + Material Symbols),
+   the `@custom-variant dark` line, and the full :root/.dark/@theme token surface — so this file
+   adds NO tailwind/font imports of its own (spec §4: avoid double-inclusion). */
+@import '@notation-hero/client/styles.css';
+
+/* Generate utilities for the classes used INSIDE the design-system source — without this,
+   imported components render unstyled (spec §4 calls this cross-package scan an unverified bet;
+   the build-time probe for `bg-clip-padding` in the plan verifies it). Paths are relative to
+   this file: web/app/ → ../../client/src.
+   Scan ALL ui/ components, not per-imported-file: Tailwind's scanner is filesystem-based, not
+   import-aware, so a component we don't import still ships its CSS. We accept that bounded,
+   cached over-generation in exchange for never hand-maintaining a per-component @source list
+   (decision: docs/decisions/2026-07-12-design-system-distribution-adr.md, NH-275). The @source
+   not lines drop co-located stories/tests so their dev-only classes never leak into app CSS.
+   `.ts` is scanned as well as `.tsx`: a component may keep its class strings in a plain module so
+   two components can share them (Slider/SliderClasses.ts feeds Slider AND RangeSlider). With a
+   `.tsx`-only scan those utilities were never generated here — the seek rail rendered 0 px wide
+   and 4 px tall in this app while Storybook, which scans client/ itself, looked perfect. The
+   extra `not` lines keep the co-located test harnesses out. */
+@source '../../client/src/components/ui/**/*.tsx';
+@source '../../client/src/components/ui/**/*.ts';
+@source not '../../client/src/**/*.stories.tsx';
+@source not '../../client/src/**/*.test.tsx';
+@source not '../../client/src/**/*.test.ts';
+@source not '../../client/src/**/*.a11y.ts';
+@source not '../../client/src/**/*.vr.ts';
+@source not '../../client/src/**/*.story-ids.ts';
+
+/* Tailwind also auto-detects sources under web/, which would include scripts/. Keep it out, or
+   the build guard defeats itself: scripts/assert-design-system-css.mjs names the very utilities
+   it checks for, so scanning it makes Tailwind GENERATE them and the guard can never see them
+   go missing. Verified — without this line the guard reports 1 of 5 missing instead of 5 of 5. */
+@source not '../scripts/**';
+
+/* AlphaTab ships no stylesheet: it creates .at-cursor-bar and .at-cursor-beat as bare divs with
+   inline geometry only, so `enableCursor` paints nothing until the host app supplies these rules.
+   The beat cursor needs an explicit width or it may not show at all (upstream's styling guide).
+   Dark mode is not handled here: the notation surface is pinned to bg-white in both themes. */
+.at-cursor-bar {
+  background: color-mix(in oklab, var(--primary) 18%, transparent);
+}
+
+.at-cursor-beat {
+  background: var(--primary);
+  width: 3px;
+}
+
+.at-highlight * {
+  fill: var(--primary);
+  stroke: var(--primary);
+}
+
+/* The bar-range selection — drag across bars in the notation, and that range is what Loop repeats.
+   AlphaTab appends one bare, class-less div per staff system inside .at-selection and sizes each
+   with a scale() transform on a 100 x 100 px box. So the descendant selector is the only hook, and
+   `background` the only safe property: a border, a radius or a shadow would be stretched by that
+   same transform. Lighter than the bar cursor (18%), so "selected" and "playing now" stay distinct
+   where they overlap. Without this rule the range is real but invisible, which hides the one
+   thing that explains why playback keeps returning to the same bars. */
+.at-selection div {
+  background: color-mix(in oklab, var(--primary) 12%, transparent);
+}
+
+/* The drag-and-drop affordance. No hardcoded white or black, so it reads in both themes. */
+.nh-drop-overlay {
+  border-radius: var(--radius);
+  background: color-mix(in oklab, var(--background) 80%, transparent);
+
+  /* Without the blur the notation's staff lines and the teal Open file button show through
+     directly behind the hint line. */
+  backdrop-filter: blur(3px);
+}
+
+/* The whole surface signals "drop anywhere in here"; only the score area carries the scrim, so
+   the transport stays legible rather than reading as a broken player.
+   Scoped to the drop zone's own class, never the bare attribute: Base UI's Slider puts
+   `data-dragging` on its own elements while a thumb is held, and the bare selector drew this
+   dashed outline around the seek bar on every scrub. */
+.nh-drop-zone[data-dragging] {
+  outline: 2px dashed var(--primary);
+  outline-offset: 6px;
+  border-radius: var(--radius);
+}

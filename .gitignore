@@ -3,9 +3,12 @@
 
 # Dependencies
 node_modules/
+# pnpm store left in the repo root by the Dockerized VR-baseline run (see AGENTS.md)
+.pnpm-store/
 
 # Build output
 dist/
+dist-lambda/
 *.tsbuildinfo
 
 # pnpm-lock.yaml is COMMITTED (text lockfile) — see docs/cicd-pipeline.md
@@ -33,6 +36,7 @@ docs/.private/
 # Compound Engineering local config
 .compound-engineering/*.local.yaml
 
-
-.nx/cache
-.nx/workspace-data
+# Machine-local agent reference map (NH-318). Contains absolute paths to a contributor's
+# local clones of prior-art repositories, so it is never committed - this repo is public.
+# Each contributor writes their own; see docs/.private/ above for the same pattern.
+.claude/local-references.md

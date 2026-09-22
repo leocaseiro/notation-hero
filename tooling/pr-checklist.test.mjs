@@ -14,9 +14,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT = fileURLToPath(new URL('./pr-checklist.mjs', import.meta.url));
-const TEMPLATE = fileURLToPath(
-  new URL('../.github/pull_request_template.md', import.meta.url),
-);
+const TEMPLATE = fileURLToPath(new URL('../.github/pull_request_template.md', import.meta.url));
 
 function run(env) {
   try {
@@ -33,7 +31,11 @@ function run(env) {
     });
     return { code: 0, stdout, stderr: '' };
   } catch (e) {
-    return { code: e.status ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
+    return {
+      code: e.status ?? 1,
+      stdout: e.stdout ?? '',
+      stderr: e.stderr ?? '',
+    };
   }
 }
 
@@ -52,13 +54,21 @@ test('sanity: template exposes several acknowledgement items', () => {
 });
 
 test('fails when no Jira key anywhere', () => {
-  const r = run({ PR_TITLE: 'no key', PR_BODY: allTicked(), PR_BRANCH: 'feature' });
+  const r = run({
+    PR_TITLE: 'no key',
+    PR_BODY: allTicked(),
+    PR_BRANCH: 'feature',
+  });
   assert.equal(r.code, 1);
   assert.match(r.stderr, /No Jira key/);
 });
 
 test('passes: key in title + all items ticked', () => {
-  const r = run({ PR_TITLE: '[NH-16] feat', PR_BODY: allTicked(), PR_BRANCH: 'nh-16-x' });
+  const r = run({
+    PR_TITLE: '[NH-16] feat',
+    PR_BODY: allTicked(),
+    PR_BRANCH: 'nh-16-x',
+  });
   assert.equal(r.code, 0);
 });
 
@@ -72,7 +82,11 @@ test('passes: key only in body', () => {
 });
 
 test('passes: key only in branch (KAN- accepted too in code)', () => {
-  const r = run({ PR_TITLE: 'feat', PR_BODY: allTicked(), PR_BRANCH: 'KAN-9-x' });
+  const r = run({
+    PR_TITLE: 'feat',
+    PR_BODY: allTicked(),
+    PR_BRANCH: 'KAN-9-x',
+  });
   assert.equal(r.code, 0);
 });
 
@@ -87,9 +101,7 @@ test('bot bypass: PR_AUTHOR_TYPE=Bot skips the gate', () => {
 });
 
 test('fails: a single box left blank', () => {
-  const body = canonical
-    .map((label, i) => `- [${i === 0 ? ' ' : 'x'}] ${label}`)
-    .join('\n');
+  const body = canonical.map((label, i) => `- [${i === 0 ? ' ' : 'x'}] ${label}`).join('\n');
   const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: body, PR_BRANCH: 'nh-16-x' });
   assert.equal(r.code, 1);
   assert.match(r.stderr, /Unticked/);
@@ -105,14 +117,21 @@ test('v1.1: N/A is no longer honored — a blank box with "N/A" appended still f
 });
 
 test('anti-deletion: deleting one item fails (no delete-the-checklist bypass)', () => {
-  const body = canonical.slice(1).map((label) => `- [x] ${label}`).join('\n');
+  const body = canonical
+    .slice(1)
+    .map((label) => `- [x] ${label}`)
+    .join('\n');
   const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: body, PR_BRANCH: 'nh-16-x' });
   assert.equal(r.code, 1);
   assert.match(r.stderr, /Missing checklist item/);
 });
 
 test('anti-deletion: empty / checklist-less body fails', () => {
-  const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: 'just a description', PR_BRANCH: 'nh-16-x' });
+  const r = run({
+    PR_TITLE: '[NH-16] x',
+    PR_BODY: 'just a description',
+    PR_BRANCH: 'nh-16-x',
+  });
   assert.equal(r.code, 1);
 });
 
@@ -125,5 +144,64 @@ test('fenced sample checklist does not false-fail a compliant PR', () => {
 test('uppercase [X] counts as ticked', () => {
   const body = canonical.map((label) => `- [X] ${label}`).join('\n');
   const r = run({ PR_TITLE: '[NH-16] x', PR_BODY: body, PR_BRANCH: 'nh-16-x' });
+  assert.equal(r.code, 0);
+});
+
+// NH-206 review #3 — diff-aware infra-preview safety-net (PR_INFRA_CHANGED from paths-filter).
+const PREVIEW_SECTION =
+  '\n\n## Pulumi preview\n\nsafe — only creates, no destructive/exposure change\n';
+
+test('infra gate: infra-changed + no "## Pulumi preview" section fails', () => {
+  const r = run({
+    PR_TITLE: '[NH-16] x',
+    PR_BODY: allTicked(),
+    PR_BRANCH: 'nh-16-x',
+    PR_INFRA_CHANGED: 'true',
+  });
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /Pulumi preview/);
+});
+
+test('infra gate: infra-changed + empty "## Pulumi preview" section fails', () => {
+  const r = run({
+    PR_TITLE: '[NH-16] x',
+    PR_BODY: `${allTicked()}\n\n## Pulumi preview\n`,
+    PR_BRANCH: 'nh-16-x',
+    PR_INFRA_CHANGED: 'true',
+  });
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /empty/);
+});
+
+test('infra gate: infra-changed + comment-only "## Pulumi preview" section fails (stripNoise)', () => {
+  // The PR template ships the section with an HTML-comment placeholder; stripNoise removes it
+  // before the content check, so an un-filled section reads as empty and must FAIL (not pass).
+  const r = run({
+    PR_TITLE: '[NH-16] x',
+    PR_BODY: `${allTicked()}\n\n## Pulumi preview\n\n<!-- record: safe | destructive/exposure + task -->\n`,
+    PR_BRANCH: 'nh-16-x',
+    PR_INFRA_CHANGED: 'true',
+  });
+  assert.equal(r.code, 1);
+  assert.match(r.stderr, /empty/);
+});
+
+test('infra gate: infra-changed + filled section passes', () => {
+  const r = run({
+    PR_TITLE: '[NH-16] x',
+    PR_BODY: allTicked() + PREVIEW_SECTION,
+    PR_BRANCH: 'nh-16-x',
+    PR_INFRA_CHANGED: 'true',
+  });
+  assert.equal(r.code, 0);
+});
+
+test('infra gate: infra UNchanged does not require the section', () => {
+  const r = run({
+    PR_TITLE: '[NH-16] x',
+    PR_BODY: allTicked(),
+    PR_BRANCH: 'nh-16-x',
+    PR_INFRA_CHANGED: 'false',
+  });
   assert.equal(r.code, 0);
 });

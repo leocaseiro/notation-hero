@@ -1,0 +1,248 @@
+# @notation-hero/client
+
+The Notation Hero web client — a **Vite + React 19 SPA** using **TanStack Router** (file-based routing) and **TanStack Query**, styled with **Tailwind CSS v4** (CSS-first `@theme`). This package also hosts the **design system**: shadcn/ui components, Storybook docs, and Playwright visual-regression (VR) tests.
+
+> Run every command from the **repo root** with a pnpm workspace filter (`--filter @notation-hero/client`). Requires Node >= 24 and pnpm 11.
+
+## Getting started
+
+```bash
+pnpm install
+pnpm --filter @notation-hero/client dev      # http://localhost:3000
+```
+
+## Scripts
+
+| Command (from repo root)                              | What it does                                  |
+| ----------------------------------------------------- | --------------------------------------------- |
+| `pnpm --filter @notation-hero/client dev`             | Vite dev server (port 3000)                   |
+| `pnpm --filter @notation-hero/client build`           | Production build                              |
+| `pnpm --filter @notation-hero/client typecheck`       | `tsc --noEmit`                                |
+| `pnpm --filter @notation-hero/client test`            | Unit tests (Vitest, run once)                 |
+| `pnpm --filter @notation-hero/client test:watch`      | Unit tests (watch)                            |
+| `pnpm --filter @notation-hero/client lint`            | ESLint — also fails on formatting drift       |
+| `pnpm --filter @notation-hero/client format`          | Auto-fix: Prettier `--write` + `eslint --fix` |
+| `pnpm --filter @notation-hero/client storybook`       | Storybook dev (port 6006)                     |
+| `pnpm --filter @notation-hero/client build-storybook` | Static Storybook build                        |
+| `pnpm --filter @notation-hero/client test:vr`         | Visual-regression tests (Playwright)          |
+| `pnpm --filter @notation-hero/client test:vr:update`  | Re-generate VR baselines                      |
+| `pnpm --filter @notation-hero/client test:a11y`       | Accessibility tests (axe, both themes)        |
+| `pnpm --filter @notation-hero/client test:e2e`        | e2e tests (Playwright vs built app, MSW)      |
+| `pnpm --filter @notation-hero/client test:e2e:ui`     | e2e tests, interactive UI mode                |
+
+---
+
+## Design system / component development
+
+### Component structure (folder-per-component)
+
+Each component is a **PascalCase folder** under `src/components/ui/`, with its test, story, and VR spec **co-located**:
+
+```
+src/components/ui/Button/
+  Button.tsx                 # the component
+  Button.test.tsx            # Vitest + Testing Library unit tests
+  Button.stories.tsx         # Storybook stories (docs + the source of truth for VR)
+  Button.vr.ts               # Playwright visual-regression spec
+  Button.vr.ts-snapshots/    # committed baseline PNGs (Linux only)
+```
+
+Import via the `@/` alias (maps to `src/`), e.g. `import { Button } from '@/components/ui/Button/Button'`.
+
+> The repo layout guard (`tooling/check-layout.sh`) enforces co-location: no `__tests__/`, `__mocks__/`, or `stories/` directories, and every `*.test.*` / `*.spec.*` must sit next to a same-name source file. That is why the VR spec is named `*.vr.ts` (not `*.spec.ts`) — it sidesteps both that rule and the Vitest matcher.
+
+### Adding a shadcn component
+
+The theme is the shadcn preset **`b5claE9qM`** (teal + Public Sans), already applied to `src/styles.css`. To add a component:
+
+```bash
+pnpm dlx shadcn@latest add <component> -c client
+```
+
+Then move the generated file into its folder-per-component home (`src/components/ui/<Name>/<Name>.tsx`) and add `<Name>.stories.tsx`, `<Name>.test.tsx`, and `<Name>.vr.ts`. shadcn's generated `@/` imports already match our alias — no import rewrite needed, only the folder move (generators-first).
+
+### Icons — Material Symbols
+
+Icons use **Material Symbols Outlined**, **self-hosted** via `@fontsource-variable/material-symbols-outlined` (`@import`ed in `src/styles.css`, bundled by Vite — CSP-clean + offline/Capacitor-safe, no CDN). Render a glyph with the `.material-symbols-outlined` class — the text content is the ligature name:
+
+```tsx
+// Icon + text
+<Button>
+  <span className="material-symbols-outlined" aria-hidden="true">play_arrow</span>
+  Play
+</Button>
+
+// Icon-only — give it an accessible name with aria-label; mark the glyph aria-hidden
+<Button size="icon" aria-label="Play">
+  <span className="material-symbols-outlined" aria-hidden="true">play_arrow</span>
+</Button>
+```
+
+Browse glyph names at <https://fonts.google.com/icons>.
+
+**Gotcha — you cannot hide a `.material-symbols-outlined` span with `hidden`.** That class sets `display` _outside_ Tailwind's `@layer`, and unlayered CSS beats layered utilities in the cascade — so `hidden` (and any other `display` utility) has no effect on an icon span; it stays visible. To show or hide an icon by state, put the toggle on a plain wrapper and nest the glyph inside:
+
+```tsx
+// The wrapper carries the display toggle; the icon span never does.
+// `contents` (not `block`) centres the glyph in a flex parent instead of
+// baseline-aligning it ~3px too high.
+<span className="hidden group-data-checked/checkbox:contents" aria-hidden="true">
+  <span className="material-symbols-outlined">check</span>
+</span>
+```
+
+See `Checkbox/Checkbox.tsx` for a working example.
+
+### Disabled buttons — focusable and announced (NH-304)
+
+Pass `disabled` to `<Button>` as before. Button renders `aria-disabled="true"`, **not** the native `disabled` attribute, so a disabled button stays reachable by Tab and by screen readers (announced as "dimmed" / "unavailable") and accepts `ref.current.focus()`. Button blocks activation itself — click, Enter, Space, form submit, and a Base UI trigger rendered as `render={<Button disabled />}` — so consumers need no guard of their own.
+
+- **`disabled` is the one API that turns the guard on.** `aria-disabled` on its own only styles the button; it does not block activation.
+- **Say why it is unavailable.** Button makes the control discoverable, but it does not give the reason. Point `aria-describedby` at the reason text. A Tooltip alone is not enough: it sets no accessible description, and on a disabled button it opens for keyboard focus only (`pointer-events-none` stops mouse hover). With a Tooltip, put `disabled` on the Button inside `render`, not on `TooltipTrigger` — the trigger's own `disabled` prop turns the tooltip off.
+- **In unit tests, assert the attribute:** `toHaveAttribute('aria-disabled', 'true')`. jest-dom's `toBeDisabled()` reads the native attribute only, so it fails. Playwright's `toBeDisabled()` and `getByRole('button', { disabled: true })` do honour `aria-disabled`.
+- **No opt-out prop.** For a control whose state a user can infer from its neighbour (Previous next to Next), use a native `<button disabled>` with `buttonVariants`, as `Pagination` does — `buttonVariants` styles both `disabled:` and `aria-disabled:`, so it stays dimmed.
+- **Known limits:** a disabled as-link Button (`render={<a href>}`) keeps its `href`, so the context-menu key can still open it, and Space does not scroll the page while it has focus; a handler placed on the `render` element itself (or a capture-phase handler) is not withheld; a Button inside `<fieldset disabled>` stays natively disabled and out of reach; the guard is a React handler, so in server-rendered HTML it is not active until hydration (a disabled `type="submit"` Button could still submit by keyboard in that window — mouse is blocked by `pointer-events-none`); under `opacity-50` the 1px focus border renders at half strength (the ring alpha is doubled to match an enabled Button).
+
+### Storybook
+
+```bash
+pnpm --filter @notation-hero/client storybook        # http://localhost:6006
+```
+
+Stories are co-located (`Button.stories.tsx`) and use the `@storybook/tanstack-react` framework. Addons: **docs** (autodocs) and **a11y** (accessibility checks). Tailwind + the theme are wired via `.storybook/preview.tsx` (which imports `src/styles.css`) and `viteFinal` in `.storybook/main.ts`.
+
+### PR previews (GitHub Pages)
+
+Every PR that touches `client/**` publishes a live Storybook to GitHub Pages so you can review it in the browser with no local setup. The URL is posted as a sticky comment on the PR:
+
+- **Per-PR:** `https://leocaseiro.github.io/notation-hero/pr/<number>/`
+- **Latest `master`:** `https://leocaseiro.github.io/notation-hero/`
+
+The workflow (`.github/workflows/storybook-preview.yml`) auto-builds on `client/**` changes. You can also add the **`preview`** label to any PR, or trigger it from the **Actions** tab (**Run workflow** → PR number). Each push rebuilds the same URL; the preview folder is removed when the PR closes. It is **not** a required check, so it never blocks merge.
+
+The comment shows the commit SHA and the time it was built (Sydney local time, AEST/AEDT) — compare that against the PR's latest commit to tell whether the preview is stale (e.g. a push that didn't touch `client/**` won't rebuild it). The `cleanup` job in the Checks list shows **skipped** on every push while the PR is open — that's expected, it only runs when the PR closes.
+
+`STORYBOOK_BASE_PATH` (set only by that workflow; default `/`) drives the Vite `base` in `.storybook/main.ts` so assets resolve under the subpath — `dev`, `vr`, and `a11y` are unaffected.
+
+> **One-time setup:** enable Pages at **Settings → Pages → Deploy from a branch → `gh-pages` / root**. Until then the workflow still runs and creates the `gh-pages` branch, but the URLs 404.
+
+> **Why the publish job writes a `web/vercel.json` into `gh-pages`:** Vercel deploys every push on
+> every branch by default, and the `web` project's Root Directory is `web/` — which `gh-pages`
+> (compiled Storybook only) does not have. Every publish therefore produced a failed Vercel
+> deployment on the new `gh-pages` commit: a red status plus a failure email, gating nothing but
+> drowning real alerts. Vercel reads `vercel.json` from the **pushed branch's** Root Directory, so
+> the matching entry in `web/vercel.json` on `master` cannot reach `gh-pages` — this was measured,
+> not assumed. The publish job therefore writes the opt-out onto `gh-pages` itself, where Vercel
+> does read it; `keep_files` carries it across every later commit on that branch (NH-314).
+
+### Unit tests (Vitest)
+
+```bash
+pnpm --filter @notation-hero/client test
+```
+
+Vitest runs in jsdom with Testing Library. Tests are `*.test.tsx` beside the component. VR specs (`*.vr.ts`) are excluded from Vitest — they belong to Playwright.
+
+### Visual-regression (VR) tests (Playwright)
+
+VR tests render each Storybook story in isolation and compare a screenshot against a committed baseline. Baselines are **Linux-only** (see below), so run them locally through the Playwright container — or just rely on CI:
+
+```bash
+# From the repo root — compare against the committed Linux baselines in the Playwright container:
+pnpm test:vr:docker            # compare
+pnpm test:vr:docker:update     # regenerate baselines after an intended visual change, then commit
+
+# Raw commands (used by CI and inside the container above). On a Mac these render against
+# local, git-ignored darwin shots — fine for quick iteration, never the source of truth:
+pnpm --filter @notation-hero/client test:vr
+pnpm --filter @notation-hero/client test:vr:update
+```
+
+- Playwright auto-starts Storybook as its `webServer` (see `playwright.config.ts`) — you do **not** need Storybook running separately.
+- Specs match `**/*.vr.{ts,tsx}`. Each test opens `…/iframe.html?id=<story-id>` and calls `toHaveScreenshot`.
+- Baselines live in `<Component>.vr.ts-snapshots/` and are **committed** — **Linux only** (`…-chromium-linux.png`). macOS and Linux rasterize fonts differently (subpixel vs grayscale antialiasing, different glyph metrics), so a single OS's baselines are the source of truth. **CI compares against `-linux`** — the `vr` job runs in the `mcr.microsoft.com/playwright:v1.61.1-noble` container, matching the committed set exactly; run `pnpm test:vr:docker` locally to use that same container. Darwin shots (`…-chromium-darwin.png`) are git-ignored, so a Mac `test:vr:update` can't leak them into the repo.
+
+**Debugging a failing VR test:**
+
+```bash
+# Open the HTML report — Expected / Actual / Diff, side by side
+pnpm --filter @notation-hero/client exec playwright show-report
+
+# Interactive UI mode — step through tests, inspect the DOM
+pnpm --filter @notation-hero/client exec playwright test --ui
+
+# Headed — watch the real browser render
+pnpm --filter @notation-hero/client exec playwright test --headed
+```
+
+- **On a failing PR (one-click):** CI publishes the report to gh-pages and posts a **sticky PR comment** linking it — `https://leocaseiro.github.io/notation-hero/vr-report/pr/<n>/` — with the image-diff **Slider** and the trace **timeline**. The comment carries the head SHA + Sydney time and refreshes on every commit while VR fails; it flips to `✅ VR passing` once the run goes green. (The `playwright-vr-report` artifact is still uploaded as a downloadable fallback.)
+- **Locally:** `test:vr` writes the same report; run `npx playwright show-report` to open it, and add `--trace on` to also capture the timeline (local runs have no retry, so `on-first-retry` records nothing).
+- **Change was intentional?** Regenerate the Linux baselines and commit them: `pnpm test:vr:docker:update` (from the repo root — runs in the Playwright container so the shots match CI). See [`docs/runbooks/vr-a11y-testing.md`](../docs/runbooks/vr-a11y-testing.md) § "VR baselines are Linux-only".
+- **Looks like a flake?** The usual cause is web fonts not being ready. Specs already `await document.fonts.ready` before snapshotting (so Material Symbols render as glyphs, not the ligature fallback text) — if you introduce a new font/icon, load it the same way.
+- `test-results/`, `playwright-report/`, and `storybook-static/` are git-ignored.
+
+### Accessibility (a11y) tests
+
+Every Storybook story is checked with **axe-core** (WCAG 2 A + AA) in **both light and dark themes** — a required CI gate.
+
+```bash
+pnpm --filter @notation-hero/client test:a11y
+```
+
+- Driven by `@axe-core/playwright` over the stories (`*.a11y.ts`, the `a11y` Playwright project). Like VR, it auto-starts Storybook.
+- Each story is loaded twice — `?globals=theme:light` and `:dark` — so contrast is checked against the real rendered colors (the preview decorator applies the `.dark` class; the Storybook "dark background" addon is intentionally disabled because it only paints the canvas without switching the theme).
+- On a violation the test prints the rule, the element, and the **measured contrast ratio + the two colors** — the same detail as the Storybook a11y panel, readable straight from the CI job log.
+- While building a component, the **a11y addon panel** in `pnpm storybook` shows the same checks live.
+
+### End-to-end (e2e) tests
+
+Unlike VR/a11y (which run against Storybook), e2e runs against the **built app** served by
+`vite preview`, with a **separate config** (`playwright.e2e.config.ts`) and test dir (`e2e/`).
+
+```bash
+pnpm --filter @notation-hero/client test:e2e          # build -> preview (:4173) -> smoke test
+pnpm --filter @notation-hero/client test:e2e:ui       # interactive UI mode
+```
+
+- MSW intercepts `/api/*` at the browser network layer (Playwright `context.route`), so it is the
+  source of catalog data — handlers live in `e2e/mocks/handlers.ts`; there is no real backend in CI.
+  The fixture's `onUnhandledRequest` errors on an unmocked `/api/*` call so a mock miss fails at the
+  network layer (not as a vague "Could not reach the API").
+- The smoke test (`e2e/smoke.e2e.ts`) is the **reusable template**: load a page → navigate via an
+  in-app link → assert the MSW-mocked data renders → assert a clean console boot. Copy it for
+  future feature tests.
+
+**Debugging a failing e2e (traces):** `trace: 'on-first-retry'` records a replayable timeline. CI
+uploads it as the `playwright-e2e-report` artifact (kept even on flaky-then-passed runs). Download,
+unzip, then:
+
+```bash
+pnpm --filter @notation-hero/client exec playwright show-trace test-results/<test>/trace.zip
+```
+
+### Formatting & linting
+
+Prettier (`prettier.config.js`): **semicolons**, single quotes, trailing commas, **`printWidth: 100`** — matching `server/`. **ESLint enforces formatting** via `eslint-plugin-prettier`, so `pnpm lint` (a CI gate) fails on a missing semicolon or an over-long line, not just `prettier --check`.
+
+```bash
+pnpm --filter @notation-hero/client lint     # check (CI gate) — fails on format drift
+pnpm --filter @notation-hero/client format   # auto-fix formatting + lint
+```
+
+The ESLint base is `@tanstack/eslint-config` plus React-hooks/Compiler and Storybook rules. (`server/` uses a separate hand-rolled typed config — only the Prettier formatting is shared between the two packages.)
+
+---
+
+## Styling (Tailwind CSS v4)
+
+Tailwind v4 is configured CSS-first in `src/styles.css` (no `tailwind.config.js`). The teal theme tokens + Public Sans font come from the shadcn preset; dark mode is the `.dark` class variant.
+
+## Routing (TanStack Router)
+
+File-based routing under `src/routes/`. Add a route by adding a file there; the route tree is generated into `src/routeTree.gen.ts` (`pnpm --filter @notation-hero/client generate-routes`) and is **not** hand-edited (it is prettier-ignored). The root layout lives in `src/routes/__root.tsx`.
+
+```tsx
+import { Link } from '@tanstack/react-router';
+
+<Link to="/about">About</Link>;
+```

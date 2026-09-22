@@ -1,42 +1,73 @@
-# pnpm workspace globs — mirrors the npm-style `workspaces` field that used
-# to live in the root package.json. Source of truth for pnpm.
-#
-# `core/`, `adapters/`, `apps/` hold real Nx packages as of Wave 1 (DACI Step 1).
+# pnpm workspace — lightweight monorepo (no Nx, no Turborepo).
+# Each package keeps its own toolchain + linting from its starter; the root
+# orchestrates with plain `pnpm -r --if-present run <target>`.
 packages:
-  - 'core/*'
-  - 'adapters/*'
-  - 'apps/*'
-  - 'infra'
-# Build-script approval. pnpm 11.5.2 uses the `allowBuilds: {pkg: true|false}` map
-# (it IGNORES the older `onlyBuiltDependencies` list and re-injects this block as a
-# prompt). Both nx and @swc/core (transitive via @nx/js) ship postinstall builds;
-# approving both keeps a fresh `pnpm install --frozen-lockfile` green (e.g. CI),
-# which otherwise fails with ERR_PNPM_IGNORED_BUILDS.
-allowBuilds:
-  '@swc/core': true
-  nx: true
-  lefthook: true
-  # esbuild ships a platform binary via a postinstall build; the handler-hello
-  # Lambda build (apps/handler-hello) bundles with it. Approve so a frozen CI
-  # install stays green (ERR_PNPM_IGNORED_BUILDS otherwise).
-  esbuild: true
-  # import-x@4's native (Rust) module resolver. FALSE on purpose: the enforcement bundle uses
-  # only import-x/no-default-export + import-x/order, neither of which needs the native resolver
-  # (group classification works off node builtins + static heuristics). An explicit `false`
-  # silences ERR_PNPM_IGNORED_BUILDS WITHOUT running a native build script we don't yet need.
-  # Flip to true when resolver-backed rules (no-unresolved, internal/external precision) are
-  # wired — likely with the flat-config migration (NH-42) or when real source lands.
-  unrs-resolver: false
-  # protobufjs ships a postinstall build; it backs @pulumi/pulumi's gRPC runtime
-  # (transitive dep of the infra/ Pulumi program). Approve so a frozen CI install
-  # stays green and `pulumi up` works (NH-150).
-  protobufjs: true
+  - client
+  - server
+  - shared
+  - infra
+  - web
 
-# Security overrides — force patched versions of transitive deps flagged by the CI
-# `deps-cve` gate (osv-scanner). pnpm 11 reads `overrides` here, NOT package.json's
-# `pnpm.overrides` (that field is ignored). The two Pulumi-transitive MAJOR-bump CVEs
-# (js-yaml, @opentelemetry/core) are deferred via osv-scanner.toml — see NH-191.
+# pnpm 11.5.2 build-script approval (allowBuilds map; it ignores the older
+# onlyBuiltDependencies list). Add entries as scaffolds introduce build scripts.
+allowBuilds:
+  lefthook: true
+  '@swc/core': true
+  esbuild: true
+  protobufjs: true # @pulumi/pulumi gRPC runtime (infra/)
+  sharp: true # next/image native dependency (web/)
+  unrs-resolver: false # import-x native resolver not needed yet
+  msw: false # @msw/playwright intercepts via Playwright's context.route — MSW's service-worker postinstall is not needed
+
+# Supply-chain hardening — satisfies the pnpm Semgrep SAST rules (NH-259).
+minimumReleaseAge: 10080 # minutes = 7 days; delay installing freshly-published versions to dodge supply-chain attacks
+# minimumReleaseAgeExclude is also the CVE fast-track: to install a security patch published < 7 days
+# ago, add its exact name@version here, then drop it after the window / next lockfile refresh (NH-259).
+minimumReleaseAgeExclude:
+  - playwright-core@1.61.1
+  - playwright@1.61.1
+  - '@playwright/test@1.61.1'
+trustPolicy: no-downgrade # block malicious downgrade of security settings
+# semver@6.3.1 and chokidar@4.0.3 are the canonical, ubiquitous libs; no-downgrade flags these older
+# transitive copies only because higher-provenance newer majors (semver 7, chokidar 5) also resolve in
+# the tree — vetted false positives, not takeovers (NH-259). Exclude keeps no-downgrade on everywhere else.
+# These pins are version-EXACT: when the lockfile bumps them the exclude stops matching and no-downgrade
+# re-trips. `pnpm run check:supply-chain-pins` (CI lint + pre-push) fails early and points here to re-sync.
+trustPolicyExclude:
+  - semver@6.3.1
+  - chokidar@4.0.3
+  # eslint-import-resolver-typescript 3.10.1: the exact version eslint-config-next@16.3.4 requires.
+  # no-downgrade flags it as a provenance downgrade — 3.10.1 has no provenance attestation while the
+  # package's newer 4.x line on the registry does — even though no 4.x resolves anywhere in this tree
+  # and 3.10.1 is integrity-pinned in the lockfile. Vetted false positive, not a takeover (NH-275).
+  # (Comment must stay on its own line: check-supply-chain-pins.mjs reads the list item verbatim.)
+  - eslint-import-resolver-typescript@3.10.1
+blockExoticSubdeps: true # block transitive deps from untrusted/exotic sources
+
+# Security overrides — patched transitive deps flagged by osv-scanner (NH-191).
+# pnpm 11 reads overrides here, NOT package.json's pnpm.overrides.
 overrides:
-  form-data: 4.0.6 # GHSA-hmw2-7cc7-3qxx (High 8.7); was 4.0.5
-  tmp: 0.2.7 # GHSA-7c78-jf6q-g5cm (High 8.2); was 0.2.6
-  undici: 6.27.0 # GHSA-vxpw-j846-p89q (High 7.5) + GHSA-p88m-4jfj-68fv/g8m3-5g58-fq7m/35p6-xmwp-9g52; was 6.26.0
+  form-data: 4.0.6 # GHSA-hmw2-7cc7-3qxx
+  tmp: 0.2.7 # GHSA-7c78-jf6q-g5cm
+  multer: ^2.3.0 # GHSA-72gw-mp4g-v24j + GHSA-3p4h-7m6x-2hcm + GHSA-535w-7cp7-47q4 + GHSA-qfvm-cv95-jqjf + GHSA-wc9g-mqfw-jrwm + GHSA-qvfw-j98x-7q72 — via @nestjs/platform-express
+  file-type: ^21.3.4 # GHSA-5v7r-6r5c-r473 + GHSA-j47w-4g3g-c36v — dev-only via @nestjs/cli
+  markdown-it: ^14.2.0 # GHSA-6v5v-wf23-fmfq — dev-only via markdownlint-cli2 (NH-243)
+  'esbuild@<0.25.0': 0.25.12 # GHSA-67mh-4wv8-2f99 — drizzle-kit build transitive via deprecated @esbuild-kit; remove once drizzle-orm#5689 ships (Tracked: NH-252)
+  postcss: ^8.5.23 # GHSA-qx2v-qp2m-jg93 + GHSA-r28c-9q8g-f849 + GHSA-fxqj-rqcc-2cmp — next pins postcss internally; 8.5.x is a compatible minor (NH-275). Also floats nanoid past GHSA-28wg-ghj8-5hjv + GHSA-2v37-7h3g-55p8.
+  # js-yaml: the v3 line left the tree completely with @pulumi/pulumi 3.261.0, so the old
+  # 'js-yaml@3' override is dropped rather than renewed — nothing resolves to js-yaml 3.x now.
+  # v4 survives via cosmiconfig and was pinned EXACT at 4.2.0, so it could not float to the patches.
+  'js-yaml@4': 4.3.2 # GHSA-2883-xcg3-v3hh + GHSA-5p4m-2wfm-xmqj + GHSA-52cp-r559-cp3m (supersedes GHSA-h67p-54hq-rp68)
+  # NH-231: each parent below resolves its copy under the patched version, and pnpm reuses the
+  # parent's existing snapshot, so `pnpm update` alone cannot float them — the override is the only
+  # lever. Every entry stays inside the SAME major the parent declares, so no API surface changes.
+  'brace-expansion@1': ^1.1.18 # GHSA-3jxr-9vmj-r5cp + GHSA-mh99-v99m-4gvg + GHSA-rgw5-rvv9-x895 — via minimatch@3
+  'brace-expansion@2': ^2.1.4 # the same three — via minimatch@9
+  'brace-expansion@5': ^5.0.9 # the same three — via minimatch@10
+  'fast-uri@3': ^3.1.6 # GHSA-4c8g-83qw-93j6 + GHSA-v2hh-gcrm-f6hx + GHSA-7p8r-x3mc-p8w7 + GHSA-f65p-4m7j-42xc + GHSA-fph4-wmhf-6fwf + GHSA-jqff-g426-hqxp — via ajv@8
+  'qs@6': ^6.16.0 # GHSA-4mjr-xmp4-gh2g + GHSA-x5fp-wj9c-mxmx — via express@5 and body-parser@2
+  smol-toml: ^1.7.1 # GHSA-7w5x-hrqm-74c2 — markdownlint-cli2 0.23.2 still pins smol-toml 1.7.0 exactly
+
+
+  # No undici override: jsdom@29 (client tests) needs undici 7.x; master's 6.27.0 pin
+  # was for the removed Nx/handler-hello tree and breaks jsdom's dispatcher here.

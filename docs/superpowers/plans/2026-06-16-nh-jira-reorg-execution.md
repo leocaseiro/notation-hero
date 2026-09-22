@@ -70,19 +70,19 @@ cp /tmp/nh-baseline-*.json docs/superpowers/specs/ 2>/dev/null || true   # OPTIO
 
 Reuse **NH-14** Design (sprints 2,3,14), **NH-15** Local play (sprint 7). Create:
 
-| Epic | Sprint(s) | AWS-track? |
-|---|---|---|
-| Foundation & CI/CD | 1 | — |
-| Catalog/CMS & Infra | **4 only** | ✅ (Lambda·S3·CF·Pulumi) |
-| Player & Notation | 5 | — |
-| Scoring, MIDI & Progress | 7, 9 | ✅ (DynamoDB @9) |
-| Observability & SRE | 6, 12 | ✅ |
-| AWS Messaging & Analytics | 7b, 11 | ✅ |
-| Auth & Accounts (incl. upload) | 8, **10** | ✅ (Cognito·S3) |
-| Offline Sync | 13 | ✅ |
-| Native & Platform | 15 | — |
+| Epic                           | Sprint(s)  | AWS-track?               |
+| ------------------------------ | ---------- | ------------------------ |
+| Foundation & CI/CD             | 1          | —                        |
+| Catalog/CMS & Infra            | **4 only** | ✅ (Lambda·S3·CF·Pulumi) |
+| Player & Notation              | 5          | —                        |
+| Scoring, MIDI & Progress       | 7, 9       | ✅ (DynamoDB @9)         |
+| Observability & SRE            | 6, 12      | ✅                       |
+| AWS Messaging & Analytics      | 7b, 11     | ✅                       |
+| Auth & Accounts (incl. upload) | 8, **10**  | ✅ (Cognito·S3)          |
+| Offline Sync                   | 13         | ✅                       |
+| Native & Platform              | 15         | —                        |
 
-*(Fix from review: sprint-10 "User upload" now under **Auth & Accounts**, not Catalog. AWS-track epics marked so Task 5 goal-linking is explicit.)*
+_(Fix from review: sprint-10 "User upload" now under **Auth & Accounts**, not Catalog. AWS-track epics marked so Task 5 goal-linking is explicit.)_
 
 - [ ] **Step 1:** list existing epics (idempotency). **Step 2:** create the 9 (honor DRY_RUN). **Step 3:** verify + log keys.
 
@@ -103,7 +103,7 @@ Reuse **NH-14** Design (sprints 2,3,14), **NH-15** Local play (sprint 7). Create
 
 ## Task 6: Catalog Preview — re-parent + tag + sprint-assign (🚦 CONFIRM GATE)
 
-Issue→target map (sprints 1–4): **S1 Foundation** → Foundation&CI/CD / CI-CD-Tooling: NH-119,80,83,89,91,93,96,98,104,125,25 · **S2 Wireframes** → NH-14 / Design-system: NH-133,134,116 · **S3 Temp DS** → NH-14 / Design-system: *(read NH-14 children at run time to confirm keys)* · **S4 Catalog+infra** → Catalog/CMS&Infra: NH-126,79,123,122,118,117 (Catalog/CMS) + NH-107,110,121 (Infra/AWS). All → release `Catalog Preview`.
+Issue→target map (sprints 1–4): **S1 Foundation** → Foundation&CI/CD / CI-CD-Tooling: NH-119,80,83,89,91,93,96,98,104,125,25 · **S2 Wireframes** → NH-14 / Design-system: NH-133,134,116 · **S3 Temp DS** → NH-14 / Design-system: _(read NH-14 children at run time to confirm keys)_ · **S4 Catalog+infra** → Catalog/CMS&Infra: NH-126,79,123,122,118,117 (Catalog/CMS) + NH-107,110,121 (Infra/AWS). All → release `Catalog Preview`.
 
 - [ ] **Step 1: snapshot** each issue's FULL mutable state (`parent,customfield_10014,fixVersions,components,labels,customfield_10020`) to `$RUNLOG` — the per-issue restore record.
 - [ ] **Step 2: re-parent + realign Epic Link + merge tags** (DRY_RUN first):
@@ -129,6 +129,7 @@ jira -X PUT "$BASE/rest/api/3/issue/NH-126" -d '{"fields":{
 ## Task 8+: Alpha / Beta / M1 phases
 
 Same hardened procedure as Task 6, per spec §6, one release at a time (snapshot → dry-run → re-parent+epic-link+merge → sprint-assign → diff-verify). Confirm before each.
+
 - **Alpha** sprints 5,6,7,7b · **Beta** 8–12 · **M1** 13–15. (Clarify sprint-7b "NH-51 part" key at run time.)
 
 ## Task 9: Credential hygiene (after all phases)

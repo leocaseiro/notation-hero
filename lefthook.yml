@@ -1,70 +1,129 @@
-# lefthook.yml — notation-hero (pnpm 11.5.2 + Nx 22.7.5, hexagonal monorepo)
-# Docs: https://lefthook.dev/configuration/  |  nx affected: https://nx.dev/nx-api/nx/documents/affected
-#
-# pre-commit: fast feedback on STAGED work — the layout guard (same script CI runs)
-#             + nx affected lint/typecheck scoped to uncommitted (staged + working) changes.
-# pre-push:   wider safety net — nx affected lint/typecheck/test vs origin/master.
-#
-# Skip on merge/rebase so conflict-resolution / history-rewrite commits don't fight the hooks.
-# Worktree note: lefthook >= 2.1.9 resolves the shim via `git rev-parse --show-toplevel`
-# (fixes the deleted-worktree dead-path bug). Re-run `pnpm exec lefthook install` in the
-# worktree you actively develop in if hooks ever stop firing.
+# lefthook — pnpm workspaces (no Nx).
+# pre-commit: auto-fix + re-stage STAGED files (fast, glob-scoped).
+#   FOOTGUN (stage_fixed): the fixers below re-stage the WHOLE fixed file. If you
+#   partially staged a file (`git add -p`, leaving some hunks unstaged), an auto-fix
+#   that touches it sweeps those unstaged hunks into the commit too. Stage whole files,
+#   or review `git diff --staged` after committing a partially-staged file.
+# pre-push: full check vs origin/master; fails the push if unclean.
+# Skipped on merge/rebase so conflict-resolution / history-rewrite commits don't fight hooks.
+# Binary tools (shellcheck) are guarded inside their scripts — missing binary = skip locally.
+# Worktree: if hooks stop firing in a worktree, run `lefthook install --reset-hooks-path`
+# (the prepare script runs this automatically on install).
 
 pre-commit:
   parallel: false
   commands:
-    # 1) Layout guard — blocks __tests__/ · __mocks__/ · stories/ dirs BEFORE they're committed.
     layout-guard:
       run: bash tooling/check-layout.sh
-      skip:
-        - merge
-        - rebase
-    # 2) gitleaks secret scan on STAGED changes (local best-effort; CI is authoritative — E-gitleaks).
+      skip: [merge, rebase]
     secret-scan:
       run: bash tooling/gitleaks-precommit.sh
-      skip:
-        - merge
-        - rebase
-    # 3) semgrep SAST on STAGED source (local best-effort; CI is authoritative — E-semgrep).
+      skip: [merge, rebase]
     sast:
       run: bash tooling/semgrep-precommit.sh
-      skip:
-        - merge
-        - rebase
-    # 4) nx affected lint + typecheck on UNCOMMITTED changes (staged + unstaged working tree).
-    # NOTE: Coverage-ignore guard runs in CI only (see ci.yml `quality` job). Same policy
-    # as gitleaks/semgrep: CI is authoritative for whole-tree gates; pre-commit stays fast.
-    affected-lint-typecheck:
-      run: pnpm exec nx affected -t lint typecheck --uncommitted
-      skip:
-        - merge
-        - rebase
+      skip: [merge, rebase]
+    prettier:
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs,json,md,yml,yaml,css,html}'
+      run: pnpm exec prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
+    # ESLint lives in client/ + server/ (per-package flat configs; no root install).
+    # Flat config resolves ONE config from CWD, so run eslint inside each package
+    # via lefthook `root:` — {staged_files} are filtered to that root and made relative.
+    eslint-client:
+      root: 'client/'
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs}'
+      run: pnpm exec eslint --fix {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
+    eslint-server:
+      root: 'server/'
+      glob: '*.{ts,mjs,cjs,js}'
+      run: pnpm exec eslint --fix {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
+    eslint-web:
+      root: 'web/'
+      glob: '*.{ts,tsx,js,jsx,mjs,cjs}'
+      run: pnpm exec eslint --fix {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
+    stylelint:
+      glob: '*.css'
+      run: pnpm exec stylelint --fix {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
+    markdownlint:
+      glob: '*.md'
+      run: pnpm exec markdownlint-cli2 --fix {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
+    sort-package-json:
+      glob: '*package.json'
+      run: pnpm exec sort-package-json {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
+    shellcheck-fix:
+      glob: '*.sh'
+      run: bash tooling/shellcheck-fix.sh {staged_files}
+      stage_fixed: true
+      skip: [merge, rebase]
 
 commit-msg:
   commands:
     commitlint:
       run: pnpm exec commitlint --edit {1}
-      skip:
-        - merge
-        - rebase
+      skip: [merge, rebase]
 
 pre-push:
   parallel: false
   commands:
-    # Wider net before sharing: lint + typecheck + test for projects affected since origin/master.
-    # Requires origin/master to be fetched locally (a normal `git push` has it).
-    affected-verify:
-      run: pnpm exec nx affected -t lint typecheck test --base=origin/master --head=HEAD
-      skip:
-        - merge
-        - rebase
-    # Non-blocking heads-up (NH-16): list active worktrees so you notice overlapping
-    # work before pushing — the one overlap signal CI structurally can't see. Always
-    # passes (informational); the PR checklist's "overlapping work" item is the record.
-    worktree-reminder:
+    format:
+      run: pnpm exec prettier --check --ignore-unknown .
+      skip: [merge, rebase]
+    lint:
+      run: pnpm -r --if-present run lint
+      skip: [merge, rebase]
+    lint-css:
+      run: pnpm run lint:css
+      skip: [merge, rebase]
+    lint-md:
+      run: pnpm run lint:md
+      skip: [merge, rebase]
+    lint-spell:
+      run: pnpm run lint:spell
+      skip: [merge, rebase]
+    lint-editorconfig:
+      # The npm wrapper fetches a platform binary at runtime and has no darwin-arm64 build
+      # (NH-293), so a missing binary is an environment gap, not a violation — skip only
+      # that case; real violations still fail. CI runs the same script as a hard gate.
       run: |
-        echo "ℹ️  Active git worktrees — watch for overlapping work before pushing:"
-        git worktree list || true
-      skip:
-        - merge
-        - rebase
+        out=$(pnpm run lint:editorconfig 2>&1) && { printf '%s\n' "$out"; exit 0; }
+        case "$out" in
+          *"Failed to download binary"*)
+            echo "editorconfig-checker binary unavailable on this platform — skipped (CI gates; NH-293)" ;;
+          *)
+            printf '%s\n' "$out"; exit 1 ;;
+        esac
+      skip: [merge, rebase]
+    lint-yaml:
+      run: if command -v yamllint >/dev/null 2>&1; then pnpm run lint:yaml; else echo "yamllint missing — skipped (CI gates)"; fi
+      skip: [merge, rebase]
+    lint-shell:
+      run: if command -v shellcheck >/dev/null 2>&1; then pnpm run lint:shell; else echo "shellcheck missing — skipped (CI gates)"; fi
+      skip: [merge, rebase]
+    lint-actions:
+      run: if command -v actionlint >/dev/null 2>&1; then pnpm run lint:actions; else echo "actionlint missing — skipped (CI gates)"; fi
+      skip: [merge, rebase]
+    lint-sort-pkg:
+      run: pnpm run lint:sort-pkg
+      skip: [merge, rebase]
+    check-supply-chain-pins:
+      run: pnpm run check:supply-chain-pins
+      skip: [merge, rebase]
+    typecheck:
+      run: pnpm -r --if-present run typecheck
+      skip: [merge, rebase]
+    test:
+      run: pnpm -r --if-present run test
+      skip: [merge, rebase]

@@ -1,0 +1,18 @@
+{
+  "Exclude": [
+    "docs/decisions/decision-registry\\.md",
+    "^resources/",
+    "\\.(gp|gp3|gp4|gp5|gpx|mid|musicxml|mxl|capx)$",
+    "^web/e2e/fixtures/",
+    "^web/public/charts/"
+  ],
+  "Disable": {
+    "Charset": false,
+    "EndOfLine": false,
+    "Indentation": false,
+    "InsertFinalNewline": false,
+    "TrimTrailingWhitespace": false,
+    "IndentSize": true,
+    "MaxLineLength": false
+  }
+}

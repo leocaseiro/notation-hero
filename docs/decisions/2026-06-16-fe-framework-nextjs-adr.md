@@ -27,7 +27,7 @@ Adopt **Next.js (App Router)** as a **single front-end source** (`apps/notation-
 1. **Web → SSR** via **OpenNext → Lambda + CloudFront**, provisioned in **Pulumi**, on AWS free-tier. Server-render + hydration → SEO + the portfolio showcase.
 2. **iOS / Android → static-export** (`output:'export'`) → **Capacitor** native shell. No server; offline-capable.
 
-Build the **catalogue routes first** (SSR is most valuable there). Player routes migrate into the same app from the fork over time. **No Amplify.** **Not a micro-frontend; not two apps.**
+Build the **catalog routes first** (SSR is most valuable there). Player routes migrate into the same app from the fork over time. **No Amplify.** **Not a micro-frontend; not two apps.**
 
 ---
 
@@ -46,6 +46,7 @@ Build the **catalogue routes first** (SSR is most valuable there). Player routes
 **Positive:** Next.js + App Router + a genuine SSR/hydration portfolio piece; ~$0; keeps Pulumi (single IaC), Capacitor, PWA, S3+CloudFront, and the hexagon.
 
 **Negative / costs:**
+
 - Pages shipping in the **static (iOS) build must render client-side**; `isCapacitor()` selects the data path, SSR is the web bonus. No server-actions in shared pages.
 - Capacitor routing config (`basePath`/`trailingSlash`) for the `capacitor://localhost` scheme.
 - **Next.js ↔ OpenNext** version pinning required (Next 16 in 2026 — verify adapter support before wiring).
@@ -56,7 +57,7 @@ Build the **catalogue routes first** (SSR is most valuable there). Player routes
 
 - **Vite + React + HashRouter** — cleanest Capacitor fit, but no "Next.js" keyword → rejected (driver).
 - **Amplify SSR hosting** — free-tier but sidelines Pulumi + hides AWS depth → rejected.
-- **Two separate apps** (player static + catalogue SSR) — deferred; additive later if SEO page-load needs a game-bundle-free site (route-splitting likely makes it unnecessary).
+- **Two separate apps** (player static + catalog SSR) — deferred; additive later if SEO page-load needs a game-bundle-free site (route-splitting likely makes it unnecessary).
 - **Keep the 2026-06-02 rejection** — superseded: it never evaluated static-export + one-source.
 
 ---
@@ -64,5 +65,5 @@ Build the **catalogue routes first** (SSR is most valuable there). Player routes
 ## Enforcement / follow-up
 
 - **No machine enforcement** (framework choice is prose-grade). Hexagon boundaries already guard `core`/`adapters` from the FE.
-- Implementation tracked in **NH-185** (scaffold `apps/notation-hero`, conditional `output`, first catalogue route, OpenNext+Pulumi deploy).
+- Implementation tracked in **NH-185** (scaffold `apps/notation-hero`, conditional `output`, first catalog route, OpenNext+Pulumi deploy).
 - `decision-registry.md` change-log row added 2026-06-16.
