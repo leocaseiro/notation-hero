@@ -16,8 +16,9 @@ the 46 component folders under `client/src/components/ui/` already have them (on
   loading-bar fade race of PR #164 is a timing bug and keeps its own test.
 - **No Storybook inside `web/`.** The locked NH-275 decision stands (see "Approaches weighed").
 - **No dark-mode baselines.** Dark mode is unreachable in `web/` today — see "Light only".
-- **No mobile-width baselines in v1.** One viewport; a second doubles the baseline count for a
-  breakpoint no bug has yet been found at.
+- **No full narrow-width pass.** One narrow shot, not every state shot twice — see "The shots".
+  PR #170 puts a real breakpoint in the player chrome, so a single viewport is no longer defensible,
+  but shooting all eleven states at both widths is what the small-count rule exists to prevent.
 
 ## Why this exists
 
@@ -101,7 +102,7 @@ Three design consequences, all evidence-backed rather than guessed:
 3. **The tolerance is a free choice**, because even the worst observed drift is ±1/255 in one
    channel. See "Open question 1".
 
-Cost: Playwright reported **41 passed (2.2 m) for 60 runs** — about 2.2 s per shot, so an eight-shot
+Cost: Playwright reported **41 passed (2.2 m) for 60 runs** — about 2.2 s per shot, so an eleven-shot
 lane is well under a minute of test time. The dominant cost is the `next build`, not the
 screenshots.
 
@@ -140,7 +141,10 @@ projects: [
 ```
 
 The viewport is pinned explicitly rather than inherited from the device definition, so a Playwright
-upgrade that adjusts `Desktop Chrome` cannot silently invalidate every baseline.
+upgrade that adjusts `Desktop Chrome` cannot silently invalidate every baseline. The narrow-viewport
+shot overrides it for that one test with `test.use({ viewport: { width: 900, height: 900 } })`
+rather than adding a second project — a project would double every baseline's filename space for
+the sake of one shot.
 
 **Every invocation must name its project**, or adding the array quietly breaks the command that
 exists today. `web/package.json`'s `test:e2e` carries no `--project`, so the moment projects exist
@@ -164,28 +168,70 @@ single `next build`) shared while naming which lane went red.
 
 ### The shots
 
-Eight. Six reuse navigation `web/e2e/a11y.e2e.ts` has already proved works; the last two cover the
-popovers v0 Plan C adds to `/play` before this gate is built. Keeping the count small is deliberate:
+Eleven. Six reuse navigation `web/e2e/a11y.e2e.ts` has already proved works; two cover the popovers
+v0 Plan C adds to `/play`; two come from the PR #170 review, deferred here by the maintainer on
+2026-09-22; and one covers the breakpoint #170 introduces. Keeping the count small is deliberate:
 every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.
 
-| Shot                      | How it is reached                                    | What only this shot covers                          |
-| ------------------------- | ---------------------------------------------------- | --------------------------------------------------- |
-| Landing                   | `/`                                                  | the Play button, the one screen that is not `/play` |
-| Player, bundled beat      | `/play`                                              | the default screen: header, score, transport row    |
-| Player, long score        | `/play` + `Punk.gp` via `open-file-input`            | the scrolling notation box, a real filename         |
-| First-visit Skeleton      | stall `**/alphatab/esm/alphaTab.mjs`                 | the loading state                                   |
-| Engine error              | abort `**/alphatab/esm/alphaTab.mjs`                 | the `color-mix(in oklab, …)` destructive tint       |
-| Transport toggles pressed | click loop, metronome, count-in, then increase tempo | pressed-state styling and the tempo percentage      |
-| Settings popover open     | click the header gear                                | the accordion sections and their rows, composed     |
-| Tracks popover open       | click the transport's Tracks button                  | one mixer row per track, over a real score          |
+**All of these describe `/play` as PR #170 leaves it** — a full-bleed page with a `z-10` header, a
+left `bg-rail` strip carrying the Open-file control, the notation surface, and a raised `bg-panel`
+transport footer.
 
-The last two exist because the sequencing puts Plan C first, so both popovers are already on `/play`
+| Shot                      | How it is reached                                    | What only this shot covers                            |
+| ------------------------- | ---------------------------------------------------- | ----------------------------------------------------- |
+| Landing                   | `/`                                                  | the Play button, the one screen that is not `/play`   |
+| Player, bundled beat      | `/play`                                              | the default screen: header, rail, score, footer       |
+| Player, long score        | `/play` + `Punk.gp` via `open-file-input`            | the scrolling notation box, a real filename           |
+| First-visit Skeleton      | stall `**/alphatab/esm/alphaTab.mjs`                 | the loading state                                     |
+| Engine error              | abort `**/alphatab/esm/alphaTab.mjs`                 | the `color-mix(in oklab, …)` destructive tint         |
+| Transport toggles pressed | click loop, metronome, count-in, then increase tempo | pressed-state styling and the tempo percentage        |
+| Settings popover open     | click the header gear                                | the accordion sections and their rows, composed       |
+| Tracks popover open       | click the transport's Tracks button                  | one mixer row per track, over a real score            |
+| Ghost hover on the rail   | hover `open-file-button`                             | `hover:bg-elevate` measured against `--rail`          |
+| Tooltip over the header   | hover `back-home`                                    | a portalled tooltip winning the header's `z-10` layer |
+| Narrow viewport           | `/play` at 900 px wide                               | the rail's `w-20` state, below the `lg` breakpoint    |
+
+Two of these exist because the sequencing puts Plan C first, so both popovers are already on `/play`
 by the time this lane is written. They are app-composed UI built from `client/` primitives and
 rendered only by the real Next.js build — exactly the surface this gate exists to cover, and the
 same shape of thing as the 0 px seek rail. Their `client/` halves (`Accordion`, `SettingRow`,
 `TrackRow`) carry their own Storybook baselines; these two shots cover the composition, which no
 `client/` story can see. **If Plan C ships them behind different controls than the gear and the
 Tracks button, these two rows follow Plan C, not this document.**
+
+**The last three come from outside this document and each has a precise reason.**
+
+**Ghost hover on the rail** — PR #170 finding 10. `client/src/components/ui/Button/Button.tsx` gives
+the ghost variant `hover:bg-elevate`, and #170 adds three surfaces it can land on:
+
+```css
+--elevate: oklch(93.5% 0.006 240.4deg); /* the raised step a control shows under the pointer */
+--rail: #f4f6f9; /* recessed — the left rail */
+--panel: #fbfcfe; /* raised — the transport footer */
+```
+
+The step is strongest against Storybook's white canvas, which is the only place it is photographed
+today, and weakest against `--rail` — where it could regress to invisible with every existing gate
+green. `OpenFileControl.tsx` renders `variant="ghost"` on `--rail`, so hovering it is the shot.
+Convenient side effect: that button also carries a tooltip, so this shot captures the hover step and
+that tooltip together.
+
+**Tooltip over the header** — PR #170 finding 9. `Tooltip.tsx` portals its content to the end of
+`<body>` and puts `isolate z-50` on the **Positioner**; the `z-50` on the Popup beneath it has never
+done anything, because Base UI renders that element `position: static` and z-index is ignored there.
+Nothing noticed while no other element claimed a layer. #170's header claims `z-10`, and the
+tooltips went behind it. Storybook cannot see this: a Tooltip story has no header to hide behind.
+
+The trigger must be a **header** button. The `z-10` only buries what overlaps the header's top
+64 px, so a tooltip that opens clear of it proves nothing — `back-home` sits inside the header and
+overlaps by construction. A screenshot is enough: the tooltip is portalled and positioned from its
+trigger's box, so it lands in the same place every run, and a buried one is simply absent from the
+picture.
+
+**Narrow viewport** — `PlayerShell.tsx` renders the rail as `w-20 shrink-0 … lg:w-24`, so it is
+80 px below Tailwind's `lg` (1024 px) and 96 px at or above it. The other ten shots are pinned at
+1280 px and only ever see the wide rail. One shot at 900 px covers the narrow one without shooting
+every state twice.
 
 Candidates deliberately **not** in v1, each recorded so the omission is a decision rather than an
 oversight:
@@ -200,15 +246,16 @@ oversight:
   state exists only mid-gesture, so a shot has to pause before `drop` or `mouse.up()` and hold the
   frame steady long enough for two consecutive samples. Worth adding when that is worth solving, or
   the first time one of them breaks.
-- **A mobile-width pass.** One viewport in v1.
+- **Every state at both widths.** One narrow shot, not eleven.
 
 ### Readiness, and why each wait is there
 
 Every shot settles on explicit signals — no bare sleeps except a final short one. The waits are
-**per shot**, not one recipe for all eight: three of the states deliberately never finish loading,
+**per shot**, not one recipe for all eleven: three of the states deliberately never finish loading,
 so the player-ready block below can never pass for them and would simply hang.
 
-**The five player-loaded shots** (bundled beat, long score, both popovers, transport toggles):
+**The eight player-loaded shots** (bundled beat, long score, both popovers, transport toggles,
+ghost hover, tooltip over the header, narrow viewport):
 
 ```ts
 await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
@@ -224,7 +271,7 @@ await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHa
 | First-visit Skeleton | `getByTestId('notation-skeleton')` visible    | the engine is stalled on purpose, so Play never enables        |
 | Engine error         | `getByTestId('engine-error')` visible         | the engine is aborted on purpose, so Play never enables        |
 
-**All eight** then finish identically:
+**All eleven** then finish identically:
 
 ```ts
 await page.evaluate(async () => {
@@ -233,7 +280,9 @@ await page.evaluate(async () => {
 await page.waitForTimeout(500);
 ```
 
-The Skeleton shot's route handler must **stall indefinitely** rather than resume after a fixed
+The two hover shots add one wait of their own: the tooltip must be present and settled before the
+shot, since Base UI opens it after a delay. The Skeleton shot's route handler must **stall
+indefinitely** rather than resume after a fixed
 delay the way the accessibility lane's 5 000 ms stall does: `toHaveScreenshot` needs the state to
 hold across two consecutive samples, and on a baseline-generation run across the write as well.
 
@@ -360,7 +409,12 @@ With these two scripts the repo would carry four near-identical docker invocatio
 ## Risks and caveats
 
 - **Baseline churn.** Every `client/` visual change and every AlphaTab upgrade moves these
-  baselines too. Eight shots is the mitigation; adding a ninth should have to justify itself.
+  baselines too. Eleven shots is the mitigation; adding a twelfth should have to justify itself.
+- **Every shot below is written against PR #170's layout, which is open, not merged.** #170
+  restructures `/play` into a full-bleed page with a left rail and a raised transport footer, and
+  adds the `--rail`, `--panel` and `--elevate` surface tokens the hover shot depends on. If #170
+  changes in review, the shot list follows it. Re-read `web/app/play/PlayerShell.tsx` before
+  writing the lane rather than trusting these descriptions.
 - **Parallel workers are unmeasured.** The measurement ran `--workers=1`. The waits are on explicit
   signals rather than on timing, so parallel execution should hold, but if it proves flaky the VR
   project takes `workers: 1` — at about 2.2 s a shot that costs almost nothing.
