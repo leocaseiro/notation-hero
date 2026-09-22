@@ -52,6 +52,9 @@ test("the volume slider spans AlphaTab's own 0-16 scale", () => {
   expect(volume).toHaveAttribute('min', '0');
   expect(volume).toHaveAttribute('max', '16');
   expect(volume).toHaveAttribute('aria-valuenow', '8');
+  // The readout shows the percentage of the 0-16 scale, not the raw channel level — 12/16 means
+  // nothing to a drummer.
+  expect(screen.getByText('50%')).toBeInTheDocument();
 });
 
 test('the transposition sliders are hidden until expanded', () => {

@@ -27,6 +27,19 @@ test('the foot row shows master volume, solo all and mute all', () => {
   expect(screen.getByRole('checkbox', { name: /mute all/i })).toBeInTheDocument();
 });
 
+test("the master volume slider spans AlphaTab's own 0-1 scale", () => {
+  render(<MasterRow {...baseProps} />);
+  const volume = screen.getByRole('slider', { name: /master volume/i });
+  // Locks in the SCALE, not just that a slider exists: this is AlphaTab's own masterVolume gain,
+  // 0-1 — a DIFFERENT range from a track's playbackInfo.volume (0-16, TrackRow's own scale test).
+  // Nothing else in this suite would catch a regression that reintroduced the 0-16 range here.
+  expect(volume).toHaveAttribute('min', '0');
+  expect(volume).toHaveAttribute('max', '1');
+  expect(volume).toHaveAttribute('aria-valuenow', '0.5');
+  // The readout uses the same percentage formula TrackRow's volume uses, against this scale.
+  expect(screen.getByText('50%')).toBeInTheDocument();
+});
+
 test('some tracks muted reads as mixed, not as unticked', () => {
   render(<MasterRow {...baseProps} muteAllIndeterminate />);
   expect(screen.getByRole('checkbox', { name: /mute all/i })).toHaveAttribute(
@@ -68,19 +81,32 @@ test('each master box says what the next press will do', async () => {
   await waitFor(() => expect(openTooltip()).toBe('Solo all'));
 });
 
-test('a recording disables both master boxes and leaves the volume live', () => {
-  render(<MasterRow {...baseProps} soloMuteUnavailable={RECORDING} />);
+test('a recording disables both master boxes and leaves the volume live', async () => {
+  const onSoloAllChange = vi.fn();
+  const onMuteAllChange = vi.fn();
+  render(
+    <MasterRow
+      {...baseProps}
+      soloMuteUnavailable={RECORDING}
+      onSoloAllChange={onSoloAllChange}
+      onMuteAllChange={onMuteAllChange}
+    />,
+  );
   // `aria-disabled`, not `data-disabled` and not toBeDisabled(): Base UI's Checkbox.Root has no
   // `focusableWhenDisabled` escape hatch, so its own `disabled` prop would drop the control out
   // of the tab order — the row sets `aria-disabled` by hand instead, so the why-tooltip stays
   // reachable on keyboard focus.
-  expect(screen.getByRole('checkbox', { name: /solo all/i })).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
-  expect(screen.getByRole('checkbox', { name: /mute all/i })).toHaveAttribute(
-    'aria-disabled',
-    'true',
-  );
+  const solo = screen.getByRole('checkbox', { name: /solo all/i });
+  const mute = screen.getByRole('checkbox', { name: /mute all/i });
+  expect(solo).toHaveAttribute('aria-disabled', 'true');
+  expect(mute).toHaveAttribute('aria-disabled', 'true');
   expect(screen.getByRole('slider', { name: /master volume/i })).not.toBeDisabled();
+
+  // `aria-disabled` alone does not stop a press — Base UI still fires `onCheckedChange` on an
+  // element that is not natively disabled. The guard inside it is what actually blocks the
+  // report; prove it fires rather than trusting the attribute alone.
+  await userEvent.click(solo);
+  await userEvent.click(mute);
+  expect(onSoloAllChange).not.toHaveBeenCalled();
+  expect(onMuteAllChange).not.toHaveBeenCalled();
 });

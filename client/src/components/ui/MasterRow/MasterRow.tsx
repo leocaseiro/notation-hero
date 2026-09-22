@@ -11,7 +11,11 @@ import type { ComponentProps } from 'react';
 import { cn } from '@/lib/utils';
 
 interface MasterRowProps extends Omit<ComponentProps<'div'>, 'children' | 'onVolumeChange'> {
-  /** AlphaTab's own 0-1 master gain, the same value the Settings ▸ Player row edits. */
+  /**
+   * AlphaTab's own 0-1 master gain, the same value the Settings ▸ Player row edits. The row
+   * SHOWS it as a percentage — `Math.round(volume * 100)` — the same display unit TrackRow's
+   * volume uses, just against this control's 0-1 scale instead of a track's 0-16.
+   */
   volume: number;
   onVolumeChange: (next: number) => void;
   /**
@@ -89,6 +93,10 @@ const MasterRow = ({
         max={1}
         step={0.05}
         label="Master volume"
+        // The same percentage readout TrackRow's volume slider uses, against this control's 0-1
+        // scale rather than a track's 0-16.
+        showReadout
+        formatValue={(v) => `${Math.round(v * 100)}%`}
         className="w-32"
       />
 

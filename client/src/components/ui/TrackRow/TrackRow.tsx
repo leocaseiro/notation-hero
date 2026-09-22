@@ -48,8 +48,10 @@ interface TrackRowProps extends Omit<ComponentProps<'div'>, 'children' | 'onVolu
   mute: boolean;
   onMuteChange: (next: boolean) => void;
   /**
-   * 0-16, AlphaTab's own `playbackInfo.volume` scale. The caller writes `next / 16` to the engine —
-   * this row stays on the raw 0-16 scale throughout.
+   * 0-16, AlphaTab's own `playbackInfo.volume` scale. The ROW SHOWS it as a percentage —
+   * `Math.round((volume / 16) * 100)` — because 12/16 means nothing to a drummer. The value here
+   * and the caller's `next / 16` to the engine are both unchanged: the percentage is a display
+   * unit, not a second scale.
    */
   volume: number;
   onVolumeChange: (next: number) => void;
@@ -217,12 +219,19 @@ const TrackRow = ({
           max={16}
           step={1}
           label={`${name} volume`}
+          // 12/16 means nothing to a drummer — show the percentage, not the raw channel level.
+          showReadout
+          formatValue={(v) => `${Math.round((v / 16) * 100)}%`}
           disabled={mixDisabled}
           className="w-32"
         />
 
         {staves.length === 1 && staves[0] ? staffGroup(staves[0], false) : null}
 
+        {/* The expand control is never disabled, so the trigger renders the Button directly
+            through `render` rather than wrapping it in a span — the
+            `TooltipTrigger render={<Button …/>}` shape `Tooltip.stories.tsx` demonstrates for a
+            control with no disabled state to guard against. */}
         <Tooltip>
           <TooltipTrigger
             render={
