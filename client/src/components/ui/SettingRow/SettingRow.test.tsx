@@ -77,9 +77,9 @@ test('a number row reports a NUMBER, not the input string', async () => {
   expect(onChange).toHaveBeenLastCalledWith(2);
 });
 
-// A blank or half-typed number must not push NaN into the settings tree, where it would break
-// rendering silently.
-test('a number row ignores an unparseable entry instead of reporting NaN', async () => {
+// A blank field must not push anything into the settings tree — neither NaN nor a silent 0 —
+// where it would break rendering.
+test('a number row reports nothing while the field is blank', async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();
   render(
@@ -93,7 +93,7 @@ test('a number row ignores an unparseable entry instead of reporting NaN', async
   );
 
   await user.clear(screen.getByRole('spinbutton', { name: 'Scale' }));
-  expect(onChange).not.toHaveBeenCalledWith(Number.NaN);
+  expect(onChange).not.toHaveBeenCalled();
 });
 
 // "Numeric values pair a number input in the row with a slider on the line beneath."
@@ -177,4 +177,36 @@ test('a range row reports a keyboard step once, as a committed value', async () 
   expect(onChange).toHaveBeenCalledTimes(1);
   // closeTo, not an exact 1.05: the step arithmetic is floating point.
   expect(onChange).toHaveBeenLastCalledWith(expect.closeTo(1.05, 5));
+});
+
+// Same controlled-input problem as the plain `number` kind's harness above: a bare spy never
+// changes `value`, so the field would revert before the Enter keystroke ever saw the typed digit.
+const RangeHarness = ({ onChange }: Readonly<{ onChange: (next: SettingValue) => void }>) => {
+  const [value, setValue] = useState<SettingValue>(1);
+  return (
+    <SettingRow
+      id="zoom"
+      label="Zoom"
+      control={{ kind: 'range', min: 0.25, max: 3, step: 1 }}
+      value={value}
+      onChange={(next) => {
+        setValue(next);
+        onChange(next);
+      }}
+    />
+  );
+};
+
+// A half-typed or overshot value in the range row's number input must not sit there unclamped
+// until the next edit — it clamps to the control's own bounds the moment the edit commits.
+test('a range row clamps an out-of-range value on commit', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(<RangeHarness onChange={onChange} />);
+
+  const input = screen.getByRole('spinbutton', { name: 'Zoom' });
+  await user.tripleClick(input);
+  await user.type(input, '9');
+  await user.keyboard('{Enter}');
+  expect(onChange).toHaveBeenLastCalledWith(3);
 });

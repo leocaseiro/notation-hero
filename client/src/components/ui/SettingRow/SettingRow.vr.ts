@@ -21,6 +21,8 @@ runVrStories({
   hoverSelector: CONTROL_SELECTOR,
   // A disabled row's control can't take focus and paints no hover style.
   statesForStory: (story) => (story === 'disabled' ? ['resting'] : ['resting', 'focus', 'hover']),
-  // Only the select story renders NativeSelect's decorative chevron glyph.
-  iconFontStory: (story) => story === 'select',
+  // Two stories render a Material Symbols glyph: `select` always shows NativeSelect's decorative
+  // chevron, and `toggle` is checked (value: true), which mounts the Checkbox indicator's `check`
+  // glyph. The `disabled` story reuses the toggle kind but unchecked, so it renders no glyph.
+  iconFontStory: (story) => story === 'select' || story === 'toggle',
 });
