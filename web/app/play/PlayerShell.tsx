@@ -519,12 +519,22 @@ function Player() {
   const openFileName = notation?.name ?? SAMPLE_NOTATION.split('/').pop() ?? '';
 
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-4 p-6">
+    // The player fills the window and never scrolls as a page: the notation is the only thing that
+    // scrolls, and it does so inside its own box. `h-dvh`, not `h-screen` — on a phone or tablet
+    // browser `100vh` is the height WITHOUT the retracting address bar, so the transport row sat
+    // below the fold until the bar hid itself. Three rows: header, notation (the one that grows),
+    // transport.
+    <main className="flex h-dvh flex-col overflow-hidden">
       <h1 className="sr-only">Player</h1>
 
       {/* The bar rides the header's bottom edge, out of the layout flow, so the notation below
-          does not jump when it appears and again when it goes. */}
-      <div className="relative">
+          does not jump when it appears and again when it goes.
+          `z-10` is what makes the header's elevation shadow VISIBLE: without it the header is an
+          ordinary flex item, so the rail and the notation below — both opaque — paint straight
+          over the shadow it casts, and the edge reads as a bare hairline. The class belongs here
+          rather than on the <header>: the loading bar is its SIBLING inside this wrapper, sitting
+          on the header's bottom edge, so lifting the header alone would hide the bar behind it. */}
+      <div className="relative z-10 shrink-0">
         <PlayerHeader
           scoreTitle={notation?.score.title ?? ''}
           fileName={openFileName}
@@ -552,7 +562,7 @@ function Player() {
           14 state transitions on one drag across the control, a visible strobe. Clamped at 0 so a
           stray leave cannot make the next enter a no-op. */}
       <section
-        className="nh-drop-zone relative flex flex-col gap-4"
+        className="nh-drop-zone relative flex min-h-0 flex-1"
         data-testid="drop-zone"
         data-dragging={dragging || undefined}
         onDragEnter={(event) => {
@@ -581,68 +591,89 @@ function Player() {
           void acceptDropped(event.dataTransfer.files[0]);
         }}
       >
-        <div className="relative">
-          {/* NotationSurface is ALWAYS mounted — it renders its own engine-error message as an
+        {/* The mockup's left rail. Open file lives at its FOOT — that is where the mockup draws
+            it, and it is why the transport row no longer takes a `leading` slot. The rail's other
+            occupant in the mockup, the practice/game toggle, needs scoring and is not built (spec
+            §2), so the rail holds exactly one control and `mt-auto` is what pins it down there. */}
+        {/* `bg-rail` is a step DOWN from the page, where the footer's `bg-panel` is a step up —
+            the mockup's own two values. One token for both read as a single flat band. */}
+        <aside className="flex w-20 shrink-0 flex-col items-center border-r border-border bg-rail py-6 lg:w-24">
+          <div className="mt-auto">
+            <OpenFileControl onNotation={requestNotation} />
+          </div>
+        </aside>
+
+        {/* `min-w-0` AND `min-h-0` — both axes, for one reason. A flex item defaults to
+            `min-width`/`min-height: auto`, which refuses to shrink below its own content. Without
+            `min-h-0` a long score pushes the transport row off the bottom; without `min-w-0` the
+            transport row keeps its full intrinsic width in a narrow window and the shell's
+            `overflow-hidden` simply cuts the right-hand controls away — measured 928 px of row in
+            a 700 px window, with the metronome and count-in buttons gone. Raising the browser's
+            text size does the same thing, because every size here is rem-based. */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="relative min-h-0 flex-1">
+            {/* NotationSurface is ALWAYS mounted — it renders its own engine-error message as an
               overlay. Do not reintroduce a branch that renders something INSTEAD of it: unmounting
               the box while the api is alive leaves AlphaTab drawing into a detached node, with no
               error raised anywhere. When the engine never loaded, nothing can open or play, and the
               Play button stays where it is, disabled (spec §4). */}
-          <NotationSurface
-            api={api}
-            hostRef={hostRef}
-            viewportRef={viewportRef}
-            notation={notation}
-            onSoundFontProgress={setSoundFontProgress}
-          />
-          {dragging ? (
-            /* MUST be a descendant of the drop container AND pointer-events-none. An overlay
+            <NotationSurface
+              api={api}
+              hostRef={hostRef}
+              viewportRef={viewportRef}
+              notation={notation}
+              onSoundFontProgress={setSoundFontProgress}
+            />
+            {dragging ? (
+              /* MUST be a descendant of the drop container AND pointer-events-none. An overlay
                mounted outside the container oscillated forever: every dragleave's relatedTarget was
                the overlay, which is not a descendant, so no matching dragenter ever arrived inside
                and the counter could not balance. aria-hidden is deliberate — it is decorative
                during a pointer gesture, and the keyboard path is the labelled Open file button. */
-            <div
-              aria-hidden
-              className="nh-drop-overlay pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-primary" aria-hidden="true">
-                upload
-              </span>
-              <p className="text-lg font-semibold text-foreground">Drop to open</p>
-              <p className="text-sm text-foreground opacity-75">
-                Guitar Pro, MusicXML, Capella or alphaTex
-              </p>
-            </div>
-          ) : null}
-        </div>
+              <div
+                aria-hidden
+                className="nh-drop-overlay pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-primary" aria-hidden="true">
+                  upload
+                </span>
+                <p className="text-lg font-semibold text-foreground">Drop to open</p>
+                <p className="text-sm text-foreground opacity-75">
+                  Guitar Pro, MusicXML, Capella or alphaTex
+                </p>
+              </div>
+            ) : null}
+          </div>
 
-        <div
-          data-testid="player-status"
-          data-playing={playing}
-          data-player-ready={playerReady}
-          data-duration={durationMs}
-          data-looping={looping}
-          data-metronome={metronome}
-          data-countin={countIn}
-          data-speed={speed}
-        >
-          {/* The whole transport is gated on `playerReady`, never on `soundFontLoaded`: that one is
+          <div
+            className="shrink-0"
+            data-testid="player-status"
+            data-playing={playing}
+            data-player-ready={playerReady}
+            data-duration={durationMs}
+            data-looping={looping}
+            data-metronome={metronome}
+            data-countin={countIn}
+            data-speed={speed}
+          >
+            {/* The whole transport is gated on `playerReady`, never on `soundFontLoaded`: that one is
               a bare emitter with no replay, so a late subscriber would latch the row disabled
               forever. */}
-          <TransportRow
-            positionMs={positionMs}
-            durationMs={durationMs}
-            onSeek={seek}
-            looping={looping}
-            onLoopingChange={applyLooping}
-            metronome={metronome}
-            onMetronomeChange={applyMetronome}
-            countIn={countIn}
-            onCountInChange={applyCountIn}
-            hasRange={hasRange}
-            hasBackingTrack={hasBackingTrack}
-            disabled={!playerReady}
-            playButton={
-              /* The mockup's Play: a SOLID teal circle, 48 px, with a solid glyph and a soft teal
+            <TransportRow
+              positionMs={positionMs}
+              durationMs={durationMs}
+              onSeek={seek}
+              looping={looping}
+              onLoopingChange={applyLooping}
+              metronome={metronome}
+              onMetronomeChange={applyMetronome}
+              countIn={countIn}
+              onCountInChange={applyCountIn}
+              hasRange={hasRange}
+              hasBackingTrack={hasBackingTrack}
+              disabled={!playerReady}
+              playButton={
+                /* The mockup's Play: a SOLID teal circle, 48 px, with a solid glyph and a soft teal
                  shadow — Button's own `default` variant, which is bg-primary with the hover
                  darken. The two glyphs are inline SVG paths (Material's play_arrow and pause):
                  the self-hosted Material Symbols face carries the weight axis only, so
@@ -656,58 +687,50 @@ function Player() {
                  opening a file moves focus to this button: while the engine is still loading, a
                  native `disabled` would make that focus call a silent no-op and strand the
                  person's focus on the control they just used. */
-              <Tooltip>
-                {/* The trigger is a span AROUND the button, never the button itself — the fix
+                <Tooltip>
+                  {/* The trigger is a span AROUND the button, never the button itself — the fix
                     TransportToggle already carries. A disabled Button is `pointer-events: none`,
                     so as its own trigger it never receives the hover that opens the tooltip, and
                     Play is disabled for the whole engine + soundfont load. Focus events bubble,
                     so focus still opens it, and `playRef` stays on the Button. */}
-                <TooltipTrigger
-                  // Play/Pause is a toggle: keep the tooltip open across the press, so it says the new
-                  // state at once instead of vanishing until the pointer leaves and returns.
-                  closeOnClick={false}
-                  render={<span className="inline-flex shrink-0" />}
-                >
-                  <Button
-                    ref={playRef}
-                    data-testid="transport-play"
-                    size="icon"
-                    aria-label={playing ? 'Pause' : 'Play'}
-                    disabled={!playerReady}
-                    onClick={() => {
-                      // An explicit pause cancels a seek's pending auto-resume. This CANNOT
-                      // live in `playerStateChanged`: that also fires when AlphaTab stops
-                      // playback as a side effect of leaving the range — the very stop
-                      // `resumeAfterSeek` exists to undo.
-                      if (playing) resumeAfterSeek.current = false;
-                      api?.playPause();
-                    }}
-                    className="size-12 rounded-full shadow-lg shadow-primary/20"
+                  <TooltipTrigger
+                    // Play/Pause is a toggle: keep the tooltip open across the press, so it says the new
+                    // state at once instead of vanishing until the pointer leaves and returns.
+                    closeOnClick={false}
+                    render={<span className="inline-flex shrink-0" />}
                   >
-                    <svg
-                      viewBox="0 0 24 24"
-                      className="size-6"
-                      fill="currentColor"
-                      aria-hidden="true"
+                    <Button
+                      ref={playRef}
+                      data-testid="transport-play"
+                      size="icon"
+                      aria-label={playing ? 'Pause' : 'Play'}
+                      disabled={!playerReady}
+                      onClick={() => {
+                        // An explicit pause cancels a seek's pending auto-resume. This CANNOT
+                        // live in `playerStateChanged`: that also fires when AlphaTab stops
+                        // playback as a side effect of leaving the range — the very stop
+                        // `resumeAfterSeek` exists to undo.
+                        if (playing) resumeAfterSeek.current = false;
+                        api?.playPause();
+                      }}
+                      className="size-12 rounded-full shadow-lg shadow-primary/20"
                     >
-                      <path d={playing ? 'M6 19h4V5H6v14zm8-14v14h4V5h-4z' : 'M8 5v14l11-7z'} />
-                    </svg>
-                  </Button>
-                </TooltipTrigger>
-                {/* Lifted 8 px, or the teal arrow lies on the solid teal button and cannot be seen. */}
-                <TooltipContent sideOffset={8}>{playing ? 'Pause' : 'Play'}</TooltipContent>
-              </Tooltip>
-            }
-            leading={
-              /* Permanent, never conditional. The control sits in the row for the whole life of
-                 the page: a score is always open, so there is no other place for it to live, the
-                 replace tests always find `open-file-input`, and the person's focus is never
-                 moved by a control disappearing out from under them. It is FIRST in the row — the
-                 mockup keeps Open file at the bottom-left — and `trailing` stays free for the
-                 Tracks trigger Plan C adds. */
-              <OpenFileControl onNotation={requestNotation} />
-            }
-          />
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="size-6"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d={playing ? 'M6 19h4V5H6v14zm8-14v14h4V5h-4z' : 'M8 5v14l11-7z'} />
+                      </svg>
+                    </Button>
+                  </TooltipTrigger>
+                  {/* Lifted 8 px, or the teal arrow lies on the solid teal button and cannot be seen. */}
+                  <TooltipContent sideOffset={8}>{playing ? 'Pause' : 'Play'}</TooltipContent>
+                </Tooltip>
+              }
+            />
+          </div>
         </div>
 
         {/* Visually hidden, and polite so it waits for a gap rather than cutting the reader off. It

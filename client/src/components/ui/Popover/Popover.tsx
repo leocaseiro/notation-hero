@@ -26,7 +26,18 @@ const PopoverContent = ({
     'align' | 'side' | 'sideOffset'
   >) => (
   <PopoverPrimitive.Portal container={getStorybookRootContainer()}>
-    <PopoverPrimitive.Positioner align={align} side={side} sideOffset={sideOffset}>
+    {/* Same fix as Tooltip, for the same reason. Being PORTALLED is not what puts a panel on top:
+        the portal only moves it in the DOM, and DOM order breaks ties only between elements in the
+        same layer. A portal lands at body level with `z-index: auto`, so anything on the page with
+        a real z-index — the player's header is z-10 — paints over it regardless. The `z-50` on the
+        Popup below cannot help: Base UI renders that element `position: static`, and z-index is
+        ignored on a static element. It has to live on the Positioner. */}
+    <PopoverPrimitive.Positioner
+      className="isolate z-50"
+      align={align}
+      side={side}
+      sideOffset={sideOffset}
+    >
       <PopoverPrimitive.Popup
         data-slot="popover-content"
         className={cn(

@@ -1,5 +1,12 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/public-sans';
+
+/* Typography D3, the trio every mockup and the wireframe are drawn in and the design brief calls
+   locked (docs/design/2026-06-13-design-consultation-brief.md): Hanken Grotesk for UI text,
+   Bricolage Grotesque for display, Geist Mono for numbers. Each is the VARIABLE cut, so one file
+   per subset covers every weight the system asks for. */
+@import '@fontsource-variable/hanken-grotesk';
+@import '@fontsource-variable/bricolage-grotesque';
+@import '@fontsource-variable/geist-mono';
 @import '@fontsource-variable/material-symbols-outlined';
 
 /* The Material Symbols face ships `font-display: swap`, and `.material-symbols-outlined` declares
@@ -59,8 +66,13 @@ body,
 }
 
 @theme inline {
-  --font-heading: var(--font-sans);
-  --font-sans: 'Public Sans Variable', sans-serif;
+  /* `--font-heading` is display type now, not a re-pointer at the UI face: Bricolage Grotesque is
+     what the mockups set every heading and the wordmark in. `--font-mono` is Geist Mono, which is
+     what carries the tempo readout, the clock either side of the seek rail and every other figure
+     the player shows. */
+  --font-sans: 'Hanken Grotesk Variable', sans-serif;
+  --font-heading: 'Bricolage Grotesque Variable', var(--font-sans);
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -95,6 +107,9 @@ body,
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
+  --color-elevate: var(--elevate);
+  --color-rail: var(--rail);
+  --color-panel: var(--panel);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
@@ -127,9 +142,34 @@ body,
   --secondary: oklch(96.7% 0.001 286.375deg);
   --secondary-foreground: oklch(21% 0.006 285.885deg);
   --muted: oklch(96.3% 0.002 197.1deg);
-  --muted-foreground: oklch(56% 0.021 213.5deg);
+
+  /* 52 %, not the 56 % it sat at. At 56 % this cleared AA on pure white by 0.11 (4.61:1) and
+     failed on every tinted surface the app actually paints: 4.44:1 on --sidebar and 4.19:1 on
+     --secondary, both under 4.5:1. The player's footer, rail and tempo pill are exactly those
+     surfaces, so the a11y lane failed the moment they were tinted. 52 % keeps the hue and the
+     chroma and clears AA everywhere with room to spare — 5.48:1 on white, 5.27:1 on --sidebar,
+     4.98:1 on --secondary. The dark value needs no change (6.1:1 at its worst). */
+  --muted-foreground: oklch(52% 0.021 213.5deg);
   --accent: oklch(96.3% 0.002 197.1deg);
   --accent-foreground: oklch(21.8% 0.008 223.9deg);
+
+  /* The RAISED surface a control shows under the pointer — the mockup's own `--elevate`
+     (player-flatrow-teal.html), which it paints on every hovered header, rail and transport
+     button. The design system had no token at this step, so ghost hover fell back to --muted,
+     which sits within 2 % of the surfaces it has to be seen against: pointing at the tempo
+     steppers changed nothing you could see. Tuned against the Button `secondary` story, whose own
+     hover is a 1.133 step off its resting fill: this is 1.18 off the tempo pill and 1.17 off the
+     transport footer, so it reads at least as clearly as the reference the design system already
+     ships. */
+  --elevate: oklch(93.5% 0.006 240.4deg);
+
+  /* The player frames the score between two surfaces, and the mockup gives them DIFFERENT values:
+     --rail is recessed (the left rail), --panel is raised (the transport footer and the tempo
+     pill). Painting both with one token flattened the frame.
+     sRGB hex, not oklch, unlike their neighbours: these are the mockup's own values and were asked
+     for exactly, and a round trip through oklch moves them a unit or two. */
+  --rail: #f4f6f9;
+  --panel: #fbfcfe;
   --destructive: oklch(50.5% 0.21 27.5deg);
 
   /* Success/warning: Okabe-Ito green #009e73 / amber #e69f00 (the score hues),
@@ -181,6 +221,9 @@ body,
   --muted: oklch(27.5% 0.011 216.9deg);
   --muted-foreground: oklch(72.3% 0.014 214.4deg);
   --accent: oklch(27.5% 0.011 216.9deg);
+  --elevate: oklch(31% 0.016 249.4deg);
+  --rail: #090d12;
+  --panel: #121821;
   --accent-foreground: oklch(98.7% 0.002 197.1deg);
   --destructive: oklch(70.4% 0.191 22.216deg);
 

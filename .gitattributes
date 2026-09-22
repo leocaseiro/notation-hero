@@ -6,3 +6,4 @@ client/src/routeTree.gen.ts linguist-generated=true
 # (no markers) instead of failing — concurrent entries auto-combine; re-sort newest-first by hand
 # if the order matters. Scoped to this one file only. See the registry "Merge note" + NH-16.
 docs/decisions/decision-registry.md merge=union
+docs/decisions/decision-changelog.md merge=union

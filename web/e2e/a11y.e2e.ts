@@ -52,6 +52,18 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
         // still failing a milder 1 px one.
         if (el.getClientRects().length === 0) return false;
         const r = el.getBoundingClientRect();
+        // A control clipped OUTSIDE the viewport still reports its full layout box here —
+        // getBoundingClientRect ignores an ancestor's overflow:hidden — so a toggle pushed off the
+        // screen by the shell would pass the size check below. Fail it on position too: anything
+        // past an edge (0.5px tolerance for sub-pixel rounding) cannot be reached by a pointer.
+        if (
+          r.right > globalThis.innerWidth + 0.5 ||
+          r.left < -0.5 ||
+          r.bottom > globalThis.innerHeight + 0.5 ||
+          r.top < -0.5
+        ) {
+          return true;
+        }
         return r.width < 44 || r.height < 44;
       })
       .map((el) => ({
@@ -164,4 +176,22 @@ test('player has no axe violations with every transport toggle pressed', async (
 
   await expectNoViolations(page, 'play / transport pressed');
   await expectHitAreas(page, 'play / transport pressed');
+});
+
+// Every other case here runs at the config's 1280px, so this is the one case that exercises the
+// transport-row shrink fix (min-w-0 on the flex column). At ~700px the row could not shrink below
+// its content before that fix, and the metronome and count-in toggles were clipped off-screen. The
+// containment check in expectHitAreas above is what lets this fail on a control pushed past the
+// viewport edge rather than one merely painted small. Pinned at 700px, the width the regression was
+// reported at; narrower phone-portrait widths are a known gap tracked in NH-321.
+test('every transport control stays on-screen in a narrow 700px window', async ({ page }) => {
+  await page.setViewportSize({ width: 700, height: 800 });
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  // The two controls the shrink bug hid first — assert they are fully in the viewport by name,
+  // then run the full hit-area gate (size + the new containment check) over every control.
+  await expect(page.getByTestId('toggle-metronome')).toBeInViewport();
+  await expect(page.getByTestId('toggle-countin')).toBeInViewport();
+  await expectHitAreas(page, 'play / narrow 700px');
 });

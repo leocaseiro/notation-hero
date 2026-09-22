@@ -54,15 +54,28 @@ const Scrubber = ({
   const shownMs = draggingMs ?? Math.min(maxMs, Math.max(0, Math.round(positionMs)));
 
   return (
-    <div data-slot="scrubber" className={cn('flex w-full items-center gap-4', className)}>
-      <span className="shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
+    // `min-w-0` is not decoration: as a flex item this defaults to `min-width: auto`, which
+    // refuses to shrink below its own content, so in a tight row it pushes its neighbours out of
+    // the layout instead of giving way. The two clocks step aside below `sm` for the same reason —
+    // they are `shrink-0`, and on a phone they would otherwise sit on top of the transport icons.
+    // Nothing is lost to a screen reader: the slider's own valueText already reads
+    // "0:00 of 0:06".
+    <div
+      data-slot="scrubber"
+      className={cn('flex w-full min-w-0 items-center gap-2 sm:gap-4', className)}
+    >
+      <span className="shrink-0 font-mono text-sm tabular-nums text-muted-foreground max-sm:hidden">
         {formatClock(shownMs)}
       </span>
       {/* onChange keeps the thumb (and the elapsed clock) under the pointer; onCommit is the only
           thing that seeks. One drag then costs one seek instead of one per pointer move. Keyboard
           seeking still works — a settled keystroke commits too. */}
       <Slider
-        className="flex-1"
+        // `min-w-16` is the floor. Without it the rail is the only thing in the row that CAN give
+        // way, so a narrow window took it to 0 px — still focusable, still seekable by keyboard,
+        // and completely invisible. That is the NH-315 failure mode, and the a11y lane's 44 px
+        // check on the slider control is what would catch it.
+        className="min-w-16 flex-1"
         value={shownMs}
         onChange={setDraggingMs}
         onCommit={(ms) => {
@@ -83,7 +96,7 @@ const Scrubber = ({
         label="Seek"
         disabled={disabled || maxMs === 0}
       />
-      <span className="shrink-0 font-mono text-sm tabular-nums text-muted-foreground">
+      <span className="shrink-0 font-mono text-sm tabular-nums text-muted-foreground max-sm:hidden">
         {formatClock(durationMs)}
       </span>
     </div>

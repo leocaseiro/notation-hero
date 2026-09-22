@@ -88,6 +88,11 @@ The only per-user cache is the **client-side Router Cache** (each browser, for b
 
 ### 3.2 The pattern
 
+> ⚠️ **Superseded pattern (2026-07-21):** the bare `'use cache'` shown below is the **wrong variant** for this
+> app — the shipped code uses **`'use cache: remote'`** (Vercel's durable cache). Read the three-directive
+> distinction (`use-cache` / `use-cache-remote` / `use-cache-private`) in the bundled Next 16.2.10 docs and
+> the study plan [`2026-07-16-contract-study-plan.md`](2026-07-16-contract-study-plan.md) §5 before copying this snippet.
+
 ```ts
 // ✅ Public catalog — shared cache, revalidate only when an admin edits
 async function getCatalog() {

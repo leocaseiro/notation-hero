@@ -27,8 +27,14 @@ const buttonVariants = cva(
           'border-border bg-background shadow-xs hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
         secondary:
           'bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground',
+        // `bg-elevate`, not `bg-muted`. A ghost button has no chrome at all until you point at
+        // it, so its hover IS the affordance — and --muted lands within 2 % of the surfaces this
+        // app paints, which made the hover invisible on the tempo steppers, the transport toggles,
+        // Open file and Back alike. --elevate is the raised step the mockup uses for exactly this.
+        // No `/50` in dark: the dark value is already tuned against dark surfaces, and halving it
+        // reintroduces the problem.
         ghost:
-          'hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50',
+          'hover:bg-elevate hover:text-foreground aria-expanded:bg-elevate aria-expanded:text-foreground',
         destructive:
           'bg-destructive/10 text-destructive hover:bg-destructive/15 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 aria-disabled:focus-visible:ring-destructive/40 dark:bg-destructive/20 dark:hover:bg-destructive/25 dark:focus-visible:ring-destructive/40 dark:aria-disabled:focus-visible:ring-destructive/80',
         link: 'text-primary underline-offset-4 hover:text-[color-mix(in_oklch,var(--primary),black_12%)] hover:underline',

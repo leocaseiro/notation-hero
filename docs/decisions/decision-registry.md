@@ -6,7 +6,7 @@
 
 Legend — status: 🔒 locked-active · 💤 deferred (first-use trigger) · ✅ done · ⏳ pending · ⛔ superseded — enforcement: 🤖 machine · 🟡 partial · 📄 prose-only · — n/a
 
-## Change log — manual approvals & merge status updates
+## Change log (moved)
 
 Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
 
@@ -1589,6 +1589,11 @@ Ratified by leocaseiro 2026-06-12. ADR: `docs/decisions/2026-06-12-file-level-st
 - L4 `isolatedDeclarations` + type-coverage → **keep the rigor** (stress-tested 3× in prior sessions).
 - L9 Renovate → **keep** (vs Dependabot; grouped PRs). · L7 merge-queue → **keep**.
 - 9 remaining discretionary decisions (security scanners, AGENTS-from-config, dep-cruiser+Nx, DangerJS, Knip/Syncpack, Sentry, Lefthook) → **bulk-ratified as-is**.
+  The dated change-log entries (2026-06-11 → 2026-07-15) have moved to
+  [`docs/decisions/decision-changelog.md`](decision-changelog.md). This file — the
+  **registry** — is the small **state-by-topic** view. New change-log entries land in
+  the changelog file, not here. Both files are `merge=union` per `.gitattributes` —
+  entries never conflict, only append.
 
 ## A · Foundation & folders (pnpm, Nx, boundaries, lint, types)
 
