@@ -122,15 +122,17 @@ export function PlayerHeader({
             `basePath` itself, so the href never has to be rewritten. (next/image is the exception:
             its `src` needs the prefix spelled out.)
 
-            min-h-11 is not decoration: the a11y lane fails any a[href] under 44 px, and this line
-            box is 28. */}
+            min-h-11 AND min-w-11 are not decoration: the a11y lane fails any a[href] under 44 px
+            in EITHER dimension, and this line box is 28. The width floor matters below `md`,
+            where the wordmark goes `sr-only` — that is `position: absolute`, so the span leaves
+            the flex flow and takes its `gap-2` with it, leaving px-1 + the mark's w-8 = 40 px. */}
         <Tooltip>
           <TooltipTrigger
             render={
               <Link
                 href="/"
                 data-testid="app-wordmark"
-                className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-lg px-1 text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg px-1 text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 <BrandMark />
                 {/* `sr-only` below `md`, never `hidden`: the name still reaches a screen reader,
