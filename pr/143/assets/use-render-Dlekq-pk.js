@@ -1,1 +1,0 @@
-import{i as e}from"./preload-helper-FPWZkWV6.js";import{n as t,t as n}from"./useRenderElement-CqmHsrC7.js";function r(e){return t(e.defaultTagName??`div`,e,e)}var i=e((()=>{n()})),a=e((()=>{i()}));export{i as n,r,a as t};

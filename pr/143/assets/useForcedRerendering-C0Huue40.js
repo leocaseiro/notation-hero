@@ -1,1 +1,0 @@
-import{i as e,s as t}from"./preload-helper-FPWZkWV6.js";import{t as n}from"./react-9ZeVnuTE.js";function r(){let[,e]=i.useState({});return i.useCallback(()=>{e({})},[])}var i,a=e((()=>{i=t(n(),1)}));export{r as n,a as t};
