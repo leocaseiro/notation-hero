@@ -53,6 +53,25 @@ for scripts that were not archived; it is kept only for completeness.
 branch still present on `origin`.
 
 **Status:** ✅ decided (the archiving) · ⚠️ unverified (the five recovered decisions) · 📄 prose-only.
+
+### 2026-09-22 — Keep local branches too: worktree cleanup no longer deletes the branch (NH-25)
+
+`AGENTS.md` had said local cleanup was "fine and expected" and told agents to run `git branch -d`/`-D`
+after a merge. leocaseiro corrected that on 2026-09-22: **remove the worktree, keep the branch.**
+
+- **The remote rule was never the whole rule.** "Never delete a remote branch" left agents believing
+  the local half was disposable because `origin/<branch>` could restore it. That is only true when a
+  remote counterpart exists — and several local branches here have none, so deleting one destroys it
+  outright.
+- **Observed, not hypothetical.** Five local branches were deleted during post-merge cleanup this
+  session under the old wording. Three were restorable from `origin`; one
+  (`claude/notation-hero-status-recap-d54ded`) had no remote and had to be recreated from the commit
+  it happened to point at. All five are back.
+- **Worktree removal stays expected.** The disk cost is the worktree, not the ref. The guidance also
+  now says what to do when `git worktree remove` reports "Directory not empty" — that means untracked
+  files such as `node_modules`; leave the directory and ask rather than forcing.
+
+**Status:** ✅ decided · 📄 prose-only — `AGENTS.md` is the contract; no CI check enforces it.
 Approved by leocaseiro 2026-09-22.
 
 ### 2026-09-22 — merge=union is scoped to the changelog; the registry conflicts normally (NH-322)
