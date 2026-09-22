@@ -41,7 +41,7 @@ approved by the maintainer in conversation while looking at the running app.
   variant. Tuned against the Button `secondary` story, whose own hover is a 1.133 step: this is
   1.18. 🤖 VR captures every ghost hover in light and dark.
 - **`--muted-foreground` is 52 %, not 56 %.** At 56 % it cleared AA on pure white by 0.11 and
-  failed on every tinted surface underneath it — 4.44:1 on `--rail`, 4.19:1 on `--secondary` — and
+  failed on every tinted surface underneath it — 4.44:1 on `--sidebar`, 4.19:1 on `--secondary` — and
   the a11y lane went red on the seek rail's clock the moment the footer was tinted. Asked whether
   to go further, the maintainer chose to hold at 52 %. 🤖 the `a11y` job.
 - **Back retraces a step; the LOGO goes home.** Two different jobs, deliberately not merged: Back

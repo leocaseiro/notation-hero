@@ -1,7 +1,8 @@
 /* The design system's styles.css is the single token source of truth: it already includes
-   Tailwind v4 itself, the @fontsource-variable font imports (Public Sans + Material Symbols),
-   the `@custom-variant dark` line, and the full :root/.dark/@theme token surface — so this file
-   adds NO tailwind/font imports of its own (spec §4: avoid double-inclusion). */
+   Tailwind v4 itself, the @fontsource-variable font imports (Hanken Grotesk, Bricolage
+   Grotesque, Geist Mono + Material Symbols), the `@custom-variant dark` line, and the full
+   :root/.dark/@theme token surface — so this file adds NO tailwind/font imports of its own
+   (spec §4: avoid double-inclusion). */
 @import '@notation-hero/client/styles.css';
 
 /* Generate utilities for the classes used INSIDE the design-system source — without this,
