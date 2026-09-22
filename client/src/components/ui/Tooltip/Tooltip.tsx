@@ -41,7 +41,18 @@ const TooltipContent = ({
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Positioner>) => (
   <TooltipPrimitive.Portal>
-    <TooltipPrimitive.Positioner data-slot="tooltip-positioner" sideOffset={sideOffset} {...props}>
+    {/* `isolate z-50` belongs on the POSITIONER, the element that is actually positioned — the
+        same shape Menubar, DropdownMenu and HoverCard already use. The `z-50` below sits on the
+        Popup, which Base UI renders `position: static`, and z-index is ignored on a static
+        element: it has never done anything. That went unnoticed only while nothing else on the
+        page claimed a layer. The player's header now does — z-10, so its elevation shadow is not
+        painted over by the content below — and the tooltips went behind it. */}
+    <TooltipPrimitive.Positioner
+      data-slot="tooltip-positioner"
+      className="isolate z-50"
+      sideOffset={sideOffset}
+      {...props}
+    >
       <TooltipPrimitive.Popup
         data-slot="tooltip-content"
         className={cn(

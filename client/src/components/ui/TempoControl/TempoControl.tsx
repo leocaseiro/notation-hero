@@ -4,6 +4,7 @@ import { NumberField } from '@base-ui/react/number-field';
 import { useEffect, useRef, useState } from 'react';
 
 import { buttonVariants } from '../Button/Button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip/Tooltip';
 
 import { cn } from '@/lib/utils';
 
@@ -24,6 +25,15 @@ interface TempoControlProps {
   disabled?: boolean;
   className?: string;
 }
+
+/**
+ * The steppers sit flush inside the pill, so their corners have to NEST inside its corners rather
+ * than pick a radius of their own: concentric rounding means inner radius = outer radius minus the
+ * distance between them, which here is the pill's 1 px border. `rounded-lg` was 10 px against the
+ * pill's 14 px and left a sliver of pill showing in each corner. Derived from the same variable
+ * the consumer's `rounded-xl` uses, so re-rounding the pill cannot desynchronise the two.
+ */
+const STEPPER_RADIUS = 'rounded-[calc(var(--radius-xl)-1px)]';
 
 /** How long the percentage stays visible after a change that carried no focus. */
 const PERCENT_LINGER_MS = 3000;
@@ -111,6 +121,8 @@ const TempoControl = ({
     timerRef.current = setTimeout(() => setLingering(false), PERCENT_LINGER_MS);
   };
 
+  const tempoTip = offSpeed ? `${displayedBpm} BPM (${percent}%)` : `${displayedBpm} BPM`;
+
   return (
     <NumberField.Root
       value={displayedBpm}
@@ -135,12 +147,23 @@ const TempoControl = ({
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) endEdit();
       }}
-      className={cn('group flex items-center gap-0.5', className)}
+      // `items-stretch` here too, not just on the Group below: this is the element the consumer
+      // gives a height to, and while it centred its child the Group sat at its own content height
+      // with the pill showing above and below it. Stretching both is what makes the steppers reach
+      // the pill's inner edge.
+      className={cn('group flex items-stretch gap-0.5', className)}
     >
-      <NumberField.Group className="flex items-center gap-0.5">
+      {/* `items-stretch`, NOT `items-center`: the steppers are meant to FILL the pill, edge to
+          edge, and centring them left 2 px of pill showing above and below each one. Width is the
+          only size they set now; their height is whatever the pill's inner box is. */}
+      <NumberField.Group className="flex items-stretch gap-0.5">
         <NumberField.Decrement
           aria-label="Decrease tempo"
-          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11 rounded-lg')}
+          className={cn(
+            buttonVariants({ variant: 'ghost', size: 'icon' }),
+            'h-auto min-h-11 w-11',
+            STEPPER_RADIUS,
+          )}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
             remove
@@ -152,37 +175,58 @@ const TempoControl = ({
             input in there the number could not be selected with the mouse — no drag, no
             double-click. The field behaves like a native number input instead: the mouse selects,
             and the value moves by the arrow keys, the wheel, the +/- buttons and typing. */}
-        <div className="flex flex-col items-center px-2">
-          <span className="text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
-            BPM
-          </span>
-          <NumberField.Input
-            aria-label="Tempo"
-            className={cn(
-              'w-12 border-0 bg-transparent p-0 text-center text-sm leading-none font-bold tabular-nums',
-              'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
-            )}
-          />
-          {/* Rule 1-4, entirely in CSS: hover or focus reveals it, blur hides it (focus-within does
+        {/* The readout says what the number IS — a tempo in BPM — and the tooltip says what it is
+            RELATIVE TO, which the bare number cannot: 120 means nothing until you know whether the
+            score is written at 120 or at 150 and running slow. The inline percentage below shows
+            the same figure but only while the tempo is being adjusted (the visibility rule), so
+            without this there is no way to ask "what speed am I at?" after the fact.
+            The trigger wraps the column rather than the whole pill: a tooltip anchored to the pill
+            would open from its centre, under the pointer that is on a stepper. */}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <div
+                data-slot="tempo-readout"
+                className="flex flex-col items-center justify-center gap-0.5 px-2"
+              />
+            }
+          >
+            <span className="text-[10px] leading-none font-bold tracking-widest text-muted-foreground uppercase">
+              BPM
+            </span>
+            <NumberField.Input
+              aria-label="Tempo"
+              className={cn(
+                'w-12 border-0 bg-transparent p-0 text-center font-mono text-sm leading-none font-bold tabular-nums',
+                'focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none',
+              )}
+            />
+            {/* Rule 1-4, entirely in CSS: hover or focus reveals it, blur hides it (focus-within does
               that for free), data-linger covers a change that carries no focus, and the whole thing is gated
               on data-off-speed so 100% never shows anything. */}
-          <span
-            data-testid="tempo-percent"
-            aria-hidden="true"
-            className={cn(
-              'text-[10px] text-primary tabular-nums opacity-0 transition-opacity',
-              'group-data-[off-speed=true]:group-hover:opacity-100',
-              'group-data-[off-speed=true]:group-focus-within:opacity-100',
-              'group-data-[off-speed=true]:group-data-[linger=true]:opacity-100',
-            )}
-          >
-            {percent}%
-          </span>
-        </div>
+            <span
+              data-testid="tempo-percent"
+              aria-hidden="true"
+              className={cn(
+                'font-mono text-[10px] leading-none text-primary tabular-nums opacity-0 transition-opacity',
+                'group-data-[off-speed=true]:group-hover:opacity-100',
+                'group-data-[off-speed=true]:group-focus-within:opacity-100',
+                'group-data-[off-speed=true]:group-data-[linger=true]:opacity-100',
+              )}
+            >
+              {percent}%
+            </span>
+          </TooltipTrigger>
+          <TooltipContent data-testid="tempo-tooltip">{tempoTip}</TooltipContent>
+        </Tooltip>
 
         <NumberField.Increment
           aria-label="Increase tempo"
-          className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), 'size-11 rounded-lg')}
+          className={cn(
+            buttonVariants({ variant: 'ghost', size: 'icon' }),
+            'h-auto min-h-11 w-11',
+            STEPPER_RADIUS,
+          )}
         >
           <span className="material-symbols-outlined" aria-hidden="true">
             add

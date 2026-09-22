@@ -18,11 +18,6 @@ interface TransportRowProps {
   /** Whether the loaded score plays an embedded recording. Metronome and Count-In are inert then. */
   hasBackingTrack: boolean;
   /**
-   * Rendered FIRST in the row: the Open file control. The mockup draws it at the bottom of a left
-   * rail; v0 has no rail, so the row's left end is the nearest place to it.
-   */
-  leading?: ReactNode;
-  /**
    * Rendered last in the row. Exists so Plan C can drop its mixer/settings trigger in without
    * reopening this interface or this layout. Plan B passes nothing.
    */
@@ -71,7 +66,6 @@ export function TransportRow({
   hasBackingTrack,
   disabled,
   playButton,
-  leading,
   trailing,
 }: Readonly<TransportRowProps>) {
   // Every icon button says what it is and what STATE it is in: an icon alone does neither, and
@@ -94,8 +88,18 @@ export function TransportRow({
   };
 
   return (
-    <div className="flex w-full items-center gap-4 border-t border-border px-6 py-3">
-      {leading}
+    // The mockup's footer: a fixed 80 px bar tinted a step off the page, so the transport reads as
+    // its own surface rather than as more notation. `h-20` rather than padding, because that
+    // height is the mockup's and must not drift with the tallest control inside it.
+    //
+    // `bg-panel`, the RAISED surface — deliberately not the rail's. The mockup gives the two
+    // different values (`--panel` here, `--rail` on the aside), and painting both with one token
+    // flattened the frame the score sits in. The tempo pill shares this one.
+    // Solid, and no backdrop blur: the mockup needs both because its footer floats over the staff,
+    // and this one is a flex row that nothing scrolls under, so an alpha would paint nothing.
+    // The gaps and the side padding tighten before any control has to go: 24 px of gap and 32 px
+    // of padding is 160 px of the row on a phone, which is most of what the seek rail needs.
+    <div className="flex h-20 w-full shrink-0 items-center gap-3 border-t border-border bg-panel px-4 sm:gap-6 sm:px-8">
       {playButton}
       {/* The LABEL names what will repeat too, for a screen reader: the button looks identical
           either way. No marker UI, so the out-of-scope constraint holds. */}

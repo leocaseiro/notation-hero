@@ -1,9 +1,34 @@
 'use client';
 
-import { TempoControl, Tooltip, TooltipContent, TooltipTrigger } from '@notation-hero/client';
+import {
+  Button,
+  TempoControl,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@notation-hero/client';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import { APP_VERSION } from '../../lib/app-version';
+
+// The brand mark, as the wireframe draws it beside the wordmark (docs/wireframe/index.html,
+// `MARK_SVG`): a ring with a play triangle on its right and a single eighth note inside. Inline
+// rather than an <img>, so it takes `currentColor` and follows the teal in both themes; an SVG
+// file would need a second copy for dark. The inner <svg> keeps Material's own -960 viewBox —
+// nesting is what lets the note path stay verbatim instead of being re-projected by hand.
+//
+// Decorative: `aria-hidden`, no title. The wordmark right next to it already says "Notation Hero",
+// and a mark that repeats its neighbour makes a screen reader read the name twice.
+const BrandMark = () => (
+  <svg viewBox="0 0 44 40" fill="none" className="h-7 w-8 shrink-0" aria-hidden="true">
+    <circle cx="19" cy="20" r="12.6" stroke="currentColor" strokeWidth="3.6" />
+    <path d="M31 13.8 L43 20 L31 26.2 Z" fill="currentColor" />
+    <svg x="9.5" y="10.5" width="19" height="19" viewBox="0 -960 960 960" fill="currentColor">
+      <path d="M287-167q-47-47-47-113t47-113q47-47 113-47 23 0 42.5 5.5T480-418v-422h240v160H560v400q0 66-47 113t-113 47q-66 0-113-47Z" />
+    </svg>
+  </svg>
+);
 
 interface PlayerHeaderProps {
   scoreTitle: string;
@@ -20,6 +45,10 @@ interface PlayerHeaderProps {
 // The wordmark, the title and its tooltip were first rendered inline in PlayerShell. Both data-
 // attributes moved across unchanged — the e2e tests read them. The tempo pill is what this adds.
 //
+// The Back link and the brand mark follow the wireframe's top bar
+// (`docs/wireframe/index.html` — `.backlink` and `.logo`), which is where the player borrows its
+// "mark + name, with a way out" arrangement from.
+//
 // Deliberately absent in v0: the Auto-Speed toggle (a practice feature — it needs the v0.2 scoring
 // work) and the MIDI status icon (no Web MIDI until v0.2). The Settings gear arrives in Plan C.
 export function PlayerHeader({
@@ -30,32 +59,92 @@ export function PlayerHeader({
   onSpeedChange,
   disabled,
 }: Readonly<PlayerHeaderProps>) {
+  const router = useRouter();
+
   return (
-    // The mockup's three columns: brand and title on the left, the tempo pill in the centre, and
-    // the right one kept for the Settings gear that Plan C adds. `1fr auto 1fr` keeps the pill
+    // The mockup's three columns: Back, brand and title on the left, the tempo pill in the centre,
+    // and the right one kept for the Settings gear that Plan C adds. `1fr auto 1fr` keeps the pill
     // centred on the PAGE, whatever the title's length.
-    <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-8 border-b border-border px-6">
-      <div className="flex min-w-0 items-center gap-8">
+    // A shadow as well as the border, which is how the mockup separates the header from the score
+    // (player-flatrow-teal.html:179). A hairline alone reads as a drawn divider; the shadow is what
+    // makes the bar sit ABOVE the notation rather than beside it.
+    //
+    // `shadow-md`, one step deeper than the mockup's `shadow-sm`, at the maintainer's request. The
+    // mockup can afford the lighter one: its header floats over a scrolling body, so content moves
+    // under it and sells the depth by itself. This header sits in a flex column with nothing
+    // passing beneath, so the shadow is the only thing doing that work.
+    // It needs the z-10 on the wrapper in PlayerShell to be seen at all — see the note there.
+    <header className="grid h-16 grid-cols-[1fr_auto_1fr] items-center gap-6 border-b border-border px-4 shadow-md">
+      <div className="flex min-w-0 items-center gap-2">
+        {/* Back RETRACES a step — it is not a second way home; the logo beside it is the way home.
+            So the browser's own history, not a link to `/`: wherever the person came from is where
+            they go. But `history.length` counts forward entries too, so it cannot say whether an
+            entry sits BEHIND this one: it is 1 on a tab opened straight onto /play (a bookmark, a
+            shared link) and 2 after a browser-Back returns here with a forward entry — and `back()`
+            is a silent no-op in both. `navigation.canGoBack` answers that directly where it exists
+            (Chromium); the length check is the cross-browser fallback and the landing page the
+            floor, so the button always does something.
+            `history.length` is only READ — the navigating is the router's, because a bare
+            `location.assign('/')` is a full page reload of a route Next can serve on the client,
+            which its own lint rule rejects. The hook is why this component's test mocks
+            next/navigation: `useRouter` throws outside an app router.
+            Icon only, so the header's left column spends its width on the score's name rather than
+            on a word the arrow already says. `size-11` is the 44 px the a11y lane enforces and the
+            size the tempo steppers beside it already use; the sr-only text is the accessible name —
+            a tooltip is not one, and an icon button without it is unnamed to a screen reader. */}
         <Tooltip>
           <TooltipTrigger
             render={
-              // The wordmark goes home, and carries the build version as its tooltip. A real link
-              // rather than a button: it does something, and it is focusable, so the version is
-              // reachable by keyboard and not by hover alone.
-              //
-              // `/` is correct even if this app is ever served under a sub-path — next/link
-              // applies `basePath` itself, so the href never has to be rewritten. (next/image is
-              // the exception to that rule: its `src` needs the prefix spelled out.)
-              //
-              // min-h-11 is not decoration: the a11y lane fails any a[href] under 44 px, and the
-              // wordmark's own line box is 32. inline-flex + items-center grows the hit area
-              // around the text without moving the text, so the header looks unchanged.
+              <Button
+                type="button"
+                variant="ghost"
+                data-testid="back-home"
+                onClick={() => {
+                  const canGoBack =
+                    (globalThis as { navigation?: { canGoBack?: boolean } }).navigation
+                      ?.canGoBack ?? globalThis.history.length > 1;
+                  if (canGoBack) router.back();
+                  else router.push('/');
+                }}
+                className="size-11 shrink-0 rounded-lg text-muted-foreground hover:text-foreground"
+              >
+                <span className="material-symbols-outlined" aria-hidden="true">
+                  arrow_back
+                </span>
+                <span className="sr-only">Back</span>
+              </Button>
+            }
+          />
+          <TooltipContent>Back</TooltipContent>
+        </Tooltip>
+        {/* The mark and the wordmark are ONE unit — the logo — and the logo goes home, which is the
+            convention everywhere else on the web and is NOT what Back does: Back retraces, this
+            arrives. It carries the build version as its tooltip (NH-317), which is why it is a real
+            link and not a span — focusable, so the version is reachable by keyboard and not by
+            hover alone. The MARK is inside the link too, so the whole logo is the target.
+
+            `/` is correct even if this app is ever served under a sub-path — next/link applies
+            `basePath` itself, so the href never has to be rewritten. (next/image is the exception:
+            its `src` needs the prefix spelled out.)
+
+            min-h-11 AND min-w-11 are not decoration: the a11y lane fails any a[href] under 44 px
+            in EITHER dimension, and this line box is 28. The width floor matters below `md`,
+            where the wordmark goes `sr-only` — that is `position: absolute`, so the span leaves
+            the flex flow and takes its `gap-2` with it, leaving px-1 + the mark's w-8 = 40 px. */}
+        <Tooltip>
+          <TooltipTrigger
+            render={
               <Link
                 href="/"
                 data-testid="app-wordmark"
-                className="inline-flex min-h-11 min-w-11 items-center rounded-sm text-2xl font-bold text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-lg px-1 text-primary outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
-                Notation Hero
+                <BrandMark />
+                {/* `sr-only` below `md`, never `hidden`: the name still reaches a screen reader,
+                    and the mark alone carries the brand. Below a tablet, Back + mark + the full
+                    wordmark stop fitting beside a centred tempo pill, and the first thing to lose
+                    is the word the mark already stands for — not the score's own title. */}
+                <span className="font-heading text-xl font-bold max-md:sr-only">Notation Hero</span>
               </Link>
             }
           />
@@ -72,7 +161,7 @@ export function PlayerHeader({
                 type="button"
                 data-testid="loaded-notation-name"
                 data-file={fileName}
-                className="min-h-11 max-w-full min-w-11 truncate px-1 text-left font-medium text-foreground"
+                className="min-h-11 max-w-full min-w-11 truncate rounded-lg px-1 text-left font-medium text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
               >
                 {scoreTitle || fileName}
               </button>
@@ -86,7 +175,16 @@ export function PlayerHeader({
         speed={speed}
         onSpeedChange={onSpeedChange}
         disabled={disabled}
-        className="rounded-xl border border-border bg-card p-1 shadow-sm dark:border-input"
+        // `h-12` and no padding: the pill is exactly as tall as the transport's Play button. Left
+        // to itself it grew to 57 px — the BPM label, the number and the percentage stack to 47 px
+        // inside 8 px of padding — which read as a taller object than anything else in the player.
+        // The 44 px steppers still fit, so the hit area is untouched.
+        //
+        // `bg-panel` is the mockup's raised surface (`bg-surface-container`,
+        // player-flatrow-teal.html:193) — the SAME one the transport footer uses, because the
+        // mockup treats the pill and the footer as one material. It also restores the steppers'
+        // hover, which was invisible against the --secondary this replaces.
+        className="h-12 rounded-xl border border-border bg-panel shadow-sm dark:border-input"
       />
       {/* Reserved for the Settings gear. This is an EMPTY GRID CELL, not a spacer: the header's
           `1fr auto 1fr` template reserves the third column whether or not a node sits in it, so
