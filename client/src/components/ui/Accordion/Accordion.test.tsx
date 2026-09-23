@@ -71,3 +71,21 @@ test('multiple={false} closes the first section when a second one opens', async 
     'false',
   );
 });
+
+// Sticky on the button does nothing: the heading around it is only as tall as the button,
+// so the title scrolls away with the group. The class has to reach the heading.
+test('headerClassName lands on the heading, not the button', () => {
+  render(
+    <Accordion defaultValue={['notation']}>
+      <AccordionItem value="notation">
+        <AccordionTrigger headerClassName="sticky top-0 z-10 bg-popover">Notation</AccordionTrigger>
+        <AccordionContent>notation rows</AccordionContent>
+      </AccordionItem>
+    </Accordion>,
+  );
+
+  const button = screen.getByRole('button', { name: 'Notation' });
+  expect(button).not.toHaveClass('sticky');
+  expect(button.parentElement).toHaveClass('sticky', 'top-0', 'z-10', 'bg-popover');
+  expect(button.parentElement?.tagName).toBe('H3');
+});

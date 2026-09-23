@@ -164,11 +164,13 @@ export function SettingsPopover({
         <ScrollArea viewportClassName="max-h-[70vh]">
           {/* Every group OPEN by default (maintainer, 2026-09-21): browsing is the only way to
               find a row until search lands, and a panel that opens closed hides all 90 of them.
-              The trigger is sticky so the group a row belongs to stays readable while it scrolls. */}
+              The heading is sticky so the group a row belongs to stays readable while it
+              scrolls. The classes sit on the <h3> (headerClassName), not the button: the
+              button's parent is only as tall as the button, so sticky there never holds. */}
           <Accordion className="px-3 py-2" defaultValue={groups.map((group) => group.id)}>
             {groups.map((group) => (
               <AccordionItem key={group.id} value={group.id}>
-                <AccordionTrigger className="sticky top-0 z-10 bg-popover">
+                <AccordionTrigger headerClassName="sticky top-0 z-10 bg-popover">
                   {group.title}
                 </AccordionTrigger>
                 <AccordionContent>

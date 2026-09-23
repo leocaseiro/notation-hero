@@ -36,10 +36,17 @@ const AccordionItem = ({
 
 const AccordionTrigger = ({
   className,
+  headerClassName,
   children,
   ...props
-}: React.ComponentProps<typeof AccordionPrimitive.Trigger>) => (
-  <AccordionPrimitive.Header>
+}: React.ComponentProps<typeof AccordionPrimitive.Trigger> & {
+  // Lands on the <h3>, not the button. A sticky button cannot hold: its containing
+  // block is that heading, and the heading is only as tall as the button. The heading's
+  // parent is the item, which also wraps the rows, so sticky there stays readable
+  // while that group scrolls and leaves with the group.
+  headerClassName?: string;
+}) => (
+  <AccordionPrimitive.Header className={headerClassName}>
     <AccordionPrimitive.Trigger
       data-slot="accordion-trigger"
       className={cn(
