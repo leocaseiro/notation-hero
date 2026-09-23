@@ -81,8 +81,8 @@ const layoutModeLabel = (trackCount: number, single: boolean): string => {
 
 const trackName = (track: AlphaTab.model.Track): string => {
   const name = track.name.trim();
-  // Guitar Pro leaves the name blank and puts a useless short name like "s.guit." on every
-  // track. A numbered label is the name the row can show.
+  // Guitar Pro leaves the name blank and puts the same placeholder short name on every track.
+  // A numbered label is the name the row can show.
   return name || `Track ${track.index + 1}`;
 };
 
