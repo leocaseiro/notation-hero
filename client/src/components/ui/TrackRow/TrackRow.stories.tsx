@@ -68,7 +68,8 @@ export const Expanded: Story = {
   args: { expanded: true },
 };
 
-// A stringed staff with a tuning — the only case that offers the tablature toggle.
+// A stringed staff with a tuning — the only case where the tablature toggle is enabled. Percussion
+// still shows the button, disabled.
 export const StringedExpanded: Story = {
   args: {
     name: 'Distortion Guitar',

@@ -82,12 +82,15 @@ test('the transposition readouts are signed, so the direction is never ambiguous
   expect(screen.getAllByText('0')).toHaveLength(2);
 });
 
-test('a percussion staff offers no tablature toggle', () => {
-  // No `expanded`: the four display toggles are on the always-visible primary row, not behind
-  // the disclosure.
+test('a percussion staff shows tablature disabled, not hidden', () => {
+  // 1.8.4 cannot render tablature on a percussion staff. The toggle stays in the row so the
+  // four buttons still line up with a stringed staff; it just cannot be turned on.
   render(<TrackRow {...baseProps} />);
   expect(screen.getByRole('button', { name: /standard notation/i })).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: /tablature/i })).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /tablature/i })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
 });
 
 test('a stringed staff with a tuning does offer the tablature toggle', () => {
@@ -189,7 +192,13 @@ test('every control without visible text has a tooltip that tells its state', as
   expect(numberedToggle).toHaveAttribute('aria-pressed', 'false');
   expect(await screen.findByText(/numbered notation: off/i)).toBeInTheDocument();
 
-  // No tablature toggle for a percussion staff — straight to more-controls.
+  // Percussion keeps the tablature toggle so the row lines up; it is disabled, and still a stop.
+  await user.tab();
+  const tabToggle = screen.getByRole('button', { name: /tablature/i });
+  expect(tabToggle).toHaveFocus();
+  expect(tabToggle).toHaveAttribute('aria-disabled', 'true');
+  expect(await screen.findByText(/tablature: unavailable/i)).toBeInTheDocument();
+
   await user.tab();
   const more = screen.getByRole('button', { name: /more controls/i });
   expect(more).toHaveFocus();
@@ -232,6 +241,12 @@ test('each tooltip follows the state it describes', async () => {
   const numberedToggle = screen.getByRole('button', { name: /numbered/i });
   expect(numberedToggle).toHaveAttribute('aria-pressed', 'false');
   expect(await screen.findByText(/numbered notation: off/i)).toBeInTheDocument();
+
+  await user.tab();
+  expect(screen.getByRole('button', { name: /tablature/i })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
 
   await user.tab();
   const more = screen.getByRole('button', { name: /more controls/i });

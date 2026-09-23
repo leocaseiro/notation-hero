@@ -1839,23 +1839,23 @@ test('opening another score starts from a clean mix', async ({ page }) => {
   expect(await mutesAfterOpen()).toEqual([]);
 });
 
-test('only a stringed staff with a tuning offers the tablature toggle', async ({ page }) => {
+test('tablature is enabled only on a stringed staff with a tuning', async ({ page }) => {
   await openFirstScore(page, 'Punk.gp');
   await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
 
   await page.getByTestId('tracks-trigger').click();
 
-  // The guitar staff reports tuningLen=6, so its row has the toggle. The display toggles sit on
-  // the always-visible primary row.
+  // The guitar staff reports tuningLen=6, so its tablature toggle is live. The display toggles
+  // sit on the always-visible primary row.
   await expect(
     page.getByTestId('track-row-1').getByRole('button', { name: /tablature/i }),
-  ).toBeVisible();
+  ).not.toHaveAttribute('aria-disabled', 'true');
 
   // Both drum staves report showTablature=false, tuningLen=0 — 1.8.4 cannot render percussion
-  // tablature at all, so the toggle must be absent rather than present-and-broken.
+  // tablature at all, so the toggle is shown disabled rather than absent.
   await expect(
     page.getByTestId('track-row-0').getByRole('button', { name: /tablature/i }),
-  ).toHaveCount(0);
+  ).toHaveAttribute('aria-disabled', 'true');
 });
 
 // Two editors, one value, one writer. The Settings ▸ Player row and the mixer's Master row.

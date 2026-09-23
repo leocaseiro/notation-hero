@@ -96,7 +96,7 @@ const Mark = ({ children }: Readonly<{ children: string }>) => (
 // 8.5rem whether or not a row fills it, so a 3-toggle percussion row and a 4-toggle string row
 // still end on the same expand button.
 export const MIXER_ROW_CLASS =
-  'grid items-center gap-1.5 [grid-template-columns:2.125rem_minmax(3.25rem,1fr)_2.125rem_2.125rem_minmax(4.5rem,1.25fr)_8.5rem_2.125rem]';
+  'grid items-center gap-1.5 [grid-template-columns:2.125rem_minmax(3.25rem,1fr)_2.125rem_2.125rem_minmax(4.5rem,1.25fr)_8.625rem_2.125rem]';
 
 // Mixer icon buttons. `size-11` on TransportToggle is the transport's 44px target; this overrides
 // it for the row. Mute's pressed fill is warning amber — solo and "shown" stay brand teal.
@@ -144,8 +144,8 @@ const TrackRow = ({
   const staffToggleIcon = (key: StaffToggleKey) => {
     if (key === 'showSlash') return <Mark>/</Mark>;
     if (key === 'showNumbered') return <Mark>#</Mark>;
-    const name = key === 'showTablature' ? 'grid_on' : 'music_note';
-    return <Icon name={name} />;
+    const iconName = key === 'showTablature' ? 'grid_on' : 'music_note';
+    return <Icon name={iconName} />;
   };
   const staffToggleName: Record<StaffToggleKey, string> = {
     showStandardNotation: 'Standard notation',
@@ -154,20 +154,28 @@ const TrackRow = ({
     showTablature: 'Tablature',
   };
 
-  const staffToggle = (staff: TrackStaffState, key: StaffToggleKey, divided: boolean) => (
-    <TransportToggle
-      key={key}
-      pressed={staff[key]}
-      onPressedChange={(next) => onStaffChange(staff.id, key, next)}
-      label={`${name} ${staff.label} ${staffToggleName[key]}`}
-      icon={staffToggleIcon(key)}
-      tooltip={`${staff.label} ${staffToggleName[key]}: ${staff[key] ? 'on' : 'off'}`}
-      className={cn(
-        'h-[2.125rem] w-full min-w-0 flex-1 rounded-none border-0',
-        divided && 'border-l border-border',
-      )}
-    />
-  );
+  const staffToggle = (staff: TrackStaffState, key: StaffToggleKey, divided: boolean) => {
+    const unavailable = key === 'showTablature' && !staff.tablatureAvailable;
+    const state = staff[key] ? 'on' : 'off';
+    const tooltip = unavailable
+      ? `${staff.label} Tablature: unavailable`
+      : `${staff.label} ${staffToggleName[key]}: ${state}`;
+    return (
+      <TransportToggle
+        key={key}
+        pressed={staff[key]}
+        onPressedChange={(next) => onStaffChange(staff.id, key, next)}
+        label={`${name} ${staff.label} ${staffToggleName[key]}`}
+        icon={staffToggleIcon(key)}
+        tooltip={tooltip}
+        disabled={unavailable}
+        className={cn(
+          'size-[2.125rem] shrink-0 rounded-none border-0',
+          divided && 'border-l border-border',
+        )}
+      />
+    );
+  };
 
   // A single staff's toggle group, joined into one control the width of the staff column.
   // `withLabel` shows the staff's own name above the group — the primary row's single-staff case
@@ -179,7 +187,7 @@ const TrackRow = ({
       'showStandardNotation',
       'showSlash',
       'showNumbered',
-      ...(staff.tablatureAvailable ? (['showTablature'] as const) : []),
+      'showTablature',
     ];
     return (
       <div key={staff.id} className={cn('min-w-0', withLabel && 'w-full sm:w-auto')}>
@@ -188,7 +196,7 @@ const TrackRow = ({
             {staff.label}
           </span>
         ) : null}
-        <div className="flex w-full overflow-hidden rounded-lg border border-border [&>span]:flex [&>span]:min-w-0 [&>span]:flex-1">
+        <div className="inline-flex overflow-hidden rounded-lg border border-border">
           {keys.map((key, index) => staffToggle(staff, key, index > 0))}
         </div>
       </div>
