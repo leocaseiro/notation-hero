@@ -277,8 +277,12 @@ const TrackRow = ({
           <TooltipTrigger
             render={
               <Button
+                variant="ghost"
                 size="icon"
-                className={cn(MIXER_BUTTON_CLASS, 'border border-border')}
+                className={cn(
+                  MIXER_BUTTON_CLASS,
+                  'border border-border bg-transparent text-foreground aria-expanded:bg-transparent',
+                )}
                 aria-expanded={expanded}
                 aria-controls={panelId}
                 aria-label={`More controls for ${name}`}
