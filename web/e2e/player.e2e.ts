@@ -1327,10 +1327,21 @@ async function recordApiCalls(page: Page, method: string): Promise<() => Promise
     const leaf = parts.pop() as string;
     let at = root;
     for (const part of parts) {
-      // Object.hasOwn guard, same reasoning as settings-paths.ts: only an OWN key is ever
-      // indexed, never something resolved off the prototype chain — a false positive for the
-      // loop shape alone.
-      if (!Object.prototype.hasOwnProperty.call(at, part)) throw new Error(`no ${part}`);
+      // `player` is a getter on AlphaTabApi's prototype, not an own property of the instance, so
+      // the chain has to be walked. The three names below are the ones a polluted path would use.
+      if (part === '__proto__' || part === 'constructor' || part === 'prototype') {
+        throw new Error(`no ${part}`);
+      }
+      let found = false;
+      let current: object | null = at;
+      while (current !== null && current !== Object.prototype) {
+        if (Object.prototype.hasOwnProperty.call(current, part)) {
+          found = true;
+          break;
+        }
+        current = Object.getPrototypeOf(current) as object | null;
+      }
+      if (!found) throw new Error(`no ${part}`);
       at = (at as Record<string, Record<string, unknown>>)[part]; // nosemgrep: prototype-pollution-loop
     }
     const original = (at[leaf] as (...args: unknown[]) => unknown).bind(at);
@@ -1648,4 +1659,229 @@ test('every settings row names a key the engine really has', async ({ page }) =>
       });
   });
   expect(missing, 'settings rows whose path is not a real AlphaTab key').toEqual([]);
+});
+
+// Punk.gp parses to three tracks — 0:Drumkit (percussion), 1:Distortion Guitar, 2:Drumkit Left
+// (percussion) — so the popover has three rows to audit, not one, even though only two render.
+test('the Tracks popover lists every track in the score, not only the rendered ones', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  // Opening a file focuses Play, and that focus keeps Play's tooltip open. Blur it so the
+  // hover below is the only tip on screen.
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.getByTestId('tracks-trigger').hover();
+  await expect(openTooltip(page)).toHaveText('Tracks');
+
+  await page.getByTestId('tracks-trigger').click();
+  await expect(page.getByTestId('tracks-popover')).toBeVisible();
+  await expect(page.getByTestId('track-row-0')).toBeVisible();
+  await expect(page.getByTestId('track-row-1')).toBeVisible();
+  await expect(page.getByTestId('track-row-2')).toBeVisible();
+
+  // The two drum tracks are drawn, so their render-select toggles start pressed; the guitar's does not.
+  const drawn = (row: number) =>
+    page.getByTestId(`track-row-${row}`).getByRole('button', { name: /render/i });
+  await expect(drawn(0)).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawn(1)).toHaveAttribute('aria-pressed', 'false');
+  await expect(drawn(2)).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('render-select changes which tracks are drawn', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await page.getByTestId('tracks-trigger').click();
+  // Draw the guitar too. `rendered-track-count` is what AlphaTab actually drew (api.tracks), not
+  // an echo of the request.
+  await page
+    .getByTestId('track-row-1')
+    .getByRole('button', { name: /render/i })
+    .click();
+
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('3', { timeout: 30_000 });
+});
+
+// The mixer's version of the transport's tooltip case: every control on a row that shows no
+// words says what it is AND what state it is in — on hover, where a person's pointer goes. EVERY
+// row is walked, not one checked by hand: a row is built in a loop, but a tooltip that depends on
+// a track's own state (drawn or not) is exactly what goes wrong on one row and not the next.
+test('every mixer control without visible text has a tooltip that tells its state', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('tracks-trigger').click();
+
+  // Punk.gp draws its two drum tracks (rows 0 and 2) and not the guitar (row 1).
+  const drawn = ['Shown in the score', 'Hidden from the score', 'Shown in the score'];
+  for (const [index, renderTip] of drawn.entries()) {
+    const row = page.getByTestId(`track-row-${index}`);
+    // The toggle is the 44 px target itself now — no label wrapper to aim at.
+    await row.getByRole('button', { name: /render/i }).hover();
+    await expect(openTooltip(page)).toHaveText(renderTip);
+    await row.getByRole('button', { name: /solo/i }).hover();
+    await expect(openTooltip(page)).toHaveText('Solo: off');
+    await row.getByRole('button', { name: /mute/i }).hover();
+    await expect(openTooltip(page)).toHaveText('Mute: off');
+    await row.getByRole('button', { name: /more controls/i }).hover();
+    await expect(openTooltip(page)).toHaveText('Show more controls');
+  }
+
+  // And each one follows its state. A click closes the tooltip; leave and come back to read it.
+  const guitar = page.getByTestId('track-row-1');
+  for (const [name, after] of [
+    [/solo/i, 'Solo: on'],
+    [/mute/i, 'Mute: on'],
+    [/more controls/i, 'Hide more controls'],
+  ] as const) {
+    const control = guitar.getByRole('button', { name });
+    await control.click();
+    await page.getByTestId('notation-surface').hover();
+    await control.hover();
+    await expect(openTooltip(page)).toHaveText(after);
+  }
+});
+
+// Rows 0 and 1, NOT 0 and 2. AlphaTab solos a MIDI CHANNEL, and Punk.gp's two drum tracks share
+// channel 9 — soloing both would be one channel soloed twice and would prove nothing.
+test('solo is not exclusive — two tracks can be soloed at once', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  const soloCalls = await recordApiCalls(page, 'changeTrackSolo');
+
+  await page.getByTestId('tracks-trigger').click();
+  await page.getByTestId('track-row-0').getByRole('button', { name: /solo/i }).click();
+  await page.getByTestId('track-row-1').getByRole('button', { name: /solo/i }).click();
+
+  await expect(
+    page.getByTestId('track-row-0').getByRole('button', { name: /solo/i }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    page.getByTestId('track-row-1').getByRole('button', { name: /solo/i }),
+  ).toHaveAttribute('aria-pressed', 'true');
+
+  // The ENGINE heard both, and neither click un-soloed the other.
+  expect(await soloCalls()).toEqual([
+    [[0], true],
+    [[1], true],
+  ]);
+});
+
+test('mute and volume reach the engine, the volume as an absolute channel level', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  const muteCalls = await recordApiCalls(page, 'changeTrackMute');
+  const volumeCalls = await recordApiCalls(page, 'changeTrackVolume');
+
+  await page.getByTestId('tracks-trigger').click();
+  const guitar = page.getByTestId('track-row-1');
+  await guitar.getByRole('button', { name: /mute/i }).click();
+  expect(await muteCalls()).toEqual([[[1], true]]);
+
+  const volume = guitar.getByRole('slider', { name: /volume/i });
+  const before = Number(await volume.getAttribute('aria-valuenow'));
+  await volume.focus();
+  await volume.press('ArrowLeft');
+
+  // One step down on the 0-16 scale, sent on AlphaTab's OWN scale as next / 16 — the engine takes
+  // an absolute channel level, not a ratio against the file's.
+  const [[tracks, level]] = (await volumeCalls()) as [[number[], number]];
+  expect(tracks).toEqual([1]);
+  expect(level).toBeCloseTo((before - 1) / 16, 5);
+});
+
+// AlphaTab keeps its muted and soloed CHANNELS across a score change, and drums are channel 9 in
+// every file — so without a reset, muting the drums in one score silences them in the next, beside
+// a row that reads un-muted.
+test('opening another score starts from a clean mix', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('tracks-trigger').click();
+  await page.getByTestId('track-row-0').getByRole('button', { name: /mute/i }).click();
+  // The mute click leaves its tooltip open (a toggle keeps the tip across the press). The first
+  // Escape dismisses that tip; the second dismisses the popover.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('tracks-popover')).toBeHidden();
+
+  const mutesAfterOpen = await recordApiCalls(page, 'changeTrackMute');
+  const resetCalls = await recordApiCalls(page, 'player.resetChannelStates');
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/guitar-no-percussion.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
+    'data-file',
+    'guitar-no-percussion.gp',
+    { timeout: 30_000 },
+  );
+
+  await page.getByTestId('tracks-trigger').click();
+  await expect(page.getByTestId('tracks-popover')).toBeVisible();
+  await expect(page.getByTestId('track-row-1')).toHaveCount(0); // one track now, not three
+  await expect(
+    page.getByTestId('track-row-0').getByRole('button', { name: /mute/i }),
+  ).toHaveAttribute('aria-pressed', 'false');
+  // The reset REACHED the synth. This fails if the handler is moved back to scoreLoaded, where
+  // api.player is null.
+  await expect
+    .poll(async () => {
+      const calls = await resetCalls();
+      return calls.length;
+    })
+    .toBeGreaterThan(0);
+  // …and the mixer does not replay the old score's mutes on top of it.
+  expect(await mutesAfterOpen()).toEqual([]);
+});
+
+test('only a stringed staff with a tuning offers the tablature toggle', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await page.getByTestId('tracks-trigger').click();
+
+  // The guitar staff reports tuningLen=6, so its row has the toggle. The display toggles sit on
+  // the always-visible primary row.
+  await expect(
+    page.getByTestId('track-row-1').getByRole('button', { name: /tablature/i }),
+  ).toBeVisible();
+
+  // Both drum staves report showTablature=false, tuningLen=0 — 1.8.4 cannot render percussion
+  // tablature at all, so the toggle must be absent rather than present-and-broken.
+  await expect(
+    page.getByTestId('track-row-0').getByRole('button', { name: /tablature/i }),
+  ).toHaveCount(0);
+});
+
+// Two editors, one value, one writer. The Settings ▸ Player row and the mixer's Master row.
+test('the Settings master volume and the mixer Master row are one value', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('spinbutton', { name: 'Master volume' }).fill('0.5');
+  await page.keyboard.press('Escape');
+
+  await page.getByTestId('tracks-trigger').click();
+  const master = page.getByTestId('master-row').getByRole('slider', { name: 'Master volume' });
+  await expect(master).toHaveAttribute('aria-valuenow', '0.5');
+
+  await master.focus();
+  await master.press('ArrowLeft');
+  await page.keyboard.press('Escape');
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await expect
+    .poll(async () => {
+      const raw = await page.getByRole('spinbutton', { name: 'Master volume' }).inputValue();
+      return Number(raw);
+    })
+    .toBeCloseTo(0.45, 2);
 });

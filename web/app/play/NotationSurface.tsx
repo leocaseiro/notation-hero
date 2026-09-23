@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 import { selectDrumTrackIndexes } from '../../lib/alphatab/drum-tracks';
+import { clearTrackTranspositions } from '../../lib/alphatab/live-settings';
 import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { PLAYER_ERROR } from '../../lib/player-errors';
 import type { OpenNotation } from './PlayerShell';
@@ -43,6 +44,12 @@ function renderOpenNotation(
   // INDEXES, not Track objects. Passing undefined makes AlphaTab render score.tracks[0] — its
   // FIRST track, not a "default" or preferred one. Fine here: that branch only runs when no track
   // carries a percussion staff at all, where any track is as good as another.
+  // The pitches are indexed by track and live on the api, so the previous score's +2 on track 1
+  // would transpose this score's track 1 — drawn AND played. It has to happen BEFORE the score
+  // reaches the engine: applyPitchOffsets runs at the top of the render path, and clearing to []
+  // afterwards un-stamps nothing, because the write only reaches a track whose index is inside the
+  // array. Clearing first also leaves a transposition the FILE itself carries intact.
+  clearTrackTranspositions(api);
   api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
 }
 

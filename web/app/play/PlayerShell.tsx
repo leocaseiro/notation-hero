@@ -25,6 +25,7 @@ import { NotationSurface } from './NotationSurface';
 import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
 import { PlayerHeader } from './PlayerHeader';
 import { SettingsPopover } from './SettingsPopover';
+import { TracksPopover } from './TracksPopover';
 import { TransportRow } from './TransportRow';
 import { useLoadingBarPhase } from './useLoadingBarPhase';
 import type {
@@ -146,9 +147,9 @@ function Player() {
     // person's own files. AlphaTab resolves EnabledAutomatic to its backing-track player whenever
     // `score.backingTrack.rawAudioFile` exists, and that player's synthesizer stubs out
     // channelSetMute, channelSetSolo, channelSetMixVolume and the metronome channel (verified in
-    // 1.8.4). Nothing here drives those, but the transport's metronome and count-in and the mixer
-    // rows MUST render disabled, with a tooltip saying the file is playing its own recording
-    // (spec §4). A toggle between the recording and the synth is deferred (NH-298).
+    // 1.8.4). The transport's metronome and count-in and the mixer rows disable only while that
+    // backing-track player is the one AlphaTab actually built — choosing the synthesizer in
+    // Settings leaves them live, even when the file still embeds a recording.
     //
     // It also keeps the empty page cheap: with EnabledAutomatic and no score yet, AlphaTab creates
     // no player at all — no AudioContext, no synth worker, no soundfont fetch
@@ -173,12 +174,24 @@ function Player() {
   useAlphaTabEvent(api, 'playerStateChanged', (args) => {
     setPlaying(args.state === engine?.synth.PlayerState.Playing);
   });
+  // Which player AlphaTab actually built. A file that embeds a recording still plays from the
+  // synthesizer when that mode is selected, and then the metronome, the count-in and the mixer
+  // work. The file merely containing audio is not the signal: EnabledAutomatic resolves to the
+  // backing-track player, EnabledSynthesizer does not.
+  const syncBackingTrack = useCallback(() => {
+    if (!api || !engine) return;
+    setHasBackingTrack(api.actualPlayerMode === engine.PlayerMode.EnabledBackingTrack);
+  }, [api, engine]);
+
   // `playerReady`, not `soundFontLoaded`: 1.8.4 builds soundFontLoaded as a bare `new EventEmitter()`,
   // so it fires once and is never replayed — a subscription that lands one commit after the api was
   // constructed can miss it and latch Play disabled forever. `api.playerReady` returns the player
   // wrapper's `readyForPlayback`, built as `new EventEmitter(() => this.isReadyForPlayback)`, which
   // reports the current value to a late subscriber.
-  useAlphaTabEvent(api, 'playerReady', () => setPlayerReady(true));
+  useAlphaTabEvent(api, 'playerReady', () => {
+    setPlayerReady(true);
+    syncBackingTrack();
+  });
 
   // Guard 2's bookkeeping — see the position handler below.
   const pendingSeek = useRef<{ target: number; since: number } | null>(null);
@@ -314,12 +327,14 @@ function Player() {
   // The Loop toggle's label needs to know whether a bar range is selected.
   useAlphaTabEvent(api, 'playbackRangeChanged', (args) => setHasRange(args.playbackRange !== null));
 
-  // The SAME condition AlphaTab uses to pick its backing-track player (alphaTab.core.mjs:46685,
-  // `score?.backingTrack?.rawAudioFile`). `backingTrack` alone is not enough: a score can carry the
-  // sync metadata without the audio, and AlphaTab then plays the synth, where both toggles work.
-  useAlphaTabEvent(api, 'scoreLoaded', (score) =>
-    setHasBackingTrack(Boolean(score.backingTrack?.rawAudioFile)),
-  );
+  // scoreLoaded fires BEFORE _setupOrDestroyPlayer writes actualPlayerMode, so a read in this
+  // handler would still see the outgoing player (the synth, on the first file that embeds a
+  // recording). The setup call is synchronous and finishes before the stack yields, so a microtask
+  // sees the player this score will use — including a file opened while the synthesizer is already
+  // selected, which must not lock the mixer just because the file contains audio.
+  useAlphaTabEvent(api, 'scoreLoaded', () => {
+    queueMicrotask(syncBackingTrack);
+  });
 
   // `api` is state, not a ref, so it MUST be in each dependency list: an empty list would freeze
   // the callback on the `undefined` it held before the engine arrived.
@@ -422,8 +437,12 @@ function Player() {
       const next = writeSettingValue(settings, path, value);
       setSettings(next);
       if (api) applySettingsJson(api, next, apply);
+      // updateSettings() swaps the player synchronously, so the new mode is readable now.
+      // playerReady arrives later, after the soundfont, which is too late: the metronome would
+      // stay locked for the whole download after a switch to the synthesizer.
+      if (path === 'player.playerMode') syncBackingTrack();
     },
-    [api, settings],
+    [api, settings, syncBackingTrack],
   );
 
   const runAction = useCallback(
@@ -853,6 +872,16 @@ function Player() {
                   {/* Lifted 8 px, or the teal arrow lies on the solid teal button and cannot be seen. */}
                   <TooltipContent sideOffset={8}>{playing ? 'Pause' : 'Play'}</TooltipContent>
                 </Tooltip>
+              }
+              trailing={
+                <TracksPopover
+                  api={api}
+                  hasBackingTrack={hasBackingTrack}
+                  disabled={!engine}
+                  // The SAME value and writer the Settings ▸ Player row uses. Two editors, one writer.
+                  masterVolume={masterVolume}
+                  onMasterVolumeChange={applyMasterVolume}
+                />
               }
             />
           </div>
