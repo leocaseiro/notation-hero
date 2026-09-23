@@ -1591,7 +1591,7 @@ test('a group title stays with its rows while the settings list scrolls', async 
     };
   });
 
-  // Still inside Player: its title is pinned to the top of the scrollport.
+  // Still inside Player: its title is pinned to the top of the scroll area.
   expect(stuck?.inside).toBe(0);
   // Past that group: Player has left, and Display: general is the title that holds.
   expect(stuck?.afterGroup).toBeLessThan(0);
