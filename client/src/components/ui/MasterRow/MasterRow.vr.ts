@@ -13,8 +13,8 @@ runVrStories({
   slotSelector: '[data-slot="master-row"]',
   states: ['resting', 'focus', 'hover'],
   focusTabs: 1,
-  focusExpect: 'button',
-  hoverSelector: 'button',
+  focusExpect: '[data-slot="master-row"] button',
+  hoverSelector: '[data-slot="master-row"] button',
   captureSelectors: ['[data-slot="master-row"]', '[data-slot="tooltip-content"]'],
   revealWaitSelectorForStory: () => '[data-slot="tooltip-content"]',
   // A disabled button still takes focus — that is the state its tooltip opens in — but hovering
