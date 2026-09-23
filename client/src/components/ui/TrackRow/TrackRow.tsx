@@ -236,7 +236,7 @@ const TrackRow = ({
             through `render` rather than wrapping it in a span — the
             `TooltipTrigger render={<Button …/>}` shape `Tooltip.stories.tsx` demonstrates for a
             control with no disabled state to guard against. */}
-        <Tooltip>
+        <Tooltip disableHoverablePopup>
           <TooltipTrigger
             render={
               <Button

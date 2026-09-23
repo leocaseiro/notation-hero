@@ -88,10 +88,12 @@ const TransportToggle = ({
   // and a mouse user gets a dimmed button and no reason. The span takes the hover; focus events
   // bubble, so focus on the button still opens it.
   return tooltip ? (
-    <Tooltip>
+    <Tooltip disableHoverablePopup>
       {/* closeOnClick off: a tooltip closes on click by default, which is right for a button that
           does something once and wrong for a toggle — the press changes the state, and the
-          tooltip that would now SAY the new state had gone until the pointer left and came back. */}
+          tooltip that would now SAY the new state had gone until the pointer left and came back.
+          disableHoverablePopup: the popup is wider than the button, and on a mixer row it covers
+          the next control. A hoverable popup would stay open there, so two tips show at once. */}
       <TooltipTrigger closeOnClick={false} render={<span className="inline-flex" />}>
         {toggle}
       </TooltipTrigger>
