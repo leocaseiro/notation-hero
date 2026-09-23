@@ -1559,6 +1559,45 @@ test('the Settings icon trigger has a tooltip', async ({ page }) => {
   await expect(openTooltip(page)).toHaveText('Settings');
 });
 
+// The heading has to stick inside its own group. A sticky class on the button cannot: that
+// button's parent is only as tall as the button, so the title scrolls away with the rows.
+test('a group title stays with its rows while the settings list scrolls', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('settings-trigger').click();
+  await expect(page.getByTestId('settings-popover')).toBeVisible();
+
+  const stuck = await page.evaluate(() => {
+    const popover = document.querySelector('[data-testid="settings-popover"]');
+    const viewport = popover?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]');
+    const triggers = [...(popover?.querySelectorAll('[data-slot="accordion-trigger"]') ?? [])];
+    const player = triggers.find((button) => button.textContent?.trim().startsWith('Player'));
+    const display = triggers.find((button) =>
+      button.textContent?.trim().startsWith('Display: general'),
+    );
+    const playerHeading = player?.parentElement;
+    const displayHeading = display?.parentElement;
+    const item = playerHeading?.parentElement;
+    if (!viewport || !playerHeading || !displayHeading || !(item instanceof HTMLElement))
+      return null;
+    const viewportTop = viewport.getBoundingClientRect().top;
+    viewport.scrollTop = Math.min(420, item.offsetHeight / 2);
+    const inside = Math.round(playerHeading.getBoundingClientRect().top - viewportTop);
+    viewport.scrollTop = item.offsetTop + item.offsetHeight + 80;
+    return {
+      inside,
+      afterGroup: Math.round(playerHeading.getBoundingClientRect().top - viewportTop),
+      nextGroup: Math.round(displayHeading.getBoundingClientRect().top - viewportTop),
+    };
+  });
+
+  // Still inside Player: its title is pinned to the top of the scrollport.
+  expect(stuck?.inside).toBe(0);
+  // Past that group: Player has left, and Display: general is the title that holds.
+  expect(stuck?.afterGroup).toBeLessThan(0);
+  expect(stuck?.nextGroup).toBe(0);
+});
+
 // Every path the schema names must exist on the LIVE settings object. fillFromJson ignores a key
 // it does not know, so a misspelled path is a row that moves and changes nothing, in silence.
 test('every settings row names a key the engine really has', async ({ page }) => {
