@@ -874,14 +874,22 @@ function Player() {
                 </Tooltip>
               }
               trailing={
-                <TracksPopover
-                  api={api}
-                  hasBackingTrack={hasBackingTrack}
-                  disabled={!engine}
-                  // The SAME value and writer the Settings ▸ Player row uses. Two editors, one writer.
-                  masterVolume={masterVolume}
-                  onMasterVolumeChange={applyMasterVolume}
-                />
+                <div className="flex items-center">
+                  {/* Hairline between Count-in and Tracks. bg-border is the row's own line
+                      token; a `bg-line` utility is not in this theme. */}
+                  <div
+                    aria-hidden="true"
+                    className="mx-2 h-6 w-px shrink-0 bg-border dark:bg-input"
+                  />
+                  <TracksPopover
+                    api={api}
+                    hasBackingTrack={hasBackingTrack}
+                    disabled={!engine}
+                    // The SAME value and writer the Settings ▸ Player row uses. Two editors, one writer.
+                    masterVolume={masterVolume}
+                    onMasterVolumeChange={applyMasterVolume}
+                  />
+                </div>
               }
             />
           </div>
