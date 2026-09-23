@@ -195,7 +195,7 @@ Every task's requirements implicitly include this section, plus **all of Plan A'
 - Consumes: `@base-ui/react/accordion`, `cn`.
 - Produces: `Accordion`, `AccordionItem`, `AccordionTrigger`, `AccordionContent` — a Radix-shaped composite over Base UI's `Root / Item / Header / Trigger / Panel`. `data-slot="accordion"`. Task 5 consumes it. (`TrackRow`'s disclosure is a single collapsible and does not use it.)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `client/src/components/ui/Accordion/Accordion.test.tsx`:
 
@@ -250,12 +250,12 @@ test('opening a second section leaves the first open', async () => {
 });
 ```
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/Accordion`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the component**
+- [x] **Step 3: Write the component**
 
 Create `client/src/components/ui/Accordion/Accordion.tsx`:
 
@@ -340,16 +340,16 @@ export { Accordion, AccordionItem, AccordionTrigger, AccordionContent };
 
 > Both Base UI names above are checked against the installed 1.6.0 types, so neither needs guessing: the root's prop is `multiple` (`node_modules/@base-ui/react/accordion/root/AccordionRoot.d.ts:84`), and the trigger's open-state attribute is `data-panel-open` (`accordion/trigger/AccordionTriggerDataAttributes.d.ts`), which is what the chevron rotation keys off. The fourth test is what proves `multiple` took effect. The trigger is 44 px tall (`min-h-11`) and spans the popover's width, so it passes the hit-area gate as written.
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/Accordion`
 Expected: PASS — 4 tests.
 
-- [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
+- [x] **Step 5: Write the story-ids, stories, a11y and VR files**
 
 `Accordion.story-ids.ts`: `['default', 'all-closed', 'many-sections']`. Stories under `title: 'UI/Accordion'` with a `w-80` decorator, modelled on `RangeSlider.stories.tsx`. `storyPrefix: 'ui-accordion'`, `snapshotSlug: 'accordion'`, `slotSelector: '[data-slot="accordion"]'`, `iconFontStory: () => true` (every trigger renders the chevron glyph), `states: ['resting', 'focus', 'hover']`.
 
-- [ ] **Step 6: Run the gates and generate baselines**
+- [x] **Step 6: Run the gates and generate baselines**
 
 ```bash
 pkill -f "storybook.*6006" || true
@@ -361,7 +361,7 @@ pnpm test:vr:docker
 
 Expected: a11y PASS; only new `accordion-*-linux.png`; the second run clean.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add client/src/components/ui/Accordion
@@ -413,7 +413,7 @@ interface SettingRowProps {
 
 `data-slot="setting-row"`. Task 5 consumes it.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `client/src/components/ui/SettingRow/SettingRow.test.tsx`:
 
@@ -580,12 +580,12 @@ test('a range row reports a keyboard step once, as a committed value', async () 
 
 > jsdom has no layout, so the 44 px rule cannot be unit-tested here. It is enforced where it can be measured: `expectHitAreas` in the `web` lane, with the popover open (Task 9).
 
-- [ ] **Step 2: Run the test to verify it fails**
+- [x] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/SettingRow`
 Expected: FAIL — module not found.
 
-- [ ] **Step 3: Write the component**
+- [x] **Step 3: Write the component**
 
 Create `client/src/components/ui/SettingRow/SettingRow.tsx`. Compose the primitives that already exist — `Field` with `orientation="horizontal"` gives the label-left / control-right layout, and none of `Checkbox`, `Input`, `NativeSelect` or `Slider` is new work:
 
@@ -850,16 +850,16 @@ export { SettingRow };
 >
 > **The `range` kind's number input shows the raw number.** A caller whose value is not a tidy number — the playback speed is `0.8916…` after a BPM step in the header — converts to a display unit before it gets here (Task 5 passes the speed as a percentage, rounded to one decimal).
 
-- [ ] **Step 4: Run the test to verify it passes**
+- [x] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/SettingRow`
 Expected: PASS — 8 tests.
 
-- [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
+- [x] **Step 5: Write the story-ids, stories, a11y and VR files**
 
 `SettingRow.story-ids.ts`: `['toggle', 'number', 'range', 'text', 'color', 'select', 'action', 'disabled']` — one story per control kind, so every branch carries a VR and axe baseline. `storyPrefix: 'ui-settingrow'`, `snapshotSlug: 'settingrow'`, `slotSelector: '[data-slot="setting-row"]'`, a `w-96` decorator.
 
-- [ ] **Step 6: Run the gates and generate baselines**
+- [x] **Step 6: Run the gates and generate baselines**
 
 ```bash
 pkill -f "storybook.*6006" || true
@@ -871,7 +871,7 @@ pnpm test:vr:docker
 
 Expected: a11y PASS; only new `settingrow-*-linux.png`; the second run clean.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add client/src/components/ui/SettingRow
@@ -993,7 +993,7 @@ interface MasterRowProps {
 
 `data-slot="master-row"`; this root spreads `...rest` too. Task 7 consumes it and owns the volume value — the row holds no state of its own.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `client/src/components/ui/TrackRow/TrackRow.test.tsx`. Write a `baseProps` object once and spread it, so each test states only what it exercises:
 
@@ -1323,12 +1323,12 @@ test('a recording disables both master boxes and leaves the volume live', () => 
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow src/components/ui/MasterRow`
 Expected: FAIL — module not found, both of them.
 
-- [ ] **Step 3: Write the component**
+- [x] **Step 3: Write the component**
 
 Create `client/src/components/ui/TrackRow/TrackRow.tsx`. Keep it presentation-only: no AlphaTab import, no ratio arithmetic (the caller does that), no knowledge of MIDI channels.
 
@@ -1383,18 +1383,18 @@ Then create `client/src/components/ui/MasterRow/MasterRow.tsx`. It adds no primi
 - `soloMuteUnavailable` sets `disabled` on both boxes and REPLACES the action text above as their tooltip — a disabled box explains why it cannot be pressed, not what pressing would have done. It never touches the volume `Slider` — master volume is live during a recording, which is the whole reason the flag is not called `mixUnavailable`.
 - Every hit area is at least 44 px, same as `TrackRow`. Task 9 measures it in the browser.
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 Run: `pnpm --filter @notation-hero/client exec vitest run src/components/ui/TrackRow src/components/ui/MasterRow`
 Expected: PASS — 14 `TrackRow` tests and 6 `MasterRow` tests.
 
-- [ ] **Step 5: Write the story-ids, stories, a11y and VR files**
+- [x] **Step 5: Write the story-ids, stories, a11y and VR files**
 
 `TrackRow.story-ids.ts`: `['collapsed', 'expanded', 'stringed-expanded', 'multi-staff', 'muted', 'soloed', 'recording']`. The `stringed-expanded` story is what proves the tablature toggle renders for a tuned staff, so it earns its own baseline; the `multi-staff` story is a two-staff grand-staff track (piano), the one case the Wrap layout exists for, so its wrapped per-staff groups get a baseline in both themes; `recording` is the expanded row with `mixUnavailable` set, so the disabled look of all four controls has a baseline in both themes (VR `statesForStory`: `['resting', 'focus']` — a disabled toggle still takes focus, and that is the state its tooltip opens in). `storyPrefix: 'ui-trackrow'`, `snapshotSlug: 'trackrow'`, `slotSelector: '[data-slot="track-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
 
 `MasterRow.story-ids.ts`: `['resting', 'mixed', 'ticked', 'recording']` — `mixed` is the row with both `…Indeterminate` flags set, because the indeterminate dash is the one master state that is easy to draw wrong and impossible to catch in a unit test; `ticked` is both boxes checked; `recording` is the row with `soloMuteUnavailable` set, so the disabled look of solo-all and mute-all has a baseline in both themes. VR `statesForStory`: `['resting', 'focus']` — the tooltip opens on focus, and it is the tooltip that changes with state (`Solo all` vs `Clear solos`), so `ticked` and `recording` are where that copy gets a baseline. `storyPrefix: 'ui-masterrow'`, `snapshotSlug: 'masterrow'`, `slotSelector: '[data-slot="master-row"]'`, `iconFontStory: () => true`, a `w-[30rem]` decorator.
 
-- [ ] **Step 6: Run the gates and generate baselines**
+- [x] **Step 6: Run the gates and generate baselines**
 
 ```bash
 pkill -f "storybook.*6006" || true
@@ -1406,7 +1406,7 @@ pnpm test:vr:docker
 
 Expected: a11y PASS; only new `trackrow-*-linux.png` and `masterrow-*-linux.png`; the second run clean.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add client/src/components/ui/TrackRow client/src/components/ui/MasterRow
@@ -1579,7 +1579,7 @@ export function setStaffDisplay(
 
 Tasks 5, 6 and 7 consume all of it.
 
-- [ ] **Step 1: Read the fork, with the row inventory beside you**
+- [x] **Step 1: Read the fork, with the row inventory beside you**
 
 Open the reference panel and work through it:
 
@@ -1613,7 +1613,7 @@ Four things the fork's panel does that a careless port gets wrong — each check
 3. **Fourteen Player rows do nothing until the MIDI is regenerated** — `apply: 'midi'`.
 4. **The Export block is two commands**, not settings. The v0.1 spec's row grammar already names them as its two "Action" rows (§4).
 
-- [ ] **Step 2: Write the failing test for the path helpers**
+- [x] **Step 2: Write the failing test for the path helpers**
 
 The schema itself is data, but the two path helpers are logic and they are where a silent settings corruption would start. Create `web/lib/alphatab/settings-paths.test.ts`, beside the module it covers:
 
@@ -1666,12 +1666,12 @@ describe('writeSettingValue', () => {
 });
 ```
 
-- [ ] **Step 3: Run the test to verify it fails**
+- [x] **Step 3: Run the test to verify it fails**
 
 Run: `pnpm --filter @notation-hero/web exec vitest run lib/alphatab/settings-paths`
 Expected: FAIL — module not found.
 
-- [ ] **Step 4: Write the path helpers**
+- [x] **Step 4: Write the path helpers**
 
 Create `web/lib/alphatab/settings-paths.ts`:
 
@@ -1727,12 +1727,12 @@ export function writeSettingValue(
 }
 ```
 
-- [ ] **Step 5: Run the test to verify it passes**
+- [x] **Step 5: Run the test to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web exec vitest run lib/alphatab/settings-paths`
 Expected: PASS — 6 tests.
 
-- [ ] **Step 6: Write the schema**
+- [x] **Step 6: Write the schema**
 
 Create `web/lib/alphatab/settings-schema.ts`. It takes the engine so it can turn an AlphaTab enum into plain `{ value, label }` pairs before handing them to a `client/` row:
 
@@ -2076,7 +2076,7 @@ Run: `pnpm --filter @notation-hero/web exec vitest run lib/alphatab/settings-def
 Expected: PASS — every shipped default equals what a fresh `Settings()` reports. A failure here is
 the engine's defaults having moved, not the test being wrong: take the engine's value.
 
-- [ ] **Step 7: Write the live-settings funnel**
+- [x] **Step 7: Write the live-settings funnel**
 
 Create `web/lib/alphatab/live-settings.ts`. Every write to a live engine object goes through this file — React's compiler lint rejects such a write inside a component — and it holds the only `api.updateSettings()` call in the app:
 
@@ -2272,7 +2272,7 @@ Then create the co-located `web/lib/alphatab/live-settings.test.ts` beside it. T
 Run: `pnpm --filter @notation-hero/web exec vitest run lib/alphatab/live-settings`
 Expected: PASS — three render pushes collapse to one `render()`, and each apply mode calls exactly the engine methods it should.
 
-- [ ] **Step 8: Export the row components and the primitives the popovers need**
+- [x] **Step 8: Export the row components and the primitives the popovers need**
 
 Append to `client/src/index.ts`, in the file's own voice — each block there says which screen pulled the components across:
 
@@ -2313,7 +2313,7 @@ pnpm --filter @notation-hero/client run test:a11y -g "Popover|ScrollArea"
 pnpm test:vr:docker
 ```
 
-- [ ] **Step 9: Verify the packages are clean**
+- [x] **Step 9: Verify the packages are clean**
 
 ```bash
 pnpm --filter @notation-hero/client run lint
@@ -2325,7 +2325,7 @@ pnpm --filter @notation-hero/web run test
 
 Expected: all PASS. `web`'s lint is the one that matters most here: it is what proves `live-settings.ts` is where the compiler lint allows these writes.
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add web/lib/alphatab/settings-paths.ts web/lib/alphatab/settings-paths.test.ts \
@@ -2350,7 +2350,7 @@ git commit -m "feat(web): add the settings group schema and the live-settings fu
 - Consumes: `buildSettingGroups`, `readSettingValue`, `writeSettingValue`, `applySettingsJson` (Task 4); `Accordion`, `SettingRow`, `Popover*`, `ScrollArea`, `Tooltip*` (Tasks 1, 2, 4); `useAlphaTabEngine`, the `api` state (Plan A); `applySpeed` and `speed` (Plan B).
 - Produces: test hooks `data-testid="settings-trigger"`, `data-testid="settings-popover"`. No new `data-*` state mirror: the cases below read the engine instead.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `web/e2e/player.e2e.ts`. There is no button to press first: `/play` opens on the bundled beat (spec D8), so a case starts by waiting for Play to enable, exactly as Plan B's cases do.
 
@@ -2568,12 +2568,12 @@ test('the Settings icon trigger has a tooltip', async ({ page }) => {
 
 `openTooltip` is the helper Plan B's tooltip cases already use in this file. The Tracks trigger's tooltip is asserted in Task 7's first case. `openGroup` is new here and every later case reuses it — including Task 6's reload case and Task 8's `setPlayerMode`.
 
-- [ ] **Step 2: Run them to verify they fail**
+- [x] **Step 2: Run them to verify they fail**
 
 Run: `pnpm --filter @notation-hero/web run test:e2e -g "settings row|one value|Stylesheet row|regenerates the MIDI|icon trigger"`
 Expected: FAIL — no `settings-trigger`.
 
-- [ ] **Step 3: Write the popover**
+- [x] **Step 3: Write the popover**
 
 Create `web/app/play/SettingsPopover.tsx`:
 
@@ -2781,7 +2781,7 @@ export function SettingsPopover({
 >
 > `render={…}` is Base UI's composition prop, and `TooltipTrigger render={<Button … />}` is the working precedent in this repo — `PlayerShell`'s Play button. Here the `TooltipTrigger` renders a `<span className="inline-flex" />` **around** the `PopoverTrigger` — the shape `TransportToggle` already ships — chosen, not a fallback, because the gear is disabled while the engine loads and a disabled `Button` is `pointer-events: none`, so as its own tooltip trigger it would never see the mouse. The span takes the hover; focus still opens the tooltip, because focus events bubble up from the button inside, and it is still one `<button>`. Verify in the browser before moving on: hover opens the tooltip **while the gear is still disabled**, a click opens the popover once it is enabled, Tab reaches the button once, and `Escape` closes the popover and leaves focus on the gear.
 
-- [ ] **Step 4: Apply a changed setting to the live engine**
+- [x] **Step 4: Apply a changed setting to the live engine**
 
 In `PlayerShell.tsx`, inside `Player`. `api` is **state**, so it is in every dependency list below:
 
@@ -2932,12 +2932,12 @@ import { RECORDING } from '@notation-hero/client';
 />;
 ```
 
-- [ ] **Step 5: Run the lane to verify it passes**
+- [x] **Step 5: Run the lane to verify it passes**
 
 Run: `pnpm --filter @notation-hero/web run lint && pnpm --filter @notation-hero/web run test:e2e`
 Expected: PASS. The lint run is not a formality here: it is what catches an engine write that slipped into a component instead of `live-settings.ts`.
 
-- [ ] **Step 6: Prove every `settings` row reaches the engine**
+- [x] **Step 6: Prove every `settings` row reaches the engine**
 
 Criterion 7 says the Settings popover's rows change the rendered score, not that the popover opens — and a row with a wrong `path` does nothing, without an error. ~70 settings rows are too many to trust to one zoom case, and a machine can check most of it. Add to `web/e2e/player.e2e.ts`:
 
@@ -2989,7 +2989,7 @@ For it to find the rows, `SettingsPopover` passes `data-setting-path={setting.pa
 
 What this cannot tell is whether a row chose the wrong `apply` (the value changes, and the score or the sound does not), or whether the change looks right. That needs eyes, and it is one of the two checks handed back in Task 10.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add web/app/play/SettingsPopover.tsx web/app/play/PlayerHeader.tsx \
