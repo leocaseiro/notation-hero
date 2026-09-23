@@ -115,8 +115,8 @@ test('a multi-staff track gives each staff its own labelled toggle group', () =>
       ]}
     />,
   );
-  // Wrap layout: two staves render two standard-notation toggles, each named for its staff so a
-  // screen-reader user can tell them apart with two rows' disclosures open.
+  // One line per staff: two staves render two standard-notation toggles, each named for its
+  // staff so a screen-reader user can tell them apart.
   const std = screen.getAllByRole('button', { name: /standard notation/i });
   expect(std).toHaveLength(2);
   expect(std[0]).toHaveAccessibleName(/treble/i);

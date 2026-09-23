@@ -177,31 +177,16 @@ const TrackRow = ({
     );
   };
 
-  // A single staff's toggle group, joined into one control the width of the staff column.
-  // `withLabel` shows the staff's own name above the group — the primary row's single-staff case
-  // omits it (the track name next to it already identifies the staff); the multi-staff wrap
-  // section below the primary row always shows it, so a grand-staff part's two groups can be
-  // told apart.
-  const staffGroup = (staff: TrackStaffState, withLabel: boolean) => {
-    const keys: StaffToggleKey[] = [
-      'showStandardNotation',
-      'showSlash',
-      'showNumbered',
-      'showTablature',
-    ];
-    return (
-      <div key={staff.id} className={cn('min-w-0', withLabel && 'w-full sm:w-auto')}>
-        {withLabel ? (
-          <span className="mb-1 block text-xs font-medium text-muted-foreground">
-            {staff.label}
-          </span>
-        ) : null}
-        <div className="inline-flex overflow-hidden rounded-lg border border-border">
-          {keys.map((key, index) => staffToggle(staff, key, index > 0))}
-        </div>
-      </div>
-    );
-  };
+  // Four buttons, always, at the mixer button size. A single staff sits in the primary row's
+  // staff column. Each further staff gets its own line in that same column, so a grand staff
+  // does not shrink the buttons to fit two groups on one row.
+  const staffButtons = (staff: TrackStaffState) => (
+    <div className="col-start-6 inline-flex justify-self-start overflow-hidden rounded-lg border border-border">
+      {(['showStandardNotation', 'showSlash', 'showNumbered', 'showTablature'] as const).map(
+        (key, index) => staffToggle(staff, key, index > 0),
+      )}
+    </div>
+  );
 
   return (
     <Field
@@ -271,7 +256,11 @@ const TrackRow = ({
           className="w-full min-w-0"
         />
 
-        {staves.length === 1 && staves[0] ? staffGroup(staves[0], false) : <span />}
+        {staves.length === 1 && staves[0] ? (
+          staffButtons(staves[0])
+        ) : (
+          <span className="col-start-6" />
+        )}
 
         {/* The expand control is never disabled, so the trigger renders the Button directly
             through `render` rather than wrapping it in a span — the
@@ -306,11 +295,16 @@ const TrackRow = ({
         </Tooltip>
       </div>
 
-      {staves.length > 1 ? (
-        <div className="flex w-full flex-wrap gap-x-4 gap-y-2">
-          {staves.map((staff) => staffGroup(staff, true))}
-        </div>
-      ) : null}
+      {staves.length > 1
+        ? staves.map((staff) => (
+            <div key={staff.id} className={MIXER_ROW_CLASS}>
+              <span className="col-start-2 truncate text-xs font-medium text-muted-foreground">
+                {staff.label}
+              </span>
+              {staffButtons(staff)}
+            </div>
+          ))
+        : null}
 
       {expanded ? (
         <div id={panelId} className="flex flex-col gap-3 pt-1">
