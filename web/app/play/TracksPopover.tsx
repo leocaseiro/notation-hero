@@ -14,7 +14,7 @@ import {
   TooltipTrigger,
   TrackRow,
 } from '@notation-hero/client';
-import { useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
 import { setStaffDisplay, setTrackTransposition } from '../../lib/alphatab/live-settings';
 import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
@@ -54,6 +54,24 @@ interface MixerTrack {
 // AlphaTab's Clef enum, as numbers. The web app does not import the runtime namespace.
 const CLEF_BASS = 3; // F4
 const CLEF_TREBLE = 4; // G2
+
+// How tall the list may grow: the notation surface, which is the visible score between the
+// header and the transport. Shorter than the viewport on purpose — `--available-height` reaches
+// the window edge and would let the panel cover the header. The footer is subtracted in the
+// viewport class so Master stays inside that same room.
+function useNotationRoom(): number | null {
+  const [room, setRoom] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    const surface = document.querySelector('[data-testid="notation-surface"]');
+    if (!surface) return;
+    const measure = () => setRoom(Math.floor(surface.getBoundingClientRect().height));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(surface);
+    return () => observer.disconnect();
+  }, []);
+  return room;
+}
 
 const staffLabel = (staff: AlphaTab.model.Staff, staffIndex: number): string => {
   // The clef lives on the bar. A grand staff is named by its two clefs; everything else stays
@@ -100,6 +118,7 @@ export function TracksPopover({
 }: Readonly<TracksPopoverProps>) {
   const [tracks, setTracks] = useState<MixerTrack[]>([]);
   const [renderedIndexes, setRenderedIndexes] = useState<number[]>([]);
+  const notationRoom = useNotationRoom();
   // Multiple tracks is the mix the score opens in. Single track draws one staff at a time.
   // Not persisted — Task 6 owns that, and a new score starts from multiple again.
   const [singleTrack, setSingleTrack] = useState(false);
@@ -293,19 +312,25 @@ export function TracksPopover({
         data-testid="tracks-popover"
         align="end"
         side="top"
-        className="w-[32rem] p-0"
+        className="flex max-h-(--available-height) w-[32rem] flex-col p-0"
+        style={
+          notationRoom === null
+            ? undefined
+            : ({ '--notation-room': `${notationRoom}px` } as CSSProperties)
+        }
         aria-label="Tracks"
       >
         {/* The list scrolls. The footer does not: Master and the layout switch stay put when a
-            score has more tracks than the panel can show. viewportClassName, not className: a
-            height cap on the Root computes to auto and the list never scrolls. */}
+            score has more tracks than the score area can show. The cap is the notation surface
+            (the visible score), and also the space above the trigger, whichever is smaller.
+            viewportClassName, not className: a height cap on the Root computes to auto. */}
         {hasBackingTrack ? (
           <p className="px-3 pt-3 text-sm text-muted-foreground">
             This file is playing its own recording, so solo, mute, volume and audio transposition
             are not available.
           </p>
         ) : null}
-        <ScrollArea viewportClassName="max-h-[min(22rem,50vh)]">
+        <ScrollArea viewportClassName="max-h-[calc(min(var(--available-height),var(--notation-room,var(--available-height)))-4.5rem)]">
           {tracks.map((track) => (
             <TrackRow
               key={track.index}
