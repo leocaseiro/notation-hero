@@ -35,7 +35,7 @@ export {
 } from './components/ui/Accordion/Accordion';
 export { SettingRow } from './components/ui/SettingRow/SettingRow';
 export type { SettingControl, SettingValue } from './components/ui/SettingRow/SettingRow';
-export { TrackRow } from './components/ui/TrackRow/TrackRow';
+export { MIXER_BUTTON_CLASS, TrackRow } from './components/ui/TrackRow/TrackRow';
 export type { TrackStaffState } from './components/ui/TrackRow/TrackRow';
 // The one "file plays its own recording" reason string — imported by both popovers, the mixer
 // and their tests, never re-declared.

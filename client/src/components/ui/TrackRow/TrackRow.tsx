@@ -83,6 +83,21 @@ const Icon = ({ name }: Readonly<{ name: string }>) => (
   </span>
 );
 
+// One column track for every track row and the master footer. Fixed columns (the eye, solo, mute,
+// the staff group, the expand control) are the same width on both, so those buttons line up even
+// though a track name changes length. 2.125rem is 34px: WCAG 2.5.8 AA asks 24px, and this mixer
+// is dense enough that the transport's 44px targets do not fit the row. The staff column is
+// 8.5rem whether or not a row fills it, so a 3-toggle percussion row and a 4-toggle string row
+// still end on the same expand button.
+export const MIXER_ROW_CLASS =
+  'grid items-center gap-1.5 [grid-template-columns:2.125rem_minmax(3.25rem,1fr)_2.125rem_2.125rem_minmax(4.5rem,1.25fr)_8.5rem_2.125rem]';
+
+// Mixer icon buttons. `size-11` on TransportToggle is the transport's 44px target; this overrides
+// it for the row. Mute's pressed fill is warning amber — solo and "shown" stay brand teal.
+export const MIXER_BUTTON_CLASS = 'size-[2.125rem] shrink-0 rounded-lg text-muted-foreground';
+export const MUTE_PRESSED_CLASS =
+  'data-pressed:border-warning data-pressed:bg-warning data-pressed:text-warning-foreground';
+
 // One mixer row. The primary cluster (name, render-select, solo, mute, volume, then every
 // per-staff display toggle) is always visible; only the two transposition sliders sit behind the
 // per-row expand control. Eight controls do not fit on one line, so only those two disclose.
@@ -133,7 +148,7 @@ const TrackRow = ({
     showTablature: 'Tablature',
   };
 
-  const staffToggle = (staff: TrackStaffState, key: StaffToggleKey) => (
+  const staffToggle = (staff: TrackStaffState, key: StaffToggleKey, divided: boolean) => (
     <TransportToggle
       key={key}
       pressed={staff[key]}
@@ -141,42 +156,47 @@ const TrackRow = ({
       label={`${name} ${staff.label} ${staffToggleName[key]}`}
       icon={<Icon name={staffToggleIcon[key]} />}
       tooltip={`${staff.label} ${staffToggleName[key]}: ${staff[key] ? 'on' : 'off'}`}
+      className={cn(
+        'h-[2.125rem] w-full min-w-0 flex-1 rounded-none border-0',
+        divided && 'border-l border-border',
+      )}
     />
   );
 
-  // A single staff's toggle group. `withLabel` shows the staff's own name above the group — the
-  // primary row's single-staff case omits it (the track name next to it already identifies the
-  // staff); the multi-staff wrap section below the primary row always shows it, so a grand-staff
-  // part's two groups can be told apart.
-  const staffGroup = (staff: TrackStaffState, withLabel: boolean) => (
-    <div
-      key={staff.id}
-      className={cn('flex flex-wrap items-center gap-1', withLabel && 'w-full sm:w-auto')}
-    >
-      {withLabel ? (
-        <span className="text-xs font-medium text-muted-foreground">{staff.label}</span>
-      ) : null}
-      {staffToggle(staff, 'showStandardNotation')}
-      {staffToggle(staff, 'showSlash')}
-      {staffToggle(staff, 'showNumbered')}
-      {staff.tablatureAvailable ? staffToggle(staff, 'showTablature') : null}
-    </div>
-  );
+  // A single staff's toggle group, joined into one control the width of the staff column.
+  // `withLabel` shows the staff's own name above the group — the primary row's single-staff case
+  // omits it (the track name next to it already identifies the staff); the multi-staff wrap
+  // section below the primary row always shows it, so a grand-staff part's two groups can be
+  // told apart.
+  const staffGroup = (staff: TrackStaffState, withLabel: boolean) => {
+    const keys: StaffToggleKey[] = [
+      'showStandardNotation',
+      'showSlash',
+      'showNumbered',
+      ...(staff.tablatureAvailable ? (['showTablature'] as const) : []),
+    ];
+    return (
+      <div key={staff.id} className={cn('min-w-0', withLabel && 'w-full sm:w-auto')}>
+        {withLabel ? (
+          <span className="mb-1 block text-xs font-medium text-muted-foreground">
+            {staff.label}
+          </span>
+        ) : null}
+        <div className="flex w-full overflow-hidden rounded-lg border border-border [&>span]:flex [&>span]:min-w-0 [&>span]:flex-1">
+          {keys.map((key, index) => staffToggle(staff, key, index > 0))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <Field
       data-slot="track-row"
       orientation="vertical"
-      className={cn('gap-3', className)}
+      className={cn('gap-1.5 px-2 py-1.5', className)}
       {...rest}
     >
-      <div className="flex w-full flex-wrap items-center gap-2">
-        {/* min-w-36 (9rem/144px) is a floor, not a fit: long enough to keep a realistic name like
-            "Distortion Guitar" mostly legible at the popover's real width (32rem), while `truncate`
-            still catches anything longer. Below that floor `flex-wrap` on the row above pushes the
-            controls that no longer fit onto a second line — the name never loses the floor. */}
-        <span className="min-w-36 flex-1 truncate text-sm font-medium">{name}</span>
-
+      <div className={MIXER_ROW_CLASS}>
         <TransportToggle
           pressed={rendered}
           onPressedChange={onRenderedChange}
@@ -184,7 +204,12 @@ const TrackRow = ({
           icon={<Icon name={rendered ? 'visibility' : 'visibility_off'} />}
           tooltip={renderLockReason ?? (rendered ? 'Shown in the score' : 'Hidden from the score')}
           disabled={Boolean(renderLockReason)}
+          className={cn(MIXER_BUTTON_CLASS, 'border-transparent')}
         />
+
+        {/* The column is a floor, not a fit: `truncate` catches a name longer than whatever
+            space the fixed buttons leave at the popover's real width. */}
+        <span className="min-w-0 truncate text-sm font-medium">{name}</span>
 
         <TransportToggle
           pressed={solo}
@@ -193,6 +218,7 @@ const TrackRow = ({
           icon={<Icon name="headphones" />}
           tooltip={mixUnavailable ?? `Solo: ${solo ? 'on' : 'off'}`}
           disabled={mixDisabled}
+          className={cn(MIXER_BUTTON_CLASS, 'border border-border')}
         />
 
         <TransportToggle
@@ -202,6 +228,7 @@ const TrackRow = ({
           icon={<Icon name="volume_off" />}
           tooltip={mixUnavailable ?? `Mute: ${mute ? 'on' : 'off'}`}
           disabled={mixDisabled}
+          className={cn(MIXER_BUTTON_CLASS, 'border border-border', MUTE_PRESSED_CLASS)}
         />
 
         {/* 0-16 is playbackInfo.volume's own scale. The caller divides by 16, because
@@ -227,10 +254,10 @@ const TrackRow = ({
           showReadout
           formatValue={(v) => `${Math.round((v / 16) * 100)}%`}
           disabled={mixDisabled}
-          className="w-32"
+          className="w-full min-w-0"
         />
 
-        {staves.length === 1 && staves[0] ? staffGroup(staves[0], false) : null}
+        {staves.length === 1 && staves[0] ? staffGroup(staves[0], false) : <span />}
 
         {/* The expand control is never disabled, so the trigger renders the Button directly
             through `render` rather than wrapping it in a span — the
@@ -241,7 +268,7 @@ const TrackRow = ({
             render={
               <Button
                 size="icon"
-                className="size-11"
+                className={cn(MIXER_BUTTON_CLASS, 'border border-border')}
                 aria-expanded={expanded}
                 aria-controls={panelId}
                 aria-label={`More controls for ${name}`}

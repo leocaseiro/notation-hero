@@ -1,12 +1,13 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useState } from 'react';
 
-import { Checkbox } from '../Checkbox/Checkbox';
-import { Field, FieldLabel } from '../Field/Field';
+import { Button } from '../Button/Button';
+import { Field } from '../Field/Field';
 import { Slider } from '../Slider/Slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip/Tooltip';
-import type { ComponentProps } from 'react';
+import { MIXER_BUTTON_CLASS, MIXER_ROW_CLASS, MUTE_PRESSED_CLASS } from '../TrackRow/TrackRow';
+import type { ComponentProps, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -19,12 +20,12 @@ interface MasterRowProps extends Omit<ComponentProps<'div'>, 'children' | 'onVol
   volume: number;
   onVolumeChange: (next: number) => void;
   /**
-   * Solo-all and mute-all are "select all" CHECKBOXES over the rows, not one-way commands: ticked
-   * when every track is, `indeterminate` when only some are — Base UI renders that as
-   * `aria-checked="mixed"`. A click on a mixed or unticked box reports `true` and on a ticked box
-   * `false`, the browser's own select-all behaviour; this row adds no rule of its own. The caller
-   * writes the reported value onto every track through the same per-row handler a row click uses,
-   * so each value keeps exactly one writer.
+   * Solo-all and mute-all are "select all" toggles over the rows, not one-way commands: pressed
+   * when every track is, `aria-pressed="mixed"` when only some are. A click on a mixed or
+   * released button reports `true` and on a pressed button `false`, the browser's own select-all
+   * behaviour; this row adds no rule of its own. The caller writes the reported value onto every
+   * track through the same per-row handler a row click uses, so each value keeps exactly one
+   * writer.
    */
   soloAll: boolean;
   soloAllIndeterminate: boolean;
@@ -34,15 +35,21 @@ interface MasterRowProps extends Omit<ComponentProps<'div'>, 'children' | 'onVol
   onMuteAllChange: (next: boolean) => void;
   /**
    * Set while the file plays its own recording: the reason, as tooltip text. Both master
-   * checkboxes then render unavailable — the engine ignores per-track solo and mute in that mode.
+   * toggles then render unavailable — the engine ignores per-track solo and mute in that mode.
    * Master volume stays LIVE, which is why this flag is not called `mixUnavailable`.
    */
   soloMuteUnavailable?: string;
+  /**
+   * The mixer's layout switch, rendered in the eye column so it lines up with each track's
+   * show/hide button. The row does not know what the button does.
+   */
+  leading?: ReactNode;
 }
 
-// The mixer's foot row: master volume, plus solo-all and mute-all as select-all checkboxes over
-// the rows. It composes the same primitives TrackRow does and owns no state of its own — the
-// caller supplies every value and writes each reported change onto the individual rows.
+// The mixer's foot row: master volume, plus solo-all and mute-all as select-all icon buttons in
+// the same columns as a track's solo and mute. It composes the same primitives TrackRow does and
+// owns no state of its own — the caller supplies every value and writes each reported change onto
+// the individual rows.
 const MasterRow = ({
   volume,
   onVolumeChange,
@@ -53,21 +60,19 @@ const MasterRow = ({
   muteAllIndeterminate,
   onMuteAllChange,
   soloMuteUnavailable,
+  leading,
   className,
   ...rest
 }: Readonly<MasterRowProps>) => {
-  const soloId = useId();
-  const muteId = useId();
-
   // Pointer-tracking draft, the same shape TrackRow's volume slider uses. null = not dragging.
   const [draft, setDraft] = useState<number | null>(null);
 
   const disabled = Boolean(soloMuteUnavailable);
 
-  // The tooltip names the NEXT PRESS, not the current state — `aria-checked` already announces
+  // The tooltip names the NEXT PRESS, not the current state — `aria-pressed` already announces
   // the state to a screen reader, so this is the one place in the row set where the tooltip may
-  // carry the action instead. The mixed state reuses the "all" wording on purpose: the dash
-  // already says some are set, and the press takes everything to on either way.
+  // carry the action instead. The mixed state reuses the "all" wording on purpose: the mixed
+  // fill already says some are set, and the press takes everything to on either way.
   const soloTooltip =
     soloMuteUnavailable ?? (soloAll && !soloAllIndeterminate ? 'Clear solos' : 'Solo all');
   const muteTooltip =
@@ -77,10 +82,33 @@ const MasterRow = ({
     <Field
       data-slot="master-row"
       orientation="horizontal"
-      className={cn('flex-wrap gap-3', className)}
+      className={cn(MIXER_ROW_CLASS, 'px-2 py-1.5', className)}
       {...rest}
     >
-      <span className="text-sm font-medium">Master</span>
+      <span className="flex size-[2.125rem] items-center justify-center">{leading}</span>
+
+      <span className="min-w-0 truncate text-sm font-semibold">Master</span>
+
+      <MixAllToggle
+        pressed={soloAll}
+        indeterminate={soloAllIndeterminate}
+        label="Solo all"
+        tooltip={soloTooltip}
+        disabled={disabled}
+        icon="headphones"
+        onChange={onSoloAllChange}
+      />
+
+      <MixAllToggle
+        pressed={muteAll}
+        indeterminate={muteAllIndeterminate}
+        label="Mute all"
+        tooltip={muteTooltip}
+        disabled={disabled}
+        icon="volume_off"
+        mute
+        onChange={onMuteAllChange}
+      />
 
       <Slider
         value={draft ?? volume}
@@ -97,72 +125,59 @@ const MasterRow = ({
         // scale rather than a track's 0-16.
         showReadout
         formatValue={(v) => `${Math.round(v * 100)}%`}
-        className="w-32"
+        className="w-full min-w-0"
       />
-
-      <Tooltip>
-        <TooltipTrigger
-          closeOnClick={false}
-          render={
-            <FieldLabel
-              htmlFor={soloId}
-              className={cn(
-                'flex min-h-11 min-w-11 items-center justify-center gap-2',
-                disabled && 'cursor-not-allowed opacity-50',
-              )}
-            >
-              Solo all
-              <Checkbox
-                id={soloId}
-                checked={soloAll}
-                indeterminate={soloAllIndeterminate}
-                aria-disabled={disabled}
-                // Base UI's Checkbox.Root has no `focusableWhenDisabled` escape hatch, so its own
-                // `disabled` prop would drop the control out of the tab order and the
-                // why-tooltip could never open on keyboard focus. `aria-disabled` plus this guard
-                // is the Button / TransportToggle precedent, kept in the tab order on purpose —
-                // the dimming above rides on the same flag so a mouse user sees it too, since
-                // Checkbox's own styling keys off `data-disabled`, which this never sets.
-                onCheckedChange={(next) => {
-                  if (disabled) return;
-                  onSoloAllChange(next);
-                }}
-              />
-            </FieldLabel>
-          }
-        />
-        <TooltipContent sideOffset={8}>{soloTooltip}</TooltipContent>
-      </Tooltip>
-
-      <Tooltip>
-        <TooltipTrigger
-          closeOnClick={false}
-          render={
-            <FieldLabel
-              htmlFor={muteId}
-              className={cn(
-                'flex min-h-11 min-w-11 items-center justify-center gap-2',
-                disabled && 'cursor-not-allowed opacity-50',
-              )}
-            >
-              Mute all
-              <Checkbox
-                id={muteId}
-                checked={muteAll}
-                indeterminate={muteAllIndeterminate}
-                aria-disabled={disabled}
-                onCheckedChange={(next) => {
-                  if (disabled) return;
-                  onMuteAllChange(next);
-                }}
-              />
-            </FieldLabel>
-          }
-        />
-        <TooltipContent sideOffset={8}>{muteTooltip}</TooltipContent>
-      </Tooltip>
     </Field>
   );
 };
+
+// Select-all over the rows, drawn as the same 34px icon button a track uses so the two rows
+// share a column. `aria-pressed="mixed"` is the checkbox dash: some tracks are on, not all.
+const MixAllToggle = ({
+  pressed,
+  indeterminate,
+  label,
+  tooltip,
+  disabled,
+  icon,
+  mute = false,
+  onChange,
+}: Readonly<{
+  pressed: boolean;
+  indeterminate: boolean;
+  label: string;
+  tooltip: string;
+  disabled: boolean;
+  icon: string;
+  mute?: boolean;
+  onChange: (next: boolean) => void;
+}>) => (
+  <Tooltip disableHoverablePopup>
+    <TooltipTrigger closeOnClick={false} render={<span className="inline-flex" />}>
+      <Button
+        variant="ghost"
+        size="icon"
+        aria-pressed={indeterminate ? 'mixed' : pressed}
+        aria-label={label}
+        disabled={disabled}
+        onClick={() => onChange(!(pressed && !indeterminate))}
+        className={cn(
+          MIXER_BUTTON_CLASS,
+          'border border-border',
+          mute && MUTE_PRESSED_CLASS,
+          indeterminate &&
+            (mute
+              ? 'border-warning bg-warning/25 text-warning'
+              : 'border-primary bg-primary/20 text-primary'),
+        )}
+      >
+        <span className="material-symbols-outlined" aria-hidden="true">
+          {icon}
+        </span>
+      </Button>
+    </TooltipTrigger>
+    <TooltipContent sideOffset={8}>{tooltip}</TooltipContent>
+  </Tooltip>
+);
 
 export { MasterRow };

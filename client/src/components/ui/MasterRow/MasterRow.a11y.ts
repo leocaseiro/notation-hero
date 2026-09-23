@@ -9,6 +9,6 @@ runA11yStories({
   storyPrefix: 'ui-masterrow',
   storyIds: MASTER_ROW_STORY_IDS,
   slotSelector: '[data-slot="master-row"]',
-  iconFontStory: (story) => story === 'mixed' || story === 'ticked',
+  iconFontStory: () => true,
   axeInclude: 'body',
 });

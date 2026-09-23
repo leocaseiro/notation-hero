@@ -33,17 +33,17 @@ type Story = StoryObj<typeof meta>;
 
 export const Resting: Story = {};
 
-// Only some tracks soloed and muted — both boxes read the indeterminate dash, never unticked.
+// Only some tracks soloed and muted — both buttons read mixed, never released.
 export const Mixed: Story = {
   args: { soloAllIndeterminate: true, muteAllIndeterminate: true },
 };
 
-// Every track soloed and muted — both boxes ticked, so their tooltips read the way back out.
+// Every track soloed and muted — both buttons pressed, so their tooltips read the way back out.
 export const Ticked: Story = {
   args: { soloAll: true, muteAll: true },
 };
 
-// The file plays its own recording: both boxes render unavailable; master volume stays live.
+// The file plays its own recording: both buttons render unavailable; master volume stays live.
 export const Recording: Story = {
   args: { soloMuteUnavailable: RECORDING },
 };
