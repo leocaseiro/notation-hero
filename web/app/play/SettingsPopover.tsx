@@ -170,7 +170,10 @@ export function SettingsPopover({
           <Accordion className="px-3 py-2" defaultValue={groups.map((group) => group.id)}>
             {groups.map((group) => (
               <AccordionItem key={group.id} value={group.id}>
-                <AccordionTrigger headerClassName="sticky top-0 z-10 bg-popover">
+                <AccordionTrigger
+                  className="text-xl font-bold text-primary hover:text-foreground"
+                  headerClassName="sticky top-0 z-10 bg-popover"
+                >
                   {group.title}
                 </AccordionTrigger>
                 <AccordionContent>

@@ -220,13 +220,17 @@ export function NotationSurface({
           box is flush against the window edges now, so an outward ring is clipped away by the
           shell's `overflow-hidden` on three sides and there is nothing left to see. The
           accessibility gate audits the scrolling state with Punk.gp. */}
+      {/* `isolate` keeps AlphaTab's cursor layer inside this box. The engine sets
+          `.at-cursors` to z-index 1000, and nothing between that div and the page
+          creates a stacking context, so the bar highlight and the beat line paint
+          over the settings popover. */}
       <div
         ref={viewportRef}
         data-testid="notation-surface"
         role="region"
         aria-label="Score"
         tabIndex={0}
-        className="h-full w-full overflow-y-auto bg-white outline-none transition-[color,box-shadow] focus-visible:inset-ring-[3px] focus-visible:inset-ring-ring/50 focus-visible:-outline-offset-1 focus-visible:outline-1"
+        className="isolate h-full w-full overflow-y-auto bg-white outline-none transition-[color,box-shadow] focus-visible:inset-ring-[3px] focus-visible:inset-ring-ring/50 focus-visible:-outline-offset-1 focus-visible:outline-1"
       >
         <div ref={hostRef} />
       </div>
