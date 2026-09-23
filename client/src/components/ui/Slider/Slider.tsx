@@ -73,12 +73,12 @@ const Slider = ({
   const readout = `${formatValue(value)}${suffix}`;
 
   return (
-    <div data-slot="slider" className={cn('flex flex-col gap-2', className)}>
-      {showReadout ? (
-        <output aria-hidden="true" className="text-sm text-muted-foreground tabular-nums">
-          {readout}
-        </output>
-      ) : null}
+    // One cell, readout painted over the top of the rail's hit area and nudged 4px toward
+    // the rail (`translate-y-1`). The number used to sit in the flow above the 44px control,
+    // so the gap to the rail was that padding plus `gap-2` — far enough that a percentage
+    // read as a label for the row rather than for the rail. `pointer-events-none` keeps the
+    // readout from stealing the drag that starts on the padding.
+    <div data-slot="slider" className={cn('grid w-full min-w-0', className)}>
       <SliderPrimitive.Root
         value={value}
         onValueChange={(next, details) => {
@@ -109,7 +109,7 @@ const Slider = ({
         largeStep={largeStep}
         disabled={disabled}
         className={cn(
-          'relative flex w-full touch-none items-center select-none',
+          'col-start-1 row-start-1 relative flex w-full touch-none items-center select-none',
           // 70, not the 50 the rest of the system dims a disabled control to. A disabled button
           // sits among enabled ones and borrows their contrast; the seek bar with nothing loaded
           // is alone on the screen, and the thumb is the only thing that says a seek bar is even
@@ -139,6 +139,14 @@ const Slider = ({
           </SliderPrimitive.Track>
         </SliderPrimitive.Control>
       </SliderPrimitive.Root>
+      {showReadout ? (
+        <output
+          aria-hidden="true"
+          className="pointer-events-none col-start-1 row-start-1 translate-y-1 self-start text-xs leading-none text-muted-foreground tabular-nums"
+        >
+          {readout}
+        </output>
+      ) : null}
     </div>
   );
 };
