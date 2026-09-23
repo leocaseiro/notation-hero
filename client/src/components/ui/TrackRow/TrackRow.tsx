@@ -258,7 +258,9 @@ const TrackRow = ({
           showReadout
           formatValue={(v) => `${Math.round((v / 16) * 100)}%`}
           disabled={mixDisabled}
-          className="w-full min-w-0"
+          // Half the thumb hangs off each end of the rail. Without this inset a 0% thumb
+          // lands on the mute button, and a 100% thumb lands on the notation buttons.
+          className="w-full min-w-0 px-4"
         />
 
         {staves.length === 1 && staves[0] ? (

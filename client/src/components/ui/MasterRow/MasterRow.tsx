@@ -125,7 +125,7 @@ const MasterRow = ({
         // scale rather than a track's 0-16.
         showReadout
         formatValue={(v) => `${Math.round(v * 100)}%`}
-        className="w-full min-w-0"
+        className="w-full min-w-0 px-4"
       />
     </Field>
   );
