@@ -276,12 +276,12 @@ const TrackRow = ({
               >
                 <span
                   className={cn(
-                    'material-symbols-outlined transition-transform',
+                    'material-symbols-outlined text-[22px] transition-transform',
                     expanded && 'rotate-180',
                   )}
                   aria-hidden="true"
                 >
-                  expand_more
+                  keyboard_arrow_down
                 </span>
               </Button>
             }
