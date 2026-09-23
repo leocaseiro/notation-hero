@@ -73,6 +73,19 @@ function useNotationRoom(): number | null {
   return room;
 }
 
+const layoutModeLabel = (trackCount: number, single: boolean): string => {
+  if (trackCount < 2) return 'Only one track';
+  if (single) return 'Single track';
+  return 'Multiple tracks';
+};
+
+const trackName = (track: AlphaTab.model.Track): string => {
+  const name = track.name.trim();
+  // Guitar Pro leaves the name blank and puts a useless short name like "s.guit." on every
+  // track. A numbered label is the name the row can show.
+  return name || `Track ${track.index + 1}`;
+};
+
 const staffLabel = (staff: AlphaTab.model.Staff, staffIndex: number): string => {
   // The clef lives on the bar. A grand staff is named by its two clefs; everything else stays
   // "Staff N", which is the name TrackRow's own contract documents.
@@ -85,7 +98,7 @@ const staffLabel = (staff: AlphaTab.model.Staff, staffIndex: number): string => 
 // Plain data at the boundary, so nothing downstream holds an AlphaTab object in React state.
 const toMixerTrack = (track: AlphaTab.model.Track): MixerTrack => ({
   index: track.index,
-  name: track.name,
+  name: trackName(track),
   fileVolume: track.playbackInfo.volume,
   volume: track.playbackInfo.volume,
   solo: false,
@@ -267,9 +280,10 @@ export function TracksPopover({
     }
   });
 
-  const layoutLabel = singleTrack ? 'Single track' : 'Multiple tracks';
+  const layoutLabel = layoutModeLabel(tracks.length, singleTrack);
 
   const toggleLayout = () => {
+    if (tracksRef.current.length < 2) return;
     const next = !singleTrack;
     setSingleTrack(next);
     if (!next) return;
@@ -381,6 +395,7 @@ export function TracksPopover({
                     size="icon"
                     aria-pressed={singleTrack}
                     aria-label={layoutLabel}
+                    disabled={tracks.length < 2}
                     onClick={toggleLayout}
                     className={`${MIXER_BUTTON_CLASS} border border-border`}
                   >
