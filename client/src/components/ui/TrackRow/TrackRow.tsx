@@ -206,9 +206,14 @@ const TrackRow = ({
           className={cn(MIXER_BUTTON_CLASS, 'border-transparent')}
         />
 
-        {/* The column is a floor, not a fit: `truncate` catches a name longer than whatever
-            space the fixed buttons leave at the popover's real width. */}
-        <span className="min-w-0 truncate text-sm font-medium">{name}</span>
+        <Tooltip disableHoverablePopup>
+          <TooltipTrigger
+            render={<span tabIndex={-1} className="block min-w-0 truncate text-sm font-medium" />}
+          >
+            {name}
+          </TooltipTrigger>
+          <TooltipContent sideOffset={8}>{name}</TooltipContent>
+        </Tooltip>
 
         <TransportToggle
           pressed={solo}
