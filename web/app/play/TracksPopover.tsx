@@ -2,6 +2,7 @@
 
 import {
   Button,
+  MIXER_BUTTON_CLASS,
   MasterRow,
   Popover,
   PopoverContent,
@@ -99,6 +100,9 @@ export function TracksPopover({
 }: Readonly<TracksPopoverProps>) {
   const [tracks, setTracks] = useState<MixerTrack[]>([]);
   const [renderedIndexes, setRenderedIndexes] = useState<number[]>([]);
+  // Multiple tracks is the mix the score opens in. Single track draws one staff at a time.
+  // Not persisted — Task 6 owns that, and a new score starts from multiple again.
+  const [singleTrack, setSingleTrack] = useState(false);
   // Written in event handlers, read in event handlers. useAlphaTabEvent only refreshes its
   // handler ref in an effect, so a playerReady that arrives in the same turn as scoreLoaded would
   // still see the previous render's rows. The ref is current the moment the score arrives.
@@ -126,6 +130,7 @@ export function TracksPopover({
   // the mixer on one "Drums" row beside a score that has three tracks.
   useAlphaTabEvent(api, 'scoreLoaded', (score) => {
     if (api?.score && api.score !== score) return;
+    setSingleTrack(false);
     commitTracks(score.tracks.map((track) => toMixerTrack(track)));
   });
 
@@ -144,6 +149,13 @@ export function TracksPopover({
   const applyRendered = (index: number, next: boolean) => {
     const score = api?.score;
     if (!api || !score) return;
+    // Single track: the eye picks the one staff that stays drawn. Hiding it is the same lock
+    // as "at least one track must stay shown" — there is nothing else on screen to fall back to.
+    if (singleTrack) {
+      if (!next) return;
+      api.renderTracks([score.tracks[index]]);
+      return;
+    }
     const chosen = [
       ...new Set(next ? [...drawnIndexes, index] : drawnIndexes.filter((i) => i !== index)),
     ].toSorted((a, b) => a - b);
@@ -236,6 +248,18 @@ export function TracksPopover({
     }
   });
 
+  const layoutLabel = singleTrack ? 'Single track' : 'Multiple tracks';
+
+  const toggleLayout = () => {
+    const next = !singleTrack;
+    setSingleTrack(next);
+    if (!next) return;
+    const score = api?.score;
+    if (!api || !score || tracks.length === 0) return;
+    const keep = drawnIndexes.length > 0 ? drawnIndexes[0] : tracks[0].index;
+    api.renderTracks([score.tracks[keep]]);
+  };
+
   return (
     <Popover>
       <Tooltip>
@@ -272,21 +296,21 @@ export function TracksPopover({
         className="w-[32rem] p-0"
         aria-label="Tracks"
       >
-        {/* viewportClassName, not className: a height cap on the Root computes to auto and the
-            list never scrolls. Same fix the Settings popover already carries. */}
-        <ScrollArea viewportClassName="max-h-[60vh]">
-          {/* Said ONCE, in words, above the rows: a disabled slider has no tooltip of its own. */}
-          {hasBackingTrack ? (
-            <p className="px-3 pt-3 text-sm text-muted-foreground">
-              This file is playing its own recording, so solo, mute, volume and audio transposition
-              are not available.
-            </p>
-          ) : null}
+        {/* The list scrolls. The footer does not: Master and the layout switch stay put when a
+            score has more tracks than the panel can show. viewportClassName, not className: a
+            height cap on the Root computes to auto and the list never scrolls. */}
+        {hasBackingTrack ? (
+          <p className="px-3 pt-3 text-sm text-muted-foreground">
+            This file is playing its own recording, so solo, mute, volume and audio transposition
+            are not available.
+          </p>
+        ) : null}
+        <ScrollArea viewportClassName="max-h-[min(22rem,50vh)]">
           {tracks.map((track) => (
             <TrackRow
               key={track.index}
               data-testid={`track-row-${track.index}`}
-              className="px-3 py-2"
+              className="border-b border-border last:border-b-0"
               name={track.name}
               rendered={drawnIndexes.includes(track.index)}
               onRenderedChange={(next) => applyRendered(track.index, next)}
@@ -314,14 +338,35 @@ export function TracksPopover({
               mixUnavailable={hasBackingTrack ? RECORDING : undefined}
             />
           ))}
+        </ScrollArea>
+        <div className="border-t border-border bg-popover">
           {/* Master volume is the shell's value, handed down with its existing single writer.
               Solo-all and mute-all belong to the mixer: they set every row through the same
               handlers a row click uses. An all-soloed mix sounds like an un-soloed one, which is
-              why these are select-all checkboxes with a way back. Master volume stays live while
+              why these are select-all toggles with a way back. Master volume stays live while
               a recording plays — unlike every per-track mix control. */}
           <MasterRow
             data-testid="master-row"
-            className="px-3 py-2"
+            leading={
+              <Tooltip disableHoverablePopup>
+                <TooltipTrigger closeOnClick={false} render={<span className="inline-flex" />}>
+                  <Button
+                    data-testid="tracks-layout"
+                    variant="ghost"
+                    size="icon"
+                    aria-pressed={singleTrack}
+                    aria-label={layoutLabel}
+                    onClick={toggleLayout}
+                    className={`${MIXER_BUTTON_CLASS} border border-border`}
+                  >
+                    <span className="material-symbols-outlined" aria-hidden="true">
+                      {singleTrack ? 'crop_16_9' : 'splitscreen'}
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={8}>{layoutLabel}</TooltipContent>
+              </Tooltip>
+            }
             volume={masterVolume}
             onVolumeChange={onMasterVolumeChange}
             soloAll={tracks.length > 0 && tracks.every((t) => t.solo)}
@@ -336,7 +381,7 @@ export function TracksPopover({
             }}
             soloMuteUnavailable={hasBackingTrack ? RECORDING : undefined}
           />
-        </ScrollArea>
+        </div>
       </PopoverContent>
     </Popover>
   );
