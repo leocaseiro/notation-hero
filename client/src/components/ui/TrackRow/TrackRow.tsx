@@ -83,6 +83,12 @@ const Icon = ({ name }: Readonly<{ name: string }>) => (
   </span>
 );
 
+const Mark = ({ children }: Readonly<{ children: string }>) => (
+  <span aria-hidden="true" className="text-base leading-none font-semibold">
+    {children}
+  </span>
+);
+
 // One column track for every track row and the master footer. Fixed columns (the eye, solo, mute,
 // the staff group, the expand control) are the same width on both, so those buttons line up even
 // though a track name changes length. 2.125rem is 34px: WCAG 2.5.8 AA asks 24px, and this mixer
@@ -135,11 +141,11 @@ const TrackRow = ({
 
   const mixDisabled = Boolean(mixUnavailable);
 
-  const staffToggleIcon: Record<StaffToggleKey, string> = {
-    showStandardNotation: 'music_note',
-    showSlash: 'north_east',
-    showNumbered: 'format_list_numbered',
-    showTablature: 'grid_on',
+  const staffToggleIcon = (key: StaffToggleKey) => {
+    if (key === 'showSlash') return <Mark>/</Mark>;
+    if (key === 'showNumbered') return <Mark>#</Mark>;
+    const name = key === 'showTablature' ? 'grid_on' : 'music_note';
+    return <Icon name={name} />;
   };
   const staffToggleName: Record<StaffToggleKey, string> = {
     showStandardNotation: 'Standard notation',
@@ -154,7 +160,7 @@ const TrackRow = ({
       pressed={staff[key]}
       onPressedChange={(next) => onStaffChange(staff.id, key, next)}
       label={`${name} ${staff.label} ${staffToggleName[key]}`}
-      icon={<Icon name={staffToggleIcon[key]} />}
+      icon={staffToggleIcon(key)}
       tooltip={`${staff.label} ${staffToggleName[key]}: ${staff[key] ? 'on' : 'off'}`}
       className={cn(
         'h-[2.125rem] w-full min-w-0 flex-1 rounded-none border-0',
