@@ -7,7 +7,8 @@ import { Field } from '../Field/Field';
 import { Slider } from '../Slider/Slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip/Tooltip';
 import { TransportToggle } from '../TransportToggle/TransportToggle';
-import type { ComponentProps } from 'react';
+import { MIXER_BUTTON_CLASS, MIXER_ROW_CLASS, MUTE_PRESSED_CLASS } from './MixerClasses';
+import type { ComponentProps, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -56,11 +57,7 @@ interface TrackRowProps extends Omit<ComponentProps<'div'>, 'children' | 'onVolu
   volume: number;
   onVolumeChange: (next: number) => void;
   staves: readonly TrackStaffState[];
-  onStaffChange: (
-    staffId: string,
-    key: keyof Omit<TrackStaffState, 'id' | 'label' | 'tablatureAvailable'>,
-    next: boolean,
-  ) => void;
+  onStaffChange: (staffId: string, key: StaffToggleKey, next: boolean) => void;
   transposeAudio: number;
   onTransposeAudioChange: (semitones: number) => void;
   transposeFull: number;
@@ -75,7 +72,11 @@ interface TrackRowProps extends Omit<ComponentProps<'div'>, 'children' | 'onVolu
   mixUnavailable?: string;
 }
 
-type StaffToggleKey = 'showStandardNotation' | 'showSlash' | 'showNumbered' | 'showTablature';
+export type StaffToggleKey =
+  | 'showStandardNotation'
+  | 'showSlash'
+  | 'showNumbered'
+  | 'showTablature';
 
 const Icon = ({ name }: Readonly<{ name: string }>) => (
   <span className="material-symbols-outlined" aria-hidden="true">
@@ -89,30 +90,21 @@ const Mark = ({ children }: Readonly<{ children: string }>) => (
   </span>
 );
 
-// One column track for every track row and the master footer. Fixed columns (the eye, solo, mute,
-// the staff group, the expand control) are the same width on both, so those buttons line up even
-// though a track name changes length. 2.125rem is 34px: WCAG 2.5.8 AA asks 24px, and this mixer
-// is dense enough that the transport's 44px targets do not fit the row. The staff column is
-// 8.5rem whether or not a row fills it, so a 3-toggle percussion row and a 4-toggle string row
-// still end on the same expand button.
-export const MIXER_ROW_CLASS =
-  'grid items-center gap-1.5 [grid-template-columns:2.125rem_minmax(3.25rem,1fr)_2.125rem_2.125rem_minmax(4.5rem,1.25fr)_8.625rem_2.125rem]';
-
-// Mixer icon buttons. `size-11` on TransportToggle is the transport's 44px target; this overrides
-// it for the row. Mute's pressed fill is warning amber — solo and "shown" stay brand teal.
-export const MIXER_BUTTON_CLASS = 'size-[2.125rem] shrink-0 rounded-lg text-muted-foreground';
-// data-pressed: a Base UI Toggle sets it — every mixer toggle built through TransportToggle
-// (this row's own Mute button included).
-export const MUTE_PRESSED_CLASS =
-  'data-pressed:border-warning data-pressed:bg-warning data-pressed:text-warning-foreground';
-// aria-pressed: the twins for a plain Button that carries its pressed state only as
-// aria-pressed="true" (MasterRow's select-all toggles, which are not a Base UI Toggle and so
-// never get data-pressed). Tailwind's built-in aria-pressed variant matches the literal string
-// "true" only, so aria-pressed="mixed" — MasterRow's indeterminate state — does not match either.
-export const MIXER_SOLO_PRESSED_CLASS =
-  'aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground';
-export const MIXER_MUTE_PRESSED_CLASS =
-  'aria-pressed:border-warning aria-pressed:bg-warning aria-pressed:text-warning-foreground';
+// Static elements, safe at module scope: neither closes over anything from the component, and
+// React clones them at the call site. A Record, not an if-chain, so adding a fifth
+// StaffToggleKey fails the type check here instead of silently falling through.
+const STAFF_TOGGLE_ICON: Record<StaffToggleKey, ReactNode> = {
+  showStandardNotation: <Icon name="music_note" />,
+  showSlash: <Mark>/</Mark>,
+  showNumbered: <Mark>#</Mark>,
+  showTablature: <Icon name="grid_on" />,
+};
+const STAFF_TOGGLE_NAME: Record<StaffToggleKey, string> = {
+  showStandardNotation: 'Standard notation',
+  showSlash: 'Slash notation',
+  showNumbered: 'Numbered notation',
+  showTablature: 'Tablature',
+};
 
 // One mixer row. The primary cluster (name, render-select, solo, mute, volume, then every
 // per-staff display toggle) is always visible; only the two transposition sliders sit behind the
@@ -151,32 +143,19 @@ const TrackRow = ({
 
   const mixDisabled = Boolean(mixUnavailable);
 
-  const staffToggleIcon = (key: StaffToggleKey) => {
-    if (key === 'showSlash') return <Mark>/</Mark>;
-    if (key === 'showNumbered') return <Mark>#</Mark>;
-    const iconName = key === 'showTablature' ? 'grid_on' : 'music_note';
-    return <Icon name={iconName} />;
-  };
-  const staffToggleName: Record<StaffToggleKey, string> = {
-    showStandardNotation: 'Standard notation',
-    showSlash: 'Slash notation',
-    showNumbered: 'Numbered notation',
-    showTablature: 'Tablature',
-  };
-
   const staffToggle = (staff: TrackStaffState, key: StaffToggleKey, divided: boolean) => {
     const unavailable = key === 'showTablature' && !staff.tablatureAvailable;
     const state = staff[key] ? 'on' : 'off';
     const tooltip = unavailable
       ? `${staff.label} Tablature: unavailable`
-      : `${staff.label} ${staffToggleName[key]}: ${state}`;
+      : `${staff.label} ${STAFF_TOGGLE_NAME[key]}: ${state}`;
     return (
       <TransportToggle
         key={key}
         pressed={staff[key]}
         onPressedChange={(next) => onStaffChange(staff.id, key, next)}
-        label={`${name} ${staff.label} ${staffToggleName[key]}`}
-        icon={staffToggleIcon(key)}
+        label={`${name} ${staff.label} ${STAFF_TOGGLE_NAME[key]}`}
+        icon={STAFF_TOGGLE_ICON[key]}
         tooltip={tooltip}
         disabled={unavailable}
         // These four buttons sit flush against each other in one bordered box (no gap), so a
@@ -283,17 +262,16 @@ const TrackRow = ({
           className="w-full min-w-0 px-4"
         />
 
-        {staves.length === 1 && staves[0] ? (
-          staffButtons(staves[0])
-        ) : (
-          <span className="col-start-6" />
-        )}
+        {staves.length === 1 && staves[0] ? staffButtons(staves[0]) : null}
 
         {/* The expand control is never disabled, so the trigger renders the Button directly
             through `render` rather than wrapping it in a span — the
             `TooltipTrigger render={<Button …/>}` shape `Tooltip.stories.tsx` demonstrates for a
             control with no disabled state to guard against. Hoverable (no disableHoverablePopup —
-            WCAG 2.1 AA 1.4.13); max-w-40 on the content bounds its reach on a packed row. */}
+            WCAG 2.1 AA 1.4.13); max-w-40 on the content bounds its reach on a packed row.
+            col-start-7 is explicit, not auto-placement: the staff column above is empty (no
+            staffButtons) whenever a track has anything other than exactly one staff, and nothing
+            else would otherwise hold column 6 open. */}
         <Tooltip>
           <TooltipTrigger
             render={
@@ -302,7 +280,7 @@ const TrackRow = ({
                 size="icon"
                 className={cn(
                   MIXER_BUTTON_CLASS,
-                  'border border-border bg-transparent text-foreground aria-expanded:bg-transparent',
+                  'col-start-7 border border-border bg-transparent text-foreground aria-expanded:bg-transparent',
                 )}
                 aria-expanded={expanded}
                 aria-controls={panelId}

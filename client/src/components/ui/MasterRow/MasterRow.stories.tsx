@@ -2,7 +2,8 @@ import { fn } from 'storybook/test';
 
 import { Button } from '../Button/Button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip/Tooltip';
-import { MIXER_BUTTON_CLASS, RECORDING } from '../TrackRow/TrackRow';
+import { MIXER_BUTTON_CLASS } from '../TrackRow/MixerClasses';
+import { RECORDING } from '../TrackRow/TrackRow';
 import { MasterRow } from './MasterRow';
 import type { Meta, StoryObj } from '@storybook/tanstack-react';
 

@@ -4,6 +4,7 @@ import {
   Button,
   Progress,
   RECORDING,
+  Separator,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -1024,12 +1025,9 @@ function Player() {
               }
               trailing={
                 <div className="flex items-center">
-                  {/* Hairline between Count-in and Tracks. bg-border is the row's own line
-                      token; a `bg-line` utility is not in this theme. */}
-                  <div
-                    aria-hidden="true"
-                    className="mx-2 h-6 w-px shrink-0 bg-border dark:bg-input"
-                  />
+                  {/* Hairline between Count-in and Tracks — the design system's own divider,
+                      not a hand-copied class string. */}
+                  <Separator aria-hidden="true" orientation="vertical" className="mx-2 h-6" />
                   <TracksPopover
                     api={api}
                     hasBackingTrack={hasBackingTrack}

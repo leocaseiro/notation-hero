@@ -1,7 +1,7 @@
 import type { PlayerSettingsJson } from './settings-paths';
 import type { SettingApply, StylesheetKey } from './settings-schema';
 import type * as AlphaTab from '@coderline/alphatab';
-import type { SettingValue } from '@notation-hero/client';
+import type { SettingValue, StaffToggleKey } from '@notation-hero/client';
 
 /**
  * The ONE place the live engine's settings change: write, push to the workers, redraw when asked.
@@ -155,11 +155,10 @@ export function setStylesheetValue(
   queueRender(api);
 }
 
-export type StaffDisplayKey =
-  | 'showStandardNotation'
-  | 'showSlash'
-  | 'showNumbered'
-  | 'showTablature';
+// An alias, not a second declaration: the one union lives on TrackRow, the component whose props
+// define which staff flags exist. Kept under this name because this module's own callers already
+// import it as StaffDisplayKey.
+export type StaffDisplayKey = StaffToggleKey;
 
 /** A staff flag lives on the score model, not in the settings, so only a redraw is needed. */
 export function setStaffDisplay(

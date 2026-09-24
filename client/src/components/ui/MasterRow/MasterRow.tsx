@@ -11,7 +11,7 @@ import {
   MIXER_MUTE_PRESSED_CLASS,
   MIXER_ROW_CLASS,
   MIXER_SOLO_PRESSED_CLASS,
-} from '../TrackRow/TrackRow';
+} from '../TrackRow/MixerClasses';
 import type { ComponentProps, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';

@@ -39,6 +39,7 @@ export const REQUIRED_SELECTORS = [
   ['.border-primary', 'the seek thumb is white on white'],
   ['.cursor-grab', 'the seek thumb loses its drag affordance'],
   ['.text-right', 'right-aligned table columns lose their alignment'],
+  [String.raw`.size-\[2\.125rem\]`, 'every mixer icon button collapses to the Button default size'],
 ];
 
 const cssFiles = (dir) =>

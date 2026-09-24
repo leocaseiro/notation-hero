@@ -5,15 +5,10 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-  Button,
   Popover,
   PopoverContent,
-  PopoverTrigger,
   ScrollArea,
   SettingRow,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from '@notation-hero/client';
 import { useState } from 'react';
 
@@ -25,6 +20,7 @@ import {
   STYLESHEET_ENUMS,
 } from '../../lib/alphatab/settings-schema';
 import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
+import { PopoverIconTrigger } from './PopoverIconTrigger';
 import type {
   ApiValueKey,
   PlayerSettingsJson,
@@ -128,33 +124,13 @@ export function SettingsPopover({
 
   return (
     <Popover>
-      {/* The tooltip is ALWAYS present, never conditional: swapping the wrapped and the bare
-          element remounts the button and drops its focus. The TooltipTrigger renders a SPAN
-          around the PopoverTrigger — the shape TransportToggle ships — because the gear is
-          disabled while the engine loads, and a disabled Button is pointer-events:none, so as
-          its own tooltip trigger it would never see the mouse. The span takes the hover; focus
-          still opens it, because focus events bubble. Still one <button>. */}
-      <Tooltip>
-        <TooltipTrigger render={<span className="inline-flex" />}>
-          <PopoverTrigger
-            render={
-              <Button
-                data-testid="settings-trigger"
-                variant="ghost"
-                size="icon"
-                aria-label="Settings"
-                disabled={!engine}
-                className="size-11 rounded-xl"
-              >
-                <span className="material-symbols-outlined" aria-hidden="true">
-                  settings
-                </span>
-              </Button>
-            }
-          />
-        </TooltipTrigger>
-        <TooltipContent>Settings</TooltipContent>
-      </Tooltip>
+      <PopoverIconTrigger
+        testId="settings-trigger"
+        label="Settings"
+        glyph="settings"
+        disabled={!engine}
+        className="rounded-xl"
+      />
       <PopoverContent
         data-testid="settings-popover"
         align="end"

@@ -1,26 +1,25 @@
 'use client';
 
 import {
-  Button,
   MIXER_BUTTON_CLASS,
   MasterRow,
   Popover,
   PopoverContent,
-  PopoverTrigger,
   RECORDING,
   ScrollArea,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
   TrackRow,
+  TransportToggle,
 } from '@notation-hero/client';
 import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
+import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 import { setStaffDisplay, setTrackTransposition } from '../../lib/alphatab/live-settings';
+import { toMixerTrack } from '../../lib/alphatab/mixer-tracks';
 import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
+import { PopoverIconTrigger } from './PopoverIconTrigger';
 import type { StaffDisplayKey } from '../../lib/alphatab/live-settings';
+import type { MixerTrack } from '../../lib/alphatab/mixer-tracks';
 import type * as AlphaTab from '@coderline/alphatab';
-import type { TrackStaffState } from '@notation-hero/client';
 
 interface TracksPopoverProps {
   /** The live api, or undefined until the engine has loaded. The mixer reads the score from its events. */
@@ -36,24 +35,6 @@ interface TracksPopoverProps {
   masterVolume: number;
   onMasterVolumeChange: (next: number) => void;
 }
-
-interface MixerTrack {
-  index: number;
-  name: string;
-  /** The level the FILE gives this track, 0-16. AlphaTab never writes playbackInfo.volume, so this stays the file's own level. It is not a denominator: the writer divides by the constant 16. */
-  fileVolume: number;
-  volume: number;
-  solo: boolean;
-  mute: boolean;
-  transposeAudio: number;
-  transposeFull: number;
-  expanded: boolean;
-  staves: TrackStaffState[];
-}
-
-// AlphaTab's Clef enum, as numbers. The web app does not import the runtime namespace.
-const CLEF_BASS = 3; // F4
-const CLEF_TREBLE = 4; // G2
 
 // How tall the list may grow: the notation surface, which is the visible score between the
 // header and the transport. Shorter than the viewport on purpose — `--available-height` reaches
@@ -73,51 +54,13 @@ function useNotationRoom(): number | null {
   return room;
 }
 
-const layoutModeLabel = (trackCount: number, single: boolean): string => {
+// The layout switch's TOOLTIP text — its accessible name stays the stable "Track layout" (see the
+// TransportToggle below); this is what the popup says the state is.
+const layoutStateLabel = (trackCount: number, single: boolean): string => {
   if (trackCount < 2) return 'Only one track';
   if (single) return 'Single track';
   return 'Multiple tracks';
 };
-
-const trackName = (track: AlphaTab.model.Track): string => {
-  const name = track.name.trim();
-  // Guitar Pro leaves the name blank and puts the same placeholder short name on every track.
-  // A numbered label is the name the row can show.
-  return name || `Track ${track.index + 1}`;
-};
-
-const staffLabel = (staff: AlphaTab.model.Staff, staffIndex: number): string => {
-  // The clef lives on the bar. A grand staff is named by its two clefs; everything else stays
-  // "Staff N", which is the name TrackRow's own contract documents.
-  const clef = staff.bars[0]?.clef;
-  if (clef === CLEF_TREBLE) return 'Treble';
-  if (clef === CLEF_BASS) return 'Bass';
-  return `Staff ${staffIndex + 1}`;
-};
-
-// Plain data at the boundary, so nothing downstream holds an AlphaTab object in React state.
-const toMixerTrack = (track: AlphaTab.model.Track): MixerTrack => ({
-  index: track.index,
-  name: trackName(track),
-  fileVolume: track.playbackInfo.volume,
-  volume: track.playbackInfo.volume,
-  solo: false,
-  mute: false,
-  transposeAudio: 0,
-  transposeFull: 0,
-  expanded: false,
-  staves: track.staves.map((staff, staffIndex) => ({
-    id: `${track.index}-${staffIndex}`,
-    label: staffLabel(staff, staffIndex),
-    showStandardNotation: staff.showStandardNotation,
-    showSlash: staff.showSlash,
-    showNumbered: staff.showNumbered,
-    showTablature: staff.showTablature,
-    // The pinned AlphaTab forces showTablature=false on any percussion staff and requires a
-    // tuning, so the toggle is offered only where it can actually do something.
-    tablatureAvailable: !staff.isPercussion && staff.tuning.length > 0,
-  })),
-});
 
 // The mixer. It owns solo and mute, because AlphaTab keeps those in the synth worker and nothing
 // on the main thread can be read back. The component stays mounted for the life of the page —
@@ -129,11 +72,13 @@ export function TracksPopover({
   masterVolume,
   onMasterVolumeChange,
 }: Readonly<TracksPopoverProps>) {
+  const { engine } = useAlphaTabEngine();
   const [tracks, setTracks] = useState<MixerTrack[]>([]);
   const [renderedIndexes, setRenderedIndexes] = useState<number[]>([]);
   const notationRoom = useNotationRoom();
   // Multiple tracks is the mix the score opens in. Single track draws one staff at a time.
-  // Not persisted — Task 6 owns that, and a new score starts from multiple again.
+  // Not stored between visits — only AlphaTab's settings JSON is persisted — and a new score
+  // starts from multiple again.
   const [singleTrack, setSingleTrack] = useState(false);
   // Written in event handlers, read in event handlers. useAlphaTabEvent only refreshes its
   // handler ref in an effect, so a playerReady that arrives in the same turn as scoreLoaded would
@@ -172,7 +117,11 @@ export function TracksPopover({
     // score.tracks[i] on the new one.
     setRenderedIndexes([]);
     multiDrawnRef.current = [];
-    commitTracks(score.tracks.map((track) => toMixerTrack(track)));
+    commitTracks(
+      score.tracks.map((track) =>
+        toMixerTrack(track, engine?.model.Clef.G2, engine?.model.Clef.F4),
+      ),
+    );
   });
 
   // What AlphaTab actually DREW, not what was asked for. It also covers the first render, which
@@ -262,7 +211,14 @@ export function TracksPopover({
     next: boolean,
   ) => {
     if (!api) return;
-    const staffIndex = Number(staffId.split('-')[1]);
+    // Derived from the row data, not parsed back out of `id` — `id` is a React key only (its
+    // JSDoc on TrackStaffState says so), so a track whose staves changed shape underneath it
+    // bails here instead of committing state for a staff the engine never touched.
+    const staffIndex =
+      tracksRef.current
+        .find((t) => t.index === trackIndex)
+        ?.staves.findIndex((s) => s.id === staffId) ?? -1;
+    if (staffIndex < 0) return;
     setStaffDisplay(api, trackIndex, staffIndex, key, next);
     commitTracks(
       tracksRef.current.map((track) =>
@@ -293,7 +249,7 @@ export function TracksPopover({
     }
   });
 
-  const layoutLabel = layoutModeLabel(tracks.length, singleTrack);
+  const layoutLabel = layoutStateLabel(tracks.length, singleTrack);
 
   const toggleLayout = () => {
     if (tracksRef.current.length < 2) return;
@@ -324,33 +280,14 @@ export function TracksPopover({
 
   return (
     <Popover>
-      <Tooltip>
-        {/* The span-wrap, not a bare stacked trigger: this button is disabled while the engine
-            loads, and a disabled Button is pointer-events:none. */}
-        <TooltipTrigger render={<span className="inline-flex" />}>
-          <PopoverTrigger
-            render={
-              <Button
-                data-testid="tracks-trigger"
-                variant="ghost"
-                size="icon"
-                aria-label="Tracks"
-                disabled={disabled}
-                className="size-11 rounded-lg text-muted-foreground"
-              >
-                <span
-                  className="material-symbols-outlined"
-                  aria-hidden="true"
-                  style={{ fontSize: 24 }}
-                >
-                  instant_mix
-                </span>
-              </Button>
-            }
-          />
-        </TooltipTrigger>
-        <TooltipContent>Tracks</TooltipContent>
-      </Tooltip>
+      <PopoverIconTrigger
+        testId="tracks-trigger"
+        label="Tracks"
+        glyph="instant_mix"
+        disabled={disabled}
+        className="rounded-lg text-muted-foreground"
+        glyphStyle={{ fontSize: 24 }}
+      />
       <PopoverContent
         data-testid="tracks-popover"
         align="end"
@@ -416,29 +353,29 @@ export function TracksPopover({
           <MasterRow
             data-testid="master-row"
             leading={
-              <Tooltip>
-                <TooltipTrigger closeOnClick={false} render={<span className="inline-flex" />}>
-                  <Button
-                    data-testid="tracks-layout"
-                    variant="ghost"
-                    size="icon"
-                    aria-pressed={singleTrack}
-                    aria-label={layoutLabel}
-                    disabled={tracks.length < 2}
-                    onClick={toggleLayout}
-                    className={`${MIXER_BUTTON_CLASS} border border-border`}
-                  >
-                    <span className="material-symbols-outlined" aria-hidden="true">
-                      {singleTrack ? 'crop_16_9' : 'splitscreen'}
-                    </span>
-                  </Button>
-                </TooltipTrigger>
-                {/* Hoverable (no disableHoverablePopup — WCAG 2.1 AA 1.4.13); max-w-40 bounds its
-                    reach on this packed footer row. */}
-                <TooltipContent sideOffset={8} className="max-w-40">
-                  {layoutLabel}
-                </TooltipContent>
-              </Tooltip>
+              // The stable name says what the control IS ("Track layout"); aria-pressed carries
+              // the state, and the tooltip — the one place this button's state shows — carries
+              // layoutLabel. A name that changed on every press broke voice control and read
+              // oddly to a screen reader ("Multiple tracks, button, not pressed").
+              <TransportToggle
+                data-testid="tracks-layout"
+                pressed={singleTrack}
+                onPressedChange={toggleLayout}
+                label="Track layout"
+                tooltip={layoutLabel}
+                icon={
+                  <span className="material-symbols-outlined" aria-hidden="true">
+                    {singleTrack ? 'crop_16_9' : 'splitscreen'}
+                  </span>
+                }
+                disabled={tracks.length < 2}
+                // This toggle's pressed state is carried by the icon (crop_16_9 / splitscreen)
+                // alone, unlike every other TransportToggle in the mixer — so the data-pressed
+                // trio below overrides TransportToggle's own solid-teal fill back to the row's
+                // plain resting look, keeping this button's appearance exactly as it was before
+                // it read the shared component.
+                className={`${MIXER_BUTTON_CLASS} border border-border data-pressed:border-border data-pressed:bg-transparent data-pressed:text-muted-foreground`}
+              />
             }
             volume={masterVolume}
             onVolumeChange={onMasterVolumeChange}

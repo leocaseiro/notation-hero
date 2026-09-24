@@ -23,6 +23,7 @@ export { Progress } from './components/ui/Progress/Progress';
 export { Scrubber } from './components/ui/Scrubber/Scrubber';
 export { TransportToggle } from './components/ui/TransportToggle/TransportToggle';
 export { TempoControl } from './components/ui/TempoControl/TempoControl';
+export { Separator } from './components/ui/Separator/Separator';
 
 // Pulled across by the v0 popovers:
 // - Accordion holds the settings groups; SettingRow and TrackRow are the rows inside each popover.
@@ -35,8 +36,9 @@ export {
 } from './components/ui/Accordion/Accordion';
 export { SettingRow } from './components/ui/SettingRow/SettingRow';
 export type { SettingControl, SettingValue } from './components/ui/SettingRow/SettingRow';
-export { MIXER_BUTTON_CLASS, TrackRow } from './components/ui/TrackRow/TrackRow';
-export type { TrackStaffState } from './components/ui/TrackRow/TrackRow';
+export { TrackRow } from './components/ui/TrackRow/TrackRow';
+export type { StaffToggleKey, TrackStaffState } from './components/ui/TrackRow/TrackRow';
+export { MIXER_BUTTON_CLASS } from './components/ui/TrackRow/MixerClasses';
 // The one "file plays its own recording" reason string — imported by both popovers, the mixer
 // and their tests, never re-declared.
 export { RECORDING } from './components/ui/TrackRow/TrackRow';
