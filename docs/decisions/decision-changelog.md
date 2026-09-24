@@ -52,6 +52,68 @@ scrollHeight]`) instead of the window — horizontally unchanged, since this anc
   app-local component, not a fifth gated design-system one; it carries no stories/VR/a11y files of
   its own and is covered by the popover-open e2e cases and `client/`'s existing Tooltip/Popover/
   Button baselines that it composes.
+### 2026-09-22 — Eight orphaned spike documents archived, and five NH-196 decisions recovered (NH-25)
+
+The eight documents PR #57 flagged as orphan-risk on 2026-06-20 — still absent from `master` three
+months later — are now on `master` under `docs/archive/2026-09/`, each with a banner naming its
+original path, its carrier branch and its triage verdict. leocaseiro chose to land all eight rather
+than only the valuable ones, so the set stays complete.
+
+**The reason this mattered more than tidiness:** `docs/archive/2026-09/superpowers/specs/2026-06-19-gp-tonal-design.md`
+records five decisions it describes as **"locked with Leo"**, and a grep of `docs/decisions/` on
+`master` for `D-build`, `D-key`, `D-sections`, `D-naming`, `D-bars`, `gp-tonal`, `Krumhansl` and
+`NH-196` returned **zero hits for every one of them**. Per this repository's own governance rule, a
+decision is not ratified until it is in the register — so these were ratified in conversation and then
+lost with the branch.
+
+**Recorded here as ⚠️ UNVERIFIED — recovered from a branch, not re-confirmed:**
+
+| ID           | As written on 2026-06-19                                                                                                                                                                                                                                                    |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `D-build`    | Build the **read-only analyzer core** first; write-back, section approximation and progression search are later satellites.                                                                                                                                                 |
+| `D-key`      | Key detection is **hybrid** — chord-based when explicit chords exist (precise, with roman numerals), pitch-class histogram (Krumhansl-Schmuckler) plus mode refinement otherwise; cross-check, report alternatives, aggregate across tracks weighting harmonic tracks high. |
+| `D-sections` | Include **per-section** analysis when the file carries section markers.                                                                                                                                                                                                     |
+| `D-naming`   | Output field names follow **tonal's vocabulary** (`tonic`/`type`/`alteration`/`keySignature`; time signature `upper`/`lower`; chord `symbol`/`tonic`/`type`/`quality`; roman numerals in tonal form). camelCase, mapped to snake_case at the DB layer.                      |
+| `D-bars`     | `barStart` + `barEnd` on every span (sections, key changes, time signatures, tempos); chords carry `bar` + `beat` onset.                                                                                                                                                    |
+
+**These are recorded, not re-ratified.** The analyzer core was never built, the v0 player took a
+different path, and `ARCH-CONTRACT-1` has since moved. They need leocaseiro's confirmation before any
+of them is treated as binding — until then they are a recovered record, which is still better than
+the register silently omitting them.
+
+**Triage summary of the eight**, so a reader need not open all of them: the NH-200 research roadmap
+and findings are unique and still accurate (key-change detection recommended to ship; section naming
+lifted from 14-30% to 60-86% with energy/texture and position priors, no ML). The song-slice findings
+are the evidence behind NH-137's shipped positions-only decision. The gp-tonal findings are partly
+overtaken — the v0 player proves AlphaTab parsing in production, but the tonal extraction is unbuilt.
+The clean-slate stack spike is mostly superseded (it recommends drizzle-zod, which `ARCH-CONTRACT-1`
+rejected, and predates the Next.js re-adoption). The smart-structure `README.md` is run instructions
+for scripts that were not archived; it is kept only for completeness.
+
+**None of the eight had been lost**, and that was a rule working rather than luck: every one sat on a
+branch still present on `origin`.
+
+**Status:** ✅ decided (the archiving) · ⚠️ unverified (the five recovered decisions) · 📄 prose-only.
+
+### 2026-09-22 — Keep local branches too: worktree cleanup no longer deletes the branch (NH-25)
+
+`AGENTS.md` had said local cleanup was "fine and expected" and told agents to run `git branch -d`/`-D`
+after a merge. leocaseiro corrected that on 2026-09-22: **remove the worktree, keep the branch.**
+
+- **The remote rule was never the whole rule.** "Never delete a remote branch" left agents believing
+  the local half was disposable because `origin/<branch>` could restore it. That is only true when a
+  remote counterpart exists — and several local branches here have none, so deleting one destroys it
+  outright.
+- **Observed, not hypothetical.** Five local branches were deleted during post-merge cleanup this
+  session under the old wording. Three were restorable from `origin`; one
+  (`claude/notation-hero-status-recap-d54ded`) had no remote and had to be recreated from the commit
+  it happened to point at. All five are back.
+- **Worktree removal stays expected.** The disk cost is the worktree, not the ref. The guidance also
+  now says what to do when `git worktree remove` reports "Directory not empty" — that means untracked
+  files such as `node_modules`; leave the directory and ask rather than forcing.
+
+**Status:** ✅ decided · 📄 prose-only — `AGENTS.md` is the contract; no CI check enforces it.
+Approved by leocaseiro 2026-09-22.
 
 ### 2026-09-22 — merge=union is scoped to the changelog; the registry conflicts normally (NH-322)
 
