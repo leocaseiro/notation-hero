@@ -1661,6 +1661,53 @@ test('every settings row names a key the engine really has', async ({ page }) =>
   expect(missing, 'settings rows whose path is not a real AlphaTab key').toEqual([]);
 });
 
+test('a changed setting survives a reload', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Display: general');
+  const zoom = page.getByRole('spinbutton', { name: 'Zoom' });
+  await zoom.selectText();
+  await zoom.pressSequentially('2');
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(2);
+
+  await page.reload();
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  // Read the ENGINE, before the popover is ever opened: the stored zoom must be in the api the
+  // page built, not merely in the popover's own state.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(2);
+});
+
+// A bad stored value must never stop the player mounting — the one thing v0 exists to do — and
+// must not vanish quietly either.
+test('a corrupt stored value resets with a toast, and the player still starts', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    globalThis.localStorage.setItem('notation-hero.player-settings', '{broken');
+  });
+  await page.goto('/play');
+
+  await expect(page.locator('[data-sonner-toast]')).toContainText('reset to the defaults');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(1);
+});
+
 // Punk.gp parses to three tracks — 0:Drumkit (percussion), 1:Distortion Guitar, 2:Drumkit Left
 // (percussion) — so the popover has three rows to audit, not one, even though only two render.
 test('the Tracks popover lists every track in the score, not only the rendered ones', async ({

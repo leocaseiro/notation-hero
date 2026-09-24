@@ -18,7 +18,16 @@ import {
 } from '../../lib/alphatab/AlphaTabEngineContext';
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
 import { applySettingsJson } from '../../lib/alphatab/live-settings';
-import { DEFAULT_PLAYER_SETTINGS, writeSettingValue } from '../../lib/alphatab/settings-schema';
+import {
+  DEFAULT_PLAYER_SETTINGS,
+  SETTING_OPTION_VALUES,
+  writeSettingValue,
+} from '../../lib/alphatab/settings-schema';
+import {
+  loadStoredSettings,
+  serializeSettings,
+  SETTINGS_STORAGE_KEY,
+} from '../../lib/alphatab/settings-storage';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { PLAYER_ERROR } from '../../lib/player-errors';
 import { NotationSurface } from './NotationSurface';
@@ -125,10 +134,51 @@ function Player() {
   // A file is being opened. The parse is synchronous and can hold the main thread for seconds on a
   // slow machine, so this is committed and PAINTED before the parse starts.
   const [opening, setOpening] = useState(false);
+  // Read ONCE per page visit, in a lazy initialiser rather than an effect — react-hooks/set-state-
+  // in-effect is an error in this package, and reading storage in an effect and then calling
+  // setSettings would trip it. The initialiser also runs for the server render, where there is no
+  // storage: it yields the defaults there, and the HTML is identical either way because nothing on
+  // the page renders a setting until the popover is opened.
+  const [restored] = useState(() =>
+    // eslint-disable-next-line sonarjs/different-types-comparison -- true at runtime during server rendering, where `window` genuinely does not exist; the DOM lib's ambient types just do not say so
+    globalThis.window === undefined
+      ? { settings: DEFAULT_PLAYER_SETTINGS, reset: false }
+      : loadStoredSettings(
+          globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY),
+          DEFAULT_PLAYER_SETTINGS,
+          SETTING_OPTION_VALUES,
+        ),
+  );
   // The Settings popover's edit state: the whole document the shell pushes into the live engine on
   // every change (see applySetting below). Declared here, above useAlphaTab, so a lazily
   // initialised read of the stored value can reach it without closing over a const declared later.
-  const [settings, setSettings] = useState<PlayerSettingsJson>(DEFAULT_PLAYER_SETTINGS);
+  const [settings, setSettings] = useState<PlayerSettingsJson>(restored.settings);
+
+  // A toast is not state, so an effect is the right place for it. Without it a drummer watches
+  // their colours and fonts revert with no way to tell it from a bug — the same surface the
+  // corrupt-file and engine-failure states already use.
+  //
+  // The repair write happens here too, not only inside applySetting: without it the cleaned-up
+  // document is never written back, so the same corrupt value stays in storage and the warning
+  // would repeat on every visit until the person happens to touch a setting.
+  //
+  // The toast call is deferred a tick rather than fired synchronously: the root layout renders the
+  // page before the toaster with no boundary between them, and passive effects run in tree order,
+  // so a synchronous call here fires before the toaster has subscribed and is never shown. The
+  // cleanup cancels the deferred call on an unmount before it fires, which is what keeps React's
+  // development double-mount from stacking two toasts.
+  useEffect(() => {
+    if (!restored.reset) return;
+    try {
+      globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(restored.settings));
+    } catch {
+      // Storage is unavailable or full; the warning below is still worth showing.
+    }
+    const id = setTimeout(() => {
+      toast.warning('Your player settings could not be read, so they were reset to the defaults.');
+    }, 0);
+    return () => clearTimeout(id);
+  }, [restored]);
 
   // The ONE owner of the api. There is no second apiRef and no onApiReady callback: a callback
   // prop in the hook's dependency list rebuilds the engine on an ordinary state change, throwing
@@ -136,12 +186,12 @@ function Player() {
   //
   // `alphaTab` is the namespace object the hook passes in — the self-hosted-ESM delivery decision
   // forbids importing it, so this is the only way a call site reaches an enum.
-  const [api, hostRef] = useAlphaTab((settings, alphaTab) => {
-    // No settings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
+  const [api, hostRef] = useAlphaTab((engineSettings, alphaTab) => {
+    // No engineSettings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
     // /alphatab/esm/alphaTab.mjs — that is the entire point of self-hosting the ESM.
     // fontDirectory, logLevel and soundFont are already applied by setAlphaTabDefaults().
-    settings.core.file = SAMPLE_NOTATION;
-    settings.core.tracks = 'all';
+    engineSettings.core.file = SAMPLE_NOTATION;
+    engineSettings.core.tracks = 'all';
     // EnabledAutomatic on purpose (2026-09-16): a Guitar Pro file that embeds an audio track plays
     // that recording, with the notation on screen — that is how this player plays along to a
     // person's own files. AlphaTab resolves EnabledAutomatic to its backing-track player whenever
@@ -154,16 +204,33 @@ function Player() {
     // It also keeps the empty page cheap: with EnabledAutomatic and no score yet, AlphaTab creates
     // no player at all — no AudioContext, no synth worker, no soundfont fetch
     // (alphaTab.core.mjs:46680-46685).
-    settings.player.playerMode = alphaTab.PlayerMode.EnabledAutomatic;
-    settings.player.enableCursor = true;
-    settings.player.scrollMode = alphaTab.ScrollMode.Continuous;
+    engineSettings.player.playerMode = alphaTab.PlayerMode.EnabledAutomatic;
+    engineSettings.player.enableCursor = true;
+    engineSettings.player.scrollMode = alphaTab.ScrollMode.Continuous;
     // The OUTER div scrolls — never AlphaTab's own element. This runs inside the hook's effect,
     // after both divs are committed, so the ref is filled; the `if` is for the type, and because
     // `@typescript-eslint/no-non-null-assertion` is not worth fighting over one line.
-    if (viewportRef.current) settings.player.scrollElement = viewportRef.current;
+    if (viewportRef.current) engineSettings.player.scrollElement = viewportRef.current;
     // Ten pixels of air above the cursor, so it does not sit flush against the top edge. The
     // fork sets the same (AlphaTabRhythmGame/index.tsx:151).
-    settings.player.scrollOffsetY = -10;
+    engineSettings.player.scrollOffsetY = -10;
+
+    // The person's stored settings, applied before the api exists, so the first draw already has
+    // them — the score is drawn once, with the person's settings, instead of once with the
+    // defaults and again with theirs. After the shell's own assignments on purpose: for a key both
+    // set — the cursor, the scroll mode — the person's own choice is the one that must win.
+    //
+    // fillFromJson, never assignment: RenderingResources holds real Color and Font instances, and
+    // a plain object assigned into the settings tree breaks rendering WITHOUT throwing, so a
+    // try/catch around an assignment would never fire. And wrapped in try/catch here anyway,
+    // because an uncaught throw would stop the player mounting at all, which is the one thing this
+    // page exists to do — the per-key merge against the shipped defaults makes this unreachable in
+    // practice, but the cost of being wrong is a page with no player.
+    try {
+      engineSettings.fillFromJson(settings as AlphaTab.json.SettingsJson);
+    } catch {
+      // Keep the defaults already on `engineSettings`.
+    }
   });
 
   // Both subscriptions go through the helper, so each one is removed when this component
@@ -436,6 +503,12 @@ function Player() {
       // React may run an updater twice, which would push the settings and redraw the score twice.
       const next = writeSettingValue(settings, path, value);
       setSettings(next);
+      try {
+        globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(next));
+      } catch {
+        // Private browsing and a full quota both throw here. Losing persistence is survivable;
+        // losing the player is not, so swallow it rather than breaking the edit.
+      }
       if (api) applySettingsJson(api, next, apply);
       // updateSettings() swaps the player synchronously, so the new mode is readable now.
       // playerReady arrives later, after the soundfont, which is too late: the metronome would
