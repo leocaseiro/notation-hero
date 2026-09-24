@@ -139,6 +139,9 @@ export function TracksPopover({
   // handler ref in an effect, so a playerReady that arrives in the same turn as scoreLoaded would
   // still see the previous render's rows. The ref is current the moment the score arrives.
   const tracksRef = useRef<MixerTrack[]>([]);
+  // What was drawn just before the layout switch collapsed the score to one track — the set the
+  // switch restores on its way back to multiple tracks.
+  const multiDrawnRef = useRef<number[]>([]);
 
   const commitTracks = (next: MixerTrack[]) => {
     tracksRef.current = next;
@@ -163,6 +166,12 @@ export function TracksPopover({
   useAlphaTabEvent(api, 'scoreLoaded', (score) => {
     if (api?.score && api.score !== score) return;
     setSingleTrack(false);
+    // The previous score's drawn indexes describe a score the engine no longer has open. Clear
+    // them here so drawnIndexes falls back to api.tracks until the new score's renderFinished
+    // reports what was really drawn — otherwise a stale index can outlive its score and reach
+    // score.tracks[i] on the new one.
+    setRenderedIndexes([]);
+    multiDrawnRef.current = [];
     commitTracks(score.tracks.map((track) => toMixerTrack(track)));
   });
 
@@ -191,13 +200,17 @@ export function TracksPopover({
     const chosen = [
       ...new Set(next ? [...drawnIndexes, index] : drawnIndexes.filter((i) => i !== index)),
     ].toSorted((a, b) => a - b);
+    // drawnIndexes can still hold an index from a score that has since been replaced (the window
+    // between scoreLoaded and the new score's first renderFinished) — filter to indexes the
+    // OPEN score actually has before touching the engine, or renderTracks dereferences undefined.
+    const picked = chosen.filter((i) => i < score.tracks.length);
     // AlphaTab cannot draw nothing: an empty list falls back to the first track, and the box
     // the person just cleared would untick itself a moment later. The row disables that control
     // rather than swallowing the click. Reaching here at all would be a bug.
-    if (chosen.length === 0) return;
+    if (picked.length === 0) return;
     // renderTracks takes Track OBJECTS (unlike renderScore, which takes indexes). No state is
     // set here: renderFinished reports what was really drawn.
-    api.renderTracks(chosen.map((i) => score.tracks[i]));
+    api.renderTracks(picked.map((i) => score.tracks[i]));
   };
 
   const applySolo = (index: number, next: boolean) => {
@@ -286,11 +299,27 @@ export function TracksPopover({
     if (tracksRef.current.length < 2) return;
     const next = !singleTrack;
     setSingleTrack(next);
-    if (!next) return;
     const score = api?.score;
-    if (!api || !score || tracks.length === 0) return;
-    const keep = drawnIndexes.length > 0 ? drawnIndexes[0] : tracks[0].index;
-    api.renderTracks([score.tracks[keep]]);
+    if (!api || !score) return;
+    if (next) {
+      // Remember what was drawn so the way back can restore it, then collapse to one track.
+      // Bound-check before indexing: drawnIndexes can still name a track the OPEN score does not
+      // have, in the window between a new score's scoreLoaded and its first renderFinished.
+      const validDrawn = drawnIndexes.filter((i) => i < score.tracks.length);
+      multiDrawnRef.current = validDrawn;
+      const keep = validDrawn.length > 0 ? validDrawn[0] : 0;
+      if (keep >= score.tracks.length) return;
+      api.renderTracks([score.tracks[keep]]);
+      return;
+    }
+    // Multiple tracks again: replay the pre-collapse selection, bound-checked against whatever
+    // score is open now (it may have changed while singleTrack was on). Nothing remembered (or
+    // none of it survives) falls back to drawing every track, which is what "multiple tracks"
+    // means with no prior selection to restore.
+    const restore = multiDrawnRef.current.filter((i) => i < score.tracks.length);
+    const picked = restore.length > 0 ? restore : score.tracks.map((track) => track.index);
+    if (picked.length === 0) return;
+    api.renderTracks(picked.map((i) => score.tracks[i]));
   };
 
   return (
@@ -387,7 +416,7 @@ export function TracksPopover({
           <MasterRow
             data-testid="master-row"
             leading={
-              <Tooltip disableHoverablePopup>
+              <Tooltip>
                 <TooltipTrigger closeOnClick={false} render={<span className="inline-flex" />}>
                   <Button
                     data-testid="tracks-layout"
@@ -404,7 +433,11 @@ export function TracksPopover({
                     </span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent sideOffset={8}>{layoutLabel}</TooltipContent>
+                {/* Hoverable (no disableHoverablePopup — WCAG 2.1 AA 1.4.13); max-w-40 bounds its
+                    reach on this packed footer row. */}
+                <TooltipContent sideOffset={8} className="max-w-40">
+                  {layoutLabel}
+                </TooltipContent>
               </Tooltip>
             }
             volume={masterVolume}

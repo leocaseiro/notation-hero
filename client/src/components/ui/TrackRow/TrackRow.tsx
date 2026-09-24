@@ -101,8 +101,18 @@ export const MIXER_ROW_CLASS =
 // Mixer icon buttons. `size-11` on TransportToggle is the transport's 44px target; this overrides
 // it for the row. Mute's pressed fill is warning amber — solo and "shown" stay brand teal.
 export const MIXER_BUTTON_CLASS = 'size-[2.125rem] shrink-0 rounded-lg text-muted-foreground';
+// data-pressed: a Base UI Toggle sets it — every mixer toggle built through TransportToggle
+// (this row's own Mute button included).
 export const MUTE_PRESSED_CLASS =
   'data-pressed:border-warning data-pressed:bg-warning data-pressed:text-warning-foreground';
+// aria-pressed: the twins for a plain Button that carries its pressed state only as
+// aria-pressed="true" (MasterRow's select-all toggles, which are not a Base UI Toggle and so
+// never get data-pressed). Tailwind's built-in aria-pressed variant matches the literal string
+// "true" only, so aria-pressed="mixed" — MasterRow's indeterminate state — does not match either.
+export const MIXER_SOLO_PRESSED_CLASS =
+  'aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground';
+export const MIXER_MUTE_PRESSED_CLASS =
+  'aria-pressed:border-warning aria-pressed:bg-warning aria-pressed:text-warning-foreground';
 
 // One mixer row. The primary cluster (name, render-select, solo, mute, volume, then every
 // per-staff display toggle) is always visible; only the two transposition sliders sit behind the
@@ -169,6 +179,12 @@ const TrackRow = ({
         icon={staffToggleIcon(key)}
         tooltip={tooltip}
         disabled={unavailable}
+        // These four buttons sit flush against each other in one bordered box (no gap), so a
+        // tooltip wide enough to hold its text cannot avoid covering the very next one — measured
+        // live: hovering from one straight to the next left both tooltips open at once, each kept
+        // alive by the pointer landing on the other's own popup content. Every other toggle in
+        // this app has a real gap and stays hoverable (the WCAG 2.1 AA 1.4.13 default).
+        disableHoverablePopup
         className={cn(
           'size-[2.125rem] shrink-0 rounded-none border-0',
           divided && 'border-l border-border',
@@ -206,13 +222,17 @@ const TrackRow = ({
           className={cn(MIXER_BUTTON_CLASS, 'border-transparent')}
         />
 
-        <Tooltip disableHoverablePopup>
+        <Tooltip>
           <TooltipTrigger
             render={<span tabIndex={-1} className="block min-w-0 truncate text-sm font-medium" />}
           >
             {name}
           </TooltipTrigger>
-          <TooltipContent sideOffset={8}>{name}</TooltipContent>
+          {/* Hoverable (no disableHoverablePopup — WCAG 2.1 AA 1.4.13), max-w-40 keeps a long
+              track name from reaching toward the next row's controls on a packed mixer row. */}
+          <TooltipContent sideOffset={8} className="max-w-40">
+            {name}
+          </TooltipContent>
         </Tooltip>
 
         <TransportToggle
@@ -272,8 +292,9 @@ const TrackRow = ({
         {/* The expand control is never disabled, so the trigger renders the Button directly
             through `render` rather than wrapping it in a span — the
             `TooltipTrigger render={<Button …/>}` shape `Tooltip.stories.tsx` demonstrates for a
-            control with no disabled state to guard against. */}
-        <Tooltip disableHoverablePopup>
+            control with no disabled state to guard against. Hoverable (no disableHoverablePopup —
+            WCAG 2.1 AA 1.4.13); max-w-40 on the content bounds its reach on a packed row. */}
+        <Tooltip>
           <TooltipTrigger
             render={
               <Button
@@ -300,7 +321,7 @@ const TrackRow = ({
               </Button>
             }
           />
-          <TooltipContent sideOffset={8}>
+          <TooltipContent sideOffset={8} className="max-w-40">
             {expanded ? 'Hide more controls' : 'Show more controls'}
           </TooltipContent>
         </Tooltip>

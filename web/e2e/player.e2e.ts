@@ -1288,6 +1288,7 @@ const engineState = (page: Page) =>
         at?: {
           playbackSpeed: number;
           metronomeVolume: number;
+          masterVolume: number;
           // The playhead, in MIDI ticks. Read to prove the sound-rebuilding rows rewind it.
           tickPosition: number;
           settings: { display: { scale: number } };
@@ -1299,6 +1300,7 @@ const engineState = (page: Page) =>
       ? {
           speed: at.playbackSpeed,
           metronomeVolume: at.metronomeVolume,
+          masterVolume: at.masterVolume,
           tick: at.tickPosition,
           scale: at.settings.display.scale,
           hideDynamics: at.score?.stylesheet.hideDynamics ?? null,
@@ -1753,6 +1755,56 @@ test('render-select changes which tracks are drawn', async ({ page }) => {
   await expect(page.getByTestId('rendered-track-count')).toHaveText('3', { timeout: 30_000 });
 });
 
+// The layout switch collapses the mixer to one track and must restore what was drawn before on
+// the way back — both directions reach the engine, not only the ON direction.
+test('the track-layout switch redraws the score both ways', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await page.getByTestId('tracks-trigger').click();
+  const layout = page.getByTestId('tracks-layout');
+  await expect(layout).toHaveAttribute('aria-pressed', 'false');
+
+  await layout.click();
+  await expect(layout).toHaveAttribute('aria-pressed', 'true');
+  // The ENGINE, not just the control: AlphaTab really drew down to one track.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1', { timeout: 30_000 });
+
+  await layout.click();
+  await expect(layout).toHaveAttribute('aria-pressed', 'false');
+  // The way back restores what was drawn before the collapse — Punk.gp's two drum tracks — not
+  // just any two tracks.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  await expect(
+    page.getByTestId('track-row-0').getByRole('button', { name: /render/i }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    page.getByTestId('track-row-1').getByRole('button', { name: /render/i }),
+  ).toHaveAttribute('aria-pressed', 'false');
+  await expect(
+    page.getByTestId('track-row-2').getByRole('button', { name: /render/i }),
+  ).toHaveAttribute('aria-pressed', 'true');
+});
+
+// A score with only one track has nothing to collapse — the switch stays disabled and explains
+// why on hover, the same shape every other disabled mixer control uses.
+test('the track-layout switch is disabled with nothing to collapse', async ({ page }) => {
+  await openFirstScore(page, 'guitar-no-percussion.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1');
+
+  await page.getByTestId('tracks-trigger').click();
+  const layout = page.getByTestId('tracks-layout');
+  await expect(layout).toHaveAttribute('aria-disabled', 'true');
+
+  // page.mouse, not locator.hover(): hover() waits for the target to receive pointer events, and
+  // aria-disabled:pointer-events-none means the Button itself never does — the span wrapping it
+  // is what actually takes the hover, same as every other disabled mixer control.
+  const box = await layout.boundingBox();
+  if (!box) throw new Error('the layout switch has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(openTooltip(page)).toHaveText('Only one track');
+});
+
 // The mixer's version of the transport's tooltip case: every control on a row that shows no
 // words says what it is AND what state it is in — on hover, where a person's pointer goes. EVERY
 // row is walked, not one checked by hand: a row is built in a loop, but a tooltip that depends on
@@ -1763,6 +1815,15 @@ test('every mixer control without visible text has a tooltip that tells its stat
   await openFirstScore(page, 'Punk.gp');
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
   await page.getByTestId('tracks-trigger').click();
+
+  // The four per-staff display toggles by their own accessible-name fragment and tooltip
+  // wording. They are icon-only, so — same as render, solo and mute — nothing but the tooltip
+  // and aria-pressed/aria-disabled tells a sighted pointer user their state.
+  const STAFF_TOGGLES = [
+    { query: /standard notation/i, name: 'Standard notation' },
+    { query: /slash/i, name: 'Slash notation' },
+    { query: /numbered/i, name: 'Numbered notation' },
+  ] as const;
 
   // Punk.gp draws its two drum tracks (rows 0 and 2) and not the guitar (row 1).
   const drawn = ['Shown in the score', 'Hidden from the score', 'Shown in the score'];
@@ -1775,6 +1836,36 @@ test('every mixer control without visible text has a tooltip that tells its stat
     await expect(openTooltip(page)).toHaveText('Solo: off');
     await row.getByRole('button', { name: /mute/i }).hover();
     await expect(openTooltip(page)).toHaveText('Mute: off');
+
+    // Read each toggle's own reported state first — the staff LABEL that precedes it in the
+    // tooltip is a different control's concern — then hover and check the tooltip agrees.
+    for (const { query, name } of STAFF_TOGGLES) {
+      const control = row.getByRole('button', { name: query });
+      const pressed = (await control.getAttribute('aria-pressed')) === 'true';
+      await control.hover();
+      await expect(openTooltip(page)).toHaveText(new RegExp(`${name}: ${pressed ? 'on' : 'off'}$`));
+    }
+    // Tablature is the one toggle whose availability itself varies by row: 1.8.4 cannot draw it
+    // on a percussion staff (rows 0 and 2 here), so it renders disabled with an explaining
+    // tooltip instead of a state it does not have.
+    const tablature = row.getByRole('button', { name: /tablature/i });
+    const tablatureUnavailable = (await tablature.getAttribute('aria-disabled')) === 'true';
+    const tablaturePressed = (await tablature.getAttribute('aria-pressed')) === 'true';
+    let tablatureState = 'off';
+    if (tablatureUnavailable) tablatureState = 'unavailable';
+    else if (tablaturePressed) tablatureState = 'on';
+    // page.mouse, not locator.hover(): on a percussion row the button is aria-disabled, which
+    // means pointer-events:none — hover() waits for the BUTTON itself to receive the pointer,
+    // and it never does; the wrapping span is what actually takes it, same as every other
+    // disabled mixer control. The pointer goes where a person's would either way.
+    const tablatureBox = await tablature.boundingBox();
+    if (!tablatureBox) throw new Error('the tablature toggle has no box');
+    await page.mouse.move(
+      tablatureBox.x + tablatureBox.width / 2,
+      tablatureBox.y + tablatureBox.height / 2,
+    );
+    await expect(openTooltip(page)).toHaveText(new RegExp(`Tablature: ${tablatureState}$`));
+
     await row.getByRole('button', { name: /more controls/i }).hover();
     await expect(openTooltip(page)).toHaveText('Show more controls');
   }
@@ -1798,7 +1889,11 @@ test('every mixer control without visible text has a tooltip that tells its stat
 // channel 9 — soloing both would be one channel soloed twice and would prove nothing.
 test('solo is not exclusive — two tracks can be soloed at once', async ({ page }) => {
   await openFirstScore(page, 'Punk.gp');
-  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  // Let the score settle before installing the recorder: the mixer's own playerReady re-assert
+  // calls changeTrackSolo for every already-soloed row on every playerReady (up to four per
+  // renderScore), and transport-play latches from the bundled beat rather than waiting for
+  // Punk.gp's own MIDI loads — so recording too early can catch a re-assert instead of a click.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
   const soloCalls = await recordApiCalls(page, 'changeTrackSolo');
 
   await page.getByTestId('tracks-trigger').click();
@@ -1812,25 +1907,34 @@ test('solo is not exclusive — two tracks can be soloed at once', async ({ page
     page.getByTestId('track-row-1').getByRole('button', { name: /solo/i }),
   ).toHaveAttribute('aria-pressed', 'true');
 
-  // The ENGINE heard both, and neither click un-soloed the other.
-  expect(await soloCalls()).toEqual([
-    [[0], true],
-    [[1], true],
-  ]);
+  // The ENGINE heard both, and neither click un-soloed the other. Read each clicked track's LAST
+  // call rather than the whole recording: a playerReady re-assert lands its own idempotent call
+  // for a row that is already soloed, and asserting the full array would break on that call too.
+  const calls = (await soloCalls()) as [number[], boolean][];
+  const lastFor = (index: number) => calls.findLast(([tracks]) => tracks[0] === index);
+  expect(lastFor(0)).toEqual([[0], true]);
+  expect(lastFor(1)).toEqual([[1], true]);
 });
 
 test('mute and volume reach the engine, the volume as an absolute channel level', async ({
   page,
 }) => {
   await openFirstScore(page, 'Punk.gp');
-  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  // Let the score settle before installing the recorder, as the sibling solo case does: the
+  // mixer's own playerReady re-assert calls changeTrackVolume for every row on every playerReady
+  // (up to four per renderScore), and transport-play latches from the bundled beat rather than
+  // waiting for Punk.gp's own MIDI loads — so recording too early can catch a re-assert at track 0
+  // where the click named track 1.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
   const muteCalls = await recordApiCalls(page, 'changeTrackMute');
   const volumeCalls = await recordApiCalls(page, 'changeTrackVolume');
 
   await page.getByTestId('tracks-trigger').click();
   const guitar = page.getByTestId('track-row-1');
   await guitar.getByRole('button', { name: /mute/i }).click();
-  expect(await muteCalls()).toEqual([[[1], true]]);
+  const muteRecording = (await muteCalls()) as [number[], boolean][];
+  const lastMuteForGuitar = muteRecording.findLast(([tracks]) => tracks[0] === 1);
+  expect(lastMuteForGuitar).toEqual([[1], true]);
 
   const volume = guitar.getByRole('slider', { name: /volume/i });
   const before = Number(await volume.getAttribute('aria-valuenow'));
@@ -1838,8 +1942,12 @@ test('mute and volume reach the engine, the volume as an absolute channel level'
   await volume.press('ArrowLeft');
 
   // One step down on the 0-16 scale, sent on AlphaTab's OWN scale as next / 16 — the engine takes
-  // an absolute channel level, not a ratio against the file's.
-  const [[tracks, level]] = (await volumeCalls()) as [[number[], number]];
+  // an absolute channel level, not a ratio against the file's. Read the keystroke's OWN call —
+  // filtered to track 1, the last one — rather than the first call recorded, which a playerReady
+  // re-assert can occupy with track 0's volume instead.
+  const volumeRecording = (await volumeCalls()) as [number[], number][];
+  const lastVolumeForGuitar = volumeRecording.findLast(([tracks]) => tracks[0] === 1);
+  const [tracks, level] = lastVolumeForGuitar!;
   expect(tracks).toEqual([1]);
   expect(level).toBeCloseTo((before - 1) / 16, 5);
 });
@@ -1918,6 +2026,14 @@ test('the Settings master volume and the mixer Master row are one value', async 
   await page.getByTestId('tracks-trigger').click();
   const master = page.getByTestId('master-row').getByRole('slider', { name: 'Master volume' });
   await expect(master).toHaveAttribute('aria-valuenow', '0.5');
+  // Both ends of the DOM assertion are the same React state — they would agree even if the write
+  // never reached AlphaTab. Read the engine through the debug handle to prove it did.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.masterVolume;
+    })
+    .toBeCloseTo(0.5, 5);
 
   await master.focus();
   await master.press('ArrowLeft');
@@ -1929,6 +2045,12 @@ test('the Settings master volume and the mixer Master row are one value', async 
     .poll(async () => {
       const raw = await page.getByRole('spinbutton', { name: 'Master volume' }).inputValue();
       return Number(raw);
+    })
+    .toBeCloseTo(0.45, 2);
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.masterVolume;
     })
     .toBeCloseTo(0.45, 2);
 });

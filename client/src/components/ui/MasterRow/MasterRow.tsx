@@ -6,7 +6,12 @@ import { Button } from '../Button/Button';
 import { Field } from '../Field/Field';
 import { Slider } from '../Slider/Slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip/Tooltip';
-import { MIXER_BUTTON_CLASS, MIXER_ROW_CLASS, MUTE_PRESSED_CLASS } from '../TrackRow/TrackRow';
+import {
+  MIXER_BUTTON_CLASS,
+  MIXER_MUTE_PRESSED_CLASS,
+  MIXER_ROW_CLASS,
+  MIXER_SOLO_PRESSED_CLASS,
+} from '../TrackRow/TrackRow';
 import type { ComponentProps, ReactNode } from 'react';
 
 import { cn } from '@/lib/utils';
@@ -152,7 +157,7 @@ const MixAllToggle = ({
   mute?: boolean;
   onChange: (next: boolean) => void;
 }>) => (
-  <Tooltip disableHoverablePopup>
+  <Tooltip>
     <TooltipTrigger closeOnClick={false} render={<span className="inline-flex" />}>
       <Button
         variant="ghost"
@@ -164,7 +169,12 @@ const MixAllToggle = ({
         className={cn(
           MIXER_BUTTON_CLASS,
           'border border-border',
-          mute && MUTE_PRESSED_CLASS,
+          // Keyed off aria-pressed, not data-pressed: this is a plain Button, not a Base UI
+          // Toggle, so data-pressed is never set on it — the mechanism TrackRow's own Mute
+          // button uses does not apply here. aria-pressed="mixed" does not match the
+          // aria-pressed="true" selector, so the indeterminate branch below still wins the mixed
+          // look; order it after for that reason.
+          mute ? MIXER_MUTE_PRESSED_CLASS : MIXER_SOLO_PRESSED_CLASS,
           indeterminate &&
             (mute
               ? 'border-warning bg-warning/25 text-warning'
@@ -176,7 +186,11 @@ const MixAllToggle = ({
         </span>
       </Button>
     </TooltipTrigger>
-    <TooltipContent sideOffset={8}>{tooltip}</TooltipContent>
+    {/* Hoverable (no disableHoverablePopup — WCAG 2.1 AA 1.4.13); max-w-40 bounds its reach on
+        this packed footer row. */}
+    <TooltipContent sideOffset={8} className="max-w-40">
+      {tooltip}
+    </TooltipContent>
   </Tooltip>
 );
 

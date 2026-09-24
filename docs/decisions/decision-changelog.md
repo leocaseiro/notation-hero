@@ -11,6 +11,23 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-24 — Two deliberate exceptions to the 44px hit-area gate (NH-291)
+
+`expectHitAreas` (`web/e2e/a11y.e2e.ts`) enforces this repo's own 44px hit-area bar — stricter than
+WCAG 2.5.8 AA, which asks only 24px. Two controls fall under it on purpose, and the gate now scopes
+around both rather than being loosened generally.
+
+- **The toast close button stays 20x20.** Sonner's `[data-close-button]` is a fixed-size control,
+  and the maintainer wants `closeButton` kept on the Toaster. The gate now skips any control inside
+  `[data-sonner-toast]` — scoped to toasts, not a blanket exemption — because the toast's resting
+  state, hit area included, is already covered by the design system's own Sonner Storybook stories.
+- **Every mixer control (TrackRow, MasterRow) stays 34px** (`MIXER_BUTTON_CLASS`). The mixer row
+  packs render-select, solo, mute, volume and four per-staff toggles onto one line at tablet-landscape
+  width; 44px per control does not fit. 34px still clears WCAG 2.5.8 AA's 24px floor — it only misses
+  this repo's own stricter 44px (AAA) bar, and the density is the maintainer's deliberate choice for
+  this row, not an oversight. The gate now skips any control inside `[data-slot="track-row"]` or
+  `[data-slot="master-row"]`, scoped to those two rows only.
+
 ### 2026-09-22 — merge=union is scoped to the changelog; the registry conflicts normally (NH-322)
 
 The #143 split moved the dated change log out of `decision-registry.md` into this file, leaving `registry.md` as the topic-by-topic STATE view — but `.gitattributes` still applied `merge=union` to both. On a state file, union silently keeps BOTH sides of a real edit (two PRs flipping the same decision's status) with no conflict to review, and PR #170 already hit the append-side of it (a union merge duplicated the whole change log back into the registry). So union is now scoped to `decision-changelog.md` only; `decision-registry.md` conflicts normally, surfacing real state-edit collisions for manual resolution. Approved by the maintainer 2026-09-22.
