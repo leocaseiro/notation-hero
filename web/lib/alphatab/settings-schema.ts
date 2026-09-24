@@ -86,23 +86,124 @@ const MIDI_APPLY_NOTE =
   'Rebuilds the MIDI to take effect — this stops playback and rewinds to the start.';
 
 /**
- * Turns an AlphaTab enum object into the plain option array a client/ row takes.
+ * Turns an AlphaTab enum object into the option array a client/ row takes, pairing each member
+ * with hand-written copy instead of showing the enum's own identifier to the user.
  *
  * TypeScript's numeric enums are bidirectional, so Object.keys yields both the names and the
  * numbers; keeping only the non-numeric keys drops the reverse half.
  *
- * The option VALUE is the enum's NAME, not its number. fillFromJson reads an enum from either
- * (case-insensitively, for a name), and a name keeps the stored JSON readable and lets the shipped
- * defaults below be a module constant — a number would need the runtime enum, which no module-scope
- * constant may touch.
+ * The option VALUE is still the enum's NAME, not its number — `labels` only ever supplies the
+ * LABEL. fillFromJson reads an enum from either (case-insensitively, for a name), and a name keeps
+ * the stored JSON readable and lets the shipped defaults below be a module constant — a number
+ * would need the runtime enum, which no module-scope constant may touch. Writing a translated or
+ * reworded VALUE here would make the row a silent no-op: the control would move, the stored JSON
+ * would update, and fillFromJson would ignore a name it does not recognise.
+ *
+ * `labels` is a hand-written map, one entry per member whose meaning this file's author has
+ * actually read (in the library's own doc comments) and can restate in plain words. A member the
+ * running library has that the map does not — added by a later `@coderline/alphatab` release —
+ * still appears in the dropdown: it falls back to its own enum key rather than silently
+ * disappearing from the list.
  */
 function enumOptions(
   enumObject: Record<string, string | number>,
+  labels: Partial<Record<string, string>>,
 ): { value: string; label: string }[] {
   return Object.keys(enumObject)
     .filter((key) => Number.isNaN(Number(key)))
-    .map((key) => ({ value: key, label: key }));
+    .map((key) => ({ value: key, label: labels[key] ?? key }));
 }
+
+// Hand-written copy for every enum-backed dropdown, one map per AlphaTab enum. Three of them are
+// each shared by two rows (see the comment on each) — the label set belongs to the ENUM, not to
+// any one row, so both rows read identically whenever they mean the same thing.
+
+/** player.playerMode — "Playback source". What actually produces sound for each mode. */
+const PLAYER_MODE_LABELS: Partial<Record<string, string>> = {
+  Disabled: 'No playback',
+  EnabledAutomatic: 'The backing track when there is one, otherwise the synthesizer',
+  EnabledSynthesizer: 'The synthesizer, always',
+  EnabledBackingTrack: 'The backing track only, if the file has one',
+  // This app wires up no external-media handler, so this mode plays nothing here — say that
+  // plainly instead of promising a source the app cannot provide.
+  EnabledExternalMedia: 'External audio, not available in this app',
+};
+
+/** player.scrollMode — "Auto-scroll style". */
+const SCROLL_MODE_LABELS: Partial<Record<string, string>> = {
+  Off: 'Do not scroll automatically',
+  Continuous: 'Follow the cursor as it moves',
+  OffScreen: 'Jump only when the cursor leaves the screen',
+  Smooth: 'Scroll smoothly at a steady speed',
+};
+
+/** display.layoutMode — "Layout". */
+const LAYOUT_MODE_LABELS: Partial<Record<string, string>> = {
+  Page: 'Wrap bars into rows, like a page',
+  Horizontal: 'Lay out every bar in one long row',
+  Parchment: "Wrap into rows sized by the file's own layout",
+};
+
+/** display.systemsLayoutMode — "Row layout source". */
+const SYSTEMS_LAYOUT_MODE_LABELS: Partial<Record<string, string>> = {
+  Automatic: 'Decide automatically',
+  UseModelLayout: 'Use the row breaks stored in the file',
+};
+
+/** notation.fingeringMode — "Fingering display". */
+const FINGERING_MODE_LABELS: Partial<Record<string, string>> = {
+  ScoreDefault: 'On the standard notation staff',
+  ScoreForcePiano: 'On the standard notation staff, numbered like piano fingering',
+  SingleNoteEffectBand: 'Above the tab, for single notes only',
+  SingleNoteEffectBandForcePiano:
+    'Above the tab, for single notes only, numbered like piano fingering',
+};
+
+/** notation.rhythmMode — "Tab rhythm notation". */
+const TAB_RHYTHM_MODE_LABELS: Partial<Record<string, string>> = {
+  Hidden: 'Hidden',
+  ShowWithBeams: 'Shown, with separate beams per beat',
+  ShowWithBars: 'Shown, connected like standard notation',
+  Automatic: 'Shown automatically when standard notation is hidden',
+};
+
+/** stylesheet.bracketExtendMode — "Brackets and braces". */
+const BRACKET_EXTEND_MODE_LABELS: Partial<Record<string, string>> = {
+  NoBrackets: 'None',
+  GroupStaves: "Group each track's staves",
+  GroupSimilarInstruments: 'Group tracks that share an instrument',
+};
+
+/**
+ * TrackNamePolicy — whether a track name shows at all. Shared by
+ * singleTrackTrackNamePolicy ("Track name (single-track view)") and multiTrackTrackNamePolicy
+ * ("Track name (multi-track view)").
+ */
+const TRACK_NAME_POLICY_LABELS: Partial<Record<string, string>> = {
+  Hidden: 'Hidden',
+  FirstSystem: 'Shown on the first row only',
+  AllSystems: 'Shown on every row',
+};
+
+/**
+ * TrackNameMode — how much of the name shows (full or abbreviated). Shared by the two "...track
+ * name length" rows (first-system and other-systems). NOT the same enum as
+ * TRACK_NAME_ORIENTATION_LABELS below — that one belongs to the "...track name direction" rows.
+ */
+const TRACK_NAME_MODE_LABELS: Partial<Record<string, string>> = {
+  FullName: 'Full name',
+  ShortName: 'Short name (abbreviated)',
+};
+
+/**
+ * TrackNameOrientation — which way the name reads (horizontal or vertical). Shared by the two
+ * "...track name direction" rows (first-system and other-systems). NOT the same enum as
+ * TRACK_NAME_MODE_LABELS above — that one belongs to the "...track name length" rows.
+ */
+const TRACK_NAME_ORIENTATION_LABELS: Partial<Record<string, string>> = {
+  Horizontal: 'Horizontal',
+  Vertical: 'Vertical, rotated upright',
+};
 
 /**
  * The eight groups, in the order the popover shows them. They stay exactly these: v0.1 layers
@@ -167,7 +268,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Playback source',
           path: 'player.playerMode',
-          control: { kind: 'select', options: enumOptions(engine.PlayerMode) },
+          control: { kind: 'select', options: enumOptions(engine.PlayerMode, PLAYER_MODE_LABELS) },
           apply: 'settings',
         },
         {
@@ -224,7 +325,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Auto-scroll style',
           path: 'player.scrollMode',
-          control: { kind: 'select', options: enumOptions(engine.ScrollMode) },
+          control: { kind: 'select', options: enumOptions(engine.ScrollMode, SCROLL_MODE_LABELS) },
           apply: 'settings',
         },
 
@@ -397,7 +498,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Layout',
           path: 'display.layoutMode',
-          control: { kind: 'select', options: enumOptions(engine.LayoutMode) },
+          control: { kind: 'select', options: enumOptions(engine.LayoutMode, LAYOUT_MODE_LABELS) },
           apply: 'render',
         },
         {
@@ -437,7 +538,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Row layout source',
           path: 'display.systemsLayoutMode',
-          control: { kind: 'select', options: enumOptions(engine.SystemsLayoutMode) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.SystemsLayoutMode, SYSTEMS_LAYOUT_MODE_LABELS),
+          },
           apply: 'render',
         },
       ],
@@ -733,7 +837,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Fingering display',
           path: 'notation.fingeringMode',
-          control: { kind: 'select', options: enumOptions(engine.FingeringMode) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.FingeringMode, FINGERING_MODE_LABELS),
+          },
           apply: 'render',
         },
         {
@@ -741,7 +848,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Tab rhythm notation',
           path: 'notation.rhythmMode',
-          control: { kind: 'select', options: enumOptions(engine.TabRhythmMode) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.TabRhythmMode, TAB_RHYTHM_MODE_LABELS),
+          },
           apply: 'render',
         },
         {
@@ -808,7 +918,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           key: 'bracketExtendMode',
           label: 'Brackets and braces',
           description: STYLESHEET_NOTE,
-          control: { kind: 'select', options: enumOptions(engine.model.BracketExtendMode) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.model.BracketExtendMode, BRACKET_EXTEND_MODE_LABELS),
+          },
         },
         {
           id: 'stylesheet-system-sign-separator',
@@ -840,7 +953,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           key: 'singleTrackTrackNamePolicy',
           label: 'Track name (single-track view)',
           description: STYLESHEET_NOTE,
-          control: { kind: 'select', options: enumOptions(engine.model.TrackNamePolicy) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.model.TrackNamePolicy, TRACK_NAME_POLICY_LABELS),
+          },
         },
         {
           id: 'stylesheet-multi-track-name-policy',
@@ -848,7 +964,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           key: 'multiTrackTrackNamePolicy',
           label: 'Track name (multi-track view)',
           description: STYLESHEET_NOTE,
-          control: { kind: 'select', options: enumOptions(engine.model.TrackNamePolicy) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.model.TrackNamePolicy, TRACK_NAME_POLICY_LABELS),
+          },
         },
         {
           id: 'stylesheet-first-system-name-mode',
@@ -856,7 +975,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           key: 'firstSystemTrackNameMode',
           label: 'First row: track name length',
           description: STYLESHEET_NOTE,
-          control: { kind: 'select', options: enumOptions(engine.model.TrackNameMode) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.model.TrackNameMode, TRACK_NAME_MODE_LABELS),
+          },
         },
         // The fork binds this row's neighbour — otherSystemsTrackNameOrientation — to THIS enum
         // (TrackNameMode) a second time by mistake. TrackNameOrientation is the one that belongs to
@@ -867,7 +989,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           key: 'firstSystemTrackNameOrientation',
           label: 'First row: track name direction',
           description: STYLESHEET_NOTE,
-          control: { kind: 'select', options: enumOptions(engine.model.TrackNameOrientation) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.model.TrackNameOrientation, TRACK_NAME_ORIENTATION_LABELS),
+          },
         },
         {
           id: 'stylesheet-other-systems-name-mode',
@@ -875,7 +1000,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           key: 'otherSystemsTrackNameMode',
           label: 'Later rows: track name length',
           description: STYLESHEET_NOTE,
-          control: { kind: 'select', options: enumOptions(engine.model.TrackNameMode) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.model.TrackNameMode, TRACK_NAME_MODE_LABELS),
+          },
         },
         {
           id: 'stylesheet-other-systems-name-orientation',
@@ -883,7 +1011,10 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           key: 'otherSystemsTrackNameOrientation',
           label: 'Later rows: track name direction',
           description: STYLESHEET_NOTE,
-          control: { kind: 'select', options: enumOptions(engine.model.TrackNameOrientation) },
+          control: {
+            kind: 'select',
+            options: enumOptions(engine.model.TrackNameOrientation, TRACK_NAME_ORIENTATION_LABELS),
+          },
         },
         {
           id: 'stylesheet-multi-bar-rests',
