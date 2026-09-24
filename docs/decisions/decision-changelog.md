@@ -11,11 +11,13 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
-### 2026-09-24 — Two deliberate exceptions to the 44px hit-area gate (NH-291)
+### 2026-09-24 — The 44px hit-area gate now covers both popovers, with two deliberate exceptions (NH-291)
 
 `expectHitAreas` (`web/e2e/a11y.e2e.ts`) enforces this repo's own 44px hit-area bar — stricter than
-WCAG 2.5.8 AA, which asks only 24px. Two controls fall under it on purpose, and the gate now scopes
-around both rather than being loosened generally.
+WCAG 2.5.8 AA, which asks only 24px. Two controls fall under it on purpose, and the gate scopes
+around both rather than being loosened generally. The gate now also runs with the Settings popover
+(every accordion group open) and the Tracks popover (two rows expanded, a solo and a mute pressed)
+open, per an e2e case each; both pass.
 
 - **The toast close button stays 20x20.** Sonner's `[data-close-button]` is a fixed-size control,
   and the maintainer wants `closeButton` kept on the Toaster. The gate now skips any control inside
@@ -27,6 +29,29 @@ around both rather than being loosened generally.
   this repo's own stricter 44px (AAA) bar, and the density is the maintainer's deliberate choice for
   this row, not an oversight. The gate now skips any control inside `[data-slot="track-row"]` or
   `[data-slot="master-row"]`, scoped to those two rows only.
+- **The gate now measures the popovers' fields and selects too**: `[data-slot="popover-content"]
+select` and `input` (excluding `range`, `file` and `checkbox`, none of which is what a finger
+  hits) join the existing button/link/label/slider selectors. Scoped to popover content only, so
+  the header's BPM field — Base UI's `NumberField.Input`, deliberately out of scope for this PR —
+  stays untouched. `Input` and `NativeSelect` are `h-9` (36px) in the design system by default;
+  every row in `SettingRow` raises them to `h-11` (44px) at the call site. A design-system default
+  of 44px is a separate question, not answered here.
+- **The gate's position check is now container-aware.** With every Settings group open at once (so
+  the whole panel is auditable in one pass), the panel is far taller than the viewport — ~6000px of
+  rows in a ~500px scrolling window — and the plain window-edge check flagged nearly every row as
+  unreachable, though each is one scroll away. `expectHitAreas` now walks up from each control to
+  its nearest ancestor with computed `overflow-y: auto`/`scroll`. When none exists short of the
+  document, the check is unchanged (a shell-clipped control has no way out and still fails).
+  Otherwise position is judged against that ancestor's own scrollable content range (`[0,
+scrollHeight]`) instead of the window — horizontally unchanged, since this ancestor only scrolls
+  vertically. The 44px SIZE check is untouched either way.
+- **Four new design-system components, not three** — `Accordion`, `SettingRow`, `TrackRow` and
+  `MasterRow`, each with a Storybook story plus VR and axe baselines that block merge. A fifth
+  component, `PopoverIconTrigger`, was extracted during a later refactor pass to share the
+  Settings/Tracks trigger button — it lives in `web/app/play/`, not `client/`, so it is an
+  app-local component, not a fifth gated design-system one; it carries no stories/VR/a11y files of
+  its own and is covered by the popover-open e2e cases and `client/`'s existing Tooltip/Popover/
+  Button baselines that it composes.
 
 ### 2026-09-22 — merge=union is scoped to the changelog; the registry conflicts normally (NH-322)
 

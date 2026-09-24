@@ -41,7 +41,23 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
       // (min-h-11, h-[44px], padding) makes the selector match nothing and the gate pass
       // silently over whatever the rail became.
       ...document.querySelectorAll(
-        'button, a[href], label[for], [role="button"], [data-slot="slider-control"]',
+        [
+          'button',
+          'a[href]',
+          'label[for]',
+          '[role="button"]',
+          '[data-slot="slider-control"]',
+          // The popovers' fields, and ONLY the popovers': scoped to the popover content so the
+          // header's BPM field stays out. That field is Base UI's NumberField.Input — a text input
+          // about 14 px tall — and it is deliberately out of scope for this PR; widening the gate
+          // over it would turn five /play cases red in files this plan does not otherwise touch.
+          // NOT [role="checkbox"]: the design system's checkbox is a 16 px box by design, and its
+          // hit target is the <label for> around it — measured above.
+          // NOT the hidden inputs either: the file picker's, the range input Base UI sizes to its
+          // 16 px thumb, and the checkbox's own hidden input are none of them what a finger hits.
+          '[data-slot="popover-content"] select',
+          '[data-slot="popover-content"] input:not([type="range"]):not([type="file"]):not([type="checkbox"])',
+        ].join(', '),
       ),
     ]
       .filter((el) => {
@@ -67,7 +83,37 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
         // getBoundingClientRect ignores an ancestor's overflow:hidden — so a toggle pushed off the
         // screen by the shell would pass the size check below. Fail it on position too: anything
         // past an edge (0.5px tolerance for sub-pixel rounding) cannot be reached by a pointer.
-        if (
+        //
+        // But "past an edge" only means unreachable when the edge is the WINDOW's. The Settings
+        // popover opens every accordion group at once (so the whole panel is auditable in one
+        // pass) and is taller than the viewport by design — its rows sit inside a scrolling
+        // container, and a row below the fold there is one scroll away, not lost. A row clipped by
+        // the app SHELL (no scrolling ancestor between it and the document) has no such way out, so
+        // that case keeps the plain window-edge check. Walk up for the nearest scrolling ancestor
+        // and, when one exists, judge position against ITS scrollable content range instead of the
+        // window: horizontally unchanged (this ancestor only scrolls vertically, so a horizontal
+        // clip is still permanent), vertically bounded by [0, scrollHeight] rather than the
+        // viewport height.
+        let scrollAncestor: Element | null = null;
+        for (let node = el.parentElement; node; node = node.parentElement) {
+          const overflowY = globalThis.getComputedStyle(node).overflowY;
+          if (overflowY === 'auto' || overflowY === 'scroll') {
+            scrollAncestor = node;
+            break;
+          }
+        }
+        if (scrollAncestor) {
+          const ar = scrollAncestor.getBoundingClientRect();
+          const contentTop = r.top - ar.top + scrollAncestor.scrollTop;
+          if (
+            r.right > globalThis.innerWidth + 0.5 ||
+            r.left < -0.5 ||
+            contentTop < -0.5 ||
+            contentTop + r.height > scrollAncestor.scrollHeight + 0.5
+          ) {
+            return true;
+          }
+        } else if (
           r.right > globalThis.innerWidth + 0.5 ||
           r.left < -0.5 ||
           r.bottom > globalThis.innerHeight + 0.5 ||
@@ -205,4 +251,50 @@ test('every transport control stays on-screen in a narrow 700px window', async (
   await expect(page.getByTestId('toggle-metronome')).toBeInViewport();
   await expect(page.getByTestId('toggle-countin')).toBeInViewport();
   await expectHitAreas(page, 'play / narrow 700px');
+});
+
+test('player has no axe violations with the Settings popover open', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('settings-trigger').click();
+  await expect(page.getByTestId('settings-popover')).toBeVisible();
+  // Open EVERY group so every control kind is audited, not just the closed headers: the text
+  // fields live in the colour and font groups, the selects in the general and player groups, and
+  // the action buttons in Export.
+  const headers = page.getByTestId('settings-popover').locator('[data-slot="accordion-trigger"]');
+  for (const header of await headers.all()) {
+    if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click();
+  }
+
+  await expectNoViolations(page, 'play / settings open');
+  await expectHitAreas(page, 'play / settings open');
+});
+
+test('player has no axe violations with the Tracks popover open', async ({ page }) => {
+  await page.goto('/play');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+    timeout: 30_000,
+  });
+  await settleToasts(page);
+
+  await page.getByTestId('tracks-trigger').click();
+  await expect(page.getByTestId('tracks-popover')).toBeVisible();
+  // Expand a drum row AND the guitar row: both of Punk.gp's audited tracks are single-staff, so
+  // their four display toggles (tablature included) already sit on the primary row — expanding
+  // instead audits each row's OWN controls, the Transpose audio and Transpose full sliders, on a
+  // percussion track and a stringed one.
+  for (const row of ['track-row-0', 'track-row-1']) {
+    await page
+      .getByTestId(row)
+      .getByRole('button', { name: /more controls/i })
+      .click();
+  }
+  // And press a solo and a mute: the pressed state is a different colour pair for axe to check.
+  await page.getByTestId('track-row-1').getByRole('button', { name: /solo/i }).click();
+  await page.getByTestId('track-row-1').getByRole('button', { name: /mute/i }).click();
+
+  await expectNoViolations(page, 'play / tracks open');
+  await expectHitAreas(page, 'play / tracks open');
 });
