@@ -117,6 +117,17 @@ function Player() {
   const [hasRange, setHasRange] = useState(false);
   // Whether the open score plays its own embedded recording. Metronome and Count-In are inert then.
   const [hasBackingTrack, setHasBackingTrack] = useState(false);
+  // The two modes that build no player at all, or build one nothing ever drives: the person's own
+  // choice in settings, not what AlphaTab built. Disabled builds no player, so playerReady can
+  // never answer for it; EnabledExternalMedia builds one with no media source in v0, so it never has
+  // anything to drive. Written by readChosenMode below.
+  const [playbackOff, setPlaybackOff] = useState(false);
+  const [externalMedia, setExternalMedia] = useState(false);
+  // The third dead mode: EnabledBackingTrack chosen on a file with no embedded recording. AlphaTab
+  // still builds that player and reports it ready (measured in a real browser), but playback
+  // completes instantly with nothing to play. Needs the real player and the loaded score, so it is
+  // written by readPlayer, not readChosenMode.
+  const [backingTrackNoRecording, setBackingTrackNoRecording] = useState(false);
   // The live score tempo, for the header's tempo control. The position handler below is what keeps
   // it current; the 120 is the pre-load placeholder only.
   const [scoreTempo, setScoreTempo] = useState(120);
@@ -241,24 +252,56 @@ function Player() {
   useAlphaTabEvent(api, 'playerStateChanged', (args) => {
     setPlaying(args.state === engine?.synth.PlayerState.Playing);
   });
+  // The mode the PERSON chose, read from settings rather than from what AlphaTab built. Both
+  // dead-on-arrival modes need it here: Disabled builds no player, so playerReady never fires for
+  // it, and EnabledExternalMedia builds one with no media source, so nothing ever drives it — the
+  // settings read is the only way either is known, on a reload where no playerReady is ever coming.
+  //
+  // Guarded and compared WITHOUT optional chaining on the comparison itself: `api?.x === engine?.y`
+  // is `undefined === undefined` — true — whenever EITHER is still missing, which would report
+  // every dead mode as chosen before the engine has even loaded.
+  const readChosenMode = useCallback(() => {
+    if (!api || !engine) return;
+    const mode = api.settings.player.playerMode;
+    setPlaybackOff(mode === engine.PlayerMode.Disabled);
+    setExternalMedia(mode === engine.PlayerMode.EnabledExternalMedia);
+  }, [api, engine]);
+
   // Which player AlphaTab actually built. A file that embeds a recording still plays from the
   // synthesizer when that mode is selected, and then the metronome, the count-in and the mixer
   // work. The file merely containing audio is not the signal: EnabledAutomatic resolves to the
   // backing-track player, EnabledSynthesizer does not.
-  const syncBackingTrack = useCallback(() => {
+  const readPlayer = useCallback(() => {
     if (!api || !engine) return;
-    setHasBackingTrack(api.actualPlayerMode === engine.PlayerMode.EnabledBackingTrack);
-  }, [api, engine]);
+    const isBackingTrack = api.actualPlayerMode === engine.PlayerMode.EnabledBackingTrack;
+    setHasBackingTrack(isBackingTrack);
+    // EnabledBackingTrack on a file with no embedded recording is a dead state, measured in a real
+    // browser: AlphaTab builds the backing-track player and reports it ready right away, but
+    // playback completes instantly with nothing to play.
+    setBackingTrackNoRecording(isBackingTrack && !api.score?.backingTrack?.rawAudioFile);
+    // Read, not latched `true`: the same soundfont reload that follows a mode switch or a file
+    // replace leaves an earlier `true` stale while the new player is still loading, and Play must
+    // not stay pressable through that window.
+    setPlayerReady(api.isReadyForPlayback);
+    // A mid-session switch INTO a dead mode settles without a reload: playerReady never fires for
+    // Disabled or EnabledExternalMedia, so the settings read has to run here too, not only at
+    // scoreLoaded.
+    readChosenMode();
+  }, [api, engine, readChosenMode]);
 
   // `playerReady`, not `soundFontLoaded`: 1.8.4 builds soundFontLoaded as a bare `new EventEmitter()`,
   // so it fires once and is never replayed — a subscription that lands one commit after the api was
   // constructed can miss it and latch Play disabled forever. `api.playerReady` returns the player
   // wrapper's `readyForPlayback`, built as `new EventEmitter(() => this.isReadyForPlayback)`, which
   // reports the current value to a late subscriber.
-  useAlphaTabEvent(api, 'playerReady', () => {
-    setPlayerReady(true);
-    syncBackingTrack();
-  });
+  useAlphaTabEvent(api, 'playerReady', readPlayer);
+  // Also subscribed to `renderStarted`: without it, `readPlayer` runs only from `playerReady` above
+  // and from the settings-change handler below, so a FILE REPLACE rebuilds the player with
+  // `playerReady` still latched true from the OLD score and `hasBackingTrack` stale until the new
+  // score's own `playerReady` eventually arrives. `_internalRenderTracks` runs after
+  // `_onScoreLoaded` has already set the new player up, so `renderStarted` sees the right answer,
+  // and the read is idempotent — safe to run on every one of the four renders per score.
+  useAlphaTabEvent(api, 'renderStarted', readPlayer);
 
   // Guard 2's bookkeeping — see the position handler below.
   const pendingSeek = useRef<{ target: number; since: number } | null>(null);
@@ -382,7 +425,20 @@ function Player() {
   // indeterminate until soundfont bytes flow, then a real fraction. It also covers opening a file.
   // A failure shows NO bar — never a "finished" one beside an error message.
   const failed = engineError !== null || loadFailed;
-  const loadingPlayer = !failed && (!playerReady || opening);
+  // Three modes will NEVER become a playable player: Disabled and EnabledExternalMedia build none
+  // that could ever answer playerReady (v0 wires up no external-media handler), and
+  // EnabledBackingTrack on a file with no embedded recording builds one that reports ready straight
+  // away with nothing to play (all three measured in a real browser). Each is a SETTLED choice, not
+  // a pending one, so the bar must not wait on a playerReady that is either never coming or already
+  // meaningless.
+  const noPlayerComing = playbackOff || externalMedia || backingTrackNoRecording;
+  const loadingPlayer = !failed && ((!playerReady && !noPlayerComing) || opening);
+  // The same three modes disable every control that ACTS on the player, not only the loading bar.
+  // `!playerReady` alone is not enough: EnabledExternalMedia and a recording-less
+  // EnabledBackingTrack both measured `isReadyForPlayback: true` immediately, so without
+  // `noPlayerComing` here, Play, Loop, the scrubber and the metronome would all look live while
+  // doing nothing — the one thing a control here must never do.
+  const playbackDisabled = !playerReady || noPlayerComing;
   // 700 = the 400 ms hold at 100 % plus the 300 ms fade in LOADING_BAR_LEAVING below.
   const barPhase = useLoadingBarPhase(loadingPlayer, 700);
   // Held at 100 % while it fades. Opening a file has no fraction to show, and neither has the wait
@@ -400,7 +456,11 @@ function Player() {
   // sees the player this score will use — including a file opened while the synthesizer is already
   // selected, which must not lock the mixer just because the file contains audio.
   useAlphaTabEvent(api, 'scoreLoaded', () => {
-    queueMicrotask(syncBackingTrack);
+    // The chosen mode comes from settings, not from the score or the player, so it needs none of
+    // the wait above — and a stored Disabled or EnabledExternalMedia mode must read as settled from
+    // the very first frame, on a reload where playerReady is never coming at all.
+    readChosenMode();
+    queueMicrotask(readPlayer);
   });
 
   // `api` is state, not a ref, so it MUST be in each dependency list: an empty list would freeze
@@ -513,9 +573,9 @@ function Player() {
       // updateSettings() swaps the player synchronously, so the new mode is readable now.
       // playerReady arrives later, after the soundfont, which is too late: the metronome would
       // stay locked for the whole download after a switch to the synthesizer.
-      if (path === 'player.playerMode') syncBackingTrack();
+      if (path === 'player.playerMode') readPlayer();
     },
-    [api, settings, syncBackingTrack],
+    [api, settings, readPlayer],
   );
 
   const runAction = useCallback(
@@ -724,6 +784,20 @@ function Player() {
   // again, so renaming the file cannot leave a stale label behind.
   const openFileName = notation?.name ?? SAMPLE_NOTATION.split('/').pop() ?? '';
 
+  // Play's tooltip: one branch per dead mode, so a disabled Play never says "Play". An if-chain
+  // rather than a nested ternary — the same shape `barValue` above already uses.
+  let playTooltip = playing ? 'Pause' : 'Play';
+  if (playbackOff) {
+    playTooltip = 'Playback is turned off in Settings';
+  } else if (externalMedia) {
+    playTooltip =
+      'This mode follows an outside video or audio player, such as a YouTube video, which this ' +
+      'version does not provide yet. A recording inside the file plays fine on the other modes.';
+  } else if (backingTrackNoRecording) {
+    playTooltip =
+      'This file has no recording to play. Choose the synthesizer in Settings to hear it.';
+  }
+
   return (
     // The player fills the window and never scrolls as a page: the notation is the only thing that
     // scrolls, and it does so inside its own box. `h-dvh`, not `h-screen` — on a phone or tablet
@@ -875,7 +949,9 @@ function Player() {
           >
             {/* The whole transport is gated on `playerReady`, never on `soundFontLoaded`: that one is
               a bare emitter with no replay, so a late subscriber would latch the row disabled
-              forever. */}
+              forever. `playbackDisabled` also covers the two dead modes that report ready with
+              nothing to play (see its definition above) — otherwise Loop, the scrubber and the
+              metronome would look live while doing nothing. */}
             <TransportRow
               positionMs={positionMs}
               durationMs={durationMs}
@@ -888,7 +964,7 @@ function Player() {
               onCountInChange={(on) => applyCountInVolume(on ? 1 : 0)}
               hasRange={hasRange}
               hasBackingTrack={hasBackingTrack}
-              disabled={!playerReady}
+              disabled={playbackDisabled}
               playButton={
                 /* The mockup's Play: a SOLID teal circle, 48 px, with a solid glyph and a soft teal
                  shadow — Button's own `default` variant, which is bg-primary with the hover
@@ -921,7 +997,7 @@ function Player() {
                       data-testid="transport-play"
                       size="icon"
                       aria-label={playing ? 'Pause' : 'Play'}
-                      disabled={!playerReady}
+                      disabled={playbackDisabled}
                       onClick={() => {
                         // An explicit pause cancels a seek's pending auto-resume. This CANNOT
                         // live in `playerStateChanged`: that also fires when AlphaTab stops
@@ -943,7 +1019,7 @@ function Player() {
                     </Button>
                   </TooltipTrigger>
                   {/* Lifted 8 px, or the teal arrow lies on the solid teal button and cannot be seen. */}
-                  <TooltipContent sideOffset={8}>{playing ? 'Pause' : 'Play'}</TooltipContent>
+                  <TooltipContent sideOffset={8}>{playTooltip}</TooltipContent>
                 </Tooltip>
               }
               trailing={

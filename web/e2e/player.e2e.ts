@@ -2054,3 +2054,109 @@ test('the Settings master volume and the mixer Master row are one value', async 
     })
     .toBeCloseTo(0.45, 2);
 });
+
+// PlayerMode.Disabled is 0 and EnabledSynthesizer is 2 in 1.8.4's enum (alphaTab.d.ts). The page
+// cannot reach the enum object, so the numbers are written here, beside their source.
+const playerModes = (page: Page) =>
+  page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: { actualPlayerMode: number; isReadyForPlayback: boolean; player: unknown };
+      } | null
+    )?.at;
+    return at
+      ? { actual: at.actualPlayerMode, ready: at.isReadyForPlayback, hasPlayer: at.player !== null }
+      : null;
+  });
+
+const setPlayerMode = async (page: Page, label: string) => {
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('combobox', { name: 'Playback source' }).selectOption({ label });
+  await page.keyboard.press('Escape');
+};
+
+// On the bundled beat, actualPlayerMode is ALREADY the synthesizer: AlphaTab resolves the default
+// automatic mode to the synthesizer on a score with no embedded recording. Switching the row
+// straight to "the synthesizer, always" would rebuild nothing, so this drives a mode that genuinely
+// CHANGES actualPlayerMode first — "No playback" — which exercises the destroy-then-rebuild path
+// and the un-latching of playerReady that a mode switch or a file replace both depend on.
+test('the player-mode row makes AlphaTab build the other player, and Play still works', async ({
+  page,
+}) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await setPlayerMode(page, 'No playback');
+  await expect
+    .poll(async () => {
+      const modes = await playerModes(page);
+      return modes?.actual;
+    })
+    .toBe(0);
+  await expect
+    .poll(async () => {
+      const modes = await playerModes(page);
+      return modes?.hasPlayer;
+    })
+    .toBe(false);
+  await expect(page.getByTestId('transport-play')).toHaveAttribute('aria-disabled', 'true');
+
+  await setPlayerMode(page, 'The synthesizer, always');
+  await expect
+    .poll(async () => {
+      const modes = await playerModes(page);
+      return modes?.actual;
+    })
+    .toBe(2);
+
+  // Play must not be pressable before the new player is ready, and must work once it is.
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  const readyModes = await playerModes(page);
+  expect(readyModes?.ready).toBe(true);
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+// "No playback" is a real choice, and it is STORED — so the next visit starts with no player. The
+// page must say so and stay usable, not pulse a loading bar forever beside a dead Play button.
+test('with playback turned off, the page settles and says why', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await setPlayerMode(page, 'No playback');
+
+  await page.reload();
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  const play = page.getByTestId('transport-play');
+  await expect(play).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0);
+
+  // The way back is never disabled with the rest.
+  await expect(page.getByTestId('settings-trigger')).toBeEnabled();
+  // page.mouse, not hover(): a disabled Button takes no pointer events, so hover() would wait
+  // forever. The pointer goes where a person's would — the same move the disabled-toggle case uses.
+  const box = await play.boundingBox();
+  if (!box) throw new Error('the Play button has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(openTooltip(page)).toContainText('Playback is turned off in Settings');
+});
+
+// The same settled state WITHOUT a reload. The case above reloads before it asserts, so it would
+// pass even if a mid-session switch left the bar spinning behind a dead Play button — which is what
+// happens when the mode change re-reads only the flags that come from the built player. playerReady
+// never fires for a mode that builds no player, so the settings read has to run on the mode change
+// too (readChosenMode, called from readPlayer). No reload here.
+test('switching to a mode with no player settles without a reload', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await setPlayerMode(page, 'No playback');
+
+  const play = page.getByTestId('transport-play');
+  await expect(play).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0);
+  await expect(page.getByTestId('settings-trigger')).toBeEnabled();
+});
