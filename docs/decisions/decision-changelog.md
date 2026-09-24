@@ -52,6 +52,7 @@ scrollHeight]`) instead of the window — horizontally unchanged, since this anc
   app-local component, not a fifth gated design-system one; it carries no stories/VR/a11y files of
   its own and is covered by the popover-open e2e cases and `client/`'s existing Tooltip/Popover/
   Button baselines that it composes.
+
 ### 2026-09-22 — Eight orphaned spike documents archived, and five NH-196 decisions recovered (NH-25)
 
 The eight documents PR #57 flagged as orphan-risk on 2026-06-20 — still absent from `master` three
