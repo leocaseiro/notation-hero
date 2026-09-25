@@ -212,8 +212,8 @@ const TRACK_NAME_ORIENTATION_LABELS: Partial<Record<string, string>> = {
  * an unparseable draft reaches both the engine and storage.
  *
  * The accepted units are exactly the ones Font.fromJson converts — px, pt, em and the CSS keyword
- * sizes. `rem` and a bare unitless number are rejected on purpose: the engine does not throw on
- * them, it silently falls back to 12px, which is worse than being told the value is wrong.
+ * sizes. `rem` and a bare number with no unit are rejected on purpose: the engine does not throw
+ * on them, it silently falls back to 12px, which is worse than being told the value is wrong.
  */
 const FONT_STYLE_OR_WEIGHT = /^(?:normal|italic|oblique|small-caps|bold|bolder|lighter|[1-9]00)$/i;
 const FONT_SIZE =
