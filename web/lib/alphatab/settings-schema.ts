@@ -216,23 +216,46 @@ const TRACK_NAME_ORIENTATION_LABELS: Partial<Record<string, string>> = {
  * on them, it silently falls back to 12px, which is worse than being told the value is wrong.
  */
 /**
- * Any colour notation the browser itself accepts — hex with or without alpha, rgb()/rgba(), hsl(),
- * a named colour. The engine stores whatever CSS string it is given, so the browser's own parser is
- * the right authority, and it is stricter than a hand-written pattern.
+ * Exactly the colour notations AlphaTab's own Color.fromJson parses: 3-, 6- or 8-digit hex, and
+ * lowercase rgb()/rgba(). Deliberately NOT `CSS.supports('color', …)`, which was the first attempt
+ * and is the wrong authority in both directions. Color.fromJson returns `null` WITHOUT throwing for
+ * `red`, `hsl(...)`, `rgb(0 0 0 / 50%)` and `RGBA(...)` — all of which CSS.supports accepts — so the
+ * engine never rejects them, the settings funnel's try/catch never fires, the value is persisted,
+ * and the renderer then dereferences `null.rgba` inside a queued frame, outside any catch. Encoding
+ * the grammar here also keeps the module free of a value import of the engine, which the web/
+ * ESLint fence forbids, and free of the `CSS` global, which the test environment does not provide.
  */
-const isCssColor = (draft: string) => CSS.supports('color', draft.trim());
+const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+// Whitespace is stripped before this runs, so the pattern carries none: `\s*` between every token
+// is what made the single combined expression backtrack super-linearly. The alpha is an
+// unambiguous alternation for the same reason — `\d*\.?\d+` can split a digit run two ways.
+const RGB_COLOR = /^rgba?\(\d{1,3},\d{1,3},\d{1,3}(?:,(?:\d+(?:\.\d+)?|\.\d+))?\)$/;
+
+const isCssColor = (draft: string) => {
+  const value = draft.trim();
+  if (HEX_COLOR.test(value)) return true;
+  // Only inside the parentheses is whitespace insignificant to AlphaTab, and a hex value has
+  // already returned, so nothing here can silently join two meaningful tokens.
+  return RGB_COLOR.test(value.replaceAll(/\s+/g, ''));
+};
 
 const FONT_STYLE_OR_WEIGHT = /^(?:normal|italic|oblique|small-caps|bold|bolder|lighter|[1-9]00)$/i;
 const FONT_SIZE =
   /^(?:\d+(?:\.\d+)?(?:px|pt|em)|xx-small|x-small|smaller|small|medium|larger|large|x-large|xx-large)$/i;
 
 const isFontShorthand = (draft: string) => {
+  // The family list reaches the renderer unescaped: SvgCanvas builds `<text … style='… font:${…}'>`
+  // as a SINGLE-quoted attribute and assigns it as markup, so an apostrophe in a family name closes
+  // that attribute and everything after it is parsed as more attributes. Angle brackets open a tag
+  // outright. Neither belongs in a font family, and a stored value re-arms on every later visit, so
+  // they are refused at the field. A double quote is safe inside a single-quoted attribute and stays
+  // allowed, because `12px "Times New Roman"` is a legitimate value.
+  if (/['<>]/.test(draft)) return false;
   const parts = draft.trim().split(/\s+/);
   let index = 0;
   while (index < parts.length && FONT_STYLE_OR_WEIGHT.test(parts[index])) index += 1;
   // A size token, and then at least one family token after it — the two things whose absence makes
-  // AlphaTab's parser throw. The family list itself is not validated: the parser accepts anything
-  // there, and a font the machine does not have falls back rather than failing.
+  // AlphaTab's parser throw.
   return index < parts.length - 1 && FONT_SIZE.test(parts[index]);
 };
 

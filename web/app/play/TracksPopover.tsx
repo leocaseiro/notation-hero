@@ -199,7 +199,10 @@ export function TracksPopover({
 
   const applyTransposeFull = (index: number, semitones: number) => {
     if (!api) return;
-    // Notation AND audio. The write itself lives with the other live-settings writes.
+    // Notation ONLY — it moves the drawn score, never the sound; see setTrackTransposition's
+    // own doc for why 'render' cannot reach the synth. The slider above is the audible one.
+    // The `Full` names here map to AlphaTab's whole-score transpositionPitches, as opposed to
+    // the per-channel changeTrackTranspositionPitch the audio slider uses.
     setTrackTransposition(api, index, semitones);
     patch(index, { transposeFull: semitones });
   };
