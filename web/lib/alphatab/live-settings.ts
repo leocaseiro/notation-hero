@@ -60,13 +60,33 @@ export function applySettingsJson(
   pushSettings(api, apply);
 }
 
-/** Notation AND audio for one track. The other transposition — audio only — is an api method. */
+/**
+ * Notation ONLY, for one track. The other transposition — audio only — is an api method.
+ *
+ * This does not move the sound, and cannot: 'render' runs updateSettings() plus a redraw, and the
+ * transposition reaches the synth only through loadMidiForScore, which updateSettings skips when
+ * the player mode has not changed. The row is labelled for what it does.
+ */
 export function setTrackTransposition(
   api: AlphaTab.AlphaTabApi,
   trackIndex: number,
   semitones: number,
 ): void {
   const pitches = [...api.settings.notation.transpositionPitches];
+  // Densify up to the written index first. The engine's guard is `i < transpositionPitches.length`,
+  // not a presence test, so a HOLE below the index is read as `-undefined` — NaN — and stamped onto
+  // every lower-indexed staff: garbage drawn pitches, and synth voices keyed NaN that noteOff can
+  // never match (NaN !== NaN), so they never stop.
+  //
+  // The gap is filled with each track's OWN transposition rather than 0, because 0 is not "leave it
+  // alone" here — it would erase a transposition the FILE carries, the very thing
+  // clearTrackTranspositions above goes out of its way to preserve.
+  while (pitches.length <= trackIndex) {
+    // The staff stores the NEGATED value, so it is negated back. `=== 0` rather than a bare
+    // negation: -(0) is -0, which is arithmetically fine but reads as a bug in a stored array.
+    const own = api.score?.tracks[pitches.length]?.staves[0]?.transpositionPitch ?? 0;
+    pitches.push(own === 0 ? 0 : -own);
+  }
   pitches[trackIndex] = semitones;
   api.settings.notation.transpositionPitches = pitches;
   pushSettings(api, 'render');

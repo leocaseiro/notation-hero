@@ -61,6 +61,11 @@ interface TrackRowProps extends Omit<ComponentProps<'div'>, 'children' | 'onVolu
   transposeAudio: number;
   onTransposeAudioChange: (semitones: number) => void;
   transposeFull: number;
+  /**
+   * Notation only — this moves the DRAWN score, never the sound. The audio-only transposition is
+   * the slider above it. The prop keeps its `Full` name because it maps to AlphaTab's whole-score
+   * `transpositionPitches`, as opposed to the per-channel `changeTrackTranspositionPitch`.
+   */
   onTransposeFullChange: (semitones: number) => void;
   expanded: boolean;
   onExpandedChange: (next: boolean) => void;
@@ -75,7 +80,8 @@ interface TrackRowProps extends Omit<ComponentProps<'div'>, 'children' | 'onVolu
   /**
    * Set while the file plays its own recording: the reason, as tooltip text. Solo, mute, volume
    * and Transpose audio then render disabled — the engine ignores all four in that mode.
-   * Render-select, the display toggles and Transpose full stay live: they change the drawn score.
+   * Render-select, the display toggles and Transpose notation stay live: they change the drawn
+   * score.
    */
   mixUnavailable?: string;
 }
@@ -365,7 +371,7 @@ const TrackRow = ({
             />
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-muted-foreground">Transpose full</span>
+            <span className="text-xs font-medium text-muted-foreground">Transpose notation</span>
             <Slider
               value={fullDraft ?? transposeFull}
               onChange={setFullDraft}
@@ -376,7 +382,7 @@ const TrackRow = ({
               min={-12}
               max={12}
               step={1}
-              label={`${name} Transpose full`}
+              label={`${name} Transpose notation`}
               showReadout
               formatValue={(v) => (v > 0 ? `+${v}` : `${v}`)}
             />

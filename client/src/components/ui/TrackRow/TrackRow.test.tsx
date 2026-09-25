@@ -71,7 +71,7 @@ test('the transposition sliders are hidden until expanded', () => {
 test('expanding reveals both transposition sliders as SEPARATE controls', () => {
   render(<TrackRow {...baseProps} expanded />);
   expect(screen.getByRole('slider', { name: /transpose audio/i })).toBeInTheDocument();
-  expect(screen.getByRole('slider', { name: /transpose full/i })).toBeInTheDocument();
+  expect(screen.getByRole('slider', { name: /transpose notation/i })).toBeInTheDocument();
 });
 
 // Semitones are exact targets people aim for — "up a whole step" is +2 — so the readout must
@@ -315,7 +315,7 @@ test('the controls that change the DRAWN score stay live while a recording plays
     'aria-disabled',
     'true',
   );
-  expect(screen.getByRole('slider', { name: /transpose full/i })).not.toBeDisabled();
+  expect(screen.getByRole('slider', { name: /transpose notation/i })).not.toBeDisabled();
 });
 
 // The LAST drawn track: AlphaTab cannot draw nothing, so the caller refuses to un-draw it. The

@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { applySettingsJson, readStylesheetValues, setStylesheetValue } from './live-settings';
+import {
+  applySettingsJson,
+  clearTrackTranspositions,
+  readStylesheetValues,
+  setStylesheetValue,
+} from './live-settings';
+import { setTrackTransposition } from './live-settings';
 import type { StylesheetKey } from './settings-schema';
 import type * as AlphaTab from '@coderline/alphatab';
 
@@ -135,5 +141,95 @@ describe('stylesheet round-trip', () => {
     setStylesheetValue(alphaTabApi, 'multiBarRests', false);
     expect(score.stylesheet.multiTrackMultiBarRest).toBe(false);
     expect(score.stylesheet.perTrackMultiBarRest).toBeNull();
+  });
+});
+
+/**
+ * A score whose staves carry their own transposition, the way a chart with `\transpose` does.
+ * The engine stores the NEGATED value on the staff, so a track written as -2 in the pitches array
+ * reads back as 2 here.
+ */
+function createTransposingScore() {
+  return {
+    tracks: [
+      { index: 0, staves: [{ transpositionPitch: 0 }] },
+      { index: 1, staves: [{ transpositionPitch: 2 }] },
+      { index: 2, staves: [{ transpositionPitch: 0 }] },
+    ],
+  };
+}
+
+describe('per-track transposition', () => {
+  it('leaves NO holes when a track other than the first is transposed', () => {
+    // The regression this pins: assigning straight into an empty array left indexes 0..n-1 as
+    // holes, and the engine's guard is `i < transpositionPitches.length`, not a presence test — so
+    // every lower staff read `-undefined` (NaN) and drew garbage, with synth voices keyed NaN that
+    // noteOff can never match. Asserted with `in`, because [ , , 3 ] and [0, 0, 3] are both length 3.
+    const api = createFakeApi();
+    api.score = createTransposingScore();
+
+    setTrackTransposition(api as unknown as AlphaTab.AlphaTabApi, 2, 3);
+
+    const pitches = api.settings.notation.transpositionPitches;
+    expect(pitches).toHaveLength(3);
+    for (const index of pitches.keys()) {
+      expect(index in pitches, `index ${index} is a hole`).toBe(true);
+      expect(Number.isNaN(pitches[index]), `index ${index} is NaN`).toBe(false);
+    }
+  });
+
+  it("fills the gap with each track's OWN transposition, not zero", () => {
+    // 0 is not "leave it alone" here: it would erase a transposition the FILE carries, which
+    // clearTrackTranspositions goes out of its way to preserve.
+    const api = createFakeApi();
+    api.score = createTransposingScore();
+
+    setTrackTransposition(api as unknown as AlphaTab.AlphaTabApi, 2, 3);
+
+    expect(api.settings.notation.transpositionPitches).toEqual([0, -2, 3]);
+  });
+
+  it('writes the first track without inventing any other entry', () => {
+    const api = createFakeApi();
+    api.score = createTransposingScore();
+
+    setTrackTransposition(api as unknown as AlphaTab.AlphaTabApi, 0, -5);
+
+    expect(api.settings.notation.transpositionPitches).toEqual([-5]);
+  });
+
+  it('pushes a RENDER, never a MIDI reload — it moves the notation, not the sound', () => {
+    // The slider is labelled "Transpose notation" for exactly this reason. If this ever becomes a
+    // 'midi' push, the label and this test have to change together.
+    const api = createFakeApi();
+    api.score = createTransposingScore();
+
+    setTrackTransposition(api as unknown as AlphaTab.AlphaTabApi, 1, 4);
+
+    expect(api.updateSettings).toHaveBeenCalledTimes(1);
+    expect(api.loadMidiForScore).not.toHaveBeenCalled();
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears every transposition and pushes settings, with no redraw', () => {
+    const api = createFakeApi();
+    api.score = createTransposingScore();
+    setTrackTransposition(api as unknown as AlphaTab.AlphaTabApi, 1, 4);
+    api.updateSettings.mockClear();
+    rafSpy.mockClear();
+
+    clearTrackTranspositions(api as unknown as AlphaTab.AlphaTabApi);
+
+    expect(api.settings.notation.transpositionPitches).toEqual([]);
+    expect(api.updateSettings).toHaveBeenCalledTimes(1);
+    expect(rafSpy).not.toHaveBeenCalled();
+  });
+
+  it('does nothing at all when there is no transposition to clear', () => {
+    const api = createFakeApi();
+
+    clearTrackTranspositions(api as unknown as AlphaTab.AlphaTabApi);
+
+    expect(api.updateSettings).not.toHaveBeenCalled();
   });
 });

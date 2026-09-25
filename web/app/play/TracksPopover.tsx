@@ -192,7 +192,7 @@ export function TracksPopover({
   const applyTransposeAudio = (index: number, semitones: number) => {
     const track = trackAt(index);
     if (!api || !track) return;
-    // Audio only — no re-render. This must not be fused with Transpose full.
+    // Audio only — no re-render. This must not be fused with Transpose notation.
     api.changeTrackTranspositionPitch([track], semitones);
     patch(index, { transposeAudio: semitones });
   };
@@ -342,7 +342,7 @@ export function TracksPopover({
               onExpandedChange={(next) => patch(track.index, { expanded: next })}
               // A drum "pitch" is an instrument identifier, not a note — transposing one is
               // meaningless, and it also broke playback (Transpose audio silenced the track,
-              // Transpose full changed nothing, and zero did not reliably restore sound). The
+              // Transpose notation changed nothing, and zero did not reliably restore sound). The
               // disclosure holds only those two sliders, so locking the control itself is enough.
               expandUnavailable={
                 track.isPercussion

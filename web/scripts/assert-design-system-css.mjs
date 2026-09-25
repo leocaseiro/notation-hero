@@ -3,7 +3,13 @@
 // app/globals.css does not import the design system's compiled stylesheet — it generates the
 // utilities by SCANNING client/ source files (`@source` globs). The selectors below reach the
 // bundle only through the `**/*.ts` glob, because they live in plain .ts modules that several
-// components share (Slider/SliderClasses.ts, DataTable/ColumnMeta.ts) rather than in a component.
+// components share (Slider/SliderClasses.ts, DataTable/ColumnMeta.ts, TrackRow/MixerClasses.ts)
+// rather than in a component.
+//
+// An entry only canaries the .ts scan when the utility appears NOWHERE ELSE. size-[2.125rem] below
+// is the counter-example: it is also written literally in TrackRow.tsx and MasterRow.tsx, so the
+// .tsx scan alone keeps it present and it proves nothing about MixerClasses.ts. The four entries
+// after it exist only in that module.
 //
 // That scan can come back stale with nothing else failing. Vercel derives its build-cache key from
 // the branch, framework, root directory, Node version and package manager — never from source
@@ -40,6 +46,16 @@ export const REQUIRED_SELECTORS = [
   ['.cursor-grab', 'the seek thumb loses its drag affordance'],
   ['.text-right', 'right-aligned table columns lose their alignment'],
   [String.raw`.size-\[2\.125rem\]`, 'every mixer icon button collapses to the Button default size'],
+  // Unique to TrackRow/MixerClasses.ts. Each fails invisibly: correct ARIA, correct behaviour,
+  // nothing painted. The grid entry carries the whole arbitrary value, so changing a mixer column
+  // means updating this line too — that is the point of naming the utility exactly.
+  [
+    String.raw`.\[grid-template-columns\:2\.125rem_minmax\(3\.25rem\,1fr\)_2\.125rem_2\.125rem_minmax\(4\.5rem\,1\.25fr\)_8\.625rem_2\.125rem\]`,
+    'the mixer grid collapses — every track row and the master footer lose their shared columns',
+  ],
+  [String.raw`.data-pressed\:bg-warning`, 'a muted track row shows no amber fill'],
+  [String.raw`.aria-pressed\:bg-warning`, "the master row's mute-all shows no amber fill"],
+  [String.raw`.aria-pressed\:bg-primary`, "the master row's solo-all shows no teal fill"],
 ];
 
 const cssFiles = (dir) =>
