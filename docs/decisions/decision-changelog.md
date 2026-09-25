@@ -45,6 +45,25 @@ select` and `input` (excluding `range`, `file` and `checkbox`, none of which is 
   Otherwise position is judged against that ancestor's own scrollable content range (`[0,
 scrollHeight]`) instead of the window — horizontally unchanged, since this ancestor only scrolls
   vertically. The 44px SIZE check is untouched either way.
+- **The code review of this PR then found two holes in that same gate, and both are closed.** The
+  mixer and toast exemptions above ran BEFORE the element's rectangle was taken, so they exempted
+  those controls from the off-screen POSITION check as well — which neither exemption's reasoning
+  argues for, and the mixer's fixed-width grid makes a narrow window its realistic failure. They
+  now resolve after the measurement and apply to the size verdict alone. Separately, the
+  container-aware branch could not fail vertically at all: `contentTop + height <= scrollHeight`
+  holds by construction for any child of a scroll container, so the relaxation silently dropped
+  vertical containment for every popover control rather than re-basing it. The branch now also
+  checks that the scrolling box is ITSELF on screen, which is the property the relaxation assumed.
+  `expectHitAreas` settles toasts before measuring, so the restored position check cannot race a
+  slide-in animation.
+- **The CSS build canary gains five `REQUIRED_SELECTORS` entries**, which is what AGENTS.md already
+  prescribes for a new shared class module — recorded here because it is a build-BLOCKING guard,
+  not because it is a new decision. Only one entry shipped with the component work, and that one
+  (`size-[2.125rem]`) is also written literally in `TrackRow.tsx` and `MasterRow.tsx`, so the `.tsx`
+  scan alone keeps it present and it proved nothing about `MixerClasses.ts`. The four added by the
+  review pass — the mixer's grid-template arbitrary value and three `aria-pressed:`/`data-pressed:`
+  fills — exist in no other file, and each fails invisibly: correct ARIA, correct behaviour,
+  nothing painted.
 - **Four new design-system components, not three** — `Accordion`, `SettingRow`, `TrackRow` and
   `MasterRow`, each with a Storybook story plus VR and axe baselines that block merge. A fifth
   component, `PopoverIconTrigger`, was extracted during a later refactor pass to share the
