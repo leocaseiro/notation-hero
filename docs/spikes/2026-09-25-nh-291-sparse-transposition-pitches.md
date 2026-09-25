@@ -165,7 +165,7 @@ drum note-on key after channel map lookup: NaN | Number.isNaN = true
 `ch9=undefined` is the whole story for a drum app: the drum channel's transposition becomes
 `undefined`, and every drum note-on key becomes `NaN`.
 
-### 2.2 Real charts — `node repro-realfiles.mjs "<ACDC>" "<Angra>"`
+### 2.2 Real scores — `node repro-realfiles.mjs "<ACDC>" "<Angra>"`
 
 ```
 ### ACDC-Back in black.gp — Transpose full +2 on row 2 (Bass)
@@ -355,7 +355,7 @@ re-seeding reproduces the same value.
 |                    | Severity             | Note                                                                                                                                                                                                                                                                                                              |
 | ------------------ | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | The `NaN` (holes)  | **P1, ships broken** | Silent — no throw, no console error. Drawn pitches go `NaN`, lower tracks' audio starts unreleasable NaN-pitched voices, drum channel 9 included. Reachable on the first drag on any non-percussion row above index 0.                                                                                            |
-| The `0` fill value | **P3**               | Only bites files carrying their own `transpositionPitch` (alphaTex `\transpose`, transposing MusicXML parts). None of the 25 local `.gp*` charts do — they carry `displayTranspositionPitch = -12`, a **different array** this code never touches. Worth fixing in the same edit because it costs one expression. |
+| The `0` fill value | **P3**               | Only bites files carrying their own `transpositionPitch` (alphaTex `\transpose`, transposing MusicXML parts). None of the 25 local `.gp*` scores do — they carry `displayTranspositionPitch = -12`, a **different array** this code never touches. Worth fixing in the same edit because it costs one expression. |
 
 ### Test that would have caught it
 
@@ -368,7 +368,7 @@ or an integration assertion that no `staff.transpositionPitch` is `NaN` after a 
 ## Appendix — scratchpad artefacts
 
 ```
-/private/tmp/claude-501/-Users-leocaseiro-Sites-notation-hero--claude-worktrees-spec-triage-code-review-loop-4927c4/1c49d4de-9c7a-47fc-a785-065a7d11d450/scratchpad/
+(the spike's session scratchpad — not committed; these are the throwaway scripts behind the run above)
   engine.patched.mjs     copy of the installed 1.8.4 dist + one `export { ModelUtils };` line
   repro.mjs              synthetic 3-track, cases A/B/C/D
   repro-punk.mjs         resources/charts/Punk.gp

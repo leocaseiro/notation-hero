@@ -145,7 +145,7 @@ describe('stylesheet round-trip', () => {
 });
 
 /**
- * A score whose staves carry their own transposition, the way a chart with `\transpose` does.
+ * A score whose staves carry their own transposition, the way a score with `\transpose` does.
  * The engine stores the NEGATED value on the staff, so a track written as -2 in the pitches array
  * reads back as 2 here.
  */

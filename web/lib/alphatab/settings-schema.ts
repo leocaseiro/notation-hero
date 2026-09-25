@@ -937,7 +937,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
       title: 'Stylesheet',
       settings: [
         // Every row in this group is exempt from the panel's "survives a reload" promise, and the
-        // exemption has to be ON SCREEN: someone who turns one on and opens the next chart finds it
+        // exemption has to be ON SCREEN: someone who turns one on and opens the next score finds it
         // back off, with nothing to distinguish that from a bug. One sentence, the same on all
         // twelve — they are all the open score's own value.
         {
