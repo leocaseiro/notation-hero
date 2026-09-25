@@ -2159,6 +2159,70 @@ test('a percussion track locks the expand control instead of the sliders behind 
   ).toBeVisible();
 });
 
+// The two per-track pitch controls, which shipped two defects between them because nothing here
+// was covered: a sparse write that poisoned every lower track, and a label promising audio from a
+// push that only ever redraws. One case each, both on track 1 — index >= 1 is exactly what the
+// sparse write got wrong, and Punk.gp's row 0 is percussion and cannot be expanded.
+test('Transpose audio reaches the engine as a per-track call', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  const transposeCalls = await recordApiCalls(page, 'changeTrackTranspositionPitch');
+
+  await page.getByTestId('tracks-trigger').click();
+  const guitar = page.getByTestId('track-row-1');
+  await guitar.getByRole('button', { name: /more controls/i }).click();
+  const slider = guitar.getByRole('slider', { name: /transpose audio/i });
+  const before = Number(await slider.getAttribute('aria-valuenow'));
+  await slider.focus();
+  await slider.press('ArrowRight');
+
+  // Filtered to track 1 and taken last, as the sibling volume case does: the mixer's playerReady
+  // re-assert also calls this method, and can otherwise occupy the first recorded call.
+  const recording = (await transposeCalls()) as [number[], number][];
+  const lastForGuitar = recording.findLast(([tracks]) => tracks[0] === 1);
+  expect(lastForGuitar).toEqual([[1], before + 1]);
+});
+
+test('Transpose notation writes a DENSE pitch array and never reloads the MIDI', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  const midiLoads = await recordApiCalls(page, 'loadMidiForScore');
+
+  await page.getByTestId('tracks-trigger').click();
+  const guitar = page.getByTestId('track-row-1');
+  await guitar.getByRole('button', { name: /more controls/i }).click();
+  const slider = guitar.getByRole('slider', { name: /transpose notation/i });
+  await slider.focus();
+  await slider.press('ArrowRight');
+
+  const pitches = await page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: { settings: { notation: { transpositionPitches: number[] } } };
+      } | null
+    )?.at;
+    if (!at) return null;
+    const raw = at.settings.notation.transpositionPitches;
+    return {
+      length: raw.length,
+      // A HOLE is what poisoned the lower tracks: AlphaTab loops `i < length` and reads a missing
+      // index as -undefined, NaN. `in` is the only way to tell [ , 1 ] from [0, 1].
+      holes: [...raw.keys()].filter((index) => !(index in raw)),
+      values: [...raw],
+    };
+  });
+
+  expect(pitches).not.toBeNull();
+  expect(pitches!.holes).toEqual([]);
+  expect(pitches!.values.some((value) => Number.isNaN(value))).toBe(false);
+  expect(pitches!.values[1]).not.toBe(0);
+
+  // Notation only. If this ever pushes MIDI, the slider's label has to change with it.
+  expect(await midiLoads()).toEqual([]);
+});
+
 // Two editors, one value, one writer. The Settings ▸ Player row and the mixer's Master row.
 test('the Settings master volume and the mixer Master row are one value', async ({ page }) => {
   await openFirstScore(page, 'Punk.gp');
