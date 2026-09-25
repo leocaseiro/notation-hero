@@ -31,6 +31,10 @@ async function expectNoViolations(page: Page, label: string): Promise<void> {
 // stricter rule is enforced here deliberately, and in the lane rather than by eye, so a later
 // control cannot quietly shrink below it.
 async function expectHitAreas(page: Page, label: string): Promise<void> {
+  // A toast mid-animation is still sliding into place, and the containment check below reads its
+  // position. Settle first, for the same reason the axe pass does — measure the rendered UI, not a
+  // transitional frame.
+  await settleToasts(page);
   const tooSmall = await page.evaluate(() =>
     [
       // The last selector is the seek rail. A Base UI slider's 44 px pointer target is neither a
@@ -67,18 +71,24 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
         // the old `r.width > 0 && r.height > 0` guard let exactly that worst case through while
         // still failing a milder 1 px one.
         if (el.getClientRects().length === 0) return false;
-        // The toast close button is sonner's own fixed 20x20 control. The maintainer wants it
-        // kept, and its resting state — including its hit area — is already gated by the design
-        // system's own Sonner stories, so this scoped skip (inside a toast only, not every
-        // control on the page) does not leave it unchecked.
-        if (el.closest('[data-sonner-toast]')) return false;
-        // Every mixer control (TrackRow, MasterRow) is a deliberate 34px box — MIXER_BUTTON_CLASS
-        // — so the row stays dense enough to fit render-select, solo, mute, volume and four
-        // per-staff toggles on one line. WCAG 2.5.8 AA asks only 24px; the 44px minimum below is
-        // this repo's own stricter AAA bar, and the mixer is a deliberate, scoped exception to it
-        // — not everything under 44px, only these two rows.
-        if (el.closest('[data-slot="track-row"], [data-slot="master-row"]')) return false;
         const r = el.getBoundingClientRect();
+        // Two deliberate exceptions to the 44px minimum — and to the SIZE verdict ONLY. They are
+        // resolved here, after the rectangle is measured, so the off-screen containment checks
+        // below still run for every control: nothing about a small-by-design box makes it fine for
+        // that box to sit past an edge where no pointer can reach it.
+        //
+        // 1. The toast close button is sonner's own fixed 20x20 control. The maintainer wants it
+        //    kept, and its resting state — including its hit area — is already gated by the design
+        //    system's own Sonner stories, so this scoped skip (inside a toast only, not every
+        //    control on the page) does not leave it unchecked.
+        // 2. Every mixer control (TrackRow, MasterRow) is a deliberate 34px box —
+        //    MIXER_BUTTON_CLASS — so the row stays dense enough to fit render-select, solo, mute,
+        //    volume and four per-staff toggles on one line. WCAG 2.5.8 AA asks only 24px; the 44px
+        //    minimum below is this repo's own stricter AAA bar, and the mixer is a deliberate,
+        //    scoped exception to it — not everything under 44px, only these two rows.
+        const sizeExempt =
+          el.closest('[data-sonner-toast], [data-slot="track-row"], [data-slot="master-row"]') !==
+          null;
         // A control clipped OUTSIDE the viewport still reports its full layout box here —
         // getBoundingClientRect ignores an ancestor's overflow:hidden — so a toggle pushed off the
         // screen by the shell would pass the size check below. Fail it on position too: anything
@@ -104,6 +114,18 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
         }
         if (scrollAncestor) {
           const ar = scrollAncestor.getBoundingClientRect();
+          // The relaxation below only holds while the scrolling box is itself reachable. Check
+          // that first: `contentTop + height <= scrollHeight` is true BY CONSTRUCTION for any
+          // child of a scroll container, so without this the vertical bound cannot fail at all
+          // and a popover pushed off the window would pass with every row inside it.
+          if (
+            ar.bottom > globalThis.innerHeight + 0.5 ||
+            ar.top < -0.5 ||
+            ar.right > globalThis.innerWidth + 0.5 ||
+            ar.left < -0.5
+          ) {
+            return true;
+          }
           const contentTop = r.top - ar.top + scrollAncestor.scrollTop;
           if (
             r.right > globalThis.innerWidth + 0.5 ||
@@ -121,7 +143,7 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
         ) {
           return true;
         }
-        return r.width < 44 || r.height < 44;
+        return sizeExempt ? false : r.width < 44 || r.height < 44;
       })
       .map((el) => ({
         id: (el as HTMLElement).dataset.testid ?? el.textContent?.trim().slice(0, 24) ?? '?',

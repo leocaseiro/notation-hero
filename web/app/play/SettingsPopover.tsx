@@ -49,9 +49,9 @@ interface SettingsPopoverProps {
   onAction: (action: SettingAction) => void;
   /**
    * Set while the file plays its own recording: the reason the two rows below are unavailable.
-   * Consumed only as a boolean — `Boolean(mixUnavailable)` — to decide `disabled` on the
-   * metronome-volume and count-in-volume rows; the row's own label is what tells a person why, the
-   * same way the transport's two buttons already work.
+   * It both DISABLES the metronome-volume and count-in-volume rows and becomes their description,
+   * so a greyed row says why it is greyed — the same reason string the transport's Metronome and
+   * Count-In buttons already show. A control must never look dead with no explanation.
    */
   mixUnavailable?: string;
 }
@@ -153,30 +153,33 @@ export function SettingsPopover({
                   {group.title}
                 </AccordionTrigger>
                 <AccordionContent>
-                  {group.settings.map((setting) => (
-                    <SettingRow
-                      key={setting.id}
-                      id={setting.id}
-                      label={setting.label}
-                      control={setting.control}
-                      description={setting.description}
-                      value={valueOf(setting)}
-                      onChange={(next) => change(setting, next)}
-                      onAction={
-                        setting.source === 'action' ? () => onAction(setting.action) : undefined
-                      }
-                      // The path a live e2e case checks against the real AlphaTab settings object
-                      // — a static attribute, present only on the rows it can check.
-                      data-setting-path={setting.source === 'settings' ? setting.path : undefined}
-                      // The only two rows the backing-track synthesizer ignores. A control must
-                      // never look live and do nothing.
-                      disabled={
-                        Boolean(mixUnavailable) &&
-                        setting.source === 'api' &&
-                        (setting.key === 'metronomeVolume' || setting.key === 'countInVolume')
-                      }
-                    />
-                  ))}
+                  {group.settings.map((setting) => {
+                    // The only two rows the backing-track synthesizer ignores. A control must
+                    // never look live and do nothing — and a disabled one must say why, so the
+                    // reason and the disabling are derived from the SAME value and cannot drift.
+                    const mixDisabled =
+                      Boolean(mixUnavailable) &&
+                      setting.source === 'api' &&
+                      (setting.key === 'metronomeVolume' || setting.key === 'countInVolume');
+                    return (
+                      <SettingRow
+                        key={setting.id}
+                        id={setting.id}
+                        label={setting.label}
+                        control={setting.control}
+                        description={mixDisabled ? mixUnavailable : setting.description}
+                        value={valueOf(setting)}
+                        onChange={(next) => change(setting, next)}
+                        onAction={
+                          setting.source === 'action' ? () => onAction(setting.action) : undefined
+                        }
+                        // The path a live e2e case checks against the real AlphaTab settings
+                        // object — a static attribute, present only on the rows it can check.
+                        data-setting-path={setting.source === 'settings' ? setting.path : undefined}
+                        disabled={mixDisabled}
+                      />
+                    );
+                  })}
                 </AccordionContent>
               </AccordionItem>
             ))}

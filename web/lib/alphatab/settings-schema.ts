@@ -206,6 +206,30 @@ const TRACK_NAME_ORIENTATION_LABELS: Partial<Record<string, string>> = {
 };
 
 /**
+ * Every font row is a CSS font shorthand, and AlphaTab's own parser THROWS on a partial one:
+ * an empty field or a lone `bold` raises 'Missing font size', and a lone `12px` raises
+ * 'Missing font list'. SettingRow only gates a text row when the row supplies this, so without it
+ * an unparseable draft reaches both the engine and storage.
+ *
+ * The accepted units are exactly the ones Font.fromJson converts — px, pt, em and the CSS keyword
+ * sizes. `rem` and a bare unitless number are rejected on purpose: the engine does not throw on
+ * them, it silently falls back to 12px, which is worse than being told the value is wrong.
+ */
+const FONT_STYLE_OR_WEIGHT = /^(?:normal|italic|oblique|small-caps|bold|bolder|lighter|[1-9]00)$/i;
+const FONT_SIZE =
+  /^(?:\d+(?:\.\d+)?(?:px|pt|em)|xx-small|x-small|smaller|small|medium|larger|large|x-large|xx-large)$/i;
+
+const isFontShorthand = (draft: string) => {
+  const parts = draft.trim().split(/\s+/);
+  let index = 0;
+  while (index < parts.length && FONT_STYLE_OR_WEIGHT.test(parts[index])) index += 1;
+  // A size token, and then at least one family token after it — the two things whose absence makes
+  // AlphaTab's parser throw. The family list itself is not validated: the parser accepts anything
+  // there, and a font the machine does not have falls back rather than failing.
+  return index < parts.length - 1 && FONT_SIZE.test(parts[index]);
+};
+
+/**
  * The eight groups, in the order the popover shows them. They stay exactly these: v0.1 layers
  * search and tabs over the same rows, so a re-grouping now would be re-done then.
  *
@@ -244,8 +268,9 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           label: 'Metronome volume',
           control: { kind: 'range', min: 0, max: 1, step: 0.05 },
           // This row and the count-in-volume row beside it disable on `mixUnavailable` while the
-          // file plays its own recording — the same rule, and the same reason string, as the
-          // transport's Metronome and Count-In buttons. They are the only two Player rows that do.
+          // file plays its own recording, and SHOW it as their description — the same rule, and
+          // the same reason string, as the transport's Metronome and Count-In buttons. They are
+          // the only two Player rows that do.
         },
         {
           id: 'player-count-in-volume',
@@ -609,7 +634,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Copyright line',
           path: 'display.resources.elementFonts.ScoreCopyright',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -617,7 +642,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Title',
           path: 'display.resources.elementFonts.ScoreTitle',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -625,7 +650,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Subtitle',
           path: 'display.resources.elementFonts.ScoreSubTitle',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -633,7 +658,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Lyrics',
           path: 'display.resources.elementFonts.ScoreWords',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -641,7 +666,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Beat timer',
           path: 'display.resources.elementFonts.EffectBeatTimer',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -649,7 +674,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Directions text',
           path: 'display.resources.elementFonts.EffectDirections',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -657,7 +682,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Chord diagram fret numbers',
           path: 'display.resources.elementFonts.ChordDiagramFretboardNumbers',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -665,7 +690,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Section markers',
           path: 'display.resources.elementFonts.EffectMarker',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -673,7 +698,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Bar numbers',
           path: 'display.resources.elementFonts.BarNumber',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -681,7 +706,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Numbered notation',
           path: 'display.resources.numberedNotationFont',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -689,7 +714,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Tablature numbers',
           path: 'display.resources.tablatureFont',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
         {
@@ -697,7 +722,7 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Grace notes',
           path: 'display.resources.graceFont',
-          control: { kind: 'text' },
+          control: { kind: 'text', validate: isFontShorthand },
           apply: 'render',
         },
       ],
@@ -1210,4 +1235,57 @@ export const SETTING_OPTION_VALUES: Readonly<Record<string, readonly string[]>> 
     'EnabledExternalMedia',
   ],
   'player.scrollMode': ['Off', 'Continuous', 'OffScreen', 'Smooth'],
+};
+
+/**
+ * Every number and range row's declared BOUNDS, by dot-path — the same hand-maintained mirror as
+ * SETTING_OPTION_VALUES above, kept honest by the same drift test, and read by the settings-storage
+ * restore path before the engine exists.
+ *
+ * A stored number outside its row's range is not caught by anything else: the per-key merge gates
+ * on `typeof` only, and the option lists gate enum NAMES. The field's own clamp runs on commit
+ * (blur or Enter), so closing the tab mid-edit persists the unclamped draft and every later visit
+ * restores it. Clamping here is the only place that sees it.
+ *
+ * The two rows with neither bound — player.scrollOffsetX/Y, which are legitimately unbounded and
+ * may be negative — are deliberately absent rather than present and empty.
+ */
+export const SETTING_NUMERIC_BOUNDS: Readonly<
+  Record<string, { readonly min?: number; readonly max?: number }>
+> = {
+  'player.songBookBendDuration': { min: 0 },
+  'player.songBookDipDuration': { min: 0 },
+  'player.vibrato.noteWideLength': { min: 0 },
+  'player.vibrato.noteWideAmplitude': { min: 0 },
+  'player.vibrato.noteSlightLength': { min: 0 },
+  'player.vibrato.noteSlightAmplitude': { min: 0 },
+  'player.vibrato.beatWideLength': { min: 0 },
+  'player.vibrato.beatWideAmplitude': { min: 0 },
+  'player.vibrato.beatSlightLength': { min: 0 },
+  'player.vibrato.beatSlightAmplitude': { min: 0 },
+  'player.slide.simpleSlidePitchOffset': { min: 0 },
+  'player.slide.simpleSlideDurationRatio': { min: 0, max: 1 },
+  'player.slide.shiftSlideDurationRatio': { min: 0, max: 1 },
+  'display.scale': { min: 0.25, max: 3 },
+  'display.stretchForce': { min: 0.1 },
+  'display.barsPerRow': { min: -1 },
+  'display.startBar': { min: 1 },
+  'display.barCount': { min: -1 },
+  'display.padding.0': { min: 0 },
+  'display.padding.1': { min: 0 },
+  'display.firstSystemPaddingTop': { min: 0 },
+  'display.systemPaddingTop': { min: 0 },
+  'display.lastSystemPaddingBottom': { min: 0 },
+  'display.systemPaddingBottom': { min: 0 },
+  'display.systemLabelPaddingLeft': { min: 0 },
+  'display.systemLabelPaddingRight': { min: 0 },
+  'display.accoladeBarPaddingRight': { min: 0 },
+  'display.notationStaffPaddingTop': { min: 0 },
+  'display.notationStaffPaddingBottom': { min: 0 },
+  'display.effectStaffPaddingTop': { min: 0 },
+  'display.effectStaffPaddingBottom': { min: 0 },
+  'display.firstStaffPaddingLeft': { min: 0 },
+  'display.staffPaddingLeft': { min: 0 },
+  'notation.rhythmHeight': { min: 0 },
+  'notation.slurHeight': { min: 0 },
 };

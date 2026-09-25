@@ -21,6 +21,7 @@ import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
 import { applySettingsJson } from '../../lib/alphatab/live-settings';
 import {
   DEFAULT_PLAYER_SETTINGS,
+  SETTING_NUMERIC_BOUNDS,
   SETTING_OPTION_VALUES,
   writeSettingValue,
 } from '../../lib/alphatab/settings-schema';
@@ -151,16 +152,24 @@ function Player() {
   // setSettings would trip it. The initialiser also runs for the server render, where there is no
   // storage: it yields the defaults there, and the HTML is identical either way because nothing on
   // the page renders a setting until the popover is opened.
-  const [restored] = useState(() =>
+  const [restored] = useState(() => {
     // eslint-disable-next-line sonarjs/different-types-comparison -- true at runtime during server rendering, where `window` genuinely does not exist; the DOM lib's ambient types just do not say so
-    globalThis.window === undefined
-      ? { settings: DEFAULT_PLAYER_SETTINGS, reset: false }
-      : loadStoredSettings(
-          globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY),
-          DEFAULT_PLAYER_SETTINGS,
-          SETTING_OPTION_VALUES,
-        ),
-  );
+    if (globalThis.window === undefined) return { settings: DEFAULT_PLAYER_SETTINGS, reset: false };
+    try {
+      return loadStoredSettings(
+        globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY),
+        DEFAULT_PLAYER_SETTINGS,
+        SETTING_OPTION_VALUES,
+        SETTING_NUMERIC_BOUNDS,
+      );
+    } catch {
+      // A browser with site data blocked makes the localStorage GETTER itself throw, not only
+      // setItem — and this initialiser runs during render, so an unguarded throw takes the whole
+      // page. Blocked storage is not a corrupt document: reset stays false, so no toast fires and
+      // no repair write happens. Both setItem calls below are guarded the same way.
+      return { settings: DEFAULT_PLAYER_SETTINGS, reset: false };
+    }
+  });
   // The Settings popover's edit state: the whole document the shell pushes into the live engine on
   // every change (see applySetting below). Declared here, above useAlphaTab, so a lazily
   // initialised read of the stored value can reach it without closing over a const declared later.
@@ -563,6 +572,19 @@ function Player() {
       // Compute, set, THEN call the engine — never call the engine inside the setState updater.
       // React may run an updater twice, which would push the settings and redraw the score twice.
       const next = writeSettingValue(settings, path, value);
+      // The engine is the authority on whether a value is usable, so ask it BEFORE the row shows
+      // the new value and BEFORE it is stored. Persisting first means a value it rejects is
+      // already saved: every later visit re-hits the same rejection inside fillFromJson, which
+      // aborts mid-tree and silently truncates the whole restore. Failing here costs the edit,
+      // not every future setting — and nothing is set, so there is nothing to roll back.
+      if (api) {
+        try {
+          applySettingsJson(api, next, apply);
+        } catch {
+          toast.error('That value could not be applied.');
+          return;
+        }
+      }
       setSettings(next);
       try {
         globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(next));
@@ -570,7 +592,6 @@ function Player() {
         // Private browsing and a full quota both throw here. Losing persistence is survivable;
         // losing the player is not, so swallow it rather than breaking the edit.
       }
-      if (api) applySettingsJson(api, next, apply);
       // updateSettings() swaps the player synchronously, so the new mode is readable now.
       // playerReady arrives later, after the soundfont, which is too late: the metronome would
       // stay locked for the whole download after a switch to the synthesizer.

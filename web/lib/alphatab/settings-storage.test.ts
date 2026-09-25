@@ -5,18 +5,20 @@ import { loadStoredSettings, serializeSettings } from './settings-storage';
 const DEFAULTS = { display: { scale: 1 }, player: { enableCursor: true } };
 // Every option-bearing row's allowed VALUES, by dot-path — what the schema offers.
 const OPTIONS = { 'display.layoutMode': ['Page', 'Horizontal'] } as const;
+// Every number/range row's declared min/max, by dot-path — what the schema's controls declare.
+const BOUNDS = { 'display.scale': { min: 0.25, max: 3 } } as const;
 
 describe('loadStoredSettings', () => {
   it('round-trips every stored value', () => {
     const stored = serializeSettings({ display: { scale: 1.4 }, player: { enableCursor: false } });
-    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS);
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
 
     expect(settings).toEqual({ display: { scale: 1.4 }, player: { enableCursor: false } });
     expect(reset).toBe(false);
   });
 
   it('yields the defaults for a first visit, and does NOT call that a reset', () => {
-    const { settings, reset } = loadStoredSettings(null, DEFAULTS, OPTIONS);
+    const { settings, reset } = loadStoredSettings(null, DEFAULTS, OPTIONS, BOUNDS);
     expect(settings).toEqual(DEFAULTS);
     // A first visit is not a corruption.
     expect(reset).toBe(false);
@@ -24,13 +26,13 @@ describe('loadStoredSettings', () => {
 
   // A bad stored value must never break the player, and must not vanish quietly.
   it('falls back to the defaults and reports a reset on unparseable JSON', () => {
-    const { settings, reset } = loadStoredSettings('{not json', DEFAULTS, OPTIONS);
+    const { settings, reset } = loadStoredSettings('{not json', DEFAULTS, OPTIONS, BOUNDS);
     expect(settings).toEqual(DEFAULTS);
     expect(reset).toBe(true);
   });
 
   it('falls back and reports a reset on a wrong-shaped value', () => {
-    const { settings, reset } = loadStoredSettings('"a string"', DEFAULTS, OPTIONS);
+    const { settings, reset } = loadStoredSettings('"a string"', DEFAULTS, OPTIONS, BOUNDS);
     expect(settings).toEqual(DEFAULTS);
     expect(reset).toBe(true);
   });
@@ -39,7 +41,7 @@ describe('loadStoredSettings', () => {
   // these same settings, so the stored shape changes soon after v0 ships.
   it('keeps the keys an older version has and fills the rest from the defaults', () => {
     const stored = JSON.stringify({ version: 0, settings: { display: { scale: 1.4 } } });
-    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS);
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
 
     expect(settings).toEqual({ display: { scale: 1.4 }, player: { enableCursor: true } });
     // A partial merge is not a reset.
@@ -56,7 +58,7 @@ describe('loadStoredSettings', () => {
       version: 1,
       settings: { display: { layoutMode: 'NotAMode' } },
     });
-    const { settings, reset } = loadStoredSettings(stored, defaults, OPTIONS);
+    const { settings, reset } = loadStoredSettings(stored, defaults, OPTIONS, BOUNDS);
 
     expect(settings).toEqual({ display: { layoutMode: 'Page' } });
     // A typo in storage is a corruption the person should be told about.
@@ -68,7 +70,7 @@ describe('loadStoredSettings', () => {
       version: 1,
       settings: { display: { scale: 1.4 }, bogus: { nope: 1 } },
     });
-    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS);
+    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
     expect(settings).not.toHaveProperty('bogus');
   });
 
@@ -77,13 +79,13 @@ describe('loadStoredSettings', () => {
   it('merges an array element by element, and drops a malformed one', () => {
     const defaults = { display: { padding: [35, 35] } };
     const good = JSON.stringify({ version: 1, settings: { display: { padding: [10, 20] } } });
-    expect(loadStoredSettings(good, defaults, OPTIONS).settings).toEqual({
+    expect(loadStoredSettings(good, defaults, OPTIONS, BOUNDS).settings).toEqual({
       display: { padding: [10, 20] },
     });
 
     for (const bad of [[10], [10, 'wide'], { 0: 10, 1: 20 }, null]) {
       const stored = JSON.stringify({ version: 1, settings: { display: { padding: bad } } });
-      expect(loadStoredSettings(stored, defaults, OPTIONS).settings).toEqual(defaults);
+      expect(loadStoredSettings(stored, defaults, OPTIONS, BOUNDS).settings).toEqual(defaults);
     }
   });
 
@@ -91,7 +93,33 @@ describe('loadStoredSettings', () => {
   // belongs breaks the layout without throwing, so the default wins.
   it('drops a stored value whose type differs from the default', () => {
     const stored = JSON.stringify({ version: 1, settings: { display: { scale: 'huge' } } });
-    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS);
+    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
     expect(settings).toEqual(DEFAULTS);
+  });
+
+  it('clamps a stored number back inside its row range, and calls that a reset', () => {
+    // The field clamps on blur/Enter only, so a tab closed mid-edit persists the raw draft. This
+    // is the only place that sees it on the way back in.
+    const stored = serializeSettings({ display: { scale: 9 }, player: { enableCursor: true } });
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+
+    expect(settings).toEqual({ display: { scale: 3 }, player: { enableCursor: true } });
+    expect(reset).toBe(true);
+  });
+
+  it('clamps up to the minimum as well as down to the maximum', () => {
+    const stored = serializeSettings({ display: { scale: -5 }, player: { enableCursor: true } });
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+
+    expect(settings).toEqual({ display: { scale: 0.25 }, player: { enableCursor: true } });
+    expect(reset).toBe(true);
+  });
+
+  it('leaves an in-range number alone and does NOT call that a reset', () => {
+    const stored = serializeSettings({ display: { scale: 1.4 }, player: { enableCursor: true } });
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+
+    expect(settings).toEqual({ display: { scale: 1.4 }, player: { enableCursor: true } });
+    expect(reset).toBe(false);
   });
 });

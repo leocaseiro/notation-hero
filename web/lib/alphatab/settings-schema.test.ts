@@ -6,6 +6,7 @@ import { readSettingValue } from './settings-paths';
 import {
   buildSettingGroups,
   DEFAULT_PLAYER_SETTINGS,
+  SETTING_NUMERIC_BOUNDS,
   SETTING_OPTION_VALUES,
 } from './settings-schema';
 import type { PlayerSettingsJson } from './settings-paths';
@@ -168,6 +169,36 @@ it('SETTING_OPTION_VALUES still matches every settings-row option list', () => {
       expect(SETTING_OPTION_VALUES[row.path], row.path).toEqual(
         row.control.options.map((option) => option.value),
       );
+    }
+  }
+});
+
+// The bounds a control declares, in the exact shape SETTING_NUMERIC_BOUNDS stores — `undefined`
+// for a row that declares neither, so an unbounded row is asserted absent rather than empty.
+function declaredBounds(control: {
+  min?: number;
+  max?: number;
+}): { min?: number; max?: number } | undefined {
+  const { min, max } = control;
+  if (min === undefined && max === undefined) return undefined;
+  const bounds: { min?: number; max?: number } = {};
+  if (min !== undefined) bounds.min = min;
+  if (max !== undefined) bounds.max = max;
+  return bounds;
+}
+
+it('SETTING_NUMERIC_BOUNDS still matches every settings-row min/max', () => {
+  // Same hazard as the option lists above, one file over: the restore path clamps stored numbers
+  // against this hand-maintained mirror (PlayerShell reads it before the engine exists). A row
+  // whose range is widened here but not there would keep clamping to the old limit and fire a
+  // false "settings were reset" toast; one narrowed here but not there would let the bad value
+  // through. Asserted in BOTH directions so a bound cannot be added, changed or forgotten.
+  for (const group of buildSettingGroups(engine)) {
+    for (const row of group.settings) {
+      if (row.source !== 'settings') continue;
+      if (row.control.kind !== 'number' && row.control.kind !== 'range') continue;
+      // An unbounded row is absent from the map, never present and empty.
+      expect(SETTING_NUMERIC_BOUNDS[row.path], row.path).toEqual(declaredBounds(row.control));
     }
   }
 });

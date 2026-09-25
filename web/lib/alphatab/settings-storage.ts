@@ -78,10 +78,45 @@ function dropUnknownOptions(
 }
 
 /**
+ * Pull any stored number back inside its row's declared range. Runs in the same pass as
+ * dropUnknownOptions, for the same reason: it sees the whole document before the restore push.
+ *
+ * Nothing else catches this. The merge above gates on `typeof`, so -5 and 1e9 both pass against a
+ * numeric default, and the option lists gate enum NAMES. The field's own clamp runs only on commit
+ * (blur or Enter) — closing the tab mid-edit persists the unclamped draft, and every later visit
+ * restores it and pushes it into the engine. Clamping rather than resetting to the default keeps
+ * the intent of what was typed: a 5 typed into a row that stops at 3 becomes 3, not the shipped
+ * default.
+ */
+function clampToBounds(
+  merged: PlayerSettingsJson,
+  bounds: Readonly<Record<string, { readonly min?: number; readonly max?: number }>>,
+): { settings: PlayerSettingsJson; clamped: boolean } {
+  let settings = merged;
+  let clamped = false;
+  for (const [path, { min, max }] of Object.entries(bounds)) {
+    const value = readSettingValue(settings, path);
+    // A path the stored document does not carry is not a violation — the merge already backfilled
+    // it from the defaults. A non-number never got past the merge's type check either.
+    if (typeof value !== 'number') continue;
+    // NaN and the infinities survive JSON.parse as numbers via a crafted document, and compare
+    // false against every bound, so they are pinned to the nearer end rather than left through.
+    const bounded = Number.isFinite(value)
+      ? Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? Number.NEGATIVE_INFINITY, value))
+      : (min ?? max ?? 0);
+    if (bounded !== value) {
+      settings = writeSettingValue(settings, path, bounded);
+      clamped = true;
+    }
+  }
+  return { settings, clamped };
+}
+
+/**
  * Read the stored settings, merging per key against the shipped defaults.
  *
- * `reset` is true only when something was actually WRONG — unparseable, the wrong shape, or a
- * value its row does not offer. A first visit (null) and an older version that merges cleanly are
+ * `reset` is true only when something was actually WRONG — unparseable, the wrong shape, a value
+ * its row does not offer, or a number outside its row's declared range. A first visit (null) and an older version that merges cleanly are
  * both normal, and raising a "settings were reset" warning for either would cry wolf.
  *
  * Merging per key rather than discarding the whole object matters because the stored shape can
@@ -94,6 +129,9 @@ export function loadStoredSettings(
   // Every option-bearing row's allowed VALUES, by dot-path. The same-type check in the merge above
   // cannot see a bad enum name: the good one and the typo are both strings.
   optionValues: Readonly<Record<string, readonly string[]>>,
+  // Every number/range row's declared min/max, by dot-path. The same-type check in the merge above
+  // cannot see an out-of-range number: -5 and 0 are both numbers.
+  numericBounds: Readonly<Record<string, { readonly min?: number; readonly max?: number }>>,
 ): { settings: PlayerSettingsJson; reset: boolean } {
   if (raw === null) return { settings: defaults, reset: false };
 
@@ -110,6 +148,8 @@ export function loadStoredSettings(
 
   const merged = mergeAgainstDefaults(parsed.settings, defaults);
   // A value no row offers is a corruption, not an older shape: say so, so the warning fires.
-  const { settings, dropped } = dropUnknownOptions(merged, defaults, optionValues);
-  return { settings, reset: dropped };
+  const { settings: gated, dropped } = dropUnknownOptions(merged, defaults, optionValues);
+  // Out of its row's range is the same kind of corruption, and reuses the same warning.
+  const { settings, clamped } = clampToBounds(gated, numericBounds);
+  return { settings, reset: dropped || clamped };
 }
