@@ -81,14 +81,20 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
         //    kept, and its resting state — including its hit area — is already gated by the design
         //    system's own Sonner stories, so this scoped skip (inside a toast only, not every
         //    control on the page) does not leave it unchecked.
-        // 2. Every mixer control (TrackRow, MasterRow) is a deliberate 34px box —
+        // 2. Every mixer BUTTON (TrackRow, MasterRow) is a deliberate 34px box —
         //    MIXER_BUTTON_CLASS — so the row stays dense enough to fit render-select, solo, mute,
         //    volume and four per-staff toggles on one line. WCAG 2.5.8 AA asks only 24px; the 44px
         //    minimum below is this repo's own stricter AAA bar, and the mixer is a deliberate,
-        //    scoped exception to it — not everything under 44px, only these two rows.
+        //    scoped exception to it — not everything under 44px, and not even everything in these
+        //    two rows. It is matched on the ELEMENT (`matches`), not on its ancestry (`closest`),
+        //    so the sliders sharing these rows — per-track volume, both Transpose rows, Master
+        //    volume — keep the full 44px verdict. They are already h-11 w-full and pass it; a rail
+        //    painted 0px wide is the NH-315 failure this gate exists to catch, so it must not be
+        //    able to hide behind a button's exemption.
         const sizeExempt =
-          el.closest('[data-sonner-toast], [data-slot="track-row"], [data-slot="master-row"]') !==
-          null;
+          el.closest('[data-sonner-toast]') !== null ||
+          (el.closest('[data-slot="track-row"], [data-slot="master-row"]') !== null &&
+            el.matches('button, [role="button"]'));
         // A control clipped OUTSIDE the viewport still reports its full layout box here —
         // getBoundingClientRect ignores an ancestor's overflow:hidden — so a toggle pushed off the
         // screen by the shell would pass the size check below. Fail it on position too: anything
