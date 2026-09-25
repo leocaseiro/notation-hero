@@ -57,21 +57,32 @@ const stubEnumName = (_key: StylesheetKey, value: number) => String(value);
 // live-settings.ts calls the bare global requestAnimationFrame, which does not exist in web/'s
 // node test environment (no DOM). Stubbed per test so the queued-frame assertions are exact.
 let rafSpy: ReturnType<typeof vi.fn>;
-let frameCallback: FrameRequestCallback | undefined;
+// EVERY queued callback, not just the last: live-settings has two independent queues (render and
+// midi), so a single slot would silently drop one — and the dropped one leaves its module flag
+// stuck `true`, which makes the NEXT test's queue early-return and its rafSpy count come up short.
+let frameCallbacks: FrameRequestCallback[] = [];
+
+/** Run everything queued so far, in order, and empty the queue — one animation frame. */
+function runFrame(): void {
+  const queued = frameCallbacks;
+  frameCallbacks = [];
+  for (const cb of queued) cb(0);
+}
 
 beforeEach(() => {
-  frameCallback = undefined;
+  frameCallbacks = [];
   rafSpy = vi.fn((cb: FrameRequestCallback) => {
-    frameCallback = cb;
+    frameCallbacks.push(cb);
     return 0;
   });
   vi.stubGlobal('requestAnimationFrame', rafSpy);
 });
 
 afterEach(() => {
-  // The module's `renderQueued` flag is module state, not test state: a test that queues a frame
-  // and never runs it would leave the NEXT test's coalescing count wrong. Run anything left queued.
-  frameCallback?.(0);
+  // The module's `renderQueued` and `midiQueued` flags are module state, not test state: a test
+  // that queues a frame and never runs it would leave the NEXT test's coalescing count wrong. Run
+  // anything left queued.
+  runFrame();
   vi.unstubAllGlobals();
 });
 
@@ -88,8 +99,45 @@ describe('applySettingsJson — coalescing', () => {
     expect(rafSpy).toHaveBeenCalledTimes(1);
     expect(api.render).not.toHaveBeenCalled();
 
-    frameCallback?.(0);
+    runFrame();
     expect(api.render).toHaveBeenCalledTimes(1);
+  });
+
+  // The sequence a number row ACTUALLY emits for typing "100", measured against SettingRow: it
+  // reports 1, 10 and 100 while typing (its onChange fires per keystroke — `commit` gates the
+  // CLAMP, not whether it reports) and 100 once more on blur. Thirteen of the fourteen
+  // apply:'midi' rows are number rows, so this is the real shape of editing one.
+  //
+  // Uncoalesced that was four calls to loadMidiForScore, and each one regenerates the whole
+  // MidiFile and then hits AlphaSynth.loadMidiFile, which does `this.stop()` and
+  // `this.tickPosition = 0` — so the song stopped and jumped back to the start on every keystroke,
+  // against a PR that promises neither popover blocks playback.
+  it('four MIDI pushes — one per keystroke of "100" plus the blur — reload the MIDI ONCE', () => {
+    const api = createFakeApi();
+    const alphaTabApi = api as unknown as AlphaTab.AlphaTabApi;
+
+    for (const noteWideLength of [1, 10, 100, 100]) {
+      applySettingsJson(alphaTabApi, { player: { vibrato: { noteWideLength } } }, 'midi');
+    }
+
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+    expect(api.loadMidiForScore).not.toHaveBeenCalled();
+
+    runFrame();
+    expect(api.loadMidiForScore).toHaveBeenCalledTimes(1);
+  });
+
+  // Its own flag: a notation row and a MIDI row edited in the same frame must both survive.
+  it('a render push and a midi push in one frame queue independently', () => {
+    const api = createFakeApi();
+    const alphaTabApi = api as unknown as AlphaTab.AlphaTabApi;
+
+    applySettingsJson(alphaTabApi, { display: { scale: 1.2 } }, 'render');
+    applySettingsJson(alphaTabApi, { player: { vibrato: { noteWideLength: 5 } } }, 'midi');
+
+    runFrame();
+    expect(api.render).toHaveBeenCalledTimes(1);
+    expect(api.loadMidiForScore).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -103,13 +151,17 @@ describe('applySettingsJson — push modes', () => {
     expect(api.render).not.toHaveBeenCalled();
   });
 
-  it("a 'midi' apply reloads the MIDI and calls neither updateSettings nor render", () => {
+  it("a 'midi' apply QUEUES the MIDI reload and calls neither updateSettings nor render", () => {
     const api = createFakeApi();
     applySettingsJson(api as unknown as AlphaTab.AlphaTabApi, {}, 'midi');
 
+    // Queued, not immediate — the reload is the expensive branch and it stops the player.
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+    expect(api.loadMidiForScore).not.toHaveBeenCalled();
+
+    runFrame();
     expect(api.loadMidiForScore).toHaveBeenCalledTimes(1);
     expect(api.updateSettings).not.toHaveBeenCalled();
-    expect(rafSpy).not.toHaveBeenCalled();
     expect(api.render).not.toHaveBeenCalled();
   });
 });

@@ -20,7 +20,7 @@ function pushSettings(api: AlphaTab.AlphaTabApi, apply: SettingApply): void {
   // unavoidable in 1.8.4 — do not try to restore the playhead here, and do not widen the "neither
   // popover blocks the player" promise to cover it.
   if (apply === 'midi') {
-    api.loadMidiForScore();
+    queueMidi(api);
     return;
   }
   api.updateSettings();
@@ -43,6 +43,28 @@ function queueRender(api: AlphaTab.AlphaTabApi): void {
   requestAnimationFrame(() => {
     renderQueued = false;
     api.render();
+  });
+}
+
+// ONE MIDI rebuild per frame, for the same reason and by the same rule as queueRender above — and
+// it matters more here, because this is the expensive branch. Measured against the sequence a
+// number row actually emits: typing "100" reports 1, 10, 100 while typing and 100 again on blur,
+// so FOUR times, and each one regenerated the whole MidiFile (MidiFileGenerator.generate over every
+// bar) and then called AlphaSynth.loadMidiFile, which does `this.stop()` and `this.tickPosition =
+// 0` — stopping the player and rewinding it, once per keystroke.
+//
+// Coalescing is safe because applySettingsJson has ALREADY written the value into api.settings
+// synchronously before this runs: the deferred call reads the settings tree as it stands a frame
+// later, which is the last value typed. Only the rebuild is deferred, never the write.
+//
+// Its own flag, not renderQueued: a 'render' row and a 'midi' row must not cancel each other.
+let midiQueued = false;
+function queueMidi(api: AlphaTab.AlphaTabApi): void {
+  if (midiQueued) return;
+  midiQueued = true;
+  requestAnimationFrame(() => {
+    midiQueued = false;
+    api.loadMidiForScore();
   });
 }
 
