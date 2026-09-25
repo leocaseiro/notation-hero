@@ -10,7 +10,7 @@ import {
   ScrollArea,
   SettingRow,
 } from '@notation-hero/client';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 import { readStylesheetValues, setStylesheetValue } from '../../lib/alphatab/live-settings';
@@ -83,7 +83,11 @@ export function SettingsPopover({
 }: Readonly<SettingsPopoverProps>) {
   const { engine } = useAlphaTabEngine();
   // The enum options come off the loaded namespace, so the groups cannot exist before it does.
-  const groups = engine ? buildSettingGroups(engine) : [];
+  // PlayerShell re-renders about once per animation frame while the transport runs, and this
+  // rebuilt all ninety descriptors — with their enum option arrays — every time, open or not, on
+  // the thread the synth is also using. The tree is a pure function of the engine's enum
+  // namespaces; every live value reaches the rows through valueOf below, not through here.
+  const groups = useMemo(() => (engine ? buildSettingGroups(engine) : []), [engine]);
 
   // The Stylesheet group belongs to the OPEN SCORE, not to the app: every score brings its own
   // stylesheet, so the values are re-read each time one loads, and they are never stored.

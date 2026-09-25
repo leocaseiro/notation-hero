@@ -215,6 +215,13 @@ const TRACK_NAME_ORIENTATION_LABELS: Partial<Record<string, string>> = {
  * sizes. `rem` and a bare number with no unit are rejected on purpose: the engine does not throw
  * on them, it silently falls back to 12px, which is worse than being told the value is wrong.
  */
+/**
+ * Any colour notation the browser itself accepts — hex with or without alpha, rgb()/rgba(), hsl(),
+ * a named colour. The engine stores whatever CSS string it is given, so the browser's own parser is
+ * the right authority, and it is stricter than a hand-written pattern.
+ */
+const isCssColor = (draft: string) => CSS.supports('color', draft.trim());
+
 const FONT_STYLE_OR_WEIGHT = /^(?:normal|italic|oblique|small-caps|bold|bolder|lighter|[1-9]00)$/i;
 const FONT_SIZE =
   /^(?:\d+(?:\.\d+)?(?:px|pt|em)|xx-small|x-small|smaller|small|medium|larger|large|x-large|xx-large)$/i;
@@ -612,7 +619,11 @@ export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] {
           source: 'settings',
           label: 'Secondary voices',
           path: 'display.resources.secondaryGlyphColor',
-          control: { kind: 'color' },
+          // A text row, not a swatch: this one default carries an alpha channel, and
+          // <input type="color"> silently rewrites anything that is not a plain #rrggbb to
+          // #000000 — so a swatch here reported black whatever the engine held, and touching it
+          // threw the alpha away. Same deferred-commit control the font rows use.
+          control: { kind: 'text', validate: isCssColor },
           apply: 'render',
         },
         {

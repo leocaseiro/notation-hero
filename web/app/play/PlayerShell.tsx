@@ -669,8 +669,17 @@ function Player() {
         // the SAME memoised import the provider is waiting on. `notation` is still null in that
         // window, so nothing the person opened can be lost and there is nothing to confirm.
         at = await loadAlphaTabEngine().catch(() => null);
-        // The engine failed; that failure is reported by the engine-error message, not by a toast.
-        if (!at) return;
+        if (!at) {
+          // The import rejection is cached for the whole page ("one failed import is permanent"),
+          // and the banner that reported it is dismissible — so by now there may be nothing on
+          // screen at all. Without this, picking a file or dropping one is a silent no-op. Same
+          // toast id as the parse failure below, so the two failure paths behave alike.
+          toast.error(
+            'The player could not start, so this file cannot be opened. Reload the page and try again.',
+            { id: 'notation-load' },
+          );
+          return;
+        }
       }
 
       // Record the playing state BEFORE the prompt: globalThis.confirm blocks the main thread, so
