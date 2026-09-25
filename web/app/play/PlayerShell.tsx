@@ -729,6 +729,9 @@ function Player() {
       clearTimeout(rangeCheck.current);
       pendingSeek.current = null;
       resumeAfterSeek.current = false;
+      // Opening a file is a deliberate new attempt, so a crash reported against the PREVIOUS
+      // score must not keep the player marked failed forever — nothing else ever sets this back.
+      setLoadFailed(false);
       setNotation({ name: next.name, score });
       setOpening(false);
       toast.success(`${next.name} loaded`, { id: 'notation-load' });

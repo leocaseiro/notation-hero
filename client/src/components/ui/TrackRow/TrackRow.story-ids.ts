@@ -9,4 +9,5 @@ export const TRACK_ROW_STORY_IDS = [
   'muted',
   'soloed',
   'recording',
+  'percussion-expand-locked',
 ] as const;

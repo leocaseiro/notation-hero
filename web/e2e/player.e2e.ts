@@ -251,6 +251,45 @@ test('a music font that arrives after the 60 s backstop clears the error', async
   await expect(page.getByTestId('notation-skeleton')).toHaveCount(0);
 });
 
+// Defect 2 (NH-291): the failed state used to survive opening a completely different file — a
+// single transient engine error disabled the player for the life of the page. Opening a file is
+// a deliberate new attempt, and it now clears a stale banner instead of leaving it stuck forever.
+// Aborting the soundfont request is the documented way to reach the E202 path (see the SoundFont
+// comment on the 60s-backstop test above) — the same class of engine-runtime error Defect 1's
+// crash also raised.
+test('opening a new file clears a stale engine-error banner', async ({ page }) => {
+  await page.route('**/alphatab/soundfont/**', (route) => route.abort());
+  await page.goto('/play');
+  await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('engine-error')).toContainText('Error E202');
+
+  await page.unroute('**/alphatab/soundfont/**');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/1-beat.gpx');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
+    'data-file',
+    '1-beat.gpx',
+    { timeout: 30_000 },
+  );
+
+  await expect(page.getByTestId('engine-error')).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
+});
+
+// Defect 3 (NH-291): the engine-error banner had no way to remove it from the screen — the
+// maintainer's own words were "make sure we can remove them from the screen (like a close
+// button)". A close control now hides it; dismissing does not "fix" the dead engine, only the
+// message about it — see NotationSurface's own comment beside the button.
+test('the engine-error banner can be dismissed', async ({ page }) => {
+  await page.route('**/alphatab/soundfont/**', (route) => route.abort());
+  await page.goto('/play');
+  const banner = page.getByTestId('engine-error');
+  await expect(banner).toBeVisible({ timeout: 15_000 });
+  await expect(banner).toContainText('Error E202');
+
+  await banner.getByRole('button', { name: /dismiss error message/i }).click();
+  await expect(banner).toBeHidden();
+});
+
 // One fixture per importer path, and the evidence behind criterion 1's `.gp5`. All are already
 // committed — no new content needed. 1-beat.musicxml and 1-beat.mxl are real MuseScore exports
 // (plain and compressed MusicXML take different code paths); 1-beat.atex is a real alphaTex
@@ -1182,6 +1221,26 @@ test('opening a file drops the bar range selected in the previous score', async 
 /** The one OPEN tooltip. A closing popup can stay in the DOM for a frame, hence `[data-open]`. */
 const openTooltip = (page: Page) => page.locator('[data-slot="tooltip-content"][data-open]');
 
+// Locator.hover() waits for the BUTTON itself to receive the pointer, and a locked control
+// (aria-disabled, which means pointer-events:none) never does — the wrapping span is what
+// actually takes it instead, same as every disabled mixer control. The pointer goes where a
+// person's would either way.
+async function hoverPossiblyLocked(page: Page, control: Locator): Promise<void> {
+  if ((await control.getAttribute('aria-disabled')) === 'true') {
+    const box = await control.boundingBox();
+    if (!box) throw new Error('the control has no box');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    return;
+  }
+  await control.hover();
+}
+
+/** Tablature's own three states: 'unavailable' beats whatever aria-pressed reports. */
+function tablatureToggleState(unavailable: boolean, pressed: boolean): string {
+  if (unavailable) return 'unavailable';
+  return pressed ? 'on' : 'off';
+}
+
 // An icon alone says neither what a control is nor what state it is in.
 test('every transport icon button has a tooltip that tells its state', async ({ page }) => {
   await page.goto('/play');
@@ -1838,12 +1897,23 @@ test('every mixer control without visible text has a tooltip that tells its stat
     await expect(openTooltip(page)).toHaveText('Mute: off');
 
     // Read each toggle's own reported state first — the staff LABEL that precedes it in the
-    // tooltip is a different control's concern — then hover and check the tooltip agrees.
+    // tooltip is a different control's concern — then hover and check the tooltip agrees. A
+    // staff down to its last enabled notation type locks that toggle instead of letting the
+    // engine be asked to draw nothing (NH-291) — Punk.gp's drum rows carry standard notation
+    // only, so their Standard notation toggle is exactly this case, not a plain "on".
     for (const { query, name } of STAFF_TOGGLES) {
       const control = row.getByRole('button', { name: query });
+      const locked = (await control.getAttribute('aria-disabled')) === 'true';
       const pressed = (await control.getAttribute('aria-pressed')) === 'true';
-      await control.hover();
-      await expect(openTooltip(page)).toHaveText(new RegExp(`${name}: ${pressed ? 'on' : 'off'}$`));
+      const state = pressed ? 'on' : 'off';
+      await hoverPossiblyLocked(page, control);
+      // toContainText with a plain string, not toHaveText with a dynamic RegExp: the tooltip is
+      // prefixed with the staff LABEL ("Staff 1 …"), which this loop does not track, so the
+      // check only needs the SUFFIX to match — substring containment says that without building
+      // a regex out of runtime strings.
+      await expect(openTooltip(page)).toContainText(
+        locked ? 'at least one notation type must stay shown' : `${name}: ${state}`,
+      );
     }
     // Tablature is the one toggle whose availability itself varies by row: 1.8.4 cannot draw it
     // on a percussion staff (rows 0 and 2 here), so it renders disabled with an explaining
@@ -1851,23 +1921,16 @@ test('every mixer control without visible text has a tooltip that tells its stat
     const tablature = row.getByRole('button', { name: /tablature/i });
     const tablatureUnavailable = (await tablature.getAttribute('aria-disabled')) === 'true';
     const tablaturePressed = (await tablature.getAttribute('aria-pressed')) === 'true';
-    let tablatureState = 'off';
-    if (tablatureUnavailable) tablatureState = 'unavailable';
-    else if (tablaturePressed) tablatureState = 'on';
-    // page.mouse, not locator.hover(): on a percussion row the button is aria-disabled, which
-    // means pointer-events:none — hover() waits for the BUTTON itself to receive the pointer,
-    // and it never does; the wrapping span is what actually takes it, same as every other
-    // disabled mixer control. The pointer goes where a person's would either way.
-    const tablatureBox = await tablature.boundingBox();
-    if (!tablatureBox) throw new Error('the tablature toggle has no box');
-    await page.mouse.move(
-      tablatureBox.x + tablatureBox.width / 2,
-      tablatureBox.y + tablatureBox.height / 2,
-    );
-    await expect(openTooltip(page)).toHaveText(new RegExp(`Tablature: ${tablatureState}$`));
+    const tablatureState = tablatureToggleState(tablatureUnavailable, tablaturePressed);
+    await hoverPossiblyLocked(page, tablature);
+    await expect(openTooltip(page)).toContainText(`Tablature: ${tablatureState}`);
 
-    await row.getByRole('button', { name: /more controls/i }).hover();
-    await expect(openTooltip(page)).toHaveText('Show more controls');
+    // A percussion row's expand control is locked too (NH-291 — transposition is meaningless on
+    // a drum track), same aria-disabled/pointer-events-none shape as the staff toggles above.
+    const expandControl = row.getByRole('button', { name: /more controls/i });
+    const expandLocked = (await expandControl.getAttribute('aria-disabled')) === 'true';
+    await hoverPossiblyLocked(page, expandControl);
+    await expect(openTooltip(page)).toHaveText(expandLocked ? /percussion/i : 'Show more controls');
   }
 
   // And each one follows its state. A click closes the tooltip; leave and come back to read it.
@@ -2011,6 +2074,89 @@ test('tablature is enabled only on a stringed staff with a tuning', async ({ pag
   await expect(
     page.getByTestId('track-row-0').getByRole('button', { name: /tablature/i }),
   ).toHaveAttribute('aria-disabled', 'true');
+});
+
+// Defect 1 (NH-291): turning off a staff's LAST enabled notation type used to crash the engine in
+// one click — AlphaTab's layout code threw "Cannot read properties of undefined (reading
+// 'staves')" trying to draw a staff with nothing shown, and the whole player died behind the
+// engine-error banner. The toggle now locks instead of ever reaching the engine.
+test('turning off the only enabled notation type does not crash the player', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.getByTestId('tracks-trigger').click();
+  // The bundled beat's one track, one staff, standard notation only — the exact shape that
+  // crashed.
+  const standard = page
+    .getByTestId('track-row-0')
+    .getByRole('button', { name: /standard notation/i });
+  await expect(standard).toHaveAttribute('aria-pressed', 'true');
+  await expect(standard).toHaveAttribute('aria-disabled', 'true');
+
+  // Keyboard activation, not a mouse click: aria-disabled means pointer-events:none, so a real
+  // mouse click can never even reach the button — that IS the fix, and Playwright's own click
+  // actionability check refuses it the same way (measured: a plain .click() here times out
+  // waiting for "element to be enabled"). The button stays in the tab order — Button's design
+  // keeps a disabled control focusable so its tooltip can still explain why — so Enter is the one
+  // interaction a person could still attempt, and Button's own onKeyDown guard must swallow it
+  // before it ever reaches setStaffDisplay / queueRender / api.render().
+  await standard.focus();
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByTestId('engine-error')).toHaveCount(0);
+  await expect(standard).toHaveAttribute('aria-pressed', 'true');
+
+  // The player really survived, not merely "no banner yet" — the engine still answers Play.
+  await page.getByTestId('transport-play').click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+// Defect 4 (NH-291): a drum "pitch" is an instrument identifier, not a note, so transposing one
+// is meaningless — and it also broke playback (Transpose audio silenced the track, Transpose full
+// changed nothing, and returning to zero did not reliably restore sound). The two sliders are the
+// ONLY thing behind the expand disclosure, so it locks instead of them.
+test('a percussion track locks the expand control instead of the sliders behind it', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await page.getByTestId('tracks-trigger').click();
+  const drumExpand = page
+    .getByTestId('track-row-0')
+    .getByRole('button', { name: /more controls/i });
+  await expect(drumExpand).toHaveAttribute('aria-disabled', 'true');
+
+  // page.mouse, not locator.hover(): aria-disabled means pointer-events:none on the Button
+  // itself — the wrapping span is what actually takes the hover, same as every other disabled
+  // mixer control.
+  const box = await drumExpand.boundingBox();
+  if (!box) throw new Error('the drum row expand control has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(openTooltip(page)).toHaveText(/percussion/i);
+
+  // Keyboard activation, not a mouse click: pointer-events:none means a mouse click can never
+  // reach the button at all (Playwright's own click actionability agrees — measured timeout).
+  // Enter is the one interaction a person focused on it could still attempt, and Button's own
+  // onKeyDown guard must swallow it.
+  await drumExpand.focus();
+  await page.keyboard.press('Enter');
+  await expect(drumExpand).toHaveAttribute('aria-expanded', 'false');
+  await expect(
+    page.getByTestId('track-row-0').getByRole('slider', { name: /transpose/i }),
+  ).toHaveCount(0);
+
+  // The guitar row is unaffected — transposition remains available on a real melodic track.
+  const guitarExpand = page
+    .getByTestId('track-row-1')
+    .getByRole('button', { name: /more controls/i });
+  await expect(guitarExpand).not.toHaveAttribute('aria-disabled', 'true');
+  await guitarExpand.click();
+  await expect(
+    page.getByTestId('track-row-1').getByRole('slider', { name: /transpose audio/i }),
+  ).toBeVisible();
 });
 
 // Two editors, one value, one writer. The Settings ▸ Player row and the mixer's Master row.

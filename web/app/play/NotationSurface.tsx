@@ -1,6 +1,6 @@
 'use client';
 
-import { Skeleton } from '@notation-hero/client';
+import { Button, Skeleton } from '@notation-hero/client';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
@@ -63,12 +63,31 @@ export function NotationSurface({
   const { error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  // A crash rendering the PREVIOUS score must not keep condemning every score after it — opening
+  // a file is a deliberate new attempt, unlike a same-score renderFinished (which proves nothing
+  // about audio and must not clear this — see fontError's own comment just below). Adjusted here
+  // DURING RENDER, against a STATE copy of the last-seen notation (never a ref — react-hooks/refs
+  // treats a ref read/write during render as unsafe: React cannot see it and schedules no
+  // re-render from it), rather than in an effect: react-hooks/set-state-in-effect (both errors in
+  // this package) treats "clear local state when a prop changes" inside an effect as the
+  // anti-pattern it exists to catch. This is the React-endorsed replacement — "Adjusting some
+  // state when a prop changes" at https://react.dev/learn/you-might-not-need-an-effect.
+  const [previousNotation, setPreviousNotation] = useState(notation);
+  if (previousNotation !== notation) {
+    setPreviousNotation(notation);
+    if (runtimeError !== null) setRuntimeError(null);
+  }
   // The two MUSIC-FONT failures are held apart from AlphaTab's own `error` event on purpose. A
   // finished render PROVES the font arrived — AlphaTab holds renderFinished until its font checker
   // sees the alphaTab face — so a font error is stale the moment one lands, and renderFinished
   // clears it below. It proves nothing about the SoundFont (E202): playback is still dead, so that
   // one must survive every later render. One shared state could not tell the two apart.
   const [fontError, setFontError] = useState<string | null>(null);
+  // Hides the banner without touching WHY it is there — runtimeError/fontError/engineError all
+  // stay exactly as they were, so the underlying failure is still real; dismissing does not
+  // re-enable a dead engine. Reset to false at every place that RAISES a new failure (never at a
+  // place that merely clears one), so a person who dismissed one problem still sees the next.
+  const [dismissed, setDismissed] = useState(false);
   const [renderedTrackCount, setRenderedTrackCount] = useState(0);
   // ReturnType<typeof globalThis.setTimeout>, not `number`: web/tsconfig.json sets no `types`
   // array, so @types/node is in scope and globalThis.setTimeout resolves to Node's overload,
@@ -98,19 +117,19 @@ export function NotationSurface({
         setFontError(
           `Error ${PLAYER_ERROR.musicFontFailed}: the music font could not be downloaded`,
         );
+        setDismissed(false);
       }
     };
     document.fonts.addEventListener('loadingerror', onFontError);
 
     // Backstop for a download that hangs without ever failing: no event arrives, so give up after
     // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
-    timeoutRef.current = globalThis.setTimeout(
-      () =>
-        setFontError(
-          `Error ${PLAYER_ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
-        ),
-      60_000,
-    );
+    timeoutRef.current = globalThis.setTimeout(() => {
+      setFontError(
+        `Error ${PLAYER_ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
+      );
+      setDismissed(false);
+    }, 60_000);
 
     return () => {
       document.fonts.removeEventListener('loadingerror', onFontError);
@@ -120,9 +139,10 @@ export function NotationSurface({
 
   // The SoundFont download failure surfaces through AlphaTab's own error event; the engine import
   // failure cannot (AlphaTabApi does not exist yet) and arrives through engineError below.
-  useAlphaTabEvent(api, 'error', (cause) =>
-    setRuntimeError(`Error ${PLAYER_ERROR.engineRuntime}: ${String(cause)}`),
-  );
+  useAlphaTabEvent(api, 'error', (cause) => {
+    setRuntimeError(`Error ${PLAYER_ERROR.engineRuntime}: ${String(cause)}`);
+    setDismissed(false);
+  });
   // AlphaTab forwards the raw XMLHttpRequest ProgressEvent, so two numeric cases are real:
   //   - `total` is 0 when the response carries no Content-Length -> no fraction exists, so report
   //     null and let the bar render its indeterminate style.
@@ -187,13 +207,27 @@ export function NotationSurface({
           unmounts the element AlphaTab is bound to while the api is still alive, and the engine
           then renders into a detached node — with no error anywhere. Every state of this
           component keeps both divs below mounted. */}
-      {failure ? (
+      {failure && !dismissed ? (
         <p
           data-testid="engine-error"
           role="alert"
-          className="absolute inset-x-0 top-0 z-10 rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-4 text-destructive"
+          className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-4 text-destructive"
         >
-          The player engine could not start. Reload the page to try again. ({failure})
+          <span>The player engine could not start. Reload the page to try again. ({failure})</span>
+          {/* Dismiss only HIDES this message — it does not fix the engine, which stays dead
+              behind it. "Open file" in the left rail is the actual way back (NH-291): it is never
+              disabled by this state, so it is still there once the banner is gone. */}
+          <Button
+            variant="destructive"
+            size="icon"
+            aria-label="Dismiss error message"
+            onClick={() => setDismissed(true)}
+            className="size-11 shrink-0"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">
+              close
+            </span>
+          </Button>
         </p>
       ) : null}
       {/* The Skeleton covers BOTH the engine import and the music-font fetch, and lifts on the

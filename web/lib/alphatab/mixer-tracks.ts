@@ -32,6 +32,13 @@ export interface MixerTrack {
   transposeAudio: number;
   transposeFull: number;
   expanded: boolean;
+  /**
+   * True when ANY staff on this track is percussion. A drum "pitch" is an instrument identifier,
+   * not a note, so transposing one is meaningless — the row's expand control locks on this flag.
+   * `tablatureAvailable` on `TrackStaffState` cannot stand in for it: that is false for
+   * percussion, piano AND vocal alike, so it cannot tell a caller the track is drums.
+   */
+  isPercussion: boolean;
   staves: TrackStaffState[];
 }
 
@@ -76,6 +83,9 @@ export const toMixerTrack = (
   transposeAudio: 0,
   transposeFull: 0,
   expanded: false,
+  // Reads the staves directly, the same rule selectDrumTrackIndexes (drum-tracks.ts) settled on
+  // over Track's own `isPercussion` getter: it survives a change to the getter.
+  isPercussion: track.staves.some((staff) => staff.isPercussion),
   staves: track.staves.map((staff, staffIndex) => ({
     id: `${track.index}-${staffIndex}`,
     label: staffLabel(staff, staffIndex, clefTreble, clefBass),

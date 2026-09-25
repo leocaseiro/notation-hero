@@ -340,6 +340,15 @@ export function TracksPopover({
               onTransposeFullChange={(semitones) => applyTransposeFull(track.index, semitones)}
               expanded={track.expanded}
               onExpandedChange={(next) => patch(track.index, { expanded: next })}
+              // A drum "pitch" is an instrument identifier, not a note — transposing one is
+              // meaningless, and it also broke playback (Transpose audio silenced the track,
+              // Transpose full changed nothing, and zero did not reliably restore sound). The
+              // disclosure holds only those two sliders, so locking the control itself is enough.
+              expandUnavailable={
+                track.isPercussion
+                  ? 'Transposition is not available for percussion tracks'
+                  : undefined
+              }
               mixUnavailable={hasBackingTrack ? RECORDING : undefined}
             />
           ))}

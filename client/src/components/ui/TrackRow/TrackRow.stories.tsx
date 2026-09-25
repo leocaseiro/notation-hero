@@ -102,3 +102,11 @@ export const Soloed: Story = {
 export const Recording: Story = {
   args: { expanded: true, mixUnavailable: RECORDING },
 };
+
+// A percussion track: transposition is meaningless on a drum "pitch", so the expand control that
+// reveals the two transposition sliders locks — never the sliders themselves, since the
+// disclosure holds nothing else. expanded stays false: the mapper never starts a percussion row
+// already expanded, so the sliders can never actually be reached here.
+export const PercussionExpandLocked: Story = {
+  args: { expandUnavailable: 'Transposition is not available for percussion tracks' },
+};

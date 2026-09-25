@@ -281,16 +281,19 @@ test('player has no axe violations with the Tracks popover open', async ({ page 
 
   await page.getByTestId('tracks-trigger').click();
   await expect(page.getByTestId('tracks-popover')).toBeVisible();
-  // Expand a drum row AND the guitar row: both of Punk.gp's audited tracks are single-staff, so
-  // their four display toggles (tablature included) already sit on the primary row — expanding
-  // instead audits each row's OWN controls, the Transpose audio and Transpose full sliders, on a
-  // percussion track and a stringed one.
-  for (const row of ['track-row-0', 'track-row-1']) {
-    await page
-      .getByTestId(row)
-      .getByRole('button', { name: /more controls/i })
-      .click();
-  }
+  // Only the guitar row (1) can expand: Punk.gp's drum rows (0, 2) are percussion, and NH-291
+  // locks their "more controls" disclosure — transposition is meaningless on a drum track. The
+  // lock is aria-disabled, which means pointer-events:none, so Playwright's own click
+  // actionability refuses it the same way a real mouse would (measured: a plain .click() there
+  // times out waiting for "element to be enabled"). Row 0 is single-staff, so its four display
+  // toggles (tablature included) already sit on the primary row, and its own locked "more
+  // controls" button is still part of the static page axe/hit-area scans below without being
+  // clicked. Expanding row 1 audits the ONE row whose Transpose audio/full sliders can actually
+  // be reached.
+  await page
+    .getByTestId('track-row-1')
+    .getByRole('button', { name: /more controls/i })
+    .click();
   // And press a solo and a mute: the pressed state is a different colour pair for axe to check.
   await page.getByTestId('track-row-1').getByRole('button', { name: /solo/i }).click();
   await page.getByTestId('track-row-1').getByRole('button', { name: /mute/i }).click();

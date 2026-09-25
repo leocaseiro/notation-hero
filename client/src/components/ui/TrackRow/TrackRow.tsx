@@ -65,6 +65,14 @@ interface TrackRowProps extends Omit<ComponentProps<'div'>, 'children' | 'onVolu
   expanded: boolean;
   onExpandedChange: (next: boolean) => void;
   /**
+   * Set on a PERCUSSION track: the reason, as tooltip text, and the expand control that reveals
+   * Transpose audio/full renders disabled. A drum "pitch" is an instrument identifier, not a
+   * note, so transposing one is meaningless — and it also broke playback. The disclosure holds
+   * nothing else, so locking the control itself is enough; the two sliders inside need no lock
+   * of their own.
+   */
+  expandUnavailable?: string;
+  /**
    * Set while the file plays its own recording: the reason, as tooltip text. Solo, mute, volume
    * and Transpose audio then render disabled — the engine ignores all four in that mode.
    * Render-select, the display toggles and Transpose full stay live: they change the drawn score.
@@ -105,6 +113,14 @@ const STAFF_TOGGLE_NAME: Record<StaffToggleKey, string> = {
   showNumbered: 'Numbered notation',
   showTablature: 'Tablature',
 };
+// All four keys, in display order — staffButtons renders this array, and staffToggle counts
+// against it to find whether IT is the only one left on for its staff.
+const STAFF_TOGGLE_KEYS: readonly StaffToggleKey[] = [
+  'showStandardNotation',
+  'showSlash',
+  'showNumbered',
+  'showTablature',
+];
 
 // One mixer row. The primary cluster (name, render-select, solo, mute, volume, then every
 // per-staff display toggle) is always visible; only the two transposition sliders sit behind the
@@ -128,6 +144,7 @@ const TrackRow = ({
   onTransposeFullChange,
   expanded,
   onExpandedChange,
+  expandUnavailable,
   mixUnavailable,
   className,
   ...rest
@@ -145,10 +162,17 @@ const TrackRow = ({
 
   const staffToggle = (staff: TrackStaffState, key: StaffToggleKey, divided: boolean) => {
     const unavailable = key === 'showTablature' && !staff.tablatureAvailable;
+    // 1.8.4 cannot lay out a staff with NOTHING to draw — it throws deep inside its own renderer
+    // (a crash reached in one click: "Cannot read properties of undefined (reading 'staves')" on
+    // a drum staff, "reading 'beat'" on a vocal one). Once a staff is down to its last enabled
+    // notation type, that toggle locks on rather than letting the click reach setStaffDisplay.
+    const onCount = STAFF_TOGGLE_KEYS.filter((toggleKey) => staff[toggleKey]).length;
+    const lastOn = staff[key] && onCount === 1;
+    const disabled = unavailable || lastOn;
     const state = staff[key] ? 'on' : 'off';
-    const tooltip = unavailable
-      ? `${staff.label} Tablature: unavailable`
-      : `${staff.label} ${STAFF_TOGGLE_NAME[key]}: ${state}`;
+    let tooltip = `${staff.label} ${STAFF_TOGGLE_NAME[key]}: ${state}`;
+    if (unavailable) tooltip = `${staff.label} Tablature: unavailable`;
+    else if (lastOn) tooltip = `${staff.label}: at least one notation type must stay shown`;
     return (
       <TransportToggle
         key={key}
@@ -157,7 +181,7 @@ const TrackRow = ({
         label={`${name} ${staff.label} ${STAFF_TOGGLE_NAME[key]}`}
         icon={STAFF_TOGGLE_ICON[key]}
         tooltip={tooltip}
-        disabled={unavailable}
+        disabled={disabled}
         // These four buttons sit flush against each other in one bordered box (no gap), so a
         // tooltip wide enough to hold its text cannot avoid covering the very next one — measured
         // live: hovering from one straight to the next left both tooltips open at once, each kept
@@ -177,9 +201,7 @@ const TrackRow = ({
   // does not shrink the buttons to fit two groups on one row.
   const staffButtons = (staff: TrackStaffState) => (
     <div className="col-start-6 inline-flex justify-self-start overflow-hidden rounded-lg border border-border">
-      {(['showStandardNotation', 'showSlash', 'showNumbered', 'showTablature'] as const).map(
-        (key, index) => staffToggle(staff, key, index > 0),
-      )}
+      {STAFF_TOGGLE_KEYS.map((key, index) => staffToggle(staff, key, index > 0))}
     </div>
   );
 
@@ -264,43 +286,47 @@ const TrackRow = ({
 
         {staves.length === 1 && staves[0] ? staffButtons(staves[0]) : null}
 
-        {/* The expand control is never disabled, so the trigger renders the Button directly
-            through `render` rather than wrapping it in a span — the
+        {/* A percussion track locks this control (transposition is meaningless on a drum
+            "pitch" — expandUnavailable), so the trigger wraps the Button in a span rather than
+            rendering it directly — the same shape TransportToggle's own tooltip uses, unlike the
             `TooltipTrigger render={<Button …/>}` shape `Tooltip.stories.tsx` demonstrates for a
-            control with no disabled state to guard against. Hoverable (no disableHoverablePopup —
+            control with no disabled state to guard against. A disabled Button is
+            `pointer-events: none`, so as its own trigger it would never receive the hover that
+            opens the tooltip explaining why; the span takes the hover instead, and focus still
+            reaches the Button because focus events bubble. Hoverable (no disableHoverablePopup —
             WCAG 2.1 AA 1.4.13); max-w-40 on the content bounds its reach on a packed row.
-            col-start-7 is explicit, not auto-placement: the staff column above is empty (no
+            col-start-7 sits on the SPAN, not the Button — it is the span that is now the grid
+            item — and is explicit, not auto-placement: the staff column above is empty (no
             staffButtons) whenever a track has anything other than exactly one staff, and nothing
             else would otherwise hold column 6 open. */}
         <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon"
+          <TooltipTrigger render={<span className="col-start-7 inline-flex" />}>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={Boolean(expandUnavailable)}
+              className={cn(
+                MIXER_BUTTON_CLASS,
+                'border border-border bg-transparent text-foreground aria-expanded:bg-transparent',
+              )}
+              aria-expanded={expanded}
+              aria-controls={panelId}
+              aria-label={`More controls for ${name}`}
+              onClick={() => onExpandedChange(!expanded)}
+            >
+              <span
                 className={cn(
-                  MIXER_BUTTON_CLASS,
-                  'col-start-7 border border-border bg-transparent text-foreground aria-expanded:bg-transparent',
+                  'material-symbols-outlined text-[22px] transition-transform',
+                  expanded && 'rotate-180',
                 )}
-                aria-expanded={expanded}
-                aria-controls={panelId}
-                aria-label={`More controls for ${name}`}
-                onClick={() => onExpandedChange(!expanded)}
+                aria-hidden="true"
               >
-                <span
-                  className={cn(
-                    'material-symbols-outlined text-[22px] transition-transform',
-                    expanded && 'rotate-180',
-                  )}
-                  aria-hidden="true"
-                >
-                  keyboard_arrow_down
-                </span>
-              </Button>
-            }
-          />
+                keyboard_arrow_down
+              </span>
+            </Button>
+          </TooltipTrigger>
           <TooltipContent sideOffset={8} className="max-w-40">
-            {expanded ? 'Hide more controls' : 'Show more controls'}
+            {expandUnavailable ?? (expanded ? 'Hide more controls' : 'Show more controls')}
           </TooltipContent>
         </Tooltip>
       </div>

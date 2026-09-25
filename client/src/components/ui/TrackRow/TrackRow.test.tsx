@@ -13,6 +13,12 @@ const drumStaff = {
   tablatureAvailable: false,
 };
 
+// drumStaff carries only ONE enabled notation type, same as a real drum export — which is
+// exactly the shape that crashed the engine (NH-291: AlphaTab cannot lay out a staff with
+// nothing to draw). So Standard notation locks on by default wherever baseProps/drumStaff is
+// used unmodified, and its tooltip replaces "Standard notation: on" with this reason.
+const NOTATION_LOCKED = 'at least one notation type must stay shown';
+
 const baseProps = {
   name: 'Drumkit',
   rendered: true,
@@ -178,7 +184,10 @@ test('every control without visible text has a tooltip that tells its state', as
   const standardToggle = screen.getByRole('button', { name: /standard notation/i });
   expect(standardToggle).toHaveFocus();
   expect(standardToggle).toHaveAttribute('aria-pressed', 'true');
-  expect(await screen.findByText(/standard notation: on/i)).toBeInTheDocument();
+  // drumStaff carries only this ONE notation type, so it is locked on rather than plain "on" —
+  // see NOTATION_LOCKED's own comment.
+  expect(standardToggle).toHaveAttribute('aria-disabled', 'true');
+  expect(await screen.findByText(new RegExp(NOTATION_LOCKED, 'i'))).toBeInTheDocument();
 
   await user.tab();
   const slashToggle = screen.getByRole('button', { name: /slash/i });
@@ -230,7 +239,9 @@ test('each tooltip follows the state it describes', async () => {
   await user.tab();
   const standardToggle = screen.getByRole('button', { name: /standard notation/i });
   expect(standardToggle).toHaveAttribute('aria-pressed', 'true');
-  expect(await screen.findByText(/standard notation: on/i)).toBeInTheDocument();
+  // drumStaff carries only this ONE notation type, so it is locked on rather than plain "on".
+  expect(standardToggle).toHaveAttribute('aria-disabled', 'true');
+  expect(await screen.findByText(new RegExp(NOTATION_LOCKED, 'i'))).toBeInTheDocument();
 
   await user.tab();
   const slashToggle = screen.getByRole('button', { name: /slash/i });
@@ -283,7 +294,17 @@ test('while the file plays its own recording, the mix controls are disabled and 
 });
 
 test('the controls that change the DRAWN score stay live while a recording plays', () => {
-  render(<TrackRow {...baseProps} expanded mixUnavailable={RECORDING} />);
+  // A second notation type on, so Defect 1's own "last one left on" lock (NH-291) does not mask
+  // what THIS test checks — that recording-unavailability, a completely different lock, leaves
+  // the display toggles alone.
+  render(
+    <TrackRow
+      {...baseProps}
+      staves={[{ ...drumStaff, showSlash: true }]}
+      expanded
+      mixUnavailable={RECORDING}
+    />,
+  );
   // `aria-disabled`, not toBeDisabled(): `TransportToggle` renders the ARIA attribute and never
   // the native one, so the button keeps its focus — and toBeDisabled() would pass whatever happens.
   expect(screen.getByRole('button', { name: /render/i })).not.toHaveAttribute(
@@ -325,4 +346,118 @@ test('the last drawn track cannot be hidden, and the row says why', async () => 
 
   await user.click(render_);
   expect(onRenderedChange).not.toHaveBeenCalled();
+});
+
+// A staff down to its LAST enabled notation type: 1.8.4 cannot lay out a staff with nothing to
+// draw — a crash reached in one click (NH-291: "Cannot read properties of undefined (reading
+// 'staves')" on a drum staff, "reading 'beat'" on a vocal one). The toggle locks on instead of
+// letting the click reach the engine, the same shape renderLockReason already uses above.
+test('the last enabled notation type cannot be turned off, and the row says why', async () => {
+  const user = userEvent.setup();
+  const onStaffChange = vi.fn();
+  render(<TrackRow {...baseProps} onStaffChange={onStaffChange} />);
+
+  // drumStaff carries only showStandardNotation — the exact shape that crashed.
+  const standard = screen.getByRole('button', { name: /standard notation/i });
+  expect(standard).toHaveAttribute('aria-pressed', 'true');
+  expect(standard).toHaveAttribute('aria-disabled', 'true');
+
+  // Keyboard focus, not hover: jsdom has no pointer geometry. render, solo, mute, volume, then
+  // this row's single staff toggle — 5 stops from body.
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  expect(standard).toHaveFocus();
+  expect(await screen.findByText(new RegExp(NOTATION_LOCKED, 'i'))).toBeInTheDocument();
+
+  await user.click(standard);
+  expect(onStaffChange).not.toHaveBeenCalled();
+});
+
+test('a staff with two notation types on locks neither', () => {
+  render(<TrackRow {...baseProps} staves={[{ ...drumStaff, showSlash: true }]} />);
+  expect(screen.getByRole('button', { name: /standard notation/i })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(screen.getByRole('button', { name: /slash notation/i })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+});
+
+// The lock is a property of "only one left on", not a hardcoded standard-notation special case —
+// on a stringed staff it can just as easily be tablature that is the last one shown.
+test('the last enabled type locks even when it is tablature', () => {
+  render(
+    <TrackRow
+      {...baseProps}
+      name="Distortion Guitar"
+      staves={[
+        {
+          ...drumStaff,
+          id: 'staff-1',
+          showStandardNotation: false,
+          showTablature: true,
+          tablatureAvailable: true,
+        },
+      ]}
+    />,
+  );
+  expect(screen.getByRole('button', { name: /tablature/i })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  expect(screen.getByRole('button', { name: /standard notation/i })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+});
+
+// A drum "pitch" is an instrument identifier, not a note, so transposing one is meaningless — and
+// it also broke playback (NH-291). The two sliders are the ONLY thing behind the expand
+// disclosure, so the fix locks the disclosure control itself rather than the sliders inside it.
+const EXPAND_LOCKED = 'Transposition is not available for percussion tracks';
+
+test('a percussion track locks the expand control, and the row says why', async () => {
+  const user = userEvent.setup();
+  const onExpandedChange = vi.fn();
+  render(
+    <TrackRow
+      {...baseProps}
+      expandUnavailable={EXPAND_LOCKED}
+      onExpandedChange={onExpandedChange}
+    />,
+  );
+
+  const more = screen.getByRole('button', { name: /more controls/i });
+  expect(more).toHaveAttribute('aria-disabled', 'true');
+
+  // Keyboard focus, not hover: jsdom has no pointer geometry. drumStaff's single staff puts
+  // "more controls" 9 stops from body — render, solo, mute, volume, then the four staff toggles
+  // (standard notation locked by Defect 1's own rule, slash/numbered/tablature not).
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  expect(more).toHaveFocus();
+  expect(await screen.findByText(EXPAND_LOCKED)).toBeInTheDocument();
+
+  await user.click(more);
+  expect(onExpandedChange).not.toHaveBeenCalled();
+});
+
+test('a non-percussion track leaves the expand control live', () => {
+  render(<TrackRow {...baseProps} />);
+  expect(screen.getByRole('button', { name: /more controls/i })).not.toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
 });
