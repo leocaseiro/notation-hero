@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   applySettingsJson,
+  cancelQueuedFrames,
   clearTrackTranspositions,
   readStylesheetValues,
   setStylesheetValue,
@@ -60,28 +61,39 @@ let rafSpy: ReturnType<typeof vi.fn>;
 // EVERY queued callback, not just the last: live-settings has two independent queues (render and
 // midi), so a single slot would silently drop one — and the dropped one leaves its module flag
 // stuck `true`, which makes the NEXT test's queue early-return and its rafSpy count come up short.
-let frameCallbacks: FrameRequestCallback[] = [];
+// Keyed by the handle the stub hands back, so a cancelled frame can actually be removed. Handles
+// start at 0 — a legitimate value the module must not treat as "nothing queued".
+let frameCallbacks: Map<number, FrameRequestCallback> = new Map();
+let nextHandle = 0;
+let cancelSpy: ReturnType<typeof vi.fn>;
 
-/** Run everything queued so far, in order, and empty the queue — one animation frame. */
+/** Run everything still queued, in order, and empty the queue — one animation frame. */
 function runFrame(): void {
-  const queued = frameCallbacks;
-  frameCallbacks = [];
+  const queued = [...frameCallbacks.values()];
+  frameCallbacks = new Map();
   for (const cb of queued) cb(0);
 }
 
 beforeEach(() => {
-  frameCallbacks = [];
+  frameCallbacks = new Map();
+  nextHandle = 0;
   rafSpy = vi.fn((cb: FrameRequestCallback) => {
-    frameCallbacks.push(cb);
-    return 0;
+    const handle = nextHandle;
+    nextHandle += 1;
+    frameCallbacks.set(handle, cb);
+    return handle;
+  });
+  cancelSpy = vi.fn((handle: number) => {
+    frameCallbacks.delete(handle);
   });
   vi.stubGlobal('requestAnimationFrame', rafSpy);
+  vi.stubGlobal('cancelAnimationFrame', cancelSpy);
 });
 
 afterEach(() => {
-  // The module's `renderQueued` and `midiQueued` flags are module state, not test state: a test
-  // that queues a frame and never runs it would leave the NEXT test's coalescing count wrong. Run
-  // anything left queued.
+  // Each test builds its own fake api, and the queues are keyed by instance, so nothing can leak
+  // between tests any more. Draining is kept anyway: it keeps a test that queues and never runs
+  // from leaving a callback holding its fake api alive for the rest of the file.
   runFrame();
   vi.unstubAllGlobals();
 });
@@ -108,8 +120,8 @@ describe('applySettingsJson — coalescing', () => {
   // CLAMP, not whether it reports) and 100 once more on blur. Thirteen of the fourteen
   // apply:'midi' rows are number rows, so this is the real shape of editing one.
   //
-  // Uncoalesced that was four calls to loadMidiForScore, and each one regenerates the whole
-  // MidiFile and then hits AlphaSynth.loadMidiFile, which does `this.stop()` and
+  // Before this was coalesced that was four calls to loadMidiForScore. Each one rebuilds the
+  // whole MidiFile and then reaches AlphaSynth.loadMidiFile, which does `this.stop()` and
   // `this.tickPosition = 0` — so the song stopped and jumped back to the start on every keystroke,
   // against a PR that promises neither popover blocks playback.
   it('four MIDI pushes — one per keystroke of "100" plus the blur — reload the MIDI ONCE', () => {
@@ -125,6 +137,67 @@ describe('applySettingsJson — coalescing', () => {
 
     runFrame();
     expect(api.loadMidiForScore).toHaveBeenCalledTimes(1);
+  });
+
+  // Strict Mode mounts the [engine] effect twice, so a second AlphaTabApi routinely exists while
+  // a frame queued for the first is still pending. Keyed on the instance, the fresh api still gets
+  // its redraw; on a module-global flag it would silently lose it.
+  it('a frame queued for one api does NOT suppress a different api in the same frame', () => {
+    const stale = createFakeApi();
+    const fresh = createFakeApi();
+
+    applySettingsJson(
+      stale as unknown as AlphaTab.AlphaTabApi,
+      { display: { scale: 1 } },
+      'render',
+    );
+    applySettingsJson(
+      fresh as unknown as AlphaTab.AlphaTabApi,
+      { display: { scale: 2 } },
+      'render',
+    );
+
+    expect(rafSpy).toHaveBeenCalledTimes(2);
+    runFrame();
+    expect(stale.render).toHaveBeenCalledTimes(1);
+    expect(fresh.render).toHaveBeenCalledTimes(1);
+  });
+
+  // AlphaTabApiBase.render() carries no _isDestroyed guard, so a frame surviving unmount would run
+  // against a destroyed renderer from a callback nothing in the React tree can catch.
+  it('cancelQueuedFrames stops a queued redraw and a queued MIDI rebuild from ever firing', () => {
+    const api = createFakeApi();
+    const alphaTabApi = api as unknown as AlphaTab.AlphaTabApi;
+
+    applySettingsJson(alphaTabApi, { display: { scale: 1.2 } }, 'render');
+    applySettingsJson(alphaTabApi, { player: { vibrato: { noteWideLength: 5 } } }, 'midi');
+    cancelQueuedFrames(alphaTabApi);
+
+    expect(cancelSpy).toHaveBeenCalledTimes(2);
+    runFrame();
+    expect(api.render).not.toHaveBeenCalled();
+    expect(api.loadMidiForScore).not.toHaveBeenCalled();
+  });
+
+  it('cancelQueuedFrames is a no-op for an api with nothing queued', () => {
+    const api = createFakeApi();
+    cancelQueuedFrames(api as unknown as AlphaTab.AlphaTabApi);
+    expect(cancelSpy).not.toHaveBeenCalled();
+  });
+
+  // The stub hands out handles from 0, which is a legitimate rAF handle. A module comparing the
+  // stored handle for truthiness rather than against undefined would treat the FIRST queue of every
+  // api as "nothing queued" and never coalesce it.
+  it('coalesces even when the frame handle is 0', () => {
+    const api = createFakeApi();
+    const alphaTabApi = api as unknown as AlphaTab.AlphaTabApi;
+
+    applySettingsJson(alphaTabApi, { display: { scale: 1 } }, 'render');
+    applySettingsJson(alphaTabApi, { display: { scale: 2 } }, 'render');
+
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+    runFrame();
+    expect(api.render).toHaveBeenCalledTimes(1);
   });
 
   // Its own flag: a notation row and a MIDI row edited in the same frame must both survive.

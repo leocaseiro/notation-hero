@@ -36,36 +36,80 @@ function pushSettings(api: AlphaTab.AlphaTabApi, apply: SettingApply): void {
 // over settings), one assignment into the renderer, and a player rebuild that early-returns unless
 // `player.playerMode` itself changed — and it never redraws, because there is no render() inside it
 // (AlphaTabApiBase.ts:549-563 and :1670-1708).
-let renderQueued = false;
-function queueRender(api: AlphaTab.AlphaTabApi): void {
-  if (renderQueued) return;
-  renderQueued = true;
-  requestAnimationFrame(() => {
-    renderQueued = false;
-    api.render();
-  });
-}
-
-// ONE MIDI rebuild per frame, for the same reason and by the same rule as queueRender above — and
-// it matters more here, because this is the expensive branch. Measured against the sequence a
-// number row actually emits: typing "100" reports 1, 10, 100 while typing and 100 again on blur,
-// so FOUR times, and each one regenerated the whole MidiFile (MidiFileGenerator.generate over every
-// bar) and then called AlphaSynth.loadMidiFile, which does `this.stop()` and `this.tickPosition =
-// 0` — stopping the player and rewinding it, once per keystroke.
+//
+// The MIDI rebuild is coalesced by the same rule and matters more, because it is the expensive
+// branch AND the one that interrupts the player. Measured against the sequence a number row
+// actually emits: typing "100" reports 1, 10, 100 while typing and 100 again on blur, so FOUR
+// times, and each one regenerated the whole MidiFile (MidiFileGenerator.generate over every bar)
+// and then called AlphaSynth.loadMidiFile, which does `this.stop()` and `this.tickPosition = 0` —
+// stopping the player and rewinding it, once per keystroke.
 //
 // Coalescing is safe because applySettingsJson has ALREADY written the value into api.settings
 // synchronously before this runs: the deferred call reads the settings tree as it stands a frame
 // later, which is the last value typed. Only the rebuild is deferred, never the write.
+
+/** The frame handle for each kind of deferred work, or undefined when nothing is queued. */
+interface QueuedFrames {
+  render?: number;
+  midi?: number;
+}
+
+// Keyed by engine INSTANCE, not module-global, and holding the HANDLE rather than a boolean.
 //
-// Its own flag, not renderQueued: a 'render' row and a 'midi' row must not cancel each other.
-let midiQueued = false;
+// Both of those matter, and neither is hypothetical. useAlphaTab builds a new AlphaTabApi whenever
+// its [engine] effect re-runs — which Strict Mode deliberately exercises on every mount — and a
+// module-global flag cannot tell the instances apart: a frame queued for an api that has since been
+// destroyed would suppress a FRESH api's request in the same frame, so the new engine silently
+// misses its redraw. Keying on the instance means each api coalesces only against itself.
+//
+// Keeping the handle is what makes the work cancellable. AlphaTabApiBase.render() carries no
+// _isDestroyed guard (unlike changeTrackVolume/Mute/Solo and its siblings), so a frame that
+// survives unmount runs against a destroyed renderer from a detached callback nothing in the React
+// tree can catch — and the window is widest on a backgrounded tab, where rAF is throttled. The
+// cleanup in useAlphaTab cancels through cancelQueuedFrames, beside created.destroy().
+//
+// A WeakMap rather than a Map: a destroyed api must not be held alive by this bookkeeping, and an
+// unmount that somehow misses the cleanup must not leak it either.
+const queuedFrames = new WeakMap<AlphaTab.AlphaTabApi, QueuedFrames>();
+
+function queueFrame(api: AlphaTab.AlphaTabApi, kind: keyof QueuedFrames, run: () => void): void {
+  const queued = queuedFrames.get(api) ?? {};
+  // Compared against undefined, never truthiness: 0 is a legitimate frame handle.
+  if (queued[kind] !== undefined) return;
+  queued[kind] = requestAnimationFrame(() => {
+    // Clear BEFORE running, so work queued from inside the callback is not swallowed by a handle
+    // that is about to become stale.
+    const current = queuedFrames.get(api);
+    if (current) current[kind] = undefined;
+    run();
+  });
+  queuedFrames.set(api, queued);
+}
+
+function queueRender(api: AlphaTab.AlphaTabApi): void {
+  queueFrame(api, 'render', () => {
+    api.render();
+  });
+}
+
 function queueMidi(api: AlphaTab.AlphaTabApi): void {
-  if (midiQueued) return;
-  midiQueued = true;
-  requestAnimationFrame(() => {
-    midiQueued = false;
+  queueFrame(api, 'midi', () => {
     api.loadMidiForScore();
   });
+}
+
+/**
+ * Drop any frame still queued for this api. Call it from the SAME cleanup that destroys the api.
+ *
+ * Without it a redraw or a MIDI rebuild queued in the last frame before unmount still fires, on an
+ * engine that no longer exists.
+ */
+export function cancelQueuedFrames(api: AlphaTab.AlphaTabApi): void {
+  const queued = queuedFrames.get(api);
+  if (!queued) return;
+  if (queued.render !== undefined) cancelAnimationFrame(queued.render);
+  if (queued.midi !== undefined) cancelAnimationFrame(queued.midi);
+  queuedFrames.delete(api);
 }
 
 /**
