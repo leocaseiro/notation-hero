@@ -231,7 +231,7 @@ const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 // unambiguous alternation for the same reason — `\d*\.?\d+` can split a digit run two ways.
 const RGB_COLOR = /^rgba?\(\d{1,3},\d{1,3},\d{1,3}(?:,(?:\d+(?:\.\d+)?|\.\d+))?\)$/;
 
-const isCssColor = (draft: string) => {
+const isCssColor = (draft: string): boolean => {
   const value = draft.trim();
   if (HEX_COLOR.test(value)) return true;
   // Only inside the parentheses is whitespace insignificant to AlphaTab, and a hex value has
@@ -243,7 +243,7 @@ const FONT_STYLE_OR_WEIGHT = /^(?:normal|italic|oblique|small-caps|bold|bolder|l
 const FONT_SIZE =
   /^(?:\d+(?:\.\d+)?(?:px|pt|em)|xx-small|x-small|smaller|small|medium|larger|large|x-large|xx-large)$/i;
 
-const isFontShorthand = (draft: string) => {
+const isFontShorthand = (draft: string): boolean => {
   // The family list reaches the renderer unescaped: SvgCanvas builds `<text … style='… font:${…}'>`
   // as a SINGLE-quoted attribute and assigns it as markup, so an apostrophe in a family name closes
   // that attribute and everything after it is parsed as more attributes. Angle brackets open a tag
@@ -1322,4 +1322,35 @@ export const SETTING_NUMERIC_BOUNDS: Readonly<
   'display.staffPaddingLeft': { min: 0 },
   'notation.rhythmHeight': { min: 0 },
   'notation.slurHeight': { min: 0 },
+};
+
+/**
+ * Every TEXT row's validator, by dot-path — the third hand-maintained mirror beside
+ * SETTING_OPTION_VALUES and SETTING_NUMERIC_BOUNDS, kept honest by the same drift test, and read
+ * by the settings-storage restore path before the engine exists.
+ *
+ * Without it the thirteen text rows are the one row kind the restore gates NOTHING on: the per-key
+ * merge gates on `typeof` only, so a stored font of `bold` and a stored colour of `red` are both
+ * strings and both survive it. They then reach `fillFromJson`, which has no per-key try/catch — so
+ * the font THROWS and takes the whole restore with it (every unrelated notation and player group
+ * included), while the colour does not throw at all and instead stores a `null` the renderer
+ * dereferences a frame later, outside any catch.
+ *
+ * These are the SAME two functions the rows themselves use, exported rather than re-implemented, so
+ * the write path and the read path cannot drift into disagreeing about what the engine accepts.
+ */
+export const SETTING_TEXT_VALIDATORS: Readonly<Record<string, (draft: string) => boolean>> = {
+  'display.resources.secondaryGlyphColor': isCssColor,
+  'display.resources.elementFonts.ScoreCopyright': isFontShorthand,
+  'display.resources.elementFonts.ScoreTitle': isFontShorthand,
+  'display.resources.elementFonts.ScoreSubTitle': isFontShorthand,
+  'display.resources.elementFonts.ScoreWords': isFontShorthand,
+  'display.resources.elementFonts.EffectBeatTimer': isFontShorthand,
+  'display.resources.elementFonts.EffectDirections': isFontShorthand,
+  'display.resources.elementFonts.ChordDiagramFretboardNumbers': isFontShorthand,
+  'display.resources.elementFonts.EffectMarker': isFontShorthand,
+  'display.resources.elementFonts.BarNumber': isFontShorthand,
+  'display.resources.numberedNotationFont': isFontShorthand,
+  'display.resources.tablatureFont': isFontShorthand,
+  'display.resources.graceFont': isFontShorthand,
 };

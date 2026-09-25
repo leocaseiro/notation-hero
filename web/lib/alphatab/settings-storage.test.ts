@@ -7,18 +7,21 @@ const DEFAULTS = { display: { scale: 1 }, player: { enableCursor: true } };
 const OPTIONS = { 'display.layoutMode': ['Page', 'Horizontal'] } as const;
 // Every number/range row's declared min/max, by dot-path — what the schema's controls declare.
 const BOUNDS = { 'display.scale': { min: 0.25, max: 3 } } as const;
+// Every text row's own validator, by dot-path. Stands in for the real font/colour validators: what
+// matters here is that the restore CONSULTS them, not which grammar they encode.
+const TEXTS = { 'display.font': (draft: string) => draft.startsWith('12px ') } as const;
 
 describe('loadStoredSettings', () => {
   it('round-trips every stored value', () => {
     const stored = serializeSettings({ display: { scale: 1.4 }, player: { enableCursor: false } });
-    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS, TEXTS);
 
     expect(settings).toEqual({ display: { scale: 1.4 }, player: { enableCursor: false } });
     expect(reset).toBe(false);
   });
 
   it('yields the defaults for a first visit, and does NOT call that a reset', () => {
-    const { settings, reset } = loadStoredSettings(null, DEFAULTS, OPTIONS, BOUNDS);
+    const { settings, reset } = loadStoredSettings(null, DEFAULTS, OPTIONS, BOUNDS, TEXTS);
     expect(settings).toEqual(DEFAULTS);
     // A first visit is not a corruption.
     expect(reset).toBe(false);
@@ -26,13 +29,13 @@ describe('loadStoredSettings', () => {
 
   // A bad stored value must never break the player, and must not vanish quietly.
   it('falls back to the defaults and reports a reset on unparseable JSON', () => {
-    const { settings, reset } = loadStoredSettings('{not json', DEFAULTS, OPTIONS, BOUNDS);
+    const { settings, reset } = loadStoredSettings('{not json', DEFAULTS, OPTIONS, BOUNDS, TEXTS);
     expect(settings).toEqual(DEFAULTS);
     expect(reset).toBe(true);
   });
 
   it('falls back and reports a reset on a wrong-shaped value', () => {
-    const { settings, reset } = loadStoredSettings('"a string"', DEFAULTS, OPTIONS, BOUNDS);
+    const { settings, reset } = loadStoredSettings('"a string"', DEFAULTS, OPTIONS, BOUNDS, TEXTS);
     expect(settings).toEqual(DEFAULTS);
     expect(reset).toBe(true);
   });
@@ -41,7 +44,7 @@ describe('loadStoredSettings', () => {
   // these same settings, so the stored shape changes soon after v0 ships.
   it('keeps the keys an older version has and fills the rest from the defaults', () => {
     const stored = JSON.stringify({ version: 0, settings: { display: { scale: 1.4 } } });
-    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS, TEXTS);
 
     expect(settings).toEqual({ display: { scale: 1.4 }, player: { enableCursor: true } });
     // A partial merge is not a reset.
@@ -58,7 +61,7 @@ describe('loadStoredSettings', () => {
       version: 1,
       settings: { display: { layoutMode: 'NotAMode' } },
     });
-    const { settings, reset } = loadStoredSettings(stored, defaults, OPTIONS, BOUNDS);
+    const { settings, reset } = loadStoredSettings(stored, defaults, OPTIONS, BOUNDS, TEXTS);
 
     expect(settings).toEqual({ display: { layoutMode: 'Page' } });
     // A typo in storage is a corruption the person should be told about.
@@ -70,7 +73,7 @@ describe('loadStoredSettings', () => {
       version: 1,
       settings: { display: { scale: 1.4 }, bogus: { nope: 1 } },
     });
-    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS, TEXTS);
     expect(settings).not.toHaveProperty('bogus');
   });
 
@@ -79,13 +82,15 @@ describe('loadStoredSettings', () => {
   it('merges an array element by element, and drops a malformed one', () => {
     const defaults = { display: { padding: [35, 35] } };
     const good = JSON.stringify({ version: 1, settings: { display: { padding: [10, 20] } } });
-    expect(loadStoredSettings(good, defaults, OPTIONS, BOUNDS).settings).toEqual({
+    expect(loadStoredSettings(good, defaults, OPTIONS, BOUNDS, TEXTS).settings).toEqual({
       display: { padding: [10, 20] },
     });
 
     for (const bad of [[10], [10, 'wide'], { 0: 10, 1: 20 }, null]) {
       const stored = JSON.stringify({ version: 1, settings: { display: { padding: bad } } });
-      expect(loadStoredSettings(stored, defaults, OPTIONS, BOUNDS).settings).toEqual(defaults);
+      expect(loadStoredSettings(stored, defaults, OPTIONS, BOUNDS, TEXTS).settings).toEqual(
+        defaults,
+      );
     }
   });
 
@@ -93,7 +98,7 @@ describe('loadStoredSettings', () => {
   // belongs breaks the layout without throwing, so the default wins.
   it('drops a stored value whose type differs from the default', () => {
     const stored = JSON.stringify({ version: 1, settings: { display: { scale: 'huge' } } });
-    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+    const { settings } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS, TEXTS);
     expect(settings).toEqual(DEFAULTS);
   });
 
@@ -101,7 +106,7 @@ describe('loadStoredSettings', () => {
     // The field clamps on blur/Enter only, so a tab closed mid-edit persists the raw draft. This
     // is the only place that sees it on the way back in.
     const stored = serializeSettings({ display: { scale: 9 }, player: { enableCursor: true } });
-    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS, TEXTS);
 
     expect(settings).toEqual({ display: { scale: 3 }, player: { enableCursor: true } });
     expect(reset).toBe(true);
@@ -109,7 +114,7 @@ describe('loadStoredSettings', () => {
 
   it('clamps up to the minimum as well as down to the maximum', () => {
     const stored = serializeSettings({ display: { scale: -5 }, player: { enableCursor: true } });
-    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS, TEXTS);
 
     expect(settings).toEqual({ display: { scale: 0.25 }, player: { enableCursor: true } });
     expect(reset).toBe(true);
@@ -117,9 +122,66 @@ describe('loadStoredSettings', () => {
 
   it('leaves an in-range number alone and does NOT call that a reset', () => {
     const stored = serializeSettings({ display: { scale: 1.4 }, player: { enableCursor: true } });
-    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS);
+    const { settings, reset } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS, TEXTS);
 
     expect(settings).toEqual({ display: { scale: 1.4 }, player: { enableCursor: true } });
+    expect(reset).toBe(false);
+  });
+
+  // A text row is a string whatever it holds, so nothing upstream of this catches a bad one: the
+  // per-key merge gates on `typeof`, the option lists gate enum names, the bounds gate numbers.
+  it('restores the default for a text value its row rejects, and calls that a reset', () => {
+    const defaults = { display: { font: '12px serif', scale: 1 } };
+    const stored = serializeSettings({ display: { font: 'bold', scale: 1 } });
+    const { settings, reset } = loadStoredSettings(stored, defaults, OPTIONS, BOUNDS, TEXTS);
+
+    expect(settings).toEqual({ display: { font: '12px serif', scale: 1 } });
+    expect(reset).toBe(true);
+  });
+
+  // The whole point of repairing per key: one bad font used to throw inside fillFromJson and take
+  // every unrelated group with it.
+  it('keeps every OTHER stored value when one text row is corrupt', () => {
+    const defaults = { display: { font: '12px serif', scale: 1 }, player: { enableCursor: true } };
+    const stored = serializeSettings({
+      display: { font: '<image onerror=alert(1)>', scale: 2 },
+      player: { enableCursor: false },
+    });
+    const { settings, reset } = loadStoredSettings(stored, defaults, OPTIONS, BOUNDS, TEXTS);
+
+    expect(settings).toEqual({
+      display: { font: '12px serif', scale: 2 },
+      player: { enableCursor: false },
+    });
+    expect(reset).toBe(true);
+  });
+
+  it('leaves a valid text value alone and does NOT call that a reset', () => {
+    const defaults = { display: { font: '12px serif', scale: 1 } };
+    const stored = serializeSettings({ display: { font: '12px "Times New Roman"', scale: 1 } });
+    const { settings, reset } = loadStoredSettings(stored, defaults, OPTIONS, BOUNDS, TEXTS);
+
+    expect(settings).toEqual({ display: { font: '12px "Times New Roman"', scale: 1 } });
+    expect(reset).toBe(false);
+  });
+
+  // A stored NON-string where a text row belongs never reaches the validator: the per-key merge
+  // compares against the default's type first and drops it there, quietly — the same way it
+  // already drops a non-number, and deliberately not a "reset" (an older shape is not corruption).
+  // The `typeof` guard inside dropInvalidText is therefore narrowing for the type-checker, not a
+  // second line of defence; this case pins the division of labour so a future change to either
+  // side cannot quietly move it.
+  it('leaves a non-string text value to the merge, which drops it without a reset', () => {
+    const defaults = { display: { font: '12px serif', scale: 1 } };
+    const { settings, reset } = loadStoredSettings(
+      JSON.stringify({ settings: { display: { font: 42, scale: 1 } } }),
+      defaults,
+      OPTIONS,
+      BOUNDS,
+      TEXTS,
+    );
+
+    expect(settings).toEqual({ display: { font: '12px serif', scale: 1 } });
     expect(reset).toBe(false);
   });
 });

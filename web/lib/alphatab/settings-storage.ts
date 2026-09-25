@@ -78,6 +78,36 @@ function dropUnknownOptions(
 }
 
 /**
+ * The same repair as dropUnknownOptions, for the row kind neither it nor clampToBounds can see.
+ *
+ * A stored font or colour is a string, so the per-key merge's `typeof` check passes it, the option
+ * lists do not cover it and the bounds do not either. It then reaches fillFromJson, where a bad
+ * font THROWS — losing the entire restore, including every unrelated group — and a bad colour does
+ * something worse than throwing: Color.fromJson returns null without raising, and the renderer
+ * dereferences it a frame later, outside any try/catch.
+ *
+ * Restoring the default for just that key keeps the other twelve rows and every other group, and
+ * folds into the same `reset` flag so the drummer is told rather than silently reverted.
+ */
+function dropInvalidText(
+  merged: PlayerSettingsJson,
+  defaults: PlayerSettingsJson,
+  textValidators: Readonly<Record<string, (draft: string) => boolean>>,
+): { settings: PlayerSettingsJson; dropped: boolean } {
+  let settings = merged;
+  let dropped = false;
+  for (const [path, isValid] of Object.entries(textValidators)) {
+    const value = readSettingValue(settings, path);
+    if (value === undefined) continue;
+    if (typeof value !== 'string' || !isValid(value)) {
+      settings = writeSettingValue(settings, path, readSettingValue(defaults, path) ?? '');
+      dropped = true;
+    }
+  }
+  return { settings, dropped };
+}
+
+/**
  * Pull any stored number back inside its row's declared range. Runs in the same pass as
  * dropUnknownOptions, for the same reason: it sees the whole document before the restore push.
  *
@@ -132,6 +162,10 @@ export function loadStoredSettings(
   // Every number/range row's declared min/max, by dot-path. The same-type check in the merge above
   // cannot see an out-of-range number: -5 and 0 are both numbers.
   numericBounds: Readonly<Record<string, { readonly min?: number; readonly max?: number }>>,
+  // Every text row's own validator, by dot-path. The same-type check in the merge above cannot see
+  // a font the engine will throw on, or a colour it will silently turn into null: `bold`, `red` and
+  // a good value are all strings.
+  textValidators: Readonly<Record<string, (draft: string) => boolean>>,
 ): { settings: PlayerSettingsJson; reset: boolean } {
   if (raw === null) return { settings: defaults, reset: false };
 
@@ -149,7 +183,10 @@ export function loadStoredSettings(
   const merged = mergeAgainstDefaults(parsed.settings, defaults);
   // A value no row offers is a corruption, not an older shape: say so, so the warning fires.
   const { settings: gated, dropped } = dropUnknownOptions(merged, defaults, optionValues);
+  // A font or colour the engine will reject is the same corruption again — and the only one that
+  // can take the WHOLE restore with it, so it is repaired here rather than left to fillFromJson.
+  const { settings: texted, dropped: badText } = dropInvalidText(gated, defaults, textValidators);
   // Out of its row's range is the same kind of corruption, and reuses the same warning.
-  const { settings, clamped } = clampToBounds(gated, numericBounds);
-  return { settings, reset: dropped || clamped };
+  const { settings, clamped } = clampToBounds(texted, numericBounds);
+  return { settings, reset: dropped || badText || clamped };
 }

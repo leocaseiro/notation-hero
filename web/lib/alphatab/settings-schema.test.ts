@@ -8,6 +8,7 @@ import {
   DEFAULT_PLAYER_SETTINGS,
   SETTING_NUMERIC_BOUNDS,
   SETTING_OPTION_VALUES,
+  SETTING_TEXT_VALIDATORS,
 } from './settings-schema';
 import type { PlayerSettingsJson } from './settings-paths';
 import type { SettingValue } from '@notation-hero/client';
@@ -201,4 +202,36 @@ it('SETTING_NUMERIC_BOUNDS still matches every settings-row min/max', () => {
       expect(SETTING_NUMERIC_BOUNDS[row.path], row.path).toEqual(declaredBounds(row.control));
     }
   }
+});
+
+const byName = (a: string, b: string): number => a.localeCompare(b);
+
+it("SETTING_TEXT_VALIDATORS still covers every settings text row, with the row's own validator", () => {
+  // The third hand-maintained mirror, and the one whose absence is worst: a text row missing here
+  // is gated by NOTHING on the way back in — the merge compares `typeof`, the option lists gate
+  // enum names and the bounds gate numbers, so a bad font reaches fillFromJson and throws away the
+  // whole restore. Asserted as the SAME function object the row uses, not merely as present, so a
+  // re-implemented copy that drifts from the field's own rule fails here.
+  for (const group of buildSettingGroups(engine)) {
+    for (const row of group.settings) {
+      if (row.source !== 'settings' || row.control.kind !== 'text') continue;
+      expect(SETTING_TEXT_VALIDATORS[row.path], row.path).toBe(row.control.validate);
+    }
+  }
+});
+
+it('SETTING_TEXT_VALIDATORS names no path that is not a text row', () => {
+  // The other direction: a stale entry would silently gate a row against a rule it no longer has.
+  // A for/of rather than filter+map: `filter` does not narrow the discriminated union, so `row.path`
+  // would not type-check against the api-sourced arm that has no path.
+  const textPaths = new Set<string>();
+  for (const group of buildSettingGroups(engine)) {
+    for (const row of group.settings) {
+      if (row.source !== 'settings' || row.control.kind !== 'text') continue;
+      textPaths.add(row.path);
+    }
+  }
+  expect(Object.keys(SETTING_TEXT_VALIDATORS).toSorted(byName)).toEqual(
+    [...textPaths].toSorted(byName),
+  );
 });

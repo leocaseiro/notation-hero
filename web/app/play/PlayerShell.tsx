@@ -23,6 +23,7 @@ import {
   DEFAULT_PLAYER_SETTINGS,
   SETTING_NUMERIC_BOUNDS,
   SETTING_OPTION_VALUES,
+  SETTING_TEXT_VALIDATORS,
   writeSettingValue,
 } from '../../lib/alphatab/settings-schema';
 import {
@@ -161,6 +162,7 @@ function Player() {
         DEFAULT_PLAYER_SETTINGS,
         SETTING_OPTION_VALUES,
         SETTING_NUMERIC_BOUNDS,
+        SETTING_TEXT_VALIDATORS,
       );
     } catch {
       // A browser with site data blocked makes the localStorage GETTER itself throw, not only
