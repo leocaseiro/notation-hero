@@ -1,0 +1,835 @@
+{
+  "_header": {
+    "artifact": "The committed diff of PR #176 (leocaseiro/notation-hero) - feat: v0 settings and tracks popovers (NH-291)",
+    "artifact_url": "https://github.com/leocaseiro/notation-hero/pull/176",
+    "reviewed_head": "2f9b481b111539a65ca9a104c1cfe8336a8e823c (branch claude/plan-c-implementation-fa4ebf)",
+    "reviewed_base": "9e367f69b1e81597f53de7788ad0840ec40f48eb (master tip, also the merge-base)",
+    "diff_size": "228 files, +7166 / -122. 58 text files; the other 170 are Playwright VR .png baselines.",
+    "lap": 1,
+    "half": "review (steps 1-3 of the shared loop). THIS FILE IS UNTRIAGED. The triage half is a separate invocation.",
+    "review_skill": "compound-engineering:ce-code-review",
+    "review_mode": "mode:agent pr:176 (report-only - this mode mutates nothing, so no silent edits were applied and step 2b has no entries)",
+    "review_run_dir": "/tmp/compound-engineering-501/ce-code-review/20260925-150101-ea1bce0c",
+    "FINDING_COUNT": 14,
+    "severity_mix": {
+      "P1": 3,
+      "P2": 8,
+      "P3": 3
+    },
+    "triage_cap_note": "The shared loop caps the triage half at 8 findings or 5 picker rounds. There are 14, so triage will NOT finish in one invocation. Suggested batch 1 (8), which keeps the groups intact: #5, #11, #19, #1 (group 1), then #16, #2, #7 (group 2), then #6. Batch 2 (6): #12, #14, #18, #17, #9, #8.",
+    "reviewers_run": [
+      "correctness",
+      "project-standards",
+      "testing",
+      "maintainability",
+      "learnings-researcher",
+      "security",
+      "performance",
+      "api-contract",
+      "reliability",
+      "adversarial (in-process fallback)",
+      "previous-comments",
+      "julik-frontend-races",
+      "fast-pass (orchestrator's own scan, capped at anchor 50, never promotes)"
+    ],
+    "worktree_warning": "This review ran from the worktree .claude/worktrees/lap-4-review-v0c-popovers-8bb25c, which is on branch claude/pr-176-code-review-735c4a - NOT the PR branch. The PR head branch claude/plan-c-implementation-fa4ebf is checked out in a DIFFERENT worktree. Applying any fix means working in that other worktree (or wherever the PR branch is checked out), never here. Check `git worktree list` and `git log -1` before touching it, and never run git in a worktree another session is inside."
+  },
+  "_state_store": {
+    "binding": "This file. NOT the plan's frontmatter.",
+    "why": "The shared loop would normally bind STATE-STORE to the driving plan's frontmatter - docs/plans/2026-09-13-v0c-popovers-plan.md. That file already carries `lap: 4` and `last_applied: P1`, but those belong to the DOC-review loop that reviewed the plan itself over four laps. Writing this code loop's state into the same two keys would silently corrupt the doc loop's record. So the code loop keeps its own state here, under distinct keys.",
+    "code_lap": 1,
+    "code_last_applied": null,
+    "next": "The triage half sets code_last_applied to the highest severity applied, bumps code_lap, and marks this file triaged."
+  },
+  "_exit_signal": {
+    "raw_verdict": "Ready with fixes",
+    "actionable_findings_count": 13,
+    "clean": false,
+    "reading": "NOT CLEAN. The loop's exit test needs verdict == 'Ready to merge' AND an empty actionable_findings. Neither holds: the verdict is 'Ready with fixes' and 13 of the 14 findings are actionable. So after triage and apply, the loop re-laps - a fresh review half as a NEW invocation.",
+    "review_json": "/tmp/compound-engineering-501/ce-code-review/20260925-150101-ea1bce0c/review.json"
+  },
+  "_how_verified": {
+    "verify_check": "superpowers:receiving-code-review, the From External Reviewers branch, run in a dispatched subagent (never inline).",
+    "combined_with": "ce-code-review's own Stage 5b validator batch. Both ask the same question of the same findings, so they ran as ONE dispatched pass with both contracts bound into the prompt - disclosed rather than run twice.",
+    "what_the_verifier_did": "Read each finding fresh against refs/review/pr-176-head via `git show`, and for several of them traced the installed @coderline/alphatab 1.8.4 source to decide whether the consequence is actually reachable. It returned, per finding, a pass/fail, a grounded reason, the VERBATIM current code it confirmed, and a severity opinion. 17 in, 14 confirmed, 3 rejected.",
+    "severity_recalibration": "Synthesis accepted every downgrade the verifier argued: #1 #6 #7 #12 P1->P2, #8 #9 P1->P3, #17 P2->P3. Nothing was upgraded. The 'severity_as_raised' field on each finding preserves what the reviewer claimed.",
+    "corroboration_limits": "No cross-model peer ran: scope is pr-remote, where the skill forbids starting it. So every reviewer shares a serving family with the orchestrator, and agreement between them is NOT independent cross-model corroboration. Only #1 had two independent reviewers (security + adversarial) find it separately."
+  },
+  "findings": [
+    {
+      "id": 2,
+      "severity": "P1",
+      "severity_as_raised": "P1",
+      "severity_note": "agree",
+      "title": "Transpose full writes a sparse array, poisoning lower tracks",
+      "file": "web/lib/alphatab/live-settings.ts",
+      "line": 70,
+      "location": "web/lib/alphatab/live-settings.ts:70",
+      "whats_wrong": "Dragging 'Transpose full' on any track other than the first corrupts every track above it. The code assigns into a hole of an empty array, and AlphaTab then reads the holes back as NaN for the lower-indexed staves - garbage drawn pitches, and a silent channel on the next MIDI rebuild.",
+      "before": "web/lib/alphatab/live-settings.ts:69-70\n  const pitches = [...api.settings.notation.transpositionPitches];\n  pitches[trackIndex] = semitones;",
+      "after": "web/lib/alphatab/live-settings.ts\n\n  const pitches = [...api.settings.notation.transpositionPitches];\n  // Densify first. AlphaTab loops `i < length` over this array, so a hole reads back as\n  // -undefined = NaN on every lower-indexed staff. 0 is its own \"no transposition\" value.\n  while (pitches.length <= trackIndex) pitches.push(0);\n  pitches[trackIndex] = semitones;",
+      "proposed_fix": "In setTrackTransposition, densify before writing: `const pitches = [...api.settings.notation.transpositionPitches]; while (pitches.length <= trackIndex) pitches.push(0); pitches[trackIndex] = semitones;` - 0 is AlphaTab's own \"no transposition\" value and is what toMixerTrack already reports for every untouched row.",
+      "why_it_works": "Filling the gap with 0 - AlphaTab's own 'no transposition' value, and what the mixer already reports for untouched rows - means the loop reads a real number for every index instead of undefined. It fixes the lower tracks without changing what the dragged track does.",
+      "why_it_matters": "Dragging \"Transpose full\" on any track other than the first breaks every track ABOVE it in the score. `pitches[trackIndex] = semitones` on an array that is still `[]` (AlphaTab ships `transpositionPitches = []`, and `clearTrackTranspositions` resets it to `[]` on every file open) produces a sparse array with holes at indexes 0..trackIndex-1. AlphaTab's `applyPitchOffsets` then runs `staff.transpositionPitch = -settings.notation.transpositionPitches[i]` for every `i < length`, so a hole becomes `-undefined` = `NaN`: on a melodic track that makes `Note.calculateRealValue` return NaN, and the staff redraws with garbage pitches and \"NaN\" fret numbers. The same holes reach the synth on the next MIDI rebuild \u2014 `MidiFileGenerator._generateChannel` reads `settings.notation.transpositionPitches[track.index]`, gets `undefined`, and `channelNoteOn` does `key += undefined`, so that channel goes silent. Padding the array with zeros up to `trackIndex` before the write removes the holes and matches what AlphaTab expects (a dense per-track array).",
+      "evidence": [
+        "web/lib/alphatab/live-settings.ts:69-70 -- `const pitches = [...api.settings.notation.transpositionPitches];` / `pitches[trackIndex] = semitones;`",
+        "node_modules/.pnpm/@coderline+alphatab@1.8.4/.../dist/alphaTab.core.mjs:3694 -- `if (i < settings.notation.transpositionPitches.length) for (const staff of score.tracks[i].staves) staff.transpositionPitch = -settings.notation.transpositionPitches[i];`",
+        "alphaTab.core.mjs:1513 -- `transpositionPitches = [];` (the shipped default, so the array really is empty when the first Transpose full lands)",
+        "web/lib/alphatab/live-settings.ts:86-87 -- `if (api.settings.notation.transpositionPitches.length === 0) return;` / `api.settings.notation.transpositionPitches = [];` (clearTrackTranspositions resets it to empty on every file open)",
+        "alphaTab.core.mjs:43020-43021 -- `const transpositionPitch = track.index < this._settings.notation.transpositionPitches.length ? this._settings.notation.transpositionPitches[track.index] : -track.staves[0].transpositionPitch;` / `this.transpositionPitches.set(channel, transpositionPitch);` (a hole is inside the length, so `undefined` is stored)",
+        "alphaTab.core.mjs:39260 -- `if (this._transpositionPitches.has(channel)) key += this._transpositionPitches.get(channel);` (undefined -> NaN note key -> no preset -> silence)",
+        "alphaTab.core.mjs:6166-6167 -- `if (this.isStringed) return this.fret + this.stringTuning - transpositionPitch;` / `if (this.isPiano) return this.octave * 12 + this.tone - transpositionPitch;` (NaN propagates into displayValue via realValue)",
+        "provenance: 7e920af7 leocaseiro 2026-09-24 - refactor(web): share the popover trigger, lift the mixer's pure mapping (NH-291) \u2014 introduced by this PR"
+      ],
+      "raised_by": ["correctness"],
+      "independent_reviewers": ["correctness"],
+      "confidence": 100,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "transpositionPitches starts [] and clearTrackTranspositions resets it to [] on every score load, so pitches[trackIndex]=semitones for trackIndex>=1 produces holes. alphatab 1.8.4 ModelUtils.applyPitchOffsets runs staff.transpositionPitch = -pitches[i] for every i below the new length -> -undefined = NaN on lower tracks; MidiFileGenerator reads the same holes. Reachable: Punk.gp's non-percussion row 1 can expand.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 5,
+      "severity": "P1",
+      "severity_as_raised": "P1",
+      "severity_note": "agree",
+      "title": "Setting is persisted before the engine is asked to accept it",
+      "file": "web/app/play/PlayerShell.tsx",
+      "line": 568,
+      "location": "web/app/play/PlayerShell.tsx:568",
+      "whats_wrong": "An edit is written to localStorage BEFORE the engine is asked to accept it, and the live apply has no try/catch. So a value AlphaTab rejects is already stored; on every later visit the restore hits the same rejection and throws away the entire saved settings document.",
+      "before": "web/app/play/PlayerShell.tsx:567-573\n      try {\n        globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(next));\n      } catch {\n        // Private browsing and a full quota both throw here. Losing persistence is survivable;\n        // losing the player is not, so swallow it rather than breaking the edit.\n      }\n      if (api) applySettingsJson(api, next, apply);",
+      "after": "web/app/play/PlayerShell.tsx -- apply first, persist only on success:\n\n      // The engine is the authority on whether a value is usable. Persisting first means a value\n      // it rejects comes back on every later visit and truncates the whole restore.\n      if (api) {\n        try {\n          applySettingsJson(api, next, apply);\n        } catch {\n          setSettings(settings);\n          toast.error('That value could not be applied.');\n          return;\n        }\n      }\n      try {\n        globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(next));\n      } catch {\n        // Private browsing and a full quota both throw here. Losing persistence is survivable;\n        // losing the player is not, so swallow it rather than breaking the edit.\n      }",
+      "proposed_fix": "Reorder `applySetting` to apply-then-persist under a guard: wrap `if (api) applySettingsJson(api, next, apply);` in `try { ... } catch { setSettings(settings); toast.error('That value could not be applied.'); return; }` and move `localStorage.setItem(...)` below it so it runs only on success.",
+      "why_it_works": "The engine becomes the gate. Nothing reaches storage that the engine has not already accepted, so the permanent-restore-break in #11 stops being reachable at all, and the person sees an error at the moment of the edit instead of silently losing every setting later.",
+      "why_it_matters": "Any value AlphaTab rejects outlives the failure: the edit funnel writes the new settings document to localStorage first and only then hands it to the engine, and unlike the engine-build call at PlayerShell.tsx:241-245 the live `applySettingsJson` carries no try/catch. So when `fillFromJson` throws (an unparseable font today -- see the font-row finding -- and any future row whose parser is strict), the person sees an uncaught error, the engine is left half-updated, and the value that caused it is already stored and comes back on every reload. Applying first inside a try/catch and persisting only on success makes the store reflect what the engine actually accepted, and matches the guard the engine-build path already uses.",
+      "evidence": [
+        "web/app/play/PlayerShell.tsx:568 -- `        globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(next));`  -- runs before the engine has seen the value",
+        "web/app/play/PlayerShell.tsx:573 -- `      if (api) applySettingsJson(api, next, apply);`  -- no try/catch here, unlike the engine-build call",
+        "web/lib/alphatab/live-settings.ts:59 -- `  api.settings.fillFromJson(json as AlphaTab.json.SettingsJson);`  -- the throwing call, unguarded on this path",
+        "web/app/play/PlayerShell.tsx:241-245 -- the parallel pattern this path should match: `try { engineSettings.fillFromJson(settings as AlphaTab.json.SettingsJson); } catch { ... }`"
+      ],
+      "raised_by": ["security"],
+      "independent_reviewers": ["security"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "The storage write at :568 precedes applySettingsJson at :573, and that call has no try/catch. fillFromJson routes elementFonts through Font.fromJson, whose FontParser throws on a malformed string. So a rejected value is already in storage, loadStoredSettings keeps it (same type), and the init-time fillFromJson then discards EVERY stored setting on each later visit.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 11,
+      "severity": "P1",
+      "severity_as_raised": "P1",
+      "severity_note": "agree",
+      "title": "Font rows ship without the validator their row contract requires",
+      "file": "web/lib/alphatab/settings-schema.ts",
+      "line": 612,
+      "location": "web/lib/alphatab/settings-schema.ts:612",
+      "whats_wrong": "All twelve font rows accept any string. SettingRow only validates a text row when the row supplies a validator, and none of them do. Clear a font field and press Enter and AlphaTab's font parser throws - after the bad value has already been persisted (see #5), so the player stops restoring settings from then on.",
+      "before": "web/lib/alphatab/settings-schema.ts:611-613\n          path: 'display.resources.elementFonts.ScoreCopyright',\n          control: { kind: 'text' },\n          apply: 'render',",
+      "after": "web/lib/alphatab/settings-schema.ts -- one shared validator, passed on all twelve font rows:\n\n// AlphaTab's FontParser throws on a partial string ('Missing font size' / 'Missing font list'),\n// and SettingRow only gates a text row when the row supplies a validator.\nconst isFontShorthand = (draft: string) =>\n  /^(?:(?:normal|italic|oblique|small-caps|bold|bolder|lighter|[1-9]00)\\s+)*\\d+(?:\\.\\d+)?(?:px|pt|em|rem)\\s+\\S/.test(\n    draft.trim(),\n  );\n\n          path: 'display.resources.elementFonts.ScoreCopyright',\n          control: { kind: 'text', validate: isFontShorthand },\n          apply: 'render',",
+      "proposed_fix": "Add one shared validator in settings-schema.ts and pass it on all twelve `kind: 'text'` rows, e.g. `const validateFont = (draft: string) => /^(?:(?:normal|italic|oblique|small-caps|bold|bolder|lighter|[1-9]00)\\s+)*\\d+(?:\\.\\d+)?(?:px|pt|em|rem)\\s+\\S/.test(draft.trim());` then `control: { kind: 'text', validate: validateFont }`. Assumption: the accepted shape is the CSS font shorthand the shipped defaults already use.",
+      "why_it_works": "A validator is the mechanism SettingRow already provides for exactly this; the rows simply never used it. Rejecting a malformed string at the field stops it reaching both the engine and storage, so it closes the input half of the same failure #5 closes on the ordering half.",
+      "why_it_matters": "Clear a font field in the Settings popover and press Enter (or type 'bold') and the player stops restoring settings correctly from then on, silently and permanently. SettingRow only gates a text row on `control.validate`, and none of the twelve `kind: 'text'` font rows supply one, so the raw string is reported, written to localStorage, and handed to `Settings.fillFromJson`, where AlphaTab's `FontParser` throws (`_fontSizeLineHeight` -> `throw new Error('Missing font size')`, alphaTab.core.mjs:27319). The bad string is now stored; every later visit re-throws inside the engine-build `fillFromJson`, which is caught at PlayerShell.tsx:243, so the restore is truncated at that key and every setting after it is silently never applied. `loadStoredSettings` type-checks a string against a string default and returns `reset: false`, so no toast fires and no repair write happens -- the person's only way out is to find that exact row again or clear site data. Supplying the `validate` the component already accepts (as SettingRow.tsx:47 and :163 say the caller must) keeps the unparseable draft from ever reaching storage or the engine.",
+      "evidence": [
+        "web/lib/alphatab/settings-schema.ts:612 -- `          control: { kind: 'text' },`  (the first of twelve font rows; grep for `validate` across refs/review/pr-176-head shows zero callers supply it)",
+        "client/src/components/ui/SettingRow/SettingRow.tsx:97 -- `      control.kind === 'text' && control.validate ? control.validate(textDraft) : true;`  -- with no `validate`, `accepted` is unconditionally true",
+        "client/src/components/ui/SettingRow/SettingRow.tsx:89-91 -- the contract the schema does not honour: 'Nothing reaches the caller until blur or Enter, and then only if the caller's `validate` accepts it -- the engine's parsers throw or return null on almost every partial string, and the settings funnel has no try/catch on the edit path.'",
+        "web/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs:27319 -- `\t\tif (!this._currentToken) throw new Error(\"Missing font size\");`  -- reached for `''` and for any single style/weight token such as `bold`",
+        "web/node_modules/@coderline/alphatab/dist/alphaTab.core.mjs:29471 -- `\t\t\t\t\tobj.elementFonts.set(JsonHelper.parseEnum(k, NotationElement), Font.fromJson(v));`  -- no guard around Font.fromJson inside fillFromJson's setProperty",
+        "web/app/play/PlayerShell.tsx:241-245 -- the engine-build call IS wrapped (`try { engineSettings.fillFromJson(...) } catch { // Keep the defaults already on engineSettings }`), but fillFromJson aborts mid-tree, so what survives is a partially-applied document, not the defaults the comment claims",
+        "web/lib/alphatab/settings-storage.ts:37 -- `      merged[key] = typeof value === typeof fallback ? value : fallback;`  -- a bad font string is a string, so the restore accepts it and reports `reset: false`"
+      ],
+      "raised_by": ["security"],
+      "independent_reviewers": ["security"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "All twelve font rows ship control:{kind:'text'} with no validate, and SettingRow.tsx is the only definition site with zero callers supplying one - so commitText's `: true` branch accepts any string. AlphaTab's FontParser throws on malformed input ('Missing font list' / 'Missing font size'), reached unguarded via RenderingResourcesSerializer's Font.fromJson, so clearing a font field and pressing Enter throws out of applySetting after the bad value is already persisted.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 1,
+      "severity": "P2",
+      "severity_as_raised": "P1",
+      "severity_note": "P2 - total loss of the page, but only under blocked site data, and web/app/play/error.tsx catches the throw",
+      "title": "Unguarded localStorage read leaves the player page permanently broken",
+      "file": "web/app/play/PlayerShell.tsx",
+      "line": 159,
+      "location": "web/app/play/PlayerShell.tsx:159",
+      "whats_wrong": "The player page reads localStorage inside a useState initialiser, guarded only against server-side rendering. In a browser that blocks site data the getter itself throws, during render, so the whole /play page falls over to its error boundary. Both localStorage WRITES in the same file are wrapped in try/catch; only the read is not.",
+      "before": "web/app/play/PlayerShell.tsx:156-162\n    globalThis.window === undefined\n      ? { settings: DEFAULT_PLAYER_SETTINGS, reset: false }\n      : loadStoredSettings(\n          globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY),\n          DEFAULT_PLAYER_SETTINGS,\n          SETTING_OPTION_VALUES,\n        ),",
+      "after": "web/app/play/PlayerShell.tsx -- add the helper beside the initialiser, then call it:\n\n// Blocked site data makes the localStorage GETTER itself throw, not only setItem. This read runs\n// inside a useState initialiser, i.e. during render, so an unguarded throw takes the whole page.\nconst readStoredSettings = () => {\n  try {\n    return loadStoredSettings(\n      globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY),\n      DEFAULT_PLAYER_SETTINGS,\n      SETTING_OPTION_VALUES,\n    );\n  } catch {\n    // Blocked storage is NOT a corrupt document: reset stays false, so no toast and no repair write.\n    return { settings: DEFAULT_PLAYER_SETTINGS, reset: false };\n  }\n};\n\n    globalThis.window === undefined\n      ? { settings: DEFAULT_PLAYER_SETTINGS, reset: false }\n      : readStoredSettings(),",
+      "proposed_fix": "Wrap the read in the lazy initialiser: `try { return loadStoredSettings(globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY), DEFAULT_PLAYER_SETTINGS, SETTING_OPTION_VALUES); } catch { return { settings: DEFAULT_PLAYER_SETTINGS, reset: false }; }`. Use reset:false - blocked storage is not a corrupt document.",
+      "why_it_works": "It makes the read match the writes the same file already guards. Blocked storage is a different condition from a corrupt document, so returning reset:false keeps the toast and the repair write out of it - the person just gets shipped defaults and a working player.",
+      "why_it_matters": "In a browser configured to block site data (Chrome's 'block all cookies', Firefox with dom.storage disabled, a partitioned third-party context), touching `globalThis.localStorage` throws a SecurityError. That read sits inside a `useState` lazy initialiser, so the throw happens during the hydration render and `web/app/play/error.tsx` catches it -- the person gets 'The player stopped unexpectedly' instead of the player, and the 'Try again' button re-runs the same read, so it never recovers. The same file guards both WRITES for exactly this reason and states the priority outright at line 570: 'Losing persistence is survivable; losing the player is not.' The read is the one access that is not guarded, and it is the one that takes the player down.",
+      "evidence": [
+        "web/app/play/PlayerShell.tsx:159 -- `          globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY),`  -- inside the `useState(() => ...)` initialiser at :154, guarded only for SSR (`globalThis.window === undefined`), not for a throwing accessor",
+        "web/app/play/PlayerShell.tsx:569-571 -- the author's own statement of intent on the write path: `      } catch {` / `        // Private browsing and a full quota both throw here. Losing persistence is survivable;` / `        // losing the player is not, so swallow it rather than breaking the edit.`",
+        "web/app/play/PlayerShell.tsx:186-188 -- the second guarded write: `    } catch {` / `      // Storage is unavailable or full; the warning below is still worth showing.` / `    }`",
+        "web/app/play/error.tsx:10 -- `      <h1 className=\"text-2xl font-bold\">The player stopped unexpectedly</h1>`  -- what a render-phase throw shows, with a `reset` button that re-runs the same read",
+        "web/lib/alphatab/settings-storage.ts:98 -- `  if (raw === null) return { settings: defaults, reset: false };`  -- null is already the safe path a guarded read can return"
+      ],
+      "raised_by": ["adversarial", "security"],
+      "independent_reviewers": ["adversarial", "security"],
+      "confidence": 100,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "Lazy initialiser guards only for SSR, not for a browser where the localStorage GETTER throws (Chrome with all site data blocked, sandboxed iframe, Firefox dom.storage disabled); the throw happens during render. Both setItem calls in the same file ARE wrapped, so the asymmetry is an oversight.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 6,
+      "severity": "P2",
+      "severity_as_raised": "P1",
+      "severity_note": "P2 instead of P1 - needs an engine-import failure plus a dismissed banner",
+      "title": "Open file/drop is a silent no-op after a dismissed engine-import failure",
+      "file": "web/app/play/PlayerShell.tsx",
+      "line": 652,
+      "location": "web/app/play/PlayerShell.tsx:652",
+      "whats_wrong": "After AlphaTab's module import fails once, the failure is cached for the whole page. The error banner is dismissible for the first time in this PR - and once dismissed, 'Open file' and drag-and-drop do nothing at all: no toast, no error, nothing. The code's own comment claims Open file 'is the actual way back', which is false in that state.",
+      "before": "web/app/play/PlayerShell.tsx:650-652\n        at = await loadAlphaTabEngine().catch(() => null);\n        // The engine failed; that failure is reported by the engine-error message, not by a toast.\n        if (!at) return;",
+      "after": "web/app/play/PlayerShell.tsx\n\n        at = await loadAlphaTabEngine().catch(() => null);\n        if (!at) {\n          // The import rejection is cached for the whole page, so the banner that reported it may\n          // already be dismissed -- without this there is no feedback at all for this pick.\n          toast.error(\n            'The player could not start, so this file cannot be opened. Reload the page and try again.',\n            { id: 'notation-load' },\n          );\n          return;\n        }",
+      "proposed_fix": "In requestNotation (PlayerShell.tsx:646-653), replace the bare `if (!at) return;` with a branch that also calls toast.error('The player could not start, so this file cannot be opened. Reload the page and try again.', { id: 'notation-load' }) before returning, mirroring the toast.error(..., { id: 'notation-load' }) call used later in the same function for a file that fails to parse.",
+      "why_it_works": "It reuses the toast id the same function already uses for a file that fails to parse, so the two failure paths behave alike and the person learns why nothing happened. It does not try to revive the engine - that stays a reload, which the message now says.",
+      "why_it_matters": "When AlphaTab's self-hosted ESM import fails (a CDN blip, a blocked script, a stale cached chunk), the header shows a banner this PR makes dismissible for the first time (`web/app/play/NotationSurface.tsx:90,220-224`, all newly added lines). Once the person dismisses it -- the button's only function -- the code's own comment says 'Open file' in the left rail is 'the actual way back', but `requestNotation` retries the SAME memoised `loadAlphaTabEngine()` promise, which `web/lib/alphatab/engine.ts:33-37` documents as permanently cached as a rejection ('one failed import is permanent for the page ... the `.catch(() => null)` retry ... cannot succeed after a failure'). The retry resolves to `null` and the function returns at line 652 with no toast, no state change, and no loading indicator -- the click (or a file drop) does visibly nothing. Both entry points are affected the same way: `OpenFileControl.tsx:64-75` and the drop-zone's `acceptDropped` each await `requestNotation` inside their own try/catch, but since it resolves normally rather than throwing, neither catch ever fires. Before this PR the banner could not be dismissed, so the failure was always visible; now the one indicator can be hidden while the one advertised recovery path fails in total silence, leaving the person with no way to learn a reload is required. Adding a `toast.error(..., { id: 'notation-load' })` at the `if (!at) return;` branch -- the same pattern `requestNotation` already uses a few lines later for a file that fails to parse, and that `OpenFileControl`/`acceptDropped` already use for their own failures -- closes the gap for both entry points at once.",
+      "evidence": [
+        "web/app/play/PlayerShell.tsx:650-652 -- at = await loadAlphaTabEngine().catch(() => null); // The engine failed; that failure is reported by the engine-error message, not by a toast. if (!at) return;",
+        "web/app/play/NotationSurface.tsx:90 -- const [dismissed, setDismissed] = useState(false); (added by this PR -- confirmed every dismiss-related line in the diff hunk is a '+' line)",
+        "web/app/play/NotationSurface.tsx:217-224 -- {/* Dismiss only HIDES this message \u2014 it does not fix the engine, which stays dead behind it. \"Open file\" in the left rail is the actual way back (NH-291) ... */} <Button ... aria-label=\"Dismiss error message\" onClick={() => setDismissed(true)} ...>",
+        "web/lib/alphatab/engine.ts:33-37 -- comment: 'one failed import is permanent for the page and a reload is the only recovery ... The `.catch(() => null)` retry in the file-open path therefore cannot succeed after a failure; it only covers the case where the import is still in flight.'",
+        "web/app/play/OpenFileControl.tsx:64-75 -- const accept = async (file) => { ... try { await onNotation(await readNotation(file)); } catch { toast.error(readFailureMessage(file), { id: 'notation-load' }); } }; -- this catch never fires for the engine-failure case because requestNotation resolves normally instead of throwing"
+      ],
+      "raised_by": ["reliability"],
+      "independent_reviewers": ["reliability"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "loadAlphaTabEngine memoises the rejection (engine.ts:33-37: 'one failed import is permanent for the page'), so after a failed import every pick or drop hits `if (!at) return;` with no feedback. The banner is dismissible and `dismissed` resets only where a NEW failure is raised, which never happens for the one-shot import error. NotationSurface.tsx:217-219's claim that \"'Open file' in the left rail is the actual way back\" is false for this state.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 7,
+      "severity": "P2",
+      "severity_as_raised": "P1",
+      "severity_note": "P2 instead of P1 - a coverage gap, not a runtime defect on its own",
+      "title": "Both per-track transposition writes never verified to reach the engine",
+      "file": "web/app/play/TracksPopover.tsx",
+      "line": 196,
+      "location": "web/app/play/TracksPopover.tsx:196",
+      "whats_wrong": "Both per-track transposition writes have no test at any level, while the solo, mute and volume writes beside them are all proven to reach the engine. This is not an abstract gap: two confirmed defects in this same review (#2 and #16) live in exactly this untested path.",
+      "before": "web/app/play/TracksPopover.tsx:196\n    api.changeTrackTranspositionPitch([track], semitones);",
+      "after": "Two additions, mirroring tests that already exist for the sibling writes.\n\nweb/lib/alphatab/live-settings.test.ts -- the unit case that would have caught #2:\n\nit('writes a dense pitch array so lower tracks keep their own value', () => {\n  const api = createFakeApi();\n  setTrackTransposition(api, 2, 5);\n  expect(api.settings.notation.transpositionPitches).toEqual([0, 0, 5]);\n});\n\nweb/e2e/player.e2e.ts -- the e2e case that would have caught #16, mirroring the existing\nchangeTrackSolo / changeTrackMute / changeTrackVolume recordApiCalls cases:\n\ntest('Transpose audio reaches the engine, and Transpose full reaches the score', async ({ page }) => {\n  // ... open Punk.gp, open Tracks, expand row 1 (the one non-percussion row) ...\n  // assert recordApiCalls captured changeTrackTranspositionPitch for Transpose audio\n  // assert settings.notation.transpositionPitches for Transpose full\n});",
+      "proposed_fix": "Add player.e2e.ts cases recording changeTrackTranspositionPitch (Transpose audio) and polling settings.notation.transpositionPitches (Transpose full), mirroring the existing solo/mute/volume recordApiCalls tests; also unit-test setTrackTransposition/clearTrackTranspositions in live-settings.test.ts.",
+      "why_it_works": "The unit case pins the exact array shape that #2 got wrong, and the e2e case pins what actually reaches the engine, which is the only thing that would have caught #16. Both mirror tests that already exist for the sibling mixer writes, so there is a pattern to copy rather than a new harness to build.",
+      "why_it_matters": "Dragging either of a track's two transposition sliders is supposed to call a real AlphaTab method -- `api.changeTrackTranspositionPitch` for Transpose audio, `setTrackTransposition` (which writes `settings.notation.transpositionPitches`) for Transpose full -- exactly the mechanism criterion 7 of the PR claims works 'in both directions.' The sibling per-track controls on the same row (render-select, solo, mute, volume) each get a `player.e2e.ts` case using the `recordApiCalls` helper to prove the click actually reached `changeTrackSolo`/`changeTrackMute`/`changeTrackVolume`. Neither transposition control gets that treatment, and no unit test covers it either: `TrackRow.test.tsx` only proves the sliders render visible/enabled/disabled, and `live-settings.test.ts` never calls `setTrackTransposition` or `clearTrackTranspositions`. A regression that silently no-ops either write (wrong track index, or the semitone value never leaving React state) would move the slider and its signed readout while doing nothing to the sound or the notation, and no test would fail -- worse, `clearTrackTranspositions` already had a documented carry-over bug caught in this feature's own review history (`.spec-triage-loop/2026-09-13-v0c-popovers-plan/lap-1/findings.json`), so this is a proven-fragile area shipping with zero regression coverage.",
+      "evidence": [
+        "web/app/play/TracksPopover.tsx:192-198 -- const applyTransposeAudio = (index, semitones) => { const track = trackAt(index); if (!api || !track) return; api.changeTrackTranspositionPitch([track], semitones); patch(index, { transposeAudio: semitones }); };",
+        "web/app/play/TracksPopover.tsx:200-205 -- const applyTransposeFull = (index, semitones) => { if (!api) return; setTrackTransposition(api, index, semitones); patch(index, { transposeFull: semitones }); };",
+        "web/lib/alphatab/live-settings.ts:64-71 -- export function setTrackTransposition(api, trackIndex, semitones): void { const pitches = [...api.settings.notation.transpositionPitches]; pitches[trackIndex] = semitones; api.settings.notation.transpositionPitches = pitches; pushSettings(api, 'render'); }",
+        "git grep for changeTrackTranspositionPitch / setTrackTransposition across every *.test.ts/*.test.tsx/*.e2e.ts at refs/review/pr-176-head returns zero matches, versus recordApiCalls-based cases for changeTrackSolo/changeTrackMute/changeTrackVolume in web/e2e/player.e2e.ts (tests 'solo is not exclusive' and 'mute and volume reach the engine')",
+        "provenance: .spec-triage-loop/2026-09-13-v0c-popovers-plan/lap-1/findings.json:70 -- prior finding title 'clearTrackTranspositions() cannot undo the carry-over it exists to fix', confirming this exact function was already found buggy once during this feature's own review"
+      ],
+      "raised_by": ["testing"],
+      "independent_reviewers": ["testing"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "live-settings.test.ts covers only applySettingsJson and the stylesheet round trip - setTrackTransposition and clearTrackTranspositions are not imported - and `git grep -i transpos refs/review/pr-176-head -- web/e2e` returns nothing, while the neighbouring mixer writes DO have recordApiCalls cases. Two real defects (#2, #16) live in exactly this untested path.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 12,
+      "severity": "P2",
+      "severity_as_raised": "P1",
+      "severity_note": "P2 instead of P1 - one canary still covers a wholly stale client/ scan",
+      "title": "MixerClasses.ts distinctive utilities missing from REQUIRED_SELECTORS",
+      "file": "web/scripts/assert-design-system-css.mjs",
+      "line": 42,
+      "location": "web/scripts/assert-design-system-css.mjs:42",
+      "whats_wrong": "AGENTS.md requires a new shared class module under client/src/components/ui/ to add its distinctive utilities to the CSS canary. The one utility added, size-[2.125rem], also appears literally in two .tsx files, so it does not canary the new .ts module at all. The utilities that exist only there - the mixer's grid template and its pressed-state fills - are unguarded, and each fails invisibly.",
+      "before": "web/scripts/assert-design-system-css.mjs:42\n  [String.raw`.size-\\[2\\.125rem\\]`, 'every mixer icon button collapses to the Button default size'],",
+      "after": "web/scripts/assert-design-system-css.mjs -- canary the utilities that exist ONLY in\nMixerClasses.ts, alongside the size entry already there:\n\n  [String.raw`.size-\\[2\\.125rem\\]`, 'every mixer icon button collapses to the Button default size'],\n  [\n    String.raw`.\\[grid-template-columns\\:2\\.125rem_minmax\\(3\\.25rem\\,1fr\\)`,\n    'the mixer rows lose their shared column grid and collapse out of alignment',\n  ],\n  [\n    String.raw`.aria-pressed\\:bg-warning`,\n    'a soloed or muted track shows no fill, so the mixer looks untouched',\n  ],",
+      "proposed_fix": "Add REQUIRED_SELECTORS tuples (matching the file's existing [selector, consequence] shape and escaping convention) for the utilities unique to MixerClasses.ts: the grid-template-columns arbitrary value from MIXER_ROW_CLASS (MixerClasses.ts:13-14), and the aria-pressed:/data-pressed:*-warning compound utilities from MIXER_SOLO_PRESSED_CLASS, MIXER_MUTE_PRESSED_CLASS and MUTE_PRESSED_CLASS that do not already appear in a scanned .tsx file.",
+      "why_it_works": "It names the utilities that only the .ts file can produce, which is what the guard is for. The size entry stays; these add the two failures that would otherwise be silent - a collapsed mixer grid and a solo button with correct ARIA and no visible fill.",
+      "why_it_matters": "If Tailwind's client/ source scan ever comes back stale on Vercel \u2014 the exact failure mode this guard exists to catch, and one that has already shipped to production once (the seek rail) \u2014 TrackRow and MasterRow lose the grid-template-columns layout that MIXER_ROW_CLASS defines and collapse into an unstyled single column, and every solo/mute pressed-state highlight (the aria-pressed and data-pressed-warning colour pairs) stops rendering, so a soloed or muted track looks identical to a resting one. Nothing else catches this: the controls keep their roles and ARIA attributes, so unit tests, the e2e suite and axe all stay green while the mixer looks broken to a real viewer. AGENTS.md requires 'add its distinctive utilities to REQUIRED_SELECTORS' whenever a shared class module is added under client/src/components/ui/, but this PR's new MixerClasses.ts only got one addition (`.size-[2.125rem]`), and that one is already duplicated in TrackRow.tsx/MasterRow.tsx as a literal class string \u2014 the utilities that exist nowhere else in client/src (the grid-template-columns value and every aria-pressed:/data-pressed:*-warning compound class) were left unprotected.",
+      "evidence": [
+        "client/src/components/ui/TrackRow/MixerClasses.ts:13-14 -- export const MIXER_ROW_CLASS = 'grid items-center gap-1.5 [grid-template-columns:2.125rem_minmax(3.25rem,1fr)_2.125rem_2.125rem_minmax(4.5rem,1.25fr)_8.625rem_2.125rem]';",
+        "web/scripts/assert-design-system-css.mjs:36-42 -- REQUIRED_SELECTORS only gained one tuple this PR: [String.raw`.size-\\[2\\.125rem\\]`, 'every mixer icon button collapses to the Button default size'],",
+        "client/src/components/ui/TrackRow/MixerClasses.ts:27-30 -- export const MIXER_SOLO_PRESSED_CLASS = 'aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground'; export const MIXER_MUTE_PRESSED_CLASS = 'aria-pressed:border-warning aria-pressed:bg-warning aria-pressed:text-warning-foreground';",
+        "client/src/components/ui/TrackRow/MixerClasses.ts:21-22 -- export const MUTE_PRESSED_CLASS = 'data-pressed:border-warning data-pressed:bg-warning data-pressed:text-warning-foreground';",
+        "git grep confirms scope: 'grid-template-columns', 'aria-pressed:' and 'data-pressed:*-warning' return zero hits under client/src outside MixerClasses.ts; only the data-pressed:*-primary triplet and the size-[2.125rem] literal are independently duplicated in TransportToggle.tsx:79, TrackRow.tsx:192 and MasterRow.tsx:93.",
+        "client/src/components/ui/TrackRow/TrackRow.tsx:215 -- <div className={MIXER_ROW_CLASS}> -- confirms the grid layout class is live-rendered, not dead code.",
+        "client/src/components/ui/MasterRow/MasterRow.tsx:177 -- mute ? MIXER_MUTE_PRESSED_CLASS : MIXER_SOLO_PRESSED_CLASS -- confirms the pressed-state compound classes are live-rendered.",
+        "AGENTS.md:109-110 -- 'If you add a shared class module under `client/src/components/ui/`, add its distinctive utilities to `REQUIRED_SELECTORS`. Covered by `tooling/assert-design-system-css.test.mjs`.'"
+      ],
+      "raised_by": ["project-standards"],
+      "independent_reviewers": ["project-standards"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "AGENTS.md requires a new shared class module under client/src/components/ui/ to add its distinctive utilities to REQUIRED_SELECTORS, and the one entry added - size-[2.125rem] - is the LEAST distinctive: it appears verbatim in MasterRow.tsx:93 and TrackRow.tsx:192, so it does not canary MixerClasses.ts specifically. The utilities that exist ONLY in that .ts file are unlisted, and each fails invisibly.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 14,
+      "severity": "P2",
+      "severity_as_raised": "P2",
+      "severity_note": "agree",
+      "title": "Settings popover rebuilds all 90 rows on every keystroke (unmemoized)",
+      "file": "web/app/play/SettingsPopover.tsx",
+      "line": 86,
+      "location": "web/app/play/SettingsPopover.tsx:86",
+      "whats_wrong": "The 90-row settings schema is rebuilt on every render of the popover's parent, which re-renders about once per animation frame while the transport is running - so the whole descriptor tree is reconstructed roughly 60 times a second whether or not the popover is even open.",
+      "before": "web/app/play/SettingsPopover.tsx:86\n  const groups = engine ? buildSettingGroups(engine) : [];",
+      "after": "web/app/play/SettingsPopover.tsx\n\n  // PlayerShell re-renders about once per animation frame while the transport runs, and the\n  // result depends only on the engine identity.\n  const groups = useMemo(() => (engine ? buildSettingGroups(engine) : []), [engine]);",
+      "proposed_fix": "Memoize the schema build: const groups = useMemo(() => (engine ? buildSettingGroups(engine) : []), [engine]); in SettingsPopover.tsx so the 90-row descriptor tree is rebuilt only when the engine identity changes.",
+      "why_it_works": "The result depends only on the engine identity, so memoising on it is safe and changes nothing observable. It removes per-frame work from the main thread, which is where the synth is also competing for time.",
+      "why_it_matters": "Typing a digit, holding an arrow key, or committing any slider drag in the Settings popover updates `PlayerShell`'s `settings` state or `apiValues` object, which re-renders `SettingsPopover` and re-invokes `buildSettingGroups(engine)` from scratch on every single edit -- not once per popover open. `buildSettingGroups` (settings-schema.ts:216) allocates a brand-new array of all 8 groups and all ~90 `SettingDescriptor`/`control` objects on each call, including fresh `enumOptions()` arrays for every enum-backed row, so none of the 90 row identities survive the rebuild. Because neither `SettingsPopover` nor `SettingRow` is wrapped in `React.memo` and `buildSettingGroups()` is called directly in the render body (no `useMemo`), React has to reconcile all 90 `SettingRow` elements on every keystroke -- not just the one row the person is editing. This stacks on top of the same-keystroke cost in the sibling finding (uncoalesced localStorage + fillFromJson), and the popover is explicitly designed to stay open and usable while the score plays ('Neither popover blocks playback' -- PR body), so this extra reconciliation work runs on every edit exactly while that promise needs to hold. At 90 simple form rows this is unlikely to single-handedly drop a frame, but it is pure waste on a path a one-line fix removes entirely.",
+      "evidence": [
+        "web/app/play/SettingsPopover.tsx:86 -- const groups = engine ? buildSettingGroups(engine) : [];",
+        "web/lib/alphatab/settings-schema.ts:216 -- export function buildSettingGroups(engine: AlphaTabEngine): SettingGroup[] { return [ ... 8 groups, ~90 settings ... ] }",
+        "web/app/play/SettingsPopover.tsx:146-179 -- <Accordion ...>{groups.map((group) => <AccordionItem ...>{group.settings.map((setting) => <SettingRow key={setting.id} ... value={valueOf(setting)} onChange={(next) => change(setting, next)} .../>)}</AccordionItem>)}</Accordion> -- rebuilt from the fresh `groups` array on every render",
+        "web/app/play/PlayerShell.tsx:566 -- setSettings(next); (state write inside applySetting that triggers the SettingsPopover re-render described above)",
+        "web/app/play/PlayerShell.tsx:521-527 -- const apiValues: Partial<Record<ApiValueKey, SettingValue>> = { playbackSpeed: ..., masterVolume, metronomeVolume, countInVolume, isLooping: looping }; -- a fresh object literal on every PlayerShell render, so the 4 api-sourced range rows also re-trigger the same SettingsPopover rebuild via a different state path (speed/masterVolume/etc.)",
+        "web/app/play/PlayerShell.tsx:833 -- onSettingChange={applySetting} (wires every settings-row edit back into the state SettingsPopover re-renders from)",
+        "No useMemo/React.memo call exists anywhere in web/app/play/SettingsPopover.tsx, web/app/play/PlayerShell.tsx, client/src/components/ui/SettingRow/SettingRow.tsx, client/src/components/ui/TrackRow/TrackRow.tsx, or client/src/components/ui/MasterRow/MasterRow.tsx (checked via git grep against refs/review/pr-176-head) -- confirms no memoization exists anywhere on this render path"
+      ],
+      "raised_by": ["performance"],
+      "independent_reviewers": ["performance"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "buildSettingGroups(engine) is called unmemoized in the component body, and SettingsPopover is an unmemoized child of PlayerShell, which re-renders roughly every animation frame during playback (the position handler's rAF calls setPositionMs/setDurationMs/setScoreTempo). So the whole 90-row descriptor tree, with its enum option arrays, is rebuilt ~60x/s whether or not the popover is open. The result depends only on `engine`, so useMemo is correct and safe.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 16,
+      "severity": "P2",
+      "severity_as_raised": "P2",
+      "severity_note": "agree",
+      "title": "Transpose full never reaches the audio despite its docs",
+      "file": "web/lib/alphatab/live-settings.ts",
+      "line": 72,
+      "location": "web/lib/alphatab/live-settings.ts:72",
+      "whats_wrong": "The 'Transpose full' slider's own JSDoc says 'Notation AND audio for one track', but it pushes with apply:'render', which never regenerates the MIDI. The notation transposes; the sound does not - until something else rebuilds the MIDI later, at which point the pitch jumps unexpectedly.",
+      "before": "web/lib/alphatab/live-settings.ts:63 and :72\n/** Notation AND audio for one track. The other transposition - audio only - is an api method. */\n...\n  pushSettings(api, 'render');",
+      "after": "This one is a decision, not a mechanical fix. Two coherent answers:\n\nOPTION A -- make the label true (the slider really transposes audio):\nweb/lib/alphatab/live-settings.ts\n  pushSettings(api, 'midi');\n...and give the Transpose full slider the same MIDI_APPLY_NOTE warning the other fourteen\nsound-rebuilding rows carry, because this now stops and rewinds the player.\n\nOPTION B -- make the docs true (the slider is notation-only):\nweb/lib/alphatab/live-settings.ts\n/** Notation only, for one track. Audio transposition is a separate api method. */\n...relabel the slider from 'Transpose full' to something that does not promise audio, and correct\nTrackRow's onTransposeFullChange prop doc to match.",
+      "proposed_fix": "Assuming the label is the contract: switch to `pushSettings(api, 'midi')` and give the Transpose full slider the MIDI_APPLY_NOTE warning the fourteen MIDI rows carry. If keeping the mixer non-interrupting matters more, take the opposite branch: correct the JSDoc at live-settings.ts:63 and TrackRow's onTransposeFullChange prop doc to say notation only, and relabel the slider.",
+      "why_it_works": "Either branch makes the code and its label agree, which is the actual defect. Option A costs the person a stop-and-rewind on that slider, like the other fourteen sound-rebuilding rows. Option B costs nothing at runtime and admits the slider is notation-only. Only the maintainer can say which the slider is meant to be.",
+      "why_it_matters": "A drummer drags \"Transpose full\" and hears no change \u2014 the notation transposes, the playback does not \u2014 and then the pitch jumps later, the next time anything rebuilds the MIDI (one of the 14 sound-rebuilding settings rows, or opening a file). `setTrackTransposition` pushes with `apply: 'render'`, which runs `api.updateSettings()` + `api.render()`; neither touches the MIDI. AlphaTab only hands the synth its per-channel transposition map from `loadMidiForScore` (`player.applyTranspositionPitches(generator.transpositionPitches)`), so `settings.notation.transpositionPitches` stays engine-side until then. Both the function's own JSDoc (\"Notation AND audio for one track\") and TrackRow's prop doc (\"Notation AND audio\") promise otherwise, and the control's name only makes sense next to \"Transpose audio\" if it covers both. Either the push mode or the promise has to change.",
+      "evidence": [
+        "web/lib/alphatab/live-settings.ts:63 -- `/** Notation AND audio for one track. The other transposition \u2014 audio only \u2014 is an api method. */`",
+        "web/lib/alphatab/live-settings.ts:72 -- `pushSettings(api, 'render');`",
+        "web/lib/alphatab/live-settings.ts:22-27 -- `if (apply === 'midi') { api.loadMidiForScore(); return; }` / `api.updateSettings();` / `if (apply === 'render') queueRender(api);` \u2014 the 'render' branch never reloads the MIDI",
+        "alphaTab.core.mjs:46742 -- `player.applyTranspositionPitches(generator.transpositionPitches);` inside `loadMidiForScore()`, the only caller that updates the synth's map",
+        "alphaTab.core.mjs:46049-46053 -- `render(renderHints) { ... this._renderer.renderScore(this.score, this._trackIndexes, renderHints); ... }` \u2014 no MIDI work",
+        "alphaTab.core.mjs:45683-45691 -- `updateSettings() { this.settings.handleBackwardsCompatibility(); ... ModelUtils.applyPitchOffsets(...); this._updateRenderer(); this._renderer.updateSettings(...); this._setupOrDestroyPlayer(); this._onSettingsUpdated(); }` \u2014 no MIDI work either, and `_setupOrDestroyPlayer` returns early when the player mode has not changed"
+      ],
+      "raised_by": ["correctness"],
+      "independent_reviewers": ["correctness"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "pushSettings(api,'render') runs updateSettings() + a queued render(); updateSettings applies pitch offsets to the score model and rebuilds the renderer, but _setupOrDestroyPlayer() returns false when the mode is unchanged and never calls loadMidiForScore(), and the transposition only reaches the synth through player.applyTranspositionPitches(...) INSIDE loadMidiForScore. TracksPopover's playerReady re-assert restores transposeAudio but not transposeFull, so the audio never follows.",
+      "route": {
+        "autofix_class": "manual",
+        "owner": "human",
+        "actionable": false
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 18,
+      "severity": "P2",
+      "severity_as_raised": "P2",
+      "severity_note": "agree",
+      "title": "Secondary-voices colour row shows black, not its real value",
+      "file": "web/lib/alphatab/settings-schema.ts",
+      "line": 590,
+      "location": "web/lib/alphatab/settings-schema.ts:590",
+      "whats_wrong": "The Settings > Colours row 'Secondary voices' always shows a black swatch, whatever the engine is using. Its real default carries an alpha channel, and an <input type=\"color\"> silently rewrites anything that is not a plain #rrggbb to #000000 - so the row misreports the value, and touching it discards the alpha.",
+      "before": "web/lib/alphatab/settings-schema.ts:589-591\n          path: 'display.resources.secondaryGlyphColor',\n          control: { kind: 'color' },\n          apply: 'render',",
+      "after": "web/lib/alphatab/settings-schema.ts -- this path's default carries an alpha channel, which\n<input type=\"color\"> cannot hold, so use the deferred-commit text row the fonts already use:\n\n          path: 'display.resources.secondaryGlyphColor',\n          control: { kind: 'text', validate: (draft) => CSS.supports('color', draft) },\n          apply: 'render',\n\n(The smaller alternative, if editing the alpha channel does not matter: keep kind:'color' and change\nthe shipped default to an opaque #rrggbb so the swatch at least shows the truth.)",
+      "proposed_fix": "Give display.resources.secondaryGlyphColor `control: { kind: 'text', validate: (draft) => CSS.supports('color', draft) }` instead of `{ kind: 'color' }`, matching the deferred-commit text rows the fonts use. Assumption: keeping the alpha channel editable matters; if not, change the shipped default to an opaque hex so the colour input can render it.",
+      "why_it_works": "A text row with a CSS colour validator can hold the alpha channel the real value needs, and it is the same deferred-commit control the font rows already use - so no new control kind is invented. The row then shows what the engine is actually using.",
+      "why_it_matters": "The Settings \u25b8 Colours row \"Secondary voices\" always paints a black swatch, whatever the engine is actually using. Its shipped value is the `rgba()` string AlphaTab's `Color#rgba` reports for a colour with alpha \u2014 `rgba(0,0,0,0.39215686274509803)` \u2014 and `<input type=\"color\">` sanitizes anything that is not a `#rrggbb` literal to `#000000` per the HTML value-sanitization algorithm, so the control cannot display it. The person sees a solid black chip for a 39 %-opacity grey, and the first time they touch the picker the alpha channel is silently replaced by an opaque hex. The other five colour rows are unaffected \u2014 they all ship plain hex. Splitting this one row onto the `text` kind (which already commits on blur/Enter and takes a `validate`) keeps the value round-trippable through `Color.fromJson`, which is what the restore path uses.",
+      "evidence": [
+        "web/lib/alphatab/settings-schema.ts:589-590 -- `path: 'display.resources.secondaryGlyphColor',` / `control: { kind: 'color' },`",
+        "web/lib/alphatab/settings-schema.ts:1120 -- `secondaryGlyphColor: 'rgba(0,0,0,0.39215686274509803)',`",
+        "web/lib/alphatab/settings-schema.ts:1113-1115 -- `// Colours are the CSS string \\`Color#rgba\\` reports \u2014 a plain \\`#RRGGBB\\` hex for an opaque // colour, \\`rgba(r,g,b,a)\\` for one with alpha (secondaryGlyphColor).`",
+        "client/src/components/ui/SettingRow/SettingRow.tsx:185-190 -- `{control.kind === 'color' ? (<Input id={id} type=\"color\" value={String(value)} onChange={(event) => onChange(event.target.value)} ... />)`",
+        "web/lib/alphatab/settings-schema.test.ts:96-100 -- `expectColorDefault` asserts the shipped string equals `Color#rgba`'s own output, so the rgba value really is what a fresh Settings() reports"
+      ],
+      "raised_by": ["correctness"],
+      "independent_reviewers": ["correctness"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "The shipped default for that path is rgba(0,0,0,0.39215686274509803) (settings-schema.ts:1120, with a comment at :1113-1115 acknowledging secondaryGlyphColor is the alpha case), and SettingRow renders kind:'color' as <Input type=\"color\" value={String(value)}>. The HTML color-input value sanitiser rejects anything that is not a simple #rrggbb and forces #000000, so the row shows black and any interaction silently drops the alpha channel.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 19,
+      "severity": "P2",
+      "severity_as_raised": "P2",
+      "severity_note": "agree",
+      "title": "Out-of-range number survives every restore with no fallback and no toast",
+      "file": "web/lib/alphatab/settings-storage.ts",
+      "line": 37,
+      "location": "web/lib/alphatab/settings-storage.ts:37",
+      "whats_wrong": "A number outside its row's declared range survives the restore untouched - no clamp, no fallback, no toast. Half-type a value into a settings row and reload before the field blurs, and the on-commit clamp never runs: the out-of-range value comes back applied on every future visit.",
+      "before": "web/lib/alphatab/settings-storage.ts:37-38\n    } else {\n      merged[key] = typeof value === typeof fallback ? value : fallback;\n    }",
+      "after": "web/lib/alphatab/settings-schema.ts -- export the bounds that already exist on every number/range\ndescriptor:\n\nexport const SETTING_NUMERIC_BOUNDS: Record<string, { min?: number; max?: number }> = { ... };\n\nweb/lib/alphatab/settings-storage.ts -- clamp in the same pass that drops unknown enum names, and\nset `dropped` so the existing warning toast fires:\n\n    const bounded = clampToBounds(settings, defaults, numericBounds);\n    if (bounded.clamped) dropped = true;",
+      "proposed_fix": "Export `SETTING_NUMERIC_BOUNDS: Record<string, { min?: number; max?: number }>` from settings-schema.ts beside SETTING_OPTION_VALUES, pass it into loadStoredSettings, and clamp in the same pass as dropUnknownOptions - setting dropped = true when a clamp changes a value so the existing warning toast fires.",
+      "why_it_works": "The bounds already exist on every number and range descriptor; exporting them lets the restore enforce the same limits the field enforces on commit. Reusing the existing `dropped` flag means the person gets the warning toast the PR already promises for a corrupt value.",
+      "why_it_matters": "A drummer who half-types a number into a settings row can leave the player stuck on that value on every future visit, with no warning and no way back except finding and retyping the row. The stated rule for this PR is that a corrupt or unknown stored value falls back to the shipped default and raises a toast rather than reverting silently, but the restore path only enforces three things: JSON parses, the per-key `typeof` matches, and an option row's value is in its list. A number outside the row's own declared min/max is none of those, so it is restored verbatim, pushed into the engine through fillFromJson before the engine is built, and `reset` stays false so no toast fires. SettingRow's own comment records that such values are 'reported, pushed to the engine and persisted' per keystroke, and the on-commit clamp only runs if the person blurs or presses Enter \u2014 closing the tab mid-edit skips it. There is no reset-to-defaults action in the popover (the two actions are the MIDI and Guitar Pro exports), so the only exit is to re-edit the exact row. Clamping on restore, in the same pass that already drops unknown option values, closes the persistence hole without reintroducing the per-keystroke clamp the author deliberately rejected.",
+      "evidence": [
+        "web/lib/alphatab/settings-storage.ts:37 -- merged[key] = typeof value === typeof fallback ? value : fallback;  \u2014 the only check a plain number faces; 0 and 1e9 both satisfy it against a numeric default.",
+        "web/lib/alphatab/settings-storage.ts:69-76 -- dropUnknownOptions iterates optionValues only, so no numeric row is examined at all, and `reset` therefore stays false for an out-of-range number.",
+        "client/src/components/ui/SettingRow/SettingRow.tsx:71-73 -- '// which constrain the stepper and nothing else, so a typed 0 in a row declared min 0.25 is / // reported, pushed to the engine and persisted \u2014 and the next visit restores it before the / // clamp runs again.'",
+        "client/src/components/ui/SettingRow/SettingRow.tsx:85 -- onChange(commit ? clampToControl(parsed) : parsed);  \u2014 the clamp is applied only on the commit path (blur / Enter), never on the per-keystroke path that feeds applySetting.",
+        "web/app/play/PlayerShell.tsx:566-568 -- const next = writeSettingValue(settings, path, value); setSettings(next); ... localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(next));  \u2014 every keystroke is persisted immediately, so abandoning a half-typed value leaves it in storage.",
+        "web/lib/alphatab/settings-schema.ts:485 -- control: { kind: 'range', min: 0.25, max: 3, step: 0.05 }  (display.scale / Zoom) and settings-schema.ts:493 -- control: { kind: 'number', min: 0.1, step: 0.1 }  (display.stretchForce, no upper bound at all, so even a committed value is never clamped above).",
+        "web/app/play/PlayerShell.tsx:582-609 -- runAction handles only 'export-midi' and the Guitar Pro export; there is no reset-to-defaults action to recover with."
+      ],
+      "raised_by": ["adversarial"],
+      "independent_reviewers": ["adversarial"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "mergeAgainstDefaults gates on typeof only, and dropUnknownOptions clamps nothing (it checks enum NAMES), so any finite number survives restore and `reset` stays false - no toast. Reachable exactly as SettingRow.tsx:70-77 itself documents: the declared min/max are not enforced per keystroke, so typing -5 into one of the 36 kind:'number' rows (most declare min:0) persists it immediately, and reloading before blur means the on-commit clamp never runs.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 17,
+      "severity": "P3",
+      "severity_as_raised": "P2",
+      "severity_note": "P3 instead of P2 - a consistency/UX gap on two rows",
+      "title": "Settings rows promise a disable reason the UI never shows",
+      "file": "web/lib/alphatab/settings-schema.ts",
+      "line": 247,
+      "location": "web/lib/alphatab/settings-schema.ts:247",
+      "whats_wrong": "When a file plays its own recording, the Settings popover's Metronome volume and Count-in volume rows go grey with no explanation. Every other control this PR disables shows the reason. The schema comment promises the same reason string as the transport buttons, and the code never delivers it.",
+      "before": "web/app/play/SettingsPopover.tsx:173-177\n                      disabled={\n                        Boolean(mixUnavailable) &&\n                        setting.source === 'api' &&\n                        (setting.key === 'metronomeVolume' || setting.key === 'countInVolume')\n                      }",
+      "after": "web/app/play/SettingsPopover.tsx -- pass the reason through as the row description, the same way\n`disabled` is already derived from it:\n\n                      description={\n                        Boolean(mixUnavailable) &&\n                        setting.source === 'api' &&\n                        (setting.key === 'metronomeVolume' || setting.key === 'countInVolume')\n                          ? mixUnavailable\n                          : setting.description\n                      }",
+      "proposed_fix": "In SettingsPopover.tsx (line 162), derive `description` for the metronome-volume/count-in-volume rows from `mixUnavailable` the same way `disabled` already is a few lines below, matching the disabled-with-reason pattern TrackRow and MasterRow already use.",
+      "why_it_works": "It derives the description from the same value that already drives `disabled`, so the two cannot drift apart again, and it matches the disabled-with-reason pattern TrackRow and MasterRow already ship.",
+      "why_it_matters": "A drummer who opens a file with its own embedded recording -- the mode v0 is built around -- sees the Settings popover's Metronome volume and Count-in volume rows go gray with no explanation. Every other disabled control this PR ships (TrackRow's mix controls, MasterRow's select-all toggles, and these same two values' own Transport buttons via TransportRow.tsx's `onOff` helper) shows 'Unavailable while the file plays its own recording' in a tooltip. The settings-schema.ts comment on these two rows explicitly claims 'the same reason string' reaches them, but SettingRow.tsx has no tooltip mechanism at all and SettingsPopover.tsx passes only the row's own static `setting.description` (undefined for both rows), so only `disabled` reaches the DOM. A future contributor who trusts the comment and copies this row as a template for the next 'unavailable while X' setting will repeat the gap, and nothing -- type or test -- will catch it.",
+      "evidence": [
+        "web/lib/alphatab/settings-schema.ts:246-248 -- // This row and the count-in-volume row beside it disable on `mixUnavailable` while the // file plays its own recording \u2014 the same rule, and the same reason string, as the // transport's Metronome and Count-In buttons. They are the only two Player rows that do.",
+        "web/lib/alphatab/settings-schema.ts:240-245 -- { id: 'player-metronome-volume', source: 'api', key: 'metronomeVolume', label: 'Metronome volume', control: { kind: 'range', min: 0, max: 1, step: 0.05 }, } -- no `description` field is set on this descriptor (nor on the count-in-volume descriptor immediately after it)",
+        "web/app/play/SettingsPopover.tsx:162,173-177 -- description={setting.description} ... disabled={ Boolean(mixUnavailable) && setting.source === 'api' && (setting.key === 'metronomeVolume' || setting.key === 'countInVolume') } -- `disabled` is derived from `mixUnavailable`; `description` is not",
+        "client/src/components/ui/SettingRow/SettingRow.tsx:270 -- {description ? <FieldDescription>{description}</FieldDescription> : null} -- the only place `description` reaches the DOM, unconditional on `disabled`; this file imports no Tooltip",
+        "web/app/play/TransportRow.tsx:85,128,138 -- const onOff = (name, on) => { if (hasBackingTrack) return `${name}: ${UNAVAILABLE}`; ... }; ... tooltip={onOff('Metronome', metronome)} ... tooltip={onOff('Count-in', countIn)} -- the real 'reason string' pattern the settings-schema.ts comment claims to mirror"
+      ],
+      "raised_by": ["maintainability"],
+      "independent_reviewers": ["maintainability"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "SettingsPopover consumes the string only as Boolean(mixUnavailable) for `disabled` and passes no `description`, so the two rows are greyed out with no reason - and the prop doc's stated justification is verifiably false on both halves: the label is 'Metronome volume', which says nothing, and TransportRow.tsx:86 shows the transport's two buttons put the reason in the TOOLTIP rather than relying on their label. Every other disabled control here carries the RECORDING reason.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 8,
+      "severity": "P3",
+      "severity_as_raised": "P1",
+      "severity_note": "P3 instead of P1 - weakens a new test gate; no user-facing defect",
+      "title": "Scroll-container bound is satisfied by construction; vertical containment is gone",
+      "file": "web/e2e/a11y.e2e.ts",
+      "line": 112,
+      "location": "web/e2e/a11y.e2e.ts:112",
+      "whats_wrong": "The new scroll-container branch of the hit-area gate cannot fail vertically. `contentTop + height <= scrollHeight` is true by definition for any child of a scroll container, and nothing checks that the container itself is on screen - so the window-bottom check was removed for all popover content and nothing replaced it.",
+      "before": "web/e2e/a11y.e2e.ts:105-115\n        if (scrollAncestor) {\n          const ar = scrollAncestor.getBoundingClientRect();\n          const contentTop = r.top - ar.top + scrollAncestor.scrollTop;\n          if (\n            r.right > globalThis.innerWidth + 0.5 ||\n            r.left < -0.5 ||\n            contentTop < -0.5 ||\n            contentTop + r.height > scrollAncestor.scrollHeight + 0.5\n          ) {\n            return true;\n          }",
+      "after": "web/e2e/a11y.e2e.ts -- keep the content-range test, and also require the container itself to be\non screen:\n\n        if (scrollAncestor) {\n          const ar = scrollAncestor.getBoundingClientRect();\n          const contentTop = r.top - ar.top + scrollAncestor.scrollTop;\n          // The content-range test below cannot fail on its own -- scrollHeight includes this\n          // child by definition. The container's own containment is what still has teeth.\n          if (\n            ar.bottom > globalThis.innerHeight + 0.5 ||\n            ar.top < -0.5 ||\n            ar.right > globalThis.innerWidth + 0.5 ||\n            ar.left < -0.5 ||\n            r.right > globalThis.innerWidth + 0.5 ||\n            r.left < -0.5 ||\n            contentTop < -0.5 ||\n            contentTop + r.height > scrollAncestor.scrollHeight + 0.5\n          ) {\n            return true;\n          }",
+      "proposed_fix": "Keep the content-range test but add the container's own containment inside the `if (scrollAncestor)` branch: fail when `ar.bottom > globalThis.innerHeight + 0.5 || ar.top < -0.5 || ar.right > globalThis.innerWidth + 0.5 || ar.left < -0.5`.",
+      "why_it_works": "Checking the container's own rectangle restores the property the relaxation silently assumed - that the scrolling box is itself on screen. The content-range test stays for what it genuinely covers, so a row below the fold inside a visible popover still passes, which was the point of the change.",
+      "why_it_matters": "Inside any scrolling ancestor the gate no longer has a vertical containment check at all, so a control clipped past the top or bottom of the window passes green. The new branch claims to bound the element by its scroll container's content range, but that bound is arithmetically free: `contentTop = r.top - ar.top + scrollAncestor.scrollTop` is the element's offset inside the scrollable content measured from the container's border-box top, so for any in-flow descendant `contentTop >= 0` and `contentTop + r.height <= scrollHeight` both hold by definition \u2014 neither condition can ever fire. What actually makes a below-the-fold row reachable is that the CONTAINER is on screen, and that is never checked, while the old `r.bottom > innerHeight` / `r.top < -0.5` test is dropped (it survives only in the `else` branch at lines 116-121). The branch also triggers on any ancestor whose computed overflowY is `auto` or `scroll` without confirming it actually overflows, and Base UI's ScrollArea Viewport hard-codes `overflow: 'scroll'`, so both popovers sit in the relaxed branch permanently, overflowing or not. Adding the container's own window-edge test restores the protection while keeping the intended 'a row below the fold is one scroll away' relaxation.",
+      "evidence": [
+        "web/e2e/a11y.e2e.ts:112 -- contentTop + r.height > scrollAncestor.scrollHeight + 0.5",
+        "web/e2e/a11y.e2e.ts:107 -- const contentTop = r.top - ar.top + scrollAncestor.scrollTop;  \u2014 r.top - ar.top equals (borderTopWidth + offsetInScrollContent - scrollTop), so contentTop reduces to borderTopWidth + offsetInScrollContent, which is >= 0 and whose sum with r.height is <= borderTopWidth + scrollHeight. With the ScrollArea Viewport carrying no border, both conditions are unsatisfiable.",
+        "web/e2e/a11y.e2e.ts:119 -- r.bottom > globalThis.innerHeight + 0.5 ||  \u2014 the vertical window test now exists only in the `else` branch (no scrolling ancestor); nothing replaces it in the scroll branch.",
+        "web/e2e/a11y.e2e.ts:100 -- if (overflowY === 'auto' || overflowY === 'scroll') {  \u2014 matched on computed style alone, with no scrollHeight > clientHeight test.",
+        "node_modules/.pnpm/@base-ui+react@1.6.0_.../node_modules/@base-ui/react/scroll-area/viewport/ScrollAreaViewport.mjs:303 -- overflow: 'scroll'  \u2014 Base UI sets it unconditionally on the Viewport, so every control in the Settings and Tracks popovers takes the relaxed branch whether or not the panel overflows.",
+        "Constructed scenario: give the Settings popup a taller cap (or open it in a short window where Base UI's Positioner cannot fit it) so the panel's own scroll viewport hangs past the window bottom. Rows in the off-window part of the container are not reachable by scrolling the container \u2014 the container itself is what is off-screen \u2014 yet the filter evaluates only contentTop (always in range) and the two horizontal tests, and returns green.",
+        "The comment at a11y.e2e.ts:93-95 also states the premise 'this ancestor only scrolls vertically, so a horizontal clip is still permanent'. Base UI sets overflow on BOTH axes, so that premise is false for the containers this branch actually finds."
+      ],
+      "raised_by": ["adversarial", "fast-pass"],
+      "independent_reviewers": ["adversarial"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "For any in-flow descendant of a scrolling ancestor, contentTop + r.height <= scrollAncestor.scrollHeight holds BY DEFINITION (scrollHeight includes that child), so the vertical half of the new branch can never fail; and nothing checks the scroll container's own rect against the window. The diff removed vertical window containment for popover content without substituting anything that can fail.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    },
+    {
+      "id": 9,
+      "severity": "P3",
+      "severity_as_raised": "P1",
+      "severity_note": "P3 instead of P1 - test-gate hardening; the scoping mismatch is real but no shipped bug follows",
+      "title": "Mixer and toast skips also disable the off-screen containment check",
+      "file": "web/e2e/a11y.e2e.ts",
+      "line": 80,
+      "location": "web/e2e/a11y.e2e.ts:80",
+      "whats_wrong": "The two new skips in the hit-area gate run BEFORE the element's rectangle is measured, so they exempt mixer and toast controls from the off-screen position check as well as the 44px size check. Their own comments justify only the size exemption.",
+      "before": "web/e2e/a11y.e2e.ts:74 and :80\n        if (el.closest('[data-sonner-toast]')) return false;\n...\n        if (el.closest('[data-slot=\"track-row\"], [data-slot=\"master-row\"]')) return false;",
+      "after": "web/e2e/a11y.e2e.ts -- move both skips below getBoundingClientRect and make them size-only:\n\n        const r = el.getBoundingClientRect();\n        // Size-only exemption: sonner's fixed 20x20 close button, and the mixer's deliberate 34px\n        // boxes. Position is NOT exempt -- a control off the screen is never intentional.\n        const sizeExempt =\n          el.closest('[data-sonner-toast], [data-slot=\"track-row\"], [data-slot=\"master-row\"]') !== null;\n\n        ... the window / scrollAncestor position branches run for every element ...\n\n        return sizeExempt ? false : r.width < 44 || r.height < 44;",
+      "proposed_fix": "Move the two skips below `const r = el.getBoundingClientRect()` and apply them only to the size verdict: `const sizeExempt = el.closest('[data-sonner-toast], [data-slot=\"track-row\"], [data-slot=\"master-row\"]') !== null;`, run the window/scroll position branches for every element, and end the filter with `return sizeExempt ? false : r.width < 44 || r.height < 44;`",
+      "why_it_works": "Measuring first and exempting only the size verdict keeps the deliberate 34px and 20px boxes passing, which is what the comments actually argue for, while restoring the containment check for the entire Tracks popover. The mixer's fixed-width grid makes a narrow window the realistic failure, so this is the case that matters.",
+      "why_it_matters": "A mixer control that is pushed off the screen now passes the merge-blocking hit-area gate silently. The two new `return false` skips are justified in their own comments as SIZE exemptions (sonner's fixed 20x20 close button, the mixer's deliberate 34px boxes), but both run BEFORE `const r = el.getBoundingClientRect()` on line 81, so they also remove those controls from the position/containment test that the narrow-700px case's own comment calls out as the thing that 'lets this fail on a control pushed past the viewport edge rather than one merely painted small'. Every control in the Tracks popover is inside one of the two exempted roots, so the whole mixer is now unmeasured on both axes: the four staff toggles, the per-row expand button, the render/solo/mute toggles, the track volume rail, the two transposition rails and the whole Master footer (select-all solo, select-all mute, master volume, the track-layout switch). The fix keeps the intended 34px/20px size exemption while restoring containment, by reading the rect first, running the position checks unconditionally, and applying the exemption only to the final 44px size return.",
+      "evidence": [
+        "web/e2e/a11y.e2e.ts:80 -- if (el.closest('[data-slot=\"track-row\"], [data-slot=\"master-row\"]')) return false;",
+        "web/e2e/a11y.e2e.ts:81 -- const r = el.getBoundingClientRect();  (the rect the position checks use is only read AFTER both skips have already returned)",
+        "web/e2e/a11y.e2e.ts:74 -- if (el.closest('[data-sonner-toast]')) return false;  (same shape, same placement)",
+        "web/e2e/a11y.e2e.ts:242 -- 'The containment check in expectHitAreas above is what lets this fail on a control pushed past the viewport edge rather than one merely painted small.' \u2014 the repo's own statement that containment is a separate, load-bearing protection, not part of the size test the skips exempt.",
+        "client/src/components/ui/TrackRow/TrackRow.tsx:210 -- data-slot=\"track-row\" sits on the ROW root (the Field), so every descendant control matches el.closest(): the volume Slider's [data-slot=\"slider-control\"] (TrackRow.tsx:267), the two Transpose rails (TrackRow.tsx:349, 369), and every button in the row.",
+        "client/src/components/ui/MasterRow/MasterRow.tsx:88 -- data-slot=\"master-row\" likewise covers the master volume rail, the select-all solo/mute buttons and the track-layout toggle passed in as `leading` (web/app/play/TracksPopover.tsx:376).",
+        "Constructed scenario: TracksPopover's Popup is a FIXED width \u2014 web/app/play/TracksPopover.tsx:295 -- className=\"flex max-h-(--available-height) w-[32rem] flex-col p-0\" (512px) \u2014 and the shell never scrolls horizontally: web/app/play/PlayerShell.tsx:811 -- <main className=\"flex h-dvh flex-col overflow-hidden\">. At any window narrower than the popup, the mixer rows extend past the window's right edge and their right-hand controls cannot be reached by any pointer. `r.right > globalThis.innerWidth + 0.5` is the check the author deliberately kept in BOTH branches for exactly this ('a horizontal clip is still permanent', a11y.e2e.ts:94-95), and it never runs. The repo names narrow phone-portrait widths as the open gap (a11y.e2e.ts:243, NH-321), so the case a future narrow test would add is already pre-greened.",
+        "Second constructed scenario (vertical): the Tracks popup reserves a hard-coded 4.5rem for its non-scrolling footer (TracksPopover.tsx:313), which does not account for the backing-track paragraph rendered above the ScrollArea (TracksPopover.tsx:307-312). With a file that plays its own recording the popup content exceeds --available-height and is clipped past a window edge; the top track rows and/or the Master footer go off-screen, and neither can be reported \u2014 the track rows are exempted here and the Master footer is exempted here too."
+      ],
+      "raised_by": ["adversarial", "fast-pass"],
+      "independent_reviewers": ["adversarial"],
+      "confidence": 75,
+      "verifier_verdict": "CONFIRMED",
+      "verifier_reason": "Both skips `return false` at lines 74 and 80, BEFORE `const r = el.getBoundingClientRect()` at line 81, so mixer and toast controls are exempt from the position/containment branches as well as the 44px size check - while the comment justifies the exemption purely on size. MIXER_ROW_CLASS pins a wide fixed grid template, so a narrow window is exactly where a mixer control could be pushed past the right edge unnoticed.",
+      "route": {
+        "autofix_class": "gated_auto",
+        "owner": "downstream-resolver",
+        "actionable": true
+      },
+      "requires_verification": true
+    }
+  ],
+  "groups": [
+    {
+      "title": "Bad setting values reach storage and stick",
+      "findings": [5, 11, 19, 1],
+      "kind": "apply-queue",
+      "context": "One boundary - what gets into the saved settings document, in what order, and what happens when it cannot be read. #5 and #11 compound: the missing validator lets a bad value in, and the persist-before-apply ordering makes it permanent.",
+      "preferred_resolution": "Fix #5 first (the ordering) - it alone stops #11 from being permanent. Then #11 (the validator), then #19 (clamp on restore), then #1 (guard the read).",
+      "why": "All four are edits to the same two files and the same write/read path, and doing #5 first shrinks the blast radius of the other three."
+    },
+    {
+      "title": "Per-track transposition is wrong, and untested",
+      "findings": [16, 2, 7],
+      "kind": "decision-gate",
+      "context": "The transposition path carries a real corruption bug (#2), a semantics mismatch between the label and the code (#16), and no test at all (#7) - which is why the first two shipped.",
+      "preferred_resolution": "Decide #16 first - whether 'Transpose full' means audio or notation - because it changes what #7's test should assert. Then fix #2, then add #7's cases.",
+      "why": "#16 is a product call only the maintainer can make; #2 and #7 are mechanical once it is answered."
+    },
+    {
+      "title": "Settings rows that misreport their own state",
+      "findings": [18, 17],
+      "kind": "apply-queue",
+      "context": "Two rows in the Settings popover show the person something other than the truth: a colour swatch that is always black, and two disabled rows with no reason given.",
+      "preferred_resolution": "Independent one-line fixes in the same two files; do them together.",
+      "why": "Same surface, same shape of defect, no ordering between them."
+    },
+    {
+      "title": "The hit-area gate can pass while the UI is broken",
+      "findings": [9, 8],
+      "kind": "apply-queue",
+      "context": "Both weaken the merge-blocking 44px gate this PR widened. Neither is a shipped bug - they are holes in the guard that is supposed to catch the next one.",
+      "preferred_resolution": "One pass over expectHitAreas fixes both: measure the rect first and exempt only size (#9), and check the scroll container's own containment (#8).",
+      "why": "Same function, same edit session; splitting them would mean touching the filter twice. Worth pairing with the canary test the adversarial reviewer suggests, since this gate has no self-test."
+    }
+  ],
+  "dropped_after_verification": [
+    {
+      "id": 3,
+      "title": "Backing-track detection (hasBackingTrack) untested at any level",
+      "raised_by": "testing",
+      "severity_claimed": "P1",
+      "drop_reason": "The verifier rejected the proposed fix as a tautology: extracting isBackingTrackMode(actualPlayerMode, engine) and asserting it against a hand-built fake tests `a === b` and proves nothing about whether the real engine sets actualPlayerMode. The behaviour it gates - the disabled mixer and metronome states - is already covered by TrackRow.test.tsx:275-318 and MasterRow.test.tsx:88 through mixUnavailable/soloMuteUnavailable. Real coverage needs a fixture with an embedded recording, and none exists in web/e2e/fixtures; the finding neither establishes that nor addresses it."
+    },
+    {
+      "id": 4,
+      "title": "Every settings keystroke synchronously persists+pushes the whole document",
+      "raised_by": "performance",
+      "severity_claimed": "P1",
+      "drop_reason": "Rejected as an unmeasured micro-optimisation with a correctness cost. The named cost is a JSON.stringify of a few KB plus one setItem, against per-event work the module already analysed and deliberately accepted (live-settings.ts:30-38 explains why only render() is coalesced) - the relayout dominates by orders of magnitude. The suggested rAF deferral also trades a guaranteed persist for a lossy one: an edit in the last frame before the tab closes would never be written. Note #14, the unmemoized rebuild, survived - that one is the real per-frame cost."
+    },
+    {
+      "id": 10,
+      "title": "Queued AlphaTab render frame fires after api.destroy() on unmount",
+      "raised_by": "julik-frontend-races",
+      "severity_claimed": "P1",
+      "drop_reason": "The race is real but has no consequence in alphatab 1.8.4. destroy() calls _renderer.destroy(), which sets _instance = undefined, so a later api.render() reaches this._instance?.renderScore(...) and is a guarded no-op (alphaTab.core.mjs:44674-44688, 46049-46053). canRender still returns true after destroy, so the leaky canRenderChanged.on branch is not taken either. The module-level renderQueued flag is reset by the same frame."
+    }
+  ],
+  "suppressed_at_anchor_50": [
+    {
+      "title": "A wrong-type stored setting reverts with no toast",
+      "raised_by": "correctness",
+      "severity": "P3",
+      "reason": "Anchor 50 - the reviewer verified it but called it a nitpick. mergeAgainstDefaults substitutes the default for a wrong-typed value without setting `reset`, so no toast and no repair write. Related to #19, which survived and covers the same silence for out-of-range numbers."
+    },
+    {
+      "title": "Number-input JSX duplicated across SettingRow's number and range kinds",
+      "raised_by": "maintainability",
+      "severity": "P2",
+      "reason": "Anchor 50, advisory - a taste call about extracting a local render helper, with no defect behind it."
+    }
+  ],
+  "demoted_to_testing_gaps": [
+    "#13 (was P2, testing): the Settings popover's Export MIDI / Export Guitar Pro actions have no test at any level, happy path or error path. Demoted as a narrower case under the same subsystem as #7.",
+    "#15 (was P2, testing): the mixer's Solo all / Mute all aggregation loop (TracksPopover.tsx:393) has no e2e coverage; only the presentational MasterRow is tested.",
+    "#20 (was P3, testing): the new disableHoverablePopup prop on TransportToggle has no test, though it was added to fix a real stuck-tooltip bug."
+  ],
+  "already_applied_this_lap": [],
+  "id_glossary": {
+    "P0": "Critical - must fix before merge. None in this review.",
+    "P1": "High-impact defect likely hit in normal use, or a broken contract. Should fix before merge.",
+    "P2": "Moderate - a real issue with a meaningful downside. Fix if straightforward.",
+    "P3": "Low impact or narrow scope. The maintainer's discretion.",
+    "anchor 50 / 75 / 100": "The reviewer's confidence. 100 = provable from the code alone; 75 = verified, with a concrete consequence named; 50 = real but a nitpick (suppressed from the primary set unless P0).",
+    "NH-291": "The Jira issue this PR closes - the v0 settings and tracks popovers.",
+    "NH-295": "A follow-up issue: playback speed and master volume are deliberately NOT persisted.",
+    "NH-315": "The shipped incident behind the CSS canary - a production build served the seek rail 0px wide because Tailwind's scan of client/ came back stale, while the preview was perfect. Finding #12 is about that guard.",
+    "NH-275": "The recorded learning that a Vite-only tsconfig broke Next's typecheck when the design-system barrel grew. Checked this lap: NOT reintroduced.",
+    "NH-323 / NH-324 / NH-325 / NH-326": "Follow-up issues the PR author filed rather than fixing in this PR, disclosed in the PR's own comment.",
+    "Task 1-10": "The implementation units of the driving plan, docs/plans/2026-09-13-v0c-popovers-plan.md. Tasks 1-9 are code and all appear in the diff; Task 10 is a deliberate human hand-back (play it by ear, look at every group by eye) and is intentionally not done.",
+    "criterion 3 / criterion 7": "The v0 success criteria this PR closes - per-track mute/solo (3) and settings changing the rendered score (7).",
+    "fillFromJson": "AlphaTab's own method for loading a whole settings document into the engine. It takes what it is given and reports success even for values it could not parse - which is why several findings here concern what reaches it.",
+    "transpositionPitches": "AlphaTab's per-track array of semitone offsets, indexed by track. Ships as []. Finding #2 is about writing into it sparsely.",
+    "REQUIRED_SELECTORS": "The list in web/scripts/assert-design-system-css.mjs naming CSS utilities that must appear in the built stylesheet. The build fails if one is missing. Finding #12 says the new mixer module's utilities are not really covered.",
+    "MIXER_ROW_CLASS": "The shared grid-template-columns string in client/src/components/ui/TrackRow/MixerClasses.ts that lines up every mixer row. It exists only in a .ts file, so only the Tailwind source scan produces it.",
+    "MIDI_APPLY_NOTE": "The warning the fourteen sound-rebuilding settings rows carry, because changing them stops and rewinds the player.",
+    "expectHitAreas": "The Playwright helper in web/e2e/a11y.e2e.ts that fails the build when an interactive control is smaller than 44px or off-screen. This PR widened it; findings #8 and #9 are holes in the widening.",
+    "pr-remote": "The review scope mode used this lap: the PR head was fetched as refs/review/pr-176-head and read with `git show`, because this worktree sits on a different branch. No reviewer read the working tree for a changed file.",
+    "Accordion / SettingRow / TrackRow / MasterRow": "The four new design-system components in client/. PopoverIconTrigger is a fifth, app-local one in web/app/play/."
+  },
+  "requirements_completeness": {
+    "plan": "docs/plans/2026-09-13-v0c-popovers-plan.md",
+    "plan_source": "explicit (named in the PR body)",
+    "shape": "Legacy-style plan: no R-IDs and no ## Requirements section. Implementation units are Tasks 1-10.",
+    "units": [
+      {
+        "unit": "Task 1: Accordion",
+        "status": "met",
+        "evidence": "client/src/components/ui/Accordion/* - component, test, stories, VR and axe specs"
+      },
+      {
+        "unit": "Task 2: SettingRow",
+        "status": "met",
+        "evidence": "client/src/components/ui/SettingRow/* (275-line component, 259-line test)"
+      },
+      {
+        "unit": "Task 3: TrackRow",
+        "status": "met",
+        "evidence": "client/src/components/ui/TrackRow/* plus MasterRow/* - the plan's three components became four"
+      },
+      {
+        "unit": "Task 4: settings schema and accessors",
+        "status": "met",
+        "evidence": "web/lib/alphatab/settings-schema.ts (1,213 lines), settings-paths.ts, live-settings.ts"
+      },
+      {
+        "unit": "Task 5: Settings popover",
+        "status": "met",
+        "evidence": "web/app/play/SettingsPopover.tsx"
+      },
+      {
+        "unit": "Task 6: Persist the settings",
+        "status": "met",
+        "evidence": "web/lib/alphatab/settings-storage.ts - though findings #5, #11, #19 and #1 are all defects in this unit"
+      },
+      {
+        "unit": "Task 7: Tracks popover",
+        "status": "met",
+        "evidence": "web/app/play/TracksPopover.tsx, web/lib/alphatab/mixer-tracks.ts"
+      },
+      {
+        "unit": "Task 8: player-mode row",
+        "status": "met",
+        "evidence": "shipped per the PR body; the row supersedes the spec's v0 boundary"
+      },
+      {
+        "unit": "Task 9: Extend the axe gate and open the PR",
+        "status": "met",
+        "evidence": "web/e2e/a11y.e2e.ts widened; PR open - though findings #8 and #9 are holes in that widening"
+      },
+      {
+        "unit": "Task 10: human hand-back",
+        "status": "intentionally not done",
+        "evidence": "A deliberate human gate (mix by ear, every settings group by eye). The PR body leaves criteria 3 and 7 unticked and says so explicitly. Not a finding."
+      }
+    ],
+    "verdict_effect": "All code units addressed. No unaddressed requirement blocks the verdict."
+  },
+  "learnings": [
+    {
+      "learning": "docs/solutions/2026-07-12-vite-client-types-break-next-typecheck.md - Vite-only tsconfig types break Next's typecheck when the design-system barrel grows",
+      "status": "HONORED - not reintroduced",
+      "detail": "This PR grows exactly that barrel (client/src/index.ts, +27 lines, nine new crossings). The doc's own prescribed audit was re-run against the reviewed head: `git grep -nE \"import\\.meta\\.env|\\?(url|raw|worker)\\b\" refs/review/pr-176-head -- client/src/components` returns zero hits. All six interactive new exports carry 'use client'; MixerClasses.ts has no imports at all.",
+      "note": "The mitigation is still a MANUAL pre-barrel grep - no lint rule or CI check enforces it. That gap predates this PR (doc still status: known-risk) and is worth a ticket, not a blocker."
+    },
+    {
+      "learning": "AGENTS.md / NH-315 - a preview deployment is NOT evidence that production will render",
+      "status": "PARTIALLY HONORED - this is finding #12",
+      "detail": "Both required mechanisms are intact: web/vercel.json and web/app/globals.css are untouched by this PR. The one REQUIRED_SELECTORS entry added follows the documented convention, but covers the least distinctive utility. Precedent is mixed - Slider/SliderClasses.ts gets 4 selectors, DataTable/ColumnMeta.ts gets 1 - so this is a thin canary rather than a unique shortfall."
+    },
+    {
+      "learning": "docs/solutions/architecture-patterns/dotenv-local-env-loading.md",
+      "status": "NOT APPLICABLE",
+      "detail": "Concerns server/'s Nest entry points; this PR touches only client/ and web/."
+    },
+    {
+      "learning": "docs/solutions/developer-experience/markdownlint-errors-far-from-edit.md",
+      "status": "NOT APPLICABLE",
+      "detail": "docs/decisions/decision-changelog.md is in the diff, but markdownlint is a blocking CI job and CI is green."
+    }
+  ],
+  "residual_risks": [
+    "A stored COLOUR that type-checks but Color.fromJson rejects reaches the renderer with reset:false and makes the canvas throw on .rgba every load; unreachable through the UI today.",
+    "ApiValueKey (settings-schema.ts) and AlphaTabApiValue (useAlphaTab.ts) are two independently hand-maintained string-literal unions describing overlapping AlphaTabApi properties; nothing ties the two declarations together beyond the literal strings lining up at call sites.",
+    "Base UI Accordion captures defaultValue at mount, and SettingsPopover renders it with groups still empty while the engine loads. It works only because PopoverContent is unmounted while closed; adding keepMounted later would ship the panel fully collapsed.",
+    "Callsite completeness for `validate` is grep-only against refs/review/pr-176-head.",
+    "Callsite completeness for setTrackTransposition / clearTrackTranspositions is grep-only against refs/review/pr-176-head.",
+    "Did not exhaustively re-derive all ~90 settings-schema.ts rows against the reference panel by hand; relied on the PR's own defaults-vs-fresh-Settings() test and the e2e path-existence gate, which would not catch a row bound to a real key with the wrong semantic meaning.",
+    "Did not verify Popover's own open/close transition mechanics since Popover.tsx's behavioural code is unchanged by this diff.",
+    "Did not verify whether the 6 color-kind SettingRow rows stream continuous onChange events while the native OS color picker is dragged; if so the affected-row count would be 47/90 rather than the confirmed 41/90.",
+    "Font strings are an XSS SINK in AlphaTab's default SVG renderer but self-inflicted only: SvgCanvas.fillText interpolates the font CSS string raw into hand-built markup and quoteFont escapes only double quotes inside a single-quoted attribute. Score text IS escaped and colours are safe, so a malicious .gp file cannot reach it. Becomes real if settings ever become importable, shareable, or URL-encodable.",
+    "MixerClasses.ts is a shared plain-.ts class module under client/src/components/ui/ - the exact shape AGENTS.md says must have its distinctive utilities added to REQUIRED_SELECTORS. Only `.size-[2.125rem]` was added; the arbitrary MIXER_ROW_CLASS grid template and the three pressed-fill classes are uncovered.",
+    "PR #176 has zero formal GitHub reviews and zero inline review comments. Of its 3 issue-level comments, 2 are bot notifications and the third is the PR owner's own pre-emptive 'Notes for a reviewer' comment -- not third-party feedback awaiting verification.",
+    "PlayerShell.tsx's applyApiValue switches on ApiValueKey and ends in a bare default mapped to 'isLooping' rather than an explicit case; the repo has no switch-exhaustiveness lint rule, so a sixth ApiValueKey added later would silently route through applyLooping.",
+    "PlayerShell.tsx:561-573 (applySetting) closes over the `settings` state variable directly rather than accumulating through a ref, unlike TracksPopover's patch/commitTracks which its own select-all loops rely on. No current call site invokes applySetting twice for two different paths in one React batch, so this is not reachable today - but a future bulk 'reset group'/'apply preset' action would need the same ref-based pattern.",
+    "Prototype pollution: examined and found SOUND. readSettingValue gates every hop on Object.hasOwn (settings-paths.ts:20); writeInto uses a COMPUTED key in { ...base, [head]: ... }, creating an own data property; mergeAgainstDefaults iterates Object.entries(defaults) (settings-storage.ts:24), so a stored __proto__ key is never copied.",
+    "SettingRow.tsx:78-81 (clampToControl) reads .min/.max off SettingControl via a cast rather than narrowing on control.kind first; harmless today, but a future control kind wired into the same reportNumber path would silently get undefined bounds instead of a compile error.",
+    "The Gp7 export path calls URL.revokeObjectURL(url) synchronously right after link.click(). Fine on Chromium/Firefox; Safari has historically had timing bugs where an immediate revoke can invalidate the blob before its async download manager reads it.",
+    "The L4-dts build:dts target (decision-registry.md: status pending, predates the Nx drop) is still unimplemented -- client/package.json's types/main/exports point at src/index.ts directly, so web/ typechecks client/ from raw source, not a built .d.ts.",
+    "The corrupt-settings repair writes the healed document back to localStorage so the reset toast fires once, but the write is wrapped in an empty catch. In private browsing or at full quota the toast would repeat on every visit. Explicit, commented author trade-off.",
+    "The hit-area gate's mixer skip (el.closest track-row/master-row) also exempts the mixer volume slider rails from the 44px size check, not just the icon buttons.",
+    "The owner's self-authored comment discloses issues explicitly filed as follow-up tickets rather than fixed here (NH-323, NH-324, NH-325, NH-326) plus known residuals called out as deliberately unresolved (non-hoverable tooltips on 4 per-staff notation toggles failing WCAG 2.1 AA 1.4.13; engine-error dismissal not reviving the engine; 5 settings not persisting per NH-295).",
+    "The widened selectors are scoped to [data-slot=\"popover-content\"]; a later row rendering textarea, [role=\"switch\"], a non-button [role=\"combobox\"], or a focusable div[tabindex] would be unmeasured with no signal.",
+    "TracksPopover reserves a fixed 4.5rem for its non-scrolling footer but renders the backing-track paragraph above the ScrollArea without counting it. Could not measure the wrapped paragraph height from the diff.",
+    "TracksPopover's patch()/commitTracks() re-maps the full tracks array on every solo/mute/volume-commit, but this is inexpensive at the small track counts this app targets and every mixer slider is already gesture-end-committed.",
+    "Unbounded numeric rows (display.stretchForce min 0.1 no max; display.barsPerRow/barCount min -1 no max) report unclamped on every keystroke and persist on the same keystroke; the restore type-checks only, so an extreme value typed then abandoned before blur comes back applied with the clamp never re-running.",
+    "Whether the audio itself audibly glitches during a sustained edit burst was not verified end-to-end - would need a runtime CPU-throttled profile of AlphaTab's worker-backed synth scheduling.",
+    "a11y.e2e.ts:93-95 asserts the scroll ancestor 'only scrolls vertically'. Base UI's ScrollArea Viewport sets overflow:'scroll' on both axes, so the premise is wrong - a false-fail rather than a silent pass, dormant at 1280px.",
+    "applySetting closes over `settings` and is memoised on it (PlayerShell.tsx:561-579); two writes in one React batch would clobber each other. No reachable path constructed from the current UI.",
+    "client/'s new exports (Accordion family, SettingRow, TrackRow, MasterRow) don't export full Props interfaces, only the caller-constructed data types -- consistent with every pre-existing export except Button, and no current consumer needs the missing types.",
+    "expectHitAreas now drops the window top/bottom check for ANY control with a scrolling ancestor; a whole popover pushed below the fold would pass the gate.",
+    "live-settings.ts's 'midi' branch calls api.loadMidiForScore(), documented as stopping and rewinding the player. PlayerShell's pre-existing pendingSeek/rangeCheck guard could drop the resulting non-seek position event for up to 250ms. Not independently verified against AlphaTab's exact internal event sequence.",
+    "queueRender's renderQueued flag is module-global and the scheduled frame calls api.render() without re-checking the api is alive (live-settings.ts:39-47); an unmount inside that frame would render a destroyed api.",
+    "readPlayer's queueMicrotask(readPlayer) ordering inside scoreLoaded rests on a documented but AlphaTab-version-specific synchronous-setup assumption with no regression test pinning it.",
+    "runAction('export-guitar-pro') revokes the object URL in the same tick as link.click() (PlayerShell.tsx:604-605); some browsers abort a download started that way. Not verified in a browser."
+  ],
+  "testing_gaps": [
+    "No automated check verifies that REQUIRED_SELECTORS stays complete when a new shared class module is added under client/src/components/ui/ - tooling/assert-design-system-css.test.mjs only exercises the checker against whatever list already exists, so an incomplete list passes CI silently.",
+    "No case covers a browser that refuses localStorage.",
+    "No case exercises the Tracks popover with a file that plays its own recording.",
+    "No e2e case opens either popover at a narrow viewport - the narrow-700px case exists for exactly the clipped-control class but never opens Settings or Tracks.",
+    "No fixture with two MELODIC tracks. Punk.gp hides the sparse-array damage because the two drum tracks share channel 9.",
+    "No test asserts an engine-rejected edit is NOT persisted.",
+    "No test asserts prototype-pollution resistance of the deserialization path though both files carry comments claiming it.",
+    "No test covers localStorage throwing on READ (storage-blocked browser); the two guarded writes are untested too.",
+    "No test drags either transposition slider end to end or reads back api.settings.notation.transpositionPitches / the resulting playback pitch.",
+    "No test drives two different SettingsPopover rows through applySetting within the same synchronous batch.",
+    "No test exercises Open file or a file drop after the engine-error banner has been dismissed while the engine failed to load.",
+    "No test pins that SettingsPopover/buildSettingGroups execution stays bounded across repeated settings changes.",
+    "No test reloads the page a second time after a corrupt-settings reset to confirm the repaired document was actually persisted - a regression in the write-back would go uncaught.",
+    "No unit, VR, or e2e test asserts that the Settings popover's metronome-volume/count-in-volume rows show any explanatory text when mixUnavailable is set.",
+    "SettingsPopover's 'Count-in volume' row has no e2e test proving the two-editors-one-value pattern, unlike its tested twin 'Metronome volume' row.",
+    "SettingsPopover.tsx's stylesheet write guard has no test forcing an unresolvable enum name.",
+    "The metronome-volume/count-in-volume Settings rows' disabled-while-backing-track-plays state is never exercised by any test.",
+    "expectHitAreas has no self-test proving it still fails a control it should fail. The repo already runs that pattern for its hexagon fence (tooling/check-core-purity-canary.sh, a required CI step).",
+    "live-settings.test.ts covers applySettingsJson and the stylesheet round-trip only; setTrackTransposition and clearTrackTranspositions have no test. One assertion that setTrackTransposition(api, 2, 5) yields [0, 0, 5] would have caught the P1.",
+    "live-settings.test.ts covers queueRender's coalescing in isolation (its afterEach explicitly drains any queued frame so renderQueued doesn't leak between tests) but nothing exercises a queued render against useAlphaTab.ts's unmount cleanup.",
+    "live-settings.test.ts pins render-coalescing explicitly but nothing asserts a bound on localStorage.setItem call frequency, so a debounce fix (or its regression) would go uncaught.",
+    "settings-schema.test.ts never asserts a default is renderable by its declared control kind; a /^#[0-9a-fA-F]{6}$/ case over every kind:'color' row would have caught secondaryGlyphColor.",
+    "settings-storage.test.ts covers unparseable JSON, wrong shape, wrong type, unknown enum, malformed arrays -- but NOT a value that type-checks and passes the enum gate yet makes AlphaTab's parser throw (font ''/'bold', colour 'notacolor').",
+    "settings-storage.test.ts has no case for a numerically valid value outside its row's declared min/max.",
+    "settings-storage.test.ts's wrong-type case asserts the settings but not the reset flag.",
+    "#13 (was P2, testing): the Settings popover's Export MIDI / Export Guitar Pro actions have no test at any level, happy path or error path. Demoted as a narrower case under the same subsystem as #7.",
+    "#15 (was P2, testing): the mixer's Solo all / Mute all aggregation loop (TracksPopover.tsx:393) has no e2e coverage; only the presentational MasterRow is tested.",
+    "#20 (was P3, testing): the new disableHoverablePopup prop on TransportToggle has no test, though it was added to fix a real stuck-tooltip bug."
+  ],
+  "coverage": {
+    "reviewers_run": 12,
+    "reviewers_failed": 0,
+    "roster": "Full roster (lite path not eligible: 7,165 executable changed lines, 174 uncounted binary files, frontend signal).",
+    "cross_model_adversarial": "NOT RUN. Scope is pr-remote, where the skill's own routing forbids starting the peer because it cannot inspect the reviewed refs; the in-process adversarial-reviewer ran as the designated fallback. Consequence: the adversarial lens shares a serving family with the orchestrator, so its agreement is not cross-model corroboration.",
+    "validator_batch": "One batch over all 17 surviving primaries (expanded past the normal cap of 8 because 12 P1s survived merge; never split). 14 validated, 3 rejected. Zero validator skips were available: the skip rule requires an independence-verified cross-model peer, and none ran.",
+    "validator_drops": [
+      "#3 (testing, claimed P1): Backing-track detection (hasBackingTrack) untested at any level",
+      "#4 (performance, claimed P1): Every settings keystroke synchronously persists+pushes the whole document",
+      "#10 (julik-frontend-races, claimed P1): Queued AlphaTab render frame fires after api.destroy() on unmount"
+    ],
+    "suppressed_by_confidence": {
+      "anchor_50": 2
+    },
+    "suppressed_detail": [
+      "A wrong-type stored setting reverts with no toast (correctness, P3, anchor 50).",
+      "Number-input JSX duplicated across SettingRow's number and range kinds (maintainability, P2, anchor 50)."
+    ],
+    "mode_aware_demotions": 3,
+    "mode_aware_demotion_detail": [
+      "#13 (was P2, testing): the Settings popover's Export MIDI / Export Guitar Pro actions have no test at any level, happy path or error path. Demoted as a narrower case under the same subsystem as #7.",
+      "#15 (was P2, testing): the mixer's Solo all / Mute all aggregation loop (TracksPopover.tsx:393) has no e2e coverage; only the presentational MasterRow is tested.",
+      "#20 (was P3, testing): the new disableHoverablePopup prop on TransportToggle has no test, though it was added to fix a real stuck-tooltip bug."
+    ],
+    "quote_the_line_demotions": 0,
+    "malformed_findings": 0,
+    "severity_recalibrated_at_synthesis": "7 findings. The verifier argued specific downgrades and synthesis accepted all of them: #1 #6 #7 #12 P1->P2; #8 #9 P1->P3; #17 P2->P3. No finding was upgraded.",
+    "pre_existing": 0,
+    "scope_note": "pr-remote. The PR head was fetched to refs/review/pr-176-head (2f9b481b, matching headRefOid) and the base to 9e367f69, which is also the merge-base. Every reviewer read changed files with `git show <head ref>:<path>`; none read the working tree for a changed file. Diff staged at -U10 with 170 PNG VR baselines excluded from the text diff (listed separately); whether a baseline should have been regenerated remained in scope and the testing reviewer spot-checked four against their code changes.",
+    "untracked_excluded": "none",
+    "intent_confidence_note": "explicit - PR body states intent, plan and spec paths.",
+    "substitutions_disclosed": [
+      "Persona prompt assets were passed to each reviewer as a file PATH to read rather than inlined into the spawn prompt (~73 KB read twice avoided). Same content, same contract.",
+      "The trivial-PR pre-check was resolved inline rather than by a subagent: a 7,166-line feature PR with 48 commits is unambiguously not a dependency bump.",
+      "The Stage 5b validator batch and the code-review-loop's own VERIFY-CHECK (superpowers:receiving-code-review, From External Reviewers) were run as ONE dispatched pass, since both ask the same question of the same findings. Both contracts were bound into the verifier's prompt."
+    ]
+  }
+}
