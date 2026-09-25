@@ -9,14 +9,14 @@
     "review_skill": "compound-engineering:ce-code-review",
     "review_mode": "mode:agent pr:176 (report-only; no silent edits, so step 2b is empty)",
     "run_dir": "/tmp/compound-engineering-501/ce-code-review/20260925-234637-32660f5b",
-    "FINDING_COUNT_OPEN": 25,
+    "FINDING_COUNT_OPEN": 20,
     "FINDING_COUNT_ALREADY_APPLIED": 6,
     "severity_mix_open": {
-      "P1": 6,
-      "P2": 13,
+      "P1": 3,
+      "P2": 11,
       "P3": 6
     },
-    "triage_cap_note": "25 open findings against an 8-finding cap - triage will take at least THREE invocations. Suggested batch 1 (the six P1s, which is also one coherent area each): O1, O2, O3, O7, O4, O5.",
+    "triage_cap_note": "20 findings still open after triage round 1 (O1, O2, O3, O11, O12 resolved). Suggested next batch: O4, O5 (the two P1 test-coverage gaps) and O7 (the half-done memo) — that reaches the 8-finding cap for this triage half.",
     "reviewers_run": [
       "correctness",
       "project-standards",
@@ -39,8 +39,8 @@
     "binding": "This file. NOT the plan's frontmatter (that holds the DOC-review loop's state).",
     "code_lap": 2,
     "code_last_applied": "P1",
-    "triaged": false,
-    "next": "Triage half: read this file and little else. The exit signal is NOT clean, so the loop re-laps again after triage unless the maintainer stops it."
+    "triaged": "partial — 5 of 25 decided and applied; 20 open",
+    "next": "Continue the triage half: next batch O4, O5, O7. The exit signal is still NOT clean. Note lap 2's own P1 fixes are now applied, so the no-progress bound has not tripped."
   },
   "_exit_signal": {
     "clean": false,
@@ -102,42 +102,6 @@
     ]
   },
   "open_findings": [
-    {
-      "id": "O1",
-      "severity": "P1",
-      "confidence": 75,
-      "raised_by": ["adversarial"],
-      "file": "web/e2e/a11y.e2e.ts",
-      "line": 89,
-      "title": "Mixer size-exemption keys on the ROW, so all four mixer sliders lose the 44px verdict",
-      "whats_wrong": "sizeExempt matches el.closest('[data-slot=\"track-row\"], [data-slot=\"master-row\"]'), so every slider inside a mixer row - per-track volume, Transpose audio, Transpose notation, Master volume - is exempt from the size check, not just the deliberate 34px icon buttons the exemption is justified for. A mixer rail painted 0px wide is exactly the NH-315 failure this function exists to catch, and the gate would return [] and go green.",
-      "note": "The over-broad scope is PRE-EXISTING (the original `if (el.closest(...)) return false;` had the same reach); lap 1 narrowed it to the size verdict but did not narrow WHICH elements it covers.",
-      "proposed_fix": "AND the mixer half with el.matches('button, [role=\"button\"]'). The sliders are already h-11 w-full, so the lane stays green."
-    },
-    {
-      "id": "O2",
-      "severity": "P1",
-      "confidence": 75,
-      "raised_by": ["api-contract", "reliability"],
-      "file": "web/lib/alphatab/settings-storage.ts",
-      "line": 126,
-      "title": "The restore path gates enums and numbers but not the 13 text rows",
-      "whats_wrong": "loadStoredSettings repairs enum names (dropUnknownOptions) and numeric ranges (clampToBounds) but has no equivalent for the twelve font rows and the colour row - even though each already owns a validator in settings-schema.ts that simply is not exported or reused. fillFromJson has no per-key try/catch, so one bad stored font or colour silently aborts the ENTIRE restore, including unrelated notation/player groups, swallowed by the bare catch in PlayerShell and with reset staying false so no toast fires and no repair write happens.",
-      "note": "This is the restore-side twin of the write-side holes lap 1 closed. Reliability reached the same root cause from the other direction, adding that the stale field then rides along on every later edit and makes unrelated valid edits fail too.",
-      "proposed_fix": "Export the two validators as SETTING_TEXT_VALIDATORS and add a dropInvalidText pass mirroring dropUnknownOptions, folding into the same reset flag."
-    },
-    {
-      "id": "O3",
-      "severity": "P1",
-      "confidence": 75,
-      "raised_by": ["reliability"],
-      "file": "web/lib/alphatab/live-settings.ts",
-      "line": 23,
-      "title": "MIDI-apply rows reload the MIDI on every keystroke, stopping and rewinding playback per digit",
-      "whats_wrong": "SettingRow's number control reports on every keystroke (commit only gates CLAMPING, not whether onChange fires). All fourteen apply:'midi' rows are kind:'number'. pushSettings' 'render' branch is coalesced through requestAnimationFrame for exactly this reason; the 'midi' branch is not - so typing a three-digit value calls loadMidiForScore three times, and that call stops and rewinds the player. Each reload also re-fires TracksPopover's playerReady, re-flooding the synth worker with a full mixer resync per digit.",
-      "note": "PRE-EXISTING (not introduced by lap 1), and it contradicts the PR's stated invariant that neither popover blocks playback.",
-      "proposed_fix": "Coalesce the 'midi' branch the way 'render' already is, with its OWN flag so the two coalesce independently."
-    },
     {
       "id": "O4",
       "severity": "P1",
@@ -215,28 +179,6 @@
       "whats_wrong": "It pins .first() and waits for opacity '1'. A toast mid-dismiss moves the other way and then detaches, so the poll runs to the 5s deadline and fails the test - and layout.tsx sets duration={5000}, so that window is routine. Races adds the mirror problem: a single count() snapshot returns immediately in the gap before a triggering toast reaches the DOM.",
       "note": "This is lap 1's own addition, introduced to stop the new position check racing a slide-in.",
       "proposed_fix": "Poll page.evaluate over ALL toasts with .every(), rather than pinning .first() and waiting for a single opacity value."
-    },
-    {
-      "id": "O11",
-      "severity": "P2",
-      "confidence": 75,
-      "raised_by": ["julik-frontend-races", "reliability"],
-      "file": "web/lib/alphatab/live-settings.ts",
-      "line": 39,
-      "title": "renderQueued is module-level, so it ignores which api instance queued it",
-      "whats_wrong": "useAlphaTab recreates the api whenever its [engine] effect re-runs, which next.config.ts's Strict Mode deliberately exercises. A render queued for a stale instance suppresses a fresh instance's request in the same frame, and the stale callback calls .render() on a destroyed api. The test file's own afterEach comment already treats this flag as leaked module state.",
-      "note": "PRE-EXISTING."
-    },
-    {
-      "id": "O12",
-      "severity": "P2",
-      "confidence": 75,
-      "raised_by": ["reliability"],
-      "file": "web/lib/alphatab/live-settings.ts",
-      "line": 43,
-      "title": "A queued render fires on a destroyed AlphaTabApi after unmount",
-      "whats_wrong": "The requestAnimationFrame handle is discarded, and AlphaTabApiBase.render() has NO _isDestroyed guard (unlike changeTrackVolume/Mute/Solo and its other siblings), so the deferred call runs against a destroyed renderer from a detached callback nothing in the tree can catch. The window widens on a backgrounded tab, where rAF is throttled.",
-      "proposed_fix": "Keep the frame handle and export a cancel, called from useAlphaTab's effect cleanup beside created.destroy()."
     },
     {
       "id": "O13",
@@ -385,5 +327,99 @@
     "No test exercises useAlphaTab's cleanup while a queued render is pending (O12).",
     "No e2e case would have failed under the PRE-fix hit-area logic, so a regression in either branch lap 1 changed would not be caught.",
     "The blocked-site-data localStorage read has no coverage; an addInitScript that makes the getter throw would cover it."
-  ]
+  ],
+  "_triage_lap_2_round_1": {
+    "ran": "Triage half, invocation 1 of the lap-2 triage (the 25 findings exceed the 8-finding cap).",
+    "findings_decided": 5,
+    "picker_rounds_used": 2,
+    "cap": "8 findings or 5 picker rounds, whichever comes first — 5 findings / 2 rounds used, so 3 findings of headroom remain.",
+    "decided": [
+      {
+        "id": "O1",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["adversarial"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 89,
+        "title": "Mixer size-exemption keys on the ROW, so all four mixer sliders lose the 44px verdict",
+        "whats_wrong": "sizeExempt matches el.closest('[data-slot=\"track-row\"], [data-slot=\"master-row\"]'), so every slider inside a mixer row - per-track volume, Transpose audio, Transpose notation, Master volume - is exempt from the size check, not just the deliberate 34px icon buttons the exemption is justified for. A mixer rail painted 0px wide is exactly the NH-315 failure this function exists to catch, and the gate would return [] and go green.",
+        "note": "The over-broad scope is PRE-EXISTING (the original `if (el.closest(...)) return false;` had the same reach); lap 1 narrowed it to the size verdict but did not narrow WHICH elements it covers.",
+        "proposed_fix": "AND the mixer half with el.matches('button, [role=\"button\"]'). The sliders are already h-11 w-full, so the lane stays green.",
+        "triage": {
+          "decision": "Apply",
+          "commit": "b62a9d33",
+          "how": "sizeExempt now ANDs the mixer half with el.matches('button, [role=\"button\"]'), so the four mixer sliders keep the 44px verdict. Justifying comment rewritten to say element-not-ancestry."
+        }
+      },
+      {
+        "id": "O2",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["api-contract", "reliability"],
+        "file": "web/lib/alphatab/settings-storage.ts",
+        "line": 126,
+        "title": "The restore path gates enums and numbers but not the 13 text rows",
+        "whats_wrong": "loadStoredSettings repairs enum names (dropUnknownOptions) and numeric ranges (clampToBounds) but has no equivalent for the twelve font rows and the colour row - even though each already owns a validator in settings-schema.ts that simply is not exported or reused. fillFromJson has no per-key try/catch, so one bad stored font or colour silently aborts the ENTIRE restore, including unrelated notation/player groups, swallowed by the bare catch in PlayerShell and with reset staying false so no toast fires and no repair write happens.",
+        "note": "This is the restore-side twin of the write-side holes lap 1 closed. Reliability reached the same root cause from the other direction, adding that the stale field then rides along on every later edit and makes unrelated valid edits fail too.",
+        "proposed_fix": "Export the two validators as SETTING_TEXT_VALIDATORS and add a dropInvalidText pass mirroring dropUnknownOptions, folding into the same reset flag.",
+        "triage": {
+          "decision": "Apply",
+          "commit": "f974f9eb",
+          "how": "SETTING_TEXT_VALIDATORS exported from settings-schema (the rows' OWN isCssColor/isFontShorthand, not copies); dropInvalidText added to settings-storage mirroring dropUnknownOptions, folded into the same reset flag; PlayerShell passes it. Two drift tests assert the map equals every text row's validate BY IDENTITY, in both directions. Four new storage cases."
+        }
+      },
+      {
+        "id": "O3",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["reliability"],
+        "file": "web/lib/alphatab/live-settings.ts",
+        "line": 23,
+        "title": "MIDI-apply rows reload the MIDI on every keystroke, stopping and rewinding playback per digit",
+        "whats_wrong": "SettingRow's number control reports on every keystroke (commit only gates CLAMPING, not whether onChange fires). All fourteen apply:'midi' rows are kind:'number'. pushSettings' 'render' branch is coalesced through requestAnimationFrame for exactly this reason; the 'midi' branch is not - so typing a three-digit value calls loadMidiForScore three times, and that call stops and rewinds the player. Each reload also re-fires TracksPopover's playerReady, re-flooding the synth worker with a full mixer resync per digit.",
+        "note": "PRE-EXISTING (not introduced by lap 1), and it contradicts the PR's stated invariant that neither popover blocks playback.",
+        "proposed_fix": "Coalesce the 'midi' branch the way 'render' already is, with its OWN flag so the two coalesce independently.",
+        "triage": {
+          "decision": "Apply after a spike (maintainer required proof first)",
+          "commit": "5af145cd",
+          "how": "'midi' branch now goes through queueMidi, coalesced per frame with its own flag.",
+          "spike_findings": "THEORY CONFIRMED, with two corrections to the finding. (1) The finding said all FOURTEEN apply:'midi' rows are kind:'number'; it is THIRTEEN — player.playTripletFeel is a toggle and never had the problem. (2) The finding said typing '100' reloads three times; driving the real SettingRow measured FOUR — reports [1, 10, 100] while typing plus 100 again on blur. Engine side verified in the installed alphaTab 1.8.4: AlphaSynth.loadMidiFile does this.stop() then this.tickPosition = 0. Measured through applySettingsJson: 4 loadMidiForScore calls before, 1 after; the render path measured 1 for the same input, confirming the mechanism is the existing house pattern."
+        }
+      },
+      {
+        "id": "O11",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["julik-frontend-races", "reliability"],
+        "file": "web/lib/alphatab/live-settings.ts",
+        "line": 39,
+        "title": "renderQueued is module-level, so it ignores which api instance queued it",
+        "whats_wrong": "useAlphaTab recreates the api whenever its [engine] effect re-runs, which next.config.ts's Strict Mode deliberately exercises. A render queued for a stale instance suppresses a fresh instance's request in the same frame, and the stale callback calls .render() on a destroyed api. The test file's own afterEach comment already treats this flag as leaked module state.",
+        "note": "PRE-EXISTING.",
+        "triage": {
+          "decision": "Apply — maintainer chose to fold in rather than defer",
+          "commit": "7f00491a",
+          "how": "Both queues moved from module-global booleans to a WeakMap keyed by AlphaTabApi instance, so a frame queued for a destroyed api can no longer suppress a fresh one. Handle compared against undefined, not truthiness, because 0 is a valid frame handle."
+        }
+      },
+      {
+        "id": "O12",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["reliability"],
+        "file": "web/lib/alphatab/live-settings.ts",
+        "line": 43,
+        "title": "A queued render fires on a destroyed AlphaTabApi after unmount",
+        "whats_wrong": "The requestAnimationFrame handle is discarded, and AlphaTabApiBase.render() has NO _isDestroyed guard (unlike changeTrackVolume/Mute/Solo and its other siblings), so the deferred call runs against a destroyed renderer from a detached callback nothing in the tree can catch. The window widens on a backgrounded tab, where rAF is throttled.",
+        "proposed_fix": "Keep the frame handle and export a cancel, called from useAlphaTab's effect cleanup beside created.destroy().",
+        "triage": {
+          "decision": "Apply — maintainer chose to fold in rather than defer",
+          "commit": "7f00491a",
+          "how": "Frame handles are kept and cancelQueuedFrames(api) is exported; useAlphaTab's effect cleanup calls it immediately before created.destroy(). Mutation-checked: reinstating truthiness fails 3 tests, removing the cancel fails 1, collapsing per-instance keying to a global fails 2."
+        }
+      }
+    ],
+    "note_on_O11_O12": "Not in the suggested batch. They surfaced because the O3 fix adds a SECOND queue, which would have inherited both defects; the maintainer was asked and chose to fold them in rather than leave them for a later round.",
+    "commits_pushed": ["b62a9d33", "f974f9eb", "5af145cd", "7f00491a"]
+  }
 }
