@@ -105,6 +105,9 @@ importers:
       '@fontsource-variable/material-symbols-outlined':
         specifier: ^5.2.45
         version: 5.2.45
+      '@notation-hero/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@tailwindcss/vite':
         specifier: ^4.3.1
         version: 4.3.1(vite@8.0.16(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
@@ -272,6 +275,9 @@ importers:
       '@nestjs/platform-express':
         specifier: ^11.0.1
         version: 11.1.27(@nestjs/common@11.1.27(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.27)
+      '@notation-hero/shared':
+        specifier: workspace:*
+        version: link:../shared
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -380,6 +386,9 @@ importers:
       '@notation-hero/client':
         specifier: workspace:*
         version: link:../client
+      '@notation-hero/shared':
+        specifier: workspace:*
+        version: link:../shared
       next:
         specifier: 16.3.4
         version: 16.3.4(@opentelemetry/api@1.9.1)(@playwright/test@1.61.1)(@types/node@24.13.2)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
