@@ -16,6 +16,9 @@ pre-commit:
     layout-guard:
       run: bash tooling/check-layout.sh
       skip: [merge, rebase]
+    decision-docs-guard:
+      run: bash tooling/check-decision-docs.sh
+      skip: [merge, rebase]
     secret-scan:
       run: bash tooling/gitleaks-precommit.sh
       skip: [merge, rebase]
@@ -89,6 +92,11 @@ pre-push:
       skip: [merge, rebase]
     lint-md:
       run: pnpm run lint:md
+      skip: [merge, rebase]
+    # Also in pre-commit, but that one is skipped during a merge — and a merge is precisely how
+    # the change log got duplicated back into the registry (#163). This is the catch after it.
+    decision-docs-guard:
+      run: pnpm run check:decision-docs
       skip: [merge, rebase]
     lint-spell:
       run: pnpm run lint:spell

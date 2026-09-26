@@ -85,6 +85,10 @@ Root-level checks — each is a named script AND a CI gate, so run any locally:
 - `pnpm run check:core-purity` — core-purity canary (proves the fence fires).
 - `pnpm run check:layout` — role-suffix + no-`__tests__/` layout guard.
 - `pnpm run check:coverage-ignore` — bans istanbul/c8/v8 coverage-ignore directives.
+- `pnpm run check:decision-docs` — fails if `docs/decisions/decision-registry.md` holds a dated
+  `### YYYY-MM-DD` change-log entry. Entries belong in `decision-changelog.md`; the registry is the
+  state view. Its CI step sits in the **`lint`** job, not `quality` — `quality` is gated on `code`,
+  so a docs-only PR skips it, and a docs-only PR is exactly the shape that trips this (NH-322).
 - `pnpm run syncpack` — cross-package dependency-version consistency.
 - `pnpm run test:tooling` — `node --test` over `tooling/*.test.mjs` plus `tooling/*.test.sh` shell tests.
 - `pnpm run check:supply-chain-pins` — asserts the version-exact `trustPolicyExclude` /
