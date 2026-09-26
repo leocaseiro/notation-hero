@@ -215,25 +215,40 @@ it("SETTING_TEXT_VALIDATORS still covers every settings text row, with the row's
   // re-implemented copy that drifts from the field's own rule fails here.
   for (const group of buildSettingGroups(engine)) {
     for (const row of group.settings) {
-      if (row.source !== 'settings' || row.control.kind !== 'text') continue;
-      expect(SETTING_TEXT_VALIDATORS[row.path], row.path).toBe(row.control.validate);
+      if (row.source !== 'settings') continue;
+      if (row.control.kind === 'text') {
+        expect(SETTING_TEXT_VALIDATORS[row.path], row.path).toBe(row.control.validate);
+        continue;
+      }
+      // A colour row has no validate of its own to compare against — it draws with
+      // <input type="color">, which can only emit #rrggbb. Assert it is gated by the SAME function
+      // the one text-shaped colour row uses (secondaryGlyphColor is text-shaped because it carries
+      // alpha, which that input cannot express), so the check needs no new export to name.
+      if (row.control.kind === 'color') {
+        expect(SETTING_TEXT_VALIDATORS[row.path], row.path).toBe(
+          SETTING_TEXT_VALIDATORS['display.resources.secondaryGlyphColor'],
+        );
+      }
     }
   }
 });
 
-it('SETTING_TEXT_VALIDATORS names no path that is not a text row', () => {
+it('SETTING_TEXT_VALIDATORS names no path that is not a text or colour row', () => {
   // The other direction: a stale entry would silently gate a row against a rule it no longer has.
   // A for/of rather than filter+map: `filter` does not narrow the discriminated union, so `row.path`
   // would not type-check against the api-sourced arm that has no path.
-  const textPaths = new Set<string>();
+  const gatedPaths = new Set<string>();
   for (const group of buildSettingGroups(engine)) {
     for (const row of group.settings) {
-      if (row.source !== 'settings' || row.control.kind !== 'text') continue;
-      textPaths.add(row.path);
+      if (row.source !== 'settings') continue;
+      if (row.control.kind !== 'text' && row.control.kind !== 'color') continue;
+      gatedPaths.add(row.path);
     }
   }
+  // Both directions, so adding a SEVENTH colour row without gating it fails here rather than
+  // reaching Color.fromJson as a silent null.
   expect(Object.keys(SETTING_TEXT_VALIDATORS).toSorted(byName)).toEqual(
-    [...textPaths].toSorted(byName),
+    [...gatedPaths].toSorted(byName),
   );
 });
 

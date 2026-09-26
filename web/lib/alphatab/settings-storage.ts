@@ -99,8 +99,20 @@ function dropInvalidText(
   for (const [path, isValid] of Object.entries(textValidators)) {
     const value = readSettingValue(settings, path);
     if (value === undefined) continue;
-    if (typeof value !== 'string' || !isValid(value)) {
+    // Judge and store the SAME string. Both validators normalise before testing — isCssColor trims,
+    // isFontShorthand trims and splits on /\s+/ — and neither engine parser does either, so the raw
+    // value can pass here and still fail there. Measured against the pinned engine:
+    // Color.fromJson(' #A5A5A5') is null (and the renderer then reads .rgba off it), and
+    // Font.fromJson('12px\tArial') THROWS, which discards the WHOLE restore with no warning.
+    // Collapsing runs as well as trimming is what the font case needs, since its break is internal;
+    // it is harmless to colours, whose rgba() the engine already reads with spaces inside.
+    // This is the rule the write path adopted for the same reason: commit exactly what was checked.
+    const judged = typeof value === 'string' ? value.trim().replaceAll(/\s+/g, ' ') : value;
+    if (typeof judged !== 'string' || !isValid(judged)) {
       settings = writeSettingValue(settings, path, readSettingValue(defaults, path) ?? '');
+      repaired.push(path);
+    } else if (judged !== value) {
+      settings = writeSettingValue(settings, path, judged);
       repaired.push(path);
     }
   }

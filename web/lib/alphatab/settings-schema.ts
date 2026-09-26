@@ -216,8 +216,12 @@ const TRACK_NAME_ORIENTATION_LABELS: Partial<Record<string, string>> = {
  * on them, it silently falls back to 12px, which is worse than being told the value is wrong.
  */
 /**
- * Exactly the colour notations AlphaTab's own Color.fromJson parses: 3-, 6- or 8-digit hex, and
- * lowercase rgb()/rgba(). Deliberately NOT `CSS.supports('color', …)`, which was the first attempt
+ * Exactly the colour notations AlphaTab's own Color.fromJson parses: 3-, 4-, 6- or 8-digit hex,
+ * and
+ * lowercase rgb()/rgba(). The 4-digit form is `#rgba`, the alpha shorthand — measured against the
+ * pinned engine, Color.fromJson('#f00f') returns #FF0000, so refusing it here would make the
+ * restore path reset a colour the engine accepts and blame the stored value for it.
+ * Deliberately NOT `CSS.supports('color', …)`, which was the first attempt
  * and is the wrong authority in both directions. Color.fromJson returns `null` WITHOUT throwing for
  * `red`, `hsl(...)`, `rgb(0 0 0 / 50%)` and `RGBA(...)` — all of which CSS.supports accepts — so the
  * engine never rejects them, the settings funnel's try/catch never fires, the value is persisted,
@@ -225,7 +229,7 @@ const TRACK_NAME_ORIENTATION_LABELS: Partial<Record<string, string>> = {
  * the grammar here also keeps the module free of a value import of the engine, which the web/
  * ESLint fence forbids, and free of the `CSS` global, which the test environment does not provide.
  */
-const HEX_COLOR = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
+const HEX_COLOR = /^#(?:[0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 // Whitespace is stripped before this runs, so the pattern carries none: `\s*` between every token
 // is what made the single combined expression backtrack super-linearly. The alpha is an
 // unambiguous alternation for the same reason — `\d*\.?\d+` can split a digit run two ways.
@@ -1341,6 +1345,17 @@ export const SETTING_NUMERIC_BOUNDS: Readonly<
  */
 export const SETTING_TEXT_VALIDATORS: Readonly<Record<string, (draft: string) => boolean>> = {
   'display.resources.secondaryGlyphColor': isCssColor,
+  // The five `kind: 'color'` rows. They are gated here rather than by the row, because a colour row
+  // draws with <input type="color"> and carries no validate of its own — and on the way back in a
+  // row absent from this map is gated by NOTHING: the merge only compares `typeof`, the option
+  // lists cover enum names and the bounds cover numbers. Color.fromJson returns null WITHOUT
+  // throwing for a value outside its grammar, the engine assigns that null, and the renderer then
+  // reads `.rgba` off it inside a queued frame, outside any catch.
+  'display.resources.staffLineColor': isCssColor,
+  'display.resources.barSeparatorColor': isCssColor,
+  'display.resources.barNumberColor': isCssColor,
+  'display.resources.mainGlyphColor': isCssColor,
+  'display.resources.scoreInfoColor': isCssColor,
   'display.resources.elementFonts.ScoreCopyright': isFontShorthand,
   'display.resources.elementFonts.ScoreTitle': isFontShorthand,
   'display.resources.elementFonts.ScoreSubTitle': isFontShorthand,
