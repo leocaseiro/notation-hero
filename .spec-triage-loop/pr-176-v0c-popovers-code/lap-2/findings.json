@@ -9,14 +9,14 @@
     "review_skill": "compound-engineering:ce-code-review",
     "review_mode": "mode:agent pr:176 (report-only; no silent edits, so step 2b is empty)",
     "run_dir": "/tmp/compound-engineering-501/ce-code-review/20260925-234637-32660f5b",
-    "FINDING_COUNT_OPEN": 20,
+    "FINDING_COUNT_OPEN": 17,
     "FINDING_COUNT_ALREADY_APPLIED": 6,
     "severity_mix_open": {
-      "P1": 3,
-      "P2": 11,
+      "P1": 1,
+      "P2": 10,
       "P3": 6
     },
-    "triage_cap_note": "20 findings still open after triage round 1 (O1, O2, O3, O11, O12 resolved). Suggested next batch: O4, O5 (the two P1 test-coverage gaps) and O7 (the half-done memo) — that reaches the 8-finding cap for this triage half.",
+    "triage_cap_note": "17 findings still open. The 8-finding triage cap is reached for this half. Only ONE P1 remains: O6 (settings-schema.ts welds five concerns into 1,302 lines) — a maintainability refactor, not a defect.",
     "reviewers_run": [
       "correctness",
       "project-standards",
@@ -39,8 +39,9 @@
     "binding": "This file. NOT the plan's frontmatter (that holds the DOC-review loop's state).",
     "code_lap": 2,
     "code_last_applied": "P1",
-    "triaged": "partial — 5 of 25 decided and applied; 20 open",
-    "next": "Continue the triage half: next batch O4, O5, O7. The exit signal is still NOT clean. Note lap 2's own P1 fixes are now applied, so the no-progress bound has not tripped."
+    "triaged": true,
+    "next": "Lap 3, review half, as a NEW invocation — it re-reviews the 9 commits this triage pushed. 17 findings remain untriaged from lap 2 and should be carried into lap 3's triage rather than re-found.",
+    "lap_decision": "RE-LAP. Step 7(b): P1s were applied this lap (O1, O2, O3, O5 plus the folded-in O11/O12), and the exit signal was never clean. Step 7(a) did NOT fire: lap 2 of a 5-lap cap, and unresolved P1 count fell from 6 to 1, so the no-progress bound is clear. A re-lap must start as a NEW invocation with a fresh review half."
   },
   "_exit_signal": {
     "clean": false,
@@ -103,28 +104,6 @@
   },
   "open_findings": [
     {
-      "id": "O4",
-      "severity": "P1",
-      "confidence": 75,
-      "raised_by": ["testing"],
-      "file": "client/src/components/ui/SettingRow/SettingRow.tsx",
-      "line": 94,
-      "title": "SettingRow's validate / commit-reject path has zero tests",
-      "whats_wrong": "commitText's accept/reject branch is the shared contract every one of the thirteen validated rows depends on, and SettingRow.test.tsx's eleven cases never pass a validate function at all.",
-      "proposed_fix": "Two cases with a stub validator: a rejecting one (assert onChange NOT called and the field reverts) and an accepting one (assert onChange called with the typed string)."
-    },
-    {
-      "id": "O5",
-      "severity": "P1",
-      "confidence": 75,
-      "raised_by": ["testing"],
-      "file": "web/app/play/PlayerShell.tsx",
-      "line": 583,
-      "title": "applySetting's engine-reject path is untested at any level",
-      "whats_wrong": "The apply-before-persist ordering is lap 1's headline guarantee and nothing proves it: no test forces a rejection and asserts the toast fires AND nothing was stored.",
-      "note": "Testing flagged this manual/human because it is coupled to React state inside a component-local useCallback; the suggested route is extracting the ordering into a helper testable against a fake api, as live-settings.ts already is."
-    },
-    {
       "id": "O6",
       "severity": "P1",
       "confidence": 75,
@@ -134,17 +113,6 @@
       "title": "settings-schema.ts welds five independently-changing concerns into 1,302 new lines",
       "whats_wrong": "The descriptor tree (~1,011 lines of genuine domain data), the types, the defaults, the two hand-maintained mirrors and the two private validators all share one new file. Splitting the tree into a sibling leaves ~290 lines on a single topic.",
       "note": "Maintainability confirmed the two mirrors are honestly defended by their drift tests - they are not the trap here; the file's breadth is."
-    },
-    {
-      "id": "O7",
-      "severity": "P2",
-      "confidence": 75,
-      "raised_by": ["performance"],
-      "file": "web/app/play/SettingsPopover.tsx",
-      "line": 151,
-      "title": "Lap 1's useMemo was half the fix - all 90 rows still rebuild every frame",
-      "whats_wrong": "Memoising buildSettingGroups stops the descriptor tree rebuilding, but SettingsPopover itself is not memoised, so its body - the 90-row map, valueOf, and a fresh closure per row - still runs on every animation frame during playback. apiValues is a fresh object literal built inline in PlayerShell on every render, which would defeat a shallow memo comparison even if one were added.",
-      "proposed_fix": "useMemo apiValues in PlayerShell, then wrap SettingsPopover in memo(). The other props are already reference-stable."
     },
     {
       "id": "O8",
@@ -421,5 +389,71 @@
     ],
     "note_on_O11_O12": "Not in the suggested batch. They surfaced because the O3 fix adds a SECOND queue, which would have inherited both defects; the maintainer was asked and chose to fold them in rather than leave them for a later round.",
     "commits_pushed": ["b62a9d33", "f974f9eb", "5af145cd", "7f00491a"]
+  },
+  "_triage_lap_2_round_2": {
+    "ran": "Triage half, invocation 1 — second and third picker rounds.",
+    "findings_decided": 3,
+    "decided": [
+      {
+        "id": "O4",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["testing"],
+        "file": "client/src/components/ui/SettingRow/SettingRow.tsx",
+        "line": 94,
+        "title": "SettingRow's validate / commit-reject path has zero tests",
+        "whats_wrong": "commitText's accept/reject branch is the shared contract every one of the thirteen validated rows depends on, and SettingRow.test.tsx's eleven cases never pass a validate function at all.",
+        "proposed_fix": "Two cases with a stub validator: a rejecting one (assert onChange NOT called and the field reverts) and an accepting one (assert onChange called with the typed string).",
+        "triage": {
+          "decision": "Apply",
+          "commit": "9689e2e2",
+          "how": "Two cases in SettingRow.test.tsx with a stub validator — rejecting (validate called with the draft, onChange never fired, field visibly reverts) and accepting. The word `validate` previously appeared ZERO times in that file. Mutation-checked: dropping the `accepted` check fails the rejecting case."
+        }
+      },
+      {
+        "id": "O5",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["testing"],
+        "file": "web/app/play/PlayerShell.tsx",
+        "line": 583,
+        "title": "applySetting's engine-reject path is untested at any level",
+        "whats_wrong": "The apply-before-persist ordering is lap 1's headline guarantee and nothing proves it: no test forces a rejection and asserts the toast fires AND nothing was stored.",
+        "note": "Testing flagged this manual/human because it is coupled to React state inside a component-local useCallback; the suggested route is extracting the ordering into a helper testable against a fake api, as live-settings.ts already is.",
+        "triage": {
+          "decision": "Apply — maintainer chose the extract-a-helper route over an e2e test",
+          "commit": "d02795c8",
+          "how": "Ordering extracted as applyThenPersist in live-settings.ts; PlayerShell passes the toast and a persist closure carrying both the state write and the storage write. Three cases: accepts/persists, rejects/persists NOTHING, and no-engine-yet. Mutation-checked: moving persist() above the engine call fails the rejection case.",
+          "note": "The e2e route was rejected for a reason worth keeping: O2's field-level validators now refuse a bad font or colour BEFORE the engine sees it, so this gate is a second line of defence and is hard to reach by typing. Closing the field hole is what made the e2e route weak."
+        }
+      },
+      {
+        "id": "O7",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["performance"],
+        "file": "web/app/play/SettingsPopover.tsx",
+        "line": 151,
+        "title": "Lap 1's useMemo was half the fix - all 90 rows still rebuild every frame",
+        "whats_wrong": "Memoising buildSettingGroups stops the descriptor tree rebuilding, but SettingsPopover itself is not memoised, so its body - the 90-row map, valueOf, and a fresh closure per row - still runs on every animation frame during playback. apiValues is a fresh object literal built inline in PlayerShell on every render, which would defeat a shallow memo comparison even if one were added.",
+        "proposed_fix": "useMemo apiValues in PlayerShell, then wrap SettingsPopover in memo(). The other props are already reference-stable.",
+        "triage": {
+          "decision": "Apply after a spike (maintainer doubted the premise and asked for measurement)",
+          "commit": "8f50faf1",
+          "how": "apiValues memoised in PlayerShell; SettingsPopover wrapped in memo(). Permanent regression test at web/app/play/SettingsPopover.test.tsx.",
+          "spike_findings": "THEORY CONFIRMED. The maintainer's challenge was whether the on-blur commit made this moot; it does not — the two are independent. Blur governs when a PERSON changes a value; O7 is about the PLAYER re-rendering the popover while the song runs. Measured by rendering the real popover with the real engine namespace and counting readSettingValue (one call per settings-sourced row): with memo() but apiValues still a fresh literal, 71 rows re-read PER FRAME with the popover CLOSED; with memo() plus a stable apiValues, 0. So both halves are needed and each is useless alone. Closed is not idle because the row map sits in JSX children, evaluated when the element is created rather than when the popover opens. The finding's claim that the other props are already reference-stable was VERIFIED, not assumed: applySetting:572, applyApiValue:540 and runAction:605 are all useCallback-wrapped, settings and api are state, mixUnavailable is a module constant or undefined.",
+          "spike_process_note": "The first run of this spike reported 0 rebuilds per frame, which would have DISPROVEN the finding. It was a dead harness: the clicks were not wrapped in act(), so the parent never re-rendered. Caught by asserting the tick counter had advanced before reading anything into the zero. The permanent test keeps that assertion."
+        }
+      }
+    ],
+    "commits_pushed": ["8f50faf1", "9689e2e2", "d02795c8"]
+  },
+  "_triage_lap_2_cap": {
+    "reached": true,
+    "findings_decided_total": 8,
+    "picker_rounds_used": 3,
+    "cap": "8 findings or 5 picker rounds, whichever comes first — the 8-finding ceiling is now reached, so the triage half STOPS here.",
+    "decided_in_order": ["O1", "O2", "O3", "O11", "O12", "O4", "O5", "O7"],
+    "spikes_run": "Two, both at the maintainer's request: O3 (confirmed, and corrected the finding twice) and O7 (confirmed, after a first dead-harness run reported the opposite). The maintainer's standing instruction is to spike anything uncertain rather than apply on reasoning alone."
   }
 }
