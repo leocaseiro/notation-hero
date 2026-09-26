@@ -9,7 +9,7 @@
     "pr": "https://github.com/leocaseiro/notation-hero/pull/171",
     "jira": "NH-320",
     "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/nh-320-spec-lap-3-b024c3",
-    "push_target": "git push origin HEAD:docs/nh-320-web-vr-gate-spec  (fast-forward onto PR #171; NEVER force. The branch is checked out in worktree pr-162-code-review-5c2901, which has a live but idle session. If the push is rejected, merge their commits in \u2014 do not force.)",
+    "push_target": "git push origin HEAD:docs/nh-320-web-vr-gate-spec  (fast-forward onto PR #171; NEVER force. The branch is checked out in worktree pr-162-code-review-5c2901, which has a live but idle session. If the push is rejected, merge their commits in — do not force.)",
     "finding_count_total": 13,
     "finding_count_applied_silently_by_engine": 0,
     "finding_count_dropped_in_verification": 0,
@@ -91,8 +91,10 @@
         "web/playwright.e2e.config.ts:11 - `retries: process.env.CI ? 2 : 0` (so 1 attempt + 2 retries)"
       ],
       "contradicts": "none",
-      "decision": "UNDECIDED",
-      "picker_note": "Both edits are ONE decision. Do not offer half - applying only the readiness block leaves the fix inert, which is the whole point of the spike."
+      "decision": "APPLIED",
+      "picker_note": "Both edits are ONE decision. Do not offer half - applying only the readiness block leaves the fix inert, which is the whole point of the spike.",
+      "decision_note": "Apply — project-level timeout: 120_000 on the chromium project + 30/60/10 s readiness ceilings. Alternative per-file test.setTimeout declined.",
+      "commit": "c6b09ed3"
     },
     {
       "id": "F-2",
@@ -123,8 +125,10 @@
         "lefthook.yml:127-129 - pre-push `test: run: pnpm -r --if-present run test`"
       ],
       "contradicts": "none - the spec never claims the footprint is exhaustive, but lines 540-543 make the promise this omission breaks",
-      "decision": "UNDECIDED",
-      "picker_note": "F-2 and F-3 land in the SAME file (tooling/workflow-guards.test.mjs). Offer them adjacently - if F-2 is taken, F-3's guard is four extra lines in a file already open."
+      "decision": "APPLIED",
+      "picker_note": "F-2 and F-3 land in the SAME file (tooling/workflow-guards.test.mjs). Offer them adjacently - if F-2 is taken, F-3's guard is four extra lines in a file already open.",
+      "decision_note": "Apply — footprint gains the tooling/workflow-guards.test.mjs bullet.",
+      "commit": "fc1e6f3f"
     },
     {
       "id": "F-3",
@@ -147,8 +151,10 @@
         "spec lines 382-383 - `run: pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts` (no --project)"
       ],
       "contradicts": "none - it REMOVES a contradiction. The footprint's 'a scoped run ... exits 1' sat against the spec's own CI section (378-384) insisting the run is unscoped.",
-      "decision": "UNDECIDED",
-      "picker_note": "The AFTER also relaxes a false constraint the current text imposes ('the config and the CI step cannot land before the first shot exists'). They CAN land - that is the problem."
+      "decision": "APPLIED",
+      "picker_note": "The AFTER also relaxes a false constraint the current text imposes ('the config and the CI step cannot land before the first shot exists'). They CAN land - that is the problem.",
+      "decision_note": "Apply — correction AND the four-line guard test.",
+      "commit": "4d8563e8"
     },
     {
       "id": "F-4",
@@ -174,8 +180,10 @@
         "grep -n scroll over the spec returns only lines 202, 301, 426 - the only reference to the CHECK is line 301, outside both wait blocks"
       ],
       "contradicts": "none - it completes line 301's dangling reference and is consistent with lines 486-487 ('re-read PlayerShell.tsx before writing the lane')",
-      "decision": "UNDECIDED",
-      "picker_note": "Tell him plainly that the toast wait as specified is a NO-OP on its own - that is what turns this from 'could photograph the wrong score' into 'will, and the one wait meant to guard the frame does nothing'. If he picks F-5 Option B, F-4 needs no separate edit."
+      "decision": "REVISED_THEN_APPLIED",
+      "picker_note": "Tell him plainly that the toast wait as specified is a NO-OP on its own - that is what turns this from 'could photograph the wrong score' into 'will, and the one wait meant to guard the frame does nothing'. If he picks F-5 Option B, F-4 needs no separate edit.",
+      "decision_note": "SPIKE DISPROVED THE FINDING AS WRITTEN. Leo asked for a spike before applying. 14 runs against the BUILT app: (A) PROVED, (B) DISPROVED, (C) DISPROVED. The progressbar wait blocks 793-1354 ms and the toast wait 3793-4129 ms, so they are NOT vacuous; setNotation and setOpening(false) share a React commit, so toHaveCount(0) on the bar is already a proving wait. All 14 runs photographed Punk.gp, byte-identical (71,839 B) to a properly-waited shot; the bundled beat is 28,817 B. The original AFTER was therefore NOT applied — it asserts measured-false claims. What WAS applied: the real defect the spike found, a dangling \"after the scroll check\" reference at line 349 with no scroll check anywhere in the doc (grep scrollHeight = 0). Leo chose a data-file identity wait over the a11y overflow poll, because the bundled beat is scrollHeight === clientHeight EXACTLY (zero slack).",
+      "commit": "cc385694"
     },
     {
       "id": "F-5",
@@ -230,8 +238,10 @@
         "spec lines 327-330 - the Skeleton route handler 'must **stall indefinitely** rather than resume after a fixed delay the way the accessibility lane's 5 000 ms stall does'"
       ],
       "contradicts": "lines 183-186 as written contradict lines 327-330 of the same spec. BOTH proposed Afters remove that contradiction.",
-      "decision": "UNDECIDED",
-      "picker_note": "This is a REAL CHOICE - give it its own card with the scope in the question text, options A / B / Skip-decide-later. Whichever he picks, the spec must gain the setTimeout(fn, Infinity) note: it fires IMMEDIATELY (the same footgun sonner guards at dist/index.mjs:594-597), so 'stall indefinitely' cannot be implemented by passing Infinity as a delay. May cost two picker rounds - counts as two against the cap."
+      "decision": "APPLIED",
+      "picker_note": "This is a REAL CHOICE - give it its own card with the scope in the question text, options A / B / Skip-decide-later. Whichever he picks, the spec must gain the setTimeout(fn, Infinity) note: it fires IMMEDIATELY (the same footgun sonner guards at dist/index.mjs:594-597), so 'stall indefinitely' cannot be implemented by passing Infinity as a delay. May cost two picker rounds - counts as two against the cap.",
+      "decision_note": "Option A — player-states.ts exports navigation ONLY. Option B declined. Includes the setTimeout(fn, Infinity)-fires-immediately note.",
+      "commit": "c83c1bb7"
     },
     {
       "id": "F-6",
@@ -259,8 +269,10 @@
         "client/src/components/ui/Sonner/Sonner.tsx:38-40 - 'the Opening ... toast was replaced by its success text at 43 ms with opacity still 0.02'"
       ],
       "contradicts": "none - the note at 310-313 (error toasts to stop auto-dismissing) stays correct and reads better against the corrected mechanism. The prescribed code at 303-305 is unchanged.",
-      "decision": "UNDECIDED",
-      "picker_note": "SEQUENCING: apply F-4 FIRST - its AFTER deliberately preserves this paragraph word-for-word so F-6 composes on top. Practical consequence worth half a sentence to him: the corrected mechanism means toHaveCount(0) costs ~4.2 s of wall time, inside Playwright's 5 s default expect timeout ONLY because it starts after the scroll poll. If F-4 is declined, the toast wait passes instantly, costs nothing, and guards nothing. F-4 and F-6 are cheapest applied together."
+      "decision": "APPLIED",
+      "picker_note": "SEQUENCING: apply F-4 FIRST - its AFTER deliberately preserves this paragraph word-for-word so F-6 composes on top. Practical consequence worth half a sentence to him: the corrected mechanism means toHaveCount(0) costs ~4.2 s of wall time, inside Playwright's 5 s default expect timeout ONLY because it starts after the scroll poll. If F-4 is declined, the toast wait passes instantly, costs nothing, and guards nothing. F-4 and F-6 are cheapest applied together.",
+      "decision_note": "Apply — corrected Sonner causation. Independently CORROBORATED by the F-4 spike (first toast in DOM 15 ms after the pick; toast wait blocks ~3.8-4.1 s = TOAST_LIFETIME armed at success).",
+      "commit": "88d6da7d"
     },
     {
       "id": "F-7",
@@ -294,8 +306,10 @@
         "spec line 553 - '- `web/playwright.e2e.config.ts` - the `projects` array splitting `e2e` from `chromium`.'"
       ],
       "contradicts": "none. The ci.yml footprint bullet at 562-563 says 'the corrected comment' (singular); he may want it pluralised, and F-8 is editing that same bullet anyway.",
-      "decision": "UNDECIDED",
-      "picker_note": "web/playwright.e2e.config.ts:5's 'or axe' is arguably ALREADY wrong on master, since web/e2e/a11y.e2e.ts runs axe through that config today. If he wants that noted as pre-existing rather than caused by this change, the AFTER can say so - fixed by the same edit either way."
+      "decision": "APPLIED",
+      "picker_note": "web/playwright.e2e.config.ts:5's 'or axe' is arguably ALREADY wrong on master, since web/e2e/a11y.e2e.ts runs axe through that config today. If he wants that noted as pre-existing rather than caused by this change, the AFTER can say so - fixed by the same edit either way.",
+      "decision_note": "Apply — plain variant. The \"flag the axe clause as pre-existing\" variant was NOT chosen. Also pluralised \"the corrected comment\" -> \"comments\".",
+      "commit": "71111ca7"
     },
     {
       "id": "F-8",
@@ -320,8 +334,10 @@
         "spec line 413 - 'The rename is three lines in `ci.yml`'"
       ],
       "contradicts": "none - the fix REMOVES the contradiction with lines 405 and 413",
-      "decision": "APPLY_WITHOUT_ASKING",
-      "picker_note": "AMBIGUITY/STALE-TEXT ONLY, one word, no scope and no judgement. Per the standing rule, APPLY in the first triage batch WITHOUT a picker card - and REPORT that it was applied. Do not spend a card on it."
+      "decision": "APPLIED_WITHOUT_ASKING",
+      "picker_note": "AMBIGUITY/STALE-TEXT ONLY, one word, no scope and no judgement. Per the standing rule, APPLY in the first triage batch WITHOUT a picker card - and REPORT that it was applied. Do not spend a card on it.",
+      "decision_note": "Ambiguity/stale-count only, as the artifact directed. Reported to Leo.",
+      "commit": "8d1c42e6"
     },
     {
       "id": "F-9",
@@ -348,8 +364,10 @@
         "web/playwright.e2e.config.ts:20 - `command: 'pnpm build && pnpm start --port 4174',`"
       ],
       "contradicts": "nothing in the spec - the AFTER makes the changelog agree with the spec's table",
-      "decision": "UNDECIDED",
-      "picker_note": "Mention in the card that this one lands in THIS PR at zero cost, unlike every other finding. Also verify the exact pending-mark glyph in the live file before editing - the BEFORE/AFTER above renders it as '(pending)' to keep this JSON clean."
+      "decision": "APPLIED_AUTO",
+      "picker_note": "Mention in the card that this one lands in THIS PR at zero cost, unlike every other finding. Also verify the exact pending-mark glyph in the live file before editing - the BEFORE/AFTER above renders it as '(pending)' to keep this JSON clean.",
+      "decision_note": "Auto-resolved under Leo's \"auto resolve all others P2 or lower\". Live pending glyph is \"⏳ pending.\" not \"(pending)\" — the artifact flagged this correctly.",
+      "commit": "f34569c8"
     },
     {
       "id": "F-10",
@@ -373,8 +391,10 @@
         "docs/specs/2026-06-24-pr-checklist-auto-inject.md:3 - '> **Status:** IMPLEMENTED (2026-06-24, NH-237)'"
       ],
       "contradicts": "none",
-      "decision": "UNDECIDED",
-      "picker_note": "SEQUENCING: if F-12 is also applied, apply F-12 FIRST - it rewrites the runbook bullet that this new bullet is inserted after."
+      "decision": "APPLIED_AUTO",
+      "picker_note": "SEQUENCING: if F-12 is also applied, apply F-12 FIRST - it rewrites the runbook bullet that this new bullet is inserted after.",
+      "decision_note": "Auto-resolved. Applied AFTER F-12 per the sequencing note.",
+      "commit": "71111ca7"
     },
     {
       "id": "F-11",
@@ -398,8 +418,10 @@
         "client/playwright.e2e.config.ts:3-4 - 'Separate from playwright.config.ts (which boots Storybook for VR/a11y).'"
       ],
       "contradicts": "none - it reinforces lines 131-135 and the one-invocation CI argument at 385-392",
-      "decision": "UNDECIDED",
-      "picker_note": "The AFTER also quietly answers 'why not just give web/ a second config like client/ has?' - because the whole CI decision at 385-392 depends on one config, one webServer, one next build. Worth keeping that half-sentence. NOT silent-applied despite safe_auto, because the AFTER adds explanatory prose rather than correcting a single word."
+      "decision": "APPLIED_AUTO",
+      "picker_note": "The AFTER also quietly answers 'why not just give web/ a second config like client/ has?' - because the whole CI decision at 385-392 depends on one config, one webServer, one next build. Worth keeping that half-sentence. NOT silent-applied despite safe_auto, because the AFTER adds explanatory prose rather than correcting a single word.",
+      "decision_note": "Auto-resolved.",
+      "commit": "71111ca7"
     },
     {
       "id": "F-12",
@@ -424,8 +446,10 @@
         "docs/runbooks/vr-a11y-testing.md:6 - '## Four test layers in `client/`'"
       ],
       "contradicts": "none",
-      "decision": "UNDECIDED",
-      "picker_note": "gated_auto NOT safe_auto: it broadens what the implementing PR owes by a whole runbook section, so it needs a yes. The runbook's :10 VR bullet ('Playwright toHaveScreenshot over the stories') also becomes incomplete once a non-Storybook VR lane exists, and :50's artifact name becomes playwright-client-e2e-report under F-8's rename - both fall inside the expanded bullet."
+      "decision": "APPLIED_AUTO",
+      "picker_note": "gated_auto NOT safe_auto: it broadens what the implementing PR owes by a whole runbook section, so it needs a yes. The runbook's :10 VR bullet ('Playwright toHaveScreenshot over the stories') also becomes incomplete once a non-Storybook VR lane exists, and :50's artifact name becomes playwright-client-e2e-report under F-8's rename - both fall inside the expanded bullet.",
+      "decision_note": "Auto-resolved. Applied BEFORE F-10.",
+      "commit": "71111ca7"
     },
     {
       "id": "F-13",
@@ -450,8 +474,10 @@
         "docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md:38 - 'Download the `playwright-vr-report` artifact (`continue-on-error`)'"
       ],
       "contradicts": "none",
-      "decision": "UNDECIDED",
-      "picker_note": "FYI tier. Verdict is PLAUSIBLE not CONFIRMED - it is a real inconsistency of low value. Offer it last, or fold it into an 'auto-resolve rest' escape hatch."
+      "decision": "APPLIED_AUTO",
+      "picker_note": "FYI tier. Verdict is PLAUSIBLE not CONFIRMED - it is a real inconsistency of low value. Offer it last, or fold it into an 'auto-resolve rest' escape hatch.",
+      "decision_note": "Auto-resolved. Its own recommendation allowed a DROP; applied instead, because a live operational doc naming a renamed artifact sends a reader to a dead name. Cheap to revert.",
+      "commit": "71111ca7"
     }
   ],
   "dropped": [],
@@ -472,27 +498,22 @@
   ],
   "lap_state": {
     "lap": 3,
-    "last_applied": null,
-    "triaged": false,
-    "triage_completed": false,
-    "decisions": [],
-    "undecided": [
-      "F-1",
-      "F-2",
-      "F-3",
-      "F-4",
-      "F-5",
-      "F-6",
-      "F-7",
-      "F-8",
-      "F-9",
-      "F-10",
-      "F-11",
-      "F-12",
-      "F-13"
-    ],
-    "next_step": "STEP 4 (triage half) - a NEW invocation. Read THIS FILE and nothing else; never re-open the spec to compose a chunk. Establish findings as prose chunks then emit the AskUserQuestion picker in the SAME turn, batched <=4, with a Skip-decide-later option on every card. Apply each batch's decisions right after that round, each as its own commit, before the next round.",
-    "cap_reminder": "12 findings or 5 picker rounds, whichever comes first. 13 findings means the cap WILL be hit. At the cap: write partial state, do NOT bump lap, do NOT mark triaged, end the session.",
-    "relap_expectation": "A P0 or P1 will almost certainly be applied, and EXIT-SIGNAL is not clean, so step 7b points at a re-lap (lap 4) as a FRESH review-half invocation. Lap cap is 5, so lap 4 is within bounds. Check the no-progress gate: lap 3 must reduce the count of unresolved P0/P1 findings versus lap 2."
+    "lap_bumped": false,
+    "lap_bump_note": "NOT bumped. Leo's opening instruction said do not bump lap; that was predicated on stopping at the 12-finding cap with findings left undecided. He then overrode the cap ('auto resolve all others P2 or lower'), so all 13 got decided and lap 3's triage IS complete. Bumping to 4 is therefore his call, not an assumption this session should make.",
+    "last_applied": "P0",
+    "triaged": true,
+    "triage_completed": true,
+    "undecided": [],
+    "cap_note": "The 12-finding cap was EXCEEDED by explicit instruction (13 of 13 decided, and F-4 cost two picker rounds so it counts as two). Context was never the binding constraint in this session.",
+    "decisions_summary": "12 of 13 applied as recommended or as chosen; F-4 applied in REVISED form after its spike disproved the original finding. 0 dropped, 0 left open.",
+    "silent_edits_by_engine": "none (the engine applied 0 fixes this lap)",
+    "extra_commits": {
+      "994b6b57": "em-dash normalisation — the artifact transcribed the doc's 82 em-dashes as plain hyphens, so applying its text verbatim introduced 6 hyphens into a doc that had zero.",
+      "cc385694": "also carries two NEW findings the F-4 spike surfaced: the Play tooltip that will appear in the long-score baseline (PlayerShell focuses playRef after an open), and the stale figures in a11y.e2e.ts:111-113 (says 185/1026/420 px; measured 576/852/576)."
+    },
+    "next_step": "Step 7b points at a RE-LAP (lap 4) as a FRESH review-half invocation, because P0 and P1 findings were applied and EXIT-SIGNAL was not clean. Bound check: lap cap is 5, so lap 4 is in bounds; the no-progress gate does not trip (lap 3 resolved all 5 of its P0/P1 findings). Do NOT continue lap 4 in this session.",
+    "open_questions_for_lap_4": [
+      "The two items carried from lap 2 remain NOT measurable until the shots exist: whether web/ needs client/'s extra global transition/animation freeze, and what next build costs inside the Playwright container. The F-4 spike did measure a real next build + run on macOS (6.3-7.4 s per ordering-B run) but NOT in Docker."
+    ]
   }
 }
