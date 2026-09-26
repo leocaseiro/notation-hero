@@ -10,7 +10,7 @@ import {
   TrackRow,
   TransportToggle,
 } from '@notation-hero/client';
-import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { memo, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 import { setStaffDisplay, setTrackTransposition } from '../../lib/alphatab/live-settings';
@@ -65,7 +65,7 @@ const layoutStateLabel = (trackCount: number, single: boolean): string => {
 // The mixer. It owns solo and mute, because AlphaTab keeps those in the synth worker and nothing
 // on the main thread can be read back. The component stays mounted for the life of the page —
 // only PopoverContent comes and goes — so closing the popover does not lose the mix.
-export function TracksPopover({
+export const TracksPopover = memo(function TracksPopover({
   api,
   hasBackingTrack,
   disabled,
@@ -421,4 +421,4 @@ export function TracksPopover({
       </PopoverContent>
     </Popover>
   );
-}
+});
