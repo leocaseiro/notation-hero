@@ -60,8 +60,10 @@ the app.
 - **Sequencing: v0 Plan C (the Settings and Tracks popovers) ships first**, the gate lands after.
 - **`web/`'s whole browser lane moves into the Playwright container — one `next build` serves
   end-to-end, axe and VR.** Bolting VR onto the existing `vr` job, or adding a separate `web-vr`
-  job, would each take `web` from one build per CI run to two. This keeps it at one and makes web's
-  axe and web's VR render identically. ⏳ pending.
+  job, would each take `web` from two builds per CI run to three: the `build` job's
+  `pnpm run build` fans out to `web` (and the next step greps `web/.next/static/` to prove it),
+  and the `e2e` job's Playwright `webServer` runs a `pnpm build` of its own. This keeps it at two
+  and makes web's axe and web's VR render identically. ⏳ pending.
 - **Blocking from day one**, via `ci-green`, as `client/` VR already is. There is no flake budget to
   earn first: sixty runs of `/play` in the pinned Playwright container were measured before the
   design was fixed, at `threshold: 0` and `maxDiffPixels: 0`, and the full-page shot was byte-
