@@ -168,10 +168,10 @@ scopes each script. `web/package.json` therefore changes to match:
 + "test:vr:update": "playwright test --config=playwright.e2e.config.ts --project=chromium --update-snapshots",
 ```
 
-The CI `web` job runs the two scoped commands as **separate steps** — `test:e2e` then `test:vr` —
-rather than one unscoped run. One run would fold both lanes into a single report, where a pixel
-failure and a behavior failure can mask each other; two steps keep the webServer (and therefore the
-single `next build`) shared while naming which lane went red.
+**These scoped scripts are for local use.** CI runs `playwright test` **unscoped**, once, so both
+projects share the single `webServer` and therefore the single `next build` — see the CI section
+below, where that turns out to be the whole point. Locally the opposite is wanted: you regenerate
+baselines without sitting through fifty behaviour tests.
 
 ### The shots
 
@@ -282,6 +282,25 @@ await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHa
 | First-visit Skeleton | `getByTestId('notation-skeleton')` visible    | the engine is stalled on purpose, so Play never enables        |
 | Engine error         | `getByTestId('engine-error')` visible         | the engine is aborted on purpose, so Play never enables        |
 
+**The long-score shot needs one more wait, and it is not optional.** Opening a file raises a Sonner
+toast — `toast.loading('Opening …')` then `toast.success('… loaded')` (`PlayerShell.tsx:432`
+and `:467`) — and a Sonner toast dismisses itself after 4 000 ms. Neither call sets a duration. So
+whether the toast is whole, half-faded or already gone at shot time depends on how fast that machine
+parsed `Punk.gp`: a guaranteed flake, and the one shot in this list that opens a file. Wait for it to
+go, after the scroll check:
+
+```ts
+await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+```
+
+The bundled-beat shot needs none of this — AlphaTab loads that score itself and nothing announces
+it. Any shot added later that reaches its state by opening a file needs the same wait.
+
+> Note for whoever writes this: the maintainer intends **error** toasts to stop auto-dismissing,
+> while success toasts keep fading (stated 2026-09-26). None of the eleven shots raises an error
+> toast today — the engine-error state reports through its own `role="alert"` panel, not a toast —
+> but once that lands, a shot that does raise one will need it dismissed rather than waited out.
+
 **All eleven** then finish identically:
 
 ```ts
@@ -321,13 +340,14 @@ Linux-only, exactly as `client/` does it: `*-chromium-linux.png` committed, darw
 
 ### CI — `web/`'s whole browser lane moves into the container
 
-Today the `e2e` job runs both browser lanes on plain ubuntu and builds `web/` **once**. Bolting a VR
-step onto the existing `vr` job, or adding a separate `web-vr` job, would each make that **two**
-`web` builds per run. Moving the whole `web/` lane into one container job keeps it at one.
+`web/` is built more than once per CI run today, and this must not add another. Two places build
+it: the `build` job (`pnpm run build` at `ci.yml:176`, which fans out to every package) and the
+`e2e` job's Playwright `webServer`. Bolting a VR step onto the existing `vr` job, or adding a
+separate `web-vr` job, would each add a third.
 
 |                                       | today | add a step to `vr` | new `web-vr` job | **move the lane (chosen)** |
 | ------------------------------------- | ----- | ------------------ | ---------------- | -------------------------- |
-| `web` builds per CI run               | 1     | 2                  | 2                | **1**                      |
+| `web` builds per CI run               | 2     | 3                  | 3                | **2**                      |
 | web axe and web VR render identically | n/a   | no                 | no               | **yes**                    |
 
 ```text
@@ -344,32 +364,40 @@ browsers are baked into the image. It carries the same guard every other path-fi
 `needs: changes` plus `if: ${{ needs.changes.outputs.code == 'true' }}` — so a documentation-only
 pull request skips it rather than paying for a container build.
 
-**Each lane writes to its own folder.** The two scoped steps share one server, but both would
-otherwise write `web/playwright-report/` and `web/test-results/`, and the second run would wipe the
-first — Playwright clears the output folder when it starts. Redirect them per step:
+**One invocation, not two — and this is load-bearing.** The job runs `playwright test` **once, with
+no `--project`**, so both projects run against one server:
 
 ```yaml
-- name: web end-to-end + accessibility
-  env:
-    PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-e2e
-  run: pnpm --filter @notation-hero/web run test:e2e -- --output=test-results-e2e
-- name: web visual regression
-  env:
-    PLAYWRIGHT_HTML_OUTPUT_DIR: playwright-report-vr
-  run: pnpm --filter @notation-hero/web run test:vr -- --output=test-results-vr
+- name: web browser lane (end-to-end + accessibility + visual regression)
+  run: pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts
 ```
+
+Two scoped steps would **not** share the server, and the whole reason for putting this lane in one
+job would evaporate. Playwright registers the `webServer` per **invocation** and tears it down when
+that invocation ends, so a second `playwright test` call starts its own `pnpm build && pnpm start`.
+Measured, not assumed: a throwaway two-project config whose server logged every boot recorded **one**
+boot for a single unscoped run and **two** for two scoped runs, with the port confirmed dead in
+between. (`reuseExistingServer` is `false` under `CI`, so a server that somehow did survive would
+make the second step fail with "is already used" rather than be reused.)
+
+Nothing is lost by combining them: Playwright's HTML report and its `list` reporter both print the
+project name on every test, so a red run still says whether the pixel lane or the behaviour lane
+failed. The scoped `test:e2e` and `test:vr` scripts stay for local use, where running one lane at a
+time is the point.
+
+One invocation also means one output folder and no collision — the two lanes cannot overwrite each
+other's report, because there is only one run.
 
 **Artifact names, and a rename that makes them symmetric.** `actions/upload-artifact` v4 and later
 reject a duplicate name inside one run with a 409, and `ci.yml` already warns about exactly that on
 the step being changed. Today's two names do not say which package they came from, which stops
-working the moment `web/` has its own. So all four become explicit:
+working the moment `web/` has its own. So all three become explicit:
 
 | Job                             | Artifact                       |
 | ------------------------------- | ------------------------------ |
 | `vr` (client Storybook VR)      | `playwright-client-vr-report`  |
 | `e2e` (client only, after this) | `playwright-client-e2e-report` |
-| `web` — the end-to-end step     | `playwright-web-e2e-report`    |
-| `web` — the visual step         | `playwright-web-vr-report`     |
+| `web` (both lanes, one run)     | `playwright-web-report`        |
 
 The rename is three lines in `ci.yml`: the `vr` job's upload (line 227), the `vr-report` job's
 matching download (line 261), and the `e2e` job's upload (line 402). `vr-report` must move with its
@@ -486,11 +514,16 @@ does **not** get an equivalent, for two reasons:
   `client/`: the artifact name, the publish path, the comment marker, and the cleanup sweep in
   `storybook-preview.yml`. Extending it means duplicating both jobs or reworking them into a matrix.
 
-So a red `web` VR is read the way any other Playwright failure is: download `playwright-web-vr-report`
+So a red `web` VR is read the way any other Playwright failure is: download `playwright-web-report`
 from the run's Artifacts and open it with `npx playwright show-report`. Revisit the day that download
 becomes a real annoyance — then there is a measured case to size the work against.
 
 ## Process changes this carries
+
+**Every file below is edited by the PR that IMPLEMENTS this gate, not by the PR carrying this
+document.** This spec changes nothing outside `docs/`. The list exists so the implementing PR can be
+checked against a stated footprint — and so a reviewer seeing one of these files in that diff knows
+it was planned rather than smuggled in.
 
 - `web/e2e/*.vr.ts` — **new**; the eleven shots themselves. `web/` contains no `*.vr.ts` file today,
   and this is the one entry whose absence the config cannot survive: a scoped run whose `testMatch`
@@ -507,6 +540,10 @@ becomes a real annoyance — then there is a measured case to size the work agai
 - `web/.gitignore` — the darwin-baseline line.
 - `.github/workflows/ci.yml` — the new `web` job, the trimmed `e2e` job, the four artifact names,
   the `vr-report` download rename, the corrected comment, and `ci-green`'s `needs:`.
+- `client/README.md` — lines 178 and 216 name `playwright-vr-report` and `playwright-e2e-report`.
+  Both become the renamed `playwright-client-*` artifacts.
+- `docs/runbooks/vr-a11y-testing.md` — line 50 names `playwright-e2e-report`, and lines 27-34 hold
+  the expanded `docker run` block the helper replaces.
 - `docs/decisions/decision-changelog.md` — **not** a new entry: both NH-320 entries land with this
   spec. What the implementing pull request owes is flipping their **six** ⏳ pending marks to ✅ —
   three in the 2026-09-21 entry and three in the 2026-09-22 one — per the "PR merge → update

@@ -6,41 +6,41 @@
   "finding_count_total": 13,
   "finding_count_applied_silently": 9,
   "finding_count_awaiting_decision": 3,
-  "exit_signal": "not clean — 13 findings, 1 P0",
+  "exit_signal": "not clean \u2014 13 findings, 1 P0",
   "applied_silently_ambiguity_only": [
-    "V11 P3 — `client/src/styles.css:20` -> `:27` for the @custom-variant dark citation. VERIFIED by grep.",
-    "V12 P3 — existing web browser tests 50 -> 51. VERIFIED: `playwright test --list` reports 'Total: 51 tests in 2 files'.",
-    "V9 P3 — 'Playwright fast-forwards animate-skeleton-pulse to its end state' -> it CANCELS it to frame 0, because the keyframe is declared `infinite`; only finite animations are fast-forwarded. SPIKED: infinite animation read back at currentTime 0, finite at 4000/finished.",
-    "V13 residual — 'overrides it for that one test' -> inside a SYNC test.describe(). SPIKED: test.use() inside a test() body throws 'did not expect test.use() to be called here'; async describe also rejected; sync describe scopes correctly.",
-    "V7 P2 — hover-shot wait rationale 'Base UI opens it after a delay' -> the real signal [data-slot=\"tooltip-content\"][data-open] (player.e2e.ts:1183); Tooltip.tsx defaults delay/closeDelay to 0 and neither trigger overrides. VERIFIED.",
-    "V8 P2 — 'a buried one is simply absent from the picture' -> MEASURED live: 10.00px of a 28px tooltip overlaps the 64px header; header is transparent so only border-b + shadow-md paint; simulated regression changed 526px in a 200x100 crop. Conclusion (the shot catches it) survives; the reason was wrong.",
-    "V6 P2 (half) — 'the AGENTS.md VR section spells out the expanded command' -> it is docs/runbooks/vr-a11y-testing.md:27-34; AGENTS.md:179-183 is a summary + link; client/README.md:152-153 has the command pair. VERIFIED.",
-    "V4 P1->P2 (half) — added `web/e2e/*.vr.ts` to the footprint list with the landing-order constraint. VERIFIED no *.vr.ts exists under web/. REFUTED the 'reports green' fear: a SCOPED zero-match run exits 1 with 'No tests found' (unscoped exits 0).",
-    "coherence+feasibility (P1/P2, merged) — the registry bullet named the wrong file and the wrong count -> docs/decisions/decision-changelog.md, SIX pending marks (three per entry). VERIFIED: registry has 0 NH-320 mentions; 6 marks across the two entries."
+    "V11 P3 \u2014 `client/src/styles.css:20` -> `:27` for the @custom-variant dark citation. VERIFIED by grep.",
+    "V12 P3 \u2014 existing web browser tests 50 -> 51. VERIFIED: `playwright test --list` reports 'Total: 51 tests in 2 files'.",
+    "V9 P3 \u2014 'Playwright fast-forwards animate-skeleton-pulse to its end state' -> it CANCELS it to frame 0, because the keyframe is declared `infinite`; only finite animations are fast-forwarded. SPIKED: infinite animation read back at currentTime 0, finite at 4000/finished.",
+    "V13 residual \u2014 'overrides it for that one test' -> inside a SYNC test.describe(). SPIKED: test.use() inside a test() body throws 'did not expect test.use() to be called here'; async describe also rejected; sync describe scopes correctly.",
+    "V7 P2 \u2014 hover-shot wait rationale 'Base UI opens it after a delay' -> the real signal [data-slot=\"tooltip-content\"][data-open] (player.e2e.ts:1183); Tooltip.tsx defaults delay/closeDelay to 0 and neither trigger overrides. VERIFIED.",
+    "V8 P2 \u2014 'a buried one is simply absent from the picture' -> MEASURED live: 10.00px of a 28px tooltip overlaps the 64px header; header is transparent so only border-b + shadow-md paint; simulated regression changed 526px in a 200x100 crop. Conclusion (the shot catches it) survives; the reason was wrong.",
+    "V6 P2 (half) \u2014 'the AGENTS.md VR section spells out the expanded command' -> it is docs/runbooks/vr-a11y-testing.md:27-34; AGENTS.md:179-183 is a summary + link; client/README.md:152-153 has the command pair. VERIFIED.",
+    "V4 P1->P2 (half) \u2014 added `web/e2e/*.vr.ts` to the footprint list with the landing-order constraint. VERIFIED no *.vr.ts exists under web/. REFUTED the 'reports green' fear: a SCOPED zero-match run exits 1 with 'No tests found' (unscoped exits 0).",
+    "coherence+feasibility (P1/P2, merged) \u2014 the registry bullet named the wrong file and the wrong count -> docs/decisions/decision-changelog.md, SIX pending marks (three per entry). VERIFIED: registry has 0 NH-320 mentions; 6 marks across the two entries."
   ],
   "awaiting_decision": [
     {
       "id": "F-A",
       "severity": "P0",
-      "section": "CI — web/'s whole browser lane moves into the container",
+      "section": "CI \u2014 web/'s whole browser lane moves into the container",
       "verdict": "CONFIRMED by spike",
-      "scenario": "You open a PR touching one button. CI runs, and the web job spends several minutes building the Next.js app — twice. The single build the whole container-move decision was chosen for never happens.",
+      "scenario": "You open a PR touching one button. CI runs, and the web job spends several minutes building the Next.js app \u2014 twice. The single build the whole container-move decision was chosen for never happens.",
       "whats_wrong": "The spec runs two scoped CI steps (test:e2e then test:vr) and claims they share one webServer and therefore one next build. Playwright's webServer is per-INVOCATION: it is torn down after each `playwright test` call.",
       "spike_result": "Throwaway two-project config with a webServer that logs each boot. One unscoped invocation -> 1 boot. Two scoped invocations -> 2 boots. Port confirmed NOT LISTENING between the scoped steps. With a survivor server and CI=true, step 2 errors 'is already used'.",
-      "also": "V10 CONFIRMED — the ci.yml `build` job also builds web (pnpm run build -> pnpm -r), so the comparison table undercounts by one in EVERY column. Today is 2, not 1; the chosen option as written is 3.",
+      "also": "V10 CONFIRMED \u2014 the ci.yml `build` job also builds web (pnpm run build -> pnpm -r), so the comparison table undercounts by one in EVERY column. Today is 2, not 1; the chosen option as written is 3.",
       "options": [
         "One unscoped invocation in the web job (no --project), one artifact playwright-web-report. Restores the single build. The HTML report and list reporter already name the project per test, so a red lane is still identifiable. Dissolves V2 entirely (one run, no folder collision).",
-        "Keep two steps and state honestly that the web job pays two builds — the ranking vs the rejected options still holds, but the headline saving does not."
+        "Keep two steps and state honestly that the web job pays two builds \u2014 the ranking vs the rejected options still holds, but the headline saving does not."
       ],
       "dependent_finding": "F-B (V2) only exists under option 2"
     },
     {
       "id": "F-B",
       "severity": "P1",
-      "section": "CI — Each lane writes to its own folder",
+      "section": "CI \u2014 Each lane writes to its own folder",
       "verdict": "CONFIRMED by spike",
       "scenario": "Only relevant if two steps are kept. The VR step wipes the e2e step's traces, so a failing e2e test has no trace to replay.",
-      "whats_wrong": "`pnpm ... run test:vr -- --output=DIR` — pnpm forwards the literal `--` and Playwright then IGNORES --output, so both steps write web/test-results/ and the second clears the first.",
+      "whats_wrong": "`pnpm ... run test:vr -- --output=DIR` \u2014 pnpm forwards the literal `--` and Playwright then IGNORES --output, so both steps write web/test-results/ and the second clears the first.",
       "spike_result": "With `-- --output=$OUT`: $OUT never created, artifacts in default test-results/. Without the `--`: $OUT populated, test-results/ not created. PLAYWRIGHT_HTML_OUTPUT_DIR works in both. Per-project outputDir verified to keep both folders in either order.",
       "fix_if_two_steps": "Declare outputDir per project in the config (outputDir: 'test-results-e2e' / 'test-results-vr'), drop `-- --output=`, keep the env vars, and add both folders to web/.gitignore."
     },
@@ -49,31 +49,41 @@
       "severity": "P1",
       "section": "Readiness, and why each wait is there",
       "verdict": "CONFIRMED",
-      "scenario": "You open Punk.gp to shoot the long-score baseline. A dark toast slides in saying 'Punk.gp loaded' and slides away four seconds later. Whether the screenshot catches it whole, half-faded, or already gone depends on how fast that runner parsed the file — so the baseline is different on a slow CI runner than on your Mac, and the shot flakes forever.",
+      "scenario": "You open Punk.gp to shoot the long-score baseline. A dark toast slides in saying 'Punk.gp loaded' and slides away four seconds later. Whether the screenshot catches it whole, half-faded, or already gone depends on how fast that runner parsed the file \u2014 so the baseline is different on a slow CI runner than on your Mac, and the shot flakes forever.",
       "whats_wrong": "The long-score shot opens a file, which fires toast.loading then toast.success (PlayerShell.tsx:432, :467). Sonner's TOAST_LIFETIME is 4000ms and neither call sets a duration. The word 'toast' appears nowhere in the spec.",
       "precedent": "web/e2e/a11y.e2e.ts:83-91 already carries a settleToasts helper for this exact state; client/'s Sonner stories pin duration: Infinity because a self-dismissing toast cannot be photographed.",
-      "not_affected": "The bundled-beat shot raises no toast — AlphaTab loads that score itself and nothing calls requestNotation.",
+      "not_affected": "The bundled-beat shot raises no toast \u2014 AlphaTab loads that score itself and nothing calls requestNotation.",
       "fix": "Add a toast-gone wait to the long-score shot: await expect(page.locator('[data-sonner-toast]')).toHaveCount(0) after the scroll check, before the shared fonts.ready block. Note that any other shot reaching its state by opening a file needs the same."
     },
     {
       "id": "F-D",
       "severity": "P2",
       "section": "Process changes this carries",
-      "verdict": "PARTLY CONFIRMED — reshaped",
+      "verdict": "PARTLY CONFIRMED \u2014 reshaped",
       "scenario": "After the rename ships, you hit a red client VR run, open client/README.md to find out how to get the report, and it tells you to look for an artifact name that no longer exists.",
       "whats_wrong": "The spec renames the two existing CI artifacts but scopes the change to 'three lines in ci.yml'. Two prose docs name the old artifacts and are not in the footprint list.",
-      "verified": "client/README.md:178 (playwright-vr-report) and :216 (playwright-e2e-report); docs/runbooks/vr-a11y-testing.md:50 (playwright-e2e-report). REFUTED for AGENTS.md — it names no artifact at all, and is already in the footprint list.",
+      "verified": "client/README.md:178 (playwright-vr-report) and :216 (playwright-e2e-report); docs/runbooks/vr-a11y-testing.md:50 (playwright-e2e-report). REFUTED for AGENTS.md \u2014 it names no artifact at all, and is already in the footprint list.",
       "scope_note": "This expands the implementing PR by two more files. That is the decision.",
-      "also_unlisted_historical": "docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md, docs/specs/2026-06-26-nh-197-e2e-traces.md, two plans, and both decision docs mention the old names as history — arguably out of scope."
+      "also_unlisted_historical": "docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md, docs/specs/2026-06-26-nh-197-e2e-traces.md, two plans, and both decision docs mention the old names as history \u2014 arguably out of scope."
     }
   ],
   "dropped": [
-    "scope P1 'a testMatch matching zero files reports green' — REFUTED: a scoped zero-match run exits 1 with 'No tests found'. The useful half (the spec file is missing from the footprint) was applied silently."
+    "scope P1 'a testMatch matching zero files reports green' \u2014 REFUTED: a scoped zero-match run exits 1 with 'No tests found'. The useful half (the spec file is missing from the footprint) was applied silently."
   ],
   "open_residuals_not_raised": [
-    "workers: 1 for the VR project — fullyParallel is inherited from the config top level; the 60-run measurement was at --workers=1. Spec records it as a risk with a flip condition.",
+    "workers: 1 for the VR project \u2014 fullyParallel is inherited from the config top level; the 60-run measurement was at --workers=1. Spec records it as a risk with a flip condition.",
     "client/'s VR helper injects a global transition/animation freeze on top of Playwright's animations:'disabled'; whether web/ needs the same for the hover shots' colour transitions is unmeasured.",
     "tooling/sweep-darwin-vr-baselines.sh does not know about a web/ baseline path.",
     "next build cost inside the Playwright container is unmeasured."
-  ]
+  ],
+  "triaged": true,
+  "triage_completed": "2026-09-26",
+  "decisions": {
+    "F-A (P0, CI shape)": "APPLIED \u2014 option 1: one unscoped invocation. Build-count table corrected to 2/3/3/2 (the ci.yml build job also builds web).",
+    "F-B (P1, --output)": "DISSOLVED by F-A \u2014 one invocation cannot collide with itself. No per-project outputDir needed.",
+    "F-C (P1, toast)": "APPLIED \u2014 toast-gone wait on the long-score shot, plus a note that the maintainer intends error toasts to stop auto-dismissing.",
+    "F-D (P2, docs)": "APPLIED \u2014 client/README.md and docs/runbooks/vr-a11y-testing.md added to the footprint, and the whole list reframed to say explicitly that the IMPLEMENTING PR edits them, not this one."
+  },
+  "last_applied": "P0",
+  "undecided": []
 }
