@@ -64,6 +64,17 @@ scrollHeight]`) instead of the window — horizontally unchanged, since this anc
   review pass — the mixer's grid-template arbitrary value and three `aria-pressed:`/`data-pressed:`
   fills — exist in no other file, and each fails invisibly: correct ARIA, correct behaviour,
   nothing painted.
+- **The canary now matches a whole class name, not a substring.** It asked `css.includes(selector)`,
+  so an entry that is a PREFIX of another class was satisfied by that other class — `.grow` by
+  `.grow-0`, `.border-primary` by `.border-primary/50`, `.cursor-grab` by `.cursor-grabbing`, the two
+  pressed fills by their `/90` opacity forms. One such utility anywhere in the scanned tree would
+  satisfy its entry forever, and a build-blocking guard would report all clear on exactly the stale
+  scan it exists to catch. Nothing was broken: all ten entries were matched against the real emitted
+  stylesheet and each is present in its exact form. The match now requires a CSS boundary after the
+  entry, with `[` in that set — load-bearing, because Tailwind emits a variant utility with its
+  condition attached, so three entries never appear followed by `{` on a real build. Both sides are
+  pinned by tests; the existing ones could not have caught this, since they build their fixtures FROM
+  the list and so can only ever write exact matches.
 - **Four new design-system components, not three** — `Accordion`, `SettingRow`, `TrackRow` and
   `MasterRow`, each with a Storybook story plus VR and axe baselines that block merge. A fifth
   component, `PopoverIconTrigger`, was extracted during a later refactor pass to share the
