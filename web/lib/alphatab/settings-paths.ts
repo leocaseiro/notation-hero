@@ -18,9 +18,15 @@ export function readSettingValue(json: PlayerSettingsJson, path: string): Settin
     // on, and `in` also matches the prototype chain (e.g. 'toString', or '__proto__' itself).
     // hasOwn keeps the walk on the tree's own keys only.
     if (!isContainer(current) || !Object.hasOwn(current, part)) return undefined;
-    // The Object.hasOwn guard above already rules out '__proto__'/'constructor'/'prototype' and
-    // every other inherited key before this line runs, so only the tree's own data is ever
-    // indexed — a false positive for the loop shape alone.
+    // A false positive for the loop shape alone: this line READS, and a read cannot pollute
+    // anything. The hasOwn guard above keeps the walk on the tree's own keys, so an inherited
+    // 'toString' is never followed.
+    //
+    // It does NOT, however, reject a literal '__proto__' — that claim would be checkably false:
+    // JSON.parse('{"__proto__":{}}') produces an OWN data property of that name, and
+    // Object.hasOwn returns true for it (measured). Reading it is harmless: it yields that data
+    // property, not Object.prototype, and the return below admits only a string, number or
+    // boolean. The write path's safety is a separate argument — see writeInto.
     current = current[part]; // nosemgrep: prototype-pollution-loop
   }
   return typeof current === 'string' || typeof current === 'number' || typeof current === 'boolean'
@@ -42,6 +48,12 @@ function writeInto(container: unknown, parts: readonly string[], value: SettingV
   // Object.hasOwn, same reasoning as readSettingValue: only an OWN key of the tree is a real
   // existing value to recurse into, never something resolved off the prototype chain.
   const existing = Object.hasOwn(base, head) ? base[head] : undefined;
+  // What actually makes a hostile `head` of '__proto__' harmless is the COMPUTED KEY below, not
+  // the hasOwn above. A computed key in an object literal — like object spread — defines the
+  // property with CreateDataProperty, which never invokes the '__proto__' setter, so it lands as
+  // an ordinary own key on the new object and Object.prototype is untouched. Assigning through
+  // `base.__proto__ = …` or `Object.assign` WOULD invoke that setter; neither is used here, and
+  // neither should be introduced. Measured both shapes: Object.prototype stayed clean.
   return { ...base, [head]: writeInto(existing, rest, value) };
 }
 

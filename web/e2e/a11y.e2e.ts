@@ -166,13 +166,32 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
 // the gate measures the rendered UI rather than a transitional frame. (The toast's resting state
 // is gated too, by client/'s own Sonner stories.)
 async function settleToasts(page: Page): Promise<void> {
-  const toast = page.locator('[data-sonner-toast]').first();
-  if ((await toast.count()) === 0) return;
+  // EVERY toast, and either settled state — not `.first()` waiting for opacity '1'.
+  //
+  // Pinning the first one and demanding '1' hard-FAILS on a toast that is dismissing: it is
+  // animating the other way, so the poll runs the full five seconds and takes the test with it.
+  // That is routine, not exotic — layout.tsx sets duration={5000}, so any toast raised by an
+  // earlier step in the same test is mid-dismiss right about now.
+  //
+  // '0' counts as settled because a dismissing toast is on its way out of the DOM; once it
+  // detaches it stops being matched at all, which is the same answer one frame later. An empty
+  // list settles immediately — `[].every()` is true — which preserves the old early return for a
+  // page with no toasts.
+  //
+  // What this CANNOT do is wait for a toast that has not started yet: a caller must trigger the
+  // toast before calling this, or there is nothing to settle.
   await expect
-    .poll(() => toast.evaluate((el) => globalThis.getComputedStyle(el).opacity), {
-      timeout: 5000,
-    })
-    .toBe('1');
+    .poll(
+      () =>
+        page.evaluate(() =>
+          [...document.querySelectorAll('[data-sonner-toast]')].every((el) => {
+            const opacity = globalThis.getComputedStyle(el).opacity;
+            return opacity === '1' || opacity === '0';
+          }),
+        ),
+      { timeout: 5000 },
+    )
+    .toBe(true);
 }
 
 test('landing page has no axe violations', async ({ page }) => {
