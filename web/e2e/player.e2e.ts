@@ -2328,6 +2328,9 @@ test('Transpose notation starts at the transposition the FILE carries, and survi
   await slider.focus();
   await slider.press('ArrowUp');
   await expect(slider).toHaveAttribute('aria-valuenow', '3');
+  // The engine has to MOVE, or the return trip below proves nothing: the staff was already -2 when
+  // the file opened, so polling for -2 at the end passes whether or not the keystroke ever arrived.
+  await expect.poll(staffPitch, { timeout: 30_000 }).toBe(-3);
   await slider.press('ArrowDown');
   await expect(slider).toHaveAttribute('aria-valuenow', '2');
   await expect.poll(staffPitch, { timeout: 30_000 }).toBe(-2);

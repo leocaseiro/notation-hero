@@ -82,14 +82,16 @@ async function expectHitAreas(
         ].join(', '),
       ),
     ];
-    const tooSmall = controls
+    // Controls that are not rendered at all: `display:none` generates no box, so getClientRects()
+    // is empty. A control that IS laid out but collapsed to 0 px in either dimension stays in —
+    // a seek rail painted 0 px wide cannot be clicked at all, and the old `r.width > 0 &&
+    // r.height > 0` guard let exactly that worst case through while still failing a milder 1 px
+    // one. Split out of the verdict filter below because the FLOORS count this array: counting
+    // what the selectors matched rather than what was measured lets the floor be satisfied by
+    // controls the size check never looked at, which is the silent pass the floor exists to stop.
+    const measured = controls.filter((el) => el.getClientRects().length > 0);
+    const tooSmall = measured
       .filter((el) => {
-        // Skip controls that are not rendered at all: `display:none` generates no box, so
-        // getClientRects() is empty. A control that IS laid out but collapsed to 0 px in either
-        // dimension is NOT skipped — a seek rail painted 0 px wide cannot be clicked at all, and
-        // the old `r.width > 0 && r.height > 0` guard let exactly that worst case through while
-        // still failing a milder 1 px one.
-        if (el.getClientRects().length === 0) return false;
         const r = el.getBoundingClientRect();
         // Two deliberate exceptions to the 44px minimum — and to the SIZE verdict ONLY. They are
         // resolved here, after the rectangle is measured, so the off-screen containment checks
@@ -181,8 +183,8 @@ async function expectHitAreas(
         w: Math.round(el.getBoundingClientRect().width),
         h: Math.round(el.getBoundingClientRect().height),
       }));
-    const sliders = controls.filter((el) => el.matches('[data-slot="slider-control"]')).length;
-    return { scanned: controls.length, sliders, tooSmall };
+    const sliders = measured.filter((el) => el.matches('[data-slot="slider-control"]')).length;
+    return { scanned: measured.length, sliders, tooSmall };
   });
   expect(tooSmall, `${label}: controls under the 44px minimum`).toEqual([]);
   // An empty `tooSmall` means EITHER everything measured passed OR nothing was measured, and the

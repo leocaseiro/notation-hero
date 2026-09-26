@@ -206,16 +206,6 @@ const TRACK_NAME_ORIENTATION_LABELS: Partial<Record<string, string>> = {
 };
 
 /**
- * Every font row is a CSS font shorthand, and AlphaTab's own parser THROWS on a partial one:
- * an empty field or a lone `bold` raises 'Missing font size', and a lone `12px` raises
- * 'Missing font list'. SettingRow only gates a text row when the row supplies this, so without it
- * an unparseable draft reaches both the engine and storage.
- *
- * The accepted units are exactly the ones Font.fromJson converts — px, pt, em and the CSS keyword
- * sizes. `rem` and a bare number with no unit are rejected on purpose: the engine does not throw
- * on them, it silently falls back to 12px, which is worse than being told the value is wrong.
- */
-/**
  * Exactly the colour notations AlphaTab's own Color.fromJson parses: 3-, 4-, 6- or 8-digit hex,
  * and
  * lowercase rgb()/rgba(). The 4-digit form is `#rgba`, the alpha shorthand — measured against the
@@ -243,6 +233,16 @@ const isCssColor = (draft: string): boolean => {
   return RGB_COLOR.test(value.replaceAll(/\s+/g, ''));
 };
 
+/**
+ * Every font row is a CSS font shorthand, and AlphaTab's own parser THROWS on a partial one:
+ * an empty field or a lone `bold` raises 'Missing font size', and a lone `12px` raises
+ * 'Missing font list'. SettingRow only gates a text row when the row supplies this, so without it
+ * an unparseable draft reaches both the engine and storage.
+ *
+ * The accepted units are exactly the ones Font.fromJson converts — px, pt, em and the CSS keyword
+ * sizes. `rem` and a bare number with no unit are rejected on purpose: the engine does not throw
+ * on them, it silently falls back to 12px, which is worse than being told the value is wrong.
+ */
 const FONT_STYLE_OR_WEIGHT = /^(?:normal|italic|oblique|small-caps|bold|bolder|lighter|[1-9]00)$/i;
 const FONT_SIZE =
   /^(?:\d+(?:\.\d+)?(?:px|pt|em)|xx-small|x-small|smaller|small|medium|larger|large|x-large|xx-large)$/i;
