@@ -233,6 +233,32 @@ test('a text row ACCEPTS a draft its validator allows, and reports the typed str
   expect(onChange).toHaveBeenCalledWith('14px monospace');
 });
 
+// Pasting a colour from somewhere else almost always brings a space with it, and the validator
+// judges the TRIMMED draft — so an untrimmed commit is approved by the field and then returns null
+// from Color.fromJson without throwing, which nothing downstream can catch.
+test('a text row commits the trimmed value it validated, not the raw draft', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  const validate = vi.fn((draft: string) => draft.trim().startsWith('#'));
+  render(
+    <SettingRow
+      id="secondary"
+      label="Secondary voices"
+      control={{ kind: 'text', validate }}
+      value="#000000"
+      onChange={onChange}
+    />,
+  );
+
+  const input = screen.getByRole('textbox', { name: 'Secondary voices' });
+  await user.clear(input);
+  await user.type(input, ' #2DD4BF ');
+  await user.tab();
+
+  expect(onChange).toHaveBeenCalledWith('#2DD4BF');
+  expect(onChange).not.toHaveBeenCalledWith(' #2DD4BF ');
+});
+
 // The Export group: a row whose control is a command, not a value.
 test('an action row renders a named button and reports the press, never a value', async () => {
   const user = userEvent.setup();
