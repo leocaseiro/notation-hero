@@ -173,7 +173,7 @@ v0 Plan C adds to `/play`; two come from the PR #170 review, deferred here by th
 2026-09-22; and one covers the breakpoint #170 introduces. Keeping the count small is deliberate:
 every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.
 
-**All of these describe `/play` as PR #170 leaves it** — a full-bleed page with a `z-10` header, a
+**All of these describe `/play` as PR #170 left it** (merged 2026-09-22) — a full-bleed page with a `z-10` header, a
 left `bg-rail` strip carrying the Open-file control, the notation surface, and a raised `bg-panel`
 transport footer.
 
@@ -410,11 +410,12 @@ With these two scripts the repo would carry four near-identical docker invocatio
 
 - **Baseline churn.** Every `client/` visual change and every AlphaTab upgrade moves these
   baselines too. Eleven shots is the mitigation; adding a twelfth should have to justify itself.
-- **Every shot below is written against PR #170's layout, which is open, not merged.** #170
-  restructures `/play` into a full-bleed page with a left rail and a raised transport footer, and
-  adds the `--rail`, `--panel` and `--elevate` surface tokens the hover shot depends on. If #170
-  changes in review, the shot list follows it. Re-read `web/app/play/PlayerShell.tsx` before
-  writing the lane rather than trusting these descriptions.
+- **The shot list was re-derived from PR #170 and re-checked after it merged.** Every element it
+  names is on `master`: the rail at `PlayerShell.tsx:600` (`w-20 … lg:w-24`, `bg-rail`), the header's
+  layer at `:537` (`relative z-10`) over a `h-16` header, the ghost Open-file button at
+  `OpenFileControl.tsx:118` with its tooltip, `back-home` in the header, and the `--rail`, `--panel`
+  and `--elevate` tokens in `client/src/styles.css`. Line numbers drift — re-read
+  `web/app/play/PlayerShell.tsx` before writing the lane rather than trusting them.
 - **Parallel workers are unmeasured.** The measurement ran `--workers=1`. The waits are on explicit
   signals rather than on timing, so parallel execution should hold, but if it proves flaky the VR
   project takes `workers: 1` — at about 2.2 s a shot that costs almost nothing.
