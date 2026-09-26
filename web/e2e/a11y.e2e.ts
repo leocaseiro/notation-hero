@@ -81,13 +81,23 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
 // the gate measures the rendered UI rather than a transitional frame. (The toast's resting state
 // is gated too, by client/'s own Sonner stories.)
 async function settleToasts(page: Page): Promise<void> {
-  const toast = page.locator('[data-sonner-toast]').first();
-  if ((await toast.count()) === 0) return;
+  // Every toast, not just the front one. Sonner PREPENDS, so `.first()` is the newest — settling
+  // it says nothing about the ones behind, and those are the ones still transitioning. Polling to
+  // '1' is also wrong for a background or dismissed card: its resting opacity is legitimately 0,
+  // so waiting for 1 would time out on a page that is perfectly settled.
+  const toasts = page.locator('[data-sonner-toast]');
+  if ((await toasts.count()) === 0) return;
   await expect
-    .poll(() => toast.evaluate((el) => globalThis.getComputedStyle(el).opacity), {
-      timeout: 5000,
-    })
-    .toBe('1');
+    .poll(
+      () =>
+        toasts.evaluateAll((nodes) => {
+          const painted = nodes.flatMap((node) => [node, ...node.children]);
+          const opacities = painted.map((el) => globalThis.getComputedStyle(el).opacity);
+          return opacities.every((opacity) => opacity === '1' || opacity === '0');
+        }),
+      { timeout: 5000 },
+    )
+    .toBe(true);
 }
 
 test('landing page has no axe violations', async ({ page }) => {

@@ -558,6 +558,10 @@ Approved by leocaseiro 2026-09-16:
   missing from the spec. Nine numbers — 1xx opening a file, 2xx the engine and its assets, 9xx an
   unexpected crash — live in `web/lib/player-errors.ts` (Task 6); spec §4's failure table gains a
   Number column and the two music-font rows it lacked. The e2e lane pins E101, E103 and E203.
+  **Superseded 2026-09-26 (NH-331):** the registry moved to `shared/src/error-codes.ts`, its
+  documented twin is now the app-wide `docs/reference/error-codes.md` rather than the v0 spec, and
+  `pnpm run check:error-codes` enforces the pairing in CI. The nine numbers and their meanings are
+  unchanged.
 - **Also raised:** a `TODO` comment fails lint in every package (`sonarjs/todo-tag` is an error in the
   shared base). leocaseiro asked that lint stop blocking TODO comments, JSDoc `@todo` in particular;
   that change is handled separately, off `master`.
