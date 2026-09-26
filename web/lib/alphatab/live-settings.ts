@@ -127,6 +127,51 @@ export function applySettingsJson(
 }
 
 /**
+ * The ordering rule for committing one setting: ask the engine FIRST, keep it only if it accepted.
+ *
+ * Extracted from PlayerShell so the rule itself can be tested. It used to sit inside a
+ * component-local useCallback, wrapped around React state, where nothing could force a rejection
+ * and check what followed — and it is the whole guarantee, so it should not be the one untested
+ * step.
+ *
+ * Why this order and not the other: persisting first means a value the engine rejects is already
+ * stored, and every later visit re-hits the same rejection inside fillFromJson, which aborts
+ * mid-tree and silently truncates the WHOLE restore — unrelated groups included. Failing here
+ * costs the one edit instead, and since nothing was written there is nothing to roll back.
+ *
+ * `persist` receives the document only when the engine accepted it, and carries both the state
+ * write and the storage write so their order cannot drift apart from this decision.
+ *
+ * @returns true when the engine accepted and `persist` ran; false when the edit was refused.
+ */
+export function applyThenPersist({
+  api,
+  next,
+  apply,
+  onRejected,
+  persist,
+}: {
+  // Absent before the engine has loaded. There is nothing to ask, so the edit is kept: the value
+  // reaches the engine through the restore path when it does load.
+  readonly api: AlphaTab.AlphaTabApi | undefined;
+  readonly next: PlayerSettingsJson;
+  readonly apply: SettingApply;
+  readonly onRejected: () => void;
+  readonly persist: (accepted: PlayerSettingsJson) => void;
+}): boolean {
+  if (api) {
+    try {
+      applySettingsJson(api, next, apply);
+    } catch {
+      onRejected();
+      return false;
+    }
+  }
+  persist(next);
+  return true;
+}
+
+/**
  * Notation ONLY, for one track. The other transposition — audio only — is an api method.
  *
  * This does not move the sound, and cannot: 'render' runs updateSettings() plus a redraw, and the

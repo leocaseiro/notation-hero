@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   applySettingsJson,
+  applyThenPersist,
   cancelQueuedFrames,
   clearTrackTranspositions,
   readStylesheetValues,
@@ -356,5 +357,69 @@ describe('per-track transposition', () => {
     clearTrackTranspositions(api as unknown as AlphaTab.AlphaTabApi);
 
     expect(api.updateSettings).not.toHaveBeenCalled();
+  });
+});
+
+describe('applyThenPersist — apply BEFORE persist', () => {
+  it('persists the document when the engine accepts it', () => {
+    const api = createFakeApi();
+    const persist = vi.fn();
+    const onRejected = vi.fn();
+
+    const committed = applyThenPersist({
+      api: api as unknown as AlphaTab.AlphaTabApi,
+      next: { display: { scale: 1.4 } },
+      apply: 'render',
+      onRejected,
+      persist,
+    });
+
+    expect(committed).toBe(true);
+    expect(api.settings.fillFromJson).toHaveBeenCalledTimes(1);
+    expect(persist).toHaveBeenCalledWith({ display: { scale: 1.4 } });
+    expect(onRejected).not.toHaveBeenCalled();
+  });
+
+  // THE guarantee. Persisting a value the engine rejects means every later visit re-hits the same
+  // rejection inside fillFromJson, which aborts mid-tree and truncates the whole restore — so a
+  // refused edit must leave storage completely untouched, not merely warn.
+  it('persists NOTHING when the engine rejects the value, and says so', () => {
+    const api = createFakeApi();
+    api.settings.fillFromJson.mockImplementation(() => {
+      throw new Error('Missing font list');
+    });
+    const persist = vi.fn();
+    const onRejected = vi.fn();
+
+    const committed = applyThenPersist({
+      api: api as unknown as AlphaTab.AlphaTabApi,
+      next: { display: { resources: { graceFont: 'bold' } } },
+      apply: 'render',
+      onRejected,
+      persist,
+    });
+
+    expect(committed).toBe(false);
+    expect(persist).not.toHaveBeenCalled();
+    expect(onRejected).toHaveBeenCalledTimes(1);
+  });
+
+  // Before the engine has loaded there is nothing to ask, and the edit must still be kept: the
+  // value reaches the engine through the restore path when it does load.
+  it('keeps the edit when there is no engine yet, without asking anything', () => {
+    const persist = vi.fn();
+    const onRejected = vi.fn();
+
+    const committed = applyThenPersist({
+      api: undefined,
+      next: { display: { scale: 2 } },
+      apply: 'render',
+      onRejected,
+      persist,
+    });
+
+    expect(committed).toBe(true);
+    expect(persist).toHaveBeenCalledWith({ display: { scale: 2 } });
+    expect(onRejected).not.toHaveBeenCalled();
   });
 });
