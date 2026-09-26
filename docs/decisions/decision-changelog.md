@@ -7,9 +7,59 @@
 
 ## Change log — manual approvals & merge status updates
 
-Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
+Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, as a new entry at the top — and so does every PR-merge note. The affected decisions' **status and enforcement flips** go in [`decision-registry.md`](decision-registry.md), which holds current state per topic and never a dated entry.
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
+
+### 2026-09-26 — The registry/changelog split finished, and made self-enforcing (NH-322)
+
+The #143 split (NH-25) left `decision-registry.md` at 340 lines with zero dated entries. It did not
+hold: on 2026-09-22 **PR #163 put 1,586 lines back**. It wrote its own change-log entry into the
+registry — which is what AGENTS.md told it to do — and because the registry still carried
+`merge=union`, the merge concatenated the entire change log back in beside it. No conflict, so
+review saw nothing. It survived three further merges unnoticed.
+
+NH-322 (#173) removed the union driver from the registry two hours later. That fixed the cause and
+left the damage, so three sources disagreed about where a new entry goes and an agent had to guess.
+This entry closes the second half.
+
+**What the state actually was, measured rather than assumed.** Of the registry's 72 dated entries,
+**71 already existed in this file**, 69 byte-identical. The 2 that differed both favoured this file:
+the registry's `2026-06-17 — Architecture decisions` still read `ARCH-CONTRACT-1 oRPC`, superseded
+by NH-284 in July, and its `2026-06-11 — PR #9` had #143's pointer paragraph welded onto the entry's
+tail by the union merge, wrongly claiming both files are `merge=union`. Exactly **one** entry was
+registry-only — `2026-09-20 — v0 Plan C re-triaged`, the entry #163 itself authored — and it moved
+here byte-exact. The registry's state tables were byte-identical to #143's clean version, so the
+damage never touched the decisions themselves. Registry: 1921 → 343 lines, 72 → 0 dated entries.
+
+**Approved by leocaseiro 2026-09-26**, three decisions:
+
+- **NH-322 carries this, not NH-25 and not a new ticket.** Its description already named this exact
+  damage, so closing it with the damage still present would have made the ticket untrue. (Its
+  description blames PR #170; the registry has zero dated entries at #170's tree and 72 at #163's,
+  so the blame is corrected.)
+- **The stale-reference sweep covers what misleads future work, not what recorded past work.** The
+  three sites that told an agent where to _write_ are fixed — AGENTS.md "Decision governance", the
+  AGENTS.md current-direction snapshot, and Step 5 of the live, unshipped
+  `docs/plans/2026-09-13-v0c-popovers-plan.md` (PR #176 is open against it, so the next agent on
+  that plan would have repeated #163 exactly). So are eight read-pointers into the section that no
+  longer exists, in `CONCEPTS.md`, `tooling/check-layout.sh`, the 2026-06-17 ADR, the 2026-06-09
+  DACI and the 2026-07-16 typed-contract re-spike — two of which pointed at the NH-284 and NH-231
+  entries that have only ever lived in this file, and so were already broken. Roughly 14 past-tense
+  records inside shipped plans and specs are **deliberately left alone**: they describe accurately
+  what was done at the time, and rewriting them would edit the historical record.
+- **The rule becomes a machine gate.** A prose rule is what failed here, and this regression class
+  is invisible to review by construction — #163 passed lint, markdownlint, the PR checklist and CI
+  Green. `pnpm run check:decision-docs` (`tooling/check-decision-docs.sh`) now fails when the
+  registry holds a dated `### YYYY-MM-DD` heading; non-dated h3 sub-headings stay legal. Its CI step
+  sits in the **`lint`** job, not `quality`: `quality` is gated on the `code` paths-filter, so a
+  docs-only PR skips it — and a docs-only PR is exactly the shape that trips this. It also runs in
+  Lefthook pre-commit (the authoring mistake) and pre-push (pre-commit is skipped during a merge,
+  and a merge is how #163's duplication arrived). `tooling/check-decision-docs.test.sh` proves it
+  rejects a violation, the same reasoning as the core-purity canary.
+
+**Enforcement:** ⏳ → 🤖 for the registry/changelog boundary. **No registry row was added**, matching
+how #173 recorded NH-322 itself: the governance rule lives in AGENTS.md and the gate enforces it.
 
 ### 2026-09-22 — Eight orphaned spike documents archived, and five NH-196 decisions recovered (NH-25)
 
