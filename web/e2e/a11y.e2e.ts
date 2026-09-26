@@ -30,13 +30,25 @@ async function expectNoViolations(page: Page, label: string): Promise<void> {
 // 2.5.5 AAA and the platform HIG, and it is what this player's own constraints demand. The
 // stricter rule is enforced here deliberately, and in the lane rather than by eye, so a later
 // control cannot quietly shrink below it.
-async function expectHitAreas(page: Page, label: string): Promise<void> {
+/**
+ * Every interactive control on the page is at least 44x44 and sits where a pointer can reach it.
+ *
+ * `floor` is what stops the whole check passing over NOTHING. An empty failure list means either
+ * "everything measured passed" or "nothing was measured", and the assertion cannot tell those
+ * apart — so renaming one selector would turn all nine cases green while measuring less, or none,
+ * of the page. Both numbers are MEASURED, not guessed: run this file and read the counts.
+ */
+async function expectHitAreas(
+  page: Page,
+  label: string,
+  floor: { readonly controls: number; readonly sliders: number },
+): Promise<void> {
   // A toast mid-animation is still sliding into place, and the containment check below reads its
   // position. Settle first, for the same reason the axe pass does — measure the rendered UI, not a
   // transitional frame.
   await settleToasts(page);
-  const tooSmall = await page.evaluate(() =>
-    [
+  const { scanned, sliders, tooSmall } = await page.evaluate(() => {
+    const controls = [
       // The last selector is the seek rail. A Base UI slider's 44 px pointer target is neither a
       // button nor a link: the nested input[type="range"] is sized to its 16 px thumb by design
       // and can never pass, while the element that actually takes the click is the slider's
@@ -63,7 +75,8 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
           '[data-slot="popover-content"] input:not([type="range"]):not([type="file"]):not([type="checkbox"])',
         ].join(', '),
       ),
-    ]
+    ];
+    const tooSmall = controls
       .filter((el) => {
         // Skip controls that are not rendered at all: `display:none` generates no box, so
         // getClientRects() is empty. A control that IS laid out but collapsed to 0 px in either
@@ -120,6 +133,12 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
         }
         if (scrollAncestor) {
           const ar = scrollAncestor.getBoundingClientRect();
+          // Edges are not enough — check the EXTENT first. A scroll box collapsed to nothing sits
+          // inside all four window edges, and the relaxed vertical bound below it is true BY
+          // CONSTRUCTION for any child of a scroll container, so every control inside an unpainted
+          // container would be excused rather than failed. The Tracks popover sizes its list with a
+          // runtime calc(), which is a reachable way to get there.
+          if (ar.width <= 0 || ar.height <= 0) return true;
           // The relaxation below only holds while the scrolling box is itself reachable. Check
           // that first: `contentTop + height <= scrollHeight` is true BY CONSTRUCTION for any
           // child of a scroll container, so without this the vertical bound cannot fail at all
@@ -155,9 +174,29 @@ async function expectHitAreas(page: Page, label: string): Promise<void> {
         id: (el as HTMLElement).dataset.testid ?? el.textContent?.trim().slice(0, 24) ?? '?',
         w: Math.round(el.getBoundingClientRect().width),
         h: Math.round(el.getBoundingClientRect().height),
-      })),
-  );
+      }));
+    const sliders = controls.filter((el) => el.matches('[data-slot="slider-control"]')).length;
+    return { scanned: controls.length, sliders, tooSmall };
+  });
   expect(tooSmall, `${label}: controls under the 44px minimum`).toEqual([]);
+  // An empty `tooSmall` means EITHER everything measured passed OR nothing was measured, and the
+  // assertion above cannot tell those apart. Rename a data-slot and every case below goes green
+  // over zero elements — the exact silent-pass mode this file rejects elsewhere (see the comment
+  // refusing to key the gate on `[class*="h-11"]`). The floor is per call site because the pages
+  // differ: the landing page has a handful of controls, the two open popovers have dozens.
+  expect(
+    scanned,
+    `${label}: the hit-area scan matched ${scanned} controls, fewer than the ${floor.controls} this page should have — a renamed selector would make this case pass over nothing`,
+  ).toBeGreaterThanOrEqual(floor.controls);
+  // The sliders again on their own, because the total cannot see one CATEGORY disappear: the seek
+  // rail is a single control out of thirteen on /play, so losing every slider still leaves the
+  // total looking healthy. Sliders earn the separate check because they are the one control the
+  // gate finds by a design-system attribute rather than by role or tag — and because a rail
+  // painted 0px wide is the failure this whole file exists to catch (NH-315).
+  expect(
+    sliders,
+    `${label}: matched ${sliders} slider controls, fewer than the ${floor.sliders} expected — '[data-slot="slider-control"]' is probably stale`,
+  ).toBeGreaterThanOrEqual(floor.sliders);
 }
 
 // A toast that is still fading in is sampled by axe at PARTIAL OPACITY, and axe folds that into
@@ -198,7 +237,7 @@ test('landing page has no axe violations', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('link', { name: 'Play' })).toBeVisible();
   await expectNoViolations(page, 'landing');
-  await expectHitAreas(page, 'landing');
+  await expectHitAreas(page, 'landing', { controls: 1, sliders: 0 });
 });
 
 // There is no empty state to audit: the page opens on the bundled beat, so this is the
@@ -209,7 +248,7 @@ test('player has no axe violations on the score it opens with', async ({ page })
     timeout: 30_000,
   });
   await expectNoViolations(page, 'play / bundled beat');
-  await expectHitAreas(page, 'play / bundled beat');
+  await expectHitAreas(page, 'play / bundled beat', { controls: 12, sliders: 1 });
 });
 
 // The sample renders 185 px tall and never scrolls; Punk.gp's two drum tracks render 1,026 px at
@@ -227,7 +266,7 @@ test('player has no axe violations with a score long enough to scroll', async ({
     .toBe(true);
   await settleToasts(page);
   await expectNoViolations(page, 'play / scrolling score');
-  await expectHitAreas(page, 'play / scrolling score');
+  await expectHitAreas(page, 'play / scrolling score', { controls: 12, sliders: 1 });
 });
 
 // The first-visit Skeleton is reachable because the engine import is a real request the lane can
@@ -244,7 +283,7 @@ test('player has no axe violations while the first-visit Skeleton is up', async 
   // so the Skeleton is up on a bare /play — no interaction needed to reach this state.
   await expect(page.getByTestId('notation-skeleton')).toBeVisible();
   await expectNoViolations(page, 'play / skeleton');
-  await expectHitAreas(page, 'play / skeleton');
+  await expectHitAreas(page, 'play / skeleton', { controls: 12, sliders: 1 });
 });
 
 // The engine-error state is reachable and permanent — abort the engine module the way the case
@@ -255,7 +294,7 @@ test('player has no axe violations when the engine fails to load', async ({ page
   await page.goto('/play');
   await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
   await expectNoViolations(page, 'play / engine error');
-  await expectHitAreas(page, 'play / engine error');
+  await expectHitAreas(page, 'play / engine error', { controls: 12, sliders: 1 });
 });
 
 // A toggle's pressed styling is where contrast usually breaks, and the transport did not exist
@@ -279,7 +318,7 @@ test('player has no axe violations with every transport toggle pressed', async (
     .toBe('1');
 
   await expectNoViolations(page, 'play / transport pressed');
-  await expectHitAreas(page, 'play / transport pressed');
+  await expectHitAreas(page, 'play / transport pressed', { controls: 12, sliders: 1 });
 });
 
 // Every other case here runs at the config's 1280px, so this is the one case that exercises the
@@ -297,7 +336,7 @@ test('every transport control stays on-screen in a narrow 700px window', async (
   // then run the full hit-area gate (size + the new containment check) over every control.
   await expect(page.getByTestId('toggle-metronome')).toBeInViewport();
   await expect(page.getByTestId('toggle-countin')).toBeInViewport();
-  await expectHitAreas(page, 'play / narrow 700px');
+  await expectHitAreas(page, 'play / narrow 700px', { controls: 12, sliders: 1 });
 });
 
 test('player has no axe violations with the Settings popover open', async ({ page }) => {
@@ -315,7 +354,7 @@ test('player has no axe violations with the Settings popover open', async ({ pag
   }
 
   await expectNoViolations(page, 'play / settings open');
-  await expectHitAreas(page, 'play / settings open');
+  await expectHitAreas(page, 'play / settings open', { controls: 150, sliders: 5 });
 });
 
 test('player has no axe violations with the Tracks popover open', async ({ page }) => {
@@ -346,5 +385,5 @@ test('player has no axe violations with the Tracks popover open', async ({ page 
   await page.getByTestId('track-row-1').getByRole('button', { name: /mute/i }).click();
 
   await expectNoViolations(page, 'play / tracks open');
-  await expectHitAreas(page, 'play / tracks open');
+  await expectHitAreas(page, 'play / tracks open', { controls: 40, sliders: 6 });
 });

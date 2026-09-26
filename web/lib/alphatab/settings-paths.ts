@@ -22,7 +22,7 @@ export function readSettingValue(json: PlayerSettingsJson, path: string): Settin
     // anything. The hasOwn guard above keeps the walk on the tree's own keys, so an inherited
     // 'toString' is never followed.
     //
-    // It does NOT, however, reject a literal '__proto__' — that claim would be checkably false:
+    // It does NOT, however, reject a literal '__proto__' — that claim is false, and testable:
     // JSON.parse('{"__proto__":{}}') produces an OWN data property of that name, and
     // Object.hasOwn returns true for it (measured). Reading it is harmless: it yields that data
     // property, not Object.prototype, and the return below admits only a string, number or
