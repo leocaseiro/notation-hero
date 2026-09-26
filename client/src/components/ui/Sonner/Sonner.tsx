@@ -22,6 +22,13 @@ const liveErrorIds = new Set<string | number>();
 
 let anonymousErrorCount = 0;
 
+/**
+ * How many times each LIVE error id has been raised. Only ids currently on screen appear here:
+ * the `else` branch below clears the entry whenever an id returns as a fresh occurrence, and the
+ * dismiss callbacks clear it when the toast goes away.
+ */
+const repeatCounts = new Map<string | number, number>();
+
 type ErrorMessage = Parameters<typeof sonnerToast.error>[0];
 type ErrorOptions = Parameters<typeof sonnerToast.error>[1];
 
@@ -48,12 +55,27 @@ function forget(id: string | number): void {
 function raiseErrorToast(message: ErrorMessage, options?: ErrorOptions): string | number {
   const id = options?.id ?? deriveId(message);
 
+  let shown = message;
+
   if (liveErrorIds.has(id)) {
-    // The same failure again. Updating in place would change nothing on screen — identical copy,
-    // no re-animation, nothing new in the live region — so someone who retried could not tell
-    // whether the retry registered. Dismiss and re-raise so the entry animation runs again.
-    sonnerToast.dismiss(id);
+    // The same failure again, and it has to CHANGE something or a person who retried cannot tell
+    // whether the retry registered.
+    //
+    // It must not do that by dismissing and re-raising the same id: sonner is still running the
+    // exit animation for that id, so the re-raise is swallowed and the toast is simply gone.
+    // Measured on /play at 50 ms — the error AND the "Opening …" spinner both vanished within
+    // 50 ms of a retry and never came back, leaving a failed open looking exactly like a
+    // successful one, and a later unrelated failure could no longer stack.
+    //
+    // Changing the COPY instead keeps the toast on screen and still gives the repeat something
+    // visible. It is announced too: the count lands inside sonner's own live region, and unlike
+    // a re-animation it survives reduced-motion.
+    const repeats = (repeatCounts.get(id) ?? 1) + 1;
+    repeatCounts.set(id, repeats);
+    if (typeof shown === 'string') shown = `${shown} (\u00D7${String(repeats)})`;
   } else {
+    // A fresh occurrence of an id that is not on screen — start its count over.
+    repeatCounts.delete(id);
     while (liveErrorIds.size >= ERROR_TOAST_CAP) {
       const oldest = liveErrorIds.values().next().value;
       if (oldest === undefined) break;
@@ -66,17 +88,19 @@ function raiseErrorToast(message: ErrorMessage, options?: ErrorOptions): string 
   forget(id);
   liveErrorIds.add(id);
 
-  return sonnerToast.error(message, {
+  return sonnerToast.error(shown, {
     ...options,
     id,
     duration: Number.POSITIVE_INFINITY,
     closeButton: true,
     onDismiss: (raised) => {
       forget(id);
+      repeatCounts.delete(id);
       options?.onDismiss?.(raised);
     },
     onAutoClose: (raised) => {
       forget(id);
+      repeatCounts.delete(id);
       options?.onAutoClose?.(raised);
     },
   });
