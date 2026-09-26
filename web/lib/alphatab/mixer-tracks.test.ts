@@ -14,6 +14,7 @@ const staff = (overrides: Partial<StaffScannable> = {}): StaffScannable => ({
   showTablature: false,
   isPercussion: false,
   tuning: [],
+  transpositionPitch: 0,
   ...overrides,
 });
 
@@ -108,6 +109,36 @@ describe('toMixerTrack', () => {
       CLEF_BASS,
     );
     expect(mixerTrack.staves[0]?.tablatureAvailable).toBe(true);
+  });
+
+  // AlphaTab stores the NEGATIVE of the number a person reads: its own applyPitchOffsets does
+  // `staff.transpositionPitch = -settings.notation.transpositionPitches[i]`, and the alphaTex
+  // importer does `value * -1` for `\transpose`. Verified by loading a fixture that carries
+  // `\transpose 2`: the staff comes back as -2. So the row has to negate it to show +2, and a row
+  // that started at 0 instead both misreported the open file and erased its value the moment
+  // anyone moved the slider back to 0.
+  it('starts Transpose notation at the transposition the FILE carries, sign-corrected', () => {
+    const mixerTrack = toMixerTrack(track({ staves: [staff({ transpositionPitch: -2 })] }));
+    expect(mixerTrack.transposeFull).toBe(2);
+  });
+
+  it('starts Transpose notation at a file transposition in the other direction too', () => {
+    const mixerTrack = toMixerTrack(track({ staves: [staff({ transpositionPitch: 3 })] }));
+    expect(mixerTrack.transposeFull).toBe(-3);
+  });
+
+  it('starts Transpose notation at a plain zero, never -0, for a file that carries nothing', () => {
+    const mixerTrack = toMixerTrack(track({ staves: [staff({ transpositionPitch: 0 })] }));
+    expect(mixerTrack.transposeFull).toBe(0);
+    // -0 compares equal to 0, so only Object.is tells them apart. A stored -0 reads as a bug.
+    expect(Object.is(mixerTrack.transposeFull, -0)).toBe(false);
+  });
+
+  // Transpose AUDIO is a separate per-channel offset on top of whatever the file already says, so
+  // seeding it from the file would transpose the sound twice.
+  it('leaves Transpose audio at zero even when the file carries a transposition', () => {
+    const mixerTrack = toMixerTrack(track({ staves: [staff({ transpositionPitch: -2 })] }));
+    expect(mixerTrack.transposeAudio).toBe(0);
   });
 
   it('labels each staff of a three-staff track by its own clef, falling back to its position', () => {

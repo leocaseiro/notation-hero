@@ -13,6 +13,14 @@ export interface StaffScannable {
   showTablature: boolean;
   isPercussion: boolean;
   tuning: readonly number[];
+  /**
+   * AlphaTab stores this NEGATED: the engine's own `applyPitchOffsets` does
+   * `staff.transpositionPitch = -settings.notation.transpositionPitches[i]`, and the alphaTex
+   * importer does `staff.transpositionPitch = value * -1` for `\transpose`. So a file that asks
+   * for "up two semitones" arrives here as -2. `toMixerTrack` negates it back to the number the
+   * row's slider shows.
+   */
+  transpositionPitch: number;
 }
 
 /** The shape this module needs from an AlphaTab `Track`. */
@@ -69,6 +77,14 @@ export const staffLabel = (
   return `Staff ${staffIndex + 1}`;
 };
 
+// The row's starting Transpose notation value: the file's own, read back from the staff. A track
+// whose staves disagree cannot happen through this app — both the engine's applyPitchOffsets and
+// setTrackTransposition write every staff of a track at once — so the first staff speaks for it.
+const transposeStart = (track: TrackScannable): number => {
+  const stored = track.staves[0]?.transpositionPitch ?? 0;
+  return stored === 0 ? 0 : -stored;
+};
+
 // Plain data at the boundary, so nothing downstream holds an AlphaTab object in React state.
 export const toMixerTrack = (
   track: TrackScannable,
@@ -81,7 +97,13 @@ export const toMixerTrack = (
   solo: false,
   mute: false,
   transposeAudio: 0,
-  transposeFull: 0,
+  // Seeded from the FILE, not from 0. The engine keeps a file-carried transposition on the staff
+  // (negated — see StaffScannable.transpositionPitch), and the Transpose notation row is the only
+  // editor for it. Starting at 0 made the row lie about the open file and, worse, turned a return
+  // to 0 into an erase: measured on a file carrying `\transpose 2`, nudging the slider up one and
+  // back down left the staff at 0, losing the file's value with no way back but reopening.
+  // `=== 0` rather than a bare negation: -(0) is -0, which reads as a bug in stored state.
+  transposeFull: transposeStart(track),
   expanded: false,
   // Reads the staves directly, the same rule selectDrumTrackIndexes (drum-tracks.ts) settled on
   // over Track's own `isPercussion` getter: it survives a change to the getter.
