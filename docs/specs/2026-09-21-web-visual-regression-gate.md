@@ -188,10 +188,16 @@ v0 Plan C adds to `/play`; two come from the PR #170 review, deferred here by th
 2026-09-22; and one covers the breakpoint #170 introduces. Keeping the count small is deliberate:
 every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.
 
-**The navigation is shared, not copied.** The six states the accessibility lane already reaches move
-into `web/e2e/player-states.ts` — one exported function per state, each returning once that state is
-reached — and **both** lanes import it. `a11y.e2e.ts` is refactored to call it rather than keep its
-own copy.
+**The navigation is shared, not copied — and only the navigation.** The six states the accessibility
+lane already reaches move into `web/e2e/player-states.ts`: one exported function per state,
+performing the `goto`, clicks and file-picks that _reach_ it and returning immediately. Each lane
+keeps its own readiness waits, because the two lanes genuinely disagree about them — the pixel lane
+needs the Skeleton's stalled module to never resume while `a11y.e2e.ts:133-136` resumes after
+5 000 ms (so the Skeleton helper takes its stall duration as an argument, and must branch rather
+than pass `Infinity` to `setTimeout`, which fires immediately), and the long-score state needs the
+toast **painted** for axe (`settleToasts`, `a11y.e2e.ts:83-91`) but **gone** for a screenshot. Both
+lanes import it, and `a11y.e2e.ts` is refactored to call it rather than keep its own copy of the
+navigation.
 
 That costs an edit to a lane that passes today, which is the reason to think about it. The
 alternative costs more: two copies of six navigations drift the moment someone renames a test id, and
