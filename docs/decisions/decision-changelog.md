@@ -216,6 +216,53 @@ that very commit.
   the `.ts` scan lost the build exits 1 on all five; with it present the CSS is byte-identical to a
   known-good build.
 
+### 2026-09-20 — v0 Plan C re-triaged: the Settings popover ships every AlphaTab setting, the player-mode switch included (NH-291)
+
+Plan C (the Settings and Tracks popovers) was written on 2026-09-13, before Plans A and B existed as
+code, and had not been reviewed. It was re-triaged against both builds before its first review lap
+(`docs/plans/2026-09-13-v0c-popovers-plan.md`, banner). Nothing is enforced yet — this is a plan —
+so what is recorded here is what was **decided**.
+
+Approved by leocaseiro 2026-09-20:
+
+- **The Settings popover is the same as the reference panel — every row.** His words: _"we should
+  be able to change every single setting from alphatab, including enable synth or backing track.
+  100% do this now. I use this all the time!"_ Two consequences:
+  - **The player-mode row ships in v0 — superseding the spec's "a toggle between the recording and
+    the synthesizer is out of v0"** (`docs/specs/2026-09-10-v0-local-file-player-design.md` §4),
+    and answering the question the 2026-09-20 hands-on entry recorded as built by no plan. It gets
+    its own task, because two things assumed the mode never changes: `hasBackingTrack` will come
+    from `api.actualPlayerMode` instead of from the score, and `playerReady` will stop latching —
+    which also closes the hazard that entry left open.
+  - **Metronome volume, count-in volume and loop are rows in the Player group as well as buttons
+    on the transport.** One value, one writer: the shell's `metronome` and `countIn` state becomes
+    a volume, and the transport button reads `> 0`.
+- **He asked whether the plan had every row of the reference panel. It did not** — it carried row
+  counts. A full inventory by AlphaTab key (92 rows) found four things a count cannot show, each a
+  silent no-op had it been built as written: the **Stylesheet group is not settings at all** (it
+  lives on `api.score.stylesheet`, which `fillFromJson` ignores); **fourteen Player rows only take
+  effect after `api.loadMidiForScore()`**; **five Player rows are `AlphaTabApi` properties**; and
+  **`display.padding` is an array** the dot-path helpers could not address. Two rows of the
+  reference panel are bound to the wrong key, and the plan carries the right ones.
+
+- **Every mixer control without visible text gets a state-telling tooltip, and a test reads each
+  one.** His instruction: _"Make sure every button toggle has tooltip, including the tracks ones,
+  such as solo/mute/etc."_ The plan already required it for Solo, Mute and the "more controls"
+  button but enforced none of it; it now also covers the render-select box (a bare 16 px box on
+  the row), with a unit case in `TrackRow` and an e2e case that walks every row of the open mixer
+  and re-reads each tooltip after its state changes. Controls that show their own words — settings
+  rows, display toggles, accordion headers, the export buttons — need none.
+
+Carried over from earlier decisions rather than re-asked: the two checks only a person can do are
+handed back once, at the end (as chosen for Plan B, 2026-09-20), and the mechanical
+plan-versus-reality corrections were applied without a question (the lap-4 rule, 2026-09-18).
+
+Found while re-triaging, from AlphaTab 1.8.4's source — **read, not yet run**, and the plan says so:
+`changeTrackSolo` and `changeTrackMute` act on a MIDI channel exactly as `changeTrackVolume` does,
+so the accepted coupling covers all three; the backing-track synthesizer stubs the audio
+transposition as well as mute, solo and volume; and the synth keeps its muted and soloed channels
+across a score change, so the mixer must reset them.
+
 ### 2026-09-20 — Plan B, first hands-on round: sixteen findings, and what they changed (NH-291)
 
 The maintainer tested PR #162 by hand and raised sixteen items. Each was reproduced in a real
