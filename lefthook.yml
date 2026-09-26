@@ -93,6 +93,9 @@ pre-push:
     lint-css:
       run: pnpm run lint:css
       skip: [merge, rebase]
+    check-error-codes:
+      run: pnpm run check:error-codes
+      skip: [merge, rebase]
     lint-md:
       run: pnpm run lint:md
       skip: [merge, rebase]
