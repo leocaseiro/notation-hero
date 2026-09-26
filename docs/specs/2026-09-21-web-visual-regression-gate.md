@@ -603,7 +603,7 @@ it was planned rather than smuggled in.
 - `AGENTS.md` — the "VR & a11y testing" section is scoped to `client/`; it gains the `web/` lane and
   the two new commands.
 - `web/.gitignore` — the darwin-baseline line.
-- `.github/workflows/ci.yml` — the new `web` job, the trimmed `e2e` job, the four artifact names,
+- `.github/workflows/ci.yml` — the new `web` job, the trimmed `e2e` job, the three artifact names,
   the `vr-report` download rename, the corrected comment, and `ci-green`'s `needs:`.
 - `tooling/workflow-guards.test.mjs` — the Node test that pins today's `e2e` job in source, and
   the one file in this list whose failure you cannot see before pushing. Two assertions break:
