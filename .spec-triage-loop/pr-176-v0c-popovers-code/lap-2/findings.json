@@ -1,0 +1,655 @@
+{
+  "_header": {
+    "artifact": "The committed diff of PR #176 (leocaseiro/notation-hero) - feat: v0 settings and tracks popovers (NH-291)",
+    "artifact_url": "https://github.com/leocaseiro/notation-hero/pull/176",
+    "reviewed_head": "11e618d0 (dispatch time). Six more commits landed DURING/AFTER this lap, up to 8757d5ac - see _applied_during_lap_2.",
+    "reviewed_base": "9e367f69 (master tip / merge-base)",
+    "lap": 2,
+    "half": "review (steps 1-3). UNTRIAGED. The triage half is a separate invocation.",
+    "review_skill": "compound-engineering:ce-code-review",
+    "review_mode": "mode:agent pr:176 (report-only; no silent edits, so step 2b is empty)",
+    "run_dir": "/tmp/compound-engineering-501/ce-code-review/20260925-234637-32660f5b",
+    "FINDING_COUNT_OPEN": 5,
+    "FINDING_COUNT_ALREADY_APPLIED": 6,
+    "severity_mix_open": {
+      "P1": 0,
+      "P2": 5,
+      "P3": 0
+    },
+    "triage_cap_note": "14 findings still open, NONE of them P1 \u2014 the highest remaining are P2.",
+    "reviewers_run": [
+      "correctness",
+      "project-standards",
+      "testing",
+      "maintainability",
+      "learnings-researcher",
+      "security",
+      "performance",
+      "api-contract",
+      "reliability",
+      "adversarial (IN-PROCESS fallback)",
+      "previous-comments",
+      "julik-frontend-races"
+    ],
+    "adversarial_route": "IN-PROCESS fallback, NOT cross-model. Scope resolved to pr-remote (the local branch name differs from the PR head branch even though the tree carries the exact head SHA), and the shared loop forbids the detached cross-model peer in that mode because it cannot inspect the reviewed refs. So the adversarial lens has NO independent-model corroboration this lap.",
+    "independence_note": "All twelve lenses ran as separate dispatched subagents, so cross-reviewer agreement IS independent corroboration. Two pairs agreed independently: the colour-validator P1 (correctness + security) and the stale transpose comment (correctness + maintainability).",
+    "process_note": "This review half ran in the SAME session as lap 1's triage half, which the shared loop's context guardrail says not to do. It was done at the maintainer's explicit request. Mitigation: every reviewer ran as a subagent and received file PATHS rather than inlined persona/scope/schema content, so the orchestrator's context carried findings only.",
+    "triaged": true,
+    "triaged_note": "All 25 findings decided across two triage invocations. Closed 2026-09-26. The loop entry rule must NOT re-enter step 4 on this artifact."
+  },
+  "_state_store": {
+    "binding": "This file. NOT the plan's frontmatter (that holds the DOC-review loop's state).",
+    "code_lap": 2,
+    "code_last_applied": "P1",
+    "triaged": "partial \u2014 21 of 25 decided; 5 open, no P1 left; HANDING OFF",
+    "next": "Read _handoff. Answer the three recorded questions before touching O14, O15 or O16.",
+    "lap_decision": "RE-LAP. Step 7(b): P1s were applied this lap (O1, O2, O3, O5 plus the folded-in O11/O12), and the exit signal was never clean. Step 7(a) did NOT fire: lap 2 of a 5-lap cap, and unresolved P1 count fell from 6 to 1, so the no-progress bound is clear. A re-lap must start as a NEW invocation with a fresh review half.",
+    "tickets_filed": [
+      "NH-328 (secondary-voices colour control)",
+      "NH-329 (split settings-schema)",
+      "NH-330 (mobile portrait UI)"
+    ]
+  },
+  "_exit_signal": {
+    "clean": false,
+    "raw_verdict": "Ready with fixes",
+    "reading": "NOT CLEAN. 25 open findings, six of them P1. Lap 2 did reduce unresolved P0/P1 count in the areas lap 1 touched, so the no-progress bound has NOT tripped."
+  },
+  "_applied_during_lap_2": {
+    "why": "These were defects in LAP 1's OWN fixes, two of them security, all verified by the orchestrator against the installed alphaTab 1.8.4 before changing anything. Applied rather than parked because a known injection sink should not sit on a pushed branch awaiting triage.",
+    "commits": ["e45d6e12", "8757d5ac", "and the TracksPopover comment fix folded into 8757d5ac"],
+    "items": [
+      {
+        "id": "A1",
+        "severity": "P1",
+        "raised_by": ["correctness", "security"],
+        "title": "Colour validator used CSS.supports, the wrong authority",
+        "detail": "Color.fromJson returns null WITHOUT throwing for red / hsl(...) / rgb(0 0 0 / 50%) / RGBA(...), all of which CSS.supports accepts. So the engine never rejected them, lap 1's apply-before-persist gate never fired, the null was stored, and the renderer dereferenced null.rgba inside a queued frame - outside that try/catch. Replaced with the engine's own grammar (3/6/8-digit hex + lowercase rgb()/rgba()); verified to agree with Color.fromJson on all 17 cases tested.",
+        "status": "FIXED and verified"
+      },
+      {
+        "id": "A2",
+        "severity": "P1",
+        "raised_by": ["security"],
+        "title": "Font family list was a script-injection sink",
+        "detail": "isFontShorthand deliberately did not validate the family list. SvgCanvas builds `<text ... style='... font:${...}'>` as a SINGLE-quoted attribute and assigns it as markup (alphaTab.core.mjs:49768), so an apostrophe closes the attribute. Confirmed `12px <image onerror=...>` passed the validator. A stored value re-arms on every visit. Now refuses ' < > ; keeps \" so `12px \"Times New Roman\"` still works.",
+        "status": "FIXED and verified"
+      },
+      {
+        "id": "A3",
+        "severity": "P1",
+        "raised_by": ["testing"],
+        "title": "isCssColor threw under the project's pinned jsdom",
+        "detail": "CSS.supports is unimplemented in jsdom, so any test touching that validator would throw.",
+        "status": "MOOT - A1's fix removed the CSS global entirely"
+      },
+      {
+        "id": "A4",
+        "severity": "P3",
+        "raised_by": ["correctness", "maintainability"],
+        "title": "applyTransposeFull comment still claimed 'Notation AND audio'",
+        "detail": "TracksPopover.tsx:202 contradicted the JSDoc lap 1 corrected in live-settings.ts. Lap 1's rename pass fixed the label strings but missed this semantic claim.",
+        "status": "FIXED"
+      },
+      {
+        "id": "A5",
+        "severity": "P2",
+        "raised_by": ["project-standards", "learnings-researcher"],
+        "title": "The banned word 'chart' in six new lines",
+        "detail": "CONCEPTS.md ratified 'score'/'notation' and bans 'chart' in specs, plans, code identifiers and UI copy. Six occurrences had crept into this branch's new prose. The pre-existing resources/charts/ directory was left alone.",
+        "status": "FIXED"
+      },
+      {
+        "id": "A6",
+        "severity": "P2",
+        "raised_by": ["project-standards"],
+        "title": "A local scratchpad path committed to a public repo",
+        "detail": "The spike write-up carried /private/tmp/claude-501/-Users-leocaseiro-... , which hides the username inside a directory name rather than at the start of the path, so the first scrub missed it.",
+        "status": "FIXED"
+      }
+    ]
+  },
+  "open_findings": [
+    {
+      "id": "O14",
+      "severity": "P2",
+      "confidence": 75,
+      "raised_by": ["julik-frontend-races"],
+      "file": "web/app/play/TracksPopover.tsx",
+      "line": 134,
+      "title": "Rapid double-toggle of two tracks' visibility drops the first toggle",
+      "whats_wrong": "applyRendered computes its replacement set from drawnIndexes, which only updates on the async renderFinished event, so a second toggle before that fires silently discards the first.",
+      "triage": {
+        "status": "APPLIED \u2014 5d96afe4",
+        "his_questions_ANSWERED": "How quick? Within the score redraw. MEASURED: 16ms on Punk.gp and 65ms on a 5-track/160-bar score, both unthrottled; 220ms only at a 20x CPU slowdown. A third track? Yes \u2014 with two drawn, unticking one locks the last box, so there is no second click to race.",
+        "his_verdict": "Pushed back, correctly: a hand cannot cross ~80px and click again inside 220ms, and a machine that slow cannot play alphaTab either. Approved anyway on the condition the fix adds no heavy checks \u2014 it is one map over a handful of tracks per click.",
+        "what_was_WRONG_in_the_earlier_framing": "The 150ms reproduction used two programmatic mouse clicks at fixed coordinates, so it had NO cursor travel and overstated how reachable the mouse path is. Corrected in the commit message and the code comment.",
+        "fix": "liveDrawnIndexes() reads api.tracks, which renderTracks assigns synchronously. applyRendered and toggleLayout both use it; drawnIndexes stays state for what the rows DISPLAY.",
+        "regression_test": "web/e2e/player.e2e.ts \u2014 'a second untick before the redraw does not bring the first track back'. Both toggles fire from ONE page task, so it is deterministic at any machine speed. Verified to fail on the old code (two tracks drawn, the hidden one re-ticked)."
+      }
+    },
+    {
+      "id": "O15",
+      "severity": "P2",
+      "confidence": 50,
+      "raised_by": ["adversarial"],
+      "file": "web/scripts/assert-design-system-css.mjs",
+      "line": 88,
+      "title": "The CSS canary matches by substring, so a longer utility satisfies a prefix entry",
+      "whats_wrong": "css.includes() is a raw substring test and three of the new entries are prefixes - one aria-pressed:bg-primary/90 anywhere in the scanned tree satisfies that entry forever. The guard's own test builds its fixtures FROM the list, so it can never catch this.",
+      "note": "Adversarial explicitly CLEARED the self-satisfaction question the brief asked: globals.css still excludes web/scripts/**, so naming a utility there does not make Tailwind generate it.",
+      "triage": {
+        "status": "APPLIED \u2014 53cd3ec4",
+        "his_questions_ANSWERED": "NH-315 = production served the seek rail 0px wide and transparent while the preview was perfect and every test stayed green. assert-design-system-css.mjs = a build step that fails when a design-system utility never reached the emitted CSS. .grow = one of its ten watched Tailwind class names, the one giving the seek rail its width. Neither settings nor tracks \u2014 the build. No id is possible: the searched artifact is compiled CSS, whose only handle is the class name.",
+        "was_it_live": "NO. All ten entries were matched against the real emitted stylesheet: each present in its exact form, nothing longer satisfying any of them. A trap for later, not a live hole.",
+        "what_was_WRONG_in_the_finding": "The finding said 'three of the new entries are prefixes' and named aria-pressed:bg-primary/90. There are TEN entries now (the four at handoff time plus six), FIVE are prefixes of plausible longer utilities, and that selector does not appear.",
+        "fix": "isWholeClass() requires a CSS boundary after the entry. `[` is in the boundary set and is load-bearing: Tailwind emits a variant utility with its condition attached, so three entries never appear followed by `{`.",
+        "regression_test": "tooling/assert-design-system-css.test.mjs \u2014 a negative case (only longer classes; every entry must be reported missing) and a boundary case (the attribute form still counts). Verified: the negative test fails with \"Missing expected exception\" against the substring check it replaces."
+      }
+    },
+    {
+      "id": "O16",
+      "severity": "P2",
+      "confidence": 50,
+      "raised_by": ["adversarial"],
+      "file": "web/lib/alphatab/mixer-tracks.ts",
+      "line": 84,
+      "title": "The Transpose notation row seeds at 0 over a file's own transposition",
+      "whats_wrong": "Three modules disagree about what 0 means: the engine preserves a file-carried transposition, lap 1's densify loop reads it back specifically to avoid losing it, but toMixerTrack still seeds the row at 0. So the slider reads at rest while the engine holds +2, and returning it to 0 writes a literal 0 - which erases the file's value, irrecoverably without reopening.",
+      "note": "Closely related to NH-327.",
+      "triage": {
+        "status": "APPLIED \u2014 59795e82",
+        "his_questions_ANSWERED": "Why the minus: it is the engine's storage convention, now demonstrated rather than asserted. applyPitchOffsets does staff.transpositionPitch = -settings.notation.transpositionPitches[i], and the alphaTex importer does value * -1. A new fixture carrying \\transpose 2 loads with the staff at -2, so the number the row must show is -(-2) = +2.",
+        "the_fixture_he_asked_for": "web/e2e/fixtures/transposed.alphatex. Every pre-existing fixture reports 0 \u2014 all twelve re-verified with importer.ScoreLoader in this session.",
+        "measured_before": "staff -2 after open; slider reads 0; ArrowUp then ArrowDown leaves staff 0 \u2014 the file's +2 gone.",
+        "measured_after": "slider reads +2; ArrowUp gives -3; ArrowDown gives -2 back \u2014 the file's value survives the round trip.",
+        "fix": "toMixerTrack seeds transposeFull from staves[0].transpositionPitch, negated, with `=== 0` so a no-op never stores -0. transposeAudio stays 0 on purpose: a separate per-channel offset on top of the file, so seeding it would transpose twice.",
+        "regression_tests": "four unit cases in mixer-tracks.test.ts plus an e2e round trip in player.e2e.ts."
+      }
+    },
+    {
+      "id": "O18",
+      "severity": "P2",
+      "confidence": 75,
+      "raised_by": ["maintainability"],
+      "file": "web/app/play/PlayerShell.tsx",
+      "line": 1,
+      "title": "PlayerShell.tsx crosses 1,000 lines in this diff (755 -> 1,097)",
+      "triage": {
+        "status": "ROUTED \u2014 NH-332",
+        "note": "PlayerShell.tsx is 1,167 lines now, not the 1,097 the finding measured; Player() is 91% of it. Deferred on the reasoning NH-329 already records: a pure move through the file laps 3 and 4 must read."
+      }
+    },
+    {
+      "id": "O19",
+      "severity": "P2",
+      "confidence": 75,
+      "raised_by": ["maintainability"],
+      "file": "web/e2e/player.e2e.ts",
+      "line": 1,
+      "title": "player.e2e.ts grows to 2,372 lines with no test.describe grouping",
+      "triage": {
+        "status": "ROUTED \u2014 NH-333",
+        "note": "player.e2e.ts is 2,482 lines with 69 tests and zero test.describe. 45 of those lines are O14's regression test. Deferred for the same reason, plus: fullyParallel makes a describe purely cosmetic."
+      }
+    }
+  ],
+  "notable_clears": [
+    "adversarial CLEARED the CSS-canary self-satisfaction question: globals.css's `@source not '../scripts/**'` still covers the new entries, so naming a utility in the guard does not make Tailwind generate it.",
+    "security CLEARED the prototype-pollution guards in settings-paths.ts - not exploitable by any path shape tested, including against a hostile JSON.parse'd document. Only the justifying comment is wrong (O23).",
+    "security CLEARED ReDoS on both validators as originally written (0.17ms on 50KB); the super-linear pattern was one the orchestrator then introduced while fixing A1, and removed before commit.",
+    "correctness CONFIRMED lap 1's densify fix is correct against the engine, and disproved a suspected crash path in TrackRow's last-notation-type lock.",
+    "testing CONFIRMED the new e2e dense-array assertion would genuinely fail under the pre-fix sparse code.",
+    "maintainability CLEARED the web/ <-> client/ coupling: no client/ file imports alphatab or web/.",
+    "learnings-researcher CONFIRMED the NH-315 canary step was followed correctly for the new MixerClasses.ts module, and found no violation of the localStorage, setAlphaTabValue, or Linux-only-VR-baseline decisions."
+  ],
+  "testing_gaps": [
+    "No test covers SettingRow's validate/commit-reject contract (O4).",
+    "Neither new validator has direct coverage; both are module-private, though the drift test's pattern (reading a validator off the built descriptor) makes them reachable.",
+    "No test drives rapid keystrokes into a MIDI-apply row to prove loadMidiForScore is called once rather than once per digit (O3).",
+    "No test exercises useAlphaTab's cleanup while a queued render is pending (O12).",
+    "No e2e case would have failed under the PRE-fix hit-area logic, so a regression in either branch lap 1 changed would not be caught.",
+    "The blocked-site-data localStorage read has no coverage; an addInitScript that makes the getter throw would cover it."
+  ],
+  "_triage_lap_2_round_1": {
+    "ran": "Triage half, invocation 1 of the lap-2 triage (the 25 findings exceed the 8-finding cap).",
+    "findings_decided": 5,
+    "picker_rounds_used": 2,
+    "cap": "8 findings or 5 picker rounds, whichever comes first \u2014 5 findings / 2 rounds used, so 3 findings of headroom remain.",
+    "decided": [
+      {
+        "id": "O1",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["adversarial"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 89,
+        "title": "Mixer size-exemption keys on the ROW, so all four mixer sliders lose the 44px verdict",
+        "whats_wrong": "sizeExempt matches el.closest('[data-slot=\"track-row\"], [data-slot=\"master-row\"]'), so every slider inside a mixer row - per-track volume, Transpose audio, Transpose notation, Master volume - is exempt from the size check, not just the deliberate 34px icon buttons the exemption is justified for. A mixer rail painted 0px wide is exactly the NH-315 failure this function exists to catch, and the gate would return [] and go green.",
+        "note": "The over-broad scope is PRE-EXISTING (the original `if (el.closest(...)) return false;` had the same reach); lap 1 narrowed it to the size verdict but did not narrow WHICH elements it covers.",
+        "proposed_fix": "AND the mixer half with el.matches('button, [role=\"button\"]'). The sliders are already h-11 w-full, so the lane stays green.",
+        "triage": {
+          "decision": "Apply",
+          "commit": "b62a9d33",
+          "how": "sizeExempt now ANDs the mixer half with el.matches('button, [role=\"button\"]'), so the four mixer sliders keep the 44px verdict. Justifying comment rewritten to say element-not-ancestry."
+        }
+      },
+      {
+        "id": "O2",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["api-contract", "reliability"],
+        "file": "web/lib/alphatab/settings-storage.ts",
+        "line": 126,
+        "title": "The restore path gates enums and numbers but not the 13 text rows",
+        "whats_wrong": "loadStoredSettings repairs enum names (dropUnknownOptions) and numeric ranges (clampToBounds) but has no equivalent for the twelve font rows and the colour row - even though each already owns a validator in settings-schema.ts that simply is not exported or reused. fillFromJson has no per-key try/catch, so one bad stored font or colour silently aborts the ENTIRE restore, including unrelated notation/player groups, swallowed by the bare catch in PlayerShell and with reset staying false so no toast fires and no repair write happens.",
+        "note": "This is the restore-side twin of the write-side holes lap 1 closed. Reliability reached the same root cause from the other direction, adding that the stale field then rides along on every later edit and makes unrelated valid edits fail too.",
+        "proposed_fix": "Export the two validators as SETTING_TEXT_VALIDATORS and add a dropInvalidText pass mirroring dropUnknownOptions, folding into the same reset flag.",
+        "triage": {
+          "decision": "Apply",
+          "commit": "f974f9eb",
+          "how": "SETTING_TEXT_VALIDATORS exported from settings-schema (the rows' OWN isCssColor/isFontShorthand, not copies); dropInvalidText added to settings-storage mirroring dropUnknownOptions, folded into the same reset flag; PlayerShell passes it. Two drift tests assert the map equals every text row's validate BY IDENTITY, in both directions. Four new storage cases."
+        }
+      },
+      {
+        "id": "O3",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["reliability"],
+        "file": "web/lib/alphatab/live-settings.ts",
+        "line": 23,
+        "title": "MIDI-apply rows reload the MIDI on every keystroke, stopping and rewinding playback per digit",
+        "whats_wrong": "SettingRow's number control reports on every keystroke (commit only gates CLAMPING, not whether onChange fires). All fourteen apply:'midi' rows are kind:'number'. pushSettings' 'render' branch is coalesced through requestAnimationFrame for exactly this reason; the 'midi' branch is not - so typing a three-digit value calls loadMidiForScore three times, and that call stops and rewinds the player. Each reload also re-fires TracksPopover's playerReady, re-flooding the synth worker with a full mixer resync per digit.",
+        "note": "PRE-EXISTING (not introduced by lap 1), and it contradicts the PR's stated invariant that neither popover blocks playback.",
+        "proposed_fix": "Coalesce the 'midi' branch the way 'render' already is, with its OWN flag so the two coalesce independently.",
+        "triage": {
+          "decision": "Apply after a spike (maintainer required proof first)",
+          "commit": "5af145cd",
+          "how": "'midi' branch now goes through queueMidi, coalesced per frame with its own flag.",
+          "spike_findings": "THEORY CONFIRMED, with two corrections to the finding. (1) The finding said all FOURTEEN apply:'midi' rows are kind:'number'; it is THIRTEEN \u2014 player.playTripletFeel is a toggle and never had the problem. (2) The finding said typing '100' reloads three times; driving the real SettingRow measured FOUR \u2014 reports [1, 10, 100] while typing plus 100 again on blur. Engine side verified in the installed alphaTab 1.8.4: AlphaSynth.loadMidiFile does this.stop() then this.tickPosition = 0. Measured through applySettingsJson: 4 loadMidiForScore calls before, 1 after; the render path measured 1 for the same input, confirming the mechanism is the existing house pattern."
+        }
+      },
+      {
+        "id": "O11",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["julik-frontend-races", "reliability"],
+        "file": "web/lib/alphatab/live-settings.ts",
+        "line": 39,
+        "title": "renderQueued is module-level, so it ignores which api instance queued it",
+        "whats_wrong": "useAlphaTab recreates the api whenever its [engine] effect re-runs, which next.config.ts's Strict Mode deliberately exercises. A render queued for a stale instance suppresses a fresh instance's request in the same frame, and the stale callback calls .render() on a destroyed api. The test file's own afterEach comment already treats this flag as leaked module state.",
+        "note": "PRE-EXISTING.",
+        "triage": {
+          "decision": "Apply \u2014 maintainer chose to fold in rather than defer",
+          "commit": "7f00491a",
+          "how": "Both queues moved from module-global booleans to a WeakMap keyed by AlphaTabApi instance, so a frame queued for a destroyed api can no longer suppress a fresh one. Handle compared against undefined, not truthiness, because 0 is a valid frame handle."
+        }
+      },
+      {
+        "id": "O12",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["reliability"],
+        "file": "web/lib/alphatab/live-settings.ts",
+        "line": 43,
+        "title": "A queued render fires on a destroyed AlphaTabApi after unmount",
+        "whats_wrong": "The requestAnimationFrame handle is discarded, and AlphaTabApiBase.render() has NO _isDestroyed guard (unlike changeTrackVolume/Mute/Solo and its other siblings), so the deferred call runs against a destroyed renderer from a detached callback nothing in the tree can catch. The window widens on a backgrounded tab, where rAF is throttled.",
+        "proposed_fix": "Keep the frame handle and export a cancel, called from useAlphaTab's effect cleanup beside created.destroy().",
+        "triage": {
+          "decision": "Apply \u2014 maintainer chose to fold in rather than defer",
+          "commit": "7f00491a",
+          "how": "Frame handles are kept and cancelQueuedFrames(api) is exported; useAlphaTab's effect cleanup calls it immediately before created.destroy(). Mutation-checked: reinstating truthiness fails 3 tests, removing the cancel fails 1, collapsing per-instance keying to a global fails 2."
+        }
+      }
+    ],
+    "note_on_O11_O12": "Not in the suggested batch. They surfaced because the O3 fix adds a SECOND queue, which would have inherited both defects; the maintainer was asked and chose to fold them in rather than leave them for a later round.",
+    "commits_pushed": ["b62a9d33", "f974f9eb", "5af145cd", "7f00491a"]
+  },
+  "_triage_lap_2_round_2": {
+    "ran": "Triage half, invocation 1 \u2014 second and third picker rounds.",
+    "findings_decided": 3,
+    "decided": [
+      {
+        "id": "O4",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["testing"],
+        "file": "client/src/components/ui/SettingRow/SettingRow.tsx",
+        "line": 94,
+        "title": "SettingRow's validate / commit-reject path has zero tests",
+        "whats_wrong": "commitText's accept/reject branch is the shared contract every one of the thirteen validated rows depends on, and SettingRow.test.tsx's eleven cases never pass a validate function at all.",
+        "proposed_fix": "Two cases with a stub validator: a rejecting one (assert onChange NOT called and the field reverts) and an accepting one (assert onChange called with the typed string).",
+        "triage": {
+          "decision": "Apply",
+          "commit": "9689e2e2",
+          "how": "Two cases in SettingRow.test.tsx with a stub validator \u2014 rejecting (validate called with the draft, onChange never fired, field visibly reverts) and accepting. The word `validate` previously appeared ZERO times in that file. Mutation-checked: dropping the `accepted` check fails the rejecting case."
+        }
+      },
+      {
+        "id": "O5",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["testing"],
+        "file": "web/app/play/PlayerShell.tsx",
+        "line": 583,
+        "title": "applySetting's engine-reject path is untested at any level",
+        "whats_wrong": "The apply-before-persist ordering is lap 1's headline guarantee and nothing proves it: no test forces a rejection and asserts the toast fires AND nothing was stored.",
+        "note": "Testing flagged this manual/human because it is coupled to React state inside a component-local useCallback; the suggested route is extracting the ordering into a helper testable against a fake api, as live-settings.ts already is.",
+        "triage": {
+          "decision": "Apply \u2014 maintainer chose the extract-a-helper route over an e2e test",
+          "commit": "d02795c8",
+          "how": "Ordering extracted as applyThenPersist in live-settings.ts; PlayerShell passes the toast and a persist closure carrying both the state write and the storage write. Three cases: accepts/persists, rejects/persists NOTHING, and no-engine-yet. Mutation-checked: moving persist() above the engine call fails the rejection case.",
+          "note": "The e2e route was rejected for a reason worth keeping: O2's field-level validators now refuse a bad font or colour BEFORE the engine sees it, so this gate is a second line of defence and is hard to reach by typing. Closing the field hole is what made the e2e route weak."
+        }
+      },
+      {
+        "id": "O7",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["performance"],
+        "file": "web/app/play/SettingsPopover.tsx",
+        "line": 151,
+        "title": "Lap 1's useMemo was half the fix - all 90 rows still rebuild every frame",
+        "whats_wrong": "Memoising buildSettingGroups stops the descriptor tree rebuilding, but SettingsPopover itself is not memoised, so its body - the 90-row map, valueOf, and a fresh closure per row - still runs on every animation frame during playback. apiValues is a fresh object literal built inline in PlayerShell on every render, which would defeat a shallow memo comparison even if one were added.",
+        "proposed_fix": "useMemo apiValues in PlayerShell, then wrap SettingsPopover in memo(). The other props are already reference-stable.",
+        "triage": {
+          "decision": "Apply after a spike (maintainer doubted the premise and asked for measurement)",
+          "commit": "8f50faf1",
+          "how": "apiValues memoised in PlayerShell; SettingsPopover wrapped in memo(). Permanent regression test at web/app/play/SettingsPopover.test.tsx.",
+          "spike_findings": "THEORY CONFIRMED. The maintainer's challenge was whether the on-blur commit made this moot; it does not \u2014 the two are independent. Blur governs when a PERSON changes a value; O7 is about the PLAYER re-rendering the popover while the song runs. Measured by rendering the real popover with the real engine namespace and counting readSettingValue (one call per settings-sourced row): with memo() but apiValues still a fresh literal, 71 rows re-read PER FRAME with the popover CLOSED; with memo() plus a stable apiValues, 0. So both halves are needed and each is useless alone. Closed is not idle because the row map sits in JSX children, evaluated when the element is created rather than when the popover opens. The finding's claim that the other props are already reference-stable was VERIFIED, not assumed: applySetting:572, applyApiValue:540 and runAction:605 are all useCallback-wrapped, settings and api are state, mixUnavailable is a module constant or undefined.",
+          "spike_process_note": "The first run of this spike reported 0 rebuilds per frame, which would have DISPROVEN the finding. It was a dead harness: the clicks were not wrapped in act(), so the parent never re-rendered. Caught by asserting the tick counter had advanced before reading anything into the zero. The permanent test keeps that assertion."
+        }
+      }
+    ],
+    "commits_pushed": ["8f50faf1", "9689e2e2", "d02795c8"]
+  },
+  "_triage_lap_2_cap": {
+    "reached": true,
+    "findings_decided_total": 8,
+    "picker_rounds_used": 3,
+    "cap": "8 findings or 5 picker rounds, whichever comes first \u2014 the 8-finding ceiling is now reached, so the triage half STOPS here.",
+    "decided_in_order": ["O1", "O2", "O3", "O11", "O12", "O4", "O5", "O7"],
+    "spikes_run": "Two, both at the maintainer's request: O3 (confirmed, and corrected the finding twice) and O7 (confirmed, after a first dead-harness run reported the opposite). The maintainer's standing instruction is to spike anything uncertain rather than apply on reasoning alone."
+  },
+  "_triage_lap_2_round_3": {
+    "ran": "Triage half, invocation 2 (maintainer directed: triage the open findings BEFORE re-reviewing).",
+    "findings_decided": 3,
+    "decided": [
+      {
+        "id": "O6",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["maintainability"],
+        "file": "web/lib/alphatab/settings-schema.ts",
+        "line": 1,
+        "title": "settings-schema.ts welds five independently-changing concerns into 1,302 new lines",
+        "whats_wrong": "The descriptor tree (~1,011 lines of genuine domain data), the types, the defaults, the two hand-maintained mirrors and the two private validators all share one new file. Splitting the tree into a sibling leaves ~290 lines on a single topic.",
+        "note": "Maintainability confirmed the two mirrors are honestly defended by their drift tests - they are not the trap here; the file's breadth is.",
+        "triage": {
+          "decision": "Ticket, do not do it in this PR",
+          "ticket": "NH-329",
+          "scenario": "Not a defect \u2014 nothing goes wrong for a person using the app. It is a maintainability finding about one 1,356-line file carrying five concerns that change for unrelated reasons.",
+          "how": "Filed as NH-329 with the proposed split, the acceptance criteria, and an explicit NOT-in-scope note that the three drift-tested mirrors must be left alone.",
+          "why_deferred": "A pure move with no behaviour change would add ~1,300 relocated lines to a PR already at 9,613 insertions, making the planned lap-4 full-PR review materially harder to read for no functional gain."
+        }
+      },
+      {
+        "id": "O8",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["correctness"],
+        "file": "client/src/components/ui/SettingRow/SettingRow.tsx",
+        "line": 98,
+        "title": "Text rows validate the trimmed draft but commit the untrimmed one",
+        "whats_wrong": "Both validators judge draft.trim(); commitText reports textDraft verbatim. Neither AlphaTab parser trims, so a value with surrounding whitespace passes the gate and can still be rejected by the engine.",
+        "proposed_fix": "Commit exactly what was validated.",
+        "triage": {
+          "decision": "Apply",
+          "commit": "ee592f98",
+          "scenario": "You paste a colour copied from somewhere else into Secondary voices. Copying almost always brings a space with it. The field accepts it silently, so it looks applied \u2014 then the next redraw throws where nothing can catch it, and the bad value is saved, so it happens again on every visit.",
+          "how": "commitText now reports textDraft.trim(). Mutation-checked: restoring the raw commit fails the new case.",
+          "spike": "SEVERITY UPGRADED P2 -> P1, and the finding's claim CORRECTED. Measured against alphaTab 1.8.4: ' #2DD4BF', '#2DD4BF ', '  #2DD4BF  ' and ' rgba(0,0,0,0.5)' all pass the field validator (it trims) and all return null from Color.fromJson WITHOUT throwing, because fromJson tests startsWith('#')/startsWith('rgb') on the RAW string. That defeats the apply-before-persist gate, which only fires on a throw, so the null is stored and the renderer dereferences null.rgba a frame later. HOWEVER the finding said 'neither AlphaTab parser trims' \u2014 that is WRONG. Font.fromJson was measured on ' 12px serif', '12px serif ' and '  12px serif ' and parsed all three correctly (serif @12). Only the colour row breaks; the twelve font rows were never at risk."
+        }
+      },
+      {
+        "id": "O25",
+        "severity": "P3",
+        "confidence": 50,
+        "raised_by": ["julik-frontend-races"],
+        "file": "client/src/components/ui/SettingRow/SettingRow.tsx",
+        "line": 65,
+        "title": "SettingRow's local draft never reconciles an externally-pushed value",
+        "whats_wrong": "There is a real dual-editor case: playbackSpeed is written by both the header's TempoControl and the Settings popover's speed row.",
+        "triage": {
+          "decision": "Drop \u2014 no reachable scenario",
+          "scenario": "The finding implies: you are dragging the Playback speed slider and the speed changes from somewhere else mid-drag, so your release overwrites it. Leo raised the sharpest version \u2014 a song with tempo changes, where the BPM pill moves on its own during playback.",
+          "spike": "NOT REACHABLE, verified two ways. (1) PlayerShell:507 names applySpeed the ONLY writer of api.playbackSpeed, and it has exactly two callers \u2014 the settings row (:555) and the header tempo control (:866). No keyboard shortcut, timer or effect writes it. (2) Leo's tempo-change case: PlayerShell:417 does setScoreTempo(next.originalTempo) live during playback, but that writes scoreTempo, NEVER speed. The settings row is a pure percentage (Math.round(speed*1000)/10) and never reads scoreTempo, so which bar is playing cannot move it. The header's BPM pill DOES divide by the base tempo and therefore does need protection \u2014 and already has it: TempoControl freezes `editBase` at the start of an edit and uses `base = editBase ?? scoreTempo`, so a mid-drag tempo change cannot compound.",
+          "why_dropped": "The patch (useEffect clearing draft on value change) guards nothing reachable and would cost a real regression: any future external write would yank the slider out from under an in-flight drag."
+        }
+      }
+    ],
+    "note": "Maintainer set the running order for the rest: (1) finish triaging open findings, (2) lap 3 reviewing ONLY the code lap 2 never saw, reading FULL FILES not just diffs, (3) lap 4 reviewing the full PR.",
+    "rules_reloaded": "The spec-triage-loop rules changed on disk mid-session; the triage skill and _shared/review-loop.md were re-read. New: spike the FIX not just the finding, open every finding with the scenario, and the artifact must carry both."
+  },
+  "_triage_lap_2_round_4": {
+    "ran": "Triage half, invocation 2 continued (maintainer overrode the cap).",
+    "findings_decided": 4,
+    "decided": [
+      {
+        "id": "O9",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["adversarial"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 154,
+        "title": "The hit-area gate passes vacuously when its selectors match nothing",
+        "whats_wrong": "expect(tooSmall).toEqual([]) cannot distinguish a clean scan from an empty one. This lap added two data-slot-scoped selectors; renaming a data-slot makes all nine cases pass over zero elements - the exact silent-pass mode the file's own comments argue against for [class*=\"h-11\"].",
+        "proposed_fix": "Return the scanned count too and assert a floor.",
+        "triage": {
+          "decision": "Apply \u2014 caller-supplied floor, plus a per-selector slider floor the maintainer asked for",
+          "commit": "58571e54",
+          "scenario": "Someone renames a data-slot attribute in an ordinary refactor. The test that guarantees every control is finger-sized now matches zero elements in that category, reports no failures, goes green, and you ship a control nobody can tap \u2014 the NH-315 failure with a green tick.",
+          "how": "expectHitAreas takes a measured floor {controls, sliders}. Sliders are counted separately because a total cannot see one CATEGORY vanish: the seek rail is 1 control out of 13 on /play.",
+          "floors_measured": "landing 1/0; bundled beat 13/1; scrolling score 14/1; skeleton 13/1; engine error 14/1; transport pressed 13/1; narrow 700px 13/1; settings open 189/6; tracks open 47/7. Floors set just below each.",
+          "spike": "MUTATION-VERIFIED end to end. Ran the real suite: 9 passed. Renamed '[data-slot=\"slider-control\"]' to a bogus value: 8 of 9 FAILED naming the stale selector (the 9th is landing, which legitimately has 0 sliders). Restored: 9 passed. Before this change that same rename passed all nine silently.",
+          "maintainer_question": "Leo asked whether data-testid would prevent the rename problem. Answered with evidence: data-testid IS an existing convention here (9 production files), but it would relocate the coupling rather than remove it, cannot be applied to the third-party '[data-sonner-toast]' selector at all, and only lowers the CHANCE of a silent break where the floor DETECTS one. He chose the per-selector slider floor instead of adding a testid."
+        }
+      },
+      {
+        "id": "O10",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["adversarial", "julik-frontend-races"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 163,
+        "title": "settleToasts hard-fails on a toast that is dismissing, and misses one about to land",
+        "whats_wrong": "It pins .first() and waits for opacity '1'. A toast mid-dismiss moves the other way and then detaches, so the poll runs to the 5s deadline and fails the test - and layout.tsx sets duration={5000}, so that window is routine. Races adds the mirror problem: a single count() snapshot returns immediately in the gap before a triggering toast reaches the DOM.",
+        "note": "This is lap 1's own addition, introduced to stop the new position check racing a slide-in.",
+        "proposed_fix": "Poll page.evaluate over ALL toasts with .every(), rather than pinning .first() and waiting for a single opacity value.",
+        "triage": {
+          "decision": "Apply \u2014 AUTO-RESOLVED (test-quality fix, approach unambiguous)",
+          "commit": "6ba8cd25",
+          "scenario": "A test that raised a toast earlier fails five seconds later for no visible reason. The helper meant to wait for toasts to stop animating pinned the FIRST toast and waited for it to become fully opaque \u2014 but a toast that is dismissing animates the other way, so the wait never succeeds and takes the test down with it.",
+          "how": "Polls every toast for either settled state ('1' or '0') instead of pinning .first() and demanding '1'. An empty list settles immediately, preserving the old early return.",
+          "spike": "Verified by running the a11y suite locally: 9 passed before and after."
+        }
+      },
+      {
+        "id": "O17",
+        "severity": "P2",
+        "confidence": 50,
+        "raised_by": ["adversarial"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 121,
+        "title": "The scroll-ancestor reprieve never checks the container is actually visible",
+        "whats_wrong": "Lap 1's new ancestor check tests EDGES, not extent. A collapsed scroll box sits inside every edge, its children are still laid out, and contentTop+height<=scrollHeight holds by construction - so everything inside passes. TracksPopover's viewport max-height is a runtime calc(), which is a reachable trigger.",
+        "triage": {
+          "decision": "Apply",
+          "commit": "58571e54",
+          "scenario": "The Tracks popover sizes its list at runtime. If that calculation ever collapses the box to zero height, every mixer row inside is invisible \u2014 but the gate hands those controls a 'they are in a scroll container, just below the fold' pass and never checks whether they are reachable at all. A popover full of unreachable controls goes green.",
+          "how": "Added `if (ar.width <= 0 || ar.height <= 0) return true;` before the edge checks.",
+          "spike": "(UNTESTED as to the trigger) \u2014 a collapsed container was not reproduced; the reviewer rated confidence 50 and the runtime calc() is plausible but unobserved. The change itself IS verified as safe: strictly a tightening, and the 9 real cases still pass."
+        }
+      },
+      {
+        "id": "O23",
+        "severity": "P3",
+        "confidence": 100,
+        "raised_by": ["security"],
+        "file": "web/lib/alphatab/settings-paths.ts",
+        "line": 21,
+        "title": "The nosemgrep comment misstates what Object.hasOwn blocks",
+        "whats_wrong": "The guards DO hold - security could not pollute Object.prototype by any path shape - but for a reason the code does not state: computed keys and object spread use CreateDataProperty, which never runs the __proto__ setter. The stated reason is checkably false, since Object.hasOwn(JSON.parse('{\"__proto__\":{}}'), '__proto__') is true. A suppression carrying a wrong justification is the finding.",
+        "triage": {
+          "decision": "Apply \u2014 AUTO-RESOLVED (ambiguity-only: a wrong comment, no behaviour change)",
+          "commit": "6ba8cd25",
+          "scenario": "Nothing goes wrong for a person using the app. The next developer to audit the security suppression reads its justification, finds it false, and has to re-derive from scratch whether the code is safe at all.",
+          "spike": "CONFIRMED the comment is wrong AND the code is safe. Object.hasOwn(JSON.parse('{\"__proto__\":{}}'), '__proto__') returns TRUE, so hasOwn does not rule out '__proto__' as claimed. But neither the computed-key assignment nor the object spread polluted Object.prototype when run \u2014 because a computed key uses CreateDataProperty, which never invokes the '__proto__' setter. Both comments now state the true reason; the write path also warns off the two shapes that WOULD invoke it."
+        }
+      }
+    ],
+    "cap_note": "15 of 25 now decided across 7 picker rounds, past the 12-finding / 5-round ceiling. Continued on the maintainer's explicit instruction; recorded here so the override is visible.",
+    "auto_resolved": "Two were applied without a picker under a standing instruction granted this session: trivial 100%-confident fixes and test/type improvements are auto-resolved and reported, never asked."
+  },
+  "_triage_lap_2_round_5": {
+    "ran": "Triage half, invocation 2 continued.",
+    "findings_decided": 2,
+    "decided": [
+      {
+        "id": "O22",
+        "severity": "P3",
+        "confidence": 50,
+        "raised_by": ["adversarial"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 108,
+        "title": "The scroll-ancestor walk climbs past overflow:hidden clippers",
+        "whats_wrong": "Only auto/scroll match, so a permanent clipper is skipped; and an overflow-x-hidden ancestor computes overflow-y:auto and is mis-adopted as a scroller - a rule Table.tsx already documents.",
+        "triage": {
+          "decision": "Drop \u2014 maintainer chose to discard entirely, nothing to reproduce",
+          "scenario": "The finding implies a control is cut off and unreachable, but the test picks the wrong parent box when deciding whether it is merely scrolled out of view, and excuses it.",
+          "spike": "CSS RULE REAL, TRIGGER ABSENT. Verified in a browser that `overflow-x: hidden` makes overflow-y compute to `auto` \u2014 even when overflow-y:visible is written explicitly \u2014 so a purely horizontal clipper would be adopted as a vertical scroller. But the tree was checked: the only permanent clipper above these controls is PlayerShell's `<main className=\"flex h-dvh flex-col overflow-hidden\">`, whose box IS the viewport, so the existing window check already covers it; and the only overflow-x-hidden in the design system (DropdownMenu) explicitly pairs overflow-y-auto, so adopting it is correct. Nothing in Tracks or Settings triggers either hole.",
+          "why_dropped": "The maintainer asked how to reproduce it and there is no answer \u2014 it is a trap for future code, not a present defect. He chose to discard rather than ticket."
+        }
+      },
+      {
+        "id": "O24",
+        "severity": "P3",
+        "confidence": 50,
+        "raised_by": ["correctness"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 131,
+        "title": "The gate checks horizontal clipping against the window, not the scroll box",
+        "triage": {
+          "decision": "Apply \u2014 AUTO-RESOLVED under the standing test-fix instruction, after the spike made the approach certain",
+          "commit": "a6b7f178",
+          "scenario": "On a phone, a control sits completely off the right of the screen with no way to scroll to it \u2014 and the test that exists to catch exactly that passes, because the overflow pushing the control away also inflated the width the test compares against.",
+          "spike": "MEASURED IN A BROWSER, and it reframed the finding. The artifact called this 'checked against the window, not the scroll box'; the sharper truth is that innerWidth ITSELF lies. On a 375px phone with the Tracks popover open: visualViewport.width 375, innerWidth 517, documentElement.scrollWidth 517. The fix uses visualViewport.width with an innerWidth fallback. The risk worth checking was the OPPOSITE direction \u2014 visualViewport excludes a scrollbar where innerWidth includes it, which could newly fail edge controls \u2014 so all nine cases were run: 9 passed, nothing moved."
+        }
+      }
+    ],
+    "new_finding_found_during_triage": {
+      "summary": "Investigating O24 in a real browser surfaced a defect no reviewer found: the Tracks popover is 512px FIXED width, so on a 375px phone it hangs 142px off the screen and forces the whole page to scroll sideways. The maintainer then reported the transport footer is also bad on a phone; measured on iPhone SE (375x667), the Tracks BUTTON sits at right 397 against a 375px screen and the page does NOT scroll sideways there, so it is simply unreachable. The score area also renders blank in portrait.",
+      "decision": "Mobile portrait is deferred to its own PR \u2014 LANDSCAPE ONLY for now, at the maintainer's direction, because landscape works well. Filed as NH-330 with all three problems, the measurements, the one-line max-w-(--available-width) starting point, and a note that the accessibility suite's narrowest case is 700px so CI has never seen any of it.",
+      "ticket": "NH-330"
+    }
+  },
+  "_triage_lap_2_round_6": {
+    "ran": "Triage half, invocation 2 continued.",
+    "findings_decided": 3,
+    "decided": [
+      {
+        "id": "O13",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["julik-frontend-races"],
+        "file": "web/app/play/PlayerShell.tsx",
+        "line": 664,
+        "title": "requestNotation has no guard against two overlapping file opens",
+        "whats_wrong": "Neither the file input nor the drop zone disables while an open is in flight, and `opening` is not set until after an early await - so two opens race and the last to resolve silently wins.",
+        "triage": {
+          "decision": "Apply \u2014 maintainer noted it is out of this PR's strict scope and approved it anyway",
+          "commit": "670c19fb",
+          "scenario": "You open a drum chart, realise within a second it is the wrong file, and open another. Both loads run, and whichever finishes LAST wins \u2014 which may be the file you rejected. Nothing stops you: the opening indicator has not appeared yet and neither the picker nor the drop zone is disabled.",
+          "how": "A ref claimed synchronously at entry and released in a finally, wrapping runRequestNotation rather than nesting inside it, so the 113-line body keeps its shape.",
+          "spike": "SCOPE CONFIRMED PRE-EXISTING: requestNotation appears 5 times on master and this PR added 0 lines mentioning it. The race predates the feature. Verified the flag ordering that causes it: setOpening(true) is at line 737, AFTER the engine await at 680, so React state cannot gate a second pick made during that window."
+        }
+      },
+      {
+        "id": "O20",
+        "severity": "P3",
+        "confidence": 75,
+        "raised_by": ["correctness"],
+        "file": "web/app/play/PlayerShell.tsx",
+        "line": 199,
+        "title": "The 'settings were reset' toast fires for a clamp that reset nothing",
+        "whats_wrong": "Lap 1 folded 'clamped' into the existing reset flag, but the toast still says the settings were reset to the defaults - false on both halves for a clamp, which preserves the intent of what was typed.",
+        "triage": {
+          "decision": "Apply \u2014 reworded, and split into two messages after the maintainer asked for the corrected settings to be named",
+          "commit": "670c19fb",
+          "scenario": "You set zoom to 500%, close the tab, come back. 500 is out of range so it is brought down to the 300% maximum and nothing else changes \u2014 but you are told your settings 'could not be read, so they were reset to the defaults', so you go and check everything.",
+          "how": "Two branches, two codes. An unreadable document keeps the original wording (still true there, E303); a per-key repair says which rows were corrected by NAME (E301). The console logs label AND dot-path so a report is searchable from either end.",
+          "spike": "The reword initially BROKE an existing e2e that asserts 'reset to the defaults' \u2014 and that assertion was right, because its fixture stores '{broken', which discards the whole document. That is what forced the two-branch split. A new e2e covers the other branch. First run of it failed against a STALE preview server still serving the old build; rebuilt, then 84 e2e + a11y passed."
+        }
+      },
+      {
+        "id": "O21",
+        "severity": "P3",
+        "confidence": 100,
+        "raised_by": ["correctness"],
+        "file": "web/lib/alphatab/settings-storage.ts",
+        "line": 106,
+        "title": "A non-finite stored number clamps to min regardless of sign",
+        "whats_wrong": "The comment claims the value is pinned to 'the nearer end', but the code pins to min unconditionally - so a stored 1e999 zoom restores as 0.25.",
+        "note": "Lap 1's own code and comment disagree.",
+        "triage": {
+          "decision": "Fix the comment, not the behaviour (maintainer chose option 2)",
+          "commit": "670c19fb",
+          "scenario": "A corrupted stored zoom of infinity restores at the SMALLEST setting rather than the largest, and the code's own comment claims it pins to the nearer end.",
+          "spike": "CONFIRMED by running it: Infinity -> 0.25 where the nearer end is 3; -Infinity -> 0.25 (correct); JSON.parse('1e999') yields Infinity, so a crafted document does reach it. The comment now states the real behaviour and why the sign is ignored on purpose."
+        }
+      }
+    ],
+    "maintainer_directed_work_beyond_the_findings": {
+      "summary": "The maintainer asked for an audit of every user-facing error message against the error-code registry, and for the settings warning to name what it corrected.",
+      "audit_result": "8 messages; 5 carried NO code. One needed no new code (the engine toast shares its cause with the banner's E201). Four fell outside every existing band \u2014 nothing covered settings or export.",
+      "applied": "E205 (engine missing on file-open), E301 (settings repaired), E302 (value rejected), E303 (settings document unreadable), E401 (export failed). SETTING_LABELS added as the fourth drift-tested mirror so the warning can name rows; loadStoredSettings now returns repaired PATHS.",
+      "dead_entry_noted_not_deleted": "PLAYER_ERROR.cachedScoreUnavailable (E104) is defined but referenced nowhere.",
+      "gate_caught_the_fix": "semgrep blocked the first commit: the console.warn used an interpolated format string, which a format specifier in stored data could forge. Rewritten with a literal format string and the values as arguments."
+    }
+  },
+  "open_findings_note": "All five are decided. Kept here with their resolution rather than deleted, so lap 3 can see what was asked and answered.",
+  "_new_finding_found_while_fixing": {
+    "id": "O26",
+    "severity": "P2",
+    "file": "web/e2e/player.e2e.ts",
+    "title": "the dense-pitch test's MIDI recorder could start before the player settled",
+    "status": "APPLIED in 5d96afe4, no picker \u2014 a test-only fix under the standing auto-resolve instruction, reported in chat and in that commit message.",
+    "detail": "Introduced by this PR in 48b82248. It started recording loadMidiForScore after only rendered-track-count = 2, but pushSettings('render') loads MIDI whenever the player mode has changed, and it is still changing while the player boots. Observed failing once, on the first run after a cold build, then passing four times. A probe confirmed zero MIDI calls once the player is ready, so the fix waits for transport-play to be enabled first.",
+    "honesty": "The cause is reasoned from the engine path plus that probe. The flake was never reproduced on demand, so the fix removes the only plausible window rather than being proven against a failure."
+  },
+  "_triage_lap_2_complete": {
+    "finished": "Lap 2 triage is DONE. All 25 findings are decided: 21 in the previous invocation, 5 here.",
+    "commits": ["5d96afe4 \u2014 O14 + O26", "59795e82 \u2014 O16", "53cd3ec4 \u2014 O15"],
+    "branch_and_head": "claude/plan-c-implementation-fa4ebf at 53cd3ec4, pushed. PR #176 CI was green on the previous head; the run for 53cd3ec4 started on push.",
+    "verification_run": "pnpm run fix, lint and typecheck across all packages; 518 unit tests; 61 tooling tests; all 86 web e2e tests. The pre-push hook re-ran the full check suite.",
+    "tickets_filed_this_invocation": {
+      "NH-332": "Extract the transport, readiness and open-file concerns out of PlayerShell.tsx (O18).",
+      "NH-333": "Group player.e2e.ts's 69 tests by feature area with test.describe (O19)."
+    },
+    "also_recorded": "A bullet in docs/decisions/decision-changelog.md, under this PR's existing 2026-09-24 entry, for the CSS canary now matching whole class names \u2014 it changes how a build-BLOCKING guard decides.",
+    "standing_instructions_still_in_force": [
+      "Spike anything uncertain and come back with the result; mark anything untestable as (untested).",
+      "Auto-resolve trivial 100%-confident fixes and test/type improvements WITHOUT asking \u2014 but always report the decision.",
+      "Open every finding with the scenario, in plain words, before any mechanism.",
+      "Every user-facing error message carries an error code from web/lib/player-errors.ts."
+    ],
+    "what_this_invocation_learned": [
+      "The handoff note held: every spike contradicted its finding in some way. O14 was real but far less reachable than stated; O15 was real but inert today, and the finding named the wrong selectors AND the wrong count; O16 was real exactly as described, and its sign convention held up.",
+      "The maintainer caught the overstatement in O14 unprompted. His objection was correct and the framing was corrected rather than defended."
+    ],
+    "next_steps_in_the_maintainer_s_own_order": [
+      "1. Lap 3: review ONLY the code lap 2 never saw, reading FULL FILES rather than diffs.",
+      "2. Lap 4: review the full PR."
+    ]
+  }
+}

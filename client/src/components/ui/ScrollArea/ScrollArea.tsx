@@ -1,3 +1,5 @@
+'use client';
+
 import { ScrollArea as ScrollAreaPrimitive } from '@base-ui/react/scroll-area';
 import type * as React from 'react';
 
@@ -10,13 +12,20 @@ import { cn } from '@/lib/utils';
 // overflow it. Radix's `type` prop is gone: Base UI mounts the bar whenever the viewport has
 // measurable overflow and unmounts it otherwise (pass `keepMounted` on `ScrollBar` to pin it).
 // The Base UI `Content` part wraps the children so horizontal overflow is measured correctly.
+//
+// `viewportClassName` lands on the VIEWPORT, not the Root: the Viewport is `size-full` against an
+// auto-height Root, so a height cap on `className` (e.g. `max-h-[70vh]`) computes to auto against
+// that auto-height parent — nothing overflows, no scrollbar mounts, and the cap clips nothing. A
+// popover full of settings rows just grows to content height instead of scrolling.
 const ScrollArea = ({
   className,
+  viewportClassName,
   children,
   orientation = 'vertical',
   ...props
 }: React.ComponentProps<typeof ScrollAreaPrimitive.Root> & {
   orientation?: 'vertical' | 'horizontal';
+  viewportClassName?: string;
 }) => (
   <ScrollAreaPrimitive.Root
     data-slot="scroll-area"
@@ -28,7 +37,10 @@ const ScrollArea = ({
       // Base UI manages the viewport's tabIndex itself (0 only while there is overflow to
       // scroll — WCAG 2.1.1 / axe scrollable-region-focusable). The focus-visible ring classes
       // below exist for exactly that focused state.
-      className="focus-visible:ring-ring/50 size-full rounded-[inherit] outline-none transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1"
+      className={cn(
+        'focus-visible:ring-ring/50 size-full rounded-[inherit] outline-none transition-[color,box-shadow] focus-visible:ring-[3px] focus-visible:outline-1',
+        viewportClassName,
+      )}
     >
       <ScrollAreaPrimitive.Content data-slot="scroll-area-content">
         {children}

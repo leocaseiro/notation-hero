@@ -1,0 +1,284 @@
+'use client';
+
+import { useState } from 'react';
+
+import { Button } from '../Button/Button';
+import { Checkbox } from '../Checkbox/Checkbox';
+import { Field, FieldDescription, FieldLabel } from '../Field/Field';
+import { Input } from '../Input/Input';
+import { NativeSelect } from '../NativeSelect/NativeSelect';
+import { Slider } from '../Slider/Slider';
+import type { ComponentProps } from 'react';
+
+export type SettingControl =
+  | { kind: 'toggle' }
+  | { kind: 'number'; min?: number; max?: number; step?: number }
+  | { kind: 'range'; min: number; max: number; step?: number }
+  | { kind: 'text'; validate?: (draft: string) => boolean }
+  | { kind: 'color' }
+  | { kind: 'select'; options: readonly { value: string; label: string }[] }
+  | { kind: 'action'; actionLabel: string };
+
+export type SettingValue = string | number | boolean;
+
+interface SettingRowProps extends Omit<ComponentProps<'div'>, 'onChange' | 'children' | 'id'> {
+  /** Unique within the popover; ties the label to its control. */
+  id: string;
+  label: string;
+  control: SettingControl;
+  /** Ignored by an `action` row, which has no value. */
+  value: SettingValue;
+  onChange: (next: SettingValue) => void;
+  /** Called by an `action` row's button. Every other kind ignores it. */
+  onAction?: () => void;
+  description?: string;
+  disabled?: boolean;
+}
+
+// One row of a settings group: label left, control right. It takes a PLAIN descriptor and plain
+// option arrays — never an AlphaTab enum object — which is what lets a Storybook story render
+// every control kind with honest data and keeps the VR and axe baselines meaningful. The caller
+// (in web/) turns an enum into { value, label } pairs before it gets here.
+//
+// Colours use the `color` kind, NOT `text`. This supersedes the spec's "Colors are plain text
+// inputs for now": AlphaTab's Color.fromJson returns null for a half-typed hex and the canvas
+// then throws on `.rgba`, so a text field breaks the score while someone types into it. The
+// reference panel uses a swatch picker for the same reason. Text rows (the fonts) commit on blur
+// or Enter and validate before reporting.
+const SettingRow = ({
+  id,
+  label,
+  control,
+  value,
+  onChange,
+  onAction,
+  description,
+  disabled = false,
+  className,
+  ...rest
+}: Readonly<SettingRowProps>) => {
+  const labelId = `${id}-label`;
+
+  // While a slider is being dragged, the row shows the value under the pointer and reports
+  // nothing. A settings change re-lays-out the whole score, and Base UI reports every pointer
+  // move — so the report waits for the gesture to end. null = not dragging.
+  const [draft, setDraft] = useState<number | null>(null);
+
+  // A half-typed or cleared number field yields NaN; pushing that into the settings tree breaks
+  // rendering WITHOUT throwing, so drop it and keep the last good value.
+  //
+  // The declared min/max are NOT enforced per keystroke. They reach the DOM as native attributes,
+  // which constrain the stepper and nothing else, so a typed 0 in a row declared min 0.25 is
+  // reported, pushed to the engine and persisted — and the next visit restores it before the
+  // clamp runs again. But clamping on every keystroke is worse: the field is controlled, so
+  // typing "0.5" into that row would rewrite itself to "0.25" at the first character, and "100"
+  // into the speed row (min 12.5) would rewrite to "12.5". So the clamp waits for the commit —
+  // blur or Enter — the same boundary the text rows already use, and only for rows that declare a
+  // bound.
+  const clampToControl = (n: number) => {
+    const { min, max } = control as { min?: number; max?: number };
+    return Math.min(max ?? n, Math.max(min ?? n, n));
+  };
+  const reportNumber = (raw: string, commit = false) => {
+    const parsed = Number(raw);
+    if (raw.trim() === '' || Number.isNaN(parsed)) return;
+    onChange(commit ? clampToControl(parsed) : parsed);
+  };
+
+  // A text row's in-progress string. null = not being edited, so the row shows `value`. Nothing
+  // reaches the caller until blur or Enter, and then only if the caller's `validate` accepts it —
+  // the engine's parsers throw or return null on almost every partial string, and the settings
+  // funnel has no try/catch on the edit path.
+  const [textDraft, setTextDraft] = useState<string | null>(null);
+
+  const commitText = () => {
+    if (textDraft === null) return;
+    const accepted =
+      control.kind === 'text' && control.validate ? control.validate(textDraft) : true;
+    // Commit exactly what was VALIDATED. Both validators judge `draft.trim()`, so a pasted value
+    // carrying a space is approved on its trimmed form and then reported raw — and for a COLOUR
+    // that is the null-crash all over again: Color.fromJson tests `startsWith('#')` and
+    // `startsWith('rgb')` against the raw string, so " #2DD4BF" matches neither arm and comes back
+    // null WITHOUT throwing. Nothing downstream can catch that: the engine gate in applyThenPersist
+    // only fires on a throw, so the null is stored and the renderer dereferences null.rgba a frame
+    // later. (Font.fromJson does tolerate surrounding whitespace — measured — so the colour row is
+    // the one that breaks, but the value that reaches the engine should equal the value that was
+    // judged either way.)
+    if (accepted) onChange(textDraft.trim());
+    // Rejected or accepted, stop editing: the row falls back to showing `value`, so a bad draft
+    // visibly reverts instead of sitting there looking applied.
+    setTextDraft(null);
+  };
+
+  return (
+    // ALWAYS vertical: a row is one or more full-width LINES stacked top to bottom — the
+    // label-and-control line, then (a range row only) the slider, then (if present) the
+    // description — never a single horizontal flex row. `[data-slot=setting-row-line]` below is
+    // the one line that is itself a row; nothing else may share its flex context, or it competes
+    // with the control for horizontal space exactly as the description used to.
+    <Field data-slot="setting-row" orientation="vertical" className={className} {...rest}>
+      {/* min-h-11 = the 44px minimum, on THIS line specifically — the row's overall height varies
+          with the slider and the description, but the label-and-control hit area must not. */}
+      <div
+        data-slot="setting-row-line"
+        className="flex min-h-11 w-full items-center justify-between gap-3"
+      >
+        {/* min-h-11/min-w-11 because a <label for> IS a hit target: pressing it focuses or toggles
+            its control, and the lane's hit-area gate measures it. On a toggle row the checkbox sits
+            INSIDE the label, so the whole 44px row toggles it — the box itself is 16px and could
+            never pass alone. An action row gets NO `for`: a <label for> pointing at a <button>
+            replaces the button's accessible name with the label's text, and the button must keep
+            saying what it does ("Export MIDI"), not what the row is about. */}
+        <FieldLabel
+          htmlFor={control.kind === 'action' ? undefined : id}
+          id={labelId}
+          className="flex min-h-11 min-w-11 flex-1 items-center justify-between gap-3"
+        >
+          {label}
+          {control.kind === 'toggle' ? (
+            <Checkbox
+              id={id}
+              checked={Boolean(value)}
+              onCheckedChange={(next) => onChange(Boolean(next))}
+              disabled={disabled}
+            />
+          ) : null}
+        </FieldLabel>
+
+        {control.kind === 'number' ? (
+          <Input
+            id={id}
+            type="number"
+            min={control.min}
+            max={control.max}
+            step={control.step}
+            value={String(value)}
+            onChange={(event) => reportNumber(event.target.value)}
+            onBlur={(event) => reportNumber(event.target.value, true)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') reportNumber(event.currentTarget.value, true);
+            }}
+            disabled={disabled}
+            // h-11, not Input's own h-9: 36px is under the 44px minimum.
+            className="h-11 w-28"
+          />
+        ) : null}
+
+        {/* A text row NEVER reports per keystroke. AlphaTab's parsers are hostile to a partial
+            value: a half-typed hex gives a null Color and the canvas then throws on `.rgba`, an
+            `rgb` prefix throws out of the parser itself, and EVERY partial font string throws — ten
+            of the seventeen keystrokes in "bold 12px Georgia". Each of those is also written to
+            storage on the same keystroke, so the broken value survives a reload. The draft is held
+            locally and reported only on blur or Enter, and only if `validate` accepts it. A
+            validator alone is not enough: "#2DD" is legitimate CSS shorthand, so nothing can tell a
+            half-typed "#2DD4BF" from a deliberate "#2DD" — deferring the commit is what removes the
+            intermediate states. */}
+        {control.kind === 'text' ? (
+          <Input
+            id={id}
+            type="text"
+            value={textDraft ?? String(value)}
+            onChange={(event) => setTextDraft(event.target.value)}
+            onBlur={commitText}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') commitText();
+            }}
+            disabled={disabled}
+            className="h-11 w-40"
+          />
+        ) : null}
+
+        {/* The colour rows. A native colour control cannot produce a value the engine rejects,
+            which is how the reference panel avoids this entirely — it uses a swatch picker and
+            never a text field. */}
+        {control.kind === 'color' ? (
+          <Input
+            id={id}
+            type="color"
+            value={String(value)}
+            onChange={(event) => onChange(event.target.value)}
+            disabled={disabled}
+            className="h-11 w-40 p-1"
+          />
+        ) : null}
+
+        {control.kind === 'action' ? (
+          <Button
+            id={id}
+            variant="outline"
+            onClick={() => onAction?.()}
+            disabled={disabled}
+            className="h-11"
+          >
+            {control.actionLabel}
+          </Button>
+        ) : null}
+
+        {control.kind === 'select' ? (
+          <NativeSelect
+            id={id}
+            value={String(value)}
+            onChange={(event) => onChange(event.target.value)}
+            disabled={disabled}
+            className="h-11 w-44"
+          >
+            {control.options.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </NativeSelect>
+        ) : null}
+
+        {/* The row grammar both design sources describe: label left, NUMBER input right — on
+            THIS line, the same as every other kind — and the slider on the line beneath (outside
+            this container, below). Both controls carry the SAME accessible name, so a screen
+            reader hears one setting with two ways to set it. The number input gets the same
+            on-commit clamp the plain `number` kind has: a half-typed value out of range must not
+            sit there unclamped until the next edit. */}
+        {control.kind === 'range' ? (
+          <Input
+            id={id}
+            type="number"
+            min={control.min}
+            max={control.max}
+            step={control.step}
+            value={String(draft ?? value)}
+            onChange={(event) => reportNumber(event.target.value)}
+            onBlur={(event) => reportNumber(event.target.value, true)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') reportNumber(event.currentTarget.value, true);
+            }}
+            disabled={disabled}
+            className="h-11 w-28"
+          />
+        ) : null}
+      </div>
+
+      {/* The slider's own line, full width (Field's vertical orientation forces `w-full` on every
+          direct child) — never sharing the label-and-control line's flex context above. */}
+      {control.kind === 'range' ? (
+        <Slider
+          value={draft ?? Number(value)}
+          onChange={setDraft}
+          onCommit={(next) => {
+            setDraft(null);
+            onChange(next);
+          }}
+          min={control.min}
+          max={control.max}
+          step={control.step ?? 1}
+          label={label}
+          disabled={disabled}
+        />
+      ) : null}
+
+      {/* Prose about the row: its own full-width line beneath everything else, never a flex item
+          competing with the control for horizontal space — the fourteen MIDI rows' full-sentence
+          description is what makes that fatal if it ever regresses. */}
+      {description ? <FieldDescription>{description}</FieldDescription> : null}
+    </Field>
+  );
+};
+
+export { SettingRow };

@@ -1,7 +1,13 @@
 import path from 'node:path';
 
 import { expect, test } from '@playwright/test';
+
+import { failOnUnexpectedPageErrors } from './page-errors';
+
 import type { Locator, Page } from '@playwright/test';
+
+// Every case below also fails if the page threw an uncaught error while it ran.
+failOnUnexpectedPageErrors();
 
 test('renders the bundled sample score as notation', async ({ page }) => {
   await page.goto('/play');
@@ -249,6 +255,45 @@ test('a music font that arrives after the 60 s backstop clears the error', async
   await expect(page.getByTestId('engine-error')).toBeHidden({ timeout: 30_000 });
   await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
   await expect(page.getByTestId('notation-skeleton')).toHaveCount(0);
+});
+
+// Defect 2 (NH-291): the failed state used to survive opening a completely different file — a
+// single transient engine error disabled the player for the life of the page. Opening a file is
+// a deliberate new attempt, and it now clears a stale banner instead of leaving it stuck forever.
+// Aborting the soundfont request is the documented way to reach the E202 path (see the SoundFont
+// comment on the 60s-backstop test above) — the same class of engine-runtime error Defect 1's
+// crash also raised.
+test('opening a new file clears a stale engine-error banner', async ({ page }) => {
+  await page.route('**/alphatab/soundfont/**', (route) => route.abort());
+  await page.goto('/play');
+  await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId('engine-error')).toContainText('Error E202');
+
+  await page.unroute('**/alphatab/soundfont/**');
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/1-beat.gpx');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
+    'data-file',
+    '1-beat.gpx',
+    { timeout: 30_000 },
+  );
+
+  await expect(page.getByTestId('engine-error')).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
+});
+
+// Defect 3 (NH-291): the engine-error banner had no way to remove it from the screen — the
+// maintainer's own words were "make sure we can remove them from the screen (like a close
+// button)". A close control now hides it; dismissing does not "fix" the dead engine, only the
+// message about it — see NotationSurface's own comment beside the button.
+test('the engine-error banner can be dismissed', async ({ page }) => {
+  await page.route('**/alphatab/soundfont/**', (route) => route.abort());
+  await page.goto('/play');
+  const banner = page.getByTestId('engine-error');
+  await expect(banner).toBeVisible({ timeout: 15_000 });
+  await expect(banner).toContainText('Error E202');
+
+  await banner.getByRole('button', { name: /dismiss error message/i }).click();
+  await expect(banner).toBeHidden();
 });
 
 // One fixture per importer path, and the evidence behind criterion 1's `.gp5`. All are already
@@ -1179,8 +1224,48 @@ test('opening a file drops the bar range selected in the previous score', async 
   ).toBeNull();
 });
 
+// The same stale-selection trap as the case above, reached WITHOUT opening anything — and the one a
+// person is far more likely to hit, because both controls live in this PR's own popover. Untick the
+// track the selection sits on and its beats stop being laid out, while the engine goes on
+// re-applying its own selection after every render: it looks those beats up in the new bounds and
+// dereferences undefined. There is no assertion for the throw here on purpose — the page-error gate
+// in page-errors.ts is what fails on it, so this case only has to perform the interaction and prove
+// the redraw really happened (NH-291).
+test('unticking the track a bar selection sits on does not throw', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await selectBars(page, 0, 0);
+  await page.getByTestId('tracks-trigger').click();
+  await page
+    .getByTestId('track-row-0')
+    .getByRole('button', { name: /render/i })
+    .click();
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1', { timeout: 30_000 });
+});
+
 /** The one OPEN tooltip. A closing popup can stay in the DOM for a frame, hence `[data-open]`. */
 const openTooltip = (page: Page) => page.locator('[data-slot="tooltip-content"][data-open]');
+
+// Locator.hover() waits for the BUTTON itself to receive the pointer, and a locked control
+// (aria-disabled, which means pointer-events:none) never does — the wrapping span is what
+// actually takes it instead, same as every disabled mixer control. The pointer goes where a
+// person's would either way.
+async function hoverPossiblyLocked(page: Page, control: Locator): Promise<void> {
+  if ((await control.getAttribute('aria-disabled')) === 'true') {
+    const box = await control.boundingBox();
+    if (!box) throw new Error('the control has no box');
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    return;
+  }
+  await control.hover();
+}
+
+/** Tablature's own three states: 'unavailable' beats whatever aria-pressed reports. */
+function tablatureToggleState(unavailable: boolean, pressed: boolean): string {
+  if (unavailable) return 'unavailable';
+  return pressed ? 'on' : 'off';
+}
 
 // An icon alone says neither what a control is nor what state it is in.
 test('every transport icon button has a tooltip that tells its state', async ({ page }) => {
@@ -1276,4 +1361,1193 @@ test('the tempo number can be selected with the mouse and typed over', async ({ 
   await page.keyboard.type('90');
   await page.keyboard.press('Tab');
   await expect(tempo).toHaveValue('90');
+});
+
+// What AlphaTab itself holds, through the debug handle `useAlphaTab` parks on the host element.
+// The popover's own number field mirrors React state and would show 2 even if the write never
+// reached the engine.
+const engineState = (page: Page) =>
+  page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: {
+          playbackSpeed: number;
+          metronomeVolume: number;
+          masterVolume: number;
+          // The playhead, in MIDI ticks. Read to prove the sound-rebuilding rows rewind it.
+          tickPosition: number;
+          settings: { display: { scale: number } };
+          score: { stylesheet: { hideDynamics: boolean } } | null;
+        };
+      } | null
+    )?.at;
+    return at
+      ? {
+          speed: at.playbackSpeed,
+          metronomeVolume: at.metronomeVolume,
+          masterVolume: at.masterVolume,
+          tick: at.tickPosition,
+          scale: at.settings.display.scale,
+          hideDynamics: at.score?.stylesheet.hideDynamics ?? null,
+        }
+      : null;
+  });
+
+// Record every call the page makes to one AlphaTabApi method. The synth keeps solo, mute and
+// volume in its WORKER, so nothing on the main thread can be read back afterwards — and the row's
+// aria-pressed mirrors React state, so it flips even when the call never reached the engine
+// (exactly what a callback frozen on the pre-engine `undefined` api does). Wrapping the method
+// through the debug handle is test-side only: nothing ships for it.
+// `method` may be a dotted path: 'changeTrackVolume' is on the api itself, but
+// 'player.resetChannelStates' is on the synth wrapper. Without the path form the mixer's reset
+// could not be observed at all, and a test would be asserting the absence of something instead of
+// the presence of the call.
+async function recordApiCalls(page: Page, method: string): Promise<() => Promise<unknown[][]>> {
+  await page.evaluate((name) => {
+    const root = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: Record<string, unknown>;
+      } | null
+    )?.at;
+    if (!root) throw new Error('no engine');
+    const parts = name.split('.');
+    const leaf = parts.pop() as string;
+    let at = root;
+    for (const part of parts) {
+      // `player` is a getter on AlphaTabApi's prototype, not an own property of the instance, so
+      // the chain has to be walked. The three names below are the ones a polluted path would use.
+      if (part === '__proto__' || part === 'constructor' || part === 'prototype') {
+        throw new Error(`no ${part}`);
+      }
+      let found = false;
+      let current: object | null = at;
+      while (current !== null && current !== Object.prototype) {
+        if (Object.prototype.hasOwnProperty.call(current, part)) {
+          found = true;
+          break;
+        }
+        current = Object.getPrototypeOf(current) as object | null;
+      }
+      if (!found) throw new Error(`no ${part}`);
+      at = (at as Record<string, Record<string, unknown>>)[part]; // nosemgrep: prototype-pollution-loop
+    }
+    const original = (at[leaf] as (...args: unknown[]) => unknown).bind(at);
+    const calls: unknown[][] = [];
+    const store = ((globalThis as { nhCalls?: Record<string, unknown[][]> }).nhCalls ??= {});
+    store[name] = calls;
+    at[leaf] = (...args: unknown[]) => {
+      // Tracks are live objects; keep only what identifies them. Plain loops, not nested
+      // array-method callbacks, so this stays readable at the depth a page.evaluate closure
+      // allows.
+      const summarized: unknown[] = [];
+      for (const arg of args) {
+        if (Array.isArray(arg)) {
+          const indices: number[] = [];
+          for (const track of arg) indices.push((track as { index: number }).index);
+          summarized.push(indices);
+        } else {
+          summarized.push(arg);
+        }
+      }
+      calls.push(summarized);
+      return original(...args);
+    };
+  }, method);
+  return () =>
+    page.evaluate(
+      (name) => (globalThis as { nhCalls?: Record<string, unknown[][]> }).nhCalls?.[name] ?? [],
+      method,
+    );
+}
+
+// Every settings group starts expanded (SettingsPopover's defaultValue lists them all), and Base
+// UI's Accordion.Panel does not keepMounted — so clicking an open header removes its rows from the
+// DOM and the next fill() times out. Same idiom as a11y.e2e.ts's "open every group" loop.
+const openGroup = async (page: Page, name: string) => {
+  const header = page.getByRole('button', { name });
+  if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click();
+};
+
+test('a settings row changes the rendered score without stopping playback', async ({ page }) => {
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+
+  const surface = page.getByTestId('notation-surface');
+  const boxBefore = await surface.locator('svg').first().boundingBox();
+  const widthBefore = boxBefore?.width ?? 0;
+
+  await page.getByTestId('settings-trigger').click();
+  await expect(page.getByTestId('settings-popover')).toBeVisible();
+
+  // Change the zoom — a setting whose effect is measurable in the DOM. Through the NUMBER field:
+  // it shares the slider's name. The popover opens with every group EXPANDED, so a bare click
+  // would CLOSE the group and unmount the row: open only if shut.
+  //
+  // The field is already showing '1', and pressSequentially APPENDS rather than replacing, so
+  // typing '2.5' straight in would yield '12.5'. Select the existing text first.
+  //
+  // pressSequentially, not fill(): the row reports on EVERY keystroke, so this is also the case
+  // that proves the redraw is coalesced. Four characters, four settings pushes, no more than TWO
+  // renders — without the coalescer this is four full relayouts while the player runs. Not pinned
+  // at exactly one: each keystroke is a separate round trip to the page and can straddle an
+  // animation frame boundary, so two adjacent keystrokes occasionally land in different frames.
+  // The exact-one guarantee for a single batch of edits is pinned in live-settings.test.ts instead.
+  const renders = await recordApiCalls(page, 'render');
+  await openGroup(page, 'Display: general');
+  const zoom = page.getByRole('spinbutton', { name: 'Zoom' });
+  await zoom.selectText();
+  await zoom.pressSequentially('2.5');
+
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(2.5);
+  const renderCalls = await renders();
+  expect(renderCalls.length).toBeLessThanOrEqual(2);
+  await expect
+    .poll(
+      async () => {
+        const box = await surface.locator('svg').first().boundingBox();
+        return box?.width ?? 0;
+      },
+      { timeout: 20_000 },
+    )
+    .toBeGreaterThan(widthBefore);
+
+  // The popover never blocks the player: that is the whole reason v0 chose a popover. This case
+  // uses a `render` row (zoom); the `midi` rows are the measured exception, pinned by the case
+  // below so the difference is a decision on record rather than a bug someone later "fixes".
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+// The ONE exception to the promise above, and the only path that reaches it. loadMidiForScore ->
+// loadMidiFile -> stop() pauses AND rewinds (alphaTab.core.mjs:40054 and :39987-39995), so a
+// sound-rebuilding row is not something to change mid-take. The case above cannot catch this: zoom
+// takes the redraw path and never regenerates the MIDI.
+test('a sound-rebuilding row stops the player and rewinds it', async ({ page }) => {
+  await page.goto('/play');
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+  // Let the playhead actually leave the start, or the rewind assertion proves nothing.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.tick ?? 0;
+    })
+    .toBeGreaterThan(0);
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('spinbutton', { name: 'Wide note vibrato: length' }).fill('5');
+
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'false');
+  // The playhead leaves the start at tick 0, and the score before this reads well into the
+  // thousands (asserted above). A few ticks of residual drift are expected here — the stop
+  // message is a worker round trip, and a few more audio quanta land before it is processed —
+  // so this checks "back near the start", not the literal tick 1 a synthetic, single-worker
+  // measurement (no other CPU contention) produced.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.tick ?? -1;
+    })
+    .toBeLessThanOrEqual(50);
+});
+
+// Two editors, one value, one writer. The header's stepper and this row must never disagree, and
+// the ENGINE must hear about it — a row that wrote the speed into the settings JSON would move,
+// show its new number, and change nothing.
+test('the Player group speed row and the header tempo control are one value', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('spinbutton', { name: 'Playback speed (%)' }).fill('50');
+
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-speed', '0.5');
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.speed;
+    })
+    .toBe(0.5);
+});
+
+// The same rule for the metronome: the transport's button and this row are one volume.
+test('the metronome volume row and the transport button are one value', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('toggle-metronome').click();
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.metronomeVolume;
+    })
+    .toBe(1);
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('spinbutton', { name: 'Metronome volume' }).fill('0.4');
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.metronomeVolume;
+    })
+    .toBe(0.4);
+  // Still on: the button reads "volume > 0".
+  await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'true');
+
+  await page.getByRole('spinbutton', { name: 'Metronome volume' }).fill('0');
+  await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'false');
+});
+
+// The Stylesheet group is NOT settings: it lives on the open score's model. A row wired like its
+// neighbours would write a JSON key AlphaTab ignores — for the whole group, in silence.
+test('a Stylesheet row changes the open score, not the settings', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  const beforeState = await engineState(page);
+  const before = beforeState?.hideDynamics;
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Stylesheet');
+  await page.getByRole('checkbox', { name: 'Hide dynamics' }).click();
+
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.hideDynamics;
+    })
+    .toBe(!before);
+});
+
+// Vibrato, slides, song-book timings and triplet feel are read when the MIDI is BUILT. Pushing
+// the settings or redrawing changes nothing audible, so the row must regenerate the MIDI.
+test('a playback-shaping row regenerates the MIDI', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  const midiLoads = await recordApiCalls(page, 'loadMidiForScore');
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('checkbox', { name: /triplet feel/i }).click();
+
+  await expect
+    .poll(async () => {
+      const calls = await midiLoads();
+      return calls.length;
+    })
+    .toBe(1);
+});
+
+test('the Settings icon trigger has a tooltip', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('settings-trigger').hover();
+  await expect(openTooltip(page)).toHaveText('Settings');
+});
+
+// The heading has to stick inside its own group. A sticky class on the button cannot: that
+// button's parent is only as tall as the button, so the title scrolls away with the rows.
+test('a group title stays with its rows while the settings list scrolls', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('settings-trigger').click();
+  await expect(page.getByTestId('settings-popover')).toBeVisible();
+
+  const stuck = await page.evaluate(() => {
+    const popover = document.querySelector('[data-testid="settings-popover"]');
+    const viewport = popover?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]');
+    const triggers = [...(popover?.querySelectorAll('[data-slot="accordion-trigger"]') ?? [])];
+    const player = triggers.find((button) => button.textContent?.trim().startsWith('Player'));
+    const display = triggers.find((button) =>
+      button.textContent?.trim().startsWith('Display: general'),
+    );
+    const playerHeading = player?.parentElement;
+    const displayHeading = display?.parentElement;
+    const item = playerHeading?.parentElement;
+    if (!viewport || !playerHeading || !displayHeading || !(item instanceof HTMLElement))
+      return null;
+    const viewportTop = viewport.getBoundingClientRect().top;
+    viewport.scrollTop = Math.min(420, item.offsetHeight / 2);
+    const inside = Math.round(playerHeading.getBoundingClientRect().top - viewportTop);
+    viewport.scrollTop = item.offsetTop + item.offsetHeight + 80;
+    return {
+      inside,
+      afterGroup: Math.round(playerHeading.getBoundingClientRect().top - viewportTop),
+      nextGroup: Math.round(displayHeading.getBoundingClientRect().top - viewportTop),
+    };
+  });
+
+  // Still inside Player: its title is pinned to the top of the scroll area.
+  expect(stuck?.inside).toBe(0);
+  // Past that group: Player has left, and Display: general is the title that holds.
+  expect(stuck?.afterGroup).toBeLessThan(0);
+  expect(stuck?.nextGroup).toBe(0);
+});
+
+// Every path the schema names must exist on the LIVE settings object. fillFromJson ignores a key
+// it does not know, so a misspelled path is a row that moves and changes nothing, in silence.
+test('every settings row names a key the engine really has', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('settings-trigger').click();
+
+  // Open every group, so every row is in the DOM.
+  const headers = page.getByTestId('settings-popover').locator('[data-slot="accordion-trigger"]');
+  for (const header of await headers.all()) {
+    if ((await header.getAttribute('aria-expanded')) !== 'true') await header.click();
+  }
+
+  const missing = await page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: { settings: Record<string, unknown> };
+      } | null
+    )?.at;
+    if (!at) return ['no engine'];
+    return [...document.querySelectorAll<HTMLElement>('[data-setting-path]')]
+      .map((row) => row.dataset.settingPath ?? '')
+      .filter((path) => {
+        let current: unknown = at.settings;
+        for (const part of path.split('.')) {
+          // elementFonts is a real AlphaTab Map<NotationElement, Font>, keyed by a NUMBER this
+          // dot-path's string segment cannot address — so a lookup by name stops here. Whether
+          // the row's own enum name is real is proven elsewhere, against the loaded engine's own
+          // NotationElement enum; here it is enough that the container itself is real and
+          // populated, not empty or missing.
+          if (current instanceof Map) return current.size === 0;
+          // NOT `part in current`: `in` walks the PROTOTYPE CHAIN, so a deprecated getter such as
+          // the old font aliases satisfies it while fillFromJson ignores the key entirely — which
+          // is exactly how eleven dead font rows passed this gate. Own properties only.
+          if (
+            current === null ||
+            typeof current !== 'object' ||
+            !Object.prototype.hasOwnProperty.call(current, part)
+          )
+            return true;
+          // The hasOwnProperty guard above already rules out '__proto__'/'constructor'/
+          // 'prototype' and every other inherited key before this line runs, so only the
+          // engine's own settings tree is ever indexed — a false positive for the loop shape
+          // alone.
+          current = (current as Record<string, unknown>)[part]; // nosemgrep: prototype-pollution-loop
+        }
+        return false;
+      });
+  });
+  expect(missing, 'settings rows whose path is not a real AlphaTab key').toEqual([]);
+});
+
+test('a changed setting survives a reload', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Display: general');
+  const zoom = page.getByRole('spinbutton', { name: 'Zoom' });
+  await zoom.selectText();
+  await zoom.pressSequentially('2');
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(2);
+
+  await page.reload();
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  // Read the ENGINE, before the popover is ever opened: the stored zoom must be in the api the
+  // page built, not merely in the popover's own state.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(2);
+});
+
+// The OTHER repair path, and the one a person can act on: a single out-of-range value is corrected
+// on its own, so the warning must name the row rather than claim everything was reset. 99 is far
+// outside Zoom's 0.25-3 range, and the field clamps only on blur/Enter, so closing a tab mid-edit
+// is a real way to store it.
+test('a single out-of-range setting is corrected and the warning NAMES it', async ({ page }) => {
+  await page.addInitScript(() => {
+    globalThis.localStorage.setItem(
+      'notation-hero.player-settings',
+      JSON.stringify({ settings: { display: { scale: 99 } } }),
+    );
+  });
+  await page.goto('/play');
+
+  const toast = page.locator('[data-sonner-toast]');
+  await expect(toast).toContainText('Zoom');
+  await expect(toast).toContainText('Error E601');
+  // It must NOT claim a reset: the other settings were untouched, and Zoom landed on its maximum
+  // rather than its default.
+  await expect(toast).not.toContainText('reset to the defaults');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  // Clamped to the maximum, not dropped to the default of 1.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(3);
+});
+
+// A bad stored value must never stop the player mounting — the one thing v0 exists to do — and
+// must not vanish quietly either.
+test('a corrupt stored value resets with a toast, and the player still starts', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    globalThis.localStorage.setItem('notation-hero.player-settings', '{broken');
+  });
+  await page.goto('/play');
+
+  await expect(page.locator('[data-sonner-toast]')).toContainText('reset to the defaults');
+  await expect(page.locator('[data-sonner-toast]')).toContainText('Error E603');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(1);
+});
+
+// Punk.gp parses to three tracks — 0:Drumkit (percussion), 1:Distortion Guitar, 2:Drumkit Left
+// (percussion) — so the popover has three rows to audit, not one, even though only two render.
+test('the Tracks popover lists every track in the score, not only the rendered ones', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  // Opening a file focuses Play, and that focus keeps Play's tooltip open. Blur it so the
+  // hover below is the only tip on screen.
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+  });
+  await page.getByTestId('tracks-trigger').hover();
+  await expect(openTooltip(page)).toHaveText('Tracks');
+
+  await page.getByTestId('tracks-trigger').click();
+  await expect(page.getByTestId('tracks-popover')).toBeVisible();
+  await expect(page.getByTestId('track-row-0')).toBeVisible();
+  await expect(page.getByTestId('track-row-1')).toBeVisible();
+  await expect(page.getByTestId('track-row-2')).toBeVisible();
+
+  // The two drum tracks are drawn, so their render-select toggles start pressed; the guitar's does not.
+  const drawn = (row: number) =>
+    page.getByTestId(`track-row-${row}`).getByRole('button', { name: /render/i });
+  await expect(drawn(0)).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawn(1)).toHaveAttribute('aria-pressed', 'false');
+  await expect(drawn(2)).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('render-select changes which tracks are drawn', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await page.getByTestId('tracks-trigger').click();
+  // Draw the guitar too. `rendered-track-count` is what AlphaTab actually drew (api.tracks), not
+  // an echo of the request.
+  await page
+    .getByTestId('track-row-1')
+    .getByRole('button', { name: /render/i })
+    .click();
+
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('3', { timeout: 30_000 });
+});
+
+// Two unticks with no redraw between them. A hand almost certainly cannot reach this — the gap
+// measures 16ms on Punk.gp and 65ms on a 5-track, 160-bar score, against the ~250ms a double-click
+// needs to cross the space between two rows — so the pair is dispatched from ONE page task, where
+// nothing can land between them whatever the machine speed. That makes the test about the logic
+// rather than the timing, and it is deterministic: it fails whenever a handler computes its new
+// draw set from renderedIndexes (state, written on the async renderFinished) instead of api.tracks
+// (assigned synchronously by renderTracks). Before the live read it left TWO tracks drawn, with the
+// first one the person hid ticked again.
+test('a second untick before the redraw does not bring the first track back', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  await page.getByTestId('tracks-trigger').click();
+  const drawn = (row: number) =>
+    page.getByTestId(`track-row-${row}`).getByRole('button', { name: /render/i });
+
+  // Draw all three, so hiding two still leaves one and the "at least one track" lock never fires.
+  await drawn(1).click();
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('3', { timeout: 30_000 });
+
+  await page.evaluate(() => {
+    for (const rowIndex of [0, 2]) {
+      const row = document.querySelector(`[data-testid="track-row-${rowIndex}"]`);
+      const button = [...(row?.querySelectorAll('button') ?? [])].find((candidate) =>
+        /render/i.test(candidate.getAttribute('aria-label') ?? candidate.textContent ?? ''),
+      );
+      if (!button) throw new Error(`no render toggle in row ${rowIndex}`);
+      button.click();
+    }
+  });
+
+  // Only the guitar is left. The two drum tracks stay hidden — neither returns.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1', { timeout: 30_000 });
+  await expect(drawn(0)).toHaveAttribute('aria-pressed', 'false');
+  await expect(drawn(1)).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawn(2)).toHaveAttribute('aria-pressed', 'false');
+});
+
+// The layout switch collapses the mixer to one track and must restore what was drawn before on
+// the way back — both directions reach the engine, not only the ON direction.
+test('the track-layout switch redraws the score both ways', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await page.getByTestId('tracks-trigger').click();
+  const layout = page.getByTestId('tracks-layout');
+  await expect(layout).toHaveAttribute('aria-pressed', 'false');
+
+  await layout.click();
+  await expect(layout).toHaveAttribute('aria-pressed', 'true');
+  // The ENGINE, not just the control: AlphaTab really drew down to one track.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1', { timeout: 30_000 });
+
+  await layout.click();
+  await expect(layout).toHaveAttribute('aria-pressed', 'false');
+  // The way back restores what was drawn before the collapse — Punk.gp's two drum tracks — not
+  // just any two tracks.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  await expect(
+    page.getByTestId('track-row-0').getByRole('button', { name: /render/i }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    page.getByTestId('track-row-1').getByRole('button', { name: /render/i }),
+  ).toHaveAttribute('aria-pressed', 'false');
+  await expect(
+    page.getByTestId('track-row-2').getByRole('button', { name: /render/i }),
+  ).toHaveAttribute('aria-pressed', 'true');
+});
+
+// A score with only one track has nothing to collapse — the switch stays disabled and explains
+// why on hover, the same shape every other disabled mixer control uses.
+test('the track-layout switch is disabled with nothing to collapse', async ({ page }) => {
+  await openFirstScore(page, 'guitar-no-percussion.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1');
+
+  await page.getByTestId('tracks-trigger').click();
+  const layout = page.getByTestId('tracks-layout');
+  await expect(layout).toHaveAttribute('aria-disabled', 'true');
+
+  // page.mouse, not locator.hover(): hover() waits for the target to receive pointer events, and
+  // aria-disabled:pointer-events-none means the Button itself never does — the span wrapping it
+  // is what actually takes the hover, same as every other disabled mixer control.
+  const box = await layout.boundingBox();
+  if (!box) throw new Error('the layout switch has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(openTooltip(page)).toHaveText('Only one track');
+});
+
+// The mixer's version of the transport's tooltip case: every control on a row that shows no
+// words says what it is AND what state it is in — on hover, where a person's pointer goes. EVERY
+// row is walked, not one checked by hand: a row is built in a loop, but a tooltip that depends on
+// a track's own state (drawn or not) is exactly what goes wrong on one row and not the next.
+test('every mixer control without visible text has a tooltip that tells its state', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('tracks-trigger').click();
+
+  // The four per-staff display toggles by their own accessible-name fragment and tooltip
+  // wording. They are icon-only, so — same as render, solo and mute — nothing but the tooltip
+  // and aria-pressed/aria-disabled tells a sighted pointer user their state.
+  const STAFF_TOGGLES = [
+    { query: /standard notation/i, name: 'Standard notation' },
+    { query: /slash/i, name: 'Slash notation' },
+    { query: /numbered/i, name: 'Numbered notation' },
+  ] as const;
+
+  // Punk.gp draws its two drum tracks (rows 0 and 2) and not the guitar (row 1).
+  const drawn = ['Shown in the score', 'Hidden from the score', 'Shown in the score'];
+  for (const [index, renderTip] of drawn.entries()) {
+    const row = page.getByTestId(`track-row-${index}`);
+    // The toggle is the 44 px target itself now — no label wrapper to aim at.
+    await row.getByRole('button', { name: /render/i }).hover();
+    await expect(openTooltip(page)).toHaveText(renderTip);
+    await row.getByRole('button', { name: /solo/i }).hover();
+    await expect(openTooltip(page)).toHaveText('Solo: off');
+    await row.getByRole('button', { name: /mute/i }).hover();
+    await expect(openTooltip(page)).toHaveText('Mute: off');
+
+    // Read each toggle's own reported state first — the staff LABEL that precedes it in the
+    // tooltip is a different control's concern — then hover and check the tooltip agrees. A
+    // staff down to its last enabled notation type locks that toggle instead of letting the
+    // engine be asked to draw nothing (NH-291) — Punk.gp's drum rows carry standard notation
+    // only, so their Standard notation toggle is exactly this case, not a plain "on".
+    for (const { query, name } of STAFF_TOGGLES) {
+      const control = row.getByRole('button', { name: query });
+      const locked = (await control.getAttribute('aria-disabled')) === 'true';
+      const pressed = (await control.getAttribute('aria-pressed')) === 'true';
+      const state = pressed ? 'on' : 'off';
+      await hoverPossiblyLocked(page, control);
+      // toContainText with a plain string, not toHaveText with a dynamic RegExp: the tooltip is
+      // prefixed with the staff LABEL ("Staff 1 …"), which this loop does not track, so the
+      // check only needs the SUFFIX to match — substring containment says that without building
+      // a regex out of runtime strings.
+      await expect(openTooltip(page)).toContainText(
+        locked ? 'at least one notation type must stay shown' : `${name}: ${state}`,
+      );
+    }
+    // Tablature is the one toggle whose availability itself varies by row: 1.8.4 cannot draw it
+    // on a percussion staff (rows 0 and 2 here), so it renders disabled with an explaining
+    // tooltip instead of a state it does not have.
+    const tablature = row.getByRole('button', { name: /tablature/i });
+    const tablatureUnavailable = (await tablature.getAttribute('aria-disabled')) === 'true';
+    const tablaturePressed = (await tablature.getAttribute('aria-pressed')) === 'true';
+    const tablatureState = tablatureToggleState(tablatureUnavailable, tablaturePressed);
+    await hoverPossiblyLocked(page, tablature);
+    await expect(openTooltip(page)).toContainText(`Tablature: ${tablatureState}`);
+
+    // A percussion row's expand control is locked too (NH-291 — transposition is meaningless on
+    // a drum track), same aria-disabled/pointer-events-none shape as the staff toggles above.
+    const expandControl = row.getByRole('button', { name: /more controls/i });
+    const expandLocked = (await expandControl.getAttribute('aria-disabled')) === 'true';
+    await hoverPossiblyLocked(page, expandControl);
+    await expect(openTooltip(page)).toHaveText(expandLocked ? /percussion/i : 'Show more controls');
+  }
+
+  // And each one follows its state. A click closes the tooltip; leave and come back to read it.
+  const guitar = page.getByTestId('track-row-1');
+  for (const [name, after] of [
+    [/solo/i, 'Solo: on'],
+    [/mute/i, 'Mute: on'],
+    [/more controls/i, 'Hide more controls'],
+  ] as const) {
+    const control = guitar.getByRole('button', { name });
+    await control.click();
+    await page.getByTestId('notation-surface').hover();
+    await control.hover();
+    await expect(openTooltip(page)).toHaveText(after);
+  }
+});
+
+// Rows 0 and 1, NOT 0 and 2. AlphaTab solos a MIDI CHANNEL, and Punk.gp's two drum tracks share
+// channel 9 — soloing both would be one channel soloed twice and would prove nothing.
+test('solo is not exclusive — two tracks can be soloed at once', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  // Let the score settle before installing the recorder: the mixer's own playerReady re-assert
+  // calls changeTrackSolo for every already-soloed row on every playerReady (up to four per
+  // renderScore), and transport-play latches from the bundled beat rather than waiting for
+  // Punk.gp's own MIDI loads — so recording too early can catch a re-assert instead of a click.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  const soloCalls = await recordApiCalls(page, 'changeTrackSolo');
+
+  await page.getByTestId('tracks-trigger').click();
+  await page.getByTestId('track-row-0').getByRole('button', { name: /solo/i }).click();
+  await page.getByTestId('track-row-1').getByRole('button', { name: /solo/i }).click();
+
+  await expect(
+    page.getByTestId('track-row-0').getByRole('button', { name: /solo/i }),
+  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    page.getByTestId('track-row-1').getByRole('button', { name: /solo/i }),
+  ).toHaveAttribute('aria-pressed', 'true');
+
+  // The ENGINE heard both, and neither click un-soloed the other. Read each clicked track's LAST
+  // call rather than the whole recording: a playerReady re-assert lands its own idempotent call
+  // for a row that is already soloed, and asserting the full array would break on that call too.
+  const calls = (await soloCalls()) as [number[], boolean][];
+  const lastFor = (index: number) => calls.findLast(([tracks]) => tracks[0] === index);
+  expect(lastFor(0)).toEqual([[0], true]);
+  expect(lastFor(1)).toEqual([[1], true]);
+});
+
+test('mute and volume reach the engine, the volume as an absolute channel level', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  // Let the score settle before installing the recorder, as the sibling solo case does: the
+  // mixer's own playerReady re-assert calls changeTrackVolume for every row on every playerReady
+  // (up to four per renderScore), and transport-play latches from the bundled beat rather than
+  // waiting for Punk.gp's own MIDI loads — so recording too early can catch a re-assert at track 0
+  // where the click named track 1.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  const muteCalls = await recordApiCalls(page, 'changeTrackMute');
+  const volumeCalls = await recordApiCalls(page, 'changeTrackVolume');
+
+  await page.getByTestId('tracks-trigger').click();
+  const guitar = page.getByTestId('track-row-1');
+  await guitar.getByRole('button', { name: /mute/i }).click();
+  const muteRecording = (await muteCalls()) as [number[], boolean][];
+  const lastMuteForGuitar = muteRecording.findLast(([tracks]) => tracks[0] === 1);
+  expect(lastMuteForGuitar).toEqual([[1], true]);
+
+  const volume = guitar.getByRole('slider', { name: /volume/i });
+  const before = Number(await volume.getAttribute('aria-valuenow'));
+  await volume.focus();
+  await volume.press('ArrowLeft');
+
+  // One step down on the 0-16 scale, sent on AlphaTab's OWN scale as next / 16 — the engine takes
+  // an absolute channel level, not a ratio against the file's. Read the keystroke's OWN call —
+  // filtered to track 1, the last one — rather than the first call recorded, which a playerReady
+  // re-assert can occupy with track 0's volume instead.
+  const volumeRecording = (await volumeCalls()) as [number[], number][];
+  const lastVolumeForGuitar = volumeRecording.findLast(([tracks]) => tracks[0] === 1);
+  const [tracks, level] = lastVolumeForGuitar!;
+  expect(tracks).toEqual([1]);
+  expect(level).toBeCloseTo((before - 1) / 16, 5);
+});
+
+// AlphaTab keeps its muted and soloed CHANNELS across a score change, and drums are channel 9 in
+// every file — so without a reset, muting the drums in one score silences them in the next, beside
+// a row that reads un-muted.
+test('opening another score starts from a clean mix', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await page.getByTestId('tracks-trigger').click();
+  await page.getByTestId('track-row-0').getByRole('button', { name: /mute/i }).click();
+  // The mute click leaves its tooltip open (a toggle keeps the tip across the press). The first
+  // Escape dismisses that tip; the second dismisses the popover.
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('tracks-popover')).toBeHidden();
+
+  const mutesAfterOpen = await recordApiCalls(page, 'changeTrackMute');
+  const resetCalls = await recordApiCalls(page, 'player.resetChannelStates');
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/guitar-no-percussion.gp');
+  await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute(
+    'data-file',
+    'guitar-no-percussion.gp',
+    { timeout: 30_000 },
+  );
+
+  await page.getByTestId('tracks-trigger').click();
+  await expect(page.getByTestId('tracks-popover')).toBeVisible();
+  await expect(page.getByTestId('track-row-1')).toHaveCount(0); // one track now, not three
+  await expect(
+    page.getByTestId('track-row-0').getByRole('button', { name: /mute/i }),
+  ).toHaveAttribute('aria-pressed', 'false');
+  // The reset REACHED the synth. This fails if the handler is moved back to scoreLoaded, where
+  // api.player is null.
+  await expect
+    .poll(async () => {
+      const calls = await resetCalls();
+      return calls.length;
+    })
+    .toBeGreaterThan(0);
+  // …and the mixer does not replay the old score's mutes on top of it.
+  expect(await mutesAfterOpen()).toEqual([]);
+});
+
+test('tablature is enabled only on a stringed staff with a tuning', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await page.getByTestId('tracks-trigger').click();
+
+  // The guitar staff reports tuningLen=6, so its tablature toggle is live. The display toggles
+  // sit on the always-visible primary row.
+  await expect(
+    page.getByTestId('track-row-1').getByRole('button', { name: /tablature/i }),
+  ).not.toHaveAttribute('aria-disabled', 'true');
+
+  // Both drum staves report showTablature=false, tuningLen=0 — 1.8.4 cannot render percussion
+  // tablature at all, so the toggle is shown disabled rather than absent.
+  await expect(
+    page.getByTestId('track-row-0').getByRole('button', { name: /tablature/i }),
+  ).toHaveAttribute('aria-disabled', 'true');
+});
+
+// Defect 1 (NH-291): turning off a staff's LAST enabled notation type used to crash the engine in
+// one click — AlphaTab's layout code threw "Cannot read properties of undefined (reading
+// 'staves')" trying to draw a staff with nothing shown, and the whole player died behind the
+// engine-error banner. The toggle now locks instead of ever reaching the engine.
+test('turning off the only enabled notation type does not crash the player', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.getByTestId('tracks-trigger').click();
+  // The bundled beat's one track, one staff, standard notation only — the exact shape that
+  // crashed.
+  const standard = page
+    .getByTestId('track-row-0')
+    .getByRole('button', { name: /standard notation/i });
+  await expect(standard).toHaveAttribute('aria-pressed', 'true');
+  await expect(standard).toHaveAttribute('aria-disabled', 'true');
+
+  // Keyboard activation, not a mouse click: aria-disabled means pointer-events:none, so a real
+  // mouse click can never even reach the button — that IS the fix, and Playwright's own click
+  // actionability check refuses it the same way (measured: a plain .click() here times out
+  // waiting for "element to be enabled"). The button stays in the tab order — Button's design
+  // keeps a disabled control focusable so its tooltip can still explain why — so Enter is the one
+  // interaction a person could still attempt, and Button's own onKeyDown guard must swallow it
+  // before it ever reaches setStaffDisplay / queueRender / api.render().
+  await standard.focus();
+  await page.keyboard.press('Enter');
+
+  await expect(page.getByTestId('engine-error')).toHaveCount(0);
+  await expect(standard).toHaveAttribute('aria-pressed', 'true');
+
+  // The player really survived, not merely "no banner yet" — the engine still answers Play.
+  await page.getByTestId('transport-play').click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+// Defect 4 (NH-291): a drum "pitch" is an instrument identifier, not a note, so transposing one
+// is meaningless — and it also broke playback (Transpose audio silenced the track, Transpose full
+// changed nothing, and returning to zero did not reliably restore sound). The two sliders are the
+// ONLY thing behind the expand disclosure, so it locks instead of them.
+test('a percussion track locks the expand control instead of the sliders behind it', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await page.getByTestId('tracks-trigger').click();
+  const drumExpand = page
+    .getByTestId('track-row-0')
+    .getByRole('button', { name: /more controls/i });
+  await expect(drumExpand).toHaveAttribute('aria-disabled', 'true');
+
+  // page.mouse, not locator.hover(): aria-disabled means pointer-events:none on the Button
+  // itself — the wrapping span is what actually takes the hover, same as every other disabled
+  // mixer control.
+  const box = await drumExpand.boundingBox();
+  if (!box) throw new Error('the drum row expand control has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(openTooltip(page)).toHaveText(/percussion/i);
+
+  // Keyboard activation, not a mouse click: pointer-events:none means a mouse click can never
+  // reach the button at all (Playwright's own click actionability agrees — measured timeout).
+  // Enter is the one interaction a person focused on it could still attempt, and Button's own
+  // onKeyDown guard must swallow it.
+  await drumExpand.focus();
+  await page.keyboard.press('Enter');
+  await expect(drumExpand).toHaveAttribute('aria-expanded', 'false');
+  await expect(
+    page.getByTestId('track-row-0').getByRole('slider', { name: /transpose/i }),
+  ).toHaveCount(0);
+
+  // The guitar row is unaffected — transposition remains available on a real melodic track.
+  const guitarExpand = page
+    .getByTestId('track-row-1')
+    .getByRole('button', { name: /more controls/i });
+  await expect(guitarExpand).not.toHaveAttribute('aria-disabled', 'true');
+  await guitarExpand.click();
+  await expect(
+    page.getByTestId('track-row-1').getByRole('slider', { name: /transpose audio/i }),
+  ).toBeVisible();
+});
+
+// The two per-track pitch controls, which shipped two defects between them because nothing here
+// was covered: a sparse write that poisoned every lower track, and a label promising audio from a
+// push that only ever redraws. One case each, both on track 1 — index >= 1 is exactly what the
+// sparse write got wrong, and Punk.gp's row 0 is percussion and cannot be expanded.
+test('Transpose audio reaches the engine as a per-track call', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  const transposeCalls = await recordApiCalls(page, 'changeTrackTranspositionPitch');
+
+  await page.getByTestId('tracks-trigger').click();
+  const guitar = page.getByTestId('track-row-1');
+  await guitar.getByRole('button', { name: /more controls/i }).click();
+  const slider = guitar.getByRole('slider', { name: /transpose audio/i });
+  const before = Number(await slider.getAttribute('aria-valuenow'));
+  await slider.focus();
+  await slider.press('ArrowRight');
+
+  // Filtered to track 1 and taken last, as the sibling volume case does: the mixer's playerReady
+  // re-assert also calls this method, and can otherwise occupy the first recorded call.
+  const recording = (await transposeCalls()) as [number[], number][];
+  const lastForGuitar = recording.findLast(([tracks]) => tracks[0] === 1);
+  expect(lastForGuitar).toEqual([[1], before + 1]);
+});
+
+test('Transpose notation writes a DENSE pitch array and never reloads the MIDI', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  // Wait for the PLAYER, not only the drawn score. pushSettings('render') calls updateSettings,
+  // which loads the MIDI whenever the player mode has changed — and it is still changing while the
+  // player boots. Recording before then makes this assertion fail on a slow first run for a reason
+  // that has nothing to do with transposition. Observed once, on the first run after a cold build.
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  const midiLoads = await recordApiCalls(page, 'loadMidiForScore');
+
+  await page.getByTestId('tracks-trigger').click();
+  const guitar = page.getByTestId('track-row-1');
+  await guitar.getByRole('button', { name: /more controls/i }).click();
+  const slider = guitar.getByRole('slider', { name: /transpose notation/i });
+  await slider.focus();
+  await slider.press('ArrowRight');
+
+  const pitches = await page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: { settings: { notation: { transpositionPitches: number[] } } };
+      } | null
+    )?.at;
+    if (!at) return null;
+    const raw = at.settings.notation.transpositionPitches;
+    return {
+      length: raw.length,
+      // A HOLE is what poisoned the lower tracks: AlphaTab loops `i < length` and reads a missing
+      // index as -undefined, NaN. `in` is the only way to tell [ , 1 ] from [0, 1].
+      holes: [...raw.keys()].filter((index) => !(index in raw)),
+      values: [...raw],
+    };
+  });
+
+  expect(pitches).not.toBeNull();
+  expect(pitches!.holes).toEqual([]);
+  expect(pitches!.values.some((value) => Number.isNaN(value))).toBe(false);
+  expect(pitches!.values[1]).not.toBe(0);
+
+  // Notation only. If this ever pushes MIDI, the slider's label has to change with it.
+  expect(await midiLoads()).toEqual([]);
+});
+
+/**
+ * The transposition the ENGINE holds for the first track's first staff, read off the live api.
+ *
+ * Negated relative to the file: a score written `\transpose 2` reports -2 here, because the engine
+ * stores how far to shift the notes to get back to concert pitch. Shared by the transposition cases
+ * so the two read the same value the same way.
+ */
+const firstStaffTranspositionPitch = (page: Page): Promise<number | null> =>
+  page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: { score?: { tracks: { staves: { transpositionPitch: number }[] }[] } };
+      } | null
+    )?.at;
+    return at?.score?.tracks[0]?.staves[0]?.transpositionPitch ?? null;
+  });
+
+// transposed.alphatex carries `\transpose 2` on its first track — a score written two semitones up,
+// the case every other fixture is missing (all twelve report 0). The engine keeps that on the staff
+// NEGATED, as -2, and the Transpose notation row is the only editor for it. A row that started at 0
+// both misreported the open file and turned a return to 0 into an erase: nudge the slider and put it
+// back, and the score sat two semitones under the file with no way back but reopening it.
+test('Transpose notation starts at the transposition the FILE carries, and survives a round trip', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'transposed.alphatex');
+
+  const staffPitch = () => firstStaffTranspositionPitch(page);
+
+  // The engine holds the file's own value, negated.
+  expect(await staffPitch()).toBe(-2);
+
+  await page.getByTestId('tracks-trigger').click();
+  const lead = page.getByTestId('track-row-0');
+  await lead.getByRole('button', { name: /more controls/i }).click();
+  const slider = lead.getByRole('slider', { name: /transpose notation/i });
+
+  // The row reports what the file says, in the direction a person reads it.
+  await expect(slider).toHaveAttribute('aria-valuenow', '2');
+
+  // Move it and put it back where it was found. The file's transposition is still there.
+  await slider.focus();
+  await slider.press('ArrowUp');
+  await expect(slider).toHaveAttribute('aria-valuenow', '3');
+  // The engine has to MOVE, or the return trip below proves nothing: the staff was already -2 when
+  // the file opened, so polling for -2 at the end passes whether or not the keystroke ever arrived.
+  await expect.poll(staffPitch, { timeout: 30_000 }).toBe(-3);
+  await slider.press('ArrowDown');
+  await expect(slider).toHaveAttribute('aria-valuenow', '2');
+  await expect.poll(staffPitch, { timeout: 30_000 }).toBe(-2);
+});
+
+// transposed-wide.alphatex carries `\transpose 24` — two octaves, which is more than the row's
+// original -12..12 rail could hold. It read "+24" beside a thumb reporting 12, and a single ArrowUp
+// committed the clamped 12: the score dropped an octave while the thumb never moved and the number
+// gave no warning. Same class as the case above — the row must not rewrite what the file says —
+// which is why the rail is -24..24 (NH-291).
+test('a file transposed two octaves is held, not narrowed by the first keystroke', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'transposed-wide.alphatex');
+
+  const staffPitch = () => firstStaffTranspositionPitch(page);
+
+  // The engine holds the file's own value, negated — two octaves, not one.
+  expect(await staffPitch()).toBe(-24);
+
+  await page.getByTestId('tracks-trigger').click();
+  const lead = page.getByTestId('track-row-0');
+  await lead.getByRole('button', { name: /more controls/i }).click();
+  const slider = lead.getByRole('slider', { name: /transpose notation/i });
+
+  // The thumb reports what the file says. On the old rail this read '12'.
+  await expect(slider).toHaveAttribute('aria-valuenow', '24');
+
+  // Up from the top is a no-op, and must stay one: on the old rail this same keystroke committed 12
+  // and moved the staff to -12.
+  await slider.focus();
+  await slider.press('ArrowUp');
+  await expect(slider).toHaveAttribute('aria-valuenow', '24');
+  await expect.poll(staffPitch, { timeout: 30_000 }).toBe(-24);
+});
+
+// Two editors, one value, one writer. The Settings ▸ Player row and the mixer's Master row.
+test('the Settings master volume and the mixer Master row are one value', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('spinbutton', { name: 'Master volume' }).fill('0.5');
+  await page.keyboard.press('Escape');
+
+  await page.getByTestId('tracks-trigger').click();
+  const master = page.getByTestId('master-row').getByRole('slider', { name: 'Master volume' });
+  await expect(master).toHaveAttribute('aria-valuenow', '0.5');
+  // Both ends of the DOM assertion are the same React state — they would agree even if the write
+  // never reached AlphaTab. Read the engine through the debug handle to prove it did.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.masterVolume;
+    })
+    .toBeCloseTo(0.5, 5);
+
+  await master.focus();
+  await master.press('ArrowLeft');
+  await page.keyboard.press('Escape');
+
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await expect
+    .poll(async () => {
+      const raw = await page.getByRole('spinbutton', { name: 'Master volume' }).inputValue();
+      return Number(raw);
+    })
+    .toBeCloseTo(0.45, 2);
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.masterVolume;
+    })
+    .toBeCloseTo(0.45, 2);
+});
+
+// PlayerMode.Disabled is 0 and EnabledSynthesizer is 2 in 1.8.4's enum (alphaTab.d.ts). The page
+// cannot reach the enum object, so the numbers are written here, beside their source.
+const playerModes = (page: Page) =>
+  page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: { actualPlayerMode: number; isReadyForPlayback: boolean; player: unknown };
+      } | null
+    )?.at;
+    return at
+      ? { actual: at.actualPlayerMode, ready: at.isReadyForPlayback, hasPlayer: at.player !== null }
+      : null;
+  });
+
+const setPlayerMode = async (page: Page, label: string) => {
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('combobox', { name: 'Playback source' }).selectOption({ label });
+  await page.keyboard.press('Escape');
+};
+
+// On the bundled beat, actualPlayerMode is ALREADY the synthesizer: AlphaTab resolves the default
+// automatic mode to the synthesizer on a score with no embedded recording. Switching the row
+// straight to "the synthesizer, always" would rebuild nothing, so this drives a mode that genuinely
+// CHANGES actualPlayerMode first — "No playback" — which exercises the destroy-then-rebuild path
+// and the un-latching of playerReady that a mode switch or a file replace both depend on.
+test('the player-mode row makes AlphaTab build the other player, and Play still works', async ({
+  page,
+}) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await setPlayerMode(page, 'No playback');
+  await expect
+    .poll(async () => {
+      const modes = await playerModes(page);
+      return modes?.actual;
+    })
+    .toBe(0);
+  await expect
+    .poll(async () => {
+      const modes = await playerModes(page);
+      return modes?.hasPlayer;
+    })
+    .toBe(false);
+  await expect(page.getByTestId('transport-play')).toHaveAttribute('aria-disabled', 'true');
+
+  await setPlayerMode(page, 'The synthesizer, always');
+  await expect
+    .poll(async () => {
+      const modes = await playerModes(page);
+      return modes?.actual;
+    })
+    .toBe(2);
+
+  // Play must not be pressable before the new player is ready, and must work once it is.
+  const play = page.getByTestId('transport-play');
+  await expect(play).toBeEnabled({ timeout: 60_000 });
+  const readyModes = await playerModes(page);
+  expect(readyModes?.ready).toBe(true);
+  await play.click();
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-playing', 'true');
+});
+
+// "No playback" is a real choice, and it is STORED — so the next visit starts with no player. The
+// page must say so and stay usable, not pulse a loading bar forever beside a dead Play button.
+test('with playback turned off, the page settles and says why', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  await setPlayerMode(page, 'No playback');
+
+  await page.reload();
+  await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  const play = page.getByTestId('transport-play');
+  await expect(play).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0);
+
+  // The way back is never disabled with the rest.
+  await expect(page.getByTestId('settings-trigger')).toBeEnabled();
+  // page.mouse, not hover(): a disabled Button takes no pointer events, so hover() would wait
+  // forever. The pointer goes where a person's would — the same move the disabled-toggle case uses.
+  const box = await play.boundingBox();
+  if (!box) throw new Error('the Play button has no box');
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(openTooltip(page)).toContainText('Playback is turned off in Settings');
+});
+
+// The same settled state WITHOUT a reload. The case above reloads before it asserts, so it would
+// pass even if a mid-session switch left the bar spinning behind a dead Play button — which is what
+// happens when the mode change re-reads only the flags that come from the built player. playerReady
+// never fires for a mode that builds no player, so the settings read has to run on the mode change
+// too (readChosenMode, called from readPlayer). No reload here.
+test('switching to a mode with no player settles without a reload', async ({ page }) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  await setPlayerMode(page, 'No playback');
+
+  const play = page.getByTestId('transport-play');
+  await expect(play).toHaveAttribute('aria-disabled', 'true');
+  await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0);
+  await expect(page.getByTestId('settings-trigger')).toBeEnabled();
 });

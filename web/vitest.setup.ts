@@ -28,6 +28,27 @@ class ResizeObserverStub {
 if (!globalThis.ResizeObserver) {
   globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
 }
+// next/link measures its own visibility with an IntersectionObserver and disconnects it on
+// unmount, which throws when the global is absent — so PlayerShell, which renders a Link through
+// PlayerHeader, cannot even be unmounted without this.
+class IntersectionObserverStub {
+  observe(): void {
+    // no-op: nothing intersects in jsdom.
+  }
+  unobserve(): void {
+    // no-op.
+  }
+  disconnect(): void {
+    // no-op.
+  }
+  takeRecords(): [] {
+    return [];
+  }
+}
+if (!globalThis.IntersectionObserver) {
+  globalThis.IntersectionObserver =
+    IntersectionObserverStub as unknown as typeof IntersectionObserver;
+}
 Element.prototype.scrollIntoView = () => {};
 Element.prototype.hasPointerCapture = () => false;
 Element.prototype.setPointerCapture = () => {};

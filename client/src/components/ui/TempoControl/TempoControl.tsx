@@ -187,7 +187,7 @@ const TempoControl = ({
             render={
               <div
                 data-slot="tempo-readout"
-                className="flex flex-col items-center justify-center gap-0.5 px-2"
+                className="flex flex-col items-center justify-center gap-0.5"
               />
             }
           >

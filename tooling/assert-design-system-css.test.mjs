@@ -70,6 +70,41 @@ test('fails on a single missing selector, not only when all of them are gone', (
   });
 });
 
+// The case the two tests above CANNOT produce. Both build their fixtures from REQUIRED_SELECTORS,
+// so every class they write is an exact match — and a substring check passes those either way. The
+// hole a substring check leaves is a LONGER class that merely contains an entry: one
+// `.cursor-grabbing` anywhere in the scanned tree would satisfy the `.cursor-grab` entry forever,
+// and the guard would report all clear on exactly the stale-scan build it exists to catch.
+test('a longer class that merely contains a required selector does not satisfy it', () => {
+  // A suffix is the shape Tailwind really produces: cursor-grabbing, bg-primary/90, border-2xl.
+  const longer = REQUIRED_SELECTORS.map(([selector]) => `${selector}-0{color:red}`).join('\n');
+  withOutput(longer, (dir) => {
+    assert.throws(
+      () => assertDesignSystemCss({ outputDir: dir }),
+      (error) => {
+        assert.match(
+          error.message,
+          new RegExp(`${REQUIRED_SELECTORS.length} of ${REQUIRED_SELECTORS.length} required`),
+        );
+        return true;
+      },
+    );
+  });
+});
+
+// The other side of that boundary, and it is load-bearing: Tailwind emits a VARIANT utility with its
+// condition attached — `.aria-pressed\:bg-primary[aria-pressed="true"]{…}` — so three of the entries
+// never appear followed by `{` on a real build. The class is whole there and must still count.
+test('the attribute form Tailwind emits for a variant utility still counts as present', () => {
+  const asEmitted = REQUIRED_SELECTORS.map(
+    ([selector]) => `${selector}[data-pressed]{color:red}`,
+  ).join('\n');
+  withOutput(asEmitted, (dir) => {
+    const checked = assertDesignSystemCss({ outputDir: dir });
+    assert.equal(checked.length, 1, 'should have read the one emitted stylesheet');
+  });
+});
+
 test('fails when the build emitted no stylesheet at all', () => {
   withOutput(null, (dir) => {
     assert.throws(() => assertDesignSystemCss({ outputDir: dir }), /emitted no stylesheet/);

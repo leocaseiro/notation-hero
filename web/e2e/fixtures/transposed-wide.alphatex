@@ -1,0 +1,5 @@
+\title "Transposed two octaves"
+.
+\track "Lead"
+ \staff \transpose 24 \tuning e5 b4 g4 d4 a3 e3
+ :4 3.3 3.3 3.3 3.3 |

@@ -11,6 +11,78 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-24 — The 44px hit-area gate now covers both popovers, with two deliberate exceptions (NH-291)
+
+`expectHitAreas` (`web/e2e/a11y.e2e.ts`) enforces this repo's own 44px hit-area bar — stricter than
+WCAG 2.5.8 AA, which asks only 24px. Two controls fall under it on purpose, and the gate scopes
+around both rather than being loosened generally. The gate now also runs with the Settings popover
+(every accordion group open) and the Tracks popover (two rows expanded, a solo and a mute pressed)
+open, per an e2e case each; both pass.
+
+- **The toast close button stays 20x20.** Sonner's `[data-close-button]` is a fixed-size control,
+  and the maintainer wants `closeButton` kept on the Toaster. The gate now skips any control inside
+  `[data-sonner-toast]` — scoped to toasts, not a blanket exemption — because the toast's resting
+  state, hit area included, is already covered by the design system's own Sonner Storybook stories.
+- **Every mixer control (TrackRow, MasterRow) stays 34px** (`MIXER_BUTTON_CLASS`). The mixer row
+  packs render-select, solo, mute, volume and four per-staff toggles onto one line at tablet-landscape
+  width; 44px per control does not fit. 34px still clears WCAG 2.5.8 AA's 24px floor — it only misses
+  this repo's own stricter 44px (AAA) bar, and the density is the maintainer's deliberate choice for
+  this row, not an oversight. The gate now skips any control inside `[data-slot="track-row"]` or
+  `[data-slot="master-row"]`, scoped to those two rows only.
+- **The gate now measures the popovers' fields and selects too**: `[data-slot="popover-content"]
+select` and `input` (excluding `range`, `file` and `checkbox`, none of which is what a finger
+  hits) join the existing button/link/label/slider selectors. Scoped to popover content only, so
+  the header's BPM field — Base UI's `NumberField.Input`, deliberately out of scope for this PR —
+  stays untouched. `Input` and `NativeSelect` are `h-9` (36px) in the design system by default;
+  every row in `SettingRow` raises them to `h-11` (44px) at the call site. A design-system default
+  of 44px is a separate question, not answered here.
+- **The gate's position check is now container-aware.** With every Settings group open at once (so
+  the whole panel is auditable in one pass), the panel is far taller than the viewport — ~6000px of
+  rows in a ~500px scrolling window — and the plain window-edge check flagged nearly every row as
+  unreachable, though each is one scroll away. `expectHitAreas` now walks up from each control to
+  its nearest ancestor with computed `overflow-y: auto`/`scroll`. When none exists short of the
+  document, the check is unchanged (a shell-clipped control has no way out and still fails).
+  Otherwise position is judged against that ancestor's own scrollable content range (`[0,
+scrollHeight]`) instead of the window — horizontally unchanged, since this ancestor only scrolls
+  vertically. The 44px SIZE check is untouched either way.
+- **The code review of this PR then found two holes in that same gate, and both are closed.** The
+  mixer and toast exemptions above ran BEFORE the element's rectangle was taken, so they exempted
+  those controls from the off-screen POSITION check as well — which neither exemption's reasoning
+  argues for, and the mixer's fixed-width grid makes a narrow window its realistic failure. They
+  now resolve after the measurement and apply to the size verdict alone. Separately, the
+  container-aware branch could not fail vertically at all: `contentTop + height <= scrollHeight`
+  holds by construction for any child of a scroll container, so the relaxation silently dropped
+  vertical containment for every popover control rather than re-basing it. The branch now also
+  checks that the scrolling box is ITSELF on screen, which is the property the relaxation assumed.
+  `expectHitAreas` settles toasts before measuring, so the restored position check cannot race a
+  slide-in animation.
+- **The CSS build canary gains five `REQUIRED_SELECTORS` entries**, which is what AGENTS.md already
+  prescribes for a new shared class module — recorded here because it is a build-BLOCKING guard,
+  not because it is a new decision. Only one entry shipped with the component work, and that one
+  (`size-[2.125rem]`) is also written literally in `TrackRow.tsx` and `MasterRow.tsx`, so the `.tsx`
+  scan alone keeps it present and it proved nothing about `MixerClasses.ts`. The four added by the
+  review pass — the mixer's grid-template arbitrary value and three `aria-pressed:`/`data-pressed:`
+  fills — exist in no other file, and each fails invisibly: correct ARIA, correct behaviour,
+  nothing painted.
+- **The canary now matches a whole class name, not a substring.** It asked `css.includes(selector)`,
+  so an entry that is a PREFIX of another class was satisfied by that other class — `.grow` by
+  `.grow-0`, `.border-primary` by `.border-primary/50`, `.cursor-grab` by `.cursor-grabbing`, the two
+  pressed fills by their `/90` opacity forms. One such utility anywhere in the scanned tree would
+  satisfy its entry forever, and a build-blocking guard would report all clear on exactly the stale
+  scan it exists to catch. Nothing was broken: all ten entries were matched against the real emitted
+  stylesheet and each is present in its exact form. The match now requires a CSS boundary after the
+  entry, with `[` in that set — load-bearing, because Tailwind emits a variant utility with its
+  condition attached, so three entries never appear followed by `{` on a real build. Both sides are
+  pinned by tests; the existing ones could not have caught this, since they build their fixtures FROM
+  the list and so can only ever write exact matches.
+- **Four new design-system components, not three** — `Accordion`, `SettingRow`, `TrackRow` and
+  `MasterRow`, each with a Storybook story plus VR and axe baselines that block merge. A fifth
+  component, `PopoverIconTrigger`, was extracted during a later refactor pass to share the
+  Settings/Tracks trigger button — it lives in `web/app/play/`, not `client/`, so it is an
+  app-local component, not a fifth gated design-system one; it carries no stories/VR/a11y files of
+  its own and is covered by the popover-open e2e cases and `client/`'s existing Tooltip/Popover/
+  Button baselines that it composes.
+
 ### 2026-09-26 — Error codes become app-wide and machine-checked; error toasts stop vanishing (NH-331, NH-311)
 
 The player's error numbers were a good convention trapped in the wrong package. `PLAYER_ERROR`

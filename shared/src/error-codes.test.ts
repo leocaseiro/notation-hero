@@ -6,7 +6,7 @@ const codes = Object.values(ERROR);
 
 // The ranges the registry reserves. A number outside them means either a new area arrived without
 // a range, or a typo put a code somewhere nobody is looking for it.
-const DECLARED_RANGE_PREFIXES = new Set(['1', '2', '3', '5', '9']);
+const DECLARED_RANGE_PREFIXES = new Set(['1', '2', '3', '4', '5', '6', '9']);
 
 describe('the error-code registry', () => {
   it('gives every code the E-plus-three-digits shape', () => {
@@ -35,6 +35,19 @@ describe('the error-code registry', () => {
     expect(ERROR.musicFontFailed).toBe('E203');
     expect(ERROR.musicFontTimeout).toBe('E204');
     expect(ERROR.unexpectedCrash).toBe('E901');
+  });
+
+  // The five the v0 popovers brought in. E205 and E401 landed on their first-chosen numbers; the
+  // three settings codes did NOT — they were E301/E302/E303 until the app-wide registry gave 3xx to
+  // the catalog, so they moved to 6xx before either side shipped. Pinned here because
+  // web/e2e/player.e2e.ts asserts E601 and E603 against the rendered toast, and because the numbers
+  // are spent from now on.
+  it('keeps every settings and export code at the number it shipped with', () => {
+    expect(ERROR.engineUnavailableOnOpen).toBe('E205');
+    expect(ERROR.exportFailed).toBe('E401');
+    expect(ERROR.settingsRepaired).toBe('E601');
+    expect(ERROR.settingRejected).toBe('E602');
+    expect(ERROR.settingsUnreadable).toBe('E603');
   });
 
   it('puts every code inside a declared range', () => {

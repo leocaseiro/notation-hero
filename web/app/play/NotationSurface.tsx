@@ -1,11 +1,12 @@
 'use client';
 
-import { Skeleton } from '@notation-hero/client';
+import { Button, Skeleton } from '@notation-hero/client';
 import { ERROR } from '@notation-hero/shared/error-codes';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 import { selectDrumTrackIndexes } from '../../lib/alphatab/drum-tracks';
+import { clearTrackTranspositions } from '../../lib/alphatab/live-settings';
 import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import type { OpenNotation } from './PlayerShell';
 import type * as AlphaTab from '@coderline/alphatab';
@@ -43,6 +44,12 @@ function renderOpenNotation(
   // INDEXES, not Track objects. Passing undefined makes AlphaTab render score.tracks[0] — its
   // FIRST track, not a "default" or preferred one. Fine here: that branch only runs when no track
   // carries a percussion staff at all, where any track is as good as another.
+  // The pitches are indexed by track and live on the api, so the previous score's +2 on track 1
+  // would transpose this score's track 1 — drawn AND played. It has to happen BEFORE the score
+  // reaches the engine: applyPitchOffsets runs at the top of the render path, and clearing to []
+  // afterwards un-stamps nothing, because the write only reaches a track whose index is inside the
+  // array. Clearing first also leaves a transposition the FILE itself carries intact.
+  clearTrackTranspositions(api);
   api.renderScore(notation.score, drumIndexes.length > 0 ? drumIndexes : undefined);
 }
 
@@ -56,12 +63,31 @@ export function NotationSurface({
   const { error: engineError } = useAlphaTabEngine();
   const [rendered, setRendered] = useState(false);
   const [runtimeError, setRuntimeError] = useState<string | null>(null);
+  // A crash rendering the PREVIOUS score must not keep condemning every score after it — opening
+  // a file is a deliberate new attempt, unlike a same-score renderFinished (which proves nothing
+  // about audio and must not clear this — see fontError's own comment just below). Adjusted here
+  // DURING RENDER, against a STATE copy of the last-seen notation (never a ref — react-hooks/refs
+  // treats a ref read/write during render as unsafe: React cannot see it and schedules no
+  // re-render from it), rather than in an effect: react-hooks/set-state-in-effect (both errors in
+  // this package) treats "clear local state when a prop changes" inside an effect as the
+  // anti-pattern it exists to catch. This is the React-endorsed replacement — "Adjusting some
+  // state when a prop changes" at https://react.dev/learn/you-might-not-need-an-effect.
+  const [previousNotation, setPreviousNotation] = useState(notation);
+  if (previousNotation !== notation) {
+    setPreviousNotation(notation);
+    if (runtimeError !== null) setRuntimeError(null);
+  }
   // The two MUSIC-FONT failures are held apart from AlphaTab's own `error` event on purpose. A
   // finished render PROVES the font arrived — AlphaTab holds renderFinished until its font checker
   // sees the alphaTab face — so a font error is stale the moment one lands, and renderFinished
   // clears it below. It proves nothing about the SoundFont (E202): playback is still dead, so that
   // one must survive every later render. One shared state could not tell the two apart.
   const [fontError, setFontError] = useState<string | null>(null);
+  // Hides the banner without touching WHY it is there — runtimeError/fontError/engineError all
+  // stay exactly as they were, so the underlying failure is still real; dismissing does not
+  // re-enable a dead engine. Reset to false at every place that RAISES a new failure (never at a
+  // place that merely clears one), so a person who dismissed one problem still sees the next.
+  const [dismissed, setDismissed] = useState(false);
   const [renderedTrackCount, setRenderedTrackCount] = useState(0);
   // ReturnType<typeof globalThis.setTimeout>, not `number`: web/tsconfig.json sets no `types`
   // array, so @types/node is in scope and globalThis.setTimeout resolves to Node's overload,
@@ -89,19 +115,19 @@ export function NotationSurface({
     const onFontError = (event: FontFaceSetLoadEvent) => {
       if (event.fontfaces.some((face) => face.family.startsWith('alphaTab'))) {
         setFontError(`Error ${ERROR.musicFontFailed}: the music font could not be downloaded`);
+        setDismissed(false);
       }
     };
     document.fonts.addEventListener('loadingerror', onFontError);
 
     // Backstop for a download that hangs without ever failing: no event arrives, so give up after
     // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
-    timeoutRef.current = globalThis.setTimeout(
-      () =>
-        setFontError(
-          `Error ${ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
-        ),
-      60_000,
-    );
+    timeoutRef.current = globalThis.setTimeout(() => {
+      setFontError(
+        `Error ${ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
+      );
+      setDismissed(false);
+    }, 60_000);
 
     return () => {
       document.fonts.removeEventListener('loadingerror', onFontError);
@@ -111,9 +137,10 @@ export function NotationSurface({
 
   // The SoundFont download failure surfaces through AlphaTab's own error event; the engine import
   // failure cannot (AlphaTabApi does not exist yet) and arrives through engineError below.
-  useAlphaTabEvent(api, 'error', (cause) =>
-    setRuntimeError(`Error ${ERROR.engineRuntime}: ${String(cause)}`),
-  );
+  useAlphaTabEvent(api, 'error', (cause) => {
+    setRuntimeError(`Error ${ERROR.engineRuntime}: ${String(cause)}`);
+    setDismissed(false);
+  });
   // AlphaTab forwards the raw XMLHttpRequest ProgressEvent, so two numeric cases are real:
   //   - `total` is 0 when the response carries no Content-Length -> no fraction exists, so report
   //     null and let the bar render its indeterminate style.
@@ -178,13 +205,27 @@ export function NotationSurface({
           unmounts the element AlphaTab is bound to while the api is still alive, and the engine
           then renders into a detached node — with no error anywhere. Every state of this
           component keeps both divs below mounted. */}
-      {failure ? (
+      {failure && !dismissed ? (
         <p
           data-testid="engine-error"
           role="alert"
-          className="absolute inset-x-0 top-0 z-10 rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-4 text-destructive"
+          className="absolute inset-x-0 top-0 z-10 flex items-start justify-between gap-3 rounded-md border border-destructive/25 bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))] p-4 text-destructive"
         >
-          The player engine could not start. Reload the page to try again. ({failure})
+          <span>The player engine could not start. Reload the page to try again. ({failure})</span>
+          {/* Dismiss only HIDES this message — it does not fix the engine, which stays dead
+              behind it. "Open file" in the left rail is the actual way back (NH-291): it is never
+              disabled by this state, so it is still there once the banner is gone. */}
+          <Button
+            variant="destructive"
+            size="icon"
+            aria-label="Dismiss error message"
+            onClick={() => setDismissed(true)}
+            className="size-11 shrink-0"
+          >
+            <span className="material-symbols-outlined" aria-hidden="true">
+              close
+            </span>
+          </Button>
         </p>
       ) : null}
       {/* The Skeleton covers BOTH the engine import and the music-font fetch, and lifts on the
@@ -218,13 +259,17 @@ export function NotationSurface({
           box is flush against the window edges now, so an outward ring is clipped away by the
           shell's `overflow-hidden` on three sides and there is nothing left to see. The
           accessibility gate audits the scrolling state with Punk.gp. */}
+      {/* `isolate` keeps AlphaTab's cursor layer inside this box. The engine sets
+          `.at-cursors` to z-index 1000, and nothing between that div and the page
+          creates a stacking context, so the bar highlight and the beat line paint
+          over the settings popover. */}
       <div
         ref={viewportRef}
         data-testid="notation-surface"
         role="region"
         aria-label="Score"
         tabIndex={0}
-        className="h-full w-full overflow-y-auto bg-white outline-none transition-[color,box-shadow] focus-visible:inset-ring-[3px] focus-visible:inset-ring-ring/50 focus-visible:-outline-offset-1 focus-visible:outline-1"
+        className="isolate h-full w-full overflow-y-auto bg-white outline-none transition-[color,box-shadow] focus-visible:inset-ring-[3px] focus-visible:inset-ring-ring/50 focus-visible:-outline-offset-1 focus-visible:outline-1"
       >
         <div ref={hostRef} />
       </div>

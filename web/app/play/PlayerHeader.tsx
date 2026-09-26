@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 import { APP_VERSION } from '../../lib/app-version';
+import type { ReactNode } from 'react';
 
 // The brand mark, as the wireframe draws it beside the wordmark (docs/wireframe/index.html,
 // `MARK_SVG`): a ring with a play triangle on its right and a single eighth note inside. Inline
@@ -37,6 +38,9 @@ interface PlayerHeaderProps {
   speed: number;
   onSpeedChange: (next: number) => void;
   disabled: boolean;
+  /** The header's right column. The shell passes the Settings trigger; the header knows nothing
+   *  about what it renders. */
+  actions?: ReactNode;
 }
 
 // The header bar. Tempo lives here, not in the transport row, so the player has exactly one tempo
@@ -50,7 +54,8 @@ interface PlayerHeaderProps {
 // "mark + name, with a way out" arrangement from.
 //
 // Deliberately absent in v0: the Auto-Speed toggle (a practice feature — it needs the v0.2 scoring
-// work) and the MIDI status icon (no Web MIDI until v0.2). The Settings gear arrives in Plan C.
+// work) and the MIDI status icon (no Web MIDI until v0.2). The Settings gear is the shell's
+// `actions` prop, rendered in the third column below.
 export function PlayerHeader({
   scoreTitle,
   fileName,
@@ -58,12 +63,13 @@ export function PlayerHeader({
   speed,
   onSpeedChange,
   disabled,
+  actions,
 }: Readonly<PlayerHeaderProps>) {
   const router = useRouter();
 
   return (
     // The mockup's three columns: Back, brand and title on the left, the tempo pill in the centre,
-    // and the right one kept for the Settings gear that Plan C adds. `1fr auto 1fr` keeps the pill
+    // and the right one for the Settings gear (`actions`). `1fr auto 1fr` keeps the pill
     // centred on the PAGE, whatever the title's length.
     // A shadow as well as the border, which is how the mockup separates the header from the score
     // (player-flatrow-teal.html:179). A hairline alone reads as a drawn divider; the shadow is what
@@ -186,10 +192,9 @@ export function PlayerHeader({
         // hover, which was invisible against the --secondary this replaces.
         className="h-12 rounded-xl border border-border bg-panel shadow-sm dark:border-input"
       />
-      {/* Reserved for the Settings gear. This is an EMPTY GRID CELL, not a spacer: the header's
-          `1fr auto 1fr` template reserves the third column whether or not a node sits in it, so
-          removing this would not move the tempo pill. It marks where the gear goes. */}
-      <div />
+      {/* The third column of the header's `1fr auto 1fr` grid — reserved whether or not `actions`
+          is passed, so the tempo pill never moves. The Settings gear lands here. */}
+      <div className="flex items-center justify-end">{actions}</div>
     </header>
   );
 }
