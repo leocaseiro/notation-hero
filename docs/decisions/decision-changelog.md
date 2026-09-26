@@ -11,6 +11,70 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-26 — The registry's own statuses reconciled, and a duplicated table removed (NH-322)
+
+With the change log out of `decision-registry.md`, its state tables turned out to be
+**byte-identical to what PR #143 left on 2026-09-18** — so no PR had flipped a status since,
+although AGENTS.md requires it in the same PR. Two things came out of reconciling them, and only
+one was the expected job.
+
+**Section B held its entire 13-row table twice**, with a second `| ID | Decision |` header and
+separator mid-table, and the copies disagreed: one `L5-vitest` row read _"DECIDED but DEFERRED"_
+(💤 📄), the other _"live for client/ + server/ + infra/"_ (✅ 🤖). The wrong one came first, and
+it contradicted both AGENTS.md and NH-194. Only 3 of the 13 rows differed and the surviving copy is
+newer in all three — the other two differ only by carrying correctly escaped `` `*.test.*` `` /
+`` `/* istanbul ignore */` `` where the stale copy has the mangled MD049 form. The block first
+appears on master in `1299e826` (PR #85, NH-243, 2026-06-27), whose registry diff is 197 insertions
+/ 178 deletions on a _lint_ PR; `merge=union` had been applied to the registry two days earlier.
+**This is the NH-322 failure one section deeper** — a real edit (`L5-vitest` 💤 → ✅) "resolved" by
+keeping both sides, with no conflict for anyone to review. A scan of every section now reports no
+repeated header and no repeated row ID.
+
+**The 2026-09-16-onward window produced almost no flips**, which is worth recording so nobody
+re-runs the search. The registry is DACI-derived and does not model the v0 player work at all — zero
+mentions of alphatab, `web/`, VR, visual-regression, editorconfig, Vercel, Next.js, sonarjs or
+todo-tag. NH-291's Plan A/B/C entries, NH-317, NH-315, NH-304, NH-293 and NH-299 map to **no row**;
+NH-231 maps to `E-osv-scanner`, already ✅ 🤖. Plan A's _"D5 — 📄 → 🤖"_ is the **v0 spec's** D5
+(self-hosted AlphaTab ESM), a different numbering namespace from the ADR's `D1`–`D7`; there is no
+`D5` row to flip.
+
+**The real staleness sat in the 🟥 backlog** — the table whose whole job is to show what is decided
+but unenforced, and which instead listed shipped gates as missing. 16 enforcement cells rewritten,
+each checked against the repo:
+
+- `E-gitleaks`, `E-semgrep`, `E-osv-scanner` claimed "not wired into required CI/Lefthook". They are
+  the `secret-scan`, `sast` and `deps-cve` jobs, all in `ci-green`'s `needs`.
+- `E-syncpack` claimed "not in required CI"; it is a `quality` step and in `check:all`. `L6-4`
+  claimed commitlint "not yet wired"; Lefthook `commit-msg` + the CI `pr-title` job.
+- Seven rows (`E-no-orphans-error`, `CONV-5`, `CONV-orphans`, `L5-test-colocation`, `F2-colocate`,
+  `CONV-coloc`, `CONV-2`) all claimed `no-orphans` is WARN and whitelists `__tests__/`.
+  `.dependency-cruiser.cjs` sets `severity: 'error'` and excludes co-located tests/stories via
+  `pathNot`; `check:layout` additionally fails any `__tests__/`, `__mocks__/` or `stories/`
+  directory. The co-location rows are marked 🟡 partial, not done — nothing asserts a test sits
+  beside _its own_ source.
+- `L12-pin` and `M5-nvmrc` claimed `.nvmrc` was "not yet added"; it is committed (Node 24).
+- `L5-no-escape-hatches` is 🟡 partial on purpose: `eslint-comments/require-description` is `error`
+  in the shared base and `check:coverage-ignore` bans istanbul/c8/v8 directives, but no explicit
+  `@typescript-eslint/ban-ts-comment` rule exists. Its cell also named `.eslintrc.cjs`; the repo is
+  on flat configs.
+
+Seven section rows flipped to match: `L13` and `L5-test-colocation` → ✅ 🤖 with the 🟥 cleared;
+`L12-pin` and `M5-nvmrc` → ✅; `CONV-orphans`, `CONV-coloc` and `F2-colocate` → 🟡 enforcement,
+keeping their 🟥 because each still has a genuinely open half.
+
+**Approved by leocaseiro 2026-09-26:** `L13` reads ✅ done 🤖 rather than partial — the decision was
+"defer to first use", Storybook and Playwright both landed and block merge, and LocalStack's trigger
+simply has not fired, which is the decision working rather than a gap. He also asked that findings
+which only remove ambiguity and have a clear fix be applied without a question, which is how the
+section-B duplicate and the extra six verified-stale backlog cells were handled.
+
+**Left alone after checking, because the cells are accurate:** `E-knip` (installed, but only in the
+CI paths-filter, never a gate) and `H7` (the config carries exactly four rules — `core-purity`,
+`no-adapters-to-modules`, `no-circular`, `no-orphans` — so H8–H11's file-level bans genuinely are
+absent; an earlier reading of this as self-contradictory was wrong). Everything DangerJS, Stryker,
+floors, type-coverage and size-limit is untouched and still correctly 🟥. No rows added, no tables
+restructured.
+
 ### 2026-09-26 — The registry/changelog split finished, and made self-enforcing (NH-322)
 
 The #143 split (NH-25) left `decision-registry.md` at 340 lines with zero dated entries. It did not
