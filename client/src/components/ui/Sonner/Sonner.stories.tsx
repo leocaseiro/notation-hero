@@ -169,6 +169,46 @@ export const Stack: Story = {
   render: (args) => <StackOnMount {...args} />,
 };
 
+// Fires several DIFFERENT error causes so they stack rather than collapse onto one id, and
+// dismisses all of them on unmount. No explicit duration anywhere below: these stories exist to
+// pixel-guard what `toast.error` does on its own.
+const ErrorsOnMount = ({ count, ...rest }: { count: number } & ComponentProps<typeof Toaster>) => {
+  useEffect(() => {
+    const causes = [
+      'song.gp is too large to open. The limit is 25 MB.',
+      'riff.xml could not be read. Check that the file still exists.',
+      'beat.cap is not a score format the player reads.',
+      'solo.gp5 could not be opened.',
+    ];
+    for (const cause of causes.slice(0, count)) toast.error(cause);
+    return () => {
+      toast.dismiss();
+    };
+  }, [count]);
+  return <Toaster {...rest} />;
+};
+
+// A single error left alone. Every other story pins `duration: Infinity` by hand, which means none
+// of them would notice if the wrapper stopped applying it — this one fires a bare toast.error, so
+// the frame IS the guarantee that an error toast does not dismiss itself, and that it carries a
+// close button success and loading toasts do not.
+export const PersistentError: Story = {
+  render: (args) => <ErrorsOnMount {...args} count={1} />,
+};
+
+// Three causes at the cap. Expanded by default, because a collapsed stack renders all but the
+// newest as a blank scaled card until a pointer enters the list — unreadable to anyone on a
+// keyboard or a touch screen.
+export const ErrorStack: Story = {
+  render: (args) => <ErrorsOnMount {...args} count={3} />,
+};
+
+// A fourth error arrives. The oldest is dropped rather than parked past visibleToasts, where sonner
+// would keep it laid out at opacity 0 and still focusable — invisible and tabbable at once.
+export const ErrorStackAtCap: Story = {
+  render: (args) => <ErrorsOnMount {...args} count={4} />,
+};
+
 // Expanded stack — expand={true} renders every toast already spread out, so the resting
 // snapshot IS the expanded view with no hover timing to race (what VR pixel-guards).
 export const StackExpanded: Story = {
