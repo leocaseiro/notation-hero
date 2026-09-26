@@ -335,9 +335,17 @@ then `toHaveScreenshot`'s two-sample compare), so the pixel lane has _less_ head
 
 **The long-score shot needs one more wait, and it is not optional.** Opening a file raises a Sonner
 toast — `toast.loading('Opening …')` then `toast.success('… loaded')` (`PlayerShell.tsx:432`
-and `:467`) — and a Sonner toast dismisses itself after 4 000 ms. Neither call sets a duration. So
-whether the toast is whole, half-faded or already gone at shot time depends on how fast that machine
-parsed `Punk.gp`: a guaranteed flake, and the one shot in this list that opens a file. Wait for it to
+and `:467`) — sharing one id, `notation-load`. Neither sets a duration, so each falls back to Sonner's
+`TOAST_LIFETIME` of 4 000 ms — but that clock does **not** start at the pick. Sonner exempts a
+`loading` toast from the close timer entirely (`sonner@2.0.7`, `dist/index.mjs:582`), and the id
+keeps the same component instance (`:1146`), so the 4 000 ms is armed by the `toast.success` that
+replaces it — at parse completion, 200 ms more before the element leaves the DOM. Every wait below
+starts from that same instant (`setNotation` and `setOpening(false)` are the two lines before
+`toast.success`), so the parse time cancels out of both sides and the toast is not a race: it is
+reliably on screen and fully painted about a second into a 4.2-second life. That is the real reason
+the wait is not optional — without it every long-score baseline is bound to a success toast carrying
+the filename, over the notation box the shot exists for. It is the one shot in this list that opens
+a file. Wait for it to
 go, after the scroll check:
 
 ```ts
