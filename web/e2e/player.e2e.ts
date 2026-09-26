@@ -1842,6 +1842,43 @@ test('render-select changes which tracks are drawn', async ({ page }) => {
   await expect(page.getByTestId('rendered-track-count')).toHaveText('3', { timeout: 30_000 });
 });
 
+// Two unticks with no redraw between them. A hand almost certainly cannot reach this — the gap
+// measures 16ms on Punk.gp and 65ms on a 5-track, 160-bar score, against the ~250ms a double-click
+// needs to cross the space between two rows — so the pair is dispatched from ONE page task, where
+// nothing can land between them whatever the machine speed. That makes the test about the logic
+// rather than the timing, and it is deterministic: it fails whenever a handler computes its new
+// draw set from renderedIndexes (state, written on the async renderFinished) instead of api.tracks
+// (assigned synchronously by renderTracks). Before the live read it left TWO tracks drawn, with the
+// first one the person hid ticked again.
+test('a second untick before the redraw does not bring the first track back', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  await page.getByTestId('tracks-trigger').click();
+  const drawn = (row: number) =>
+    page.getByTestId(`track-row-${row}`).getByRole('button', { name: /render/i });
+
+  // Draw all three, so hiding two still leaves one and the "at least one track" lock never fires.
+  await drawn(1).click();
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('3', { timeout: 30_000 });
+
+  await page.evaluate(() => {
+    for (const rowIndex of [0, 2]) {
+      const row = document.querySelector(`[data-testid="track-row-${rowIndex}"]`);
+      const button = [...(row?.querySelectorAll('button') ?? [])].find((candidate) =>
+        /render/i.test(candidate.getAttribute('aria-label') ?? candidate.textContent ?? ''),
+      );
+      if (!button) throw new Error(`no render toggle in row ${rowIndex}`);
+      button.click();
+    }
+  });
+
+  // Only the guitar is left. The two drum tracks stay hidden — neither returns.
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1', { timeout: 30_000 });
+  await expect(drawn(0)).toHaveAttribute('aria-pressed', 'false');
+  await expect(drawn(1)).toHaveAttribute('aria-pressed', 'true');
+  await expect(drawn(2)).toHaveAttribute('aria-pressed', 'false');
+});
+
 // The layout switch collapses the mixer to one track and must restore what was drawn before on
 // the way back — both directions reach the engine, not only the ON direction.
 test('the track-layout switch redraws the score both ways', async ({ page }) => {
@@ -2216,6 +2253,11 @@ test('Transpose notation writes a DENSE pitch array and never reloads the MIDI',
 }) => {
   await openFirstScore(page, 'Punk.gp');
   await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+  // Wait for the PLAYER, not only the drawn score. pushSettings('render') calls updateSettings,
+  // which loads the MIDI whenever the player mode has changed — and it is still changing while the
+  // player boots. Recording before then makes this assertion fail on a slow first run for a reason
+  // that has nothing to do with transposition. Observed once, on the first run after a cold build.
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
   const midiLoads = await recordApiCalls(page, 'loadMidiForScore');
 
   await page.getByTestId('tracks-trigger').click();
@@ -2249,6 +2291,46 @@ test('Transpose notation writes a DENSE pitch array and never reloads the MIDI',
 
   // Notation only. If this ever pushes MIDI, the slider's label has to change with it.
   expect(await midiLoads()).toEqual([]);
+});
+
+// transposed.alphatex carries `\transpose 2` on its first track — a chart written two semitones up,
+// the case every other fixture is missing (all twelve report 0). The engine keeps that on the staff
+// NEGATED, as -2, and the Transpose notation row is the only editor for it. A row that started at 0
+// both misreported the open file and turned a return to 0 into an erase: nudge the slider and put it
+// back, and the score sat two semitones under the file with no way back but reopening it.
+test('Transpose notation starts at the transposition the FILE carries, and survives a round trip', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'transposed.alphatex');
+
+  const staffPitch = () =>
+    page.evaluate(() => {
+      const at = (
+        document.querySelector('[data-testid="notation-surface"] > div') as {
+          at?: { score?: { tracks: { staves: { transpositionPitch: number }[] }[] } };
+        } | null
+      )?.at;
+      return at?.score?.tracks[0]?.staves[0]?.transpositionPitch ?? null;
+    });
+
+  // The engine holds the file's own value, negated.
+  expect(await staffPitch()).toBe(-2);
+
+  await page.getByTestId('tracks-trigger').click();
+  const lead = page.getByTestId('track-row-0');
+  await lead.getByRole('button', { name: /more controls/i }).click();
+  const slider = lead.getByRole('slider', { name: /transpose notation/i });
+
+  // The row reports what the file says, in the direction a person reads it.
+  await expect(slider).toHaveAttribute('aria-valuenow', '2');
+
+  // Move it and put it back where it was found. The file's transposition is still there.
+  await slider.focus();
+  await slider.press('ArrowUp');
+  await expect(slider).toHaveAttribute('aria-valuenow', '3');
+  await slider.press('ArrowDown');
+  await expect(slider).toHaveAttribute('aria-valuenow', '2');
+  await expect.poll(staffPitch, { timeout: 30_000 }).toBe(-2);
 });
 
 // Two editors, one value, one writer. The Settings ▸ Player row and the mixer's Master row.

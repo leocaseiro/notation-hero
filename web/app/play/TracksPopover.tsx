@@ -131,8 +131,21 @@ export function TracksPopover({
     setRenderedIndexes(api?.tracks.map((track) => track.index) ?? []);
   });
 
+  // What the rows SHOW. State, so the list re-renders when a draw finishes.
   const drawnIndexes =
     renderedIndexes.length > 0 ? renderedIndexes : (api?.tracks.map((track) => track.index) ?? []);
+
+  // What the engine is drawing RIGHT NOW. Every handler that computes a NEW set to draw reads this,
+  // never drawnIndexes: renderTracks assigns api.tracks synchronously, while renderedIndexes only
+  // catches up on the async renderFinished. A second toggle inside that gap computes from the
+  // pre-toggle set and puts the track just hidden straight back on screen.
+  //
+  // A hand almost certainly cannot reach that gap: measured at 16ms on a 3-track score and 65ms on
+  // a 5-track, 160-bar one, against the ~250ms a real double-click needs to cross the ~80px between
+  // two rows. It widens to 220ms only at a 20x CPU slowdown, where playback is unusable anyway.
+  // This reads the engine because that is the correct source for a set the engine already holds and
+  // it costs one map over a handful of tracks per click — not because the race is reachable.
+  const liveDrawnIndexes = () => api?.tracks.map((track) => track.index) ?? [];
 
   const trackAt = (index: number) => api?.score?.tracks[index];
 
@@ -146,12 +159,13 @@ export function TracksPopover({
       api.renderTracks([score.tracks[index]]);
       return;
     }
-    const chosen = [
-      ...new Set(next ? [...drawnIndexes, index] : drawnIndexes.filter((i) => i !== index)),
-    ].toSorted((a, b) => a - b);
-    // drawnIndexes can still hold an index from a score that has since been replaced (the window
-    // between scoreLoaded and the new score's first renderFinished) — filter to indexes the
-    // OPEN score actually has before touching the engine, or renderTracks dereferences undefined.
+    const live = liveDrawnIndexes();
+    const chosen = [...new Set(next ? [...live, index] : live.filter((i) => i !== index))].toSorted(
+      (a, b) => a - b,
+    );
+    // api.tracks can still hold an index from a score that is being replaced — filter to indexes
+    // the OPEN score actually has before touching the engine, or renderTracks dereferences
+    // undefined.
     const picked = chosen.filter((i) => i < score.tracks.length);
     // AlphaTab cannot draw nothing: an empty list falls back to the first track, and the box
     // the person just cleared would untick itself a moment later. The row disables that control
@@ -262,9 +276,9 @@ export function TracksPopover({
     if (!api || !score) return;
     if (next) {
       // Remember what was drawn so the way back can restore it, then collapse to one track.
-      // Bound-check before indexing: drawnIndexes can still name a track the OPEN score does not
-      // have, in the window between a new score's scoreLoaded and its first renderFinished.
-      const validDrawn = drawnIndexes.filter((i) => i < score.tracks.length);
+      // Bound-check before indexing: api.tracks can still name a track the OPEN score does not
+      // have, in the window while a new score is being swapped in.
+      const validDrawn = liveDrawnIndexes().filter((i) => i < score.tracks.length);
       multiDrawnRef.current = validDrawn;
       const keep = validDrawn.length > 0 ? validDrawn[0] : 0;
       if (keep >= score.tracks.length) return;
