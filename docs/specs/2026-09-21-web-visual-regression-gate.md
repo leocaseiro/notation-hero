@@ -140,10 +140,18 @@ projects: [
   {
     name: 'chromium',
     testMatch: '**/*.vr.ts',
+    // Readiness alone can spend 100 s (30 + 60 + 10) before a pixel is compared, and the
+    // config-wide default is 30 s - see "Readiness". Same number web/e2e/player.e2e.ts
+    // already sets per test at :729, :781 and :812.
+    timeout: 120_000,
     use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
   },
 ],
 ```
+
+A per-project `timeout` is honoured over the 30 s default - measured - and scoping it to
+`chromium` leaves the behaviour project on the budget it runs under today, so no existing test
+silently gets a looser one.
 
 The viewport is pinned explicitly rather than inherited from the device definition, so a Playwright
 upgrade that adjusts `Desktop Chrome` cannot silently invalidate every baseline. The narrow-viewport
@@ -280,10 +288,31 @@ so the player-ready block below can never pass for them and would simply hang.
 ghost hover, tooltip over the header, narrow viewport):
 
 ```ts
-await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible();
-await expect(page.getByTestId('transport-play')).toBeEnabled(); // engine + soundfont ready
-await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0);
+await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
+  timeout: 30_000,
+});
+// engine + soundfont ready
+await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+await expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0, {
+  timeout: 10_000,
+});
 ```
+
+**Those three numbers are the existing lane's, and they only work if the per-test budget is
+raised with them.** Playwright's `expect` default is 5 000 ms, nowhere near what `/play` needs:
+every readiness wait in `web/e2e/a11y.e2e.ts` and `web/e2e/player.e2e.ts` spends 30 000 ms on
+the notation `svg`, 60 000 ms on `transport-play` and 10 000 ms on the bar's unmount. But a
+per-test cap swallows all three - `web/playwright.e2e.config.ts` sets no `timeout`, so each test
+gets Playwright's 30 000 ms default and a higher `expect` ceiling is never reached. Measured on
+this version: `toBeVisible({ timeout: 60_000 })` under a config with no `timeout` fails at
+exactly 30.0 s with "Test timeout of 30000ms exceeded", while the call log still reports
+`Expect "toBeVisible" with timeout 60000ms`. So the pixel project carries its own budget (see
+"One config, two projects").
+
+`a11y.e2e.ts` has this gap today - its 60 000 ms ceilings at `:161` and `:190` are already
+unreachable - and it stays green only because readiness really does arrive inside 30 s. A shot
+does more after readiness than an axe sweep does (`document.fonts.ready`, the 500 ms settle,
+then `toHaveScreenshot`'s two-sample compare), so the pixel lane has _less_ headroom, not more.
 
 **The other three** settle on the signal `web/e2e/a11y.e2e.ts` already uses for that same state:
 
