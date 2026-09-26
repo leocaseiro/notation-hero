@@ -2321,6 +2321,23 @@ test('Transpose notation writes a DENSE pitch array and never reloads the MIDI',
   expect(await midiLoads()).toEqual([]);
 });
 
+/**
+ * The transposition the ENGINE holds for the first track's first staff, read off the live api.
+ *
+ * Negated relative to the file: a score written `\transpose 2` reports -2 here, because the engine
+ * stores how far to shift the notes to get back to concert pitch. Shared by the transposition cases
+ * so the two read the same value the same way.
+ */
+const firstStaffTranspositionPitch = (page: Page): Promise<number | null> =>
+  page.evaluate(() => {
+    const at = (
+      document.querySelector('[data-testid="notation-surface"] > div') as {
+        at?: { score?: { tracks: { staves: { transpositionPitch: number }[] }[] } };
+      } | null
+    )?.at;
+    return at?.score?.tracks[0]?.staves[0]?.transpositionPitch ?? null;
+  });
+
 // transposed.alphatex carries `\transpose 2` on its first track — a score written two semitones up,
 // the case every other fixture is missing (all twelve report 0). The engine keeps that on the staff
 // NEGATED, as -2, and the Transpose notation row is the only editor for it. A row that started at 0
@@ -2331,15 +2348,7 @@ test('Transpose notation starts at the transposition the FILE carries, and survi
 }) => {
   await openFirstScore(page, 'transposed.alphatex');
 
-  const staffPitch = () =>
-    page.evaluate(() => {
-      const at = (
-        document.querySelector('[data-testid="notation-surface"] > div') as {
-          at?: { score?: { tracks: { staves: { transpositionPitch: number }[] }[] } };
-        } | null
-      )?.at;
-      return at?.score?.tracks[0]?.staves[0]?.transpositionPitch ?? null;
-    });
+  const staffPitch = () => firstStaffTranspositionPitch(page);
 
   // The engine holds the file's own value, negated.
   expect(await staffPitch()).toBe(-2);
@@ -2362,6 +2371,37 @@ test('Transpose notation starts at the transposition the FILE carries, and survi
   await slider.press('ArrowDown');
   await expect(slider).toHaveAttribute('aria-valuenow', '2');
   await expect.poll(staffPitch, { timeout: 30_000 }).toBe(-2);
+});
+
+// transposed-wide.alphatex carries `\transpose 24` — two octaves, which is more than the row's
+// original -12..12 rail could hold. It read "+24" beside a thumb reporting 12, and a single ArrowUp
+// committed the clamped 12: the score dropped an octave while the thumb never moved and the number
+// gave no warning. Same class as the case above — the row must not rewrite what the file says —
+// which is why the rail is -24..24 (NH-291).
+test('a file transposed two octaves is held, not narrowed by the first keystroke', async ({
+  page,
+}) => {
+  await openFirstScore(page, 'transposed-wide.alphatex');
+
+  const staffPitch = () => firstStaffTranspositionPitch(page);
+
+  // The engine holds the file's own value, negated — two octaves, not one.
+  expect(await staffPitch()).toBe(-24);
+
+  await page.getByTestId('tracks-trigger').click();
+  const lead = page.getByTestId('track-row-0');
+  await lead.getByRole('button', { name: /more controls/i }).click();
+  const slider = lead.getByRole('slider', { name: /transpose notation/i });
+
+  // The thumb reports what the file says. On the old rail this read '12'.
+  await expect(slider).toHaveAttribute('aria-valuenow', '24');
+
+  // Up from the top is a no-op, and must stay one: on the old rail this same keystroke committed 12
+  // and moved the staff to -12.
+  await slider.focus();
+  await slider.press('ArrowUp');
+  await expect(slider).toHaveAttribute('aria-valuenow', '24');
+  await expect.poll(staffPitch, { timeout: 30_000 }).toBe(-24);
 });
 
 // Two editors, one value, one writer. The Settings ▸ Player row and the mixer's Master row.

@@ -379,8 +379,15 @@ const TrackRow = ({
                 setFullDraft(null);
                 onTransposeFullChange(next);
               }}
-              min={-12}
-              max={12}
+              // Wider than the Transpose audio row above on purpose. That one is a plain offset
+              // that always starts at zero, so an octave each way is plenty. This one is SEEDED
+              // from the file, and a file can carry more than an octave — measured, alphaTex
+              // parses \transpose 24. On a -12..12 rail such a file read "+24" beside a thumb
+              // reporting 12, and one arrow key committed the clamped 12 and moved the score down
+              // an octave while the thumb did not move at all. The rail has to be able to hold
+              // what a file can carry.
+              min={-24}
+              max={24}
               step={1}
               label={`${name} Transpose notation`}
               showReadout
