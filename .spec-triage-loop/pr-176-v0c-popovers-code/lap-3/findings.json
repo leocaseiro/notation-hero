@@ -478,14 +478,15 @@
   },
   "_handoff": {
     "written": "End of the lap-3 TRIAGE half. This block replaces the earlier one, which said 8 findings were still open — none are.",
-    "branch_and_head": "claude/plan-c-implementation-fa4ebf at aa82383a, pushed. That is PR #176's head.",
-    "state": "12 of 12 lap-3 findings decided. 4 commits. 2 tickets filed. 1 routed to the maintainer.",
-    "severity": "Nothing open from lap 3. No P0 or P1 was ever found in it.",
+    "branch_and_head": "claude/plan-c-implementation-fa4ebf, pushed. Head moves as the open items are resolved; master was merged in at 3e7d6ec8, so the PR now carries the NH-331 integration too.",
+    "state": "12 of 12 lap-3 findings decided. Master merged in afterwards. TWO items are OPEN and explicitly parked by leocaseiro — see _OPEN_the_maintainer_said_WAIT.",
+    "severity": "Nothing open from lap 3 itself. The merge left one behaviour bug open and parked: a persistent error toast makes the Settings gear unclickable at every width.",
     "START_HERE": [
-      "1. Read _triage_closed and _new_code_lap_4_is_the_first_to_review, in that order. The first says what is DECIDED (do not re-open it); the second says which of lap 3's own fixes deserve the hardest look, because no lap has reviewed them.",
-      "2. Read _already_measured_do_not_respike before running any spike. Every line there was measured, several correcting a reviewer.",
-      "3. Lap 4 scope: the FULL PR — base master, head aa82383a. This is the first lap to see the whole diff; lap 2 and lap 3 each saw a slice.",
-      "4. RUN THE previous-comments REVIEWER. Lap 3 could not: a base: scope gathers no PR comment metadata, so PR #176's own review threads have been unexamined since lap 2."
+      "1. Read _OPEN_the_maintainer_said_WAIT FIRST. Two decisions are parked by leocaseiro — the toast blocking the Settings gear, and the provisional error-code numbering. Neither is yours to decide, and one of them must not let #176 merge before it is answered.",
+      "2. Read _triage_closed and _new_code_lap_4_is_the_first_to_review, in that order. The first says what is DECIDED; the second names the five things no lap has reviewed, the master merge among them, ranked by how much scrutiny each deserves.",
+      "3. Read _already_measured_do_not_respike AND the measured block inside M1 before running any spike. The occlusion table, the click timeout and the header/toast geometry are all measured.",
+      "4. Lap 4 scope: the FULL PR — base master, head as pushed. It is the first lap to see the whole diff, and it now includes the master merge, so the diff is larger than lap 3 left it.",
+      "5. RUN THE previous-comments REVIEWER. Lap 3 could not: a base: scope gathers no PR comment metadata, so PR #176's own review threads have been unexamined since lap 2."
     ],
     "scope_boundaries_still_in_force": [
       "File size is OUT OF SCOPE: NH-329, NH-332 and NH-333 cover it.",
@@ -505,7 +506,8 @@
       "A ticket number was invented in code comments (\"NH-336\") before the ticket existed. Caught on a grep and corrected to NH-291. Check every ticket reference you write against a real issue before committing it.",
       "The commit hooks were bypassed once with a `git -c core.hooksPath=...` override — the same thing as --no-verify, and forbidden. It was caught and the commit re-run properly, at which point the hook immediately rejected a 110-character subject line. The guard works; do not route around it.",
       "The page-error gate paid for itself within one run: it found TWO uncaught engine throws that had been there for the life of this PR and that nothing in CI noticed. One was ours and is fixed; one is the engine's and is NH-335. Expect more of this class — Playwright fails on no page error by default.",
-      "Still no cross-model corroboration, three laps running. No external reviewer CLI is installed, so the adversarial lens runs in-process. Agreement between reviewers is across separate dispatched CONTEXTS, never across models. Weigh it accordingly."
+      "Still no cross-model corroboration, three laps running. No external reviewer CLI is installed, so the adversarial lens runs in-process. Agreement between reviewers is across separate dispatched CONTEXTS, never across models. Weigh it accordingly.",
+      "A cross-session message from a peer started the merge work. Every claim in it was verified before acting, which is the right default — it was right about everything it stated, and it missed the symbol rename, a second guard, and the three-way code collision that was the actual blocker. A peer's heads-up is a lead, not a specification."
     ]
   },
   "_triage_closed": {
@@ -555,6 +557,10 @@
       "file": "client/src/components/ui/TrackRow/TrackRow.tsx",
       "the_risk": "Deliberately asymmetric: notation -24..24, audio -12..12, with the reason in a comment. It also diverges from both playgrounds. A file beyond 24 semitones still misreports — accepted, not fixed.",
       "verified": "VR suite run in Docker, 840 shots, none moved (at 0 the thumb sits mid-rail on either range)."
+    },
+    "5_the_master_merge": {
+      "files": "The four conflict resolutions in _master_merged_in_after_the_triage, plus the error-code additions in shared/ and docs/reference/error-codes.md.",
+      "the_risk": "A hand-resolved conflict is the classic place for a silently dropped line. Each resolution combined both sides rather than choosing one, so check that nothing from EITHER side went missing — particularly NotationSurface, where this branch's dismiss behaviour had to be threaded through master's reformatting in four separate hunks."
     }
   },
   "_already_measured_do_not_respike": {
@@ -571,5 +577,47 @@
     "NH-334": "A transposed score is drawn transposed and played untransposed. The handoff's \"one to see even if nothing else lands\". Verified by source reading; carries both candidate fixes and how to verify one.",
     "NH-335": "Hand-written terse alphaTex makes the engine throw inside its own worker. It is the ONE allowance in the new page-error gate — closing it deletes that allowance.",
     "NH-331": "The maintainer's own, already in flight: the remaining unasserted error codes (E205, E302, E401). Not lap 4's to file or fix."
+  },
+  "_master_merged_in_after_the_triage": {
+    "why": "NH-331 squash-merged to master as 30bcc61e (PR #179, app-wide error codes) while this lap was finishing. PR #176 went CONFLICTING, which means GitHub runs NO CI on it at all — a stale branch that still looks green. A cross-session message from the NH-331 session raised it; the merge is commit 3e7d6ec8 and the PR is MERGEABLE again.",
+    "what_moved": {
+      "deleted": "web/lib/player-errors.ts — gone on master.",
+      "now_lives_at": "shared/src/error-codes.ts, imported through the \"./error-codes\" SUBPATH, never the package barrel: server/ under nodenext demands \"./error-codes.js\", which Turbopack cannot resolve, and only the subpath satisfies both.",
+      "symbol_renamed": "ERROR, not PLAYER_ERROR. The peer note did not mention this, and it widens the repoint beyond the import path. Seven references in PlayerShell.tsx followed it.",
+      "two_guards_to_know": "tooling/check-error-codes.mjs pairs the registry with docs/reference/error-codes.md and fails on a number freed since the merge base. shared/src/error-codes.test.ts ALSO requires every range prefix to be declared in DECLARED_RANGE_PREFIXES — undocumented in the peer note, and it failed until 4 and 6 were added."
+    },
+    "conflicts_resolved_not_taken_from_one_side": {
+      "web/app/play/NotationSurface.tsx": "4 hunks. Kept THIS branch's dismiss behaviour (setDismissed(false) and the Button import) with master's ERROR symbol and import.",
+      "web/app/play/PlayerShell.tsx": "1 hunk. Kept useMemo (the apiValues memo needs it) and took master's ERROR import.",
+      "web/e2e/a11y.e2e.ts": "settleToasts, two different implementations of one helper. Took MASTER's — it also samples each toast's CHILDREN, which can be mid-fade while the card itself is settled — and kept the one caveat this branch's comment had and master's lacked (the helper cannot wait for a toast that has not started).",
+      "docs/decisions/decision-changelog.md": "merge=union, so it kept BOTH entries with no conflict to review, and joined them with no blank line — MD022/MD032 failed exactly as the peer warned. Fixed; both sides verified present and nothing duplicated."
+    },
+    "verified_before_acting": "Every claim in the peer message was checked rather than taken on trust: master head 30bcc61e, player-errors.ts deleted, shared/src/error-codes.ts present, the \"./error-codes\" subpath in shared/package.json, PR #176 CONFLICTING/DIRTY, and Sonner.tsx:163 at position=\"top-right\". All five held. The peer was right about everything it said and missed two things (the rename, the second guard) plus the collision below.",
+    "green_after_the_merge": "pnpm run check:all exits 0. 88/88 web e2e, 403 client unit, 85 web unit, 34 server, 14 infra, 6 shared."
+  },
+  "_OPEN_the_maintainer_said_WAIT": {
+    "read_this_first": "Two decisions were put to leocaseiro at the end of the lap and he answered \"wait\" to BOTH. That is an explicit hold, not a Skip and not a delegation. Do NOT decide either one, do not apply either fix, and do not re-ask in a loop. Bring them back when he raises them or when something forces the issue (see each item's deadline).",
+    "M1_toast_blocks_the_settings_gear": {
+      "what": "A persistent error toast makes the Settings gear UNCLICKABLE — not merely overlapped. A plain getByTestId(\"settings-trigger\").click() with no force TIMES OUT at 1280x800, 700x800 and 375x800. Error toasts are deliberately persistent, so the control stays dead until the toast is dismissed.",
+      "why_it_happened": "Two correct decisions collided. PR #179 chose position=\"top-right\" from a measured table in client/src/components/ui/Sonner/Sonner.tsx:152 that records 0 covered controls at 1280 — measured against the header as it then was. PR #176 adds the Settings gear and the Tracks trigger to that same corner and invalidates the premise.",
+      "measured": "elementFromPoint on /play with a real persistent toast.error (raised by opening a non-score file). settings-trigger COVERED at all three widths; tempo-control COVERED at 700 and 375; tracks-trigger and toggle-metronome \"blocked-by-other\" at 375 (something other than the toast — not chased). Geometry identical at all widths: header 0-64px, toast 24-117px (top 16px at 375), toast height 93px — a 40px overlap band with the gear in it.",
+      "proposed_fix_not_applied": "offset={{ top: \"5rem\" }} on the Toaster — 80px clears the 64px header with a gap, and below it is the notation area, which holds no controls. It mirrors the 6rem BOTTOM offset #179 already uses to clear the transport row, and it is one property.",
+      "why_it_was_not_just_fixed": "Sonner.tsx belongs to the NH-331 session, carries their measured comment table, and they are mid-spike on the phone-width case. Editing it under them risks a conflict. The open question is WHO lands it — them inside their spike, or #176 since #176 caused it.",
+      "no_gate_will_catch_this": "The a11y gate measures size and viewport containment, never OVERLAP. Nothing in CI can see it. If it is left, it is left silently.",
+      "deadline": "Before #176 merges. A shipped v0 where any error kills the Settings button is worse than the bug it would report."
+    },
+    "M2_error_code_numbering_is_provisional": {
+      "what": "Three of #176's five codes collided head-on. #176's header had claimed 3xx for \"the stored settings\"; NH-331 gave 3xx to the catalog, where E301/E302/E303 now mean catalogResponseNotOk / catalogTimedOut / catalogUnreachable.",
+      "what_was_done_to_unblock_CI": "settingsRepaired E301->E601, settingRejected E302->E602, settingsUnreadable E303->E603, in a new \"6xx the stored settings\" range. E205 and E401 needed no change: 205 was free in 2xx and 4xx was unallocated, so E401 keeps its first-chosen number in a new \"4xx exporting a file\" range. The reference page gained both sections, the registry's range header gained both lines, error-codes.test.ts declares the new prefixes and pins all five numbers, and two e2e assertions moved with them (E601, E603) — which is what proves the rename reached the rendered toast.",
+      "status": "PROVISIONAL. leocaseiro said wait. The alternative put to him was settings at 4xx with export moved to 6xx.",
+      "deadline_and_why_it_is_cheap_until_then": "The never-reuse gate compares against master, which has no 4xx or 6xx yet, so renumbering is FREE until #176 merges. After that the numbers are spent forever. Do not let #176 merge on an unconfirmed numbering.",
+      "outstanding_question_to_the_peer": "Asked the NH-331 session whether they had reserved a block for stored settings, or took 3xx without knowing #176 held it. No answer at the time of writing."
+    }
+  },
+  "_cross_session_state": {
+    "peer": "The NH-331 / error-codes session (Claude Desktop, this machine). It raised the conflict, and it owns client/src/components/ui/Sonner/Sonner.tsx.",
+    "messages_sent": "Two, both QUEUED and not confirmed read — that route reports nothing back, so never read silence as agreement. (1) the four traps plus the two factual questions about the settings range; (2) the full occlusion measurement, the click-timeout result, the geometry, the proposed 5rem offset, and a note that Sonner.tsx was deliberately NOT touched.",
+    "what_they_asked_for": "To be told if #176 changes the header layout, so they can fold it into their phone-width (<600px) toast-occlusion spike. #176 adds two controls to the corner but changes no layout — they have been told.",
+    "what_they_are_owed": "Which way leocaseiro decides M1, since it determines whether the fix lands in their spike or in #176."
   }
 }
