@@ -48,6 +48,12 @@ async function expectHitAreas(
   // transitional frame.
   await settleToasts(page);
   const { scanned, sliders, tooSmall } = await page.evaluate(() => {
+    // The VISUAL viewport, not innerWidth. innerWidth grows with the layout, so a control pushed
+    // off-screen BY horizontal overflow inflates the very number it is measured against: on a
+    // 375px phone with the Tracks popover open (512px, fixed width) innerWidth reported 517 while
+    // the screen was still 375. Measured, not assumed. visualViewport reports what a person can
+    // actually see; the fallback keeps this working anywhere it is missing.
+    const viewportWidth = globalThis.visualViewport?.width ?? globalThis.innerWidth;
     const controls = [
       // The last selector is the seek rail. A Base UI slider's 44 px pointer target is neither a
       // button nor a link: the nested input[type="range"] is sized to its 16 px thumb by design
@@ -153,7 +159,7 @@ async function expectHitAreas(
           }
           const contentTop = r.top - ar.top + scrollAncestor.scrollTop;
           if (
-            r.right > globalThis.innerWidth + 0.5 ||
+            r.right > viewportWidth + 0.5 ||
             r.left < -0.5 ||
             contentTop < -0.5 ||
             contentTop + r.height > scrollAncestor.scrollHeight + 0.5
@@ -161,7 +167,7 @@ async function expectHitAreas(
             return true;
           }
         } else if (
-          r.right > globalThis.innerWidth + 0.5 ||
+          r.right > viewportWidth + 0.5 ||
           r.left < -0.5 ||
           r.bottom > globalThis.innerHeight + 0.5 ||
           r.top < -0.5
