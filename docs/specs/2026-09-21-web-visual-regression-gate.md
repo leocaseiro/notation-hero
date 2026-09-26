@@ -605,6 +605,22 @@ it was planned rather than smuggled in.
 - `web/.gitignore` — the darwin-baseline line.
 - `.github/workflows/ci.yml` — the new `web` job, the trimmed `e2e` job, the four artifact names,
   the `vr-report` download rename, the corrected comment, and `ci-green`'s `needs:`.
+- `tooling/workflow-guards.test.mjs` — the Node test that pins today's `e2e` job in source, and
+  the one file in this list whose failure you cannot see before pushing. Two assertions break:
+  `:40` requires a literal `run: pnpm --filter @notation-hero/web run test:e2e` line, which the
+  trimmed `e2e` job no longer has, and `:44` requires a
+  `pnpm --filter @notation-hero/web exec playwright install --with-deps chromium` line, which the
+  container job deliberately does not need. Both must be repointed at the new `web` job — the test
+  case is even named _"the e2e job runs the web Playwright lane, not only the client one"_, which
+  stops being what the workflow does. Two more (`:47`, `:48`) require the literals
+  `web/playwright-report/` and `web/test-results/` to appear in `ci.yml`, so the new job's `path:`
+  list must keep those exact spellings, trailing slash included. And `:51` pins `e2e,` in
+  `ci-green`'s `needs:` as the proof the lane blocks merge; after the move that proof is `web,`, so
+  the new job needs its own assertion or the guard no longer guards what its comment claims.
+  **It runs only in CI:** via the ROOT `pnpm run test:tooling` (`ci.yml:105`, inside the `quality`
+  job `ci-green` waits on), while the pre-push hook runs `pnpm -r --if-present run test`, which
+  pnpm scopes to "5 of 6 workspace projects" — the root is excluded, so the script is never
+  reached. Green push, red CI. Run `pnpm run test:tooling` by hand before pushing this one.
 - `client/README.md` — lines 178 and 216 name `playwright-vr-report` and `playwright-e2e-report`.
   Both become the renamed `playwright-client-*` artifacts.
 - `docs/runbooks/vr-a11y-testing.md` — line 50 names `playwright-e2e-report`, and lines 27-34 hold
