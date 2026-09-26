@@ -1,0 +1,1 @@
+import{i as e}from"./preload-helper-DY1ixdAW.js";import{n as t,t as n}from"./useRenderElement-Cv_p_-3N.js";function r(e){return t(e.defaultTagName??`div`,e,e)}var i=e((()=>{n()})),a=e((()=>{i()}));export{i as n,r,a as t};
