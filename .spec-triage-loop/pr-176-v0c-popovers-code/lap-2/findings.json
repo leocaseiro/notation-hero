@@ -9,12 +9,12 @@
     "review_skill": "compound-engineering:ce-code-review",
     "review_mode": "mode:agent pr:176 (report-only; no silent edits, so step 2b is empty)",
     "run_dir": "/tmp/compound-engineering-501/ce-code-review/20260925-234637-32660f5b",
-    "FINDING_COUNT_OPEN": 10,
+    "FINDING_COUNT_OPEN": 8,
     "FINDING_COUNT_ALREADY_APPLIED": 6,
     "severity_mix_open": {
       "P1": 0,
       "P2": 6,
-      "P3": 4
+      "P3": 2
     },
     "triage_cap_note": "14 findings still open, NONE of them P1 — the highest remaining are P2.",
     "reviewers_run": [
@@ -39,9 +39,14 @@
     "binding": "This file. NOT the plan's frontmatter (that holds the DOC-review loop's state).",
     "code_lap": 2,
     "code_last_applied": "P1",
-    "triaged": "partial — 15 of 25 decided; 10 open, no P1 left",
+    "triaged": "partial — 18 of 25 decided; 8 open, no P1 left",
     "next": "Continue triaging the remaining findings, then lap 3 (unreviewed code only, full files), then lap 4 (full PR).",
-    "lap_decision": "RE-LAP. Step 7(b): P1s were applied this lap (O1, O2, O3, O5 plus the folded-in O11/O12), and the exit signal was never clean. Step 7(a) did NOT fire: lap 2 of a 5-lap cap, and unresolved P1 count fell from 6 to 1, so the no-progress bound is clear. A re-lap must start as a NEW invocation with a fresh review half."
+    "lap_decision": "RE-LAP. Step 7(b): P1s were applied this lap (O1, O2, O3, O5 plus the folded-in O11/O12), and the exit signal was never clean. Step 7(a) did NOT fire: lap 2 of a 5-lap cap, and unresolved P1 count fell from 6 to 1, so the no-progress bound is clear. A re-lap must start as a NEW invocation with a fresh review half.",
+    "tickets_filed": [
+      "NH-328 (secondary-voices colour control)",
+      "NH-329 (split settings-schema)",
+      "NH-330 (mobile portrait UI)"
+    ]
   },
   "_exit_signal": {
     "clean": false,
@@ -183,25 +188,6 @@
       "title": "A non-finite stored number clamps to min regardless of sign",
       "whats_wrong": "The comment claims the value is pinned to 'the nearer end', but the code pins to min unconditionally - so a stored 1e999 zoom restores as 0.25.",
       "note": "Lap 1's own code and comment disagree."
-    },
-    {
-      "id": "O22",
-      "severity": "P3",
-      "confidence": 50,
-      "raised_by": ["adversarial"],
-      "file": "web/e2e/a11y.e2e.ts",
-      "line": 108,
-      "title": "The scroll-ancestor walk climbs past overflow:hidden clippers",
-      "whats_wrong": "Only auto/scroll match, so a permanent clipper is skipped; and an overflow-x-hidden ancestor computes overflow-y:auto and is mis-adopted as a scroller - a rule Table.tsx already documents."
-    },
-    {
-      "id": "O24",
-      "severity": "P3",
-      "confidence": 50,
-      "raised_by": ["correctness"],
-      "file": "web/e2e/a11y.e2e.ts",
-      "line": 131,
-      "title": "The gate checks horizontal clipping against the window, not the scroll box"
     }
   ],
   "notable_clears": [
@@ -520,5 +506,47 @@
     ],
     "cap_note": "15 of 25 now decided across 7 picker rounds, past the 12-finding / 5-round ceiling. Continued on the maintainer's explicit instruction; recorded here so the override is visible.",
     "auto_resolved": "Two were applied without a picker under a standing instruction granted this session: trivial 100%-confident fixes and test/type improvements are auto-resolved and reported, never asked."
+  },
+  "_triage_lap_2_round_5": {
+    "ran": "Triage half, invocation 2 continued.",
+    "findings_decided": 2,
+    "decided": [
+      {
+        "id": "O22",
+        "severity": "P3",
+        "confidence": 50,
+        "raised_by": ["adversarial"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 108,
+        "title": "The scroll-ancestor walk climbs past overflow:hidden clippers",
+        "whats_wrong": "Only auto/scroll match, so a permanent clipper is skipped; and an overflow-x-hidden ancestor computes overflow-y:auto and is mis-adopted as a scroller - a rule Table.tsx already documents.",
+        "triage": {
+          "decision": "Drop — maintainer chose to discard entirely, nothing to reproduce",
+          "scenario": "The finding implies a control is cut off and unreachable, but the test picks the wrong parent box when deciding whether it is merely scrolled out of view, and excuses it.",
+          "spike": "CSS RULE REAL, TRIGGER ABSENT. Verified in a browser that `overflow-x: hidden` makes overflow-y compute to `auto` — even when overflow-y:visible is written explicitly — so a purely horizontal clipper would be adopted as a vertical scroller. But the tree was checked: the only permanent clipper above these controls is PlayerShell's `<main className=\"flex h-dvh flex-col overflow-hidden\">`, whose box IS the viewport, so the existing window check already covers it; and the only overflow-x-hidden in the design system (DropdownMenu) explicitly pairs overflow-y-auto, so adopting it is correct. Nothing in Tracks or Settings triggers either hole.",
+          "why_dropped": "The maintainer asked how to reproduce it and there is no answer — it is a trap for future code, not a present defect. He chose to discard rather than ticket."
+        }
+      },
+      {
+        "id": "O24",
+        "severity": "P3",
+        "confidence": 50,
+        "raised_by": ["correctness"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 131,
+        "title": "The gate checks horizontal clipping against the window, not the scroll box",
+        "triage": {
+          "decision": "Apply — AUTO-RESOLVED under the standing test-fix instruction, after the spike made the approach certain",
+          "commit": "a6b7f178",
+          "scenario": "On a phone, a control sits completely off the right of the screen with no way to scroll to it — and the test that exists to catch exactly that passes, because the overflow pushing the control away also inflated the width the test compares against.",
+          "spike": "MEASURED IN A BROWSER, and it reframed the finding. The artifact called this 'checked against the window, not the scroll box'; the sharper truth is that innerWidth ITSELF lies. On a 375px phone with the Tracks popover open: visualViewport.width 375, innerWidth 517, documentElement.scrollWidth 517. The fix uses visualViewport.width with an innerWidth fallback. The risk worth checking was the OPPOSITE direction — visualViewport excludes a scrollbar where innerWidth includes it, which could newly fail edge controls — so all nine cases were run: 9 passed, nothing moved."
+        }
+      }
+    ],
+    "new_finding_found_during_triage": {
+      "summary": "Investigating O24 in a real browser surfaced a defect no reviewer found: the Tracks popover is 512px FIXED width, so on a 375px phone it hangs 142px off the screen and forces the whole page to scroll sideways. The maintainer then reported the transport footer is also bad on a phone; measured on iPhone SE (375x667), the Tracks BUTTON sits at right 397 against a 375px screen and the page does NOT scroll sideways there, so it is simply unreachable. The score area also renders blank in portrait.",
+      "decision": "Mobile portrait is deferred to its own PR — LANDSCAPE ONLY for now, at the maintainer's direction, because landscape works well. Filed as NH-330 with all three problems, the measurements, the one-line max-w-(--available-width) starting point, and a note that the accessibility suite's narrowest case is 700px so CI has never seen any of it.",
+      "ticket": "NH-330"
+    }
   }
 }
