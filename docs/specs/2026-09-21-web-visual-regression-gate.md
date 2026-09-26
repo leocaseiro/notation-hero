@@ -451,18 +451,29 @@ shadowing `web/.next` during a `client/` run is harmless, so both packages share
 - **The PR template needs no edit.** Item _"If this PR changed UI, I added or updated the VR tests
   for it"_ already reads correctly; it simply starts applying to `web/` changes once this lands.
 
-## Open questions for review
+## A failing run gives you a zip, not a hosted diff — deliberately
 
-1. **Should a failing `web` VR publish its diff report to gh-pages?** GitHub's own image views
-   (2-up / Swipe / Onion Skin) only compare **committed** baseline PNGs that a pull request
-   modifies — so they cover an _intended_ visual change and cannot show a _failing_ run, where no
-   baseline was updated and therefore no file changed. `client/` fills that gap with the `vr-report`
-   job (`docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md`); `web/` as specced leaves a red run
-   needing an artifact download. Extending it is about 100 lines of YAML with four client-hardwired
-   values (the artifact name, the publish path, the comment marker, and the cleanup sweep in
-   `storybook-preview.yml`). Weigh that against the evidence that the `client/` mechanism has left no
-   trace on `gh-pages` — no `vr-report/pr/*` path exists — so it may never have fired since it
-   shipped.
+Decided 2026-09-26. GitHub's own image views (2-up / Swipe / Onion Skin) compare **committed**
+baseline PNGs that a pull request modifies. That covers an **intended** visual change completely and
+needs nothing built. It cannot show a **failing** run, because a failing run updates no baseline, so
+no file changes and the Files tab has nothing to show — the diff exists only inside the Playwright
+report in the CI artifact.
+
+`client/` fills that gap with the `vr-report` job, which publishes its report to GitHub Pages and
+links it from a sticky comment (`docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md`). `web/`
+does **not** get an equivalent, for two reasons:
+
+- **The evidence says it is unproven.** `gh-pages` carries no `vr-report/pr/*` path, and the only
+  pull request mentioning its comment marker is the one that built it (#122). Either `client/` VR
+  has never failed on a pull request since it shipped, or every publish was swept on close. Either
+  way the mechanism has not been exercised.
+- **It costs more than the gate.** About 100 lines of workflow, with four values hard-wired to
+  `client/`: the artifact name, the publish path, the comment marker, and the cleanup sweep in
+  `storybook-preview.yml`. Extending it means duplicating both jobs or reworking them into a matrix.
+
+So a red `web` VR is read the way any other Playwright failure is: download `playwright-web-vr-report`
+from the run's Artifacts and open it with `npx playwright show-report`. Revisit the day that download
+becomes a real annoyance — then there is a measured case to size the work against.
 
 ## Process changes this carries
 
