@@ -181,6 +181,58 @@ test('reports the raw string on Enter, never per keystroke', async () => {
   expect(onChange).toHaveBeenLastCalledWith('#2DD4BF!');
 });
 
+// The `validate` gate, which every one of the thirteen validated rows depends on — the twelve font
+// rows and the secondary-voice colour. Both of its branches are covered here, because a row that
+// silently accepted a rejected draft would put the value straight into the engine and into storage:
+// the font validator is what refuses an apostrophe or an angle bracket, and AlphaTab builds its
+// `<text style='font:…'>` as a SINGLE-quoted attribute assigned as markup.
+test('a text row REFUSES a draft its validator rejects, and visibly reverts', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  const validate = vi.fn(() => false);
+  render(
+    <SettingRow
+      id="title-font"
+      label="Title font"
+      control={{ kind: 'text', validate }}
+      value='12px "Times New Roman"'
+      onChange={onChange}
+    />,
+  );
+
+  const input = screen.getByRole('textbox', { name: 'Title font' });
+  await user.clear(input);
+  await user.type(input, '12px <image onerror=x>');
+  await user.tab(); // blur commits
+
+  expect(validate).toHaveBeenCalledWith('12px <image onerror=x>');
+  // Never reported, so it reaches neither the engine nor storage.
+  expect(onChange).not.toHaveBeenCalled();
+  // And the row shows the old value again, so a rejected draft cannot look applied.
+  expect(input).toHaveValue('12px "Times New Roman"');
+});
+
+test('a text row ACCEPTS a draft its validator allows, and reports the typed string', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  render(
+    <SettingRow
+      id="title-font"
+      label="Title font"
+      control={{ kind: 'text', validate: () => true }}
+      value="12px serif"
+      onChange={onChange}
+    />,
+  );
+
+  const input = screen.getByRole('textbox', { name: 'Title font' });
+  await user.clear(input);
+  await user.type(input, '14px monospace');
+  await user.tab();
+
+  expect(onChange).toHaveBeenCalledWith('14px monospace');
+});
+
 // The Export group: a row whose control is a command, not a value.
 test('an action row renders a named button and reports the press, never a value', async () => {
   const user = userEvent.setup();
