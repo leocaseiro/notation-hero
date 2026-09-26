@@ -37,8 +37,8 @@
 // vercel.json is JSON and cannot carry that reasoning itself, which is why it lives here.
 //
 // globals.css keeps this folder out of Tailwind's automatic source detection. Without that, the
-// check defeats itself: naming a utility here is enough for Tailwind to GENERATE it, so all five
-// would be present no matter what the design-system scan did.
+// check defeats itself: naming a utility here is enough for Tailwind to GENERATE it, so the three
+// plainly-written entries would be present no matter what the design-system scan did.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
