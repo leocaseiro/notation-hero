@@ -1790,7 +1790,7 @@ test('a single out-of-range setting is corrected and the warning NAMES it', asyn
 
   const toast = page.locator('[data-sonner-toast]');
   await expect(toast).toContainText('Zoom');
-  await expect(toast).toContainText('Error E301');
+  await expect(toast).toContainText('Error E601');
   // It must NOT claim a reset: the other settings were untouched, and Zoom landed on its maximum
   // rather than its default.
   await expect(toast).not.toContainText('reset to the defaults');
@@ -1815,7 +1815,7 @@ test('a corrupt stored value resets with a toast, and the player still starts', 
   await page.goto('/play');
 
   await expect(page.locator('[data-sonner-toast]')).toContainText('reset to the defaults');
-  await expect(page.locator('[data-sonner-toast]')).toContainText('Error E303');
+  await expect(page.locator('[data-sonner-toast]')).toContainText('Error E603');
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
   await expect
     .poll(async () => {

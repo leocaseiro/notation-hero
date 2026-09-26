@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
 // check noticed (NH-335).
 //
 // It matters more in this lane than in most. The player's failures are reported to the person by
-// error code (web/lib/player-errors.ts), and the whole point of that table is that an engine
+// error code (shared/src/error-codes.ts), and the whole point of that table is that an engine
 // failure is never silent. An uncaught throw the lane ignores is the opposite of that promise.
 //
 // Deliberately not `page.on('pageerror', () => { throw … })`: a throw inside an event handler

@@ -1,13 +1,13 @@
 'use client';
 
 import { Button, Skeleton } from '@notation-hero/client';
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 import { selectDrumTrackIndexes } from '../../lib/alphatab/drum-tracks';
 import { clearTrackTranspositions } from '../../lib/alphatab/live-settings';
 import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
-import { PLAYER_ERROR } from '../../lib/player-errors';
 import type { OpenNotation } from './PlayerShell';
 import type * as AlphaTab from '@coderline/alphatab';
 import type { RefObject } from 'react';
@@ -114,9 +114,7 @@ export function NotationSurface({
     // Chromium). Text-font checkers have system fallbacks, hence the family filter.
     const onFontError = (event: FontFaceSetLoadEvent) => {
       if (event.fontfaces.some((face) => face.family.startsWith('alphaTab'))) {
-        setFontError(
-          `Error ${PLAYER_ERROR.musicFontFailed}: the music font could not be downloaded`,
-        );
+        setFontError(`Error ${ERROR.musicFontFailed}: the music font could not be downloaded`);
         setDismissed(false);
       }
     };
@@ -126,7 +124,7 @@ export function NotationSurface({
     // 60 s. Long on purpose — the 306 KB font on a slow link must not trip it.
     timeoutRef.current = globalThis.setTimeout(() => {
       setFontError(
-        `Error ${PLAYER_ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
+        `Error ${ERROR.musicFontTimeout}: the music font did not arrive within 60 seconds`,
       );
       setDismissed(false);
     }, 60_000);
@@ -140,7 +138,7 @@ export function NotationSurface({
   // The SoundFont download failure surfaces through AlphaTab's own error event; the engine import
   // failure cannot (AlphaTabApi does not exist yet) and arrives through engineError below.
   useAlphaTabEvent(api, 'error', (cause) => {
-    setRuntimeError(`Error ${PLAYER_ERROR.engineRuntime}: ${String(cause)}`);
+    setRuntimeError(`Error ${ERROR.engineRuntime}: ${String(cause)}`);
     setDismissed(false);
   });
   // AlphaTab forwards the raw XMLHttpRequest ProgressEvent, so two numeric cases are real:
@@ -196,7 +194,7 @@ export function NotationSurface({
   });
 
   const failure = engineError
-    ? `Error ${PLAYER_ERROR.engineImport}: ${engineError.message}`
+    ? `Error ${ERROR.engineImport}: ${engineError.message}`
     : (runtimeError ?? fontError);
 
   return (

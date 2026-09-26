@@ -50,3 +50,24 @@ test('the e2e job runs the web Playwright lane, not only the client one', () => 
   // for that, so a step that runs inside a job nothing waits on is not a gate.
   assert.match(ci, /^\s+e2e,$/m);
 });
+
+// NH-331: the error-code drift gate is only a gate while its job is one ci-green waits on, and it
+// only sees a docs-only change because it lives in `lint` (gated on code || docs_or_config) rather
+// than `quality` (gated on `code`, which does not match docs/**).
+test('the error-code gate runs in the lint job', () => {
+  assert.match(workflow('ci.yml'), /^\s+run: pnpm run check:error-codes$/m);
+});
+
+test('lint is a job ci-green waits on, so the error-code gate can block a merge', () => {
+  assert.match(workflow('ci.yml'), /^\s+lint,$/m);
+});
+
+test('the lint job fetches enough history for the never-reuse comparison', () => {
+  // check:error-codes is fail-closed when it cannot resolve a base revision, so a shallow
+  // checkout would turn the whole gate red rather than skipping quietly.
+  const lintJob =
+    workflow('ci.yml')
+      .split(/^  lint:$/m)[1]
+      ?.split(/^  [a-z][a-z0-9-]*:$/m)[0] ?? '';
+  assert.match(lintJob, /fetch-depth: 0/);
+});

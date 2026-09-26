@@ -83,6 +83,70 @@ scrollHeight]`) instead of the window — horizontally unchanged, since this anc
   its own and is covered by the popover-open e2e cases and `client/`'s existing Tooltip/Popover/
   Button baselines that it composes.
 
+### 2026-09-26 — Error codes become app-wide and machine-checked; error toasts stop vanishing (NH-331, NH-311)
+
+The player's error numbers were a good convention trapped in the wrong package. `PLAYER_ERROR`
+lived in `web/lib/player-errors.ts`, which `client/` and `server/` cannot import, so three failures
+a person or an operator meets carried no number at all: the catalog page's "Could not reach the API
+right now.", and the two byte-identical `{ message: 'Service unavailable' }` 503s — one for a
+Lambda that never booted, one for a request that failed inside a running one.
+
+**Decisions leocaseiro made, with what each was chosen over:**
+
+- **One registry, globally unique numbers, ranges per area inside the one file** — over a registry
+  per package or per area. His words: a number must never repeat across areas, so one file owns the
+  numbering. `1xx` opening a file · `2xx` engine and assets · `3xx` catalog and API · `5xx` server
+  and infrastructure · `9xx` unexpected crash.
+- **A TypeScript `as const` object, not JSON** — over a JSON data file with a typing wrapper. A
+  spike settled it: the gate can read a `.ts` module directly, so JSON's only hard advantage
+  disappeared, and `as const` keeps the per-code doc comments JSON cannot hold.
+- **`shared/`, not `web/`** — the whole reason the gaps existed.
+- **A real CI check script, not a checklist line alone** — and not a custom ESLint rule, which was
+  heavier with false-positive risk.
+- **Retrofit the gaps now** — over shipping the gate and filing a follow-up, so no uncoded
+  user-facing error is left on `master`.
+- **Error toasts persist, stack and close in the same change** (NH-311) — over doing the
+  persistence half and leaving the Close button separate, because persistent stacked errors are
+  unusable without a way to close them.
+- **Whether `server/src/core/` may carry codes is left OPEN, deliberately** — over building the
+  outer-ring translation layer now, and over widening the fail-closed `core-purity` allow-list.
+  `core/` holds one string helper and no business rules, so either choice would design for code
+  that does not exist. Decide it with the first real catalog rule.
+
+**What is now enforced.** `tooling/check-error-codes.mjs` (root `check:error-codes`, a step in the
+`lint` job, which `ci-green` waits on) fails on a duplicated number, on the registry and
+`docs/reference/error-codes.md` listing different codes, and on a number freed for reuse. That last
+one needs history rather than the current files: a commit removing a code from both leaves them
+agreeing and the number available, so the gate reads the registry at the merge base — and is
+fail-closed when it cannot resolve one, which is why the `lint` job now checks out with
+`fetch-depth: 0`. A new canonical item in the pull-request template claims the work, and the
+`pr-checklist-auditor` persona gained an `error-codes` category, because the gate proves the two
+files agree with _each other_ but cannot see a failure that was never given a code at all.
+
+**Why `lint` and not `quality`:** `quality` is gated on the `code` paths filter, which does not
+match `docs/**`. A pull request editing only the reference page would have skipped it and passed
+green with a drifted table — half of what the gate exists to catch.
+
+**Three things found by building it, each worth carrying forward:**
+
+- A barrel re-export cannot serve both consumers. `server/` compiles under `nodenext`, which
+  rejects an extensionless relative import and demands `./error-codes.js`; Turbopack cannot resolve
+  that, because no such file exists and it does not map `.js` to `.ts` for a transpiled package. The
+  registry is therefore a **subpath export**, and any future shared module should follow that shape.
+- Node refuses to strip types for anything it resolves under `node_modules`, so the gate imports the
+  registry by repo-relative path, never by package name.
+- Both 503 bodies are asserted by **whole-body deep equality**, and that must not be relaxed to
+  `expect.objectContaining`. It is the only machine-checked thing stopping a later change from
+  putting the caught error text — which carries the Neon connection string — into a body that
+  reaches unauthenticated callers.
+
+**Open, and not decided here:** below 600px sonner spans nearly the full width, so a persistent
+toast covers whichever row it is anchored to at any position. Measured on the running player with
+`document.elementFromPoint`: sonner's bottom-right default made three transport controls
+unclickable at both 1280 and 700 wide; top-right blocks none at 1280 and one at 700. top-right
+ships as the best available. The phone case is structural — the shell reserving space, or the toast
+not being a full-width fixed overlay — and stays a decision.
+
 ### 2026-09-22 — Eight orphaned spike documents archived, and five NH-196 decisions recovered (NH-25)
 
 The eight documents PR #57 flagged as orphan-risk on 2026-06-20 — still absent from `master` three
