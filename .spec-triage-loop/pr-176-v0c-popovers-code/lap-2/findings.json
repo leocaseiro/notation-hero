@@ -9,14 +9,14 @@
     "review_skill": "compound-engineering:ce-code-review",
     "review_mode": "mode:agent pr:176 (report-only; no silent edits, so step 2b is empty)",
     "run_dir": "/tmp/compound-engineering-501/ce-code-review/20260925-234637-32660f5b",
-    "FINDING_COUNT_OPEN": 17,
+    "FINDING_COUNT_OPEN": 14,
     "FINDING_COUNT_ALREADY_APPLIED": 6,
     "severity_mix_open": {
-      "P1": 1,
-      "P2": 10,
-      "P3": 6
+      "P1": 0,
+      "P2": 9,
+      "P3": 5
     },
-    "triage_cap_note": "17 findings still open. The 8-finding triage cap is reached for this half. Only ONE P1 remains: O6 (settings-schema.ts welds five concerns into 1,302 lines) — a maintainability refactor, not a defect.",
+    "triage_cap_note": "14 findings still open, NONE of them P1 — the highest remaining are P2.",
     "reviewers_run": [
       "correctness",
       "project-standards",
@@ -39,8 +39,8 @@
     "binding": "This file. NOT the plan's frontmatter (that holds the DOC-review loop's state).",
     "code_lap": 2,
     "code_last_applied": "P1",
-    "triaged": true,
-    "next": "Lap 3, review half, as a NEW invocation — it re-reviews the 9 commits this triage pushed. 17 findings remain untriaged from lap 2 and should be carried into lap 3's triage rather than re-found.",
+    "triaged": "partial — 11 of 25 decided; 14 open, no P1 left",
+    "next": "Continue triaging the remaining findings, then lap 3 (unreviewed code only, full files), then lap 4 (full PR).",
     "lap_decision": "RE-LAP. Step 7(b): P1s were applied this lap (O1, O2, O3, O5 plus the folded-in O11/O12), and the exit signal was never clean. Step 7(a) did NOT fire: lap 2 of a 5-lap cap, and unresolved P1 count fell from 6 to 1, so the no-progress bound is clear. A re-lap must start as a NEW invocation with a fresh review half."
   },
   "_exit_signal": {
@@ -103,28 +103,6 @@
     ]
   },
   "open_findings": [
-    {
-      "id": "O6",
-      "severity": "P1",
-      "confidence": 75,
-      "raised_by": ["maintainability"],
-      "file": "web/lib/alphatab/settings-schema.ts",
-      "line": 1,
-      "title": "settings-schema.ts welds five independently-changing concerns into 1,302 new lines",
-      "whats_wrong": "The descriptor tree (~1,011 lines of genuine domain data), the types, the defaults, the two hand-maintained mirrors and the two private validators all share one new file. Splitting the tree into a sibling leaves ~290 lines on a single topic.",
-      "note": "Maintainability confirmed the two mirrors are honestly defended by their drift tests - they are not the trap here; the file's breadth is."
-    },
-    {
-      "id": "O8",
-      "severity": "P2",
-      "confidence": 75,
-      "raised_by": ["correctness"],
-      "file": "client/src/components/ui/SettingRow/SettingRow.tsx",
-      "line": 98,
-      "title": "Text rows validate the trimmed draft but commit the untrimmed one",
-      "whats_wrong": "Both validators judge draft.trim(); commitText reports textDraft verbatim. Neither AlphaTab parser trims, so a value with surrounding whitespace passes the gate and can still be rejected by the engine.",
-      "proposed_fix": "Commit exactly what was validated."
-    },
     {
       "id": "O9",
       "severity": "P2",
@@ -267,16 +245,6 @@
       "file": "web/e2e/a11y.e2e.ts",
       "line": 131,
       "title": "The gate checks horizontal clipping against the window, not the scroll box"
-    },
-    {
-      "id": "O25",
-      "severity": "P3",
-      "confidence": 50,
-      "raised_by": ["julik-frontend-races"],
-      "file": "client/src/components/ui/SettingRow/SettingRow.tsx",
-      "line": 65,
-      "title": "SettingRow's local draft never reconciles an externally-pushed value",
-      "whats_wrong": "There is a real dual-editor case: playbackSpeed is written by both the header's TempoControl and the Settings popover's speed row."
     }
   ],
   "notable_clears": [
@@ -455,5 +423,65 @@
     "cap": "8 findings or 5 picker rounds, whichever comes first — the 8-finding ceiling is now reached, so the triage half STOPS here.",
     "decided_in_order": ["O1", "O2", "O3", "O11", "O12", "O4", "O5", "O7"],
     "spikes_run": "Two, both at the maintainer's request: O3 (confirmed, and corrected the finding twice) and O7 (confirmed, after a first dead-harness run reported the opposite). The maintainer's standing instruction is to spike anything uncertain rather than apply on reasoning alone."
+  },
+  "_triage_lap_2_round_3": {
+    "ran": "Triage half, invocation 2 (maintainer directed: triage the open findings BEFORE re-reviewing).",
+    "findings_decided": 3,
+    "decided": [
+      {
+        "id": "O6",
+        "severity": "P1",
+        "confidence": 75,
+        "raised_by": ["maintainability"],
+        "file": "web/lib/alphatab/settings-schema.ts",
+        "line": 1,
+        "title": "settings-schema.ts welds five independently-changing concerns into 1,302 new lines",
+        "whats_wrong": "The descriptor tree (~1,011 lines of genuine domain data), the types, the defaults, the two hand-maintained mirrors and the two private validators all share one new file. Splitting the tree into a sibling leaves ~290 lines on a single topic.",
+        "note": "Maintainability confirmed the two mirrors are honestly defended by their drift tests - they are not the trap here; the file's breadth is.",
+        "triage": {
+          "decision": "Ticket, do not do it in this PR",
+          "ticket": "NH-329",
+          "scenario": "Not a defect — nothing goes wrong for a person using the app. It is a maintainability finding about one 1,356-line file carrying five concerns that change for unrelated reasons.",
+          "how": "Filed as NH-329 with the proposed split, the acceptance criteria, and an explicit NOT-in-scope note that the three drift-tested mirrors must be left alone.",
+          "why_deferred": "A pure move with no behaviour change would add ~1,300 relocated lines to a PR already at 9,613 insertions, making the planned lap-4 full-PR review materially harder to read for no functional gain."
+        }
+      },
+      {
+        "id": "O8",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["correctness"],
+        "file": "client/src/components/ui/SettingRow/SettingRow.tsx",
+        "line": 98,
+        "title": "Text rows validate the trimmed draft but commit the untrimmed one",
+        "whats_wrong": "Both validators judge draft.trim(); commitText reports textDraft verbatim. Neither AlphaTab parser trims, so a value with surrounding whitespace passes the gate and can still be rejected by the engine.",
+        "proposed_fix": "Commit exactly what was validated.",
+        "triage": {
+          "decision": "Apply",
+          "commit": "ee592f98",
+          "scenario": "You paste a colour copied from somewhere else into Secondary voices. Copying almost always brings a space with it. The field accepts it silently, so it looks applied — then the next redraw throws where nothing can catch it, and the bad value is saved, so it happens again on every visit.",
+          "how": "commitText now reports textDraft.trim(). Mutation-checked: restoring the raw commit fails the new case.",
+          "spike": "SEVERITY UPGRADED P2 -> P1, and the finding's claim CORRECTED. Measured against alphaTab 1.8.4: ' #2DD4BF', '#2DD4BF ', '  #2DD4BF  ' and ' rgba(0,0,0,0.5)' all pass the field validator (it trims) and all return null from Color.fromJson WITHOUT throwing, because fromJson tests startsWith('#')/startsWith('rgb') on the RAW string. That defeats the apply-before-persist gate, which only fires on a throw, so the null is stored and the renderer dereferences null.rgba a frame later. HOWEVER the finding said 'neither AlphaTab parser trims' — that is WRONG. Font.fromJson was measured on ' 12px serif', '12px serif ' and '  12px serif ' and parsed all three correctly (serif @12). Only the colour row breaks; the twelve font rows were never at risk."
+        }
+      },
+      {
+        "id": "O25",
+        "severity": "P3",
+        "confidence": 50,
+        "raised_by": ["julik-frontend-races"],
+        "file": "client/src/components/ui/SettingRow/SettingRow.tsx",
+        "line": 65,
+        "title": "SettingRow's local draft never reconciles an externally-pushed value",
+        "whats_wrong": "There is a real dual-editor case: playbackSpeed is written by both the header's TempoControl and the Settings popover's speed row.",
+        "triage": {
+          "decision": "Drop — no reachable scenario",
+          "scenario": "The finding implies: you are dragging the Playback speed slider and the speed changes from somewhere else mid-drag, so your release overwrites it. Leo raised the sharpest version — a song with tempo changes, where the BPM pill moves on its own during playback.",
+          "spike": "NOT REACHABLE, verified two ways. (1) PlayerShell:507 names applySpeed the ONLY writer of api.playbackSpeed, and it has exactly two callers — the settings row (:555) and the header tempo control (:866). No keyboard shortcut, timer or effect writes it. (2) Leo's tempo-change case: PlayerShell:417 does setScoreTempo(next.originalTempo) live during playback, but that writes scoreTempo, NEVER speed. The settings row is a pure percentage (Math.round(speed*1000)/10) and never reads scoreTempo, so which bar is playing cannot move it. The header's BPM pill DOES divide by the base tempo and therefore does need protection — and already has it: TempoControl freezes `editBase` at the start of an edit and uses `base = editBase ?? scoreTempo`, so a mid-drag tempo change cannot compound.",
+          "why_dropped": "The patch (useEffect clearing draft on value change) guards nothing reachable and would cost a real regression: any future external write would yank the slider out from under an in-flight drag."
+        }
+      }
+    ],
+    "note": "Maintainer set the running order for the rest: (1) finish triaging open findings, (2) lap 3 reviewing ONLY the code lap 2 never saw, reading FULL FILES not just diffs, (3) lap 4 reviewing the full PR.",
+    "rules_reloaded": "The spec-triage-loop rules changed on disk mid-session; the triage skill and _shared/review-loop.md were re-read. New: spike the FIX not just the finding, open every finding with the scenario, and the artifact must carry both."
   }
 }
