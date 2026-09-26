@@ -576,9 +576,24 @@ it was planned rather than smuggled in.
 - `web/e2e/a11y.e2e.ts` — refactored to import those functions instead of carrying its own copies.
   No change to what it asserts.
 - `web/e2e/*.vr.ts` — **new**; the eleven shots themselves. `web/` contains no `*.vr.ts` file today,
-  and this is the one entry whose absence the config cannot survive: a scoped run whose `testMatch`
-  finds nothing exits 1 with "No tests found". Loud rather than silent, but it means the config and
-  the CI step cannot land before the first shot exists.
+  and **nothing fails if the first one never arrives.** The scoped `pnpm --filter
+@notation-hero/web run test:vr` does exit 1 with "No tests found" — measured — but CI runs
+  `playwright test` unscoped, and Playwright raises that error only when the WHOLE root suite is
+  empty (`!testRun.rootSuite?.allTests().length`, `playwright/lib/runner/index.js:6027`). The
+  existing behaviour and axe tests keep it non-empty, so an unscoped run over this config with an
+  empty `chromium` project exits **0** — also measured. A merge-blocking gate would read as green
+  over zero pixels. So the guard belongs with the shots, and it is four lines in
+  `tooling/workflow-guards.test.mjs` — already in this footprint, and already inside the `quality`
+  job `ci-green` waits on:
+
+  ```js
+  test('the web VR project has at least one shot to run', () => {
+    const dir = fileURLToPath(new URL('../web/e2e', import.meta.url));
+    const shots = readdirSync(dir).filter((f) => f.endsWith('.vr.ts'));
+    assert.ok(shots.length > 0, 'web/e2e has no *.vr.ts — the chromium project runs nothing');
+  });
+  ```
+
 - `web/playwright.e2e.config.ts` — the `projects` array splitting `e2e` from `chromium`.
 - `web/package.json` — `test:e2e` and `test:e2e:ui` scoped to `--project=e2e`, plus the new
   `test:vr` and `test:vr:update`.
