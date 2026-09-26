@@ -58,6 +58,32 @@ export const REQUIRED_SELECTORS = [
   [String.raw`.aria-pressed\:bg-primary`, "the master row's solo-all shows no teal fill"],
 ];
 
+// What may follow a class name in emitted CSS: the end of the selector, a combinator, a pseudo, or
+// the attribute part of a variant utility (`.data-pressed\:bg-warning[data-pressed]`). Anything else
+// means the match landed INSIDE a longer class name.
+const BOUNDARY = new Set([',', '{', ' ', '\n', '\r', '\t', ':', '[', '>', '+', '~', ')', ';', '}']);
+
+/**
+ * Whether `selector` appears in `css` as a WHOLE class name rather than as a prefix of a longer one.
+ *
+ * A plain `css.includes()` cannot tell the two apart, and several entries in the list below are
+ * prefixes of utilities Tailwind can emit: `.grow` of `.grow-0`, `.border-primary` of
+ * `.border-primary\/50`, `.cursor-grab` of `.cursor-grabbing`, `.aria-pressed\:bg-primary` of its
+ * `/90` opacity form. Any one of those appearing anywhere in the scanned tree would satisfy its
+ * entry forever, and this guard would report all clear on exactly the build it exists to catch.
+ *
+ * @param {string} css
+ * @param {string} selector
+ * @returns {boolean}
+ */
+const isWholeClass = (css, selector) => {
+  for (let at = css.indexOf(selector); at !== -1; at = css.indexOf(selector, at + 1)) {
+    const next = css[at + selector.length];
+    if (next === undefined || BOUNDARY.has(next)) return true;
+  }
+  return false;
+};
+
 const cssFiles = (dir) =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
     const full = path.join(dir, entry.name);
@@ -85,7 +111,7 @@ export function assertDesignSystemCss({ outputDir }) {
   }
 
   const css = files.map((file) => readFileSync(file, 'utf8')).join('\n');
-  const missing = REQUIRED_SELECTORS.filter(([selector]) => !css.includes(selector));
+  const missing = REQUIRED_SELECTORS.filter(([selector]) => !isWholeClass(css, selector));
 
   if (missing.length > 0) {
     throw new Error(
