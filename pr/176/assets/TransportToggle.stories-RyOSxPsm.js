@@ -1,0 +1,11 @@
+import{i as e,s as t}from"./preload-helper-D2Tj54I7.js";import{t as n}from"./react-oFBTHxA-.js";import{t as r}from"./jsx-runtime-Di7G22GK.js";import{w as i}from"./iframe-DDlLn9hE.js";import{n as a,t as o}from"./TransportToggle-CIcjkD3e.js";var s,c,l,u,d,f,p,m,h,g,_,v;e((()=>{s=i(),c=t(n(),1),a(),l=r(),{fn:u}=__STORYBOOK_MODULE_TEST__,d=e=>{let t=(0,s.c)(2),{name:n}=e,r;return t[0]===n?r=t[1]:(r=(0,l.jsx)(`span`,{className:`material-symbols-outlined`,"aria-hidden":`true`,children:n}),t[0]=n,t[1]=r),r},f={title:`UI/TransportToggle`,component:o,parameters:{layout:`padded`},tags:[`autodocs`],args:{pressed:!1,onPressedChange:u(),label:`Loop`,icon:(0,l.jsx)(d,{name:`repeat`})},argTypes:{disabled:{control:`boolean`},icon:{control:!1}}},p=e=>{let t=(0,s.c)(9),n,r;t[0]===e?(n=t[1],r=t[2]):({initial:r,...n}=e,t[0]=e,t[1]=n,t[2]=r);let[i,a]=(0,c.useState)(r),u;t[3]===n?u=t[4]:(u=e=>{a(e),n.onPressedChange(e)},t[3]=n,t[4]=u);let d;return t[5]!==n||t[6]!==i||t[7]!==u?(d=(0,l.jsx)(o,{...n,pressed:i,onPressedChange:u}),t[5]=n,t[6]=i,t[7]=u,t[8]=d):d=t[8],d},m={render:e=>(0,l.jsx)(p,{...e,initial:!1})},h={render:e=>(0,l.jsx)(p,{...e,initial:!0})},g={args:{disabled:!0}},_={render:e=>(0,l.jsx)(p,{...e,initial:!1,tooltip:`Drag across bars in the notation to loop just that range`})},m.parameters={...m.parameters,docs:{...m.parameters?.docs,source:{originalSource:`{
+  render: args => <Interactive {...args} initial={false} />
+}`,...m.parameters?.docs?.source}}},h.parameters={...h.parameters,docs:{...h.parameters?.docs,source:{originalSource:`{
+  render: args => <Interactive {...args} initial />
+}`,...h.parameters?.docs?.source}}},g.parameters={...g.parameters,docs:{...g.parameters?.docs,source:{originalSource:`{
+  args: {
+    disabled: true
+  }
+}`,...g.parameters?.docs?.source}}},_.parameters={..._.parameters,docs:{..._.parameters?.docs,source:{originalSource:`{
+  render: args => <Interactive {...args} initial={false} tooltip="Drag across bars in the notation to loop just that range" />
+}`,..._.parameters?.docs?.source}}},v=[`Default`,`Pressed`,`Disabled`,`WithTooltip`]}))();export{m as Default,g as Disabled,h as Pressed,_ as WithTooltip,v as __namedExportsOrder,f as default};
