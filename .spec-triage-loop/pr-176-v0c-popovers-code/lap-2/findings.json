@@ -9,12 +9,12 @@
     "review_skill": "compound-engineering:ce-code-review",
     "review_mode": "mode:agent pr:176 (report-only; no silent edits, so step 2b is empty)",
     "run_dir": "/tmp/compound-engineering-501/ce-code-review/20260925-234637-32660f5b",
-    "FINDING_COUNT_OPEN": 14,
+    "FINDING_COUNT_OPEN": 10,
     "FINDING_COUNT_ALREADY_APPLIED": 6,
     "severity_mix_open": {
       "P1": 0,
-      "P2": 9,
-      "P3": 5
+      "P2": 6,
+      "P3": 4
     },
     "triage_cap_note": "14 findings still open, NONE of them P1 — the highest remaining are P2.",
     "reviewers_run": [
@@ -39,7 +39,7 @@
     "binding": "This file. NOT the plan's frontmatter (that holds the DOC-review loop's state).",
     "code_lap": 2,
     "code_last_applied": "P1",
-    "triaged": "partial — 11 of 25 decided; 14 open, no P1 left",
+    "triaged": "partial — 15 of 25 decided; 10 open, no P1 left",
     "next": "Continue triaging the remaining findings, then lap 3 (unreviewed code only, full files), then lap 4 (full PR).",
     "lap_decision": "RE-LAP. Step 7(b): P1s were applied this lap (O1, O2, O3, O5 plus the folded-in O11/O12), and the exit signal was never clean. Step 7(a) did NOT fire: lap 2 of a 5-lap cap, and unresolved P1 count fell from 6 to 1, so the no-progress bound is clear. A re-lap must start as a NEW invocation with a fresh review half."
   },
@@ -104,29 +104,6 @@
   },
   "open_findings": [
     {
-      "id": "O9",
-      "severity": "P2",
-      "confidence": 75,
-      "raised_by": ["adversarial"],
-      "file": "web/e2e/a11y.e2e.ts",
-      "line": 154,
-      "title": "The hit-area gate passes vacuously when its selectors match nothing",
-      "whats_wrong": "expect(tooSmall).toEqual([]) cannot distinguish a clean scan from an empty one. This lap added two data-slot-scoped selectors; renaming a data-slot makes all nine cases pass over zero elements - the exact silent-pass mode the file's own comments argue against for [class*=\"h-11\"].",
-      "proposed_fix": "Return the scanned count too and assert a floor."
-    },
-    {
-      "id": "O10",
-      "severity": "P2",
-      "confidence": 75,
-      "raised_by": ["adversarial", "julik-frontend-races"],
-      "file": "web/e2e/a11y.e2e.ts",
-      "line": 163,
-      "title": "settleToasts hard-fails on a toast that is dismissing, and misses one about to land",
-      "whats_wrong": "It pins .first() and waits for opacity '1'. A toast mid-dismiss moves the other way and then detaches, so the poll runs to the 5s deadline and fails the test - and layout.tsx sets duration={5000}, so that window is routine. Races adds the mirror problem: a single count() snapshot returns immediately in the gap before a triggering toast reaches the DOM.",
-      "note": "This is lap 1's own addition, introduced to stop the new position check racing a slide-in.",
-      "proposed_fix": "Poll page.evaluate over ALL toasts with .every(), rather than pinning .first() and waiting for a single opacity value."
-    },
-    {
       "id": "O13",
       "severity": "P2",
       "confidence": 75,
@@ -167,16 +144,6 @@
       "title": "The Transpose notation row seeds at 0 over a file's own transposition",
       "whats_wrong": "Three modules disagree about what 0 means: the engine preserves a file-carried transposition, lap 1's densify loop reads it back specifically to avoid losing it, but toMixerTrack still seeds the row at 0. So the slider reads at rest while the engine holds +2, and returning it to 0 writes a literal 0 - which erases the file's value, irrecoverably without reopening.",
       "note": "Closely related to NH-327."
-    },
-    {
-      "id": "O17",
-      "severity": "P2",
-      "confidence": 50,
-      "raised_by": ["adversarial"],
-      "file": "web/e2e/a11y.e2e.ts",
-      "line": 121,
-      "title": "The scroll-ancestor reprieve never checks the container is actually visible",
-      "whats_wrong": "Lap 1's new ancestor check tests EDGES, not extent. A collapsed scroll box sits inside every edge, its children are still laid out, and contentTop+height<=scrollHeight holds by construction - so everything inside passes. TracksPopover's viewport max-height is a runtime calc(), which is a reachable trigger."
     },
     {
       "id": "O18",
@@ -226,16 +193,6 @@
       "line": 108,
       "title": "The scroll-ancestor walk climbs past overflow:hidden clippers",
       "whats_wrong": "Only auto/scroll match, so a permanent clipper is skipped; and an overflow-x-hidden ancestor computes overflow-y:auto and is mis-adopted as a scroller - a rule Table.tsx already documents."
-    },
-    {
-      "id": "O23",
-      "severity": "P3",
-      "confidence": 100,
-      "raised_by": ["security"],
-      "file": "web/lib/alphatab/settings-paths.ts",
-      "line": 21,
-      "title": "The nosemgrep comment misstates what Object.hasOwn blocks",
-      "whats_wrong": "The guards DO hold - security could not pollute Object.prototype by any path shape - but for a reason the code does not state: computed keys and object spread use CreateDataProperty, which never runs the __proto__ setter. The stated reason is checkably false, since Object.hasOwn(JSON.parse('{\"__proto__\":{}}'), '__proto__') is true. A suppression carrying a wrong justification is the finding."
     },
     {
       "id": "O24",
@@ -483,5 +440,85 @@
     ],
     "note": "Maintainer set the running order for the rest: (1) finish triaging open findings, (2) lap 3 reviewing ONLY the code lap 2 never saw, reading FULL FILES not just diffs, (3) lap 4 reviewing the full PR.",
     "rules_reloaded": "The spec-triage-loop rules changed on disk mid-session; the triage skill and _shared/review-loop.md were re-read. New: spike the FIX not just the finding, open every finding with the scenario, and the artifact must carry both."
+  },
+  "_triage_lap_2_round_4": {
+    "ran": "Triage half, invocation 2 continued (maintainer overrode the cap).",
+    "findings_decided": 4,
+    "decided": [
+      {
+        "id": "O9",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["adversarial"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 154,
+        "title": "The hit-area gate passes vacuously when its selectors match nothing",
+        "whats_wrong": "expect(tooSmall).toEqual([]) cannot distinguish a clean scan from an empty one. This lap added two data-slot-scoped selectors; renaming a data-slot makes all nine cases pass over zero elements - the exact silent-pass mode the file's own comments argue against for [class*=\"h-11\"].",
+        "proposed_fix": "Return the scanned count too and assert a floor.",
+        "triage": {
+          "decision": "Apply — caller-supplied floor, plus a per-selector slider floor the maintainer asked for",
+          "commit": "58571e54",
+          "scenario": "Someone renames a data-slot attribute in an ordinary refactor. The test that guarantees every control is finger-sized now matches zero elements in that category, reports no failures, goes green, and you ship a control nobody can tap — the NH-315 failure with a green tick.",
+          "how": "expectHitAreas takes a measured floor {controls, sliders}. Sliders are counted separately because a total cannot see one CATEGORY vanish: the seek rail is 1 control out of 13 on /play.",
+          "floors_measured": "landing 1/0; bundled beat 13/1; scrolling score 14/1; skeleton 13/1; engine error 14/1; transport pressed 13/1; narrow 700px 13/1; settings open 189/6; tracks open 47/7. Floors set just below each.",
+          "spike": "MUTATION-VERIFIED end to end. Ran the real suite: 9 passed. Renamed '[data-slot=\"slider-control\"]' to a bogus value: 8 of 9 FAILED naming the stale selector (the 9th is landing, which legitimately has 0 sliders). Restored: 9 passed. Before this change that same rename passed all nine silently.",
+          "maintainer_question": "Leo asked whether data-testid would prevent the rename problem. Answered with evidence: data-testid IS an existing convention here (9 production files), but it would relocate the coupling rather than remove it, cannot be applied to the third-party '[data-sonner-toast]' selector at all, and only lowers the CHANCE of a silent break where the floor DETECTS one. He chose the per-selector slider floor instead of adding a testid."
+        }
+      },
+      {
+        "id": "O10",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["adversarial", "julik-frontend-races"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 163,
+        "title": "settleToasts hard-fails on a toast that is dismissing, and misses one about to land",
+        "whats_wrong": "It pins .first() and waits for opacity '1'. A toast mid-dismiss moves the other way and then detaches, so the poll runs to the 5s deadline and fails the test - and layout.tsx sets duration={5000}, so that window is routine. Races adds the mirror problem: a single count() snapshot returns immediately in the gap before a triggering toast reaches the DOM.",
+        "note": "This is lap 1's own addition, introduced to stop the new position check racing a slide-in.",
+        "proposed_fix": "Poll page.evaluate over ALL toasts with .every(), rather than pinning .first() and waiting for a single opacity value.",
+        "triage": {
+          "decision": "Apply — AUTO-RESOLVED (test-quality fix, approach unambiguous)",
+          "commit": "6ba8cd25",
+          "scenario": "A test that raised a toast earlier fails five seconds later for no visible reason. The helper meant to wait for toasts to stop animating pinned the FIRST toast and waited for it to become fully opaque — but a toast that is dismissing animates the other way, so the wait never succeeds and takes the test down with it.",
+          "how": "Polls every toast for either settled state ('1' or '0') instead of pinning .first() and demanding '1'. An empty list settles immediately, preserving the old early return.",
+          "spike": "Verified by running the a11y suite locally: 9 passed before and after."
+        }
+      },
+      {
+        "id": "O17",
+        "severity": "P2",
+        "confidence": 50,
+        "raised_by": ["adversarial"],
+        "file": "web/e2e/a11y.e2e.ts",
+        "line": 121,
+        "title": "The scroll-ancestor reprieve never checks the container is actually visible",
+        "whats_wrong": "Lap 1's new ancestor check tests EDGES, not extent. A collapsed scroll box sits inside every edge, its children are still laid out, and contentTop+height<=scrollHeight holds by construction - so everything inside passes. TracksPopover's viewport max-height is a runtime calc(), which is a reachable trigger.",
+        "triage": {
+          "decision": "Apply",
+          "commit": "58571e54",
+          "scenario": "The Tracks popover sizes its list at runtime. If that calculation ever collapses the box to zero height, every mixer row inside is invisible — but the gate hands those controls a 'they are in a scroll container, just below the fold' pass and never checks whether they are reachable at all. A popover full of unreachable controls goes green.",
+          "how": "Added `if (ar.width <= 0 || ar.height <= 0) return true;` before the edge checks.",
+          "spike": "(UNTESTED as to the trigger) — a collapsed container was not reproduced; the reviewer rated confidence 50 and the runtime calc() is plausible but unobserved. The change itself IS verified as safe: strictly a tightening, and the 9 real cases still pass."
+        }
+      },
+      {
+        "id": "O23",
+        "severity": "P3",
+        "confidence": 100,
+        "raised_by": ["security"],
+        "file": "web/lib/alphatab/settings-paths.ts",
+        "line": 21,
+        "title": "The nosemgrep comment misstates what Object.hasOwn blocks",
+        "whats_wrong": "The guards DO hold - security could not pollute Object.prototype by any path shape - but for a reason the code does not state: computed keys and object spread use CreateDataProperty, which never runs the __proto__ setter. The stated reason is checkably false, since Object.hasOwn(JSON.parse('{\"__proto__\":{}}'), '__proto__') is true. A suppression carrying a wrong justification is the finding.",
+        "triage": {
+          "decision": "Apply — AUTO-RESOLVED (ambiguity-only: a wrong comment, no behaviour change)",
+          "commit": "6ba8cd25",
+          "scenario": "Nothing goes wrong for a person using the app. The next developer to audit the security suppression reads its justification, finds it false, and has to re-derive from scratch whether the code is safe at all.",
+          "spike": "CONFIRMED the comment is wrong AND the code is safe. Object.hasOwn(JSON.parse('{\"__proto__\":{}}'), '__proto__') returns TRUE, so hasOwn does not rule out '__proto__' as claimed. But neither the computed-key assignment nor the object spread polluted Object.prototype when run — because a computed key uses CreateDataProperty, which never invokes the '__proto__' setter. Both comments now state the true reason; the write path also warns off the two shapes that WOULD invoke it."
+        }
+      }
+    ],
+    "cap_note": "15 of 25 now decided across 7 picker rounds, past the 12-finding / 5-round ceiling. Continued on the maintainer's explicit instruction; recorded here so the override is visible.",
+    "auto_resolved": "Two were applied without a picker under a standing instruction granted this session: trivial 100%-confident fixes and test/type improvements are auto-resolved and reported, never asked."
   }
 }
