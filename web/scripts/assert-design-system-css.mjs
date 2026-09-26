@@ -11,6 +11,14 @@
 // .tsx scan alone keeps it present and it proves nothing about MixerClasses.ts. The four entries
 // after it exist only in that module.
 //
+// "Nowhere else" includes PROSE. Tailwind v4 reads candidates out of raw file text, comments and
+// all, so an ordinary English sentence arms a utility just as a className does. Two entries here
+// were decoration for exactly that reason and have been replaced: `.grow`, by the word in "How
+// tall the list may grow" (TracksPopover.tsx), and `.h-1` — the obvious substitute — by "rail stays
+// h-1 and is centred" (Slider.tsx). `.border-primary` went for the plainer reason: MasterRow.tsx
+// writes it literally. Before adding an entry, grep the whole scanned tree for the bare word, not
+// for a className.
+//
 // That scan can come back stale with nothing else failing. Vercel derives its build-cache key from
 // the branch, framework, root directory, Node version and package manager — never from source
 // content — so a restored cache can predate a change to what gets scanned. It happened once
@@ -40,9 +48,9 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 
 /** [selector exactly as Tailwind emits it, what breaks on screen when it is absent]. */
 export const REQUIRED_SELECTORS = [
-  ['.grow', 'the seek rail collapses to 0 px wide'],
+  [String.raw`.dark\:bg-muted-foreground\/40`, 'the seek rail paints transparent in dark mode'],
   [String.raw`.bg-muted-foreground\/50`, 'the seek rail paints transparent'],
-  ['.border-primary', 'the seek thumb is white on white'],
+  ['.border-2', 'the seek thumb loses its outline'],
   ['.cursor-grab', 'the seek thumb loses its drag affordance'],
   ['.text-right', 'right-aligned table columns lose their alignment'],
   [String.raw`.size-\[2\.125rem\]`, 'every mixer icon button collapses to the Button default size'],
@@ -66,11 +74,11 @@ const BOUNDARY = new Set([',', '{', ' ', '\n', '\r', '\t', ':', '[', '>', '+', '
 /**
  * Whether `selector` appears in `css` as a WHOLE class name rather than as a prefix of a longer one.
  *
- * A plain `css.includes()` cannot tell the two apart, and several entries in the list below are
- * prefixes of utilities Tailwind can emit: `.grow` of `.grow-0`, `.border-primary` of
- * `.border-primary\/50`, `.cursor-grab` of `.cursor-grabbing`, `.aria-pressed\:bg-primary` of its
- * `/90` opacity form. Any one of those appearing anywhere in the scanned tree would satisfy its
- * entry forever, and this guard would report all clear on exactly the build it exists to catch.
+ * A plain `css.includes()` cannot tell the two apart, and several entries in the list above are
+ * prefixes of utilities Tailwind can emit: `.cursor-grab` of `.cursor-grabbing`, `.border-2` of
+ * `.border-2xl`, `.aria-pressed\:bg-primary` of its `/90` opacity form. Any one of those appearing
+ * anywhere in the scanned tree would satisfy its entry forever, and this guard would report all
+ * clear on exactly the build it exists to catch.
  *
  * @param {string} css
  * @param {string} selector

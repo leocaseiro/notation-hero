@@ -72,11 +72,11 @@ test('fails on a single missing selector, not only when all of them are gone', (
 
 // The case the two tests above CANNOT produce. Both build their fixtures from REQUIRED_SELECTORS,
 // so every class they write is an exact match — and a substring check passes those either way. The
-// hole a substring check leaves is a LONGER class that merely contains an entry: one `.grow-0`
-// anywhere in the scanned tree would satisfy the `.grow` entry forever, and the guard would report
-// all clear on exactly the stale-scan build it exists to catch.
+// hole a substring check leaves is a LONGER class that merely contains an entry: one
+// `.cursor-grabbing` anywhere in the scanned tree would satisfy the `.cursor-grab` entry forever,
+// and the guard would report all clear on exactly the stale-scan build it exists to catch.
 test('a longer class that merely contains a required selector does not satisfy it', () => {
-  // `-0` is the shape Tailwind really produces: grow-0, border-primary/50, cursor-grabbing.
+  // A suffix is the shape Tailwind really produces: cursor-grabbing, bg-primary/90, border-2xl.
   const longer = REQUIRED_SELECTORS.map(([selector]) => `${selector}-0{color:red}`).join('\n');
   withOutput(longer, (dir) => {
     assert.throws(

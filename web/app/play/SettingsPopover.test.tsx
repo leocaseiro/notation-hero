@@ -89,11 +89,12 @@ test('a CLOSED popover rebuilds no rows while the transport runs', () => {
   expect(runFrames()).toBe(0);
 });
 
-test('an unstable apiValues defeats memo() on its own, so PlayerShell keeps it in a useMemo', () => {
-  // The guard for the other half of the fix. memo() is a SHALLOW comparison, so one fresh object
+test('an unstable apiValues defeats memo() on its own — why PlayerShell keeps it memoised', () => {
+  // Why the other half of the fix exists. memo() is a SHALLOW comparison, so one fresh object
   // literal per render is enough to fail it and re-render the whole tree — measured at every
-  // settings row re-read on every frame, popover closed. Removing the useMemo around apiValues in
-  // PlayerShell puts that back, and fails here.
+  // settings row re-read on every frame, popover closed. This case proves the MECHANISM on the
+  // stand-in shell above; PlayerShell is not rendered here, so it cannot fail when PlayerShell's
+  // own useMemo goes. PlayerShell.test.tsx is the case that does.
   render(<Shell stableApiValues={false} />);
   expect(runFrames()).toBeGreaterThan(0);
 });
