@@ -500,7 +500,7 @@ that is still why it has none — only the "unlike `vr`" comparison needs reword
 no longer the only container job. "web/ has no Storybook, so neither `vr` nor `a11y` covers it"
 stays true but belongs with the new job rather than this one.
 
-`web/playwright.e2e.config.ts`'s own header (`:3-5`) carries the stale claim from the other side -
+`web/playwright.e2e.config.ts`'s own header (`:3-5`) carries the stale claim from the other side —
 "web/ has no Storybook, so no VR or axe job covers it". The `web` job this document adds is a VR
 job over that very config, so that clause goes; the no-Storybook fact stays, because it is still
 the reason the lane is shaped this way.
