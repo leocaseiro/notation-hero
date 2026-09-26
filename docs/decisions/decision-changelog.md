@@ -7,9 +7,59 @@
 
 ## Change log — manual approvals & merge status updates
 
-Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
+Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, as a new entry at the top — and so does every PR-merge note. The affected decisions' **status and enforcement flips** go in [`decision-registry.md`](decision-registry.md), which holds current state per topic and never a dated entry.
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
+
+### 2026-09-26 — The registry/changelog split finished, and made self-enforcing (NH-322)
+
+The #143 split (NH-25) left `decision-registry.md` at 340 lines with zero dated entries. It did not
+hold: on 2026-09-22 **PR #163 put 1,586 lines back**. It wrote its own change-log entry into the
+registry — which is what AGENTS.md told it to do — and because the registry still carried
+`merge=union`, the merge concatenated the entire change log back in beside it. No conflict, so
+review saw nothing. It survived three further merges unnoticed.
+
+NH-322 (#173) removed the union driver from the registry two hours later. That fixed the cause and
+left the damage, so three sources disagreed about where a new entry goes and an agent had to guess.
+This entry closes the second half.
+
+**What the state actually was, measured rather than assumed.** Of the registry's 72 dated entries,
+**71 already existed in this file**, 69 byte-identical. The 2 that differed both favoured this file:
+the registry's `2026-06-17 — Architecture decisions` still read `ARCH-CONTRACT-1 oRPC`, superseded
+by NH-284 in July, and its `2026-06-11 — PR #9` had #143's pointer paragraph welded onto the entry's
+tail by the union merge, wrongly claiming both files are `merge=union`. Exactly **one** entry was
+registry-only — `2026-09-20 — v0 Plan C re-triaged`, the entry #163 itself authored — and it moved
+here byte-exact. The registry's state tables were byte-identical to #143's clean version, so the
+damage never touched the decisions themselves. Registry: 1921 → 343 lines, 72 → 0 dated entries.
+
+**Approved by leocaseiro 2026-09-26**, three decisions:
+
+- **NH-322 carries this, not NH-25 and not a new ticket.** Its description already named this exact
+  damage, so closing it with the damage still present would have made the ticket untrue. (Its
+  description blames PR #170; the registry has zero dated entries at #170's tree and 72 at #163's,
+  so the blame is corrected.)
+- **The stale-reference sweep covers what misleads future work, not what recorded past work.** The
+  three sites that told an agent where to _write_ are fixed — AGENTS.md "Decision governance", the
+  AGENTS.md current-direction snapshot, and Step 5 of the live, unshipped
+  `docs/plans/2026-09-13-v0c-popovers-plan.md` (PR #176 is open against it, so the next agent on
+  that plan would have repeated #163 exactly). So are eight read-pointers into the section that no
+  longer exists, in `CONCEPTS.md`, `tooling/check-layout.sh`, the 2026-06-17 ADR, the 2026-06-09
+  DACI and the 2026-07-16 typed-contract re-spike — two of which pointed at the NH-284 and NH-231
+  entries that have only ever lived in this file, and so were already broken. Roughly 14 past-tense
+  records inside shipped plans and specs are **deliberately left alone**: they describe accurately
+  what was done at the time, and rewriting them would edit the historical record.
+- **The rule becomes a machine gate.** A prose rule is what failed here, and this regression class
+  is invisible to review by construction — #163 passed lint, markdownlint, the PR checklist and CI
+  Green. `pnpm run check:decision-docs` (`tooling/check-decision-docs.sh`) now fails when the
+  registry holds a dated `### YYYY-MM-DD` heading; non-dated h3 sub-headings stay legal. Its CI step
+  sits in the **`lint`** job, not `quality`: `quality` is gated on the `code` paths-filter, so a
+  docs-only PR skips it — and a docs-only PR is exactly the shape that trips this. It also runs in
+  Lefthook pre-commit (the authoring mistake) and pre-push (pre-commit is skipped during a merge,
+  and a merge is how #163's duplication arrived). `tooling/check-decision-docs.test.sh` proves it
+  rejects a violation, the same reasoning as the core-purity canary.
+
+**Enforcement:** ⏳ → 🤖 for the registry/changelog boundary. **No registry row was added**, matching
+how #173 recorded NH-322 itself: the governance rule lives in AGENTS.md and the gate enforces it.
 
 ### 2026-09-26 — Error codes become app-wide and machine-checked; error toasts stop vanishing (NH-331, NH-311)
 
@@ -279,6 +329,53 @@ that very commit.
   `scripts/` scanned the guard reported 1 of 5 missing instead of 5 of 5. Verified both ways — with
   the `.ts` scan lost the build exits 1 on all five; with it present the CSS is byte-identical to a
   known-good build.
+
+### 2026-09-20 — v0 Plan C re-triaged: the Settings popover ships every AlphaTab setting, the player-mode switch included (NH-291)
+
+Plan C (the Settings and Tracks popovers) was written on 2026-09-13, before Plans A and B existed as
+code, and had not been reviewed. It was re-triaged against both builds before its first review lap
+(`docs/plans/2026-09-13-v0c-popovers-plan.md`, banner). Nothing is enforced yet — this is a plan —
+so what is recorded here is what was **decided**.
+
+Approved by leocaseiro 2026-09-20:
+
+- **The Settings popover is the same as the reference panel — every row.** His words: _"we should
+  be able to change every single setting from alphatab, including enable synth or backing track.
+  100% do this now. I use this all the time!"_ Two consequences:
+  - **The player-mode row ships in v0 — superseding the spec's "a toggle between the recording and
+    the synthesizer is out of v0"** (`docs/specs/2026-09-10-v0-local-file-player-design.md` §4),
+    and answering the question the 2026-09-20 hands-on entry recorded as built by no plan. It gets
+    its own task, because two things assumed the mode never changes: `hasBackingTrack` will come
+    from `api.actualPlayerMode` instead of from the score, and `playerReady` will stop latching —
+    which also closes the hazard that entry left open.
+  - **Metronome volume, count-in volume and loop are rows in the Player group as well as buttons
+    on the transport.** One value, one writer: the shell's `metronome` and `countIn` state becomes
+    a volume, and the transport button reads `> 0`.
+- **He asked whether the plan had every row of the reference panel. It did not** — it carried row
+  counts. A full inventory by AlphaTab key (92 rows) found four things a count cannot show, each a
+  silent no-op had it been built as written: the **Stylesheet group is not settings at all** (it
+  lives on `api.score.stylesheet`, which `fillFromJson` ignores); **fourteen Player rows only take
+  effect after `api.loadMidiForScore()`**; **five Player rows are `AlphaTabApi` properties**; and
+  **`display.padding` is an array** the dot-path helpers could not address. Two rows of the
+  reference panel are bound to the wrong key, and the plan carries the right ones.
+
+- **Every mixer control without visible text gets a state-telling tooltip, and a test reads each
+  one.** His instruction: _"Make sure every button toggle has tooltip, including the tracks ones,
+  such as solo/mute/etc."_ The plan already required it for Solo, Mute and the "more controls"
+  button but enforced none of it; it now also covers the render-select box (a bare 16 px box on
+  the row), with a unit case in `TrackRow` and an e2e case that walks every row of the open mixer
+  and re-reads each tooltip after its state changes. Controls that show their own words — settings
+  rows, display toggles, accordion headers, the export buttons — need none.
+
+Carried over from earlier decisions rather than re-asked: the two checks only a person can do are
+handed back once, at the end (as chosen for Plan B, 2026-09-20), and the mechanical
+plan-versus-reality corrections were applied without a question (the lap-4 rule, 2026-09-18).
+
+Found while re-triaging, from AlphaTab 1.8.4's source — **read, not yet run**, and the plan says so:
+`changeTrackSolo` and `changeTrackMute` act on a MIDI channel exactly as `changeTrackVolume` does,
+so the accepted coupling covers all three; the backing-track synthesizer stubs the audio
+transposition as well as mute, solo and volume; and the synth keeps its muted and soloed channels
+across a score change, so the mixer must reset them.
 
 ### 2026-09-20 — Plan B, first hands-on round: sixteen findings, and what they changed (NH-291)
 
@@ -712,6 +809,10 @@ Approved by leocaseiro 2026-09-16:
   missing from the spec. Nine numbers — 1xx opening a file, 2xx the engine and its assets, 9xx an
   unexpected crash — live in `web/lib/player-errors.ts` (Task 6); spec §4's failure table gains a
   Number column and the two music-font rows it lacked. The e2e lane pins E101, E103 and E203.
+  **Superseded 2026-09-26 (NH-331):** the registry moved to `shared/src/error-codes.ts`, its
+  documented twin is now the app-wide `docs/reference/error-codes.md` rather than the v0 spec, and
+  `pnpm run check:error-codes` enforces the pairing in CI. The nine numbers and their meanings are
+  unchanged.
 - **Also raised:** a `TODO` comment fails lint in every package (`sonarjs/todo-tag` is an error in the
   shared base). leocaseiro asked that lint stop blocking TODO comments, JSDoc `@todo` in particular;
   that change is handled separately, off `master`.
