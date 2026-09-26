@@ -99,8 +99,13 @@ Three design consequences, all evidence-backed rather than guessed:
 
 1. **Page-level shots only** — no `toHaveScreenshot` on a clipped element.
 2. **No mask over the notation.** The score is shot as it is drawn.
-3. **The tolerance is a free choice**, because even the worst observed drift is ±1/255 in one
-   channel. See "Open question 1".
+3. **Playwright's default tolerance is enough** — decided 2026-09-26. Its `threshold` defaults to
+   `0.2` in YIQ colour space and `maxDiffPixels` is unset, so a pixel must differ noticeably to
+   count and then a _single_ such pixel fails. The worst drift measured here is ±1/255 in one
+   channel, about `0.004` — fifty times under that threshold. Going stricter (`threshold: 0`) would
+   buy nothing the evidence points at, would make element-clipped shots impossible, and would give
+   the repo two comparison policies instead of one. So the shots pass no comparison options at all,
+   exactly as `client/` does.
 
 Cost: Playwright reported **41 passed (2.2 m) for 60 runs** — about 2.2 s per shot, so an eleven-shot
 lane is well under a minute of test time. The dominant cost is the `next build`, not the
@@ -402,9 +407,19 @@ wrecking the working tree.
 `web/test-results/` and the snapshot folders are deliberately **not** shadowed — those are the
 results a developer needs to read afterwards.
 
-With these two scripts the repo would carry four near-identical docker invocations inline in
-`package.json` — the two existing ones measure 395 and 402 characters, and the new pair lands near
-450 with the extra volumes. See "Open question 3".
+**The docker invocation moves into `tooling/docker-playwright.sh`** — decided 2026-09-26. Inlining
+a fifth copy is where it stops paying: the two existing scripts measure 395 and 402 characters, the
+new pair lands near 450, and they already differ in the two volumes above, which is drift before a
+line is written. One helper takes the package and the script name and carries the full volume list;
+shadowing `web/.next` during a `client/` run is harmless, so both packages share it.
+
+```diff
+- "test:vr:docker": "docker run --rm -v \"$PWD\":/work -v /work/node_modules … bash -c \"corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter @notation-hero/client run test:vr\"",
++ "test:vr:docker": "bash tooling/docker-playwright.sh @notation-hero/client test:vr",
+```
+
+`tooling/*.sh` is already shellcheck-linted, so the helper is checked rather than trusted. The
+`AGENTS.md` VR section spells out the expanded command and updates with it.
 
 ## Risks and caveats
 
@@ -438,25 +453,25 @@ With these two scripts the repo would carry four near-identical docker invocatio
 
 ## Open questions for review
 
-1. **Tolerance: Playwright's defaults, or exact zero?** The measurement supports either — the worst
-   observed drift is ±1/255 in one channel, far under the default `threshold: 0.2`, and page-level
-   shots showed no drift at all. **Recommendation: use the defaults, the same as `client/`**, so the
-   repo has one comparison policy rather than two. Exact zero buys nothing the evidence can point
-   at, and being stricter than `client/` on a much larger surface invites flakes.
-2. **Should a failing `web` VR publish its report to gh-pages?** Today `vr-report` is `needs: vr`
-   and serves `client/` only (`docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md`). Without an
-   equivalent, a red `web` VR means downloading a zip to see the diff — a real usability step
-   backwards from the client lane. Extending `vr-report` to `needs: [vr, web]` is more work than the
-   gate itself. Follow-up ticket, or in scope?
-3. **Extract the docker invocation into `tooling/docker-playwright.sh`?** Four call sites of the
-   same ~400-character command is roughly where inlining stops paying. Optional, and easy to defer.
+1. **Should a failing `web` VR publish its diff report to gh-pages?** GitHub's own image views
+   (2-up / Swipe / Onion Skin) only compare **committed** baseline PNGs that a pull request
+   modifies — so they cover an _intended_ visual change and cannot show a _failing_ run, where no
+   baseline was updated and therefore no file changed. `client/` fills that gap with the `vr-report`
+   job (`docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md`); `web/` as specced leaves a red run
+   needing an artifact download. Extending it is about 100 lines of YAML with four client-hardwired
+   values (the artifact name, the publish path, the comment marker, and the cleanup sweep in
+   `storybook-preview.yml`). Weigh that against the evidence that the `client/` mechanism has left no
+   trace on `gh-pages` — no `vr-report/pr/*` path exists — so it may never have fired since it
+   shipped.
 
 ## Process changes this carries
 
 - `web/playwright.e2e.config.ts` — the `projects` array splitting `e2e` from `chromium`.
 - `web/package.json` — `test:e2e` and `test:e2e:ui` scoped to `--project=e2e`, plus the new
   `test:vr` and `test:vr:update`.
-- `package.json` (root) — `test:web:docker` and `test:web:docker:update`.
+- `package.json` (root) — `test:web:docker` and `test:web:docker:update`, and the two existing
+  `test:vr:docker*` scripts rewritten to call the helper.
+- `tooling/docker-playwright.sh` — new; the shared container invocation.
 - `AGENTS.md` — the "VR & a11y testing" section is scoped to `client/`; it gains the `web/` lane and
   the two new commands.
 - `web/.gitignore` — the darwin-baseline line.
