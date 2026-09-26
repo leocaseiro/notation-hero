@@ -1,4 +1,5 @@
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DbExceptionFilter } from './db-exception.filter';
 import type { ArgumentsHost } from '@nestjs/common';
@@ -24,7 +25,23 @@ describe('DbExceptionFilter', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     new DbExceptionFilter().catch(new Error('connect ECONNREFUSED nh_app@ep-secret'), host);
     expect(res.status).toHaveBeenCalledWith(HttpStatus.SERVICE_UNAVAILABLE);
-    expect(res.json).toHaveBeenCalledWith({ message: 'Service unavailable' });
+    // Whole-body deep equality, deliberately. This exact-match is the only machine-checked thing
+    // stopping a later change from adding the caught error text — which carries the Neon
+    // connection string — to a body that reaches unauthenticated callers. Do not relax it to
+    // expect.objectContaining.
+    expect(res.json).toHaveBeenCalledWith({
+      message: 'Service unavailable',
+      code: ERROR.serverRequestFailed,
+    });
+  });
+
+  it('puts the code in the server-side log too, so an operator can quote it', () => {
+    const { host } = mockHost();
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    new DbExceptionFilter().catch(new Error('some driver failure'), host);
+    // The response body is not the only reader: the two 503 producers are told apart in
+    // CloudWatch by this prefix long before anyone looks at a client-side report.
+    expect(errSpy.mock.calls[0]?.join(' ')).toContain(ERROR.serverRequestFailed);
   });
 
   it('redacts a Postgres connection string from the server-side log (no plaintext credential)', () => {
