@@ -141,6 +141,26 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
     // until a pointer entered the list — unreadable to anyone on a keyboard or a touch screen.
     expand
     visibleToasts={ERROR_TOAST_CAP + 1}
+    // Measured, not guessed. A persistent toast at sonner's default bottom offset covers the
+    // player's transport row: with one error up at 700x800, elementFromPoint returned the toast
+    // instead of the seek rail, the metronome and the count-in — three controls a person simply
+    // could not click, and nothing in CI can see that. Moving to a corner only relocates the
+    // problem (top-right covers the header's tempo stepper at 700 wide, top-center covers both),
+    // so the toast is lifted above the control row instead. 6rem clears the row's 72px with a
+    // visible gap; the notation area it overlaps instead holds no controls.
+    // Measured on /play with a real persistent error and document.elementFromPoint, which is the
+    // only way to see occlusion — the a11y gate measures size and viewport containment, never
+    // overlap. Controls a person could not click, by position:
+    //
+    //                     1280x800   700x800   375x800
+    //   bottom-right         3          3       the transport row
+    //   top-right            0          1       the header
+    //
+    // top-right is therefore the best available, not a clean win. Below 600px sonner spans nearly
+    // the full width, so at phone sizes a persistent toast covers whichever row it is anchored to
+    // whatever we choose — that is structural, and fixing it means the shell reserving space or
+    // the toast not being a full-width fixed overlay. Recorded rather than papered over.
+    position="top-right"
     // Sonner's default, set explicitly because it is now load-bearing: the Toaster mounts last in
     // the app's root layout, so plain Tab reaches a close button only after every page control.
     // This is the direct route into the toast region.
@@ -162,7 +182,8 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
         warning:
           'bg-[color-mix(in_oklab,var(--warning)_10%,var(--popover))]! text-warning! border-warning/25!',
         error:
-          'bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))]! text-destructive! border-destructive/25!',
+          // pr-11 reserves the close button's 44px column; only error toasts carry one.
+          'bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))]! text-destructive! border-destructive/25! pr-11!',
         // Scope 2 for sonner's built-in action button: it ships a hardcoded 2px
         // rgba(0,0,0,.4) focus ring (invisible on dark, ignores --ring); the `!`
         // modifiers beat its (0,4,0) attribute-selector specificity.
@@ -175,7 +196,9 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
         // outward translate is dropped so a 44px box cannot hang past the viewport edge — the same
         // gate fails a control positioned outside it.
         closeButton: [
-          'size-11! transform-none! left-1! top-1! border-0! bg-transparent! text-current!',
+          // Right-hand side, not sonner's default left: at 44px the box otherwise sits on top of
+          // the toast's own icon (measured — the icon's rect fell entirely inside the button's).
+          'size-11! transform-none! left-auto! right-0! top-0! border-0! bg-transparent! text-current!',
           'before:absolute before:left-1/2 before:top-1/2 before:size-5 before:-translate-x-1/2',
           'before:-translate-y-1/2 before:rounded-full before:border before:border-current/25',
           'before:bg-[var(--normal-bg)] before:content-[""]',
