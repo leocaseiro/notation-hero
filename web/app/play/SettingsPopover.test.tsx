@@ -89,7 +89,7 @@ test('a CLOSED popover rebuilds no rows while the transport runs', () => {
   expect(runFrames()).toBe(0);
 });
 
-test('an unstable apiValues defeats memo() on its own, which is why PlayerShell memoises it', () => {
+test('an unstable apiValues defeats memo() on its own, so PlayerShell keeps it in a useMemo', () => {
   // The guard for the other half of the fix. memo() is a SHALLOW comparison, so one fresh object
   // literal per render is enough to fail it and re-render the whole tree — measured at every
   // settings row re-read on every frame, popover closed. Removing the useMemo around apiValues in
