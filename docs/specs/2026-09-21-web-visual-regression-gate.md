@@ -164,8 +164,13 @@ every baseline's filename space for the sake of one.
 **Every invocation must name its project**, or adding the array quietly breaks the command that
 exists today. `web/package.json`'s `test:e2e` carries no `--project`, so the moment projects exist
 that one command runs **both** lanes — and on a Mac that means a guaranteed red run against Linux
-baselines plus stray `*-chromium-darwin.png` files. `client/` never has this problem because it
-scopes each script. `web/package.json` therefore changes to match:
+baselines plus stray `*-chromium-darwin.png` files. `client/` never has this problem, but not
+because every script is scoped — `test:e2e` and `test:e2e:ui` carry no `--project` either. It is
+structural: those two point at a second config, `client/playwright.e2e.config.ts`, which declares no
+`projects` array at all, so there is nothing to scope; the scripts that DO run against the
+projects-carrying `client/playwright.config.ts` (`test:vr`, `test:vr:update`, `test:a11y`) are all
+scoped. `web/` is putting both lanes in ONE config, so it gets neither protection for free and every
+invocation must name its project. `web/package.json` therefore changes to match:
 
 ```diff
 - "test:e2e": "playwright test --config=playwright.e2e.config.ts",
@@ -452,9 +457,22 @@ artifact or it silently stops finding the report it publishes.
 The `e2e` job's upload also **drops** `web/playwright-report/` and `web/test-results/` from its
 `path:` list — those paths belong to the new job now.
 
-One comment in `ci.yml` needs correcting rather than deleting — the `e2e` job says the container is
-unnecessary because the lane "is not pixel-exact". That was true and is the reason it never had one;
-after this change the `web` half _is_ pixel-exact and the client half still is not.
+**Two comments need correcting rather than deleting, and one of them is not in `ci.yml`.** The
+`e2e` job's header (`ci.yml:374-380`) describes a job that is about to stop running `web/` at all,
+so four of its clauses go false at once: "two Playwright lanes" becomes one, the whole "web/: the
+built Next.js app (`next build` then `next start`)" sentence moves to the new job, "which is the
+only gate over the product's own UI" now points at a gate that lives elsewhere, and "Each package
+needs its own browser install" stops being true in either direction — the trimmed `e2e` job
+installs only for `client/`, and the container job installs nothing. The clause that survives is
+"it is not pixel-exact, so no Playwright container": the remaining client half still is not, and
+that is still why it has none — only the "unlike `vr`" comparison needs rewording, because `vr` is
+no longer the only container job. "web/ has no Storybook, so neither `vr` nor `a11y` covers it"
+stays true but belongs with the new job rather than this one.
+
+`web/playwright.e2e.config.ts`'s own header (`:3-5`) carries the stale claim from the other side -
+"web/ has no Storybook, so no VR or axe job covers it". The `web` job this document adds is a VR
+job over that very config, so that clause goes; the no-Storybook fact stays, because it is still
+the reason the lane is shaped this way.
 
 **Blocking from day one.** `web` joins `ci-green`'s `needs:` list alongside `a11y`, `vr` and `e2e`.
 `client/` VR already blocks, and the measurement found no flake to earn a grace period against: a
@@ -600,7 +618,8 @@ it was planned rather than smuggled in.
   });
   ```
 
-- `web/playwright.e2e.config.ts` — the `projects` array splitting `e2e` from `chromium`.
+- `web/playwright.e2e.config.ts` — the `projects` array splitting `e2e` from `chromium`, plus its
+  header comment, which still says no VR job covers `web/`.
 - `web/package.json` — `test:e2e` and `test:e2e:ui` scoped to `--project=e2e`, plus the new
   `test:vr` and `test:vr:update`.
 - `package.json` (root) — `test:web:docker` and `test:web:docker:update`, and the two existing
@@ -610,7 +629,9 @@ it was planned rather than smuggled in.
   the two new commands.
 - `web/.gitignore` — the darwin-baseline line.
 - `.github/workflows/ci.yml` — the new `web` job, the trimmed `e2e` job, the three artifact names,
-  the `vr-report` download rename, the corrected comment, and `ci-green`'s `needs:`.
+  the `vr-report` download rename, the corrected comments, and `ci-green`'s `needs:`.
+  `docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md:35` and `:38` name the old
+  artifact; correct those two, and leave the change-log and plan records as history.
 - `tooling/workflow-guards.test.mjs` — the Node test that pins today's `e2e` job in source, and
   the one file in this list whose failure you cannot see before pushing. Two assertions break:
   `:40` requires a literal `run: pnpm --filter @notation-hero/web run test:e2e` line, which the
@@ -629,8 +650,17 @@ it was planned rather than smuggled in.
   reached. Green push, red CI. Run `pnpm run test:tooling` by hand before pushing this one.
 - `client/README.md` — lines 178 and 216 name `playwright-vr-report` and `playwright-e2e-report`.
   Both become the renamed `playwright-client-*` artifacts.
-- `docs/runbooks/vr-a11y-testing.md` — line 50 names `playwright-e2e-report`, and lines 27-34 hold
-  the expanded `docker run` block the helper replaces.
+- `docs/runbooks/vr-a11y-testing.md` — more than two spot edits, because `AGENTS.md` points at this
+  file as the full reference and `AGENTS.md` is gaining the `web/` lane. Line 50 names
+  `playwright-e2e-report` and lines 27-34 hold the expanded `docker run` block the helper replaces;
+  beyond those, the title (line 1) and the "Four test layers" heading (line 6) are both scoped
+  `client/`, and the `test:vr:docker` pair at lines 19-22 is where the new `test:web:docker` and
+  `test:web:docker:update` belong. It gains a `web/` lane section: the eleven shots, the
+  Linux-only baseline rule (line 15 applies to `web/` too), the two new commands, and the
+  `playwright-web-report` artifact to download on a red run.
+- This document's own **Status** line (line 4) — "Designed — not implemented" becomes implemented, the
+  way `docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md:4` and
+  `docs/specs/2026-06-24-pr-checklist-auto-inject.md:3` already read.
 - `docs/decisions/decision-changelog.md` — **not** a new entry: both NH-320 entries land with this
   spec. What the implementing pull request owes is flipping their **six** ⏳ pending marks to ✅ —
   three in the 2026-09-21 entry and three in the 2026-09-22 one — per the "PR merge → update
