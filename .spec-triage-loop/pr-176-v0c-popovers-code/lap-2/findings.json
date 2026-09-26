@@ -33,7 +33,9 @@
     ],
     "adversarial_route": "IN-PROCESS fallback, NOT cross-model. Scope resolved to pr-remote (the local branch name differs from the PR head branch even though the tree carries the exact head SHA), and the shared loop forbids the detached cross-model peer in that mode because it cannot inspect the reviewed refs. So the adversarial lens has NO independent-model corroboration this lap.",
     "independence_note": "All twelve lenses ran as separate dispatched subagents, so cross-reviewer agreement IS independent corroboration. Two pairs agreed independently: the colour-validator P1 (correctness + security) and the stale transpose comment (correctness + maintainability).",
-    "process_note": "This review half ran in the SAME session as lap 1's triage half, which the shared loop's context guardrail says not to do. It was done at the maintainer's explicit request. Mitigation: every reviewer ran as a subagent and received file PATHS rather than inlined persona/scope/schema content, so the orchestrator's context carried findings only."
+    "process_note": "This review half ran in the SAME session as lap 1's triage half, which the shared loop's context guardrail says not to do. It was done at the maintainer's explicit request. Mitigation: every reviewer ran as a subagent and received file PATHS rather than inlined persona/scope/schema content, so the orchestrator's context carried findings only.",
+    "triaged": true,
+    "triaged_note": "All 25 findings decided across two triage invocations. Closed 2026-09-26. The loop entry rule must NOT re-enter step 4 on this artifact."
   },
   "_state_store": {
     "binding": "This file. NOT the plan's frontmatter (that holds the DOC-review loop's state).",
