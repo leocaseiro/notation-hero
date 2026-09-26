@@ -9,12 +9,12 @@
     "review_skill": "compound-engineering:ce-code-review",
     "review_mode": "mode:agent pr:176 (report-only; no silent edits, so step 2b is empty)",
     "run_dir": "/tmp/compound-engineering-501/ce-code-review/20260925-234637-32660f5b",
-    "FINDING_COUNT_OPEN": 8,
+    "FINDING_COUNT_OPEN": 5,
     "FINDING_COUNT_ALREADY_APPLIED": 6,
     "severity_mix_open": {
       "P1": 0,
-      "P2": 6,
-      "P3": 2
+      "P2": 5,
+      "P3": 0
     },
     "triage_cap_note": "14 findings still open, NONE of them P1 — the highest remaining are P2.",
     "reviewers_run": [
@@ -39,7 +39,7 @@
     "binding": "This file. NOT the plan's frontmatter (that holds the DOC-review loop's state).",
     "code_lap": 2,
     "code_last_applied": "P1",
-    "triaged": "partial — 18 of 25 decided; 8 open, no P1 left",
+    "triaged": "partial — 21 of 25 decided; 5 open, no P1 left",
     "next": "Continue triaging the remaining findings, then lap 3 (unreviewed code only, full files), then lap 4 (full PR).",
     "lap_decision": "RE-LAP. Step 7(b): P1s were applied this lap (O1, O2, O3, O5 plus the folded-in O11/O12), and the exit signal was never clean. Step 7(a) did NOT fire: lap 2 of a 5-lap cap, and unresolved P1 count fell from 6 to 1, so the no-progress bound is clear. A re-lap must start as a NEW invocation with a fresh review half.",
     "tickets_filed": [
@@ -109,16 +109,6 @@
   },
   "open_findings": [
     {
-      "id": "O13",
-      "severity": "P2",
-      "confidence": 75,
-      "raised_by": ["julik-frontend-races"],
-      "file": "web/app/play/PlayerShell.tsx",
-      "line": 664,
-      "title": "requestNotation has no guard against two overlapping file opens",
-      "whats_wrong": "Neither the file input nor the drop zone disables while an open is in flight, and `opening` is not set until after an early await - so two opens race and the last to resolve silently wins."
-    },
-    {
       "id": "O14",
       "severity": "P2",
       "confidence": 75,
@@ -167,27 +157,6 @@
       "file": "web/e2e/player.e2e.ts",
       "line": 1,
       "title": "player.e2e.ts grows to 2,372 lines with no test.describe grouping"
-    },
-    {
-      "id": "O20",
-      "severity": "P3",
-      "confidence": 75,
-      "raised_by": ["correctness"],
-      "file": "web/app/play/PlayerShell.tsx",
-      "line": 199,
-      "title": "The 'settings were reset' toast fires for a clamp that reset nothing",
-      "whats_wrong": "Lap 1 folded 'clamped' into the existing reset flag, but the toast still says the settings were reset to the defaults - false on both halves for a clamp, which preserves the intent of what was typed."
-    },
-    {
-      "id": "O21",
-      "severity": "P3",
-      "confidence": 100,
-      "raised_by": ["correctness"],
-      "file": "web/lib/alphatab/settings-storage.ts",
-      "line": 106,
-      "title": "A non-finite stored number clamps to min regardless of sign",
-      "whats_wrong": "The comment claims the value is pinned to 'the nearer end', but the code pins to min unconditionally - so a stored 1e999 zoom restores as 0.25.",
-      "note": "Lap 1's own code and comment disagree."
     }
   ],
   "notable_clears": [
@@ -547,6 +516,70 @@
       "summary": "Investigating O24 in a real browser surfaced a defect no reviewer found: the Tracks popover is 512px FIXED width, so on a 375px phone it hangs 142px off the screen and forces the whole page to scroll sideways. The maintainer then reported the transport footer is also bad on a phone; measured on iPhone SE (375x667), the Tracks BUTTON sits at right 397 against a 375px screen and the page does NOT scroll sideways there, so it is simply unreachable. The score area also renders blank in portrait.",
       "decision": "Mobile portrait is deferred to its own PR — LANDSCAPE ONLY for now, at the maintainer's direction, because landscape works well. Filed as NH-330 with all three problems, the measurements, the one-line max-w-(--available-width) starting point, and a note that the accessibility suite's narrowest case is 700px so CI has never seen any of it.",
       "ticket": "NH-330"
+    }
+  },
+  "_triage_lap_2_round_6": {
+    "ran": "Triage half, invocation 2 continued.",
+    "findings_decided": 3,
+    "decided": [
+      {
+        "id": "O13",
+        "severity": "P2",
+        "confidence": 75,
+        "raised_by": ["julik-frontend-races"],
+        "file": "web/app/play/PlayerShell.tsx",
+        "line": 664,
+        "title": "requestNotation has no guard against two overlapping file opens",
+        "whats_wrong": "Neither the file input nor the drop zone disables while an open is in flight, and `opening` is not set until after an early await - so two opens race and the last to resolve silently wins.",
+        "triage": {
+          "decision": "Apply — maintainer noted it is out of this PR's strict scope and approved it anyway",
+          "commit": "670c19fb",
+          "scenario": "You open a drum chart, realise within a second it is the wrong file, and open another. Both loads run, and whichever finishes LAST wins — which may be the file you rejected. Nothing stops you: the opening indicator has not appeared yet and neither the picker nor the drop zone is disabled.",
+          "how": "A ref claimed synchronously at entry and released in a finally, wrapping runRequestNotation rather than nesting inside it, so the 113-line body keeps its shape.",
+          "spike": "SCOPE CONFIRMED PRE-EXISTING: requestNotation appears 5 times on master and this PR added 0 lines mentioning it. The race predates the feature. Verified the flag ordering that causes it: setOpening(true) is at line 737, AFTER the engine await at 680, so React state cannot gate a second pick made during that window."
+        }
+      },
+      {
+        "id": "O20",
+        "severity": "P3",
+        "confidence": 75,
+        "raised_by": ["correctness"],
+        "file": "web/app/play/PlayerShell.tsx",
+        "line": 199,
+        "title": "The 'settings were reset' toast fires for a clamp that reset nothing",
+        "whats_wrong": "Lap 1 folded 'clamped' into the existing reset flag, but the toast still says the settings were reset to the defaults - false on both halves for a clamp, which preserves the intent of what was typed.",
+        "triage": {
+          "decision": "Apply — reworded, and split into two messages after the maintainer asked for the corrected settings to be named",
+          "commit": "670c19fb",
+          "scenario": "You set zoom to 500%, close the tab, come back. 500 is out of range so it is brought down to the 300% maximum and nothing else changes — but you are told your settings 'could not be read, so they were reset to the defaults', so you go and check everything.",
+          "how": "Two branches, two codes. An unreadable document keeps the original wording (still true there, E303); a per-key repair says which rows were corrected by NAME (E301). The console logs label AND dot-path so a report is searchable from either end.",
+          "spike": "The reword initially BROKE an existing e2e that asserts 'reset to the defaults' — and that assertion was right, because its fixture stores '{broken', which discards the whole document. That is what forced the two-branch split. A new e2e covers the other branch. First run of it failed against a STALE preview server still serving the old build; rebuilt, then 84 e2e + a11y passed."
+        }
+      },
+      {
+        "id": "O21",
+        "severity": "P3",
+        "confidence": 100,
+        "raised_by": ["correctness"],
+        "file": "web/lib/alphatab/settings-storage.ts",
+        "line": 106,
+        "title": "A non-finite stored number clamps to min regardless of sign",
+        "whats_wrong": "The comment claims the value is pinned to 'the nearer end', but the code pins to min unconditionally - so a stored 1e999 zoom restores as 0.25.",
+        "note": "Lap 1's own code and comment disagree.",
+        "triage": {
+          "decision": "Fix the comment, not the behaviour (maintainer chose option 2)",
+          "commit": "670c19fb",
+          "scenario": "A corrupted stored zoom of infinity restores at the SMALLEST setting rather than the largest, and the code's own comment claims it pins to the nearer end.",
+          "spike": "CONFIRMED by running it: Infinity -> 0.25 where the nearer end is 3; -Infinity -> 0.25 (correct); JSON.parse('1e999') yields Infinity, so a crafted document does reach it. The comment now states the real behaviour and why the sign is ignored on purpose."
+        }
+      }
+    ],
+    "maintainer_directed_work_beyond_the_findings": {
+      "summary": "The maintainer asked for an audit of every user-facing error message against the error-code registry, and for the settings warning to name what it corrected.",
+      "audit_result": "8 messages; 5 carried NO code. One needed no new code (the engine toast shares its cause with the banner's E201). Four fell outside every existing band — nothing covered settings or export.",
+      "applied": "E205 (engine missing on file-open), E301 (settings repaired), E302 (value rejected), E303 (settings document unreadable), E401 (export failed). SETTING_LABELS added as the fourth drift-tested mirror so the warning can name rows; loadStoredSettings now returns repaired PATHS.",
+      "dead_entry_noted_not_deleted": "PLAYER_ERROR.cachedScoreUnavailable (E104) is defined but referenced nowhere.",
+      "gate_caught_the_fix": "semgrep blocked the first commit: the console.warn used an interpolated format string, which a format specifier in stored data could forge. Rewritten with a literal format string and the values as arguments."
     }
   }
 }
