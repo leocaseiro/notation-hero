@@ -10,7 +10,7 @@ import {
   ScrollArea,
   SettingRow,
 } from '@notation-hero/client';
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 import { readStylesheetValues, setStylesheetValue } from '../../lib/alphatab/live-settings';
@@ -72,7 +72,7 @@ interface SettingsPopoverProps {
 // JSON would move, show its new number, and change nothing audible — a silent failure, not an
 // error. They go to the shell's single writer for that value instead, which is also what keeps
 // this slider and the header's tempo control showing the same speed.
-export function SettingsPopover({
+export const SettingsPopover = memo(function SettingsPopover({
   api,
   settings,
   onSettingChange,
@@ -192,4 +192,4 @@ export function SettingsPopover({
       </PopoverContent>
     </Popover>
   );
-}
+});

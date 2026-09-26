@@ -10,7 +10,7 @@ import {
   TooltipTrigger,
   toast,
 } from '@notation-hero/client';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 import {
@@ -529,13 +529,21 @@ function Player() {
   // The Settings popover's Player group api rows, in the unit each row shows. The speed is a
   // multiplier everywhere else in the player; the row shows a percentage, rounded to one decimal,
   // because the header's BPM stepper leaves the multiplier at values like 0.8916….
-  const apiValues: Partial<Record<ApiValueKey, SettingValue>> = {
-    playbackSpeed: Math.round(speed * 1000) / 10,
-    masterVolume,
-    metronomeVolume,
-    countInVolume,
-    isLooping: looping,
-  };
+  // Memoised because SettingsPopover is memo()'d, and this was the one prop defeating it: a fresh
+  // object literal every render fails the shallow comparison, so the popover re-rendered with the
+  // transport whatever else stayed stable. Measured — see the case in SettingsPopover.test.tsx:
+  // with memo() but this left as a literal, all seventy-one settings rows were re-read on EVERY
+  // animation frame while the player ran, popover closed; with both, zero.
+  const apiValues = useMemo<Partial<Record<ApiValueKey, SettingValue>>>(
+    () => ({
+      playbackSpeed: Math.round(speed * 1000) / 10,
+      masterVolume,
+      metronomeVolume,
+      countInVolume,
+      isLooping: looping,
+    }),
+    [speed, masterVolume, metronomeVolume, countInVolume, looping],
+  );
 
   const applyApiValue = useCallback(
     (key: ApiValueKey, value: SettingValue) => {
