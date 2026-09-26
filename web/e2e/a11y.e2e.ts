@@ -1,6 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { failOnUnexpectedPageErrors } from './page-errors';
+
 import type { Page } from '@playwright/test';
+
+// Every case below also fails if the page threw an uncaught error while it ran.
+failOnUnexpectedPageErrors();
 
 // Same WCAG tag set the client/ suite runs, so one repo has one bar.
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];

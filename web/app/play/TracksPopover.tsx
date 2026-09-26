@@ -15,6 +15,7 @@ import { memo, useLayoutEffect, useRef, useState, type CSSProperties } from 'rea
 import { useAlphaTabEngine } from '../../lib/alphatab/AlphaTabEngineContext';
 import { setStaffDisplay, setTrackTransposition } from '../../lib/alphatab/live-settings';
 import { toMixerTrack } from '../../lib/alphatab/mixer-tracks';
+import { dropPlaybackSelection } from '../../lib/alphatab/playback-selection';
 import { useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { PopoverIconTrigger } from './PopoverIconTrigger';
 import type { StaffDisplayKey } from '../../lib/alphatab/live-settings';
@@ -149,6 +150,17 @@ export const TracksPopover = memo(function TracksPopover({
 
   const trackAt = (index: number) => api?.score?.tracks[index];
 
+  // Every redraw that changes WHICH tracks are drawn can leave a bar selection pointing at a beat
+  // that is no longer laid out — and the engine re-applies its own selection after EVERY render, so
+  // it looks that beat up in the new bounds and dereferences undefined. Untick the track the
+  // selection sits on and that was an uncaught throw nothing in the lane noticed. Drop the
+  // selection first; dropPlaybackSelection explains why the clearing route is as odd as it is.
+  const drawTracks = (tracks: Parameters<AlphaTab.AlphaTabApi['renderTracks']>[0]) => {
+    if (!api) return;
+    dropPlaybackSelection(api);
+    api.renderTracks(tracks);
+  };
+
   const applyRendered = (index: number, next: boolean) => {
     const score = api?.score;
     if (!api || !score) return;
@@ -156,7 +168,7 @@ export const TracksPopover = memo(function TracksPopover({
     // as "at least one track must stay shown" — there is nothing else on screen to fall back to.
     if (singleTrack) {
       if (!next) return;
-      api.renderTracks([score.tracks[index]]);
+      drawTracks([score.tracks[index]]);
       return;
     }
     const live = liveDrawnIndexes();
@@ -173,7 +185,7 @@ export const TracksPopover = memo(function TracksPopover({
     if (picked.length === 0) return;
     // renderTracks takes Track OBJECTS (unlike renderScore, which takes indexes). No state is
     // set here: renderFinished reports what was really drawn.
-    api.renderTracks(picked.map((i) => score.tracks[i]));
+    drawTracks(picked.map((i) => score.tracks[i]));
   };
 
   const applySolo = (index: number, next: boolean) => {
@@ -282,7 +294,7 @@ export const TracksPopover = memo(function TracksPopover({
       multiDrawnRef.current = validDrawn;
       const keep = validDrawn.length > 0 ? validDrawn[0] : 0;
       if (keep >= score.tracks.length) return;
-      api.renderTracks([score.tracks[keep]]);
+      drawTracks([score.tracks[keep]]);
       return;
     }
     // Multiple tracks again: replay the pre-collapse selection, bound-checked against whatever
@@ -292,7 +304,7 @@ export const TracksPopover = memo(function TracksPopover({
     const restore = multiDrawnRef.current.filter((i) => i < score.tracks.length);
     const picked = restore.length > 0 ? restore : score.tracks.map((track) => track.index);
     if (picked.length === 0) return;
-    api.renderTracks(picked.map((i) => score.tracks[i]));
+    drawTracks(picked.map((i) => score.tracks[i]));
   };
 
   return (

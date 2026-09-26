@@ -1,7 +1,13 @@
 import path from 'node:path';
 
 import { expect, test } from '@playwright/test';
+
+import { failOnUnexpectedPageErrors } from './page-errors';
+
 import type { Locator, Page } from '@playwright/test';
+
+// Every case below also fails if the page threw an uncaught error while it ran.
+failOnUnexpectedPageErrors();
 
 test('renders the bundled sample score as notation', async ({ page }) => {
   await page.goto('/play');
@@ -1216,6 +1222,26 @@ test('opening a file drops the bar range selected in the previous score', async 
         ).at.playbackRange,
     ),
   ).toBeNull();
+});
+
+// The same stale-selection trap as the case above, reached WITHOUT opening anything — and the one a
+// person is far more likely to hit, because both controls live in this PR's own popover. Untick the
+// track the selection sits on and its beats stop being laid out, while the engine goes on
+// re-applying its own selection after every render: it looks those beats up in the new bounds and
+// dereferences undefined. There is no assertion for the throw here on purpose — the page-error gate
+// in page-errors.ts is what fails on it, so this case only has to perform the interaction and prove
+// the redraw really happened (NH-291).
+test('unticking the track a bar selection sits on does not throw', async ({ page }) => {
+  await openFirstScore(page, 'Punk.gp');
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
+
+  await selectBars(page, 0, 0);
+  await page.getByTestId('tracks-trigger').click();
+  await page
+    .getByTestId('track-row-0')
+    .getByRole('button', { name: /render/i })
+    .click();
+  await expect(page.getByTestId('rendered-track-count')).toHaveText('1', { timeout: 30_000 });
 });
 
 /** The one OPEN tooltip. A closing popup can stay in the DOM for a frame, hence `[data-open]`. */

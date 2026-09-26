@@ -19,6 +19,7 @@ import {
 } from '../../lib/alphatab/AlphaTabEngineContext';
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
 import { applyThenPersist } from '../../lib/alphatab/live-settings';
+import { dropPlaybackSelection } from '../../lib/alphatab/playback-selection';
 import {
   DEFAULT_PLAYER_SETTINGS,
   SETTING_LABELS,
@@ -797,6 +798,11 @@ function Player() {
       // went on reading "Loop selection", the cursor froze at the old range's end, and Pause
       // jumped back — with no seek involved.
       if (api?.playbackRange) setAlphaTabValue(api, 'playbackRange', null);
+      // And the selection the ENGINE holds, which the line above does not touch: it keeps the BEAT
+      // OBJECTS a person dragged across and re-applies them after every render, so the beats of the
+      // score being replaced get looked up in the new score's bounds and dereferenced. This must
+      // run while the OLD score is still the one rendered.
+      dropPlaybackSelection(api);
       // Nor may the in-flight seek bookkeeping. `api` survives a file open — it is destroyed only
       // on unmount — so an armed `rangeCheck` would run `leaveRange` against the NEW score,
       // writing an old position into it and, if the old score was playing, starting it.

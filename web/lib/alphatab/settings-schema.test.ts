@@ -268,3 +268,22 @@ it('SETTING_LABELS still matches every settings row, and names no path that is n
     [...rowLabels.keys()].toSorted(byName),
   );
 });
+
+// The characters a font row refuses, and why each one has to be refused rather than escaped: the
+// value is written straight into an SVG style attribute the renderer assigns as MARKUP —
+// `<text … style='stroke: none; font:<value>; dominant-baseline: …'>` — so the apostrophe closes the
+// attribute, the angle brackets open a tag, and the semicolon starts a second declaration on that
+// text element. `12px a;fill:none` paints the text with nothing, on every visit, because the value
+// is stored. A double quote stays ALLOWED: it is safe inside a single-quoted attribute, and
+// `12px "Times New Roman"` is a font a person may legitimately want.
+it('a font row refuses the characters that escape its own style attribute', () => {
+  const validate = SETTING_TEXT_VALIDATORS['display.resources.tablatureFont'];
+
+  expect(validate('12px Arial'), 'a plain font shorthand').toBe(true);
+  expect(validate('bold 12px "Times New Roman"'), 'a quoted family name').toBe(true);
+
+  expect(validate('12px a;fill:none'), 'a second declaration').toBe(false);
+  expect(validate('12px a;'), 'a bare semicolon').toBe(false);
+  expect(validate("12px 'a"), 'an apostrophe, which closes the attribute').toBe(false);
+  expect(validate('12px <a'), 'an angle bracket, which opens a tag').toBe(false);
+});

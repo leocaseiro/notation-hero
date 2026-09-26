@@ -254,7 +254,16 @@ const isFontShorthand = (draft: string): boolean => {
   // outright. Neither belongs in a font family, and a stored value re-arms on every later visit, so
   // they are refused at the field. A double quote is safe inside a single-quoted attribute and stays
   // allowed, because `12px "Times New Roman"` is a legitimate value.
-  if (/['<>]/.test(draft)) return false;
+  //
+  // The semicolon is refused for a milder reason with the same shape. The value is interpolated
+  // BETWEEN two other declarations — `style='stroke: none; font:<here>; dominant-baseline: …'` — so
+  // everything after a `;` becomes a declaration of its own on that text element. `12px a;fill:none`
+  // paints the text with nothing, and `fill` is set as a presentation ATTRIBUTE one line later,
+  // which CSS beats. Nothing script-capable follows (the apostrophe is already refused, so the
+  // attribute cannot be closed), but a stored value that silently blanks the title, the bar numbers
+  // or the chord names on every visit is worth one character to prevent. No legitimate font
+  // shorthand contains a semicolon.
+  if (/['<>;]/.test(draft)) return false;
   const parts = draft.trim().split(/\s+/);
   let index = 0;
   while (index < parts.length && FONT_STYLE_OR_WEIGHT.test(parts[index])) index += 1;
