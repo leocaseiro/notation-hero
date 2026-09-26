@@ -345,12 +345,35 @@ starts from that same instant (`setNotation` and `setOpening(false)` are the two
 reliably on screen and fully painted about a second into a 4.2-second life. That is the real reason
 the wait is not optional — without it every long-score baseline is bound to a success toast carrying
 the filename, over the notation box the shot exists for. It is the one shot in this list that opens
-a file. Wait for it to
-go, after the scroll check:
+a file.
+
+**First prove _which_ score is on screen.** Every wait above is also satisfied by the bundled beat
+`/play` shows before the pick, so the shot needs the app's own per-file marker — the signal
+`web/e2e/player.e2e.ts` uses throughout:
+
+```ts
+await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
+```
+
+Measured against the built app: the ordering is already safe without it. `setNotation` and
+`setOpening(false)` land in the same React commit, so `toHaveCount(0)` on the loading bar cannot
+pass until the new score is in state — and it really blocks, 793–1 354 ms against 3 793–4 129 ms for
+the toast. Fourteen runs all photographed `Punk.gp`. It is prescribed anyway because that safety
+rests on a React detail nobody reading this file would know, and because the bar wait's first poll
+lands about 15 ms from the `flushSync` that arms it. Prefer this attribute over an overflow poll:
+the bundled beat measures `scrollHeight === clientHeight` exactly, so a layout that gave it one
+pixel of overflow would make such a poll pass vacuously.
+
+**Then wait for the toast to go:**
 
 ```ts
 await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
 ```
+
+One thing the first baseline will contain: the long-score shot shows the **Play** tooltip, because a
+successful open moves focus to the transport (`PlayerShell` calls `playRef.current?.focus()`). It is
+deterministic — identical bytes across fourteen runs — but a reviewer approving that baseline should
+expect it.
 
 The bundled-beat shot needs none of this — AlphaTab loads that score itself and nothing announces
 it. Any shot added later that reaches its state by opening a file needs the same wait.
@@ -606,6 +629,9 @@ it was planned rather than smuggled in.
 - `web/e2e/player-states.ts` — **new**; one exported function per player state, imported by both
   browser lanes.
 - `web/e2e/a11y.e2e.ts` — refactored to import those functions instead of carrying its own copies.
+  Its comment at `:111-113` also has stale figures: it says the sample renders 185 px, `Punk.gp`
+  1,026 px and the box 420 px, where the measured values at this viewport are 576, 852 and 576.
+  The conclusion it draws still holds; the three numbers do not.
   No change to what it asserts.
 - `web/e2e/*.vr.ts` — **new**; the eleven shots themselves. `web/` contains no `*.vr.ts` file today,
   and **nothing fails if the first one never arrives.** The scoped `pnpm --filter
