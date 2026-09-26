@@ -2293,7 +2293,7 @@ test('Transpose notation writes a DENSE pitch array and never reloads the MIDI',
   expect(await midiLoads()).toEqual([]);
 });
 
-// transposed.alphatex carries `\transpose 2` on its first track — a chart written two semitones up,
+// transposed.alphatex carries `\transpose 2` on its first track — a score written two semitones up,
 // the case every other fixture is missing (all twelve report 0). The engine keeps that on the staff
 // NEGATED, as -2, and the Transpose notation row is the only editor for it. A row that started at 0
 // both misreported the open file and turned a return to 0 into an erase: nudge the slider and put it
