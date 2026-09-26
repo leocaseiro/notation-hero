@@ -39,8 +39,8 @@
     "binding": "This file. NOT the plan's frontmatter (that holds the DOC-review loop's state).",
     "code_lap": 2,
     "code_last_applied": "P1",
-    "triaged": "partial — 21 of 25 decided; 5 open, no P1 left",
-    "next": "Continue triaging the remaining findings, then lap 3 (unreviewed code only, full files), then lap 4 (full PR).",
+    "triaged": "partial — 21 of 25 decided; 5 open, no P1 left; HANDING OFF",
+    "next": "Read _handoff. Answer the three recorded questions before touching O14, O15 or O16.",
     "lap_decision": "RE-LAP. Step 7(b): P1s were applied this lap (O1, O2, O3, O5 plus the folded-in O11/O12), and the exit signal was never clean. Step 7(a) did NOT fire: lap 2 of a 5-lap cap, and unresolved P1 count fell from 6 to 1, so the no-progress bound is clear. A re-lap must start as a NEW invocation with a fresh review half.",
     "tickets_filed": [
       "NH-328 (secondary-voices colour control)",
@@ -116,7 +116,13 @@
       "file": "web/app/play/TracksPopover.tsx",
       "line": 134,
       "title": "Rapid double-toggle of two tracks' visibility drops the first toggle",
-      "whats_wrong": "applyRendered computes its replacement set from drawnIndexes, which only updates on the async renderFinished event, so a second toggle before that fires silently discards the first."
+      "whats_wrong": "applyRendered computes its replacement set from drawnIndexes, which only updates on the async renderFinished event, so a second toggle before that fires silently discards the first.",
+      "triage": {
+        "status": "OPEN — maintainer could not reproduce it and asked how",
+        "his_questions_verbatim": "I wasn't able to replicate that. How quick do I need to click? Do i need to keep only those 2 tracks, or I should have a 3rd one showing too to replicate it?",
+        "what_the_next_session_must_do": "ANSWER THE REPRODUCTION QUESTION FIRST, by running it, not by reasoning. Open the Tracks popover on Punk.gp (3 tracks, so a third stays visible), untick two different tracks within one render frame, and report whether the first returns. If it cannot be reproduced by hand, say so plainly and consider dropping it — the proposed fix was never demonstrated against a failure.",
+        "what_is_certain": "applyRendered computes from drawnIndexes, which is fed by renderedIndexes, which is only written in the async renderFinished handler (TracksPopover.tsx:130-135). That much was read from the source. Whether a human can click fast enough was NOT established."
+      }
     },
     {
       "id": "O15",
@@ -127,7 +133,14 @@
       "line": 88,
       "title": "The CSS canary matches by substring, so a longer utility satisfies a prefix entry",
       "whats_wrong": "css.includes() is a raw substring test and three of the new entries are prefixes - one aria-pressed:bg-primary/90 anywhere in the scanned tree satisfies that entry forever. The guard's own test builds its fixtures FROM the list, so it can never catch this.",
-      "note": "Adversarial explicitly CLEARED the self-satisfaction question the brief asked: globals.css still excludes web/scripts/**, so naming a utility there does not make Tailwind generate it."
+      "note": "Adversarial explicitly CLEARED the self-satisfaction question the brief asked: globals.css still excludes web/scripts/**, so naming a utility there does not make Tailwind generate it.",
+      "triage": {
+        "status": "OPEN — the explanation failed; maintainer asked what any of it meant",
+        "his_questions_verbatim": "What is NH-315? I am so confused. You are worry about a substring? Do you want to use an id instead? What does `.grow` comes from? Is this on settings or tracks? You say the test can never produce a longer-class case. Why do I need that for? Sorry, there're a lot of assumptions here...no idea what you want to do and to fix.",
+        "what_the_next_session_must_do": "RE-EXPLAIN FROM ZERO before proposing anything. Every one of those questions is fair and none was answered in the chunk. Specifically: NH-315 is the incident where production served the seek rail 0px wide and fully transparent while the preview looked perfect; web/scripts/assert-design-system-css.mjs is a BUILD step that fails the build when the design system's CSS never reached the bundle; '.grow' is one of its four watched Tailwind utility class names, not a setting or a track; it is neither settings nor tracks, it is the build. Then decide whether the concern is even worth acting on.",
+        "what_is_certain": "css.includes(selector) is a raw substring test, so '.grow-0{flex-grow:0}'.includes('.grow') is true. The guard's test imports REQUIRED_SELECTORS and builds its fixture from it (tooling/assert-design-system-css.test.mjs:30), so no fixture it generates can contain a longer class than the list.",
+        "what_was_WRONG_in_the_finding": "The finding cited 'three of the new entries are prefixes' and named aria-pressed:bg-primary/90. Checked: there are FOUR entries (.grow, .border-primary, .cursor-grab, .text-right), NONE is a prefix of another, and that selector does not appear at all."
+      }
     },
     {
       "id": "O16",
@@ -138,7 +151,13 @@
       "line": 84,
       "title": "The Transpose notation row seeds at 0 over a file's own transposition",
       "whats_wrong": "Three modules disagree about what 0 means: the engine preserves a file-carried transposition, lap 1's densify loop reads it back specifically to avoid losing it, but toMixerTrack still seeds the row at 0. So the slider reads at rest while the engine holds +2, and returning it to 0 writes a literal 0 - which erases the file's value, irrecoverably without reopening.",
-      "note": "Closely related to NH-327."
+      "note": "Closely related to NH-327.",
+      "triage": {
+        "status": "OPEN — maintainer rejected an untested fix, correctly",
+        "his_questions_verbatim": "Why is the meaning of `-` for your truthy condition? Test before you suggest me a fix, please.",
+        "what_the_next_session_must_do": "He is right and the criticism should be taken at face value: a fix was proposed containing a negation (`-track.staves[0].transpositionPitch`) that was never run. Before proposing it again, BUILD a fixture that actually carries a transposition — every existing fixture reports transpositionPitch 0, verified by loading all twelve with importer.ScoreLoader — then demonstrate the sign convention rather than asserting it. live-settings.ts:197 says 'The staff stores the NEGATED value, so it is negated back', which is the claim to verify, not to repeat.",
+        "what_is_certain": "mixer-tracks.ts:84 hardcodes transposeAudio: 0 and transposeFull: 0, while live-settings.ts:192-199 explicitly refuses to treat 0 as 'leave it alone' for the same data. The two modules disagree. NOT established: that any real file reaches it, or that the proposed negation is correct."
+      }
     },
     {
       "id": "O18",
@@ -581,5 +600,32 @@
       "dead_entry_noted_not_deleted": "PLAYER_ERROR.cachedScoreUnavailable (E104) is defined but referenced nowhere.",
       "gate_caught_the_fix": "semgrep blocked the first commit: the console.warn used an interpolated format string, which a format specifier in stored data could forge. Rewritten with a literal format string and the values as arguments."
     }
+  },
+  "_handoff": {
+    "written": "End of triage invocation 2, at the maintainer's instruction: \"This session context is very large, we are handing off. Please commit everything we discussed and agreed.\"",
+    "state": "21 of 25 findings decided and pushed. 5 open: O14, O15, O16 (all three now carry the maintainer's own unanswered questions — read them before touching the code) and O18, O19, which were never presented.",
+    "severity": "No P0 or P1 remains open. Everything left is P2.",
+    "branch_and_head": "claude/plan-c-implementation-fa4ebf at 24190123 plus this commit; the worktree HEAD matched origin exactly before this was written.",
+    "tickets_filed": {
+      "NH-328": "Secondary voices needs an alpha-capable colour control. Carries the engine evidence, the caniuse numbers for <input type=\"color\" alpha> (13.7%, Safari only), and the alphaTab playground research: copy the #RRGGBBAA conversion, NOT the @uiw picker, whose sliders have no role, no ARIA and no keyboard and would fail the blocking a11y job.",
+      "NH-329": "Split the 1,356-line settings-schema.ts. Deliberately NOT done in this PR to keep the final full-PR review readable.",
+      "NH-330": "Mobile portrait UI. LANDSCAPE ONLY for now, by the maintainer's decision. Three measured problems: the Tracks popover is 512px fixed and hangs 142px off a 375px screen; the Tracks BUTTON sits at right 397 on an iPhone SE where the page does not scroll sideways, so it is unreachable; the score area renders blank in portrait."
+    },
+    "next_steps_in_the_maintainer_s_own_order": [
+      "1. Finish triaging the 5 open findings — starting by ANSWERING the three questions recorded above.",
+      "2. Lap 3: review ONLY the code lap 2 never saw, reading FULL FILES rather than diffs.",
+      "3. Lap 4: review the full PR."
+    ],
+    "standing_instructions_granted_this_session": [
+      "Spike anything uncertain and come back with the result; mark anything untestable as (untested).",
+      "Auto-resolve trivial 100%-confident fixes and test/type improvements WITHOUT asking — but always report the decision, in a comment, the commit message or the chat.",
+      "Open every finding with the scenario, in plain words, before any mechanism. This was breached twice this session (O22 and O15) and both times the maintainer had to ask what the finding even meant.",
+      "Every user-facing error message carries an error code from web/lib/player-errors.ts."
+    ],
+    "honest_notes": [
+      "The triage ceiling (12 findings or 5 picker rounds) was passed on the maintainer's explicit instruction; 21 findings over 15 rounds is far beyond it, and the size of this context is the direct result.",
+      "Lap 3 and lap 4 have not started. The exit signal has never been clean.",
+      "Every single spike this session contradicted its finding in some way — magnitude, scope, severity, stated cause, or reachability. Treat a finding as a hypothesis, never as a fact."
+    ]
   }
 }
