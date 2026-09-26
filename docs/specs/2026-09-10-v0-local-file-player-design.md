@@ -181,7 +181,9 @@ No upload, no network call for user content. The only network traffic is the sta
 
 **Error numbers.** Every failure message ends with its number — `(Error E101)` — so a report names the
 exact case: 1xx opening a file, 2xx the engine and its assets, 9xx an unexpected crash. The numbers
-live in `web/lib/player-errors.ts`. Change the code and this table together, and never reuse a
+live in `shared/src/error-codes.ts`, and `docs/reference/error-codes.md` is the app-wide list
+that `pnpm run check:error-codes` keeps in step with it. The table above stays the player's own
+view. Change the code and the reference page together, and never reuse a
 retired number.
 
 **While it loads (first visit):** about 1.6 MB of engine, soundfont and font arrives. Two
