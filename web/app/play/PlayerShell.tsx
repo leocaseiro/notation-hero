@@ -6,6 +6,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  dismissErrors,
   toast,
 } from '@notation-hero/client';
 import { ERROR } from '@notation-hero/shared/error-codes';
@@ -19,7 +20,12 @@ import {
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { NotationSurface } from './NotationSurface';
-import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
+import {
+  OpenFileControl,
+  openFailureCode,
+  readFailureMessage,
+  readNotation,
+} from './OpenFileControl';
 import { PlayerHeader } from './PlayerHeader';
 import { TransportRow } from './TransportRow';
 import { useLoadingBarPhase } from './useLoadingBarPhase';
@@ -62,7 +68,19 @@ const nextFrame = () =>
 async function loadingToastPainted(): Promise<void> {
   for (let frame = 0; frame < 30; frame += 1) {
     await nextFrame();
-    if (document.querySelector('[data-sonner-toast][data-mounted="true"]')) break;
+    // Scoped to the LOADING toast, not to any mounted toast: error toasts are persistent now, so
+    // a leftover one satisfies a bare [data-mounted="true"] on the very first frame and this loop
+    // stops waiting for the toast it is named after.
+    //
+    // That is a correctness fix, not a bug fix — measured, so the next reader does not have to.
+    // With the selector deliberately reverted and an error toast already on screen, the
+    // "Opening …" toast still reached full opacity under a 20x CPU throttle, because the Toaster
+    // gives loading toasts `transition-none`: there is no fade left for a blocked thread to
+    // freeze. A regression test for it passed with the bug reinstated, so none is kept — a test
+    // that cannot fail is worse than no test.
+    if (document.querySelector('[data-sonner-toast][data-type="loading"][data-mounted="true"]')) {
+      break;
+    }
   }
   // Mounted is a DOM fact; these two frames are what put it on the glass.
   await nextFrame();
@@ -440,10 +458,18 @@ function Player() {
         score = at.importer.ScoreLoader.loadScoreFromBytes(next.bytes);
       } catch {
         setOpening(false);
+        // Dismiss the spinner explicitly, then raise the error under its OWN id. Sharing
+        // 'notation-load' is what made an error REPLACE the spinner — necessary while toasts
+        // auto-dismissed, but it also meant two different failures replaced each other. Keyed by
+        // code and file name so the same failure twice collapses onto one toast.
+        toast.dismiss('notation-load');
         toast.error(
           `${next.name} could not be opened — it is not a score format the player reads. (Error ${ERROR.notAScore})`,
-          { id: 'notation-load' },
+          { id: `${ERROR.notAScore}:${next.name}` },
         );
+        // The success path announces; the failure path did not, so a screen-reader user could
+        // miss the very number this change exists to hand them.
+        setAnnouncement(`${next.name} could not be opened. Error ${ERROR.notAScore}.`);
         // The open score was never replaced, and playback was never interrupted — the worklet
         // drained its buffer while the dialog was up and the pump refills it. Nothing to restart.
         return;
@@ -469,6 +495,10 @@ function Player() {
       // returned above), from the read failures the picker catches, or for the bundled score —
       // nobody asked for that one, so nothing is announced and nothing is focused at page load.
       setAnnouncement(`Opened ${next.name}`);
+      // A later success contradicts an earlier open-a-file failure, so the stale 1xx toasts go.
+      // 2xx engine failures are NOT toasts — they render over the notation area — so nothing
+      // here reaches them.
+      dismissErrors((id) => id.startsWith('E1'));
       playRef.current?.focus();
     },
     [api, engine, notation, playing],
@@ -491,7 +521,9 @@ function Player() {
         await requestNotation(await readNotation(file));
       } catch {
         // Same id as requestNotation's loading toast — see OpenFileControl's `accept`.
-        toast.error(readFailureMessage(file), { id: 'notation-load' });
+        toast.dismiss('notation-load');
+        toast.error(readFailureMessage(file), { id: `${openFailureCode(file)}:${file.name}` });
+        setAnnouncement(`${file.name} could not be opened. Error ${openFailureCode(file)}.`);
       }
     },
     [requestNotation],
