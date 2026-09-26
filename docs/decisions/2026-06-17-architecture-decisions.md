@@ -152,7 +152,7 @@ server/src/
 > re-decided by leocaseiro after a re-spike and a study pause: **DEFER the framework.** The interim contract is
 > **hand-authored Zod in `shared/` + `z.infer` + `.parse()`**; the flip-default is **`@nestjs/swagger` +
 > `nestjs-zod`**, explicitly **not** oRPC. Nothing was ever installed, so this reversal cost no migration.
-> Full record: the 2026-07-21 change-log entry in [`decision-registry.md`](decision-registry.md) and the
+> Full record: the 2026-07-21 entry in [`decision-changelog.md`](decision-changelog.md) and the
 > re-spike: [the 2026-07-16 typed-contract re-spike](../spikes/2026-07-16-typed-contract-respike.md).
 >
 > **Why it fell:** both load-bearing premises of the "Why" paragraph below were false. (1) "Moots the
@@ -339,7 +339,7 @@ These foundation decisions were **DACI-locked**; leocaseiro pre-authorized reope
 1. **Rewrite the DACI + file-structure ADR text** — supersede `2026-06-09-tooling-stack-daci.md` (`L1` Nx, the layout) and `2026-06-12-file-level-structure-enforcement-adr.md` (`NAME-suffix`) per §9, and flip the affected decision-registry rows.
 2. **Invoke `writing-plans`** for the phased implementation plan, sequenced **slice-first** so the build stays deployable and the FE scaffold can't balloon into "whole stack first":
    - **Phase 0 — remove everything Nx** (per the ARCH-MONO-1 migration inventory; regenerate a clean root `package.json`). **Phase 0 is not complete until the ARCH-GUARD-1 core-purity canary passes as a _required_ CI check** — a deliberate `import '@nestjs/common'` in `core/` that the depcruise step must reject (SCOPE-4).
-   - **Phase 1 — a thin deployable AWS slice:** an **About-page hello-world wired end-to-end** (CloudFront → Function URL → Lambda), so the recruiter-clickable artifact exists early (honours the DACI 4-week-pivot guardrail). **Implemented in NH-206** (slice shape (c): the real Nest app on Lambda; ARCH-EDGE-1 two-origin; ARCH-LAMBDA-1 AWS_IAM+OAC) — see the 2026-06-21 registry change-log entry.
+   - **Phase 1 — a thin deployable AWS slice:** an **About-page hello-world wired end-to-end** (CloudFront → Function URL → Lambda), so the recruiter-clickable artifact exists early (honours the DACI 4-week-pivot guardrail). **Implemented in NH-206** (slice shape (c): the real Nest app on Lambda; ARCH-EDGE-1 two-origin; ARCH-LAMBDA-1 AWS_IAM+OAC) — see the 2026-06-21 entry in [`decision-changelog.md`](decision-changelog.md).
    - **Phase 2 — CRUD (the admin catalog CMS)** next, **layering the FE libraries (oRPC / TanStack Router+Query / Dexie / auth) only as CRUD actually needs them** — not all up front.
 
    Then execute.

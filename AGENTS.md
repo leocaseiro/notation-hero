@@ -7,7 +7,7 @@
 
 ## Current direction — READ FIRST (snapshot, 2026-09-12)
 
-> 30-second version so you don't act on a superseded doc. **Source of truth:** [`docs/decisions/decision-registry.md`](docs/decisions/decision-registry.md) (newest-first change-log) + the ADR [`docs/decisions/2026-06-17-architecture-decisions.md`](docs/decisions/2026-06-17-architecture-decisions.md). **If any doc conflicts with this snapshot or the registry, the registry wins.**
+> 30-second version so you don't act on a superseded doc. **Source of truth:** [`docs/decisions/decision-registry.md`](docs/decisions/decision-registry.md) (current state per topic) + [`docs/decisions/decision-changelog.md`](docs/decisions/decision-changelog.md) (the newest-first history) + the ADR [`docs/decisions/2026-06-17-architecture-decisions.md`](docs/decisions/2026-06-17-architecture-decisions.md). **If any doc conflicts with this snapshot or the registry, the registry wins.**
 
 - **Now building (v0, NH-291)** — a **local-file drum player** in `web/`: open a chart from disk, see drum notation, press play. The **catalog**, the backend (Neon, Cognito) and the Playable schema are **paused, not dropped** (2026-09-12 registry entry). **No PWA in v0** — no install, no offline; both are one later milestone.
 - **Foundation** — plain **pnpm workspaces** + folders-in-one-app (Nx DROPPED 2026-06-17). One **NestJS** app (hexagon inside); FE = **Next.js 16 App Router on Vercel** (re-adopted, ADR 2026-07-08 — supersedes the 2026-06-18 Vite-SPA decision), consuming the `client/` design system.
@@ -270,17 +270,25 @@ The `pr-checklist` gate is **diff-aware**: a PR that touches `infra/**` fails un
 
 ## Decision governance
 
-`docs/decisions/decision-registry.md` is the single source of truth for every decision +
-its status. Keep it alive:
+Two files, two jobs — **write to the right one**:
 
-- **Manual approvals → the register.** Whenever the user personally approves, ratifies,
-  or revises a decision (in conversation, an `AskUserQuestion`, or a review), record it in
-  the registry's **Change log** (date, outcome, their reasoning). A decision isn't "ratified"
-  until it's in the register.
-- **PR merge → update statuses.** Every PR that changes what's enforced updates the register
-  in the SAME PR: add a Change-log entry and flip affected decisions' status/enforcement
-  (⏳→✅, 📄→🤖, clear the 🟥 gap). The register update travels with the PR so it lands
-  atomically on merge.
+| File                                   | Holds                                                                 | You add                                        |
+| -------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------- |
+| `docs/decisions/decision-changelog.md` | the dated history, newest first                                       | **every new entry**, at the top                |
+| `docs/decisions/decision-registry.md`  | current state per topic: what's decided, its status, what enforces it | **status/enforcement flips only** — no entries |
+
+- **Manual approvals → the changelog.** Whenever the user personally approves, ratifies,
+  or revises a decision (in conversation, an `AskUserQuestion`, or a review), add an entry to
+  **`decision-changelog.md`** (date, outcome, their reasoning) — newest first, at the top.
+  A decision isn't "ratified" until it's recorded there.
+- **PR merge → update both, in the SAME PR.** Every PR that changes what's enforced adds its
+  entry to **`decision-changelog.md`** and flips the affected rows' status/enforcement in
+  **`decision-registry.md`** (⏳→✅, 📄→🤖, clear the 🟥 gap). Both updates travel with the PR
+  so they land atomically on merge.
+- **Never put a dated `### YYYY-MM-DD` entry in the registry.** It is the state view, not a log
+  (split out in #143, NH-25). `pnpm run check:decision-docs` fails the build if one lands there:
+  writing an entry here is exactly what let PR #163 silently duplicate the whole change log back
+  into the registry, because the merge driver then concatenated both copies (NH-322).
 
 ## Public repo — no personal data in committed files
 

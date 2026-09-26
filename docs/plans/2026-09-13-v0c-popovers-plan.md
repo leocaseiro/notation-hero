@@ -4252,9 +4252,9 @@ pnpm --filter @notation-hero/web run test:e2e
 
 Expected: all PASS.
 
-- [ ] **Step 5: Update the decision registry**
+- [ ] **Step 5: Update the decision changelog**
 
-`docs/decisions/decision-registry.md`, a new Change-log entry at the top, in this PR (AGENTS.md, "Decision governance"). Record what is now **enforced**, and every place the build superseded an older line:
+`docs/decisions/decision-changelog.md`, a new entry at the top, in this PR (AGENTS.md, "Decision governance" — entries go in the changelog; `decision-registry.md` takes status flips only, never a dated entry). Record what is now **enforced**, and every place the build superseded an older line:
 
 - The three new design-system components — `Accordion`, `SettingRow`, `TrackRow` — gated by VR + axe.
 - The settings-persistence shape: one `localStorage` key, AlphaTab's settings JSON plus a `version`, restored **before** the api is built, merged per key and per type, a toast on a real corruption.
