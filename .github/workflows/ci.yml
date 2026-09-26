@@ -115,6 +115,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # check:error-codes below compares the registry against its merge base to prove a
+          # spent error number was never freed for reuse. The default shallow fetch leaves no
+          # base to resolve, and that check is fail-closed, so it needs real history.
+          fetch-depth: 0
       - uses: ./.github/actions/setup-js
       - name: Install pinned lint binaries
         run: |
@@ -168,6 +173,8 @@ jobs:
         run: pnpm run lint:sort-pkg
       - name: supply-chain pins in sync with lockfile (NH-259)
         run: pnpm run check:supply-chain-pins
+      - name: error codes in step with the reference page (NH-331)
+        run: pnpm run check:error-codes
 
   # Per-package build via `pnpm -r run build`.
   build:
