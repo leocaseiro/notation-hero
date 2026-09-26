@@ -175,10 +175,21 @@ baselines without sitting through fifty behaviour tests.
 
 ### The shots
 
-Eleven. Six reuse navigation `web/e2e/a11y.e2e.ts` has already proved works; two cover the popovers
+Eleven. Six reach states `web/e2e/a11y.e2e.ts` has already proved reachable; two cover the popovers
 v0 Plan C adds to `/play`; two come from the PR #170 review, deferred here by the maintainer on
 2026-09-22; and one covers the breakpoint #170 introduces. Keeping the count small is deliberate:
 every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.
+
+**The navigation is shared, not copied.** The six states the accessibility lane already reaches move
+into `web/e2e/player-states.ts` — one exported function per state, each returning once that state is
+reached — and **both** lanes import it. `a11y.e2e.ts` is refactored to call it rather than keep its
+own copy.
+
+That costs an edit to a lane that passes today, which is the reason to think about it. The
+alternative costs more: two copies of six navigations drift the moment someone renames a test id, and
+the lane that drifts is the pixel one. Its failure mode is the dangerous one — a red VR run whose
+quickest route to green is regenerating the baselines, which blesses a page nobody looked at. A
+shared module makes a test-id rename land once.
 
 **All of these describe `/play` as PR #170 left it** (merged 2026-09-22) — a full-bleed page with a `z-10` header, a
 left `bg-rail` strip carrying the Open-file control, the notation surface, and a raised `bg-panel`
@@ -474,9 +485,15 @@ without them.
   `OpenFileControl.tsx:118` with its tooltip, `back-home` in the header, and the `--rail`, `--panel`
   and `--elevate` tokens in `client/src/styles.css`. Line numbers drift — re-read
   `web/app/play/PlayerShell.tsx` before writing the lane rather than trusting them.
-- **Parallel workers are unmeasured.** The measurement ran `--workers=1`. The waits are on explicit
-  signals rather than on timing, so parallel execution should hold, but if it proves flaky the VR
-  project takes `workers: 1` — at about 2.2 s a shot that costs almost nothing.
+- **The shots run in parallel, like every other test here — decided 2026-09-26.** The 60-run
+  measurement was taken at `--workers=1`, so these particular shots are untested in parallel. The
+  decision rests on precedent instead: `client/playwright.config.ts` sets `fullyParallel: true` with
+  no pinned worker count, CI pins none either, and **698 pixel tests already run that way and block
+  merge**. Eleven more is a rounding error, and `retries: 2` on CI already absorbs a one-off timing
+  blip. The one honest difference is that `client/`'s shots are small isolated Storybook components
+  while these are full pages driving a real engine and a soundfont download — heavier, more moving
+  parts. If that difference bites, `fullyParallel: false` on the VR project costs about 25 seconds
+  for the whole lane and is a one-line change.
 - **Moving the 51 existing `web/` browser tests into the container may change their timing.** This
   is the one real risk in the CI decision. If it materializes, fall back to a separate `web-vr`
   container job and accept the second build.
@@ -525,6 +542,10 @@ document.** This spec changes nothing outside `docs/`. The list exists so the im
 checked against a stated footprint — and so a reviewer seeing one of these files in that diff knows
 it was planned rather than smuggled in.
 
+- `web/e2e/player-states.ts` — **new**; one exported function per player state, imported by both
+  browser lanes.
+- `web/e2e/a11y.e2e.ts` — refactored to import those functions instead of carrying its own copies.
+  No change to what it asserts.
 - `web/e2e/*.vr.ts` — **new**; the eleven shots themselves. `web/` contains no `*.vr.ts` file today,
   and this is the one entry whose absence the config cannot survive: a scoped run whose `testMatch`
   finds nothing exits 1 with "No tests found". Loud rather than silent, but it means the config and

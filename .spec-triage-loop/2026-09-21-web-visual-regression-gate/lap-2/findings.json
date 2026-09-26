@@ -82,8 +82,25 @@
     "F-A (P0, CI shape)": "APPLIED \u2014 option 1: one unscoped invocation. Build-count table corrected to 2/3/3/2 (the ci.yml build job also builds web).",
     "F-B (P1, --output)": "DISSOLVED by F-A \u2014 one invocation cannot collide with itself. No per-project outputDir needed.",
     "F-C (P1, toast)": "APPLIED \u2014 toast-gone wait on the long-score shot, plus a note that the maintainer intends error toasts to stop auto-dismissing.",
-    "F-D (P2, docs)": "APPLIED \u2014 client/README.md and docs/runbooks/vr-a11y-testing.md added to the footprint, and the whole list reframed to say explicitly that the IMPLEMENTING PR edits them, not this one."
+    "F-D (P2, docs)": "APPLIED \u2014 client/README.md and docs/runbooks/vr-a11y-testing.md added to the footprint, and the whole list reframed to say explicitly that the IMPLEMENTING PR edits them, not this one.",
+    "L-1 (parallel workers)": "APPLIED \u2014 parallel, matching client/. Recorded with the 698-test precedent and the flip condition.",
+    "L-2 (shared navigation)": "APPLIED \u2014 web/e2e/player-states.ts, both lanes import it."
   },
   "last_applied": "P0",
-  "undecided": []
+  "undecided": [],
+  "lap1_leftover_audit": {
+    "why": "The maintainer asked, before lap 3, whether anything from lap 1 was left unresolved.",
+    "genuine_leftovers_now_closed": {
+      "L-1 parallel workers": "Deferred in lap 1, re-raised as a lap-2 residual, never decided. CLOSED 2026-09-26: run in parallel, matching client/. Evidence: client/playwright.config.ts sets fullyParallel:true with no worker pin, CI pins none, and 698 VR tests already run that way blocking merge; retries:2 absorbs a blip. These shots remain UNTESTED in parallel \u2014 the decision rests on precedent, and the flip is one line.",
+      "L-2 shot-file organization": "Lap 1 asked whether the VR shots share a11y.e2e.ts's navigation or copy it; never answered. CLOSED 2026-09-26: a shared web/e2e/player-states.ts that both lanes import, with a11y.e2e.ts refactored to use it."
+    },
+    "suspected_leftovers_that_were_false_alarms": {
+      "tooling/sweep-darwin-vr-baselines.sh": "Lap 2 residual suggested it does not know about a web/ baseline path. FALSE \u2014 line 68 is `git rm -- \"*-chromium-darwin.png\"` with no path filter, so it is repo-wide and already covers web/.",
+      "AGENTS.md conflating PR #162 with NH-315": "Lap 1 coherence flagged AGENTS.md describing NH-315's symptom as the 0px seek rail. FALSE \u2014 both incidents genuinely produced that symptom from different causes, so AGENTS.md is correct."
+    },
+    "still_open_and_carried_to_lap_3": {
+      "global animation freeze": "client/'s VR helper injects `transition: none !important; animation: none !important` on top of Playwright's animations:'disabled' (client/src/vr-helpers.ts:205-210). Whether web/'s hover shots need the same for their colour transitions is UNMEASURED and cannot be until the shots exist.",
+      "next build cost in the container": "Unmeasured inside mcr.microsoft.com/playwright:v1.61.1-noble. A risk, not a decision."
+    }
+  }
 }
