@@ -1,0 +1,552 @@
+{
+  "_header": {
+    "artifact_path": "docs/specs/2026-09-21-web-visual-regression-gate.md",
+    "artifact_lines": 702,
+    "reviewed_commit": "9e03a4ef",
+    "lap": 4,
+    "review_skill": "compound-engineering:ce-doc-review",
+    "review_mode": "mode:headless",
+    "pr": "#171",
+    "jira": "NH-320",
+    "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/nh-320-vr-spec-lap-4-92e22a",
+    "push_target": "git push origin HEAD:docs/nh-320-web-vr-gate-spec",
+    "branch": "claude/nh-320-vr-spec-lap-4-92e22a",
+    "finding_count_total": 12,
+    "finding_count_awaiting_decision": 12,
+    "finding_count_raw_from_reviewers": 14,
+    "finding_count_merged_away_in_dedup": 2,
+    "finding_count_dropped_in_verification": 0,
+    "finding_count_applied_silently_by_engine": 0,
+    "severity_split": {
+      "P0": 1,
+      "P1": 2,
+      "P2": 6,
+      "P3": 3
+    },
+    "route_split": {
+      "proposed_fixes_needing_decision": 8,
+      "fyi_observations": 4
+    },
+    "CAP_WARNING": "12 findings is EXACTLY the triage-half cap. Expect to stop at the cap with none left over IF no finding needs a second picker round -- a finding that needs two rounds counts as two. L4-F-1 (the P0) and L4-F-7 (the inverted fix) are the two most likely to need a second round, so plan for stopping around 10-11 and writing partial state. The 4 FYI observations require NO decision and do not consume the cap: they are reported, not asked.",
+    "state_store_note": "STATE-STORE for this loop is THIS FILE, not the document. The spec has NO YAML frontmatter and must not gain one -- no sibling spec in docs/specs/ has any. Write last_applied and the lap bump into lap_state below.",
+    "step_2b_silent_edits": "NONE. The engine applied 0 fixes. Verified three ways: git status --porcelain is empty, git diff 9e03a4ef -- <doc> is empty, and the doc's sha256 still equals the baseline captured before the review ran (18b973766c271b7661faadc9f23859ba48410304137e8009f6d2c102605f4ea8). The one finding that WOULD have auto-applied (L4-F-7, safe_auto at anchor 100) was downgraded to gated_auto during synthesis before the apply step -- and its spike then proved the fix was inverted, so the downgrade prevented a wrong silent edit.",
+    "exit_signal_raw": "NOT CLEAN -- 12 actionable findings survived verification (1 P0, 2 P1, 6 P2, 3 P3; 8 proposed fixes + 4 FYI observations). A Proposed-fixes section is non-empty, so the doc-review-loop EXIT-SIGNAL (neither a Proposed-fixes nor a Decisions section present) does not fire. Note there is no Decisions section this lap: no finding landed as `manual` at anchor 75+, so every actionable item carries a concrete fix.",
+    "quote_integrity": "CLEAN LAP. All 37 claimed_evidence strings from all four reviewers matched grep -n -F byte-for-byte against the doc: zero paraphrases, zero em-dash-to-hyphen substitutions. The defect that broke three applies in lap 3 is absent. Every `before` block in this file was sliced out of the document BY LINE NUMBER by a script, never retyped, so it is byte-exact by construction -- including all 111 em-dashes (U+2014). Apply it with an exact-match edit and it will match.",
+    "coverage": {
+      "activated": ["coherence", "feasibility", "scope-guardian", "adversarial"],
+      "not_activated": [
+        "product-lens -- both legs (premise claims, strategic weight) are foreclosed by settled items 1 and 12, so it could only re-litigate settled ground. Same call as lap 3.",
+        "design-lens -- the doc's screen references are incidental to test infrastructure and the eleven-shot list is settled. Same call as lap 3.",
+        "security-lens -- no auth, PII, endpoint or trust-boundary surface."
+      ],
+      "cross_model_judgment_pass": "SKIPPED, and named here as a real coverage gap. It was triggered (adversarial was activated) but it requires sending document content off-host to a third-party model provider over a sanctioned egress route, and this session holds no such sanction from the maintainer. Non-blocking by the skill's own design. Lap 3 skipped it for the same reason. If you want it, it needs your explicit go-ahead for a named provider and route.",
+      "dropped_anchors_0_25": 0,
+      "restated_suppressed": 3
+    },
+    "dedup_note": "14 raw findings became 12. Two pairs merged, each pair raised independently by feasibility AND adversarial in separate dispatched contexts, which is the strongest corroboration signal available this lap, so each merged finding took the +1 anchor step to 100:\n  L4-F-5 = feasibility 'Long-score waits carry no timeout' (P2/75) + adversarial 'Toast-gone wait carries no timeout' (P2/75). Feasibility's is the superset: it covers BOTH the data-file and the toast-gone assertion; adversarial's covers only the toast.\n  L4-F-6 = feasibility 'Shot guard checks file presence' (P2/75) + adversarial 'Shot guard proves a file exists' (P2/50).\nTransparency: the pipeline's literal fingerprint is normalize(section)+normalize(title), and these pairs do not match it, because the adversarial sections carry parenthetical line numbers and the titles are differently worded. They were merged on substance anyway -- surfacing them separately would have put two near-duplicate decisions about the same snippet in front of you. Both halves' evidence is unioned into the entries.",
+    "no_chains": "No premise-dependency chains exist this lap. A chain root must be P0/P1 AND `manual`, and no P0/P1 finding is `manual` -- both carry concrete fixes. So no finding is presented as a dependent of another; all 8 proposed fixes are independent decisions.",
+    "settled_do_not_relitigate": [
+      "1. Page-level Playwright screenshots in web/e2e (not a web/ Storybook, not NH-298 alone).",
+      "2. v0 Plan C ships first; this gate lands after.",
+      "3. web/'s whole browser lane moves into the Playwright container.",
+      "4. Blocking via ci-green from day one.",
+      "5. Eleven shots, against PR #170's merged layout.",
+      "6. Playwright's DEFAULT comparison tolerance, same as client/.",
+      "7. tooling/docker-playwright.sh replaces the inlined container command.",
+      "8. No gh-pages diff report for web/; a red run gives a downloadable artifact.",
+      "9. ONE unscoped `playwright test` invocation in CI, not two scoped steps.",
+      "10. Shots run in PARALLEL, matching client/.",
+      "11. Navigation shared via web/e2e/player-states.ts; a11y.e2e.ts refactored to import it.",
+      "12. Whether the gate is worth building at all."
+    ],
+    "settled_note": "Carried from lap 3 and passed to all four reviewers as the Settled-decisions slot. No finding this lap challenges any of the twelve on preference grounds. L4-F-1 and L4-F-4 both touch settled ground (the default tolerance; day-one blocking) but neither reopens it: each fixes the doc's REASONING while leaving the decision standing -- L4-F-1 adds a signal-side assertion rather than tightening the tolerance, and L4-F-4 corrects the warrant for day-one blocking rather than asking for a grace period.",
+    "prohibited_claim_lap3_F4": "CHECKED AND CLEAN -- nothing to drop. No finding asserts that the long-score shot photographs the bundled beat or that its toast wait passes vacuously. Verified mechanically (grep for vacuous / bundled beat / photograph across the finding set): the only hits outside the check text are L4-F-5's own disclaimer and L4-F-8's verbatim quote of the doc's eight-shot list, where 'bundled beat' is just one item. L4-F-5 argues the OPPOSITE of the prohibited claim -- it accepts the 3793-4129 ms measurement as real and says the margin is thin.",
+    "not_findings_confirmed_absent": "CHECKED AND CLEAN. Neither of the two known-open items is raised as a finding: (a) whether web/ needs client/'s extra global transition/animation freeze, and (b) what next build costs inside the Playwright container. Verified mechanically: 'next build', 'transition' and 'freeze' appear ONLY inside the instruction text; 'animation' appears once outside it, in L4-F-8's verbatim quote of the doc's own stated reason for the tooltip wait, which is the per-shot open animation, not client/'s global CSS freeze. Both remain not measurable until the shots exist.",
+    "known_open_carried_forward": [
+      "Whether web/ needs client/'s extra global `transition/animation: none !important` freeze (client/src/vr-helpers.ts:205-210) on top of Playwright's animations:'disabled'. NOT measurable until the shots exist. Confirmed again this lap that the spec states no number and treats it as open.",
+      "What `next build` costs inside mcr.microsoft.com/playwright:v1.61.1-noble. NOT measurable until the shots exist. Feasibility flagged that the genuinely untested part is a Next 16 + Babel React Compiler build under an --ignore-scripts install, which the existing vr job never exercises, and that it is worth one throwaway container run before the lane is written. Two things de-risk it: the vr job already installs in that image under engine-strict against engines.node >= 24, and --disable-dev-shm-usage is already in Playwright 1.61.1's default Chromium switches."
+    ],
+    "id_glossary": {
+      "L4-F-N / L4-FYI-N": "Lap-4 finding N. F = needs a decision from you; FYI = reported only, no decision.",
+      "P0": "Would ship a gate that passes while the thing it guards is broken -- the failure this whole spec exists to prevent.",
+      "P1": "An implementer is blocked or has to invent something the spec should have chosen.",
+      "P2": "Real defect; the spec still works but misleads or leaves a hole.",
+      "P3": "Minor; nothing breaks.",
+      "confidence anchor": "The review engine's evidence scale. 100 = evidence directly confirms it. 75 = double-checked, will be hit in practice. 50 = verified real but advisory, routed to FYI and never asked as a decision.",
+      "safe_auto / gated_auto / manual": "Whether the fix is silently applied (one clear right answer), applied after you confirm, or needs your judgement. Only gated_auto items reach you as decisions this lap.",
+      "Plan C": "The v0 popovers plan (the Settings and Tracks popovers). It ships BEFORE this gate, which is why two of the eleven shots cannot be measured yet.",
+      "ci-green": "The single required merge-gate CI context. Branch protection requires only this one, so a new job needs no ruleset change.",
+      "PR #170": "The merged full-bleed player layout the eleven shots are taken against. It also shipped the hover:bg-muted -> hover:bg-elevate change L4-F-1 turns on.",
+      "PR #162": "An already-shipped bug of exactly this class: the seek rail rendered 0 px wide and every browser test passed, axe included.",
+      "NH-315 / PR #167": "The other shipped bug of this class: production served the design system unstyled while the same commit's preview was perfect.",
+      "the eleven shots": "landing, Skeleton, engine error, bundled beat, long score, Settings popover, Tracks popover, transport toggles, ghost hover, header tooltip, narrow viewport.",
+      "anchor-100 safe_auto": "The one class the review engine applies to the document silently, without showing you first. Zero were applied this lap."
+    }
+  },
+  "findings": [
+    {
+      "id": "L4-F-1",
+      "severity": "P0",
+      "confidence_anchor": 100,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "adversarial",
+      "section": "The pixel-stability measurement (102-108) + The shots (227, 241-252, 268-270)",
+      "title": "Default tolerance cannot see the surface step the ghost-hover shot targets",
+      "route": "Proposed fix (concrete fix, needs your confirmation)",
+      "scenario": "You change the player's icon buttons so hovering no longer lightens them — the surface token goes back to what it was before the full-bleed layout PR. You push, the new web VR job goes green with the ghost-hover shot included, and you merge believing the screenshot proved the hover still works. It did not. At Playwright's default tolerance that surface step is 17 times too faint for even one pixel to be counted as changed.",
+      "whats_wrong": "The ghost-hover shot's stated job (:227) is to measure a background-token step, and at the default tolerance that step is invisible to the comparator. Measured against the installed comparator: the cutoff is 35215 x 0.2^2 = 1408.6, and the step --elevate over --rail scores 80.7 — 17x under. So reverting hover:bg-elevate to hover:bg-muted, the exact regression the full-bleed layout PR records having shipped, changes ZERO counted pixels and the shot passes. The doc ran this signal-side check for the OTHER new shot (the tooltip, 526 px, \"Far past the tolerance\") and never for this one, so it is an oversight, not a decision.",
+      "before": [
+        {
+          "lines": "102-108",
+          "text": "3. **Playwright's default tolerance is enough** — decided 2026-09-26. Its `threshold` defaults to\n   `0.2` in YIQ colour space and `maxDiffPixels` is unset, so a pixel must differ noticeably to\n   count and then a _single_ such pixel fails. The worst drift measured here is ±1/255 in one\n   channel, about `0.004` — fifty times under that threshold. Going stricter (`threshold: 0`) would\n   buy nothing the evidence points at, would make element-clipped shots impossible, and would give\n   the repo two comparison policies instead of one. So the shots pass no comparison options at all,\n   exactly as `client/` does."
+        },
+        {
+          "lines": "227",
+          "text": "| Ghost hover on the rail   | hover `open-file-button`                             | `hover:bg-elevate` measured against `--rail`          |"
+        },
+        {
+          "lines": "241-252",
+          "text": "**Ghost hover on the rail** — PR #170 finding 10. `client/src/components/ui/Button/Button.tsx` gives\nthe ghost variant `hover:bg-elevate`, and #170 adds three surfaces it can land on:\n\n```css\n--elevate: oklch(93.5% 0.006 240.4deg); /* the raised step a control shows under the pointer */\n--rail: #f4f6f9; /* recessed — the left rail */\n--panel: #fbfcfe; /* raised — the transport footer */\n```\n\nThe step is strongest against Storybook's white canvas, which is the only place it is photographed\ntoday, and weakest against `--rail` — where it could regress to invisible with every existing gate\ngreen. `OpenFileControl.tsx` renders `variant=\"ghost\"` on `--rail`, so hovering it is the shot."
+        },
+        {
+          "lines": "268-270",
+          "text": "regression (the Positioner's `z-index` set back to `auto`) changed **526 pixels** in a 200×100 crop,\nthe arrow and that band. Far past the tolerance, so the shot catches it — but it is a sliver, not a\nmissing tooltip."
+        }
+      ],
+      "after": "Two edits, neither reopening the settled default-tolerance decision.\n\n(1) In consequence 3 (:105-108), add the signal-side floor after the noise figure: at threshold 0.2 the comparator's per-pixel cutoff is 35215 x 0.2^2 = 1408.6, so a grey-on-grey step must clear roughly 53/255 of luminance to be counted at all — which puts this repo's surface tokens under it: --elevate against --rail scores 80.7, --muted against --elevate 44.7, and --panel against --background 5.3.\n\n(2) In the ghost-hover row's reason column (:227) and as a Risks bullet, state that the screenshot alone cannot see the surface step, and prescribe asserting the hovered button's computed background-color before the shot — the way the accessibility lane already polls getComputedStyle (web/e2e/a11y.e2e.ts:87, :173) and the way the transport-toggles bullet already prescribes for the tempo percentage.",
+      "why_it_works": "It closes the hole on the signal side rather than by tightening the comparison, so the settled \"Playwright's DEFAULT tolerance, same as client/\" decision stands untouched. It also reuses a pattern already live in the same test lane, so the implementer copies rather than invents.",
+      "spike": "SPIKED AND CONFIRMED, with the reviewer's arithmetic reproduced independently from the installed playwright-core 1.61.1 and the real tokens in client/src/styles.css. Cutoff 1408.6 exact. Formula is the real 0.5053*dY^2 + 0.299*dI^2 + 0.1957*dQ^2 (coreBundle.js :6865-6904), not the reviewer's shorthand; test is |delta| > maxDelta (:6798); maxDiffPixels falls back to 0 (:7271) so ONE counted pixel fails. Measured: --elevate/--rail 80.7 (17x under), --muted/--elevate 44.7 (31x under), --panel/--background 5.3 (268x under). The oklch->sRGB conversion was validated against three values styles.css asserts in its own comments. Also confirmed the full-bleed layout PR (f98537cd) really shipped hover:bg-muted -> hover:bg-elevate, and --color-elevate maps to the raw token with no alpha (styles.css:110).\n\nTWO REFINEMENTS, BOTH STRENGTHENING IT: the default lives at coreBundle.js:7260 (not :7261, which is the closing brace); and even the case the doc calls strongest (:250, against Storybook's white canvas) scores 244.6 — still 6x under.\n\nONE LIMIT THE WALK-THROUGH MUST NOT OVERSTATE: the ghost variant also carries hover:text-foreground, and the icon rests at text-muted-foreground (OpenFileControl.tsx:119); that colour change scores 4412.0 and IS counted. So the shot does catch \"hover failed entirely\". What it cannot catch is a change to the BACKGROUND token — which is exactly what :227 claims it measures. Keep the wording on \"cannot see the surface step\", never \"sees nothing\".",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 4,
+      "fix_contradicts_doc": false,
+      "verification_reason": "Arithmetic independently reproduced from the installed comparator source and the real tokens: cutoff 1408.6 vs 80.7 (17x under) for the step the shot claims to measure, and 44.7 (31x under) for the exact revert that already shipped once as PR #170 commit f98537cd. The doc measured the signal side for the tooltip shot (526 px, :268-269) and never for this one.",
+      "decision": null,
+      "contradiction_note": "No later section resolves it. The only threshold/tolerance discussion in the whole doc is 102-108 (grepped: \"threshold\" hits 72,102,105; \"tolerance\" hits 102,269; \"maxDiffPixels\" hits 72,103). No signal-side pixel measurement is given for the ghost-hover shot anywhere, unlike the tooltip shot at 268-269."
+    },
+    {
+      "id": "L4-F-2",
+      "severity": "P1",
+      "confidence_anchor": 100,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "feasibility",
+      "section": "Process changes this carries (670-675), against the CI section (443-445)",
+      "title": "A guard assertion cannot be repointed at the container job, because its subject is gone",
+      "route": "Proposed fix (concrete fix, needs your confirmation)",
+      "scenario": "You implement the gate, move web/'s browser lane into the container, and run the repo's own workflow-guard test. It fails: one assertion demands a browser-install line in ci.yml that your new job deliberately does not have. The spec told you to repoint both broken assertions at the new web job, so you go looking for the line to point at — and there is none. You now invent the replacement yourself, and the quality job that ci-green waits on stays red until you guess right.",
+      "whats_wrong": "The spec prescribes ONE remedy (\"Both must be repointed at the new web job\") for two assertions that need two different ones. The browser-install assertion's subject ceases to exist in ci.yml after the move — which the same sentence states one clause earlier — so there is nothing to repoint it at. Guessing wrong either deletes coverage silently or leaves the quality job red with no stated correct target.",
+      "before": [
+        {
+          "lines": "443-445",
+          "text": "The new `web` job follows the `vr` job's container recipe, not the `setup-js` composite: `corepack\nenable && pnpm install --frozen-lockfile --ignore-scripts`, and no `playwright install` because the\nbrowsers are baked into the image. It carries the same guard every other path-filtered job has —"
+        },
+        {
+          "lines": "670-675",
+          "text": "  the one file in this list whose failure you cannot see before pushing. Two assertions break:\n  `:40` requires a literal `run: pnpm --filter @notation-hero/web run test:e2e` line, which the\n  trimmed `e2e` job no longer has, and `:44` requires a\n  `pnpm --filter @notation-hero/web exec playwright install --with-deps chromium` line, which the\n  container job deliberately does not need. Both must be repointed at the new `web` job — the test\n  case is even named _\"the e2e job runs the web Playwright lane, not only the client one\"_, which"
+        }
+      ],
+      "after": "Split the remedy instead of prescribing one for both. Say that the test-invocation assertion is rewritten to match the new job's actual run line (pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts), and that the browser-install assertion is REPLACED by one pinning the new job's container: mcr.microsoft.com/playwright:v1.61.1-noble line — since the image pin is what makes \"no install needed\" true, and nothing else in the test suite pins it.",
+      "why_it_works": "It gives each broken assertion its own named target, so neither is left to invention, and it preserves the coverage the browser-install assertion existed to provide by moving it onto the thing that now guarantees the same property.",
+      "spike": "SPIKED AND CONFIRMED. The browser-install assertion's subject really does cease to exist in ci.yml, and nothing in the repo already pins the container image tag in a test.\n\nONE WIDENING the finding understates: the test-invocation assertion is not straightforwardly repointable either — the new job's only run line is \"exec playwright test --config=...\" (doc :454), which does not match \"run test:e2e\", so it needs its literal rewritten too, not merely repointed. The finding's distinction still holds and is the sharper point (that assertion's subject still exists somewhere to point at; the browser-install one's does not), but the After text must cover both.\n\nLINE REFS TO CORRECT: the browser-install regex spans workflow-guards.test.mjs:42-45 with the literal on :44.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 3,
+      "fix_contradicts_doc": false,
+      "verification_reason": "The assertion really is the literal browser-install run line, and the doc's own CI section (:444) says the container job installs no browsers, so \"Both must be repointed at the new web job\" (:674) is impossible for that one.",
+      "decision": null,
+      "contradiction_note": "Nothing elsewhere in the doc offers an alternative remedy for :44, and nothing in the repo already pins the container image tag in a test: the only source-file occurrence of `container: mcr.microsoft.com/playwright:v1.61.1-noble` is .github/workflows/ci.yml:211 (all other hits are docs), so the finding's proposed substitute assertion does not already exist."
+    },
+    {
+      "id": "L4-F-3",
+      "severity": "P1",
+      "confidence_anchor": 75,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "adversarial",
+      "section": "CI — web/'s whole browser lane moves into the container (452-455) + A failing run gives you a zip (618-620)",
+      "title": "The new job's report upload has no stated condition, so a red run uploads nothing",
+      "route": "Proposed fix (concrete fix, needs your confirmation)",
+      "scenario": "Your web VR run goes red on a real pixel change. You open the run to download the report and compare the before and after images — and there is no artifact attached. The upload step never ran, because GitHub skips a job's remaining steps once one fails, and the spec never said to guard the upload. Since web/ deliberately gets no hosted diff page, that zip was the only way to see what changed.",
+      "whats_wrong": "The spec pins the new job down to the exact artifact name and the exact paths, but never states the upload step's if: condition — the one thing that makes the failure path work. An unconditional upload step never runs on exactly the run that needs it. Both sibling uploads in ci.yml already solve this and explain why.",
+      "before": [
+        {
+          "lines": "452-455",
+          "text": "```yaml\n- name: web browser lane (end-to-end + accessibility + visual regression)\n  run: pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts\n```"
+        },
+        {
+          "lines": "478-482",
+          "text": "| Job                             | Artifact                       |\n| ------------------------------- | ------------------------------ |\n| `vr` (client Storybook VR)      | `playwright-client-vr-report`  |\n| `e2e` (client only, after this) | `playwright-client-e2e-report` |\n| `web` (both lanes, one run)     | `playwright-web-report`        |"
+        },
+        {
+          "lines": "488-489",
+          "text": "The `e2e` job's upload also **drops** `web/playwright-report/` and `web/test-results/` from its\n`path:` list — those paths belong to the new job now."
+        },
+        {
+          "lines": "618-620",
+          "text": "So a red `web` VR is read the way any other Playwright failure is: download `playwright-web-report`\nfrom the run's Artifacts and open it with `npx playwright show-report`. Revisit the day that download\nbecomes a real annoyance — then there is a measured case to size the work against."
+        }
+      ],
+      "after": "Spell the upload step out next to the test invocation in the CI section: an actions/upload-artifact step named playwright-web-report, guarded by if: ${{ !cancelled() }} rather than if: failure() — so a flaky-then-passed retry's trace survives, matching the vr job's upload (ci.yml:224) and the e2e job's (:399) — with path: holding the exact web/playwright-report/ and web/test-results/ literals the workflow-guard test pins, plus retention-days: 7 and if-no-files-found: ignore as both siblings use.",
+      "why_it_works": "It copies a solved pattern from the two sibling jobs in the same file, including the reason the stricter if: failure() is wrong, so the failure path works on the first try and the guard test's pinned path literals keep matching.",
+      "spike": "SPIKED AND CONFIRMED. Both sibling uploads carry if: ${{ !cancelled() }} plus a comment explaining why it is not if: failure(), and the spec really pins only the name and paths. The doc's only if: anywhere is the job-level paths-filter guard at :446.\n\nLINE REFS TO CORRECT: the finding cites the siblings' if: as ci.yml:222-223 and :396-398; those ranges are the step name plus the explanatory comment. The if: ${{ !cancelled() }} itself is on :224 and :399. Both siblings also carry retention-days: 7 and if-no-files-found: ignore, which the new job equally needs and the doc equally omits.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 3,
+      "fix_contradicts_doc": false,
+      "verification_reason": "Both sibling uploads carry `if: ${{ !cancelled() }}` with a comment saying why not `if: failure()`, the spec pins only the new artifact's name and paths, and :618-620 tells the reader to download that artifact on a red run - which an unconditional upload step would never produce.",
+      "decision": null,
+      "contradiction_note": "Grepped the whole doc for \"if:\", \"upload\" and \"retention\": the only `if:` is the job-level paths-filter guard at :446, and the upload hits (473, 484, 485, 488) all concern artifact NAMES and the e2e job dropping the web paths. No upload step, and therefore no `if:` condition, is prescribed for the new job anywhere."
+    },
+    {
+      "id": "L4-F-4",
+      "severity": "P2",
+      "confidence_anchor": 75,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "adversarial",
+      "section": "Blocking from day one (508-510), against The pixel-stability measurement (71-80) and the parallelism bullet (572-574)",
+      "title": "Day-one blocking is warranted by a measurement covering two of the eleven shots",
+      "route": "Proposed fix (concrete fix, needs your confirmation)",
+      "scenario": "You read that the measurement \"found no flake\", so turning the gate on blocking from day one looks safe. Weeks later an unrelated PR goes red on the tracks-popover shot. Nine of the eleven shots never had determinism data — two of them could not, because those popovers do not exist until Plan C ships — and the runs that did pass were taken one worker at a time, while CI runs them in parallel.",
+      "whats_wrong": "The no-flake claim is cited as the warrant for having no grace period, but its evidence covers /play's default loaded state plus the long-score state: 2 of 11 shots. The doc's own parallelism bullet already concedes the measured shots are \"untested in parallel\". Because the gate blocks with no grace period, the first flake in one of the nine unmeasured shots surfaces as a red ci-green on somebody's unrelated PR.",
+      "before": [
+        {
+          "lines": "71-80",
+          "text": "Sixty runs in `mcr.microsoft.com/playwright:v1.61.1-noble`, three shots × twenty runs each, at\n`threshold: 0` and `maxDiffPixels: 0` — the harshest comparison Playwright allows, where a single\nbyte of difference in a single channel fails. The **first** run of each shot writes the baseline and\ncompares against nothing, so every ratio below is out of the **nineteen comparisons that follow it**:\n\n| Shot                                    | Identical runs |\n| --------------------------------------- | -------------- |\n| Full page (contains the rendered score) | **19 / 19**    |\n| Page with the notation masked out       | **19 / 19**    |\n| Notation box only (element-clipped)     | 3 / 19         |"
+        },
+        {
+          "lines": "508-510",
+          "text": "**Blocking from day one.** `web` joins `ci-green`'s `needs:` list alongside `a11y`, `vr` and `e2e`.\n`client/` VR already blocks, and the measurement found no flake to earn a grace period against: a\nvisual gate nobody has to obey is one people learn to scroll past."
+        },
+        {
+          "lines": "572-574",
+          "text": "- **The shots run in parallel, like every other test here — decided 2026-09-26.** The 60-run\n  measurement was taken at `--workers=1`, so these particular shots are untested in parallel. The\n  decision rests on precedent instead: `client/playwright.config.ts` sets `fullyParallel: true` with"
+        }
+      ],
+      "after": "In \"Blocking from day one\", replace the appeal to a no-flake measurement with its real scope: say the sixty-run study covered /play's default loaded state and that the long-score state was byte-identical across fourteen runs; that the remaining nine states (landing, Skeleton, engine error, transport toggles, both popovers, ghost hover, header tooltip, narrow viewport) are unmeasured and two of them cannot be measured until Plan C ships; and that retries: 2 on CI plus the per-shot document.fonts.ready and 500 ms settle are what absorb a one-off blip — the same absorber the parallelism bullet already names.",
+      "why_it_works": "It keeps the settled day-one blocking decision and removes only the false warrant, replacing it with the mechanism that actually absorbs a blip. A reader then knows which shots carry evidence and which carry a bet.",
+      "spike": "SPIKED AND CONFIRMED, counts exact: 2 of 11 shots have determinism data, 9 do not, and 2 of those 9 cannot have any because the popovers do not exist yet. The doc's parallelism bullet (:572-580) concedes the gap rather than closing it, and the Risks section offers fullyParallel: false only as a fallback.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 3,
+      "fix_contradicts_doc": false,
+      "verification_reason": "The doc warrants day-one blocking on \"the measurement found no flake\" (:509), but the measurement covers one state in three crop shapes plus a 14-run long-score check - 2 of 11 shots - and the doc itself concedes the measured shots ran at --workers=1 while CI runs parallel.",
+      "decision": null,
+      "contradiction_note": "The doc's own parallelism bullet (:572-580) concedes the gap rather than closing it, and the Risks section offers `fullyParallel: false` only as a fallback if the difference \"bites\". Nothing else supplies determinism data for the other nine shots."
+    },
+    {
+      "id": "L4-F-5",
+      "severity": "P2",
+      "confidence_anchor": 100,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "feasibility + adversarial (merged, +1 anchor for independent agreement)",
+      "section": "Readiness, and why each wait is there (301-317, 354-363, 369-371)",
+      "title": "Both long-score waits carry no timeout, inheriting the 5 s default this section rejects",
+      "route": "Proposed fix (concrete fix, needs your confirmation)",
+      "scenario": "The long-score shot starts failing now and then with a bare \"expected count 0\" and nothing else to go on. Both of its waits quietly inherited Playwright's 5-second default — the very default this section spends two paragraphs saying is too small for /play. The toast lives 4.2 seconds and the measured wait already reaches 4.13 of them, so there is under a second of slack, and that figure came from a one-worker run while CI runs several.",
+      "whats_wrong": "Neither prescribed long-score wait names a ceiling, while EVERY sibling wait in the same section states one (30 000 / 60 000 / 10 000 ms). Two consequences: the toast-gone assertion has ~871 ms of margin against the toast's measured life; and the data-file assertion — the belt the spec adds for the 15 ms window in which the loading-bar wait can pass early — becomes the parse gate with six times less budget than the lane it was copied from, which gives it { timeout: 30_000 }.",
+      "before": [
+        {
+          "lines": "301-310",
+          "text": "```ts\nawait expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({\n  timeout: 30_000,\n});\n// engine + soundfont ready\nawait expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });\nawait expect(page.getByRole('progressbar', { name: 'Loading the player' })).toHaveCount(0, {\n  timeout: 10_000,\n});\n```"
+        },
+        {
+          "lines": "312-317",
+          "text": "**Those three numbers are the existing lane's, and they only work if the per-test budget is\nraised with them.** Playwright's `expect` default is 5 000 ms, nowhere near what `/play` needs:\nevery readiness wait in `web/e2e/a11y.e2e.ts` and `web/e2e/player.e2e.ts` spends 30 000 ms on\nthe notation `svg`, 60 000 ms on `transport-play` and 10 000 ms on the bar's unmount. But a\nper-test cap swallows all three — `web/playwright.e2e.config.ts` sets no `timeout`, so each test\ngets Playwright's 30 000 ms default and a higher `expect` ceiling is never reached. Measured on"
+        },
+        {
+          "lines": "354-356",
+          "text": "```ts\nawait expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');\n```"
+        },
+        {
+          "lines": "358-363",
+          "text": "Measured against the built app: the ordering is already safe without it. `setNotation` and\n`setOpening(false)` land in the same React commit, so `toHaveCount(0)` on the loading bar cannot\npass until the new score is in state — and it really blocks, 793–1 354 ms against 3 793–4 129 ms for\nthe toast. Fourteen runs all photographed `Punk.gp`. It is prescribed anyway because that safety\nrests on a React detail nobody reading this file would know, and because the bar wait's first poll\nlands about 15 ms from the `flushSync` that arms it. Prefer this attribute over an overflow poll:"
+        },
+        {
+          "lines": "369-371",
+          "text": "```ts\nawait expect(page.locator('[data-sonner-toast]')).toHaveCount(0);\n```"
+        }
+      ],
+      "after": "Add explicit ceilings to both prescribed snippets: { timeout: 30_000 } on the loaded-notation-name data-file assertion, the value the source lane uses (web/e2e/player.e2e.ts:191), and { timeout: 10_000 } on the [data-sonner-toast] toHaveCount(0) assertion. Add one clause noting the bare expect default of 5 000 ms leaves under a second of margin against the toast's measured life, which is why this wait names its own timeout.",
+      "why_it_works": "It makes the two waits consistent with every sibling in their own section and with the source lane the data-file assertion was copied from, and it removes the only silent fallback to a default the section already argues against.",
+      "spike": "SPIKED AND CONFIRMED, every figure including the ~871 ms margin. sonner 2.0.7: TOAST_LIFETIME 4000 (dist/index.mjs:417) + TIME_BEFORE_UNMOUNT 200 (:425) = 4200 ms, loading toasts exempted from auto-dismiss (:582), same instance per id (:1146) — all four exactly as the doc cites. web/playwright.e2e.config.ts sets no expect block, and the spec's projects array (:136-150) adds none, so the 5 000 ms default really is what both waits inherit.\n\nPROHIBITED-CLAIM CHECK: this finding does NOT re-raise lap 3's F-4. It ACCEPTS the 3793-4129 ms measurement as real and argues the margin is thin. It never claims the wait is vacuous or that the shot photographs the bundled beat. Independently confirmed.\n\nLINE REF TO CORRECT: the source { timeout: 30_000 } is on player.e2e.ts:191 (the assertion spans :190-192), not :190.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 4,
+      "fix_contradicts_doc": false,
+      "verification_reason": "Both prescribed long-score waits (:355, :370) name no timeout, so both inherit the 5 000 ms expect default that this very section rejects as too small for /play (:313), while every sibling wait states 30/60/10 s; the toast-gone wait has only ~871 ms of measured margin and the data-file wait loses 6x the budget its source line carries.",
+      "decision": null,
+      "contradiction_note": "No later section raises either wait's ceiling. web/playwright.e2e.config.ts sets no `expect` block, and the spec's projects array (:136-150) adds only a per-project `timeout`, which caps the test rather than the assertion, so nothing in the doc lifts these two waits off the 5 s expect default."
+    },
+    {
+      "id": "L4-F-6",
+      "severity": "P2",
+      "confidence_anchor": 100,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "feasibility + adversarial (merged, +1 anchor for independent agreement)",
+      "section": "Process changes this carries — the web/e2e/*.vr.ts bullet (642-653)",
+      "title": "The shot guard proves a file exists, not that any pixels are compared",
+      "route": "Proposed fix (concrete fix, needs your confirmation)",
+      "scenario": "A shot flakes on a Friday afternoon, so somebody wraps it in test.skip to get back to green and means to return to it. The guard still passes, because all it does is count *.vr.ts filenames. The merge-blocking web job now compares zero pixels and reports success — which is the exact outcome the guard was added to prevent.",
+      "whats_wrong": "The prescribed guard stops at counting filenames, so it stays green over an empty file, a file whose shots are all test.skip or test.fixme, or one with no toHaveScreenshot call at all. Playwright's forbidOnly catches .only but nothing in the repo catches .skip or .fixme, and the spec has already established that an unscoped run over an empty pixel project exits 0. The guard's own host file sets the opposite standard: it warns at :38-39 that an unanchored presence check stays green against a commented-out ci.yml step.",
+      "before": [
+        {
+          "lines": "642-653",
+          "text": "  empty `chromium` project exits **0** — also measured. A merge-blocking gate would read as green\n  over zero pixels. So the guard belongs with the shots, and it is four lines in\n  `tooling/workflow-guards.test.mjs` — already in this footprint, and already inside the `quality`\n  job `ci-green` waits on:\n\n  ```js\n  test('the web VR project has at least one shot to run', () => {\n    const dir = fileURLToPath(new URL('../web/e2e', import.meta.url));\n    const shots = readdirSync(dir).filter((f) => f.endsWith('.vr.ts'));\n    assert.ok(shots.length > 0, 'web/e2e has no *.vr.ts — the chromium project runs nothing');\n  });\n  ```"
+        }
+      ],
+      "after": "Extend the guard past presence. Keep the shots.length > 0 assertion and add a second one that reads each matched file and fails when any contains test.skip( or test.fixme(, or when none contains toHaveScreenshot( — so the chromium project cannot match files while comparing no pixels. Add readdirSync to that file's node:fs import.",
+      "why_it_works": "It holds the guard to the anchored-match standard the neighbouring assertions in the same file were already hardened to, and it closes the one remaining route by which the merge-blocking job can pass over zero pixel comparisons. It is a few lines in a file the plan already edits.",
+      "spike": "SPIKED AND CONFIRMED. The guard counts filenames only; nothing in the repo forbids .skip or .fixme (the doc's only \"skip\" hit is :447, about a docs-only PR skipping the job); and :38-39 really does carry the anchored-match warning.\n\nTHE IMPORT FIX IS NARROWER THAN IT SOUNDS: fileURLToPath is already imported at workflow-guards.test.mjs:11, so readdirSync is the only missing import.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 3,
+      "fix_contradicts_doc": false,
+      "verification_reason": "The prescribed guard counts filenames only, so it stays green over an empty file, an all-skipped file, or one with no toHaveScreenshot - the \"green over zero pixels\" outcome the doc names at :642-643 - and the host file's own :38-39 comment sets the opposite standard for exactly this reason.",
+      "decision": null,
+      "contradiction_note": "Grepped the doc for \"skip\", \"fixme\" and \"forbidOnly\": the only \"skip\" hit is :447 about a docs-only PR skipping the job. Nothing anywhere in the doc strengthens the guard beyond the filename count."
+    },
+    {
+      "id": "L4-F-7",
+      "severity": "P2",
+      "confidence_anchor": 100,
+      "autofix_class": "gated_auto (DOWNGRADED from safe_auto -- see downgrade)",
+      "verdict": "PARTIAL",
+      "reviewer": "scope-guardian (fix direction CORRECTED in verification)",
+      "section": "Design — the helper paragraph (556-560); NOT the footprint bullet (685-686)",
+      "title": "The design section sends the implementer to edit a file that needs no edit",
+      "route": "Proposed fix (concrete fix, needs your confirmation)",
+      "scenario": "You work through the footprint and reach client/README.md. The design section told you lines 152-153 go stale once the docker helper lands, so you open them looking for the docker command to update — and find only two pnpm script names, which the refactor does not change. You have been sent to edit a file that needs no editing, and the sentence that sent you there is the thing that is actually wrong.",
+      "whats_wrong": "The design paragraph (:559-560) lists client/README.md:152-153 among \"the files that go stale if the helper lands without them\". Those two lines carry only the two root pnpm SCRIPT NAMES, whose public interface the refactor preserves — it rewrites the script bodies, not their names. Nothing there goes stale. The runbook, by contrast, does spell out the full docker run invocation the helper replaces.",
+      "before": [
+        {
+          "lines": "556-560",
+          "text": "`tooling/*.sh` is already shellcheck-linted, so the helper is checked rather than trusted. The\nexpanded command is written out in `docs/runbooks/vr-a11y-testing.md` (lines 27-34), not in\n`AGENTS.md` — whose VR section is three summary lines that link the runbook — and `client/README.md`\n(lines 152-153) carries the command pair. Those are the files that go stale if the helper lands\nwithout them."
+        },
+        {
+          "lines": "685-686",
+          "text": "- `client/README.md` — lines 178 and 216 name `playwright-vr-report` and `playwright-e2e-report`.\n  Both become the renamed `playwright-client-*` artifacts."
+        }
+      ],
+      "after": "Narrow the sentence at :559-560 so it names the runbook block as the thing that goes stale, and drop client/README.md:152-153 from that claim — those two lines carry only root script names that survive the refactor.\n\nIMPORTANT: leave the footprint bullet at :685-686 exactly as it is. It already lists only lines 178 and 216 (the artifact renames), and that is correct.",
+      "why_it_works": "It fixes the sentence that makes the false claim instead of propagating the false claim into the footprint. The implementer is then pointed only at the one file that genuinely goes stale, and the footprint stays an accurate diff checklist.",
+      "spike": "SPIKED, AND IT INVERTED THE FIX — this is why nothing was applied silently.\n\nclient/README.md:152-153 contains ONLY two pnpm script-name invocations with trailing # comments (pnpm test:vr:docker and pnpm test:vr:docker:update), inside a bash fence opened at :150. No docker invocation, no volumes, no image tag. Their public interface is untouched by the helper refactor, which rewrites the BODY of those two root package.json scripts and preserves both names.\n\nBy contrast docs/runbooks/vr-a11y-testing.md:27-34 DOES spell out the full docker run block — seven -v flags, -w /work, the pinned image tag, and the corepack/pnpm body. That is what the helper replaces.\n\nSo the scope-guardian's own deferred question was right and its proposed fix was backwards: adding 152-153 to the footprint would prescribe an edit with no content. The real defect is the design sentence. Verification set fix_contradicts_doc: true and supports_claim: false on this entry.\n\nSide note, consistent and NOT a defect: the runbook's own script-name pair at :20-21 is the same shape as client/README.md:152-153, and the footprint at :691 already treats that block as a place to ADD the web commands.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 3,
+      "fix_contradicts_doc": true,
+      "verification_reason": "The inconsistency between :559-560 and the footprint is real, but it resolves the OPPOSITE way from the finding: 152-153 contains only pnpm script names that survive the refactor, so the footprint is right and the design section's go-stale sentence is wrong. The downgrade from safe_auto was correct - do not silent-apply, and if applied, apply the inverted fix.",
+      "decision": null,
+      "downgrade": "The scope-guardian classified this safe_auto at anchor 100, which routes to a SILENT apply. It was downgraded to gated_auto under the strawman-downgrade safeguard, because the same reviewer's own deferred_questions left the fix direction open: it asked whether client/README.md:152-153 needs any change at all, since it names only script names whose interface survives the refactor. A fix whose own author left the direction unresolved is not \"one clear correct answer\". The spike then proved the direction was inverted — so the downgrade is what stopped a wrong edit being written into the doc without anyone seeing it.",
+      "contradiction_note": "The proposed fix would prescribe an edit with no content. client/README.md:152-153 names ONLY the two root pnpm script names, whose public interface is untouched by the helper refactor, so nothing there goes stale. The doc's footprint bullet at :685-686 is therefore RIGHT to omit them, and the sentence at :559-560 is the wrong half: it lumps client/README.md in with the runbook as a file that \"goes stale\". The runbook genuinely does - vr-a11y-testing.md:27-34 spells out the full `docker run` block the helper replaces."
+    },
+    {
+      "id": "L4-F-8",
+      "severity": "P2",
+      "confidence_anchor": 75,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "feasibility",
+      "section": "Readiness, and why each wait is there (386-398), against The shots (225-226, 298-299)",
+      "title": "The popover shots have no open-state wait, so a baseline can be recorded closed",
+      "route": "Proposed fix (concrete fix, needs your confirmation)",
+      "scenario": "You record the first baselines. The settings-popover shot captures the page a moment before the popover finishes opening — or with it still shut — and that image becomes the reference every later run is compared against. Every later run matches it. The two shots that made this whole gate wait for Plan C are green and photographing nothing.",
+      "whats_wrong": "Both popovers sit in the eight player-loaded group, whose three waits all fire BEFORE the trigger click, leaving only document.fonts.ready and a 500 ms sleep between the click and the compare. The two hover shots get an explicit open-state wait for exactly the portal-position reason that applies to a popover too, and the shared Popover component already exposes the matching hook — so the wait exists and simply was not prescribed.",
+      "before": [
+        {
+          "lines": "225-226",
+          "text": "| Settings popover open     | click the header gear                                | the accordion sections and their rows, composed       |\n| Tracks popover open       | click the transport's Tracks button                  | one mixer row per track, over a real score            |"
+        },
+        {
+          "lines": "298-299",
+          "text": "**The eight player-loaded shots** (bundled beat, long score, both popovers, transport toggles,\nghost hover, tooltip over the header, narrow viewport):"
+        },
+        {
+          "lines": "386-398",
+          "text": "**All eleven** then finish identically:\n\n```ts\nawait page.evaluate(async () => {\n  await document.fonts.ready;\n});\nawait page.waitForTimeout(500);\n```\n\nThe two hover shots add one wait of their own — `[data-slot=\"tooltip-content\"][data-open]` visible,\nthe locator `web/e2e/player.e2e.ts:1183` already defines for exactly this. Not because of an open\ndelay: `Tooltip.tsx` defaults `delay` and `closeDelay` to `0` and neither trigger overrides them.\nWhat needs settling is the open animation and the portal's position. The Skeleton shot's route handler must **stall"
+        }
+      ],
+      "after": "Give the two popover shots their own wait in the readiness section, alongside the hover shots' tooltip wait: after the trigger click, wait for [data-slot=\"popover-content\"] to be visible — the slot the shared Popover component sets on the portalled panel (client/src/components/ui/Popover/Popover.tsx:42).",
+      "why_it_works": "It reuses the doc's own stated reason for the tooltip wait (the open animation and the portal's position), which applies verbatim to the popovers, and it targets an attribute the shared component already sets, so no new test hook is needed.",
+      "spike": "SPIKED AND CONFIRMED. Popover.tsx:42 really sets data-slot=\"popover-content\". The only open-state wait in the readiness section is :395, scoped to \"The two hover shots\"; the popover shots get none.\n\nThe symmetry the fix relies on is exact: Popover uses the same isolate z-50 Positioner plus portalled Popup shape as Tooltip, so the doc's own stated reason for the tooltip wait (\"the open animation and the portal's position\", :398) transfers verbatim.\n\nNOTE for the walk-through: Plan C owns both triggers, so if the maintainer prefers to fix the selector when Plan C lands rather than name it now, that is a legitimate defer.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 4,
+      "fix_contradicts_doc": false,
+      "verification_reason": "The two popover shots are in the eight-shot list with no open-state wait, and the hover shots get an explicit [data-open] wait for a reason the doc states and which applies identically to popovers; a data-slot hook already exists at Popover.tsx:42, so the gap is an omission rather than a missing capability.",
+      "decision": null,
+      "contradiction_note": "Grepped the doc for \"data-open\" and \"popover\": the only open-state wait in the readiness section is :395, scoped to \"The two hover shots\". The popover rows at :225-226 and the eight-shot list at :298 give the popovers nothing beyond the shared finish at :388-392."
+    },
+    {
+      "id": "L4-FYI-1",
+      "severity": "P2",
+      "confidence_anchor": 50,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "adversarial",
+      "section": "The pixel-stability measurement (71-72, 80, 98-108)",
+      "title": "The element-clip ban rests on evidence taken at a tolerance the doc then rejects",
+      "route": "FYI observation (anchor 50 -- no decision required)",
+      "scenario": "Later on you want one tightly-cropped shot of a single control, and you read that element-clipped shots are ruled out by measurement. But the measurement behind that rule was taken at zero tolerance, and the drift it found is thousands of times under the tolerance the doc actually adopts two consequences later.",
+      "whats_wrong": "The three consequences are introduced as \"all evidence-backed rather than guessed\", yet the element-clip drift was measured at threshold 0 / maxDiffPixels 0, and consequence 3 then adopts a default under which that drift is invisible — and even concedes a stricter setting \"would make element-clipped shots impossible\", which is an admission that the adopted default permits them.",
+      "before": [
+        {
+          "lines": "71-72",
+          "text": "Sixty runs in `mcr.microsoft.com/playwright:v1.61.1-noble`, three shots × twenty runs each, at\n`threshold: 0` and `maxDiffPixels: 0` — the harshest comparison Playwright allows, where a single"
+        },
+        {
+          "lines": "80",
+          "text": "| Notation box only (element-clipped)     | 3 / 19         |"
+        },
+        {
+          "lines": "98-108",
+          "text": "Three design consequences, all evidence-backed rather than guessed:\n\n1. **Page-level shots only** — no `toHaveScreenshot` on a clipped element.\n2. **No mask over the notation.** The score is shot as it is drawn.\n3. **Playwright's default tolerance is enough** — decided 2026-09-26. Its `threshold` defaults to\n   `0.2` in YIQ colour space and `maxDiffPixels` is unset, so a pixel must differ noticeably to\n   count and then a _single_ such pixel fails. The worst drift measured here is ±1/255 in one\n   channel, about `0.004` — fifty times under that threshold. Going stricter (`threshold: 0`) would\n   buy nothing the evidence points at, would make element-clipped shots impossible, and would give\n   the repo two comparison policies instead of one. So the shots pass no comparison options at all,\n   exactly as `client/` does."
+        }
+      ],
+      "after": "Qualify consequence 1: note that the element-clip drift was measured at threshold 0 / maxDiffPixels 0 and sits far inside the default tolerance adopted in consequence 3, so page-level-only is a deliberate choice to keep one shot shape and one comparison policy rather than something the measurement forces.",
+      "why_it_works": "It keeps the rule while making its real basis legible, so a later author who wants a clipped shot argues with a design choice instead of with evidence that does not actually forbid it.",
+      "spike": "SPIKED AND CONFIRMED, and stronger than claimed. The measured element-clip drift scores 0.16 against the 1408.6 cutoff — about 8,800x under in the comparator's own units (~94x in threshold units). The reviewer's \"tens of times\" was echoing the doc's own conservative \"fifty times under\" at :105.\n\nUNRAISED BUT ADJACENT: the doc's \"about 0.004 — fifty times under that threshold\" (:105) is itself inexact; the drift is ~0.0021 in threshold units, so ~94x, not 50x. It sits inside the same range L4-F-1 edits, so it may be worth revisiting in that same pass.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 3,
+      "fix_contradicts_doc": false,
+      "verification_reason": "Consequence 1 is derived from drift measured at threshold 0, and at the tolerance the doc actually adopts that same drift produces zero counted pixels, so page-level-only is a consistency choice as claimed - and the doc itself concedes as much at :106.",
+      "decision": null,
+      "contradiction_note": "The doc contains no other justification for page-level-only; consequence 3 at :105-108 supplies the concession the finding leans on (\"would make element-clipped shots impossible\") rather than rebutting it."
+    },
+    {
+      "id": "L4-FYI-2",
+      "severity": "P3",
+      "confidence_anchor": 50,
+      "autofix_class": "manual",
+      "verdict": "CONFIRMED",
+      "reviewer": "coherence",
+      "section": "Baselines (415-421)",
+      "title": "The web/.gitignore diff is not the line client/.gitignore actually carries",
+      "route": "FYI observation (anchor 50 -- no decision required)",
+      "scenario": "You diff web/.gitignore against client/.gitignore to confirm the two Linux-only baseline rules really match, because the doc says web/ \"gains the line client/.gitignore already carries\". Only the ignore pattern matches. The comment is reworded and drops the command names — and copying client's line verbatim would be wrong anyway, because it names the client script, not the web/ one this same doc introduces.",
+      "whats_wrong": "\"Gains the line client/.gitignore already carries\" promises a verbatim copy, but only the *-chromium-darwin.png pattern is identical; both comment lines are a paraphrase that drops the concrete command names client/.gitignore states. A verbatim copy would also be wrong, since client's comment names the client-specific script while this doc introduces a separate helper for web/.",
+      "before": [
+        {
+          "lines": "415-421",
+          "text": "`web/.gitignore` gains the line `client/.gitignore` already carries:\n\n```diff\n+ # VR baselines are Linux-only. A local update on a Mac writes darwin shots for quick\n+ # iteration — they must never be committed (regenerate through the container).\n+ *-chromium-darwin.png\n```"
+        }
+      ],
+      "after": "Reword the diff block to mirror client/.gitignore's actual comment, substituting the web-appropriate script name, so the sentence's \"already carries\" claim becomes true of the comment as well as the pattern.",
+      "why_it_works": "It makes the claim and the block agree, and it keeps the command name actionable for whoever hits a stray darwin baseline — which is the only reason client's comment names a command at all.",
+      "spike": "SPIKED AND CONFIRMED, both halves: only the pattern line is identical, both comment lines are paraphrase, and a verbatim copy would itself be wrong because the doc introduces a separate web/ helper at :518.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 3,
+      "fix_contradicts_doc": false,
+      "verification_reason": "\"gains the line client/.gitignore already carries\" (:415) promises a verbatim copy, but only the pattern matches; the comment is a paraphrase that drops the command names, and a true verbatim copy would name the wrong command for web/.",
+      "decision": null,
+      "contradiction_note": "Nothing later in the doc reconciles the wording. The doc introduces test:web:docker for web/ at :518, which is what makes a verbatim copy of client's comment wrong rather than merely paraphrased."
+    },
+    {
+      "id": "L4-FYI-3",
+      "severity": "P3",
+      "confidence_anchor": 50,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "feasibility",
+      "section": "Readiness, and why each wait is there — the three-signal table (328-334)",
+      "title": "The engine-error signal drops the ceiling its source line states",
+      "route": "FYI observation (anchor 50 -- no decision required)",
+      "scenario": "The engine-error shot is given the same signal the accessibility lane already uses for that state, but without the 15-second ceiling that line carries. So the one shot whose state depends on an aborted module load ends up with the least headroom written down, in a section that otherwise states every number.",
+      "whats_wrong": "The signal is copied from the accessibility lane without that line's { timeout: 15_000 }, so it runs on the 5 000 ms default. Nothing breaks on a warm run, which is why this is an observation rather than a decision.",
+      "before": [
+        {
+          "lines": "328-334",
+          "text": "**The other three** settle on the signal `web/e2e/a11y.e2e.ts` already uses for that same state:\n\n| Shot                 | Its signal                                    | Why the block above cannot work                                |\n| -------------------- | --------------------------------------------- | -------------------------------------------------------------- |\n| Landing `/`          | `getByRole('link', { name: 'Play' })` visible | the page renders a heading and a link — neither test id exists |\n| First-visit Skeleton | `getByTestId('notation-skeleton')` visible    | the engine is stalled on purpose, so Play never enables        |\n| Engine error         | `getByTestId('engine-error')` visible         | the engine is aborted on purpose, so Play never enables        |"
+        }
+      ],
+      "after": "State the source lane's ceiling on the engine-error row of the three-signal table: getByTestId('engine-error') visible with { timeout: 15_000 }, the value the source uses for the same assertion.",
+      "why_it_works": "It carries the number across with the assertion it belongs to, keeping the table consistent with the sentence that introduces it.",
+      "spike": "SPIKED AND CONFIRMED: the source line carries { timeout: 15_000 } and the doc's row drops it.\n\nONE CLARIFYING WORD THE WALK-THROUGH NEEDS: all three rows of that table run on the 5 000 ms default — the landing and Skeleton sources carry no timeout either. Engine-error is the only row that drops a ceiling its source actually states. The finding's \"it alone runs on the default\" is true only in that precise sense.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 2,
+      "fix_contradicts_doc": false,
+      "verification_reason": "The source line really carries { timeout: 15_000 } and the doc's table row reproduces the signal without it, in a section that states every other number explicitly. Low severity is right: nothing breaks on a warm run.",
+      "decision": null,
+      "contradiction_note": "The section states explicit ceilings for the eight player-loaded shots at :303/:306/:308 and none for any row of this table, so nothing later supplies the missing number."
+    },
+    {
+      "id": "L4-FYI-4",
+      "severity": "P3",
+      "confidence_anchor": 50,
+      "autofix_class": "gated_auto",
+      "verdict": "CONFIRMED",
+      "reviewer": "feasibility",
+      "section": "A failing run gives you a zip, not a hosted diff (606-613) + the ci.yml footprint bullet (665-666)",
+      "title": "The sticky comment can claim VR is passing while the new web VR is red",
+      "route": "FYI observation (anchor 50 -- no decision required)",
+      "scenario": "On a PR where the client VR job failed on an earlier commit and then went green, the sticky comment is rewritten to say VR is passing with no visual diffs to review — while your new web VR job is red. The merge still blocks, so nothing ships broken, but the comment a reviewer reads contradicts the run they are looking at.",
+      "whats_wrong": "The job that resolves the sticky comment keys on the client VR result alone, so after this change its \"VR passing\" wording is true of only one of two VR lanes. That job is absent from the footprint's ci.yml bullet, which lists the new job, the trimmed e2e job, the artifact names and the corrected comments.",
+      "before": [
+        {
+          "lines": "606-613",
+          "text": "`client/` fills that gap with the `vr-report` job, which publishes its report to GitHub Pages and\nlinks it from a sticky comment (`docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md`). `web/`\ndoes **not** get an equivalent, for two reasons:\n\n- **The evidence says it is unproven.** `gh-pages` carries no `vr-report/pr/*` path, and the only\n  pull request mentioning its comment marker is the one that built it (#122). Either `client/` VR\n  has never failed on a pull request since it shipped, or every publish was swept on close. Either\n  way the mechanism has not been exercised."
+        },
+        {
+          "lines": "665-666",
+          "text": "- `.github/workflows/ci.yml` — the new `web` job, the trimmed `e2e` job, the three artifact names,\n  the `vr-report` download rename, the corrected comments, and `ci-green`'s `needs:`."
+        }
+      ],
+      "after": "Add the resolve job's comment body to the ci.yml footprint bullet and scope its wording to the client lane (for example \"client VR passing\"), so a green client run can no longer describe a red web run.",
+      "why_it_works": "It makes the comment say what it actually checked, and it puts the job in the footprint so the edit is not discovered by accident.",
+      "spike": "SPIKED AND CONFIRMED: the job exists at ci.yml:341, keys on needs.vr.result alone, and is absent from the footprint.\n\nPRECONDITION worth stating so the maintainer is not surprised: the job only UPDATES an existing comment (if (existing) at :365; its own comment at :337 says it never creates one on a green PR). So the contradiction needs a PR where an earlier commit had already turned client VR red and created the sticky comment, then client VR went green while the new web VR is red.",
+      "evidence_quotes_verbatim": true,
+      "evidence_quote_count": 2,
+      "fix_contradicts_doc": false,
+      "verification_reason": "The job exists, fires on a green client vr, rewrites the comment to claim VR is passing with no visual diffs, is keyed on needs.vr.result alone, and is absent from the footprint's ci.yml bullet - so after this change the comment can contradict a red web VR lane.",
+      "decision": null,
+      "contradiction_note": "Grepped the doc for \"vr-report-resolve\" and \"sticky\": the only sticky-comment mention is :607, about the vr-report publish job. The resolve job is named nowhere in the doc, including the footprint bullet at :665-666, which lists the vr-report download rename but not vr-report-resolve."
+    }
+  ],
+  "dropped": [],
+  "dropped_note": "Nothing was dropped in verification. 11 CONFIRMED, 1 PARTIAL (L4-F-7, kept with its fix direction corrected), 0 DROP.",
+  "line_ref_corrections": [
+    "Four line refs inside the reviewers' prose are off by one or name a range rather than the literal. The `before` blocks in this file are sliced from the doc by verified line number and are NOT affected; this list is so the walk-through does not repeat a wrong ref:",
+    "playwright-core's `threshold: options.threshold ?? 0.2` default is at coreBundle.js:7260, not :7261 (:7261 is the object literal's closing brace).",
+    "The browser-install regex spans workflow-guards.test.mjs:42-45, with the literal on :44.",
+    "The sibling `if: ${{ !cancelled() }}` lines are ci.yml:224 and :399 (the cited :222-223 / :396-398 are the step name plus the explanatory comment).",
+    "player.e2e.ts's `{ timeout: 30_000 }` is on :191 (the assertion spans :190-192)."
+  ],
+  "residual_concerns": [
+    "The doc never states whether the shots are viewport-clipped (toHaveScreenshot's default) or fullPage: true. The determinism table's 'Full page' row implies the latter and /play is full-bleed so the two probably coincide, but the implementer is choosing unaided. (adversarial)",
+    "The 2.2 s per-shot cost is the mean over three repeated shapes of one already-loaded state; the eleven shots each pay their own navigation and readiness. Self-consistent, so an extrapolation risk rather than a bad measurement, and not load-bearing for the CI build-count argument. (adversarial)",
+    "Moving the 51 existing web/ browser tests into the container may change more than timing: a11y.e2e.ts's expectHitAreas (44 px minimums plus viewport containment) and its toBeInViewport assertions at 700 px are LAYOUT assertions, and the environment changes image. Fonts are self-hosted so text metrics should hold, but this was not measured, and a metric flip would land in the axe lane, not the pixel lane. The doc's risk bullet names timing only. (feasibility)",
+    "docs/specs/2026-06-26-nh-197-e2e-traces.md still names the old artifact in live prose (:186, :206, :223) and is absent from the footprint, while the doc DOES correct the same name in the 2026-07-08 spec. It may fall under 'leave the change-log and plan records as history', which is why neither reviewer filed it. (adversarial + coherence)",
+    "docs/runbooks/vr-a11y-testing.md:37 says the vr CI job pins the container tag and to bump it in lockstep. After the move, two CI jobs plus the helper script carry the tag. Not filed because the single-job phrasing is already incomplete today. (feasibility)",
+    "decision-registry.md's own '## Change log (moved)' section says dated entries now live only in decision-changelog.md, yet still opens with a 2026-09-20-dated entry. Pre-existing drift inside that file, unrelated to this spec. (coherence)",
+    "RESOLVED THIS LAP, not carried: the stray plain hyphen at doc line 503 that feasibility flagged as a surviving lap-3 transcription artifact. It was the only one left in the file and it sat in a dash position; repaired to an em-dash in its own commit. Not a finding (dash style is suppressed) -- mechanical repair of known lap-3 damage."
+  ],
+  "deferred_questions": [
+    "Should the computed-style assertion pattern apply to EVERY shot whose stated target is a surface-token step (the bundled-beat shot's rail and panel included), or only to the ghost-hover shot where the step is smallest? Broader than L4-F-1's fix. (adversarial)",
+    "Does the web job need fullyParallel: false on the VR project, or a pinned workers count, once the eleven shots are measured in parallel alongside the 51 behaviour tests sharing one next build? (feasibility)",
+    "Plan C also adds a MasterRow to client/, which the Tracks-popover shot will photograph. Should that shot's coverage column name it alongside the per-track rows, or is 'one mixer row per track' meant to cover the foot row too? (feasibility)",
+    "The footprint corrects the 2026-07-08 spec's stale artifact name but says to leave change-log and plan records as history. Should the 2026-06-26 spec and the registry's NH-197 entry be corrected too, on the same reasoning (a spec describing a still-relevant mechanism), or do they fall under 'leave as history'? The doc does not say. (coherence)",
+    "Suppressed as restatements of findings that already answer them (3): which assertion replaces the browser-install guard (answered by L4-F-2), what the popover shots wait on (answered by L4-F-8), and whether the nine unmeasured shots are stable in parallel (answered by L4-F-4)."
+  ],
+  "lap_state": {
+    "lap": 4,
+    "lap_bumped_from_3": true,
+    "half_completed": "REVIEW half only (steps 1, 2, 2b, 3)",
+    "triaged": false,
+    "triage_completed": false,
+    "last_applied": null,
+    "last_applied_note": "Nothing applied this lap. The review half applies nothing by design, and the engine applied 0 silent fixes.",
+    "undecided": [
+      "L4-F-1",
+      "L4-F-2",
+      "L4-F-3",
+      "L4-F-4",
+      "L4-F-5",
+      "L4-F-6",
+      "L4-F-7",
+      "L4-F-8",
+      "L4-FYI-1",
+      "L4-FYI-2",
+      "L4-FYI-3",
+      "L4-FYI-4"
+    ],
+    "bound_check": "IN BOUNDS. Lap cap is 5, so lap 4 is allowed and lap 5 would be the last. The no-progress gate does not trip: lap 3 resolved all five of its own unresolved P0/P1 findings (2 P0 + 3 P1), so the unresolved P0/P1 count fell 5 -> 0 before this lap opened. Lap 4 raises 3 fresh ones (1 P0 + 2 P1), all newly found rather than carried.",
+    "next_step": "TRIAGE half, as a SEPARATE invocation -- do not continue it in the review session. It starts at step 4, reads THIS FILE and nothing else (never re-open the spec to compose a chunk; every finding's Before is already inline here, byte-exact), establishes findings as prose chunks, and puts them to the maintainer in AskUserQuestion pickers batched <=4, applying each batch's Apply decisions as its own commit before the next round. The 4 FYI observations are reported, not asked.",
+    "suggested_walkthrough_order": "Severity order as listed: L4-F-1 (P0) first -- it is the only finding about the gate passing over a real regression, and its fix is the only one that needs a design choice (where the computed-style assertion goes). Then the two P1s, which both block an implementer. L4-F-7 deserves care despite being P2: its fix direction is INVERTED from what the reviewer proposed, so the picker must present the CORRECTED fix (narrow the design sentence at :559-560) and must NOT offer adding lines 152-153 to the footprint."
+  }
+}
