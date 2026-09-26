@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
   toast,
 } from '@notation-hero/client';
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
@@ -17,7 +18,6 @@ import {
 } from '../../lib/alphatab/AlphaTabEngineContext';
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
-import { PLAYER_ERROR } from '../../lib/player-errors';
 import { NotationSurface } from './NotationSurface';
 import { OpenFileControl, readFailureMessage, readNotation } from './OpenFileControl';
 import { PlayerHeader } from './PlayerHeader';
@@ -441,7 +441,7 @@ function Player() {
       } catch {
         setOpening(false);
         toast.error(
-          `${next.name} could not be opened — it is not a score format the player reads. (Error ${PLAYER_ERROR.notAScore})`,
+          `${next.name} could not be opened — it is not a score format the player reads. (Error ${ERROR.notAScore})`,
           { id: 'notation-load' },
         );
         // The open score was never replaced, and playback was never interrupted — the worklet

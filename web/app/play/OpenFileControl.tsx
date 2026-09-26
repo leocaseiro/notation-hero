@@ -1,9 +1,9 @@
 'use client';
 
 import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '@notation-hero/client';
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { useId, useRef } from 'react';
 
-import { PLAYER_ERROR } from '../../lib/player-errors';
 import type { LoadedNotation } from './PlayerShell';
 
 // Every extension of a format AlphaTab 1.8.4 reads (spec §4): Guitar Pro 3-8, MusicXML plain and
@@ -49,8 +49,8 @@ export async function readNotation(file: File): Promise<LoadedNotation> {
  */
 export function readFailureMessage(file: File): string {
   return file.size > MAX_NOTATION_BYTES
-    ? `${file.name} is too large to open. The limit is ${MAX_NOTATION_MB} MB. (Error ${PLAYER_ERROR.fileTooLarge})`
-    : `${file.name} could not be read. Check that the file still exists, then try again. (Error ${PLAYER_ERROR.fileUnreadable})`;
+    ? `${file.name} is too large to open. The limit is ${MAX_NOTATION_MB} MB. (Error ${ERROR.fileTooLarge})`
+    : `${file.name} could not be read. Check that the file still exists, then try again. (Error ${ERROR.fileUnreadable})`;
 }
 
 export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) {
