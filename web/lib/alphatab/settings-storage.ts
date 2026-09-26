@@ -63,18 +63,18 @@ function dropUnknownOptions(
   merged: PlayerSettingsJson,
   defaults: PlayerSettingsJson,
   optionValues: Readonly<Record<string, readonly string[]>>,
-): { settings: PlayerSettingsJson; dropped: boolean } {
+): { settings: PlayerSettingsJson; repaired: string[] } {
   let settings = merged;
-  let dropped = false;
+  const repaired: string[] = [];
   for (const [path, allowed] of Object.entries(optionValues)) {
     const value = readSettingValue(settings, path);
     if (value === undefined) continue;
     if (typeof value !== 'string' || !allowed.includes(value)) {
       settings = writeSettingValue(settings, path, readSettingValue(defaults, path) ?? '');
-      dropped = true;
+      repaired.push(path);
     }
   }
-  return { settings, dropped };
+  return { settings, repaired };
 }
 
 /**
@@ -93,18 +93,18 @@ function dropInvalidText(
   merged: PlayerSettingsJson,
   defaults: PlayerSettingsJson,
   textValidators: Readonly<Record<string, (draft: string) => boolean>>,
-): { settings: PlayerSettingsJson; dropped: boolean } {
+): { settings: PlayerSettingsJson; repaired: string[] } {
   let settings = merged;
-  let dropped = false;
+  const repaired: string[] = [];
   for (const [path, isValid] of Object.entries(textValidators)) {
     const value = readSettingValue(settings, path);
     if (value === undefined) continue;
     if (typeof value !== 'string' || !isValid(value)) {
       settings = writeSettingValue(settings, path, readSettingValue(defaults, path) ?? '');
-      dropped = true;
+      repaired.push(path);
     }
   }
-  return { settings, dropped };
+  return { settings, repaired };
 }
 
 /**
@@ -121,25 +121,33 @@ function dropInvalidText(
 function clampToBounds(
   merged: PlayerSettingsJson,
   bounds: Readonly<Record<string, { readonly min?: number; readonly max?: number }>>,
-): { settings: PlayerSettingsJson; clamped: boolean } {
+): { settings: PlayerSettingsJson; repaired: string[] } {
   let settings = merged;
-  let clamped = false;
+  const repaired: string[] = [];
   for (const [path, { min, max }] of Object.entries(bounds)) {
     const value = readSettingValue(settings, path);
     // A path the stored document does not carry is not a violation — the merge already backfilled
     // it from the defaults. A non-number never got past the merge's type check either.
     if (typeof value !== 'number') continue;
-    // NaN and the infinities survive JSON.parse as numbers via a crafted document, and compare
-    // false against every bound, so they are pinned to the nearer end rather than left through.
+    // NaN and the infinities survive JSON.parse as numbers via a crafted document — `1e999`
+    // parses to Infinity — and they compare false against every bound, so they would otherwise
+    // pass straight through. They are pinned to the row's MINIMUM (its maximum when it declares
+    // no minimum, 0 when it declares neither).
+    //
+    // That ignores the sign on purpose: +Infinity lands on the minimum too, not the maximum it is
+    // nearer to. A non-finite stored number is corruption, not a value with a meaningful
+    // direction, and the low end is the safer landing for every row here — a score restored too
+    // small is obvious and one keystroke from fixed, where one restored at the maximum looks like
+    // the app broke.
     const bounded = Number.isFinite(value)
       ? Math.min(max ?? Number.POSITIVE_INFINITY, Math.max(min ?? Number.NEGATIVE_INFINITY, value))
       : (min ?? max ?? 0);
     if (bounded !== value) {
       settings = writeSettingValue(settings, path, bounded);
-      clamped = true;
+      repaired.push(path);
     }
   }
-  return { settings, clamped };
+  return { settings, repaired };
 }
 
 /**
@@ -166,27 +174,34 @@ export function loadStoredSettings(
   // a font the engine will throw on, or a colour it will silently turn into null: `bold`, `red` and
   // a good value are all strings.
   textValidators: Readonly<Record<string, (draft: string) => boolean>>,
-): { settings: PlayerSettingsJson; reset: boolean } {
-  if (raw === null) return { settings: defaults, reset: false };
+): { settings: PlayerSettingsJson; reset: boolean; repaired: string[] } {
+  if (raw === null) return { settings: defaults, reset: false, repaired: [] };
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
   } catch {
-    return { settings: defaults, reset: true };
+    return { settings: defaults, reset: true, repaired: [] };
   }
 
   if (!isPlainObject(parsed) || !isPlainObject(parsed.settings)) {
-    return { settings: defaults, reset: true };
+    return { settings: defaults, reset: true, repaired: [] };
   }
 
   const merged = mergeAgainstDefaults(parsed.settings, defaults);
   // A value no row offers is a corruption, not an older shape: say so, so the warning fires.
-  const { settings: gated, dropped } = dropUnknownOptions(merged, defaults, optionValues);
+  const { settings: gated, repaired: badOptions } = dropUnknownOptions(
+    merged,
+    defaults,
+    optionValues,
+  );
   // A font or colour the engine will reject is the same corruption again — and the only one that
   // can take the WHOLE restore with it, so it is repaired here rather than left to fillFromJson.
-  const { settings: texted, dropped: badText } = dropInvalidText(gated, defaults, textValidators);
+  const { settings: texted, repaired: badText } = dropInvalidText(gated, defaults, textValidators);
   // Out of its row's range is the same kind of corruption, and reuses the same warning.
-  const { settings, clamped } = clampToBounds(texted, numericBounds);
-  return { settings, reset: dropped || badText || clamped };
+  const { settings, repaired: outOfRange } = clampToBounds(texted, numericBounds);
+  // The PATHS, not just a flag: the warning names what it corrected, and the console log pairs
+  // each path with its row label so a report can be searched by either.
+  const repaired = [...badOptions, ...badText, ...outOfRange];
+  return { settings, reset: repaired.length > 0, repaired };
 }

@@ -11,6 +11,8 @@ const BOUNDS = { 'display.scale': { min: 0.25, max: 3 } } as const;
 // matters here is that the restore CONSULTS them, not which grammar they encode.
 const TEXTS = { 'display.font': (draft: string) => draft.startsWith('12px ') } as const;
 
+const byPath = (a: string, b: string): number => a.localeCompare(b);
+
 describe('loadStoredSettings', () => {
   it('round-trips every stored value', () => {
     const stored = serializeSettings({ display: { scale: 1.4 }, player: { enableCursor: false } });
@@ -163,6 +165,28 @@ describe('loadStoredSettings', () => {
 
     expect(settings).toEqual({ display: { font: '12px "Times New Roman"', scale: 1 } });
     expect(reset).toBe(false);
+  });
+
+  // The warning names the rows it repaired, so the repair passes have to report WHICH paths they
+  // touched, not just that something happened.
+  it('reports every repaired path, from all three repair passes at once', () => {
+    const defaults = { display: { font: '12px serif', scale: 1 }, player: { enableCursor: true } };
+    const stored = serializeSettings({
+      display: { font: 'bold', scale: 99 },
+      player: { enableCursor: true },
+    });
+    const { reset, repaired } = loadStoredSettings(stored, defaults, OPTIONS, BOUNDS, TEXTS);
+
+    expect(reset).toBe(true);
+    expect(repaired.toSorted(byPath)).toEqual(['display.font', 'display.scale']);
+  });
+
+  it('reports no repaired paths when nothing was wrong', () => {
+    const stored = serializeSettings({ display: { scale: 1.4 }, player: { enableCursor: true } });
+    const { reset, repaired } = loadStoredSettings(stored, DEFAULTS, OPTIONS, BOUNDS, TEXTS);
+
+    expect(reset).toBe(false);
+    expect(repaired).toEqual([]);
   });
 
   // A stored NON-string where a text row belongs never reaches the validator: the per-key merge

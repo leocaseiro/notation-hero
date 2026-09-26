@@ -21,6 +21,7 @@ import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
 import { applyThenPersist } from '../../lib/alphatab/live-settings';
 import {
   DEFAULT_PLAYER_SETTINGS,
+  SETTING_LABELS,
   SETTING_NUMERIC_BOUNDS,
   SETTING_OPTION_VALUES,
   SETTING_TEXT_VALIDATORS,
@@ -155,7 +156,8 @@ function Player() {
   // the page renders a setting until the popover is opened.
   const [restored] = useState(() => {
     // eslint-disable-next-line sonarjs/different-types-comparison -- true at runtime during server rendering, where `window` genuinely does not exist; the DOM lib's ambient types just do not say so
-    if (globalThis.window === undefined) return { settings: DEFAULT_PLAYER_SETTINGS, reset: false };
+    if (globalThis.window === undefined)
+      return { settings: DEFAULT_PLAYER_SETTINGS, reset: false, repaired: [] };
     try {
       return loadStoredSettings(
         globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY),
@@ -169,7 +171,7 @@ function Player() {
       // setItem — and this initialiser runs during render, so an unguarded throw takes the whole
       // page. Blocked storage is not a corrupt document: reset stays false, so no toast fires and
       // no repair write happens. Both setItem calls below are guarded the same way.
-      return { settings: DEFAULT_PLAYER_SETTINGS, reset: false };
+      return { settings: DEFAULT_PLAYER_SETTINGS, reset: false, repaired: [] };
     }
   });
   // The Settings popover's edit state: the whole document the shell pushes into the live engine on
@@ -197,8 +199,40 @@ function Player() {
     } catch {
       // Storage is unavailable or full; the warning below is still worth showing.
     }
+    // Both forms, because they serve different readers: the label is what the row is CALLED in the
+    // popover, the dot-path is what to grep for. A report that carries only one of them is hard to
+    // act on from the other end.
+    if (restored.repaired.length > 0) {
+      // A LITERAL format string, with everything else passed as arguments. An interpolated first
+      // argument lets a format specifier inside the interpolated value forge the log line, which
+      // is what the repository's static-analysis gate blocks — and the values here come from
+      // stored data, so the gate is right even though these particular two are constants.
+      console.warn(
+        'Player settings repaired',
+        PLAYER_ERROR.settingsRepaired,
+        restored.repaired.map((path) => `${SETTING_LABELS[path] ?? path} [${path}]`).join(', '),
+      );
+    }
     const id = setTimeout(() => {
-      toast.warning('Your player settings could not be read, so they were reset to the defaults.');
+      // NOT "reset to the defaults" — that was false on both halves. A clamped number keeps the
+      // intent of what was typed and lands on the nearest bound, not the default; and only the
+      // offending keys move, never the whole document. Naming the rows is what makes the warning
+      // actionable: a person can go and look at exactly those.
+      // No filter: the drift test in settings-schema.test.ts binds SETTING_LABELS to the rows in
+      // BOTH directions, so every repairable path has a label. The `?? path` is the belt for a
+      // key that somehow escapes that, and keeps the warning readable rather than printing
+      // "undefined" at a drummer.
+      const named = restored.repaired.map((path) => SETTING_LABELS[path] ?? path);
+      // TWO different events, so two messages and two codes. An empty `repaired` with `reset`
+      // set means the document could not be read at all and EVERYTHING fell back — there "reset
+      // to the defaults" is simply true. A non-empty one means only those keys moved, and a
+      // clamped number went to its nearest bound rather than its default, so claiming a reset
+      // would be false on both halves.
+      toast.warning(
+        named.length > 0
+          ? `Some settings were not valid and have been corrected: ${named.join(', ')}. (Error ${PLAYER_ERROR.settingsRepaired})`
+          : `Your saved settings could not be read, so they were reset to the defaults. (Error ${PLAYER_ERROR.settingsUnreadable})`,
+      );
     }, 0);
     return () => clearTimeout(id);
   }, [restored]);
@@ -589,7 +623,8 @@ function Player() {
         api,
         next,
         apply,
-        onRejected: () => toast.error('That value could not be applied.'),
+        onRejected: () =>
+          toast.error(`That value could not be applied. (Error ${PLAYER_ERROR.settingRejected})`),
         persist: (accepted) => {
           setSettings(accepted);
           try {
@@ -616,7 +651,7 @@ function Player() {
         try {
           api.downloadMidi();
         } catch {
-          toast.error('That file could not be exported.');
+          toast.error(`That file could not be exported. (Error ${PLAYER_ERROR.exportFailed})`);
         }
         return;
       }
@@ -634,7 +669,7 @@ function Player() {
         link.click();
         URL.revokeObjectURL(url);
       } catch {
-        toast.error('That file could not be exported.');
+        toast.error(`That file could not be exported. (Error ${PLAYER_ERROR.exportFailed})`);
       }
     },
     [api, engine],
@@ -670,7 +705,7 @@ function Player() {
   // Confirm FIRST, then parse, then swap — spec §4's order. A file that does not parse never
   // becomes the open notation, so the score on screen is untouched by construction and there is
   // no rollback path to build.
-  const requestNotation = useCallback(
+  const runRequestNotation = useCallback(
     async (next: LoadedNotation) => {
       let at = engine;
       if (!at) {
@@ -684,7 +719,7 @@ function Player() {
           // screen at all. Without this, picking a file or dropping one is a silent no-op. Same
           // toast id as the parse failure below, so the two failure paths behave alike.
           toast.error(
-            'The player could not start, so this file cannot be opened. Reload the page and try again.',
+            `The player could not start, so this file cannot be opened. Reload the page and try again. (Error ${PLAYER_ERROR.engineUnavailableOnOpen})`,
             { id: 'notation-load' },
           );
           return;
@@ -781,6 +816,32 @@ function Player() {
       playRef.current?.focus();
     },
     [api, engine, notation, playing],
+  );
+
+  // ONE open at a time. Two overlapping opens both run to completion and the one that finishes
+  // LAST wins — which can be the file the person already rejected.
+  //
+  // A ref, not `opening` state: `opening` is set by the flushSync below, which is AFTER the engine
+  // await at the top of runRequestNotation, so a second pick made during that window sees it still
+  // false. A ref is written in the same synchronous tick as the call and is visible immediately.
+  //
+  // The guard wraps rather than nests so the 113-line body keeps its shape; `finally` releases the
+  // slot on every exit, including the early returns for a failed engine import and an unreadable
+  // score.
+  //
+  // PRE-EXISTING: this path is unchanged by this feature, and the race predates it.
+  const openInFlight = useRef(false);
+  const requestNotation = useCallback(
+    async (next: LoadedNotation) => {
+      if (openInFlight.current) return;
+      openInFlight.current = true;
+      try {
+        await runRequestNotation(next);
+      } finally {
+        openInFlight.current = false;
+      }
+    },
+    [runRequestNotation],
   );
 
   const [dragging, setDragging] = useState(false);

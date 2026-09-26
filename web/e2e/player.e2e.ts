@@ -1749,6 +1749,34 @@ test('a changed setting survives a reload', async ({ page }) => {
     .toBe(2);
 });
 
+// The OTHER repair path, and the one a person can act on: a single out-of-range value is corrected
+// on its own, so the warning must name the row rather than claim everything was reset. 99 is far
+// outside Zoom's 0.25-3 range, and the field clamps only on blur/Enter, so closing a tab mid-edit
+// is a real way to store it.
+test('a single out-of-range setting is corrected and the warning NAMES it', async ({ page }) => {
+  await page.addInitScript(() => {
+    globalThis.localStorage.setItem(
+      'notation-hero.player-settings',
+      JSON.stringify({ settings: { display: { scale: 99 } } }),
+    );
+  });
+  await page.goto('/play');
+
+  const toast = page.locator('[data-sonner-toast]');
+  await expect(toast).toContainText('Zoom');
+  // It must NOT claim a reset: the other settings were untouched, and Zoom landed on its maximum
+  // rather than its default.
+  await expect(toast).not.toContainText('reset to the defaults');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+  // Clamped to the maximum, not dropped to the default of 1.
+  await expect
+    .poll(async () => {
+      const state = await engineState(page);
+      return state?.scale;
+    })
+    .toBe(3);
+});
+
 // A bad stored value must never stop the player mounting — the one thing v0 exists to do — and
 // must not vanish quietly either.
 test('a corrupt stored value resets with a toast, and the player still starts', async ({

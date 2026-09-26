@@ -6,6 +6,7 @@ import { readSettingValue } from './settings-paths';
 import {
   buildSettingGroups,
   DEFAULT_PLAYER_SETTINGS,
+  SETTING_LABELS,
   SETTING_NUMERIC_BOUNDS,
   SETTING_OPTION_VALUES,
   SETTING_TEXT_VALIDATORS,
@@ -233,5 +234,22 @@ it('SETTING_TEXT_VALIDATORS names no path that is not a text row', () => {
   }
   expect(Object.keys(SETTING_TEXT_VALIDATORS).toSorted(byName)).toEqual(
     [...textPaths].toSorted(byName),
+  );
+});
+
+it('SETTING_LABELS still matches every settings row, and names no path that is not one', () => {
+  // The fourth mirror, and the one a PERSON reads: the restore warning names the rows it
+  // repaired, so a label that drifts from its row sends someone looking at the wrong setting.
+  // Asserted in both directions, like the numeric bounds.
+  const rowLabels = new Map<string, string>();
+  for (const group of buildSettingGroups(engine)) {
+    for (const row of group.settings) {
+      if (row.source !== 'settings') continue;
+      rowLabels.set(row.path, row.label);
+      expect(SETTING_LABELS[row.path], row.path).toBe(row.label);
+    }
+  }
+  expect(Object.keys(SETTING_LABELS).toSorted(byName)).toEqual(
+    [...rowLabels.keys()].toSorted(byName),
   );
 });
