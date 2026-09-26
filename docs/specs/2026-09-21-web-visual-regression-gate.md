@@ -120,7 +120,7 @@ screenshots.
 ### Light only
 
 Dark mode cannot be reached in `web/` today. The variant is class-based —
-`@custom-variant dark (&:is(.dark *))` at `client/src/styles.css:20` — and `web/app/layout.tsx`
+`@custom-variant dark (&:is(.dark *))` at `client/src/styles.css:27` — and `web/app/layout.tsx`
 renders a bare `<html lang="en">` with no theme toggle and no `next-themes`. Shooting a dark
 baseline would mean injecting `.dark` from the test: a state no visitor can reach, and test-only
 instrumentation of exactly the kind this project bans. Dark baselines become available the day
@@ -147,9 +147,11 @@ projects: [
 
 The viewport is pinned explicitly rather than inherited from the device definition, so a Playwright
 upgrade that adjusts `Desktop Chrome` cannot silently invalidate every baseline. The narrow-viewport
-shot overrides it for that one test with `test.use({ viewport: { width: 900, height: 900 } })`
-rather than adding a second project — a project would double every baseline's filename space for
-the sake of one shot.
+shot overrides it with `test.use({ viewport: { width: 900, height: 900 } })` inside a **sync**
+`test.describe()` wrapping that one shot — Playwright rejects `test.use()` inside a `test()` body,
+and inside an `async` describe, with "did not expect test.use() to be called here". A describe
+block is the form that scopes it to one shot; a second Playwright project would instead double
+every baseline's filename space for the sake of one.
 
 **Every invocation must name its project**, or adding the array quietly breaks the command that
 exists today. `web/package.json`'s `test:e2e` carries no `--project`, so the moment projects exist
@@ -229,9 +231,13 @@ tooltips went behind it. Storybook cannot see this: a Tooltip story has no heade
 
 The trigger must be a **header** button. The `z-10` only buries what overlaps the header's top
 64 px, so a tooltip that opens clear of it proves nothing — `back-home` sits inside the header and
-overlaps by construction. A screenshot is enough: the tooltip is portalled and positioned from its
-trigger's box, so it lands in the same place every run, and a buried one is simply absent from the
-picture.
+overlaps by construction. A screenshot is enough, though not for the obvious reason. Measured live on `master`: the header is
+64 px, `back-home` is 44 px centred in it, and the tooltip flips **below** the trigger, so only
+**10 px of its 28** fall inside the header's band — the rest stays visible either way. The header
+paints no background, so what covers that strip is its `border-b` and `shadow-md`. Simulating the
+regression (the Positioner's `z-index` set back to `auto`) changed **526 pixels** in a 200×100 crop,
+the arrow and that band. Far past the tolerance, so the shot catches it — but it is a sliver, not a
+missing tooltip.
 
 **Narrow viewport** — `PlayerShell.tsx` renders the rail as `w-20 shrink-0 … lg:w-24`, so it is
 80 px below Tailwind's `lg` (1024 px) and 96 px at or above it. The other ten shots are pinned at
@@ -285,8 +291,10 @@ await page.evaluate(async () => {
 await page.waitForTimeout(500);
 ```
 
-The two hover shots add one wait of their own: the tooltip must be present and settled before the
-shot, since Base UI opens it after a delay. The Skeleton shot's route handler must **stall
+The two hover shots add one wait of their own — `[data-slot="tooltip-content"][data-open]` visible,
+the locator `web/e2e/player.e2e.ts:1183` already defines for exactly this. Not because of an open
+delay: `Tooltip.tsx` defaults `delay` and `closeDelay` to `0` and neither trigger overrides them.
+What needs settling is the open animation and the portal's position. The Skeleton shot's route handler must **stall
 indefinitely** rather than resume after a fixed
 delay the way the accessibility lane's 5 000 ms stall does: `toHaveScreenshot` needs the state to
 hold across two consecutive samples, and on a baseline-generation run across the write as well.
@@ -294,7 +302,11 @@ hold across two consecutive samples, and on a baseline-generation run across the
 The progress-bar wait is for **unmount**, not opacity: the bar fades with `delay-[400ms]
 duration-300` and is only removed once `useLoadingBarPhase` reaches `gone`. A bar caught mid-fade is
 precisely the kind of drift this lane must not bless. `animations: 'disabled'` covers the
-`Skeleton`'s `animate-skeleton-pulse`, which Playwright fast-forwards to its end state.
+`Skeleton`'s `animate-skeleton-pulse` — but by **cancelling** it to its first frame, not by
+fast-forwarding it, because `client/src/styles.css` declares that keyframe `infinite`. Playwright
+fast-forwards only _finite_ animations. It lands on the right pixels here either way (0% and 100%
+of `skeleton-pulse` are the same colour), and the distinction is written down because the next
+infinite animation added to `web/` may not be so forgiving.
 
 ### Baselines
 
@@ -419,7 +431,10 @@ shadowing `web/.next` during a `client/` run is harmless, so both packages share
 ```
 
 `tooling/*.sh` is already shellcheck-linted, so the helper is checked rather than trusted. The
-`AGENTS.md` VR section spells out the expanded command and updates with it.
+expanded command is written out in `docs/runbooks/vr-a11y-testing.md` (lines 27-34), not in
+`AGENTS.md` — whose VR section is three summary lines that link the runbook — and `client/README.md`
+(lines 152-153) carries the command pair. Those are the files that go stale if the helper lands
+without them.
 
 ## Risks and caveats
 
@@ -434,7 +449,7 @@ shadowing `web/.next` during a `client/` run is harmless, so both packages share
 - **Parallel workers are unmeasured.** The measurement ran `--workers=1`. The waits are on explicit
   signals rather than on timing, so parallel execution should hold, but if it proves flaky the VR
   project takes `workers: 1` — at about 2.2 s a shot that costs almost nothing.
-- **Moving the 50 existing `web/` browser tests into the container may change their timing.** This
+- **Moving the 51 existing `web/` browser tests into the container may change their timing.** This
   is the one real risk in the CI decision. If it materializes, fall back to a separate `web-vr`
   container job and accept the second build.
 - **The app-version tooltip is a landmine for any future shot that opens it.** NH-317 renders
@@ -477,6 +492,10 @@ becomes a real annoyance — then there is a measured case to size the work agai
 
 ## Process changes this carries
 
+- `web/e2e/*.vr.ts` — **new**; the eleven shots themselves. `web/` contains no `*.vr.ts` file today,
+  and this is the one entry whose absence the config cannot survive: a scoped run whose `testMatch`
+  finds nothing exits 1 with "No tests found". Loud rather than silent, but it means the config and
+  the CI step cannot land before the first shot exists.
 - `web/playwright.e2e.config.ts` — the `projects` array splitting `e2e` from `chromium`.
 - `web/package.json` — `test:e2e` and `test:e2e:ui` scoped to `--project=e2e`, plus the new
   `test:vr` and `test:vr:update`.
@@ -488,6 +507,8 @@ becomes a real annoyance — then there is a measured case to size the work agai
 - `web/.gitignore` — the darwin-baseline line.
 - `.github/workflows/ci.yml` — the new `web` job, the trimmed `e2e` job, the four artifact names,
   the `vr-report` download rename, the corrected comment, and `ci-green`'s `needs:`.
-- `docs/decisions/decision-registry.md` — **not** a new change-log entry: that entry lands with this
-  spec. What the implementing pull request owes is flipping this decision's three ⏳ pending marks
-  to ✅, per the "PR merge → update statuses" rule in `AGENTS.md`.
+- `docs/decisions/decision-changelog.md` — **not** a new entry: both NH-320 entries land with this
+  spec. What the implementing pull request owes is flipping their **six** ⏳ pending marks to ✅ —
+  three in the 2026-09-21 entry and three in the 2026-09-22 one — per the "PR merge → update
+  statuses" rule in `AGENTS.md`. `decision-registry.md` carries no NH-320 text at all; the change log
+  was split out of it on 2026-07-15.
