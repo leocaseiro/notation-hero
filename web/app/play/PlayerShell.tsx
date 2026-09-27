@@ -768,8 +768,8 @@ function Player() {
         {/* Visually hidden, and polite so it waits for a gap rather than cutting the reader off. It
             is mounted for the whole life of the page: a live region added to the DOM at the same
             moment its text appears is not announced at all — the region has to be there first.
-            Empty until the first successful open, and that open is the only thing that writes to
-            it. */}
+            Empty until the first open finishes; BOTH outcomes write to it — a successful open
+            and a failed one (see the setAnnouncement calls above). */}
         <p aria-live="polite" className="sr-only">
           {announcement}
         </p>
