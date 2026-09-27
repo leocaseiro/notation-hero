@@ -113,6 +113,11 @@ unclickable at both 1280 and 700 wide; top-right blocks none at 1280 and one at 
 ships as the best available. The phone case is structural — the shell reserving space, or the toast
 not being a full-width fixed overlay — and stays a decision.
 
+> **Superseded 2026-09-27** (see the entry at the top of this log). The phone case was not
+> structural: lifting the toast clear of the header with `mobileOffset` cleared every blocked
+> control at 375px, and the shell reserves nothing. The numbers above are also understated — a
+> re-measurement found 2 blocked at 700px and 6 at 375px, not one and "the header".
+
 ### 2026-09-22 — Eight orphaned spike documents archived, and five NH-196 decisions recovered (NH-25)
 
 The eight documents PR #57 flagged as orphan-risk on 2026-06-20 — still absent from `master` three
