@@ -236,6 +236,13 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
           'before:absolute before:left-1/2 before:top-1/2 before:size-5 before:-translate-x-1/2',
           'before:-translate-y-1/2 before:rounded-full before:border before:border-current/25',
           'before:bg-[var(--normal-bg)] before:content-[""]',
+          // The circle above is an ABSOLUTELY POSITIONED pseudo-element with an OPAQUE fill, and
+          // CSS paints a positioned decoration above the element's own in-flow content — so it
+          // covered sonner's X glyph completely and the only control that can dismiss a persistent
+          // error rendered as a blank circle nobody could read. Lift the glyph back over it. The
+          // baselines for every close-button story are what hold this shut: hiding the X again
+          // moves pixels.
+          '[&>svg]:relative [&>svg]:z-10',
           'outline-none focus-visible:border-ring focus-visible:ring-[3px]! focus-visible:ring-ring/50!',
         ].join(' '),
       },
