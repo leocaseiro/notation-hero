@@ -46,13 +46,25 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-/** [selector exactly as Tailwind emits it, what breaks on screen when it is absent]. */
+/**
+ * [selector exactly as Tailwind emits it, what breaks on screen when it is absent].
+ *
+ * Every entry is written so Tailwind CANNOT extract it from this file, and that is load-bearing.
+ * A plainly-written utility SELF-ARMS: spelling it out anywhere in this file — including in a
+ * comment, since the extractor reads raw text and does not know what a comment is — is enough for
+ * Tailwind to GENERATE it, so the canary then reports present no matter what the design-system
+ * scan did. The escaped entries are unextractable already; the three split with an interpolation
+ * are spelled that way for the same reason. Measured by breaking the client scan and toggling
+ * globals.css's `@source not '../scripts/**'`: 9 of 10 reported missing with that line, 6 of 10
+ * without it, and the three that went quiet were exactly the three that were plain. Write new
+ * entries unextractable too, and never name a watched utility in prose here.
+ */
 export const REQUIRED_SELECTORS = [
   [String.raw`.dark\:bg-muted-foreground\/40`, 'the seek rail paints transparent in dark mode'],
   [String.raw`.bg-muted-foreground\/50`, 'the seek rail paints transparent'],
-  ['.border-2', 'the seek thumb loses its outline'],
-  ['.cursor-grab', 'the seek thumb loses its drag affordance'],
-  ['.text-right', 'right-aligned table columns lose their alignment'],
+  [`.${'border'}-2`, 'the seek thumb loses its outline'],
+  [`.${'cursor'}-grab`, 'the seek thumb loses its drag affordance'],
+  [`.${'text'}-right`, 'right-aligned table columns lose their alignment'],
   [String.raw`.size-\[2\.125rem\]`, 'every mixer icon button collapses to the Button default size'],
   // Unique to TrackRow/MixerClasses.ts. Each fails invisibly: correct ARIA, correct behaviour,
   // nothing painted. The grid entry carries the whole arbitrary value, so changing a mixer column
@@ -75,10 +87,13 @@ const BOUNDARY = new Set([',', '{', ' ', '\n', '\r', '\t', ':', '[', '>', '+', '
  * Whether `selector` appears in `css` as a WHOLE class name rather than as a prefix of a longer one.
  *
  * A plain `css.includes()` cannot tell the two apart, and several entries in the list above are
- * prefixes of utilities Tailwind can emit: `.cursor-grab` of `.cursor-grabbing`, `.border-2` of
- * `.border-2xl`, `.aria-pressed\:bg-primary` of its `/90` opacity form. Any one of those appearing
- * anywhere in the scanned tree would satisfy its entry forever, and this guard would report all
- * clear on exactly the build it exists to catch.
+ * prefixes of longer utilities Tailwind can emit — the drag-cursor entry is a prefix of its
+ * `-grabbing` form, the two-pixel border entry of its `xl` form, the pressed-state background of
+ * its `/90` opacity form. Any one of those appearing anywhere in the scanned tree would satisfy
+ * its entry forever, and this guard would report all clear on exactly the build it exists to
+ * catch. The examples are DESCRIBED rather than spelled out on purpose: writing a watched utility
+ * literally anywhere in this file lets Tailwind extract it and arms the canary (see the note on
+ * REQUIRED_SELECTORS above).
  *
  * @param {string} css
  * @param {string} selector
