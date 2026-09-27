@@ -104,9 +104,13 @@ async function expectHitAreas(
         // that box to sit past an edge where no pointer can reach it.
         //
         // 1. The toast close button is sonner's own fixed 20x20 control. The maintainer wants it
-        //    kept, and its resting state — including its hit area — is already gated by the design
-        //    system's own Sonner stories, so this scoped skip (inside a toast only, not every
-        //    control on the page) does not leave it unchecked.
+        //    kept. It is NOT unchecked: toast.error is the design system's raiseErrorToast wrapper,
+        //    which forces closeButton: true, so every error story renders the X and eight Sonner VR
+        //    baselines pixel-guard it at rest (NH-331). That pins its rendered box — the button
+        //    cannot shrink or vanish without moving pixels — but it is a baseline match, not a
+        //    target-size assertion, and axe's tag set carries no target-size rule. So this scoped
+        //    skip (inside a toast only, not every control on the page) trades a 44px measurement
+        //    for a pixel baseline; it does not leave the control uncovered.
         // 2. Every mixer BUTTON (TrackRow, MasterRow) is a deliberate 34px box —
         //    MIXER_BUTTON_CLASS — so the row stays dense enough to fit render-select, solo, mute,
         //    volume and four per-staff toggles on one line. WCAG 2.5.8 AA asks only 24px; the 44px
@@ -215,8 +219,8 @@ async function expectHitAreas(
 // A toast that is still fading in is sampled by axe at PARTIAL OPACITY, and axe folds that into
 // its effective-contrast maths: measured 2.88:1 for a success toast caught at opacity 0.64, from
 // exactly the same text and surface colours that pass at rest. Wait for the animation to settle so
-// the gate measures the rendered UI rather than a transitional frame. (The toast's resting state
-// is gated too, by client/'s own Sonner stories.)
+// the gate measures the rendered UI rather than a transitional frame. (The toast's resting state,
+// close button included, is pixel-guarded by client/'s own Sonner VR baselines.)
 async function settleToasts(page: Page): Promise<void> {
   // Every toast, not just the front one. Sonner PREPENDS, so `.first()` is the newest — settling
   // it says nothing about the ones behind, and those are the ones still transitioning. Polling to

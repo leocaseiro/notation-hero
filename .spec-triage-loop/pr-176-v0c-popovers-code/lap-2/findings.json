@@ -104,7 +104,7 @@
         "severity": "P2",
         "raised_by": ["project-standards"],
         "title": "A local scratchpad path committed to a public repo",
-        "detail": "The spike write-up carried /private/tmp/claude-501/-Users-leocaseiro-... , which hides the username inside a directory name rather than at the start of the path, so the first scrub missed it.",
+        "detail": "The spike write-up carried a scratchpad path whose DIRECTORY NAME embedded the whole home path, which hides the username inside a directory name rather than at the start of the path, so the first scrub missed it.",
         "status": "FIXED"
       }
     ]
