@@ -8,7 +8,7 @@ import {
   readStylesheetValues,
   setStylesheetValue,
 } from './live-settings';
-import { setTrackTransposition } from './live-settings';
+import { setStaffDisplay, setTrackTransposition } from './live-settings';
 import type { StylesheetKey } from './settings-schema';
 import type * as AlphaTab from '@coderline/alphatab';
 
@@ -357,6 +357,59 @@ describe('per-track transposition', () => {
     clearTrackTranspositions(api as unknown as AlphaTab.AlphaTabApi);
 
     expect(api.updateSettings).not.toHaveBeenCalled();
+  });
+});
+
+/** A score with two staves on its only track, so an out-of-range index has something to miss. */
+function createTwoStaffScore() {
+  return {
+    tracks: [
+      {
+        index: 0,
+        staves: [
+          { showTablature: true, showStandardNotation: true },
+          { showTablature: true, showStandardNotation: true },
+        ],
+      },
+    ],
+  };
+}
+
+describe('setStaffDisplay', () => {
+  it('flips the flag on the addressed staff and queues exactly one render', () => {
+    const api = createFakeApi();
+    api.score = createTwoStaffScore();
+
+    setStaffDisplay(api as unknown as AlphaTab.AlphaTabApi, 0, 1, 'showTablature', false);
+
+    const score = api.score as ReturnType<typeof createTwoStaffScore>;
+    expect(score.tracks[0].staves[1].showTablature).toBe(false);
+    // The SIBLING staff is what proves the index is honoured rather than the first staff taken.
+    expect(score.tracks[0].staves[0].showTablature).toBe(true);
+    expect(rafSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('does nothing and queues NO render when the staff does not exist', () => {
+    // The guard branch. Without it this throws, and a render would still be queued for a change
+    // that never happened — a redraw that tells the person something was applied.
+    const api = createFakeApi();
+    api.score = createTwoStaffScore();
+
+    expect(() =>
+      setStaffDisplay(api as unknown as AlphaTab.AlphaTabApi, 9, 9, 'showTablature', false),
+    ).not.toThrow();
+
+    expect(rafSpy).not.toHaveBeenCalled();
+  });
+
+  it('does nothing when the engine holds no score yet', () => {
+    const api = createFakeApi();
+
+    expect(() =>
+      setStaffDisplay(api as unknown as AlphaTab.AlphaTabApi, 0, 0, 'showTablature', false),
+    ).not.toThrow();
+
+    expect(rafSpy).not.toHaveBeenCalled();
   });
 });
 
