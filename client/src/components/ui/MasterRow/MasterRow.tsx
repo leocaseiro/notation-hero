@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-
 import { Button } from '../Button/Button';
 import { Field } from '../Field/Field';
 import { Slider } from '../Slider/Slider';
+import { useSliderDraft } from '../Slider/SliderDraft';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip/Tooltip';
 import {
   MIXER_BUTTON_CLASS,
@@ -69,8 +68,7 @@ const MasterRow = ({
   className,
   ...rest
 }: Readonly<MasterRowProps>) => {
-  // Pointer-tracking draft, the same shape TrackRow's volume slider uses. null = not dragging.
-  const [draft, setDraft] = useState<number | null>(null);
+  const volumeSlider = useSliderDraft(volume, onVolumeChange);
 
   const disabled = Boolean(soloMuteUnavailable);
 
@@ -116,12 +114,7 @@ const MasterRow = ({
       />
 
       <Slider
-        value={draft ?? volume}
-        onChange={setDraft}
-        onCommit={(next) => {
-          setDraft(null);
-          onVolumeChange(next);
-        }}
+        {...volumeSlider}
         min={0}
         max={1}
         step={0.05}

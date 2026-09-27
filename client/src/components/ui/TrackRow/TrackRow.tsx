@@ -1,10 +1,11 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId } from 'react';
 
 import { Button } from '../Button/Button';
 import { Field } from '../Field/Field';
 import { Slider } from '../Slider/Slider';
+import { useSliderDraft } from '../Slider/SliderDraft';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../Tooltip/Tooltip';
 import { TransportToggle } from '../TransportToggle/TransportToggle';
 import { MIXER_BUTTON_CLASS, MIXER_ROW_CLASS, MUTE_PRESSED_CLASS } from './MixerClasses';
@@ -157,12 +158,10 @@ const TrackRow = ({
 }: Readonly<TrackRowProps>) => {
   const panelId = useId();
 
-  // Pointer-tracking drafts: the row shows the value under the thumb while dragging and reports
-  // only once the gesture ends — the shape `SettingRow`'s range kind already uses. One message to
-  // the synth worker per gesture is enough. null = not dragging.
-  const [volumeDraft, setVolumeDraft] = useState<number | null>(null);
-  const [audioDraft, setAudioDraft] = useState<number | null>(null);
-  const [fullDraft, setFullDraft] = useState<number | null>(null);
+  // All three rails report once per gesture: one message to the synth worker per drag is enough.
+  const volumeSlider = useSliderDraft(volume, onVolumeChange);
+  const audioSlider = useSliderDraft(transposeAudio, onTransposeAudioChange);
+  const fullSlider = useSliderDraft(transposeFull, onTransposeFullChange);
 
   const mixDisabled = Boolean(mixUnavailable);
 
@@ -271,12 +270,7 @@ const TrackRow = ({
             independent, and muting or soloing one does the same to the other while this row's own
             button still shows only what was pressed on it. That is expected, not a defect. */}
         <Slider
-          value={volumeDraft ?? volume}
-          onChange={setVolumeDraft}
-          onCommit={(next) => {
-            setVolumeDraft(null);
-            onVolumeChange(next);
-          }}
+          {...volumeSlider}
           min={0}
           max={16}
           step={1}
@@ -353,12 +347,7 @@ const TrackRow = ({
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-muted-foreground">Transpose audio</span>
             <Slider
-              value={audioDraft ?? transposeAudio}
-              onChange={setAudioDraft}
-              onCommit={(next) => {
-                setAudioDraft(null);
-                onTransposeAudioChange(next);
-              }}
+              {...audioSlider}
               min={-12}
               max={12}
               step={1}
@@ -373,12 +362,7 @@ const TrackRow = ({
           <div className="flex flex-col gap-1">
             <span className="text-xs font-medium text-muted-foreground">Transpose notation</span>
             <Slider
-              value={fullDraft ?? transposeFull}
-              onChange={setFullDraft}
-              onCommit={(next) => {
-                setFullDraft(null);
-                onTransposeFullChange(next);
-              }}
+              {...fullSlider}
               // Wider than the Transpose audio row above on purpose. That one is a plain offset
               // that always starts at zero, so an octave each way is plenty. This one is SEEDED
               // from the file, and a file can carry more than an octave — measured, alphaTex
