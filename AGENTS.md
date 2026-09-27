@@ -91,6 +91,11 @@ Root-level checks — each is a named script AND a CI gate, so run any locally:
   `minimumReleaseAgeExclude` pins in `pnpm-workspace.yaml` still resolve in `pnpm-lock.yaml`; a lockfile
   bump silently un-matches them and re-trips pnpm's `no-downgrade` / 7-day `minimumReleaseAge` gate,
   re-breaking installs (NH-259).
+- `pnpm run check:error-codes` — keeps the app-wide error-code registry
+  (`shared/src/error-codes.ts`) in step with its documented twin
+  (`docs/reference/error-codes.md`). Fail-closed on a REUSED code, so it reads the merge
+  base — which is why the `lint` job checks out with `fetch-depth: 0`. A shallow checkout
+  silently defeats it (NH-331).
 
 **A preview deployment is NOT evidence that production will render (NH-315).** `web/` generates the
 design system's utilities by SCANNING `client/` source — the `@source` globs in
