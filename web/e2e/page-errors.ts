@@ -51,6 +51,22 @@ const ALLOWED = [
     // a fixed path. So the same words thrown from app code still fail the gate, everywhere.
     origin: ENGINE_BUNDLE,
   },
+  {
+    // NH-338. AlphaTab 1.8.4's AudioWorklet output has no "has started" flag: play() only reaches
+    // source.start(0) INSIDE an async promise, after audioWorklet.addModule() resolves, while
+    // pause() calls source.stop(0) unconditionally. A Pause arriving before that promise settles
+    // stops a node that never started. `playing` flips from playerStateChanged, which fires
+    // independently of that promise, so the button is live for the whole window.
+    //
+    // Measured: 7/10 with no metronome and no gap, 3/10 with the metronome, 0/20 once a ~700 ms
+    // gap is left. The metronome is INCIDENTAL -- the immediacy is what causes it.
+    //
+    // This one is NOT an app defect to fix here: the only remedy that helps a real person is to
+    // withhold the pause until the output has started, which costs responsiveness the maintainer
+    // has judged by hand. NH-338 carries that decision. Remove this entry when it lands.
+    message: 'cannot call stop without calling start first',
+    origin: ENGINE_BUNDLE,
+  },
 ];
 
 /**
