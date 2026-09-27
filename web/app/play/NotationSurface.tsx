@@ -166,6 +166,21 @@ export function NotationSurface({
     setRenderedTrackCount(api?.tracks.length ?? 0);
   });
 
+  // Engine-state repair, the same class as dropPlaybackSelection (lib/alphatab/playback-selection.ts)
+  // but a DIFFERENT hole. AlphaTab's own _onBeatMouseDown sets `_selectionStart = { beat }` and
+  // `_selectionEnd = undefined`, and _onPostRenderFinished then reads `_selectionEnd.beat` with no
+  // guard -- the only unguarded read of that field in the bundle. So any render that completes while
+  // the pointer is down, before the first move resolves a second beat, throws. A window resize
+  // mid-drag reaches it, and so does a setting that finishes applying.
+  //
+  // Seeding a same-beat pair closes the window: AlphaTab assigns the pair BEFORE it triggers
+  // beatMouseDown, so this lands after the engine's own assignment and replaces the undefined half.
+  // _onBeatMouseMove overwrites `_selectionEnd` on the first move to a different beat, so dragging is
+  // unchanged, and _cursorSelectRange early-returns for a same-beat pair, so nothing is painted.
+  useAlphaTabEvent(api, 'beatMouseDown', (beat) => {
+    api?.highlightPlaybackRange(beat, beat);
+  });
+
   // The score arrives ALREADY PARSED. PlayerShell parses inside requestNotation, before it swaps
   // state, so a file that does not parse never becomes the open notation — there is no rollback
   // path to build because there is nothing to roll back. This effect only renders, and nothing is
