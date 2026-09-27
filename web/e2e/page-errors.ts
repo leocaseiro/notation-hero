@@ -18,27 +18,52 @@ import { expect, test } from '@playwright/test';
  * entries wherever possible: an allowance hides exactly the class of failure the gate exists to
  * catch, so every line here is a debt with a number on it.
  */
+/** The vendored engine bundle, as vendor-alphatab.mjs serves it. See ENGINE_ONLY below. */
+const ENGINE_BUNDLE = '/alphatab/esm/alphaTab.core.mjs';
+
 const ALLOWED = [
   {
-    // NH-335. AlphaTab 1.8.4 throws this out of its own worker's score deserialization when handed a
-    // hand-written TERSE alphaTex score. transposed.alphatex is the only such fixture in the repo;
-    // every exported block-form file is clean. Ruled out by measurement: the transposition itself,
-    // the tuning syntax, the track count, the bar count, and a missing instrument. Nothing observable
-    // follows — the score renders, the transposition reaches the staff, and playback runs — so this
-    // is an allowance for engine noise, not for a product failure. Matched on the message because the
-    // stack is minified and its frame names change with every engine bump.
+    // NH-335. AlphaTab 1.8.4 throws this out of its own worker's score DESERIALIZATION. Nothing
+    // observable follows — the score renders, the transposition reaches the staff, and playback
+    // runs — so this is an allowance for engine noise, not for a product failure. Ruled out by
+    // measurement: the transposition itself, the tuning syntax, the track count, the bar count,
+    // and a missing instrument.
     message: "Cannot read properties of undefined (reading 'voices')",
-    // Scoped to the ONLY two cases that open a terse alphaTex score. The message is a GENERIC V8
-    // TypeError — the engine indexes `.voices` in 62 places — so a bare message match would excuse
-    // it for every test in this file and every accessibility case too, which is the opposite of
-    // what this gate is for. Matched on exact titles rather than a pattern: if a title is edited the
-    // allowance simply lapses and the gate gets STRICTER, never looser.
-    inTests: [
-      'Transpose notation starts at the transposition the FILE carries, and survives a round trip',
-      'a file transposed two octaves is held, not narrowed by the first keystroke',
-    ],
+    // Scoped by ORIGIN, not by message alone and not by test name.
+    //
+    // The message is a GENERIC V8 TypeError — the engine indexes `.voices` in 62 places — so a
+    // bare message match excuses an APP-side throw of the same words across all ~71 tests here
+    // and every accessibility case, which is the opposite of what this gate is for.
+    //
+    // Scoping it to named tests was tried and is WRONG: NH-335's note claimed transposed.alphatex
+    // was the only fixture that reaches this, and "every exported block-form file is clean". That
+    // is false. Measured in CI: guitar-no-percussion.gp, alphatex-GP5.gp5 and alphatex-GPX.gpx all
+    // reach it too — ordinary exported Guitar Pro files, seven throws in one case — so the fixture
+    // is not what distinguishes it.
+    //
+    // What DOES distinguish it is where it comes from. Every frame of every occurrence sits inside
+    // the vendored engine bundle, inside a Worker, with no app frame at all:
+    //     at Jn.fromJson        (…/alphatab/esm/alphaTab.core.mjs)
+    //     at jn.Zu              (…/alphatab/esm/alphaTab.core.mjs)
+    //     at Worker.<anonymous> (…/alphatab/esm/alphaTab.core.mjs)
+    // Matching the bundle PATH rather than frame names is deliberate: the build is minified and
+    // its frame names change with every engine bump, but vendor-alphatab.mjs serves the engine at
+    // a fixed path. So the same words thrown from app code still fail the gate, everywhere.
+    origin: ENGINE_BUNDLE,
   },
 ];
+
+/**
+ * Whether EVERY frame of `stack` sits inside `origin`.
+ *
+ * One app frame anywhere means app code is on the path, and the gate must fail even though the
+ * words match. A stack with no frames at all never qualifies — an unattributable throw is exactly
+ * the kind this lane must not wave through.
+ */
+const framesAreAllEngine = (stack: string, origin: string): boolean => {
+  const frames = stack.split('\n').filter((line) => line.trimStart().startsWith('at '));
+  return frames.length > 0 && frames.every((frame) => frame.includes(origin));
+};
 
 /**
  * Fails any test in the calling file that leaves an uncaught page error behind.
@@ -49,17 +74,16 @@ const ALLOWED = [
 export function failOnUnexpectedPageErrors(): void {
   let unexpected: string[] = [];
 
-  test.beforeEach(({ page }, testInfo) => {
+  test.beforeEach(({ page }) => {
     // Reset per test rather than per file: a worker runs the tests in a file one at a time, so one
     // test's leftovers would otherwise fail the next one and point at the wrong case.
     unexpected = [];
-    // The title is read HERE, where we are certainly inside a test, rather than with `test.info()`
-    // inside the listener below — that fires later, off the test's own call stack.
     page.on('pageerror', (error) => {
       if (
         ALLOWED.some(
           (allowed) =>
-            error.message.includes(allowed.message) && allowed.inTests.includes(testInfo.title),
+            error.message.includes(allowed.message) &&
+            framesAreAllEngine(error.stack ?? '', allowed.origin),
         )
       ) {
         return;

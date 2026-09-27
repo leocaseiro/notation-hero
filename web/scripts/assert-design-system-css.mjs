@@ -53,11 +53,11 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
  * A plainly-written utility SELF-ARMS: spelling it out anywhere in this file — including in a
  * comment, since the extractor reads raw text and does not know what a comment is — is enough for
  * Tailwind to GENERATE it, so the canary then reports present no matter what the design-system
- * scan did. The escaped entries are unextractable already; the three split with an interpolation
+ * scan did. The escaped entries are already beyond its reach; the three split with an interpolation
  * are spelled that way for the same reason. Measured by breaking the client scan and toggling
  * globals.css's `@source not '../scripts/**'`: 9 of 10 reported missing with that line, 6 of 10
  * without it, and the three that went quiet were exactly the three that were plain. Write new
- * entries unextractable too, and never name a watched utility in prose here.
+ * entries beyond its reach too, and never name a watched utility in prose here.
  */
 export const REQUIRED_SELECTORS = [
   [String.raw`.dark\:bg-muted-foreground\/40`, 'the seek rail paints transparent in dark mode'],
