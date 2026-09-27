@@ -614,7 +614,12 @@
         "the_peer_gate_is_sound_and_will_catch_this": "web/e2e/toast-occlusion.e2e.ts (new in #181, merge-blocking in the e2e job) re-runs this measurement at 1280/700/375 and asserts painted>0 and controls>0 before blocked==[], so it cannot pass vacuously. It is green on #181 only because that branch has no control in the corner. Once #176 lands, EXPECT IT TO GO RED at all three widths — that is the gate working, not a new regression. Do not \"fix\" it by weakening the gate.",
         "dependency_to_watch": "Merge order. If #176 lands before #181, master carries a player whose Settings gear dies on any error and no gate that sees it. If #181 lands first, its gate is in place and correctly turns #176 red until the layout deletion is made."
       },
-      "status": "STILL OPEN and still parked. The peer's claim that it is already fixed does not hold — see CORRECTED_after_a_peer_reply. The fix is now a measured three-line deletion rather than an unknown, but it is leocaseiro's call, and it moved from \"who adds an offset\" to \"who deletes a stale override\"."
+      "status": "STILL OPEN and still parked. The fix is a self-contained deletion of three props THIS PR added to web/app/layout.tsx. Measured working. Not applied.",
+      "CORRECTED_AGAIN_the_ownership_was_MINE_and_I_had_it_backwards": {
+        "my_error": "I wrote that NEITHER PR touches web/app/layout.tsx and that its Toaster props were \"vestigial from the bottom-anchored era\". BOTH claims were wrong, and the peer caught them. Master carries a bare <Toaster />; THIS PR adds closeButton, offset={{bottom: 96}}, duration={5000} and mobileOffset, together with the \"Lifted 96px … above the transport\" comment, in one hunk. Verified with git diff origin/master...HEAD -- web/app/layout.tsx.",
+        "how_the_error_happened": "I checked #181's diff for that file, found nothing, and extended \"neither PR\" to #176 without diffing #176 against master. Checking one side and generalising is the whole mistake; the file was in this PR's own changed-file list the entire time.",
+        "what_this_changes": "Nothing about the mechanism or the measurements — those stand. It changes the OWNERSHIP, and for the better: the fix is #176 deleting three of its own props, self-contained, with no dependency on #181 changing anything. #181's 88px is correct and reaches the app fine on master and on #181; it loses only on this branch, because this branch introduced the thing that beats it."
+      }
     },
     "M2_error_code_numbering_is_provisional": {
       "what": "Three of #176's five codes collided head-on. #176's header had claimed 3xx for \"the stored settings\"; NH-331 gave 3xx to the catalog, where E301/E302/E303 now mean catalogResponseNotOk / catalogTimedOut / catalogUnreachable.",
@@ -631,6 +636,17 @@
       "probably_pre_existing": "Not introduced here as far as can be told: #176's only Slider change is the min/max pair, and the VR suite (840 shots, Docker) moved zero pixels. NOT verified against a master build — that is the one step left to settle provenance.",
       "why_nothing_catches_it": "The a11y gate measures size and viewport containment, never overlap. The peer's new toast gate only flags a hit INSIDE the toaster, so control-on-control overlap is invisible to it too. They have been sent a one-line generalisation that would catch this class for free.",
       "status": "OPEN, unassigned, no ticket. Raise it with leocaseiro rather than deciding it."
+    },
+    "M4_closeButton_reverses_a_documented_decision": {
+      "found_by": "The peer, reading the same web/app/layout.tsx hunk. Confirmed here by measuring the real app.",
+      "what": "This PR passes `closeButton` at the TOASTER level, which makes it a global default for every toast type rather than errors only. client/src/components/ui/Sonner/Sonner.test.tsx has test(\"success and loading toasts get no close control\") asserting the opposite — and it renders a bare <Toaster />, so it stays green while the shipped app contradicts it. A documented design decision reversed by a prop, with no test that can see the reversal.",
+      "MEASURED_and_narrower_than_reported": "Measured on /play by opening Punk.gp and sampling every toast's data-type and its [data-close-button]: loading:close=FALSE, success:close=TRUE. So the divergence is SUCCESS only — sonner suppresses the close button on a loading toast by itself. The peer reported it as \"success and loading\"; it is success.",
+      "why_it_matters_beyond_the_button": "The test is the record of the decision. Either the decision changed and the test should change with it, or the prop is wrong. Both are fine; a silent disagreement between them is not. If the prop stays, the test should render the app's own Toaster configuration rather than a bare one, or it will keep guarding a shape nothing ships.",
+      "status": "OPEN, no ticket, not decided. Belongs with M1 — same three-line hunk."
+    },
+    "M5_duration_ordering_is_load_bearing_not_a_bug": {
+      "what": "This PR also adds `duration={5000}` at the Toaster level. Error toasts still persist, because raiseErrorToast spreads `...options` FIRST and then sets `duration: Number.POSITIVE_INFINITY` — verified by reading Sonner.tsx. So the per-toast value beats both the caller and the Toaster default.",
+      "why_it_is_recorded": "NOT a finding — nothing to fix. It is recorded because that spread order is the only thing keeping error toasts persistent, and reordering those two lines during a future tidy would silently make every error toast vanish after five seconds. Raised by the peer; worth a reviewer knowing."
     }
   },
   "_cross_session_state": {
@@ -638,6 +654,7 @@
     "messages_sent": "Two, both QUEUED and not confirmed read — that route reports nothing back, so never read silence as agreement. (1) the four traps plus the two factual questions about the settings range; (2) the full occlusion measurement, the click-timeout result, the geometry, the proposed 5rem offset, and a note that Sonner.tsx was deliberately NOT touched.",
     "what_they_asked_for": "To be told if #176 changes the header layout, so they can fold it into their phone-width (<600px) toast-occlusion spike. #176 adds two controls to the corner but changes no layout — they have been told.",
     "what_they_are_owed": "Which way leocaseiro decides M1, since it determines whether the fix lands in their spike or in #176.",
-    "peer_replied": "Yes, with fast factual answers on the numbering (both useful and both acted on) and one claim that did not survive checking — that the occlusion was already fixed. Three messages sent in total, all QUEUED and none confirmed read. The lesson from this exchange, in both directions: every cross-session claim here was worth verifying, and verification changed the conclusion twice — the peer's first note missed the code collision, and its second note was wrong about the fix reaching the app."
+    "peer_replied": "Yes, with fast factual answers on the numbering (both useful and both acted on) and one claim that did not survive checking — that the occlusion was already fixed. Three messages sent in total, all QUEUED and none confirmed read. The lesson from this exchange, in both directions: every cross-session claim here was worth verifying, and verification changed the conclusion twice — the peer's first note missed the code collision, and its second note was wrong about the fix reaching the app.",
+    "peer_corrected_me": "Yes, and it was right. Four messages each way now. Running score, kept honest because it cuts both ways: the peer's first note missed the error-code collision, its second was wrong that the offset fix reaches the app, and its third correctly caught that I had the ownership of the overriding props backwards — they are this PR's own additions, not legacy. It also found M4 and M5 in that same hunk, which I had merged past without reading. Verify every cross-session claim, including the ones that flatter your own diff."
   }
 }
