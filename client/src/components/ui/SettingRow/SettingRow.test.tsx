@@ -161,7 +161,7 @@ test('the description renders outside the label-and-control line, not beside it'
 
 // The text row commits on blur or Enter, never per keystroke — so the assertion that nothing has
 // reported yet has to land BEFORE the Enter, not only after it.
-test('reports the raw string on Enter, never per keystroke', async () => {
+test('reports the typed string on Enter, never per keystroke', async () => {
   const user = userEvent.setup();
   const onChange = vi.fn();
   render(
@@ -179,6 +179,39 @@ test('reports the raw string on Enter, never per keystroke', async () => {
   expect(onChange).not.toHaveBeenCalled();
   await user.type(input, '{Enter}');
   expect(onChange).toHaveBeenLastCalledWith('#2DD4BF!');
+});
+
+// A font with a TAB in it used to be ACCEPTED and then silently ignored: the validator splits on
+// /\s+/ so it passed, but alphaTab's FontParser splits on the literal space only — it swallows the
+// whole string as the size and throws 'Missing font list'. The row said yes; the engine said no;
+// the person saw nothing change. The restore path (dropInvalidText in web/'s settings-storage.ts)
+// already collapsed runs for exactly this reason, so this is the two paths agreeing at last.
+test('a text row collapses internal whitespace before judging AND committing', async () => {
+  const user = userEvent.setup();
+  const onChange = vi.fn();
+  // Records what the validator was handed, so the test proves the SAME string is judged and
+  // committed — not merely that the committed one happens to be clean.
+  const judged: string[] = [];
+  const validate = vi.fn((draft: string) => {
+    judged.push(draft);
+    return true;
+  });
+  render(
+    <SettingRow
+      id="title-font"
+      label="Title font"
+      control={{ kind: 'text', validate }}
+      value=""
+      onChange={onChange}
+    />,
+  );
+
+  const input = screen.getByRole('textbox', { name: 'Title font' });
+  await user.type(input, '  12px\t\tArial  ');
+  await user.type(input, '{Enter}');
+
+  expect(onChange).toHaveBeenLastCalledWith('12px Arial');
+  expect(judged.at(-1)).toBe('12px Arial');
 });
 
 // The `validate` gate, which every one of the thirteen validated rows depends on — the twelve font

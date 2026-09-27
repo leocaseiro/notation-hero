@@ -93,18 +93,24 @@ const SettingRow = ({
 
   const commitText = () => {
     if (textDraft === null) return;
+    // Normalize ONCE, then judge and commit that same string. Collapsing internal runs matters as
+    // much as trimming: the font validator splits on /\s+/, so '12px\tArial' passes it, while
+    // alphaTab's FontParser splits on the literal space only — it swallows the whole thing as the
+    // size and throws 'Missing font list'. The row would accept the value and the engine would
+    // then refuse it, so the text simply never applies and nothing says why.
+    //
+    // Trimming alone was already load-bearing for a COLOUR, and that is the null-crash: on the raw
+    // string Color.fromJson tests `startsWith('#')` and `startsWith('rgb')`, so ' #2DD4BF' matches
+    // neither arm and comes back null WITHOUT throwing. Nothing downstream can catch that — the
+    // engine gate in applyThenPersist only fires on a throw — so the null is stored and the
+    // renderer dereferences null.rgba a frame later.
+    //
+    // This is the same rule dropInvalidText applies on the RESTORE path
+    // (web/lib/alphatab/settings-storage.ts), so the two paths finally agree.
+    const normalized = textDraft.trim().replaceAll(/\s+/g, ' ');
     const accepted =
-      control.kind === 'text' && control.validate ? control.validate(textDraft) : true;
-    // Commit exactly what was VALIDATED. Both validators judge `draft.trim()`, so a pasted value
-    // carrying a space is approved on its trimmed form and then reported raw — and for a COLOUR
-    // that is the null-crash all over again: Color.fromJson tests `startsWith('#')` and
-    // `startsWith('rgb')` against the raw string, so " #2DD4BF" matches neither arm and comes back
-    // null WITHOUT throwing. Nothing downstream can catch that: the engine gate in applyThenPersist
-    // only fires on a throw, so the null is stored and the renderer dereferences null.rgba a frame
-    // later. (Font.fromJson does tolerate surrounding whitespace — measured — so the colour row is
-    // the one that breaks, but the value that reaches the engine should equal the value that was
-    // judged either way.)
-    if (accepted) onChange(textDraft.trim());
+      control.kind === 'text' && control.validate ? control.validate(normalized) : true;
+    if (accepted) onChange(normalized);
     // Rejected or accepted, stop editing: the row falls back to showing `value`, so a bad draft
     // visibly reverts instead of sitting there looking applied.
     setTextDraft(null);
