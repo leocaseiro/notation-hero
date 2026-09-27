@@ -174,17 +174,27 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
     // visible gap; the notation area it overlaps instead holds no controls.
     // Measured on /play with a real persistent error and document.elementFromPoint, which is the
     // only way to see occlusion — the a11y gate measures size and viewport containment, never
-    // overlap. Controls a person could not click, by position:
+    // overlap. Controls a person could not click, at sonner's DEFAULT top offset:
     //
     //                     1280x800   700x800   375x800
     //   bottom-right         3          3       the transport row
-    //   top-right            0          1       the header
+    //   top-right            0          2       6 — the entire header
     //
-    // top-right is therefore the best available, not a clean win. Below 600px sonner spans nearly
-    // the full width, so at phone sizes a persistent toast covers whichever row it is anchored to
-    // whatever we choose — that is structural, and fixing it means the shell reserving space or
-    // the toast not being a full-width fixed overlay. Recorded rather than papered over.
+    // Picking a different corner only moved it, because the problem is VERTICAL: the toast sat at
+    // the top of the viewport, which is exactly where the header is. Lifting it clear of the
+    // header drops it onto the notation area, which holds no controls — the same move that took
+    // it off the transport row. Re-measured after the lift: 0 blocked at all three widths.
+    //
+    // Saying "never cover the header" takes both offsets, because sonner switches at 600px and
+    // reads `offset` above it, `mobileOffset` below. 88px is the 64px header plus the 24px gap
+    // sonner's default left at the top. Below 600px the toaster is full-width as well, so there
+    // is no horizontal escape down there and the vertical lift is the only fix available.
+    //
+    // web/e2e/toast-occlusion.e2e.ts re-runs this measurement in CI, so a change to the header's
+    // height cannot silently put the toast back on top of it.
     position="top-right"
+    offset={{ top: '88px' }}
+    mobileOffset={{ top: '88px' }}
     // Sonner's default, set explicitly because it is now load-bearing: the Toaster mounts last in
     // the app's root layout, so plain Tab reaches a close button only after every page control.
     // This is the direct route into the toast region.
