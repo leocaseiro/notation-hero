@@ -22,6 +22,13 @@ const liveErrorIds = new Set<string | number>();
 
 let anonymousErrorCount = 0;
 
+/**
+ * How many times each LIVE error id has been raised. Only ids currently on screen appear here:
+ * the `else` branch below clears the entry whenever an id returns as a fresh occurrence, and the
+ * dismiss callbacks clear it when the toast goes away.
+ */
+const repeatCounts = new Map<string | number, number>();
+
 type ErrorMessage = Parameters<typeof sonnerToast.error>[0];
 type ErrorOptions = Parameters<typeof sonnerToast.error>[1];
 
@@ -48,12 +55,27 @@ function forget(id: string | number): void {
 function raiseErrorToast(message: ErrorMessage, options?: ErrorOptions): string | number {
   const id = options?.id ?? deriveId(message);
 
+  let shown = message;
+
   if (liveErrorIds.has(id)) {
-    // The same failure again. Updating in place would change nothing on screen — identical copy,
-    // no re-animation, nothing new in the live region — so someone who retried could not tell
-    // whether the retry registered. Dismiss and re-raise so the entry animation runs again.
-    sonnerToast.dismiss(id);
+    // The same failure again, and it has to CHANGE something or a person who retried cannot tell
+    // whether the retry registered.
+    //
+    // It must not do that by dismissing and re-raising the same id: sonner is still running the
+    // exit animation for that id, so the re-raise is swallowed and the toast is simply gone.
+    // Measured on /play at 50 ms — the error AND the "Opening …" spinner both vanished within
+    // 50 ms of a retry and never came back, leaving a failed open looking exactly like a
+    // successful one, and a later unrelated failure could no longer stack.
+    //
+    // Changing the COPY instead keeps the toast on screen and still gives the repeat something
+    // visible. It is announced too: the count lands inside sonner's own live region, and unlike
+    // a re-animation it survives reduced-motion.
+    const repeats = (repeatCounts.get(id) ?? 1) + 1;
+    repeatCounts.set(id, repeats);
+    if (typeof shown === 'string') shown = `${shown} (\u00D7${String(repeats)})`;
   } else {
+    // A fresh occurrence of an id that is not on screen — start its count over.
+    repeatCounts.delete(id);
     while (liveErrorIds.size >= ERROR_TOAST_CAP) {
       const oldest = liveErrorIds.values().next().value;
       if (oldest === undefined) break;
@@ -66,17 +88,19 @@ function raiseErrorToast(message: ErrorMessage, options?: ErrorOptions): string 
   forget(id);
   liveErrorIds.add(id);
 
-  return sonnerToast.error(message, {
+  return sonnerToast.error(shown, {
     ...options,
     id,
     duration: Number.POSITIVE_INFINITY,
     closeButton: true,
     onDismiss: (raised) => {
       forget(id);
+      repeatCounts.delete(id);
       options?.onDismiss?.(raised);
     },
     onAutoClose: (raised) => {
       forget(id);
+      repeatCounts.delete(id);
       options?.onAutoClose?.(raised);
     },
   });
@@ -150,17 +174,27 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
     // visible gap; the notation area it overlaps instead holds no controls.
     // Measured on /play with a real persistent error and document.elementFromPoint, which is the
     // only way to see occlusion — the a11y gate measures size and viewport containment, never
-    // overlap. Controls a person could not click, by position:
+    // overlap. Controls a person could not click, at sonner's DEFAULT top offset:
     //
     //                     1280x800   700x800   375x800
     //   bottom-right         3          3       the transport row
-    //   top-right            0          1       the header
+    //   top-right            0          2       6 — the entire header
     //
-    // top-right is therefore the best available, not a clean win. Below 600px sonner spans nearly
-    // the full width, so at phone sizes a persistent toast covers whichever row it is anchored to
-    // whatever we choose — that is structural, and fixing it means the shell reserving space or
-    // the toast not being a full-width fixed overlay. Recorded rather than papered over.
+    // Picking a different corner only moved it, because the problem is VERTICAL: the toast sat at
+    // the top of the viewport, which is exactly where the header is. Lifting it clear of the
+    // header drops it onto the notation area, which holds no controls — the same move that took
+    // it off the transport row. Re-measured after the lift: 0 blocked at all three widths.
+    //
+    // Saying "never cover the header" takes both offsets, because sonner switches at 600px and
+    // reads `offset` above it, `mobileOffset` below. 88px is the 64px header plus the 24px gap
+    // sonner's default left at the top. Below 600px the toaster is full-width as well, so there
+    // is no horizontal escape down there and the vertical lift is the only fix available.
+    //
+    // web/e2e/toast-occlusion.e2e.ts re-runs this measurement in CI, so a change to the header's
+    // height cannot silently put the toast back on top of it.
     position="top-right"
+    offset={{ top: '88px' }}
+    mobileOffset={{ top: '88px' }}
     // Sonner's default, set explicitly because it is now load-bearing: the Toaster mounts last in
     // the app's root layout, so plain Tab reaches a close button only after every page control.
     // This is the direct route into the toast region.
@@ -202,6 +236,13 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
           'before:absolute before:left-1/2 before:top-1/2 before:size-5 before:-translate-x-1/2',
           'before:-translate-y-1/2 before:rounded-full before:border before:border-current/25',
           'before:bg-[var(--normal-bg)] before:content-[""]',
+          // The circle above is an ABSOLUTELY POSITIONED pseudo-element with an OPAQUE fill, and
+          // CSS paints a positioned decoration above the element's own in-flow content — so it
+          // covered sonner's X glyph completely and the only control that can dismiss a persistent
+          // error rendered as a blank circle nobody could read. Lift the glyph back over it. The
+          // baselines for every close-button story are what hold this shut: hiding the X again
+          // moves pixels.
+          '[&>svg]:relative [&>svg]:z-10',
           'outline-none focus-visible:border-ring focus-visible:ring-[3px]! focus-visible:ring-ring/50!',
         ].join(' '),
       },

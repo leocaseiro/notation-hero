@@ -122,14 +122,15 @@ test('two different causes stack instead of replacing one another', async () => 
 });
 
 // Dropping the same bad file twice must not stack two identical cards, each needing its own
-// close. It collapses onto one.
+// close. It collapses onto one, and a count in the copy is what makes the repeat visible.
 //
-// What this does NOT yet do is make the repeat VISIBLE. Sonner reconciles a re-raised id onto the
-// existing node, so identical copy produces no animation and nothing new in the live region —
-// someone who retried cannot tell the retry registered. Making it visible means either changing
-// the rendered copy (a repeat count) or introducing a deliberate exit-then-re-enter flicker, and
-// both are user-visible product choices rather than implementation detail. Flagged, not guessed.
-test('the same failure twice collapses onto one toast', async () => {
+// The count is not decoration. It replaced a dismiss-then-re-raise of the SAME id, which loses
+// the toast outright in a real browser: sonner is still animating that id out, so it swallows
+// the re-raise. jsdom runs no transitions, so this file cannot reproduce that — the length-1
+// assertion below passed all the way through the broken version. It was measured on /play at
+// 50 ms sampling instead, where the error and the "Opening …" spinner both disappeared within
+// 50 ms of a retry and never returned, and a later unrelated failure could no longer stack.
+test('the same failure twice collapses onto one toast, and the repeat is visible', async () => {
   render(<Toaster />);
   act(() => {
     toast.error('Not a score');
@@ -139,6 +140,45 @@ test('the same failure twice collapses onto one toast', async () => {
     toast.error('Not a score');
   });
   expect(liveErrors()).toHaveLength(1);
+  expect(await screen.findByText('Not a score (×2)')).toBeInTheDocument();
+});
+
+test('a third raise of the same failure counts up rather than sticking at two', async () => {
+  render(<Toaster />);
+  act(() => {
+    toast.error('Not a score');
+  });
+  await screen.findByText('Not a score');
+  act(() => {
+    toast.error('Not a score');
+  });
+  act(() => {
+    toast.error('Not a score');
+  });
+  expect(liveErrors()).toHaveLength(1);
+  expect(await screen.findByText('Not a score (×3)')).toBeInTheDocument();
+});
+
+// A repeat count that survived its own toast would make the NEXT, unrelated occurrence of the
+// same failure open at "(×4)" — which would read as three failures nobody saw.
+test('the repeat count starts over once the toast has been dismissed', async () => {
+  render(<Toaster />);
+  act(() => {
+    toast.error('Not a score');
+  });
+  await screen.findByText('Not a score');
+  act(() => {
+    toast.error('Not a score');
+  });
+  await screen.findByText('Not a score (×2)');
+
+  act(() => {
+    dismissErrors((id) => id.includes('Not a score'));
+  });
+  act(() => {
+    toast.error('Not a score');
+  });
+  expect(await screen.findByText('Not a score')).toBeInTheDocument();
 });
 
 test('an error toast carries a close control with an accessible name', async () => {

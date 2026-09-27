@@ -228,3 +228,23 @@ export const Loading: Story = {
     />
   ),
 };
+
+// The SAME cause raised twice. A retry has to change something on screen or a person cannot tell
+// it registered, and the count in the copy is that something. It replaced a dismiss-and-re-raise
+// of the same id, which in a real browser lost the toast altogether — sonner is still animating
+// that id out, so it swallows the re-raise. jsdom runs no transitions and never saw it, which is
+// why this frame exists: it pins the one piece of the repair that is visible.
+const RepeatedErrorOnMount = (props: ComponentProps<typeof Toaster>) => {
+  useEffect(() => {
+    toast.error('solo.gp5 could not be opened.');
+    toast.error('solo.gp5 could not be opened.');
+    return () => {
+      toast.dismiss();
+    };
+  }, []);
+  return <Toaster {...props} />;
+};
+
+export const RepeatedError: Story = {
+  render: (args) => <RepeatedErrorOnMount {...args} />,
+};
