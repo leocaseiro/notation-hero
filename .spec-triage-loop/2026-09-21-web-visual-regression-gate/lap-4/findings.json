@@ -121,7 +121,7 @@
       "evidence_quote_count": 4,
       "fix_contradicts_doc": false,
       "verification_reason": "Arithmetic independently reproduced from the installed comparator source and the real tokens: cutoff 1408.6 vs 80.7 (17x under) for the step the shot claims to measure, and 44.7 (31x under) for the exact revert that already shipped once as PR #170 commit f98537cd. The doc measured the signal side for the tooltip shot (526 px, :268-269) and never for this one.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, round 1, maintainer chose the BROADENED option (every surface-step shot, not ghost-hover only). Five edits: consequence 3 gained the signal-side floor (35215 x threshold^2 = 1408.6) with the surface-step score table inline and the general rule that no shot can see a change between two of these surfaces; the doc's inexact 'fifty times under' corrected to ninety (the drift is ~0.002 in threshold units, so ~94x, not 50x); the ghost-hover and engine-error rows re-labelled 'asserted, not photographed'; a new paragraph after the ghost-hover section prescribing the computed background-color assertion for BOTH shots, with the same-serializer rule so the assertion cannot pass vacuously on a colour-format mismatch; and a Risks bullet. NEW MEASUREMENT found while applying, not in the review: the ENGINE-ERROR shot has the same defect. Its stated coverage is the color-mix(in oklab) destructive tint, which scores 172.5 against the 1408.6 cutoff -- 8.2x under -- and its border-destructive/25 edge only reaches 1231 (1.1x under). Only the red text (19698) and the panel's presence are counted. Verified the two shots that do NOT need an assertion: the pressed transport toggle's --primary over --secondary scores 14664 (10.4x OVER, counted). All figures independently reproduced from client/src/styles.css tokens and the pixelmatch YIQ metric; the review's ghost-hover numbers replicated within rounding (80.1 vs 80.7, 45.6 vs 44.7, 5.3 vs 5.3, 243.6 vs 244.6).",
       "contradiction_note": "No later section resolves it. The only threshold/tolerance discussion in the whole doc is 102-108 (grepped: \"threshold\" hits 72,102,105; \"tolerance\" hits 102,269; \"maxDiffPixels\" hits 72,103). No signal-side pixel measurement is given for the ghost-hover shot anywhere, unlike the tooltip shot at 268-269."
     },
     {
@@ -153,7 +153,7 @@
       "evidence_quote_count": 3,
       "fix_contradicts_doc": false,
       "verification_reason": "The assertion really is the literal browser-install run line, and the doc's own CI section (:444) says the container job installs no browsers, so \"Both must be repointed at the new web job\" (:674) is impossible for that one.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, round 1. The one-remedy sentence at :674 replaced with two named remedies: :40's literal is REWRITTEN to the new job's real run line (pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts, which is not 'run test:e2e' either, so it is a rewrite not a repoint), and :44 is REPLACED by an assertion pinning container: mcr.microsoft.com/playwright:v1.61.1-noble.",
       "contradiction_note": "Nothing elsewhere in the doc offers an alternative remedy for :44, and nothing in the repo already pins the container image tag in a test: the only source-file occurrence of `container: mcr.microsoft.com/playwright:v1.61.1-noble` is .github/workflows/ci.yml:211 (all other hits are docs), so the finding's proposed substitute assertion does not already exist."
     },
     {
@@ -193,7 +193,7 @@
       "evidence_quote_count": 3,
       "fix_contradicts_doc": false,
       "verification_reason": "Both sibling uploads carry `if: ${{ !cancelled() }}` with a comment saying why not `if: failure()`, the spec pins only the new artifact's name and paths, and :618-620 tells the reader to download that artifact on a red run - which an unconditional upload step would never produce.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, round 1. The upload step is now spelled out in the CI section after the e2e-drops-the-web-paths paragraph, with if: ${{ !cancelled() }}, the reason it is not if: failure(), the pinned path literals the workflow guard checks, retention-days: 7 and if-no-files-found: ignore. CORRECTION to the finding's own After text, caught while applying: the repo pins actions by SHA, so the step uses actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1 -- the exact pin both siblings carry at ci.yml:224 and :399 -- not the '@v4' the finding wrote.",
       "contradiction_note": "Grepped the whole doc for \"if:\", \"upload\" and \"retention\": the only `if:` is the job-level paths-filter guard at :446, and the upload hits (473, 484, 485, 488) all concern artifact NAMES and the e2e job dropping the web paths. No upload step, and therefore no `if:` condition, is prescribed for the new job anywhere."
     },
     {
@@ -527,14 +527,11 @@
     "lap": 4,
     "lap_bumped_from_3": true,
     "half_completed": "REVIEW half only (steps 1, 2, 2b, 3)",
-    "triaged": false,
+    "triaged": "IN PROGRESS -- round 1 of 3 done (the P0 and both P1s)",
     "triage_completed": false,
-    "last_applied": null,
-    "last_applied_note": "Nothing applied this lap. The review half applies nothing by design, and the engine applied 0 silent fixes.",
+    "last_applied": "L4-F-1 (broadened), L4-F-2, L4-F-3",
+    "last_applied_note": "Round 1 applied 2026-09-28 in worktree .claude/worktrees/nh-320-vr-spec-review-26a18f, branch claude/nh-320-vr-spec-review-26a18f, pushed to docs/nh-320-web-vr-gate-spec. prettier, markdownlint-cli2 and cspell all clean on the spec.",
     "undecided": [
-      "L4-F-1",
-      "L4-F-2",
-      "L4-F-3",
       "L4-F-4",
       "L4-F-5",
       "L4-F-6",
@@ -546,7 +543,7 @@
       "L4-FYI-4"
     ],
     "bound_check": "IN BOUNDS. Lap cap is 5, so lap 4 is allowed and lap 5 would be the last. The no-progress gate does not trip: lap 3 resolved all five of its own unresolved P0/P1 findings (2 P0 + 3 P1), so the unresolved P0/P1 count fell 5 -> 0 before this lap opened. Lap 4 raises 3 fresh ones (1 P0 + 2 P1), all newly found rather than carried.",
-    "next_step": "TRIAGE half, as a SEPARATE invocation -- do not continue it in the review session. It starts at step 4, reads THIS FILE and nothing else (never re-open the spec to compose a chunk; every finding's Before is already inline here, byte-exact), establishes findings as prose chunks, and puts them to the maintainer in AskUserQuestion pickers batched <=4, applying each batch's Apply decisions as its own commit before the next round. The 4 FYI observations are reported, not asked.",
+    "next_step": "Round 2: L4-F-4, L4-F-5, L4-F-8 (the measurement/readiness cluster). Round 3: L4-F-6, L4-F-7 plus the four FYI observations as one multi-select card. Then the four deferred_questions if the maintainer wants them.",
     "suggested_walkthrough_order": "Severity order as listed: L4-F-1 (P0) first -- it is the only finding about the gate passing over a real regression, and its fix is the only one that needs a design choice (where the computed-style assertion goes). Then the two P1s, which both block an implementer. L4-F-7 deserves care despite being P2: its fix direction is INVERTED from what the reviewer proposed, so the picker must present the CORRECTED fix (narrow the design sentence at :559-560) and must NOT offer adding lines 152-153 to the footprint."
   }
 }

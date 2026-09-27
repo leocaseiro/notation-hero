@@ -102,10 +102,24 @@ Three design consequences, all evidence-backed rather than guessed:
 3. **Playwright's default tolerance is enough** — decided 2026-09-26. Its `threshold` defaults to
    `0.2` in YIQ colour space and `maxDiffPixels` is unset, so a pixel must differ noticeably to
    count and then a _single_ such pixel fails. The worst drift measured here is ±1/255 in one
-   channel, about `0.004` — fifty times under that threshold. Going stricter (`threshold: 0`) would
-   buy nothing the evidence points at, would make element-clipped shots impossible, and would give
-   the repo two comparison policies instead of one. So the shots pass no comparison options at all,
-   exactly as `client/` does.
+   channel, about `0.002` in threshold units — ninety times under that threshold. Going stricter
+   (`threshold: 0`) would buy nothing the evidence points at, would make element-clipped shots
+   impossible, and would give the repo two comparison policies instead of one. So the shots pass no
+   comparison options at all, exactly as `client/` does.
+
+   **Run the same arithmetic the other way and it sets a floor on what a screenshot can prove.** The
+   comparator's per-pixel cutoff is `35215 × threshold²`, so at `0.2` a pixel must score above
+   `1408.6` to be counted at all — roughly `53/255` of luminance for a grey-on-grey step. This repo's
+   surfaces sit under it: `--elevate` over `--rail` scores `80` (17× under), `--muted` over `--elevate`
+   `46`, `--rail` over `--panel` `20`, `--panel` over `--background` `5`, and the engine-error panel's
+   tint over `--popover` `173`. So **no shot can see a change between two of these surfaces**, at any
+   crop or size — the comparison is per-pixel, so a flat region that clears no pixel's cutoff
+   contributes nothing however large it is. Two consequences carry into the shot list: a shot whose
+   stated coverage **is** a surface step needs a signal-side assertion rather than a tighter tolerance
+   (the ghost-hover and engine-error shots), and a twelfth shot proposed to guard a surface step
+   should be scored against these numbers before it is written. Steps that carry chroma need nothing
+   extra — the pressed transport toggle's `--primary` over `--secondary` scores `14664`, ten times
+   over the cutoff.
 
 Cost: Playwright reported **41 passed (2.2 m) for 60 runs** — about 2.2 s per shot, so an eleven-shot
 lane is well under a minute of test time. The dominant cost is the `next build`, not the
@@ -214,19 +228,19 @@ shared module makes a test-id rename land once.
 left `bg-rail` strip carrying the Open-file control, the notation surface, and a raised `bg-panel`
 transport footer.
 
-| Shot                      | How it is reached                                    | What only this shot covers                            |
-| ------------------------- | ---------------------------------------------------- | ----------------------------------------------------- |
-| Landing                   | `/`                                                  | the Play button, the one screen that is not `/play`   |
-| Player, bundled beat      | `/play`                                              | the default screen: header, rail, score, footer       |
-| Player, long score        | `/play` + `Punk.gp` via `open-file-input`            | the scrolling notation box, a real filename           |
-| First-visit Skeleton      | stall `**/alphatab/esm/alphaTab.mjs`                 | the loading state                                     |
-| Engine error              | abort `**/alphatab/esm/alphaTab.mjs`                 | the `color-mix(in oklab, …)` destructive tint         |
-| Transport toggles pressed | click loop, metronome, count-in, then increase tempo | pressed-state styling and the tempo percentage        |
-| Settings popover open     | click the header gear                                | the accordion sections and their rows, composed       |
-| Tracks popover open       | click the transport's Tracks button                  | one mixer row per track, over a real score            |
-| Ghost hover on the rail   | hover `open-file-button`                             | `hover:bg-elevate` measured against `--rail`          |
-| Tooltip over the header   | hover `back-home`                                    | a portalled tooltip winning the header's `z-10` layer |
-| Narrow viewport           | `/play` at 900 px wide                               | the rail's `w-20` state, below the `lg` breakpoint    |
+| Shot                      | How it is reached                                    | What only this shot covers                                       |
+| ------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
+| Landing                   | `/`                                                  | the Play button, the one screen that is not `/play`              |
+| Player, bundled beat      | `/play`                                              | the default screen: header, rail, score, footer                  |
+| Player, long score        | `/play` + `Punk.gp` via `open-file-input`            | the scrolling notation box, a real filename                      |
+| First-visit Skeleton      | stall `**/alphatab/esm/alphaTab.mjs`                 | the loading state                                                |
+| Engine error              | abort `**/alphatab/esm/alphaTab.mjs`                 | the destructive error panel; its tint asserted, not photographed |
+| Transport toggles pressed | click loop, metronome, count-in, then increase tempo | pressed-state styling and the tempo percentage                   |
+| Settings popover open     | click the header gear                                | the accordion sections and their rows, composed                  |
+| Tracks popover open       | click the transport's Tracks button                  | one mixer row per track, over a real score                       |
+| Ghost hover on the rail   | hover `open-file-button`                             | `hover:bg-elevate` over `--rail`, asserted not photographed      |
+| Tooltip over the header   | hover `back-home`                                    | a portalled tooltip winning the header's `z-10` layer            |
+| Narrow viewport           | `/play` at 900 px wide                               | the rail's `w-20` state, below the `lg` breakpoint               |
 
 Two of these exist because the sequencing puts Plan C first, so both popovers are already on `/play`
 by the time this lane is written. They are app-composed UI built from `client/` primitives and
@@ -252,6 +266,49 @@ today, and weakest against `--rail` — where it could regress to invisible with
 green. `OpenFileControl.tsx` renders `variant="ghost"` on `--rail`, so hovering it is the shot.
 Convenient side effect: that button also carries a tooltip, so this shot captures the hover step and
 that tooltip together.
+
+**Neither this step nor the engine-error tint is visible to the comparator, so both shots assert it
+instead.** `--elevate` over `--rail` scores `80` against the `1408.6` cutoff, so reverting to
+`hover:bg-muted` (`46`) changes zero counted pixels — and that revert is the exact regression PR #170
+records having shipped. The engine panel's tint over `--popover` scores `173`, and even its
+`border-destructive/25` edge only reaches `1231`. Each shot therefore reads the surface directly
+before the compare, the way the accessibility lane already polls `getComputedStyle`
+(`web/e2e/a11y.e2e.ts:87`, `:173`) and the way the tempo-percentage caveat under Risks already
+prescribes:
+
+```ts
+// Ghost hover: the step must actually change the button's surface.
+const ghost = page.getByTestId('open-file-button');
+const resting = await ghost.evaluate((el) => getComputedStyle(el).backgroundColor);
+await ghost.hover();
+await expect
+  .poll(() => ghost.evaluate((el) => getComputedStyle(el).backgroundColor))
+  .not.toBe(resting);
+
+// Engine error: the tint must be there, not only the border and the red text.
+const panel = page.getByTestId('engine-error');
+await expect
+  .poll(() =>
+    panel.evaluate((el) => {
+      const own = getComputedStyle(el).backgroundColor;
+      return (
+        own !== getComputedStyle(el.parentElement).backgroundColor && own !== 'rgba(0, 0, 0, 0)'
+      );
+    }),
+  )
+  .toBe(true);
+```
+
+**Both assertions compare two values read through the same serializer, and that is deliberate.** A
+hard-coded expectation like `toHaveCSS('background-color', 'oklch(93.5% 0.006 240.4deg)')` invites the
+failure this whole subsection is about: the browser resolves computed colours to its own format, so a
+format mismatch makes the assertion pass — or fail — for a reason unrelated to the surface. Read the
+resting value and the hovered value the same way, or read the element and its parent the same way, and
+the comparison cannot go vacuous.
+
+The pictures still earn their place: the ghost variant's `hover:text-foreground` step scores `4412`
+and the error panel's red text `19698`, so each shot catches "this state did not render at all" while
+its assertion catches the surface underneath.
 
 **Tooltip over the header** — PR #170 finding 9. `Tooltip.tsx` portals its content to the end of
 `<body>` and puts `isolate z-50` on the **Positioner**; the `z-50` on the Popup beneath it has never
@@ -488,6 +545,28 @@ artifact or it silently stops finding the report it publishes.
 The `e2e` job's upload also **drops** `web/playwright-report/` and `web/test-results/` from its
 `path:` list — those paths belong to the new job now.
 
+**The new job's upload step, spelled out — the `if:` is what makes the failure path work.** An
+unguarded step never runs on the one run that needs it, because GitHub skips a job's remaining steps
+once a step fails, and `web/` gets no hosted diff page as a fallback:
+
+```yaml
+- name: Upload the web Playwright report
+  # NOT `if: failure()` — keep the trace of a flaky-then-passed retry (matches vr and e2e, D5).
+  if: ${{ !cancelled() }}
+  uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  with:
+    name: playwright-web-report
+    path: |
+      web/playwright-report/
+      web/test-results/
+    retention-days: 7
+    if-no-files-found: ignore
+```
+
+Both sibling uploads carry that condition, that reason and that SHA pin already (`ci.yml:224` and
+`:399`), and both set the same `retention-days` and `if-no-files-found`. The `path:` spellings are the
+ones `tooling/workflow-guards.test.mjs:47` and `:48` pin, trailing slash included.
+
 **Two comments need correcting rather than deleting, and one of them is not in `ci.yml`.** The
 `e2e` job's header (`ci.yml:374-380`) describes a job that is about to stop running `web/` at all,
 so four of its clauses go false at once: "two Playwright lanes" becomes one, the whole "web/: the
@@ -592,6 +671,11 @@ without them.
   button, so focus-within holds it — but a variant that moves focus away would capture it at
   `opacity-0` and bless a baseline missing the thing the shot exists for. Assert the painted opacity
   before the shot, the way the accessibility lane already does.
+- **Two shots guard a surface step the comparator cannot see.** The ghost-hover step (`80`) and the
+  engine-error tint (`173`) both fall under the `1408.6` per-pixel cutoff, so their pictures prove the
+  state rendered but not that the surface is right. Both carry a computed `background-color`
+  assertion for that reason — drop either assertion and the shot silently stops covering the thing it
+  was added for, with the screenshot still green.
 - **The PR template needs no edit.** Item _"If this PR changed UI, I added or updated the VR tests
   for it"_ already reads correctly; it simply starts applying to `web/` changes once this lands.
 
@@ -671,7 +755,12 @@ it was planned rather than smuggled in.
   `:40` requires a literal `run: pnpm --filter @notation-hero/web run test:e2e` line, which the
   trimmed `e2e` job no longer has, and `:44` requires a
   `pnpm --filter @notation-hero/web exec playwright install --with-deps chromium` line, which the
-  container job deliberately does not need. Both must be repointed at the new `web` job — the test
+  container job deliberately does not need. **They need different remedies.** `:40`'s literal is
+  rewritten to the new job's actual run line, `pnpm --filter @notation-hero/web exec playwright test
+--config=playwright.e2e.config.ts` — note that is not `run test:e2e` either, so it is a rewrite
+  rather than a repoint. `:44` has nothing left in `ci.yml` to point at, so it is **replaced** by an
+  assertion pinning the new job's `container: mcr.microsoft.com/playwright:v1.61.1-noble` line: that
+  pin is what makes "no install needed" true, and nothing in the suite pins it today. The test
   case is even named _"the e2e job runs the web Playwright lane, not only the client one"_, which
   stops being what the workflow does. Two more (`:47`, `:48`) require the literals
   `web/playwright-report/` and `web/test-results/` to appear in `ci.yml`, so the new job's `path:`
