@@ -11,6 +11,44 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-27 — A retried failure stops erasing its own toast, and the toast never covers the header (NH-331)
+
+Two follow-ups to the NH-331 merge (#179). Both were found by measuring the shipped behaviour in a
+real browser, not by reading the code, and both had passed every gate the repo had.
+
+**A retry erased all of its own feedback.** Opening the same failing file twice removed the error
+toast _and_ the "Opening …" spinner within 50 ms and put nothing back, so a failed open looked
+exactly like a successful one, and a later unrelated failure could no longer stack beside it. The
+cause was the repeat branch itself: it dismissed the toast and re-raised the same id in one tick to
+replay the entry animation, and sonner — still animating that id out — swallows the re-raise. The
+unit test asserting "the same failure twice collapses onto one toast" passed throughout, because
+jsdom runs no transitions and cannot reproduce it.
+
+**The toast sat on the player header.** At sonner's default top offset, `elementFromPoint` found it
+covering 6 controls at 375px — the entire header — and 2 at 700px. Because error toasts never
+self-dismiss, none of them could be used until the close button was found.
+
+**Decisions leocaseiro made, with what each was chosen over:**
+
+- **Make the repeat visible by changing the COPY (a `(×N)` count)** — over minting a fresh id per
+  repeat (keeps the entry animation but needs id bookkeeping, and was untested) and over merely
+  dropping the dismiss (stops the loss but leaves the repeat invisible, the original complaint).
+  The count also survives reduced-motion and lands in sonner's own live region, so it is announced.
+- **Lift the toast clear of the header at EVERY width, not only below 600px** — over the surgical
+  phone-only fix. His words: he would prefer to always show the header in both sizes, and he was
+  content for the desktop toast to move given the toast can be closed. Decided from before/after
+  screenshots at 375, 700 and 1280 rather than from the description.
+
+**What is now enforced.** `web/e2e/toast-occlusion.e2e.ts` (the `e2e` job, which `ci-green` waits
+on) raises a real persistent error at 1280, 700 and 375 and fails if `elementFromPoint` returns the
+toaster over any control. It asserts a painted toast and a non-empty control list first, so an
+empty "nothing blocked" result cannot pass vacuously. This is the gate the original note said CI
+could not have: the a11y gate measures each control's size and viewport containment, both of which
+stay valid for a button with a toast painted over it.
+
+`AGENTS.md` also now lists `pnpm run check:error-codes` among the root-level checks — it was the
+one obligation the NH-331 checklist audit found unbacked.
+
 ### 2026-09-26 — The registry's own statuses reconciled, and a duplicated table removed (NH-322)
 
 With the change log out of `decision-registry.md`, its state tables turned out to be
@@ -74,43 +112,6 @@ CI paths-filter, never a gate) and `H7` (the config carries exactly four rules �
 absent; an earlier reading of this as self-contradictory was wrong). Everything DangerJS, Stryker,
 floors, type-coverage and size-limit is untouched and still correctly 🟥. No rows added, no tables
 restructured.
-### 2026-09-27 — A retried failure stops erasing its own toast, and the toast never covers the header (NH-331)
-
-Two follow-ups to the NH-331 merge (#179). Both were found by measuring the shipped behaviour in a
-real browser, not by reading the code, and both had passed every gate the repo had.
-
-**A retry erased all of its own feedback.** Opening the same failing file twice removed the error
-toast _and_ the "Opening …" spinner within 50 ms and put nothing back, so a failed open looked
-exactly like a successful one, and a later unrelated failure could no longer stack beside it. The
-cause was the repeat branch itself: it dismissed the toast and re-raised the same id in one tick to
-replay the entry animation, and sonner — still animating that id out — swallows the re-raise. The
-unit test asserting "the same failure twice collapses onto one toast" passed throughout, because
-jsdom runs no transitions and cannot reproduce it.
-
-**The toast sat on the player header.** At sonner's default top offset, `elementFromPoint` found it
-covering 6 controls at 375px — the entire header — and 2 at 700px. Because error toasts never
-self-dismiss, none of them could be used until the close button was found.
-
-**Decisions leocaseiro made, with what each was chosen over:**
-
-- **Make the repeat visible by changing the COPY (a `(×N)` count)** — over minting a fresh id per
-  repeat (keeps the entry animation but needs id bookkeeping, and was untested) and over merely
-  dropping the dismiss (stops the loss but leaves the repeat invisible, the original complaint).
-  The count also survives reduced-motion and lands in sonner's own live region, so it is announced.
-- **Lift the toast clear of the header at EVERY width, not only below 600px** — over the surgical
-  phone-only fix. His words: he would prefer to always show the header in both sizes, and he was
-  content for the desktop toast to move given the toast can be closed. Decided from before/after
-  screenshots at 375, 700 and 1280 rather than from the description.
-
-**What is now enforced.** `web/e2e/toast-occlusion.e2e.ts` (the `e2e` job, which `ci-green` waits
-on) raises a real persistent error at 1280, 700 and 375 and fails if `elementFromPoint` returns the
-toaster over any control. It asserts a painted toast and a non-empty control list first, so an
-empty "nothing blocked" result cannot pass vacuously. This is the gate the original note said CI
-could not have: the a11y gate measures each control's size and viewport containment, both of which
-stay valid for a button with a toast painted over it.
-
-`AGENTS.md` also now lists `pnpm run check:error-codes` among the root-level checks — it was the
-one obligation the NH-331 checklist audit found unbacked.
 
 ### 2026-09-26 — The registry/changelog split finished, and made self-enforcing (NH-322)
 
