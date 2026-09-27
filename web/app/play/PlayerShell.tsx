@@ -3,6 +3,8 @@
 import {
   Button,
   Progress,
+  RECORDING,
+  Separator,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -10,7 +12,7 @@ import {
   toast,
 } from '@notation-hero/client';
 import { ERROR } from '@notation-hero/shared/error-codes';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 
 import {
@@ -18,6 +20,21 @@ import {
   useAlphaTabEngine,
 } from '../../lib/alphatab/AlphaTabEngineContext';
 import { loadAlphaTabEngine } from '../../lib/alphatab/engine';
+import { applyThenPersist } from '../../lib/alphatab/live-settings';
+import { dropPlaybackSelection } from '../../lib/alphatab/playback-selection';
+import {
+  DEFAULT_PLAYER_SETTINGS,
+  SETTING_LABELS,
+  SETTING_NUMERIC_BOUNDS,
+  SETTING_OPTION_VALUES,
+  SETTING_TEXT_VALIDATORS,
+  writeSettingValue,
+} from '../../lib/alphatab/settings-schema';
+import {
+  loadStoredSettings,
+  serializeSettings,
+  SETTINGS_STORAGE_KEY,
+} from '../../lib/alphatab/settings-storage';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { NotationSurface } from './NotationSurface';
 import {
@@ -27,9 +44,18 @@ import {
   readNotation,
 } from './OpenFileControl';
 import { PlayerHeader } from './PlayerHeader';
+import { SettingsPopover } from './SettingsPopover';
+import { TracksPopover } from './TracksPopover';
 import { TransportRow } from './TransportRow';
 import { useLoadingBarPhase } from './useLoadingBarPhase';
+import type {
+  ApiValueKey,
+  PlayerSettingsJson,
+  SettingAction,
+  SettingApply,
+} from '../../lib/alphatab/settings-schema';
 import type * as AlphaTab from '@coderline/alphatab';
+import type { SettingValue } from '@notation-hero/client';
 
 /** What the picker produces: a file read into memory, not yet parsed. */
 export interface LoadedNotation {
@@ -105,12 +131,26 @@ function Player() {
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
   const [looping, setLooping] = useState(false);
-  const [metronome, setMetronome] = useState(false);
-  const [countIn, setCountIn] = useState(false);
+  // Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 is the normal
+  // level. The transport's two buttons derive their pressed state from "volume > 0", and the
+  // Settings popover's two matching rows share these same values — one writer each.
+  const [metronomeVolume, setMetronomeVolume] = useState(0);
+  const [countInVolume, setCountInVolume] = useState(0);
   // Whether AlphaTab currently holds a bar-range selection — drives the Loop toggle's label only.
   const [hasRange, setHasRange] = useState(false);
   // Whether the open score plays its own embedded recording. Metronome and Count-In are inert then.
   const [hasBackingTrack, setHasBackingTrack] = useState(false);
+  // The two modes that build no player at all, or build one nothing ever drives: the person's own
+  // choice in settings, not what AlphaTab built. Disabled builds no player, so playerReady can
+  // never answer for it; EnabledExternalMedia builds one with no media source in v0, so it never has
+  // anything to drive. Written by readChosenMode below.
+  const [playbackOff, setPlaybackOff] = useState(false);
+  const [externalMedia, setExternalMedia] = useState(false);
+  // The third dead mode: EnabledBackingTrack chosen on a file with no embedded recording. AlphaTab
+  // still builds that player and reports it ready (measured in a real browser), but playback
+  // completes instantly with nothing to play. Needs the real player and the loaded score, so it is
+  // written by readPlayer, not readChosenMode.
+  const [backingTrackNoRecording, setBackingTrackNoRecording] = useState(false);
   // The live score tempo, for the header's tempo control. The position handler below is what keeps
   // it current; the 120 is the pre-load placeholder only.
   const [scoreTempo, setScoreTempo] = useState(120);
@@ -128,6 +168,93 @@ function Player() {
   // A file is being opened. The parse is synchronous and can hold the main thread for seconds on a
   // slow machine, so this is committed and PAINTED before the parse starts.
   const [opening, setOpening] = useState(false);
+  // Read ONCE per page visit, in a lazy initialiser rather than an effect — react-hooks/set-state-
+  // in-effect is an error in this package, and reading storage in an effect and then calling
+  // setSettings would trip it. The initialiser also runs for the server render, where there is no
+  // storage: it yields the defaults there, and the HTML is identical either way because nothing on
+  // the page renders a setting until the popover is opened.
+  const [restored] = useState(() => {
+    // eslint-disable-next-line sonarjs/different-types-comparison -- true at runtime during server rendering, where `window` genuinely does not exist; the DOM lib's ambient types just do not say so
+    if (globalThis.window === undefined)
+      return { settings: DEFAULT_PLAYER_SETTINGS, reset: false, repaired: [] };
+    try {
+      return loadStoredSettings(
+        globalThis.localStorage.getItem(SETTINGS_STORAGE_KEY),
+        DEFAULT_PLAYER_SETTINGS,
+        SETTING_OPTION_VALUES,
+        SETTING_NUMERIC_BOUNDS,
+        SETTING_TEXT_VALIDATORS,
+      );
+    } catch {
+      // A browser with site data blocked makes the localStorage GETTER itself throw, not only
+      // setItem — and this initialiser runs during render, so an unguarded throw takes the whole
+      // page. Blocked storage is not a corrupt document: reset stays false, so no toast fires and
+      // no repair write happens. Both setItem calls below are guarded the same way.
+      return { settings: DEFAULT_PLAYER_SETTINGS, reset: false, repaired: [] };
+    }
+  });
+  // The Settings popover's edit state: the whole document the shell pushes into the live engine on
+  // every change (see applySetting below). Declared here, above useAlphaTab, so a lazily
+  // initialised read of the stored value can reach it without closing over a const declared later.
+  const [settings, setSettings] = useState<PlayerSettingsJson>(restored.settings);
+
+  // A toast is not state, so an effect is the right place for it. Without it a drummer watches
+  // their colours and fonts revert with no way to tell it from a bug — the same surface the
+  // corrupt-file and engine-failure states already use.
+  //
+  // The repair write happens here too, not only inside applySetting: without it the cleaned-up
+  // document is never written back, so the same corrupt value stays in storage and the warning
+  // would repeat on every visit until the person happens to touch a setting.
+  //
+  // The toast call is deferred a tick rather than fired synchronously: the root layout renders the
+  // page before the toaster with no boundary between them, and passive effects run in tree order,
+  // so a synchronous call here fires before the toaster has subscribed and is never shown. The
+  // cleanup cancels the deferred call on an unmount before it fires, which is what keeps React's
+  // development double-mount from stacking two toasts.
+  useEffect(() => {
+    if (!restored.reset) return;
+    try {
+      globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(restored.settings));
+    } catch {
+      // Storage is unavailable or full; the warning below is still worth showing.
+    }
+    // Both forms, because they serve different readers: the label is what the row is CALLED in the
+    // popover, the dot-path is what to grep for. A report that carries only one of them is hard to
+    // act on from the other end.
+    if (restored.repaired.length > 0) {
+      // A LITERAL format string, with everything else passed as arguments. An interpolated first
+      // argument lets a format specifier inside the interpolated value forge the log line, which
+      // is what the repository's static-analysis gate blocks — and the values here come from
+      // stored data, so the gate is right even though these particular two are constants.
+      console.warn(
+        'Player settings repaired',
+        ERROR.settingsRepaired,
+        restored.repaired.map((path) => `${SETTING_LABELS[path] ?? path} [${path}]`).join(', '),
+      );
+    }
+    const id = setTimeout(() => {
+      // NOT "reset to the defaults" — that was false on both halves. A clamped number keeps the
+      // intent of what was typed and lands on the nearest bound, not the default; and only the
+      // offending keys move, never the whole document. Naming the rows is what makes the warning
+      // actionable: a person can go and look at exactly those.
+      // No filter: the drift test in settings-schema.test.ts binds SETTING_LABELS to the rows in
+      // BOTH directions, so every repairable path has a label. The `?? path` is the belt for a
+      // key that somehow escapes that, and keeps the warning readable rather than printing
+      // "undefined" at a drummer.
+      const named = restored.repaired.map((path) => SETTING_LABELS[path] ?? path);
+      // TWO different events, so two messages and two codes. An empty `repaired` with `reset`
+      // set means the document could not be read at all and EVERYTHING fell back — there "reset
+      // to the defaults" is simply true. A non-empty one means only those keys moved, and a
+      // clamped number went to its nearest bound rather than its default, so claiming a reset
+      // would be false on both halves.
+      toast.warning(
+        named.length > 0
+          ? `Some settings were not valid and have been corrected: ${named.join(', ')}. (Error ${ERROR.settingsRepaired})`
+          : `Your saved settings could not be read, so they were reset to the defaults. (Error ${ERROR.settingsUnreadable})`,
+      );
+    }, 0);
+    return () => clearTimeout(id);
+  }, [restored]);
 
   // The ONE owner of the api. There is no second apiRef and no onApiReady callback: a callback
   // prop in the hook's dependency list rebuilds the engine on an ordinary state change, throwing
@@ -135,34 +262,51 @@ function Player() {
   //
   // `alphaTab` is the namespace object the hook passes in — the self-hosted-ESM delivery decision
   // forbids importing it, so this is the only way a call site reaches an enum.
-  const [api, hostRef] = useAlphaTab((settings, alphaTab) => {
-    // No settings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
+  const [api, hostRef] = useAlphaTab((engineSettings, alphaTab) => {
+    // No engineSettings.core.scriptFile. AlphaTab finds its own worker and worklet relative to
     // /alphatab/esm/alphaTab.mjs — that is the entire point of self-hosting the ESM.
     // fontDirectory, logLevel and soundFont are already applied by setAlphaTabDefaults().
-    settings.core.file = SAMPLE_NOTATION;
-    settings.core.tracks = 'all';
+    engineSettings.core.file = SAMPLE_NOTATION;
+    engineSettings.core.tracks = 'all';
     // EnabledAutomatic on purpose (2026-09-16): a Guitar Pro file that embeds an audio track plays
     // that recording, with the notation on screen — that is how this player plays along to a
     // person's own files. AlphaTab resolves EnabledAutomatic to its backing-track player whenever
     // `score.backingTrack.rawAudioFile` exists, and that player's synthesizer stubs out
     // channelSetMute, channelSetSolo, channelSetMixVolume and the metronome channel (verified in
-    // 1.8.4). Nothing here drives those, but the transport's metronome and count-in and the mixer
-    // rows MUST render disabled, with a tooltip saying the file is playing its own recording
-    // (spec §4). A toggle between the recording and the synth is deferred (NH-298).
+    // 1.8.4). The transport's metronome and count-in and the mixer rows disable only while that
+    // backing-track player is the one AlphaTab actually built — choosing the synthesizer in
+    // Settings leaves them live, even when the file still embeds a recording.
     //
     // It also keeps the empty page cheap: with EnabledAutomatic and no score yet, AlphaTab creates
     // no player at all — no AudioContext, no synth worker, no soundfont fetch
     // (alphaTab.core.mjs:46680-46685).
-    settings.player.playerMode = alphaTab.PlayerMode.EnabledAutomatic;
-    settings.player.enableCursor = true;
-    settings.player.scrollMode = alphaTab.ScrollMode.Continuous;
+    engineSettings.player.playerMode = alphaTab.PlayerMode.EnabledAutomatic;
+    engineSettings.player.enableCursor = true;
+    engineSettings.player.scrollMode = alphaTab.ScrollMode.Continuous;
     // The OUTER div scrolls — never AlphaTab's own element. This runs inside the hook's effect,
     // after both divs are committed, so the ref is filled; the `if` is for the type, and because
     // `@typescript-eslint/no-non-null-assertion` is not worth fighting over one line.
-    if (viewportRef.current) settings.player.scrollElement = viewportRef.current;
+    if (viewportRef.current) engineSettings.player.scrollElement = viewportRef.current;
     // Ten pixels of air above the cursor, so it does not sit flush against the top edge. The
     // fork sets the same (AlphaTabRhythmGame/index.tsx:151).
-    settings.player.scrollOffsetY = -10;
+    engineSettings.player.scrollOffsetY = -10;
+
+    // The person's stored settings, applied before the api exists, so the first draw already has
+    // them — the score is drawn once, with the person's settings, instead of once with the
+    // defaults and again with theirs. After the shell's own assignments on purpose: for a key both
+    // set — the cursor, the scroll mode — the person's own choice is the one that must win.
+    //
+    // fillFromJson, never assignment: RenderingResources holds real Color and Font instances, and
+    // a plain object assigned into the settings tree breaks rendering WITHOUT throwing, so a
+    // try/catch around an assignment would never fire. And wrapped in try/catch here anyway,
+    // because an uncaught throw would stop the player mounting at all, which is the one thing this
+    // page exists to do — the per-key merge against the shipped defaults makes this unreachable in
+    // practice, but the cost of being wrong is a page with no player.
+    try {
+      engineSettings.fillFromJson(settings as AlphaTab.json.SettingsJson);
+    } catch {
+      // Keep the defaults already on `engineSettings`.
+    }
   });
 
   // Both subscriptions go through the helper, so each one is removed when this component
@@ -173,12 +317,56 @@ function Player() {
   useAlphaTabEvent(api, 'playerStateChanged', (args) => {
     setPlaying(args.state === engine?.synth.PlayerState.Playing);
   });
+  // The mode the PERSON chose, read from settings rather than from what AlphaTab built. Both
+  // dead-on-arrival modes need it here: Disabled builds no player, so playerReady never fires for
+  // it, and EnabledExternalMedia builds one with no media source, so nothing ever drives it — the
+  // settings read is the only way either is known, on a reload where no playerReady is ever coming.
+  //
+  // Guarded and compared WITHOUT optional chaining on the comparison itself: `api?.x === engine?.y`
+  // is `undefined === undefined` — true — whenever EITHER is still missing, which would report
+  // every dead mode as chosen before the engine has even loaded.
+  const readChosenMode = useCallback(() => {
+    if (!api || !engine) return;
+    const mode = api.settings.player.playerMode;
+    setPlaybackOff(mode === engine.PlayerMode.Disabled);
+    setExternalMedia(mode === engine.PlayerMode.EnabledExternalMedia);
+  }, [api, engine]);
+
+  // Which player AlphaTab actually built. A file that embeds a recording still plays from the
+  // synthesizer when that mode is selected, and then the metronome, the count-in and the mixer
+  // work. The file merely containing audio is not the signal: EnabledAutomatic resolves to the
+  // backing-track player, EnabledSynthesizer does not.
+  const readPlayer = useCallback(() => {
+    if (!api || !engine) return;
+    const isBackingTrack = api.actualPlayerMode === engine.PlayerMode.EnabledBackingTrack;
+    setHasBackingTrack(isBackingTrack);
+    // EnabledBackingTrack on a file with no embedded recording is a dead state, measured in a real
+    // browser: AlphaTab builds the backing-track player and reports it ready right away, but
+    // playback completes instantly with nothing to play.
+    setBackingTrackNoRecording(isBackingTrack && !api.score?.backingTrack?.rawAudioFile);
+    // Read, not latched `true`: the same soundfont reload that follows a mode switch or a file
+    // replace leaves an earlier `true` stale while the new player is still loading, and Play must
+    // not stay pressable through that window.
+    setPlayerReady(api.isReadyForPlayback);
+    // A mid-session switch INTO a dead mode settles without a reload: playerReady never fires for
+    // Disabled or EnabledExternalMedia, so the settings read has to run here too, not only at
+    // scoreLoaded.
+    readChosenMode();
+  }, [api, engine, readChosenMode]);
+
   // `playerReady`, not `soundFontLoaded`: 1.8.4 builds soundFontLoaded as a bare `new EventEmitter()`,
   // so it fires once and is never replayed — a subscription that lands one commit after the api was
   // constructed can miss it and latch Play disabled forever. `api.playerReady` returns the player
   // wrapper's `readyForPlayback`, built as `new EventEmitter(() => this.isReadyForPlayback)`, which
   // reports the current value to a late subscriber.
-  useAlphaTabEvent(api, 'playerReady', () => setPlayerReady(true));
+  useAlphaTabEvent(api, 'playerReady', readPlayer);
+  // Also subscribed to `renderStarted`: without it, `readPlayer` runs only from `playerReady` above
+  // and from the settings-change handler below, so a FILE REPLACE rebuilds the player with
+  // `playerReady` still latched true from the OLD score and `hasBackingTrack` stale until the new
+  // score's own `playerReady` eventually arrives. `_internalRenderTracks` runs after
+  // `_onScoreLoaded` has already set the new player up, so `renderStarted` sees the right answer,
+  // and the read is idempotent — safe to run on every one of the four renders per score.
+  useAlphaTabEvent(api, 'renderStarted', readPlayer);
 
   // Guard 2's bookkeeping — see the position handler below.
   const pendingSeek = useRef<{ target: number; since: number } | null>(null);
@@ -302,7 +490,20 @@ function Player() {
   // indeterminate until soundfont bytes flow, then a real fraction. It also covers opening a file.
   // A failure shows NO bar — never a "finished" one beside an error message.
   const failed = engineError !== null || loadFailed;
-  const loadingPlayer = !failed && (!playerReady || opening);
+  // Three modes will NEVER become a playable player: Disabled and EnabledExternalMedia build none
+  // that could ever answer playerReady (v0 wires up no external-media handler), and
+  // EnabledBackingTrack on a file with no embedded recording builds one that reports ready straight
+  // away with nothing to play (all three measured in a real browser). Each is a SETTLED choice, not
+  // a pending one, so the bar must not wait on a playerReady that is either never coming or already
+  // meaningless.
+  const noPlayerComing = playbackOff || externalMedia || backingTrackNoRecording;
+  const loadingPlayer = !failed && ((!playerReady && !noPlayerComing) || opening);
+  // The same three modes disable every control that ACTS on the player, not only the loading bar.
+  // `!playerReady` alone is not enough: EnabledExternalMedia and a recording-less
+  // EnabledBackingTrack both measured `isReadyForPlayback: true` immediately, so without
+  // `noPlayerComing` here, Play, Loop, the scrubber and the metronome would all look live while
+  // doing nothing — the one thing a control here must never do.
+  const playbackDisabled = !playerReady || noPlayerComing;
   // 700 = the 400 ms hold at 100 % plus the 300 ms fade in LOADING_BAR_LEAVING below.
   const barPhase = useLoadingBarPhase(loadingPlayer, 700);
   // Held at 100 % while it fades. Opening a file has no fraction to show, and neither has the wait
@@ -314,12 +515,18 @@ function Player() {
   // The Loop toggle's label needs to know whether a bar range is selected.
   useAlphaTabEvent(api, 'playbackRangeChanged', (args) => setHasRange(args.playbackRange !== null));
 
-  // The SAME condition AlphaTab uses to pick its backing-track player (alphaTab.core.mjs:46685,
-  // `score?.backingTrack?.rawAudioFile`). `backingTrack` alone is not enough: a score can carry the
-  // sync metadata without the audio, and AlphaTab then plays the synth, where both toggles work.
-  useAlphaTabEvent(api, 'scoreLoaded', (score) =>
-    setHasBackingTrack(Boolean(score.backingTrack?.rawAudioFile)),
-  );
+  // scoreLoaded fires BEFORE _setupOrDestroyPlayer writes actualPlayerMode, so a read in this
+  // handler would still see the outgoing player (the synth, on the first file that embeds a
+  // recording). The setup call is synchronous and finishes before the stack yields, so a microtask
+  // sees the player this score will use — including a file opened while the synthesizer is already
+  // selected, which must not lock the mixer just because the file contains audio.
+  useAlphaTabEvent(api, 'scoreLoaded', () => {
+    // The chosen mode comes from settings, not from the score or the player, so it needs none of
+    // the wait above — and a stored Disabled or EnabledExternalMedia mode must read as settled from
+    // the very first frame, on a reload where playerReady is never coming at all.
+    readChosenMode();
+    queueMicrotask(readPlayer);
+  });
 
   // `api` is state, not a ref, so it MUST be in each dependency list: an empty list would freeze
   // the callback on the `undefined` it held before the engine arrived.
@@ -331,20 +538,21 @@ function Player() {
     [api],
   );
 
-  // Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 is the normal
-  // level, so the toggle maps to the two ends rather than calling a method.
-  const applyMetronome = useCallback(
-    (next: boolean) => {
-      setMetronome(next);
-      if (api) setAlphaTabValue(api, 'metronomeVolume', next ? 1 : 0);
+  // The ONE writer of api.metronomeVolume. The transport's Metronome button and the Settings
+  // popover's metronome-volume row both call it.
+  const applyMetronomeVolume = useCallback(
+    (next: number) => {
+      setMetronomeVolume(next);
+      if (api) setAlphaTabValue(api, 'metronomeVolume', next);
     },
     [api],
   );
 
-  const applyCountIn = useCallback(
-    (next: boolean) => {
-      setCountIn(next);
-      if (api) setAlphaTabValue(api, 'countInVolume', next ? 1 : 0);
+  // The ONE writer of api.countInVolume, same shape as the metronome above.
+  const applyCountInVolume = useCallback(
+    (next: number) => {
+      setCountInVolume(next);
+      if (api) setAlphaTabValue(api, 'countInVolume', next);
     },
     [api],
   );
@@ -359,6 +567,131 @@ function Player() {
       if (api) setAlphaTabValue(api, 'playbackSpeed', next);
     },
     [api],
+  );
+
+  // The one api value the transport does not already own.
+  const [masterVolume, setMasterVolume] = useState(1);
+  const applyMasterVolume = useCallback(
+    (next: number) => {
+      setMasterVolume(next);
+      if (api) setAlphaTabValue(api, 'masterVolume', next);
+    },
+    [api],
+  );
+
+  // The Settings popover's Player group api rows, in the unit each row shows. The speed is a
+  // multiplier everywhere else in the player; the row shows a percentage, rounded to one decimal,
+  // because the header's BPM stepper leaves the multiplier at values like 0.8916….
+  // Memoised because SettingsPopover is memo()'d, and this was the one prop defeating it: a fresh
+  // object literal every render fails the shallow comparison, so the popover re-rendered with the
+  // transport whatever else stayed stable. Measured — see the case in SettingsPopover.test.tsx:
+  // with memo() but this left as a literal, all seventy-one settings rows were re-read on EVERY
+  // animation frame while the player ran, popover closed; with both, zero.
+  const apiValues = useMemo<Partial<Record<ApiValueKey, SettingValue>>>(
+    () => ({
+      playbackSpeed: Math.round(speed * 1000) / 10,
+      masterVolume,
+      metronomeVolume,
+      countInVolume,
+      isLooping: looping,
+    }),
+    [speed, masterVolume, metronomeVolume, countInVolume, looping],
+  );
+
+  const applyApiValue = useCallback(
+    (key: ApiValueKey, value: SettingValue) => {
+      // Every branch goes to the value's ONE writer. The speed row and the header's tempo control
+      // are two editors of one value; so are the metronome row and the transport's Metronome
+      // button.
+      switch (key) {
+        case 'playbackSpeed': {
+          applySpeed(Number(value) / 100);
+          break;
+        }
+        case 'masterVolume': {
+          applyMasterVolume(Number(value));
+          break;
+        }
+        case 'metronomeVolume': {
+          applyMetronomeVolume(Number(value));
+          break;
+        }
+        case 'countInVolume': {
+          applyCountInVolume(Number(value));
+          break;
+        }
+        default: {
+          applyLooping(Boolean(value));
+        }
+      }
+    },
+    [applySpeed, applyMasterVolume, applyMetronomeVolume, applyCountInVolume, applyLooping],
+  );
+
+  // The Settings popover's single funnel: every `settings`-sourced row pushes through here,
+  // whatever `apply` mode it declares.
+  const applySetting = useCallback(
+    (path: string, value: SettingValue, apply: SettingApply) => {
+      // Compute, set, THEN call the engine — never call the engine inside the setState updater.
+      // React may run an updater twice, which would push the settings and redraw the score twice.
+      const next = writeSettingValue(settings, path, value);
+      // The engine is the authority on whether a value is usable, so it is asked BEFORE the row
+      // shows the new value and BEFORE it is stored. That ordering lives in applyThenPersist, where
+      // a test can force a rejection and check that nothing was written — see live-settings.ts.
+      const committed = applyThenPersist({
+        api,
+        next,
+        apply,
+        onRejected: () =>
+          toast.error(`That value could not be applied. (Error ${ERROR.settingRejected})`),
+        persist: (accepted) => {
+          setSettings(accepted);
+          try {
+            globalThis.localStorage.setItem(SETTINGS_STORAGE_KEY, serializeSettings(accepted));
+          } catch {
+            // Private browsing and a full quota both throw here. Losing persistence is survivable;
+            // losing the player is not, so swallow it rather than breaking the edit.
+          }
+        },
+      });
+      if (!committed) return;
+      // updateSettings() swaps the player synchronously, so the new mode is readable now.
+      // playerReady arrives later, after the soundfont, which is too late: the metronome would
+      // stay locked for the whole download after a switch to the synthesizer.
+      if (path === 'player.playerMode') readPlayer();
+    },
+    [api, settings, readPlayer],
+  );
+
+  const runAction = useCallback(
+    (action: SettingAction) => {
+      if (!api?.score || !engine) return;
+      if (action === 'export-midi') {
+        try {
+          api.downloadMidi();
+        } catch {
+          toast.error(`That file could not be exported. (Error ${ERROR.exportFailed})`);
+        }
+        return;
+      }
+      // Guitar Pro 7 bytes from AlphaTab's own exporter, handed to the browser as a download. The
+      // exporter is a runtime value, so it comes off the loaded namespace, never an import.
+      //
+      // The SUCCESS path needs no signal — the browser's own download is the signal. A failure has
+      // none at all, and every step here can throw: the export itself, the Blob, the object URL.
+      try {
+        const bytes = new engine.exporter.Gp7Exporter().export(api.score, api.settings);
+        const url = URL.createObjectURL(new Blob([bytes as BlobPart]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${api.score.title || 'score'}.gp`;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch {
+        toast.error(`That file could not be exported. (Error ${ERROR.exportFailed})`);
+      }
+    },
+    [api, engine],
   );
 
   const seek = useCallback(
@@ -391,7 +724,7 @@ function Player() {
   // Confirm FIRST, then parse, then swap — spec §4's order. A file that does not parse never
   // becomes the open notation, so the score on screen is untouched by construction and there is
   // no rollback path to build.
-  const requestNotation = useCallback(
+  const runRequestNotation = useCallback(
     async (next: LoadedNotation) => {
       let at = engine;
       if (!at) {
@@ -399,8 +732,17 @@ function Player() {
         // the SAME memoised import the provider is waiting on. `notation` is still null in that
         // window, so nothing the person opened can be lost and there is nothing to confirm.
         at = await loadAlphaTabEngine().catch(() => null);
-        // The engine failed; that failure is reported by the engine-error message, not by a toast.
-        if (!at) return;
+        if (!at) {
+          // The import rejection is cached for the whole page ("one failed import is permanent"),
+          // and the banner that reported it is dismissible — so by now there may be nothing on
+          // screen at all. Without this, picking a file or dropping one is a silent no-op. Same
+          // toast id as the parse failure below, so the two failure paths behave alike.
+          toast.error(
+            `The player could not start, so this file cannot be opened. Reload the page and try again. (Error ${ERROR.engineUnavailableOnOpen})`,
+            { id: 'notation-load' },
+          );
+          return;
+        }
       }
 
       // Record the playing state BEFORE the prompt: globalThis.confirm blocks the main thread, so
@@ -482,12 +824,20 @@ function Player() {
       // went on reading "Loop selection", the cursor froze at the old range's end, and Pause
       // jumped back — with no seek involved.
       if (api?.playbackRange) setAlphaTabValue(api, 'playbackRange', null);
+      // And the selection the ENGINE holds, which the line above does not touch: it keeps the BEAT
+      // OBJECTS a person dragged across and re-applies them after every render, so the beats of the
+      // score being replaced get looked up in the new score's bounds and dereferenced. This must
+      // run while the OLD score is still the one rendered.
+      dropPlaybackSelection(api);
       // Nor may the in-flight seek bookkeeping. `api` survives a file open — it is destroyed only
       // on unmount — so an armed `rangeCheck` would run `leaveRange` against the NEW score,
       // writing an old position into it and, if the old score was playing, starting it.
       clearTimeout(rangeCheck.current);
       pendingSeek.current = null;
       resumeAfterSeek.current = false;
+      // Opening a file is a deliberate new attempt, so a crash reported against the PREVIOUS
+      // score must not keep the player marked failed forever — nothing else ever sets this back.
+      setLoadFailed(false);
       setNotation({ name: next.name, score });
       setOpening(false);
       toast.success(`${next.name} loaded`, { id: 'notation-load' });
@@ -502,6 +852,32 @@ function Player() {
       playRef.current?.focus();
     },
     [api, engine, notation, playing],
+  );
+
+  // ONE open at a time. Two overlapping opens both run to completion and the one that finishes
+  // LAST wins — which can be the file the person already rejected.
+  //
+  // A ref, not `opening` state: `opening` is set by the flushSync below, which is AFTER the engine
+  // await at the top of runRequestNotation, so a second pick made during that window sees it still
+  // false. A ref is written in the same synchronous tick as the call and is visible immediately.
+  //
+  // The guard wraps rather than nests so the 113-line body keeps its shape; `finally` releases the
+  // slot on every exit, including the early returns for a failed engine import and an unreadable
+  // score.
+  //
+  // PRE-EXISTING: this path is unchanged by this feature, and the race predates it.
+  const openInFlight = useRef(false);
+  const requestNotation = useCallback(
+    async (next: LoadedNotation) => {
+      if (openInFlight.current) return;
+      openInFlight.current = true;
+      try {
+        await runRequestNotation(next);
+      } finally {
+        openInFlight.current = false;
+      }
+    },
+    [runRequestNotation],
   );
 
   const [dragging, setDragging] = useState(false);
@@ -550,6 +926,20 @@ function Player() {
   // again, so renaming the file cannot leave a stale label behind.
   const openFileName = notation?.name ?? SAMPLE_NOTATION.split('/').pop() ?? '';
 
+  // Play's tooltip: one branch per dead mode, so a disabled Play never says "Play". An if-chain
+  // rather than a nested ternary — the same shape `barValue` above already uses.
+  let playTooltip = playing ? 'Pause' : 'Play';
+  if (playbackOff) {
+    playTooltip = 'Playback is turned off in Settings';
+  } else if (externalMedia) {
+    playTooltip =
+      'This mode follows an outside video or audio player, such as a YouTube video, which this ' +
+      'version does not provide yet. A recording inside the file plays fine on the other modes.';
+  } else if (backingTrackNoRecording) {
+    playTooltip =
+      'This file has no recording to play. Choose the synthesizer in Settings to hear it.';
+  }
+
   return (
     // The player fills the window and never scrolls as a page: the notation is the only thing that
     // scrolls, and it does so inside its own box. `h-dvh`, not `h-screen` — on a phone or tablet
@@ -574,6 +964,17 @@ function Player() {
           speed={speed}
           onSpeedChange={applySpeed}
           disabled={!playerReady}
+          actions={
+            <SettingsPopover
+              api={api}
+              settings={settings}
+              onSettingChange={applySetting}
+              apiValues={apiValues}
+              onApiValueChange={applyApiValue}
+              onAction={runAction}
+              mixUnavailable={hasBackingTrack ? RECORDING : undefined}
+            />
+          }
         />
         {failed || barPhase === 'gone' ? null : (
           <Progress
@@ -684,26 +1085,28 @@ function Player() {
             data-player-ready={playerReady}
             data-duration={durationMs}
             data-looping={looping}
-            data-metronome={metronome}
-            data-countin={countIn}
+            data-metronome={metronomeVolume > 0}
+            data-countin={countInVolume > 0}
             data-speed={speed}
           >
             {/* The whole transport is gated on `playerReady`, never on `soundFontLoaded`: that one is
               a bare emitter with no replay, so a late subscriber would latch the row disabled
-              forever. */}
+              forever. `playbackDisabled` also covers the two dead modes that report ready with
+              nothing to play (see its definition above) — otherwise Loop, the scrubber and the
+              metronome would look live while doing nothing. */}
             <TransportRow
               positionMs={positionMs}
               durationMs={durationMs}
               onSeek={seek}
               looping={looping}
               onLoopingChange={applyLooping}
-              metronome={metronome}
-              onMetronomeChange={applyMetronome}
-              countIn={countIn}
-              onCountInChange={applyCountIn}
+              metronome={metronomeVolume > 0}
+              onMetronomeChange={(on) => applyMetronomeVolume(on ? 1 : 0)}
+              countIn={countInVolume > 0}
+              onCountInChange={(on) => applyCountInVolume(on ? 1 : 0)}
               hasRange={hasRange}
               hasBackingTrack={hasBackingTrack}
-              disabled={!playerReady}
+              disabled={playbackDisabled}
               playButton={
                 /* The mockup's Play: a SOLID teal circle, 48 px, with a solid glyph and a soft teal
                  shadow — Button's own `default` variant, which is bg-primary with the hover
@@ -736,7 +1139,7 @@ function Player() {
                       data-testid="transport-play"
                       size="icon"
                       aria-label={playing ? 'Pause' : 'Play'}
-                      disabled={!playerReady}
+                      disabled={playbackDisabled}
                       onClick={() => {
                         // An explicit pause cancels a seek's pending auto-resume. This CANNOT
                         // live in `playerStateChanged`: that also fires when AlphaTab stops
@@ -758,8 +1161,23 @@ function Player() {
                     </Button>
                   </TooltipTrigger>
                   {/* Lifted 8 px, or the teal arrow lies on the solid teal button and cannot be seen. */}
-                  <TooltipContent sideOffset={8}>{playing ? 'Pause' : 'Play'}</TooltipContent>
+                  <TooltipContent sideOffset={8}>{playTooltip}</TooltipContent>
                 </Tooltip>
+              }
+              trailing={
+                <div className="flex items-center">
+                  {/* Hairline between Count-in and Tracks — the design system's own divider,
+                      not a hand-copied class string. */}
+                  <Separator aria-hidden="true" orientation="vertical" className="mx-2 h-6" />
+                  <TracksPopover
+                    api={api}
+                    hasBackingTrack={hasBackingTrack}
+                    disabled={!engine}
+                    // The SAME value and writer the Settings ▸ Player row uses. Two editors, one writer.
+                    masterVolume={masterVolume}
+                    onMasterVolumeChange={applyMasterVolume}
+                  />
+                </div>
               }
             />
           </div>

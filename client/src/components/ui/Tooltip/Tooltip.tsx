@@ -56,7 +56,11 @@ const TooltipContent = ({
       <TooltipPrimitive.Popup
         data-slot="tooltip-content"
         className={cn(
-          'bg-primary text-primary-foreground z-50 w-fit origin-(--transform-origin) rounded-md px-3 py-1.5 text-xs text-balance',
+          // Inverted surface, not brand teal. Light mode paints this near-black
+          // (--foreground on white). Dark mode uses the same token, which flips to
+          // near-white, so a black bubble is not what you want there — it would
+          // disappear on the dark popover.
+          'bg-foreground text-background z-50 w-fit origin-(--transform-origin) rounded-md px-3 py-1.5 text-xs text-balance',
           className,
         )}
       >
@@ -67,7 +71,7 @@ const TooltipContent = ({
             shadcn's own Base UI tooltip.tsx registry source). */}
         <TooltipPrimitive.Arrow
           className={cn(
-            'bg-primary fill-primary z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]',
+            'bg-foreground fill-foreground z-50 size-2.5 translate-y-[calc(-50%_-_2px)] rotate-45 rounded-[2px]',
             'data-[side=top]:-bottom-2.5 data-[side=bottom]:top-1',
             'data-[side=left]:top-1/2! data-[side=left]:-right-1 data-[side=left]:-translate-y-1/2',
             'data-[side=right]:top-1/2! data-[side=right]:-left-1 data-[side=right]:-translate-y-1/2',
