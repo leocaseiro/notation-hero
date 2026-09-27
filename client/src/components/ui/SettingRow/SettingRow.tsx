@@ -8,6 +8,7 @@ import { Field, FieldDescription, FieldLabel } from '../Field/Field';
 import { Input } from '../Input/Input';
 import { NativeSelect } from '../NativeSelect/NativeSelect';
 import { Slider } from '../Slider/Slider';
+import { useSliderDraft } from '../Slider/SliderDraft';
 import type { ComponentProps } from 'react';
 
 export type SettingControl =
@@ -59,10 +60,10 @@ const SettingRow = ({
 }: Readonly<SettingRowProps>) => {
   const labelId = `${id}-label`;
 
-  // While a slider is being dragged, the row shows the value under the pointer and reports
-  // nothing. A settings change re-lays-out the whole score, and Base UI reports every pointer
-  // move — so the report waits for the gesture to end. null = not dragging.
-  const [draft, setDraft] = useState<number | null>(null);
+  // A range row reports once per gesture: a settings change re-lays-out the whole score. BOTH of
+  // its controls read this one draft, so the number input beside the label counts up while the
+  // slider beneath it is dragged.
+  const range = useSliderDraft(Number(value), onChange);
 
   // A half-typed or cleared number field yields NaN; pushing that into the settings tree breaks
   // rendering WITHOUT throwing, so drop it and keep the last good value.
@@ -249,7 +250,7 @@ const SettingRow = ({
             min={control.min}
             max={control.max}
             step={control.step}
-            value={String(draft ?? value)}
+            value={String(range.value)}
             onChange={(event) => reportNumber(event.target.value)}
             onBlur={(event) => reportNumber(event.target.value, true)}
             onKeyDown={(event) => {
@@ -265,12 +266,7 @@ const SettingRow = ({
           direct child) — never sharing the label-and-control line's flex context above. */}
       {control.kind === 'range' ? (
         <Slider
-          value={draft ?? Number(value)}
-          onChange={setDraft}
-          onCommit={(next) => {
-            setDraft(null);
-            onChange(next);
-          }}
+          {...range}
           min={control.min}
           max={control.max}
           step={control.step ?? 1}
