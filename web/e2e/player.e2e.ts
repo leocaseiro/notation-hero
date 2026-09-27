@@ -1228,9 +1228,9 @@ test('opening a file drops the bar range selected in the previous score', async 
 // person is far more likely to hit, because both controls live in this PR's own popover. Untick the
 // track the selection sits on and its beats stop being laid out, while the engine goes on
 // re-applying its own selection after every render: it looks those beats up in the new bounds and
-// dereferences undefined. There is no assertion for the throw here on purpose — the page-error gate
-// in page-errors.ts is what fails on it, so this case only has to perform the interaction and prove
-// the redraw really happened (NH-291).
+// dereferences undefined. The page-error gate in page-errors.ts is what fails on the throw itself;
+// this case also asserts the OUTCOME, so it fails deterministically if the clearing route ever
+// stops working instead of leaning on a detector that can miss a late throw (NH-291).
 test('unticking the track a bar selection sits on does not throw', async ({ page }) => {
   await openFirstScore(page, 'Punk.gp');
   await expect(page.getByTestId('rendered-track-count')).toHaveText('2', { timeout: 30_000 });
@@ -1242,6 +1242,8 @@ test('unticking the track a bar selection sits on does not throw', async ({ page
     .getByRole('button', { name: /render/i })
     .click();
   await expect(page.getByTestId('rendered-track-count')).toHaveText('1', { timeout: 30_000 });
+
+  await expect.poll(() => hasBarRange(page), { timeout: 5000 }).toBe(false);
 });
 
 /** The one OPEN tooltip. A closing popup can stay in the DOM for a frame, hence `[data-open]`. */

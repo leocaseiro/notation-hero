@@ -19,14 +19,25 @@ import { expect, test } from '@playwright/test';
  * catch, so every line here is a debt with a number on it.
  */
 const ALLOWED = [
-  // NH-335. AlphaTab 1.8.4 throws this out of its own worker's score deserialization when handed a
-  // hand-written TERSE alphaTex score. transposed.alphatex is the only such fixture in the repo;
-  // every exported block-form file is clean. Ruled out by measurement: the transposition itself,
-  // the tuning syntax, the track count, the bar count, and a missing instrument. Nothing observable
-  // follows — the score renders, the transposition reaches the staff, and playback runs — so this
-  // is an allowance for engine noise, not for a product failure. Matched on the message because the
-  // stack is minified and its frame names change with every engine bump.
-  "Cannot read properties of undefined (reading 'voices')",
+  {
+    // NH-335. AlphaTab 1.8.4 throws this out of its own worker's score deserialization when handed a
+    // hand-written TERSE alphaTex score. transposed.alphatex is the only such fixture in the repo;
+    // every exported block-form file is clean. Ruled out by measurement: the transposition itself,
+    // the tuning syntax, the track count, the bar count, and a missing instrument. Nothing observable
+    // follows — the score renders, the transposition reaches the staff, and playback runs — so this
+    // is an allowance for engine noise, not for a product failure. Matched on the message because the
+    // stack is minified and its frame names change with every engine bump.
+    message: "Cannot read properties of undefined (reading 'voices')",
+    // Scoped to the ONLY two cases that open a terse alphaTex score. The message is a GENERIC V8
+    // TypeError — the engine indexes `.voices` in 62 places — so a bare message match would excuse
+    // it for every test in this file and every accessibility case too, which is the opposite of
+    // what this gate is for. Matched on exact titles rather than a pattern: if a title is edited the
+    // allowance simply lapses and the gate gets STRICTER, never looser.
+    inTests: [
+      'Transpose notation starts at the transposition the FILE carries, and survives a round trip',
+      'a file transposed two octaves is held, not narrowed by the first keystroke',
+    ],
+  },
 ];
 
 /**
@@ -38,17 +49,32 @@ const ALLOWED = [
 export function failOnUnexpectedPageErrors(): void {
   let unexpected: string[] = [];
 
-  test.beforeEach(({ page }) => {
+  test.beforeEach(({ page }, testInfo) => {
     // Reset per test rather than per file: a worker runs the tests in a file one at a time, so one
     // test's leftovers would otherwise fail the next one and point at the wrong case.
     unexpected = [];
+    // The title is read HERE, where we are certainly inside a test, rather than with `test.info()`
+    // inside the listener below — that fires later, off the test's own call stack.
     page.on('pageerror', (error) => {
-      if (ALLOWED.some((allowed) => error.message.includes(allowed))) return;
+      if (
+        ALLOWED.some(
+          (allowed) =>
+            error.message.includes(allowed.message) && allowed.inTests.includes(testInfo.title),
+        )
+      ) {
+        return;
+      }
       unexpected.push(`${error.message}\n${error.stack ?? '(no stack)'}`);
     });
   });
 
-  test.afterEach(() => {
+  test.afterEach(async ({ page }) => {
+    // One round trip to the page, so any pageerror already raised has been DISPATCHED before we
+    // assert. Without it a throw from a deferred (rAF) render lands after this check and the test
+    // goes green on a build that threw — which is why the flaky NH-291 case reported as flaky
+    // rather than as a consistent red. isClosed() keeps this hook from failing in place of the
+    // test's own assertion when a case closed its page itself.
+    if (!page.isClosed()) await page.evaluate(() => {});
     expect(
       unexpected,
       'the page threw an uncaught error during this test — see web/e2e/page-errors.ts',
