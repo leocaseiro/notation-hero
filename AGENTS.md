@@ -91,6 +91,19 @@ Root-level checks — each is a named script AND a CI gate, so run any locally:
   `minimumReleaseAgeExclude` pins in `pnpm-workspace.yaml` still resolve in `pnpm-lock.yaml`; a lockfile
   bump silently un-matches them and re-trips pnpm's `no-downgrade` / 7-day `minimumReleaseAge` gate,
   re-breaking installs (NH-259).
+- `pnpm run check:machine-paths` — keeps one maintainer's folder layout out of a public repository.
+  The GitHub handle is unavoidably public (CODEOWNERS, the PR template, the repo URL) and is not what
+  this guards; the LAYOUT is — which folder the checkout sits in, what else is cloned beside it, and
+  the numeric user id in an agent scratchpad path. Describe the location instead of naming it — an
+  absolute or home-relative path to a sibling clone becomes "the local alphaTab fork"; repo-relative
+  paths inside that project are fine to keep. Angle-bracket placeholders (`/Users/<your-name>/`) and
+  `/home/runner/` pass, so docs can still teach a path shape. Run the gate to see the exact
+  substitution it suggests — this list cannot print the offending form without tripping itself. It lives in the `lint` job, NOT `quality`: `quality` is gated on
+  the `code` paths filter, which excludes `docs/**`, and these lines land in docs-only PRs — exactly
+  the set `quality` skips. The gate excludes its own two files by exact path, because they contain
+  the patterns as regex source and as planted test fixtures; `tooling/check-machine-paths.test.mjs`
+  asserts that exclusion list stays at exactly those two entries, and proves the gate exits non-zero
+  on a planted violation in a throwaway repository.
 - `pnpm run check:error-codes` — keeps the app-wide error-code registry
   (`shared/src/error-codes.ts`) in step with its documented twin
   (`docs/reference/error-codes.md`). Fail-closed on a REUSED code, so it reads the merge

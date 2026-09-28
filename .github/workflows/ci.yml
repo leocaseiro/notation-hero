@@ -171,6 +171,11 @@ jobs:
         run: pnpm run check:supply-chain-pins
       - name: error codes in step with the reference page (NH-331)
         run: pnpm run check:error-codes
+      # In `lint`, not `quality`: `quality` is gated on the `code` paths filter, which excludes
+      # `docs/**`. Machine paths arrive almost exclusively in docs-only pull requests — the very set
+      # `quality` skips — so a guard placed there would never run for the changes it targets.
+      - name: no machine paths in tracked files (public repo)
+        run: pnpm run check:machine-paths
 
   # Per-package build via `pnpm -r run build`.
   build:

@@ -11,6 +11,42 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-29 — One maintainer's folder layout is out of the public repo, and a gate keeps it out (NH-345)
+
+**270 lines across 64 tracked files named the maintainer's local folder layout.** The handle is
+unavoidably public — CODEOWNERS, the pull-request template and the repo URL all need it — so the
+handle was never the concern. What the sweep exposed was the layout: which folder the checkout sits
+in, the numeric user id inside an agent scratchpad path, and above all **what else is cloned beside
+it** — `tablatures`, `tablatures-api`, `sightread`, `alpha-drums`, `PHPMusicXML`, `drum-tutor-clone`,
+`base-skill`, plus a private resources repo cited down to a subfolder. One `grep` over `docs/`
+returned all of it.
+
+**The task that prompted this understated the scope by twelve times**, listing 8 files and ~22 lines;
+the author had produced that list with `head` and later retracted it. An independent sweep and the
+author's corrected one agreed on ~64 files. Worth recording because the first instinct — trust the
+inventory in the brief — would have left 248 lines published behind a gate that then could not be
+made repo-wide.
+
+**The scrub removes only the machine prefix and deletes nothing.** A first pass that also dropped the
+`.claude/worktrees/<name>/` segment turned a bullet pointing into a _stale_ worktree into a bare
+`scope.md` — a file that does not exist here — and orphaned the `<!-- SUPERSEDED: stale worktree
+path -->` comment beside it. That pass was reverted. Keeping the worktree segment is both faithful and
+never invents a path. For the same reason no frontmatter key was dropped: once the value is
+worktree-relative, `home:`, `cwd:`, `worktree_path:` and `artifact_abs` each record _which worktree
+authored the document_, which is history rather than duplication. Two table-shaped files are the one
+exception, and only because each has a separate `Worktree(s)` column that already carries the name.
+
+**Enforcement — `pnpm run check:machine-paths`, live in CI.** It sits in the **`lint`** job, not
+`quality`: `quality` is gated on the `code` paths filter, which excludes `docs/**`, and these lines
+arrive almost exclusively in docs-only pull requests — exactly the set `quality` skips. That is the
+same trap NH-331's error-code gate had to avoid. Angle-bracket placeholders (`/Users/<your-name>/`)
+and `/home/runner/` pass, so docs can still teach a path shape. `tooling/check-machine-paths.test.mjs`
+plants a violation in a throwaway repository and asserts a non-zero exit — the gate has been watched
+failing, not merely written. It excludes its own two files by exact path, since they must contain the
+patterns; a test pins that exclusion list at exactly two entries so it cannot be widened into a
+hiding place. Follow-up to NH-318, which git-ignored the untracked reference map but left the
+already-committed paths in place.
+
 ### 2026-09-27 — A retried failure stops erasing its own toast, and the toast never covers the header (NH-331)
 
 Two follow-ups to the NH-331 merge (#179). Both were found by measuring the shipped behaviour in a
@@ -1588,7 +1624,7 @@ Reworded `.github/pull_request_template.md` from "I am aware I must … (if …)
 
 ### 2026-06-18 — Architecture ADR approved + foundation supersession ratified (NH-194)
 
-Expert review of `2026-06-17-architecture-decisions.md` complete (6-engineer ce-doc-review panel, NH-194); **leocaseiro approved the ADR.** 20 review findings applied or resolved — incl. **SEC-4:** AlphaTab ships no WebAssembly (verified in `~/Sites/alphaTab`) → no `wasm-unsafe-eval`; **Next.js confirmed dropped** (not a portfolio need + SSR fights the AWS $0 free tier). The W2 deferral (DACI/ADR text rewrites) is now executed:
+Expert review of `2026-06-17-architecture-decisions.md` complete (6-engineer ce-doc-review panel, NH-194); **leocaseiro approved the ADR.** 20 review findings applied or resolved — incl. **SEC-4:** AlphaTab ships no WebAssembly (verified in the local alphaTab source) → no `wasm-unsafe-eval`; **Next.js confirmed dropped** (not a portfolio need + SSR fights the AWS $0 free tier). The W2 deferral (DACI/ADR text rewrites) is now executed:
 
 - **Foundation decisions superseded** (banners added to both legacy docs):
   - `L1` (Nx), `L2-tags` (`@nx/enforce-module-boundaries`), `L7-set-shas` (nx-set-shas), `FOLD-tagmap` (Nx tag map) → **⛔ superseded by `ARCH-MONO-1`** (Nx dropped → plain pnpm workspaces).
