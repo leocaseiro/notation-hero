@@ -5,12 +5,21 @@ import { useEffect, useState } from 'react';
 import {
   DEFAULT_TRANSPORT_VALUES,
   readStoredTransport,
+  serializeTransport,
+  TRANSPORT_STORAGE_KEY,
 } from '../../lib/alphatab/transport-storage';
 import { setAlphaTabValue } from '../../lib/alphatab/useAlphaTab';
 import type { TransportValues } from '../../lib/alphatab/transport-storage';
 import type * as AlphaTab from '@coderline/alphatab';
 
 export interface RestoredTransport {
+  /**
+   * The keys the reader had to correct, or null until the restore has run. Drives the warning that
+   * names them — see the toast in PlayerShell. An EMPTY array is meaningful and distinct from null:
+   * it means the document could not be read at all and everything fell back, which is the one case
+   * where "reset to the defaults" is literally true.
+   */
+  repaired: readonly string[] | null;
   looping: boolean;
   setLooping: (next: boolean) => void;
   metronomeVolume: number;
@@ -61,14 +70,18 @@ export function useRestoredTransport(
   // committed against the same defaults the server used.
   const [previousApi, setPreviousApi] = useState(api);
   const [toRestore, setToRestore] = useState<TransportValues | null>(null);
+  const [repaired, setRepaired] = useState<readonly string[] | null>(null);
   if (previousApi !== api && api) {
     setPreviousApi(api);
     const stored = readStoredTransport();
-    setLooping(stored.isLooping);
-    setMetronomeVolume(stored.metronomeVolume);
-    setCountInVolume(stored.countInVolume);
-    setMasterVolume(stored.masterVolume);
-    setToRestore(stored);
+    setLooping(stored.values.isLooping);
+    setMetronomeVolume(stored.values.metronomeVolume);
+    setCountInVolume(stored.values.countInVolume);
+    setMasterVolume(stored.values.masterVolume);
+    setToRestore(stored.values);
+    // Only on an actual correction. A first visit and a clean older shape both read back fine, and
+    // warning about either would cry wolf.
+    if (stored.reset) setRepaired(stored.repaired);
   }
 
   // The ENGINE half of the same restore. Writing into AlphaTab is an external-system write, which
@@ -91,7 +104,20 @@ export function useRestoredTransport(
     setAlphaTabValue(api, 'masterVolume', toRestore.masterVolume);
   }, [api, toRestore]);
 
+  // Write the corrected document back, so the same bad value is not re-read and re-corrected on
+  // every later visit. Without this the warning would repeat forever and storage would never heal —
+  // the settings document already works exactly this way (see the restore effect in PlayerShell).
+  useEffect(() => {
+    if (repaired === null || !toRestore) return;
+    try {
+      globalThis.localStorage.setItem(TRANSPORT_STORAGE_KEY, serializeTransport(toRestore));
+    } catch {
+      // Storage is unavailable or full. The warning is still worth showing.
+    }
+  }, [repaired, toRestore]);
+
   return {
+    repaired,
     looping,
     setLooping,
     metronomeVolume,

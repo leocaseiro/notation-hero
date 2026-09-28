@@ -45,6 +45,18 @@ export const DEFAULT_TRANSPORT_VALUES: TransportValues = {
  * so a stored number outside it is clamped rather than trusted. `isLooping` needs no entry: the
  * reader's per-key merge already rejects anything that is not a boolean.
  */
+/**
+ * What each stored key is CALLED in the UI, for the warning that names a corrected control. The
+ * dot-path is what to grep for; the label is what the drummer can go and look at. A report carrying
+ * only one of them is hard to act on from the other end — the same reasoning as SETTING_LABELS.
+ */
+export const TRANSPORT_LABELS: Readonly<Record<string, string>> = {
+  metronomeVolume: 'Metronome volume',
+  countInVolume: 'Count-in volume',
+  masterVolume: 'Master volume',
+  isLooping: 'Loop',
+};
+
 const TRANSPORT_BOUNDS = {
   metronomeVolume: { min: 0, max: 1 },
   countInVolume: { min: 0, max: 1 },
@@ -61,8 +73,26 @@ export function serializeTransport(values: TransportValues): string {
   return serializeSettings({ ...values });
 }
 
-export function loadStoredTransport(raw: string | null): TransportValues {
-  const { settings } = loadStoredSettings(
+/**
+ * What a read of the stored document yields: the four values, plus the reader's own account of
+ * whether it had to correct anything on the way.
+ *
+ * The signal is carried rather than dropped because a silently-corrected value is indistinguishable
+ * from a broken player. A non-finite stored master volume comes back as 0 — the drummer presses
+ * Play, hears nothing, and has no way to know which of the controls to go and move. The settings
+ * document, read through this very same reader, names the corrected rows and rewrites itself clean;
+ * this one now does the same.
+ */
+export interface StoredTransport {
+  values: TransportValues;
+  /** True when something stored was WRONG — unparseable, wrong-shaped, or out of its row's range. */
+  reset: boolean;
+  /** The keys that were corrected, for the warning that names them. */
+  repaired: readonly string[];
+}
+
+export function loadStoredTransport(raw: string | null): StoredTransport {
+  const { settings, reset, repaired } = loadStoredSettings(
     raw,
     { ...DEFAULT_TRANSPORT_VALUES },
     // No option-bearing rows and no text rows here — the four values are three numbers and a
@@ -75,10 +105,14 @@ export function loadStoredTransport(raw: string | null): TransportValues {
   // declared above rather than an unchecked hope: a stored value of the wrong type was replaced by
   // the default before it got here, and a missing one was backfilled from it.
   return {
-    metronomeVolume: settings.metronomeVolume as number,
-    countInVolume: settings.countInVolume as number,
-    masterVolume: settings.masterVolume as number,
-    isLooping: settings.isLooping as boolean,
+    values: {
+      metronomeVolume: settings.metronomeVolume as number,
+      countInVolume: settings.countInVolume as number,
+      masterVolume: settings.masterVolume as number,
+      isLooping: settings.isLooping as boolean,
+    },
+    reset,
+    repaired,
   };
 }
 
@@ -89,10 +123,13 @@ export function loadStoredTransport(raw: string | null): TransportValues {
  * setItem. Catching it here rather than at the call site keeps that knowledge in one place and the
  * caller a single expression.
  */
-export function readStoredTransport(): TransportValues {
+export function readStoredTransport(): StoredTransport {
   try {
     return loadStoredTransport(globalThis.localStorage.getItem(TRANSPORT_STORAGE_KEY));
   } catch {
-    return DEFAULT_TRANSPORT_VALUES;
+    // A fresh object rather than the shared DEFAULT_TRANSPORT_VALUES, so the two paths agree about
+    // whether the caller may hold on to what it got. Storage being unreadable is not a repair:
+    // nothing was corrected, so `reset` stays false and no warning fires.
+    return { values: { ...DEFAULT_TRANSPORT_VALUES }, reset: false, repaired: [] };
   }
 }

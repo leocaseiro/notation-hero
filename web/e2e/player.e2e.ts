@@ -653,6 +653,14 @@ test('the transport toggles come back from a reload, matching what the engine is
   // never ran and left the shipped defaults — would pass a test that only ever asserts `true`.
   await page.getByTestId('toggle-loop').click();
   await page.getByTestId('toggle-metronome').click();
+  // The fourth persisted value, and the only one with no control on the transport bar. Without it
+  // here, deleting the master-volume line from the restore leaves this whole suite green while the
+  // mixer slider shows the stored value and the engine plays at full — the same disagreement
+  // between what is shown and what is done that this case exists to catch.
+  await page.getByTestId('settings-trigger').click();
+  await openGroup(page, 'Player');
+  await page.getByRole('spinbutton', { name: 'Master volume' }).fill('0.4');
+  await page.keyboard.press('Escape');
   // Speed is the fifth api value and the one deliberately NOT persisted, so move it off 100% here
   // to prove below that it comes back reset rather than remembered (NH-295).
   await page.getByRole('button', { name: 'Increase tempo' }).click();
@@ -666,6 +674,12 @@ test('the transport toggles come back from a reload, matching what the engine is
   await expect(page.getByTestId('toggle-loop')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId('toggle-countin')).toHaveAttribute('aria-pressed', 'false');
+  // Master volume has no transport control, so its restored value is read off the mixer's slider.
+  await page.getByTestId('tracks-trigger').click();
+  await expect(
+    page.getByTestId('master-row').getByRole('slider', { name: 'Master volume' }),
+  ).toHaveAttribute('aria-valuenow', '0.4');
+  await page.keyboard.press('Escape');
 
   // ...and the ENGINE agrees with them. Asserted through AlphaTab's own handle for the same reason
   // the case above gives: the attributes mirror this app's state, so a restore that repainted the
@@ -675,13 +689,18 @@ test('the transport toggles come back from a reload, matching what the engine is
       page.evaluate(() => {
         const at = (
           document.querySelector('[data-testid="notation-surface"] > div') as {
-            at?: { isLooping: boolean; metronomeVolume: number; countInVolume: number };
+            at?: {
+              isLooping: boolean;
+              metronomeVolume: number;
+              countInVolume: number;
+              masterVolume: number;
+            };
           } | null
         )?.at;
-        return at ? [at.isLooping, at.metronomeVolume, at.countInVolume] : null;
+        return at ? [at.isLooping, at.metronomeVolume, at.countInVolume, at.masterVolume] : null;
       }),
     )
-    .toEqual([true, 1, 0]);
+    .toEqual([true, 1, 0, 0.4]);
 
   // The decision, guarded: a stepped tempo does NOT survive the reload.
   await expect(page.getByTestId('tempo-control')).toHaveAttribute('data-off-speed', 'false');
