@@ -74,7 +74,6 @@ the app.
 
 Spec: `docs/specs/2026-09-21-web-visual-regression-gate.md`.
 
-### 2026-09-24 — The 44px hit-area gate now covers both popovers, with two deliberate exceptions (NH-291)
 ### 2026-09-28 — The transport values persist; the playback speed deliberately does not (NH-295)
 
 Four values a drummer sets every session never survived a reload, while a font picked once months
