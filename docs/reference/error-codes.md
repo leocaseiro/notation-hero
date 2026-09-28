@@ -11,7 +11,9 @@ disagree — so neither can drift out of step with the other.
 and moving its row to [Retired](#retired) below. The number stays spent forever, so an old report
 quoting it never resolves to a different meaning than it had.
 
-Ranges group codes by the surface that raises them; a new area takes the next free range. This page
+Ranges group codes by the surface that raises them; a new area takes the next free range — which is
+how the stored settings came to sit at 6xx rather than beside the player's other codes: 3xx was
+already the catalog's by the time they needed a home. This page
 is app-wide on purpose. The v0 player spec keeps its own failure table for the player's behavior —
 what the person sees, and where — and links here for the full list, so it stays inside its own scope
 and can be archived later without breaking the gate.
@@ -43,6 +45,7 @@ detached node.
 | E202 | AlphaTab raised its own error event — in practice, the soundfont download. |
 | E203 | The music font download failed (`loadingerror` on `document.fonts`).       |
 | E204 | The music font did not arrive within 60 seconds.                           |
+| E205 | The engine was not there when a file was opened — E201's cause, met later. |
 
 ## 3xx — the catalog and the API
 
@@ -55,6 +58,14 @@ down, the Lambda is cold, or this browser has no network — so they are three n
 | E302 | The catalog request passed its eight-second deadline without answering. |
 | E303 | The catalog request never reached the network.                          |
 
+## 4xx — exporting a file
+
+Writing a score back out from `/play`. Shows as a toast.
+
+| Code | Meaning                                                               |
+| ---- | --------------------------------------------------------------------- |
+| E401 | An export failed — building the bytes, the blob, or the download URL. |
+
 ## 5xx — the server
 
 The API itself. Each appears in the JSON response body as a `code` field and in that path's
@@ -65,6 +76,20 @@ client-side report.
 | ---- | ------------------------------------------------------------------- |
 | E501 | The API failed to start, so no request of any kind could be served. |
 | E502 | The API was running and this request failed inside it.              |
+
+## 6xx — the stored settings
+
+The settings the player remembers between visits, read back on load. E601 and E603 show as a toast
+on arrival; E602 shows as one at the moment a value is typed.
+
+| Code | Meaning                                                                            |
+| ---- | ---------------------------------------------------------------------------------- |
+| E601 | Individual stored settings were unusable and those keys alone were repaired.       |
+| E602 | The engine refused a typed value, so it was neither applied nor saved.             |
+| E603 | The stored settings could not be read at all, so everything fell back to defaults. |
+
+E601 and E603 are separate on purpose: one key corrected is not the same event as every setting
+lost, and a report that merges them cannot tell a typo from a wipe.
 
 ## 9xx — an unexpected crash
 

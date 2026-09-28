@@ -3,7 +3,21 @@
 // app/globals.css does not import the design system's compiled stylesheet — it generates the
 // utilities by SCANNING client/ source files (`@source` globs). The selectors below reach the
 // bundle only through the `**/*.ts` glob, because they live in plain .ts modules that several
-// components share (Slider/SliderClasses.ts, DataTable/ColumnMeta.ts) rather than in a component.
+// components share (Slider/SliderClasses.ts, DataTable/ColumnMeta.ts, TrackRow/MixerClasses.ts)
+// rather than in a component.
+//
+// An entry only canaries the .ts scan when the utility appears NOWHERE ELSE. size-[2.125rem] below
+// is the counter-example: it is also written literally in TrackRow.tsx and MasterRow.tsx, so the
+// .tsx scan alone keeps it present and it proves nothing about MixerClasses.ts. The four entries
+// after it exist only in that module.
+//
+// "Nowhere else" includes PROSE. Tailwind v4 reads candidates out of raw file text, comments and
+// all, so an ordinary English sentence arms a utility just as a className does. Two entries here
+// were decoration for exactly that reason and have been replaced: `.grow`, by the word in "How
+// tall the list may grow" (TracksPopover.tsx), and `.h-1` — the obvious substitute — by "rail stays
+// h-1 and is centred" (Slider.tsx). `.border-primary` went for the plainer reason: MasterRow.tsx
+// writes it literally. Before adding an entry, grep the whole scanned tree for the bare word, not
+// for a className.
 //
 // That scan can come back stale with nothing else failing. Vercel derives its build-cache key from
 // the branch, framework, root directory, Node version and package manager — never from source
@@ -23,8 +37,8 @@
 // vercel.json is JSON and cannot carry that reasoning itself, which is why it lives here.
 //
 // globals.css keeps this folder out of Tailwind's automatic source detection. Without that, the
-// check defeats itself: naming a utility here is enough for Tailwind to GENERATE it, so all five
-// would be present no matter what the design-system scan did.
+// check defeats itself: naming a utility here is enough for Tailwind to GENERATE it, so the three
+// plainly-written entries would be present no matter what the design-system scan did.
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
@@ -32,14 +46,66 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-/** [selector exactly as Tailwind emits it, what breaks on screen when it is absent]. */
+/**
+ * [selector exactly as Tailwind emits it, what breaks on screen when it is absent].
+ *
+ * Every entry is written so Tailwind CANNOT extract it from this file, and that is load-bearing.
+ * A plainly-written utility SELF-ARMS: spelling it out anywhere in this file — including in a
+ * comment, since the extractor reads raw text and does not know what a comment is — is enough for
+ * Tailwind to GENERATE it, so the canary then reports present no matter what the design-system
+ * scan did. The escaped entries are already beyond its reach; the three split with an interpolation
+ * are spelled that way for the same reason. Measured by breaking the client scan and toggling
+ * globals.css's `@source not '../scripts/**'`: 9 of 10 reported missing with that line, 6 of 10
+ * without it, and the three that went quiet were exactly the three that were plain. Write new
+ * entries beyond its reach too, and never name a watched utility in prose here.
+ */
 export const REQUIRED_SELECTORS = [
-  ['.grow', 'the seek rail collapses to 0 px wide'],
+  [String.raw`.dark\:bg-muted-foreground\/40`, 'the seek rail paints transparent in dark mode'],
   [String.raw`.bg-muted-foreground\/50`, 'the seek rail paints transparent'],
-  ['.border-primary', 'the seek thumb is white on white'],
-  ['.cursor-grab', 'the seek thumb loses its drag affordance'],
-  ['.text-right', 'right-aligned table columns lose their alignment'],
+  [`.${'border'}-2`, 'the seek thumb loses its outline'],
+  [`.${'cursor'}-grab`, 'the seek thumb loses its drag affordance'],
+  [`.${'text'}-right`, 'right-aligned table columns lose their alignment'],
+  [String.raw`.size-\[2\.125rem\]`, 'every mixer icon button collapses to the Button default size'],
+  // Unique to TrackRow/MixerClasses.ts. Each fails invisibly: correct ARIA, correct behaviour,
+  // nothing painted. The grid entry carries the whole arbitrary value, so changing a mixer column
+  // means updating this line too — that is the point of naming the utility exactly.
+  [
+    String.raw`.\[grid-template-columns\:2\.125rem_minmax\(3\.25rem\,1fr\)_2\.125rem_2\.125rem_minmax\(4\.5rem\,1\.25fr\)_8\.625rem_2\.125rem\]`,
+    'the mixer grid collapses — every track row and the master footer lose their shared columns',
+  ],
+  [String.raw`.data-pressed\:bg-warning`, 'a muted track row shows no amber fill'],
+  [String.raw`.aria-pressed\:bg-warning`, "the master row's mute-all shows no amber fill"],
+  [String.raw`.aria-pressed\:bg-primary`, "the master row's solo-all shows no teal fill"],
 ];
+
+// What may follow a class name in emitted CSS: the end of the selector, a combinator, a pseudo, or
+// the attribute part of a variant utility (`.data-pressed\:bg-warning[data-pressed]`). Anything else
+// means the match landed INSIDE a longer class name.
+const BOUNDARY = new Set([',', '{', ' ', '\n', '\r', '\t', ':', '[', '>', '+', '~', ')', ';', '}']);
+
+/**
+ * Whether `selector` appears in `css` as a WHOLE class name rather than as a prefix of a longer one.
+ *
+ * A plain `css.includes()` cannot tell the two apart, and several entries in the list above are
+ * prefixes of longer utilities Tailwind can emit — the drag-cursor entry is a prefix of its
+ * `-grabbing` form, the two-pixel border entry of its `xl` form, the pressed-state background of
+ * its `/90` opacity form. Any one of those appearing anywhere in the scanned tree would satisfy
+ * its entry forever, and this guard would report all clear on exactly the build it exists to
+ * catch. The examples are DESCRIBED rather than spelled out on purpose: writing a watched utility
+ * literally anywhere in this file lets Tailwind extract it and arms the canary (see the note on
+ * REQUIRED_SELECTORS above).
+ *
+ * @param {string} css
+ * @param {string} selector
+ * @returns {boolean}
+ */
+const isWholeClass = (css, selector) => {
+  for (let at = css.indexOf(selector); at !== -1; at = css.indexOf(selector, at + 1)) {
+    const next = css[at + selector.length];
+    if (next === undefined || BOUNDARY.has(next)) return true;
+  }
+  return false;
+};
 
 const cssFiles = (dir) =>
   readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -68,7 +134,7 @@ export function assertDesignSystemCss({ outputDir }) {
   }
 
   const css = files.map((file) => readFileSync(file, 'utf8')).join('\n');
-  const missing = REQUIRED_SELECTORS.filter(([selector]) => !css.includes(selector));
+  const missing = REQUIRED_SELECTORS.filter(([selector]) => !isWholeClass(css, selector));
 
   if (missing.length > 0) {
     throw new Error(
