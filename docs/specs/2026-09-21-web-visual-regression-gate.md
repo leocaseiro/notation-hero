@@ -128,8 +128,12 @@ Three design consequences, all evidence-backed rather than guessed:
    over the cutoff.
 
 Cost: Playwright reported **41 passed (2.2 m) for 60 runs** — about 2.2 s per shot, so a nine-shot
-lane is well under a minute of test time. The dominant cost is the `next build`, not the
-screenshots.
+lane is well under a minute of test time. Measured inside
+`mcr.microsoft.com/playwright:v1.61.1-noble`: the `next build` is **7 s** (cold and warm alike —
+the app is three static routes, so the Turbopack cache buys nothing) and the
+`pnpm install --frozen-lockfile --ignore-scripts` ahead of it is **28 s**. The dominant cost is the
+install, not the build and not the screenshots — and 18.7 s of it is pnpm's own supply-chain policy
+check, which is the NH-259 protection and stays.
 
 > The baseline image behind these numbers predates NH-317 (the build version on the wordmark). That
 > commit does not touch AlphaTab, so the determinism finding is unaffected; the baselines themselves
