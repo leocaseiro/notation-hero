@@ -1,7 +1,8 @@
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
-import { About } from './About';
+import { About, catalogFailureMessage, fetchCatalog } from './About';
 
 function renderAbout() {
   const queryClient = new QueryClient({
@@ -68,10 +69,14 @@ test('shows a loading state while /api/catalog is in flight', () => {
   expect(screen.getByText(/Loading the catalog/i)).toBeInTheDocument();
 });
 
-test('shows a graceful fallback when /api/catalog fails', async () => {
-  mockFetch(undefined, false, 500);
+test('names the status and E301 when the API answers with a failure', async () => {
+  mockFetch(undefined, false, 503);
   renderAbout();
-  await waitFor(() => expect(screen.getByText(/Could not reach the API/i)).toBeInTheDocument());
+  // The status is in the copy on purpose: 503 (cold or crashed Lambda) and 404 (a routing
+  // mistake) need different fixes, and the person reporting it can only say which if we show it.
+  await waitFor(() =>
+    expect(screen.getByText(/The API answered 503\. \(Error E301\)/)).toBeInTheDocument(),
+  );
 });
 
 test('passes an AbortSignal to the catalog fetch (the 8s timeout is wired)', async () => {
@@ -92,11 +97,59 @@ test('passes an AbortSignal to the catalog fetch (the 8s timeout is wired)', asy
   );
 });
 
-test('shows the fallback when the catalog fetch is aborted (timeout fired)', async () => {
+test('reports E302 with timeout copy when the 8s deadline aborts the fetch', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockRejectedValue(new DOMException('The operation was aborted.', 'AbortError')),
   );
   renderAbout();
-  await waitFor(() => expect(screen.getByText(/Could not reach the API/i)).toBeInTheDocument());
+  // `retry: 1` in main.tsx means a hard-down API spins for roughly seventeen seconds before this
+  // appears, so the copy says it timed out rather than implying an instant failure.
+  await waitFor(() =>
+    expect(screen.getByText(/taking too long to answer\. \(Error E302\)/)).toBeInTheDocument(),
+  );
+});
+
+test('reports E303 when the request never reaches the network', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+  renderAbout();
+  await waitFor(() =>
+    expect(screen.getByText(/could not be reached\. .*\(Error E303\)/)).toBeInTheDocument(),
+  );
+});
+
+test('shows no error number at all on the success path', async () => {
+  mockFetch(sampleCatalog);
+  renderAbout();
+  await waitFor(() => expect(screen.getByText('Single Stroke Roll')).toBeInTheDocument());
+  expect(screen.queryByText(/\(Error E\d{3}\)/)).not.toBeInTheDocument();
+});
+
+// The two aborters are the 8s timer and TanStack Query's own signal (unmount, superseded query).
+// Only the first is a failure. If the second were ever classified as one, navigating away from
+// /about mid-request would flash an error on the way out.
+test('leaves a caller-cancelled request as a cancellation, not a coded failure', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      (_url: string, init: { signal: AbortSignal }) =>
+        new Promise<never>((_resolve, reject) => {
+          init.signal.addEventListener('abort', () => {
+            reject(new DOMException('The operation was aborted.', 'AbortError'));
+          });
+        }),
+    ),
+  );
+  const caller = new AbortController();
+  const inFlight = fetchCatalog({ signal: caller.signal });
+  caller.abort();
+  await expect(inFlight).rejects.toThrow(expect.objectContaining({ name: 'AbortError' }) as Error);
+  // It must NOT have been rewritten into a coded catalog failure.
+  await expect(inFlight).rejects.not.toThrow(/Error E3/);
+});
+
+test('falls back to E303 for a cause it cannot classify', () => {
+  expect(catalogFailureMessage(new Error('something else entirely'))).toContain(
+    `(Error ${ERROR.catalogUnreachable})`,
+  );
 });

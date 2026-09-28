@@ -5,6 +5,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { ERROR } from '@notation-hero/shared/error-codes';
 import type { Response } from 'express';
 import { redactConnectionString } from '@/core/redact.util';
 
@@ -19,7 +20,15 @@ export class DbExceptionFilter implements ExceptionFilter {
       res.status(exception.getStatus()).json(exception.getResponse());
       return;
     }
-    console.error('[api] unhandled error:', redactConnectionString(exception));
-    res.status(HttpStatus.SERVICE_UNAVAILABLE).json({ message: 'Service unavailable' });
+    // Separate argument rather than interpolated — see the note in http.handler.ts.
+    console.error(
+      '[api]',
+      ERROR.serverRequestFailed,
+      'unhandled error:',
+      redactConnectionString(exception),
+    );
+    res
+      .status(HttpStatus.SERVICE_UNAVAILABLE)
+      .json({ message: 'Service unavailable', code: ERROR.serverRequestFailed });
   }
 }

@@ -24,6 +24,16 @@ interface TransportToggleProps extends Omit<
   tooltip?: string;
   disabled?: boolean;
   className?: string;
+  /**
+   * Opt out of a hoverable tooltip popup — WCAG 2.1 AA 1.4.13 wants it hoverable, so this
+   * defaults to false everywhere. The one measured exception is TrackRow's four per-staff
+   * display toggles: they sit flush against each other with no gap, sharing one bordered box, so
+   * a tooltip wide enough to hold its text cannot avoid covering the very next button — confirmed
+   * by a real hover, not reasoned about: two of their tooltips can end up open at once, each
+   * keeping the other alive because the popup content itself is what the pointer lands on next.
+   * Every other instance of this component has a real gap between neighbours and stays hoverable.
+   */
+  disableHoverablePopup?: boolean;
 }
 
 // Icon-only transport toggle. One component, three uses (Loop, Metronome, Count-In), so the
@@ -50,6 +60,7 @@ const TransportToggle = ({
   tooltip,
   disabled = false,
   className,
+  disableHoverablePopup = false,
   ...rest
 }: Readonly<TransportToggleProps>) => {
   const toggle = (
@@ -88,16 +99,23 @@ const TransportToggle = ({
   // and a mouse user gets a dimmed button and no reason. The span takes the hover; focus events
   // bubble, so focus on the button still opens it.
   return tooltip ? (
-    <Tooltip>
+    <Tooltip disableHoverablePopup={disableHoverablePopup}>
       {/* closeOnClick off: a tooltip closes on click by default, which is right for a button that
           does something once and wrong for a toggle — the press changes the state, and the
-          tooltip that would now SAY the new state had gone until the pointer left and came back. */}
+          tooltip that would now SAY the new state had gone until the pointer left and came back.
+          The popup stays hoverable by default — WCAG 2.1 AA 1.4.13 requires it, and Base UI's own
+          default is hoverable. On a packed mixer row the popup can be wider than the 34px button
+          and reach toward the next control; max-w-40 below keeps that reach short enough that a
+          pointer travelling between two neighbouring toggles does not cross it — everywhere
+          except TrackRow's flush-against-each-other staff toggles, which opt back out above. */}
       <TooltipTrigger closeOnClick={false} render={<span className="inline-flex" />}>
         {toggle}
       </TooltipTrigger>
       {/* Lifted 8 px: the arrow is half outside the popup, so at the default offset of 0 it lies ON
           the button — and on a pressed toggle that is a teal arrow over solid teal, invisible. */}
-      <TooltipContent sideOffset={8}>{tooltip}</TooltipContent>
+      <TooltipContent sideOffset={8} className="max-w-40">
+        {tooltip}
+      </TooltipContent>
     </Tooltip>
   ) : (
     toggle

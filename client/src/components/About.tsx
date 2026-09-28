@@ -1,4 +1,6 @@
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { useQuery } from '@tanstack/react-query';
+import type { ErrorCode } from '@notation-hero/shared/error-codes';
 
 // Mirrors the server's CatalogResponse (server/src/modules/catalog/catalog.controller.ts).
 // Kept in sync by hand for Phase 1; both collapse into the shared/ oRPC contract in Phase 2.
@@ -16,7 +18,29 @@ interface CatalogResponse {
   count: number;
 }
 
-async function fetchCatalog({
+/**
+ * A catalog failure that knows which of the three causes it was. The three need different fixes —
+ * the origin is down, the Lambda is cold, or this browser has no network — so they get three
+ * numbers rather than one, and the person reporting it can say which they saw.
+ */
+class CatalogUnavailableError extends Error {
+  readonly code: ErrorCode;
+
+  constructor(code: ErrorCode, message: string) {
+    super(message);
+    this.name = 'CatalogUnavailableError';
+    this.code = code;
+  }
+}
+
+/** The copy shown when the catalog cannot be loaded, ending in the number to quote. */
+export function catalogFailureMessage(cause: unknown): string {
+  return cause instanceof CatalogUnavailableError
+    ? `${cause.message} (Error ${cause.code})`
+    : `The catalog could not be loaded. (Error ${ERROR.catalogUnreachable})`;
+}
+
+export async function fetchCatalog({
   signal: querySignal,
 }: { signal?: AbortSignal } = {}): Promise<CatalogResponse> {
   // Abort well inside the 10s Lambda timeout so a hung origin surfaces the error state quickly
@@ -32,16 +56,41 @@ async function fetchCatalog({
     // Same-origin behind CloudFront: `/api/*` is routed to the Lambda Function URL.
     const res = await fetch('/api/catalog', { signal });
     if (!res.ok) {
-      throw new Error(`/api/catalog responded ${res.status}`);
+      throw new CatalogUnavailableError(
+        ERROR.catalogResponseNotOk,
+        `The catalog could not be loaded. The API answered ${res.status}.`,
+      );
     }
     return (await res.json()) as CatalogResponse;
+  } catch (error) {
+    if (error instanceof CatalogUnavailableError) throw error;
+    // Exactly two things can abort this fetch: the 8s timer above, and TanStack Query's own
+    // signal on unmount or a superseded query. The second is a cancellation, not a failure — it
+    // must stay untouched so the query is dropped rather than rendered as an error. Anything
+    // else that aborted is therefore the deadline.
+    if (isAbort(error)) {
+      if (querySignal?.aborted === true) throw error;
+      throw new CatalogUnavailableError(
+        ERROR.catalogTimedOut,
+        'The catalog is taking too long to answer.',
+      );
+    }
+    // fetch rejects without aborting only when the request never reached the network.
+    throw new CatalogUnavailableError(
+      ERROR.catalogUnreachable,
+      'The catalog could not be reached. Check your connection, then try again.',
+    );
   } finally {
     clearTimeout(timer);
   }
 }
 
+function isAbort(cause: unknown): boolean {
+  return cause instanceof DOMException && cause.name === 'AbortError';
+}
+
 export const About = () => {
-  const { data, isLoading, isError } = useQuery({
+  const { data, error, isLoading, isError } = useQuery({
     queryKey: ['catalog'],
     queryFn: fetchCatalog,
     // The catalog changes rarely; a stale window avoids a fresh CloudFront->Lambda fetch on
@@ -63,7 +112,7 @@ export const About = () => {
           Catalog preview — live from the API
         </h2>
         {isLoading && <p className="mt-2">Loading the catalog…</p>}
-        {isError && <p className="mt-2 text-red-600">Could not reach the API right now.</p>}
+        {isError && <p className="mt-2 text-red-600">{catalogFailureMessage(error)}</p>}
         {data && (
           <>
             <p className="mt-2 text-sm text-gray-500">{data.count} pieces</p>

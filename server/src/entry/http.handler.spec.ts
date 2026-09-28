@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { APIGatewayProxyEventV2, Context } from 'aws-lambda';
 
@@ -99,7 +100,14 @@ describe('lambda handler (serverless-express)', () => {
     const { handler } = await import('./http.handler.js');
     const res = await handler(event('GET', '/api/health'), ctx);
     expect(res.statusCode).toBe(503);
-    expect(JSON.parse(res.body as string)).toEqual({ message: 'Service unavailable' });
+    // Whole-body deep equality, deliberately. This exact-match is the only machine-checked thing
+    // stopping a later change from adding the caught error text — which carries the Neon
+    // connection string — to a body that reaches unauthenticated callers. Do not relax it to
+    // expect.objectContaining.
+    expect(JSON.parse(res.body as string)).toEqual({
+      message: 'Service unavailable',
+      code: ERROR.serverBootFailed,
+    });
   });
 
   it('logs the cause and retries after a failed cold start (a failed boot is not cached)', async () => {

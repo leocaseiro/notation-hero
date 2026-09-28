@@ -4,6 +4,7 @@ import 'reflect-metadata';
 
 import serverlessExpress from '@codegenie/serverless-express';
 import { NestFactory } from '@nestjs/core';
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { DbExceptionFilter } from './db-exception.filter';
 import type {
   APIGatewayProxyEventV2,
@@ -54,11 +55,20 @@ export const handler: ProxyHandler = async (event, context) => {
     proxy = cachedHandler ??= await bootstrap();
   } catch (error) {
     // Surface the cause — Lambda forwards stderr to CloudWatch; without this the 503 is opaque.
-    console.error('[http.handler] bootstrap failed:', redactConnectionString(error));
+    // The code is a separate argument, not interpolated into the first one: console.error treats
+    // its first argument as a format string, and semgrep blocks a non-literal in that position
+    // (an injected format specifier could forge a log line). Reads the same in CloudWatch, and
+    // the number still comes from the registry rather than being written out here.
+    console.error(
+      '[http.handler]',
+      ERROR.serverBootFailed,
+      'bootstrap failed:',
+      redactConnectionString(error),
+    );
     return {
       statusCode: 503,
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ message: 'Service unavailable' }),
+      body: JSON.stringify({ message: 'Service unavailable', code: ERROR.serverBootFailed }),
     };
   }
   return proxy(event, context);

@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // The app imports @notation-hero/client as raw .tsx source. Next doesn't transpile
   // node_modules (a workspace package is symlinked there), so the JSX won't parse without this.
-  transpilePackages: ['@notation-hero/client'],
+  transpilePackages: ['@notation-hero/client', '@notation-hero/shared'],
 };
 
 export default nextConfig;

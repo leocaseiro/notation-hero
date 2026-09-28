@@ -22,7 +22,9 @@ runVrStories({
   // The stack stories render multiple toasts; capture the whole toaster region so the pile is
   // framed (the default [data-sonner-toast].first() would clip to just the front toast).
   captureSelectorsForStory: (story) =>
-    story === 'stack' || story === 'stack-expanded' ? ['[data-sonner-toaster]'] : undefined,
+    ['stack', 'stack-expanded', 'error-stack', 'error-stack-at-cap'].includes(story)
+      ? ['[data-sonner-toaster]']
+      : undefined,
   hoverSelector: '[data-action]',
   // Tab #1 lands on the toast <li> (tabIndex 0); #2 reaches the action button,
   // whose new 3px design-system ring these frames pixel-guard.

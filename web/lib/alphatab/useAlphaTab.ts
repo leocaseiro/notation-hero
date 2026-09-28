@@ -4,6 +4,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react';
 
 import { useAlphaTabEngine } from './AlphaTabEngineContext';
 import { setAlphaTabDefaults } from './defaults';
+import { cancelQueuedFrames } from './live-settings';
 import type { AlphaTabEngine } from './engine';
 import type * as AlphaTab from '@coderline/alphatab';
 import type { RefObject } from 'react';
@@ -54,6 +55,10 @@ export function useAlphaTab(
     return () => {
       (host as HostWithApi).at = undefined;
       setApi(undefined);
+      // BEFORE destroy, so a redraw or MIDI rebuild queued in the last frame cannot fire against a
+      // destroyed engine. AlphaTabApiBase.render() has no _isDestroyed guard of its own, and the
+      // window is widest on a backgrounded tab, where requestAnimationFrame is throttled.
+      cancelQueuedFrames(created);
       created.destroy();
     };
   }, [engine]);
@@ -61,9 +66,10 @@ export function useAlphaTab(
   return [api, hostRef];
 }
 
-/** The AlphaTabApi members the transport writes: plain values, not methods. */
+/** The AlphaTabApi members the transport and the Settings popover write: plain values, not methods. */
 type AlphaTabApiValue =
   | 'isLooping'
+  | 'masterVolume'
   | 'metronomeVolume'
   | 'countInVolume'
   | 'playbackRange'

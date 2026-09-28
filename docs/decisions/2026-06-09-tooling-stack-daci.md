@@ -15,7 +15,7 @@ source: docs/ideation/2026-06-09-agent-native-tooling-ci-ideation.md (ce-ideate 
 > **Vitest is the chosen-but-deferred L5 runner** (ratified, not "live now"). Read Vitest
 > mentions below as "the planned L5 runner," not the current one.
 >
-> **🔴 Partial supersession (2026-06-18, NH-194):** the **foundation** layers here are superseded by [`2026-06-17-architecture-decisions.md`](2026-06-17-architecture-decisions.md). **`L1` Nx → dropped** (ARCH-MONO-1, plain pnpm workspaces); **`L2-tags` + `L7-set-shas` + `FOLD-tagmap`** die with Nx; the **`apps/core/adapters/infra` layout + `FOLD-hex` + `FOLD-serverless`** → **`client/server/shared/infra`, hexagon as folders inside one Nest app** (ARCH-LAYOUT-1 + ARCH-HEX-1). **Kept:** `PM-1`/`F6-bun` (pnpm), dependency-cruiser (rewritten folder-level, ARCH-GUARD-1), test co-location. The non-foundation layers (L3 ESLint, L4 types, L5 Vitest, L11 observability, …) stand. See the registry's 2026-06-18 change-log entry.
+> **🔴 Partial supersession (2026-06-18, NH-194):** the **foundation** layers here are superseded by [`2026-06-17-architecture-decisions.md`](2026-06-17-architecture-decisions.md). **`L1` Nx → dropped** (ARCH-MONO-1, plain pnpm workspaces); **`L2-tags` + `L7-set-shas` + `FOLD-tagmap`** die with Nx; the **`apps/core/adapters/infra` layout + `FOLD-hex` + `FOLD-serverless`** → **`client/server/shared/infra`, hexagon as folders inside one Nest app** (ARCH-LAYOUT-1 + ARCH-HEX-1). **Kept:** `PM-1`/`F6-bun` (pnpm), dependency-cruiser (rewritten folder-level, ARCH-GUARD-1), test co-location. The non-foundation layers (L3 ESLint, L4 types, L5 Vitest, L11 observability, …) stand. See the 2026-06-18 entry in [`decision-changelog.md`](decision-changelog.md).
 
 ## Roles
 

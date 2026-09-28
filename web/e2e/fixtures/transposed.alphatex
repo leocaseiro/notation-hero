@@ -1,0 +1,8 @@
+\title "Transposed"
+.
+\track "Lead"
+ \staff \transpose 2 \tuning e5 b4 g4 d4 a3 e3
+ :4 3.3 3.3 3.3 3.3 |
+\track "Rhythm"
+ \staff \tuning e5 b4 g4 d4 a3 e3
+ :4 0.6 0.6 0.6 0.6 |

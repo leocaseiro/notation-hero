@@ -7,7 +7,8 @@ import { TransportRow } from './TransportRow';
 // A Guitar Pro file can embed its own recording. AlphaTab then plays that recording through a
 // backing-track player whose synth stubs out the metronome channel, so Metronome and Count-In
 // cannot do anything — they go inert AND say why, because a merely dimmed icon explains nothing.
-// The shell derives the flag from `score.backingTrack?.rawAudioFile`; this covers the row's half
+// The shell derives the flag from AlphaTab's actual player (the backing-track player, not merely
+// a file that embeds audio). This covers the row's half
 // of that chain, which no fixture can reach (a real backing-track file is megabytes of audio).
 const props = {
   positionMs: 0,

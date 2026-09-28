@@ -39,6 +39,7 @@
 - [ ] If this PR changed a decision or what's enforced, I updated the decision log (docs/decisions).
 - [ ] If this PR changed infra/, I ran pulumi preview locally, recorded the classification under "## Pulumi preview" below, and filed a required task for any destructive (replace/delete) or exposure (public-access / auth-weakening / wildcard IAM) change.
 - [ ] If this PR needed doc updates, I updated README.md / the relevant docs with the change and the "why".
+- [ ] If this PR added a user-facing or operator-facing error, I gave it a code in the shared registry (shared/src/error-codes.ts) and a row in docs/reference/error-codes.md.
 - [ ] I checked for overlapping open PRs / worktrees and noted any risks in the PR and Jira.
 - [ ] I kept this PR small (baby commits), or explained below why it is large.
 - [ ] I self-reviewed my own diff before requesting review.

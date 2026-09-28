@@ -1,9 +1,9 @@
 'use client';
 
 import { Button, Tooltip, TooltipContent, TooltipTrigger, toast } from '@notation-hero/client';
+import { ERROR } from '@notation-hero/shared/error-codes';
 import { useId, useRef } from 'react';
 
-import { PLAYER_ERROR } from '../../lib/player-errors';
 import type { LoadedNotation } from './PlayerShell';
 
 // Every extension of a format AlphaTab 1.8.4 reads (spec §4): Guitar Pro 3-8, MusicXML plain and
@@ -47,10 +47,15 @@ export async function readNotation(file: File): Promise<LoadedNotation> {
  * with its own error number. The limit in the text comes from the constant, so changing the limit
  * changes the message. A file that is read but does not parse gets E103 from requestNotation.
  */
+/** Which read failure this is. The toast id is keyed on it, so it must not drift from the copy. */
+export function openFailureCode(file: File): string {
+  return file.size > MAX_NOTATION_BYTES ? ERROR.fileTooLarge : ERROR.fileUnreadable;
+}
+
 export function readFailureMessage(file: File): string {
   return file.size > MAX_NOTATION_BYTES
-    ? `${file.name} is too large to open. The limit is ${MAX_NOTATION_MB} MB. (Error ${PLAYER_ERROR.fileTooLarge})`
-    : `${file.name} could not be read. Check that the file still exists, then try again. (Error ${PLAYER_ERROR.fileUnreadable})`;
+    ? `${file.name} is too large to open. The limit is ${MAX_NOTATION_MB} MB. (Error ${ERROR.fileTooLarge})`
+    : `${file.name} could not be read. Check that the file still exists, then try again. (Error ${ERROR.fileUnreadable})`;
 }
 
 export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) {
@@ -70,7 +75,10 @@ export function OpenFileControl({ onNotation }: Readonly<OpenFileControlProps>) 
     } catch {
       // Same id as requestNotation's loading toast, so a throw mid-open REPLACES the "Opening…"
       // spinner instead of stacking a second toast beside one that never resolves.
-      toast.error(readFailureMessage(file), { id: 'notation-load' });
+      // Own id, not the spinner's: see the note in PlayerShell. Same file failing the same way
+      // twice refreshes one toast rather than stacking a duplicate.
+      toast.dismiss('notation-load');
+      toast.error(readFailureMessage(file), { id: `${openFailureCode(file)}:${file.name}` });
     }
   };
 

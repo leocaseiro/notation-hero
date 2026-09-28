@@ -1,7 +1,139 @@
 'use client';
 
-import { Toaster as SonnerPrimitive } from 'sonner';
+import { Toaster as SonnerPrimitive, toast as sonnerToast } from 'sonner';
 import type { CSSProperties, ComponentProps } from 'react';
+
+/**
+ * How many error toasts may be on screen at once. Sonner keeps anything past `visibleToasts` laid
+ * out at opacity 0 with pointer events off — but the element is still a tab stop and its close
+ * button is still a real `<button>`, so an invisible-yet-focusable control is exactly what a cap
+ * has to prevent. `visibleToasts` below is this plus one, so the loading or success toast always
+ * has a slot of its own: an error stack must never be able to hide the "Opening …" spinner, which
+ * the player waits on before it takes the main thread.
+ */
+const ERROR_TOAST_CAP = 3;
+
+/**
+ * The error toasts currently on screen, oldest first — a Set preserves insertion order, which is
+ * what makes "drop the oldest" meaningful. It lives here rather than in a consuming app because
+ * this is where the ids are minted: a caller cannot enumerate them afterwards.
+ */
+const liveErrorIds = new Set<string | number>();
+
+let anonymousErrorCount = 0;
+
+/**
+ * How many times each LIVE error id has been raised. Only ids currently on screen appear here:
+ * the `else` branch below clears the entry whenever an id returns as a fresh occurrence, and the
+ * dismiss callbacks clear it when the toast goes away.
+ */
+const repeatCounts = new Map<string | number, number>();
+
+type ErrorMessage = Parameters<typeof sonnerToast.error>[0];
+type ErrorOptions = Parameters<typeof sonnerToast.error>[1];
+
+/** Identical copy collapses onto one toast; a non-string message cannot, so it gets a fresh id. */
+function deriveId(message: ErrorMessage): string {
+  anonymousErrorCount += 1;
+  return typeof message === 'string'
+    ? `error:${message}`
+    : `error:anon:${String(anonymousErrorCount)}`;
+}
+
+function forget(id: string | number): void {
+  liveErrorIds.delete(id);
+}
+
+/**
+ * An error toast that stays until it is dismissed, stacks with errors from other causes, and
+ * carries a close button.
+ *
+ * `duration` and `closeButton` are applied AFTER the caller's options on purpose: sonner has no
+ * per-type setting, so these guarantees can only live in a wrapper, and a caller must not be able
+ * to hand back the four-second dismissal this exists to remove.
+ */
+function raiseErrorToast(message: ErrorMessage, options?: ErrorOptions): string | number {
+  const id = options?.id ?? deriveId(message);
+
+  let shown = message;
+
+  if (liveErrorIds.has(id)) {
+    // The same failure again, and it has to CHANGE something or a person who retried cannot tell
+    // whether the retry registered.
+    //
+    // It must not do that by dismissing and re-raising the same id: sonner is still running the
+    // exit animation for that id, so the re-raise is swallowed and the toast is simply gone.
+    // Measured on /play at 50 ms — the error AND the "Opening …" spinner both vanished within
+    // 50 ms of a retry and never came back, leaving a failed open looking exactly like a
+    // successful one, and a later unrelated failure could no longer stack.
+    //
+    // Changing the COPY instead keeps the toast on screen and still gives the repeat something
+    // visible. It is announced too: the count lands inside sonner's own live region, and unlike
+    // a re-animation it survives reduced-motion.
+    const repeats = (repeatCounts.get(id) ?? 1) + 1;
+    repeatCounts.set(id, repeats);
+    if (typeof shown === 'string') shown = `${shown} (\u00D7${String(repeats)})`;
+  } else {
+    // A fresh occurrence of an id that is not on screen — start its count over.
+    repeatCounts.delete(id);
+    while (liveErrorIds.size >= ERROR_TOAST_CAP) {
+      const oldest = liveErrorIds.values().next().value;
+      if (oldest === undefined) break;
+      forget(oldest);
+      sonnerToast.dismiss(oldest);
+    }
+  }
+
+  // Re-insert so a refreshed toast counts as the newest rather than the next to be dropped.
+  forget(id);
+  liveErrorIds.add(id);
+
+  return sonnerToast.error(shown, {
+    ...options,
+    id,
+    duration: Number.POSITIVE_INFINITY,
+    closeButton: true,
+    onDismiss: (raised) => {
+      forget(id);
+      repeatCounts.delete(id);
+      options?.onDismiss?.(raised);
+    },
+    onAutoClose: (raised) => {
+      forget(id);
+      repeatCounts.delete(id);
+      options?.onAutoClose?.(raised);
+    },
+  });
+}
+
+/**
+ * Dismiss the error toasts whose id matches. The player uses this to clear the open-a-file errors
+ * when a later open succeeds — they describe the same interaction, so leaving a stale failure
+ * behind a fresh success would contradict it.
+ */
+function dismissErrors(matches: (id: string) => boolean): void {
+  // Collected first, then dismissed: dismissing deletes from `liveErrorIds`, and mutating a Set
+  // while iterating it skips entries.
+  const doomed: (string | number)[] = [];
+  for (const id of liveErrorIds) {
+    if (matches(String(id))) doomed.push(id);
+  }
+  for (const id of doomed) {
+    forget(id);
+    sonnerToast.dismiss(id);
+  }
+}
+
+/**
+ * The design system's `toast`. `error` IS the wrapper above — not a sibling export — so there is
+ * exactly one reachable `toast.error` and a call site cannot accidentally raise a four-second,
+ * un-closable error by importing the unwrapped one.
+ */
+const toast: typeof sonnerToast = Object.assign(
+  (...args: Parameters<typeof sonnerToast>) => sonnerToast(...args),
+  sonnerToast,
+  { error: raiseErrorToast },
+);
 
 /**
  * Toast host built on `sonner`. Mount a single `<Toaster />` once near the app
@@ -29,6 +161,44 @@ import type { CSSProperties, ComponentProps } from 'react';
 const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
   <SonnerPrimitive
     className="toaster group"
+    // Errors persist, so a collapsed stack would leave all but the newest as a blank scaled card
+    // until a pointer entered the list — unreadable to anyone on a keyboard or a touch screen.
+    expand
+    visibleToasts={ERROR_TOAST_CAP + 1}
+    // Measured, not guessed. A persistent toast at sonner's default bottom offset covers the
+    // player's transport row: with one error up at 700x800, elementFromPoint returned the toast
+    // instead of the seek rail, the metronome and the count-in — three controls a person simply
+    // could not click, and nothing in CI can see that. Moving to a corner only relocates the
+    // problem (top-right covers the header's tempo stepper at 700 wide, top-center covers both),
+    // so the toast is lifted above the control row instead. 6rem clears the row's 72px with a
+    // visible gap; the notation area it overlaps instead holds no controls.
+    // Measured on /play with a real persistent error and document.elementFromPoint, which is the
+    // only way to see occlusion — the a11y gate measures size and viewport containment, never
+    // overlap. Controls a person could not click, at sonner's DEFAULT top offset:
+    //
+    //                     1280x800   700x800   375x800
+    //   bottom-right         3          3       the transport row
+    //   top-right            0          2       6 — the entire header
+    //
+    // Picking a different corner only moved it, because the problem is VERTICAL: the toast sat at
+    // the top of the viewport, which is exactly where the header is. Lifting it clear of the
+    // header drops it onto the notation area, which holds no controls — the same move that took
+    // it off the transport row. Re-measured after the lift: 0 blocked at all three widths.
+    //
+    // Saying "never cover the header" takes both offsets, because sonner switches at 600px and
+    // reads `offset` above it, `mobileOffset` below. 88px is the 64px header plus the 24px gap
+    // sonner's default left at the top. Below 600px the toaster is full-width as well, so there
+    // is no horizontal escape down there and the vertical lift is the only fix available.
+    //
+    // web/e2e/toast-occlusion.e2e.ts re-runs this measurement in CI, so a change to the header's
+    // height cannot silently put the toast back on top of it.
+    position="top-right"
+    offset={{ top: '88px' }}
+    mobileOffset={{ top: '88px' }}
+    // Sonner's default, set explicitly because it is now load-bearing: the Toaster mounts last in
+    // the app's root layout, so plain Tab reaches a close button only after every page control.
+    // This is the direct route into the toast region.
+    hotkey={['altKey', 'KeyT']}
     toastOptions={{
       classNames: {
         toast: 'group/toast',
@@ -46,12 +216,35 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
         warning:
           'bg-[color-mix(in_oklab,var(--warning)_10%,var(--popover))]! text-warning! border-warning/25!',
         error:
-          'bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))]! text-destructive! border-destructive/25!',
+          // pr-11 reserves the close button's 44px column; only error toasts carry one.
+          'bg-[color-mix(in_oklab,var(--destructive)_10%,var(--popover))]! text-destructive! border-destructive/25! pr-11!',
         // Scope 2 for sonner's built-in action button: it ships a hardcoded 2px
         // rgba(0,0,0,.4) focus ring (invisible on dark, ignores --ring); the `!`
         // modifiers beat its (0,4,0) attribute-selector specificity.
         actionButton:
           'outline-none transition-all focus-visible:border-ring focus-visible:ring-[3px]! focus-visible:ring-ring/50! active:translate-y-px',
+        // The ELEMENT grows to 44px, not an overlay on top of it: the a11y gate measures each
+        // button's own getBoundingClientRect(), so a ::after hit area would leave the measured box
+        // at sonner's 20px and still fail. Its background and border move to a centred ::before so
+        // the painted circle stays 20px and never covers the toast's icon or title, and sonner's
+        // outward translate is dropped so a 44px box cannot hang past the viewport edge — the same
+        // gate fails a control positioned outside it.
+        closeButton: [
+          // Right-hand side, not sonner's default left: at 44px the box otherwise sits on top of
+          // the toast's own icon (measured — the icon's rect fell entirely inside the button's).
+          'size-11! transform-none! left-auto! right-0! top-0! border-0! bg-transparent! text-current!',
+          'before:absolute before:left-1/2 before:top-1/2 before:size-5 before:-translate-x-1/2',
+          'before:-translate-y-1/2 before:rounded-full before:border before:border-current/25',
+          'before:bg-[var(--normal-bg)] before:content-[""]',
+          // The circle above is an ABSOLUTELY POSITIONED pseudo-element with an OPAQUE fill, and
+          // CSS paints a positioned decoration above the element's own in-flow content — so it
+          // covered sonner's X glyph completely and the only control that can dismiss a persistent
+          // error rendered as a blank circle nobody could read. Lift the glyph back over it. The
+          // baselines for every close-button story are what hold this shut: hiding the X again
+          // moves pixels.
+          '[&>svg]:relative [&>svg]:z-10',
+          'outline-none focus-visible:border-ring focus-visible:ring-[3px]! focus-visible:ring-ring/50!',
+        ].join(' '),
       },
     }}
     style={
@@ -65,6 +258,4 @@ const Toaster = ({ ...props }: ComponentProps<typeof SonnerPrimitive>) => (
   />
 );
 
-export { Toaster };
-
-export { toast } from 'sonner';
+export { Toaster, toast, dismissErrors, ERROR_TOAST_CAP };

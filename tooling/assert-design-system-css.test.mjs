@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -68,6 +68,61 @@ test('fails on a single missing selector, not only when all of them are gone', (
       },
     );
   });
+});
+
+// The case the two tests above CANNOT produce. Both build their fixtures from REQUIRED_SELECTORS,
+// so every class they write is an exact match — and a substring check passes those either way. The
+// hole a substring check leaves is a LONGER class that merely contains an entry: one
+// `.cursor-grabbing` anywhere in the scanned tree would satisfy the `.cursor-grab` entry forever,
+// and the guard would report all clear on exactly the stale-scan build it exists to catch.
+test('a longer class that merely contains a required selector does not satisfy it', () => {
+  // A suffix is the shape Tailwind really produces: cursor-grabbing, bg-primary/90, border-2xl.
+  const longer = REQUIRED_SELECTORS.map(([selector]) => `${selector}-0{color:red}`).join('\n');
+  withOutput(longer, (dir) => {
+    assert.throws(
+      () => assertDesignSystemCss({ outputDir: dir }),
+      (error) => {
+        assert.match(
+          error.message,
+          new RegExp(`${REQUIRED_SELECTORS.length} of ${REQUIRED_SELECTORS.length} required`),
+        );
+        return true;
+      },
+    );
+  });
+});
+
+// The other side of that boundary, and it is load-bearing: Tailwind emits a VARIANT utility with its
+// condition attached — `.aria-pressed\:bg-primary[aria-pressed="true"]{…}` — so three of the entries
+// never appear followed by `{` on a real build. The class is whole there and must still count.
+test('the attribute form Tailwind emits for a variant utility still counts as present', () => {
+  const asEmitted = REQUIRED_SELECTORS.map(
+    ([selector]) => `${selector}[data-pressed]{color:red}`,
+  ).join('\n');
+  withOutput(asEmitted, (dir) => {
+    const checked = assertDesignSystemCss({ outputDir: dir });
+    assert.equal(checked.length, 1, 'should have read the one emitted stylesheet');
+  });
+});
+
+// The guard depends on a line in ANOTHER file, and nothing used to check it. web/app/globals.css
+// keeps this repo's scripts out of Tailwind's automatic source detection; without it Tailwind
+// scans the guard itself, extracts any utility spelled out in there, and GENERATES it — so the
+// canary reports present on exactly the broken build it exists to catch.
+//
+// Measured by breaking the design-system scan and toggling the line: 9 of 10 entries reported
+// missing with it, 6 of 10 without. On a HEALTHY build the toggle is invisible (0 of 10 either
+// way, because removing it makes Tailwind generate MORE), which is why this is asserted as a
+// text gate here rather than as a build experiment.
+test("globals.css keeps this repo's scripts out of Tailwind source detection", () => {
+  const css = readFileSync(join(import.meta.dirname, '..', 'web', 'app', 'globals.css'), 'utf8');
+  assert.match(
+    css,
+    /^@source not '\.\.\/scripts\/\*\*';$/m,
+    "web/app/globals.css must keep `@source not '../scripts/**';`. Without it Tailwind scans " +
+      'web/scripts/, generates the utilities this guard watches for, and disarms the canaries — ' +
+      'measured at 6 of 10 reported missing instead of 9 of 10.',
+  );
 });
 
 test('fails when the build emitted no stylesheet at all', () => {

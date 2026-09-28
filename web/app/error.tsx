@@ -2,7 +2,7 @@
 
 import { Button } from '@notation-hero/client';
 
-import { PLAYER_ERROR } from '../lib/player-errors';
+import { ERROR } from '@notation-hero/shared/error-codes';
 
 export default function AppError({ reset }: Readonly<{ error: Error; reset: () => void }>) {
   return (
@@ -11,7 +11,7 @@ export default function AppError({ reset }: Readonly<{ error: Error; reset: () =
       <p className="max-w-prose text-muted-foreground">
         Nothing you opened was sent anywhere. Try again, or reload the page.
       </p>
-      <p className="text-sm text-muted-foreground">Error {PLAYER_ERROR.unexpectedCrash}</p>
+      <p className="text-sm text-muted-foreground">Error {ERROR.unexpectedCrash}</p>
       <Button className="min-h-11 px-8" onClick={reset}>
         Try again
       </Button>

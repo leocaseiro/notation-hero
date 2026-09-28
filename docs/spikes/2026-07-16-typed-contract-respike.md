@@ -4,7 +4,7 @@
 > leocaseiro decided personally after the 2026-07-16 study pause. Outcome: a **hand-authored Zod contract in
 > `shared/` + `z.infer` + `.parse()`**; **no framework now**; flip-default `@nestjs/swagger` + `nestjs-zod`
 > (**not** oRPC). Rejected: nestjs-trpc, drizzle-zod. Parked: Kanel → CMS. Recorded in the
-> [decision registry](../decisions/decision-registry.md) change log (2026-07-21); §9 holds the per-item calls.
+> [decision changelog](../decisions/decision-changelog.md) (2026-07-21); §9 holds the per-item calls.
 >
 > **Re-opens:** [`2026-06-17-typed-contract-orpc.md`](2026-06-17-typed-contract-orpc.md) (which fed `ARCH-CONTRACT-1` = oRPC).
 > **Companion:** [`2026-07-16-contract-study-plan.md`](2026-07-16-contract-study-plan.md) — the reading list.
@@ -346,7 +346,7 @@ Honest caveats — "lose nothing" is not literally zero:
 > ✅ **Adopted 2026-07-21.** Everything in this subsection became the decision, unchanged: defer the
 > framework, hand-authored Zod + `z.infer` + the drift guard, the same flip conditions, and
 > `@nestjs/swagger` + `nestjs-zod` as the flip default. Recorded in the
-> [decision registry](../decisions/decision-registry.md) change log.
+> [decision changelog](../decisions/decision-changelog.md).
 
 Defer `ARCH-CONTRACT-1`. Do not adopt oRPC in any form yet. If the boundary needs fixing before that,
 the cheapest correct step is the ADR's own recorded fast-follow: hand-authored Zod in `shared/` +
@@ -576,7 +576,7 @@ the big architectural one, because that is where this doc's own evidence conflic
 
 > ⚠️ **Re-verify the Next.js-version-pinned rows before acting.** Every Next.js claim in this doc was read
 > from the **bundled 16.2.10** docs on 2026-07-16. `master` has since moved to **`next@16.3.4`** (NH-231
-> dependency-CVE refresh, 2026-09-16 — see the registry change log), so the `revalidateTag`-deprecation and
+> dependency-CVE refresh, 2026-09-16 — see the [decision changelog](../decisions/decision-changelog.md)), so the `revalidateTag`-deprecation and
 > Runtime-Cache rows must be re-read against `web/node_modules/next/dist/docs/` at the version actually
 > installed. The Group-2 contract calls do not depend on the Next.js minor.
 

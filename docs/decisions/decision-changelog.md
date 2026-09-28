@@ -7,7 +7,7 @@
 
 ## Change log — manual approvals & merge status updates
 
-Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, and every PR merge updates affected statuses here.
+Living record (newest first). Per AGENTS.md "Decision governance": every decision leocaseiro manually approves lands here, as a new entry at the top — and so does every PR-merge note. The affected decisions' **status and enforcement flips** go in [`decision-registry.md`](decision-registry.md), which holds current state per topic and never a dated entry.
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
@@ -73,6 +73,235 @@ the app.
   over the score. ⏳ pending.
 
 Spec: `docs/specs/2026-09-21-web-visual-regression-gate.md`.
+
+### 2026-09-24 — The 44px hit-area gate now covers both popovers, with two deliberate exceptions (NH-291)
+
+`expectHitAreas` (`web/e2e/a11y.e2e.ts`) enforces this repo's own 44px hit-area bar — stricter than
+WCAG 2.5.8 AA, which asks only 24px. Two controls fall under it on purpose, and the gate scopes
+around both rather than being loosened generally. The gate now also runs with the Settings popover
+(every accordion group open) and the Tracks popover (two rows expanded, a solo and a mute pressed)
+open, per an e2e case each; both pass.
+
+- **The toast close button stays 20x20.** Sonner's `[data-close-button]` is a fixed-size control,
+  and the maintainer wants `closeButton` kept on the Toaster. The gate now skips any control inside
+  `[data-sonner-toast]` — scoped to toasts, not a blanket exemption — because the toast's resting
+  state, hit area included, is already covered by the design system's own Sonner Storybook stories.
+- **Every mixer control (TrackRow, MasterRow) stays 34px** (`MIXER_BUTTON_CLASS`). The mixer row
+  packs render-select, solo, mute, volume and four per-staff toggles onto one line at tablet-landscape
+  width; 44px per control does not fit. 34px still clears WCAG 2.5.8 AA's 24px floor — it only misses
+  this repo's own stricter 44px (AAA) bar, and the density is the maintainer's deliberate choice for
+  this row, not an oversight. The gate now skips any control inside `[data-slot="track-row"]` or
+  `[data-slot="master-row"]`, scoped to those two rows only.
+- **The gate now measures the popovers' fields and selects too**: `[data-slot="popover-content"]
+select` and `input` (excluding `range`, `file` and `checkbox`, none of which is what a finger
+  hits) join the existing button/link/label/slider selectors. Scoped to popover content only, so
+  the header's BPM field — Base UI's `NumberField.Input`, deliberately out of scope for this PR —
+  stays untouched. `Input` and `NativeSelect` are `h-9` (36px) in the design system by default;
+  every row in `SettingRow` raises them to `h-11` (44px) at the call site. A design-system default
+  of 44px is a separate question, not answered here.
+- **The gate's position check is now container-aware.** With every Settings group open at once (so
+  the whole panel is auditable in one pass), the panel is far taller than the viewport — ~6000px of
+  rows in a ~500px scrolling window — and the plain window-edge check flagged nearly every row as
+  unreachable, though each is one scroll away. `expectHitAreas` now walks up from each control to
+  its nearest ancestor with computed `overflow-y: auto`/`scroll`. When none exists short of the
+  document, the check is unchanged (a shell-clipped control has no way out and still fails).
+  Otherwise position is judged against that ancestor's own scrollable content range (`[0,
+scrollHeight]`) instead of the window — horizontally unchanged, since this ancestor only scrolls
+  vertically. The 44px SIZE check is untouched either way.
+- **The code review of this PR then found two holes in that same gate, and both are closed.** The
+  mixer and toast exemptions above ran BEFORE the element's rectangle was taken, so they exempted
+  those controls from the off-screen POSITION check as well — which neither exemption's reasoning
+  argues for, and the mixer's fixed-width grid makes a narrow window its realistic failure. They
+  now resolve after the measurement and apply to the size verdict alone. Separately, the
+  container-aware branch could not fail vertically at all: `contentTop + height <= scrollHeight`
+  holds by construction for any child of a scroll container, so the relaxation silently dropped
+  vertical containment for every popover control rather than re-basing it. The branch now also
+  checks that the scrolling box is ITSELF on screen, which is the property the relaxation assumed.
+  `expectHitAreas` settles toasts before measuring, so the restored position check cannot race a
+  slide-in animation.
+- **The CSS build canary gains five `REQUIRED_SELECTORS` entries**, which is what AGENTS.md already
+  prescribes for a new shared class module — recorded here because it is a build-BLOCKING guard,
+  not because it is a new decision. Only one entry shipped with the component work, and that one
+  (`size-[2.125rem]`) is also written literally in `TrackRow.tsx` and `MasterRow.tsx`, so the `.tsx`
+  scan alone keeps it present and it proved nothing about `MixerClasses.ts`. The four added by the
+  review pass — the mixer's grid-template arbitrary value and three `aria-pressed:`/`data-pressed:`
+  fills — exist in no other file, and each fails invisibly: correct ARIA, correct behaviour,
+  nothing painted.
+- **The canary now matches a whole class name, not a substring.** It asked `css.includes(selector)`,
+  so an entry that is a PREFIX of another class was satisfied by that other class — `.grow` by
+  `.grow-0`, `.border-primary` by `.border-primary/50`, `.cursor-grab` by `.cursor-grabbing`, the two
+  pressed fills by their `/90` opacity forms. One such utility anywhere in the scanned tree would
+  satisfy its entry forever, and a build-blocking guard would report all clear on exactly the stale
+  scan it exists to catch. Nothing was broken: all ten entries were matched against the real emitted
+  stylesheet and each is present in its exact form. The match now requires a CSS boundary after the
+  entry, with `[` in that set — load-bearing, because Tailwind emits a variant utility with its
+  condition attached, so three entries never appear followed by `{` on a real build. Both sides are
+  pinned by tests; the existing ones could not have caught this, since they build their fixtures FROM
+  the list and so can only ever write exact matches.
+- **Four new design-system components, not three** — `Accordion`, `SettingRow`, `TrackRow` and
+  `MasterRow`, each with a Storybook story plus VR and axe baselines that block merge. A fifth
+  component, `PopoverIconTrigger`, was extracted during a later refactor pass to share the
+  Settings/Tracks trigger button — it lives in `web/app/play/`, not `client/`, so it is an
+  app-local component, not a fifth gated design-system one; it carries no stories/VR/a11y files of
+  its own and is covered by the popover-open e2e cases and `client/`'s existing Tooltip/Popover/
+  Button baselines that it composes.
+
+### 2026-09-27 — A retried failure stops erasing its own toast, and the toast never covers the header (NH-331)
+
+Two follow-ups to the NH-331 merge (#179). Both were found by measuring the shipped behaviour in a
+real browser, not by reading the code, and both had passed every gate the repo had.
+
+**A retry erased all of its own feedback.** Opening the same failing file twice removed the error
+toast _and_ the "Opening …" spinner within 50 ms and put nothing back, so a failed open looked
+exactly like a successful one, and a later unrelated failure could no longer stack beside it. The
+cause was the repeat branch itself: it dismissed the toast and re-raised the same id in one tick to
+replay the entry animation, and sonner — still animating that id out — swallows the re-raise. The
+unit test asserting "the same failure twice collapses onto one toast" passed throughout, because
+jsdom runs no transitions and cannot reproduce it.
+
+**The toast sat on the player header.** At sonner's default top offset, `elementFromPoint` found it
+covering 6 controls at 375px — the entire header — and 2 at 700px. Because error toasts never
+self-dismiss, none of them could be used until the close button was found.
+
+**Decisions leocaseiro made, with what each was chosen over:**
+
+- **Make the repeat visible by changing the COPY (a `(×N)` count)** — over minting a fresh id per
+  repeat (keeps the entry animation but needs id bookkeeping, and was untested) and over merely
+  dropping the dismiss (stops the loss but leaves the repeat invisible, the original complaint).
+  The count also survives reduced-motion and lands in sonner's own live region, so it is announced.
+- **Lift the toast clear of the header at EVERY width, not only below 600px** — over the surgical
+  phone-only fix. His words: he would prefer to always show the header in both sizes, and he was
+  content for the desktop toast to move given the toast can be closed. Decided from before/after
+  screenshots at 375, 700 and 1280 rather than from the description.
+
+**What is now enforced.** `web/e2e/toast-occlusion.e2e.ts` (the `e2e` job, which `ci-green` waits
+on) raises a real persistent error at 1280, 700 and 375 and fails if `elementFromPoint` returns the
+toaster over any control. It asserts a painted toast and a non-empty control list first, so an
+empty "nothing blocked" result cannot pass vacuously. This is the gate the original note said CI
+could not have: the a11y gate measures each control's size and viewport containment, both of which
+stay valid for a button with a toast painted over it.
+
+`AGENTS.md` also now lists `pnpm run check:error-codes` among the root-level checks — it was the
+one obligation the NH-331 checklist audit found unbacked.
+
+### 2026-09-26 — The registry/changelog split finished, and made self-enforcing (NH-322)
+
+The #143 split (NH-25) left `decision-registry.md` at 340 lines with zero dated entries. It did not
+hold: on 2026-09-22 **PR #163 put 1,586 lines back**. It wrote its own change-log entry into the
+registry — which is what AGENTS.md told it to do — and because the registry still carried
+`merge=union`, the merge concatenated the entire change log back in beside it. No conflict, so
+review saw nothing. It survived three further merges unnoticed.
+
+NH-322 (#173) removed the union driver from the registry two hours later. That fixed the cause and
+left the damage, so three sources disagreed about where a new entry goes and an agent had to guess.
+This entry closes the second half.
+
+**What the state actually was, measured rather than assumed.** Of the registry's 72 dated entries,
+**71 already existed in this file**, 69 byte-identical. The 2 that differed both favoured this file:
+the registry's `2026-06-17 — Architecture decisions` still read `ARCH-CONTRACT-1 oRPC`, superseded
+by NH-284 in July, and its `2026-06-11 — PR #9` had #143's pointer paragraph welded onto the entry's
+tail by the union merge, wrongly claiming both files are `merge=union`. Exactly **one** entry was
+registry-only — `2026-09-20 — v0 Plan C re-triaged`, the entry #163 itself authored — and it moved
+here byte-exact. The registry's state tables were byte-identical to #143's clean version, so the
+damage never touched the decisions themselves. Registry: 1921 → 343 lines, 72 → 0 dated entries.
+
+**Approved by leocaseiro 2026-09-26**, three decisions:
+
+- **NH-322 carries this, not NH-25 and not a new ticket.** Its description already named this exact
+  damage, so closing it with the damage still present would have made the ticket untrue. (Its
+  description blames PR #170; the registry has zero dated entries at #170's tree and 72 at #163's,
+  so the blame is corrected.)
+- **The stale-reference sweep covers what misleads future work, not what recorded past work.** The
+  three sites that told an agent where to _write_ are fixed — AGENTS.md "Decision governance", the
+  AGENTS.md current-direction snapshot, and Step 5 of the live, unshipped
+  `docs/plans/2026-09-13-v0c-popovers-plan.md` (PR #176 is open against it, so the next agent on
+  that plan would have repeated #163 exactly). So are eight read-pointers into the section that no
+  longer exists, in `CONCEPTS.md`, `tooling/check-layout.sh`, the 2026-06-17 ADR, the 2026-06-09
+  DACI and the 2026-07-16 typed-contract re-spike — two of which pointed at the NH-284 and NH-231
+  entries that have only ever lived in this file, and so were already broken. Roughly 14 past-tense
+  records inside shipped plans and specs are **deliberately left alone**: they describe accurately
+  what was done at the time, and rewriting them would edit the historical record.
+- **The rule becomes a machine gate.** A prose rule is what failed here, and this regression class
+  is invisible to review by construction — #163 passed lint, markdownlint, the PR checklist and CI
+  Green. `pnpm run check:decision-docs` (`tooling/check-decision-docs.sh`) now fails when the
+  registry holds a dated `### YYYY-MM-DD` heading; non-dated h3 sub-headings stay legal. Its CI step
+  sits in the **`lint`** job, not `quality`: `quality` is gated on the `code` paths-filter, so a
+  docs-only PR skips it — and a docs-only PR is exactly the shape that trips this. It also runs in
+  Lefthook pre-commit (the authoring mistake) and pre-push (pre-commit is skipped during a merge,
+  and a merge is how #163's duplication arrived). `tooling/check-decision-docs.test.sh` proves it
+  rejects a violation, the same reasoning as the core-purity canary.
+
+**Enforcement:** ⏳ → 🤖 for the registry/changelog boundary. **No registry row was added**, matching
+how #173 recorded NH-322 itself: the governance rule lives in AGENTS.md and the gate enforces it.
+
+### 2026-09-26 — Error codes become app-wide and machine-checked; error toasts stop vanishing (NH-331, NH-311)
+
+The player's error numbers were a good convention trapped in the wrong package. `PLAYER_ERROR`
+lived in `web/lib/player-errors.ts`, which `client/` and `server/` cannot import, so three failures
+a person or an operator meets carried no number at all: the catalog page's "Could not reach the API
+right now.", and the two byte-identical `{ message: 'Service unavailable' }` 503s — one for a
+Lambda that never booted, one for a request that failed inside a running one.
+
+**Decisions leocaseiro made, with what each was chosen over:**
+
+- **One registry, globally unique numbers, ranges per area inside the one file** — over a registry
+  per package or per area. His words: a number must never repeat across areas, so one file owns the
+  numbering. `1xx` opening a file · `2xx` engine and assets · `3xx` catalog and API · `5xx` server
+  and infrastructure · `9xx` unexpected crash.
+- **A TypeScript `as const` object, not JSON** — over a JSON data file with a typing wrapper. A
+  spike settled it: the gate can read a `.ts` module directly, so JSON's only hard advantage
+  disappeared, and `as const` keeps the per-code doc comments JSON cannot hold.
+- **`shared/`, not `web/`** — the whole reason the gaps existed.
+- **A real CI check script, not a checklist line alone** — and not a custom ESLint rule, which was
+  heavier with false-positive risk.
+- **Retrofit the gaps now** — over shipping the gate and filing a follow-up, so no uncoded
+  user-facing error is left on `master`.
+- **Error toasts persist, stack and close in the same change** (NH-311) — over doing the
+  persistence half and leaving the Close button separate, because persistent stacked errors are
+  unusable without a way to close them.
+- **Whether `server/src/core/` may carry codes is left OPEN, deliberately** — over building the
+  outer-ring translation layer now, and over widening the fail-closed `core-purity` allow-list.
+  `core/` holds one string helper and no business rules, so either choice would design for code
+  that does not exist. Decide it with the first real catalog rule.
+
+**What is now enforced.** `tooling/check-error-codes.mjs` (root `check:error-codes`, a step in the
+`lint` job, which `ci-green` waits on) fails on a duplicated number, on the registry and
+`docs/reference/error-codes.md` listing different codes, and on a number freed for reuse. That last
+one needs history rather than the current files: a commit removing a code from both leaves them
+agreeing and the number available, so the gate reads the registry at the merge base — and is
+fail-closed when it cannot resolve one, which is why the `lint` job now checks out with
+`fetch-depth: 0`. A new canonical item in the pull-request template claims the work, and the
+`pr-checklist-auditor` persona gained an `error-codes` category, because the gate proves the two
+files agree with _each other_ but cannot see a failure that was never given a code at all.
+
+**Why `lint` and not `quality`:** `quality` is gated on the `code` paths filter, which does not
+match `docs/**`. A pull request editing only the reference page would have skipped it and passed
+green with a drifted table — half of what the gate exists to catch.
+
+**Three things found by building it, each worth carrying forward:**
+
+- A barrel re-export cannot serve both consumers. `server/` compiles under `nodenext`, which
+  rejects an extensionless relative import and demands `./error-codes.js`; Turbopack cannot resolve
+  that, because no such file exists and it does not map `.js` to `.ts` for a transpiled package. The
+  registry is therefore a **subpath export**, and any future shared module should follow that shape.
+- Node refuses to strip types for anything it resolves under `node_modules`, so the gate imports the
+  registry by repo-relative path, never by package name.
+- Both 503 bodies are asserted by **whole-body deep equality**, and that must not be relaxed to
+  `expect.objectContaining`. It is the only machine-checked thing stopping a later change from
+  putting the caught error text — which carries the Neon connection string — into a body that
+  reaches unauthenticated callers.
+
+**Open, and not decided here:** below 600px sonner spans nearly the full width, so a persistent
+toast covers whichever row it is anchored to at any position. Measured on the running player with
+`document.elementFromPoint`: sonner's bottom-right default made three transport controls
+unclickable at both 1280 and 700 wide; top-right blocks none at 1280 and one at 700. top-right
+ships as the best available. The phone case is structural — the shell reserving space, or the toast
+not being a full-width fixed overlay — and stays a decision.
+
+> **Superseded 2026-09-27** (see the entry at the top of this log). The phone case was not
+> structural: lifting the toast clear of the header with `mobileOffset` cleared every blocked
+> control at 375px, and the shell reserves nothing. The numbers above are also understated — a
+> re-measurement found 2 blocked at 700px and 6 at 375px, not one and "the header".
 
 ### 2026-09-22 — Eight orphaned spike documents archived, and five NH-196 decisions recovered (NH-25)
 
@@ -278,6 +507,53 @@ that very commit.
   `scripts/` scanned the guard reported 1 of 5 missing instead of 5 of 5. Verified both ways — with
   the `.ts` scan lost the build exits 1 on all five; with it present the CSS is byte-identical to a
   known-good build.
+
+### 2026-09-20 — v0 Plan C re-triaged: the Settings popover ships every AlphaTab setting, the player-mode switch included (NH-291)
+
+Plan C (the Settings and Tracks popovers) was written on 2026-09-13, before Plans A and B existed as
+code, and had not been reviewed. It was re-triaged against both builds before its first review lap
+(`docs/plans/2026-09-13-v0c-popovers-plan.md`, banner). Nothing is enforced yet — this is a plan —
+so what is recorded here is what was **decided**.
+
+Approved by leocaseiro 2026-09-20:
+
+- **The Settings popover is the same as the reference panel — every row.** His words: _"we should
+  be able to change every single setting from alphatab, including enable synth or backing track.
+  100% do this now. I use this all the time!"_ Two consequences:
+  - **The player-mode row ships in v0 — superseding the spec's "a toggle between the recording and
+    the synthesizer is out of v0"** (`docs/specs/2026-09-10-v0-local-file-player-design.md` §4),
+    and answering the question the 2026-09-20 hands-on entry recorded as built by no plan. It gets
+    its own task, because two things assumed the mode never changes: `hasBackingTrack` will come
+    from `api.actualPlayerMode` instead of from the score, and `playerReady` will stop latching —
+    which also closes the hazard that entry left open.
+  - **Metronome volume, count-in volume and loop are rows in the Player group as well as buttons
+    on the transport.** One value, one writer: the shell's `metronome` and `countIn` state becomes
+    a volume, and the transport button reads `> 0`.
+- **He asked whether the plan had every row of the reference panel. It did not** — it carried row
+  counts. A full inventory by AlphaTab key (92 rows) found four things a count cannot show, each a
+  silent no-op had it been built as written: the **Stylesheet group is not settings at all** (it
+  lives on `api.score.stylesheet`, which `fillFromJson` ignores); **fourteen Player rows only take
+  effect after `api.loadMidiForScore()`**; **five Player rows are `AlphaTabApi` properties**; and
+  **`display.padding` is an array** the dot-path helpers could not address. Two rows of the
+  reference panel are bound to the wrong key, and the plan carries the right ones.
+
+- **Every mixer control without visible text gets a state-telling tooltip, and a test reads each
+  one.** His instruction: _"Make sure every button toggle has tooltip, including the tracks ones,
+  such as solo/mute/etc."_ The plan already required it for Solo, Mute and the "more controls"
+  button but enforced none of it; it now also covers the render-select box (a bare 16 px box on
+  the row), with a unit case in `TrackRow` and an e2e case that walks every row of the open mixer
+  and re-reads each tooltip after its state changes. Controls that show their own words — settings
+  rows, display toggles, accordion headers, the export buttons — need none.
+
+Carried over from earlier decisions rather than re-asked: the two checks only a person can do are
+handed back once, at the end (as chosen for Plan B, 2026-09-20), and the mechanical
+plan-versus-reality corrections were applied without a question (the lap-4 rule, 2026-09-18).
+
+Found while re-triaging, from AlphaTab 1.8.4's source — **read, not yet run**, and the plan says so:
+`changeTrackSolo` and `changeTrackMute` act on a MIDI channel exactly as `changeTrackVolume` does,
+so the accepted coupling covers all three; the backing-track synthesizer stubs the audio
+transposition as well as mute, solo and volume; and the synth keeps its muted and soloed channels
+across a score change, so the mixer must reset them.
 
 ### 2026-09-20 — Plan B, first hands-on round: sixteen findings, and what they changed (NH-291)
 
@@ -711,6 +987,10 @@ Approved by leocaseiro 2026-09-16:
   missing from the spec. Nine numbers — 1xx opening a file, 2xx the engine and its assets, 9xx an
   unexpected crash — live in `web/lib/player-errors.ts` (Task 6); spec §4's failure table gains a
   Number column and the two music-font rows it lacked. The e2e lane pins E101, E103 and E203.
+  **Superseded 2026-09-26 (NH-331):** the registry moved to `shared/src/error-codes.ts`, its
+  documented twin is now the app-wide `docs/reference/error-codes.md` rather than the v0 spec, and
+  `pnpm run check:error-codes` enforces the pairing in CI. The nine numbers and their meanings are
+  unchanged.
 - **Also raised:** a `TODO` comment fails lint in every package (`sonarjs/todo-tag` is an error in the
   shared base). leocaseiro asked that lint stop blocking TODO comments, JSDoc `@todo` in particular;
   that change is handled separately, off `master`.

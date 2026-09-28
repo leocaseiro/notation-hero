@@ -35,7 +35,7 @@ const meta = {
           'pin it open (that same control is what the visual-regression suite drives). The trigger',
           'is whatever you pass to `render` — pick a Button variant with the **`triggerVariant`**',
           'control here. The content is portalled, positioned by Base UI, and themed via the',
-          '`bg-primary` / `text-primary-foreground` tokens in light and dark.',
+          '`bg-foreground` / `text-background` tokens in light and dark.',
         ].join('\n'),
       },
     },

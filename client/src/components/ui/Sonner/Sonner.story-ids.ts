@@ -14,4 +14,8 @@ export const SONNER_STORY_IDS = [
   'stack',
   'stack-expanded',
   'loading',
+  'persistent-error',
+  'error-stack',
+  'error-stack-at-cap',
+  'repeated-error',
 ] as const;
