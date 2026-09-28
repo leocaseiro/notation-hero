@@ -47,10 +47,10 @@
     "no_chains": "No premise-dependency chains exist this lap. A chain root must be P0/P1 AND `manual`, and no P0/P1 finding is `manual` -- both carry concrete fixes. So no finding is presented as a dependent of another; all 8 proposed fixes are independent decisions.",
     "settled_do_not_relitigate": [
       "1. Page-level Playwright screenshots in web/e2e (not a web/ Storybook, not NH-298 alone).",
-      "2. v0 Plan C ships first; this gate lands after.",
+      "2. REVISED 2026-09-28 by the maintainer (only he may): v0 Plan C MERGED (PR #176) while this spec was in review, and its two popover shots are now deliberately OUT of this gate -- they land after it as their own piece of work. Was: 'v0 Plan C ships first; this gate lands after.'",
       "3. web/'s whole browser lane moves into the Playwright container.",
       "4. Blocking via ci-green from day one.",
-      "5. Eleven shots, against PR #170's merged layout.",
+      "5. REVISED 2026-09-28 by the maintainer: NINE shots, not eleven -- the two Plan C popover shots are deferred (see item 2). Still against PR #170's merged layout. Was: 'Eleven shots, against PR #170's merged layout.'",
       "6. Playwright's DEFAULT comparison tolerance, same as client/.",
       "7. tooling/docker-playwright.sh replaces the inlined container command.",
       "8. No gh-pages diff report for web/; a red run gives a downloadable artifact.",
@@ -74,12 +74,12 @@
       "P3": "Minor; nothing breaks.",
       "confidence anchor": "The review engine's evidence scale. 100 = evidence directly confirms it. 75 = double-checked, will be hit in practice. 50 = verified real but advisory, routed to FYI and never asked as a decision.",
       "safe_auto / gated_auto / manual": "Whether the fix is silently applied (one clear right answer), applied after you confirm, or needs your judgement. Only gated_auto items reach you as decisions this lap.",
-      "Plan C": "The v0 popovers plan (the Settings and Tracks popovers). It ships BEFORE this gate, which is why two of the eleven shots cannot be measured yet.",
+      "Plan C": "The v0 popovers plan (the Settings and Tracks popovers). MERGED 2026-09-27 as PR #176, with a follow-up refactor in #182. Its two popover shots are deferred out of THIS gate and land after it.",
       "ci-green": "The single required merge-gate CI context. Branch protection requires only this one, so a new job needs no ruleset change.",
       "PR #170": "The merged full-bleed player layout the eleven shots are taken against. It also shipped the hover:bg-muted -> hover:bg-elevate change L4-F-1 turns on.",
       "PR #162": "An already-shipped bug of exactly this class: the seek rail rendered 0 px wide and every browser test passed, axe included.",
       "NH-315 / PR #167": "The other shipped bug of this class: production served the design system unstyled while the same commit's preview was perfect.",
-      "the eleven shots": "landing, Skeleton, engine error, bundled beat, long score, Settings popover, Tracks popover, transport toggles, ghost hover, header tooltip, narrow viewport.",
+      "the eleven shots": "SUPERSEDED 2026-09-28 -- now THE NINE SHOTS: landing, bundled beat, long score, Skeleton, engine error, transport toggles, ghost hover, header tooltip, narrow viewport. The Settings and Tracks popover shots were deferred out of the gate.",
       "anchor-100 safe_auto": "The one class the review engine applies to the document silently, without showing you first. Zero were applied this lap."
     }
   },
@@ -518,8 +518,8 @@
   ],
   "deferred_questions": [
     "Should the computed-style assertion pattern apply to EVERY shot whose stated target is a surface-token step (the bundled-beat shot's rail and panel included), or only to the ghost-hover shot where the step is smallest? Broader than L4-F-1's fix. (adversarial)",
-    "Does the web job need fullyParallel: false on the VR project, or a pinned workers count, once the eleven shots are measured in parallel alongside the 51 behaviour tests sharing one next build? (feasibility)",
-    "Plan C also adds a MasterRow to client/, which the Tracks-popover shot will photograph. Should that shot's coverage column name it alongside the per-track rows, or is 'one mixer row per track' meant to cover the foot row too? (feasibility)",
+    "STILL OPEN, now narrower: does the web job need fullyParallel: false on the VR project, or a pinned workers count, once the NINE shots are measured in parallel alongside the 51 behaviour tests sharing one next build? NOT measurable until the shots exist. The Risks section already names fullyParallel: false as the one-line fallback if the difference bites, so no spec change was made.",
+    "ANSWERED 2026-09-28: Plan C's MasterRow (the mixer's foot row -- master volume plus solo-all and mute-all) merged with its own Storybook VR baselines, so the Tracks-popover shot would photograph it. The deferred-shots block now names it in the coverage cell ('one mixer row per track plus the master foot row') and adds MasterRow to the list of client/ halves. Accuracy only -- no new shot, no new wait.",
     "The footprint corrects the 2026-07-08 spec's stale artifact name but says to leave change-log and plan records as history. Should the 2026-06-26 spec and the registry's NH-197 entry be corrected too, on the same reasoning (a spec describing a still-relevant mechanism), or do they fall under 'leave as history'? The doc does not say. (coherence)",
     "Suppressed as restatements of findings that already answer them (3): which assertion replaces the browser-install guard (answered by L4-F-2), what the popover shots wait on (answered by L4-F-8), and whether the nine unmeasured shots are stable in parallel (answered by L4-F-4)."
   ],
@@ -535,6 +535,8 @@
     "bound_check": "IN BOUNDS. Lap cap is 5, so lap 4 is allowed and lap 5 would be the last. The no-progress gate does not trip: lap 3 resolved all five of its own unresolved P0/P1 findings (2 P0 + 3 P1), so the unresolved P0/P1 count fell 5 -> 0 before this lap opened. Lap 4 raises 3 fresh ones (1 P0 + 2 P1), all newly found rather than carried.",
     "next_step": "Lap 5 REVIEW half, as a separate invocation, if another lap is wanted -- lap 5 is the cap. Still open and NOT findings: the four deferred_questions (one of which, the computed-style scope, the maintainer answered in round 1 by choosing the broadened option), the two known_open_carried_forward items (client/'s global transition freeze; what next build costs in the Playwright container -- neither measurable until the shots exist), and the skipped cross-model judgment pass, which needs the maintainer's explicit go-ahead for a named provider and route.",
     "suggested_walkthrough_order": "Severity order as listed: L4-F-1 (P0) first -- it is the only finding about the gate passing over a real regression, and its fix is the only one that needs a design choice (where the computed-style assertion goes). Then the two P1s, which both block an implementer. L4-F-7 deserves care despite being P2: its fix direction is INVERTED from what the reviewer proposed, so the picker must present the CORRECTED fix (narrow the design sentence at :559-560) and must NOT offer adding lines 152-153 to the footprint.",
-    "deferred_question_1_answered": "ANSWERED in round 1: the maintainer chose the broadened option, so the computed-style assertion pattern applies to every shot whose stated coverage IS a surface step. Applying it found a second such shot (engine error, tint 173 vs cutoff 1408.6) and cleared one candidate (pressed transport toggle, 14664, counted)."
+    "deferred_question_1_answered": "ANSWERED in round 1: the maintainer chose the broadened option, so the computed-style assertion pattern applies to every shot whose stated coverage IS a surface step. Applying it found a second such shot (engine error, tint 173 vs cutoff 1408.6) and cleared one candidate (pressed transport toggle, 14664, counted).",
+    "scope_revision_2026_09_28": "The maintainer revised two settled decisions after the triage: Plan C merged, and its two popover shots are deferred out of this gate. The spec went from eleven shots to nine in eighteen edits -- every count reference, the shots table, the readiness groups (the player-loaded group is six now, not eight), the cost line, the Risks mitigation and the footprint. The popover shots were NOT deleted: they live in a 'Deferred -- the two Plan C popover shots' block carrying their table rows, the [data-slot=\"popover-content\"] open-state wait from L4-F-8, and the real selectors verified against master (Popover.tsx:44; data-testid settings-popover at PlayerShell.tsx:139 and tracks-popover at :321). That block also answers deferred question 3: the Tracks row names the master foot row, and MasterRow joins the list of client/ halves carrying their own baselines. L4-F-4's evidence-scope sentence was recut to 'two of the nine shots, the other seven unmeasured' -- the 'two cannot be measured until Plan C ships' clause is gone, since Plan C shipped.",
+    "lint_trap_hit": "WORTH KNOWING: prettier's reflow put '#176' at the start of a line in the Status block, markdownlint read it as an ATX heading and MD022 fired, and `markdownlint-cli2 --fix` then 'resolved' it by inserting blank lines -- turning it into a REAL H1 and making all three linters report clean on a broken document (heading count 17 -> 18). Caught by diffing the heading list against HEAD. Never trust a green --fix run on a wrap artifact; compare the heading structure."
   }
 }

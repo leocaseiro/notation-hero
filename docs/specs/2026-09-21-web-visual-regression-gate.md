@@ -1,7 +1,8 @@
 # Visual-regression gate for `web/` — NH-320
 
 Date: 2026-09-21
-Status: Designed — not implemented. Lands **after** v0 Plan C (the Settings and Tracks popovers).
+Status: Designed — not implemented. v0 Plan C (the Settings and Tracks popovers) has merged, and its
+two popover shots are deliberately **out of this gate** — they land after it; see "The shots".
 Ticket: [NH-320](https://leocaseiro.atlassian.net/browse/NH-320)
 
 ## Goal
@@ -18,7 +19,7 @@ the 46 component folders under `client/src/components/ui/` already have them (on
 - **No dark-mode baselines.** Dark mode is unreachable in `web/` today — see "Light only".
 - **No full narrow-width pass.** One narrow shot, not every state shot twice — see "The shots".
   PR #170 puts a real breakpoint in the player chrome, so a single viewport is no longer defensible,
-  but shooting all eleven states at both widths is what the small-count rule exists to prevent.
+  but shooting all nine states at both widths is what the small-count rule exists to prevent.
 
 ## Why this exists
 
@@ -121,12 +122,12 @@ Three design consequences, all evidence-backed rather than guessed:
    crop or size — the comparison is per-pixel, so a flat region that clears no pixel's cutoff
    contributes nothing however large it is. Two consequences carry into the shot list: a shot whose
    stated coverage **is** a surface step needs a signal-side assertion rather than a tighter tolerance
-   (the ghost-hover and engine-error shots), and a twelfth shot proposed to guard a surface step
+   (the ghost-hover and engine-error shots), and a tenth shot proposed to guard a surface step
    should be scored against these numbers before it is written. Steps that carry chroma need nothing
    extra — the pressed transport toggle's `--primary` over `--secondary` scores `14664`, ten times
    over the cutoff.
 
-Cost: Playwright reported **41 passed (2.2 m) for 60 runs** — about 2.2 s per shot, so an eleven-shot
+Cost: Playwright reported **41 passed (2.2 m) for 60 runs** — about 2.2 s per shot, so a nine-shot
 lane is well under a minute of test time. The dominant cost is the `next build`, not the
 screenshots.
 
@@ -207,9 +208,9 @@ baselines without sitting through fifty behaviour tests.
 
 ### The shots
 
-Eleven. Six reach states `web/e2e/a11y.e2e.ts` has already proved reachable; two cover the popovers
-v0 Plan C adds to `/play`; two come from the PR #170 review, deferred here by the maintainer on
-2026-09-22; and one covers the breakpoint #170 introduces. Keeping the count small is deliberate:
+Nine. Six reach states `web/e2e/a11y.e2e.ts` has already proved reachable; two come from the PR #170
+review, deferred here by the maintainer on 2026-09-22; and one covers the breakpoint #170
+introduces. Keeping the count small is deliberate:
 every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.
 
 **The navigation is shared, not copied — and only the navigation.** The six states the accessibility
@@ -241,19 +242,37 @@ transport footer.
 | First-visit Skeleton      | stall `**/alphatab/esm/alphaTab.mjs`                 | the loading state                                                |
 | Engine error              | abort `**/alphatab/esm/alphaTab.mjs`                 | the destructive error panel; its tint asserted, not photographed |
 | Transport toggles pressed | click loop, metronome, count-in, then increase tempo | pressed-state styling and the tempo percentage                   |
-| Settings popover open     | click the header gear                                | the accordion sections and their rows, composed                  |
-| Tracks popover open       | click the transport's Tracks button                  | one mixer row per track, over a real score                       |
 | Ghost hover on the rail   | hover `open-file-button`                             | `hover:bg-elevate` over `--rail`, asserted not photographed      |
 | Tooltip over the header   | hover `back-home`                                    | a portalled tooltip winning the header's `z-10` layer            |
 | Narrow viewport           | `/play` at 900 px wide                               | the rail's `w-20` state, below the `lg` breakpoint               |
 
-Two of these exist because the sequencing puts Plan C first, so both popovers are already on `/play`
-by the time this lane is written. They are app-composed UI built from `client/` primitives and
-rendered only by the real Next.js build — exactly the surface this gate exists to cover, and the
-same shape of thing as the 0 px seek rail. Their `client/` halves (`Accordion`, `SettingRow`,
-`TrackRow`) carry their own Storybook baselines; these two shots cover the composition, which no
-`client/` story can see. **If Plan C ships them behind different controls than the gear and the
-Tracks button, these two rows follow Plan C, not this document.**
+**Deferred — the two Plan C popover shots.** v0 Plan C merged (PR #176) while this document was in
+review, so the Settings and Tracks popovers are on `/play` today. Their shots are still **out of this
+gate**, decided 2026-09-28: this lane lands with nine, and the popover shots follow as their own
+piece of work. They are worth having — app-composed UI built from `client/` primitives and rendered
+only by the real Next.js build, the same shape of thing as the 0 px seek rail — so everything that
+piece needs is specified here rather than left to be re-derived:
+
+| Shot                  | How it is reached                   | What only this shot covers                                          |
+| --------------------- | ----------------------------------- | ------------------------------------------------------------------- |
+| Settings popover open | click the header gear               | the accordion sections and their rows, composed                     |
+| Tracks popover open   | click the transport's Tracks button | one mixer row per track plus the master foot row, over a real score |
+
+Both belong in the player-loaded group, and each needs one wait of its own **after** the trigger
+click. Without it the first baseline can be recorded while the panel is still opening, or still shut,
+and every later run then matches it:
+
+```ts
+await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
+```
+
+`Popover.tsx:44` sets that `data-slot` on the portalled panel, so no new test hook is needed, and
+`Popover` shares `Tooltip`'s `isolate z-50` Positioner plus portalled Popup shape — which is why the
+tooltip wait's stated reason, the open animation and the portal's position, transfers unchanged. As
+merged, the panels carry `data-testid="settings-popover"` (`web/app/play/PlayerShell.tsx:139`) and
+`data-testid="tracks-popover"` (`:321`). Their `client/` halves — `Accordion`, `SettingRow`,
+`TrackRow` and `MasterRow`, the mixer's foot row — each carry their own Storybook baselines already;
+what these two shots would add is the composition, which no `client/` story can see.
 
 **The last three come from outside this document and each has a precise reason.**
 
@@ -349,16 +368,16 @@ oversight:
   state exists only mid-gesture, so a shot has to pause before `drop` or `mouse.up()` and hold the
   frame steady long enough for two consecutive samples. Worth adding when that is worth solving, or
   the first time one of them breaks.
-- **Every state at both widths.** One narrow shot, not eleven.
+- **Every state at both widths.** One narrow shot, not nine.
 
 ### Readiness, and why each wait is there
 
 Every shot settles on explicit signals — no bare sleeps except a final short one. The waits are
-**per shot**, not one recipe for all eleven: three of the states deliberately never finish loading,
+**per shot**, not one recipe for all nine: three of the states deliberately never finish loading,
 so the player-ready block below can never pass for them and would simply hang.
 
-**The eight player-loaded shots** (bundled beat, long score, both popovers, transport toggles,
-ghost hover, tooltip over the header, narrow viewport):
+**The six player-loaded shots** (bundled beat, long score, transport toggles, ghost hover, tooltip
+over the header, narrow viewport):
 
 ```ts
 await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
@@ -453,11 +472,11 @@ The bundled-beat shot needs none of this — AlphaTab loads that score itself an
 it. Any shot added later that reaches its state by opening a file needs the same wait.
 
 > Note for whoever writes this: the maintainer intends **error** toasts to stop auto-dismissing,
-> while success toasts keep fading (stated 2026-09-26). None of the eleven shots raises an error
+> while success toasts keep fading (stated 2026-09-26). None of the nine shots raises an error
 > toast today — the engine-error state reports through its own `role="alert"` panel, not a toast —
 > but once that lands, a shot that does raise one will need it dismissed rather than waited out.
 
-**All eleven** then finish identically:
+**All nine** then finish identically:
 
 ```ts
 await page.evaluate(async () => {
@@ -470,20 +489,6 @@ The two hover shots add one wait of their own — `[data-slot="tooltip-content"]
 the locator `web/e2e/player.e2e.ts:1183` already defines for exactly this. Not because of an open
 delay: `Tooltip.tsx` defaults `delay` and `closeDelay` to `0` and neither trigger overrides them.
 What needs settling is the open animation and the portal's position.
-
-**The two popover shots need the same wait, for the same reason.** Their three readiness waits all
-fire before the trigger click, so without one the only thing between the click and the compare is
-`document.fonts.ready` and the 500 ms settle — and a baseline recorded while the panel is still
-opening, or still shut, is the reference every later run then matches:
-
-```ts
-await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
-```
-
-`Popover.tsx:42` already sets that `data-slot` on the portalled panel, so no new test hook is needed;
-`Popover` uses the same `isolate z-50` Positioner plus portalled Popup shape as `Tooltip`, which is
-why the reason transfers unchanged. **If Plan C ships these behind different controls, the selector
-follows Plan C** — the need for the wait does not.
 
 The Skeleton shot's route handler must **stall
 indefinitely** rather than resume after a fixed
@@ -621,9 +626,9 @@ the reason the lane is shaped this way.
 `client/` VR already blocks, and a visual gate nobody has to obey is one people learn to scroll
 past. Be honest about how much determinism evidence stands behind that: the sixty-run study covered
 `/play`'s default loaded state, and the long-score state was byte-identical across fourteen runs —
-two of the eleven shots. The other nine (landing, Skeleton, engine error, transport toggles, both
-popovers, ghost hover, header tooltip, narrow viewport) are unmeasured, and two of those cannot be
-measured until Plan C ships. What absorbs a one-off blip is not the study but the mechanism:
+two of the nine shots. The other seven (landing, Skeleton, engine error, transport toggles, ghost
+hover, header tooltip, narrow viewport) are unmeasured. What absorbs a one-off blip is not the study
+but the mechanism:
 `retries: 2` on CI plus each shot's `document.fonts.ready` and 500 ms settle — the same absorber the
 parallelism caveat under Risks already names.
 
@@ -682,7 +687,7 @@ out the command that changes.
 ## Risks and caveats
 
 - **Baseline churn.** Every `client/` visual change and every AlphaTab upgrade moves these
-  baselines too. Eleven shots is the mitigation; adding a twelfth should have to justify itself.
+  baselines too. Nine shots is the mitigation; adding a tenth should have to justify itself.
 - **The shot list was re-derived from PR #170 and re-checked after it merged.** Every element it
   names is on `master`: the rail at `PlayerShell.tsx:600` (`w-20 … lg:w-24`, `bg-rail`), the header's
   layer at `:537` (`relative z-10`) over a `h-16` header, the ghost Open-file button at
@@ -693,7 +698,7 @@ out the command that changes.
   measurement was taken at `--workers=1`, so these particular shots are untested in parallel. The
   decision rests on precedent instead: `client/playwright.config.ts` sets `fullyParallel: true` with
   no pinned worker count, CI pins none either, and **698 pixel tests already run that way and block
-  merge**. Eleven more is a rounding error, and `retries: 2` on CI already absorbs a one-off timing
+  merge**. Nine more is a rounding error, and `retries: 2` on CI already absorbs a one-off timing
   blip. The one honest difference is that `client/`'s shots are small isolated Storybook components
   while these are full pages driving a real engine and a soundfont download — heavier, more moving
   parts. If that difference bites, `fullyParallel: false` on the VR project costs about 25 seconds
@@ -758,7 +763,7 @@ it was planned rather than smuggled in.
   1,026 px and the box 420 px, where the measured values at this viewport are 576, 852 and 576.
   The conclusion it draws still holds; the three numbers do not.
   No change to what it asserts.
-- `web/e2e/*.vr.ts` — **new**; the eleven shots themselves. `web/` contains no `*.vr.ts` file today,
+- `web/e2e/*.vr.ts` — **new**; the nine shots themselves. `web/` contains no `*.vr.ts` file today,
   and **nothing fails if the first one never arrives.** The scoped `pnpm --filter
 @notation-hero/web run test:vr` does exit 1 with "No tests found" — measured — but CI runs
   `playwright test` unscoped, and Playwright raises that error only when the WHOLE root suite is
@@ -843,7 +848,7 @@ it was planned rather than smuggled in.
   `playwright-e2e-report` and lines 27-34 hold the expanded `docker run` block the helper replaces;
   beyond those, the title (line 1) and the "Four test layers" heading (line 6) are both scoped
   `client/`, and the `test:vr:docker` pair at lines 19-22 is where the new `test:web:docker` and
-  `test:web:docker:update` belong. It gains a `web/` lane section: the eleven shots, the
+  `test:web:docker:update` belong. It gains a `web/` lane section: the nine shots, the
   Linux-only baseline rule (line 15 applies to `web/` too), the two new commands, and the
   `playwright-web-report` artifact to download on a red run.
 - This document's own **Status** line (line 4) — "Designed — not implemented" becomes implemented, the
