@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   DEFAULT_TRANSPORT_VALUES,
   loadStoredTransport,
+  readStoredTransport,
   serializeTransport,
+  TRANSPORT_STORAGE_KEY,
 } from './transport-storage';
 
 const ON = { metronomeVolume: 1, countInVolume: 0.5, masterVolume: 0.8, isLooping: true };
@@ -121,6 +123,49 @@ describe('the repair signal', () => {
   it('reports a reset with no named key when the document cannot be read at all', () => {
     const loaded = loadStoredTransport('{not json');
     expect(loaded.reset).toBe(true);
+    expect(loaded.repaired).toEqual([]);
+  });
+});
+
+describe('readStoredTransport', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // The literal, pinned. This string is a CONTRACT with every browser that already holds a stored
+  // transport: renaming the constant is a refactor, but renaming its value strands every one of
+  // those documents — the reader finds nothing, falls back to the shipped defaults, reports no
+  // repair, and the drummer's metronome and master volume are silently back to zero and one with
+  // nothing anywhere having failed. Nothing else in the suite can notice, because every other case
+  // passes the raw document in by hand.
+  it('is keyed on the literal string a stored document already lives under', () => {
+    expect(TRANSPORT_STORAGE_KEY).toBe('notation-hero.transport');
+
+    const stored = { metronomeVolume: 1, countInVolume: 0, masterVolume: 0.3, isLooping: true };
+    globalThis.localStorage.setItem('notation-hero.transport', serializeTransport(stored));
+    expect(readStoredTransport().values).toEqual(stored);
+  });
+
+  // The case the try/catch in this function exists for, and the one no other test can reach: a
+  // browser with site data blocked throws from the localStorage GETTER itself, not only from
+  // setItem. Uncaught, it takes the whole render down — the restore runs during render, so the
+  // player never mounts at all.
+  it('falls back to the defaults when the browser blocks storage', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('The operation is insecure.', 'SecurityError');
+    });
+
+    const loaded = readStoredTransport();
+
+    expect(loaded.values).toEqual(DEFAULT_TRANSPORT_VALUES);
+    // Storage being unreadable is not a REPAIR: nothing stored was wrong, so no warning fires.
+    // Reporting it as one would accuse a drummer in private browsing of corrupt settings on every
+    // single load.
+    expect(loaded.reset).toBe(false);
     expect(loaded.repaired).toEqual([]);
   });
 });
