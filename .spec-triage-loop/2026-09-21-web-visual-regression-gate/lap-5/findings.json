@@ -15,7 +15,7 @@
     "document_type": "plan",
     "origin": "none (no frontmatter, no origin:, no product_contract_source -- greenfield)",
     "state_store_note": "STATE-STORE for this loop is THIS FILE, not the document. The spec has NO YAML frontmatter and must not gain one -- no sibling spec in docs/specs/ has any. Carried unchanged from lap 4.",
-    "LAP_CAP_WARNING": "LAP 5 IS THE CAP (default 5). Per review-loop step 7a the bound fires FIRST: once every finding here is decided, the loop HALTS and hands to the maintainer. A lap 6 requires his explicit override. Do not re-lap on the strength of 'a P1 was applied'.",
+    "LAP_CAP_WARNING": "RESOLVED. Lap 5 was the cap; the maintainer halted at it on 2026-09-29 rather than overriding. The loop is closed — see lap_state.lap_decision.",
     "step_2b_silent_edits": "NONE. The four persona reviewers were dispatched read-only and applied nothing. Verified three ways at the close of the review half: git status --porcelain empty, git diff 3ca1b11f -- <doc> empty, and the doc still 871 lines / 17 headings / one H1 with sha256 257f2328... matching the reviewed commit.",
     "pre_review_spike_this_lap": "A container measurement ran BEFORE the review, at the maintainer's instruction, and its result CONTRADICTED the spec. Measured in mcr.microsoft.com/playwright:v1.61.1-noble: pnpm install --frozen-lockfile --ignore-scripts = 28 s (18.7 s of it pnpm's supply-chain policy check), next build = 7 s cold AND warm (re-run with web/.next shadowed by an empty volume; the app is three static routes so the Turbopack cache buys nothing), nine shots ~20 s at 2.2 s/shot. Container Node v24.17.0 clears engines.node >= 24 under engine-strict=true -- the risk most likely to fail outright, and it does not. reactCompiler ran (useMemoCache in 3 emitted chunks), vendor-alphatab copied 8 files, assert-design-system-css reported all 10 selectors present, --ignore-scripts broke nothing. The Cost paragraph said 'The dominant cost is the next build, not the screenshots'; the build is in fact the CHEAPEST of the three steps. Corrected in commit 3ca1b11f, which is this lap's reviewed baseline.",
     "cross_model_judgment_pass": "SKIPPED -- and this is now PERMANENT, because lap 5 is the cap. Named as a real coverage gap in laps 3 and 4 and put to the maintainer directly this lap with tested routes in hand: ollama IS installed with qwen3.5:9b and qwen3:8b (on-host, zero egress; a probe read the whole 15,486-token spec in 51.8 s but its single finding was a FALSE POSITIVE -- it misparsed the relative clause in 'web/.gitignore gains the line client/.gitignore already carries' at line 510); OpenAI codex CLI absent, no ~/.codex auth; gemini/llm/aichat absent; AWS Bedrock DENIED (user/notation-hero-pulumi-local not authorized for bedrock:ListFoundationModels). The maintainer chose to skip a third time. Recorded here so it reads as a decision, not an oversight.",
@@ -402,7 +402,7 @@
       "L5-F-5": "AUTO-RESOLVE REST — applied (the corrected fix: keep the hatch, add the caveat, record dependencies:['e2e'] and its cost, keep web-vr as fallback).",
       "L5-F-6": "AUTO-RESOLVE REST — applied.",
       "L5-F-7": "APPLIED although routed FYI. It is a real typecheck failure against a CI gate (web/tsconfig.json is strict and includes **/*.ts), verified by running tsc, and the guarded rewrite compiles clean. Reported to the maintainer rather than applied quietly.",
-      "L5-A-6": "NOT APPLIED — still open. FYI/P3/anchor-50, cls=manual: it proposes a third 'deliberately not in v1' entry for the transport footer's sm (640 px) flip. That is a content judgement about the non-goals list, not a verified defect, so auto-resolve does not cover it. The ONLY item from lap 5 left undone."
+      "L5-A-6": "APPLIED — maintainer, final round. He chose to add it after all: a fifth Non-goals bullet naming the transport footer's `sm` flip at 640 px as uncovered on purpose, plus the neighbouring bullet reworded to name the rail's `lg` flip as the breakpoint the narrow shot does cover."
     },
     "re_derivation_note": "L5-F-3's fix said 'apply the 14 as given', but the 14 corrections lived in lap5-verify-numbers.json, which was NEVER PERSISTED — a real defect in the review half's handoff (the artifact references a file that exists nowhere in the repo or any worktree). Rather than guess, the triage half re-derived the whole set: it extracted every file:line citation from the spec and checked each against master. Result: 13 stale by 5 to 433 lines, 2 pointing at the wrong FILE (the popover test ids are in SettingsPopover.tsx / TracksPopover.tsx, not PlayerShell.tsx), 5 already correct and left alone. All 7 corrections the artifact DID name explicitly were confirmed. A post-edit re-scan shows every citation now landing on the content the document claims for it. LESSON for the next review half: persist the verifier's tables next to findings.json, or inline their rows.",
     "applied_this_half": [
@@ -416,16 +416,17 @@
       "L5-F-4",
       "L5-F-5",
       "L5-F-6",
-      "L5-F-7"
+      "L5-F-7",
+      "L5-A-6"
     ],
     "commits_this_half": [
       "358a773d — round 1: the three P1s (NH-315 reclassified, bundled-beat surface assertion, chromium-project guard).",
       "bb9ac751 — rounds 2-3: skip-guard regex, scoped container pin, two test ids, every line citation re-taken, page-error gate, parallelism caveat, a11y refactor scope, the tsc guard."
     ],
     "bound_check": "AT THE CAP, and every finding is now decided — so review-loop step 7a fires: HALT and hand to the maintainer. Step 7b would otherwise re-lap (four P1s were applied this lap, and EXIT-SIGNAL was not clean), but the bound is evaluated FIRST and wins. A lap 6 requires the maintainer's EXPLICIT override. For that conversation: four P1s found fresh on the final lap is itself evidence the document still has depth left, which argues FOR an override — but it is his call, and the counter-argument is that five laps and 70+ decisions is already past the point of diminishing returns.",
-    "next_step": "Ask the maintainer the lap-cap question (halt vs override to lap 6). If he halts, this loop is DONE and the spec is his to merge via PR #171. If he overrides, copy L5-A-6 into lap-6's artifact before the review runs — it keeps its id and P3 severity and is never re-reviewed.",
-    "open_after_this_lap": [
-      "L5-A-6 (FYI/P3, not applied — the transport footer's 640 px flip is absent from the 'deliberately not in v1' list)"
-    ]
+    "next_step": "NONE for this loop — it is closed. The spec is the maintainer's to merge via PR #171, and implementation is the next piece of work. Do NOT re-enter the review loop on this document without an explicit new instruction.",
+    "open_after_this_lap": [],
+    "lap_decision": "HALT — chosen by the maintainer on 2026-09-29 at the step-7a bound. The loop is CLOSED at lap 5. No lap 6; `lap` stays 5 and is never bumped. His reasoning matched the recommendation: every P0/P1/P2 is resolved, and much of lap 5's yield was stale line citations that re-stale on every merge — a treadmill rather than remaining depth. The cross-model judgment pass stays permanently unclosed and is recorded as a known gap, not an oversight.",
+    "loop_closed": true
   }
 }

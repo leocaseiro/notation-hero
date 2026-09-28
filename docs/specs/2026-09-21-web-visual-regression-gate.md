@@ -18,8 +18,13 @@ the 50 component folders under `client/src/components/ui/` already have them (on
 - **No Storybook inside `web/`.** The locked NH-275 decision stands (see "Approaches weighed").
 - **No dark-mode baselines.** Dark mode is unreachable in `web/` today — see "Light only".
 - **No full narrow-width pass.** One narrow shot, not every state shot twice — see "The shots".
-  PR #170 puts a real breakpoint in the player chrome, so a single viewport is no longer defensible,
-  but shooting all nine states at both widths is what the small-count rule exists to prevent.
+  PR #170 puts the rail's `lg` flip in the player chrome — the breakpoint this shot covers — so a
+  single viewport is no longer defensible, but shooting all nine states at both widths is what the
+  small-count rule exists to prevent.
+- **No sub-`sm` transport layout.** The transport footer carries a _second_ breakpoint,
+  `sm:gap-6 sm:px-8` at 640 px (`web/app/play/TransportRow.tsx:102`), and both the 900 px and
+  1280 px shots sit above it — so no shot sees the below-`sm` footer. Uncovered on purpose, not by
+  oversight: desktop web is the v0 target and nine shots is settled.
 
 ## Why this exists
 
