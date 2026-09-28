@@ -145,10 +145,12 @@ the task named beside it — they are the reason those tests exist.
 `docs/specs/2026-09-21-web-visual-regression-gate.md` (its Status line) ·
 `docs/decisions/decision-changelog.md`.
 
-**One file sits outside the spec's stated footprint, and it is this plan's only addition:** nothing.
-Every file above appears in the spec's "Process changes this carries" list except
-`web/e2e/pages.vr.ts`, which is the spec's `web/e2e/*.vr.ts` entry realised as a single file (see
-Task 4, step 1 for why one file rather than three).
+**One file sits outside the spec's stated footprint, and the PR body must declare it:**
+`web/app/globals.css`, which gains one `@source not` line in Task 4 (the last section of this plan
+carries the measurement behind it — approved by the maintainer on 2026-09-29). Every other file
+appears in
+the spec's "Process changes this carries" list, except `web/e2e/pages.vr.ts`, which is that list's
+`web/e2e/*.vr.ts` entry realised as a single file (see below for why one rather than three).
 
 ### Why all nine shots in one file
 
@@ -711,6 +713,7 @@ container baseline generation, commit) before eight more shots are written again
 
 **Files:**
 
+- Modify: `web/app/globals.css` — one `@source not` line, before the new file is written
 - Create: `web/e2e/pages.vr.ts`
 - Create: `web/e2e/pages.vr.ts-snapshots/landing-chromium-linux.png` (generated, committed)
 
@@ -720,7 +723,42 @@ container baseline generation, commit) before eight more shots are written again
 - Produces: `settleBeforeShot(page: Page): Promise<void>` — the two waits every shot in this lane
   ends with, used by Tasks 5, 6 and 7.
 
-- [ ] **Step 1: Write the file with the one shot**
+- [ ] **Step 1: Keep `web/e2e/` out of Tailwind's scan, before adding a file it would scan**
+
+This step comes first because the file added in step 2 is the third one under `web/e2e/` that
+discusses design-system class names in prose, and Tailwind scans that folder — measured, see
+"Flagged" at the end of this plan for the reproduction. A utility named in a comment there becomes
+real CSS, which can silently disarm the `REQUIRED_SELECTORS` canary in
+`web/scripts/assert-design-system-css.mjs` — one of the two guards holding shut the failure where
+production served the design system unstyled (NH-315).
+
+In `web/app/globals.css`, directly below the existing `@source not '../scripts/**';`:
+
+```diff
+  @source not '../scripts/**';
++
++ /* Same hazard, same reason, one folder over: Tailwind scans web/e2e/ too, and those files discuss
++    design-system class names in prose (the hit-area gate quotes `h-11`, the pixel shots quote
++    `bg-rail` and `hover:bg-elevate`). A utility named in a COMMENT there becomes real CSS, which
++    would let the guard above pass over a utility the app itself no longer generates. Measured: a
++    `mt-[137px]` planted in an a11y.e2e.ts comment reached the emitted stylesheet. */
++ @source not '../e2e/**';
+```
+
+- [ ] **Step 2: Verify the exclusion works, and that the canary still passes**
+
+```bash
+printf '\n// mt-[137px]\n' >> web/e2e/a11y.e2e.ts
+pnpm --filter @notation-hero/web run build
+grep -rl 'mt-\[137px\]' web/.next/static/ --include='*.css' || echo "excluded — web/e2e is no longer scanned"
+git checkout -- web/e2e/a11y.e2e.ts
+```
+
+Expected: `excluded — web/e2e is no longer scanned`, and the build's own last line still reads
+`assert-design-system-css: all 10 selectors present in 1 stylesheet(s).` The second half matters as
+much as the first: the point is to stop the scan without starving the app of a utility it needs.
+
+- [ ] **Step 3: Write the file with the one shot**
 
 Create `web/e2e/pages.vr.ts`:
 
@@ -803,7 +841,7 @@ test('the landing page', async ({ page }) => {
 });
 ```
 
-- [ ] **Step 2: Run it on your own machine to confirm it reaches the state**
+- [ ] **Step 4: Run it on your own machine to confirm it reaches the state**
 
 ```bash
 pnpm --filter @notation-hero/web run test:vr
@@ -812,7 +850,7 @@ pnpm --filter @notation-hero/web run test:vr
 Expected: PASS, having written `landing-chromium-darwin.png` (on a Mac). That file is git-ignored by
 Task 1's line — confirm with `git status --short`, which must show **no** darwin PNG.
 
-- [ ] **Step 3: Generate the committed Linux baseline in the container**
+- [ ] **Step 5: Generate the committed Linux baseline in the container**
 
 Docker Desktop must be running.
 
@@ -823,7 +861,7 @@ pnpm test:web:docker:update
 Expected: PASS, and `git status --short` now shows exactly one new file,
 `web/e2e/pages.vr.ts-snapshots/landing-chromium-linux.png`.
 
-- [ ] **Step 4: Verify the baseline compares green, and that a real change fails**
+- [ ] **Step 6: Verify the baseline compares green, and that a real change fails**
 
 ```bash
 pnpm test:web:docker
@@ -836,7 +874,7 @@ caught by half a dozen other tests, and styling is the bug class this gate exist
 change the landing heading's size in `web/app/page.tsx` (`text-3xl` → `text-4xl`), then re-run the
 same command. Expected: FAIL with a pixel diff and a report path. Revert and re-run — expected PASS.
 
-- [ ] **Step 5: Verify the working tree survived the container run**
+- [ ] **Step 7: Verify the working tree survived the container run**
 
 The two anonymous volumes exist for this. Both paths are git-ignored, so the check is that your
 local dev build was not clobbered:
@@ -847,14 +885,14 @@ pnpm --filter @notation-hero/web run dev
 
 Expected: the dev server starts and `/` renders. Stop it.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 pnpm run fix && pnpm --filter @notation-hero/web run typecheck && pnpm --filter @notation-hero/web run lint
 ```
 
 ```bash
-git add web/e2e/pages.vr.ts web/e2e/pages.vr.ts-snapshots/
+git add web/app/globals.css web/e2e/pages.vr.ts web/e2e/pages.vr.ts-snapshots/
 git commit -m "test(web): shoot the landing page, and land the VR baseline workflow (NH-320)"
 ```
 
@@ -1966,12 +2004,19 @@ git commit -m "docs: record the web VR lane and rename the Playwright artifacts 
 - [ ] Tick every box in the PR checklist. The VR item — _"If this PR changed UI, I added or updated
       the VR tests for it"_ — needs no template edit; it simply starts applying to `web/` now.
 - [ ] No `## Pulumi preview` section is needed: nothing under `infra/` changes.
+- [ ] **Declare the one out-of-footprint file in the PR body.** The spec lists every file its
+      implementing PR should touch, so a reviewer can check the diff against it; `web/app/globals.css`
+      is not on that list. Say in the PR body that it is there deliberately, that the maintainer
+      approved it on 2026-09-29, and why — one line, so a reviewer seeing it knows it was planned
+      rather than smuggled in.
 
-## Flagged — one pre-existing hazard, measured
+## The one hazard outside the spec's footprint — measured, and fixed in Task 4
 
-Found while grounding this plan. It is pre-existing, so fixing it is not traceable to the spec and it
-is **not** in the task list above. It is written down because this plan adds a third file of the
-shape that trips it.
+Found while grounding this plan, and **approved by the maintainer on 2026-09-29** to be folded into
+this work rather than filed separately. It is pre-existing, so it is the one change in the task list
+that does **not** trace to the spec — the PR body must say so, because the spec's "Process changes
+this carries" list exists precisely so a reviewer can check the diff against a stated footprint. The
+evidence is recorded here rather than inside Task 4 so that section stays a set of actions.
 
 **Tailwind scans `web/e2e/`, and nothing excludes it.** `web/app/globals.css` carries
 `@source not '../scripts/**'` for exactly one reason, stated in the file:
@@ -2000,12 +2045,6 @@ already discuss utility names in prose, and Task 4 adds a third file that does. 
 comment that mentions one silently defeats the NH-315 guard, and that guard is one of the two things
 holding shut the failure where production served the design system unstyled.
 
-The fix is one line beside the existing one:
-
-```diff
-  @source not '../scripts/**';
-+ /* Same hazard, same reason: a utility named in an e2e comment becomes real CSS, and these files
-+    discuss design-system class names in prose. Measured: a `mt-[137px]` in an a11y.e2e.ts comment
-+    reached the emitted stylesheet. */
-+ @source not '../e2e/**';
-```
+The fix is one `@source not` line beside the existing one, applied in **Task 4, steps 1 and 2** —
+first, before the third file is written, and verified by re-running the probe above and confirming
+the canary still reports all 10 selectors present.
