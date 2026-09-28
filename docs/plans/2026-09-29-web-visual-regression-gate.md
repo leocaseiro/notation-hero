@@ -1967,18 +1967,42 @@ git commit -m "docs: record the web VR lane and rename the Playwright artifacts 
       the VR tests for it"_ — needs no template edit; it simply starts applying to `web/` now.
 - [ ] No `## Pulumi preview` section is needed: nothing under `infra/` changes.
 
-## Flagged, deliberately out of scope
+## Flagged — one pre-existing hazard, measured
 
-One hazard found while grounding this plan, not fixed here because it is pre-existing and fixing it
-is not traceable to the spec. Raise it with the maintainer:
+Found while grounding this plan. It is pre-existing, so fixing it is not traceable to the spec and it
+is **not** in the task list above. It is written down because this plan adds a third file of the
+shape that trips it.
 
-**Tailwind auto-detects sources under `web/`, and `web/e2e/` is not excluded.**
-`web/app/globals.css` carries `@source not '../scripts/**'` for exactly one reason, written in the
-file: `scripts/assert-design-system-css.mjs` names the very utilities it checks for, so scanning it
-makes Tailwind generate them and the guard can never see them go missing (verified there — without
-that line the guard reported 6 of 10 missing instead of 9). `web/e2e/` has the same shape and no such
-line: `a11y.e2e.ts` and `player.e2e.ts` already discuss utility class names in prose, and this plan
-adds a third file that does. No `REQUIRED_SELECTORS` entry is named in any of them **today**, so
-there is no live bug — but the next comment that mentions one would silently defeat the NH-315 guard.
-A one-line `@source not '../e2e/**';` would close it. Unverified: I did not run a build to confirm
-`web/e2e/` is in fact scanned.
+**Tailwind scans `web/e2e/`, and nothing excludes it.** `web/app/globals.css` carries
+`@source not '../scripts/**'` for exactly one reason, stated in the file:
+
+```text
+Tailwind also auto-detects sources under web/, which would include scripts/. Keep it out, or
+the build guard defeats itself: scripts/assert-design-system-css.mjs names the very utilities
+it checks for, so scanning it makes Tailwind GENERATE them and the guard can never see them
+go missing. Verified — without this line the guard reports 6 of 10 missing instead of 9 of 10.
+```
+
+`web/e2e/` has the same shape and no such line. **Measured, not reasoned:** a `mt-[137px]` planted in
+a _comment_ in `web/e2e/a11y.e2e.ts` — a utility that appears nowhere else in the repo — came out in
+the emitted stylesheet after `pnpm --filter @notation-hero/web run build`:
+
+```text
+web/.next/static/chunks/42d2m7n8ftnh3.css
+```
+
+So a class name mentioned in a `web/e2e` comment becomes real CSS. `a11y.e2e.ts` and `player.e2e.ts`
+already discuss utility names in prose, and Task 4 adds a third file that does. **No
+`REQUIRED_SELECTORS` entry is named in any of them today, so there is no live bug** — but the next
+comment that mentions one silently defeats the NH-315 guard, and that guard is one of the two things
+holding shut the failure where production served the design system unstyled.
+
+The fix is one line beside the existing one:
+
+```diff
+  @source not '../scripts/**';
++ /* Same hazard, same reason: a utility named in an e2e comment becomes real CSS, and these files
++    discuss design-system class names in prose. Measured: a `mt-[137px]` in an a11y.e2e.ts comment
++    reached the emitted stylesheet. */
++ @source not '../e2e/**';
+```
