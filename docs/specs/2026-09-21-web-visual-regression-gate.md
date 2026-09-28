@@ -227,10 +227,10 @@ every shot is a file that moves whenever `client/` changes or AlphaTab is upgrad
 lane already reaches move into `web/e2e/player-states.ts`: one exported function per state,
 performing the `goto`, clicks and file-picks that _reach_ it and returning immediately. Each lane
 keeps its own readiness waits, because the two lanes genuinely disagree about them — the pixel lane
-needs the Skeleton's stalled module to never resume while `a11y.e2e.ts:133-136` resumes after
+needs the Skeleton's stalled module to never resume while `a11y.e2e.ts:288` resumes after
 5 000 ms (so the Skeleton helper takes its stall duration as an argument, and must branch rather
 than pass `Infinity` to `setTimeout`, which fires immediately), and the long-score state needs the
-toast **painted** for axe (`settleToasts`, `a11y.e2e.ts:83-91`) but **gone** for a screenshot. Both
+toast **painted** for axe (`settleToasts`, `a11y.e2e.ts:224-243`) but **gone** for a screenshot. Both
 lanes import it, and `a11y.e2e.ts` is refactored to call it rather than keep its own copy of the
 navigation.
 
@@ -279,8 +279,9 @@ await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
 `Popover.tsx:44` sets that `data-slot` on the portalled panel, so no new test hook is needed, and
 `Popover` shares `Tooltip`'s `isolate z-50` Positioner plus portalled Popup shape — which is why the
 tooltip wait's stated reason, the open animation and the portal's position, transfers unchanged. As
-merged, the panels carry `data-testid="settings-popover"` (`web/app/play/PlayerShell.tsx:139`) and
-`data-testid="tracks-popover"` (`:321`). Their `client/` halves — `Accordion`, `SettingRow`,
+merged, the panels carry `data-testid="settings-popover"` (`web/app/play/SettingsPopover.tsx:139`)
+and `data-testid="tracks-popover"` (`web/app/play/TracksPopover.tsx:321`) — each in its own
+component file, not in `PlayerShell.tsx`. Their `client/` halves — `Accordion`, `SettingRow`,
 `TrackRow` and `MasterRow`, the mixer's foot row — each carry their own Storybook baselines already;
 what these two shots would add is the composition, which no `client/` story can see.
 
@@ -310,7 +311,7 @@ The bundled-beat screen is further under again: its `bg-rail` strip against the 
 scores `20`, and its `bg-panel` transport footer against that background `5`. Its **header is not**
 one of these steps — the header paints no background of its own. Each shot therefore reads the
 surface directly before the compare, the way the accessibility lane already polls `getComputedStyle`
-(`web/e2e/a11y.e2e.ts:87`, `:173`) and the way the tempo-percentage caveat under Risks already
+(`web/e2e/a11y.e2e.ts:239`, `:327`) and the way the tempo-percentage caveat under Risks already
 prescribes:
 
 ```ts
@@ -327,13 +328,27 @@ const panel = page.getByTestId('engine-error');
 await expect
   .poll(() =>
     panel.evaluate((el) => {
+      const parent = el.parentElement;
       const own = getComputedStyle(el).backgroundColor;
       return (
-        own !== getComputedStyle(el.parentElement).backgroundColor && own !== 'rgba(0, 0, 0, 0)'
+        parent !== null &&
+        own !== getComputedStyle(parent).backgroundColor &&
+        own !== 'rgba(0, 0, 0, 0)'
       );
     }),
   )
   .toBe(true);
+
+// Bundled beat: the rail and the transport footer must each stay distinct from the page behind
+// them. Both hooks are added by this work — neither element carries a test id today.
+const distinct = (testId: string) =>
+  page.getByTestId(testId).evaluate((el) => {
+    const parent = el.parentElement;
+    const own = getComputedStyle(el).backgroundColor;
+    return parent !== null && own !== getComputedStyle(parent).backgroundColor;
+  });
+await expect.poll(() => distinct('player-rail')).toBe(true);
+await expect.poll(() => distinct('transport-row')).toBe(true);
 ```
 
 **Both assertions compare two values read through the same serializer, and that is deliberate.** A
@@ -432,8 +447,8 @@ warm run. Engine error is the only one of the three whose source line states a c
 would otherwise drop, so it carries it across; the landing and Skeleton sources name none.
 
 **The long-score shot needs one more wait, and it is not optional.** Opening a file raises a Sonner
-toast — `toast.loading('Opening …')` then `toast.success('… loaded')` (`PlayerShell.tsx:432`
-and `:467`) — sharing one id, `notation-load`. Neither sets a duration, so each falls back to Sonner's
+toast — `toast.loading('Opening …')` then `toast.success('… loaded')` (`PlayerShell.tsx:792`
+and `:843`) — sharing one id, `notation-load`. Neither sets a duration, so each falls back to Sonner's
 `TOAST_LIFETIME` of 4 000 ms — but that clock does **not** start at the pick. Sonner exempts a
 `loading` toast from the close timer entirely (`sonner@2.0.7`, `dist/index.mjs:582`), and the id
 keeps the same component instance (`:1146`), so the 4 000 ms is armed by the `toast.success` that
@@ -473,7 +488,8 @@ await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 10_0
 Both of the long-score waits name their own ceiling, for the same reason every wait above does: bare
 `expect` falls back to 5 000 ms, and the toast's measured life reaches 4 129 ms, so the default would
 leave 871 ms of slack — measured at `--workers=1`, while CI runs several. The `data-file` assertion
-takes the 30 000 ms its source line (`web/e2e/player.e2e.ts:191`) already uses, since after the
+takes the 30 000 ms its source line already uses (`web/e2e/player.e2e.ts:196`, with the
+`timeout: 30_000` literal on `:197`), since after the
 loading-bar wait it is the gate on parse completion.
 
 One thing the first baseline will contain: the long-score shot shows the **Play** tooltip, because a
@@ -531,7 +547,7 @@ Linux-only, exactly as `client/` does it: `*-chromium-linux.png` committed, darw
 ### CI — `web/`'s whole browser lane moves into the container
 
 `web/` is built more than once per CI run today, and this must not add another. Two places build
-it: the `build` job (`pnpm run build` at `ci.yml:176`, which fans out to every package) and the
+it: the `build` job (`pnpm run build` at `ci.yml:187`, which fans out to every package) and the
 `e2e` job's Playwright `webServer`. Bolting a VR step onto the existing `vr` job, or adding a
 separate `web-vr` job, would each add a third.
 
@@ -614,12 +630,12 @@ once a step fails, and `web/` gets no hosted diff page as a fallback:
     if-no-files-found: ignore
 ```
 
-Both sibling uploads carry that condition, that reason and that SHA pin already (`ci.yml:224` and
-`:399`), and both set the same `retention-days` and `if-no-files-found`. The `path:` spellings are the
+Both sibling uploads carry that condition, that reason and that SHA pin already (`ci.yml:235` and
+`:410`), and both set the same `retention-days` and `if-no-files-found`. The `path:` spellings are the
 ones `tooling/workflow-guards.test.mjs:47` and `:48` pin, trailing slash included.
 
 **Two comments need correcting rather than deleting, and one of them is not in `ci.yml`.** The
-`e2e` job's header (`ci.yml:374-380`) describes a job that is about to stop running `web/` at all,
+`e2e` job's header (`ci.yml:385-391`) describes a job that is about to stop running `web/` at all,
 so four of its clauses go false at once: "two Playwright lanes" becomes one, the whole "web/: the
 built Next.js app (`next build` then `next start`)" sentence moves to the new job, "which is the
 only gate over the product's own UI" now points at a gate that lives elsewhere, and "Each package
@@ -702,11 +718,13 @@ out the command that changes.
 - **Baseline churn.** Every `client/` visual change and every AlphaTab upgrade moves these
   baselines too. Nine shots is the mitigation; adding a tenth should have to justify itself.
 - **The shot list was re-derived from PR #170 and re-checked after it merged.** Every element it
-  names is on `master`: the rail at `PlayerShell.tsx:600` (`w-20 … lg:w-24`, `bg-rail`), the header's
-  layer at `:537` (`relative z-10`) over a `h-16` header, the ghost Open-file button at
-  `OpenFileControl.tsx:118` with its tooltip, `back-home` in the header, and the `--rail`, `--panel`
-  and `--elevate` tokens in `client/src/styles.css`. Line numbers drift — re-read
-  `web/app/play/PlayerShell.tsx` before writing the lane rather than trusting them.
+  names is on `master`: the rail at `PlayerShell.tsx:1033` (`w-20 … lg:w-24`, `bg-rail`), the
+  header's layer at `:959` (`relative z-10`) over a `h-16` header, the ghost Open-file button at
+  `OpenFileControl.tsx:126` with its tooltip, `back-home` in the header, and the `--rail`, `--panel`
+  and `--elevate` tokens in `client/src/styles.css`. **Line numbers drift, and not only in this
+  file.** Every citation in this document was re-taken against `master` on 2026-09-29, after four
+  merged PRs had moved them by between 5 and 433 lines — re-read the source before writing the
+  lane rather than trusting any line number here, in any file.
 - **The shots run in parallel, like every other test here — decided 2026-09-26.** The 60-run
   measurement was taken at `--workers=1`, so these particular shots are untested in parallel. The
   decision rests on precedent instead: `client/playwright.config.ts` sets `fullyParallel: true` with
@@ -715,7 +733,17 @@ out the command that changes.
   blip. The one honest difference is that `client/`'s shots are small isolated Storybook components
   while these are full pages driving a real engine and a soundfont download — heavier, more moving
   parts. If that difference bites, `fullyParallel: false` on the VR project costs about 25 seconds
-  for the whole lane and is a one-line change.
+  for the whole lane and is a one-line change — but read what it actually does first. It serialises
+  only the shots **within each file**; the 91 behaviour tests keep running concurrently against the
+  same server, which is where the contention comes from, so it does not restore the conditions the
+  60-run study was measured under. Playwright's first-class remedy for that is `dependencies:
+['e2e']` on the `chromium` project, measured under one unscoped invocation and one `webServer`:
+  both behaviour files finish, **then** the shots run. Pair it with `fullyParallel: false` — or
+  `workers: 1`, which `TestProject` does accept — to serialise the shots among themselves. Its
+  accepted cost: a red behaviour test makes the pixel project report _"did not run"_. The run is
+  red so merge still blocks, but it compares zero pixels, and `retries: 2` makes a persistent
+  failure cost the whole pixel lane. The separate `web-vr` job below stays the documented fallback,
+  not the first remedy.
 - **Moving the 91 existing `web/` browser tests into the container may change their timing.** This
   is the one real risk in the CI decision. If it materializes, fall back to a separate `web-vr`
   container job and accept the second build.
@@ -772,11 +800,23 @@ it was planned rather than smuggled in.
 - `web/e2e/player-states.ts` — **new**; one exported function per player state, imported by both
   browser lanes.
 - `web/e2e/a11y.e2e.ts` — refactored to import those functions instead of carrying its own copies.
+  That reaches further than the six states with a VR counterpart: the three with none — narrow
+  700 px (`:341`), the Settings popover (`:353`) and the Tracks popover (`:371`) — each reach
+  `/play` by hand today (`:343`, `:354`, `:372`), and two of them reuse navigations already being
+  extracted. Their `goto`s move into `player-states.ts` as well. Only the navigation moves; this
+  adds no popover shots, and each case keeps its own readiness waits per the rule above.
   Its comment at `:111-113` also has stale figures: it says the sample renders 185 px, `Punk.gp`
   1,026 px and the box 420 px, where the measured values at this viewport are 576, 852 and 576.
   The conclusion it draws still holds; the three numbers do not.
   No change to what it asserts.
-- `web/e2e/*.vr.ts` — **new**; the nine shots themselves. `web/` contains no `*.vr.ts` file today,
+- `web/e2e/*.vr.ts` — **new**; the nine shots themselves. Each calls `failOnUnexpectedPageErrors()`
+  at module scope next to its imports, as `player.e2e.ts:10` and `a11y.e2e.ts:8` already do. This is
+  a requirement, not a nicety: `web/e2e/toast-occlusion.e2e.ts` does **not** install it, so a
+  `web/e2e` file can silently omit it — and NH-335, an uncaught `TypeError` out of the notation
+  engine's worker, went unnoticed for a whole merged PR. A screenshot comparison is even less likely
+  than a behaviour assertion to notice a throw. Its allowance is origin-scoped to the engine bundle,
+  so the deliberately-broken Skeleton and engine-error states still pass. `web/` contains no
+  `*.vr.ts` file today,
   and **nothing fails if the first one never arrives.** The scoped `pnpm --filter
 @notation-hero/web run test:vr` does exit 1 with "No tests found" — measured — but CI runs
   `playwright test` unscoped, and Playwright raises that error only when the WHOLE root suite is
@@ -789,7 +829,11 @@ it was planned rather than smuggled in.
 
   **Counting filenames is not enough.** A file can be present and still compare nothing: empty, all
   `test.skip`, or carrying no `toHaveScreenshot` at all. Playwright's `forbidOnly` catches `.only`;
-  nothing in this repo catches `.skip` or `.fixme`, and the same file's own comment at `:38-39` warns
+  nothing in this repo catches `.skip` or `.fixme`. The pattern allows `describe.` deliberately:
+  the narrow-viewport shot needs a `test.describe()` wrapper (see above), so `test.describe.skip(`
+  is the natural way to park it and a pattern anchored straight to `test.` would miss it. The
+  trailing `\(` stays — without it the assertion matches any prose occurrence, a snapshot filename
+  or a commented-out line. The same file's own comment at `:38-39` warns
   that an unanchored presence check stays green against a commented-out step. **Nor is the shot
   files' own content enough**: the `chromium` project is what makes them run, and deleting it — or
   mistyping its `testMatch` — leaves an unscoped run exiting **0** with every filename still in
@@ -804,7 +848,11 @@ it was planned rather than smuggled in.
 
     const sources = shots.map((f) => readFileSync(new URL(f, dir), 'utf8'));
     shots.forEach((f, i) => {
-      assert.doesNotMatch(sources[i], /\btest\.(skip|fixme)\(/, `${f} disables a shot`);
+      assert.doesNotMatch(
+        sources[i],
+        /\btest\.(?:describe\.)?(?:skip|fixme)\s*\(/,
+        `${f} disables a shot`,
+      );
     });
     assert.ok(
       sources.some((src) => src.includes('toHaveScreenshot(')),
@@ -820,6 +868,12 @@ it was planned rather than smuggled in.
   `readFileSync` and `fileURLToPath` are already imported in that file; `readdirSync` is the one
   addition to its `node:fs` import.
 
+- `web/app/play/PlayerShell.tsx` — `data-testid="player-rail"` on the `bg-rail` `<aside>` (`:1033`).
+  The rail carries no test hook today, and the bundled-beat surface assertion needs one.
+- `web/app/play/TransportRow.tsx` — `data-testid="transport-row"` on the `bg-panel` footer (`:102`).
+  Same reason. A class-based locator was rejected: `PlayerHeader.tsx:193` also carries `bg-panel`,
+  so `.bg-panel` alone is ambiguous, and pinning a test to a styling utility is not the idiom the
+  ghost-hover and engine-error shots already use.
 - `web/playwright.e2e.config.ts` — the `projects` array splitting `e2e` from `chromium`, plus its
   header comment, which still says no VR job covers `web/`.
 - `web/package.json` — `test:e2e` and `test:e2e:ui` scoped to `--project=e2e`, plus the new
@@ -855,7 +909,10 @@ it was planned rather than smuggled in.
   rewritten to the new job's actual run line, `pnpm --filter @notation-hero/web exec playwright test
 --config=playwright.e2e.config.ts` — note that is not `run test:e2e` either, so it is a rewrite
   rather than a repoint. `:44` has nothing left in `ci.yml` to point at, so it is **replaced** by an
-  assertion pinning the new job's `container: mcr.microsoft.com/playwright:v1.61.1-noble` line: that
+  assertion pinning the new job's `container: mcr.microsoft.com/playwright:v1.61.1-noble` line —
+  **sliced to the `web` job's own block**, the way that file's existing job-sliced test at `:65-73`
+  already does. The scoping is what makes the pin real: that exact literal already appears in
+  `ci.yml` for the `vr` job, so an unscoped assertion passes before the new job exists at all. The
   pin is what makes "no install needed" true, and nothing in the suite pins it today. The test
   case is even named _"the e2e job runs the web Playwright lane, not only the client one"_, which
   stops being what the workflow does. Two more (`:47`, `:48`) require the literals
