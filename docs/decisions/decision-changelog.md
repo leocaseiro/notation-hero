@@ -11,6 +11,43 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-09-28 — The transport values persist; the playback speed deliberately does not (NH-295)
+
+Four values a drummer sets every session never survived a reload, while a font picked once months
+ago did. They are `AlphaTabApi` **properties**, not fields in AlphaTab's `Settings` JSON —
+`PlayerSettings` declares no field for any of them on the pinned 1.8.4 or on 1.9.0, and alphaTab's
+own tutorial sets them by plain assignment and persists nothing — so they could never ride the
+settings document the other preferences use. Fenced off deliberately in Plan C
+(`docs/plans/2026-09-13-v0c-popovers-plan.md:129`) and pointed at NH-295, which this settles.
+
+**Manual approvals (leocaseiro):**
+
+- **`metronomeVolume`, `countInVolume`, `isLooping`, `masterVolume` → persist GLOBALLY**, under
+  their own `localStorage` key (`notation-hero.transport`), reusing `settings-storage`'s reader for
+  the parse, shape check, per-key merge and range clamp. These are how you like to practise: on
+  today means on tomorrow, for every song.
+- **`playbackSpeed` → NOT persisted; resets to 100% on every load.** It is the one changed per
+  _passage_ rather than per session — 60% for a hard bar is wrong for the next song — so global
+  would be actively wrong. Per-score persistence is the intended end state, deferred until the
+  local-file player has a score identity (file name or content hash) to key on.
+
+**Two claims corrected by measurement rather than reading, both recorded so they are not re-derived:**
+
+- **No per-rebuild re-push is needed, and none should be added.** A first draft added one, on the
+  theory that `EnabledAutomatic` resolves per score and `_setupOrDestroyPlayer` rebuilds the player
+  when the resolved mode changes. Driving Playback source from Automatic → No playback → Automatic
+  in a real browser moved `actualPlayerMode` 2 → 0 → 2, so the player genuinely was rebuilt — and
+  all four values survived. AlphaTab puts an `AlphaSynthWrapper` between the api and the real
+  player which outlives every rebuild and re-applies these to each new instance, which its own
+  source comment states is its purpose.
+- **The restore must not read `localStorage` during render.** The server has no `localStorage`, so
+  a value read in the first render disagrees with the HTML the server sent, and React keeps the
+  server's attribute rather than patching it. A draft that did this left all three transport
+  toggles at `aria-pressed="false"` for the whole session while the engine behind them was sounding
+  a metronome — and every unit test, ESLint and `tsc` stayed green throughout. The restore keys on
+  the api's arrival, which is always after hydration, and an e2e case now holds it (verified to fail
+  when the render-time read is put back).
+
 ### 2026-09-24 — The 44px hit-area gate now covers both popovers, with two deliberate exceptions (NH-291)
 
 `expectHitAreas` (`web/e2e/a11y.e2e.ts`) enforces this repo's own 44px hit-area bar — stricter than
