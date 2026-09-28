@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   DEFAULT_TRANSPORT_VALUES,
   loadStoredTransport,
+  persistTransport,
   readStoredTransport,
   serializeTransport,
   TRANSPORT_STORAGE_KEY,
@@ -167,5 +168,67 @@ describe('readStoredTransport', () => {
     // single load.
     expect(loaded.reset).toBe(false);
     expect(loaded.repaired).toEqual([]);
+  });
+});
+
+describe('persistTransport', () => {
+  beforeEach(() => {
+    globalThis.localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // Why this function reads storage instead of taking all four values from its caller. A second
+  // open /play tab holds its own React state; if this wrote a whole document from THAT state, the
+  // tab that wrote last would silently revert the other. Here the stored document carries a
+  // metronome and a master volume this caller never saw, and a Loop change must leave all three of
+  // them exactly as they are.
+  it('merges the one changed value into the document already in storage', () => {
+    globalThis.localStorage.setItem(
+      TRANSPORT_STORAGE_KEY,
+      serializeTransport({
+        metronomeVolume: 1,
+        countInVolume: 0.5,
+        masterVolume: 0.3,
+        isLooping: false,
+      }),
+    );
+
+    persistTransport({ isLooping: true });
+
+    expect(readStoredTransport().values).toEqual({
+      metronomeVolume: 1,
+      countInVolume: 0.5,
+      masterVolume: 0.3,
+      isLooping: true,
+    });
+  });
+
+  // A first visit has no document to merge into, so the other three come from the shipped defaults
+  // rather than from nothing — the write must still be a COMPLETE document.
+  it('writes a complete document when nothing is stored yet', () => {
+    persistTransport({ masterVolume: 0.25 });
+
+    expect(readStoredTransport().values).toEqual({
+      ...DEFAULT_TRANSPORT_VALUES,
+      masterVolume: 0.25,
+    });
+  });
+
+  // The other half of the pair with readStoredTransport's catch above, and the one the toggles
+  // depend on: private browsing and a full quota both throw from setItem. Losing persistence is
+  // survivable, losing the transport is not — an uncaught throw here propagates out of the click
+  // handler that called it, so pressing Loop would break the button instead of just failing to
+  // remember it.
+  it('swallows a storage write the browser refuses', () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    });
+
+    expect(() => {
+      persistTransport({ isLooping: true });
+    }).not.toThrow();
   });
 });
