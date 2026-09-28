@@ -33,7 +33,7 @@ It was never revisited.
 
 **Grounding before deciding:**
 
-- The working prototype already implements this lifecycle informally — `~/Sites/alphaTabWebsite`
+- The working prototype already implements this lifecycle informally — the local alphaTab fork
   (`rhythm-game` branch: `useRhythmGameScore`, `practice-mode-settings`). Read the real states
   there first (per [[alphatab-fork-reference]]).
 - It ties to the **AWS interview-prep priority** (spike §F1): XState would be a portfolio talking

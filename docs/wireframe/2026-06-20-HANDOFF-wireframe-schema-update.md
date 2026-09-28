@@ -5,7 +5,7 @@ status: handoff — start a fresh session to update the wireframe for the Group 
 worktree: wireframe-pattern-lesson-model
 branch: docs/wireframe-pattern-lesson-model
 pr: https://github.com/leocaseiro/notation-hero/pull/52
-home: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-20-HANDOFF-wireframe-schema-update.md
+home: .claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-20-HANDOFF-wireframe-schema-update.md
 ---
 
 # Handoff — update the wireframe for the Group D schema (track · media · per-instrument difficulty)
@@ -13,7 +13,7 @@ home: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-
 ## 0 · How to start (paste into a fresh Claude Code session)
 
 ```
-Working directory: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model
+Working directory: .claude/worktrees/wireframe-pattern-lesson-model
 Read docs/wireframe/2026-06-20-HANDOFF-wireframe-schema-update.md (full context), then
 docs/wireframe/2026-06-20-group-d-spec.md and docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql.
 
@@ -57,10 +57,10 @@ Update `docs/wireframe/index.html` (the catalog wireframe, already on the locked
 
 ## 4 · Key files (full paths)
 
-- Wireframe to update: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/index.html`
-- Group D spec: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-20-group-d-spec.md`
-- Group D DDL (SNA sample data): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql`
-- SD ledger (Group D reconciliation): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md`
+- Wireframe to update: `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/index.html`
+- Group D spec: `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-20-group-d-spec.md`
+- Group D DDL (SNA sample data): `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-20-group-d-track-media-difficulty-draft.sql`
+- SD ledger (Group D reconciliation): `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md`
 - Tonal/drum spec + draft: `.../docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md` · `.../2026-06-19-tonal-drum-schema-draft.sql`
 - PR: <https://github.com/leocaseiro/notation-hero/pull/52>
 
@@ -77,7 +77,7 @@ Poke-around queries are at the bottom of the Group D `.sql`.
 ## 6 · Follow-ups (NOT this wireframe task — separate threads)
 
 - **SD-25 — searchable per-instrument technique facet** (guitar/bass/piano `techniques[]` like `drum_profile.techniques[]`; reconcile with drums). Pairs with Rockschool.
-- **Rockschool grounding** — read the 3 syllabi (`~/Sites/notation-hero-resources/Rockschool/`) to calibrate the 0–10 levels + fix the per-instrument technique vocabulary. (Leo's order: do this AFTER the delta check — which is done — and before the implementation plan.)
+- **Rockschool grounding** — read the 3 syllabi (`<resources-repo>/Rockschool/`) to calibrate the 0–10 levels + fix the per-instrument technique vocabulary. (Leo's order: do this AFTER the delta check — which is done — and before the implementation plan.)
 - **SD-26 — instrument family grouping** (guitar→electric/acoustic; strings/wind/brass).
 - **SD-15 unification** — fold per-section voicing into the D-3 grid cell: `data.sections[].tracks[] = {track, level, techniques[], voices[]}`.
 - **gp-embedded → S3 extraction** — ingest policy (extract the embedded `.gp` audio to S3 vs keep embedded).

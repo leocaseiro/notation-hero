@@ -1,12 +1,12 @@
 # MIDI-note → notation mapping (multi-zone → one note) — prior art
 
-|                        |                                                                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| **Date documented**    | 2026-06-18                                                                                                                 |
-| **Origin**             | `drum-tutor-clone` phase (former name of Notation Hero)                                                                    |
-| **Status**             | Prior art — feature/product research, drafted but never implemented in production                                          |
-| **Related spikes**     | `webmidi-input-ios-bridge` (the MIDI input bridge — do NOT re-derive here), `game-scoring-engine`, `alphatab-integration`  |
-| **Original plan docs** | `~/Sites/alphaTabWebsite/MIDI_MAPPING_PLAN_SUMMARY.md` + 5 files (~2,200 lines) under `src/components/AlphaTabRhythmGame/` |
+|                        |                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| **Date documented**    | 2026-06-18                                                                                                                |
+| **Origin**             | `drum-tutor-clone` phase (former name of Notation Hero)                                                                   |
+| **Status**             | Prior art — feature/product research, drafted but never implemented in production                                         |
+| **Related spikes**     | `webmidi-input-ios-bridge` (the MIDI input bridge — do NOT re-derive here), `game-scoring-engine`, `alphatab-integration` |
+| **Original plan docs** | `<alphatab-fork>/MIDI_MAPPING_PLAN_SUMMARY.md` + 5 files (~2,200 lines) under `src/components/AlphaTabRhythmGame/`        |
 
 ## TL;DR
 
@@ -127,7 +127,7 @@ Mapping is a thin resolve step **in front of** the existing matcher — it does 
 ## Re-verify before building (2026)
 
 1. **Note numbers per kit** — the plan only _names_ presets; it never publishes full per-pad note tables for Roland TD-50/TD-17/TD-27 or Yamaha DTX. And the ride mapping is internally inconsistent (51/52/53 vs 51/53/59/93). **Re-derive every preset against real kit MIDI implementation charts / the GM percussion map.**
-2. **AlphaTab version + drum API** — prior art used `@coderline/alphatab ^1.8.1` (MPL-2.0 fork at `~/Sites/alphaTabWebsite`, branch `rhythm-game`). Re-check current version, the percussion note API, and the overlay/`boundsLookup` positioning before trusting any note constants.
+2. **AlphaTab version + drum API** — prior art used `@coderline/alphatab ^1.8.1` (MPL-2.0 fork at the local alphaTab fork, branch `rhythm-game`). Re-check current version, the percussion note API, and the overlay/`boundsLookup` positioning before trusting any note constants.
 3. **Stack re-map (the big one)** — the plan targets React Context + LocalStorage + `settingsSyncEmitter`. The clean-slate stack is **Vite SPA + TanStack + Dexie (offline-first) + oRPC + Drizzle**. Re-map: `MidiMappingContext` → TanStack/Dexie state; LocalStorage → Dexie; cloud sync → oRPC + Drizzle. Do **not** copy the React Context / LocalStorage mechanics verbatim.
 4. **Cloud persistence home** — confirm per-user MIDI mapping lives in the DynamoDB **user-profile** store (per-user data), not the catalog. Cloud sync is **post-M1** (Cognito auth deferred to ~Sept 2026), so LocalStorage/Dexie is the v1 reality.
 5. **MIDI input bridge** — getting the raw zone notes (Web MIDI, iPad Safari, Capacitor CoreMIDI) is covered by **`webmidi-input-ios-bridge`**; re-verify platform support there, not here.
@@ -137,8 +137,8 @@ Mapping is a thin resolve step **in front of** the existing matcher — it does 
 
 ## Sources / quotes
 
-- **`~/Sites/alphaTabWebsite/MIDI_MAPPING_PLAN_SUMMARY.md`** (pasted into session `53466813-…` / worktree `pensive-boyd-6d17e3`) — the executive summary of the 5-file, 2,200-line plan. Source of the problem statement, `MidiMapping` interface, scoring flow, component breakdown, LocalStorage key, success criteria ("MIDI 51, 52, 53 all score for notation note 51").
+- **`<alphatab-fork>/MIDI_MAPPING_PLAN_SUMMARY.md`** (pasted into session `53466813-…` / worktree `pensive-boyd-6d17e3`) — the executive summary of the 5-file, 2,200-line plan. Source of the problem statement, `MidiMapping` interface, scoring flow, component breakdown, LocalStorage key, success criteria ("MIDI 51, 52, 53 all score for notation note 51").
 - The 5 underlying docs (referenced, located at `src/components/AlphaTabRhythmGame/`): `MIDI_MAPPING_INDEX.md` (373L), `MIDI_MAPPING_QUICK_REF.md` (181L), `MIDI_MAPPING_PLAN.md` (503L), `MIDI_MAPPING_VISUAL_GUIDE.md` (455L), `MIDI_MAPPING_IMPLEMENTATION_SUMMARY.md` (275L).
 - **scope.md** (drum-tutor-clone, `claude/pensive-boyd-6d17e3`), lines 54–55 — the original user requirement, incl. the "51, 53, 59 and 93 → ride 51" example and the pedal-hi-hat special case.
 - **Design doc** `docs/design-stack.md` (office-hours, 2026-06-03) — the refined v1 features line: _"User-editable MIDI mapping UI … Stored per-user in DynamoDB, cached locally."_ and the doc-review finding flagging the missing mapping UI (_"Scope line 54 demands user-editable MIDI-note→notation mapping … call out a mapping table stored in user profile (S3 or local) and a UI to edit it"_).
-- **Project resume note** (session `53466813-…`) — _"MIDI mapping feature plan | `~/Sites/alphaTabWebsite/MIDI_MAPPING_PLAN_SUMMARY.md`"_ and the build-order plan: _"Week 3-4 — MIDI mapping feature: Implement … `MidiMappingContext`, `MidiMappingSettings`, `MidiMappingPresets`. LocalStorage persistence first; cloud sync later when AWS is wired."_
+- **Project resume note** (session `53466813-…`) — _"MIDI mapping feature plan | `<alphatab-fork>/MIDI_MAPPING_PLAN_SUMMARY.md`"_ and the build-order plan: _"Week 3-4 — MIDI mapping feature: Implement … `MidiMappingContext`, `MidiMappingSettings`, `MidiMappingPresets`. LocalStorage persistence first; cloud sync later when AWS is wired."_

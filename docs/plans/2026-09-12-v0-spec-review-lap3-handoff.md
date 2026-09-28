@@ -19,8 +19,8 @@ not re-litigate settled questions.
 
 ## 1. How to run lap 3
 
-1. Read `/Users/leocaseiro/Sites/spec-triage-loop/skills/_shared/review-loop.md` (loop shape) and
-   `/Users/leocaseiro/Sites/spec-triage-loop/skills/triage/SKILL.md` (how to ask). The person decides
+1. Read `<spec-triage-loop>/skills/_shared/review-loop.md` (loop shape) and
+   `<spec-triage-loop>/skills/triage/SKILL.md` (how to ask). The person decides
    every finding through a picker, three per round, with chunks written in the same message.
 2. **Review.** Classify the artifact as `plan` with origin `none`. Dispatch the six reviewers
    (`coherence`, `feasibility`, `product-lens`, `design-lens`, `scope-guardian`, `adversarial`) as

@@ -4,13 +4,13 @@ created_at: '2026-09-14T11:33:22Z'
 title: 'v0 Transport plan review — handoff'
 summary: 'Six-persona doc review of the v0 Transport plan (Plan B); 23 findings applied and pushed, three AlphaTab spikes banked, four open items ticketed as NH-294..297.'
 keywords: ['nh-291', 'v0-transport', 'plan-b', 'ce-doc-review', 'alphatab', 'base-ui', 'handoff']
-cwd: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
+cwd: '.claude/worktrees/alphatab-spike'
 resume_focus: 'Plan B is reviewed and green. Next: it cannot start until Plan A lands (engine context, /play screen, Playwright lane). Either continue reviewing Plan A/C, or begin Task 1 once Plan A is merged.'
 repository: 'leocaseiro/notation-hero'
 repo_root_sha: 'acf677074bd5'
 branch: 'spike/alphatab-nextjs-poc'
 head: '3a06db6e'
-worktree_path: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
+worktree_path: '.claude/worktrees/alphatab-spike'
 ---
 
 # v0 Transport plan review — handoff
@@ -74,7 +74,7 @@ Four were confirmed by running the real synth headless (a fake `ISynthOutput` in
    `isLooping` — alphaTab's own docs show direct assignment. The fork calls it defensively.
 
 **The spike harnesses are machine-local and will vanish.** They live at
-`/tmp/claude-501/-Users-leocaseiro-Sites-notation-hero/4602cebe-4ab7-479e-b410-7633ab4ebc0f/scratchpad/`
+the session scratchpad directory under `/tmp`
 in one subdirectory per spike. `/tmp` is OS-managed. The _conclusions_ survive in Global
 Constraints; the harnesses do not. Rebuild them if you need to re-measure.
 
@@ -83,11 +83,11 @@ Constraints; the harnesses do not. Rebuild them if you need to re-measure.
 Two of the maintainer's own codebases were surveyed and should be consulted before re-deciding any of
 this:
 
-- **`~/Sites/alphaTabWebsite`** (branch `rhythm-game`) — the fork. Uses `score.tempo × playbackSpeed`
+- **the local alphaTab fork** (branch `rhythm-game`) — the fork. Uses `score.tempo × playbackSpeed`
   computed at render time; never reads the event's tempo fields; has no tempo-automation handling at
   all. Its compact toolbar shows `120 BPM`, its expanded panel shows `120 BPM (100%)` — a two-tier
   disclosure, not "always show the percentage".
-- **`~/Sites/tablatures`** (Svelte, alphaTab 1.8.1) — the A–B loop reference. Stores the loop as **bar
+- **`a local clone of tablatures`** (Svelte, alphaTab 1.8.1) — the A–B loop reference. Stores the loop as **bar
   indices** and derives `playbackRange` ticks via `api.tickCache.masterBars` with repeat expansion
   (`barToExpandedRange`, `barSpanBetweenMs`), which is what makes a loop survive repeat sections and alternate endings. It
   also carries `tests/loop-repeat.spec.ts` (~22 Playwright cases). **Worth borrowing when A–B ships**;
@@ -189,14 +189,14 @@ Not in `AGENTS.md` or `CLAUDE.md`; the maintainer stated them mid-review and the
   applied, both minimal. Where a diff is genuinely impossible (a missing thing, a process question, a
   judgment call), give a concrete worked example instead: specific inputs, what goes wrong, what the fix
   produces. _"I understand far more from examples than from prose, and examples remove ambiguity."_
-  They are improving their own tooling for this at `~/Sites/spec-triage-loop` and declined a memory
+  They are improving their own tooling for this at `the spec-triage-loop skill repo` and declined a memory
   write for it.
 - **Standing authorization, tests and VR:** where a change is needed to make tests or visual-regression
   baselines pass, apply the best option without confirmation unless genuinely unsure or there are
   competing options.
 - **Standing authorization, accessibility:** apply a11y fixes without asking when confident they meet
   WCAG AA or better. Only ask when there are multiple valid approaches.
-- **Check the fork first.** Before deciding anything technical, check how `~/Sites/alphaTabWebsite`
+- **Check the fork first.** Before deciding anything technical, check how the local alphaTab fork
   (`rhythm-game`) already does it and align — and if the fork has a bug, they would rather fix it than
   copy it, provided the fix is validated. That is what produced NH-297.
 - **Follow AlphaTab's own naming** where it exists: if the library says `score.title`, say "score

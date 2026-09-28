@@ -140,7 +140,7 @@ Key points captured:
 
 ## Sources / quotes (drum-tutor-clone session transcripts)
 
-Session JSONL files under `~/.claude/projects/-Users-leocaseiro-Sites-drum-tutor-clone--claude-worktrees-*/`:
+Session JSONL files under the drum-tutor-clone worktrees:
 
 - `...pensive-boyd-6d17e3/53466813-...jsonl` (main office-hours / handoff)
 - `...serene-grothendieck-fb5e67/c9615811-...jsonl` and `.../9d6a169e-...jsonl` (stack + AWS brainstorms, scope.md)

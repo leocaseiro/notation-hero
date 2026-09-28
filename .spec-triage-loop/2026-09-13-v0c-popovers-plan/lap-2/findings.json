@@ -1,6 +1,6 @@
 {
   "artifact": "docs/plans/2026-09-13-v0c-popovers-plan.md",
-  "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/admiring-northcutt-763a69",
+  "worktree": ".claude/worktrees/admiring-northcutt-763a69",
   "branch": "claude/plan-c-review-updates-fcd111",
   "commit": "ca725538",
   "lap": 2,
@@ -31,7 +31,7 @@
     "P2": "cosmetic or wording",
     "P3": "trivial",
     "apply mode": "how a settings row takes effect: 'render' redraws, 'settings' is pushed without a redraw, 'midi' rebuilds the sound. A three-way EXCLUSIVE union at plan line 1226.",
-    "the reference / the fork": "READ-ONLY MPL-2.0 clean-room reference at /Users/leocaseiro/Sites/alphaTabWebsite branch rhythm-game, src/components/AlphaTabRhythmGame/playground-settings.tsx",
+    "the reference / the fork": "READ-ONLY MPL-2.0 clean-room reference at the local alphaTab fork branch rhythm-game, src/components/AlphaTabRhythmGame/playground-settings.tsx",
     "mixUnavailable": "TrackRowProps' existing optional reason string, set while the file plays its own recording; solo, mute, volume and Transpose audio render disabled with it as tooltip text",
     "NH-316": "Jira ticket raised 2026-09-21 for the single/all-tracks switch - explicitly OUT of Plan C"
   },

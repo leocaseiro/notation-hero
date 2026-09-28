@@ -48,7 +48,7 @@ The 5 seed songs are grounded in their real Guitar Pro files via AlphaTab.
 
 ```bash
 # tools/gp-extract.mjs requires @coderline/alphatab — run from a folder where it resolves,
-# e.g. copy it into ~/Sites/alphaTabWebsite/ and run there:
+# e.g. copy it into <alphatab-fork>/ and run there:
 node gp-extract.mjs "/path/to/song.gp"      # prints objective JSON: tempo, bars, time sig, tracks, sections
 ```
 

@@ -64,8 +64,8 @@ Leo pointed at an existing open-source project that already does exactly this:
 
 Repos (cloned locally at the time):
 
-- **Frontend:** `github.com/tablatures/tablatures` → local clone `~/Sites/tablatures` (referenced for _"how the FE uses"_ the API)
-- **API / sources:** `github.com/tablatures/tablatures-api` → local clone `~/Sites/tablatures-api`
+- **Frontend:** `github.com/tablatures/tablatures` → local clone `a local clone of tablatures` (referenced for _"how the FE uses"_ the API)
+- **API / sources:** `github.com/tablatures/tablatures-api` → local clone `a local clone of tablatures-api`
 - **Per-source adapters** (Python) called out specifically:
   - `api/services/sources/songsterr_source.py`
   - `api/services/sources/ultimate_guitar_source.py`
@@ -143,11 +143,11 @@ All from `~/.claude/projects/*drum-tutor-clone*/**/*.jsonl` (file `c9615811-444a
 > _"Same for searching songs, we could use the same approach from tablatures which searches songs via songsterr api, ultimate guitar and so on, and perhaps save an id for each song._
 > `https://github.com/tablatures/tablatures-api/blob/main/api/services/sources/songsterr_source.py`
 > `https://github.com/tablatures/tablatures-api/blob/main/api/services/sources/ultimate_guitar_source.py`
-> _Just in case you need to figure out how the FE uses, I have just cloned them here: /Users/leocaseiro/Sites/tablatures and /Users/leocaseiro/Sites/tablatures-api"_
+> _Just in case you need to figure out how the FE uses, I have just cloned them here: [local clones]"_
 
 **scope.md §7 (Nice-to-haves / later):**
 
-> _"**Song search** (Songsterr / Ultimate Guitar — the `tablatures` project approach): store a **`source + id`** per song (dovetails with sync-by-reference). **Needs a small server-side proxy** (CORS + unofficial/scraped APIs) — the first feature justifying a tiny serverless function (Cloud Function / Cloudflare Worker). ⚠️ **ToS/legal gray area** (esp. Ultimate Guitar) and **scraper fragility**. Reference repos cloned at `~/Sites/tablatures` + `~/Sites/tablatures-api` (check their license before reusing code)."_
+> _"**Song search** (Songsterr / Ultimate Guitar — the `tablatures` project approach): store a **`source + id`** per song (dovetails with sync-by-reference). **Needs a small server-side proxy** (CORS + unofficial/scraped APIs) — the first feature justifying a tiny serverless function (Cloud Function / Cloudflare Worker). ⚠️ **ToS/legal gray area** (esp. Ultimate Guitar) and **scraper fragility**. Reference repos cloned at `a local clone of tablatures` + `a local clone of tablatures-api` (check their license before reusing code)."_
 
 **Assistant plan reply (caveats + approach):**
 

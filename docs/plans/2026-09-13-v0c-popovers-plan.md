@@ -63,7 +63,7 @@ last_applied: P1
 
 **Spec:** [`docs/specs/2026-09-10-v0-local-file-player-design.md`](../specs/2026-09-10-v0-local-file-player-design.md) — §7 from "Two popovers, not modals" to the end is this plan's brief.
 
-**Reference (read-only):** the `rhythm-game` fork at `/Users/leocaseiro/Sites/alphaTabWebsite`, branch `rhythm-game` — `src/components/AlphaTabRhythmGame/playground-settings.tsx` (1,279 lines) is the settings panel this ports. **Clean-room: read it, copy nothing.** No files, no code blocks, no label strings. Write original code and original label copy. That is decision D4 and the [2026-06-18 licensing spike](../spikes/2026-06-18-file-formats-and-licensing.md); the fork is MPL-2.0 and stays open for reference only.
+**Reference (read-only):** the `rhythm-game` branch of the local alphaTab fork — `src/components/AlphaTabRhythmGame/playground-settings.tsx` (1,279 lines) is the settings panel this ports. **Clean-room: read it, copy nothing.** No files, no code blocks, no label strings. Write original code and original label copy. That is decision D4 and the [2026-06-18 licensing spike](../spikes/2026-06-18-file-formats-and-licensing.md); the fork is MPL-2.0 and stays open for reference only.
 
 **Depends on:** [Plan A](2026-09-13-v0a-engine-and-first-sound-plan.md), merged as PR #159 — the engine context, `/play`, `useAlphaTab` / `useAlphaTabEvent`, `setAlphaTabDefaults`, and the Playwright lane with its `expectNoViolations` helper and its `expectHitAreas` hit-area gate (the latter already widened by **Plan B** to cover a Base UI slider's `Control`) — note both are **module-local, unexported** functions inside `web/e2e/a11y.e2e.ts`, so `player.e2e.ts` cannot import them and every axe or hit-area assertion belongs in that file — and [Plan B](2026-09-13-v0b-transport-plan.md), PR #162 — `Slider` (with `onCommit`), `TransportToggle`, the transport row's free `trailing` slot, the header's empty right column, and `PlayerShell`'s `applySpeed` and `hasBackingTrack`. **Branch from `master` only after PR #162 has merged**: Tasks 2, 3, 5 and 7 import what it adds.
 
@@ -1584,7 +1584,7 @@ Tasks 5, 6 and 7 consume all of it.
 Open the reference panel and work through it:
 
 ```bash
-sed -n '266,760p' /Users/leocaseiro/Sites/alphaTabWebsite/src/components/AlphaTabRhythmGame/playground-settings.tsx
+sed -n '266,760p' <alphatab-fork>/src/components/AlphaTabRhythmGame/playground-settings.tsx
 ```
 
 It defines seven groups plus a separate Export block. **The Settings popover ships every row of it** — the maintainer's decision (2026-09-20): _"we should be able to change every single setting from alphatab."_ The inventory below is the complete list, taken from the fork on 2026-09-20 and keyed by **AlphaTab's own setting names** — which are facts about the library's API, not the fork's expression, so listing them copies nothing. A row missing from the build is a defect, not a deferral. **The labels are yours to write**: do not reuse the fork's strings, and do not borrow strings from any reference product.

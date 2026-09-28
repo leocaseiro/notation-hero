@@ -4,12 +4,12 @@ created_at: '2026-09-16T00:00:00Z'
 title: 'v0 Plan A — fork-parity triage handoff'
 summary: 'Execution of the v0a plan was paused at Task 5 because the plan never ports the rhythm-game fork useAlphaTab pattern, which spec decision D4 mandates. An audit found 15 confirmed divergences; only 2 are forced by D5. This handoff explains each one so they can be triaged.'
 keywords: ['nh-291', 'v0a', 'plan-a', 'alphatab', 'fork-parity', 'triage', 'handoff']
-cwd: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
+cwd: '.claude/worktrees/alphatab-spike'
 resume_focus: 'Triage, the plan rewrite, the spec delta and the Jira issues are ALL DONE — see "Triage outcome" and "State after the triage" at the end of this file. Next: leocaseiro reviews PR #157, then regenerate the stale task briefs from the rewritten plan and re-dispatch Task 5.'
 repository: 'leocaseiro/notation-hero'
 branch: 'spike/alphatab-nextjs-poc'
 head: 'f5359efb'
-worktree_path: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
+worktree_path: '.claude/worktrees/alphatab-spike'
 ---
 
 # v0 Plan A — fork-parity triage handoff
@@ -19,7 +19,7 @@ worktree_path: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab
 Subagent-driven execution of
 [`2026-09-13-v0a-engine-and-first-sound-plan.md`](2026-09-13-v0a-engine-and-first-sound-plan.md)
 reached Task 5 and was stopped by leocaseiro, who asked whether the plan uses the same AlphaTab
-integration as the `rhythm-game` fork at `~/Sites/alphaTabWebsite`:
+integration as the `rhythm-game` fork at the local alphaTab fork:
 
 ```ts
 const [api, element] = useAlphaTab((s) => {});

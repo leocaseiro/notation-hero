@@ -11,7 +11,7 @@ NH dumped ~50 stories directly under a "Milestone: Alpha" epic — no visible bu
 
 ## 2. Strategy / spine
 
-1. **Port the playable core** (notation render, transport, scoring engine, Web MIDI + mapping) from the fork — it's mature, ~12k LOC on `~/Sites/alphaTabWebsite` branch `rhythm-game`, dir `src/components/AlphaTabRhythmGame/`. This is a PORT, not a build.
+1. **Port the playable core** (notation render, transport, scoring engine, Web MIDI + mapping) from the fork — it's mature, ~12k LOC on the local alphaTab fork branch `rhythm-game`, dir `src/components/AlphaTabRhythmGame/`. This is a PORT, not a build.
 2. **AWS is the main build + learning track.** Nothing AWS exists in the fork — it's all greenfield, and it's the point. The app exists to **showcase** the AWS skills.
 3. **PWA-first, native later.** PWA runs on iPad/Android via Chrome now; native wrappers (Capacitor/Swift/Electron) are M1–M5.
 4. **Host early** (sprint 4) so CRUD is tested on real infra and there's a live showcase ASAP.
@@ -67,7 +67,7 @@ Ordering constraints honored: messaging (11) before sync (13) & better-UI (14); 
 
 ## 7. Fork port plan (reusable assets → NH issues)
 
-All on `~/Sites/alphaTabWebsite` branch `rhythm-game`, dir `src/components/AlphaTabRhythmGame/` (view via `git show rhythm-game:<path>`):
+All on the local alphaTab fork branch `rhythm-game`, dir `src/components/AlphaTabRhythmGame/` (view via `git show rhythm-game:<path>`):
 
 - `useRhythmGameScore.tsx` — scoring/streak/accuracy (PERFECT ±50ms, GOOD ±300ms) → **NH-97 (C-1)**, NH-99 (C-4)
 - `useMidiInput.tsx` — Web MIDI, iOS-fixed, low-latency → **NH-100 (D-1)**

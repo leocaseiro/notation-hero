@@ -3,7 +3,7 @@
 - **Ticket:** [NH-205](https://leocaseiro.atlassian.net/browse/NH-205) (epic [NH-178 Player & Notation](https://leocaseiro.atlassian.net/browse/NH-178))
 - **Date:** 2026-06-21
 - **Worktree:** `.claude/worktrees/nh-205-midi-musicxml-spike` (branch `worktree-nh-205-midi-musicxml-spike`)
-- **Subject:** [kamshory/PHPMusicXML](https://github.com/kamshory/PHPMusicXML) — local checkout `~/Sites/PHPMusicXML`
+- **Subject:** [kamshory/PHPMusicXML](https://github.com/kamshory/PHPMusicXML) — local checkout `a local clone of PHPMusicXML`
 - **Goal:** Ingest **MIDI** and render it as **notation** in our player (AlphaTab). Evaluate whether PHPMusicXML's MIDI→MusicXML conversion works, whether we can legally use it, and whether to port it / run it offline / build our own.
 
 ---
@@ -97,7 +97,7 @@ It's a **license patchwork** of bundled third-party files:
 
 ## Q5 — Port to JS vs offline converter (answered: **don't port — run offline**)
 
-**Architecture** (`~/Sites/PHPMusicXML/inc.lib/classes/`, ~500 files / ~50k LOC): a hand-rolled MIDI parser (`Midi/*.php`, Schmidt's), a 1,617-line core `MusicXML/MusicXMLFromMidi.php`, **448 pure-data Model classes** (zero logic — just typed MusicXML 4.0 schema via docblock annotations), a reflection-driven XML serializer, and a `.mxl` zip util. Reverse MusicXML→MIDI is a stub.
+**Architecture** (`<phpmusicxml>/inc.lib/classes/`, ~500 files / ~50k LOC): a hand-rolled MIDI parser (`Midi/*.php`, Schmidt's), a 1,617-line core `MusicXML/MusicXMLFromMidi.php`, **448 pure-data Model classes** (zero logic — just typed MusicXML 4.0 schema via docblock annotations), a reflection-driven XML serializer, and a `.mxl` zip util. Reverse MusicXML→MIDI is a stub.
 
 **Port blockers (all minor/mechanical except one):**
 
@@ -115,7 +115,7 @@ It's a **license patchwork** of bundled third-party files:
 
 ## Q6 — Can AlphaTab render the converted files? _(pending live run)_
 
-MusicXML is a supported AlphaTab importer (Q4), so this should be **yes**. Plan: load a converted `.musicxml`/`.mxl` into a minimal AlphaTab page and screenshot it; note any fidelity gaps. Prior art to mine: `~/Sites/alphaTabWebsite`. **Result: TBD.**
+MusicXML is a supported AlphaTab importer (Q4), so this should be **yes**. Plan: load a converted `.musicxml`/`.mxl` into a minimal AlphaTab page and screenshot it; note any fidelity gaps. Prior art to mine: the local alphaTab fork. **Result: TBD.**
 
 ---
 

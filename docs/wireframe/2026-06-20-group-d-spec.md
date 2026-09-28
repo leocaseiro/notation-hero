@@ -142,7 +142,7 @@ Loaded base + Group D under `psql ON_ERROR_STOP=1` (clean). Proof queries (in th
 ## 7 · Follow-ups (not Group D — captured here)
 
 1. **Searchable per-instrument technique facet** (guitar/bass/piano) — design where pitched techniques live (a per-track `techniques[]`? a profile facet?) and **reconcile with `drum_profile.techniques[]`**. L3 cell techniques are the _descriptive_ home; this is the _searchable_ one (promote when the filter is real).
-2. **Rockschool grounding** — read the piano/guitar/bass syllabi (`~/Sites/notation-hero-resources/Rockschool/`) to calibrate the 0–10 levels and fix the per-instrument technique vocabulary, the way drums were grounded. Pairs with (1).
+2. **Rockschool grounding** — read the piano/guitar/bass syllabi (`<resources-repo>/Rockschool/`) to calibrate the 0–10 levels and fix the per-instrument technique vocabulary, the way drums were grounded. Pairs with (1).
 3. **Instrument family grouping** (future) — guitar→electric/acoustic; families (strings/wind/brass). Flat vocab + GIN facet stays for now.
 4. **gp-embedded → S3 extraction** — ingest policy: extract the embedded `.gp` audio to S3 (`provider='s3'`) vs keep `provider='gp-embedded'`. Schema supports both.
 

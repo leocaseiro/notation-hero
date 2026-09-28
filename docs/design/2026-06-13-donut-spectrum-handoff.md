@@ -3,7 +3,7 @@
 > **Status:** 🟢 Q1 colour DONE (**System G "Spectrum"** + **gold-100**, approved 2026-06-13) · 🟡 mastered-trophy **glow** = 6 options built, awaiting Leo's pick · 🔜 Q2 layout polish NOT started.
 > **Jira:** [KAN-161](https://leocaseiro.atlassian.net/browse/KAN-161) (Catalog UI design) · related KAN-27 (score display), KAN-49 (design-shotgun).
 > **Branch:** `claude/epic-easley-b661e6` · all work committed (baby commits, all green).
-> **Worktree:** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/epic-easley-b661e6` (work happens HERE, not the repo root).
+> **Worktree:** `.claude/worktrees/epic-easley-b661e6` (work happens HERE, not the repo root).
 
 This session ran `/design-consultation` on the catalog's **best-score donut**, scoped tightly to two brief questions: (Q1) donut colour system, (Q2) layout polish. **Only Q1 was completed.**
 
@@ -13,7 +13,7 @@ This session ran `/design-consultation` on the catalog's **best-score donut**, s
 
 ```bash
 # from the epic-easley worktree root
-cd /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/epic-easley-b661e6
+cd .claude/worktrees/epic-easley-b661e6
 python3 -m http.server 8780
 ```
 

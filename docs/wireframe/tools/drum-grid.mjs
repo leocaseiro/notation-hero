@@ -1,5 +1,5 @@
 // drum-grid.mjs — extract drum grooves + fills from a Guitar Pro file's percussion track.
-// REQUIRES @coderline/alphatab. Run from a dir where it resolves (e.g. copy into ~/Sites/alphaTabWebsite/):
+// REQUIRES @coderline/alphatab. Run from a dir where it resolves (e.g. copy into <alphatab-fork>/):
 //   node drum-grid.mjs "<file1.gp>" ["<file2.gp>" ...]
 // Emits JSON only. Each percussion bar is rendered as GrooveScribe-style H/S/K(/T) rows (the SAME
 // notation the existing pat_* seed uses), then:

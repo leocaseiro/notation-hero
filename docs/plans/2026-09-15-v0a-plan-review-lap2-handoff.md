@@ -4,13 +4,13 @@ created_at: '2026-09-15T12:22:17Z'
 title: 'v0 Plan A review, lap 2 — triage handoff'
 summary: 'Seven-persona doc review of Plan A (engine and first sound). 15 findings triaged and applied, plus 12 mechanical fixes, across 9 commits; 6 findings still to triage, then a lap-3 re-review.'
 keywords: ['nh-291', 'v0a', 'plan-a', 'ce-doc-review', 'triage', 'alphatab', 'handoff']
-cwd: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
+cwd: '.claude/worktrees/alphatab-spike'
 resume_focus: 'Triage the 6 open findings in "Still open" with the spec-triage-loop triage skill, then run a lap-3 re-review of the plan.'
 repository: 'leocaseiro/notation-hero'
 repo_root_sha: '2a593aa2d597'
 branch: 'spike/alphatab-nextjs-poc'
 head: '9c75c616'
-worktree_path: '/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/alphatab-spike'
+worktree_path: '.claude/worktrees/alphatab-spike'
 ---
 
 # v0 Plan A review, lap 2 — triage handoff
@@ -174,7 +174,7 @@ a Task 14 step.
   `FICHIER GUITAR PRO v5.10` and is byte-identical to `resources/charts/1-beat.xml`.
 - **`.atex` and `.alphatex` are the same alphaTex text.** AlphaTab's docs recommend `.atex`; Tabtify
   exports `.alphatex`.
-- **The fork's accept list** (`~/Sites/alphaTabWebsite`, branch `rhythm-game`, `src/utils.ts` lines 18
+- **The fork's accept list** (the local alphaTab fork, branch `rhythm-game`, `src/utils.ts` lines 18
   and 40) is `.gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.mxml,.xml,.capx` — where the spec's `.mxml` came from.
 - **Lint in `web/`** (`eslint --print-config`): `react-hooks/set-state-in-effect` and
   `sonarjs/no-nested-conditional` are **errors**; `@typescript-eslint/no-floating-promises` and
@@ -205,5 +205,5 @@ a Task 14 step.
 Raw lap-2 reviewer output (JSON, outside the repo), if a finding's full evidence is needed:
 
 ```text
-/Users/leocaseiro/.claude/projects/-Users-leocaseiro-Sites-notation-hero/ce-doc-review-v0a/findings/
+<agent-projects-dir>/ce-doc-review-v0a/findings/
 ```

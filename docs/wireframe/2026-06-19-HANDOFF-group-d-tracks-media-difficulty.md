@@ -5,7 +5,7 @@ status: handoff — start a fresh session for Group D
 worktree: wireframe-pattern-lesson-model
 branch: docs/wireframe-pattern-lesson-model
 pr: https://github.com/leocaseiro/notation-hero/pull/52
-home: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-19-HANDOFF-group-d-tracks-media-difficulty.md
+home: .claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-19-HANDOFF-group-d-tracks-media-difficulty.md
 ---
 
 # Handoff — Group D: tracks · media · per-instrument difficulty
@@ -13,7 +13,7 @@ home: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-
 ## 0 · How to start (paste into a fresh Claude Code session)
 
 ```
-Working directory: /Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model
+Working directory: .claude/worktrees/wireframe-pattern-lesson-model
 Read docs/wireframe/2026-06-19-HANDOFF-group-d-tracks-media-difficulty.md (full context).
 
 Brainstorm Group D for the catalog schema: (1) a `track` relation (a song can have
@@ -90,13 +90,13 @@ CREATE TABLE media (
 
 ## 4 · Key files (full paths)
 
-- Spec: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md`
-- Draft SQL: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/archive/2026-07/wireframe/2026-06-19-tonal-drum-schema-draft.sql`
-- SD ledger (Current-status table + Round-6 + SD-24): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md`
-- v3 Round-6 DDL sketches (track/media/difficulty): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-17-notation-model-draft.sql` (bottom)
-- GP→tonal spike (NH-196): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/keen-neumann-0405de/docs/spikes/2026-06-19-gp-tonal/FINDINGS.md`
-- Song-slice spike (NH-137, SD-24): `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/agent-a6595b9997a45d9bc/docs/spikes/2026-06-19-nh137-song-slice/FINDINGS.md`
-- ADR + data-layer requirements: `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md` · `.../docs/specs/2026-06-17-data-layer-requirements.md`
+- Spec: `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-19-tonal-drum-extensible-schema-spec.md`
+- Draft SQL: `.claude/worktrees/wireframe-pattern-lesson-model/docs/archive/2026-07/wireframe/2026-06-19-tonal-drum-schema-draft.sql`
+- SD ledger (Current-status table + Round-6 + SD-24): `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-16-schema-deltas.md`
+- v3 Round-6 DDL sketches (track/media/difficulty): `.claude/worktrees/wireframe-pattern-lesson-model/docs/wireframe/2026-06-17-notation-model-draft.sql` (bottom)
+- GP→tonal spike (NH-196): `.claude/worktrees/keen-neumann-0405de/docs/spikes/2026-06-19-gp-tonal/FINDINGS.md`
+- Song-slice spike (NH-137, SD-24): `.claude/worktrees/agent-a6595b9997a45d9bc/docs/spikes/2026-06-19-nh137-song-slice/FINDINGS.md`
+- ADR + data-layer requirements: `.claude/worktrees/architecture-spec/docs/decisions/2026-06-17-architecture-decisions.md` · `.../docs/specs/2026-06-17-data-layer-requirements.md`
 - PR: <https://github.com/leocaseiro/notation-hero/pull/52>
 
 ## 5 · The live scratch DB

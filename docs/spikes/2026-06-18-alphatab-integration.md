@@ -116,9 +116,9 @@ These facts are version- or platform-sensitive, or were analysis assertions rath
 
 ## Existing prior-art artifacts (read before re-deriving)
 
-- **Working Phase-0 rhythm game (MPL-2.0 fork):** `~/Sites/alphaTabWebsite`, branch `rhythm-game`. Live demo: `https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game`. Confirmed working in-browser: AlphaTab drum rendering + Web MIDI scoring + auto-BPM + accuracy-coloured score + iOS Web MIDI shim.
-- **MIDI mapping feature plan:** `~/Sites/alphaTabWebsite/MIDI_MAPPING_PLAN_SUMMARY.md` (+ the `MIDI_MAPPING_*` doc set under `src/components/AlphaTabRhythmGame/`). Multi-zone mapping, presets, LocalStorage, ~6–9h.
-- **Cross-project memory:** the [AlphaTab fork reference](alphatab_fork_reference.md) note — always check `~/Sites/alphaTabWebsite` for prior art before building related features.
+- **Working Phase-0 rhythm game (MPL-2.0 fork):** the local alphaTab fork, branch `rhythm-game`. Live demo: `https://leocaseiro.github.io/alphaTabWebsite/docs/rhythm-game`. Confirmed working in-browser: AlphaTab drum rendering + Web MIDI scoring + auto-BPM + accuracy-coloured score + iOS Web MIDI shim.
+- **MIDI mapping feature plan:** `<alphatab-fork>/MIDI_MAPPING_PLAN_SUMMARY.md` (+ the `MIDI_MAPPING_*` doc set under `src/components/AlphaTabRhythmGame/`). Multi-zone mapping, presets, LocalStorage, ~6–9h.
+- **Cross-project memory:** the [AlphaTab fork reference](alphatab_fork_reference.md) note — always check the local alphaTab fork for prior art before building related features.
 
 ---
 
