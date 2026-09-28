@@ -26,7 +26,7 @@ copy uses it: _"Open a score from your own computer."_
 **"Chart" is not this project's vocabulary.** It is ambiguous (a chart is also a graph), it appears
 nowhere in the schema, and it drifted into the v0 planning documents where `notation` and `score`
 already had the job. Do not use it in specs, plans, code identifiers, test ids, file paths or UI
-copy. Ratified 2026-09-14 — see the registry Change log for that date.
+copy. Ratified 2026-09-14 — see the [decision changelog](docs/decisions/decision-changelog.md) entry for that date.
 
 Keeping the two words distinct is what avoids the unreadable
 `const score = loadScoreFromBytes(score.bytes)`. AlphaTab's own API names — `ScoreLoader`,

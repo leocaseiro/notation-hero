@@ -7,7 +7,7 @@
 # lives here. Runs in CI (quality job) and the Lefthook pre-commit hook.
 #
 # Rules (decision-registry NAME-suffix / CONV-2 + ADR 2026-06-12 D2/F-1; this SUPERSEDES the
-# prior folder-per-entity convention — see the 2026-06-12 registry change log):
+# prior folder-per-entity convention — see the 2026-06-12 decision-changelog entry):
 #
 #   1. No __tests__/, __mocks__/, or stories/ directories — group by domain, not file-type.
 #
