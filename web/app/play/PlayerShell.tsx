@@ -35,6 +35,12 @@ import {
   serializeSettings,
   SETTINGS_STORAGE_KEY,
 } from '../../lib/alphatab/settings-storage';
+import {
+  readStoredTransport,
+  serializeTransport,
+  TRANSPORT_LABELS,
+  TRANSPORT_STORAGE_KEY,
+} from '../../lib/alphatab/transport-storage';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { NotationSurface } from './NotationSurface';
 import {
@@ -48,12 +54,14 @@ import { SettingsPopover } from './SettingsPopover';
 import { TracksPopover } from './TracksPopover';
 import { TransportRow } from './TransportRow';
 import { useLoadingBarPhase } from './useLoadingBarPhase';
+import { useRestoredTransport } from './useRestoredTransport';
 import type {
   ApiValueKey,
   PlayerSettingsJson,
   SettingAction,
   SettingApply,
 } from '../../lib/alphatab/settings-schema';
+import type { TransportValues } from '../../lib/alphatab/transport-storage';
 import type * as AlphaTab from '@coderline/alphatab';
 import type { SettingValue } from '@notation-hero/client';
 
@@ -130,12 +138,6 @@ function Player() {
   // instrumentation, not UI state.
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
-  const [looping, setLooping] = useState(false);
-  // Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 is the normal
-  // level. The transport's two buttons derive their pressed state from "volume > 0", and the
-  // Settings popover's two matching rows share these same values — one writer each.
-  const [metronomeVolume, setMetronomeVolume] = useState(0);
-  const [countInVolume, setCountInVolume] = useState(0);
   // Whether AlphaTab currently holds a bar-range selection — drives the Loop toggle's label only.
   const [hasRange, setHasRange] = useState(false);
   // Whether the open score plays its own embedded recording. Metronome and Count-In are inert then.
@@ -528,14 +530,82 @@ function Player() {
     queueMicrotask(readPlayer);
   });
 
+  // The four values that survive a reload, and the restore that puts them back once the api
+  // exists. Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 the normal
+  // level. The transport's two buttons derive their pressed state from "volume > 0", and the
+  // Settings popover's two matching rows share these same values — one writer each, below.
+  const {
+    repaired: transportRepaired,
+    looping,
+    setLooping,
+    metronomeVolume,
+    setMetronomeVolume,
+    countInVolume,
+    setCountInVolume,
+    masterVolume,
+    setMasterVolume,
+  } = useRestoredTransport(api);
+
+  // Say so when a stored transport value had to be corrected. Without this a drummer whose stored
+  // master volume was corrupt presses Play, hears nothing, and has no way to learn which control
+  // moved — the exact silence the settings document already refuses to ship, through the same
+  // reader. The hook has written the corrected document back by the time this runs.
+  //
+  // It reuses the settings error codes on purpose: all four of these values ARE rows in the
+  // Settings popover's Player group, so "settings" is what the drummer sees, and a separate code
+  // would split one user-facing event across two registry entries.
+  //
+  // Deferred a tick for the same reason as the settings warning above: passive effects run in tree
+  // order, and the root layout renders this page before the toaster, so a synchronous call fires
+  // before the toaster has subscribed and is never shown.
+  useEffect(() => {
+    if (transportRepaired === null) return;
+    const named = transportRepaired.map((key) => TRANSPORT_LABELS[key] ?? key);
+    const id = setTimeout(() => {
+      toast.warning(
+        named.length > 0
+          ? `Some settings were not valid and have been corrected: ${named.join(', ')}. (Error ${ERROR.settingsRepaired})`
+          : `Your saved playback settings could not be read, so they were reset to the defaults. (Error ${ERROR.settingsUnreadable})`,
+      );
+    }, 0);
+    return () => clearTimeout(id);
+  }, [transportRepaired]);
+
+  // The ONE place the four transport values reach storage. Each writer below calls it with just the
+  // value it changed; the other three come from the document already IN storage, never from this
+  // render's closure.
+  //
+  // Reading storage rather than closing over the state is what makes the write correct in two ways
+  // a closure cannot be. A second open /play tab holds its own React state, so a whole-document
+  // write from that state silently reverts whatever the other tab last set — the drummer turns the
+  // metronome on in one tab, flips Loop in the other, and the metronome preference is gone, with
+  // nothing shown at the time. And with no dependencies this callback is STABLE, which keeps the
+  // four writers below stable too, so a Loop press no longer re-renders the memo()'d TracksPopover
+  // that only ever displays the master volume.
+  //
+  // The extra getItem + JSON.parse costs one four-key document per user gesture: the sliders commit
+  // once per drag (useSliderDraft), so this is never per-frame work.
+  const persistTransport = useCallback((change: Partial<TransportValues>) => {
+    try {
+      globalThis.localStorage.setItem(
+        TRANSPORT_STORAGE_KEY,
+        serializeTransport({ ...readStoredTransport().values, ...change }),
+      );
+    } catch {
+      // Private browsing and a full quota both throw here. Losing persistence is survivable;
+      // losing the transport is not, so swallow it rather than breaking the toggle.
+    }
+  }, []);
+
   // `api` is state, not a ref, so it MUST be in each dependency list: an empty list would freeze
   // the callback on the `undefined` it held before the engine arrived.
   const applyLooping = useCallback(
     (next: boolean) => {
       setLooping(next);
       if (api) setAlphaTabValue(api, 'isLooping', next);
+      persistTransport({ isLooping: next });
     },
-    [api],
+    [api, persistTransport, setLooping],
   );
 
   // The ONE writer of api.metronomeVolume. The transport's Metronome button and the Settings
@@ -544,8 +614,9 @@ function Player() {
     (next: number) => {
       setMetronomeVolume(next);
       if (api) setAlphaTabValue(api, 'metronomeVolume', next);
+      persistTransport({ metronomeVolume: next });
     },
-    [api],
+    [api, persistTransport, setMetronomeVolume],
   );
 
   // The ONE writer of api.countInVolume, same shape as the metronome above.
@@ -553,8 +624,9 @@ function Player() {
     (next: number) => {
       setCountInVolume(next);
       if (api) setAlphaTabValue(api, 'countInVolume', next);
+      persistTransport({ countInVolume: next });
     },
-    [api],
+    [api, persistTransport, setCountInVolume],
   );
 
   // The ONLY writer of api.playbackSpeed in the app. v0 ships two controls over this one value —
@@ -569,14 +641,13 @@ function Player() {
     [api],
   );
 
-  // The one api value the transport does not already own.
-  const [masterVolume, setMasterVolume] = useState(1);
   const applyMasterVolume = useCallback(
     (next: number) => {
       setMasterVolume(next);
       if (api) setAlphaTabValue(api, 'masterVolume', next);
+      persistTransport({ masterVolume: next });
     },
-    [api],
+    [api, persistTransport, setMasterVolume],
   );
 
   // The Settings popover's Player group api rows, in the unit each row shows. The speed is a
@@ -1106,6 +1177,7 @@ function Player() {
               onCountInChange={(on) => applyCountInVolume(on ? 1 : 0)}
               hasRange={hasRange}
               hasBackingTrack={hasBackingTrack}
+              noPlayer={noPlayerComing}
               disabled={playbackDisabled}
               playButton={
                 /* The mockup's Play: a SOLID teal circle, 48 px, with a solid glyph and a soft teal
