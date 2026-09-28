@@ -18,6 +18,13 @@ interface TransportRowProps {
   /** Whether the loaded score plays an embedded recording. Metronome and Count-In are inert then. */
   hasBackingTrack: boolean;
   /**
+   * Whether AlphaTab built no player at all — playback turned off, external media, or a
+   * backing-track score with no embedded recording. All three toggles are drawn UNPRESSED then,
+   * whatever their stored preference: a pressed Loop on a page that can never loop is a control
+   * claiming a state the app cannot deliver.
+   */
+  noPlayer: boolean;
+  /**
    * Rendered last in the row. Exists so Plan C can drop its mixer/settings trigger in without
    * reopening this interface or this layout. Plan B passes nothing.
    */
@@ -46,6 +53,7 @@ const MetronomeGlyph = () => (
 /** The mockup's resting ink for a transport control is the muted grey; pressed stays solid teal. */
 const RESTING_INK = 'text-muted-foreground';
 const UNAVAILABLE = 'not available while the file plays its own recording';
+const NO_PLAYER = 'not available while playback is off';
 
 // The transport row layout. It composes client/ controls and holds NO AlphaTab knowledge itself —
 // every accessor arrives as a prop from the shell, which is what keeps the controls reusable and
@@ -64,6 +72,7 @@ export function TransportRow({
   onCountInChange,
   hasRange,
   hasBackingTrack,
+  noPlayer,
   disabled,
   playButton,
   trailing,
@@ -74,8 +83,14 @@ export function TransportRow({
   // one it repeats the selection — and teaches the gesture that selects a range, which the UI
   // shows nowhere else. Always present, never conditional: a tooltip that comes and goes swaps
   // the wrapped and the bare element, which remounts the button and drops its focus.
+  //
+  // With no player built, all three report the reason instead of a state. Saying "Loop: on" on a
+  // page where nothing can sound describes a preference the app is not honouring, which is the one
+  // thing these tooltips exist to prevent.
   let loopTip = 'Loop: off · drag across bars in the notation to loop just that range';
-  if (looping) {
+  if (noPlayer) {
+    loopTip = `Loop: ${NO_PLAYER}`;
+  } else if (looping) {
     loopTip = hasRange
       ? 'Loop: on · the selected bars repeat'
       : 'Loop: on · the whole score repeats';
@@ -83,6 +98,7 @@ export function TransportRow({
     loopTip = 'Loop: off · click to repeat the selected bars';
   }
   const onOff = (name: string, on: boolean) => {
+    if (noPlayer) return `${name}: ${NO_PLAYER}`;
     if (hasBackingTrack) return `${name}: ${UNAVAILABLE}`;
     return `${name}: ${on ? 'on' : 'off'}`;
   };
@@ -105,7 +121,7 @@ export function TransportRow({
           either way. No marker UI, so the out-of-scope constraint holds. */}
       <TransportToggle
         data-testid="toggle-loop"
-        pressed={looping}
+        pressed={!noPlayer && looping}
         onPressedChange={onLoopingChange}
         label={hasRange ? 'Loop selection' : 'Loop score'}
         tooltip={loopTip}
@@ -122,7 +138,7 @@ export function TransportRow({
       />
       <TransportToggle
         data-testid="toggle-metronome"
-        pressed={metronome}
+        pressed={!noPlayer && metronome}
         onPressedChange={onMetronomeChange}
         label="Metronome"
         tooltip={onOff('Metronome', metronome)}
@@ -132,7 +148,7 @@ export function TransportRow({
       />
       <TransportToggle
         data-testid="toggle-countin"
-        pressed={countIn}
+        pressed={!noPlayer && countIn}
         onPressedChange={onCountInChange}
         label="Count-In"
         tooltip={onOff('Count-in', countIn)}
