@@ -1985,10 +1985,13 @@ go missing. Verified — without this line the guard reports 6 of 10 missing ins
 
 `web/e2e/` has the same shape and no such line. **Measured, not reasoned:** a `mt-[137px]` planted in
 a _comment_ in `web/e2e/a11y.e2e.ts` — a utility that appears nowhere else in the repo — came out in
-the emitted stylesheet after `pnpm --filter @notation-hero/web run build`:
+the emitted stylesheet. Reproduce it with:
 
-```text
-web/.next/static/chunks/42d2m7n8ftnh3.css
+```bash
+printf '\n// mt-[137px]\n' >> web/e2e/a11y.e2e.ts
+pnpm --filter @notation-hero/web run build
+grep -rl 'mt-\[137px\]' web/.next/static/ --include='*.css'   # prints the emitted chunk
+git checkout -- web/e2e/a11y.e2e.ts
 ```
 
 So a class name mentioned in a `web/e2e` comment becomes real CSS. `a11y.e2e.ts` and `player.e2e.ts`
