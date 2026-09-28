@@ -35,6 +35,7 @@ import {
   serializeSettings,
   SETTINGS_STORAGE_KEY,
 } from '../../lib/alphatab/settings-storage';
+import { serializeTransport, TRANSPORT_STORAGE_KEY } from '../../lib/alphatab/transport-storage';
 import { setAlphaTabValue, useAlphaTab, useAlphaTabEvent } from '../../lib/alphatab/useAlphaTab';
 import { NotationSurface } from './NotationSurface';
 import {
@@ -48,12 +49,14 @@ import { SettingsPopover } from './SettingsPopover';
 import { TracksPopover } from './TracksPopover';
 import { TransportRow } from './TransportRow';
 import { useLoadingBarPhase } from './useLoadingBarPhase';
+import { useRestoredTransport } from './useRestoredTransport';
 import type {
   ApiValueKey,
   PlayerSettingsJson,
   SettingAction,
   SettingApply,
 } from '../../lib/alphatab/settings-schema';
+import type { TransportValues } from '../../lib/alphatab/transport-storage';
 import type * as AlphaTab from '@coderline/alphatab';
 import type { SettingValue } from '@notation-hero/client';
 
@@ -130,12 +133,6 @@ function Player() {
   // instrumentation, not UI state.
   const [positionMs, setPositionMs] = useState(0);
   const [durationMs, setDurationMs] = useState(0);
-  const [looping, setLooping] = useState(false);
-  // Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 is the normal
-  // level. The transport's two buttons derive their pressed state from "volume > 0", and the
-  // Settings popover's two matching rows share these same values — one writer each.
-  const [metronomeVolume, setMetronomeVolume] = useState(0);
-  const [countInVolume, setCountInVolume] = useState(0);
   // Whether AlphaTab currently holds a bar-range selection — drives the Loop toggle's label only.
   const [hasRange, setHasRange] = useState(false);
   // Whether the open score plays its own embedded recording. Metronome and Count-In are inert then.
@@ -528,14 +525,54 @@ function Player() {
     queueMicrotask(readPlayer);
   });
 
+  // The four values that survive a reload, and the restore that puts them back once the api
+  // exists. Metronome and Count-In are VOLUMES in AlphaTab, not booleans: 0 is off and 1 the normal
+  // level. The transport's two buttons derive their pressed state from "volume > 0", and the
+  // Settings popover's two matching rows share these same values — one writer each, below.
+  const {
+    looping,
+    setLooping,
+    metronomeVolume,
+    setMetronomeVolume,
+    countInVolume,
+    setCountInVolume,
+    masterVolume,
+    setMasterVolume,
+  } = useRestoredTransport(api);
+
+  // The ONE place the four transport values reach storage. Each writer below calls it with the
+  // single value it just changed, because its own `setState` has not committed yet: reading
+  // `looping` here during applyLooping would store the value being replaced, not the new one.
+  const persistTransport = useCallback(
+    (change: Partial<TransportValues>) => {
+      try {
+        globalThis.localStorage.setItem(
+          TRANSPORT_STORAGE_KEY,
+          serializeTransport({
+            metronomeVolume,
+            countInVolume,
+            masterVolume,
+            isLooping: looping,
+            ...change,
+          }),
+        );
+      } catch {
+        // Private browsing and a full quota both throw here. Losing persistence is survivable;
+        // losing the transport is not, so swallow it rather than breaking the toggle.
+      }
+    },
+    [metronomeVolume, countInVolume, masterVolume, looping],
+  );
+
   // `api` is state, not a ref, so it MUST be in each dependency list: an empty list would freeze
   // the callback on the `undefined` it held before the engine arrived.
   const applyLooping = useCallback(
     (next: boolean) => {
       setLooping(next);
       if (api) setAlphaTabValue(api, 'isLooping', next);
+      persistTransport({ isLooping: next });
     },
-    [api],
+    [api, persistTransport, setLooping],
   );
 
   // The ONE writer of api.metronomeVolume. The transport's Metronome button and the Settings
@@ -544,8 +581,9 @@ function Player() {
     (next: number) => {
       setMetronomeVolume(next);
       if (api) setAlphaTabValue(api, 'metronomeVolume', next);
+      persistTransport({ metronomeVolume: next });
     },
-    [api],
+    [api, persistTransport, setMetronomeVolume],
   );
 
   // The ONE writer of api.countInVolume, same shape as the metronome above.
@@ -553,8 +591,9 @@ function Player() {
     (next: number) => {
       setCountInVolume(next);
       if (api) setAlphaTabValue(api, 'countInVolume', next);
+      persistTransport({ countInVolume: next });
     },
-    [api],
+    [api, persistTransport, setCountInVolume],
   );
 
   // The ONLY writer of api.playbackSpeed in the app. v0 ships two controls over this one value —
@@ -569,14 +608,13 @@ function Player() {
     [api],
   );
 
-  // The one api value the transport does not already own.
-  const [masterVolume, setMasterVolume] = useState(1);
   const applyMasterVolume = useCallback(
     (next: number) => {
       setMasterVolume(next);
       if (api) setAlphaTabValue(api, 'masterVolume', next);
+      persistTransport({ masterVolume: next });
     },
-    [api],
+    [api, persistTransport, setMasterVolume],
   );
 
   // The Settings popover's Player group api rows, in the unit each row shows. The speed is a
