@@ -229,7 +229,7 @@
       "evidence_quote_count": 3,
       "fix_contradicts_doc": false,
       "verification_reason": "The doc warrants day-one blocking on \"the measurement found no flake\" (:509), but the measurement covers one state in three crop shapes plus a 14-run long-score check - 2 of 11 shots - and the doc itself concedes the measured shots ran at --workers=1 while CI runs parallel.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, round 2. The day-one-blocking bullet no longer cites 'the measurement found no flake' as its warrant. It now names the real scope (the sixty-run study covered /play's default loaded state; the long-score state was byte-identical across fourteen runs = 2 of 11 shots), lists the nine unmeasured states, says two of them cannot be measured until Plan C ships, and points at retries: 2 plus each shot's document.fonts.ready and 500 ms settle as the mechanism that actually absorbs a blip. The settled day-one blocking decision is untouched.",
       "contradiction_note": "The doc's own parallelism bullet (:572-580) concedes the gap rather than closing it, and the Risks section offers `fullyParallel: false` only as a fallback if the difference \"bites\". Nothing else supplies determinism data for the other nine shots."
     },
     {
@@ -273,7 +273,7 @@
       "evidence_quote_count": 4,
       "fix_contradicts_doc": false,
       "verification_reason": "Both prescribed long-score waits (:355, :370) name no timeout, so both inherit the 5 000 ms expect default that this very section rejects as too small for /play (:313), while every sibling wait states 30/60/10 s; the toast-gone wait has only ~871 ms of measured margin and the data-file wait loses 6x the budget its source line carries.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, round 2. { timeout: 30_000 } on the loaded-notation-name data-file assertion (the value its source line web/e2e/player.e2e.ts:191 uses) and { timeout: 10_000 } on the [data-sonner-toast] toHaveCount(0). A new clause says why both name their own ceiling: bare expect falls back to 5 000 ms and the toast's measured life reaches 4 129 ms, so the default would leave 871 ms of slack, measured at --workers=1 while CI runs several.",
       "contradiction_note": "No later section raises either wait's ceiling. web/playwright.e2e.config.ts sets no `expect` block, and the spec's projects array (:136-150) adds only a per-project `timeout`, which caps the test rather than the assertion, so nothing in the doc lifts these two waits off the 5 s expect default."
     },
     {
@@ -301,7 +301,7 @@
       "evidence_quote_count": 3,
       "fix_contradicts_doc": false,
       "verification_reason": "The prescribed guard counts filenames only, so it stays green over an empty file, an all-skipped file, or one with no toHaveScreenshot - the \"green over zero pixels\" outcome the doc names at :642-643 - and the host file's own :38-39 comment sets the opposite standard for exactly this reason.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, round 2, auto-resolved under the maintainer's 'auto resolve P2 and lower' instruction. The shot guard now asserts what it means rather than counting filenames: no *.vr.ts may contain test.skip( or test.fixme(, and at least one must contain toHaveScreenshot(. The doc notes forbidOnly catches .only while nothing catches .skip or .fixme, and cites the host file's own :38-39 anchored-match warning. readdirSync is the only import to add -- readFileSync and fileURLToPath are already imported at workflow-guards.test.mjs:10-11 -- and the snippet uses new URL(f, dir) instead of node:path so no second import is needed. The doc's 'four lines' claim was dropped, since the guard is now about a dozen.",
       "contradiction_note": "Grepped the doc for \"skip\", \"fixme\" and \"forbidOnly\": the only \"skip\" hit is :447 about a docs-only PR skipping the job. Nothing anywhere in the doc strengthens the guard beyond the filename count."
     },
     {
@@ -333,7 +333,7 @@
       "evidence_quote_count": 3,
       "fix_contradicts_doc": true,
       "verification_reason": "The inconsistency between :559-560 and the footprint is real, but it resolves the OPPOSITE way from the finding: 152-153 contains only pnpm script names that survive the refactor, so the footprint is right and the design section's go-stale sentence is wrong. The downgrade from safe_auto was correct - do not silent-apply, and if applied, apply the inverted fix.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, round 2, auto-resolved WITH THE CORRECTED DIRECTION, not the reviewer's. The design paragraph's go-stale sentence is narrowed to the runbook block (docs/runbooks/vr-a11y-testing.md:27-34, the seven -v flags and the pinned image tag) and now says explicitly that AGENTS.md and client/README.md:152-153 do NOT go stale, because :152-153 names only the two root script names whose interface the refactor preserves. VERIFIED AFTER APPLYING: the footprint bullet for client/README.md still lists only lines 178 and 216 (the artifact renames) and was not touched, which is what the corrected direction requires. The reviewer's original fix -- adding :152-153 to the footprint -- was NOT applied; it would have prescribed an edit with no content.",
       "downgrade": "The scope-guardian classified this safe_auto at anchor 100, which routes to a SILENT apply. It was downgraded to gated_auto under the strawman-downgrade safeguard, because the same reviewer's own deferred_questions left the fix direction open: it asked whether client/README.md:152-153 needs any change at all, since it names only script names whose interface survives the refactor. A fix whose own author left the direction unresolved is not \"one clear correct answer\". The spike then proved the direction was inverted — so the downgrade is what stopped a wrong edit being written into the doc without anyone seeing it.",
       "contradiction_note": "The proposed fix would prescribe an edit with no content. client/README.md:152-153 names ONLY the two root pnpm script names, whose public interface is untouched by the helper refactor, so nothing there goes stale. The doc's footprint bullet at :685-686 is therefore RIGHT to omit them, and the sentence at :559-560 is the wrong half: it lumps client/README.md in with the runbook as a file that \"goes stale\". The runbook genuinely does - vr-a11y-testing.md:27-34 spells out the full `docker run` block the helper replaces."
     },
@@ -370,7 +370,7 @@
       "evidence_quote_count": 4,
       "fix_contradicts_doc": false,
       "verification_reason": "The two popover shots are in the eight-shot list with no open-state wait, and the hover shots get an explicit [data-open] wait for a reason the doc states and which applies identically to popovers; a data-slot hook already exists at Popover.tsx:42, so the gap is an omission rather than a missing capability.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, round 2. Both popover shots now get an open-state wait after the trigger click: await expect(page.locator('[data-slot=\"popover-content\"]')).toBeVisible(). The doc explains that their three readiness waits all fire BEFORE the click, that Popover.tsx:42 already sets the data-slot so no new hook is needed, that Popover shares Tooltip's isolate z-50 Positioner plus portalled Popup shape so the tooltip wait's stated reason transfers unchanged, and that the selector follows Plan C if it ships the popovers behind different controls.",
       "contradiction_note": "Grepped the doc for \"data-open\" and \"popover\": the only open-state wait in the readiness section is :395, scoped to \"The two hover shots\". The popover rows at :225-226 and the eight-shot list at :298 give the popovers nothing beyond the shared finish at :388-392."
     },
     {
@@ -406,7 +406,7 @@
       "evidence_quote_count": 3,
       "fix_contradicts_doc": false,
       "verification_reason": "Consequence 1 is derived from drift measured at threshold 0, and at the tolerance the doc actually adopts that same drift produces zero counted pixels, so page-level-only is a consistency choice as claimed - and the doc itself concedes as much at :106.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, auto-resolved under 'auto resolve P2 and lower'. Consequence 1 now states what the evidence does and does not force: the element-clip drift was measured at threshold 0 / maxDiffPixels 0 and scores 0.16 against the 1408.6 cutoff consequence 3 adopts, so page-level-only is a deliberate one-shot-shape / one-policy choice rather than a limit the measurement imposes. The finding's adjacent note -- that the doc's own 'fifty times under' was inexact -- was already fixed in round 1 as part of L4-F-1 (corrected to ninety; the drift is ~0.002 in threshold units, independently reproduced as 0.1601 raw score -> 0.00213 threshold equivalent -> 94x).",
       "contradiction_note": "The doc contains no other justification for page-level-only; consequence 3 at :105-108 supplies the concession the finding leans on (\"would make element-clipped shots impossible\") rather than rebutting it."
     },
     {
@@ -434,7 +434,7 @@
       "evidence_quote_count": 3,
       "fix_contradicts_doc": false,
       "verification_reason": "\"gains the line client/.gitignore already carries\" (:415) promises a verbatim copy, but only the pattern matches; the comment is a paraphrase that drops the command names, and a true verbatim copy would name the wrong command for web/.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, auto-resolved. The web/.gitignore diff block now mirrors client/.gitignore:22-23's actual comment shape, with the web-appropriate script names substituted: 'A local `test:vr:update` on a Mac writes darwin shots for quick local iteration -- they must never be committed (regenerate via test:web:docker).' A verbatim copy would have been wrong, since client's comment names test:vr:docker while this doc introduces test:web:docker for web/.",
       "contradiction_note": "Nothing later in the doc reconciles the wording. The doc introduces test:web:docker for web/ at :518, which is what makes a verbatim copy of client's comment wrong rather than merely paraphrased."
     },
     {
@@ -462,7 +462,7 @@
       "evidence_quote_count": 2,
       "fix_contradicts_doc": false,
       "verification_reason": "The source line really carries { timeout: 15_000 } and the doc's table row reproduces the signal without it, in a section that states every other number explicitly. Low severity is right: nothing breaks on a warm run.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, auto-resolved. The engine-error row of the three-signal table now carries { timeout: 15_000 }, the ceiling its source line in web/e2e/a11y.e2e.ts states. Added the clarifying sentence the verification asked for: all three rows run on the bare expect default unless a ceiling is named, and engine error is the only one whose source states a ceiling the table would otherwise drop -- the landing and Skeleton sources name none.",
       "contradiction_note": "The section states explicit ceilings for the eight player-loaded shots at :303/:306/:308 and none for any row of this table, so nothing later supplies the missing number."
     },
     {
@@ -494,7 +494,7 @@
       "evidence_quote_count": 2,
       "fix_contradicts_doc": false,
       "verification_reason": "The job exists, fires on a green client vr, rewrites the comment to claim VR is passing with no visual diffs, is keyed on needs.vr.result alone, and is absent from the footprint's ci.yml bullet - so after this change the comment can contradict a red web VR lane.",
-      "decision": null,
+      "decision": "APPLIED 2026-09-28, auto-resolved. The footprint's ci.yml bullet now names the vr-report-resolve job (:341), says it keys on needs.vr.result alone and rewrites the sticky comment to a claim that after this change is true of only one of two VR lanes, and prescribes scoping that wording to the client lane. The precondition is stated so nobody is surprised: the job only UPDATES an existing comment, never creates one on a green pull request, so the contradiction needs a PR where client VR had already gone red once -- and the merge still blocks on a red web job either way.",
       "contradiction_note": "Grepped the doc for \"vr-report-resolve\" and \"sticky\": the only sticky-comment mention is :607, about the vr-report publish job. The resolve job is named nowhere in the doc, including the footprint bullet at :665-666, which lists the vr-report download rename but not vr-report-resolve."
     }
   ],
@@ -527,23 +527,14 @@
     "lap": 4,
     "lap_bumped_from_3": true,
     "half_completed": "REVIEW half only (steps 1, 2, 2b, 3)",
-    "triaged": "IN PROGRESS -- round 1 of 3 done (the P0 and both P1s)",
-    "triage_completed": false,
-    "last_applied": "L4-F-1 (broadened), L4-F-2, L4-F-3",
-    "last_applied_note": "Round 1 applied 2026-09-28 in worktree .claude/worktrees/nh-320-vr-spec-review-26a18f, branch claude/nh-320-vr-spec-review-26a18f, pushed to docs/nh-320-web-vr-gate-spec. prettier, markdownlint-cli2 and cspell all clean on the spec.",
-    "undecided": [
-      "L4-F-4",
-      "L4-F-5",
-      "L4-F-6",
-      "L4-F-7",
-      "L4-F-8",
-      "L4-FYI-1",
-      "L4-FYI-2",
-      "L4-FYI-3",
-      "L4-FYI-4"
-    ],
+    "triaged": true,
+    "triage_completed": "2026-09-28 -- all 12 items resolved (8 decisions + 4 FYI observations), 0 dropped, 0 left undecided.",
+    "last_applied": "L4-FYI-4 (last of 12)",
+    "last_applied_note": "Round 1 (L4-F-1 broadened, L4-F-2, L4-F-3) committed as 1a507da1. Round 2 (L4-F-4, L4-F-5, L4-F-8 by picker; L4-F-6, L4-F-7 and all four FYI observations auto-resolved under the maintainer's 'auto resolve P2 and lower' instruction) committed on top. Applied in worktree .claude/worktrees/nh-320-vr-spec-review-26a18f, branch claude/nh-320-vr-spec-review-26a18f, pushed to docs/nh-320-web-vr-gate-spec. prettier, markdownlint-cli2 and cspell clean; the full pre-push gate (lint-shell, lint-sort-pkg, lint-spell, lint-yaml, test, typecheck) passed.",
+    "undecided": [],
     "bound_check": "IN BOUNDS. Lap cap is 5, so lap 4 is allowed and lap 5 would be the last. The no-progress gate does not trip: lap 3 resolved all five of its own unresolved P0/P1 findings (2 P0 + 3 P1), so the unresolved P0/P1 count fell 5 -> 0 before this lap opened. Lap 4 raises 3 fresh ones (1 P0 + 2 P1), all newly found rather than carried.",
-    "next_step": "Round 2: L4-F-4, L4-F-5, L4-F-8 (the measurement/readiness cluster). Round 3: L4-F-6, L4-F-7 plus the four FYI observations as one multi-select card. Then the four deferred_questions if the maintainer wants them.",
-    "suggested_walkthrough_order": "Severity order as listed: L4-F-1 (P0) first -- it is the only finding about the gate passing over a real regression, and its fix is the only one that needs a design choice (where the computed-style assertion goes). Then the two P1s, which both block an implementer. L4-F-7 deserves care despite being P2: its fix direction is INVERTED from what the reviewer proposed, so the picker must present the CORRECTED fix (narrow the design sentence at :559-560) and must NOT offer adding lines 152-153 to the footprint."
+    "next_step": "Lap 5 REVIEW half, as a separate invocation, if another lap is wanted -- lap 5 is the cap. Still open and NOT findings: the four deferred_questions (one of which, the computed-style scope, the maintainer answered in round 1 by choosing the broadened option), the two known_open_carried_forward items (client/'s global transition freeze; what next build costs in the Playwright container -- neither measurable until the shots exist), and the skipped cross-model judgment pass, which needs the maintainer's explicit go-ahead for a named provider and route.",
+    "suggested_walkthrough_order": "Severity order as listed: L4-F-1 (P0) first -- it is the only finding about the gate passing over a real regression, and its fix is the only one that needs a design choice (where the computed-style assertion goes). Then the two P1s, which both block an implementer. L4-F-7 deserves care despite being P2: its fix direction is INVERTED from what the reviewer proposed, so the picker must present the CORRECTED fix (narrow the design sentence at :559-560) and must NOT offer adding lines 152-153 to the footprint.",
+    "deferred_question_1_answered": "ANSWERED in round 1: the maintainer chose the broadened option, so the computed-style assertion pattern applies to every shot whose stated coverage IS a surface step. Applying it found a second such shot (engine error, tint 173 vs cutoff 1408.6) and cleared one candidate (pressed transport toggle, 14664, counted)."
   }
 }

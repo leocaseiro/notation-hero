@@ -97,7 +97,12 @@ differing pixels in the staff, the notes, the cursor or the glyphs.**
 
 Three design consequences, all evidence-backed rather than guessed:
 
-1. **Page-level shots only** — no `toHaveScreenshot` on a clipped element.
+1. **Page-level shots only** — no `toHaveScreenshot` on a clipped element. Note what the evidence
+   does and does not force: the drift above was measured at `threshold: 0` / `maxDiffPixels: 0` and
+   scores `0.16` against the `1408.6` cutoff consequence 3 adopts, thousands of times inside it. So
+   this is a deliberate choice to keep one shot shape and one comparison policy, not a limit the
+   measurement imposes — consequence 3's own note that `threshold: 0` "would make element-clipped
+   shots impossible" is the same point from the other side.
 2. **No mask over the notation.** The score is shot as it is drawn.
 3. **Playwright's default tolerance is enough** — decided 2026-09-26. Its `threshold` defaults to
    `0.2` in YIQ colour space and `maxDiffPixels` is unset, so a pixel must differ noticeably to
@@ -384,11 +389,15 @@ then `toHaveScreenshot`'s two-sample compare), so the pixel lane has _less_ head
 
 **The other three** settle on the signal `web/e2e/a11y.e2e.ts` already uses for that same state:
 
-| Shot                 | Its signal                                    | Why the block above cannot work                                |
-| -------------------- | --------------------------------------------- | -------------------------------------------------------------- |
-| Landing `/`          | `getByRole('link', { name: 'Play' })` visible | the page renders a heading and a link — neither test id exists |
-| First-visit Skeleton | `getByTestId('notation-skeleton')` visible    | the engine is stalled on purpose, so Play never enables        |
-| Engine error         | `getByTestId('engine-error')` visible         | the engine is aborted on purpose, so Play never enables        |
+| Shot                 | Its signal                                                   | Why the block above cannot work                                |
+| -------------------- | ------------------------------------------------------------ | -------------------------------------------------------------- |
+| Landing `/`          | `getByRole('link', { name: 'Play' })` visible                | the page renders a heading and a link — neither test id exists |
+| First-visit Skeleton | `getByTestId('notation-skeleton')` visible                   | the engine is stalled on purpose, so Play never enables        |
+| Engine error         | `getByTestId('engine-error')` visible, `{ timeout: 15_000 }` | the engine is aborted on purpose, so Play never enables        |
+
+All three rows run on the bare `expect` default unless a ceiling is named, and nothing breaks on a
+warm run. Engine error is the only one of the three whose source line states a ceiling the table
+would otherwise drop, so it carries it across; the landing and Skeleton sources name none.
 
 **The long-score shot needs one more wait, and it is not optional.** Opening a file raises a Sonner
 toast — `toast.loading('Opening …')` then `toast.success('… loaded')` (`PlayerShell.tsx:432`
@@ -409,7 +418,9 @@ a file.
 `web/e2e/player.e2e.ts` uses throughout:
 
 ```ts
-await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp');
+await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
+  timeout: 30_000,
+});
 ```
 
 Measured against the built app: the ordering is already safe without it. `setNotation` and
@@ -424,8 +435,14 @@ pixel of overflow would make such a poll pass vacuously.
 **Then wait for the toast to go:**
 
 ```ts
-await expect(page.locator('[data-sonner-toast]')).toHaveCount(0);
+await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 10_000 });
 ```
+
+Both of the long-score waits name their own ceiling, for the same reason every wait above does: bare
+`expect` falls back to 5 000 ms, and the toast's measured life reaches 4 129 ms, so the default would
+leave 871 ms of slack — measured at `--workers=1`, while CI runs several. The `data-file` assertion
+takes the 30 000 ms its source line (`web/e2e/player.e2e.ts:191`) already uses, since after the
+loading-bar wait it is the gate on parse completion.
 
 One thing the first baseline will contain: the long-score shot shows the **Play** tooltip, because a
 successful open moves focus to the transport (`PlayerShell` calls `playRef.current?.focus()`). It is
@@ -452,7 +469,23 @@ await page.waitForTimeout(500);
 The two hover shots add one wait of their own — `[data-slot="tooltip-content"][data-open]` visible,
 the locator `web/e2e/player.e2e.ts:1183` already defines for exactly this. Not because of an open
 delay: `Tooltip.tsx` defaults `delay` and `closeDelay` to `0` and neither trigger overrides them.
-What needs settling is the open animation and the portal's position. The Skeleton shot's route handler must **stall
+What needs settling is the open animation and the portal's position.
+
+**The two popover shots need the same wait, for the same reason.** Their three readiness waits all
+fire before the trigger click, so without one the only thing between the click and the compare is
+`document.fonts.ready` and the 500 ms settle — and a baseline recorded while the panel is still
+opening, or still shut, is the reference every later run then matches:
+
+```ts
+await expect(page.locator('[data-slot="popover-content"]')).toBeVisible();
+```
+
+`Popover.tsx:42` already sets that `data-slot` on the portalled panel, so no new test hook is needed;
+`Popover` uses the same `isolate z-50` Positioner plus portalled Popup shape as `Tooltip`, which is
+why the reason transfers unchanged. **If Plan C ships these behind different controls, the selector
+follows Plan C** — the need for the wait does not.
+
+The Skeleton shot's route handler must **stall
 indefinitely** rather than resume after a fixed
 delay the way the accessibility lane's 5 000 ms stall does: `toHaveScreenshot` needs the state to
 hold across two consecutive samples, and on a baseline-generation run across the write as well.
@@ -472,8 +505,8 @@ Linux-only, exactly as `client/` does it: `*-chromium-linux.png` committed, darw
 `web/.gitignore` gains the line `client/.gitignore` already carries:
 
 ```diff
-+ # VR baselines are Linux-only. A local update on a Mac writes darwin shots for quick
-+ # iteration — they must never be committed (regenerate through the container).
++ # VR baselines are Linux-only. A local `test:vr:update` on a Mac writes darwin shots
++ # for quick local iteration — they must never be committed (regenerate via test:web:docker).
 + *-chromium-darwin.png
 ```
 
@@ -585,8 +618,14 @@ job over that very config, so that clause goes; the no-Storybook fact stays, bec
 the reason the lane is shaped this way.
 
 **Blocking from day one.** `web` joins `ci-green`'s `needs:` list alongside `a11y`, `vr` and `e2e`.
-`client/` VR already blocks, and the measurement found no flake to earn a grace period against: a
-visual gate nobody has to obey is one people learn to scroll past.
+`client/` VR already blocks, and a visual gate nobody has to obey is one people learn to scroll
+past. Be honest about how much determinism evidence stands behind that: the sixty-run study covered
+`/play`'s default loaded state, and the long-score state was byte-identical across fourteen runs —
+two of the eleven shots. The other nine (landing, Skeleton, engine error, transport toggles, both
+popovers, ghost hover, header tooltip, narrow viewport) are unmeasured, and two of those cannot be
+measured until Plan C ships. What absorbs a one-off blip is not the study but the mechanism:
+`retries: 2` on CI plus each shot's `document.fonts.ready` and 500 ms settle — the same absorber the
+parallelism caveat under Risks already names.
 
 The image tag stays pinned in lockstep with `@playwright/test` (v1.61.1 today), and baselines are
 regenerated on the bump — the same policy `client/` already runs under.
@@ -633,10 +672,12 @@ shadowing `web/.next` during a `client/` run is harmless, so both packages share
 ```
 
 `tooling/*.sh` is already shellcheck-linted, so the helper is checked rather than trusted. The
-expanded command is written out in `docs/runbooks/vr-a11y-testing.md` (lines 27-34), not in
-`AGENTS.md` — whose VR section is three summary lines that link the runbook — and `client/README.md`
-(lines 152-153) carries the command pair. Those are the files that go stale if the helper lands
-without them.
+expanded command is written out in `docs/runbooks/vr-a11y-testing.md` (lines 27-34) — that block,
+with its seven `-v` flags and its pinned image tag, is what goes stale if the helper lands without
+it. The other two do not: `AGENTS.md`'s VR section is three summary lines that link the runbook, and
+`client/README.md` (lines 152-153) names only the two root script names, whose interface this
+refactor preserves — the helper rewrites those scripts' bodies, not their names. Neither file spells
+out the command that changes.
 
 ## Risks and caveats
 
@@ -724,17 +765,35 @@ it was planned rather than smuggled in.
   empty (`!testRun.rootSuite?.allTests().length`, `playwright/lib/runner/index.js:6027`). The
   existing behaviour and axe tests keep it non-empty, so an unscoped run over this config with an
   empty `chromium` project exits **0** — also measured. A merge-blocking gate would read as green
-  over zero pixels. So the guard belongs with the shots, and it is four lines in
+  over zero pixels. So the guard belongs with the shots, in
   `tooling/workflow-guards.test.mjs` — already in this footprint, and already inside the `quality`
-  job `ci-green` waits on:
+  job `ci-green` waits on.
+
+  **Counting filenames is not enough.** A file can be present and still compare nothing: empty, all
+  `test.skip`, or carrying no `toHaveScreenshot` at all. Playwright's `forbidOnly` catches `.only`;
+  nothing in this repo catches `.skip` or `.fixme`, and the same file's own comment at `:38-39` warns
+  that an unanchored presence check stays green against a commented-out step. So the guard asserts
+  what it actually means:
 
   ```js
   test('the web VR project has at least one shot to run', () => {
-    const dir = fileURLToPath(new URL('../web/e2e', import.meta.url));
+    const dir = new URL('../web/e2e/', import.meta.url);
     const shots = readdirSync(dir).filter((f) => f.endsWith('.vr.ts'));
     assert.ok(shots.length > 0, 'web/e2e has no *.vr.ts — the chromium project runs nothing');
+
+    const sources = shots.map((f) => readFileSync(new URL(f, dir), 'utf8'));
+    shots.forEach((f, i) => {
+      assert.doesNotMatch(sources[i], /\btest\.(skip|fixme)\(/, `${f} disables a shot`);
+    });
+    assert.ok(
+      sources.some((src) => src.includes('toHaveScreenshot(')),
+      'no *.vr.ts calls toHaveScreenshot — the chromium project compares nothing',
+    );
   });
   ```
+
+  `readFileSync` and `fileURLToPath` are already imported in that file; `readdirSync` is the one
+  addition to its `node:fs` import.
 
 - `web/playwright.e2e.config.ts` — the `projects` array splitting `e2e` from `chromium`, plus its
   header comment, which still says no VR job covers `web/`.
@@ -747,7 +806,13 @@ it was planned rather than smuggled in.
   the two new commands.
 - `web/.gitignore` — the darwin-baseline line.
 - `.github/workflows/ci.yml` — the new `web` job, the trimmed `e2e` job, the three artifact names,
-  the `vr-report` download rename, the corrected comments, and `ci-green`'s `needs:`.
+  the `vr-report` download rename, the corrected comments, and `ci-green`'s `needs:`. Also the
+  `vr-report-resolve` job (`:341`), which is easy to miss: it keys on `needs.vr.result` alone and
+  rewrites the sticky comment to _"✅ VR passing on `<sha>` — no visual diffs to review"_, which after
+  this change is true of only one of two VR lanes. Scope that wording to the client lane. The merge
+  still blocks on a red `web` either way, so this is a comment that contradicts its own run rather
+  than a hole in the gate, and it needs a pull request where `client/` VR had already gone red once
+  — the job only ever UPDATES an existing comment, never creates one on a green pull request.
   `docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md:35` and `:38` name the old
   artifact; correct those two, and leave the change-log and plan records as history.
 - `tooling/workflow-guards.test.mjs` — the Node test that pins today's `e2e` job in source, and
