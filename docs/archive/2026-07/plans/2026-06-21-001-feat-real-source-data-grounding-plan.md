@@ -14,7 +14,7 @@ origin: user request (autonomous /lfg run, 2026-06-21)
 Replace the invented/placeholder seed data in the notation-hero wireframe and SQL
 seed with **real values extracted from the actual Guitar Pro (`.gp`) source files**
 for the five decided seed songs, plus the already-real drum patterns. Feasibility
-is proven: `@coderline/alphatab` (installed at `~/Sites/alphaTabWebsite`) parses the
+is proven: `@coderline/alphatab` (installed at the local alphaTab fork) parses the
 `.gp` files in Node and yields real title/artist/tempo/bar-count/time-signature,
 the full track list with instruments + percussion flag, and section markers with
 bar ranges. The work writes a small reusable extractor, dumps each file to raw JSON,
@@ -64,7 +64,7 @@ Traced to Leo's constraints for this run:
 ## Key Technical Decisions
 
 - **KTD-1 — Reuse the installed AlphaTab, do not install in the PR.** The extractor
-  runs from `~/Sites/alphaTabWebsite` (where `@coderline/alphatab` resolves). The PR
+  runs from the local alphaTab fork (where `@coderline/alphatab` resolves). The PR
   worktree gets the **script** (for reproducibility) + the **extracted JSON output**,
   but no `node_modules`/dependency churn. Proven working on Yellow.
 - **KTD-2 — Objective vs subjective split.** AlphaTab gives: title, artist, tempo,
@@ -98,7 +98,7 @@ isPercussion,tuning}], sections[{label,startBar,endBar}], and key/chord data whe
 available).
 **Files:** `docs/wireframe/tools/gp-extract.mjs` (create), with a header comment
 documenting that it requires `@coderline/alphatab` and is run from a dir where that
-resolves (e.g. `~/Sites/alphaTabWebsite`).
+resolves (e.g. the local alphaTab fork).
 **Approach:** Port the proven probe (`ScoreLoader.loadScoreFromBytes` → walk
 `masterBars` for `isSectionStart`/`section`, `score.tracks` for names + percussion).
 Output JSON to stdout and/or a file path arg.

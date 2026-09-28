@@ -11,7 +11,7 @@
 
 - **Ticket:** NH-199 · **Date:** 2026-06-19 · **Branch:** `nh-clean-slate-spike`
 - **Method:** 7 parallel research agents, each read the §8 prior-art docs (INPUT, not re-derived) then verified every fast-moving fact against **current 2026 official sources** (npm registry, AWS pricing pages, GitHub release dates). No training assumptions. All version numbers verified 2026-06-19.
-- **Prompt:** `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/nh-clean-slate-spike/docs/prompts/2026-06-19-clean-slate-infra-tooling-app-skeleton-spike.md`
+- **Prompt:** `.claude/worktrees/nh-clean-slate-spike/docs/prompts/2026-06-19-clean-slate-infra-tooling-app-skeleton-spike.md`
 
 ## 0. How to read this
 
@@ -293,4 +293,4 @@ All 7 reviewed and decided. (D1 / D6 / D7 carry follow-up conditions.)
 
 ## Sources
 
-Per-area primary sources are in each research track's output and the §8 prior-art docs under `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/nh-clean-slate-spike/docs/spikes/` and `/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/nh-clean-slate-spike/docs/decisions/`. AWS free-tier claims verified against the relevant `aws.amazon.com/<service>/pricing` pages; npm versions against the registry; library maintenance against GitHub release dates — all 2026-06-19.
+Per-area primary sources are in each research track's output and the §8 prior-art docs under `.claude/worktrees/nh-clean-slate-spike/docs/spikes/` and `.claude/worktrees/nh-clean-slate-spike/docs/decisions/`. AWS free-tier claims verified against the relevant `aws.amazon.com/<service>/pricing` pages; npm versions against the registry; library maintenance against GitHub release dates — all 2026-06-19.

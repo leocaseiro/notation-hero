@@ -136,7 +136,7 @@ Energy splits verse from chorus (loudness + density + register); position priors
 - `merged(all)` boundaries → NH-137 song-slice picker as suggested cut-points.
 - Time-sig / tempo / repeat timelines already parse for free (no further work).
 
-## Test corpus (`/Users/leocaseiro/Music/AlphaTab-RhythmGame/`)
+## Test corpus (`<local-music-library>/`)
 
 | File                               | Markers       | Role                                               |
 | ---------------------------------- | ------------- | -------------------------------------------------- |

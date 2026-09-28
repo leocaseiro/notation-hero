@@ -116,7 +116,7 @@ docs/spikes/2026-06-20-smart-structure/
   FINDINGS.md           # R3/R4 — honest accuracy read + rule-based-vs-ML recommendation
 ```
 
-The corpus is **external** to the repo (the user's local music library at `/Users/leocaseiro/Music/AlphaTab-RhythmGame/`). Scripts take a file path argument; `validate.mjs` knows the ground-truth filenames. No audio/score files are committed.
+The corpus is **external** to the repo (the user's local music library at `<local-music-library>/`). Scripts take a file path argument; `validate.mjs` knows the ground-truth filenames. No audio/score files are committed.
 
 ---
 
@@ -240,4 +240,4 @@ The corpus is **external** to the repo (the user's local music library at `/User
 - **NH-196 design** — `docs/superpowers/specs/2026-06-19-gp-tonal-design.md` (output contract `SectionSpan`/`KeyChange`/`KeyRef`; design §9 modulation; §12 satellites).
 - **Krumhansl-Schmuckler** key-finding profiles (the MAJ/MIN weights already in `spike2.mjs`).
 - **Self-similarity matrix + checkerboard-kernel novelty** — standard music-structure-analysis technique (cite specifics in FINDINGS).
-- **Corpus** — external local library `/Users/leocaseiro/Music/AlphaTab-RhythmGame/`: marker-less `Bohemian Rhapsody.gp`, `Happiness is a Warm Gun.gp`, `Toto - Africa.gp`; ground-truth `Bohemian Rhapsody with sections.gp`, `I'm Yours - Jason Mraz.gp`, `Coldplay-Yellow-06-26-2025.gp`.
+- **Corpus** — external local library `<local-music-library>/`: marker-less `Bohemian Rhapsody.gp`, `Happiness is a Warm Gun.gp`, `Toto - Africa.gp`; ground-truth `Bohemian Rhapsody with sections.gp`, `I'm Yours - Jason Mraz.gp`, `Coldplay-Yellow-06-26-2025.gp`.
