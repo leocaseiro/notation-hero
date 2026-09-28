@@ -7,8 +7,8 @@ Ticket: [NH-320](https://leocaseiro.atlassian.net/browse/NH-320)
 
 ## Goal
 
-Give the product's own screens — `/` and `/play` — pixel screenshots that block merge, the way 45 of
-the 46 component folders under `client/src/components/ui/` already have them (only `Table/` has no
+Give the product's own screens — `/` and `/play` — pixel screenshots that block merge, the way 49 of
+the 50 component folders under `client/src/components/ui/` already have them (only `Table/` has no
 `*.vr.ts`).
 
 ## Non-goals
@@ -208,7 +208,7 @@ invocation must name its project. `web/package.json` therefore changes to match:
 **These scoped scripts are for local use.** CI runs `playwright test` **unscoped**, once, so both
 projects share the single `webServer` and therefore the single `next build` — see the CI section
 below, where that turns out to be the whole point. Locally the opposite is wanted: you regenerate
-baselines without sitting through fifty behaviour tests.
+baselines without sitting through ninety behaviour tests.
 
 ### The shots
 
@@ -355,7 +355,7 @@ the arrow and that band. Far past the tolerance, so the shot catches it — but 
 missing tooltip.
 
 **Narrow viewport** — `PlayerShell.tsx` renders the rail as `w-20 shrink-0 … lg:w-24`, so it is
-80 px below Tailwind's `lg` (1024 px) and 96 px at or above it. The other ten shots are pinned at
+80 px below Tailwind's `lg` (1024 px) and 96 px at or above it. The other eight shots are pinned at
 1280 px and only ever see the wide rail. One shot at 900 px covers the narrow one without shooting
 every state twice.
 
@@ -405,7 +405,7 @@ exactly 30.0 s with "Test timeout of 30000ms exceeded", while the call log still
 `Expect "toBeVisible" with timeout 60000ms`. So the pixel project carries its own budget (see
 "One config, two projects").
 
-`a11y.e2e.ts` has this gap today — its 60 000 ms ceilings at `:161` and `:190` are already
+`a11y.e2e.ts` has this gap today — its three 60 000 ms ceilings at `:315`, `:344` and `:355` are already
 unreachable — and it stays green only because readiness really does arrive inside 30 s. A shot
 does more after readiness than an axe sweep does (`document.fonts.ready`, the 500 ms settle,
 then `toHaveScreenshot`'s two-sample compare), so the pixel lane has _less_ headroom, not more.
@@ -707,7 +707,7 @@ out the command that changes.
   while these are full pages driving a real engine and a soundfont download — heavier, more moving
   parts. If that difference bites, `fullyParallel: false` on the VR project costs about 25 seconds
   for the whole lane and is a one-line change.
-- **Moving the 51 existing `web/` browser tests into the container may change their timing.** This
+- **Moving the 91 existing `web/` browser tests into the container may change their timing.** This
   is the one real risk in the CI decision. If it materializes, fall back to a separate `web-vr`
   container job and accept the second build.
 - **The app-version tooltip is a landmine for any future shot that opens it.** NH-317 renders
