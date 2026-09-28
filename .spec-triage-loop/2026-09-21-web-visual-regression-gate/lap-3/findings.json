@@ -8,7 +8,7 @@
     "reviewed_commit": "fb14980a",
     "pr": "https://github.com/leocaseiro/notation-hero/pull/171",
     "jira": "NH-320",
-    "worktree": "/Users/leocaseiro/Sites/notation-hero/.claude/worktrees/nh-320-spec-lap-3-b024c3",
+    "worktree": ".claude/worktrees/nh-320-spec-lap-3-b024c3",
     "push_target": "git push origin HEAD:docs/nh-320-web-vr-gate-spec  (fast-forward onto PR #171; NEVER force. The branch is checked out in worktree pr-162-code-review-5c2901, which has a live but idle session. If the push is rejected, merge their commits in — do not force.)",
     "finding_count_total": 13,
     "finding_count_applied_silently_by_engine": 0,

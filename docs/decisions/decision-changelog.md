@@ -46,6 +46,7 @@ failing, not merely written. It excludes its own two files by exact path, since 
 patterns; a test pins that exclusion list at exactly two entries so it cannot be widened into a
 hiding place. Follow-up to NH-318, which git-ignored the untracked reference map but left the
 already-committed paths in place.
+
 ### 2026-09-22 — The web VR gate grows to eleven shots, against PR #170's layout (NH-320)
 
 Reviewing PR #170 turned up two gaps that only the composed `/play` page can show, and the
