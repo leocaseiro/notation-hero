@@ -31,13 +31,18 @@ handoff, registry entry, pull request or session record — it was never weighed
 The v0 spec-review lap-3 finding _"New player components have no package home or a11y/VR gate"_
 named both halves of the gap; the applied fix closed only the accessibility half.
 
-The bug class has already shipped twice:
+The bug class has already shipped twice — and this gate would have caught one of them:
 
 - **PR #162** — the seek rail rendered 0 px wide. Every `web/` browser test passed, axe included:
   a slider keeps its role, its value and its keyboard seeking whether or not a single pixel of it is
   painted. Only an ad-hoc screenshot caught it.
 - **NH-315 / PR #167** — production served the design system unstyled while the same commit's
-  preview deployment was perfect.
+  preview deployment was perfect. **This gate would not have caught it.** Its mechanism was a
+  branch-keyed Vercel build cache that outlived a change to what Tailwind scans
+  (`docs/decisions/decision-changelog.md:483`), and a container that builds from scratch has no
+  stale cache to serve. It is already held shut by two guards that must stay: `web/vercel.json`
+  removing `.next/cache` before every build, and the `REQUIRED_SELECTORS` canary in
+  `web/scripts/assert-design-system-css.mjs` — both required by `AGENTS.md:111`.
 
 `client/` VR cannot see this class **by construction**. `web/` compiles its own Tailwind CSS by
 scanning `client/` _source_ (the `@source` globs in `web/app/globals.css`), so a component can be
@@ -51,15 +56,16 @@ Storybook, because Storybook scans `client/` itself.
 | Page screenshots in `web/e2e`           | yes — runs the real `next build` | **chosen**                          |
 | Storybook inside `web/`                 | partly                           | rejected                            |
 | Move presentational pieces to `client/` | no                               | complement, not substitute — NH-298 |
+| `assert-design-system-css` canary       | yes — asserts the emitted CSS    | complement, not substitute          |
 
 **Storybook inside `web/`** was rejected on three counts: it reopens the locked NH-275 decision that
 the app hosts no Storybook (`docs/specs/2026-07-09-nextjs-web-client-design.md` lines 40, 43, 61 and
 the ADR `docs/decisions/2026-07-12-design-system-distribution-adr.md` line 56); a `PlayerShell`
 story needs a **fake AlphaTab engine**, which the v0 spec itself names as the thing to avoid
 ("gated while rendering fabricated options") and which the project's standing rule forbids; and it
-never runs `next build`, so the NH-315 class stays invisible. In fairness, a `web/` Storybook
-importing `web/app/globals.css` would inherit its `@source` globs and probably _would_ have caught
-the 0 px rail — but the other two objections stand on their own.
+never renders the composed page at a real width, which is the coverage this gate adds. In fairness,
+a `web/` Storybook importing `web/app/globals.css` would inherit its `@source` globs and probably
+_would_ have caught the 0 px rail — but the other two objections stand on their own.
 
 **Moving pieces into `client/`** (NH-298) is worth doing and is tracked separately. It cannot
 replace this gate: it never sees the composed page at a real width, with the real CSS build.
@@ -238,17 +244,17 @@ shared module makes a test-id rename land once.
 left `bg-rail` strip carrying the Open-file control, the notation surface, and a raised `bg-panel`
 transport footer.
 
-| Shot                      | How it is reached                                    | What only this shot covers                                       |
-| ------------------------- | ---------------------------------------------------- | ---------------------------------------------------------------- |
-| Landing                   | `/`                                                  | the Play button, the one screen that is not `/play`              |
-| Player, bundled beat      | `/play`                                              | the default screen: header, rail, score, footer                  |
-| Player, long score        | `/play` + `Punk.gp` via `open-file-input`            | the scrolling notation box, a real filename                      |
-| First-visit Skeleton      | stall `**/alphatab/esm/alphaTab.mjs`                 | the loading state                                                |
-| Engine error              | abort `**/alphatab/esm/alphaTab.mjs`                 | the destructive error panel; its tint asserted, not photographed |
-| Transport toggles pressed | click loop, metronome, count-in, then increase tempo | pressed-state styling and the tempo percentage                   |
-| Ghost hover on the rail   | hover `open-file-button`                             | `hover:bg-elevate` over `--rail`, asserted not photographed      |
-| Tooltip over the header   | hover `back-home`                                    | a portalled tooltip winning the header's `z-10` layer            |
-| Narrow viewport           | `/play` at 900 px wide                               | the rail's `w-20` state, below the `lg` breakpoint               |
+| Shot                      | How it is reached                                    | What only this shot covers                                                  |
+| ------------------------- | ---------------------------------------------------- | --------------------------------------------------------------------------- |
+| Landing                   | `/`                                                  | the Play button, the one screen that is not `/play`                         |
+| Player, bundled beat      | `/play`                                              | the default screen; the rail and footer surfaces asserted, not photographed |
+| Player, long score        | `/play` + `Punk.gp` via `open-file-input`            | the scrolling notation box, a real filename                                 |
+| First-visit Skeleton      | stall `**/alphatab/esm/alphaTab.mjs`                 | the loading state                                                           |
+| Engine error              | abort `**/alphatab/esm/alphaTab.mjs`                 | the destructive error panel; its tint asserted, not photographed            |
+| Transport toggles pressed | click loop, metronome, count-in, then increase tempo | pressed-state styling and the tempo percentage                              |
+| Ghost hover on the rail   | hover `open-file-button`                             | `hover:bg-elevate` over `--rail`, asserted not photographed                 |
+| Tooltip over the header   | hover `back-home`                                    | a portalled tooltip winning the header's `z-10` layer                       |
+| Narrow viewport           | `/play` at 900 px wide                               | the rail's `w-20` state, below the `lg` breakpoint                          |
 
 **Deferred — the two Plan C popover shots.** v0 Plan C merged (PR #176) while this document was in
 review, so the Settings and Tracks popovers are on `/play` today. Their shots are still **out of this
@@ -295,12 +301,15 @@ green. `OpenFileControl.tsx` renders `variant="ghost"` on `--rail`, so hovering 
 Convenient side effect: that button also carries a tooltip, so this shot captures the hover step and
 that tooltip together.
 
-**Neither this step nor the engine-error tint is visible to the comparator, so both shots assert it
-instead.** `--elevate` over `--rail` scores `80` against the `1408.6` cutoff, so reverting to
-`hover:bg-muted` (`46`) changes zero counted pixels — and that revert is the exact regression PR #170
-records having shipped. The engine panel's tint over `--popover` scores `173`, and even its
-`border-destructive/25` edge only reaches `1231`. Each shot therefore reads the surface directly
-before the compare, the way the accessibility lane already polls `getComputedStyle`
+**Neither this step, the engine-error tint, nor the bundled-beat screen's own surface steps are
+visible to the comparator, so those shots assert them instead.** `--elevate` over `--rail` scores
+`80` against the `1408.6` cutoff, so reverting to `hover:bg-muted` (`46`) changes zero counted
+pixels — and that revert is the exact regression PR #170 records having shipped. The engine panel's
+tint over `--popover` scores `173`, and even its `border-destructive/25` edge only reaches `1231`.
+The bundled-beat screen is further under again: its `bg-rail` strip against the page background
+scores `20`, and its `bg-panel` transport footer against that background `5`. Its **header is not**
+one of these steps — the header paints no background of its own. Each shot therefore reads the
+surface directly before the compare, the way the accessibility lane already polls `getComputedStyle`
 (`web/e2e/a11y.e2e.ts:87`, `:173`) and the way the tempo-percentage caveat under Risks already
 prescribes:
 
@@ -721,11 +730,11 @@ out the command that changes.
   button, so focus-within holds it — but a variant that moves focus away would capture it at
   `opacity-0` and bless a baseline missing the thing the shot exists for. Assert the painted opacity
   before the shot, the way the accessibility lane already does.
-- **Two shots guard a surface step the comparator cannot see.** The ghost-hover step (`80`) and the
-  engine-error tint (`173`) both fall under the `1408.6` per-pixel cutoff, so their pictures prove the
-  state rendered but not that the surface is right. Both carry a computed `background-color`
-  assertion for that reason — drop either assertion and the shot silently stops covering the thing it
-  was added for, with the screenshot still green.
+- **Three shots guard a surface step the comparator cannot see.** The bundled-beat rail (`20`) and
+  its transport footer (`5`), the ghost-hover step (`80`) and the engine-error tint (`173`) all fall
+  under the `1408.6` per-pixel cutoff, so their pictures prove the state rendered but not that the
+  surface is right. Each carries a computed `background-color` assertion for that reason — drop one
+  and that shot silently stops covering the thing it was added for, with the screenshot still green.
 - **The PR template needs no edit.** Item _"If this PR changed UI, I added or updated the VR tests
   for it"_ already reads correctly; it simply starts applying to `web/` changes once this lands.
 
@@ -781,7 +790,10 @@ it was planned rather than smuggled in.
   **Counting filenames is not enough.** A file can be present and still compare nothing: empty, all
   `test.skip`, or carrying no `toHaveScreenshot` at all. Playwright's `forbidOnly` catches `.only`;
   nothing in this repo catches `.skip` or `.fixme`, and the same file's own comment at `:38-39` warns
-  that an unanchored presence check stays green against a commented-out step. So the guard asserts
+  that an unanchored presence check stays green against a commented-out step. **Nor is the shot
+  files' own content enough**: the `chromium` project is what makes them run, and deleting it — or
+  mistyping its `testMatch` — leaves an unscoped run exiting **0** with every filename still in
+  place, measured both ways on Playwright 1.61.1. So the guard reads the config too, and asserts
   what it actually means:
 
   ```js
@@ -798,6 +810,10 @@ it was planned rather than smuggled in.
       sources.some((src) => src.includes('toHaveScreenshot(')),
       'no *.vr.ts calls toHaveScreenshot — the chromium project compares nothing',
     );
+
+    const cfg = readFileSync(new URL('../web/playwright.e2e.config.ts', import.meta.url), 'utf8');
+    assert.match(cfg, /name:\s*'chromium'/, 'the chromium project is gone — the shots never run');
+    assert.match(cfg, /testMatch:\s*'\*\*\/\*\.vr\.ts'/, 'chromium no longer matches *.vr.ts');
   });
   ```
 
