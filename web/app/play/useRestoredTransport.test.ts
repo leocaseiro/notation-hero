@@ -181,14 +181,25 @@ test('a corrected value is named, clamped, and healed in storage exactly once', 
 // is no key to name. The empty array is what tells the two apart downstream — PlayerShell shows
 // "reset to the defaults" for this one and names the rows for the case above — so `[]` here is
 // meaningful and must not collapse into null.
-test('an unreadable document reports a reset with no key to name', () => {
+test('an unreadable document reports a reset with no key to name, and heals storage', () => {
+  const setItem = vi.spyOn(Storage.prototype, 'setItem');
   seed('{broken');
+  setItem.mockClear();
   const { result, arrive } = renderTransport();
 
   arrive();
 
   expect(result.current.repaired).toEqual([]);
   expect(restoredValues(result.current)).toEqual(DEFAULT_TRANSPORT_VALUES);
+  // The heal, asserted on THIS path and not only on the corrected-key one above. The write-back
+  // guard cares whether `repaired` is null, not whether it is empty — and nothing else in the suite
+  // pins that. Guard it on `repaired.length === 0` instead and every case here still passes while
+  // the unreadable document is never rewritten, so the "could not be read" warning fires again on
+  // every single load, for good.
+  expect(setItem).toHaveBeenCalledExactlyOnceWith(
+    TRANSPORT_STORAGE_KEY,
+    serializeTransport(DEFAULT_TRANSPORT_VALUES),
+  );
 });
 
 // Site data blocked throws from the localStorage GETTER itself, which `readStoredTransport`
