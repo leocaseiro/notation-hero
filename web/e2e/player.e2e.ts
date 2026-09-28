@@ -636,6 +636,58 @@ test('Loop, Metronome and Count-In each flip the engine state', async ({ page })
     .toEqual([true, 1, 1]);
 });
 
+// The regression that nearly shipped WITH the persistence feature, and the one no unit test can
+// see. The four transport values are restored from localStorage; doing that during the FIRST
+// render makes the client disagree with the server-rendered HTML, and React does not patch a
+// mismatched attribute — it keeps the server's and warns. Measured while building it: every unit
+// test, ESLint and tsc stayed green while all three toggles sat at aria-pressed="false" and the
+// engine behind them was sounding a metronome. Only loading the page catches it, which is why this
+// case exists at the e2e layer rather than beside the storage module's own tests.
+test('the transport toggles come back from a reload, matching what the engine is doing', async ({
+  page,
+}) => {
+  await page.goto('/play');
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  // Two ON and one deliberately left OFF. A restore that simply turned everything on — or one that
+  // never ran and left the shipped defaults — would pass a test that only ever asserts `true`.
+  await page.getByTestId('toggle-loop').click();
+  await page.getByTestId('toggle-metronome').click();
+  // Speed is the fifth api value and the one deliberately NOT persisted, so move it off 100% here
+  // to prove below that it comes back reset rather than remembered (NH-295).
+  await page.getByRole('button', { name: 'Increase tempo' }).click();
+  await expect(page.getByTestId('tempo-control')).toHaveAttribute('data-off-speed', 'true');
+
+  await page.reload();
+  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
+
+  // The ARIA state of the real buttons, because that is exactly what the near-miss corrupted and
+  // what a screen reader announces — not an attribute the app maintains for a test's benefit.
+  await expect(page.getByTestId('toggle-loop')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('toggle-metronome')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('toggle-countin')).toHaveAttribute('aria-pressed', 'false');
+
+  // ...and the ENGINE agrees with them. Asserted through AlphaTab's own handle for the same reason
+  // the case above gives: the attributes mirror this app's state, so a restore that repainted the
+  // buttons while never reaching the player would satisfy them alone.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const at = (
+          document.querySelector('[data-testid="notation-surface"] > div') as {
+            at?: { isLooping: boolean; metronomeVolume: number; countInVolume: number };
+          } | null
+        )?.at;
+        return at ? [at.isLooping, at.metronomeVolume, at.countInVolume] : null;
+      }),
+    )
+    .toEqual([true, 1, 0]);
+
+  // The decision, guarded: a stepped tempo does NOT survive the reload.
+  await expect(page.getByTestId('tempo-control')).toHaveAttribute('data-off-speed', 'false');
+  await expect(page.getByTestId('player-status')).toHaveAttribute('data-speed', '1');
+});
+
 test('the scrubber seeks and the position follows', async ({ page }) => {
   await page.goto('/play');
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
