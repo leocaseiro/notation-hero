@@ -819,7 +819,13 @@ it was planned rather than smuggled in.
   than a hole in the gate, and it needs a pull request where `client/` VR had already gone red once
   — the job only ever UPDATES an existing comment, never creates one on a green pull request.
   `docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md:35` and `:38` name the old
-  artifact; correct those two, and leave the change-log and plan records as history.
+  artifact; correct those two.
+- `docs/specs/2026-06-26-nh-197-e2e-traces.md` — three live references to the old name, on the same
+  reasoning: it describes a mechanism that is still in force, not a record of what was decided.
+  `:186` is the upload's `name:`, and `:206` and `:223` tell a reader to download
+  `playwright-e2e-report` to debug a CI failure — an artifact that will not exist. All three become
+  `playwright-client-e2e-report`. The change-log and registry entries for NH-197 keep the old name:
+  those are records of what was decided at the time, and stay as history.
 - `tooling/workflow-guards.test.mjs` — the Node test that pins today's `e2e` job in source, and
   the one file in this list whose failure you cannot see before pushing. Two assertions break:
   `:40` requires a literal `run: pnpm --filter @notation-hero/web run test:e2e` line, which the
