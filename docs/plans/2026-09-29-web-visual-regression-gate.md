@@ -1726,7 +1726,7 @@ either way — this is a comment contradicting its own run, not a hole in the ga
 VR job over that very config. The no-Storybook fact stays — it is still the reason the lane is
 shaped this way — and Task 1 already rewrote this comment; verify it carries no "no VR job" claim.
 
-- [ ] **Step 7: Rewrite the two broken guard assertions and add two**
+- [ ] **Step 7: Rewrite the two broken guard assertions and add three**
 
 Two assertions in `tooling/workflow-guards.test.mjs` break, and they need **different** remedies.
 Replace that whole test:
@@ -1782,6 +1782,26 @@ test("the web job runs web/'s whole browser lane in the pinned container, and bl
 
 test('the client e2e lane still blocks merge too', () => {
   assert.match(workflow('ci.yml'), /^\s+e2e,$/m);
+});
+
+// Step 3 renames this artifact on BOTH sides — `vr` uploads it, `vr-report` downloads it to publish
+// the hosted diff page. A one-sided rename is SILENT in all three respects: the download step is
+// `continue-on-error: true`, its `[ -f … index.html ]` presence gate turns a miss into present=false
+// so the job SUCCEEDS, and ci-green's `needs:` list does not contain vr-report. Nothing in the repo
+// would go red — the next person with a red pixel run would just get no diff page at all.
+test('the client VR report is uploaded and downloaded under the SAME artifact name', () => {
+  const ci = workflow('ci.yml');
+  const jobBlock = (name) =>
+    ci.split(new RegExp(`^  ${name}:$`, 'm'))[1]?.split(/^  [a-z][a-z0-9-]*:$/m)[0] ?? '';
+  // `^\s+name:` matches the artifact name under `with:` only — a step title is written `- name:`.
+  const artifact = (block) => block.match(/^\s+name: (playwright-\S+)$/m)?.[1];
+  const uploaded = artifact(jobBlock('vr'));
+  const downloaded = artifact(jobBlock('vr-report'));
+  assert.ok(
+    uploaded && downloaded,
+    'the vr upload or the vr-report download lost its artifact name',
+  );
+  assert.equal(downloaded, uploaded, 'vr-report downloads a different artifact than vr uploads');
 });
 ```
 
