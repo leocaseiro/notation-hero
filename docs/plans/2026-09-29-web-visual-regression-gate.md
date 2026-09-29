@@ -1238,8 +1238,9 @@ test('a portalled tooltip wins the header layer', async ({ page }) => {
 // measured: the sibling shots keep the project's 1280x900. A second Playwright project would
 // instead double every baseline's filename space for the sake of one shot.
 //
-// One breakpoint is deliberately NOT covered: the transport footer carries a second one at 640 px
-// (`sm:gap-6 sm:px-8`), and both 900 px and 1280 px sit above it. Desktop web is the v0 target and
+// Two breakpoints are deliberately NOT covered, both below these two widths: the transport footer's
+// second step at 640 px (`sm:gap-6 sm:px-8`), and the header wordmark's `max-md:sr-only` collapse at
+// 768 px (PlayerHeader.tsx) — 900 px and 1280 px sit above both. Desktop web is the v0 target and
 // nine shots is settled.
 test.describe('below the lg breakpoint', () => {
   test.use({ viewport: { width: 900, height: 900 } });
