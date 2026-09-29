@@ -140,14 +140,15 @@ the task named beside it — they are the reason those tests exist.
 `web/e2e/a11y.e2e.ts` · `web/app/play/PlayerShell.tsx` · `web/app/play/TransportRow.tsx` ·
 `package.json` (root) · `tooling/workflow-guards.test.mjs` · `.github/workflows/ci.yml` ·
 `AGENTS.md` · `docs/runbooks/vr-a11y-testing.md` · `client/README.md` ·
-`docs/specs/2026-06-26-nh-197-e2e-traces.md` ·
+`web/README.md` · `docs/specs/2026-06-26-nh-197-e2e-traces.md` ·
 `docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md` ·
 `docs/specs/2026-09-21-web-visual-regression-gate.md` (its Status line) ·
 `docs/decisions/decision-changelog.md`.
 
-**One file sits outside the spec's stated footprint, and the PR body must declare it:**
+**Two files sit outside the spec's stated footprint, and the PR body must declare both:**
 `web/app/globals.css`, which gains one `@source not` line in Task 4 (the last section of this plan
-carries the measurement behind it — approved by the maintainer on 2026-09-29). Every other file
+carries the measurement behind it — approved by the maintainer on 2026-09-29), and `web/README.md`,
+whose script table names the `e2e` CI lane that Task 9 moves. Every other file
 appears in
 the spec's "Process changes this carries" list, except `web/e2e/pages.vr.ts`, which is that list's
 `web/e2e/*.vr.ts` entry realised as a single file (see below for why one rather than three).
@@ -1856,14 +1857,14 @@ was decided at the time and keep the old name.
 **Files:**
 
 - Modify: `AGENTS.md` · `docs/runbooks/vr-a11y-testing.md` · `client/README.md` ·
-  `docs/specs/2026-06-26-nh-197-e2e-traces.md` ·
+  `web/README.md` · `docs/specs/2026-06-26-nh-197-e2e-traces.md` ·
   `docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md` ·
   `docs/specs/2026-09-21-web-visual-regression-gate.md` · `docs/decisions/decision-changelog.md`
 
 **Interfaces:** consumes the artifact names and commands from Tasks 3 and 9. Produces nothing code
 depends on.
 
-- [ ] **Step 1: Rename the three artifacts in every live reference**
+- [ ] **Step 1: Correct the live references — the three artifact names, and `web/README.md`**
 
 Five spot edits, found by content:
 
@@ -1888,6 +1889,15 @@ Expected: no output. Scoped to the five files this step edits on purpose: a recu
 reach zero, because the old names also live in `docs/plans/**` (including this plan's own Task 9 diff
 and the table above), in the NH-320 spec's own description of the rename, and in the change log and
 the registry — all of which keep them as history.
+
+**Then correct `web/README.md`'s script table.** No artifact name appears in it, so the grep above
+never reaches it — but Task 9 makes one of its rows false, and the pixel lane has no rows at all:
+
+- `test:e2e` — replace "Playwright against the built app — what the `e2e` CI lane runs" with
+  "Behaviour + accessibility against the built app — what the `web` CI job runs".
+- Add `test:vr` — "The nine page screenshots, compared against the committed Linux baselines".
+- Add `test:vr:update` — "Rewrite those baselines. Linux-only: regenerate through
+  `pnpm test:web:docker:update`, never from a local Mac run".
 
 - [ ] **Step 2: Give `AGENTS.md`'s VR section the `web/` lane**
 
@@ -2051,7 +2061,8 @@ Expected: only the headings you meant to add.
 - [ ] **Step 7: Commit and push**
 
 ```bash
-git add AGENTS.md docs/runbooks/vr-a11y-testing.md client/README.md docs/specs/ docs/decisions/decision-changelog.md
+git add AGENTS.md docs/runbooks/vr-a11y-testing.md client/README.md web/README.md \
+  docs/specs/ docs/decisions/decision-changelog.md
 git commit -m "docs: record the web VR lane and rename the Playwright artifacts (NH-320)"
 ```
 
@@ -2076,11 +2087,11 @@ git commit -m "docs: record the web VR lane and rename the Playwright artifacts 
 - [ ] Tick every box in the PR checklist. The VR item — _"If this PR changed UI, I added or updated
       the VR tests for it"_ — needs no template edit; it simply starts applying to `web/` now.
 - [ ] No `## Pulumi preview` section is needed: nothing under `infra/` changes.
-- [ ] **Declare the one out-of-footprint file in the PR body.** The spec lists every file its
+- [ ] **Declare both out-of-footprint files in the PR body.** The spec lists every file its
       implementing PR should touch, so a reviewer can check the diff against it; `web/app/globals.css`
-      is not on that list. Say in the PR body that it is there deliberately, that the maintainer
-      approved it on 2026-09-29, and why — one line, so a reviewer seeing it knows it was planned
-      rather than smuggled in.
+      and `web/README.md` are not on that list. Say in the PR body that each is there deliberately,
+      that the maintainer approved the `globals.css` line on 2026-09-29, and why — one line each, so
+      a reviewer seeing them knows they were planned rather than smuggled in.
 
 ## The one hazard outside the spec's footprint — measured, and fixed in Task 4
 
