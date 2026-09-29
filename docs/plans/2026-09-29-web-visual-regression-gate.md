@@ -1,3 +1,10 @@
+---
+# spec-triage-loop state. `lap` is the review lap this document has been through;
+# `last_applied` is the highest severity applied on that lap.
+lap: 1
+last_applied: P1
+---
+
 # Visual-regression gate for `web/` — implementation plan (NH-320)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development
