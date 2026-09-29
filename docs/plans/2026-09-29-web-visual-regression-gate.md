@@ -926,7 +926,7 @@ git commit -m "test(web): shoot the landing page, and land the VR baseline workf
 - Produces: `awaitPlayerReady(page: Page): Promise<void>` — used again by Task 6's three shots, and
   deliberately **not** by Task 7's two, which never finish loading.
 - Produces: `surfaceDiffersFromPageBackground(page: Page, testId: string): Promise<boolean>` — used twice
-  here and nowhere else. Task 6's ghost hover compares a resting value to a hovered one, and Task 7's
+  here and nowhere else. Task 6's ghost hover compares the hovered value against the `--elevate` token, and Task 7's
   engine panel also has to rule out fully transparent, so neither fits this shape. Two call sites is
   why it is a helper rather than inlined twice.
 - Produces: the test ids `player-rail` and `transport-row`.
@@ -1164,16 +1164,31 @@ test('the ghost hover step on the left rail', async ({ page }) => {
   await awaitPlayerReady(page);
 
   const ghost = page.getByTestId('open-file-button');
-  const resting = await ghost.evaluate((el) => globalThis.getComputedStyle(el).backgroundColor);
   await ghost.hover();
   // `--elevate` over `--rail` scores 80 against the 1408.6 cutoff, so reverting to
   // `hover:bg-muted` (46) changes ZERO counted pixels — and that revert is the exact regression
-  // this shot exists for. Read the resting and hovered values the same way and the comparison
-  // cannot go vacuous. The picture is not redundant: the variant's `hover:text-foreground` step
+  // this shot exists for. The picture is not redundant: the variant's `hover:text-foreground` step
   // scores 4412, so it catches "this state did not render at all".
+  //
+  // NOT "differs from its own resting value" — measured on 1.61.1: Tailwind's preflight paints every
+  // <button> `background-color: transparent`, so resting is rgba(0, 0, 0, 0) and ANY opaque hover
+  // differs from it. `hover:bg-muted` (the regression this shot exists for) and `hover:bg-rail`
+  // BOTH pass that form. Compare against `--elevate` itself, resolved through the SAME serializer as
+  // the button's own computed value: a throwaway element, not getPropertyValue('--elevate'), which
+  // returns the authored `oklch(93.5% 0.006 240.4deg)` where the computed value reads
+  // `oklch(0.935 0.006 240.4)` — a format mismatch is exactly the failure the Task 5 helper's
+  // doc-comment warns about.
+  const elevate = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = 'var(--elevate)';
+    document.body.append(probe);
+    const value = globalThis.getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return value;
+  });
   await expect
     .poll(() => ghost.evaluate((el) => globalThis.getComputedStyle(el).backgroundColor))
-    .not.toBe(resting);
+    .toBe(elevate);
   // Not for an open DELAY — Tooltip defaults `delay` and `closeDelay` to 0 and neither trigger
   // overrides them. What needs settling is the open animation and the portal's position.
   await expect(openTooltip(page)).toBeVisible();
@@ -1239,15 +1254,15 @@ test.describe('below the lg breakpoint', () => {
 
 - [ ] **Step 4: Prove the ghost-hover assertion fails when the step goes flat**
 
-Temporarily change the ghost variant's `hover:bg-elevate` to `hover:bg-rail` in
-`client/src/components/ui/Button/Button.tsx` — the same surface the button sits on, so the step
-truly vanishes — then:
+Temporarily change the ghost variant's `hover:bg-elevate` to `hover:bg-muted` in
+`client/src/components/ui/Button/Button.tsx` — the exact regression this shot exists for, and one
+the comparator cannot see (46 against the 1408.6 cutoff) — then:
 
 ```bash
 pnpm --filter @notation-hero/web run test:vr -g "ghost hover"
 ```
 
-Expected: FAIL on the `.not.toBe(resting)` poll. Revert.
+Expected: FAIL on the `.toBe(elevate)` poll. Revert.
 
 - [ ] **Step 5: Verify the narrow shot really renders the narrow rail**
 
