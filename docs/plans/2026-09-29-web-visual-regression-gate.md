@@ -655,13 +655,18 @@ test('the Playwright container tag agrees with @playwright/test everywhere it is
   );
   const expected = `mcr.microsoft.com/playwright:v${floor}-noble`;
 
-  assert.ok(
-    readFileSync(
-      fileURLToPath(new URL('../tooling/docker-playwright.sh', import.meta.url)),
-      'utf8',
-    ).includes(expected),
-    `tooling/docker-playwright.sh must pin ${expected}`,
+  // Anchored and exhaustive, the same treatment ci.yml gets below: a bare `.includes()` stays green
+  // when the real assignment drifts and the expected tag survives only in a comment or a second,
+  // stale IMAGE line.
+  const helper = readFileSync(
+    fileURLToPath(new URL('../tooling/docker-playwright.sh', import.meta.url)),
+    'utf8',
   );
+  const images = helper.match(/^IMAGE=mcr\.microsoft\.com\/playwright:\S+$/gm);
+  assert.ok(images, `tooling/docker-playwright.sh must pin ${expected}`);
+  for (const image of images) {
+    assert.equal(image, `IMAGE=${expected}`, `${image} disagrees with ${expected}`);
+  }
 
   const pins = workflow('ci.yml').match(/^\s+container: mcr\.microsoft\.com\/playwright:\S+$/gm);
   assert.ok(pins, 'no Playwright container pin found in ci.yml — a pixel job lost its container');
@@ -695,12 +700,15 @@ Expected: the same PASS result as before the refactor. If it fails, compare the 
 
 - [ ] **Step 6: Lint the shell and commit**
 
+Stage first: `lint:shell` is `git ls-files -z '*.sh' | xargs -0 -r shellcheck`, so it enumerates
+TRACKED files only and would skip the brand-new helper entirely.
+
 ```bash
+git add tooling/docker-playwright.sh package.json tooling/workflow-guards.test.mjs
 pnpm run lint:shell && pnpm run lint:sort-pkg && pnpm run test:tooling
 ```
 
 ```bash
-git add tooling/docker-playwright.sh package.json tooling/workflow-guards.test.mjs
 git commit -m "test: share one Playwright container invocation across client and web (NH-320)"
 ```
 
@@ -727,7 +735,7 @@ container baseline generation, commit) before eight more shots are written again
 
 This step comes first because the file added in step 2 is the third one under `web/e2e/` that
 discusses design-system class names in prose, and Tailwind scans that folder — measured, see
-"Flagged" at the end of this plan for the reproduction. A utility named in a comment there becomes
+"The one hazard outside the spec's footprint" at the end of this plan for the reproduction. A utility named in a comment there becomes
 real CSS, which can silently disarm the `REQUIRED_SELECTORS` canary in
 `web/scripts/assert-design-system-css.mjs` — one of the two guards holding shut the failure where
 production served the design system unstyled (NH-315).
@@ -847,8 +855,12 @@ test('the landing page', async ({ page }) => {
 pnpm --filter @notation-hero/web run test:vr
 ```
 
-Expected: PASS, having written `landing-chromium-darwin.png` (on a Mac). That file is git-ignored by
-Task 1's line — confirm with `git status --short`, which must show **no** darwin PNG.
+Expected: the shot **FAILS once**, with "A snapshot doesn't exist at
+…/landing-chromium-darwin.png, writing actual." — measured on 1.61.1. That is Playwright's default
+`updateSnapshots: 'missing'`: it writes the baseline and fails that attempt, without retrying. The
+darwin PNG is written all the same, and it is git-ignored by Task 1's line — confirm with
+`git status --short`, which must show **no** darwin PNG. Run the same command a second time: now it
+PASSES, which is the real check that the shot is deterministic.
 
 - [ ] **Step 5: Generate the committed Linux baseline in the container**
 
@@ -913,7 +925,7 @@ git commit -m "test(web): shoot the landing page, and land the VR baseline workf
   `pressEveryTransportToggle`.
 - Produces: `awaitPlayerReady(page: Page): Promise<void>` — used again by Task 6's three shots, and
   deliberately **not** by Task 7's two, which never finish loading.
-- Produces: `surfaceDiffersFromParent(page: Page, testId: string): Promise<boolean>` — used twice
+- Produces: `surfaceDiffersFromPageBackground(page: Page, testId: string): Promise<boolean>` — used twice
   here and nowhere else. Task 6's ghost hover compares a resting value to a hovered one, and Task 7's
   engine panel also has to rule out fully transparent, so neither fits this shape. Two call sites is
   why it is a helper rather than inlined twice.
@@ -986,7 +998,7 @@ async function awaitPlayerReady(page: Page): Promise<void> {
 }
 
 /**
- * Whether `testId`'s own background-color differs from its parent's.
+ * Whether `testId`'s own background-color differs from the page background's.
  *
  * THREE of these shots guard a surface step the pixel comparator CANNOT see, between them carrying
  * FOUR such assertions — the bundled beat has two, the ghost hover and the engine error one each.
@@ -1005,11 +1017,17 @@ async function awaitPlayerReady(page: Page): Promise<void> {
  * exists to catch: the browser resolves computed colours to its own format, so a format mismatch
  * makes the assertion pass — or fail — for a reason unrelated to the surface.
  */
-const surfaceDiffersFromParent = (page: Page, testId: string): Promise<boolean> =>
+const surfaceDiffersFromPageBackground = (page: Page, testId: string): Promise<boolean> =>
   page.getByTestId(testId).evaluate((el) => {
-    const parent = el.parentElement;
     const own = globalThis.getComputedStyle(el).backgroundColor;
-    return parent !== null && own !== globalThis.getComputedStyle(parent).backgroundColor;
+    // document.body, NOT el.parentElement: measured, NEITHER parent paints anything. The rail's is
+    // <section className="nh-drop-zone …"> and web/app/globals.css gives .nh-drop-zone only a
+    // [data-dragging] rule; the footer's is <div className="shrink-0" data-testid="player-status">.
+    // Against a transparent parent EVERY opaque colour differs, bg-background included, so the
+    // assertion could never fail. body carries `bg-background` (client/src/styles.css), which is the
+    // surface the 20 and 5 scores were measured against — and both values still come back through
+    // the SAME serializer, which is the property this helper exists to preserve.
+    return own !== globalThis.getComputedStyle(document.body).backgroundColor;
   });
 ```
 
@@ -1025,8 +1043,8 @@ test('the player on the score it opens with', async ({ page }) => {
   // The rail (20) and the transport footer (5) both score far under the 1408.6 cutoff, so the
   // picture proves the screen rendered while these two prove the surfaces are still distinct from
   // the page behind them. The header is NOT one of these steps — it paints no background of its own.
-  await expect.poll(() => surfaceDiffersFromParent(page, 'player-rail')).toBe(true);
-  await expect.poll(() => surfaceDiffersFromParent(page, 'transport-row')).toBe(true);
+  await expect.poll(() => surfaceDiffersFromPageBackground(page, 'player-rail')).toBe(true);
+  await expect.poll(() => surfaceDiffersFromPageBackground(page, 'transport-row')).toBe(true);
   await settleBeforeShot(page);
   await expect(page).toHaveScreenshot('player-bundled-beat.png', { fullPage: true });
 });
@@ -1086,7 +1104,7 @@ Temporarily change the `<aside>`'s `bg-rail` to `bg-background` in `PlayerShell.
 pnpm --filter @notation-hero/web run test:vr -g "score it opens with"
 ```
 
-Expected: FAIL on `surfaceDiffersFromParent('player-rail')`, **not** on the screenshot — that is
+Expected: FAIL on `surfaceDiffersFromPageBackground('player-rail')`, **not** on the screenshot — that is
 the point of the assertion. Revert, repeat for `transport-row` (`bg-panel` → `bg-background`),
 revert again.
 
@@ -1314,7 +1332,7 @@ test('the destructive panel when the engine module fails to load', async ({ page
   await expect(panel).toBeVisible({ timeout: 15_000 });
   // The tint over `--popover` scores 173 against the 1408.6 cutoff, and even its
   // `border-destructive/25` edge only reaches 1231 — so the picture proves the panel rendered (its
-  // red text scores 19698) while this proves the tint is there. Not surfaceDiffersFromParent: this
+  // red text scores 19698) while this proves the tint is there. Not surfaceDiffersFromPageBackground: this
   // one also has to rule out fully transparent, which "differs from the parent" does not.
   await expect
     .poll(() =>
@@ -1343,8 +1361,9 @@ simply photograph the loaded player, and the baseline would look plausible.
 pnpm --filter @notation-hero/web run test:vr -g "Skeleton"
 ```
 
-Expected: PASS. Open the written darwin PNG and confirm it shows the skeleton placeholder, **not**
-rendered notation. Then temporarily change `stallEngine(page, Infinity)` to `stallEngine(page, 500)`
+Expected: the first run **FAILS** with "A snapshot doesn't exist at …, writing actual." and writes
+the darwin PNG; a second run of the same command PASSES. Open the written darwin PNG and confirm it
+shows the skeleton placeholder, **not** rendered notation. Then temporarily change `stallEngine(page, Infinity)` to `stallEngine(page, 500)`
 and re-run — the shot should now photograph the loaded player, proving the argument is load-bearing.
 Restore `Infinity`.
 
@@ -1375,7 +1394,8 @@ player-header-tooltip-chromium-linux.png  player-transport-pressed-chromium-linu
 player-long-score-chromium-linux.png
 ```
 
-Confirm the count: `ls web/e2e/pages.vr.ts-snapshots/ | wc -l` → `9`.
+Confirm the count: `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `9`. Local
+darwin shots share this folder and are git-ignored, so count the committed Linux set explicitly.
 
 - [ ] **Step 6: Run both lanes together the way CI will, once, unscoped**
 
@@ -1714,9 +1734,12 @@ test("the web job runs web/'s whole browser lane in the pinned container, and bl
   // The container pin is what makes "no playwright install needed" true, and what makes the pixel
   // comparison match the committed -linux baselines.
   assert.match(webJob, /^\s+container: mcr\.microsoft\.com\/playwright:v[\d.]+-noble$/m);
+  // Anchored to a real `run:` line, the same idiom as the run-line assertion above: the job's own
+  // Install-deps comment ends with "no `playwright install`", and the slice includes comments, so the
+  // unanchored form fails on its own explanation the first time it is run.
   assert.doesNotMatch(
     webJob,
-    /playwright install/,
+    /^\s+run:.*playwright install/m,
     'the container bakes the browsers in — an install step here means the pin is not trusted',
   );
   // Its report and traces must be uploaded, or a CI failure is not replayable: web/ has no hosted
@@ -1827,10 +1850,16 @@ Five spot edits, found by content:
 Verify none is left behind:
 
 ```bash
-grep -rn "playwright-vr-report\|playwright-e2e-report" --include='*.md' --include='*.yml' . | grep -v decision-changelog | grep -v decision-registry
+grep -n "playwright-vr-report\|playwright-e2e-report" \
+  .github/workflows/ci.yml client/README.md docs/runbooks/vr-a11y-testing.md \
+  docs/specs/2026-06-26-nh-197-e2e-traces.md \
+  docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md
 ```
 
-Expected: no output. (The changelog and registry keep the old names as history.)
+Expected: no output. Scoped to the five files this step edits on purpose: a recursive grep cannot
+reach zero, because the old names also live in `docs/plans/**` (including this plan's own Task 9 diff
+and the table above), in the NH-320 spec's own description of the rename, and in the change log and
+the registry — all of which keep them as history.
 
 - [ ] **Step 2: Give `AGENTS.md`'s VR section the `web/` lane**
 
@@ -1845,6 +1874,20 @@ Four test layers in `client/`: **Unit** (Vitest, `quality` job), **a11y** (axe-c
 `web/` has **no Storybook**, so its gate is nine page screenshots of `/` and `/play` against the real `next build` — the `web` job, which runs behaviour, axe and pixels in ONE Playwright-container invocation so one build serves all three. Blocks merge. Baselines are Linux-only too: regenerate via `pnpm test:web:docker:update` and commit them. This is the gate `client/` VR cannot be — `web/` compiles its own Tailwind CSS by scanning `client/` **source**, so a component can be correct in Storybook and broken in the app (NH-320).
 
 **Full runbook:** [`docs/runbooks/vr-a11y-testing.md`](docs/runbooks/vr-a11y-testing.md) — VR-in-Docker mechanics, the nine `web/` shots, e2e config, trace debugging.
+```
+
+**Also widen `AGENTS.md`'s Tailwind-scan sentence in this same step.** It currently names only one
+folder, so the second exclusion Task 4 adds would ship with no standing protection — even though the
+plan's own argument is that this line is one of two things keeping the NH-315 stylesheet canary
+honest. Find the sentence beginning "`web/app/globals.css` also keeps" and make it name both:
+
+```text
+Before:  `web/app/globals.css` also keeps `web/scripts/**` out of Tailwind's automatic source
+         detection. Do not remove that line: …
+After:   `web/app/globals.css` also keeps `web/scripts/**` AND `web/e2e/**` out of Tailwind's
+         automatic source detection. Do not remove either line: the guard names the utilities it
+         checks for, so scanning a folder that discusses class names in prose makes Tailwind
+         generate them and the guard silently passes on a broken build.
 ```
 
 - [ ] **Step 3: Widen the runbook**
@@ -1993,8 +2036,9 @@ git commit -m "docs: record the web VR lane and rename the Playwright artifacts 
       (`pnpm -r --if-present run test` is scoped to the 5 workspace projects; the root is excluded).
 - [ ] `pnpm test:vr:docker && pnpm test:web:docker` — both pixel lanes against their committed
       Linux baselines.
-- [ ] `ls web/e2e/pages.vr.ts-snapshots/ | wc -l` → `9`, and
-      `git status --short` shows no `*-chromium-darwin.png`.
+- [ ] `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `9` (local
+      `*-chromium-darwin.png` files share the folder and are git-ignored), and `git status --short`
+      shows no darwin PNG.
 - [ ] Open all nine baseline PNGs and look at them. Tests and code review do not catch layout; three
       UI tasks in this repo have passed both and then failed on sight.
 - [ ] Write the PR body **before** the final push — a `gh pr edit` mid-run cancels the run and the
@@ -2032,7 +2076,13 @@ go missing. Verified — without this line the guard reports 6 of 10 missing ins
 a _comment_ in `web/e2e/a11y.e2e.ts` — a utility that appears nowhere else in the repo — came out in
 the emitted stylesheet. Reproduce it with:
 
+Precondition: `git diff --quiet -- web/e2e/a11y.e2e.ts` must pass before you run this. The last line
+discards that file's working-tree state, and Task 2 rewrites it at nine call sites — so run it only
+with that file clean. If the build fails mid-way the planted comment is still in the working tree;
+run the last line by hand.
+
 ```bash
+git diff --quiet -- web/e2e/a11y.e2e.ts || { echo 'a11y.e2e.ts has uncommitted changes — commit or stash first'; exit 1; }
 printf '\n// mt-[137px]\n' >> web/e2e/a11y.e2e.ts
 pnpm --filter @notation-hero/web run build
 grep -rl 'mt-\[137px\]' web/.next/static/ --include='*.css'   # prints the emitted chunk
