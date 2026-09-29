@@ -1,0 +1,44 @@
+{
+  "reviewer": "design-lens-reviewer",
+  "findings": [
+    {
+      "title": "Rail/footer surface checks compare against a transparent parent",
+      "severity": "P1",
+      "section": "Task 5, Step 3 (surfaceDiffersFromParent helper) and Step 5 (its own verification)",
+      "why_it_matters": "The `player-rail` and `transport-row` surface checks will report the surface as fine even when the rail or transport footer becomes visually identical to the page behind it — the exact regression they exist to catch — because their immediate DOM parent (the drop-zone `<section>` for the rail, the `player-status` `<div>` for the footer) sets no background of its own, so its computed `background-color` is always `rgba(0, 0, 0, 0)`. Any real background on the child, including `bg-background` itself, differs from that transparent value, so the comparison can never fail no matter what colour the child actually renders. Concretely, the plan's own Task 5 Step 5 tells the implementer to change `bg-rail` to `bg-background` and expect the poll to FAIL — it will not, because `rgb(255, 255, 255)` still differs from the parent's `rgba(0, 0, 0, 0)` — and since that colour swap is almost certainly under the 1408.6 per-pixel cutoff (the same close-to-white palette that scores `--panel`-over-`--background` at 5 in the spec's own table), the screenshot comparison is unlikely to catch it either, so the whole test would go green while the rail silently matches the page. Task 8's guard cannot see this either: it only checks that the strings `player-rail` and `backgroundColor` appear in the file, not that the comparison is meaningful.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "evidence": [
+        "const parent = el.parentElement;",
+        "return parent !== null && own !== globalThis.getComputedStyle(parent).backgroundColor;",
+        "Expected: FAIL on `surfaceDiffersFromParent('player-rail')`, **not** on the screenshot — that is",
+        "picture proves the screen rendered while these two prove the surfaces are still distinct from"
+      ],
+      "suggested_fix": "Have `surfaceDiffersFromParent` read `document.body`'s computed `background-color` instead of `el.parentElement`'s — body is the element that actually carries `bg-background` in this layout, with nothing between it and the rail or footer setting a background of its own — so the comparison genuinely fails when `bg-rail` or `bg-panel` regresses to `bg-background`, matching the FAIL that Task 5 Step 5 already documents as the expected outcome."
+    },
+    {
+      "title": "Header wordmark's sub-md collapse has no shot",
+      "severity": "P3",
+      "section": "Task 6, Step 3 (the narrow-viewport shot)",
+      "why_it_matters": "If a future change breaks the header's responsive behaviour below the `md` breakpoint (768px) — for instance the Back button, brand mark and title overlapping or clipping once the wordmark's own `max-md:sr-only` rule hides it — none of the nine shots would catch it, because the only narrow shot is pinned at 900px, which sits above `md` and never exercises that collapse. The plan explicitly calls out and justifies the sibling gap one breakpoint over — the transport footer's uncovered `sm:` step at 640px, reasoned through in the same Task 6 Step 3 comment block — but says nothing about this second, symmetric header gap, so a reader cannot tell whether it was considered and excluded on the same grounds or simply missed.",
+      "finding_type": "omission",
+      "autofix_class": "manual",
+      "confidence": 50,
+      "evidence": [
+        "One shot at 900 px covers the narrow one without shooting every state twice.",
+        "One breakpoint is deliberately NOT covered: the transport footer carries a second one at 640 px"
+      ],
+      "suggested_fix": "Add one sentence next to the existing sub-sm transport-footer note in Task 6 Step 3 stating that the header wordmark's max-md:sr-only collapse at 768px is out of scope for the same 'desktop web is the v0 target' reason, so the gap reads as a deliberate decision rather than an oversight."
+    }
+  ],
+  "residual_risks": [
+    "The 60-run pixel-determinism study (spec) covers only the bundled-beat and long-score states; the other seven shots — including the two whose surface assertions this review flags as currently non-functional (player-rail, transport-row) — are unmeasured for stability under parallel execution, so their true flake rate is unknown until CI has run them for real.",
+    "If `--rail` vs `--background` (and `--panel` vs `--background`) actually score above the 1408.6 per-pixel cutoff — unmeasured here, only inferred from nearby values in the spec's own table — the screenshot comparison alone would still catch a `bg-rail`-to-`bg-background` regression even with the broken assertion, which would reduce Finding 1's real-world impact without changing that the assertion itself is non-functional as written.",
+    "Task 8's guard only checks that the strings player-rail, transport-row, open-file-button, engine-error and backgroundColor appear somewhere in *.vr.ts — it cannot and does not detect that two of the four surface assertions compare against an always-transparent parent, so nothing in CI will flag Finding 1 going forward even after this review."
+  ],
+  "deferred_questions": [
+    "Should the player-rail/transport-row surface-assertion fix (comparing against document.body instead of el.parentElement) be folded into Task 5 of this same plan before merge, or filed as a fast-follow once the maintainer confirms the diagnosis?",
+    "Is the header wordmark's max-md:sr-only collapse (768px) meant to be excluded from v1 on the same 'desktop web is the v0 target' reasoning as the transport footer's sub-sm gap, or should it be folded into a later breakpoint-focused pass of this gate?"
+  ]
+}

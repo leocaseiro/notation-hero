@@ -1,0 +1,120 @@
+{
+  "reviewer": "feasibility-reviewer",
+  "findings": [
+    {
+      "title": "Surface assertions compare against transparent parents",
+      "severity": "P1",
+      "section": "Task 5 — Steps 3 and 5 (surfaceDiffersFromParent)",
+      "why_it_matters": "Two of the four surface assertions the plan calls irreplaceable pass on ANY opaque background, so the regression they exist to catch still ships green. `player-rail`'s immediate parent is `<section className=\"nh-drop-zone relative flex min-h-0 flex-1\">` (web/app/play/PlayerShell.tsx:1069) and `transport-row`'s is `<div className=\"shrink-0\" data-testid=\"player-status\">` (:1152); neither declares a background, and the only `.nh-drop-zone` rule in web/app/globals.css is a `[data-dragging]` outline — so `getComputedStyle(parent).backgroundColor` is `rgba(0, 0, 0, 0)` for both, and swapping `bg-rail`/`bg-panel` for `bg-background` still \"differs from the parent\". Task 5 Step 5's prescribed proof will therefore PASS where the plan expects FAIL, and the implementer has to redesign the helper mid-task. Walking up to the nearest ancestor that actually paints fixes it, because that ancestor is the `--background` surface the plan's own scores (rail-over-panel 20, panel-over-background 5) were measured against.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "evidence": [
+        "const surfaceDiffersFromParent = (page: Page, testId: string): Promise<boolean> =>",
+        "return parent !== null && own !== globalThis.getComputedStyle(parent).backgroundColor;",
+        "picture proves the screen rendered while these two prove the surfaces are still distinct from",
+        "Temporarily change the `<aside>`'s `bg-rail` to `bg-background` in `PlayerShell.tsx`, then:",
+        "Expected: FAIL on `surfaceDiffersFromParent('player-rail')`, **not** on the screenshot"
+      ],
+      "suggested_fix": "Compare against the nearest painting ancestor instead of `el.parentElement`: rename the helper `surfaceDiffersFromBackdrop` and have its browser callback walk up from the element until it finds an ancestor whose computed `background-color` is not `rgba(0, 0, 0, 0)`, then return `own !== thatBackdrop` (returning false if none paints). Keep both call sites and Step 5's two proofs unchanged — with this helper `bg-rail` -> `bg-background` and `bg-panel` -> `bg-background` both make the assertion fail as the step states."
+    },
+    {
+      "title": "web-job guard rejects its own explanatory comment",
+      "severity": "P2",
+      "section": "Task 9 — Steps 1, 7 and 8",
+      "why_it_matters": "`pnpm run test:tooling` goes red the moment Task 9 lands, on a guard the plan itself adds. The prescribed `web` job carries a setup comment containing the literal text `playwright install`, and the new assertion forbids that string anywhere inside the sliced job block (`ci.split(/^  web:$/m)[1]` starts after the `web:` line, so the step comments are inside the slice). Step 8's stated \"Expected: all PASS\" cannot happen, and the implementer burns a cycle on a self-inflicted failure whose message points at a non-existent install step. Anchoring the assertion to a real `run:` line — the idiom this same test already uses for the run-line check — keeps the comment and still catches an actual install step.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "evidence": [
+        "# run here. Browsers are baked into the image — no `playwright install`.",
+        "/playwright install/,",
+        "'the container bakes the browsers in — an install step here means the pin is not trusted',",
+        "Expected: all PASS. Then prove the one-invocation guard bites — temporarily duplicate the"
+      ],
+      "suggested_fix": "Change the assertion's pattern to `/^\\s+run:.*playwright install/m` so it only rejects a real step, matching the anchoring rationale already stated two assertions above it (\"ANCHORED to a real `run:` line (the /m flag), never 'appears somewhere in the file'\"). Leave the job comment as written."
+    },
+    {
+      "title": "Artifact-rename grep cannot return no output",
+      "severity": "P2",
+      "section": "Task 10 — Step 1 (Rename the three artifacts in every live reference)",
+      "why_it_matters": "The completeness check for the artifact rename reports roughly 17 hits instead of nothing, so the implementer cannot tell a missed live reference from history and may either stall or start editing historical plans that the plan elsewhere says to leave alone. Run today in this worktree the same command already matches `docs/plans/2026-06-26-001-feat-nh-197-e2e-traces-plan.md` (6 hits), `docs/plans/2026-09-13-v0a-engine-and-first-sound-plan.md` (2), this plan's own Task 9 diff and Step 1 table (6), and `docs/specs/2026-09-21-web-visual-regression-gate.md`'s own description of the rename (3) — none of which Task 10 touches, while the command's only exclusions are the change log and the registry. Scoping the grep to the files the rename actually targets makes \"no output\" both true and meaningful.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "confidence": 100,
+      "evidence": [
+        "grep -rn \"playwright-vr-report\\|playwright-e2e-report\" --include='*.md' --include='*.yml' . | grep -v decision-changelog | grep -v decision-registry",
+        "Expected: no output. (The changelog and registry keep the old names as history.)"
+      ],
+      "suggested_fix": "Replace the recursive grep with an explicit file list covering only the live references: `grep -n \"playwright-vr-report\\|playwright-e2e-report\" .github/workflows/ci.yml client/README.md docs/runbooks/vr-a11y-testing.md docs/specs/2026-06-26-nh-197-e2e-traces.md docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md`, and state that `docs/plans/**`, this spec's own rename note and the change log keep the old names as history."
+    },
+    {
+      "title": "First VR run fails, not passes, on a missing snapshot",
+      "severity": "P2",
+      "section": "Task 4 Step 4 and Task 7 Step 3",
+      "why_it_matters": "Both steps promise PASS, but a brand-new shot with no darwin baseline exits 1. Playwright's default `updateSnapshots: 'missing'` writes the file and then fails the test through a soft error: `handleMissing` in `playwright/lib/matchers/expect.js` returns `softError: new Error(\"A snapshot doesn't exist at …, writing actual.\")` with `shouldNotRetryTest: true`, and the worker calls `_failWithError` on it. An agent that treats a red run as a blocker will hunt for a config, project or testMatch bug that is not there — or 'fix' it by forcing `updateSnapshots`. Stating that the run reports the shot failed while still writing the PNG the step then asks you to open keeps both checks usable.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "confidence": 100,
+      "evidence": [
+        "Expected: PASS, having written `landing-chromium-darwin.png` (on a Mac). That file is git-ignored by",
+        "Expected: PASS. Open the written darwin PNG and confirm it shows the skeleton placeholder, **not**"
+      ],
+      "suggested_fix": "Reword both Expected lines to: the run reports the shot FAILED with \"A snapshot doesn't exist at …, writing actual.\" (Playwright's default `updateSnapshots: 'missing'` writes the baseline and then fails once, without retrying) — the darwin PNG is written all the same, which is what to open; a second run of the same command is green."
+    },
+    {
+      "title": "Baseline count check counts darwin PNGs too",
+      "severity": "P3",
+      "section": "Task 7 Step 5 and \"Before opening the PR\"",
+      "why_it_matters": "The count check reports more than 9 on any machine that followed the plan's own local steps, so a correct tree looks wrong at the last gate before the PR. Playwright writes `*-chromium-darwin.png` into the same `pages.vr.ts-snapshots/` folder as the committed Linux set: Task 4 Step 4 explicitly expects `landing-chromium-darwin.png` there, and Task 6 Step 5 and Task 7 Step 3 add `player-narrow`, `player-bundled-beat` and `player-skeleton`. They are git-ignored, so `git status --short` stays clean while `ls | wc -l` does not. Counting only `*-chromium-linux.png` makes the assertion measure the committed set it is meant to measure.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "confidence": 100,
+      "evidence": [
+        "Confirm the count: `ls web/e2e/pages.vr.ts-snapshots/ | wc -l` → `9`.",
+        "- [ ] `ls web/e2e/pages.vr.ts-snapshots/ | wc -l` → `9`, and"
+      ],
+      "suggested_fix": "Change both commands to `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `9`, and note that local darwin shots share the folder and are git-ignored."
+    },
+    {
+      "title": "web/README.md left claiming the e2e job runs it",
+      "severity": "P3",
+      "section": "File Structure (Modified) and Task 10",
+      "why_it_matters": "After Task 9, `web/README.md:20` tells the next agent something false: it lists `test:e2e` as \"Playwright against the built app — what the `e2e` CI lane runs\", while the lane has moved to the new `web` job and the script is now scoped to the behaviour project only. The file appears in neither the plan's Modified list nor Task 10, whose own premise is that every doc describing a live mechanism gets corrected — and the package script table is the first place an agent looks for how to run this lane. The two new `test:vr` / `test:vr:update` scripts are missing from that table as well. Adding the file to Task 10 Step 1 keeps the package's own contract true and inside the declared footprint.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "confidence": 100,
+      "evidence": [
+        "`AGENTS.md` · `docs/runbooks/vr-a11y-testing.md` · `client/README.md` ·",
+        "Every file here describes a mechanism that is still in force, so each is corrected rather than left"
+      ],
+      "suggested_fix": "Add `web/README.md` to the Modified list and to Task 10's Files and `git add` line, and in Step 1 correct its `test:e2e` row to say the behaviour + accessibility lane, run by the `web` CI job, plus two new rows for `test:vr` and `test:vr:update` (pixel lane, Linux baselines, run through `pnpm test:web:docker`)."
+    },
+    {
+      "title": "AGENTS.md NH-315 note omits the new e2e exclusion",
+      "severity": "P3",
+      "section": "Task 4 Step 1 and Task 10 Step 2",
+      "why_it_matters": "The root `AGENTS.md:121` paragraph that instructs agents not to remove the Tailwind source exclusion names only `web/scripts/**`, so the second exclusion Task 4 adds ships with no protection in the agent contract — while the plan's own argument is that this line is one of the two things keeping the NH-315 `assert-design-system-css` canary honest. Task 10 rewrites the \"VR & a11y testing\" section but leaves that paragraph alone, so a later cleanup can delete `@source not '../e2e/**'` with every gate green. Widening the one sentence to name both folders puts the new line under the same standing instruction as the old one.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "confidence": 75,
+      "evidence": [
+        "In `web/app/globals.css`, directly below the existing `@source not '../scripts/**';`:",
+        "- [ ] **Step 2: Give `AGENTS.md`'s VR section the `web/` lane**"
+      ],
+      "suggested_fix": "In Task 10 Step 2, also edit the AGENTS.md sentence that currently reads \"keeps `web/scripts/**` out of Tailwind's automatic source detection\" so it names both `web/scripts/**` and `web/e2e/**`, keeping the existing \"Do not remove that line\" warning attached to both."
+    }
+  ],
+  "residual_risks": [
+    "Timing: the new `web` job runs ~91 behaviour/axe tests plus nine shots against one `next build` inside the Playwright container. The plan's own Task 9 Step 10 item 6 names this as the single real risk of the move, and only a real CI run can settle it; the documented fallback (a separate `web-vr` container job, accepting a third build) is written down.",
+    "Container install parity: the `web` job uses `pnpm install --frozen-lockfile --ignore-scripts`, which skips the `sharp` build that `pnpm-workspace.yaml` explicitly allows for `next/image`. Nothing under `web/app` imports `next/image` today, so `next start` is unaffected — but the first `next/image` usage would fail only in this job.",
+    "`tooling/docker-playwright.sh` is shellcheck-clean as written (verified), but `pnpm run lint:shell` reads `git ls-files`, so Task 3 Step 6 cannot actually lint the still-untracked new file — the gate first sees it in CI after the commit.",
+    "The prescribed comments and test titles introduce words cspell has not seen (`portalled`, `vacuous`/`vacuously`, `mistyped`); `pnpm run lint:spell` is first run at Task 10 Step 6, so a spelling failure surfaces several commits after the code that caused it.",
+    "`surfaceDiffersFromParent` and the engine-error poll read only one level of ancestry, so any future refactor that inserts a painted wrapper between an asserted element and the page silently changes what these assertions mean."
+  ],
+  "deferred_questions": [
+    "Once the surface check compares against the real backdrop, does `transport-row` still earn its own test hook and assertion, or is the rail's assertion plus the picture enough (the `--panel` over `--background` step scores 5, the weakest of the four)?",
+    "`docs/runbooks/vr-a11y-testing.md`'s \"One-time cleanup\" note points at `tooling/sweep-darwin-vr-baselines.sh` for tracked darwin baselines under `client/`. Should that script (or the note) be widened now that a second package writes darwin baselines?",
+    "Should the `web` job get its own `pnpm run test:tooling`-style guard that the `chromium` project's nine baseline files are actually committed, given Task 8 only proves a shot exists and runs, not that a baseline is present to compare against?"
+  ]
+}
