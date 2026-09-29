@@ -1505,10 +1505,22 @@ test('the web VR project has at least one shot to run', () => {
   // 1408.6 per-pixel cutoff), so each reads a computed background-color instead. Drop one and that
   // shot silently stops covering what it was added for, with the screenshot still green. This is a
   // presence check, not a proof the assertion is correct — it cannot be, without a browser.
-  for (const hook of ['player-rail', 'transport-row', 'open-file-button', 'engine-error']) {
+  //
+  // One anchor per assertion, each tied to the ASSERTION's own shape rather than to a bare test id
+  // — measured: three of the four ids also occur for unrelated reasons (`player-rail` inside
+  // 'player-rail-ghost-hover.png'; `open-file-button` and `engine-error` inside locators the shots
+  // need anyway), so an id substring stays green on a deleted assertion and only `transport-row`
+  // was load-bearing. The `(page, '…')` form is deliberately helper-name-agnostic, so renaming the
+  // helper does not silently disarm this.
+  for (const [step, pattern] of [
+    ['the rail surface', /\(page, 'player-rail'\)/],
+    ['the transport-footer surface', /\(page, 'transport-row'\)/],
+    ['the ghost hover step', /var\(--elevate\)/],
+    ['the engine-error tint', /'rgba\(0, 0, 0, 0\)'/],
+  ]) {
     assert.ok(
-      sources.some((source) => source.includes(hook)),
-      `no *.vr.ts reads ${hook} — a surface assertion the comparator cannot replace is gone`,
+      sources.some((source) => pattern.test(source)),
+      `no *.vr.ts asserts ${step} — a surface assertion the comparator cannot replace is gone`,
     );
   }
   assert.ok(
@@ -1541,7 +1553,8 @@ before the next:
 1. `git mv web/e2e/pages.vr.ts web/e2e/pages.ts` → `web/e2e has no *.vr.ts`
 2. Change one `test(` to `test.skip(` in `pages.vr.ts` → `pages.vr.ts disables a shot`
 3. Delete the `name: 'chromium'` line from the config → `the chromium project is gone`
-4. Remove the `player-rail` assertion from the bundled-beat shot → `no *.vr.ts reads player-rail`
+4. Remove the `player-rail` assertion from the bundled-beat shot →
+   `no *.vr.ts asserts the rail surface`
 
 - [ ] **Step 5: Commit**
 
