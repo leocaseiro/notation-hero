@@ -1,6 +1,14 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { failOnUnexpectedPageErrors } from './page-errors';
+import {
+  abortEngine,
+  gotoLanding,
+  gotoPlayer,
+  openLongScore,
+  pressEveryTransportToggle,
+  stallEngine,
+} from './player-states';
 
 import type { Page } from '@playwright/test';
 
@@ -245,7 +253,7 @@ async function settleToasts(page: Page): Promise<void> {
 }
 
 test('landing page has no axe violations', async ({ page }) => {
-  await page.goto('/');
+  await gotoLanding(page);
   await expect(page.getByRole('link', { name: 'Play' })).toBeVisible();
   await expectNoViolations(page, 'landing');
   await expectHitAreas(page, 'landing', { controls: 1, sliders: 0 });
@@ -254,7 +262,7 @@ test('landing page has no axe violations', async ({ page }) => {
 // There is no empty state to audit: the page opens on the bundled beat, so this is the
 // state a first-time visitor actually meets.
 test('player has no axe violations on the score it opens with', async ({ page }) => {
-  await page.goto('/play');
+  await gotoPlayer(page);
   await expect(page.getByTestId('notation-surface').locator('svg').first()).toBeVisible({
     timeout: 30_000,
   });
@@ -262,13 +270,15 @@ test('player has no axe violations on the score it opens with', async ({ page })
   await expectHitAreas(page, 'play / bundled beat', { controls: 12, sliders: 1 });
 });
 
-// The sample renders 185 px tall and never scrolls; Punk.gp's two drum tracks render 1,026 px at
-// this lane's width, so the 420 px notation box scrolls. Without this case axe's
+// The sample's score renders 113 px tall and never scrolls; Punk.gp's two drum tracks render
+// 627 px at this lane's width, so the 576 px notation box scrolls. Without this case axe's
 // scrollable-region-focusable rule never meets a scrolling surface, and dropping the host's
-// tabIndex would pass the gate.
+// tabIndex would pass the gate. All three are measured, and measured the same way — the score's
+// OWN rendered height, taken across every svg chunk AlphaTab emits. Not el.scrollHeight: that is
+// clamped up to clientHeight, so for the sample it reports the box's 576 px and the real figure is
+// unreachable from it.
 test('player has no axe violations with a score long enough to scroll', async ({ page }) => {
-  await page.goto('/play');
-  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await openLongScore(page);
   const surface = page.getByTestId('notation-surface');
   await expect(surface.locator('svg').first()).toBeVisible({ timeout: 30_000 });
   // Prove the state this case exists for: the box really scrolls.
@@ -284,12 +294,7 @@ test('player has no axe violations with a score long enough to scroll', async ({
 // stall — this is exactly why that state is auditable here and the replacement loading toast is
 // not.
 test('player has no axe violations while the first-visit Skeleton is up', async ({ page }) => {
-  await page.route('**/alphatab/esm/alphaTab.mjs', async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-    await route.continue();
-  });
-
-  await page.goto('/play');
+  await stallEngine(page, 5000);
   // NotationSurface is mounted from the first paint, and the stalled import keeps `engine` null,
   // so the Skeleton is up on a bare /play — no interaction needed to reach this state.
   await expect(page.getByTestId('notation-skeleton')).toBeVisible();
@@ -301,8 +306,7 @@ test('player has no axe violations while the first-visit Skeleton is up', async 
 // above stalls it. Its `role="alert"` sits on the one player surface no gate has measured: a
 // color-mix(in oklab, …) destructive tint.
 test('player has no axe violations when the engine fails to load', async ({ page }) => {
-  await page.route('**/alphatab/esm/alphaTab.mjs', (route) => route.abort());
-  await page.goto('/play');
+  await abortEngine(page);
   await expect(page.getByTestId('engine-error')).toBeVisible({ timeout: 15_000 });
   await expectNoViolations(page, 'play / engine error');
   await expectHitAreas(page, 'play / engine error', { controls: 12, sliders: 1 });
@@ -311,13 +315,7 @@ test('player has no axe violations when the engine fails to load', async ({ page
 // A toggle's pressed styling is where contrast usually breaks, and the transport did not exist
 // when the cases above were written.
 test('player has no axe violations with every transport toggle pressed', async ({ page }) => {
-  await page.goto('/play');
-  await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
-
-  await page.getByTestId('toggle-loop').click();
-  await page.getByTestId('toggle-metronome').click();
-  await page.getByTestId('toggle-countin').click();
-  await page.getByRole('button', { name: 'Increase tempo' }).click();
+  await pressEveryTransportToggle(page);
 
   // The same trap settleToasts() exists for: the percentage FADES in, and axe folds partial
   // opacity into its contrast maths — measured 1.28:1 (#d2e7e6 on white) from a teal that passes
@@ -340,7 +338,7 @@ test('player has no axe violations with every transport toggle pressed', async (
 // reported at; narrower phone-portrait widths are a known gap tracked in NH-321.
 test('every transport control stays on-screen in a narrow 700px window', async ({ page }) => {
   await page.setViewportSize({ width: 700, height: 800 });
-  await page.goto('/play');
+  await gotoPlayer(page);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   // The two controls the shrink bug hid first — assert they are fully in the viewport by name,
@@ -351,7 +349,7 @@ test('every transport control stays on-screen in a narrow 700px window', async (
 });
 
 test('player has no axe violations with the Settings popover open', async ({ page }) => {
-  await page.goto('/play');
+  await gotoPlayer(page);
   await expect(page.getByTestId('transport-play')).toBeEnabled({ timeout: 60_000 });
 
   await page.getByTestId('settings-trigger').click();
@@ -369,8 +367,7 @@ test('player has no axe violations with the Settings popover open', async ({ pag
 });
 
 test('player has no axe violations with the Tracks popover open', async ({ page }) => {
-  await page.goto('/play');
-  await page.getByTestId('open-file-input').setInputFiles('e2e/fixtures/Punk.gp');
+  await openLongScore(page);
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
     timeout: 30_000,
   });
