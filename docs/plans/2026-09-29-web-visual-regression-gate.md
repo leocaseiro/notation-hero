@@ -147,7 +147,7 @@ the task named beside it — they are the reason those tests exist.
 `web/e2e/a11y.e2e.ts` · `web/app/play/PlayerShell.tsx` · `web/app/play/TransportRow.tsx` ·
 `package.json` (root) · `tooling/workflow-guards.test.mjs` · `.github/workflows/ci.yml` ·
 `AGENTS.md` · `docs/runbooks/vr-a11y-testing.md` · `client/README.md` ·
-`web/README.md` · `docs/specs/2026-06-26-nh-197-e2e-traces.md` ·
+`web/README.md` · `web/app/globals.css` · `docs/specs/2026-06-26-nh-197-e2e-traces.md` ·
 `docs/specs/2026-07-08-vr-report-gh-pages-on-failure.md` ·
 `docs/specs/2026-09-21-web-visual-regression-gate.md` (its Status line) ·
 `docs/decisions/decision-changelog.md`.
@@ -329,7 +329,7 @@ Expected: FAIL naming `test:e2e`. Restore the `--project=e2e` and re-run — exp
 pnpm --filter @notation-hero/web run test:e2e
 ```
 
-Expected: the same ~91 tests pass, every line prefixed `[e2e]`.
+Expected: the same ~92 tests pass, every line prefixed `[e2e]`.
 
 ```bash
 pnpm --filter @notation-hero/web run test:vr
@@ -696,7 +696,7 @@ helper to `…:v1.60.0-noble` and re-run. Expected: FAIL with
 
 - [ ] **Step 5: Verify the refactor is behaviour-preserving on `client/`'s existing baselines**
 
-This is the real test of the helper: `client/` has 698 committed baselines that must still match.
+This is the real test of the helper: `client/` has 842 committed baselines that must still match.
 Docker Desktop must be running first (`open -a Docker` on macOS).
 
 ```bash
@@ -741,7 +741,7 @@ container baseline generation, commit) before eight more shots are written again
 
 - [ ] **Step 1: Keep `web/e2e/` out of Tailwind's scan, before adding a file it would scan**
 
-This step comes first because the file added in step 2 is the third one under `web/e2e/` that
+This step comes first because the file added in step 3 is the third one under `web/e2e/` that
 discusses design-system class names in prose, and Tailwind scans that folder — measured, see
 "The one hazard outside the spec's footprint" at the end of this plan for the reproduction. A utility named in a comment there becomes
 real CSS, which can silently disarm the `REQUIRED_SELECTORS` canary in
@@ -1032,8 +1032,10 @@ const surfaceDiffersFromPageBackground = (page: Page, testId: string): Promise<b
     // <section className="nh-drop-zone …"> and web/app/globals.css gives .nh-drop-zone only a
     // [data-dragging] rule; the footer's is <div className="shrink-0" data-testid="player-status">.
     // Against a transparent parent EVERY opaque colour differs, bg-background included, so the
-    // assertion could never fail. body carries `bg-background` (client/src/styles.css), which is the
-    // surface the 20 and 5 scores were measured against — and both values still come back through
+    // assertion could never fail. body carries `bg-background` (client/src/styles.css), which is what
+    // both call sites are actually compared against: the footer's is the `--panel` over `--background`
+    // 5 above, and the rail's own step over it is 45 — bigger than the `--rail` over `--panel` 20 in
+    // that ladder, and still far under the 1408.6 cutoff — and both values still come back through
     // the SAME serializer, which is the property this helper exists to preserve.
     return own !== globalThis.getComputedStyle(document.body).backgroundColor;
   });
@@ -1429,7 +1431,7 @@ This is the first time the shared-`webServer` arrangement is exercised end to en
 pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts
 ```
 
-Expected: ~100 tests pass, each line prefixed `[e2e]` or `[chromium]`. The nine `[chromium]` lines
+Expected: ~101 tests pass, each line prefixed `[e2e]` or `[chromium]`. The nine `[chromium]` lines
 will FAIL on a Mac — they compare against Linux baselines. That is correct and expected locally; the
 point of this step is that both projects ran from one server boot. Confirm exactly one
 `pnpm build` in the output.
@@ -1591,7 +1593,7 @@ web's axe and web's VR render identically.
   renames, the `vr-report` download, the `vr-report-resolve` wording, two corrected comments, and
   `ci-green`'s `needs:`
 - Modify: `web/playwright.e2e.config.ts` — drop the now-false clause from its header
-- Modify: `tooling/workflow-guards.test.mjs` — rewrite two assertions, add two
+- Modify: `tooling/workflow-guards.test.mjs` — rewrite two assertions, add three
 
 **Interfaces:**
 
@@ -1851,7 +1853,7 @@ pushed branch, confirm in the Actions tab:
 4. `CI Green` lists `web=success`.
 5. The three artifacts are named `playwright-client-vr-report`, `playwright-client-e2e-report` and
    `playwright-web-report`, with no 409.
-6. The 91 existing `web/` behaviour tests still pass in the container. Their timing changing is the
+6. The 92 existing `web/` behaviour tests still pass in the container. Their timing changing is the
    one real risk in this decision; if it materialises, the documented fallback is a separate
    `web-vr` container job, accepting the second build.
 
@@ -1862,7 +1864,7 @@ soundfont download. `retries: 2` absorbs a one-off blip first. Then, in order:
 
 1. **`fullyParallel: false` on the `chromium` project** — about 25 seconds for the whole lane, one
    line. But read what it does before trusting it: it serialises shots only **within each file**,
-   while the 91 behaviour tests keep running concurrently against the same server — which is where
+   while the 92 behaviour tests keep running concurrently against the same server — which is where
    the contention comes from. It does **not** restore the conditions the study was measured under.
 2. **`dependencies: ['e2e']` on the `chromium` project** — Playwright's first-class remedy for
    exactly that, measured under one unscoped invocation and one `webServer`: both behaviour files
@@ -1915,8 +1917,8 @@ grep -n "playwright-vr-report\|playwright-e2e-report" \
 
 Expected: no output. Scoped to the five files this step edits on purpose: a recursive grep cannot
 reach zero, because the old names also live in `docs/plans/**` (including this plan's own Task 9 diff
-and the table above), in the NH-320 spec's own description of the rename, and in the change log and
-the registry — all of which keep them as history.
+and the table above), in the NH-320 spec's own description of the rename, and in the change log,
+which keeps them as history.
 
 **Then correct `web/README.md`'s script table.** No artifact name appears in it, so the grep above
 never reaches it — but Task 9 makes one of its rows false, and the pixel lane has no rows at all:
