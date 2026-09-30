@@ -56,7 +56,9 @@ Every task's requirements implicitly include this section. Values are copied ver
   `devices['Desktop Chrome']`, so a Playwright upgrade cannot silently invalidate every baseline.
 - **The pixel project carries `timeout: 120_000`**, scoped to `chromium` only so the behaviour
   project keeps the budget it runs under today.
-- **Every local invocation names its project.** CI runs `playwright test` **unscoped, exactly once**.
+- **Every local invocation names its project**, with ONE deliberate exception: Task 7 Step 6's
+  single unscoped run, which mirrors CI on purpose to prove both projects share one `webServer`
+  boot. CI runs `playwright test` **unscoped, exactly once**.
 - **Every `*.vr.ts` calls `failOnUnexpectedPageErrors()` at module scope**, next to its imports.
 - **Artifact names:** `playwright-client-vr-report`, `playwright-client-e2e-report`,
   `playwright-web-report`.
