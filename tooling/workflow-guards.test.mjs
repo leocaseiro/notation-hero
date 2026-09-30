@@ -44,22 +44,115 @@ test('seed-catalog.yml gates the owner-url seed on the master ref', () => {
   );
 });
 
-test('the e2e job runs the web Playwright lane, not only the client one', () => {
+// Job-block slicing, with literal patterns for the same reason the Playwright pins use them: a
+// RegExp built from a job name is rejected by this repo's sast gate.
+const WEB_JOB = /^  web:$/m;
+const VR_JOB = /^  vr:$/m;
+const VR_REPORT_JOB = /^  vr-report:$/m;
+const NEXT_JOB = /^  [a-z][a-z0-9-]*:$/m;
+const jobBlock = (ci, jobPattern) => ci.split(jobPattern)[1]?.split(NEXT_JOB)[0] ?? '';
+
+// The `web` job is the gate over the product's own UI. Everything pinned here is something whose
+// loss would be SILENT: a run line that no longer runs the lane, a missing container (so baselines
+// compare under the wrong renderer), a second invocation (so the one-build premise collapses), or
+// the job dropping out of ci-green (so a red pixel run stops blocking merge).
+test("the web job runs web's whole browser lane in the pinned container, and blocks merge", () => {
   const ci = workflow('ci.yml');
+  // Sliced to the web job's own block. The scoping is what makes the container pin REAL: that exact
+  // literal already appears for the `vr` job, so an unscoped assertion would pass before this job
+  // existed at all.
+  const webJob = jobBlock(ci, WEB_JOB);
+  assert.ok(webJob, 'there is no `web:` job in ci.yml');
+
   // ANCHORED to a real `run:` line (the /m flag), never "appears somewhere in the file": the
   // unanchored form stays green against a ci.yml where the whole step is commented out with `#`.
-  assert.match(ci, /^\s+run: pnpm --filter @notation-hero\/web run test:e2e$/m);
-  // The web lane needs its own browser install — the client step only installs for client/.
+  // Note this is NOT `run test:e2e` — the job runs playwright directly and UNSCOPED, so both
+  // projects share one webServer and therefore one `next build`.
   assert.match(
-    ci,
-    /^\s+run: pnpm --filter @notation-hero\/web exec playwright install --with-deps chromium$/m,
+    webJob,
+    /^\s+run: pnpm --filter @notation-hero\/web exec playwright test --config=playwright\.e2e\.config\.ts$/m,
   );
-  // Its report and traces must be uploaded, or a CI failure is not replayable.
-  assert.match(ci, /web\/playwright-report\//);
-  assert.match(ci, /web\/test-results\//);
+  // Exactly ONE invocation. Playwright registers the webServer per invocation and tears it down
+  // when that invocation ends, so a second call runs a second `next build` and the only reason for
+  // this job evaporates.
+  //
+  // Counted over `run:` lines, and covering the SCOPED package-script form too — the scoped
+  // test:e2e / test:vr scripts stay alive for local use and every browser-lane step in this file is
+  // written that way, so a bare `playwright test` substring count misses a second invocation
+  // written the repo's own way, while ALSO going red on a comment that merely mentions
+  // `playwright test`, since this slice includes comments. `run` is optional in the alternation
+  // because pnpm runs a script without it.
+  assert.equal(
+    (webJob.match(/^\s+run:.*(?:playwright test|test:(?:e2e|vr))/gm) ?? []).length,
+    1,
+    'the web job must call `playwright test` exactly once — a second call means a second next build',
+  );
+  // The container pin is what makes "no playwright install needed" true, and what makes the pixel
+  // comparison match the committed -linux baselines. The digest is required here too — a tag this
+  // job resolves at run time is a tag someone else can re-push under.
+  assert.match(
+    webJob,
+    /^\s+container: mcr\.microsoft\.com\/playwright:v[\d.]+-noble@sha256:[0-9a-f]{64}$/m,
+  );
+  // The install line's two flags, for the same reason: dropping either is SILENT. Without
+  // --frozen-lockfile the container resolves fresh registry versions for the caret ranges, so the
+  // installed half of the renderer can move while the pinned image half stays put.
+  assert.match(
+    webJob,
+    /^\s+run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts$/m,
+    'the web job must install from the lockfile with lifecycle scripts off',
+  );
+  // Anchored to a real `run:` line, the same idiom as the run-line assertion above: the job's own
+  // Install-deps comment ends with "no `playwright install`", and the slice includes comments, so
+  // the unanchored form fails on its own explanation the first time it is run.
+  assert.doesNotMatch(
+    webJob,
+    /^\s+run:.*playwright install/m,
+    'the container bakes the browsers in — an install step here means the pin is not trusted',
+  );
+  // Its report and traces must be uploaded, or a CI failure is not replayable: web/ has no hosted
+  // diff page, so this artifact is the only way to see the pixel diff.
+  assert.match(webJob, /web\/playwright-report\//);
+  assert.match(webJob, /web\/test-results\//);
   // …and the lane must still BLOCK merge. ci-green's `needs:` list is the single source of truth
   // for that, so a step that runs inside a job nothing waits on is not a gate.
-  assert.match(ci, /^\s+e2e,$/m);
+  assert.match(ci, /^\s+web,$/m);
+  // This job runs PR-authored browser code, so an escalation on it must be loud. Anchored to a real
+  // expression and a real job-level key (four-space indent), not the bare words: the slice includes
+  // comments, and the header above explains the posture in prose — the unanchored forms would fail
+  // on that explanation.
+  assert.doesNotMatch(
+    webJob,
+    /\$\{\{\s*secrets\./,
+    'the web job runs PR-authored browser code — it must carry no secrets',
+  );
+  assert.doesNotMatch(
+    webJob,
+    /^\s{4}permissions:\s*$/m,
+    "the web job must inherit the workflow's contents: read — a permissions block here is an escalation",
+  );
+});
+
+test('the client e2e lane still blocks merge too', () => {
+  assert.match(workflow('ci.yml'), /^\s+e2e,$/m);
+});
+
+// The vr artifact is renamed on BOTH sides — `vr` uploads it, `vr-report` downloads it to publish
+// the hosted diff page. A one-sided rename is SILENT in all three respects: the download step is
+// `continue-on-error: true`, its presence gate turns a miss into present=false so the job SUCCEEDS,
+// and ci-green's `needs:` list does not contain vr-report. Nothing in the repo would go red — the
+// next person with a red pixel run would just get no diff page at all.
+test('the client VR report is uploaded and downloaded under the SAME artifact name', () => {
+  const ci = workflow('ci.yml');
+  // `^\s+name:` matches the artifact name under `with:` only — a step title is written `- name:`.
+  const artifact = (block) => block.match(/^\s+name: (playwright-\S+)$/m)?.[1];
+  const uploaded = artifact(jobBlock(ci, VR_JOB));
+  const downloaded = artifact(jobBlock(ci, VR_REPORT_JOB));
+  assert.ok(
+    uploaded && downloaded,
+    'the vr upload or the vr-report download lost its artifact name',
+  );
+  assert.equal(downloaded, uploaded, 'vr-report downloads a different artifact than vr uploads');
 });
 
 // NH-331: the error-code drift gate is only a gate while its job is one ci-green waits on, and it
@@ -107,11 +200,10 @@ test('every web/ Playwright script names its project', () => {
 // failure reads as a real visual regression. Anchor every home to the installed @playwright/test,
 // so a bump is all-or-nothing.
 //
-// The expected count is TWO here, and that is deliberate rather than a typo: only the helper and
-// the `vr` job exist at this point. The `web` job's own `container:` line is the third home, and it
-// lands with that job — the count rises to 3 in the same change, and a hard number is what gives
-// this assertion its teeth (a count derived from the file would stay green over a deleted pin).
-const EXPECTED_PLAYWRIGHT_PINS = 2;
+// A hard number rather than one derived from the files, and that is what gives this assertion its
+// teeth: a count read out of the workflow would stay green over a deleted pin. Raise it when a
+// fourth home appears, and regenerate baselines whenever the version moves.
+const EXPECTED_PLAYWRIGHT_PINS = 3;
 
 test('the Playwright container tag agrees with @playwright/test everywhere it is pinned', () => {
   // The range is a caret (`^1.61.1`); its FLOOR is what the image tag must name, because that is
