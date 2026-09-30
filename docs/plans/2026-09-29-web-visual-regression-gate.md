@@ -1667,6 +1667,16 @@ test('the web VR project has at least one shot to run', () => {
   );
   assert.match(config, /name:\s*'chromium'/, 'the chromium project is gone — the shots never run');
   assert.match(config, /testMatch:\s*'\*\*\/\*\.vr\.ts'/, 'chromium no longer matches *.vr.ts');
+  // The OTHER project needs the same two, and for the same measured reason: after Task 9 nothing
+  // in CI runs `--project=e2e` any more, so a deleted `e2e` project — or a mistyped testMatch —
+  // leaves the unscoped run exiting 0 over the shots alone, with every behaviour and axe test
+  // silently gone. Measured on 1.61.1: both shapes printed `1 passed` and exit 0.
+  assert.match(
+    config,
+    /name:\s*'e2e'/,
+    "the e2e project is gone — web's behaviour and axe tests never run",
+  );
+  assert.match(config, /testMatch:\s*'\*\*\/\*\.e2e\.ts'/, 'e2e no longer matches *.e2e.ts');
 });
 ```
 
@@ -1680,7 +1690,7 @@ Expected: PASS.
 
 - [ ] **Step 4: Prove each arm bites**
 
-Six separate checks — run the command above after each, expecting the quoted failure, and revert
+Seven separate checks — run the command above after each, expecting the quoted failure, and revert
 before the next:
 
 1. `git mv web/e2e/pages.vr.ts web/e2e/pages.ts` → `web/e2e has no *.vr.ts`
@@ -1692,6 +1702,7 @@ before the next:
    `pages.vr.ts does not call failOnUnexpectedPageErrors()`
 6. Delete one `toHaveScreenshot(` call, leaving its baseline on disk →
    `the shots and the committed -chromium-linux baselines no longer pair up`
+7. Delete the `name: 'e2e'` line from the config → `the e2e project is gone`
 
 - [ ] **Step 5: Commit**
 
