@@ -54,7 +54,7 @@ Every task's requirements implicitly include this section. Values are copied ver
   shape as `client/`'s.
 - **The pixel project pins `viewport: { width: 1280, height: 900 }` explicitly**, not inherited from
   `devices['Desktop Chrome']`, so a Playwright upgrade cannot silently invalidate every baseline.
-- **The pixel project carries `timeout: 120_000`**, scoped to `chromium` only so the behaviour
+- **The pixel project carries `timeout: 180_000`**, scoped to `chromium` only so the behaviour
   project keeps the budget it runs under today.
 - **Every local invocation names its project**, with ONE deliberate exception: Task 7 Step 6's
   single unscoped run, which mirrors CI on purpose to prove both projects share one `webServer`
@@ -191,7 +191,7 @@ ever needed.
 
 - Consumes: nothing.
 - Produces: a Playwright project named `e2e` matching `**/*.e2e.ts`, and one named `chromium`
-  matching `**/*.vr.ts` at 1280×900 with a 120 s per-test budget. Package scripts
+  matching `**/*.vr.ts` at 1280×900 with a 180 s per-test budget. Package scripts
   `test:e2e`, `test:e2e:ui`, `test:vr`, `test:vr:update`, all carrying `--project=…`.
 
 - [ ] **Step 1: Rewrite the config's `projects` split**
@@ -232,12 +232,17 @@ export default defineConfig({
     {
       name: 'chromium',
       testMatch: '**/*.vr.ts',
-      // Readiness alone can spend 100 s (30 + 60 + 10) before a pixel is compared, and the
-      // config-wide default is Playwright's 30 s — measured: toBeVisible({ timeout: 60_000 })
-      // under a config with no `timeout` fails at exactly 30.0 s while the call log still reports
-      // a 60 000 ms expect ceiling. Same number web/e2e/player.e2e.ts already sets per test.
-      // Scoped to this project so the behaviour lane keeps the budget it runs under today.
-      timeout: 120_000,
+      // Sized against the LONGEST chain, not readiness alone. Readiness itself is 100 s
+      // (30 + 60 + 10), but the transport shot adds pressEveryTransportToggle's own 60 s
+      // toBeEnabled BEFORE awaitPlayerReady repeats it (worst chain about 165 s), and the
+      // long-score shot adds a 30 s data-file wait plus the 15 s toast wait (about 145 s). At 120 s
+      // the CAP fires first on a slow-but-healthy run — measured on 1.61.1, a project cap pre-empts
+      // a higher expect ceiling and the headline reads `Test timeout of …ms exceeded`, with
+      // `retries: 2` spending that budget three times. The config-wide default is Playwright's
+      // 30 s — measured: toBeVisible({ timeout: 60_000 }) under a config with no `timeout` fails at
+      // exactly 30.0 s while the call log still reports a 60 000 ms expect ceiling. Scoped to this
+      // project so the behaviour lane keeps the budget it runs under today.
+      timeout: 180_000,
       // Pinned explicitly rather than inherited from the device definition, so a Playwright
       // upgrade that adjusts `Desktop Chrome` cannot silently invalidate every baseline.
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 900 } },
@@ -1031,7 +1036,7 @@ Below `settleBeforeShot`:
  * The engine, the soundfont and the loading bar are all done.
  *
  * The three ceilings are the existing lane's, and they only work because the `chromium` project
- * carries its own `timeout: 120_000` — measured, a per-test cap swallows a higher `expect` ceiling
+ * carries its own `timeout: 180_000` — measured, a per-test cap swallows a higher `expect` ceiling
  * whole, and web/e2e/a11y.e2e.ts's own 60 000 ms ceilings are unreachable today for exactly that
  * reason. A shot does more after readiness than an axe sweep does, so this lane has LESS headroom.
  *
@@ -1130,12 +1135,17 @@ test('the player with a score long enough to scroll', async ({ page }) => {
   });
   // Then wait for the success toast to GO, and this one is not optional. Opening a file raises
   // toast.loading then toast.success under one id; neither sets a duration, and Sonner exempts a
-  // `loading` toast from the close timer entirely, so the 4 000 ms TOAST_LIFETIME is armed by the
-  // success that replaces it. Without this wait every long-score baseline carries a toast bearing
-  // the filename, over the notation box the shot exists for. The ceiling is named because the
-  // toast's measured life reaches 4 129 ms and a bare expect falls back to 5 000 ms — 871 ms of
-  // slack, measured at one worker while CI runs several.
-  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 10_000 });
+  // `loading` toast from the close timer entirely, so the close timer is armed by the success that
+  // replaces it. The lifetime comes from the TOASTER, not from Sonner's default: web/app/layout.tsx
+  // renders `<Toaster closeButton duration={5000} />`, the design system's wrapper spreads its props
+  // last, and sonner 2.0.7 resolves `toast.duration || durationFromToaster || TOAST_LIFETIME` — so
+  // the 4 000 ms TOAST_LIFETIME is never reached. Without this wait every long-score baseline carries
+  // a toast bearing the filename, over the notation box the shot exists for. Measured in Chromium
+  // 1.61.1 against that exact Toaster, the toast leaves the DOM at 5 267 ms (4 269 ms with no Toaster
+  // `duration` at all) — so a bare expect, which falls back to 5 000 ms, would go red ON THE TOAST.
+  // The ceiling is named, and it is 15 000 ms: 5 267 ms was measured at ONE worker, and CI runs
+  // several with `retries: 2`.
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 15_000 });
   await settleBeforeShot(page);
   // Expect this baseline to show the Play tooltip: a successful open moves focus to the transport
   // (PlayerShell calls playRef.current?.focus()). Deterministic — identical across fourteen
