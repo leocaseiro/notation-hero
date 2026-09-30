@@ -3,7 +3,14 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 
 import { failOnUnexpectedPageErrors } from './page-errors';
-import { gotoLanding, gotoPlayer, openLongScore, pressEveryTransportToggle } from './player-states';
+import {
+  abortEngine,
+  gotoLanding,
+  gotoPlayer,
+  openLongScore,
+  pressEveryTransportToggle,
+  stallEngine,
+} from './player-states';
 
 import type { Page } from '@playwright/test';
 
@@ -342,4 +349,61 @@ test.describe('below the lg breakpoint', () => {
     await settleBeforeShot(page);
     await expect(page).toHaveScreenshot('player-narrow.png', { fullPage: true });
   });
+});
+
+// NotationSurface is mounted from the first paint and the stalled import keeps `engine` null, so
+// the Skeleton is up on a bare /play with no interaction needed.
+test('the first-visit Skeleton while the engine module is stalled', async ({ page }) => {
+  // Infinity, not the accessibility lane's 5 000 ms: toHaveScreenshot needs the state to hold
+  // across two consecutive samples, and on a baseline-generation run across the write as well.
+  await stallEngine(page, Infinity);
+  // The accessibility lane's own signal for this state; it names no ceiling, so neither does this.
+  await expect(page.getByTestId('notation-skeleton')).toBeVisible();
+  await settleBeforeShot(page);
+  await expect(page).toHaveScreenshot('player-skeleton.png', { fullPage: true });
+});
+
+// The engine-error state is reachable and PERMANENT — abort the engine module the way the shot above
+// stalls it. Its role="alert" sits on a color-mix(in oklab, …) destructive tint.
+//
+// This shoots the BANNER, not the whole state. NotationSurface's own Dismiss button sets `dismissed`
+// and unmounts this <p> while `failure` stays truthy, and the Skeleton is gated `!failure` — so the
+// dismissed state is a blank notation area over a transport that never enables. Deliberately NOT a
+// shot of its own: an eleventh must score its surface step against the 1408.6 cutoff, and this
+// one's coverage is "nothing is painted here" over the same region the two shots above already
+// photograph. Revisit if that area ever gains a fallback of its own.
+test('the destructive panel when the engine module fails to load', async ({ page }) => {
+  await abortEngine(page);
+  const panel = page.getByTestId('engine-error');
+  // 15 000 ms is the ceiling the accessibility lane's own source line states for this state.
+  await expect(panel).toBeVisible({ timeout: 15_000 });
+  // The tint over `--popover` scores 173 against the 1408.6 cutoff, and even its
+  // `border-destructive/25` edge only reaches 1231 — so the picture proves the panel rendered (its
+  // red text scores 19698) while this proves the tint is there. Compared against the EXPECTED tint,
+  // not against the parent: measured, the parent `<div className="relative h-full w-full">` paints
+  // nothing, so "differs from the parent" is satisfied by every opaque colour — `bg-popover`
+  // included — and at 173 against 1408.6 the picture cannot tell them apart either. Equality with
+  // the resolved tint subsumes the transparent case while the tokens exist — but NOT when one of
+  // them goes: measured, deleting `--popover` makes the whole color-mix() invalid at
+  // computed-value time on BOTH sides, so probe and panel both read `rgba(0, 0, 0, 0)` and the
+  // equality holds over a panel whose wash is gone, with its red text and border intact so the
+  // picture is blind too. (`--destructive` is the safer of the two: its loss also flattens
+  // `text-destructive`, which the picture DOES see at 19698.) Hence the explicit clause below, the
+  // same one surfaceDiffersFromPageBackground carries. The throwaway probe is how the ghost hover
+  // resolves `var(--elevate)`, and it matters here for the same reason: both values then come back
+  // through the SAME serializer.
+  const expectedTint = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = 'color-mix(in oklab, var(--destructive) 10%, var(--popover))';
+    document.body.append(probe);
+    const value = globalThis.getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return value;
+  });
+  expect(expectedTint).not.toBe('rgba(0, 0, 0, 0)');
+  await expect
+    .poll(() => panel.evaluate((el) => globalThis.getComputedStyle(el).backgroundColor))
+    .toBe(expectedTint);
+  await settleBeforeShot(page);
+  await expect(page).toHaveScreenshot('player-engine-error.png', { fullPage: true });
 });
