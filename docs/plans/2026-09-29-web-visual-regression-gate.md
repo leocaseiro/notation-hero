@@ -720,7 +720,11 @@ node --test tooling/workflow-guards.test.mjs
 
 Expected: PASS (all three agree today). Now prove it bites — temporarily change `IMAGE` in the
 helper to `…:v1.60.0-noble` and re-run. Expected: FAIL with
-`tooling/docker-playwright.sh must pin mcr.microsoft.com/playwright:v1.61.1-noble`. Restore it.
+`IMAGE=mcr.microsoft.com/playwright:v1.60.0-noble disagrees with mcr.microsoft.com/playwright:v1.61.1-noble`
+— the loop's `assert.equal`, because the changed line still matches the anchored `IMAGE=` pattern.
+The guard's other message, `tooling/docker-playwright.sh must pin …`, is the separate case where
+that line stops matching at all: removed, commented out, or rewritten (a quoted `IMAGE="…"` value,
+for one). Restore it.
 
 - [ ] **Step 5: Verify the refactor is behaviour-preserving on `client/`'s existing baselines**
 
