@@ -34,6 +34,13 @@
    go missing. Verified — without this line the guard reports 6 of 10 missing instead of 9 of 10. */
 @source not '../scripts/**';
 
+/* Same hazard, same reason, one folder over: Tailwind scans web/e2e/ too, and those files discuss
+   design-system class names in prose (the hit-area gate quotes `h-11`, the pixel shots quote
+   `bg-rail` and `hover:bg-elevate`). A utility named in a COMMENT there becomes real CSS, which
+   would let the guard above pass over a utility the app itself no longer generates. Measured: a
+   `mt-[137px]` planted in an a11y.e2e.ts comment reached the emitted stylesheet. */
+@source not '../e2e/**';
+
 /* AlphaTab ships no stylesheet: it creates .at-cursor-bar and .at-cursor-beat as bare divs with
    inline geometry only, so `enableCursor` paints nothing until the host app supplies these rules.
    The beat cursor needs an explicit width or it may not show at all (upstream's styling guide).
