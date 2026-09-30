@@ -1805,6 +1805,10 @@ cost a new artifact upload and download.
 # Playwright-container job, so ONE `next build` serves all three and web's axe and web's VR render
 # identically. web/ has no Storybook, so neither `vr` nor `a11y` covers it; THIS is that gate.
 # Path-filtered on `code`; blocks merge via ci-green, from day one, as client/ VR already does.
+# It runs PR-AUTHORED browser code, so it deliberately carries no secrets and no permissions: block,
+# inheriting the workflow's contents: read — unlike vr-report, which holds contents: write and says
+# so in its own header. If web/ ever gains a hosted diff page, the write token goes in a SEPARATE
+# job, the way vr-report is separate from vr.
 # Spec: docs/specs/2026-09-21-web-visual-regression-gate.md (NH-320).
 web:
   needs: changes
@@ -2003,6 +2007,20 @@ test("the web job runs web/'s whole browser lane in the pinned container, and bl
   // …and the lane must still BLOCK merge. ci-green's `needs:` list is the single source of truth
   // for that, so a step that runs inside a job nothing waits on is not a gate.
   assert.match(ci, /^\s+web,$/m);
+  // This job runs PR-authored browser code, so an escalation on it must be loud. Anchored to a real
+  // expression and a real job-level key (four-space indent), not the bare words: the slice includes
+  // comments, and the header above explains the posture in prose — the unanchored forms would fail
+  // on that explanation.
+  assert.doesNotMatch(
+    webJob,
+    /\$\{\{\s*secrets\./,
+    'the web job runs PR-authored browser code — it must carry no secrets',
+  );
+  assert.doesNotMatch(
+    webJob,
+    /^\s{4}permissions:\s*$/m,
+    "the web job must inherit the workflow's contents: read — a permissions block here is an escalation",
+  );
 });
 
 test('the client e2e lane still blocks merge too', () => {
