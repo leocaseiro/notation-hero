@@ -1670,7 +1670,7 @@ test('the web VR project has at least one shot to run', () => {
     ['the ghost hover step', /var\(--elevate\)/],
     ['the engine-error tint', /var\(--destructive\)/],
   ];
-  // Both call shapes matched helper-name-agnostically, the same reason the anchors are.
+  // Both call shapes matched without naming the helper, the same reason the anchors are not.
   const surfaceAssertions = sources.flatMap((source) => [
     ...source.matchAll(/\(page, '[^']+'\)/g),
     ...source.matchAll(/probe\.style\.backgroundColor = '[^']+'/g),
