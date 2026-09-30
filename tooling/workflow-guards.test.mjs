@@ -96,3 +96,84 @@ test('every web/ Playwright script names its project', () => {
     'these web/ scripts run `playwright test` with no --project, so they would run BOTH lanes',
   );
 });
+
+// The container tag has three homes once web/'s browser lane moves into a container of its own:
+// tooling/docker-playwright.sh and the `container:` lines of the `vr` and `web` CI jobs. A partial
+// bump is invisible — baselines then compare under a renderer they were not made with, and the
+// failure reads as a real visual regression. Anchor every home to the installed @playwright/test,
+// so a bump is all-or-nothing.
+//
+// The expected count is TWO here, and that is deliberate rather than a typo: only the helper and
+// the `vr` job exist at this point. The `web` job's own `container:` line is the third home, and it
+// lands with that job — the count rises to 3 in the same change, and a hard number is what gives
+// this assertion its teeth (a count derived from the file would stay green over a deleted pin).
+const EXPECTED_PLAYWRIGHT_PINS = 2;
+
+test('the Playwright container tag agrees with @playwright/test everywhere it is pinned', () => {
+  // The range is a caret (`^1.61.1`); its FLOOR is what the image tag must name, because that is
+  // the version the baselines were rendered by. syncpack already keeps client/ and web/ on one
+  // version, so reading web/'s is enough.
+  const floor = packageJson('web/package.json').devDependencies['@playwright/test'].replace(
+    /^\D*/,
+    '',
+  );
+  // Anchored and exhaustive, the same treatment ci.yml gets elsewhere in this file: a bare
+  // `.includes()` stays green when the real assignment drifts and the expected pin survives only in
+  // a comment or a second, stale IMAGE line.
+  const helper = readFileSync(
+    fileURLToPath(new URL('../tooling/docker-playwright.sh', import.meta.url)),
+    'utf8',
+  );
+  // One LITERAL pattern per home, each capturing the version and the digest — rather than a
+  // pattern built by interpolating the version in. Two reasons, and the first is not style: a
+  // RegExp assembled from a variable is what this repo's own static-analysis gate rejects
+  // (detect-non-literal-regexp, blocking in the sast pre-commit hook), so the interpolated form
+  // cannot be committed here at all. The second is that a literal is simply stronger. A pin left
+  // on the WRONG version still MATCHES, so the version assertion below names it — where an
+  // interpolated pattern would fail to match at all and the count assertion would report a
+  // baffling "found 0 in …" for a line that is plainly right there.
+  //
+  // The DIGEST is required, not just the tag: a tag can be re-pushed, and this container runs with
+  // the repo checked out and the working tree bind-mounted read-write. Each pattern is anchored to
+  // its home's real assignment shape (`IMAGE=` / a `container:` key), never "appears somewhere in
+  // the file", so a value surviving only in a comment does not count.
+  const HELPER_PIN =
+    /^IMAGE=mcr\.microsoft\.com\/playwright:v([\d.]+)-noble@(sha256:[0-9a-f]{64})$/gm;
+  const WORKFLOW_PIN =
+    /^\s+container: mcr\.microsoft\.com\/playwright:v([\d.]+)-noble@(sha256:[0-9a-f]{64})$/gm;
+  const pinsIn = (text, pattern) =>
+    [...text.matchAll(pattern)].map(([, version, digest]) => ({ version, digest }));
+  const homes = [
+    ['tooling/docker-playwright.sh', pinsIn(helper, HELPER_PIN)],
+    ['ci.yml', pinsIn(workflow('ci.yml'), WORKFLOW_PIN)],
+  ];
+  const pins = homes.flatMap(([, found]) => found);
+  assert.equal(
+    pins.length,
+    EXPECTED_PLAYWRIGHT_PINS,
+    `all ${EXPECTED_PLAYWRIGHT_PINS} Playwright pins must read …-noble@sha256:<64 hex> — found ` +
+      homes.map(([name, found]) => `${found.length} in ${name}`).join(', '),
+  );
+  // The pinned version must be the installed floor, or the baselines were rendered by a renderer
+  // nothing in the repo still installs.
+  assert.deepEqual(
+    [...new Set(pins.map((pin) => pin.version))],
+    [floor],
+    `the Playwright pins must name v${floor}, the installed @playwright/test floor`,
+  );
+  // Shape alone is NOT enough — measured: with the helper on one digest and a workflow line on
+  // another, every shape-only pattern still matched, which is exactly the partial-bump hole this
+  // test exists to close. Require ONE value across every home.
+  const digests = [...new Set(pins.map((pin) => pin.digest))];
+  assert.equal(digests.length, 1, `the Playwright pins disagree: ${digests.join(' vs ')}`);
+  // Anchored past the flags on purpose, the same idiom the ci.yml assertions use: the comment in
+  // the helper now states the lifecycle-script reason, so a bare
+  // /pnpm install --frozen-lockfile --ignore-scripts/ would match that COMMENT and stay green over
+  // a real command that had lost the flags — measured. No comment carries the `&& pnpm --filter`
+  // continuation.
+  assert.match(
+    helper,
+    /pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter/,
+    'the helper must install from the lockfile with lifecycle scripts off',
+  );
+});
