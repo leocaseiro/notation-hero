@@ -2192,6 +2192,15 @@ the `vr` and `web` jobs, and say that `tooling/workflow-guards.test.mjs` now anc
 three to the installed version. The `e2e` job keeps only its `(client)` Chromium install. A
 paragraph rather than a sixth table row, so Step 1's "Five spot edits" count stays true.
 
+**Then add one bullet to `client/README.md`'s VR section.** The table reaches that file twice, but
+only to rename artifacts — nothing in it covers what actually changes for its readers. After this
+work a `client/` visual change also moves `web/`'s nine page baselines, because `web/` compiles its
+own Tailwind CSS by scanning `client/` **source**, and the `web` job is gated on the `code` filter,
+so a `client/`-only PR runs it. Beside the existing Linux-only bullet, add: "A `client/` visual
+change also moves `web/`'s nine page baselines in `web/e2e/pages.vr.ts-snapshots/`. Regenerate them
+with `pnpm test:web:docker:update` and commit them in the same PR — the `web` job blocks merge."
+A paragraph for the same reason as the one above, not a sixth table row.
+
 - [ ] **Step 2: Give `AGENTS.md`'s VR section the `web/` lane**
 
 Its heading is scoped `client/` and its "Full runbook" line points at a runbook that is also being
