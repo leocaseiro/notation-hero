@@ -1,0 +1,26 @@
+{
+  "reviewer": "scope-guardian",
+  "findings": [
+    {
+      "title": "Task 8's pixel-guard never checks for failOnUnexpectedPageErrors()",
+      "severity": "P2",
+      "section": "Task 8: Guard that the pixel lane actually compares pixels",
+      "why_it_matters": "A later edit to web/e2e/pages.vr.ts that drops the failOnUnexpectedPageErrors() call Task 4 adds would ship silently: Task 8's guard checks for toHaveScreenshot(, four surface-color assertions and the chromium project's name/testMatch, but nothing checks for this call. The document itself elevates the call to a blanket Global Constraint and explains why in Task 4's own code comment, citing a real precedent in this repo — \"one out of AlphaTab's worker went unnoticed for a whole merged PR (NH-335)\" — for the exact same omission in a different web/e2e file. Task 8 exists specifically to close this class of gap (\"Five failure modes the spec implies that no shot's own assertions would catch.\"), so this is the one item on that list with a real prior incident behind it, yet the only one of the guarded requirements missing a corresponding assertion. A sixth sources.some(...) check, in the same style already used three times in this test, closes it.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add one more assertion in Task 8's guard test (tooling/workflow-guards.test.mjs), in the same sources.some(...) style already used for toHaveScreenshot( and the surface-color patterns: assert that at least one *.vr.ts source contains failOnUnexpectedPageErrors(), so a future removal of that call fails CI instead of repeating NH-335.",
+      "confidence": 75,
+      "evidence": [
+        "Every `*.vr.ts` calls `failOnUnexpectedPageErrors()` at module scope",
+        "one out of AlphaTab's worker went unnoticed for a whole merged PR (NH-335)",
+        "Five failure modes the spec implies that no shot's own assertions would catch.",
+        "Task 8: Guard that the pixel lane actually compares pixels"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Verified, not filed as a finding: the lap-1 fix declaring `web/app/globals.css` and `web/README.md` as the two files outside the spec's stated footprint (the 'Two files sit outside the spec's stated footprint' passage near the top of the File Structure section, and the 'Declare both out-of-footprint files in the PR body' checklist item near the end) is internally consistent — both name the same two files. Cross-checking every Task's own Files: list, the top-level File Structure New/Modified lists, and the spec's 'Process changes this carries' section against each other turns up no third undeclared file and no disagreement in the count.",
+    "Several other Global Constraints (the pinned 1280x900 viewport, the 120s chromium-project timeout, and 'no comparison options at all' — no threshold/maxDiffPixels) have no corresponding tooling/workflow-guards.test.mjs assertion either, unlike the constraints Task 8 does check (chromium project name/testMatch, toHaveScreenshot presence, the four surface-color assertions). Not raised as a finding alongside the failOnUnexpectedPageErrors gap: none of these carries a named prior incident the way that one does (NH-335), and a reliable absence-check for comparison options risks false positives against explanatory comments mentioning threshold or maxDiffPixels."
+  ],
+  "deferred_questions": []
+}
