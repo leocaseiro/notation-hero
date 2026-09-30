@@ -1952,8 +1952,15 @@ test("the web job runs web/'s whole browser lane in the pinned container, and bl
   // Exactly ONE invocation. Playwright registers the webServer per invocation and tears it down
   // when that invocation ends, so a second call runs a second `next build` and the only reason for
   // this job evaporates.
+  //
+  // Counted over `run:` lines, and covering the SCOPED package-script form too. Task 1 keeps
+  // test:e2e / test:vr alive for local use, and every browser-lane step in this file today is
+  // written that way (`pnpm --filter … run test:vr`) — so a bare `playwright test` substring count
+  // misses a second invocation written the repo's own way, while ALSO going red on a comment that
+  // merely mentions `playwright test`, since this slice includes comments. `run` is optional in
+  // the alternation because pnpm runs a script without it (`pnpm --filter … test:vr` works).
   assert.equal(
-    (webJob.match(/playwright test/g) ?? []).length,
+    (webJob.match(/^\s+run:.*(?:playwright test|test:(?:e2e|vr))/gm) ?? []).length,
     1,
     'the web job must call `playwright test` exactly once — a second call means a second next build',
   );
@@ -2017,8 +2024,10 @@ test('the client VR report is uploaded and downloaded under the SAME artifact na
 pnpm run test:tooling && pnpm run lint:actions && pnpm run lint:yaml
 ```
 
-Expected: all PASS. Then prove the one-invocation guard bites — temporarily duplicate the
-`playwright test` step inside the `web` job and re-run `pnpm run test:tooling`. Expected: FAIL with
+Expected: all PASS. Then prove the one-invocation guard bites, twice over. First temporarily
+duplicate the `playwright test` step inside the `web` job; then, separately, add a step written the
+way the rest of this file writes them — `run: pnpm --filter @notation-hero/web run test:vr`. Re-run
+`pnpm run test:tooling` after each. Expected both times: FAIL with
 `must call \`playwright test\` exactly once`. Remove the duplicate.
 
 - [ ] **Step 9: Commit, write the PR body, and push**
