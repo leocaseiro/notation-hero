@@ -243,3 +243,103 @@ test('the drop overlay while a file is dragged over the player', async ({ page }
   // End the gesture. A drag left open outlives the test on a reused worker.
   await cdp.send('Input.dispatchDragEvent', { type: 'drop', ...at, data });
 });
+
+/** The one OPEN tooltip. A closing popup can stay in the DOM for a frame, hence `[data-open]`. */
+const openTooltip = (page: Page) => page.locator('[data-slot="tooltip-content"][data-open]');
+
+// client/'s ghost variant is `hover:bg-elevate`, and the player chrome gives it three surfaces to
+// land on. The step is strongest against Storybook's white canvas — the only place it is
+// photographed today — and weakest against `--rail`, where it could regress to invisible with every
+// existing gate green. OpenFileControl renders variant="ghost" on `--rail`, so hovering it is the
+// shot. Convenient side effect: that button also carries a tooltip, so this captures the hover step
+// and its tooltip together.
+test('the ghost hover step on the left rail', async ({ page }) => {
+  await gotoPlayer(page);
+  await awaitPlayerReady(page);
+
+  const ghost = page.getByTestId('open-file-button');
+  await ghost.hover();
+  // `--elevate` over `--rail` scores 80 against the 1408.6 cutoff, so reverting to
+  // `hover:bg-muted` (46) changes ZERO counted pixels — and that revert is the exact regression
+  // this shot exists for. The picture is not redundant: the variant's `hover:text-foreground` step
+  // scores 4412, so it catches "this state did not render at all".
+  //
+  // NOT "differs from its own resting value" — measured on 1.61.1: Tailwind's preflight paints every
+  // <button> `background-color: transparent`, so resting is rgba(0, 0, 0, 0) and ANY opaque hover
+  // differs from it. `hover:bg-muted` (the regression this shot exists for) and `hover:bg-rail`
+  // BOTH pass that form. Compare against `--elevate` itself, resolved through the SAME serializer as
+  // the button's own computed value: a throwaway element, not getPropertyValue('--elevate'), which
+  // returns the authored `oklch(93.5% 0.006 240.4deg)` where the computed value reads
+  // `oklch(0.935 0.006 240.4)` — a format mismatch is exactly the failure the surface helper's
+  // doc-comment warns about.
+  const elevate = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = 'var(--elevate)';
+    document.body.append(probe);
+    const value = globalThis.getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return value;
+  });
+  // The probe has to resolve to a REAL colour, or the comparison below is vacuous: measured in
+  // Chromium 1.61.1, a missing `--elevate` makes `var(--elevate)` invalid at computed-value time
+  // on BOTH sides — the probe and the button's `hover:bg-elevate` — so both read
+  // `rgba(0, 0, 0, 0)`, the equality holds, and at 80 against the 1408.6 cutoff the picture sees
+  // nothing either. Same clause surfaceDiffersFromPageBackground already carries.
+  expect(elevate).not.toBe('rgba(0, 0, 0, 0)');
+  await expect
+    .poll(() => ghost.evaluate((el) => globalThis.getComputedStyle(el).backgroundColor))
+    .toBe(elevate);
+  // Not for an open DELAY — Tooltip defaults `delay` and `closeDelay` to 0 and neither trigger
+  // overrides them. What needs settling is the open animation and the portal's position.
+  await expect(openTooltip(page)).toBeVisible();
+
+  await settleBeforeShot(page);
+  await expect(page).toHaveScreenshot('player-rail-ghost-hover.png', { fullPage: true });
+});
+
+// Tooltip.tsx portals its content to the end of <body> and puts `isolate z-50` on the POSITIONER;
+// the `z-50` on the Popup beneath it has never done anything, because Base UI renders that element
+// `position: static` and z-index is ignored there. Nothing noticed while no other element claimed a
+// layer — then the player header claimed `z-10` and the tooltips went behind it. Storybook cannot
+// see this: a Tooltip story has no header to hide behind.
+//
+// The trigger must be a HEADER button. `z-10` only buries what overlaps the header's top 64 px, so
+// a tooltip opening clear of it proves nothing — `back-home` sits inside the header and overlaps by
+// construction. Measured: the tooltip flips BELOW its trigger, so only 10 px of its 28 fall inside
+// the header's band, and what covers that strip is the header's `border-b` and `shadow-md` (the
+// header paints no background). Simulating the regression changed 526 pixels in a 200x100 crop —
+// far past the tolerance, so the shot catches it, but expect a sliver rather than a missing tooltip.
+test('a portalled tooltip wins the header layer', async ({ page }) => {
+  await gotoPlayer(page);
+  await awaitPlayerReady(page);
+
+  await page.getByTestId('back-home').hover();
+  await expect(openTooltip(page)).toBeVisible();
+
+  await settleBeforeShot(page);
+  await expect(page).toHaveScreenshot('player-header-tooltip.png', { fullPage: true });
+});
+
+// PlayerShell renders the rail `w-20 shrink-0 … lg:w-24`, so it is 80 px below Tailwind's `lg`
+// (1024 px) and 96 px at or above it. The other eight shots are pinned at 1280 px and only ever see
+// the wide rail. One shot at 900 px covers the narrow one without shooting every state twice.
+//
+// test.use() is rejected inside a test() body, and inside an ASYNC describe ("did not expect
+// test.use() to be called here"). A titled, SYNC describe is the form that scopes it to one shot —
+// measured: the sibling shots keep the project's 1280x900. A second Playwright project would
+// instead double every baseline's filename space for the sake of one shot.
+//
+// Two breakpoints are deliberately NOT covered, both below these two widths: the transport footer's
+// second step at 640 px (`sm:gap-6 sm:px-8`), and the header wordmark's `max-md:sr-only` collapse at
+// 768 px (PlayerHeader.tsx) — 900 px and 1280 px sit above both. Desktop web is the v0 target and
+// ten shots is settled.
+test.describe('below the lg breakpoint', () => {
+  test.use({ viewport: { width: 900, height: 900 } });
+
+  test('the player with the narrow rail', async ({ page }) => {
+    await gotoPlayer(page);
+    await awaitPlayerReady(page);
+    await settleBeforeShot(page);
+    await expect(page).toHaveScreenshot('player-narrow.png', { fullPage: true });
+  });
+});
