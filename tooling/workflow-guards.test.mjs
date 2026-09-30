@@ -19,6 +19,13 @@ function workflow(name) {
   );
 }
 
+/** @returns {{ scripts: Record<string, string>, devDependencies: Record<string, string> }} */
+function packageJson(relativePath) {
+  return JSON.parse(
+    readFileSync(fileURLToPath(new URL(`../${relativePath}`, import.meta.url)), 'utf8'),
+  );
+}
+
 test('deploy.yml gates the up job on the master ref', () => {
   assert.ok(
     workflow('deploy.yml').includes(GUARD),
@@ -70,4 +77,22 @@ test('the lint job fetches enough history for the never-reuse comparison', () =>
       .split(/^  lint:$/m)[1]
       ?.split(/^  [a-z][a-z0-9-]*:$/m)[0] ?? '';
   assert.match(lintJob, /fetch-depth: 0/);
+});
+
+// web/ puts BOTH lanes in ONE config, so an unscoped local invocation runs the pixel lane too — on
+// a Mac that is a guaranteed red run against Linux baselines plus stray *-chromium-darwin.png
+// files. client/ is immune STRUCTURALLY, not by discipline: its unscoped test:e2e scripts point at
+// a second config that declares no `projects` array, so there is nothing to scope. web/ has to be
+// explicit, and this is what keeps it that way.
+test('every web/ Playwright script names its project', () => {
+  const { scripts } = packageJson('web/package.json');
+  const unscoped = Object.entries(scripts).filter(
+    ([, script]) =>
+      script.includes('playwright test') && !/--project=(?:e2e|chromium)\b/.test(script),
+  );
+  assert.deepEqual(
+    unscoped.map(([name]) => name),
+    [],
+    'these web/ scripts run `playwright test` with no --project, so they would run BOTH lanes',
+  );
 });
