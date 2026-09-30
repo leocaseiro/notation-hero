@@ -1695,18 +1695,29 @@ test('the web VR project has at least one shot to run', () => {
     fileURLToPath(new URL('../web/playwright.e2e.config.ts', import.meta.url)),
     'utf8',
   );
-  assert.match(config, /name:\s*'chromium'/, 'the chromium project is gone — the shots never run');
-  assert.match(config, /testMatch:\s*'\*\*\/\*\.vr\.ts'/, 'chromium no longer matches *.vr.ts');
+  // Sliced to each project entry and anchored to real lines, the same treatment the web-job test
+  // gives ci.yml — and for the same reason the `run:` and `container:` assertions are anchored:
+  // measured, the unanchored form stays green over a config whose testMatch line is commented out
+  // and replaced, over a renamed project whose old name survives in a comment, and over a config
+  // where the two projects' patterns have been SWAPPED (each project's own entry bounds its slice,
+  // so a pattern landing in the other one is outside it). Prettier leaves these lines as anchored.
+  const projectEntry = (name) =>
+    config.split(new RegExp(`^\\s+name: '${name}',$`, 'm'))[1]?.split(/^\s+\},$/m)[0] ?? '';
+
+  const chromium = projectEntry('chromium');
+  assert.ok(chromium, 'the chromium project is gone — the shots never run');
+  assert.match(
+    chromium,
+    /^\s+testMatch: '\*\*\/\*\.vr\.ts',$/m,
+    'chromium no longer matches *.vr.ts',
+  );
   // The OTHER project needs the same two, and for the same measured reason: after Task 9 nothing
   // in CI runs `--project=e2e` any more, so a deleted `e2e` project — or a mistyped testMatch —
   // leaves the unscoped run exiting 0 over the shots alone, with every behaviour and axe test
   // silently gone. Measured on 1.61.1: both shapes printed `1 passed` and exit 0.
-  assert.match(
-    config,
-    /name:\s*'e2e'/,
-    "the e2e project is gone — web's behaviour and axe tests never run",
-  );
-  assert.match(config, /testMatch:\s*'\*\*\/\*\.e2e\.ts'/, 'e2e no longer matches *.e2e.ts');
+  const e2e = projectEntry('e2e');
+  assert.ok(e2e, "the e2e project is gone — web's behaviour and axe tests never run");
+  assert.match(e2e, /^\s+testMatch: '\*\*\/\*\.e2e\.ts',$/m, 'e2e no longer matches *.e2e.ts');
 });
 ```
 
