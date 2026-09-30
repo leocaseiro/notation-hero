@@ -23,7 +23,7 @@ will be delayed. This PR should be ready to implement."_
   variant is `hover:bg-elevate`, and #170 adds `--rail` (recessed), `--panel` (raised) and
   `--elevate`. The step is strongest against Storybook's white canvas — the only place it is
   photographed today — and weakest against `--rail`, where it could regress to invisible with every
-  existing gate green. The shot hovers `OpenFileControl`'s ghost button in the left rail. ⏳ pending.
+  existing gate green. The shot hovers `OpenFileControl`'s ghost button in the left rail. ✅ done.
 - **A portalled tooltip is proved to win the header's layer, and it is a screenshot.** `Tooltip.tsx`
   puts `isolate z-50` on the Positioner; the `z-50` on the Popup never did anything, because Base UI
   renders that element `position: static`. Nothing noticed until #170's header claimed `z-10` and
@@ -31,12 +31,12 @@ will be delayed. This PR should be ready to implement."_
   whether a snapshot suffices given the tooltip does not move: it does, because the tooltip is
   portalled and positioned from its trigger's box, so it lands identically every run. The trigger
   must be a **header** button (`back-home`); `z-10` only buries what overlaps the header's top
-  64 px, so a tooltip opening clear of it would prove nothing. ⏳ pending.
+  64 px, so a tooltip opening clear of it would prove nothing. ✅ done.
 - **One narrow shot, not a second full pass.** #170 renders the rail `w-20 … lg:w-24`, a real
   breakpoint at 1024 px that a single pinned 1280 px viewport never sees. This reverses the earlier
   "no mobile-width baselines" non-goal, which was written when the player had no breakpoint. One
   shot at 900 px covers the narrow rail; shooting all eleven states twice is what the small-count
-  rule exists to prevent. ⏳ pending.
+  rule exists to prevent. ✅ done.
 - **The shot list is pinned to an unmerged branch, and says so.** Every shot now describes `/play`
   as #170 leaves it. If #170 changes in review the list follows it, and the spec tells the
   implementer to re-read `PlayerShell.tsx` rather than trust the descriptions.
@@ -56,21 +56,21 @@ the app.
   alternatives. Storybook inside `web/` was rejected: it reopens the locked NH-275 decision, needs a
   fake AlphaTab engine (the v0 spec's own "gated while rendering fabricated options"), and never
   runs `next build`. Moving presentational pieces into `client/` (NH-298) stays worth doing but
-  cannot replace this — it never sees the composed page or the CSS the app builds. ⏳ pending.
+  cannot replace this — it never sees the composed page or the CSS the app builds. ✅ done.
 - **Sequencing: v0 Plan C (the Settings and Tracks popovers) ships first**, the gate lands after.
 - **`web/`'s whole browser lane moves into the Playwright container — one `next build` serves
   end-to-end, axe and VR.** Bolting VR onto the existing `vr` job, or adding a separate `web-vr`
   job, would each take `web` from two builds per CI run to three: the `build` job's
   `pnpm run build` fans out to `web` (and the next step greps `web/.next/static/` to prove it),
   and the `e2e` job's Playwright `webServer` runs a `pnpm build` of its own. This keeps it at two
-  and makes web's axe and web's VR render identically. ⏳ pending.
+  and makes web's axe and web's VR render identically. ✅ done.
 - **Blocking from day one**, via `ci-green`, as `client/` VR already is. There is no flake budget to
   earn first: sixty runs of `/play` in the pinned Playwright container were measured before the
   design was fixed, at `threshold: 0` and `maxDiffPixels: 0`, and the full-page shot was byte-
   identical 19 times out of 19. AlphaTab's notation render is pixel-deterministic — the only drift
   found was the anti-aliased rounded corner of an element-_clipped_ shot, five to nine bytes each
   off by one in a single channel, which is why the design takes page-level shots and puts no mask
-  over the score. ⏳ pending.
+  over the score. ✅ done.
 
 Spec: `docs/specs/2026-09-21-web-visual-regression-gate.md`.
 

@@ -1,7 +1,7 @@
 # Visual-regression gate for `web/` — NH-320
 
 Date: 2026-09-21
-Status: Designed — not implemented. v0 Plan C (the Settings and Tracks popovers) has merged, and its
+Status: Implemented. v0 Plan C (the Settings and Tracks popovers) has merged, and its
 two popover shots are deliberately **out of this gate** — they land after it; see "The shots".
 Ticket: [NH-320](https://leocaseiro.atlassian.net/browse/NH-320)
 
