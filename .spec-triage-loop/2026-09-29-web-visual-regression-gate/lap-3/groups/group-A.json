@@ -1,0 +1,87 @@
+{
+  "group": "A",
+  "findings": [
+    {
+      "title": "Probe-based surface assertions pass when their token is gone",
+      "severity": "P1",
+      "section": "Task 6 Step 1 / Task 7 Step 2",
+      "why_it_matters": "Rename or delete --elevate in client/src/styles.css and the ghost-hover shot still reads green: the probe's var(--elevate) and the button's hover:bg-elevate both become invalid at computed-value time and both resolve to rgba(0, 0, 0, 0), so the equality holds while the hover surface paints nothing — and at 80 against the 1408.6 cutoff the picture cannot see it either. The engine-error tint has the identical shape, yet its comment claims equality 'subsumes the transparent case', which only holds while --destructive exists. Task 5's surfaceDiffersFromPageBackground already carries the guard (own !== 'rgba(0, 0, 0, 0)'); the two probe assertions need the same clause applied to the probe's own resolved value.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 6's ghost-hover shot add `expect(elevate).not.toBe('rgba(0, 0, 0, 0)');` immediately after the --elevate probe, in Task 7's engine-error shot add `expect(expectedTint).not.toBe('rgba(0, 0, 0, 0)');` immediately after the tint probe, and correct the engine-error comment's claim that equality with the resolved tint subsumes the transparent case — it does not when the token itself is missing.",
+      "confidence": 75,
+      "evidence": [
+        "probe.style.backgroundColor = 'var(--elevate)';",
+        ".toBe(elevate);",
+        "Equality with the resolved tint subsumes the transparent case too, so this one"
+      ],
+      "id": "F-1",
+      "reviewer": "adversarial"
+    },
+    {
+      "title": "Image-tag bite-proof names a message that edit cannot produce",
+      "severity": "P2",
+      "section": "Task 3 Step 4",
+      "why_it_matters": "Following Step 4 produces a different failure than the one written down, so the implementer cannot tell whether the guard bit for the right reason — the exact discipline this plan insists on elsewhere (\"always read WHICH assertion failed, never just the exit code\"). Changing IMAGE to v1.60.0-noble still matches the /^IMAGE=…:\\S+$/gm pattern, so assert.ok(images, …) passes and the loop's assert.equal fires instead, printing \"IMAGE=…v1.60.0-noble disagrees with …v1.61.1-noble\". The quoted \"must pin\" message can only appear when the IMAGE= line is removed altogether.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 3 Step 4, change the expected failure to `IMAGE=mcr.microsoft.com/playwright:v1.60.0-noble disagrees with mcr.microsoft.com/playwright:v1.61.1-noble`, and add one clause saying the `must pin` message covers the separate case where the IMAGE= line is deleted outright.",
+      "confidence": 75,
+      "evidence": [
+        "`tooling/docker-playwright.sh must pin mcr.microsoft.com/playwright:v1.61.1-noble`. Restore it.",
+        "assert.ok(images, `tooling/docker-playwright.sh must pin ${expected}`);"
+      ],
+      "id": "F-8",
+      "reviewer": "adversarial"
+    },
+    {
+      "title": "One-invocation guard counts a literal string the script form avoids",
+      "severity": "P2",
+      "section": "Task 9: Move `web/`'s whole browser lane into the container — Step 7",
+      "why_it_matters": "A second Playwright run can be added to the `web` job without the guard noticing, so CI silently goes back to three `next build`s per run — the exact cost this job exists to remove. The guard counts occurrences of the literal text `playwright test`, but Task 1 deliberately keeps the scoped package scripts alive for local use, and a step written `run: pnpm --filter @notation-hero/web run test:vr` contains no such substring while still registering its own `webServer` and running its own build. Counting the job's Playwright-invoking `run:` lines instead closes the gap the guard's own failure message claims to close.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Replace the literal-substring count with a count of the job's Playwright-invoking `run:` lines: assert that `(webJob.match(/^\\s+run:.*(?:playwright test|run test:(?:e2e|vr))/gm) ?? []).length` equals 1, so a second step written with the scoped `test:e2e` / `test:vr` package scripts fails the same assertion.",
+      "confidence": 75,
+      "evidence": [
+        "    (webJob.match(/playwright test/g) ?? []).length,",
+        "    # test:vr scripts stay for local use, where running one lane at a time is the point."
+      ],
+      "id": "F-9",
+      "reviewer": "feasibility"
+    },
+    {
+      "title": "Chromium-project assertions are unanchored, so a commented-out testMatch passes",
+      "severity": "P2",
+      "section": "Task 8: Guard that the pixel lane actually compares pixels — Step 2",
+      "why_it_matters": "The guard written to fail when the `chromium` project is deleted or its `testMatch` mistyped stays green over a config where the real `testMatch` line has been commented out and replaced, or where the two projects' patterns are swapped — leaving an unscoped CI run at exit 0 over zero pixels, which is the failure mode Task 8 exists for. Both assertions search the whole config text with no line anchor, while every other assertion in this suite (the web job's run line, the container pin) is anchored with `/^\\s+…$/m` precisely because the unanchored form survives a commented-out line. Anchoring these two and scoping them to the `chromium` entry applies the idiom the plan already argues for elsewhere.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Slice the config from `name: 'chromium'` to the end of that project entry, the way Task 9's web-job test slices ci.yml, and assert inside the slice with anchored patterns — `/^\\s+name: 'chromium',$/m` and `/^\\s+testMatch: '\\*\\*\\/\\*\\.vr\\.ts',$/m` — so a commented-out line or a pattern swapped onto the `e2e` project fails.",
+      "confidence": 75,
+      "evidence": [
+        "  assert.match(config, /name:\\s*'chromium'/, 'the chromium project is gone — the shots never run');",
+        "  assert.match(config, /testMatch:\\s*'\\*\\*\\/\\*\\.vr\\.ts'/, 'chromium no longer matches *.vr.ts');"
+      ],
+      "id": "F-10",
+      "reviewer": "feasibility"
+    },
+    {
+      "title": "Shot/baseline set equality counts commented-out toHaveScreenshot calls",
+      "severity": "P2",
+      "section": "Task 8 Step 2",
+      "why_it_matters": "A shot parked by commenting it out leaves the merge-blocking gate green over eight pixels: shot names are derived by text-matching across the raw file, so a `//`-prefixed or block-commented toHaveScreenshot call still counts and still pairs with its on-disk baseline, while test.skip and test.fixme — the only disable routes the guard checks — are absent. Step 4's bite-proof only ever deletes a call outright, so the hole is never exercised. Stripping comments before the content matches closes it and simultaneously hardens the other arms, whose own comments already worry about matching prose and commented-out lines.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 8's guard add `const code = (source) => source.replace(/\\/\\*[\\s\\S]*?\\*\\//g, '').replace(/^\\s*\\/\\/.*$/gm, '');` and run the test.skip/test.fixme, failOnUnexpectedPageErrors, toHaveScreenshot and four surface-anchor patterns over `code(source)` rather than the raw source, then add an arm to Step 4 that comments out one shot and expects the pairing assertion to fail.",
+      "confidence": 75,
+      "evidence": [
+        "source.matchAll(/toHaveScreenshot",
+        "the shots and the committed -chromium-linux baselines no longer pair up",
+        "assertion matches any prose occurrence, a snapshot filename, or a commented-out line."
+      ],
+      "id": "F-13",
+      "reviewer": "adversarial"
+    }
+  ]
+}

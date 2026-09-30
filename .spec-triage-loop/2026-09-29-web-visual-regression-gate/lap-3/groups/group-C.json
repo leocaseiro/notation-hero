@@ -1,0 +1,156 @@
+{
+  "group": "C",
+  "findings": [
+    {
+      "title": "Drag-and-drop drop overlay has no VR shot or deferral",
+      "severity": "P1",
+      "section": "Global Constraints",
+      "why_it_matters": "A regression in the file-drag affordance would ship silently: none of the nine shots, and no client/ Storybook story, ever renders `.nh-drop-overlay` or the `.nh-drop-zone[data-dragging]` outline, so nothing pixel-compares either. This is not hypothetical: the surrounding code already documents two real visual bugs in this exact spot (the outline once drew outside the viewport and was invisible; a dragenter/dragleave counter bug once made the overlay visibly strobe). The plan's own Task 5 helper comment names `.nh-drop-zone` and its `[data-dragging]` rule while reasoning about an unrelated assertion, so the state was in view while writing this plan, yet it becomes neither a tenth shot nor an explicit deferral the way the Settings/Tracks popovers get.",
+      "finding_type": "omission",
+      "autofix_class": "manual",
+      "suggested_fix": "Add a tenth shot over the drag-over state: simulate a dragenter on the drop zone (the same CDP-based drag technique `web/e2e/player.e2e.ts` already uses) and screenshot `.nh-drop-overlay` plus the `.nh-drop-zone[data-dragging]` outline. Its icon, heading and body text sit far above the 1408.6 per-pixel cutoff, so it needs no companion background-color assertion, only the screenshot itself.",
+      "confidence": 75,
+      "evidence": [
+        "Every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.",
+        "A tenth must justify itself",
+        "and web/app/globals.css gives .nh-drop-zone only a",
+        "[data-dragging] rule; the footer's is",
+        "`player-transport-pressed`, `player-rail-ghost-hover`, `player-header-tooltip` and"
+      ],
+      "id": "F-4",
+      "reviewer": "design-lens"
+    },
+    {
+      "title": "Plan never states what nine shots add over existing 0-px guards",
+      "severity": "P1",
+      "section": "Review Focus",
+      "why_it_matters": "A contributor or agent reading this plan will conclude the pixel lane is what guards against an unpainted or zero-width control, and may drop the cheaper guards that already do exactly that: web/e2e/player.e2e.ts polls the seek rail's boundingBox().width to be greater than 100, and web/e2e/a11y.e2e.ts's hit-area scan deliberately keeps 0-px-collapsed controls in its verdict — both citing the same client/-source-scan mechanism this plan cites. Neither appears anywhere in the plan, and no shot asserts the rail's width, so the nine baselines cannot replace them. Naming them and stating the pixel lane's residual coverage is also what lets the maintainer judge whether nine committed baselines plus a container job is the proportionate size of bet.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add a short 'What the nine shots add over the guards already in web/e2e' subsection to Review Focus that names web/e2e/player.e2e.ts's seek-rail boundingBox().width poll and web/e2e/a11y.e2e.ts's 0-px hit-area scan plus slider floor as the existing cheaper guards for the PR #162 failure — stating that both must stay, and that the pixel lane's residual coverage is whole-page composition and layout that no single-element assertion names.",
+      "confidence": 75,
+      "evidence": [
+        "// seek rail that shipped 0 px wide was perfect in Storybook, because Storybook scans client/",
+        "so a component that is correct in Storybook but broken in the app cannot ship."
+      ],
+      "id": "F-5",
+      "reviewer": "product-lens"
+    },
+    {
+      "title": "AGENTS.md text the plan writes overstates what the shots can see",
+      "severity": "P1",
+      "section": "Task 10 Step 2 (AGENTS.md block) / Goal",
+      "why_it_matters": "An agent reading AGENTS.md — loaded into every session in this repo — will take nine merge-blocking screenshots as coverage of app rendering, then add a surface built from this design system's neutral tokens and ship a regression green: by the plan's own arithmetic those steps score 5 to 173 against Playwright's 1408.6 per-pixel cutoff, so no shot can see them. The plan already names this as a failure mode in Review Focus, and the runbook text it writes carries the caveat ('Four shots assert a surface the comparator cannot see'); the AGENTS.md block it writes does not, and AGENTS.md is the higher-traffic file. One sentence there closes the gap without touching the settled shot list.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 10 Step 2, add one sentence to the AGENTS.md block: the nine shots cannot see a change between two of this design system's neutral surfaces, because those steps score under Playwright's 1408.6 per-pixel cutoff, so a new low-contrast surface on / or /play needs its own computed background-color assertion beside the shot rather than a baseline alone.",
+      "confidence": 75,
+      "evidence": [
+        "so a component that is correct in Storybook but broken in the app cannot ship.",
+        "so a component can be correct in Storybook and broken in the app (NH-320).",
+        "so their pictures prove the state rendered but not that the surface is right."
+      ],
+      "id": "F-6",
+      "reviewer": "product-lens"
+    },
+    {
+      "title": "Surface-assertion pattern's growth cost is unexamined",
+      "severity": "P2",
+      "section": "Task 8: Guard that the pixel lane actually compares pixels",
+      "why_it_matters": "The fifth surface assertion anyone adds will not be protected the way the first four are: the Task 8 guard hard-codes one regex per assertion, and nothing in the plan tells a later contributor to extend that list. The plan governs shot growth — a tenth shot must be scored against the cutoff before it is written — but never assertion growth, so the property the guard exists for ('drop one and that shot silently stops covering what it was added for') quietly holds for today's four and no others. Since every neutral step in this design system sits under the cutoff, more assertions are the expected direction rather than a hypothetical, and each one costs a production data-testid, an in-shot assertion and a guard entry.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add a line to Task 8 Step 2's guard comment and to the runbook's web/ section stating that any new computed background-color assertion added to a shot must also add its own anchor to the guard's [step, pattern] list in tooling/workflow-guards.test.mjs, and must score its surface step against the 1408.6 cutoff the same way a tenth shot must.",
+      "confidence": 75,
+      "evidence": [
+        "    ['the rail surface', /\\(page, 'player-rail'\\)/],",
+        "A tenth must justify itself; if its stated coverage"
+      ],
+      "id": "F-15",
+      "reviewer": "product-lens"
+    },
+    {
+      "title": "Playwright container pinned by mutable tag, and the new guard rejects a digest pin",
+      "severity": "P2",
+      "section": "Task 3: One shared container invocation, and a guard on its image tag",
+      "why_it_matters": "Every `vr`, `web` and local baseline run pulls whatever image currently answers to the mutable tag `v1.61.1-noble`, so a re-pushed tag executes unreviewed code with the repo checkout in CI and — through the `-v \"$PWD\":/work` bind mount — read-write over the developer's whole working tree, including the snapshot folder Tasks 4-7 commit with a directory-wide `git add`. This repo pins every third-party action to a 40-character commit SHA and sets `minimumReleaseAge: 10080` plus `trustPolicy: no-downgrade` in `pnpm-workspace.yaml` explicitly against supply-chain attacks, so the container image is the one third-party execution path left with no immutable reference. Worse than a plain gap: Task 3's guard byte-compares each pin against `mcr.microsoft.com/playwright:v${floor}-noble` and Task 9's anchors `-noble$`, so a later hardening to `tag@sha256:...` would fail `pnpm run test:tooling` in three places — the plan locks the weaker form in.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Pin the image by digest in all three homes — `tooling/docker-playwright.sh`'s `IMAGE=` line and the `container:` lines of the `vr` and `web` jobs — as `mcr.microsoft.com/playwright:v1.61.1-noble@sha256:<digest>`, and widen both guards so the digest is required rather than rejected: assert each pin matches `^IMAGE=mcr\\.microsoft\\.com/playwright:v${floor}-noble@sha256:[0-9a-f]{64}$` (and the same shape for the `container:` assertions in Task 3 Step 3 and Task 9 Step 7), and add a Global Constraints line saying a Playwright bump re-takes the digest alongside the tag.",
+      "confidence": 75,
+      "evidence": [
+        "IMAGE=mcr.microsoft.com/playwright:v1.61.1-noble",
+        "const expected = `mcr.microsoft.com/playwright:v${floor}-noble`;",
+        "assert.equal(image, `IMAGE=${expected}`, `${image} disagrees with ${expected}`);",
+        "/^\\s+container: mcr\\.microsoft\\.com\\/playwright:v[\\d.]+-noble$/m",
+        "-v \"$PWD\":/work"
+      ],
+      "id": "F-16",
+      "reviewer": "security-lens"
+    },
+    {
+      "title": "client/ contributors silently inherit nine web/ baselines",
+      "severity": "P2",
+      "section": "Task 10 Step 1 (Correct the live references)",
+      "why_it_matters": "A contributor working only in client/ will make an intended visual change, regenerate client/'s baselines, push, and watch the new merge-blocking web job go red on nine baselines they did not know they owned — client/README.md is the file they are reading, and Task 10 edits it only to rename two artifact names. The plan states the coupling plainly in its Global Constraints but writes the regeneration command only into web/README.md, AGENTS.md and the runbook. One line in client/README.md turns a red CI round-trip into a local one, which matters more here than on a team repo because the same person pays both sides.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 10 Step 1, add a client/README.md edit beside the two artifact renames: a line saying a client/ visual change also moves web/'s nine page baselines, which are regenerated with pnpm test:web:docker:update and committed in the same PR.",
+      "confidence": 50,
+      "evidence": ["Every shot is a file that moves whenever ", "(the failing-PR bullet)"],
+      "id": "F-17",
+      "reviewer": "product-lens"
+    },
+    {
+      "title": "`--ignore-scripts` guarded in the CI job but unguarded in the new helper",
+      "severity": "P2",
+      "section": "Task 3: One shared container invocation, and a guard on its image tag",
+      "why_it_matters": "Dropping `--ignore-scripts` from the new helper would let every transitive dependency's install script run as root inside a container that has the developer's entire working tree bind-mounted read-write, and nothing would go red — Task 3's guard reads only the `IMAGE=` line of that file. Task 9's guard shows the asymmetry is not a deliberate choice: it anchors the `web` job's byte-identical install line and states the reason in a comment about lifecycle scripts executing in CI. The fix reuses that exact assertion idiom one test earlier, in the file this plan is already creating, so the control is pinned wherever the plan puts it.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 3 Step 3, add one assertion to the container-tag guard that the helper still installs with both flags — `assert.match(helper, /pnpm install --frozen-lockfile --ignore-scripts/, 'the helper must install from the lockfile with lifecycle scripts off')` — and extend the helper's own `--ignore-scripts` comment to give the lifecycle-script reason alongside the lefthook one, matching the wording Task 9's guard already uses.",
+      "confidence": 50,
+      "evidence": [
+        "bash -c 'corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter \"$1\" run \"$2\"' _ \"$1\" \"$2\"",
+        "const images = helper.match(/^IMAGE=mcr\\.microsoft\\.com\\/playwright:\\S+$/gm);",
+        "// --ignore-scripts dependency lifecycle scripts execute in CI.",
+        "/^\\s+run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts$/m"
+      ],
+      "id": "F-18",
+      "reviewer": "security-lens"
+    },
+    {
+      "title": "New `web` job's no-secrets, read-only posture is neither stated nor guarded",
+      "severity": "P2",
+      "section": "Task 9: Move `web/`'s whole browser lane into the container",
+      "why_it_matters": "A future editor adding the hosted diff page that Task 9 Step 10 and the new runbook section both note `web/` lacks has nothing telling them this job executes PR-authored browser tests and must therefore stay on the workflow's inherited `contents: read` with no secrets — `vr-report` documents exactly that trust model in its own header ('the write token lives in THIS job only') because it is the privileged counterpart. Task 9's guard already pins eight properties of the `web` job on the stated grounds that their loss would be silent, and a privilege escalation on this job would be silent in the same way. Nothing is wrong today — the job block carries no `permissions:` key and no `secrets.` reference — but the plan's 2,305 lines never mention secrets, tokens, permissions or forks once.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 9 Step 1, add one line to the `web` job's header comment saying it runs PR-authored browser code and therefore deliberately carries no secrets and no `permissions:` block, inheriting the workflow's `contents: read` (unlike `vr-report`, which holds `contents: write`); and in Task 9 Step 7, add one assertion to the same guard that the `webJob` slice matches neither `/secrets\\./` nor `/^\\s+permissions:$/m`, so an escalation on this job fails `pnpm run test:tooling`.",
+      "confidence": 50,
+      "evidence": [
+        "- name: web browser lane (end-to-end + accessibility + visual regression)",
+        "// loss would be SILENT: a run line that no longer runs the lane, a missing container (so baselines",
+        "run: pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts"
+      ],
+      "id": "F-19",
+      "reviewer": "security-lens"
+    },
+    {
+      "title": "Docker script pair names a lane on one side, a package on the other",
+      "severity": "P3",
+      "section": "Task 3 Step 2 (Point the root scripts at it)",
+      "why_it_matters": "Six months on, pnpm test:vr:docker and pnpm test:web:docker sit next to each other in the same package.json and only one of them says which package it touches; picking the wrong one regenerates the wrong baselines and the web job goes red for a reason the command name gave no hint of. The plan is already rewriting both test:vr:docker* values to call the new helper, so aligning the names costs nothing now and a documentation sweep later. Nothing breaks — the pre-PR checklist runs both compare commands — but this repo's own conventions ask for low cognitive load, and a symmetric pair delivers it for free at this exact moment.",
+      "finding_type": "error",
+      "autofix_class": "manual",
+      "suggested_fix": "Rename the two client scripts to test:client:docker and test:client:docker:update in Task 3 Step 2 so both pairs name their package, and carry the rename through the client/README.md, runbook and AGENTS.md edits already scheduled in Task 10.",
+      "confidence": 50,
+      "evidence": [
+        "test:vr:docker\": \"bash tooling/docker-playwright.sh @notation-hero/client test:vr\",",
+        "test:web:docker\": \"bash tooling/docker-playwright.sh @notation-hero/web test:vr\","
+      ],
+      "id": "F-22",
+      "reviewer": "product-lens"
+    }
+  ]
+}
