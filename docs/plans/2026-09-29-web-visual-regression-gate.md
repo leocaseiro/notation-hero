@@ -1,7 +1,7 @@
 ---
 # spec-triage-loop state. `lap` is the review lap this document has been through;
 # `last_applied` is the highest severity applied on that lap.
-lap: 1
+lap: 2
 last_applied: P1
 ---
 
@@ -1407,6 +1407,14 @@ test('the first-visit Skeleton while the engine module is stalled', async ({ pag
 ```ts
 // The engine-error state is reachable and PERMANENT — abort the engine module the way the shot above
 // stalls it. Its role="alert" sits on a color-mix(in oklab, …) destructive tint.
+//
+// This shoots the BANNER, not the whole state. NotationSurface's own Dismiss button sets `dismissed`
+// (:90) and unmounts this <p> while `failure` stays truthy (:223), and the Skeleton is gated
+// `!failure` (:250) — so the dismissed state is a blank notation area over a transport that never
+// enables. Deliberately NOT a tenth shot: per Global Constraints a tenth must score its surface step
+// against the 1408.6 cutoff, and this one's coverage is "nothing is painted here" over the same
+// region the two shots above already photograph. Revisit if that area ever gains a fallback of
+// its own.
 test('the destructive panel when the engine module fails to load', async ({ page }) => {
   await abortEngine(page);
   const panel = page.getByTestId('engine-error');
@@ -1488,6 +1496,9 @@ player-long-score-chromium-linux.png
 
 Confirm the count: `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `9`. Local
 darwin shots share this folder and are git-ignored, so count the committed Linux set explicitly.
+From Task 8 onward this stops being a count you have to remember to re-run: that task's guard
+asserts the shot names and the committed Linux baselines are the SAME set, so a dropped shot, a
+dropped baseline or a rename fails `pnpm run test:tooling`.
 
 - [ ] **Step 6: Run both lanes together the way CI will, once, unscoped**
 
@@ -1580,9 +1591,33 @@ test('the web VR project has at least one shot to run', () => {
       `${file} does not call failOnUnexpectedPageErrors() — a shot over a throwing page reads green`,
     );
   });
+  // Not `some(includes('toHaveScreenshot('))`: that passes while ONE call survives anywhere, and it
+  // pairs no shot with its baseline — measured on 1.61.1, deleting a shot and leaving its baseline on
+  // disk exits 0 with `1 passed` and no orphan warning, so an eight-shot lane reads exactly like a
+  // nine-shot one. Planting a baseline for a shot that never existed exits 0 too. Set equality closes
+  // a dropped shot, a dropped baseline AND a rename in one assertion. The `\.png` in the pattern is
+  // load-bearing: without it the match runs past the closing quote into the next string, the same
+  // over-matching the `\(` anchors above guard against.
+  const shotNames = new Set(
+    sources.flatMap((source) =>
+      [...source.matchAll(/toHaveScreenshot\('([^']+\.png)'/g)].map((match) =>
+        match[1].slice(0, -4),
+      ),
+    ),
+  );
   assert.ok(
-    sources.some((source) => source.includes('toHaveScreenshot(')),
+    shotNames.size > 0,
     'no *.vr.ts calls toHaveScreenshot — the chromium project compares nothing',
+  );
+  const baselineNames = new Set(
+    readdirSync(new URL('../web/e2e/pages.vr.ts-snapshots/', import.meta.url))
+      .filter((file) => file.endsWith('-chromium-linux.png'))
+      .map((file) => file.slice(0, -'-chromium-linux.png'.length)),
+  );
+  assert.deepEqual(
+    [...shotNames].sort(),
+    [...baselineNames].sort(),
+    'the shots and the committed -chromium-linux baselines no longer pair up — a shot, a baseline or a name was dropped',
   );
 
   // Three shots carry four assertions over a surface step the comparator cannot see (scoring 5, 20,
@@ -1642,6 +1677,8 @@ before the next:
    `no *.vr.ts asserts the rail surface`
 5. Delete the `failOnUnexpectedPageErrors()` call from `pages.vr.ts` →
    `pages.vr.ts does not call failOnUnexpectedPageErrors()`
+6. Delete one `toHaveScreenshot(` call, leaving its baseline on disk →
+   `the shots and the committed -chromium-linux baselines no longer pair up`
 
 - [ ] **Step 5: Commit**
 

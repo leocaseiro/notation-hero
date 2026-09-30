@@ -20,15 +20,17 @@
     "unique_finding_count": 18,
     "confirmed": 18,
     "dropped": 0,
-    "finding_count_undecided": 12,
+    "finding_count_undecided": 0,
     "exit_signal_raw": "NOT CLEAN — 18 confirmed findings (3 P1, 11 P2, 4 P3) after severity corrections; 6 applied in the review half, 12 left undecided and actionable.",
-    "triaged": false,
+    "triaged": true,
     "review_baseline_commit": "8029a516",
     "applied_commit": "71eb7c5f",
     "silent_autofixes_by_engine": "none — the six personas were dispatched READ-ONLY, so the engine's headless safe_auto auto-apply never ran and step 2b had nothing to catch. The document was byte-identical to 8029a516 when verification ran. The six safe_auto findings were therefore applied by the orchestrator instead, and are listed under already_applied.",
     "verification": "Dispatched to two subagents (verify-A: the assertion/proof-step cluster; verify-B: the stale-text/count/coupling cluster). All 62 evidence strings across 18 findings confirmed byte-verbatim with fixed-string search; all 18 cited sections confirmed to exist; 0 findings dropped. Every cheap fix was RUN, not reasoned — see each finding's `spike`.",
     "residual_risks_recorded": 35,
-    "deferred_questions_recorded": 8
+    "deferred_questions_recorded": 8,
+    "triage_summary": "All 12 decided across 2 picker rounds. Round 1: the three P1s (F-1, F-2, F-3) put to the maintainer individually - all Apply - commit 22998bb9. The maintainer then authorized auto-resolving clear fixes in the [Q-add] box, so the seven findings carrying no real choice (F-10, F-11, F-12, F-13, F-14, F-16, F-18) were applied and reported - commit 00402202. Round 2: the two carrying a genuine choice (F-9 new guard machinery, F-15 note-vs-tenth-shot) were put to the maintainer as compared alternatives - both took the recommendation. 0 Skipped, 0 Dropped.",
+    "triage_commits": ["22998bb9", "00402202", "<round-2 commit>"]
   },
   "already_applied": [
     {
@@ -108,7 +110,48 @@
       "revert": "git revert 71eb7c5f (all six plus the lap-1 cleanup together)"
     }
   ],
-  "undecided_findings": [
+  "dedup_notes": [
+    "F-19 (adversarial, P3/50, 'Client baseline count is stale: 842 committed, not 698') is a DUPLICATE of F-8 (feasibility, P2/100). Merged into F-8 and held at the higher severity/confidence. Both were separately dispatched, so this is genuine independent corroboration. F-8 is already applied.",
+    "F-2 and F-3 both concern a vacuous surface assertion but sit at DIFFERENT call sites (the Task 5 shared helper vs Task 7's engine-error poll, which compares to el.parentElement). verify-A confirmed lap 1 never edited the Task 7 site. Kept separate.",
+    "F-9 and F-12 are different gaps in the same Task 8 guard file; F-13 and F-18 are different files in the same Playwright-bump coupling. Kept separate but batch each pair together for locality."
+  ],
+  "cross_fix_conflicts": [
+    {
+      "between": ["F-2", "F-3"],
+      "severity": "BLOCKING — F-3 must not be skipped if F-2 is applied",
+      "detail": "F-2's fix reintroduces the literal string 'rgba(0, 0, 0, 0)' into the same *.vr.ts file. Task 8's guard anchors the engine-error assertion on /'rgba\\(0, 0, 0, 0\\)'/, so that anchor would keep matching while silently guarding the RAIL assertion instead — exactly the bare-substring trap Task 8's own comment documents and that lap 1's F-3 fix was written to close. F-3's re-anchor to /var\\(--destructive\\)/ is therefore MANDATORY, not optional. If the maintainer applies F-2 and skips F-3, the guard is silently disarmed; say so when asking."
+    },
+    {
+      "between": ["F-13", "F-18"],
+      "severity": "wording dependency",
+      "detail": "If both land, the rewritten NH-197-spec sentence (F-18) must use the plan's own framing — the container tag has three homes, and pnpm-workspace.yaml's version-exact excludes are a SEPARATE, differently-enforced half (check:supply-chain-pins in the lint job vs test:tooling in the quality job). Otherwise the two edits disagree with each other."
+    },
+    {
+      "note": "F-13's fix was deliberately made ADDITIVE rather than a rewrite: 'three homes' is literally true and appears in five places, so the reviewer's 'four files' wording would have falsified three of them."
+    }
+  ],
+  "carry_forward_constraints": [
+    "OUT OF SCOPE for this document, flagged but NOT edited — the NH-320 spec (docs/specs/2026-09-21-web-visual-regression-gate.md) says '698 pixel tests' where the real figure is 848, and 'the 91 behaviour tests' where it is 92. Task 10 does not open either sentence, so fixing them here would widen the footprint. Worth its own ticket.",
+    "OUT OF SCOPE — the NH-197 spec's root @playwright/test dependency named at :231 does not exist at all; the dep is per-package. Already stale before NH-320. F-18 covers the NH-320-caused half only.",
+    "Design-lens recorded that dark mode is genuinely unreachable in web/ today (no .dark class, no theme toggle, no next-themes), so the plan's 'Light only' is accurate and needs no shot.",
+    "Adversarial's one untested item was CLOSED by feasibility, which ran it: `pnpm run <script> -g zzz` does forward -g to the script rather than pnpm eating it as --global. Tasks 5-7's `-g` filters are safe.",
+    "The feared missing-baseline retry hole DOES NOT EXIST — installed Playwright 1.61.1's handleMissing returns shouldNotRetryTest: true under updateSnapshots: 'missing', so a missing baseline cannot be auto-written and then flaky-passed into a green gate. Do not re-review this."
+  ],
+  "notes": [
+    "TOOLING GOTCHA, read before applying anything: the Write tool REFUSES paths in another git worktree ('belongs to a different worktree'). This session's cwd worktree is nh-320-vr-spec-review-26a18f; the plan lives in error-code-pr-checklist-b055bb. Read and Bash both cross worktrees fine — only Write is blocked. Every lap-1 and lap-2 edit was made with Bash (a python3 exact-string replace with an assert on the match count). All six lap-2 reviewers hit this; budget for it.",
+    "Apply edits with an exact-string replace that ASSERTS the occurrence count. Two lap-2 applies would have hit the wrong site silently otherwise: F-4's anchor matched both the File Structure Modified list and Task 10's Files list (only the former is correct — Task 4 modifies globals.css, not Task 10), and '698' also appears inside the unrelated score number 19698.",
+    "F-6 was filed with the fix INVERTED and is already applied in its corrected form. If anything re-raises it, the JSDoc ladder is CORRECT and the inline comment was the false label — settled by running Playwright 1.61.1's own comparator on the real tokens (--rail over --panel = 19.58, --rail over --background = 44.72).",
+    "Four of the twelve undecided findings had their fix CORRECTED or STRENGTHENED during verification, so use this artifact's `after` text, not the reviewer's `suggested_fix_as_filed`: F-9 (the extraction regex over-matched because Task 8's own guard line contains toHaveScreenshot( — requiring \\.png yields exactly nine), F-11 (the mechanism was backwards in direction), F-12 (the fix was weaker than the Global Constraint it enforces — moved into the per-file loop), F-14 (a third reason added: the build job has no upload step, so no .next artifact exists to reuse).",
+    "The triage cap is 12 findings or 5 picker rounds. There are exactly 12 undecided, so this fits one triage invocation if the rounds hold. Batch by area, severity-ordered: (1) F-1 alone or with F-2/F-3 — the three P1 vacuous assertions; (2) F-9 + F-12 — both the Task 8 guard; (3) F-13 + F-18 — both the Playwright-bump coupling; (4) F-10 + F-11 — both Task 2/proof-step mechanics; (5) F-14 + F-15 + F-16 — the P2/P3 tail, which may go on one multi-select card."
+  ],
+  "resume": {
+    "next_step": "review-loop step 4 (the triage half), in a NEW session — the maintainer directed this explicitly on 2026-09-30: 'run lap 2, and save all in findings. Triage will be done in a new session.'",
+    "command": "/spec-triage-loop:doc-review-loop of the plan docs/plans/2026-09-29-web-visual-regression-gate.md at https://github.com/leocaseiro/notation-hero/pull/187",
+    "entry_rule": "This artifact has triaged: false and 12 undecided findings, so the entry rule sends the next invocation to step 4 (triage), NOT step 1. Do not re-run the review half.",
+    "guardrail": "In the triage half, read THIS FILE and nothing else. Never re-open the plan to compose a chunk — every finding already carries its scenario, verbatim before/after, spike result and id_expansions inline, precisely so that is unnecessary.",
+    "on_completion": "At step 6 write lap: 2 and last_applied: <highest severity applied> to the plan's frontmatter, and set triaged: true here. Then step 7: lap 2 of a cap of 5 is used; a P1 applied or a not-clean exit signal re-laps as a NEW invocation."
+  },
+  "decided_findings": [
     {
       "id": "F-1",
       "title": "Tailwind-scan probe greps a pattern the emitted CSS never contains",
@@ -146,7 +189,8 @@
         "Expected: `excluded — web/e2e is no longer scanned`, and the build's own last line still reads",
         "grep -rl 'mt-\\[137px\\]' web/.next/static/ --include='*.css'   # prints the emitted chunk",
         "`web/e2e/` has the same shape and no such line. **Measured, not reasoned:** a `mt-[137px]` planted in"
-      ]
+      ],
+      "decision": "APPLIED"
     },
     {
       "id": "F-2",
@@ -189,7 +233,8 @@
         "Temporarily change the `<aside>`'s `bg-rail` to `bg-background` in `PlayerShell.tsx`, then:",
         "Expected: FAIL on `surfaceDiffersFromPageBackground('player-rail')`, **not** on the screenshot — that is",
         "Do this before generating baselines — an assertion that cannot fail is worse than none."
-      ]
+      ],
+      "decision": "APPLIED"
     },
     {
       "id": "F-3",
@@ -233,7 +278,8 @@
         "  // one also has to rule out fully transparent, which \"differs from the parent\" does not.",
         "    // Against a transparent parent EVERY opaque colour differs, bg-background included, so the",
         "temporarily remove the background utility, keeping the border and the red text. Then:"
-      ]
+      ],
+      "decision": "APPLIED"
     },
     {
       "id": "F-9",
@@ -274,7 +320,8 @@
         "    'no *.vr.ts calls toHaveScreenshot — the chromium project compares nothing',",
         "Confirm the count: `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `9`. Local",
         "Counting filenames is not enough: an empty file, `test.describe.skip(`,"
-      ]
+      ],
+      "decision": "APPLIED (set-equality chosen over keeping the cheap some(...))"
     },
     {
       "id": "F-10",
@@ -316,7 +363,8 @@
         "Run the one case, read the values for both the bundled beat and `Punk.gp`, then delete the print and",
         "// The sample renders <N> px tall and never scrolls; Punk.gp's two drum tracks render <N> px at this",
         "the bundled beat measures scrollHeight === clientHeight"
-      ]
+      ],
+      "decision": "APPLIED (auto-resolved: no real choice)"
     },
     {
       "id": "F-11",
@@ -358,7 +406,8 @@
         "Do this before generating baselines — an assertion that cannot fail is worse than none.",
         "Temporarily change the `<aside>`'s `bg-rail` to `bg-background` in `PlayerShell.tsx`, then:",
         "Temporarily change the ghost variant's `hover:bg-elevate` to `hover:bg-muted` in"
-      ]
+      ],
+      "decision": "APPLIED (auto-resolved)"
     },
     {
       "id": "F-12",
@@ -399,7 +448,8 @@
         "one out of AlphaTab's worker went unnoticed for a whole merged PR (NH-335)",
         "Five failure modes the spec implies that no shot's own assertions would catch.",
         "Task 8: Guard that the pixel lane actually compares pixels"
-      ]
+      ],
+      "decision": "APPLIED (auto-resolved)"
     },
     {
       "id": "F-13",
@@ -441,7 +491,8 @@
         "Keep this tag in lockstep with @playwright/test AND with the `container:` lines of the `vr` and",
         "three to the installed @playwright/test, so a bump is all-or-nothing.",
         "`@playwright/test` (v1.61.1 today). Baselines are regenerated on the bump."
-      ]
+      ],
+      "decision": "APPLIED (auto-resolved)"
     },
     {
       "id": "F-14",
@@ -482,7 +533,8 @@
         "`web/` is built twice per CI run today — the `build` job's `pnpm run build` fans out to it, and the",
         "a separate `web-vr` job, would each make that three. Moving the lane keeps it at two **and** makes",
         "      // NEXT_PUBLIC_* is inlined at BUILD time, which is why the command above runs `pnpm build`"
-      ]
+      ],
+      "decision": "APPLIED (auto-resolved)"
     },
     {
       "id": "F-15",
@@ -522,7 +574,8 @@
       "evidence_quotes_verbatim": [
         "The engine-error state is reachable and PERMANENT",
         "Task 7: The two states that never finish loading"
-      ]
+      ],
+      "decision": "APPLIED as a note only (tenth shot declined)"
     },
     {
       "id": "F-16",
@@ -564,7 +617,8 @@
         "The `web` job is the gate over the product's own UI. Everything pinned here is something whose",
         "loss would be SILENT: a run line that no longer runs the lane, a missing container (so baselines",
         "run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts"
-      ]
+      ],
+      "decision": "APPLIED (auto-resolved)"
     },
     {
       "id": "F-18",
@@ -606,48 +660,8 @@
         "Every file here describes a mechanism that is still in force, so each is corrected rather than left",
         "| `docs/specs/2026-06-26-nh-197-e2e-traces.md` (three places)           | `playwright-e2e-report` | `playwright-client-e2e-report` |",
         "- **The container tag drifting from `@playwright/test`** across its three homes after this lands"
-      ]
+      ],
+      "decision": "APPLIED (auto-resolved)"
     }
-  ],
-  "dedup_notes": [
-    "F-19 (adversarial, P3/50, 'Client baseline count is stale: 842 committed, not 698') is a DUPLICATE of F-8 (feasibility, P2/100). Merged into F-8 and held at the higher severity/confidence. Both were separately dispatched, so this is genuine independent corroboration. F-8 is already applied.",
-    "F-2 and F-3 both concern a vacuous surface assertion but sit at DIFFERENT call sites (the Task 5 shared helper vs Task 7's engine-error poll, which compares to el.parentElement). verify-A confirmed lap 1 never edited the Task 7 site. Kept separate.",
-    "F-9 and F-12 are different gaps in the same Task 8 guard file; F-13 and F-18 are different files in the same Playwright-bump coupling. Kept separate but batch each pair together for locality."
-  ],
-  "cross_fix_conflicts": [
-    {
-      "between": ["F-2", "F-3"],
-      "severity": "BLOCKING — F-3 must not be skipped if F-2 is applied",
-      "detail": "F-2's fix reintroduces the literal string 'rgba(0, 0, 0, 0)' into the same *.vr.ts file. Task 8's guard anchors the engine-error assertion on /'rgba\\(0, 0, 0, 0\\)'/, so that anchor would keep matching while silently guarding the RAIL assertion instead — exactly the bare-substring trap Task 8's own comment documents and that lap 1's F-3 fix was written to close. F-3's re-anchor to /var\\(--destructive\\)/ is therefore MANDATORY, not optional. If the maintainer applies F-2 and skips F-3, the guard is silently disarmed; say so when asking."
-    },
-    {
-      "between": ["F-13", "F-18"],
-      "severity": "wording dependency",
-      "detail": "If both land, the rewritten NH-197-spec sentence (F-18) must use the plan's own framing — the container tag has three homes, and pnpm-workspace.yaml's version-exact excludes are a SEPARATE, differently-enforced half (check:supply-chain-pins in the lint job vs test:tooling in the quality job). Otherwise the two edits disagree with each other."
-    },
-    {
-      "note": "F-13's fix was deliberately made ADDITIVE rather than a rewrite: 'three homes' is literally true and appears in five places, so the reviewer's 'four files' wording would have falsified three of them."
-    }
-  ],
-  "carry_forward_constraints": [
-    "OUT OF SCOPE for this document, flagged but NOT edited — the NH-320 spec (docs/specs/2026-09-21-web-visual-regression-gate.md) says '698 pixel tests' where the real figure is 848, and 'the 91 behaviour tests' where it is 92. Task 10 does not open either sentence, so fixing them here would widen the footprint. Worth its own ticket.",
-    "OUT OF SCOPE — the NH-197 spec's root @playwright/test dependency named at :231 does not exist at all; the dep is per-package. Already stale before NH-320. F-18 covers the NH-320-caused half only.",
-    "Design-lens recorded that dark mode is genuinely unreachable in web/ today (no .dark class, no theme toggle, no next-themes), so the plan's 'Light only' is accurate and needs no shot.",
-    "Adversarial's one untested item was CLOSED by feasibility, which ran it: `pnpm run <script> -g zzz` does forward -g to the script rather than pnpm eating it as --global. Tasks 5-7's `-g` filters are safe.",
-    "The feared missing-baseline retry hole DOES NOT EXIST — installed Playwright 1.61.1's handleMissing returns shouldNotRetryTest: true under updateSnapshots: 'missing', so a missing baseline cannot be auto-written and then flaky-passed into a green gate. Do not re-review this."
-  ],
-  "notes": [
-    "TOOLING GOTCHA, read before applying anything: the Write tool REFUSES paths in another git worktree ('belongs to a different worktree'). This session's cwd worktree is nh-320-vr-spec-review-26a18f; the plan lives in error-code-pr-checklist-b055bb. Read and Bash both cross worktrees fine — only Write is blocked. Every lap-1 and lap-2 edit was made with Bash (a python3 exact-string replace with an assert on the match count). All six lap-2 reviewers hit this; budget for it.",
-    "Apply edits with an exact-string replace that ASSERTS the occurrence count. Two lap-2 applies would have hit the wrong site silently otherwise: F-4's anchor matched both the File Structure Modified list and Task 10's Files list (only the former is correct — Task 4 modifies globals.css, not Task 10), and '698' also appears inside the unrelated score number 19698.",
-    "F-6 was filed with the fix INVERTED and is already applied in its corrected form. If anything re-raises it, the JSDoc ladder is CORRECT and the inline comment was the false label — settled by running Playwright 1.61.1's own comparator on the real tokens (--rail over --panel = 19.58, --rail over --background = 44.72).",
-    "Four of the twelve undecided findings had their fix CORRECTED or STRENGTHENED during verification, so use this artifact's `after` text, not the reviewer's `suggested_fix_as_filed`: F-9 (the extraction regex over-matched because Task 8's own guard line contains toHaveScreenshot( — requiring \\.png yields exactly nine), F-11 (the mechanism was backwards in direction), F-12 (the fix was weaker than the Global Constraint it enforces — moved into the per-file loop), F-14 (a third reason added: the build job has no upload step, so no .next artifact exists to reuse).",
-    "The triage cap is 12 findings or 5 picker rounds. There are exactly 12 undecided, so this fits one triage invocation if the rounds hold. Batch by area, severity-ordered: (1) F-1 alone or with F-2/F-3 — the three P1 vacuous assertions; (2) F-9 + F-12 — both the Task 8 guard; (3) F-13 + F-18 — both the Playwright-bump coupling; (4) F-10 + F-11 — both Task 2/proof-step mechanics; (5) F-14 + F-15 + F-16 — the P2/P3 tail, which may go on one multi-select card."
-  ],
-  "resume": {
-    "next_step": "review-loop step 4 (the triage half), in a NEW session — the maintainer directed this explicitly on 2026-09-30: 'run lap 2, and save all in findings. Triage will be done in a new session.'",
-    "command": "/spec-triage-loop:doc-review-loop of the plan docs/plans/2026-09-29-web-visual-regression-gate.md at https://github.com/leocaseiro/notation-hero/pull/187",
-    "entry_rule": "This artifact has triaged: false and 12 undecided findings, so the entry rule sends the next invocation to step 4 (triage), NOT step 1. Do not re-run the review half.",
-    "guardrail": "In the triage half, read THIS FILE and nothing else. Never re-open the plan to compose a chunk — every finding already carries its scenario, verbatim before/after, spike result and id_expansions inline, precisely so that is unnecessary.",
-    "on_completion": "At step 6 write lap: 2 and last_applied: <highest severity applied> to the plan's frontmatter, and set triaged: true here. Then step 7: lap 2 of a cap of 5 is used; a P1 applied or a not-clean exit signal re-laps as a NEW invocation."
-  }
+  ]
 }
