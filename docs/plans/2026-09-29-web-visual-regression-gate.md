@@ -207,8 +207,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 // The `web` browser lane: behaviour + accessibility (`*.e2e.ts`) and visual regression
 // (`*.vr.ts`), as two projects over ONE webServer — so one `next build` serves both and web's axe
-// and web's VR render identically. It mirrors client/playwright.e2e.config.ts, but serves a
-// Next.js production build (`next build` then `next start`) rather than `vite preview`.
+// and web's VR run against the same build in the same browser binary. It mirrors
+// client/playwright.e2e.config.ts, but serves a Next.js production build (`next build` then
+// `next start`) rather than `vite preview`.
 // web/ has no Storybook, which is why the pixel lane shoots the composed PAGE here rather than
 // stories: a component can be correct in Storybook and broken in the app, because web/ compiles
 // its own Tailwind CSS by scanning client/ SOURCE (the @source globs in web/app/globals.css).
@@ -1785,8 +1786,9 @@ git commit -m "test: fail CI when the web VR lane would compare zero pixels (NH-
 `web/` is built twice per CI run today — the `build` job's `pnpm run build` fans out to it, and the
 `e2e` job's Playwright `webServer` runs its own `pnpm build`. Bolting a VR step onto `vr`, or adding
 a separate `web-vr` job, would each make that three. Moving the lane keeps it at two **and** makes
-web's axe and web's VR render identically. One build per run — reusing the `build` job's `.next`
-output and running only `pnpm start` here — was considered and rejected:
+web's axe and web's VR run against the same build in the same browser binary. One build per run —
+reusing the `build` job's `.next` output and running only `pnpm start` here — was considered and
+rejected:
 `NEXT_PUBLIC_ALPHATAB_LOG_LEVEL: 'Debug'` is inlined at BUILD time, so that artifact is not the
 build this lane needs; the `build` job runs under `setup-js` on `ubuntu-latest` while this lane runs
 inside the Playwright container; and the `build` job uploads nothing today, so the route would also
@@ -1808,8 +1810,9 @@ cost a new artifact upload and download.
 
 ```yaml
 # web/'s whole browser lane — behaviour, accessibility and visual regression — in ONE
-# Playwright-container job, so ONE `next build` serves all three and web's axe and web's VR render
-# identically. web/ has no Storybook, so neither `vr` nor `a11y` covers it; THIS is that gate.
+# Playwright-container job, so ONE `next build` serves all three and web's axe and web's VR run
+# against the same build in the same browser binary. web/ has no Storybook, so neither `vr` nor
+# `a11y` covers it; THIS is that gate.
 # Path-filtered on `code`; blocks merge via ci-green, from day one, as client/ VR already does.
 # It runs PR-AUTHORED browser code, so it deliberately carries no secrets and no permissions: block,
 # inheriting the workflow's contents: read — unlike vr-report, which holds contents: write and says
@@ -2094,9 +2097,15 @@ pushed branch, confirm in the Actions tab:
 4. `CI Green` lists `web=success`.
 5. The three artifacts are named `playwright-client-vr-report`, `playwright-client-e2e-report` and
    `playwright-web-report`, with no 409.
-6. The 92 existing `web/` behaviour tests still pass in the container. Their timing changing is the
-   one real risk in this decision; if it materialises, the documented fallback is a separate
-   `web-vr` container job, accepting the second build.
+6. The 92 existing `web/` behaviour tests still pass in the container. Timing is the likeliest thing
+   to move, but it is not the only one: this lane leaves `ubuntu-latest` plus an on-demand Chromium
+   for a pinned image with its own system font set and fontconfig, and some of those 92 assert
+   GEOMETRY, not behaviour — `expectHitAreas`' on-screen containment and 44 px floors at 700 px, and
+   axe's own large-text contrast thresholds, which key off measured type. The app's faces are
+   bundled (`@fontsource-variable`, client/src/styles.css), so a shift would have to come through a
+   FALLBACK face — unlikely, not impossible. Read a red here as a possible consequence of the move
+   before re-running it. If it materialises, the documented fallback is a separate `web-vr`
+   container job, accepting a third build.
 
 **If a shot flakes, the remedies have an order — do not reach for the last one first.** The 60-run
 determinism study was taken at `--workers=1`, so these nine shots are untested in parallel, and they
