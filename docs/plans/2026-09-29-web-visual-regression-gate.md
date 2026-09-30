@@ -1667,7 +1667,7 @@ Expected: PASS.
 
 - [ ] **Step 4: Prove each arm bites**
 
-Four separate checks — run the command above after each, expecting the quoted failure, and revert
+Six separate checks — run the command above after each, expecting the quoted failure, and revert
 before the next:
 
 1. `git mv web/e2e/pages.vr.ts web/e2e/pages.ts` → `web/e2e has no *.vr.ts`
@@ -2153,7 +2153,7 @@ from step 1. Five edits:
    pnpm test:web:docker:update                     # regenerate them, then commit
    ```
 
-   **Four shots assert a surface the comparator cannot see.** Playwright's per-pixel cutoff is
+   **Three shots carry four assertions over a surface the comparator cannot see.** Playwright's per-pixel cutoff is
    `1408.6` at the default threshold, and this app's surface steps score 5, 20, 80 and 173 — under
    it. Those shots each read a computed `background-color` alongside the picture; the picture proves
    the state rendered, the assertion proves the surface is right. Do not remove one.
