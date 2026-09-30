@@ -1,0 +1,30 @@
+{
+  "reviewer": "design-lens",
+  "findings": [
+    {
+      "title": "Drag-and-drop drop overlay has no VR shot or deferral",
+      "severity": "P1",
+      "section": "Global Constraints",
+      "why_it_matters": "A regression in the file-drag affordance would ship silently: none of the nine shots, and no client/ Storybook story, ever renders `.nh-drop-overlay` or the `.nh-drop-zone[data-dragging]` outline, so nothing pixel-compares either. This is not hypothetical: the surrounding code already documents two real visual bugs in this exact spot (the outline once drew outside the viewport and was invisible; a dragenter/dragleave counter bug once made the overlay visibly strobe). The plan's own Task 5 helper comment names `.nh-drop-zone` and its `[data-dragging]` rule while reasoning about an unrelated assertion, so the state was in view while writing this plan, yet it becomes neither a tenth shot nor an explicit deferral the way the Settings/Tracks popovers get.",
+      "finding_type": "omission",
+      "autofix_class": "manual",
+      "suggested_fix": "Add a tenth shot over the drag-over state: simulate a dragenter on the drop zone (the same CDP-based drag technique `web/e2e/player.e2e.ts` already uses) and screenshot `.nh-drop-overlay` plus the `.nh-drop-zone[data-dragging]` outline. Its icon, heading and body text sit far above the 1408.6 per-pixel cutoff, so it needs no companion background-color assertion, only the screenshot itself.",
+      "confidence": 75,
+      "evidence": [
+        "Every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.",
+        "A tenth must justify itself",
+        "and web/app/globals.css gives .nh-drop-zone only a",
+        "[data-dragging] rule; the footer's is",
+        "`player-transport-pressed`, `player-rail-ghost-hover`, `player-header-tooltip` and"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "The ghost-hover and header-tooltip shots' code comments justify their trailing 500ms settle wait partly as settling the open animation, but Tooltip.tsx's own header comment states the enter/exit animate-* classes were deliberately omitted because the repo has no animation plugin -- worth confirming there is no other transition source before that framing is reused for a future tooltip shot.",
+    "surfaceDiffersFromPageBackground reads only a computed background-color, so on its own it would not catch an opacity- or visibility-driven regression on player-rail or transport-row; such a regression would very likely also blank the rail's own icon buttons though, which should still register on the screenshot, so this is a narrow residual gap rather than a live hole."
+  ],
+  "deferred_questions": [
+    "When web/ gains a reachable dark mode, will these nine baselines need dark counterparts, matching the light+dark pairs client/'s own component VR already keeps for Scrubber, Slider and RangeSlider?",
+    "Now that web/e2e/toast-occlusion.e2e.ts proves a persistent error toast's geometry never overlaps a control, is a pixel-level shot of that same E103 toast worth adding later, or does client/'s existing Sonner VR story already cover its rendering fully?"
+  ]
+}

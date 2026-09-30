@@ -1,0 +1,66 @@
+{
+  "reviewer": "security-lens",
+  "findings": [
+    {
+      "title": "Playwright container pinned by mutable tag, and the new guard rejects a digest pin",
+      "severity": "P2",
+      "section": "Task 3: One shared container invocation, and a guard on its image tag",
+      "why_it_matters": "Every `vr`, `web` and local baseline run pulls whatever image currently answers to the mutable tag `v1.61.1-noble`, so a re-pushed tag executes unreviewed code with the repo checkout in CI and — through the `-v \"$PWD\":/work` bind mount — read-write over the developer's whole working tree, including the snapshot folder Tasks 4-7 commit with a directory-wide `git add`. This repo pins every third-party action to a 40-character commit SHA and sets `minimumReleaseAge: 10080` plus `trustPolicy: no-downgrade` in `pnpm-workspace.yaml` explicitly against supply-chain attacks, so the container image is the one third-party execution path left with no immutable reference. Worse than a plain gap: Task 3's guard byte-compares each pin against `mcr.microsoft.com/playwright:v${floor}-noble` and Task 9's anchors `-noble$`, so a later hardening to `tag@sha256:...` would fail `pnpm run test:tooling` in three places — the plan locks the weaker form in.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Pin the image by digest in all three homes — `tooling/docker-playwright.sh`'s `IMAGE=` line and the `container:` lines of the `vr` and `web` jobs — as `mcr.microsoft.com/playwright:v1.61.1-noble@sha256:<digest>`, and widen both guards so the digest is required rather than rejected: assert each pin matches `^IMAGE=mcr\\.microsoft\\.com/playwright:v${floor}-noble@sha256:[0-9a-f]{64}$` (and the same shape for the `container:` assertions in Task 3 Step 3 and Task 9 Step 7), and add a Global Constraints line saying a Playwright bump re-takes the digest alongside the tag.",
+      "confidence": 75,
+      "evidence": [
+        "IMAGE=mcr.microsoft.com/playwright:v1.61.1-noble",
+        "const expected = `mcr.microsoft.com/playwright:v${floor}-noble`;",
+        "assert.equal(image, `IMAGE=${expected}`, `${image} disagrees with ${expected}`);",
+        "/^\\s+container: mcr\\.microsoft\\.com\\/playwright:v[\\d.]+-noble$/m",
+        "-v \"$PWD\":/work"
+      ]
+    },
+    {
+      "title": "`--ignore-scripts` guarded in the CI job but unguarded in the new helper",
+      "severity": "P2",
+      "section": "Task 3: One shared container invocation, and a guard on its image tag",
+      "why_it_matters": "Dropping `--ignore-scripts` from the new helper would let every transitive dependency's install script run as root inside a container that has the developer's entire working tree bind-mounted read-write, and nothing would go red — Task 3's guard reads only the `IMAGE=` line of that file. Task 9's guard shows the asymmetry is not a deliberate choice: it anchors the `web` job's byte-identical install line and states the reason in a comment about lifecycle scripts executing in CI. The fix reuses that exact assertion idiom one test earlier, in the file this plan is already creating, so the control is pinned wherever the plan puts it.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 3 Step 3, add one assertion to the container-tag guard that the helper still installs with both flags — `assert.match(helper, /pnpm install --frozen-lockfile --ignore-scripts/, 'the helper must install from the lockfile with lifecycle scripts off')` — and extend the helper's own `--ignore-scripts` comment to give the lifecycle-script reason alongside the lefthook one, matching the wording Task 9's guard already uses.",
+      "confidence": 50,
+      "evidence": [
+        "bash -c 'corepack enable && pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter \"$1\" run \"$2\"' _ \"$1\" \"$2\"",
+        "const images = helper.match(/^IMAGE=mcr\\.microsoft\\.com\\/playwright:\\S+$/gm);",
+        "// --ignore-scripts dependency lifecycle scripts execute in CI.",
+        "/^\\s+run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts$/m"
+      ]
+    },
+    {
+      "title": "New `web` job's no-secrets, read-only posture is neither stated nor guarded",
+      "severity": "P2",
+      "section": "Task 9: Move `web/`'s whole browser lane into the container",
+      "why_it_matters": "A future editor adding the hosted diff page that Task 9 Step 10 and the new runbook section both note `web/` lacks has nothing telling them this job executes PR-authored browser tests and must therefore stay on the workflow's inherited `contents: read` with no secrets — `vr-report` documents exactly that trust model in its own header ('the write token lives in THIS job only') because it is the privileged counterpart. Task 9's guard already pins eight properties of the `web` job on the stated grounds that their loss would be silent, and a privilege escalation on this job would be silent in the same way. Nothing is wrong today — the job block carries no `permissions:` key and no `secrets.` reference — but the plan's 2,305 lines never mention secrets, tokens, permissions or forks once.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 9 Step 1, add one line to the `web` job's header comment saying it runs PR-authored browser code and therefore deliberately carries no secrets and no `permissions:` block, inheriting the workflow's `contents: read` (unlike `vr-report`, which holds `contents: write`); and in Task 9 Step 7, add one assertion to the same guard that the `webJob` slice matches neither `/secrets\\./` nor `/^\\s+permissions:$/m`, so an escalation on this job fails `pnpm run test:tooling`.",
+      "confidence": 50,
+      "evidence": [
+        "- name: web browser lane (end-to-end + accessibility + visual regression)",
+        "// loss would be SILENT: a run line that no longer runs the lane, a missing container (so baselines",
+        "run: pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts"
+      ]
+    }
+  ],
+  "residual_risks": [
+    "The `web` job's `actions/checkout` keeps the default `persist-credentials: true`, so the read-only `GITHUB_TOKEN` is written into `.git/config` in the same workspace where PR-authored Playwright tests then run. Every existing job in `ci.yml` does the same, so this is the repo's checkout convention rather than this plan's choice — but `persist-credentials: false` would cost nothing here, since the job performs no git operation after checkout.",
+    "The container writes into the deliberately-unshadowed `web/e2e/pages.vr.ts-snapshots/`, and Tasks 4-7 commit that folder with a directory-wide `git add`, so container-produced bytes reach a public repository by design. The plan's reassurance — 'Both web/ paths are git-ignored, so nothing could reach a commit' — is scoped only to `web/.next` and `web/public/alphatab`. Benign under a trusted image; it is the path that makes the missing digest pin (finding 1) matter rather than stay theoretical.",
+    "Verified as safe: the helper's `bash -c '...' _ \"$1\" \"$2\"` form passes the pnpm filter and script name as positional parameters to the container shell instead of interpolating them into the command string, so neither argument can inject shell commands, and the `$# -ne 2` check rejects a partial invocation.",
+    "`NEXT_PUBLIC_ALPHATAB_LOG_LEVEL: 'Debug'` is inlined into this lane's build and, by the config's own comment, prints the visitor's user agent, window size and screen size. It is pre-existing in `web/playwright.e2e.config.ts` and carried over verbatim, so not a finding here — but nothing in CI, in the guards, or in Vercel's env is asserted to keep it unset for the production build, and the plan now extends its reach to the pixel lane.",
+    "The two new `data-testid` attributes (`player-rail`, `transport-row`) ship in the production bundle. They match the 20+ existing `data-testid` hooks across `web/app/**` and carry no access-control or data-exposure consequence on an unauthenticated public route, so this is precedent-consistent rather than new instrumentation.",
+    "Nine committed full-page PNGs of the app enter a public repo. The plan already closes the two leak shapes it could reach — the filename toast is waited out of the long-score shot, and the `NEXT_PUBLIC_APP_VERSION` tooltip (build timestamp + commit hash under `VERCEL_ENV`) is painted in none of the nine, with a written rule that such a shot must never run with `VERCEL_ENV` set."
+  ],
+  "deferred_questions": [
+    "If the image moves to a digest pin, do the `vr` job's existing `container:` line and the two existing root `test:vr:docker*` scripts migrate in the same PR (the guard covers all pin sites at once, so a partial migration fails CI), or does NH-320 land tag-only with a follow-up ticket hardening all four homes together?",
+    "If `web/` later gains a hosted diff page mirroring `client/`'s `vr-report` gh-pages publish, what trust model does it get? It would need `contents: write` over an artifact produced by a job that ran untrusted PR code — the same shape `vr-report` deliberately isolates into a separate job — worth settling before the Task 9 Step 3 rename makes `playwright-web-report` look like a peer of `playwright-client-vr-report`.",
+    "Should `tooling/docker-playwright.sh` resolve the repo root itself (e.g. `git rev-parse --show-toplevel`) instead of trusting `$PWD`? Invoked from a subdirectory it would bind-mount that subtree at `/work`, and the mount is the helper's entire trust boundary."
+  ]
+}

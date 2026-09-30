@@ -1,0 +1,134 @@
+{
+  "group": "B",
+  "findings": [
+    {
+      "title": "Global scoped-invocation rule contradicts Task 7's unscoped run",
+      "severity": "P1",
+      "section": "Global Constraints; Task 7 Step 6",
+      "why_it_matters": "An implementer who treats the Global Constraints section as binding on every task (the document says it applies implicitly to all of them) will read Task 7 Step 6's bare `playwright test --config=playwright.e2e.config.ts` command as a mistake — it carries no `--project` flag — and either add one or split it into two scoped runs, which defeats the step's actual purpose of proving the shared `webServer` boots once for both projects the way CI does. The Global Constraints bullet states the rule as unconditional, with no cross-reference to the one place the plan itself breaks it, so the two passages read as a straight contradiction rather than a documented exception.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add a short exception clause to the Global Constraints bullet, e.g.: 'Every local invocation names its project, except Task 7 Step 6's one-off unscoped run, which deliberately mirrors CI's single invocation to prove both projects share one webServer boot.'",
+      "confidence": 75,
+      "evidence": [
+        "Every local invocation names its project.",
+        "Run both lanes together the way CI will, once, unscoped",
+        "pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts"
+      ],
+      "id": "F-2",
+      "reviewer": "coherence"
+    },
+    {
+      "title": "Nothing pins the `e2e` project once CI runs unscoped",
+      "severity": "P1",
+      "section": "Task 8 Step 2 / Task 9",
+      "why_it_matters": "Delete the `e2e` project from web/playwright.e2e.config.ts, or mistype its testMatch, and CI goes green over zero behaviour and zero accessibility tests — by the plan's own measured fact an unscoped run whose other project is empty exits 0. Task 9 removes both `web` steps from the `e2e` job, so web's `--project=e2e` script is no longer invoked anywhere in CI and the old guard that pinned that run line is replaced; Task 8's guard then pins only `chromium`. The same two assertions Task 8 already writes for `chromium` close it, and the exposure is created by this plan: before it, the config had no projects array to delete.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 8's guard, add the `e2e` counterparts beside the two `chromium` config assertions — `assert.match(config, /name:\\s*'e2e'/, \"the e2e project is gone — web's behaviour and axe tests never run\");` and `assert.match(config, /testMatch:\\s*'\\*\\*\\/\\*\\.e2e\\.ts'/, 'e2e no longer matches *.e2e.ts');` — and add a seventh arm to Task 8 Step 4's bite-proof list that deletes the `name: 'e2e'` line.",
+      "confidence": 75,
+      "evidence": [
+        "assert.match(config, /name:\\s*'chromium'/, 'the chromium project is gone — the shots never run');",
+        "run: pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts",
+        "the `chromium` project is what makes them RUN, so deleting it or mistyping its"
+      ],
+      "id": "F-3",
+      "reviewer": "adversarial"
+    },
+    {
+      "title": "The \"stale figures\" premise is contradicted by the plan's own measurement",
+      "severity": "P2",
+      "section": "Task 2 Step 3",
+      "why_it_matters": "The implementer is sent to instrument two passing accessibility tests — including a sibling case this task otherwise leaves alone — to re-measure a comment that already holds the right numbers. web/e2e/a11y.e2e.ts reads 185 px / 1,026 px / 420 px today, and the plan's own probe reproduces exactly that geometry while explaining the spec's contradicting 576/852/576 as an artifact of the clamped scrollHeight read. Only Punk.gp's 1,026 px is genuinely unverified, so scoping the step to that one figure keeps the real check and stops a temporary print going into a green test the plan is otherwise careful not to disturb.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Rewrite Task 2 Step 3 to state that this plan's own probe confirms the comment's 185 px score and 420 px box, and that only Punk.gp's 1,026 px needs re-measuring: keep the single temporary print in the `long enough to scroll` case, drop the second print from the `the score it opens with` case, and drop the \"three measurements that no longer hold\" framing.",
+      "confidence": 75,
+      "evidence": [
+        "The comment above the `long enough to scroll` case states three measurements that no longer hold.",
+        "The spec records 576 px, 852 px and 576 px, but those were taken with the clamped read",
+        "Measured in Chromium 1.61.1 on that geometry: a 185 px score"
+      ],
+      "id": "F-7",
+      "reviewer": "adversarial"
+    },
+    {
+      "title": "Toast wait sized against 4 000 ms when the app configures 5 000 ms",
+      "severity": "P2",
+      "section": "Task 5: The three loaded-player shots, and the two test hooks they need — Step 4",
+      "why_it_matters": "The long-score shot's toast wait is sized against a lifetime this app does not use, so its stated headroom is about a second smaller than the comment claims and the shot can go red on a toast the comment says it removed. `web/app/layout.tsx` renders `<Toaster closeButton duration={5000} />`, and sonner 2.0.7 resolves a toast's duration as `toast.duration || durationFromToaster || TOAST_LIFETIME`, so the success toast lives 5 000 ms — which makes the claimed 871 ms of slack negative against a bare expect and shrinks the named 10 000 ms ceiling's real margin on a multi-worker CI run. Naming the real source and raising the ceiling keeps the wait from becoming the shot's flakiest step, whose quickest route to green is a baseline refresh.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Rewrite the comment to name `web/app/layout.tsx`'s `<Toaster duration={5000} />` as the lifetime source (5 000 ms, overriding sonner's 4 000 ms `TOAST_LIFETIME`), drop the 4 129 ms and 871 ms figures, and raise the wait to `{ timeout: 15_000 }`.",
+      "confidence": 75,
+      "evidence": [
+        "  // `loading` toast from the close timer entirely, so the 4 000 ms TOAST_LIFETIME is armed by the",
+        "  // toast's measured life reaches 4 129 ms and a bare expect falls back to 5 000 ms — 871 ms of"
+      ],
+      "id": "F-11",
+      "reviewer": "feasibility"
+    },
+    {
+      "title": "Timing named as the only risk of moving the axe lane into the container",
+      "severity": "P2",
+      "section": "Task 9 Step 10",
+      "why_it_matters": "The one CI run that verifies the move is read for the wrong thing: web's accessibility lane leaves ubuntu-latest plus an on-demand Chromium for a pinned image with its own baked font set, and that lane asserts geometry — expectHitAreas' on-screen containment at 700 px and axe's contrast maths — not only timing. A shifted glyph metric then reads as a mystery red to be re-run rather than an expected consequence of the move. The \"render identically\" framing compounds it, since the two projects deliberately run at 1280x720 and 1280x900.",
+      "finding_type": "error",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Widen Task 9 Step 10 item 6 beyond timing: name the container's different Chromium build and baked font set, and call out expectHitAreas' 700 px containment check and axe's contrast measurements as the assertions most likely to move; and soften the three \"web's axe and web's VR render identically\" claims to \"the same build and the same browser binary\", since the two projects run at different viewports.",
+      "confidence": 50,
+      "evidence": [
+        "6. The 92 existing `web/` behaviour tests still pass in the container. Their timing changing is the",
+        "web's axe and web's VR render identically. One build per run"
+      ],
+      "id": "F-12",
+      "reviewer": "adversarial"
+    },
+    {
+      "title": "120 s project budget is under two shots' own stacked ceilings",
+      "severity": "P2",
+      "section": "Task 1: Split the config into two projects, and scope every local invocation — Step 1",
+      "why_it_matters": "Two of the loaded-player shots can be killed by the project's own 120 s cap before any of their named ceilings expires, so a slow-but-healthy CI run reports `Test timeout of 120000ms exceeded` instead of naming which readiness signal never arrived — and with `retries: 2` that costs three attempts each. The 120 s was sized against readiness alone (30 + 60 + 10 = 100 s), but the transport shot adds `pressEveryTransportToggle`'s own 60 s `toBeEnabled` before `awaitPlayerReady` repeats it (worst chain about 165 s), and the long-score shot adds a 30 s `data-file` wait plus a 10 s toast wait (about 140 s). Raising the project budget above the longest chain keeps the named ceilings, not the cap, as the thing that fails first — the diagnostic value the plan gives as its reason for naming them.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Raise the `chromium` project to `timeout: 180_000` and restate the comment's arithmetic as the longest chain rather than readiness alone: `pressEveryTransportToggle`'s 60 s plus `awaitPlayerReady`'s 100 s plus the shot's own poll.",
+      "confidence": 75,
+      "evidence": [
+        "      // Readiness alone can spend 100 s (30 + 60 + 10) before a pixel is compared, and the",
+        "      timeout: 120_000,",
+        "  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0, { timeout: 10_000 });"
+      ],
+      "id": "F-14",
+      "reviewer": "feasibility"
+    },
+    {
+      "title": "web-vr fallback build count: 'second' vs 'three'",
+      "severity": "P3",
+      "section": "Task 9 Step 10 / Remedies list",
+      "why_it_matters": "A reader deciding whether the separate `web-vr` container-job fallback is worth its cost gets two different answers for the same action: Step 10 says it costs 'the second build' while the remedies list, describing the identical fallback a few paragraphs later, says it takes the CI run back to three builds. The remedies-list figure matches the document's own counting convention established at the top of Task 9 (which counts the top-level `build` job's fan-out build alongside the browser-lane jobs), so it is authoritative and the earlier line should match it.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "In Task 9 Step 10 item 6, change 'accepting the second build' to 'accepting a third build' (or otherwise reference 'three builds per CI run') so it matches the cost the remedies list states for the identical `web-vr` container-job fallback.",
+      "confidence": 50,
+      "evidence": ["accepting the second build.", "takes `web` back to three builds per CI run."],
+      "id": "F-20",
+      "reviewer": "coherence"
+    },
+    {
+      "title": "Step 7 heading over-counts pre-existing guard tests it replaces",
+      "severity": "P3",
+      "section": "Task 9 Step 7",
+      "why_it_matters": "A reader cross-checking this step's own heading against its own instruction hits an internal mismatch: the heading claims two pre-existing assertions are being rewritten, but the very next sentence says to 'Replace that whole test' — singular — before showing three new tests. Checked against the actual tooling/workflow-guards.test.mjs, only one pre-existing test ('the e2e job runs the web Playwright lane, not only the client one') is relevant and broken by this task's CI changes; the third new test (VR-artifact-pairing) is added coverage for a gap the rename itself creates, not a rewrite of prior coverage. Naming the real count keeps the step's own accounting internally consistent.",
+      "finding_type": "error",
+      "autofix_class": "safe_auto",
+      "suggested_fix": "Reword the heading from 'Rewrite the two broken guard assertions and add three' to reflect that exactly one pre-existing test is being replaced by three narrower ones — e.g., 'Replace the one broken e2e-job guard test with three narrower tests.'",
+      "confidence": 50,
+      "evidence": [
+        "Rewrite the two broken guard assertions and add three",
+        "Replace that whole test:"
+      ],
+      "id": "F-21",
+      "reviewer": "coherence"
+    }
+  ]
+}

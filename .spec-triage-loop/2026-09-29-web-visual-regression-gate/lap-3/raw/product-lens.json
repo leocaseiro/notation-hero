@@ -1,0 +1,85 @@
+{
+  "reviewer": "product-lens",
+  "findings": [
+    {
+      "title": "Plan never states what nine shots add over existing 0-px guards",
+      "severity": "P1",
+      "section": "Review Focus",
+      "why_it_matters": "A contributor or agent reading this plan will conclude the pixel lane is what guards against an unpainted or zero-width control, and may drop the cheaper guards that already do exactly that: web/e2e/player.e2e.ts polls the seek rail's boundingBox().width to be greater than 100, and web/e2e/a11y.e2e.ts's hit-area scan deliberately keeps 0-px-collapsed controls in its verdict — both citing the same client/-source-scan mechanism this plan cites. Neither appears anywhere in the plan, and no shot asserts the rail's width, so the nine baselines cannot replace them. Naming them and stating the pixel lane's residual coverage is also what lets the maintainer judge whether nine committed baselines plus a container job is the proportionate size of bet.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add a short 'What the nine shots add over the guards already in web/e2e' subsection to Review Focus that names web/e2e/player.e2e.ts's seek-rail boundingBox().width poll and web/e2e/a11y.e2e.ts's 0-px hit-area scan plus slider floor as the existing cheaper guards for the PR #162 failure — stating that both must stay, and that the pixel lane's residual coverage is whole-page composition and layout that no single-element assertion names.",
+      "confidence": 75,
+      "evidence": [
+        "// seek rail that shipped 0 px wide was perfect in Storybook, because Storybook scans client/",
+        "so a component that is correct in Storybook but broken in the app cannot ship."
+      ]
+    },
+    {
+      "title": "AGENTS.md text the plan writes overstates what the shots can see",
+      "severity": "P1",
+      "section": "Task 10 Step 2 (AGENTS.md block) / Goal",
+      "why_it_matters": "An agent reading AGENTS.md — loaded into every session in this repo — will take nine merge-blocking screenshots as coverage of app rendering, then add a surface built from this design system's neutral tokens and ship a regression green: by the plan's own arithmetic those steps score 5 to 173 against Playwright's 1408.6 per-pixel cutoff, so no shot can see them. The plan already names this as a failure mode in Review Focus, and the runbook text it writes carries the caveat ('Four shots assert a surface the comparator cannot see'); the AGENTS.md block it writes does not, and AGENTS.md is the higher-traffic file. One sentence there closes the gap without touching the settled shot list.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 10 Step 2, add one sentence to the AGENTS.md block: the nine shots cannot see a change between two of this design system's neutral surfaces, because those steps score under Playwright's 1408.6 per-pixel cutoff, so a new low-contrast surface on / or /play needs its own computed background-color assertion beside the shot rather than a baseline alone.",
+      "confidence": 75,
+      "evidence": [
+        "so a component that is correct in Storybook but broken in the app cannot ship.",
+        "so a component can be correct in Storybook and broken in the app (NH-320).",
+        "so their pictures prove the state rendered but not that the surface is right."
+      ]
+    },
+    {
+      "title": "Surface-assertion pattern's growth cost is unexamined",
+      "severity": "P2",
+      "section": "Task 8: Guard that the pixel lane actually compares pixels",
+      "why_it_matters": "The fifth surface assertion anyone adds will not be protected the way the first four are: the Task 8 guard hard-codes one regex per assertion, and nothing in the plan tells a later contributor to extend that list. The plan governs shot growth — a tenth shot must be scored against the cutoff before it is written — but never assertion growth, so the property the guard exists for ('drop one and that shot silently stops covering what it was added for') quietly holds for today's four and no others. Since every neutral step in this design system sits under the cutoff, more assertions are the expected direction rather than a hypothetical, and each one costs a production data-testid, an in-shot assertion and a guard entry.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "Add a line to Task 8 Step 2's guard comment and to the runbook's web/ section stating that any new computed background-color assertion added to a shot must also add its own anchor to the guard's [step, pattern] list in tooling/workflow-guards.test.mjs, and must score its surface step against the 1408.6 cutoff the same way a tenth shot must.",
+      "confidence": 75,
+      "evidence": [
+        "    ['the rail surface', /\\(page, 'player-rail'\\)/],",
+        "A tenth must justify itself; if its stated coverage"
+      ]
+    },
+    {
+      "title": "client/ contributors silently inherit nine web/ baselines",
+      "severity": "P2",
+      "section": "Task 10 Step 1 (Correct the live references)",
+      "why_it_matters": "A contributor working only in client/ will make an intended visual change, regenerate client/'s baselines, push, and watch the new merge-blocking web job go red on nine baselines they did not know they owned — client/README.md is the file they are reading, and Task 10 edits it only to rename two artifact names. The plan states the coupling plainly in its Global Constraints but writes the regeneration command only into web/README.md, AGENTS.md and the runbook. One line in client/README.md turns a red CI round-trip into a local one, which matters more here than on a team repo because the same person pays both sides.",
+      "finding_type": "omission",
+      "autofix_class": "gated_auto",
+      "suggested_fix": "In Task 10 Step 1, add a client/README.md edit beside the two artifact renames: a line saying a client/ visual change also moves web/'s nine page baselines, which are regenerated with pnpm test:web:docker:update and committed in the same PR.",
+      "confidence": 50,
+      "evidence": ["Every shot is a file that moves whenever ", "(the failing-PR bullet)"]
+    },
+    {
+      "title": "Docker script pair names a lane on one side, a package on the other",
+      "severity": "P3",
+      "section": "Task 3 Step 2 (Point the root scripts at it)",
+      "why_it_matters": "Six months on, pnpm test:vr:docker and pnpm test:web:docker sit next to each other in the same package.json and only one of them says which package it touches; picking the wrong one regenerates the wrong baselines and the web job goes red for a reason the command name gave no hint of. The plan is already rewriting both test:vr:docker* values to call the new helper, so aligning the names costs nothing now and a documentation sweep later. Nothing breaks — the pre-PR checklist runs both compare commands — but this repo's own conventions ask for low cognitive load, and a symmetric pair delivers it for free at this exact moment.",
+      "finding_type": "error",
+      "autofix_class": "manual",
+      "suggested_fix": "Rename the two client scripts to test:client:docker and test:client:docker:update in Task 3 Step 2 so both pairs name their package, and carry the rename through the client/README.md, runbook and AGENTS.md edits already scheduled in Task 10.",
+      "confidence": 50,
+      "evidence": [
+        "test:vr:docker\": \"bash tooling/docker-playwright.sh @notation-hero/client test:vr\",",
+        "test:web:docker\": \"bash tooling/docker-playwright.sh @notation-hero/web test:vr\","
+      ]
+    }
+  ],
+  "residual_risks": [
+    "Seven of the nine shots carry no determinism measurement and the plan states the 60-run study was taken at one worker while CI runs several. The three-step flake ladder it supplies ends at a separate web-vr container job; nothing states what happens if that still flakes, or under what condition a merge-blocking gate would be made non-blocking. Not emitted as a finding because the plan names the risk and supplies remedies.",
+    "The nine-shot churn budget is already under known pressure: the two Plan C popover shots are fully specified upstream and described here as following as their own work, so eleven is the expected steady state rather than nine. The 'a tenth must justify itself' rule is the stated brake and may be sufficient.",
+    "Regenerating baselines now needs a working Docker Desktop on the maintainer's Mac for two packages rather than one, and CI offers no --update-snapshots path. client/'s 842 baselines already impose this, so it is pre-existing rather than introduced by this plan.",
+    "Moving web/'s ~92 behaviour tests into the Playwright container couples their runtime to an image pin that exists for the pixel baselines, so a Playwright bump now moves both surfaces at once. The plan names the timing risk and a documented fallback, so this is noted rather than flagged.",
+    "The plan's proof that the gate bites is a landing-heading font-size change, which moves high-contrast pixels. It never simulates the motivating regression class (a control collapsed to zero width and fully transparent) against any of the nine shots, so the gate ships without evidence it catches the failure it was built for. Folded into the first finding rather than emitted separately because verification design sits closer to another lens."
+  ],
+  "deferred_questions": [
+    "Should a client/ PR that moves web/ baselines be able to regenerate them in CI (a workflow_dispatch or label-triggered --update-snapshots run), or is a local container run the permanent contract for both packages?",
+    "Once the two deferred popover shots land, is the churn budget restated at eleven, or does 'a tenth must justify itself' gain a numeric ceiling?",
+    "At what point does a persistently flaky shot get quarantined rather than worked down the three-step remedy ladder, and does the web job stay merge-blocking while that is happening?"
+  ]
+}
