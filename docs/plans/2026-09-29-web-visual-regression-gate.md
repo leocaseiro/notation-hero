@@ -11,12 +11,12 @@ last_applied: P1
 > (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use
 > checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Give `/` and `/play` nine merge-blocking pixel screenshots, rendered by the real
+**Goal:** Give `/` and `/play` ten merge-blocking pixel screenshots, rendered by the real
 `next build`, so a component that is correct in Storybook but broken in the app cannot ship.
 
 **Architecture:** `web/playwright.e2e.config.ts` grows a `projects` array splitting the existing
 behaviour lane (`e2e`) from a new pixel lane (`chromium`), both sharing the one `webServer` so a
-single `next build` serves both. The nine shots live in `web/e2e/pages.vr.ts`; the navigation that
+single `next build` serves both. The ten shots live in `web/e2e/pages.vr.ts`; the navigation that
 reaches each state moves into `web/e2e/player-states.ts`, shared with the accessibility lane.
 `web/`'s whole browser lane then moves out of the ubuntu `e2e` job into a new Playwright-container
 `web` job that runs `playwright test` unscoped, exactly once.
@@ -45,8 +45,8 @@ Every task's requirements implicitly include this section. Values are copied ver
   there.
 - **Baselines are Linux-only.** `*-chromium-linux.png` is committed; `*-chromium-darwin.png` is
   git-ignored. Never generate baselines natively on a Mac.
-- **Nine shots.** Every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.
-  A tenth must justify itself; if its stated coverage **is** a surface step, score that step against
+- **Ten shots.** Every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.
+  An eleventh must justify itself; if its stated coverage **is** a surface step, score that step against
   the `1408.6` per-pixel cutoff before writing it.
 - **No comparison options at all.** No `threshold`, no `maxDiffPixels` — one comparison policy in the
   repo, exactly as `client/` does it. (`fullPage` is a capture option, not a comparison option.)
@@ -143,7 +143,7 @@ the task named beside it — they are the reason those tests exist.
   discipline — its unscoped scripts point at a second config that declares no `projects` array.
   → Task 1.
 
-### What the nine shots add over the guards already in `web/e2e`
+### What the ten shots add over the guards already in `web/e2e`
 
 Two cheaper guards already cover the NH-315 shape, and **both must stay** — the baselines do not
 replace either. `web/e2e/player.e2e.ts` polls the seek rail's `boundingBox()` width
@@ -162,8 +162,8 @@ layout — what no single-element assertion names.
 | File                             | Responsibility                                                                                                                                                          |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `web/e2e/player-states.ts`       | One exported function per state: the `goto`, clicks and file-picks that _reach_ it. No settling waits — the lanes disagree about those. Imported by both browser lanes. |
-| `web/e2e/pages.vr.ts`            | All nine shots, plus the two readiness helpers and the surface-assertion helper they share.                                                                             |
-| `web/e2e/pages.vr.ts-snapshots/` | The nine committed `*-chromium-linux.png` baselines (Playwright's default snapshot directory).                                                                          |
+| `web/e2e/pages.vr.ts`            | All ten shots, plus the two readiness helpers and the surface-assertion helper they share.                                                                              |
+| `web/e2e/pages.vr.ts-snapshots/` | The ten committed `*-chromium-linux.png` baselines (Playwright's default snapshot directory).                                                                           |
 | `tooling/docker-playwright.sh`   | One shared container invocation, taking a pnpm filter and a script name.                                                                                                |
 
 **Modified:** `web/playwright.e2e.config.ts` · `web/package.json` · `web/.gitignore` ·
@@ -183,9 +183,9 @@ appears in
 the spec's "Process changes this carries" list, except `web/e2e/pages.vr.ts`, which is that list's
 `web/e2e/*.vr.ts` entry realised as a single file (see below for why one rather than three).
 
-### Why all nine shots in one file
+### Why all ten shots in one file
 
-The spec writes `web/e2e/*.vr.ts` and leaves the split open. One file, because: the nine shots
+The spec writes `web/e2e/*.vr.ts` and leaves the split open. One file, because: the ten shots
 change together (all of them move when `client/` changes or AlphaTab is upgraded), they share three
 helpers, and the spec's documented parallelism fallback — `fullyParallel: false` — serialises shots
 only **within each file**, so splitting them would make that remedy partly ineffective before it is
@@ -880,6 +880,8 @@ much as the first: the point is to stop the scan without starving the app of a u
 Create `web/e2e/pages.vr.ts`:
 
 ```ts
+import path from 'node:path';
+
 import { expect, test } from '@playwright/test';
 
 import { failOnUnexpectedPageErrors } from './page-errors';
@@ -893,8 +895,8 @@ import type { Page } from '@playwright/test';
 // seek rail that shipped 0 px wide was perfect in Storybook, because Storybook scans client/
 // itself.
 //
-// Nine shots, and the count is deliberate: every shot is a file that moves whenever client/ changes
-// or AlphaTab is upgraded. A tenth should have to justify itself.
+// Ten shots, and the count is deliberate: every shot is a file that moves whenever client/ changes
+// or AlphaTab is upgraded. An eleventh should have to justify itself.
 //
 // Page-level shots only, and no mask over the notation. Sixty runs in the pinned Playwright
 // container at threshold:0 / maxDiffPixels:0 found AlphaTab's notation render byte-identical 19
@@ -914,11 +916,11 @@ import type { Page } from '@playwright/test';
 // there is scoped to the engine bundle's own frames, so the deliberately-broken Skeleton and
 // engine-error states still pass.
 //
-// TWO THINGS TO KNOW BEFORE ADDING A TENTH SHOT.
+// THREE THINGS TO KNOW BEFORE ADDING AN ELEVENTH SHOT.
 //
 // 1. The app version is a landmine for any shot that opens the wordmark's tooltip. NH-317 renders
 //    NEXT_PUBLIC_APP_VERSION inside a CLOSED TooltipContent, so it is painted in none of these
-//    nine. With VERCEL_ENV unset it is the constant `local`; with it set the string carries a build
+//    ten. With VERCEL_ENV unset it is the constant `local`; with it set the string carries a build
 //    timestamp and a commit hash, and a hovered-wordmark baseline would then break on every commit.
 //    Such a shot must never run with VERCEL_ENV set.
 // 2. A shot that reaches its state by OPENING A FILE needs the long-score shot's two extra waits —
@@ -927,6 +929,14 @@ import type { Page } from '@playwright/test';
 //    deferred; everything they need (including a `[data-slot="popover-content"]` visibility wait
 //    after the trigger click) is written down under "Deferred — the two Plan C popover shots" in
 //    docs/specs/2026-09-21-web-visual-regression-gate.md rather than left to be re-derived.
+// 3. A MID-GESTURE state has to be held open by the test itself, because it exists nowhere else.
+//    player-drop-overlay does this: it shoots between dispatchDragEvent('dragOver') and 'drop',
+//    and ends the gesture afterwards so nothing leaks into the next test on a reused worker. It
+//    needs no frame-holding trick beyond that — the overlay has no transition and no timer, so
+//    toHaveScreenshot's own two-consecutive-samples rule settles it like any other shot. The
+//    bar-range selection is the remaining state of this kind and is still deferred, recorded under
+//    "Candidates deliberately not in v1" in that same spec: it is held by mouse.down() across a
+//    move rather than by a drag, so it has a hold to solve that this one did not.
 failOnUnexpectedPageErrors();
 
 /**
@@ -953,7 +963,7 @@ test('the landing page', async ({ page }) => {
   // Explicit snapshot names throughout, so a reworded test title never orphans a baseline.
   // `fullPage` matches the shape the 60-run determinism study measured. /play cannot scroll as a
   // page (`h-dvh overflow-hidden`) and / fits 1280x900, so fullPage equals the viewport on all
-  // nine — which is also why it cannot scroll a hover out from under the pointer.
+  // ten — which is also why it cannot scroll a hover out from under the pointer.
   await expect(page).toHaveScreenshot('landing.png', { fullPage: true });
 });
 ```
@@ -1019,7 +1029,7 @@ git commit -m "test(web): shoot the landing page, and land the VR baseline workf
 
 ---
 
-## Task 5: The three loaded-player shots, and the two test hooks they need
+## Task 5: The four loaded-player shots, and the two test hooks they need
 
 **Files:**
 
@@ -1090,7 +1100,7 @@ Below `settleBeforeShot`:
  * whole, and web/e2e/a11y.e2e.ts's own 60 000 ms ceilings are unreachable today for exactly that
  * reason. A shot does more after readiness than an axe sweep does, so this lane has LESS headroom.
  *
- * Three of the nine shots deliberately never finish loading, so they must not call this — it could
+ * Three of the ten shots deliberately never finish loading, so they must not call this — it could
  * never pass for them and would simply hang.
  */
 async function awaitPlayerReady(page: Page): Promise<void> {
@@ -1153,7 +1163,7 @@ const surfaceDiffersFromPageBackground = (page: Page, testId: string): Promise<b
   });
 ```
 
-- [ ] **Step 4: Write the three shots**
+- [ ] **Step 4: Write the four shots**
 
 Append to `web/e2e/pages.vr.ts`, and add `openLongScore`, `pressEveryTransportToggle` and
 `gotoPlayer` to the `./player-states` import:
@@ -1219,6 +1229,40 @@ test('the player with every transport toggle pressed', async ({ page }) => {
   await settleBeforeShot(page);
   await expect(page).toHaveScreenshot('player-transport-pressed.png', { fullPage: true });
 });
+
+// The drag-over affordance, and the only shot in this lane that holds a gesture OPEN: the picture
+// is taken between dragOver and drop, because that is the only window in which this state exists.
+// It is shot rather than deferred because it has already failed in production once — the outline
+// was drawn outset, so the shell's overflow-hidden clipped away the one thing that says "let go
+// here", and nothing went red: the behaviour tests ask whether "Drop to open" is PRESENT, never
+// what it looks like.
+test('the drop overlay while a file is dragged over the player', async ({ page }) => {
+  await gotoPlayer(page);
+  await awaitPlayerReady(page);
+
+  // Chrome's own drag pipeline over CDP, the same shape web/e2e/player.e2e.ts already uses. A
+  // drag built from dispatchEvent skips the browser's dropEffect/effectAllowed negotiation and
+  // would pass against a real drop bug. dragOperationsMask 1 is COPY_ONLY — what a file dragged
+  // from the desktop actually offers, and the case a stray dropEffect silently rejects.
+  const cdp = await page.context().newCDPSession(page);
+  const data = { items: [], files: [path.resolve('e2e/fixtures/Punk.gp')], dragOperationsMask: 1 };
+  const box = (await page.getByTestId('drop-zone').boundingBox())!;
+  const at = { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
+  await cdp.send('Input.dispatchDragEvent', { type: 'dragEnter', ...at, data });
+  await cdp.send('Input.dispatchDragEvent', { type: 'dragOver', ...at, data });
+
+  // No companion surface assertion here, unlike the rail and the transport footer, and that is a
+  // measured decision rather than an omission: scored against the SAME 1408.6 per-pixel cutoff,
+  // the dashed `--primary` outline over the page background comes out at 16494 and the
+  // 80%-`--background` scrim over the notation's ink at 19370 — both an order of magnitude above
+  // it, the same band as the engine-error text (19698). The comparator can see this one, so an
+  // assertion beside it would be noise, and Task 8's anchor list stays at four.
+  await expect(page.getByText('Drop to open')).toBeVisible();
+  await settleBeforeShot(page);
+  await expect(page).toHaveScreenshot('player-drop-overlay.png', { fullPage: true });
+  // End the gesture. A drag left open outlives the test on a reused worker.
+  await cdp.send('Input.dispatchDragEvent', { type: 'drop', ...at, data });
+});
 ```
 
 - [ ] **Step 5: Prove each surface assertion fails when its surface goes flat**
@@ -1254,7 +1298,7 @@ Expected, both arms: FAIL on `surfaceDiffersFromPageBackground('player-rail')`, 
 screenshot — that is the point of the assertion. Revert after each arm, then repeat the same pair
 for `transport-row` (`bg-panel` → `bg-background`, then `bg-panel` deleted), reverting again.
 
-- [ ] **Step 6: Generate and verify the three Linux baselines**
+- [ ] **Step 6: Generate and verify the four Linux baselines**
 
 ```bash
 pnpm test:web:docker:update && pnpm test:web:docker
@@ -1392,7 +1436,7 @@ test('a portalled tooltip wins the header layer', async ({ page }) => {
 // Two breakpoints are deliberately NOT covered, both below these two widths: the transport footer's
 // second step at 640 px (`sm:gap-6 sm:px-8`), and the header wordmark's `max-md:sr-only` collapse at
 // 768 px (PlayerHeader.tsx) — 900 px and 1280 px sit above both. Desktop web is the v0 target and
-// nine shots is settled.
+// ten shots is settled.
 test.describe('below the lg breakpoint', () => {
   test.use({ viewport: { width: 900, height: 900 } });
 
@@ -1500,7 +1544,7 @@ test('the first-visit Skeleton while the engine module is stalled', async ({ pag
 // This shoots the BANNER, not the whole state. NotationSurface's own Dismiss button sets `dismissed`
 // (:90) and unmounts this <p> while `failure` stays truthy (:223), and the Skeleton is gated
 // `!failure` (:250) — so the dismissed state is a blank notation area over a transport that never
-// enables. Deliberately NOT a tenth shot: per Global Constraints a tenth must score its surface step
+// enables. Deliberately NOT a shot of its own: per Global Constraints an eleventh must score its surface step
 // against the 1408.6 cutoff, and this one's coverage is "nothing is painted here" over the same
 // region the two shots above already photograph. Revisit if that area ever gains a fallback of
 // its own.
@@ -1574,23 +1618,24 @@ pnpm --filter @notation-hero/web run test:vr -g "engine module fails"
 
 Expected: FAIL on the poll, **not** on the screenshot. Revert.
 
-- [ ] **Step 5: Generate and verify all nine baselines**
+- [ ] **Step 5: Generate and verify all ten baselines**
 
 ```bash
 pnpm test:web:docker:update && pnpm test:web:docker
 ```
 
-Expected: nine baselines under `web/e2e/pages.vr.ts-snapshots/`, all nine PASS:
+Expected: ten baselines under `web/e2e/pages.vr.ts-snapshots/`, all ten PASS:
 
 ```text
 landing-chromium-linux.png              player-narrow-chromium-linux.png
 player-bundled-beat-chromium-linux.png  player-rail-ghost-hover-chromium-linux.png
-player-engine-error-chromium-linux.png  player-skeleton-chromium-linux.png
-player-header-tooltip-chromium-linux.png  player-transport-pressed-chromium-linux.png
+player-drop-overlay-chromium-linux.png  player-skeleton-chromium-linux.png
+player-engine-error-chromium-linux.png  player-transport-pressed-chromium-linux.png
+player-header-tooltip-chromium-linux.png
 player-long-score-chromium-linux.png
 ```
 
-Confirm the count: `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `9`. Local
+Confirm the count: `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `10`. Local
 darwin shots share this folder and are git-ignored, so count the committed Linux set explicitly.
 From Task 8 onward this stops being a count you have to remember to re-run: that task's guard
 asserts the shot names and the committed Linux baselines are the SAME set, so a dropped shot, a
@@ -1604,7 +1649,7 @@ This is the first time the shared-`webServer` arrangement is exercised end to en
 pnpm --filter @notation-hero/web exec playwright test --config=playwright.e2e.config.ts
 ```
 
-Expected: ~101 tests pass, each line prefixed `[e2e]` or `[chromium]`. The nine `[chromium]` lines
+Expected: ~102 tests pass, each line prefixed `[e2e]` or `[chromium]`. The ten `[chromium]` lines
 will FAIL on a Mac — they compare against Linux baselines. That is correct and expected locally; the
 point of this step is that both projects ran from one server boot. Confirm exactly one
 `pnpm build` in the output.
@@ -1701,8 +1746,8 @@ test('the web VR project has at least one shot to run', () => {
   });
   // Not `some(includes('toHaveScreenshot('))`: that passes while ONE call survives anywhere, and it
   // pairs no shot with its baseline — measured on 1.61.1, deleting a shot and leaving its baseline on
-  // disk exits 0 with `1 passed` and no orphan warning, so an eight-shot lane reads exactly like a
-  // nine-shot one. Planting a baseline for a shot that never existed exits 0 too. Set equality closes
+  // disk exits 0 with `1 passed` and no orphan warning, so a nine-shot lane reads exactly like a
+  // ten-shot one. Planting a baseline for a shot that never existed exits 0 too. Set equality closes
   // a dropped shot, a dropped baseline AND a rename in one assertion. The `\.png` in the pattern is
   // load-bearing: without it the match runs past the closing quote into the next string, the same
   // over-matching the `\(` anchors above guard against.
@@ -1745,7 +1790,7 @@ test('the web VR project has at least one shot to run', () => {
   // what makes forgetting impossible — without it the fifth is unanchored, and the contributor who
   // deletes it a year later gets a green build. Score the step first: above the 1408.6 cutoff the
   // picture already covers it and the assertion is noise; under it, the assertion earns its place
-  // AND its anchor. (This is the mirror of the tenth-SHOT bar in Global Constraints, which scores
+  // AND its anchor. (This is the mirror of the ELEVENTH-SHOT bar in Global Constraints, which scores
   // the same number to decide the opposite thing.)
   const surfaceAnchors = [
     ['the rail surface', /\(page, 'player-rail'\)/],
@@ -2157,7 +2202,7 @@ Local green does not prove CI green when the binary versions or the scan scope d
 pushed branch, confirm in the Actions tab:
 
 1. The `web` job ran **in the container** and its log shows exactly one `next build`.
-2. All nine `[chromium]` shots PASSED against the committed Linux baselines. If any failed, download
+2. All ten `[chromium]` shots PASSED against the committed Linux baselines. If any failed, download
    `playwright-web-report`, open it with `npx playwright show-report`, and look at the diff before
    regenerating anything — a red VR run whose quickest route to green is a baseline refresh is
    exactly how a page nobody looked at gets blessed.
@@ -2176,7 +2221,7 @@ pushed branch, confirm in the Actions tab:
    container job, accepting a third build.
 
 **If a shot flakes, the remedies have an order — do not reach for the last one first.** The 60-run
-determinism study was taken at `--workers=1`, so these nine shots are untested in parallel, and they
+determinism study was taken at `--workers=1`, so these ten shots are untested in parallel, and they
 are heavier than `client/`'s isolated Storybook components: full pages driving a real engine and a
 soundfont download. `retries: 2` absorbs a one-off blip first. Then, in order:
 
@@ -2243,7 +2288,7 @@ never reaches it — but Task 9 makes one of its rows false, and the pixel lane 
 
 - `test:e2e` — replace "Playwright against the built app — what the `e2e` CI lane runs" with
   "Behaviour + accessibility against the built app — what the `web` CI job runs".
-- Add `test:vr` — "The nine page screenshots, compared against the committed Linux baselines".
+- Add `test:vr` — "The ten page screenshots, compared against the committed Linux baselines".
 - Add `test:vr:update` — "Rewrite those baselines. Linux-only: regenerate through
   `pnpm test:web:docker:update`, never from a local Mac run".
 
@@ -2258,10 +2303,10 @@ paragraph rather than a sixth table row, so Step 1's "Five spot edits" count sta
 
 **Then add one bullet to `client/README.md`'s VR section.** The table reaches that file twice, but
 only to rename artifacts — nothing in it covers what actually changes for its readers. After this
-work a `client/` visual change also moves `web/`'s nine page baselines, because `web/` compiles its
+work a `client/` visual change also moves `web/`'s ten page baselines, because `web/` compiles its
 own Tailwind CSS by scanning `client/` **source**, and the `web` job is gated on the `code` filter,
 so a `client/`-only PR runs it. Beside the existing Linux-only bullet, add: "A `client/` visual
-change also moves `web/`'s nine page baselines in `web/e2e/pages.vr.ts-snapshots/`. Regenerate them
+change also moves `web/`'s ten page baselines in `web/e2e/pages.vr.ts-snapshots/`. Regenerate them
 with `pnpm test:web:docker:update` and commit them in the same PR — the `web` job blocks merge."
 While you are in that bullet list, correct the Linux-only bullet's image reference too — it names
 the bare tag: `mcr.microsoft.com/playwright:v1.61.1-noble` becomes
@@ -2291,9 +2336,9 @@ widened. Replace the section:
 
 Four test layers in `client/`: **Unit** (Vitest, `quality` job), **a11y** (axe-core over Storybook stories, light + dark + hover — `a11y` job, blocks merge, OS-independent), **VR** (Playwright `toHaveScreenshot` — `vr` job, blocks merge, **Linux-only baselines**, regenerate via `pnpm test:client:docker:update`), **e2e** (Playwright vs built SPA, MSW mocks `/api/*` — `e2e` job, blocks merge, uploads traces on failure).
 
-`web/` has **no Storybook**, so its gate is nine page screenshots of `/` and `/play` against the real `next build` — the `web` job, which runs behaviour, axe and pixels in ONE Playwright-container invocation so one build serves all three. Blocks merge. Baselines are Linux-only too: regenerate via `pnpm test:web:docker:update` and commit them. This is the gate `client/` VR cannot be — `web/` compiles its own Tailwind CSS by scanning `client/` **source**, so a component can be correct in Storybook and broken in the app (NH-320). What the nine shots CANNOT see is a change between two of this design system's neutral surfaces: those steps score 5 to 173 against Playwright's `1408.6` per-pixel cutoff, so a new low-contrast surface on `/` or `/play` needs its own computed `background-color` assertion beside the shot, not a baseline alone.
+`web/` has **no Storybook**, so its gate is ten page screenshots of `/` and `/play` against the real `next build` — the `web` job, which runs behaviour, axe and pixels in ONE Playwright-container invocation so one build serves all three. Blocks merge. Baselines are Linux-only too: regenerate via `pnpm test:web:docker:update` and commit them. This is the gate `client/` VR cannot be — `web/` compiles its own Tailwind CSS by scanning `client/` **source**, so a component can be correct in Storybook and broken in the app (NH-320). What the ten shots CANNOT see is a change between two of this design system's neutral surfaces: those steps score 5 to 173 against Playwright's `1408.6` per-pixel cutoff, so a new low-contrast surface on `/` or `/play` needs its own computed `background-color` assertion beside the shot, not a baseline alone.
 
-**Full runbook:** [`docs/runbooks/vr-a11y-testing.md`](docs/runbooks/vr-a11y-testing.md) — VR-in-Docker mechanics, the nine `web/` shots, e2e config, trace debugging.
+**Full runbook:** [`docs/runbooks/vr-a11y-testing.md`](docs/runbooks/vr-a11y-testing.md) — VR-in-Docker mechanics, the ten `web/` shots, e2e config, trace debugging.
 ```
 
 **Also widen `AGENTS.md`'s Tailwind-scan sentence in this same step.** It currently names only one
@@ -2351,12 +2396,13 @@ from step 1. Six edits:
 5. **A new `web/` section**, after the client VR section:
 
    ````markdown
-   ## `web/`'s VR lane — nine page shots of the real app
+   ## `web/`'s VR lane — ten page shots of the real app
 
    `web/` has no Storybook, so its pixel gate shoots the composed pages: `landing`,
    `player-bundled-beat`, `player-long-score`, `player-skeleton`, `player-engine-error`,
-   `player-transport-pressed`, `player-rail-ghost-hover`, `player-header-tooltip` and
-   `player-narrow` (900 px, below the `lg` breakpoint). They live in `web/e2e/pages.vr.ts`, with
+   `player-transport-pressed`, `player-rail-ghost-hover`, `player-header-tooltip`,
+   `player-drop-overlay` (a file held over the player, mid-gesture) and `player-narrow`
+   (900 px, below the `lg` breakpoint). They live in `web/e2e/pages.vr.ts`, with
    baselines in `web/e2e/pages.vr.ts-snapshots/` — **Linux-only**, same rule as `client/`.
 
    All three `web/` lanes run in ONE CI job (`web`) and ONE `playwright test` invocation, so a
@@ -2366,7 +2412,7 @@ from step 1. Six edits:
 
    ```bash
    pnpm --filter @notation-hero/web run test:e2e   # behaviour + axe, natively (not pixel-exact)
-   pnpm test:web:docker                            # the nine shots, in the container
+   pnpm test:web:docker                            # the ten shots, in the container
    pnpm test:web:docker:update                     # regenerate them, then commit
    ```
 
@@ -2475,10 +2521,10 @@ git commit -m "docs: record the web VR lane and rename the Playwright artifacts 
       (`pnpm -r --if-present run test` is scoped to the 5 workspace projects; the root is excluded).
 - [ ] `pnpm test:client:docker && pnpm test:web:docker` — both pixel lanes against their committed
       Linux baselines.
-- [ ] `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `9` (local
+- [ ] `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `10` (local
       `*-chromium-darwin.png` files share the folder and are git-ignored), and `git status --short`
       shows no darwin PNG.
-- [ ] Open all nine baseline PNGs and look at them. Tests and code review do not catch layout; three
+- [ ] Open all ten baseline PNGs and look at them. Tests and code review do not catch layout; three
       UI tasks in this repo have passed both and then failed on sight.
 - [ ] Write the PR body **before** the final push — a `gh pr edit` mid-run cancels the run and the
       stale red `CI Green` never clears.
