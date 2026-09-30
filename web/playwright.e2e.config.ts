@@ -22,7 +22,15 @@ export default defineConfig({
     ...devices['Desktop Chrome'],
   },
   projects: [
-    { name: 'e2e', testMatch: '**/*.e2e.ts', use: { ...devices['Desktop Chrome'] } },
+    // Both projects are written in the same multi-line shape on purpose: the guard in
+    // tooling/workflow-guards.test.mjs slices each one by its own `name:` line, and an inline
+    // object would leave that anchor unmatchable — so the guard would report this project as
+    // GONE while it sat right here.
+    {
+      name: 'e2e',
+      testMatch: '**/*.e2e.ts',
+      use: { ...devices['Desktop Chrome'] },
+    },
     // Named `chromium` so baselines read `*-chromium-linux.png`, the same shape as client/'s.
     {
       name: 'chromium',

@@ -4,10 +4,14 @@
 // `github.ref == 'refs/heads/master'` if-guard is the defence-in-depth layer the PR documents. This
 // test pins it in source (mirrors infra/index.test.ts pinning the Function URL to AWS_IAM) so a
 // future edit cannot silently drop the guard.
+//
+// It has since grown to pin every CI arrangement whose loss would be SILENT rather than loud: the
+// browser lanes' run lines and container pins, the error-code gate's job placement, and the web VR
+// lane's ability to compare a pixel at all.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const GUARD = "github.ref == 'refs/heads/master'";
@@ -176,4 +180,146 @@ test('the Playwright container tag agrees with @playwright/test everywhere it is
     /pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter/,
     'the helper must install from the lockfile with lifecycle scripts off',
   );
+});
+
+// Counting filenames is not enough. A file can be present and still compare NOTHING: empty, all
+// test.skip, or carrying no toHaveScreenshot at all. Playwright's `forbidOnly` catches `.only`;
+// nothing else in this repo catches `.skip` or `.fixme`. And the shot files' own content is not
+// enough either — the `chromium` project is what makes them RUN, so deleting it or mistyping its
+// testMatch leaves an unscoped run exiting 0 with every filename still in place.
+//
+// Each project is sliced by its own `name:` line, which is why both are written multi-line in
+// web/playwright.e2e.config.ts. Literal patterns rather than ones built from a project name: a
+// RegExp assembled from a variable is rejected by this repo's sast gate, and there are only two.
+const E2E_NAME_LINE = /^\s+name: 'e2e',$/m;
+const CHROMIUM_NAME_LINE = /^\s+name: 'chromium',$/m;
+const PROJECT_ENTRY_END = /^\s+\},$/m;
+
+test('the web VR project has at least one shot to run', () => {
+  const dir = new URL('../web/e2e/', import.meta.url);
+  const shots = readdirSync(dir).filter((file) => file.endsWith('.vr.ts'));
+  assert.ok(shots.length > 0, 'web/e2e has no *.vr.ts — the chromium project runs nothing');
+
+  // Comments stripped before ANY content match below. A commented-out shot is still a parked shot:
+  // a `//`-prefixed or block-commented toHaveScreenshot call still yields a name, still pairs with
+  // its leftover baseline, and leaves the gate green over nine shots. test.skip and test.fixme —
+  // the only disable routes checked below — are absent in that state. It also closes a live hole in
+  // the surface anchors: `var(--elevate)` occurs in the engine-error comment as well as in the
+  // ghost hover's real probe, so without this the anchor matches the comment after the probe is
+  // deleted. A stripper, not a parser: it would mangle a `*/` or a line-leading `//` inside a string
+  // or a regex literal. There is none in that file, and the assertion below would go red, not
+  // green, if one ever appeared.
+  const stripComments = (source) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const sources = shots.map((file) => stripComments(readFileSync(new URL(file, dir), 'utf8')));
+  shots.forEach((file, index) => {
+    // `describe\.` is allowed deliberately: the narrow-viewport shot needs a test.describe()
+    // wrapper for its test.use(), so `test.describe.skip(` is the natural way to park it and a
+    // pattern anchored straight to `test\.` would miss it. The trailing `\(` stays — without it the
+    // assertion matches any prose occurrence or a snapshot filename.
+    assert.doesNotMatch(
+      sources[index],
+      /\btest\.(?:describe\.)?(?:skip|fixme)\s*\(/,
+      `${file} disables a shot`,
+    );
+    // Per-file, not `some(...)`: the rule is that EVERY *.vr.ts calls it, and a screenshot
+    // comparison is even less likely than a behaviour assertion to notice a throw.
+    assert.match(
+      sources[index],
+      /failOnUnexpectedPageErrors\(\)/,
+      `${file} does not call failOnUnexpectedPageErrors() — a shot over a throwing page reads green`,
+    );
+  });
+  // Not `some(includes('toHaveScreenshot('))`: that passes while ONE call survives anywhere, and it
+  // pairs no shot with its baseline — deleting a shot and leaving its baseline on disk exits 0 with
+  // no orphan warning, so a nine-shot lane reads exactly like a ten-shot one. Planting a baseline
+  // for a shot that never existed exits 0 too. Set equality closes a dropped shot, a dropped
+  // baseline AND a rename in one assertion. The `\.png` in the pattern is load-bearing: without it
+  // the match runs past the closing quote into the next string.
+  const shotNames = new Set(
+    sources.flatMap((source) =>
+      [...source.matchAll(/toHaveScreenshot\('([^']+\.png)'/g)].map((match) =>
+        match[1].slice(0, -4),
+      ),
+    ),
+  );
+  assert.ok(
+    shotNames.size > 0,
+    'no *.vr.ts calls toHaveScreenshot — the chromium project compares nothing',
+  );
+  const baselineNames = new Set(
+    readdirSync(new URL('../web/e2e/pages.vr.ts-snapshots/', import.meta.url))
+      .filter((file) => file.endsWith('-chromium-linux.png'))
+      .map((file) => file.slice(0, -'-chromium-linux.png'.length)),
+  );
+  assert.deepEqual(
+    [...shotNames].sort(),
+    [...baselineNames].sort(),
+    'the shots and the committed -chromium-linux baselines no longer pair up — a shot, a baseline or a name was dropped',
+  );
+
+  // Three shots carry four assertions over a surface step the comparator cannot see (scoring 5, 20,
+  // 80 and 173 against its 1408.6 per-pixel cutoff), so each reads a computed background-color
+  // instead. Drop one and that shot silently stops covering what it was added for, with the
+  // screenshot still green. This is a presence check, not a proof the assertion is correct — it
+  // cannot be, without a browser.
+  //
+  // One anchor per assertion, each tied to the ASSERTION's own shape rather than to a bare test id
+  // — three of the four ids also occur for unrelated reasons, so an id substring stays green on a
+  // deleted assertion. The `(page, '…')` form is deliberately helper-name-agnostic, so renaming the
+  // helper does not silently disarm this. Adding a FIFTH assertion is governed too, not just
+  // dropping one of today's four: the count assertion is what makes forgetting impossible. Score
+  // the step first — above the 1408.6 cutoff the picture already covers it and the assertion is
+  // noise; under it, the assertion earns its place AND its anchor.
+  const surfaceAnchors = [
+    ['the rail surface', /\(page, 'player-rail'\)/],
+    ['the transport-footer surface', /\(page, 'transport-row'\)/],
+    ['the ghost hover step', /var\(--elevate\)/],
+    ['the engine-error tint', /var\(--destructive\)/],
+  ];
+  // Both call shapes matched without naming the helper, the same reason the anchors are not.
+  const surfaceAssertions = sources.flatMap((source) => [
+    ...source.matchAll(/\(page, '[^']+'\)/g),
+    ...source.matchAll(/probe\.style\.backgroundColor = '[^']+'/g),
+  ]);
+  assert.equal(
+    surfaceAssertions.length,
+    surfaceAnchors.length,
+    `web/e2e carries ${surfaceAssertions.length} surface assertions but the guard anchors ${surfaceAnchors.length} — every surface assertion needs its own anchor, or dropping it later reads green`,
+  );
+  for (const [step, pattern] of surfaceAnchors) {
+    assert.ok(
+      sources.some((source) => pattern.test(source)),
+      `no *.vr.ts asserts ${step} — a surface assertion the comparator cannot replace is gone`,
+    );
+  }
+  assert.ok(
+    sources.some((source) => source.includes('backgroundColor')),
+    'no *.vr.ts reads a computed background-color — the surface assertions are gone',
+  );
+
+  const config = readFileSync(
+    fileURLToPath(new URL('../web/playwright.e2e.config.ts', import.meta.url)),
+    'utf8',
+  );
+  // Sliced to each project entry and anchored to real lines, the same treatment ci.yml gets: the
+  // unanchored form stays green over a config whose testMatch line is commented out and replaced,
+  // over a renamed project whose old name survives in a comment, and over a config where the two
+  // projects' patterns have been SWAPPED (each project's own entry bounds its slice, so a pattern
+  // landing in the other one is outside it).
+  const projectEntry = (nameLine) => config.split(nameLine)[1]?.split(PROJECT_ENTRY_END)[0] ?? '';
+
+  const chromium = projectEntry(CHROMIUM_NAME_LINE);
+  assert.ok(chromium, 'the chromium project is gone — the shots never run');
+  assert.match(
+    chromium,
+    /^\s+testMatch: '\*\*\/\*\.vr\.ts',$/m,
+    'chromium no longer matches *.vr.ts',
+  );
+  // The OTHER project needs the same two: nothing in CI runs `--project=e2e` once the web job owns
+  // this lane, so a deleted `e2e` project — or a mistyped testMatch — leaves the unscoped run
+  // exiting 0 over the shots alone, with every behaviour and axe test silently gone.
+  const e2e = projectEntry(E2E_NAME_LINE);
+  assert.ok(e2e, "the e2e project is gone — web's behaviour and axe tests never run");
+  assert.match(e2e, /^\s+testMatch: '\*\*\/\*\.e2e\.ts',$/m, 'e2e no longer matches *.e2e.ts');
 });
