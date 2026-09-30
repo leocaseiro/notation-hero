@@ -1584,12 +1584,24 @@ test('the web VR project has at least one shot to run', () => {
   const shots = readdirSync(dir).filter((file) => file.endsWith('.vr.ts'));
   assert.ok(shots.length > 0, 'web/e2e has no *.vr.ts — the chromium project runs nothing');
 
-  const sources = shots.map((file) => readFileSync(new URL(file, dir), 'utf8'));
+  // Comments stripped before ANY content match below. A commented-out shot is still a parked shot:
+  // measured, a `//`-prefixed or block-commented toHaveScreenshot call still yields a name, still
+  // pairs with its leftover baseline, and leaves the gate green over eight shots. test.skip and
+  // test.fixme — the only disable routes checked below — are absent in that state. It also closes a
+  // live hole in the surface anchors: `var(--elevate)` occurs in Task 7's comment as well as in
+  // Task 6's real probe, so without this the anchor matches the comment after the probe is deleted.
+  // A stripper, not a parser: it would mangle a `*/` or a line-leading `//` inside a string or a
+  // regex literal. There is none in this file, and the assertion below would go red, not green, if
+  // one ever appeared.
+  const stripComments = (source) =>
+    source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const sources = shots.map((file) => stripComments(readFileSync(new URL(file, dir), 'utf8')));
   shots.forEach((file, index) => {
     // `describe\.` is allowed deliberately: the narrow-viewport shot needs a test.describe()
     // wrapper for its test.use(), so `test.describe.skip(` is the natural way to park it and a
     // pattern anchored straight to `test\.` would miss it. The trailing `\(` stays — without it the
-    // assertion matches any prose occurrence, a snapshot filename, or a commented-out line.
+    // assertion matches any prose occurrence or a snapshot filename. Commented-out lines are
+    // already gone by here, stripped where `sources` is built.
     assert.doesNotMatch(
       sources[index],
       /\btest\.(?:describe\.)?(?:skip|fixme)\s*\(/,
@@ -1690,7 +1702,7 @@ Expected: PASS.
 
 - [ ] **Step 4: Prove each arm bites**
 
-Seven separate checks — run the command above after each, expecting the quoted failure, and revert
+Eight separate checks — run the command above after each, expecting the quoted failure, and revert
 before the next:
 
 1. `git mv web/e2e/pages.vr.ts web/e2e/pages.ts` → `web/e2e has no *.vr.ts`
@@ -1703,6 +1715,8 @@ before the next:
 6. Delete one `toHaveScreenshot(` call, leaving its baseline on disk →
    `the shots and the committed -chromium-linux baselines no longer pair up`
 7. Delete the `name: 'e2e'` line from the config → `the e2e project is gone`
+8. Comment out one `toHaveScreenshot(` call with `//`, leaving its baseline on disk →
+   `the shots and the committed -chromium-linux baselines no longer pair up`
 
 - [ ] **Step 5: Commit**
 
