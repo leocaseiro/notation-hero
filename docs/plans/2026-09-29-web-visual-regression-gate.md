@@ -763,14 +763,23 @@ In `web/app/globals.css`, directly below the existing `@source not '../scripts/*
 
 - [ ] **Step 2: Verify the exclusion works, and that the canary still passes**
 
+The search needs `-F`: the build emits the utility CSS-escaped, as `.mt-\[137px\]`, so in grep's
+default basic-regex mode `\[` matches a literal `[` and the pattern can never hit a stylesheet.
+It also needs a positive control — a lone `||` branch that fires in both states is not a check.
+
 ```bash
+# Positive control, with step 1's `@source not` line temporarily reverted:
 printf '\n// mt-[137px]\n' >> web/e2e/a11y.e2e.ts
 pnpm --filter @notation-hero/web run build
-grep -rl 'mt-\[137px\]' web/.next/static/ --include='*.css' || echo "excluded — web/e2e is no longer scanned"
+grep -rlF 'mt-\[137px\]' web/.next/static/ --include='*.css'   # MUST print a chunk path
+# then restore step 1's line and repeat:
+pnpm --filter @notation-hero/web run build
+grep -rlF 'mt-\[137px\]' web/.next/static/ --include='*.css' || echo "excluded — web/e2e is no longer scanned"
 git checkout -- web/e2e/a11y.e2e.ts
 ```
 
-Expected: `excluded — web/e2e is no longer scanned`, and the build's own last line still reads
+Expected: the first search prints a chunk path, the second prints
+`excluded — web/e2e is no longer scanned`, and the build's own last line still reads
 `assert-design-system-css: all 10 selectors present in 1 stylesheet(s).` The second half matters as
 much as the first: the point is to stop the scan without starving the app of a utility it needs.
 
@@ -934,9 +943,10 @@ git commit -m "test(web): shoot the landing page, and land the VR baseline workf
 - Produces: `awaitPlayerReady(page: Page): Promise<void>` — used again by Task 6's three shots, and
   deliberately **not** by Task 7's two, which never finish loading.
 - Produces: `surfaceDiffersFromPageBackground(page: Page, testId: string): Promise<boolean>` — used twice
-  here and nowhere else. Task 6's ghost hover compares the hovered value against the `--elevate` token, and Task 7's
-  engine panel also has to rule out fully transparent, so neither fits this shape. Two call sites is
-  why it is a helper rather than inlined twice.
+  here and nowhere else. Task 6's ghost hover compares the hovered value against the `--elevate` token,
+  and Task 7's engine panel compares against its own resolved tint — an opaque substitute such as
+  `bg-popover` differs from this page's background too, so a differs-from-background shape cannot
+  catch it. Neither fits this shape. Two call sites is why it is a helper rather than inlined twice.
 - Produces: the test ids `player-rail` and `transport-row`.
 
 - [ ] **Step 1: Add the two test hooks**
@@ -1037,7 +1047,17 @@ const surfaceDiffersFromPageBackground = (page: Page, testId: string): Promise<b
     // 5 above, and the rail's own step over it is 45 — bigger than the `--rail` over `--panel` 20 in
     // that ladder, and still far under the 1408.6 cutoff — and both values still come back through
     // the SAME serializer, which is the property this helper exists to preserve.
-    return own !== globalThis.getComputedStyle(document.body).backgroundColor;
+    //
+    // The transparent clause is the mirror of that objection, and it is the NH-315 shape itself: a
+    // `bg-rail` that never reaches the emitted stylesheet leaves the class in the markup and the
+    // computed value at `rgba(0, 0, 0, 0)`, which differs from body's opaque white — so without
+    // this clause the assertion passes over a rail that paints nothing. Measured in Chromium 1.61.1:
+    // healthy rail rgb(244, 246, 249) → true; swapped to bg-background oklch(1 0 0) → false;
+    // utility never emitted rgba(0, 0, 0, 0) → true WITHOUT this clause, false with it.
+    return (
+      own !== 'rgba(0, 0, 0, 0)' &&
+      own !== globalThis.getComputedStyle(document.body).backgroundColor
+    );
   });
 ```
 
@@ -1108,15 +1128,22 @@ test('the player with every transport toggle pressed', async ({ page }) => {
 
 Do this before generating baselines — an assertion that cannot fail is worse than none.
 
-Temporarily change the `<aside>`'s `bg-rail` to `bg-background` in `PlayerShell.tsx`, then:
+Each surface needs **both** arms run, because one arm can only ever certify one clause. Arm A
+exercises the page-background comparison; arm B exercises the transparent clause — the NH-315
+shape, and the one the screenshot provably cannot see.
+
+- **Arm A:** temporarily change the `<aside>`'s `bg-rail` to `bg-background` in `PlayerShell.tsx`.
+- **Arm B:** temporarily DELETE `bg-rail` from that same `<aside>` outright, so it paints nothing.
+
+Each time:
 
 ```bash
 pnpm --filter @notation-hero/web run test:vr -g "score it opens with"
 ```
 
-Expected: FAIL on `surfaceDiffersFromPageBackground('player-rail')`, **not** on the screenshot — that is
-the point of the assertion. Revert, repeat for `transport-row` (`bg-panel` → `bg-background`),
-revert again.
+Expected, both arms: FAIL on `surfaceDiffersFromPageBackground('player-rail')`, **not** on the
+screenshot — that is the point of the assertion. Revert after each arm, then repeat the same pair
+for `transport-row` (`bg-panel` → `bg-background`, then `bg-panel` deleted), reverting again.
 
 - [ ] **Step 6: Generate and verify the three Linux baselines**
 
@@ -1358,21 +1385,26 @@ test('the destructive panel when the engine module fails to load', async ({ page
   await expect(panel).toBeVisible({ timeout: 15_000 });
   // The tint over `--popover` scores 173 against the 1408.6 cutoff, and even its
   // `border-destructive/25` edge only reaches 1231 — so the picture proves the panel rendered (its
-  // red text scores 19698) while this proves the tint is there. Not surfaceDiffersFromPageBackground: this
-  // one also has to rule out fully transparent, which "differs from the parent" does not.
+  // red text scores 19698) while this proves the tint is there. Compared against the EXPECTED tint,
+  // not against the parent: measured, the parent `<div className="relative h-full w-full">`
+  // (NotationSurface.tsx:218) paints nothing, so "differs from the parent" is satisfied by every
+  // opaque colour — `bg-popover` included — and at 173 against 1408.6 the picture cannot tell them
+  // apart either. Equality with the resolved tint subsumes the transparent case too, so this one
+  // clause replaces all three. The throwaway probe is how Task 6's ghost hover resolves
+  // `var(--elevate)`, and it matters here for the same reason: both values then come back through
+  // the SAME serializer. Measured in Chromium 1.61.1 — the probe resolved to
+  // `oklab(0.9505 0.0186272 0.00969672)`, byte-identical to the panel's own computed value.
+  const expectedTint = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = 'color-mix(in oklab, var(--destructive) 10%, var(--popover))';
+    document.body.append(probe);
+    const value = globalThis.getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return value;
+  });
   await expect
-    .poll(() =>
-      panel.evaluate((el) => {
-        const parent = el.parentElement;
-        const own = globalThis.getComputedStyle(el).backgroundColor;
-        return (
-          parent !== null &&
-          own !== globalThis.getComputedStyle(parent).backgroundColor &&
-          own !== 'rgba(0, 0, 0, 0)'
-        );
-      }),
-    )
-    .toBe(true);
+    .poll(() => panel.evaluate((el) => globalThis.getComputedStyle(el).backgroundColor))
+    .toBe(expectedTint);
   await settleBeforeShot(page);
   await expect(page).toHaveScreenshot('player-engine-error.png', { fullPage: true });
 });
@@ -1396,7 +1428,9 @@ Restore `Infinity`.
 - [ ] **Step 4: Prove the engine-error tint assertion fails when the tint goes**
 
 Find the tint class on the `engine-error` element in `web/app/play/NotationSurface.tsx` and
-temporarily remove the background utility, keeping the border and the red text. Then:
+temporarily change it to `bg-popover`, keeping the border and the red text — an opaque substitute
+is the regression the picture cannot see (`oklch(1 0 0)` scores nothing against the 1408.6 cutoff),
+where the removal it _can_ see proves nothing about this assertion. Then:
 
 ```bash
 pnpm --filter @notation-hero/web run test:vr -g "engine module fails"
@@ -1527,7 +1561,7 @@ test('the web VR project has at least one shot to run', () => {
     ['the rail surface', /\(page, 'player-rail'\)/],
     ['the transport-footer surface', /\(page, 'transport-row'\)/],
     ['the ghost hover step', /var\(--elevate\)/],
-    ['the engine-error tint', /'rgba\(0, 0, 0, 0\)'/],
+    ['the engine-error tint', /var\(--destructive\)/],
   ]) {
     assert.ok(
       sources.some((source) => pattern.test(source)),
@@ -2154,7 +2188,7 @@ run the last line by hand.
 git diff --quiet -- web/e2e/a11y.e2e.ts || { echo 'a11y.e2e.ts has uncommitted changes — commit or stash first'; exit 1; }
 printf '\n// mt-[137px]\n' >> web/e2e/a11y.e2e.ts
 pnpm --filter @notation-hero/web run build
-grep -rl 'mt-\[137px\]' web/.next/static/ --include='*.css'   # prints the emitted chunk
+grep -rlF 'mt-\[137px\]' web/.next/static/ --include='*.css'   # prints the emitted chunk
 git checkout -- web/e2e/a11y.e2e.ts
 ```
 
