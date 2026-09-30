@@ -595,8 +595,9 @@ drift before a line is written.
 **Files:**
 
 - Create: `tooling/docker-playwright.sh`
-- Modify: `package.json` (root) — rewrite `test:vr:docker` and `test:vr:docker:update`, add
-  `test:web:docker` and `test:web:docker:update`
+- Modify: `package.json` (root) — rename `test:vr:docker` / `test:vr:docker:update` to
+  `test:client:docker` / `test:client:docker:update`, and add `test:web:docker` and
+  `test:web:docker:update`
 - Modify: `tooling/workflow-guards.test.mjs` (add one test)
 
 **Interfaces:**
@@ -684,16 +685,19 @@ the bare tag fails that guard:
 
 - [ ] **Step 2: Point the root scripts at it**
 
-In the root `package.json`, replace the two inlined `test:vr:docker*` values and add two more.
-`sort-package-json` is a lint gate and it sorts these keys as strings, so `test:vr:*` lands before
-`test:web:*` (`v` < `w`) — write them in that order, and let `pnpm run fix` place them if you get
-it wrong:
+In the root `package.json`, replace the two inlined `test:vr:docker*` values — RENAMING them so
+both pairs name their package rather than one naming a lane — and add two more.
+`sort-package-json` is a lint gate and it sorts these keys as plain strings, so the renamed
+`test:client:*` pair lands ABOVE `test:tooling` while `test:web:*` lands below it: the four are
+NOT contiguous. Write them in sorted order, and let `pnpm run fix` place them if you get it wrong:
 
 ```diff
 -    "test:vr:docker": "docker run --rm -v \"$PWD\":/work -v /work/node_modules … pnpm --filter @notation-hero/client run test:vr\"",
 -    "test:vr:docker:update": "docker run --rm … pnpm --filter @notation-hero/client run test:vr:update\"",
-+    "test:vr:docker": "bash tooling/docker-playwright.sh @notation-hero/client test:vr",
-+    "test:vr:docker:update": "bash tooling/docker-playwright.sh @notation-hero/client test:vr:update",
++    "test:client:docker": "bash tooling/docker-playwright.sh @notation-hero/client test:vr",
++    "test:client:docker:update": "bash tooling/docker-playwright.sh @notation-hero/client test:vr:update",
+     "test:tooling": "…",
+     "test:tooling:sh": "…",
 +    "test:web:docker": "bash tooling/docker-playwright.sh @notation-hero/web test:vr",
 +    "test:web:docker:update": "bash tooling/docker-playwright.sh @notation-hero/web test:vr:update",
 ```
@@ -788,7 +792,7 @@ This is the real test of the helper: `client/` has 842 committed baselines that 
 Docker Desktop must be running first (`open -a Docker` on macOS).
 
 ```bash
-pnpm test:vr:docker
+pnpm test:client:docker
 ```
 
 Expected: the same PASS result as before the refactor. If it fails, compare the expanded command in
@@ -2264,6 +2268,19 @@ the bare tag: `mcr.microsoft.com/playwright:v1.61.1-noble` becomes
 `mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48`.
 A paragraph for the same reason as the one above, not a sixth table row.
 
+**Then sweep the renamed script pair.** Task 3 renames `test:vr:docker` / `test:vr:docker:update`
+to `test:client:docker` / `test:client:docker:update`. No artifact name is involved, so the grep
+above never reaches these either, and a stale reference here is a command that no longer exists.
+`grep -rn 'test:vr:docker'` finds eleven live occurrences outside `package.json` itself:
+`client/README.md` (4), `docs/runbooks/vr-a11y-testing.md` (3), `AGENTS.md` (1), `client/.gitignore`
+(1) — that last one is a comment, and it is still a command someone will type — plus this plan's own
+Task 3 Step 5 and the pre-PR checklist, and five in
+`docs/specs/2026-09-21-web-visual-regression-gate.md`. The runbook's and `AGENTS.md`'s copies are
+rewritten wholesale by Steps 2 and 3 below; the rest are spot edits. Leave
+`docs/decisions/decision-changelog.md` and the six older plans at the old name — the same history
+rule this step already applies to the artifact renames. A paragraph again rather than table rows:
+none of these is an artifact rename, so the table's own count stays true.
+
 - [ ] **Step 2: Give `AGENTS.md`'s VR section the `web/` lane**
 
 Its heading is scoped `client/` and its "Full runbook" line points at a runbook that is also being
@@ -2272,7 +2289,7 @@ widened. Replace the section:
 ```markdown
 ## VR & a11y testing (Storybook for `client/`, the real app for `web/`)
 
-Four test layers in `client/`: **Unit** (Vitest, `quality` job), **a11y** (axe-core over Storybook stories, light + dark + hover — `a11y` job, blocks merge, OS-independent), **VR** (Playwright `toHaveScreenshot` — `vr` job, blocks merge, **Linux-only baselines**, regenerate via `pnpm test:vr:docker:update`), **e2e** (Playwright vs built SPA, MSW mocks `/api/*` — `e2e` job, blocks merge, uploads traces on failure).
+Four test layers in `client/`: **Unit** (Vitest, `quality` job), **a11y** (axe-core over Storybook stories, light + dark + hover — `a11y` job, blocks merge, OS-independent), **VR** (Playwright `toHaveScreenshot` — `vr` job, blocks merge, **Linux-only baselines**, regenerate via `pnpm test:client:docker:update`), **e2e** (Playwright vs built SPA, MSW mocks `/api/*` — `e2e` job, blocks merge, uploads traces on failure).
 
 `web/` has **no Storybook**, so its gate is nine page screenshots of `/` and `/play` against the real `next build` — the `web` job, which runs behaviour, axe and pixels in ONE Playwright-container invocation so one build serves all three. Blocks merge. Baselines are Linux-only too: regenerate via `pnpm test:web:docker:update` and commit them. This is the gate `client/` VR cannot be — `web/` compiles its own Tailwind CSS by scanning `client/` **source**, so a component can be correct in Storybook and broken in the app (NH-320). What the nine shots CANNOT see is a change between two of this design system's neutral surfaces: those steps score 5 to 173 against Playwright's `1408.6` per-pixel cutoff, so a new low-contrast surface on `/` or `/play` needs its own computed `background-color` assertion beside the shot, not a baseline alone.
 
@@ -2304,8 +2321,8 @@ from step 1. Six edits:
 3. **The two commands at lines 19-22** — add the new pair beside them:
 
    ```bash
-   pnpm test:vr:docker            # client/: compare against the committed Linux baselines
-   pnpm test:vr:docker:update     # client/: regenerate them after an intended visual change
+   pnpm test:client:docker        # client/: compare against the committed Linux baselines
+   pnpm test:client:docker:update # client/: regenerate them after an intended visual change
    pnpm test:web:docker           # web/:    compare against the committed Linux baselines
    pnpm test:web:docker:update    # web/:    regenerate them after an intended visual change
    ```
@@ -2456,7 +2473,7 @@ git commit -m "docs: record the web VR lane and rename the Playwright artifacts 
 - [ ] `pnpm run check:all` — the whole suite CI runs, from the repo root.
 - [ ] `pnpm run test:tooling` — explicitly, because the pre-push hook never reaches it
       (`pnpm -r --if-present run test` is scoped to the 5 workspace projects; the root is excluded).
-- [ ] `pnpm test:vr:docker && pnpm test:web:docker` — both pixel lanes against their committed
+- [ ] `pnpm test:client:docker && pnpm test:web:docker` — both pixel lanes against their committed
       Linux baselines.
 - [ ] `ls web/e2e/pages.vr.ts-snapshots/*-chromium-linux.png | wc -l` → `9` (local
       `*-chromium-darwin.png` files share the folder and are git-ignored), and `git status --short`
