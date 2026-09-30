@@ -1249,6 +1249,12 @@ test('the ghost hover step on the left rail', async ({ page }) => {
     probe.remove();
     return value;
   });
+  // The probe has to resolve to a REAL colour, or the comparison below is vacuous: measured in
+  // Chromium 1.61.1, a missing `--elevate` makes `var(--elevate)` invalid at computed-value time
+  // on BOTH sides — the probe and the button's `hover:bg-elevate` — so both read
+  // `rgba(0, 0, 0, 0)`, the equality holds, and at 80 against the 1408.6 cutoff the picture sees
+  // nothing either. Same clause Task 5's surfaceDiffersFromPageBackground already carries.
+  expect(elevate).not.toBe('rgba(0, 0, 0, 0)');
   await expect
     .poll(() => ghost.evaluate((el) => globalThis.getComputedStyle(el).backgroundColor))
     .toBe(elevate);
@@ -1426,8 +1432,14 @@ test('the destructive panel when the engine module fails to load', async ({ page
   // not against the parent: measured, the parent `<div className="relative h-full w-full">`
   // (NotationSurface.tsx:218) paints nothing, so "differs from the parent" is satisfied by every
   // opaque colour — `bg-popover` included — and at 173 against 1408.6 the picture cannot tell them
-  // apart either. Equality with the resolved tint subsumes the transparent case too, so this one
-  // clause replaces all three. The throwaway probe is how Task 6's ghost hover resolves
+  // apart either. Equality with the resolved tint subsumes the transparent case while the tokens
+  // exist — but NOT when one of them goes: measured, deleting `--popover` makes the whole
+  // color-mix() invalid at computed-value time on BOTH sides, so probe and panel both read
+  // `rgba(0, 0, 0, 0)` and the equality holds over a panel whose wash is gone, with its red text
+  // and border intact so the picture is blind too. (`--destructive` is the safer of the two: its
+  // loss also flattens `text-destructive`, which the picture DOES see at 19698.) Hence the
+  // explicit clause below, the same one Task 5's helper carries. The throwaway probe is how
+  // Task 6's ghost hover resolves
   // `var(--elevate)`, and it matters here for the same reason: both values then come back through
   // the SAME serializer. Measured in Chromium 1.61.1 — the probe resolved to
   // `oklab(0.9505 0.0186272 0.00969672)`, byte-identical to the panel's own computed value.
@@ -1439,6 +1451,7 @@ test('the destructive panel when the engine module fails to load', async ({ page
     probe.remove();
     return value;
   });
+  expect(expectedTint).not.toBe('rgba(0, 0, 0, 0)');
   await expect
     .poll(() => panel.evaluate((el) => globalThis.getComputedStyle(el).backgroundColor))
     .toBe(expectedTint);
