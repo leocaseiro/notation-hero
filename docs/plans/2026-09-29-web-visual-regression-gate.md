@@ -31,7 +31,13 @@ Next.js 16 App Router, pnpm workspaces, GitHub Actions, `node --test` for the to
 Every task's requirements implicitly include this section. Values are copied verbatim from the spec.
 
 - **Image tag:** `mcr.microsoft.com/playwright:v1.61.1-noble`, pinned in lockstep with
-  `@playwright/test` (v1.61.1 today). Baselines are regenerated on the bump.
+  `@playwright/test` (v1.61.1 today, a per-package devDependency in `client/` and `web/` — there is
+  no root dep). Baselines are regenerated on the bump. A bump also re-syncs `pnpm-workspace.yaml`'s
+  three version-exact `minimumReleaseAgeExclude` entries (`playwright-core@`, `playwright@`,
+  `'@playwright/test@'`): the container half is enforced by `pnpm run test:tooling` in the `quality`
+  job, that half by `pnpm run check:supply-chain-pins` in `lint`. A patch published inside the
+  7-day `minimumReleaseAge` window will not install at all until its exact `name@version` is listed
+  there.
 - **Baselines are Linux-only.** `*-chromium-linux.png` is committed; `*-chromium-darwin.png` is
   git-ignored. Never generate baselines natively on a Mac.
 - **Nine shots.** Every shot is a file that moves whenever `client/` changes or AlphaTab is upgraded.
@@ -505,17 +511,25 @@ Measure them rather than copying the spec's numbers, by adding a temporary print
 
 ```ts
 console.log(
-  await surface.evaluate((el) => ({
+  await page.getByTestId('notation-surface').evaluate((el) => ({
     box: el.clientHeight,
-    score: el.scrollHeight,
+    score: el.querySelector('svg')?.getBoundingClientRect().height,
   })),
 );
 ```
 
-Run the one case, read the values for both the bundled beat and `Punk.gp`, then delete the print and
-rewrite the comment with what you measured. The spec's expected values are 576 px (the sample),
-852 px (`Punk.gp`) and 576 px (the box) — if yours differ, yours are right; the conclusion the
-comment draws is unaffected either way:
+Read the score's OWN height, not `el.scrollHeight`: `scrollHeight` is clamped to `clientHeight`, so
+for the bundled beat — whose score is shorter than the box — it returns the box's height and the
+sample's figure is unreachable from it. Measured in Chromium 1.61.1 on that geometry: a 185 px score
+in a 420 px box gives `scrollHeight` 420 and the svg's own rect 185.
+
+One run only ever sees one score, so the print goes in TWO places — in the sibling `the score it
+opens with` case for the sample (that case stays on the bundled beat), and in this case for
+`Punk.gp`, because Step 2 has already collapsed this test's `goto` and file pick into the single
+`openLongScore(page)` call. Then delete both prints and rewrite the comment with what you measured.
+The spec records 576 px, 852 px and 576 px, but those were taken with the clamped read — which is
+why its first and third figures are the same number — so expect the sample's to come out well
+under the box's. Yours are right either way; the conclusion the comment draws is unaffected:
 
 ```ts
 // The sample renders <N> px tall and never scrolls; Punk.gp's two drum tracks render <N> px at this
@@ -1128,6 +1142,18 @@ test('the player with every transport toggle pressed', async ({ page }) => {
 
 Do this before generating baselines — an assertion that cannot fail is worse than none.
 
+**Own the port first, before every re-run below:**
+
+```bash
+lsof -ti:4174 | xargs -r kill
+```
+
+`reuseExistingServer: !process.env.CI` is TRUE locally, so a `next start` left on `:4174` by an
+interrupted run makes Playwright skip `pnpm build` entirely and serve the PRE-EDIT build. The
+assertion then passes and the run still goes red — on the not-yet-written darwin baseline, which is
+the very FAIL this step expects, for the wrong reason. Same trap this repository already hit on
+Storybook's `:6006`. So always read WHICH assertion failed, never just the exit code.
+
 Each surface needs **both** arms run, because one arm can only ever certify one clause. Arm A
 exercises the page-background comparison; arm B exercises the transparent clause — the NH-315
 shape, and the one the screenshot provably cannot see.
@@ -1292,6 +1318,9 @@ test.describe('below the lg breakpoint', () => {
 
 - [ ] **Step 4: Prove the ghost-hover assertion fails when the step goes flat**
 
+Own `:4174` first, as in Task 5 Step 5 — a reused stale server serves the pre-edit build, and the
+missing darwin baseline supplies the expected red anyway. Read which assertion failed.
+
 Temporarily change the ghost variant's `hover:bg-elevate` to `hover:bg-muted` in
 `client/src/components/ui/Button/Button.tsx` — the exact regression this shot exists for, and one
 the comparator cannot see (46 against the 1408.6 cutoff) — then:
@@ -1427,6 +1456,9 @@ Restore `Infinity`.
 
 - [ ] **Step 4: Prove the engine-error tint assertion fails when the tint goes**
 
+Own `:4174` first, as in Task 5 Step 5 — a reused stale server serves the pre-edit build, and the
+missing darwin baseline supplies the expected red anyway. Read which assertion failed.
+
 Find the tint class on the `engine-error` element in `web/app/play/NotationSurface.tsx` and
 temporarily change it to `bg-popover`, keeping the border and the red text — an opaque substitute
 is the regression the picture cannot see (`oklch(1 0 0)` scores nothing against the 1408.6 cutoff),
@@ -1539,6 +1571,14 @@ test('the web VR project has at least one shot to run', () => {
       /\btest\.(?:describe\.)?(?:skip|fixme)\s*\(/,
       `${file} disables a shot`,
     );
+    // Per-file, not `some(...)`: the Global Constraint is that EVERY *.vr.ts calls it, and a
+    // screenshot comparison is even less likely than a behaviour assertion to notice a throw — one
+    // out of AlphaTab's worker went unnoticed for a whole merged PR (NH-335).
+    assert.match(
+      sources[index],
+      /failOnUnexpectedPageErrors\(\)/,
+      `${file} does not call failOnUnexpectedPageErrors() — a shot over a throwing page reads green`,
+    );
   });
   assert.ok(
     sources.some((source) => source.includes('toHaveScreenshot(')),
@@ -1600,6 +1640,8 @@ before the next:
 3. Delete the `name: 'chromium'` line from the config → `the chromium project is gone`
 4. Remove the `player-rail` assertion from the bundled-beat shot →
    `no *.vr.ts asserts the rail surface`
+5. Delete the `failOnUnexpectedPageErrors()` call from `pages.vr.ts` →
+   `pages.vr.ts does not call failOnUnexpectedPageErrors()`
 
 - [ ] **Step 5: Commit**
 
@@ -1619,7 +1661,12 @@ git commit -m "test: fail CI when the web VR lane would compare zero pixels (NH-
 `web/` is built twice per CI run today — the `build` job's `pnpm run build` fans out to it, and the
 `e2e` job's Playwright `webServer` runs its own `pnpm build`. Bolting a VR step onto `vr`, or adding
 a separate `web-vr` job, would each make that three. Moving the lane keeps it at two **and** makes
-web's axe and web's VR render identically.
+web's axe and web's VR render identically. One build per run — reusing the `build` job's `.next`
+output and running only `pnpm start` here — was considered and rejected:
+`NEXT_PUBLIC_ALPHATAB_LOG_LEVEL: 'Debug'` is inlined at BUILD time, so that artifact is not the
+build this lane needs; the `build` job runs under `setup-js` on `ubuntu-latest` while this lane runs
+inside the Playwright container; and the `build` job uploads nothing today, so the route would also
+cost a new artifact upload and download.
 
 **Files:**
 
@@ -1807,6 +1854,15 @@ test("the web job runs web/'s whole browser lane in the pinned container, and bl
   // The container pin is what makes "no playwright install needed" true, and what makes the pixel
   // comparison match the committed -linux baselines.
   assert.match(webJob, /^\s+container: mcr\.microsoft\.com\/playwright:v[\d.]+-noble$/m);
+  // The install line's two flags, for the same reason: dropping either is SILENT. Without
+  // --frozen-lockfile the container resolves fresh registry versions for the caret ranges, so the
+  // installed half of the renderer can move while the pinned image half stays put; without
+  // --ignore-scripts dependency lifecycle scripts execute in CI.
+  assert.match(
+    webJob,
+    /^\s+run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts$/m,
+    'the web job must install from the lockfile with lifecycle scripts off',
+  );
   // Anchored to a real `run:` line, the same idiom as the run-line assertion above: the job's own
   // Install-deps comment ends with "no `playwright install`", and the slice includes comments, so the
   // unanchored form fails on its own explanation the first time it is run.
@@ -1962,6 +2018,15 @@ never reaches it — but Task 9 makes one of its rows false, and the pixel lane 
 - Add `test:vr` — "The nine page screenshots, compared against the committed Linux baselines".
 - Add `test:vr:update` — "Rewrite those baselines. Linux-only: regenerate through
   `pnpm test:web:docker:update`, never from a local Mac run".
+
+**Then correct that spec's Playwright-bump list.** `docs/specs/2026-06-26-nh-197-e2e-traces.md`
+says the version is "load-bearing in three spots — the root dep, the `vr` job's container tag, and
+the `e2e` job's Chromium install". All three go stale here, and the first is already wrong today.
+Rewrite it to name the per-package `@playwright/test` devDependency (`client/` and `web/` — there
+is no root dep), `tooling/docker-playwright.sh`'s `IMAGE=` line, and the `container:` lines of BOTH
+the `vr` and `web` jobs, and say that `tooling/workflow-guards.test.mjs` now anchors those last
+three to the installed version. The `e2e` job keeps only its `(client)` Chromium install. A
+paragraph rather than a sixth table row, so Step 1's "Five spot edits" count stays true.
 
 - [ ] **Step 2: Give `AGENTS.md`'s VR section the `web/` lane**
 
