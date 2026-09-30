@@ -30,7 +30,7 @@
     "residual_risks_recorded": 35,
     "deferred_questions_recorded": 8,
     "triage_summary": "All 12 decided across 2 picker rounds. Round 1: the three P1s (F-1, F-2, F-3) put to the maintainer individually - all Apply - commit 22998bb9. The maintainer then authorized auto-resolving clear fixes in the [Q-add] box, so the seven findings carrying no real choice (F-10, F-11, F-12, F-13, F-14, F-16, F-18) were applied and reported - commit 00402202. Round 2: the two carrying a genuine choice (F-9 new guard machinery, F-15 note-vs-tenth-shot) were put to the maintainer as compared alternatives - both took the recommendation. 0 Skipped, 0 Dropped.",
-    "triage_commits": ["22998bb9", "00402202", "<round-2 commit>"]
+    "triage_commits": ["22998bb9", "00402202", "467fa6e9"]
   },
   "already_applied": [
     {
