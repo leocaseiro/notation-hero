@@ -1657,12 +1657,30 @@ test('the web VR project has at least one shot to run', () => {
   // need anyway), so an id substring stays green on a deleted assertion and only `transport-row`
   // was load-bearing. The `(page, '…')` form is deliberately helper-name-agnostic, so renaming the
   // helper does not silently disarm this.
-  for (const [step, pattern] of [
+  // Adding a FIFTH assertion is governed too, not just dropping one of today's four. A new
+  // computed background-color assertion MUST add its own entry below, and the count assertion is
+  // what makes forgetting impossible — without it the fifth is unanchored, and the contributor who
+  // deletes it a year later gets a green build. Score the step first: above the 1408.6 cutoff the
+  // picture already covers it and the assertion is noise; under it, the assertion earns its place
+  // AND its anchor. (This is the mirror of the tenth-SHOT bar in Global Constraints, which scores
+  // the same number to decide the opposite thing.)
+  const surfaceAnchors = [
     ['the rail surface', /\(page, 'player-rail'\)/],
     ['the transport-footer surface', /\(page, 'transport-row'\)/],
     ['the ghost hover step', /var\(--elevate\)/],
     ['the engine-error tint', /var\(--destructive\)/],
-  ]) {
+  ];
+  // Both call shapes matched helper-name-agnostically, the same reason the anchors are.
+  const surfaceAssertions = sources.flatMap((source) => [
+    ...source.matchAll(/\(page, '[^']+'\)/g),
+    ...source.matchAll(/probe\.style\.backgroundColor = '[^']+'/g),
+  ]);
+  assert.equal(
+    surfaceAssertions.length,
+    surfaceAnchors.length,
+    `web/e2e carries ${surfaceAssertions.length} surface assertions but the guard anchors ${surfaceAnchors.length} — every surface assertion needs its own anchor, or dropping it later reads green`,
+  );
+  for (const [step, pattern] of surfaceAnchors) {
     assert.ok(
       sources.some((source) => pattern.test(source)),
       `no *.vr.ts asserts ${step} — a surface assertion the comparator cannot replace is gone`,
@@ -1702,7 +1720,7 @@ Expected: PASS.
 
 - [ ] **Step 4: Prove each arm bites**
 
-Eight separate checks — run the command above after each, expecting the quoted failure, and revert
+Nine separate checks — run the command above after each, expecting the quoted failure, and revert
 before the next:
 
 1. `git mv web/e2e/pages.vr.ts web/e2e/pages.ts` → `web/e2e has no *.vr.ts`
@@ -1717,6 +1735,8 @@ before the next:
 7. Delete the `name: 'e2e'` line from the config → `the e2e project is gone`
 8. Comment out one `toHaveScreenshot(` call with `//`, leaving its baseline on disk →
    `the shots and the committed -chromium-linux baselines no longer pair up`
+9. Add a fifth `surfaceDiffersFromPageBackground(page, 'player-status')` assertion without adding
+   its anchor → `web/e2e carries 5 surface assertions but the guard anchors 4`
 
 - [ ] **Step 5: Commit**
 
@@ -2194,7 +2214,10 @@ from step 1. Five edits:
    **Three shots carry four assertions over a surface the comparator cannot see.** Playwright's per-pixel cutoff is
    `1408.6` at the default threshold, and this app's surface steps score 5, 20, 80 and 173 — under
    it. Those shots each read a computed `background-color` alongside the picture; the picture proves
-   the state rendered, the assertion proves the surface is right. Do not remove one.
+   the state rendered, the assertion proves the surface is right. Do not remove one — and if you ADD
+   one, score its step against that same cutoff first (above it, the picture already covers it),
+   then add its anchor to the list in `tooling/workflow-guards.test.mjs`, which counts them and
+   fails if you do not.
 
    **Debugging a red run:** `web/` has **no** hosted diff page (unlike `client/`'s `vr-report`
    GitHub Pages publish). Download `playwright-web-report` from the run's **Artifacts**, then:
