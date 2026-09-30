@@ -523,8 +523,12 @@ console.log(
 
 Read the score's OWN height, not `el.scrollHeight`: `scrollHeight` is clamped to `clientHeight`, so
 for the bundled beat — whose score is shorter than the box — it returns the box's height and the
-sample's figure is unreachable from it. Measured in Chromium 1.61.1 on that geometry: a 185 px score
-in a 420 px box gives `scrollHeight` 420 and the svg's own rect 185.
+sample's figure is unreachable from it. Do NOT carry the comment's own `420 px` forward as the box
+height: it predates the player PR #170 landed and is stale along with the other two. Measured in
+Chromium 1.61.1 on this layout's height chain — an `h-dvh` shell less the `h-16` header and the
+`h-20` transport row — the notation box is 576 px at this lane's 1280x720, so a short score returns
+`scrollHeight` 576 while the svg's own rect returns the real height. All three figures are yours to
+measure; take none of them from the comment.
 
 One run only ever sees one score, so the print goes in TWO places — in the sibling `the score it
 opens with` case for the sample (that case stays on the bundled beat), and in this case for
