@@ -1,0 +1,1 @@
+import{i as e,s as t}from"./preload-helper-BH_2JI0G.js";import{t as n}from"./react-Tdv_pPbI.js";function r(){return i.useContext(a)??o}var i,a,o,s=e((()=>{i=t(n(),1),a=i.createContext(void 0),o={disableStyleElements:!1}}));export{r as n,s as t};
