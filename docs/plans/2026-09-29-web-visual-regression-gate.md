@@ -618,8 +618,10 @@ IMAGE=mcr.microsoft.com/playwright:v1.61.1-noble
 # working tree. web/test-results/ and the *-snapshots/ folders are deliberately NOT shadowed —
 # those are the results a developer needs to read afterwards.
 #
-# --ignore-scripts skips the lefthook `prepare` (its git call cannot resolve a worktree's .git
-# inside the container). The image bakes the browsers in, so there is no `playwright install`.
+# --ignore-scripts does two jobs. It skips the lefthook `prepare` (its git call cannot resolve a
+# worktree's .git inside the container), AND it keeps dependency lifecycle scripts from running as
+# root while the host working tree is bind-mounted read-write — the same reason the `web` CI job's
+# install line carries it. The image bakes the browsers in, so there is no `playwright install`.
 docker run --rm \
   -v "$PWD":/work \
   -v /work/node_modules \
@@ -695,6 +697,16 @@ test('the Playwright container tag agrees with @playwright/test everywhere it is
   for (const pin of pins) {
     assert.equal(pin.trim(), `container: ${expected}`, `${pin.trim()} disagrees with ${expected}`);
   }
+  // Anchored past the flags on purpose, the same idiom the ci.yml assertions use: the comment in
+  // the helper now states the lifecycle-script reason, so a bare
+  // /pnpm install --frozen-lockfile --ignore-scripts/ would match that COMMENT and stay green over
+  // a real command that had lost the flags — measured. No comment carries the `&& pnpm --filter`
+  // continuation.
+  assert.match(
+    helper,
+    /pnpm install --frozen-lockfile --ignore-scripts && pnpm --filter/,
+    'the helper must install from the lockfile with lifecycle scripts off',
+  );
 });
 ```
 
