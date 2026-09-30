@@ -535,6 +535,8 @@
     "focusability",
     "Pictogrammers",
     "valuenow",
-    "fontconfig"
+    "fontconfig",
+    "buildx",
+    "imagetools"
   ]
 }

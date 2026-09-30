@@ -21,7 +21,8 @@ reaches each state moves into `web/e2e/player-states.ts`, shared with the access
 `web/`'s whole browser lane then moves out of the ubuntu `e2e` job into a new Playwright-container
 `web` job that runs `playwright test` unscoped, exactly once.
 
-**Tech Stack:** Playwright 1.61.1 (`@playwright/test`), `mcr.microsoft.com/playwright:v1.61.1-noble`,
+**Tech Stack:** Playwright 1.61.1 (`@playwright/test`), `mcr.microsoft.com/playwright:v1.61.1-noble`
+pinned by digest,
 Next.js 16 App Router, pnpm workspaces, GitHub Actions, `node --test` for the tooling guards.
 
 **Spec:** [`docs/specs/2026-09-21-web-visual-regression-gate.md`](../specs/2026-09-21-web-visual-regression-gate.md)
@@ -30,9 +31,13 @@ Next.js 16 App Router, pnpm workspaces, GitHub Actions, `node --test` for the to
 
 Every task's requirements implicitly include this section. Values are copied verbatim from the spec.
 
-- **Image tag:** `mcr.microsoft.com/playwright:v1.61.1-noble`, pinned in lockstep with
-  `@playwright/test` (v1.61.1 today, a per-package devDependency in `client/` and `web/` — there is
-  no root dep). Baselines are regenerated on the bump. A bump also re-syncs `pnpm-workspace.yaml`'s
+- **Image pin:** `mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48`,
+  pinned by DIGEST — a tag can be re-pushed, and this container runs with the repository checked out
+  and the whole working tree bind-mounted read-write — and in lockstep with `@playwright/test` (v1.61.1 today, a per-package devDependency in `client/` and `web/` — there is
+  no root dep). Baselines are regenerated on the bump, and the bump RE-TAKES the digest with
+  `docker buildx imagetools inspect <tag> --format '{{.Manifest.Digest}}'` — NOT
+  `docker manifest inspect --verbose`, whose reported digest does not resolve when used as a pin
+  (measured: this registry serves a different digest per Accept header). A bump also re-syncs `pnpm-workspace.yaml`'s
   three version-exact `minimumReleaseAgeExclude` entries (`playwright-core@`, `playwright@`,
   `'@playwright/test@'`): the container half is enforced by `pnpm run test:tooling` in the `quality`
   job, that half by `pnpm run check:supply-chain-pins` in `lint`. A patch published inside the
@@ -616,11 +621,17 @@ if [ "$#" -ne 2 ]; then
   exit 2
 fi
 
-# Keep this tag in lockstep with @playwright/test AND with the `container:` lines of the `vr` and
+# Keep this pin in lockstep with @playwright/test AND with the `container:` lines of the `vr` and
 # `web` CI jobs; regenerate baselines on the bump. tooling/workflow-guards.test.mjs asserts all
-# three agree with the installed version, so a partial bump fails CI rather than silently comparing
-# baselines under a renderer they were not made with.
-IMAGE=mcr.microsoft.com/playwright:v1.61.1-noble
+# three agree with the installed version AND carry one shared digest, so a partial bump fails CI
+# rather than silently comparing baselines under a renderer they were not made with.
+#
+# Pinned by digest, not by tag alone: a tag can be re-pushed, and this script mounts your whole
+# working tree read-write. Re-take the digest on every bump with buildx — NOT with
+# `docker manifest inspect --verbose`, whose reported digest does NOT resolve when used as a pin
+# (measured: this registry serves a different digest per Accept header):
+#   docker buildx imagetools inspect mcr.microsoft.com/playwright:v1.61.1-noble --format '{{.Manifest.Digest}}'
+IMAGE=mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
 
 # The anonymous volumes shadow paths that must NOT be written back onto the host bind mount:
 #   * every package's node_modules + the store — so the local darwin install is untouched
@@ -651,6 +662,15 @@ docker run --rm \
 
 The `bash -c '…' _ "$1" "$2"` form passes the filter and the script positionally into the container
 shell instead of interpolating them into the command string — no quoting hazard, and shellcheck-clean.
+
+Then carry the SAME digest to the `vr` job's existing `container:` line in
+`.github/workflows/ci.yml` — it is one of the three homes the guard below counts, and leaving it on
+the bare tag fails that guard:
+
+```diff
+-    container: mcr.microsoft.com/playwright:v1.61.1-noble
++    container: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
+```
 
 - [ ] **Step 2: Point the root scripts at it**
 
@@ -689,26 +709,40 @@ test('the Playwright container tag agrees with @playwright/test everywhere it is
     /^\D*/,
     '',
   );
-  const expected = `mcr.microsoft.com/playwright:v${floor}-noble`;
-
   // Anchored and exhaustive, the same treatment ci.yml gets below: a bare `.includes()` stays green
-  // when the real assignment drifts and the expected tag survives only in a comment or a second,
+  // when the real assignment drifts and the expected pin survives only in a comment or a second,
   // stale IMAGE line.
   const helper = readFileSync(
     fileURLToPath(new URL('../tooling/docker-playwright.sh', import.meta.url)),
     'utf8',
   );
-  const images = helper.match(/^IMAGE=mcr\.microsoft\.com\/playwright:\S+$/gm);
-  assert.ok(images, `tooling/docker-playwright.sh must pin ${expected}`);
-  for (const image of images) {
-    assert.equal(image, `IMAGE=${expected}`, `${image} disagrees with ${expected}`);
-  }
-
-  const pins = workflow('ci.yml').match(/^\s+container: mcr\.microsoft\.com\/playwright:\S+$/gm);
-  assert.ok(pins, 'no Playwright container pin found in ci.yml — a pixel job lost its container');
-  for (const pin of pins) {
-    assert.equal(pin.trim(), `container: ${expected}`, `${pin.trim()} disagrees with ${expected}`);
-  }
+  // The DIGEST is required, not just the tag: a tag can be re-pushed, and this container runs with
+  // the repo checked out and the working tree bind-mounted read-write.
+  const pinned = (prefix) =>
+    new RegExp(
+      `^${prefix}mcr\\.microsoft\\.com/playwright:v${floor}-noble@(sha256:[0-9a-f]{64})$`,
+      'gm',
+    );
+  const digestsIn = (text, prefix) => [...text.matchAll(pinned(prefix))].map((m) => m[1]);
+  const homes = [
+    ['tooling/docker-playwright.sh', digestsIn(helper, 'IMAGE=')],
+    ['ci.yml', digestsIn(workflow('ci.yml'), '\\s+container: ')],
+  ];
+  const digests = homes.flatMap(([, found]) => found);
+  assert.equal(
+    digests.length,
+    3,
+    `all three Playwright pins must read …:v${floor}-noble@sha256:<64 hex> — found ` +
+      homes.map(([name, found]) => `${found.length} in ${name}`).join(', '),
+  );
+  // Shape alone is NOT enough — measured: with the helper on one digest and a workflow line on
+  // another, every shape-only pattern still matched, which is exactly the partial-bump hole this
+  // test exists to close. Require ONE value across all three.
+  assert.equal(
+    new Set(digests).size,
+    1,
+    `the three Playwright pins disagree: ${[...new Set(digests)].join(' vs ')}`,
+  );
   // Anchored past the flags on purpose, the same idiom the ci.yml assertions use: the comment in
   // the helper now states the lifecycle-script reason, so a bare
   // /pnpm install --frozen-lockfile --ignore-scripts/ would match that COMMENT and stay green over
@@ -728,12 +762,14 @@ test('the Playwright container tag agrees with @playwright/test everywhere it is
 node --test tooling/workflow-guards.test.mjs
 ```
 
-Expected: PASS (all three agree today). Now prove it bites — temporarily change `IMAGE` in the
-helper to `…:v1.60.0-noble` and re-run. Expected: FAIL with
-`IMAGE=mcr.microsoft.com/playwright:v1.60.0-noble disagrees with mcr.microsoft.com/playwright:v1.61.1-noble`
-— the loop's `assert.equal`, because the changed line still matches the anchored `IMAGE=` pattern.
-The guard's other message, `tooling/docker-playwright.sh must pin …`, is the separate case where
-that line stops matching at all: removed, commented out, or rewritten (a quoted `IMAGE="…"` value,
+Expected: PASS (all three agree today). Now prove it bites twice, because the guard has two
+distinct failure cases. First a PARTIAL bump — temporarily change one hex character of the digest in
+the helper's `IMAGE` and re-run. Expected: FAIL with `the three Playwright pins disagree: sha256:…
+vs sha256:…`, the set assertion, because the changed line still matches the anchored pattern. Then
+BLUNT the pin — drop the `@sha256:…` suffix from that same line. Expected: FAIL with `all three
+Playwright pins must read …:v1.61.1-noble@sha256:<64 hex> — found 0 in
+tooling/docker-playwright.sh, 2 in ci.yml`, the separate case where a home stops matching at all:
+unpinned, on the wrong version, removed, commented out, or rewritten (a quoted `IMAGE="…"` value,
 for one). Restore it.
 
 - [ ] **Step 5: Verify the refactor is behaviour-preserving on `client/`'s existing baselines**
@@ -1837,7 +1873,7 @@ web:
   needs: changes
   if: ${{ needs.changes.outputs.code == 'true' }}
   runs-on: ubuntu-latest
-  container: mcr.microsoft.com/playwright:v1.61.1-noble
+  container: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48
   steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
     # NOT the setup-js composite — same reasoning as the `vr` job: inside the Playwright container
@@ -2004,8 +2040,12 @@ test("the web job runs web/'s whole browser lane in the pinned container, and bl
     'the web job must call `playwright test` exactly once — a second call means a second next build',
   );
   // The container pin is what makes "no playwright install needed" true, and what makes the pixel
-  // comparison match the committed -linux baselines.
-  assert.match(webJob, /^\s+container: mcr\.microsoft\.com\/playwright:v[\d.]+-noble$/m);
+  // comparison match the committed -linux baselines. The digest is required here too — a tag this
+  // job resolves at run time is a tag someone else can re-push under.
+  assert.match(
+    webJob,
+    /^\s+container: mcr\.microsoft\.com\/playwright:v[\d.]+-noble@sha256:[0-9a-f]{64}$/m,
+  );
   // The install line's two flags, for the same reason: dropping either is SILENT. Without
   // --frozen-lockfile the container resolves fresh registry versions for the caret ranges, so the
   // installed half of the renderer can move while the pinned image half stays put; without
@@ -2198,7 +2238,7 @@ says the version is "load-bearing in three spots — the root dep, the `vr` job'
 the `e2e` job's Chromium install". All three go stale here, and the first is already wrong today.
 Rewrite it to name the per-package `@playwright/test` devDependency (`client/` and `web/` — there
 is no root dep), `tooling/docker-playwright.sh`'s `IMAGE=` line, and the `container:` lines of BOTH
-the `vr` and `web` jobs, and say that `tooling/workflow-guards.test.mjs` now anchors those last
+the `vr` and `web` jobs — all three now pinned by digest, re-taken on every bump — and say that `tooling/workflow-guards.test.mjs` now anchors those last
 three to the installed version. The `e2e` job keeps only its `(client)` Chromium install. A
 paragraph rather than a sixth table row, so Step 1's "Five spot edits" count stays true.
 
@@ -2209,6 +2249,9 @@ own Tailwind CSS by scanning `client/` **source**, and the `web` job is gated on
 so a `client/`-only PR runs it. Beside the existing Linux-only bullet, add: "A `client/` visual
 change also moves `web/`'s nine page baselines in `web/e2e/pages.vr.ts-snapshots/`. Regenerate them
 with `pnpm test:web:docker:update` and commit them in the same PR — the `web` job blocks merge."
+While you are in that bullet list, correct the Linux-only bullet's image reference too — it names
+the bare tag: `mcr.microsoft.com/playwright:v1.61.1-noble` becomes
+`mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48`.
 A paragraph for the same reason as the one above, not a sixth table row.
 
 - [ ] **Step 2: Give `AGENTS.md`'s VR section the `web/` lane**
@@ -2243,7 +2286,7 @@ After:   `web/app/globals.css` also keeps `web/scripts/**` AND `web/e2e/**` out 
 - [ ] **Step 3: Widen the runbook**
 
 `AGENTS.md` points at this file as the full reference, so it needs more than the one artifact rename
-from step 1. Five edits:
+from step 1. Six edits:
 
 1. **Title** — `# VR + a11y + e2e testing — runbook (\`client/\`)`→ drop the`client/`scoping:`# VR + a11y + e2e testing — runbook`
 2. **"Four test layers in `client/`"** — keep the heading and its four bullets, but add a sentence
@@ -2273,8 +2316,9 @@ from step 1. Five edits:
    so nothing could reach a commit — this is about the working tree). `web/test-results/` and the
    `*-snapshots/` folders are deliberately **not** shadowed: those are the results you need to read
    afterwards. `tooling/workflow-guards.test.mjs` asserts the helper's image tag and both CI jobs'
-   `container:` lines agree with the installed `@playwright/test`, so a partial bump fails CI rather
-   than silently comparing baselines under the wrong renderer.
+   `container:` lines agree with the installed `@playwright/test` AND carry one shared `@sha256:`
+   digest, so a partial bump fails CI rather than silently comparing baselines under the wrong
+   renderer.
    ````
 
 5. **A new `web/` section**, after the client VR section:
@@ -2317,6 +2361,20 @@ from step 1. Five edits:
    Look at the diff before regenerating anything. A red VR run whose quickest route to green is a
    baseline refresh is exactly how a page nobody looked at gets blessed.
    ````
+
+6. **The `vr`-job pin sentence** — it names the bare tag, which is no longer what is pinned:
+
+   ```text
+   Before:  The `vr` CI job pins `container: mcr.microsoft.com/playwright:v1.61.1-noble`, so its
+            rendering matches … Bump that image tag in lockstep with `@playwright/test` …
+   After:   Both pixel CI jobs pin
+            `container: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48`
+            — by digest, because a tag can be re-pushed — so their rendering matches the
+            Docker-generated `-linux` baselines exactly. Bump the tag in lockstep with
+            `@playwright/test`, RE-TAKE the digest with
+            `docker buildx imagetools inspect <tag> --format '{{.Manifest.Digest}}'`, and
+            regenerate baselines on the bump.
+   ```
 
 - [ ] **Step 4: Flip this spec's Status line**
 
