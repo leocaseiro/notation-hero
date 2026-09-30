@@ -143,6 +143,16 @@ the task named beside it — they are the reason those tests exist.
   discipline — its unscoped scripts point at a second config that declares no `projects` array.
   → Task 1.
 
+### What the nine shots add over the guards already in `web/e2e`
+
+Two cheaper guards already cover the NH-315 shape, and **both must stay** — the baselines do not
+replace either. `web/e2e/player.e2e.ts` polls the seek rail's `boundingBox()` width
+`.toBeGreaterThan(100)`, under a comment naming this same `client/`-source-scan mechanism;
+`web/e2e/a11y.e2e.ts`'s hit-area scan deliberately keeps a control collapsed to 0 px in its verdict,
+and its per-call-site `floor` of controls and sliders stops the scan passing over nothing. No shot
+in this lane asserts a width. The pixel lane's residual coverage is whole-page composition and
+layout — what no single-element assertion names.
+
 ---
 
 ## File Structure
