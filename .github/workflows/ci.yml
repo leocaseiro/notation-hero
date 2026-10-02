@@ -383,8 +383,8 @@ jobs:
             }
 
   # End-to-end — Playwright against client/'s built SPA (`vite preview`), with /api/catalog mocked by
-  # MSW. web/'s browser lane moved to the `web` job (NH-320), which runs it in the Playwright
-  # container so one `next build` serves behaviour, axe and pixels together. Models the `a11y` job
+  # MSW. web/'s browser lane lives in the `web` job, which runs it in the Playwright container so
+  # one `next build` serves behaviour, axe and pixels together. Models the `a11y` job
   # (ubuntu + on-demand Chromium): this lane is not pixel-exact, so it needs no Playwright container
   # — which is what still distinguishes it from the `vr` and `web` jobs, both of which are. Uploads
   # traces + the HTML report so a CI failure is replayable via `npx playwright show-trace`.

@@ -14,8 +14,10 @@
   chain explicitly — pnpm does not run `pre<script>` hooks. It is git-ignored; never commit it.
 - **`globalThis`, never `window`** — `unicorn/prefer-global-this` is an error, and lint runs with
   `--max-warnings 0`.
-- The Playwright script is `test:e2e`, never `test`: the `quality` CI job runs `pnpm -r run test`
-  with no browsers installed.
+- The Playwright scripts are `test:e2e` (behaviour + axe) and `test:vr` / `test:vr:update` (the ten
+  page shots) — never `test`: the `quality` CI job runs `pnpm -r run test` with no browsers
+  installed. Every LOCAL invocation must name its project; the `web` CI job runs both lanes in one
+  unscoped `playwright test` so a single `next build` serves them.
 
 ## Next.js agent rules (managed by Next.js — do not hand-edit)
 

@@ -33,7 +33,7 @@ bash tooling/docker-playwright.sh <pnpm-filter> <script>
 
 It shadows every package's `node_modules` plus `web/.next` and `web/public/alphatab` with anonymous volumes, so a container run cannot clobber the local dev build (both are git-ignored, so nothing could reach a commit — this is about the working tree). `web/test-results/` and the `*-snapshots/` folders are deliberately **not** shadowed: those are the results you need to read afterwards. `--ignore-scripts` skips the lefthook `prepare` (its git call can't resolve a worktree's `.git` inside the container) and keeps dependency lifecycle scripts from running as root over a bind-mounted tree. `tooling/workflow-guards.test.mjs` asserts the helper's image tag and both CI jobs' `container:` lines agree with the installed `@playwright/test` AND carry one shared `@sha256:` digest, so a partial bump fails CI rather than silently comparing baselines under the wrong renderer.
 
-Both pixel CI jobs pin `container: mcr.microsoft.com/playwright:v1.61.1-noble@sha256:5b8f294aff9041b7191c34a4bab3ac270157a28774d4b0660e9743297b697e48` — by digest, because a tag can be re-pushed — so their rendering matches the Docker-generated `-linux` baselines exactly. Bump the tag in lockstep with `@playwright/test`, RE-TAKE the digest with `docker buildx imagetools inspect <tag> --format '{{.Manifest.Digest}}'` (NOT `docker manifest inspect --verbose`, whose reported digest does not resolve as a pin), and regenerate baselines on the bump.
+Both pixel CI jobs pin the same Playwright container **by digest** — a tag can be re-pushed — so their rendering matches the Docker-generated `-linux` baselines exactly. Bump the tag in lockstep with `@playwright/test`, RE-TAKE the digest with `docker buildx imagetools inspect <tag> --format '{{.Manifest.Digest}}'` (NOT `docker manifest inspect --verbose`, whose reported digest does not resolve as a pin), and regenerate baselines on the bump.
 
 ## `web/`'s VR lane — ten page shots of the real app
 
@@ -48,6 +48,8 @@ pnpm test:web:docker:update                     # regenerate them, then commit
 ```
 
 **Three shots carry four assertions over a surface the comparator cannot see.** Playwright's per-pixel cutoff is `1408.6` at the default threshold, and this app's surface steps score 5, 20, 80 and 173 — under it. Those shots each read a computed `background-color` alongside the picture; the picture proves the state rendered, the assertion proves the surface is right. Do not remove one — and if you ADD one, score its step against that same cutoff first (above it, the picture already covers it), then add its anchor to the list in `tooling/workflow-guards.test.mjs`, which counts them and fails if you do not.
+
+**How to score a step.** Playwright's per-pixel distance is `0.5053*dY^2 + 0.299*dI^2 + 0.1957*dQ^2` in YIQ, compared against `35215 * threshold^2` — `1408.6` at the default 0.2 threshold. A pixel scoring below that is not counted at all, however large the flat region is. The worked version, with this design system's measured steps, is in the `surfaceDiffersFromPageBackground` comment in `web/e2e/pages.vr.ts`. Above the cutoff the picture already covers the change and the assertion is noise; under it, the assertion is the only thing that catches it.
 
 **Debugging a red run:** `web/` has **no** hosted diff page (unlike `client/`'s `vr-report` GitHub Pages publish). Download `playwright-web-report` from the run's **Artifacts**, then:
 

@@ -1,9 +1,28 @@
 # Visual-regression gate for `web/` — NH-320
 
 Date: 2026-09-21
-Status: Implemented. v0 Plan C (the Settings and Tracks popovers) has merged, and its
-two popover shots are deliberately **out of this gate** — they land after it; see "The shots".
+Status: Implemented, with deltas — see **Shipped deltas** below. v0 Plan C (the Settings and
+Tracks popovers) has merged, and its two popover shots are deliberately **out of this gate** —
+they land after it; see "The shots".
 Ticket: [NH-320](https://leocaseiro.atlassian.net/browse/NH-320)
+
+## Shipped deltas
+
+This spec is kept as the design record, not as a description of the shipped lane. What shipped
+differs as follows — each found by executing a step, not by re-reading it:
+
+- **Ten shots, not nine.** The drag-over overlay, listed below under the candidates deliberately
+  left out of v1, shipped as the tenth.
+- **`timeout: 180_000` on the chromium project,** not `120_000`: a 120 s project cap pre-empts the
+  expect ceilings the shots rely on, so the failure reads as a test timeout rather than the
+  assertion that actually failed.
+- **A 15 s toast ceiling,** not 10 s — 5 267 ms was measured at one worker, and CI runs several
+  with `retries: 2`.
+- **`test:client:docker*` and `test:web:docker*`,** not `test:vr:docker*`: two lanes needed two
+  script families, so the single name was split rather than overloaded.
+- **Three assertion snippets below are superseded.** The shipped versions reject them as unable to
+  fail.
+- **Measured heights are 113 / 627 / 576 px,** not 576 / 852 / 576 (see `web/e2e/a11y.e2e.ts`).
 
 ## Goal
 
