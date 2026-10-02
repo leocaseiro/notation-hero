@@ -63,6 +63,10 @@ test("the web job runs web's whole browser lane in the pinned container, and blo
   // existed at all.
   const webJob = jobBlock(ci, WEB_JOB);
   assert.ok(webJob, 'there is no `web:` job in ci.yml');
+  // Several assertions below must read COMMANDS, not prose. This slice carries the job's own
+  // comments, and a `run: |` block puts its commands on continuation lines that no `^\s+run:`
+  // anchor can see — stripping the comments once is what lets those assertions drop the anchor.
+  const webJobCode = webJob.replace(/^\s*#.*$/gm, '');
 
   // ANCHORED to a real `run:` line (the /m flag), never "appears somewhere in the file": the
   // unanchored form stays green against a ci.yml where the whole step is commented out with `#`.
@@ -76,14 +80,14 @@ test("the web job runs web's whole browser lane in the pinned container, and blo
   // when that invocation ends, so a second call runs a second `next build` and the only reason for
   // this job evaporates.
   //
-  // Counted over `run:` lines, and covering the SCOPED package-script form too — the scoped
-  // test:e2e / test:vr scripts stay alive for local use and every browser-lane step in this file is
-  // written that way, so a bare `playwright test` substring count misses a second invocation
-  // written the repo's own way, while ALSO going red on a comment that merely mentions
-  // `playwright test`, since this slice includes comments. `run` is optional in the alternation
-  // because pnpm runs a script without it.
+  // Counted over COMMANDS in the comment-stripped slice, and covering the SCOPED package-script
+  // form too — the scoped test:e2e / test:vr scripts stay alive for local use and every
+  // browser-lane step in this file is written that way, so a bare `playwright test` count would
+  // miss a second invocation written the repo's own way. NOT anchored to `^\s+run:` any more: that
+  // form counted nothing inside a `run: |` block, so a second invocation added as a continuation
+  // line read as one.
   assert.equal(
-    (webJob.match(/^\s+run:.*(?:playwright test|test:(?:e2e|vr))/gm) ?? []).length,
+    (webJobCode.match(/playwright test|test:(?:e2e|vr)\b/g) ?? []).length,
     1,
     'the web job must call `playwright test` exactly once — a second call means a second next build',
   );
@@ -102,12 +106,12 @@ test("the web job runs web's whole browser lane in the pinned container, and blo
     /^\s+run: corepack enable && pnpm install --frozen-lockfile --ignore-scripts$/m,
     'the web job must install from the lockfile with lifecycle scripts off',
   );
-  // Anchored to a real `run:` line, the same idiom as the run-line assertion above: the job's own
-  // Install-deps comment ends with "no `playwright install`", and the slice includes comments, so
-  // the unanchored form fails on its own explanation the first time it is run.
+  // Read over the comment-stripped slice, for the same reason as the count above: the job's own
+  // Install-deps comment ends with "no `playwright install`", so this cannot run against the raw
+  // slice, and a `^\s+run:` anchor would miss the command inside a `run: |` block.
   assert.doesNotMatch(
-    webJob,
-    /^\s+run:.*playwright install/m,
+    webJobCode,
+    /playwright install/,
     'the container bakes the browsers in — an install step here means the pin is not trusted',
   );
   // Its report and traces must be uploaded, or a CI failure is not replayable: web/ has no hosted
@@ -117,6 +121,22 @@ test("the web job runs web's whole browser lane in the pinned container, and blo
   // …and the lane must still BLOCK merge. ci-green's `needs:` list is the single source of truth
   // for that, so a step that runs inside a job nothing waits on is not a gate.
   assert.match(ci, /^\s+web,$/m);
+  // Registration is not enforcement, and two separate things turn this gate into a no-op while
+  // every other assertion here stays green. `continue-on-error` lets the job go red and still
+  // report success. And ci-green's allow-list accepts `skipped`, so NARROWING this job's `if:`
+  // would silently stop it running on the very pull requests it guards — which is why the
+  // condition is pinned rather than merely required to exist. Widen the `changes` filter if the
+  // lane must cover more; never this line.
+  assert.doesNotMatch(
+    webJobCode,
+    /^\s+continue-on-error:/m,
+    'the web job must not be able to pass over a red pixel run',
+  );
+  assert.match(
+    webJob,
+    /^ {4}if: \$\{\{ needs\.changes\.outputs\.code == 'true' \}\}$/m,
+    "a skipped web job reads as a pass in ci-green, so this job's `if:` is pinned",
+  );
   // This job runs PR-authored browser code, so an escalation on it must be loud. Anchored to a real
   // expression and a real key line, not the bare words: the slice includes comments, and the header
   // above explains the posture in prose — the unanchored forms would fail on that explanation. A
@@ -208,6 +228,12 @@ test('every web/ Playwright script names its project', () => {
 // fourth home appears, and regenerate baselines whenever the version moves.
 const EXPECTED_PLAYWRIGHT_PINS = 3;
 
+// The same idiom for the shot count. Set equality below catches a DROPPED shot or baseline, but
+// says nothing about how many there are, so an eleventh could be added while AGENTS.md, both
+// READMEs and the runbook all keep saying ten. A hard number is what makes an eleventh justify
+// itself: bump this line and the prose together.
+const EXPECTED_SHOTS = 10;
+
 test('the Playwright container tag agrees with @playwright/test everywhere it is pinned', () => {
   // The range is a caret (`^1.61.1`); its FLOOR is what the image tag must name, because that is
   // the version the baselines were rendered by. syncpack already keeps client/ and web/ on one
@@ -292,7 +318,13 @@ const PROJECT_ENTRY_END = /^\s+\},$/m;
 
 test('the web VR project has at least one shot to run', () => {
   const dir = new URL('../web/e2e/', import.meta.url);
-  const shots = readdirSync(dir).filter((file) => file.endsWith('.vr.ts'));
+  // Recursive, because the chromium project's testMatch is '**/*.vr.ts'. A shot in a subfolder runs
+  // in CI while a one-level listing never sees it — and Playwright's snapshot path embeds
+  // {testFileDir}, so its baselines land outside the single folder this guard pairs against, which
+  // is what makes the pairing assertion below go red on it instead of green.
+  const shots = readdirSync(dir, { recursive: true })
+    .map(String)
+    .filter((file) => file.endsWith('.vr.ts'));
   assert.ok(shots.length > 0, 'web/e2e has no *.vr.ts — the chromium project runs nothing');
 
   // Comments stripped before ANY content match below. A commented-out shot is still a parked shot:
@@ -352,6 +384,11 @@ test('the web VR project has at least one shot to run', () => {
     [...baselineNames].sort(),
     'the shots and the committed -chromium-linux baselines no longer pair up — a shot, a baseline or a name was dropped',
   );
+  assert.equal(
+    shotNames.size,
+    EXPECTED_SHOTS,
+    `web/e2e declares ${shotNames.size} shots but ${EXPECTED_SHOTS} are documented in AGENTS.md, both READMEs and the runbook — bump this and the prose together`,
+  );
 
   // Three shots carry four assertions over a surface step the comparator cannot see (scoring 5, 20,
   // 80 and 173 against its 1408.6 per-pixel cutoff), so each reads a computed background-color
@@ -366,11 +403,15 @@ test('the web VR project has at least one shot to run', () => {
   // dropping one of today's four: the count assertion is what makes forgetting impossible. Score
   // the step first — above the 1408.6 cutoff the picture already covers it and the assertion is
   // noise; under it, the assertion earns its place AND its anchor.
+  //
+  // Each anchor names the COMPARISON, never the probe that feeds it: a probe line can outlive the
+  // assertion it was written for, and `var(--elevate)` / `var(--destructive)` are probe expressions,
+  // so anchoring there stayed green over a deleted `.toBe(...)`.
   const surfaceAnchors = [
-    ['the rail surface', /\(page, 'player-rail'\)/],
-    ['the transport-footer surface', /\(page, 'transport-row'\)/],
-    ['the ghost hover step', /var\(--elevate\)/],
-    ['the engine-error tint', /var\(--destructive\)/],
+    ['the rail surface', /\(page, 'player-rail'\)\)\s*\.toBe\(true\)/],
+    ['the transport-footer surface', /\(page, 'transport-row'\)\)\s*\.toBe\(true\)/],
+    ['the ghost hover step', /\.toBe\(elevate\)/],
+    ['the engine-error tint', /\.toBe\(expectedTint\)/],
   ];
   // Both call shapes matched without naming the helper, the same reason the anchors are not.
   const surfaceAssertions = sources.flatMap((source) => [
@@ -417,4 +458,28 @@ test('the web VR project has at least one shot to run', () => {
   const e2e = projectEntry(E2E_NAME_LINE);
   assert.ok(e2e, "the e2e project is gone — web's behaviour and axe tests never run");
   assert.match(e2e, /^\s+testMatch: '\*\*\/\*\.e2e\.ts',$/m, 'e2e no longer matches *.e2e.ts');
+
+  // pages.vr.ts states the comparison policy — no options, default threshold only — and until now
+  // that policy had no mechanism. It is the shortest route from a working gate to a decorative one:
+  // one `maxDiffPixels` makes all ten shots pass over any pixels, with every assertion above still
+  // green. Checked over the comment-stripped sources, because the policy comment itself names
+  // `threshold:0 / maxDiffPixels:0` while explaining why they are not used.
+  const TOLERANCE =
+    /maxDiffPixels|maxDiffPixelRatio|threshold|ignoreSnapshots|toHaveScreenshot\s*:/;
+  // The config gets LINE comments stripped only — never stripComments(). That helper removes block
+  // comments with a non-greedy /* … */, and this config's glob strings ('**/*.vr.ts') contain both
+  // `/*` and `*/`, so it deletes a span of real config between them. Measured: it swallowed an
+  // injected `maxDiffPixels: 500` and this assertion passed over it. The config has no block
+  // comments of its own, so line-stripping is both sufficient and safe here.
+  const configCode = config.replace(/^\s*\/\/.*$/gm, '');
+  for (const [name, text] of [
+    ['web/playwright.e2e.config.ts', configCode],
+    ...shots.map((file, index) => [`web/e2e/${file}`, sources[index]]),
+  ]) {
+    assert.doesNotMatch(
+      text,
+      TOLERANCE,
+      `${name} sets a screenshot comparison option — the ten shots only mean something at the default threshold`,
+    );
+  }
 });
