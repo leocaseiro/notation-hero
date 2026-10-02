@@ -20,5 +20,5 @@ test-results
 playwright-report
 
 # VR baselines are Linux-only. A local `test:vr:update` on a Mac writes darwin shots
-# for quick local iteration — they must never be committed (regenerate via test:vr:docker).
+# for quick local iteration — they must never be committed (regenerate via test:client:docker).
 *-chromium-darwin.png

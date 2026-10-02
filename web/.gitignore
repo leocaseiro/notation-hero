@@ -15,3 +15,7 @@ next-env.d.ts
 # Playwright lane output
 /playwright-report/
 /test-results/
+
+# VR baselines are Linux-only. A local `test:vr:update` on a Mac writes darwin shots
+# for quick local iteration — they must never be committed (regenerate via test:web:docker).
+*-chromium-darwin.png

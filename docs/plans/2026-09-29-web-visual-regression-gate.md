@@ -3,6 +3,10 @@
 # `last_applied` is the highest severity applied on that lap.
 lap: 3
 last_applied: P1
+# The CODE review loop over PR #188 is a separate lane from the doc laps above.
+code_review_lap: 1
+code_review_last_applied: P1
+code_review_findings: .spec-triage-loop/pr-188-web-vr-gate-code/lap-1/findings.json
 ---
 
 # Visual-regression gate for `web/` — implementation plan (NH-320)

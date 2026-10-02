@@ -125,6 +125,22 @@ test("globals.css keeps this repo's scripts out of Tailwind source detection", (
   );
 });
 
+// The sibling line, one folder over, and the same hazard: web/e2e/ discusses design-system class
+// names in prose — the hit-area gate quotes `h-11`, the pixel shots quote `bg-rail` and
+// `hover:bg-elevate`. Tailwind scans that folder too, so a utility named only in a COMMENT there
+// becomes real CSS and the canary above passes over a utility the app itself stopped generating.
+// Measured: an `mt-[137px]` planted in an a11y.e2e.ts comment reached the emitted stylesheet.
+test("globals.css keeps this repo's e2e specs out of Tailwind source detection", () => {
+  const css = readFileSync(join(import.meta.dirname, '..', 'web', 'app', 'globals.css'), 'utf8');
+  assert.match(
+    css,
+    /^@source not '\.\.\/e2e\/\*\*';$/m,
+    "web/app/globals.css must keep `@source not '../e2e/**';`. Without it Tailwind scans web/e2e/, " +
+      'turns class names quoted in those specs into real CSS, and the canary above can no longer ' +
+      'see a utility go missing from the app.',
+  );
+});
+
 test('fails when the build emitted no stylesheet at all', () => {
   withOutput(null, (dir) => {
     assert.throws(() => assertDesignSystemCss({ outputDir: dir }), /emitted no stylesheet/);

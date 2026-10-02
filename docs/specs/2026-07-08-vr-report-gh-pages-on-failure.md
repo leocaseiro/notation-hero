@@ -32,10 +32,10 @@ cannot publish or comment, so forks skip cleanly instead of going red. Neither i
 
 **`vr-report` (on `vr` failure)** — holds the write token (`contents: write`,
 `pull-requests: write`); the `vr` job that runs PR/Storybook code stays read-only and only uploads
-the `playwright-vr-report` artifact (added in #122). Shares the `gh-pages-deploy` concurrency group
+the `playwright-client-vr-report` artifact (added in #122). Shares the `gh-pages-deploy` concurrency group
 so it never non-fast-forward-races the Storybook publish. Steps:
 
-1. Download the `playwright-vr-report` artifact (`continue-on-error`), then gate the rest on
+1. Download the `playwright-client-vr-report` artifact (`continue-on-error`), then gate the rest on
    `playwright-report/index.html` being present — a `vr` failure that crashes **before** Playwright
    writes a report produces no artifact, so the job no-ops cleanly instead of hard-failing.
 2. Publish `playwright-report/` to `gh-pages` at **`vr-report/pr/<n>/`** via the pinned
