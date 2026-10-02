@@ -104,7 +104,13 @@ async function awaitPlayerReady(page: Page): Promise<void> {
 }
 
 /**
- * Whether `testId`'s own background-color differs from the page background's.
+ * Asserts that `testId`'s own background-color IS `css`, resolved through a throwaway probe.
+ *
+ * It asserts an IDENTITY, not a difference. A difference check is far weaker than it looks here:
+ * swapping `bg-rail` for `bg-muted` scores 20 against the cutoff below, so the picture cannot see
+ * it — and the colour is opaque and is not the body's, so a "differs from the page background"
+ * assertion passed too and the change shipped unnoticed. The other two surface assertions in this
+ * file already compare against a resolved token; these two now do the same.
  *
  * THREE of these shots guard a surface step the pixel comparator CANNOT see, between them carrying
  * FOUR such assertions — the bundled beat has two, the ghost hover and the engine error one each.
@@ -122,25 +128,32 @@ async function awaitPlayerReady(page: Page): Promise<void> {
  * exists to catch: the browser resolves computed colours to its own format, so a format mismatch
  * makes the assertion pass — or fail — for a reason unrelated to the surface.
  */
-const surfaceDiffersFromPageBackground = (page: Page, testId: string): Promise<boolean> =>
-  page.getByTestId(testId).evaluate((el) => {
-    const own = globalThis.getComputedStyle(el).backgroundColor;
-    // document.body, NOT el.parentElement: measured, NEITHER parent paints anything. The rail's is
-    // <section className="nh-drop-zone …"> and web/app/globals.css gives .nh-drop-zone only a
-    // [data-dragging] rule; the footer's is <div className="shrink-0" data-testid="player-status">.
-    // Against a transparent parent EVERY opaque colour differs, bg-background included, so the
-    // assertion could never fail. body carries `bg-background` (client/src/styles.css), which is
-    // what both call sites are actually compared against.
-    //
-    // The transparent clause is the mirror of that objection, and it is the production failure this
-    // whole lane exists for: a `bg-rail` that never reaches the emitted stylesheet leaves the class
-    // in the markup and the computed value at `rgba(0, 0, 0, 0)`, which differs from body's opaque
-    // white — so without this clause the assertion passes over a rail that paints nothing.
-    return (
-      own !== 'rgba(0, 0, 0, 0)' &&
-      own !== globalThis.getComputedStyle(document.body).backgroundColor
-    );
-  });
+const expectBackgroundEquals = async (page: Page, testId: string, css: string): Promise<void> => {
+  const expected = await page.evaluate((expression) => {
+    const probe = document.createElement('div');
+    probe.style.backgroundColor = expression;
+    document.body.append(probe);
+    const value = globalThis.getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return value;
+  }, css);
+  // The probe has to resolve to a REAL colour or the comparison is vacuous — the same clause the
+  // ghost hover and the engine-error tint carry, and for the same reason. A deleted token makes
+  // `var(--rail)` invalid at computed-value time on BOTH sides, so probe and element both read
+  // `rgba(0, 0, 0, 0)`, the equality holds, and at 20 against the cutoff the picture sees nothing
+  // either. This is also the production failure the whole lane exists for: a `bg-rail` that never
+  // reaches the emitted stylesheet leaves the class in the markup and the computed value
+  // transparent.
+  expect(expected).not.toBe('rgba(0, 0, 0, 0)');
+  // Both sides come back through the SAME serializer, which is why the expected value is resolved
+  // by a probe rather than hard-coded: the browser resolves computed colours to its own format, so
+  // a hard-coded `oklch(…)` string would pass or fail for a reason unrelated to the surface.
+  await expect
+    .poll(() =>
+      page.getByTestId(testId).evaluate((el) => globalThis.getComputedStyle(el).backgroundColor),
+    )
+    .toBe(expected);
+};
 
 test('the landing page', async ({ page }) => {
   await gotoLanding(page);
@@ -162,8 +175,8 @@ test('the player on the score it opens with', async ({ page }) => {
   // The rail (20) and the transport footer (5) both score far under the 1408.6 cutoff, so the
   // picture proves the screen rendered while these two prove the surfaces are still distinct from
   // the page behind them. The header is NOT one of these steps — it paints no background of its own.
-  await expect.poll(() => surfaceDiffersFromPageBackground(page, 'player-rail')).toBe(true);
-  await expect.poll(() => surfaceDiffersFromPageBackground(page, 'transport-row')).toBe(true);
+  await expectBackgroundEquals(page, 'player-rail', 'var(--rail)');
+  await expectBackgroundEquals(page, 'transport-row', 'var(--panel)');
   await settleBeforeShot(page);
   await expect(page).toHaveScreenshot('player-bundled-beat.png', { fullPage: true });
 });
@@ -180,6 +193,11 @@ test('the player with a score long enough to scroll', async ({ page }) => {
   await expect(page.getByTestId('loaded-notation-name')).toHaveAttribute('data-file', 'Punk.gp', {
     timeout: 30_000,
   });
+  // The title's claim holds at THIS viewport, which is not the one the accessibility lane measured:
+  // the figures in its comment (627 px of score in a 576 px box) are at 1280x720, and this project
+  // runs 1280x900. Measured here: the box is 756 px and the score reflows to 770 px, so it still
+  // overflows — by 14 px rather than 51. Thin, so re-measure before changing this page's layout or
+  // the fixture; the shot deliberately does not poll for overflow, for the reason above.
   // Then wait for the success toast to GO, and this one is not optional. Opening a file raises
   // toast.loading then toast.success under one id; neither sets a duration, and Sonner exempts a
   // `loading` toast from the close timer entirely, so the close timer is armed by the success that
@@ -291,7 +309,7 @@ test('the ghost hover step on the left rail', async ({ page }) => {
   // Chromium 1.61.1, a missing `--elevate` makes `var(--elevate)` invalid at computed-value time
   // on BOTH sides — the probe and the button's `hover:bg-elevate` — so both read
   // `rgba(0, 0, 0, 0)`, the equality holds, and at 80 against the 1408.6 cutoff the picture sees
-  // nothing either. Same clause surfaceDiffersFromPageBackground already carries.
+  // nothing either. Same clause expectBackgroundEquals already carries.
   expect(elevate).not.toBe('rgba(0, 0, 0, 0)');
   await expect
     .poll(() => ghost.evaluate((el) => globalThis.getComputedStyle(el).backgroundColor))
@@ -359,6 +377,22 @@ test('the first-visit Skeleton while the engine module is stalled', async ({ pag
   await stallEngine(page, Infinity);
   // The accessibility lane's own signal for this state; it names no ceiling, so neither does this.
   await expect(page.getByTestId('notation-skeleton')).toBeVisible();
+  // …and `toBeVisible()` is not enough on its own: it reads the bounding box and CSS visibility and
+  // has NO concept of occlusion, so it passed over a Skeleton painted under the opaque scroll box
+  // and this baseline was an all-white rectangle (884,448 pure-white pixels, zero non-white). A
+  // deleted Skeleton component would have kept the shot green, because it was already photographing
+  // its absence. elementFromPoint returns whatever actually paints at that coordinate, so this
+  // fails exactly when something covers it.
+  await expect
+    .poll(() =>
+      page.getByTestId('notation-skeleton').evaluate((el) => {
+        const box = el.getBoundingClientRect();
+        return el.contains(
+          document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2),
+        );
+      }),
+    )
+    .toBe(true);
   await settleBeforeShot(page);
   await expect(page).toHaveScreenshot('player-skeleton.png', { fullPage: true });
 });
@@ -389,7 +423,7 @@ test('the destructive panel when the engine module fails to load', async ({ page
   // equality holds over a panel whose wash is gone, with its red text and border intact so the
   // picture is blind too. (`--destructive` is the safer of the two: its loss also flattens
   // `text-destructive`, which the picture DOES see at 19698.) Hence the explicit clause below, the
-  // same one surfaceDiffersFromPageBackground carries. The throwaway probe is how the ghost hover
+  // same one expectBackgroundEquals carries. The throwaway probe is how the ghost hover
   // resolves `var(--elevate)`, and it matters here for the same reason: both values then come back
   // through the SAME serializer.
   const expectedTint = await page.evaluate(() => {

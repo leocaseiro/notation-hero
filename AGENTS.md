@@ -133,7 +133,14 @@ lockfile refresh.
 (pnpm + Node-from-`.nvmrc` + frozen install) AFTER `actions/checkout@v6`; do not inline
 the pnpm/node setup. **Exception:** a dependency-free Node script (e.g. the `pr-checklist`
 gate) may use `actions/setup-node@v6` with `node-version-file: .nvmrc` directly — it needs
-no pnpm install; leave an inline comment saying so.
+no pnpm install; leave an inline comment saying so. **Second exception:** a job running INSIDE
+the Playwright container (`vr`, `web`) installs with `corepack enable && pnpm install
+--frozen-lockfile --ignore-scripts` and no `setup-js` at all — `pnpm/action-setup` conflicts with
+the image's own pnpm layout, the image supplies Node, and the lefthook `prepare` cannot resolve a
+worktree's `.git` from inside the container. Keep both flags: `--frozen-lockfile` stops the
+container resolving fresh versions for the caret ranges while the pinned image half stays put, and
+`--ignore-scripts` keeps dependency lifecycle scripts from running as root over a bind-mounted
+tree. Browsers are baked into the image, so there is no `playwright install` either.
 
 - Default branch is `master` (NOT main). Never pass `git commit/push --no-verify`.
 - Server, client, and infra tests run under **Vitest** (DACI L5 / NH-194), not Jest — despite

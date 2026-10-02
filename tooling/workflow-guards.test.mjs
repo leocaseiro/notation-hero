@@ -408,14 +408,17 @@ test('the web VR project has at least one shot to run', () => {
   // assertion it was written for, and `var(--elevate)` / `var(--destructive)` are probe expressions,
   // so anchoring there stayed green over a deleted `.toBe(...)`.
   const surfaceAnchors = [
-    ['the rail surface', /\(page, 'player-rail'\)\)\s*\.toBe\(true\)/],
-    ['the transport-footer surface', /\(page, 'transport-row'\)\)\s*\.toBe\(true\)/],
+    ['the rail surface', /\(page, 'player-rail', 'var\(--rail\)'\)/],
+    ['the transport-footer surface', /\(page, 'transport-row', 'var\(--panel\)'\)/],
     ['the ghost hover step', /\.toBe\(elevate\)/],
     ['the engine-error tint', /\.toBe\(expectedTint\)/],
   ];
   // Both call shapes matched without naming the helper, the same reason the anchors are not.
+  // Two call shapes, because two of the four resolve their expected colour through a shared helper
+  // (`(page, testId, token)`) and two build the probe inline. Both are matched without naming the
+  // helper, the same reason the anchors are not.
   const surfaceAssertions = sources.flatMap((source) => [
-    ...source.matchAll(/\(page, '[^']+'\)/g),
+    ...source.matchAll(/\(page, '[^']+', '[^']+'\)/g),
     ...source.matchAll(/probe\.style\.backgroundColor = '[^']+'/g),
   ]);
   assert.equal(

@@ -11,6 +11,40 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-10-03 — The web pixel gate ships with four execution-time decisions (NH-320)
+
+Recorded at merge, not at approval: these four were settled while executing the gate rather than
+while planning it, so the 2026-09-21 and 2026-09-22 entries above predate them. Each is stated as
+what the code does and why, for ratification on review.
+
+- **The Playwright container is pinned by DIGEST, not by tag,** in all three homes —
+  `IMAGE=` in `tooling/docker-playwright.sh`, and the `container:` lines of the `vr` and `web` CI
+  jobs. A tag can be re-pushed under you, and the helper mounts the whole working tree
+  read-write, so the image that renders the committed baselines is the one thing that must not
+  move silently. `tooling/workflow-guards.test.mjs` holds the three homes to one shared digest and
+  to the installed `@playwright/test`, so a partial bump fails CI instead of comparing baselines
+  under a renderer they were not made with.
+- **`web/e2e/**` is excluded from Tailwind's automatic source scan** (`web/app/globals.css`),
+alongside the existing `web/scripts/\*\*`exclusion. Those specs quote design-system class names
+in prose — the hit-area gate names`h-11`, the pixel shots name `bg-rail`and`hover:bg-elevate`— and Tailwind turns a class named in a COMMENT into real CSS, which would
+let`web/scripts/assert-design-system-css.mjs`pass over a utility the app itself stopped
+generating. Measured: an`mt-[137px]`planted in an`a11y.e2e.ts` comment reached the emitted
+  stylesheet. Both lines are now held by tests.
+- **One docker script family became two.** `test:vr:docker*` is split into
+  `test:client:docker*` and `test:web:docker*`, because two pixel lanes with different baselines
+  needed two entry points rather than one overloaded name. The `vr` CI artifact was renamed on
+  both the upload and the download side to match.
+- **The `web` job carries no secrets and no `permissions:` block,** and inherits the workflow's
+  `contents: read`. It runs PR-authored browser code inside a container as root over a
+  bind-mounted tree, so an escalation there has to be loud; both properties are asserted, at any
+  indent and whether written inline or as a block.
+
+**And a correction to the entry of 2026-09-22,** which is titled "grows to eleven shots". That was
+accurate when written. On 2026-09-28 the two Settings/Tracks popover shots were deferred out of
+this gate rather than widening PR #170, and that deferral was never recorded — so **ten shipped,
+not eleven**. The number now has a mechanism: `EXPECTED_SHOTS = 10` in the guard fails if the lane
+and the five documents that state it drift apart.
+
 ### 2026-10-01 — Dependency CVE refresh: 19 advisories back to zero, ignore list still empty (NH-346)
 
 The `deps-cve` gate (osv-scanner) had drifted to **19 advisories across 11 packages** (2 Critical, 7 High, 9 Medium, 1 Low) — all from `pnpm-lock.yaml` on `master`, none from an open PR, and no lockfile change since the gate was last green on 2026-09-28. The vulnerability database moved under a static tree. The 2026-09-16 choice stands unchanged: a **real version fix over an allowlist**, so `osv-scanner.toml` still carries **no ignores at all**.
