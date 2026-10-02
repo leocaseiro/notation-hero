@@ -118,9 +118,11 @@ test("the web job runs web's whole browser lane in the pinned container, and blo
   // for that, so a step that runs inside a job nothing waits on is not a gate.
   assert.match(ci, /^\s+web,$/m);
   // This job runs PR-authored browser code, so an escalation on it must be loud. Anchored to a real
-  // expression and a real job-level key (four-space indent), not the bare words: the slice includes
-  // comments, and the header above explains the posture in prose — the unanchored forms would fail
-  // on that explanation.
+  // expression and a real key line, not the bare words: the slice includes comments, and the header
+  // above explains the posture in prose — the unanchored forms would fail on that explanation. A
+  // YAML comment starts with `#`, so a `^[ \t]*key:` anchor still cannot match that prose, which is
+  // why the key form needs no indent width. Pinning one width let `permissions: write-all` and any
+  // block at another depth through.
   assert.doesNotMatch(
     webJob,
     /\$\{\{\s*secrets\./,
@@ -128,8 +130,9 @@ test("the web job runs web's whole browser lane in the pinned container, and blo
   );
   assert.doesNotMatch(
     webJob,
-    /^\s{4}permissions:\s*$/m,
-    "the web job must inherit the workflow's contents: read — a permissions block here is an escalation",
+    /^[ \t]*permissions:/m,
+    "the web job must inherit the workflow's contents: read — a permissions key here is an " +
+      'escalation, at any indent and whether it opens a block or sets a value inline',
   );
 });
 
