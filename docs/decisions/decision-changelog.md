@@ -11,6 +11,18 @@ Living record (newest first). Per AGENTS.md "Decision governance": every decisio
 
 > **Merge note (NH-16):** this file is `merge=union` (see `.gitattributes`) — when two PRs each add a change-log entry, git keeps **both** instead of conflicting. Entries may land slightly out of newest-first order after such a merge; re-sort by hand if it matters.
 
+### 2026-10-01 — Dependency CVE refresh: 19 advisories back to zero, ignore list still empty (NH-346)
+
+The `deps-cve` gate (osv-scanner) had drifted to **19 advisories across 11 packages** (2 Critical, 7 High, 9 Medium, 1 Low) — all from `pnpm-lock.yaml` on `master`, none from an open PR, and no lockfile change since the gate was last green on 2026-09-28. The vulnerability database moved under a static tree. The 2026-09-16 choice stands unchanged: a **real version fix over an allowlist**, so `osv-scanner.toml` still carries **no ignores at all**.
+
+- **Only `next` was a direct dependency.** 16.3.4 → 16.3.6 closes GHSA-vcvr-r3jv-pc5j (9.5, remote code execution in `next/og` `ImageResponse`). 16.3.6 is 8 days old and clears the 7-day `minimumReleaseAge` window; 16.3.7 is 1 day old and would have forced a `minimumReleaseAgeExclude` entry — the exact hole that gate exists to close — so it was not taken. **No release-age exception was added by this refresh.** `eslint-config-next` stays exact at 16.3.4: dev-only, no part of the advisory, and the anchor for the vetted `eslint-import-resolver-typescript@3.10.1` `trustPolicyExclude` pin (NH-275).
+- **The carrier is preferred over the override, and one override came out.** `markdownlint-cli2` pins `markdown-it` and `js-yaml` EXACTLY, so no floor could reach them — but 0.23.3 pins a patched `markdown-it` 15.0.1 and `js-yaml` 5.4.1, closing GHSA-253c-mchw-3w2r and GHSA-r3ph-w7gj-g6xm at source. That makes the old `markdown-it: ^14.2.0` override **harmful** rather than merely redundant: it would force the linter back onto the vulnerable major. It is dropped, the way the `js-yaml@3` override was dropped once its carrier left the tree. `pnpm run lint:md` is unchanged at 0 issues over 189 files.
+- **Three floated on a targeted `pnpm update --recursive`** with no override at all: `@grpc/grpc-js` 1.14.5, `ip-address` 10.7.2, `@xhmikosr/decompress` 10.2.2.
+- **`overrides` remains the lever only for the deep transitives.** Raised floors on `brace-expansion@1/@2/@5`, `fast-uri@3` and `multer`, each inside the major its parent declares.
+- **Targeted updates only — no blanket `pnpm update -r`.** Base UI, Storybook, TanStack, React, Tailwind and Playwright do not move, so the `client/` visual-regression baselines still hold. All 92 `web/` e2e browser tests pass on the `next` bump.
+
+**Status:** ✅ decided · 🤖 machine-checked — the `deps-cve` CI job is the enforcement, and it passes with an empty ignore list, so any regression or new ignore is visible in the diff.
+
 ### 2026-09-22 — The web VR gate grows to eleven shots, against PR #170's layout (NH-320)
 
 Reviewing PR #170 turned up two gaps that only the composed `/play` page can show, and the
