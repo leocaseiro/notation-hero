@@ -48,6 +48,12 @@ jobs:
               - 'package.json'
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
+              # The deps-cve gate's own allowlist. Without this entry a pull request that edits
+              # ONLY this file — which is exactly the shape of a CVE risk-acceptance change —
+              # leaves `code` false, so deps-cve skips. `CI Green` counts a skip as OK, so such a
+              # PR goes green having never once run the gate it changes, and the allowlist reaches
+              # master unexercised (observed on #192).
+              - 'osv-scanner.toml'
               - 'tsconfig*.json'
               - '.dependency-cruiser.cjs'
               - 'knip.json'

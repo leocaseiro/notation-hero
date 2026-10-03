@@ -46,6 +46,7 @@ failing, not merely written. It excludes its own two files by exact path, since 
 patterns; a test pins that exclusion list at exactly two entries so it cannot be widened into a
 hiding place. Follow-up to NH-318, which git-ignored the untracked reference map but left the
 already-committed paths in place.
+
 ### 2026-10-04 — Two unfixable advisories get a dated deferral, not a fix (NH-347)
 
 leocaseiro approved this in conversation, after being shown the exposure for each one: do the ignores, put them in their own PR, and set a reminder to re-check in a few weeks.
